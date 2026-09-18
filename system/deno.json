@@ -1,0 +1,22 @@
+{
+  "name": "@preact-components/system",
+  "version": "0.1.0",
+  "exports": {
+    ".": "./+index.ts",
+    "./head": "./head.ts",
+    "./seo-head": "./seo-head.tsx",
+    "./breadcrumb": "./breadcrumb.tsx",
+    "./sw-updater": "./sw-updater.tsx",
+    "./date": "./date.ts",
+    "./calendar": "./calendar.tsx",
+    "./time-slots": "./time-slots.tsx",
+    "./blog-image-enhancer": "./blog-image-enhancer.tsx",
+    "./booking-submit": "./booking-submit.tsx",
+    "./theme-toggle": "./theme-toggle.tsx",
+    "./flatten-routes": "./flatten-routes.ts"
+  },
+  "imports": {
+    // The root import map carries no renderer; the colocated tests assert on real rendered markup.
+    "preact-render-to-string": "npm:preact-render-to-string@6.7.0"
+  }
+}
