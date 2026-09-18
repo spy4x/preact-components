@@ -238,6 +238,7 @@ function StatusSelect(
           id={id}
           class="input mt-2"
           value={status.value}
+          // The two options below are the only values this select can report.
           onChange={(event) => status.value = event.currentTarget.value as CrudStatus}
         >
           <option value="active">{wording.active ?? "Active"}</option>
