@@ -14,8 +14,10 @@ function fakeTimers() {
         timer.cancelled = true
       }
     },
+    /** Fire a timer. A cancelled timer never runs, which is what `clearTimeout` guarantees. */
     fire(index = 0) {
-      timers[index].run()
+      const timer = timers[index]
+      if (!timer.cancelled) timer.run()
     },
   }
 }
@@ -46,6 +48,43 @@ describe("createToastStore add", () => {
   it("keeps an explicit id", () => {
     const store = createToastStore({ nextId: counterIds() })
     expect(store.add({ id: "fixed", body: "saved" })).toBe("fixed")
+    expect(store.list.value[0].id).toBe("fixed")
+  })
+
+  it("replaces the toast in place when an id is reused", () => {
+    const store = createToastStore({ nextId: counterIds() })
+    store.add({ id: "fixed", body: "one" })
+    store.add({ body: "between" })
+    store.add({ id: "fixed", body: "two" })
+
+    expect(store.list.value.map((entry) => entry.body)).toEqual(["two", "between"])
+  })
+
+  it("cancels the replaced toast's timer", () => {
+    const timers = fakeTimers()
+    const store = createToastStore({ nextId: counterIds(), schedule: timers.schedule })
+    store.add({ id: "fixed", body: "one", timeout: 100 })
+    store.add({ id: "fixed", body: "two", timeout: 100 })
+
+    // Two timers exist, but only the new one may fire. Without the cancel, the stale timer's
+    // `remove(id)` filters by id and drops the newer toast with it.
+    expect(timers.timers).toHaveLength(2)
+    expect(timers.timers[0].cancelled).toBe(true)
+    timers.fire(0)
+    expect(store.list.value.map((entry) => entry.body)).toEqual(["two"])
+
+    timers.fire(1)
+    expect(store.list.value).toEqual([])
+  })
+
+  it("does not leave the replaced toast addressable", () => {
+    const store = createToastStore({ nextId: counterIds() })
+    store.add({ id: "fixed", body: "one" })
+    store.add({ id: "fixed", body: "two" })
+
+    store.remove("fixed")
+
+    expect(store.list.value).toEqual([])
   })
 
   it("appends immutably", () => {

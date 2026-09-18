@@ -123,7 +123,10 @@ export type ToastVariant = "success" | "error" | "info" | "warning"
 
 /** Notification content the store hands to its toast port. */
 export interface ToastMessage {
-  /** Reuse a caller-supplied id to replace or address one toast. Generated when omitted. */
+  /**
+   * Caller-supplied id. Reusing one replaces that toast in place — appending would leave two entries
+   * a `remove(id)` cannot tell apart. Generated when omitted.
+   */
   id?: string
   title?: string
   body: string

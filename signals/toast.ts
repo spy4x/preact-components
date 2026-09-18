@@ -23,7 +23,10 @@ export interface ToastEntry {
 export interface ToastStore {
   /** Newest last. */
   list: ReadonlySignal<ToastEntry[]>
-  /** Push a toast. Returns its id, generated when the message carries none. */
+  /** Push a toast. Returns its id, generated when the message carries none.
+   *
+   * Reusing an id replaces that toast in place and cancels the timer it was carrying.
+   */
   add(message: ToastMessage): string
   /** Dismiss one toast and cancel its timer. */
   remove(id: string): void
@@ -99,16 +102,23 @@ export function createToastStore(options: ToastOptions = {}): ToastStore {
     const id = message.id ?? nextId()
     const type = message.type ?? "info"
     const timeout = message.timeout ?? defaultTimeout
-    list.value = [
-      ...list.value,
-      {
-        id,
-        title: message.title ?? type.charAt(0).toUpperCase() + type.slice(1),
-        body: message.body,
-        type,
-        timeout,
-      },
-    ]
+    const entry: ToastEntry = {
+      id,
+      title: message.title ?? type.charAt(0).toUpperCase() + type.slice(1),
+      body: message.body,
+      type,
+      timeout,
+    }
+
+    // A reused id replaces its toast where it stands. Appending instead would leave two entries that
+    // `remove(id)` cannot tell apart, so dismissing one would dismiss both.
+    const existing = list.value.findIndex((current) => current.id === id)
+    list.value = existing === -1
+      ? [...list.value, entry]
+      : list.value.map((current, index) => index === existing ? entry : current)
+
+    // The replaced toast's timer would otherwise fire against the new entry and take it down early.
+    cancel(id)
     if (timeout > 0) {
       timers.set(id, schedule(() => remove(id), timeout))
     }
