@@ -25,7 +25,12 @@
     "lint": "deno lint",
     "lint:fix": "deno lint --fix",
     "ts:check": "deno run --allow-read --allow-run=deno infra/scripts/type-check.ts",
-    "test": "deno test --no-prompt",
+    // Every test in the workspace reads its own sources; the theme package's
+    // compile suites additionally read `HOME` and the Deno npm cache to run the
+    // real Tailwind compiler. Both grants are as narrow as the tests allow, and
+    // are repo-wide only because `deno test` discovers every member's suite in
+    // one process. Nothing here needs `net`, `run` or `write`.
+    "test": "deno test --no-prompt --allow-read --allow-env",
     "fix": {
       "command": "echo 'Fixes applied!'",
       "description": "Run all fixes",

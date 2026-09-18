@@ -6,11 +6,8 @@
     "./preset.css": "./preset.css"
   },
   "tasks": {
-    // `integration/` compiles the shipped CSS with the real Tailwind compiler:
-    // it reads the preset, `HOME` and the Deno npm cache. It is kept out of the
-    // default test path so that the workspace `deno task check` — which runs
-    // bare `deno test` and must stay permission-free — still passes, and is run
-    // on purpose from this directory:
+    // This package alone. The workspace `test` task covers these suites too —
+    // `deno test` discovers every member — with the same two grants.
     "test": "deno test -A integration"
   }
 }

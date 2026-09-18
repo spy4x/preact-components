@@ -9,7 +9,6 @@ import {
   stylesheetLoader,
   tailwindPackageRoot,
 } from "./load-stylesheet.ts"
-import { canCompile, SKIP_REASON } from "./permissions.ts"
 
 /** Must stay in step with the `tailwindcss` pin in the repo root `deno.jsonc`. */
 const VERSION = "4.1.12"
@@ -20,9 +19,6 @@ const TOKENS = fileURLToPath(new URL("../tokens.css", import.meta.url))
 const PACKAGE_DIRECTORY = fileURLToPath(new URL("../../", import.meta.url))
 /** The shipped stylesheets: `<worktree>/theme/theme/`. */
 const THEME_DIRECTORY = fileURLToPath(new URL("../", import.meta.url))
-
-/** Queried once at module scope: `describe` callbacks are synchronous. */
-const granted = await canCompile()
 
 describe("chooseCachedVersion", () => {
   it("prefers the requested version over a newer cached one", () => {
@@ -71,55 +67,51 @@ describe("resolveStylesheetPath", () => {
   })
 })
 
-describe("stylesheets that need the Tailwind cache", () => {
-  if (!granted) {
-    it.skip(SKIP_REASON, () => {})
-  } else {
-    it("resolves Tailwind's own entrypoint", () => {
-      const path = resolveStylesheetPath("tailwindcss", PRESET, VERSION)
-      expect(path.endsWith(`/tailwindcss/${VERSION}/index.css`)).toBe(true)
-    })
+describe("stylesheets that resolve through the Tailwind cache", () => {
+  it("resolves Tailwind's own entrypoint", () => {
+    const path = resolveStylesheetPath("tailwindcss", PRESET, VERSION)
+    expect(path.endsWith(`/tailwindcss/${VERSION}/index.css`)).toBe(true)
+  })
 
-    it("resolves a Tailwind subpath", () => {
-      const path = resolveStylesheetPath("tailwindcss/preflight.css", PRESET, VERSION)
-      expect(path.endsWith(`/tailwindcss/${VERSION}/preflight.css`)).toBe(true)
-    })
+  it("resolves a Tailwind subpath", () => {
+    const path = resolveStylesheetPath("tailwindcss/preflight.css", PRESET, VERSION)
+    expect(path.endsWith(`/tailwindcss/${VERSION}/preflight.css`)).toBe(true)
+  })
 
-    it("finds the pinned version in the Deno npm cache", () => {
-      expect(tailwindPackageRoot(VERSION).endsWith(`/tailwindcss/${VERSION}`))
-        .toBe(true)
-    })
+  it("finds the pinned version in the Deno npm cache", () => {
+    expect(tailwindPackageRoot(VERSION).endsWith(`/tailwindcss/${VERSION}`))
+      .toBe(true)
+  })
 
-    it("falls back to a cached version when the requested one is absent", () => {
-      expect(tailwindPackageRoot("0.0.1-not-cached")).toContain("/registry.npmjs.org/tailwindcss/")
-    })
+  it("falls back to a cached version when the requested one is absent", () => {
+    expect(tailwindPackageRoot("0.0.1-not-cached")).toContain("/registry.npmjs.org/tailwindcss/")
+  })
 
-    it("memoises the package location across resolutions", () => {
-      resetStylesheetCache()
-      const first = resolveStylesheetPath("tailwindcss", PRESET, VERSION)
-      const second = resolveStylesheetPath("tailwindcss/preflight.css", PRESET, VERSION)
-      expect(first.replace("index.css", "preflight.css")).toBe(second)
-    })
+  it("memoises the package location across resolutions", () => {
+    resetStylesheetCache()
+    const first = resolveStylesheetPath("tailwindcss", PRESET, VERSION)
+    const second = resolveStylesheetPath("tailwindcss/preflight.css", PRESET, VERSION)
+    expect(first.replace("index.css", "preflight.css")).toBe(second)
+  })
 
-    it("returns a function the compiler can call", () => {
-      const load: StylesheetLoader = stylesheetLoader(VERSION)
-      expect(typeof load).toBe("function")
-    })
+  it("returns a function the compiler can call", () => {
+    const load: StylesheetLoader = stylesheetLoader(VERSION)
+    expect(typeof load).toBe("function")
+  })
 
-    it("reads the bytes of the resolved stylesheet", async () => {
-      const loaded = await stylesheetLoader(VERSION)("./tokens.css", PRESET)
-      expect(loaded.path).toBe(TOKENS)
-      expect(loaded.content).toContain("--color-primary")
-    })
+  it("reads the bytes of the resolved stylesheet", async () => {
+    const loaded = await stylesheetLoader(VERSION)("./tokens.css", PRESET)
+    expect(loaded.path).toBe(TOKENS)
+    expect(loaded.content).toContain("--color-primary")
+  })
 
-    it("rejects a stylesheet that does not exist", async () => {
-      await expect(stylesheetLoader(VERSION)("./nope.css", PRESET)).rejects.toThrow()
-    })
+  it("rejects a stylesheet that does not exist", async () => {
+    await expect(stylesheetLoader(VERSION)("./nope.css", PRESET)).rejects.toThrow()
+  })
 
-    it("refuses a relative import with no base path", async () => {
-      await expect(stylesheetLoader(VERSION)("./tokens.css", "")).rejects.toThrow(
-        "without a base path",
-      )
-    })
-  }
+  it("refuses a relative import with no base path", async () => {
+    await expect(stylesheetLoader(VERSION)("./tokens.css", "")).rejects.toThrow(
+      "without a base path",
+    )
+  })
 })

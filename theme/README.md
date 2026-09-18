@@ -112,8 +112,11 @@ in use (`btn-disabled` replaces that repo's `fieldset[disabled] .btn`).
 
 ## Tests
 
+The workspace `test` task runs this suite with the rest of the repo:
+
 ```bash
-deno task --cwd theme test
+deno task check          # from the repository root, what CI runs
+deno task --cwd theme test   # this package alone
 ```
 
 `integration/` compiles the shipped CSS with the real Tailwind 4 compiler and
@@ -122,7 +125,7 @@ the dark variant is class-scoped, an app's token override is still reachable
 after the preset, and the preset still works when `tokens.css` is skipped. The
 Deno-side `@import` reader the compile needs is covered there too.
 
-That compile reads `HOME`, the preset and the Deno npm cache, so it runs under
-`-A` and is kept out of the workspace's bare `deno test`. Under `deno task check`
-it reports itself as skipped rather than failing a build that has nothing wrong
-with it; the task above is how to get the real result.
+That compile reads `HOME`, the preset and the Deno npm cache, so the root `test`
+task grants `--allow-read --allow-env`. Those are repo-wide only because
+`deno test` discovers every member's suite in one process; nothing in the
+workspace needs `net`, `run` or `write` to test.
