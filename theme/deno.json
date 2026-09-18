@@ -1,0 +1,13 @@
+{
+  "name": "@preact-components/theme",
+  "version": "0.1.0",
+  "exports": {
+    "./tokens.css": "./tokens.css",
+    "./preset.css": "./preset.css"
+  },
+  "tasks": {
+    // This package alone. The workspace `test` task covers these suites too —
+    // `deno test` discovers every member — with the same two grants.
+    "test": "deno test -A integration"
+  }
+}
