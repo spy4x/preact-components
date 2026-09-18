@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "exports": {
     ".": "./+index.ts",
+    "./association-editor": "./association-editor.tsx",
     "./crud-editor": "./crud-editor.tsx",
     "./crud-list": "./crud-list.tsx",
     "./deletion-validation": "./deletion-validation.tsx",
