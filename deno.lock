@@ -13,6 +13,7 @@
     "npm:arktype@2.1.29": "2.1.29",
     "npm:clsx@2.1.1": "2.1.1",
     "npm:d3@7.9.0": "7.9.0",
+    "npm:preact-render-to-string@6.7.0": "6.7.0_preact@10.28.2",
     "npm:preact@10.28.2": "10.28.2",
     "npm:tailwind-merge@3.7.0": "3.7.0",
     "npm:tailwindcss@4.1.12": "4.1.12",
@@ -322,6 +323,12 @@
     "mitt@3.0.1": {
       "integrity": "sha512-vKivATfr97l2/QBCYAkXYDbrIWPM2IIKEl7YPhjCvKlG3kE2gm+uBo6nEXK3M5/Ffh/FLpKExzOQ3JJoJGFKBw=="
     },
+    "preact-render-to-string@6.7.0_preact@10.28.2": {
+      "integrity": "sha512-Z4WR8fmLMRpdYqJ9i7vrlXSsSrxVJydwrkEXHapexfARbWfGb7vGcnvNQnIzN0cXciMVOlz/XLoiMCi9gUsy9Q==",
+      "dependencies": [
+        "preact"
+      ]
+    },
     "preact@10.28.2": {
       "integrity": "sha512-lbteaWGzGHdlIuiJ0l2Jq454m6kcpI1zNje6d8MlGAFlYvP2GO4ibnat7P74Esfz4sPTdM6UxtTwh/d3pwM9JA=="
     },
@@ -367,6 +374,13 @@
       "npm:tailwind-merge@3.7.0",
       "npm:tailwindcss@4.1.12",
       "npm:wouter-preact@3.9.0"
-    ]
+    ],
+    "members": {
+      "ui": {
+        "dependencies": [
+          "npm:preact-render-to-string@6.7.0"
+        ]
+      }
+    }
   }
 }
