@@ -7,7 +7,10 @@
  * extreme-magnitude cases are hardened here.
  */
 
-/** Hard ceiling on generated ticks. Only reachable through pathological float input. */
+/**
+ * Hard ceiling on generated ticks. A safety net rather than a tested path: the index-driven loop
+ * terminates on its own for every input the tests exercise.
+ */
 const MAX_TICKS = 1_000
 
 /** Domain returned when the caller passes values that cannot be plotted. */
@@ -47,8 +50,12 @@ export function extent(values: readonly number[]): readonly [number, number] | n
  * Round a positive span up to a sensible tick step at the requested tick count.
  *
  * The magnitude is chosen from the span (1, 2, 5 or 10 × 10ⁿ) and then divided by `target`, so the
- * result is a round number *and* the axis lands on roughly `target` steps. Non-positive,
- * non-finite and subnormal spans fall back to something plottable instead of `NaN` or `0`.
+ * result is a round number *and* the axis lands on roughly `target` steps.
+ *
+ * No floor is applied. The source clamped with `Math.max(1e-9, step)`, which made every span below
+ * about `5e-9` unreadable — the step came out larger than the span itself, so `ticks(0, 1e-12)`
+ * returned a single `0` tick. Non-positive and non-finite spans still fall back to `1`, and a span
+ * whose step underflows keeps the smallest positive step rather than collapsing to `0`.
  */
 export function niceStep(span: number, target = 5): number {
   if (!Number.isFinite(span) || span <= 0) return 1
@@ -176,8 +183,13 @@ export function xLabelStride(count: number, maxLabels = 8): number {
  *
  * Values are rounded relative to the step instead of to a fixed number of decimals: rounding to
  * eight decimals collapses every tick of a sub-nanosecond span to `0`, and a fixed-decimal form
- * cannot represent a step like `2e-13` at all. The loop is index-driven, so it neither accumulates
- * float error nor depends on `v += step` ever landing past `high`.
+ * cannot represent a step like `2e-13` at all.
+ *
+ * The loop advances by index rather than by cursor. Where the step is finer than the float precision
+ * of the bounds, `v += step` is a no-op — `ticks(1e18, 1e18 + 100)` never terminates with a cursor,
+ * because one ulp at `1e18` is 128 while the nice step is 20 — so the source looped forever there.
+ * Multiplying the index moves the cursor in multiples of the step and always terminates; repeated
+ * values collapse, leaving the representable bounds.
  */
 function ticksForStep(low: number, high: number, step: number): number[] {
   const start = Math.floor(low / step) * step

@@ -103,14 +103,23 @@ hardest. The rules it guarantees:
 - `min === max` returns that single value instead of dividing by zero; `niceScale` widens a
   single-value or all-zero series into a plottable domain.
 - Reversed bounds are swapped; non-finite bounds return an empty axis instead of throwing.
-- Sub-nanosecond spans keep distinct tick values: rounding is relative to the step, so a step like
-  `2e-13` survives (a fixed eight-decimal round collapsed every such tick to `0`).
-- Spans up to `1e36` and down to a denormal never produce a `0`, `NaN` or infinite step.
+- Sub-nanosecond spans keep distinct tick values. Two source behaviours broke this and both are
+  fixed: the step was floored at `Math.max(1e-9, raw)`, so any span below about `5e-9` got a step
+  larger than the span itself and `ticks(0, 1e-12)` returned a single `0`; and ticks were rounded
+  with `Number(v.toFixed(8))`, which collapsed every tick of such a span to `0`. Rounding is now
+  relative to the step, so a step like `2e-13` survives, and no floor is applied.
+- A step far below the float precision cannot hang the axis: `ticks(1e18, 1e18 + 100)` terminates
+  (one ulp at `1e18` is 128 while the nice step is 20, so advancing a cursor with `v += step` never
+  moves — the source looped forever). A dedicated test runs that call in a worker with a deadline,
+  because a non-terminating loop would hang the suite rather than fail it.
+- Non-positive, non-finite and subnormal spans never produce a `0`, `NaN` or infinite step.
 
 ## Tests
 
 `deno task test` from the repo root. `scales.test.ts` covers the axis maths including degenerate,
-negative, tiny, huge and boundary-tick cases; the chart suites render each component with
+negative, tiny, huge and boundary-tick cases, and runs the non-termination case (`ticks(1e18, 1e18 +
+100)`) in a worker with a deadline — `deno test` has no per-test timeout, so an in-process call would
+hang the suite instead of failing it. The chart suites render each component with
 `preact-render-to-string` and assert on real markup — tick counts, path geometry for a known dataset,
 legend rows, percent widths, gradient stops and empty states. `d3-line-chart.test.tsx` additionally
 covers the pure helpers behind the island (`yDomainFor`, `formatTimeTick`) and its server-rendered

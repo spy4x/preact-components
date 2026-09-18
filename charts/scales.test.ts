@@ -21,6 +21,62 @@ function assertTickInvariants(values: number[], step: number): void {
   }
 }
 
+/**
+ * Call `ticks` in a worker and give up after `timeoutMs`.
+ *
+ * A tick loop that cannot advance its cursor never returns, and `deno test` has no per-test timeout,
+ * so an in-process call would hang the suite rather than fail it. Returns `"timeout"` when the
+ * worker neither answered nor crashed in time.
+ */
+async function probeTicks(
+  request: { min: number; max: number; maxTicks?: number },
+  timeoutMs: number,
+): Promise<number[] | "timeout"> {
+  const worker = new Worker(new URL("./ticks.worker.ts", import.meta.url), { type: "module" })
+
+  try {
+    return await new Promise<number[] | "timeout">((resolve) => {
+      const timer = setTimeout(() => resolve("timeout"), timeoutMs)
+      worker.onmessage = (event: MessageEvent<number[]>) => {
+        clearTimeout(timer)
+        resolve(event.data)
+      }
+      worker.onerror = () => {
+        clearTimeout(timer)
+        resolve("timeout")
+      }
+      worker.postMessage(request)
+    })
+  } finally {
+    worker.terminate()
+  }
+}
+
+// The sanitizers would flag the worker's asynchronous teardown as a leaked resource.
+Deno.test({
+  name: "ticks - terminates when the step is smaller than the float precision",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    // 1e18 + 100 is not representable: it rounds to 1e18 + 128, and one ulp at 1e18 is 128 while the
+    // nice step is 20. A loop that advances with `v += step` therefore never moves — the source ran
+    // forever here. The index-driven loop returns the two representable bounds.
+    const min = 1e18
+    const max = 1e18 + 100
+    const result = await probeTicks({ min, max }, 2_000)
+
+    if (result === "timeout") {
+      throw new Error(
+        `ticks(${min}, ${max}) did not terminate within 2000ms: the tick loop must not advance its cursor with \`v += step\``,
+      )
+    }
+
+    assertEquals(result.length, 2)
+    assertEquals(result[0], min)
+    assertEquals(result[1], max)
+  },
+})
+
 describe("niceStep", () => {
   it("returns 1 for spans it cannot scale", () => {
     assertEquals(niceStep(0), 1)
