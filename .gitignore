@@ -1,0 +1,12 @@
+# OS
+.DS_Store
+
+# Packages
+node_modules
+
+# Artifacts
+dist
+coverage
+
+# Logs
+*.log
