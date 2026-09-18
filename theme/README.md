@@ -1,0 +1,128 @@
+# @preact-components/theme
+
+The design-system CSS every component in this repo styles against: design tokens,
+a Tailwind 4 preset, and the class names components render.
+
+Tailwind 4, CSS-first — no `tailwind.config.ts` is shipped or required.
+
+## Install
+
+An app writes this at the top of its stylesheet, in this order:
+
+```css
+@import "tailwindcss";
+@import "@tailwindcss/forms";
+@import "@preact-components/theme/tokens.css";
+@import "@preact-components/theme/preset.css";
+```
+
+Then tell Tailwind where the library's components live, so the classes they use
+are emitted:
+
+```css
+@source "../node_modules/@preact-components";
+```
+
+`@tailwindcss/forms` is the one peer this preset assumes: the form controls are
+tuned to sit on top of it, and its rules must lose to `preset.css` on source
+order. The repo pins it in the root `deno.jsonc`.
+
+For dark mode, put `dark` on `<html>`. The preset defines the `dark` variant as
+`&:where(.dark, .dark *)`, so no `@custom-variant` is needed in the app.
+
+If the app's bundler cannot resolve a package `@import`, import by relative path
+— these are plain CSS files:
+
+```css
+@import "../libs/preact-components/theme/tokens.css";
+@import "../libs/preact-components/theme/preset.css";
+```
+
+## What it ships
+
+| File         | Contents                                                                   |
+| ------------ | -------------------------------------------------------------------------- |
+| `tokens.css` | every design token as a custom property: light in `:root`, dark in `.dark` |
+| `preset.css` | base type, colour atoms, buttons, forms, surfaces, data display, map atoms |
+
+### Classes
+
+- **Colour atoms** — `text-primary`, `bg-primary`, `border-primary`,
+  `rounded-primary`, `text-muted`, `bg-canvas`, `bg-surface`, `border-subtle`,
+  `border-control`, `bg-danger`, `bg-warning`, `bg-success` and the `text-*`
+  status tones.
+- **Type** — `h1`–`h5`, `link`, `page-layout`, `list-ul`, plus `theme-base` for
+  the document-level font, colour and canvas. Nothing is applied to the host
+  page by importing the preset; `theme-base` is put on `<body>` when wanted.
+- **Buttons** — `btn` with `btn-primary`, `btn-danger`, `btn-warning`,
+  `btn-success` and their `-outline` variants; `btn-icon`, `btn-link`,
+  `btn-input-icon`, `btn-disabled`. `btn` carries its own `:disabled` styling.
+- **Forms** — `input`, `select`, `textarea`, `label`, `checkbox`, `radio`.
+- **Surfaces** — `card`, `card-header`, `card-body`, `card-footer`, `scrollbar`.
+- **Data display** — `num`, `kpi`, `kpi-label`, `kpi-value`, `bar`.
+- **Map** — `map-marker` inside a `status-on` / `status-off` / `status-unknown`
+  or `power-anomaly` container (`.power-anomaly .map-marker` blinks).
+
+## Theming
+
+Every colour, radius and font in `preset.css` is read as
+`var(--token, <default>)`, so an app restyles the library by setting custom
+properties. No CSS fork, no `!important`:
+
+```css
+@import "tailwindcss";
+@import "@preact-components/theme/tokens.css";
+@import "@preact-components/theme/preset.css";
+
+/* After tokens.css, so this wins the cascade. */
+:root {
+  --color-primary: oklch(0.55 0.18 255);
+  --radius-primary: 0.25rem;
+}
+```
+
+`--color-primary` is purple (`purple-900`) because that is what the components
+were designed against in `gb` and `financy`; dark mode swaps it for near-black
+chrome. The full list is in `tokens.css`, each with the Tailwind palette value it
+came from.
+
+Two consequences of the design worth knowing:
+
+- **Tokens are runtime custom properties, not a Tailwind `@theme` block.**
+  Tailwind resolves `@theme` at build time, so a variable declared in both an
+  app's `@theme` and the library's would fold into whichever declaration the
+  compiler saw last — the app could not reliably win. `var()` is resolved by CSS
+  at runtime, so the cascade decides. Set the tokens in `:root`, or inline on any
+  element, and they win.
+- **`tokens.css` is optional.** The defaults are inlined as the `var()`
+  fallbacks, so an app that imports only `preset.css` still renders in the
+  library palette. Import `tokens.css` to get the palette, to use
+  `var(--color-primary)` in the app's own CSS, and to have one place to restyle.
+
+## Not carried over from the sources
+
+Both classes had zero usages in `gb`, the product they were extracted from —
+only its `ui-guide` referenced them, which is how they survived:
+
+- `.h6` — use `text-base font-medium`.
+- `.btn-sm` — use `h-9 px-4` on the button.
+
+`card-header` and `btn-disabled` were added back from `financy`, where both are
+in use (`btn-disabled` replaces that repo's `fieldset[disabled] .btn`).
+
+## Tests
+
+```bash
+deno task --cwd theme test
+```
+
+`integration/` compiles the shipped CSS with the real Tailwind 4 compiler and
+asserts the output: every class is emitted with declarations, atoms read tokens,
+the dark variant is class-scoped, an app's token override is still reachable
+after the preset, and the preset still works when `tokens.css` is skipped. The
+Deno-side `@import` reader the compile needs is covered there too.
+
+That compile reads `HOME`, the preset and the Deno npm cache, so it runs under
+`-A` and is kept out of the workspace's bare `deno test`. Under `deno task check`
+it reports itself as skipped rather than failing a build that has nothing wrong
+with it; the task above is how to get the real result.

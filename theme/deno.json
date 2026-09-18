@@ -1,0 +1,16 @@
+{
+  "name": "@preact-components/theme",
+  "version": "0.1.0",
+  "exports": {
+    "./tokens.css": "./tokens.css",
+    "./preset.css": "./preset.css"
+  },
+  "tasks": {
+    // `integration/` compiles the shipped CSS with the real Tailwind compiler:
+    // it reads the preset, `HOME` and the Deno npm cache. It is kept out of the
+    // default test path so that the workspace `deno task check` — which runs
+    // bare `deno test` and must stay permission-free — still passes, and is run
+    // on purpose from this directory:
+    "test": "deno test -A integration"
+  }
+}
