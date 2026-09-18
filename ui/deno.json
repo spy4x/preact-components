@@ -1,0 +1,26 @@
+{
+  "name": "@preact-components/ui",
+  "version": "0.1.0",
+  "exports": {
+    ".": "./+index.ts",
+    "./badge": "./badge.tsx",
+    "./button": "./button.tsx",
+    "./confidence-meter": "./confidence-meter.tsx",
+    "./copy-button": "./copy-button.tsx",
+    "./dropdown": "./dropdown.tsx",
+    "./error-state": "./error-state.tsx",
+    "./geo-button": "./geo-button.tsx",
+    "./loading-screen": "./loading-screen.tsx",
+    "./loading-skeleton": "./loading-skeleton.tsx",
+    "./loading-spinner": "./loading-spinner.tsx",
+    "./on-off-buttons": "./on-off-buttons.tsx",
+    "./page-title": "./page-title.tsx",
+    "./table": "./table.tsx",
+    "./toastr": "./toastr.tsx",
+    "./toggle-switch": "./toggle-switch.tsx"
+  },
+  "imports": {
+    // The root import map carries no renderer; the colocated tests assert on real rendered markup.
+    "preact-render-to-string": "npm:preact-render-to-string@6.7.0"
+  }
+}
