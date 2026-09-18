@@ -164,8 +164,13 @@ export interface CrudEditorBaseProps<M extends CrudRow> {
    * the archive toggle and the dependency lookup read `deletedAt` and `id` from the same signal.
    */
   blank: M
-  /** Schema the model is validated against on every change. */
-  schema: Type
+  /**
+   * Schema the model is validated against on every change.
+   *
+   * Omit it for a form with nothing to validate — an association row has no rules of its own — and
+   * only the caller's own `validate` port runs.
+   */
+  schema?: Type
   /** Entity name in the page title and the "not found" message, for example `"Region"`. */
   entity: string
   /** Full page title. Defaults to `Add <entity>` or `Edit <entity>`. */
@@ -190,14 +195,13 @@ export interface CrudEditorBaseProps<M extends CrudRow> {
     vl: ValidationModel<NoInfer<M>>,
   ) => ValidationModel<NoInfer<M>>
   /**
-   * Entities blocking the archive of a row.
+   * The archive toggle, for a row that is archived rather than removed.
    *
-   * When given, the footer carries the archive checkbox and a non-empty list blocks Save. Omit it
-   * for an editor whose entity nothing points at.
+   * Omit it and the form has no toggle at all — which is what a junction row wants, since a
+   * relation between two entities has no life of its own to keep. Passing the object is what turns
+   * the toggle on, so an editor whose entity nothing points at still archives.
    */
-  dependencies?: (row: NoInfer<M>) => DeletionDependency[]
-  /** Label of the archive checkbox. Defaults to `"Is Archived?"`. */
-  archiveLabel?: string
+  archive?: ArchiveConfig<NoInfer<M>>
   /**
    * The form body: the editor's own field rows, one per grid cell.
    *
@@ -206,7 +210,37 @@ export interface CrudEditorBaseProps<M extends CrudRow> {
    * field row (a schedule grid, a sensor table) is written here and gets the same harness around it.
    */
   children: (slot: CrudEditorSlot<NoInfer<M>>) => ComponentChildren
+  /**
+   * Content between the field grid and the footer: a conflict notice, a warning, a hint.
+   *
+   * A function of the editor's context like `children`, so a component wrapping this one can read
+   * the model — which is what an association editor needs in order to notice a duplicate. The
+   * caller keeps the explanation; the scaffold only reserves the slot.
+   */
+  notice?: (slot: CrudEditorSlot<NoInfer<M>>) => ComponentChildren
+  /**
+   * Content at the start of the footer, before Cancel and Save. A function of the editor's context,
+   * like `children`.
+   *
+   * Where an operation the scaffold does not perform belongs — an association editor's Delete and
+   * Restore, which end a row instead of archiving it.
+   */
+  footerSlot?: (slot: CrudEditorSlot<NoInfer<M>>) => ComponentChildren
   class?: string
+}
+
+/**
+ * The archive toggle: a checkbox in the footer that stamps `deletedAt` through the update the form
+ * already submits, plus whatever has to be archived first for it to be allowed.
+ */
+export interface ArchiveConfig<M extends CrudRow> {
+  /** Label of the checkbox. Defaults to `"Is Archived?"`. */
+  label?: string
+  /**
+   * Entities blocking the archive of a row. A non-empty answer disables Save and is listed under
+   * the form. Omit it when nothing can block the archive.
+   */
+  dependencies?: (row: M) => DeletionDependency[]
 }
 
 /** {@link CrudEditorBaseProps} plus the mode. */
@@ -232,8 +266,7 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>) {
     onCreated,
     canChange,
     validate,
-    dependencies,
-    archiveLabel,
+    archive,
     class: className,
   } = props
 
@@ -264,9 +297,9 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>) {
     initialized.value = true
   }
 
-  /** Schema validation plus the caller's own checks, in that order. */
+  /** Schema validation plus the caller's own checks, in that order. Either may be absent. */
   function runValidation(value: M, current: ValidationModel<M>): ValidationModel<M> {
-    const next = validateSchema(schema, value, current)
+    const next = schema === undefined ? current : validateSchema(schema, value, current)
     return validate?.(value, next) ?? next
   }
 
@@ -300,7 +333,7 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>) {
    * update that carries the stamp is the one the form already submits.
    */
   function toggleArchive(): void {
-    const next = toggleArchiveState(vm.value, dependencies)
+    const next = toggleArchiveState(vm.value, archive?.dependencies)
     blocked.value = next.blocked
     setField(vm, "deletedAt", next.deletedAt)
   }
@@ -335,10 +368,12 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>) {
             <div class="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
               {props.children({ vm, vl })}
             </div>
+            {props.notice?.({ vm, vl })}
           </div>
           {(canChange?.() ?? true) && (
             <div class="card-footer">
-              {props.mode === "edit" && (
+              {props.footerSlot?.({ vm, vl })}
+              {props.mode === "edit" && archive !== undefined && (
                 <div class="flex gap-2 items-center">
                   <input
                     type="checkbox"
@@ -348,7 +383,7 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>) {
                     onChange={toggleArchive}
                   />
                   <label for={archiveId} class="label">
-                    {archiveLabel ?? "Is Archived?"} {vm.value.deletedAt
+                    {archive.label ?? "Is Archived?"} {vm.value.deletedAt
                       ? (
                         <span
                           title={formatTimestamp(vm.value.deletedAt, { full: true })}

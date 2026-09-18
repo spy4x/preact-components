@@ -26,17 +26,18 @@ different field list in the middle. Roughly 55% of that is copy-paste.
 The copies have already drifted, and every drift is a bug the type system did not catch because
 each copy was written out by hand:
 
-| Source file                 | What drifted                                                                 |
-| --------------------------- | ---------------------------------------------------------------------------- |
-| `admin/users/List.tsx:90`   | reads `state.gateway.op.list.error` — the wrong store's error                |
-| `admin/system/List.tsx:71`  | reads `state.userSession.listOp` — a store the page never loads              |
-| `lamp-profiles/List.tsx:41` | the count badge counts `state.lampBox`                                       |
-| `lamps/List.tsx:79`         | the search input lost `value={query.value}`, so a re-render wipes the box    |
-| `zones/Editor.tsx:284`      | a second field reuses `for="zone-name"`…                                     |
-| `lamp-profiles/Editor.tsx`  | …four times over, so every label points at the first field                   |
-| `gateways/Editor.tsx:209`   | a field named `sensor-device-id` on the gateway form                         |
-| `sensors/Editor.tsx:251`    | the "navigate to it" link builds a `/devices/lamp-boxes/…` URL from a sensor |
-| `alerts/View.tsx:76`        | an Acknowledge button with no `onClick`                                      |
+| Source file                           | What drifted                                                                                                                |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `admin/users/List.tsx:90`             | reads `state.gateway.op.list.error` — the wrong store's error                                                               |
+| `admin/system/List.tsx:71`            | reads `state.userSession.listOp` — a store the page never loads                                                             |
+| `lamp-profiles/List.tsx:41`           | the count badge counts `state.lampBox`                                                                                      |
+| `lamps/List.tsx:79`                   | the search input lost `value={query.value}`, so a re-render wipes the box                                                   |
+| `zones/Editor.tsx:284`                | a second field reuses `for="zone-name"`…                                                                                    |
+| `lamp-profiles/Editor.tsx`            | …four times over, so every label points at the first field                                                                  |
+| `gateways/Editor.tsx:209`             | a field named `sensor-device-id` on the gateway form                                                                        |
+| `sensors/Editor.tsx:251`              | the "navigate to it" link builds a `/devices/lamp-boxes/…` URL from a sensor                                                |
+| `alerts/View.tsx:76`                  | an Acknowledge button with no `onClick`                                                                                     |
+| `lamp-boxes/[id]/zones/Editor.tsx:28` | branches on the `deletedAt` of a row found in `list.nonDeleted`, so its "you can restore the old one" branch is unreachable |
 
 The scaffold closes that class of bug by construction: the status slice, the error source, the
 count, the control ids and the save rule are written once. `field.tsx` generates every control id
@@ -133,7 +134,7 @@ because there is nothing to switch between.
   cancelHref="/devices/regions"
   onCreated={(region) => navigate(`/devices/regions/${region.id}/edit`)}
   validate={(value, vl) => …}               // optional domain checks
-  dependencies={(region) => regionDependents(region)}   // optional: what blocks the archive
+  archive={{ dependencies: (region) => regionDependents(region) }}   // the archive toggle
 >
   {({ vm, vl }) => <TextField vm={vm} vl={vl} name="name" label="Name" />}
 </CrudEditor>
@@ -147,27 +148,29 @@ The harness is the six parts, once:
 2. **Validate on every change** with arktype, plus the caller's own checks through `validate`, which
    runs after the schema and may read signals — that is how a check against a not-yet-loaded
    collection fixes itself.
-3. **Archive** by toggling `deletedAt` on the model. The update that carries the stamp is the update
-   the form already submits; the scaffold never issues a `DELETE`.
-4. **Dependencies**: `dependencies(row)` is asked first, and a non-empty answer blocks Save and is
-   listed by `DeletionValidation`.
+3. **Archive** by toggling `deletedAt` on the model — when the caller passed `archive`. The update
+   that carries the stamp is the update the form already submits; the scaffold never issues a
+   `DELETE`, and a row with no life of its own (a junction row) gets no toggle at all.
+4. **Dependencies**: `archive.dependencies(row)` is asked first, and a non-empty answer blocks Save
+   and is listed by `DeletionValidation`.
 5. **Submit**: an add calls `create` and hands the new row to `onCreated` (navigate from there); an
    edit calls `update` and reloads the row from the store.
 6. **Chrome**: page title, error line, card, footer with the archive toggle, Cancel and Save, and the
    dependency block. Save is live only when the form is initialised, valid, idle and unblocked.
 
-| Prop           | Default             | Notes                                                     |
-| -------------- | ------------------- | --------------------------------------------------------- |
-| `blank`        | —                   | the add-mode row; the row type is inferred from it        |
-| `schema`       | —                   | arktype schema validated on every change                  |
-| `entity`       | —                   | "Add **Region**", "Region not found", dependency sentence |
-| `title`        | `Add/Edit <entity>` | full title override                                       |
-| `canChange`    | `true`              | a port, because the library has no auth                   |
-| `dependencies` | nothing blocks      | enables the archive toggle in edit mode                   |
-| `archiveLabel` | `"Is Archived?"`    | "Is Banned?" for a user                                   |
-| `onCreated`    | —                   | navigate where the created row belongs                    |
-| `validate`     | —                   | extra checks after the schema                             |
-| `cancelHref`   | —                   | where Cancel points                                       |
+| Prop         | Default             | Notes                                                           |
+| ------------ | ------------------- | --------------------------------------------------------------- |
+| `blank`      | —                   | the add-mode row; the row type is inferred from it              |
+| `schema`     | —                   | arktype schema validated on every change; omit if there is none |
+| `entity`     | —                   | "Add **Region**", "Region not found", dependency sentence       |
+| `title`      | `Add/Edit <entity>` | full title override                                             |
+| `canChange`  | `true`              | a port, because the library has no auth                         |
+| `archive`    | no toggle           | `{}` turns the archive toggle on; `{ label, dependencies }`     |
+| `onCreated`  | —                   | navigate where the created row belongs                          |
+| `validate`   | —                   | extra checks after the schema                                   |
+| `cancelHref` | —                   | where Cancel points                                             |
+| `notice`     | —                   | slot between the field grid and the footer                      |
+| `footerSlot` | —                   | slot at the start of the footer                                 |
 
 ## Field rows
 
@@ -293,17 +296,67 @@ routes/<area>/x/[id]/edit.tsx → <XEditor mode="edit" editId={Number(params.id)
 `CrudEditor`'s props are a discriminated pair, so the `add` route cannot forget an id and the `edit`
 route cannot omit one.
 
+## Association rows
+
+A junction row — a lamp box _is in_ a zone — is the second editor shape in `gb`
+(`lamp-boxes/[id]/zones` 215 lines, `schedules/[id]/zones` 223, `lamp-boxes/[id]/lamps` 295, all
+near-identical). It differs from a validated form in three ways, and each one is a slot or a port on
+`CrudEditor` rather than a second harness to drift from:
+
+- **No validation model.** A junction row has no rules of its own, so there is no schema; its one
+  rule — "this pair already exists" — arrives through the same `validate` port everything else uses,
+  as an issue on the field the user has to change.
+- **A conflict instead of a dependency list.** `conflict(row, rows)` names the row that would be
+  duplicated; `conflictIssue` turns it into an issue whose payload is that row's id, so the message
+  appears beside the control and disables Save through the existing rule.
+- **Removal instead of archiving.** Delete ends the row and Restore brings it back, written into
+  `footerSlot`.
+
+`association-editor.tsx` is the composition, not a copy:
+
+```tsx
+<AssociationEditor
+  mode="edit"
+  editId={zoneLampBoxId}
+  store={zoneLampBoxStore}
+  blank={blankZoneLampBox(lampBoxId)}
+  entity="zone association"
+  cancelHref={`/devices/lamp-boxes/${lampBoxId}/zones`}
+  conflictField="zoneId"
+  conflict={(value, rows) =>
+    rows.find((other) =>
+      other.id !== value.id && other.lampBoxId === value.lampBoxId && other.zoneId === value.zoneId
+    )}
+  onCreated={(created) => navigate(`/devices/lamp-boxes/${lampBoxId}/zones/${created.id}/edit`)}
+>
+  {({ vm, vl }) => (
+    <SelectField
+      vm={vm}
+      vl={vl}
+      name="zoneId"
+      label="Zone"
+      placeholder="Select zone"
+      options={zones.value.map((zone) => ({ value: zone.id, label: zone.name }))}
+    />
+  )}
+</AssociationEditor>
+```
+
+`CrudAssociationStore` adds `list.all`, `delete` and `undelete` to `CrudEditorStore`. It reads
+`list.all` rather than `list.nonDeleted` because the duplicate worth telling the user about is often
+a row that was removed earlier: the source editors scanned `nonDeleted` and then branched on
+`deletedAt`, which is always falsy there, so their "you can restore the old one" branch was
+unreachable. Here the removed duplicate renders a Restore offer beside the conflict message.
+
 ## What is deliberately not here
 
-- **Editor B — the association/junction editors** (`lamp-boxes/[id]/zones`, `schedules/[id]/zones`,
-  `lamp-boxes/[id]/lamps`; 215–295 lines each, and near-identical to one another). They differ from
-  Editor A in four ways: no validation model, a `conflictingEntity` predicate instead, a hard
-  `delete`, and a footer carrying Delete/Restore. `CrudEditor` cannot express the footer, so this
-  variant is left for a follow-up rather than half-abstracted. Two of those three files are also
-  still ported by hand in `gb`.
-- **Editor C — multi-form editors** (two independent forms plus a ban toggle) and the
-  **singleton** settings form (no id, no collection). Neither is a list-plus-editor shape.
+- **Editor C — multi-form editors** (two independent forms plus a ban toggle) and the **singleton**
+  settings form (no id, no collection). Neither is a list-plus-editor shape.
 - **The 49 route stubs** — a convention, above, not library code.
+- **A full ported association example.** `regions` proves the list and the validated editor end to
+  end; the association editor is covered by `association-editor.test.tsx` against a fake junction
+  store (removal, restore, the conflict issue, the unreachable-branch fix) and by the snippet above,
+  rather than by a second resource ported into `examples/`.
 - **A DOM-level test of the harness.** Effects do not run under `preact-render-to-string`, so the
   load, validate, submit and archive loops are covered against a fake store at the function level
   (`crud-editor.test.ts`), and the markup is covered by a server render. Wiring a real browser to the
@@ -323,7 +376,9 @@ Small, deliberate, and each one is why the source files could drift:
 - **`timeAgo` no longer reports "0 years ago"** for something 360–364 days old; it keeps counting
   months until a full year has passed.
 - **`undelete`, not `restore`.** The state layer names the operation `undelete`, and the scaffold
-  uses its vocabulary.
+  uses its vocabulary — the button label stays "Restore".
+- **The archive toggle is a port (`archive`), not a default.** Every source editor had one; a
+  junction row must not, and "no `dependencies` prop" was the wrong way to say so.
 - **The status filter's count is the non-deleted total**, as in every source list, not the count of
   the rows the search term left visible.
 

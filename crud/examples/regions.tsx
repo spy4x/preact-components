@@ -123,6 +123,9 @@ export function RegionEditor(props: RegionEditorProps) {
       entity="Region"
       cancelHref="/devices/regions"
       canChange={() => canChange.value}
+      // A region archives rather than being removed. Nothing blocks the archive in this example;
+      // in gb the port answers with the region's zones, which have to be archived first.
+      archive={{}}
       onCreated={(region) => navigate(`/devices/regions/${region.id}/edit`)}
     >
       {({ vm, vl }) => <TextField vm={vm} vl={vl} name="name" label="Name" />}

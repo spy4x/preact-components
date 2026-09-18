@@ -20,6 +20,7 @@ export {
   type StatusFilterLabels,
 } from "./crud-list.tsx"
 export {
+  type ArchiveConfig,
   type ArchiveToggleState,
   CrudEditor,
   type CrudEditorBaseProps,
@@ -50,6 +51,18 @@ export {
   TextareaField,
   TextField,
 } from "./field.tsx"
+export {
+  type AssociationActions,
+  associationActions,
+  AssociationEditor,
+  type AssociationEditorBaseProps,
+  type AssociationEditorProps,
+  CONFLICT,
+  type ConflictInput,
+  conflictIssue,
+  type CrudAssociationStore,
+  isRestorable,
+} from "./association-editor.tsx"
 export { filterRows, search, searchWords } from "./search.ts"
 export type { CrudEditorStore, CrudListStore } from "./store.ts"
 export { formatTimestamp, type FormatTimestampOptions, timeAgo, type TimeLike } from "./time-ago.ts"

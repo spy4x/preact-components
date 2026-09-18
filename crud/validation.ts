@@ -61,7 +61,18 @@ export function setFieldIssue<M extends object>(
   payload?: number,
 ): ValidationModel<M> {
   const issue: FieldIssue | undefined = message === undefined ? undefined : { message, payload }
-  return { ...vl, [field]: pruned({ ...vl[field], [type]: issue }) }
+  const next: ValidationModel<M> = { ...vl }
+  const field_ = pruned({ ...vl[field], [type]: issue })
+
+  // A field with nothing left to report is dropped, so `vl.name` is `undefined` rather than `{}`
+  // — the difference a caller sees when it asks whether a field has any issue at all.
+  if (Object.keys(field_).length === 0) {
+    delete next[field]
+    return next
+  }
+
+  next[field] = field_
+  return next
 }
 
 /**
