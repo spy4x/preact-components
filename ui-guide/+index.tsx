@@ -1,0 +1,187 @@
+/**
+ * `@preact-components/ui-guide` — the live component catalogue, shipped as a component.
+ *
+ * Frameworks are the app's business, so this package exports a component and a plain route
+ * descriptor instead of a file-based route: any app that imports the library can render the guide
+ * and register it in its own navigation, which is what the source guide in `gb` never did.
+ *
+ * Everything below the title is generated from {@link demoRegistry}, so the page cannot show a
+ * component the registry does not know about, and cannot miss one the `ui` package exports
+ * without either failing `deno check` or showing up in the warning banner.
+ */
+
+import { PageTitle } from "@preact-components/ui"
+import type { ComponentChildren } from "preact"
+import { cn } from "@preact-components/signals/cn"
+import { IconGallery } from "./icons.tsx"
+import { CatalogInstructions } from "./instructions.tsx"
+import {
+  catalogueSections,
+  type ComponentName,
+  demoRegistry,
+  missingDemos,
+  type PartialDemoRegistry,
+} from "./registry.ts"
+
+export interface UIGuideProps {
+  /**
+   * Registry to render. Defaults to {@link demoRegistry}, the complete one.
+   *
+   * Pass a partial registry to render a trimmed guide; the components left out are named in a
+   * warning banner, which is the visible half of the drift guard.
+   */
+  registry?: PartialDemoRegistry
+  /** Clipboard port, forwarded to the icon gallery. */
+  copy?: (text: string) => void | Promise<void>
+  class?: string
+}
+
+/** One demo: its name, its summary, its JSX and its live example. */
+function DemoCard({ name, children, snippet, summary }: {
+  name: ComponentName
+  children: ComponentChildren
+  snippet: string
+  summary: string
+}) {
+  return (
+    <article
+      id={`demo-${name}`}
+      class="scroll-mt-8 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
+    >
+      <h3 class="font-mono text-sm font-semibold text-purple-700 dark:text-purple-400">
+        {`<${name} />`}
+      </h3>
+      <p class="mt-1 mb-3 text-sm text-gray-600 dark:text-gray-300">{summary}</p>
+      <div class="mb-3 overflow-visible rounded-md bg-gray-50 p-4 dark:bg-gray-900">{children}</div>
+      <details>
+        <summary class="cursor-pointer text-xs text-gray-500 dark:text-gray-400">Usage</summary>
+        <pre class="mt-2 overflow-x-auto rounded-md bg-gray-900 p-3 text-xs text-gray-100">
+          <code>{snippet}</code>
+        </pre>
+      </details>
+    </article>
+  )
+}
+
+/**
+ * Banner listing exported components with no demo.
+ *
+ * A complete registry renders nothing, so a healthy catalogue never shows it. When the guide is
+ * handed a partial registry the gap is stated at the top of the page rather than being invisible.
+ */
+function MissingDemoBanner({ names }: { names: ComponentName[] }) {
+  return (
+    <div
+      role="alert"
+      data-e2e="ui-guide-missing-demos"
+      class="rounded-lg border border-red-500 bg-red-50 p-4 text-red-800 dark:border-red-700 dark:bg-red-950 dark:text-red-100"
+    >
+      <p class="font-medium">
+        {names.length} exported {names.length === 1 ? "component has" : "components have"} no demo
+      </p>
+      <p class="mt-1 text-sm">
+        Add an entry to <code>registry.ts</code> for:{" "}
+        {names.map((name) => <code key={name} class="mr-1 font-mono">{name}</code>)}
+      </p>
+    </div>
+  )
+}
+
+/**
+ * The live catalogue: instructions, one section per group of primitives, and the icon gallery.
+ *
+ * @param props See {@link UIGuideProps}.
+ */
+export function UIGuide({ registry = demoRegistry, copy, class: className }: UIGuideProps) {
+  const missing = missingDemos(registry)
+
+  return (
+    <section class={cn("mx-auto max-w-5xl space-y-10 p-4 sm:p-6", className)}>
+      <div>
+        <PageTitle>UI Guide</PageTitle>
+        <p class="text-sm text-gray-500 dark:text-gray-400">
+          Every component <code>@preact-components/ui</code>{" "}
+          exports, one demo each, plus the icon gallery. Generated from the registry — a component
+          with no demo is called out below.
+        </p>
+      </div>
+
+      {missing.length > 0 ? <MissingDemoBanner names={missing} /> : null}
+
+      <CatalogInstructions />
+
+      {catalogueSections.map((section) => {
+        const demos = section.names.flatMap((name) => {
+          const demo = registry[name]
+          return demo ? [[name, demo] as const] : []
+        })
+        if (demos.length === 0) return null
+
+        return (
+          <section key={section.id} id={section.id} class="scroll-mt-8">
+            <div class="mb-4 border-b border-gray-200 pb-2 dark:border-gray-700">
+              <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                {section.title}
+              </h2>
+              <p class="text-sm text-gray-500 dark:text-gray-400">{section.blurb}</p>
+            </div>
+            <div class="grid grid-cols-1 gap-4">
+              {demos.map(([name, demo]) => (
+                <DemoCard key={name} name={name} summary={demo.summary} snippet={demo.snippet}>
+                  {demo.render()}
+                </DemoCard>
+              ))}
+            </div>
+          </section>
+        )
+      })}
+
+      <IconGallery copy={copy} />
+    </section>
+  )
+}
+
+/** A route a host app can register, in the shape most routers want. */
+export interface UiGuideRoute {
+  /** URL path the guide should be served at. */
+  path: string
+  /** Label for a navigation entry. */
+  label: string
+  /** The component to render at that path. */
+  component: (props: UIGuideProps) => ComponentChildren
+}
+
+/**
+ * Route descriptor for the catalogue.
+ *
+ * Exported so the guide can be registered in an app's navigation instead of being reachable only by
+ * typing its URL — the reason the `gb` guide was effectively dead code. The app decides how to
+ * consume it; nothing here knows about a router.
+ *
+ * ```tsx
+ * import { uiGuideRoute } from "@preact-components/ui-guide"
+ *
+ * const navLinks = [...appLinks, { href: uiGuideRoute.path, label: uiGuideRoute.label }]
+ * // and at the route: <uiGuideRoute.component />
+ * ```
+ */
+export const uiGuideRoute: UiGuideRoute = {
+  path: "/ui-guide",
+  label: "UI Guide",
+  component: UIGuide,
+}
+
+export { IconGallery, type IconGalleryProps, iconNames } from "./icons.tsx"
+export {
+  catalogueSections,
+  type ComponentName,
+  componentNames,
+  type Demo,
+  type DemoRegistry,
+  demoRegistry,
+  HELPER_EXPORTS,
+  missingDemos,
+  type PartialDemoRegistry,
+  registryDrift,
+  type SectionId,
+} from "./registry.ts"

@@ -380,6 +380,11 @@
         "dependencies": [
           "npm:preact-render-to-string@6.7.0"
         ]
+      },
+      "ui-guide": {
+        "dependencies": [
+          "npm:preact-render-to-string@6.7.0"
+        ]
       }
     }
   }
