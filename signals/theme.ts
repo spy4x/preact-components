@@ -1,0 +1,175 @@
+import { computed, effect, type ReadonlySignal, type Signal, signal } from "@preact/signals"
+
+/**
+ * `@preact-components/signals/theme` — light/dark/system preference on signals.
+ *
+ * The source store was a module-level singleton that read `localStorage` and touched `document` at
+ * import time, which is why it could not be shared, reset, or tested. Here nothing is read until
+ * {@link ThemeStore.attach} runs, and every outside world — storage, the OS media query, the
+ * document — arrives as a port.
+ */
+
+/** What the user chose in the UI. */
+export enum ThemeValue {
+  LIGHT = "light",
+  DARK = "dark",
+  SYSTEM = "system",
+}
+
+/** A resolved theme: what is actually painted. */
+export type Theme = ThemeValue.LIGHT | ThemeValue.DARK
+
+/** A stored preference: a resolved theme, or `"system"`. */
+export type ThemePreference = Theme | ThemeValue.SYSTEM
+
+/** Persistence port. `localStorage` satisfies it. */
+export interface ThemeStorage {
+  getItem(key: string): string | null
+  setItem(key: string, value: string): void
+}
+
+/**
+ * Media-query port. `window.matchMedia` satisfies it.
+ *
+ * Both listeners are optional so a truncated test double needs nothing more than `matches`.
+ */
+export interface ThemeMediaQuery {
+  readonly matches: boolean
+  addEventListener?(type: "change", listener: (event: { matches: boolean }) => void): void
+  removeEventListener?(type: "change", listener: (event: { matches: boolean }) => void): void
+}
+
+/** Media-query source port. `window.matchMedia` satisfies it. */
+export type ThemeMediaSource = (query: string) => ThemeMediaQuery
+
+/** Everything the store needs from the outside. All optional; defaults are the browser ones. */
+export interface ThemePorts {
+  /** Where the preference is kept. Defaults to `globalThis.localStorage` when it exists. */
+  storage?: ThemeStorage | null
+  /** OS preference source. Defaults to `globalThis.matchMedia` when it exists. */
+  media?: ThemeMediaSource | null
+  /** Storage key. Defaults to `"theme"`. */
+  storageKey?: string
+  /** Media query watched for OS changes. Defaults to the dark-scheme query. */
+  systemQuery?: string
+  /** Applies a resolved theme. Defaults to toggling the `dark` class on `documentElement`. */
+  apply?: (theme: Theme) => void
+}
+
+/** A theme store: preference in, resolved theme out, plus the DOM wiring. */
+export interface ThemeStore {
+  /** The user's choice. Writable so a settings form can bind to it. */
+  preference: Signal<ThemePreference>
+  /** What the OS asks for, when a media source was available. */
+  system: ReadonlySignal<Theme>
+  /** The theme to paint: the preference, or the OS one when the preference is `"system"`. */
+  actual: ReadonlySignal<Theme>
+  /** Store a preference and persist it. */
+  set(preference: ThemePreference): void
+  /** Flip light↔dark. From `"system"`, flips away from whatever the OS currently asks for. */
+  toggle(): void
+  /** Start applying the theme and watching the OS. Returns a disposer. */
+  attach(): () => void
+  /** Run the disposer from `attach`. Idempotent. */
+  dispose(): void
+}
+
+const DARK_SCHEME_QUERY = "(prefers-color-scheme: dark)"
+const DEFAULT_STORAGE_KEY = "theme"
+
+/** Whether a string read back from storage is a preference this version understands. */
+function isThemePreference(value: unknown): value is ThemePreference {
+  return value === ThemeValue.LIGHT || value === ThemeValue.DARK || value === ThemeValue.SYSTEM
+}
+
+/** Toggle the `dark` class on the document root, when there is a document. */
+function applyToDocument(theme: Theme): void {
+  const root = globalThis.document?.documentElement
+  if (!root) return
+  root.classList.toggle("dark", theme === ThemeValue.DARK)
+}
+
+/** `localStorage` when this runtime has one. Some runtimes throw on the property, not on use. */
+function defaultStorage(): ThemeStorage | null {
+  try {
+    return globalThis.localStorage ?? null
+  } catch {
+    return null
+  }
+}
+
+/** `matchMedia` bound to the global object, when this runtime has one. */
+function defaultMedia(query: string): ThemeMediaQuery | null {
+  const matchMedia = globalThis.matchMedia
+  return typeof matchMedia === "function" ? matchMedia.call(globalThis, query) : null
+}
+
+/**
+ * Create a theme store.
+ *
+ * @example
+ * ```ts
+ * export const theme = createThemeStore()
+ * // in the client entry point:
+ * theme.attach()
+ * ```
+ */
+export function createThemeStore(ports: ThemePorts = {}): ThemeStore {
+  const storageKey = ports.storageKey ?? DEFAULT_STORAGE_KEY
+  const systemQuery = ports.systemQuery ?? DARK_SCHEME_QUERY
+  const apply = ports.apply ?? applyToDocument
+  const storage = ports.storage === undefined ? defaultStorage() : ports.storage
+  const source = ports.media === undefined ? defaultMedia : ports.media
+  const query = source?.(systemQuery) ?? null
+
+  const stored = storage?.getItem(storageKey) ?? null
+  const preference = signal<ThemePreference>(
+    // A value written by an older or unrelated version is ignored rather than trusted.
+    isThemePreference(stored) ? stored : ThemeValue.SYSTEM,
+  )
+  const system = signal<Theme>(query?.matches ? ThemeValue.DARK : ThemeValue.LIGHT)
+  const actual = computed<Theme>(() =>
+    preference.value === ThemeValue.SYSTEM ? system.value : preference.value
+  )
+
+  const set = (next: ThemePreference): void => {
+    preference.value = next
+    storage?.setItem(storageKey, next)
+  }
+
+  const toggle = (): void => {
+    const current = preference.value
+    if (current === ThemeValue.LIGHT) {
+      set(ThemeValue.DARK)
+    } else if (current === ThemeValue.DARK) {
+      set(ThemeValue.LIGHT)
+    } else {
+      set(system.value === ThemeValue.LIGHT ? ThemeValue.DARK : ThemeValue.LIGHT)
+    }
+  }
+
+  let detach: (() => void) | null = null
+
+  const onSystemChange = (event: { matches: boolean }): void => {
+    system.value = event.matches ? ThemeValue.DARK : ThemeValue.LIGHT
+  }
+
+  function attach(): () => void {
+    dispose()
+    query?.addEventListener?.("change", onSystemChange)
+    const stopEffect = effect(() => apply(actual.value))
+    detach = () => {
+      query?.removeEventListener?.("change", onSystemChange)
+      stopEffect()
+      detach = null
+    }
+    return dispose
+  }
+
+  function dispose(): void {
+    detach?.()
+    detach = null
+  }
+
+  return { preference, system, actual, set, toggle, attach, dispose }
+}
