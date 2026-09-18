@@ -1,0 +1,7 @@
+{
+  "name": "@preact-components/signals",
+  "version": "0.1.0",
+  "exports": {
+    "./cn": "./cn.ts"
+  }
+}
