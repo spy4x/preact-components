@@ -543,9 +543,10 @@ export function buildModelStore<
 
   // `base` is checked against `ModelStoreBase` above; what follows is only the merge of two
   // optional, caller-supplied objects. TypeScript cannot verify a spread of `Extra | undefined`
-  // against the generic `Extra`, so this one assertion stands in for that check. It licenses nothing
-  // about the runtime shape: `base` is complete, and the spread adds only what the caller's own
-  // callbacks returned.
+  // against the generic `Extra`, so the assertion below stands in for that check. It is the only
+  // assertion in this package that cannot be reduced to local narrowing inside one function, and it
+  // licenses nothing about the runtime shape: `base` is complete, and the spread adds only what the
+  // caller's own callbacks returned.
   return {
     ...base,
     ...selectors?.(context),

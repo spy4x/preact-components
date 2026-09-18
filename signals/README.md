@@ -137,6 +137,19 @@ than a mistyped row in the UI.
   same way as every other hook in this repo — assert it in the app that renders it.
 - **`createThemeStore` reads the OS once at creation** and keeps watching only after `attach()`,
   which is also what applies the theme.
+- **`as` assertions.** The package uses a handful, and only one is unavoidable: the spread of
+  `extraOps`/`selectors` onto the base store in `build-model-store.ts`, where TypeScript cannot verify
+  a spread of `Extra | undefined` against a generic `Extra`. The rest are local narrowing inside one
+  function, each next to the check that justifies it — `parseSort` after its allow-list and direction
+  tests, `resolveFilterValue` and the `filters` map in `useUrlFilters` where a generic `T` loses its
+  key mapping, `responseError` after `typeof body === "object"`, and `Signal.prototype.map` handing
+  its element through `For`. To audit them:
+
+  ```bash
+  grep -n " as " signals/*.ts signals/*.tsx | grep -v "\.test\." | grep -v "as const"
+  ```
+- **A reused toast id replaces that toast** and cancels the timer the old entry was carrying; it does
+  not append a second entry a `remove(id)` could not tell apart.
 
 ## Tests
 

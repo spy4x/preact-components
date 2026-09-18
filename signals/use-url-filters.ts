@@ -46,7 +46,8 @@ export function resolveFilterValue<T>(field: FilterField<T>, raw: string | null)
   if (field.parser) return field.parser(raw)
   if (typeof field.initialValue === "number") {
     const parsed = Number.parseInt(raw, 10)
-    // Narrowing a generic `T` from its runtime type is the one place an assertion is unavoidable.
+    // Both branches narrow a generic `T` from a value whose runtime type the check above establishes;
+    // TypeScript cannot carry that check back to `T`.
     return (Number.isNaN(parsed) ? field.initialValue : parsed) as T
   }
   return (raw || field.initialValue) as T
