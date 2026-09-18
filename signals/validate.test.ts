@@ -46,7 +46,7 @@ describe("validate", () => {
     expect(error.errors.name).toBeUndefined()
   })
 
-  it("parses once, so a morph runs a single time", () => {
+  it("does not parse a valid value twice", () => {
     let calls = 0
     const schema = type({ n: "string" }).pipe((value) => {
       calls++
@@ -55,7 +55,25 @@ describe("validate", () => {
     const { error, data } = validate(schema, { n: "42" })
     expect(error).toBeNull()
     expect(data?.n).toBe(42)
-    // The zod original ran `safeParse` twice on failure paths; one call is the fix.
+    expect(calls).toBe(1)
+  })
+
+  it("parses once on the failure path", () => {
+    // The bug this guards is gb's `safeParse` twice, and gb only parsed twice when the value was
+    // rejected: the second call sat inside the `else` of the first. A counter on the success path
+    // cannot see that, so the schema here rejects one field while a sibling's morph counts — arktype
+    // still runs the sibling morph, which makes the count observable on the failure path.
+    let calls = 0
+    const schema = type({
+      n: type("string").pipe((value) => {
+        calls++
+        return value
+      }),
+      bad: "number",
+    })
+    const { error, data } = validate(schema, { n: "42", bad: "not a number" })
+    expect(data).toBeNull()
+    expect(error).not.toBeNull()
     expect(calls).toBe(1)
   })
 
