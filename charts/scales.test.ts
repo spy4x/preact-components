@@ -52,7 +52,8 @@ async function probeTicks(
   }
 }
 
-// The sanitizers would flag the worker's asynchronous teardown as a leaked resource.
+// Sanitizers are disabled because the worker terminates asynchronously; the promise settles via
+// the message handler, the error handler or the deadline, and `terminate()` runs in `finally`.
 Deno.test({
   name: "ticks - terminates when the step is smaller than the float precision",
   sanitizeOps: false,

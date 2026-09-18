@@ -52,10 +52,11 @@ export function extent(values: readonly number[]): readonly [number, number] | n
  * The magnitude is chosen from the span (1, 2, 5 or 10 × 10ⁿ) and then divided by `target`, so the
  * result is a round number *and* the axis lands on roughly `target` steps.
  *
- * No floor is applied. The source clamped with `Math.max(1e-9, step)`, which made every span below
- * about `5e-9` unreadable — the step came out larger than the span itself, so `ticks(0, 1e-12)`
- * returned a single `0` tick. Non-positive and non-finite spans still fall back to `1`, and a span
- * whose step underflows keeps the smallest positive step rather than collapsing to `0`.
+ * No floor is applied. The source clamped with `Math.max(1e-9, step)`, which below about `3e-9`
+ * made the step coarser than requested and below `1e-9` made it exceed the span itself — so
+ * `ticks(0, 1e-12)` returned a single `0` tick. Non-positive and non-finite spans still fall back
+ * to `1`, and a span whose step underflows keeps the smallest positive step rather than collapsing
+ * to `0`.
  */
 export function niceStep(span: number, target = 5): number {
   if (!Number.isFinite(span) || span <= 0) return 1

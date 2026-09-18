@@ -104,8 +104,9 @@ hardest. The rules it guarantees:
   single-value or all-zero series into a plottable domain.
 - Reversed bounds are swapped; non-finite bounds return an empty axis instead of throwing.
 - Sub-nanosecond spans keep distinct tick values. Two source behaviours broke this and both are
-  fixed: the step was floored at `Math.max(1e-9, raw)`, so any span below about `5e-9` got a step
-  larger than the span itself and `ticks(0, 1e-12)` returned a single `0`; and ticks were rounded
+  fixed: the step was floored at `Math.max(1e-9, raw)`, so below about `3e-9` the step became
+  coarser than requested and below `1e-9` it exceeded the span itself — `ticks(0, 1e-12)` returned
+  a single `0`; and ticks were rounded
   with `Number(v.toFixed(8))`, which collapsed every tick of such a span to `0`. Rounding is now
   relative to the step, so a step like `2e-13` survives, and no floor is applied.
 - A step far below the float precision cannot hang the axis: `ticks(1e18, 1e18 + 100)` terminates
