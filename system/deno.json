@@ -10,6 +10,8 @@
     "./date": "./date.ts",
     "./calendar": "./calendar.tsx",
     "./time-slots": "./time-slots.tsx",
+    "./blog-image-enhancer": "./blog-image-enhancer.tsx",
+    "./booking-submit": "./booking-submit.tsx",
     "./theme-toggle": "./theme-toggle.tsx",
     "./flatten-routes": "./flatten-routes.ts"
   },
