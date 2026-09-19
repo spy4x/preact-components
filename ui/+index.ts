@@ -158,6 +158,14 @@ export { OnOffButtons, type OnOffButtonsProps } from "./on-off-buttons.tsx"
 export { PageTitle, type PageTitleProps } from "./page-title.tsx"
 export { pageRange, type PageRangeItem, Pagination, type PaginationProps } from "./pagination.tsx"
 export {
+  clampProgress,
+  formatProgressPercent,
+  Progress,
+  type ProgressProps,
+  type ProgressTone,
+  progressWidthPercent,
+} from "./progress.tsx"
+export {
   Radio,
   RadioGroup,
   type RadioGroupProps,
