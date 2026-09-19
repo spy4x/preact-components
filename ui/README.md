@@ -103,12 +103,22 @@ region can cover a table, a grid and a paragraph that load together, and the cal
 }
 ```
 
-`SkeletonTable` mirrors the real `Table`'s wrapper, header row and one-line body row (3.25rem). The
-widths are a pure function, `columnWidthPercents(widths)`, so the same array puts the real table's
-`<colgroup>` on the same percentages and the substitution moves nothing; the rest of the answer comes
-from `tableGeometry({ rows, columns, widths })`, which is assertable without a DOM. The four-point
-checklist a caller has to satisfy, and the one case no props-only component can cover, are on
-`SkeletonTable`'s JSDoc.
+`SkeletonTable` mirrors the real `Table`'s wrapper, header row and one-line body row. The heights are
+measurements, not arithmetic: Chromium renders a single-line body row at **53px** on both sides —
+identical, so a swap does not move the page — and the header at `44px` against the real `44.5px`, the
+half pixel a `grid` row cannot land on. `tableRowHeightRem()` returns the body value and
+`tableHeaderHeightRem()` the header value, both pinned by tests that assert the literal rather than
+restating the implementation.
+
+**Column widths are an approximation, not a mirror.** `widths` splits the grid by weight, while the
+real `Table` is `table-auto` and sizes columns from cell content: for one four-column table the real
+split measured `24.8 / 23.0 / 27.2 / 25.0 %` against the grid's `31.6 / 31.6 / 21.0 / 10.5 %`. Close
+enough that the skeleton does not jump between column boundaries, not close enough to call equal —
+and making them equal needs a `Table` API change plus `table-layout: fixed`, which `Table` does not
+offer today. `columnWidthPercents(widths)` is what reports the split, and `tableGeometry({ rows,
+columns, widths })` the rest of the geometry; both are assertable without a DOM. The checklist a
+caller can satisfy, and the one case no props-only component can cover, are on `SkeletonTable`'s
+JSDoc.
 
 ## Tests
 

@@ -3,6 +3,7 @@ import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import {
   columnWidthPercents,
+  lineBoxRem,
   SKELETON_METRICS,
   SkeletonCards,
   skeletonCount,
@@ -86,7 +87,6 @@ describe("tableGeometry", () => {
       { index: 0, percent: 75 },
       { index: 1, percent: 25 },
     ])
-    expect(geometry.gridTemplateColumns).toBe("3fr 1fr")
   })
 
   it("is degenerate, not negative, for an empty table", () => {
@@ -103,18 +103,35 @@ describe("tableGeometry", () => {
     expect(tableGeometry({ rows: Number.NaN, columns: 3 }).cells).toBe(0)
   })
 
-  it("measures a body row from the tokens the real Table uses", () => {
-    const expected = SKELETON_METRICS.lineHeightRem + 2 * SKELETON_METRICS.cellPaddingYRem
-
-    expect(tableGeometry({ columns: 2 }).rowHeightRem).toBe(expected)
-    expect(tableRowHeightRem()).toBe(expected)
+  it("reserves 53px (3.3125rem) for a body row", () => {
+    // Literal on purpose. Deriving this from `SKELETON_METRICS` is what let a wrong metric ship:
+    // an expectation restated from the code under test cannot fail. 53px is what Chromium 151
+    // measures beside a real single-line `Table` row.
+    expect(tableRowHeightRem()).toBe(3.3125)
+    expect(tableRowHeightRem() * 16).toBe(53)
+    expect(tableGeometry({ columns: 2 }).rowHeightRem).toBe(3.3125)
   })
 
-  it("measures the header row shorter than a body row", () => {
-    expect(tableHeaderHeightRem()).toBe(
-      SKELETON_METRICS.lineHeightRem + 2 * SKELETON_METRICS.headerPaddingYRem,
-    )
+  it("reserves 44px (2.75rem) for a header row", () => {
+    // The real header row is 44.5px; half a pixel is not reachable by a grid row, and 44 is the
+    // closest whole-pixel height above the header's own content and padding.
+    expect(tableHeaderHeightRem()).toBe(2.75)
+    expect(tableHeaderHeightRem() * 16).toBe(44)
     expect(tableHeaderHeightRem()).toBeLessThan(tableRowHeightRem())
+  })
+
+  it("reserves a body row taller than the line it holds", () => {
+    // The row has to contain a text line plus `py-4`, or the bar it renders would overflow it.
+    const line = SKELETON_METRICS.lineHeightRem + 2 * SKELETON_METRICS.cellPaddingYRem
+
+    expect(tableRowHeightRem()).toBeGreaterThan(line)
+  })
+
+  it("keeps the metrics the row height is measured against", () => {
+    expect(SKELETON_METRICS.lineHeightRem).toBe(1.25)
+    expect(SKELETON_METRICS.cellPaddingYRem).toBe(1)
+    expect(SKELETON_METRICS.headerPaddingYRem).toBe(0.75)
+    expect(lineBoxRem()).toBe(1.25)
   })
 })
 
@@ -236,9 +253,38 @@ describe("SkeletonTable", () => {
     const html = render(<SkeletonTable rows={1} columns={2} widths={[3, 1]} />)
 
     for (const column of tableGeometry({ columns: 2, widths: [3, 1] }).columnWidths) {
-      expect(countOccurrences(html, `data-width="${column.percent}"`)).toBe(2)
+      expect(countOccurrences(html, `data-column-percent="${column.percent}"`)).toBe(2)
     }
+  })
+
+  it("stamps the column's share of the table, not its painted width", () => {
+    // `data-column-percent` is the share of the whole table that `columnWidthPercents` reports and a
+    // caller compares against the real table's split. It is not the cell's painted width: the tracks
+    // are the raw fractions, so a cell's own `px-6` comes out of its share.
+    const html = render(<SkeletonTable rows={1} columns={2} widths={[3, 1]} />)
+
+    expect(html).toContain('data-column-percent="75"')
+    expect(html).toContain('data-column-percent="25"')
     expect(html).toContain("grid-template-columns:3fr 1fr")
+  })
+
+  it("writes the measured row heights into the markup", () => {
+    const rows = markedRows(render(<SkeletonTable rows={2} columns={2} />))
+
+    expect(rows).toHaveLength(3)
+    expect(rows.filter((row) => row.markup.includes("height:3.3125rem"))).toHaveLength(2)
+    expect(rows.filter((row) => row.markup.includes("height:2.75rem"))).toHaveLength(1)
+  })
+
+  it("carries the cell padding the real row carries", () => {
+    const rows = markedRows(render(<SkeletonTable rows={1} columns={2} />))
+    const header = rows.find((row) => row.marker === "header")!
+    const body = rows.find((row) => row.marker === "0")!
+
+    expect(header.markup).toContain("py-3")
+    expect(header.markup).toContain("px-6")
+    expect(body.markup).toContain("py-4")
+    expect(body.markup).toContain("px-6")
   })
 
   it("renders nothing for zero rows", () => {
@@ -359,15 +405,37 @@ function countOccurrences(haystack: string, needle: string): number {
   return haystack.split(needle).length - 1
 }
 
+/** One placeholder row, as the markup writes it. */
+interface MarkedRow {
+  /** What the row's `data-skeleton-row` attribute says: `"header"` or the row's index. */
+  marker: string
+  /** The whole element, from its tag to the next row. */
+  markup: string
+}
+
 /**
- * Placeholder cells inside body rows, excluding the header's.
+ * Split a rendered skeleton table into its rows.
  *
- * Counted by splitting on the body row marker rather than by subtracting a header length, so a
- * table that renders no body rows at all counts zero instead of a negative number.
+ * Each row's markup is the span from its own `data-skeleton-row` attribute to the next one; the span
+ * before the first marker holds the header's class attribute, so it is prepended to it. Reading rows
+ * by marker is what lets a test ask for the header by name instead of by position.
  */
+function markedRows(html: string): MarkedRow[] {
+  const markers = [...html.matchAll(/data-skeleton-row="([^"]+)"/g)]
+
+  return markers.map((marker, index) => {
+    const tagStart = html.lastIndexOf('<div class="', marker.index!)
+    const end = index + 1 < markers.length
+      ? html.lastIndexOf('<div class="', markers[index + 1]!.index!)
+      : html.length
+
+    return { marker: marker[1]!, markup: html.slice(tagStart, end) }
+  })
+}
+
+/** Placeholder cells inside body rows, excluding the header's. */
 function bodyCells(html: string): number {
-  return html
-    .split('data-skeleton-row="')
-    .filter((chunk) => !chunk.startsWith("header"))
-    .reduce((total, chunk) => total + countOccurrences(chunk, "data-skeleton-cell="), 0)
+  return markedRows(html)
+    .filter((row) => row.marker !== "header")
+    .reduce((total, row) => total + countOccurrences(row.markup, "data-skeleton-cell="), 0)
 }

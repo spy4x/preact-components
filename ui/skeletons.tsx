@@ -85,8 +85,6 @@ export interface TableGeometry {
   rowHeightRem: number
   /** Column widths, in order. */
   columnWidths: TableColumnWidth[]
-  /** Value for the table's `grid-template-columns`: one track per column, weights when given. */
-  gridTemplateColumns: string
 }
 
 /** Resolved geometry of a skeleton paragraph. */
@@ -97,9 +95,20 @@ export interface TextGeometry {
   linePercents: number[]
 }
 
-/** Spacing tokens the real components lay out with, in `rem`. The row-height formulas use these. */
+/**
+ * Spacing and size constants the skeleton lays out with, in `rem`.
+ *
+ * `bodyRowHeightRem` and `headerRowHeightRem` are **measured border-box heights, not arithmetic
+ * on the other entries**. Tailwind's preflight is `box-sizing: border-box`, so a declared height
+ * already contains the padding: `py-4` plus `3.25rem` renders `52px`, not `52px + 32px`. The two
+ * heights therefore cannot be derived from `tableRowHeightRem`'s inputs and are pinned to what
+ * Chromium renders beside the real `Table` — see the JSDoc on {@link tableRowHeightRem}.
+ */
 export const SKELETON_METRICS = {
-  /** `text-sm` line-height — the body row font of `Table` and the base line of this module. */
+  /**
+   * `text-sm` line-height, the body and header font of `Table`. Measured as `20px`, and the nominal
+   * value is only `1.25rem` on a root font-size of `16px` — see {@link lineBoxRem}.
+   */
   lineHeightRem: 1.25,
   /** `py-4` on a `Table` body cell. */
   cellPaddingYRem: 1,
@@ -109,29 +118,69 @@ export const SKELETON_METRICS = {
   cardGapRem: 1,
   /** `p-5` inside a `Card`. */
   cardPaddingRem: 1.25,
+  /**
+   * `height` a skeleton body row declares on itself: `3.3125rem` = `53px`, the same border-box
+   * height a real `Table` body row occupies once the `tbody`'s 1px `divide-y` rule is counted.
+   */
+  bodyRowHeightRem: 3.3125,
+  /**
+   * `height` a skeleton header row declares on itself: `2.75rem` = `44px`, against the real
+   * header row's `44.5px`. Half a pixel short because the real value is a subpixel a
+   * `grid` row cannot land on; it is the closest whole-pixel height above the header's 44px of
+   * content and padding, and it is the measurement, not a derivation.
+   */
+  headerRowHeightRem: 2.75,
+  /**
+   * Line box one text line occupies, as a fraction of `lineHeightRem`.
+   *
+   * A `text-sm` line is `1.25rem` of line-height and renders a `20px` box, but a bare block inside
+   * a grid row collapses to the font's own content box — `17px` — unless it is given a height. The
+   * bars are sized from this entry so they occupy a real line box instead of shrinking the row.
+   */
+  lineBoxRatio: 1,
+  /** Fraction of a row's height a placeholder bar fills, leaving the rest as optical padding. */
+  barHeightRatio: 0.5,
 } as const
 
 /**
- * Height of one `Table` body row, from the same tokens the real `Table` uses.
+ * Height a placeholder bar needs to occupy one `text-sm` line box, in `rem`.
  *
- * A `Table` body row is `text-sm *:px-6 *:py-4`: one line box of `1.25rem` plus `py-4` twice, so
- * `3.25rem` for a single-line cell. A cell wrapping to two lines is taller, which is why the
- * skeleton reserves one line per row and the caller keeps cell content to one line where it wants
- * the substitution to be invisible.
- *
- * @returns The row height in `rem`.
+ * @returns `1.25rem`, the measured line box of the font `Table` uses.
  */
-export function tableRowHeightRem(): number {
-  return SKELETON_METRICS.lineHeightRem + 2 * SKELETON_METRICS.cellPaddingYRem
+export function lineBoxRem(): number {
+  return SKELETON_METRICS.lineHeightRem * SKELETON_METRICS.lineBoxRatio
 }
 
 /**
- * Height of the `Table` header row, from the same tokens the real `Table` uses.
+ * Height a skeleton body row renders at, in `rem`.
  *
- * @returns The header height in `rem`.
+ * **This is a measurement, not arithmetic on the padding.** It reads `53px` in Chromium 151 beside
+ * a real single-line `Table` row: that row's `<td>` is `52.5px` of `text-sm` line box (`20px`) plus
+ * `py-4` (`32px`) plus the `tbody`'s `divide-y` hairline, and the skeleton row carries its own 1px
+ * `border-t`, so the two occupy the same band. Deriving `3.25rem` here — or adding the padding to a
+ * declared height — is the bug this constant replaced: `box-sizing: border-box` absorbs the padding,
+ * so a declared `3.25rem` row renders `52px` and every row drifts a pixel.
+ *
+ * A cell wrapping to two lines makes the real row taller than one reserved row; the caller keeps
+ * cell content to one line where it wants the substitution to be invisible.
+ *
+ * @returns `3.3125`rem, `53px`.
+ */
+export function tableRowHeightRem(): number {
+  return SKELETON_METRICS.bodyRowHeightRem
+}
+
+/**
+ * Height a skeleton header row renders at, in `rem`.
+ *
+ * Measured: `44px` on a `display: grid` row with `py-3` and a 1px top border, against the real
+ * `Table` header row's `44.5px` — a subpixel a grid row cannot hit, so the skeleton is 0.5px short
+ * over the whole header and identical in every other respect.
+ *
+ * @returns `2.75`rem, `44px`.
  */
 export function tableHeaderHeightRem(): number {
-  return SKELETON_METRICS.lineHeightRem + 2 * SKELETON_METRICS.headerPaddingYRem
+  return SKELETON_METRICS.headerRowHeightRem
 }
 
 /**
@@ -172,9 +221,10 @@ function roundPercent(percent: number): number {
  * equal instead: a table whose every column measured zero is a blank box rather than the shape of a
  * table, so `[0, 0]` and `[-1, -1]` are both `50% / 50%`.
  *
- * This is the shared half of the layout-shift contract: the percentages depend only on `widths`, so
- * the real table's `<colgroup>` — built from the same array at the same column count — scales
- * identically, and both sides can be asserted without a DOM.
+ * The percentages depend only on `widths`, so they are the same numbers on the server and in a test.
+ * They describe the split this module's own grid renders, **not** the split a real `Table` renders:
+ * `Table` is `table-auto` and sizes from cell content, so equal weights and an equal real split are
+ * a coincidence rather than a contract. See the widths note on {@link SkeletonTable}.
  *
  * @param widths Per-column weights, one per column; a shorter list collapses the tail.
  * @returns One percentage per column, in order.
@@ -240,13 +290,12 @@ export function textGeometry(
  * body. Rows default to one per column, so `<SkeletonTable columns={4} />` is the shape of a
  * four-column table with content rather than an empty one.
  *
- * The grid declaration keeps the caller's weights as `fr` rather than the rounded percentages: `fr`
- * and `width: n%` resolve to the same ratio, so a real `<colgroup>` styled from these very
- * percentages — or from `[3, 1]` applied to a `table-fixed` table — lines up with the grid at any
- * viewport, which is the substitution guarantee stated without needing the DOM to check it.
+ * The geometry is the counts and the widths. The grid declaration is not part of it: the rendered
+ * tracks are the caller's `widths` verbatim, which is a markup detail rather than a number anyone
+ * asserts on.
  *
  * @param props `rows`, `columns` and `widths`, exactly as {@link SkeletonTable} takes them.
- * @returns Row, column, cell and per-column width numbers, plus the grid declaration to render.
+ * @returns Row, column, cell and per-column width numbers.
  */
 export function tableGeometry(props: {
   rows?: number
@@ -261,11 +310,6 @@ export function tableGeometry(props: {
     { length: columnCount },
     () => roundPercent(columnCount > 0 ? 100 / columnCount : 0),
   )
-  const tracks = declared !== undefined
-    ? declared.map((width) => (Number.isFinite(width) && width > 0 ? width : 0))
-    : Array.from({ length: columnCount }, () => 1)
-  const trackSum = tracks.reduce((sum, weight) => sum + weight, 0)
-  const grid = trackSum > 0 ? tracks : Array.from({ length: Math.max(columnCount, 1) }, () => 1)
 
   return {
     rows: rowCount,
@@ -273,8 +317,31 @@ export function tableGeometry(props: {
     cells: rowCount * columnCount,
     rowHeightRem: tableRowHeightRem(),
     columnWidths: percents.map((percent, index) => ({ index, percent })),
-    gridTemplateColumns: grid.join("fr ") + "fr",
   }
+}
+
+/**
+ * Value for a table's `grid-template-columns`: one `fr` track per column.
+ *
+ * `fr` and `width: n%` resolve to the same ratio, so a real `table-fixed` table styled from the same
+ * weights would line up with these tracks — a real `table-auto` one does not, and the JSDoc on
+ * {@link SkeletonTable} says why. A caller that gave no weights gets equal tracks, and every weight
+ * non-positive collapses to equal tracks for the same reason {@link columnWidthPercents} falls back:
+ * a table of zero-width columns is not the shape of a table.
+ *
+ * @param widths Per-column weights, or absent for an equal split.
+ * @param columns Column count to render when `widths` is absent.
+ * @returns A `grid-template-columns` declaration.
+ */
+function gridTracks(widths: readonly number[] | undefined, columns: number): string {
+  const declared = widths !== undefined && widths.length > 0 ? widths : undefined
+  const tracks = declared !== undefined
+    ? declared.map((width) => (Number.isFinite(width) && width > 0 ? width : 0))
+    : Array.from({ length: columns }, () => 1)
+
+  return tracks.reduce((sum, weight) => sum + weight, 0) > 0
+    ? `${tracks.join("fr ")}fr`
+    : `${Array.from({ length: Math.max(columns, 1) }, () => 1).join("fr ")}fr`
 }
 
 /**
@@ -294,15 +361,15 @@ export function skeletonStatusRole(): "status" {
 /** Pulse shared with `LoadingSkeleton`, so both shimmer identically. */
 const bar = "animate-pulse rounded bg-gray-200 dark:bg-gray-700"
 
-/** Line box of a `text-sm` paragraph, short of the `h-4` utility by design. */
-const textLineRem = SKELETON_METRICS.lineHeightRem
+/** Line box of a `text-sm` paragraph, as {@link lineBoxRem} measures it. */
+const textLineRem = lineBoxRem()
 
 /** Cell padding of a real `Table` cell (`*:px-6`), reused as the horizontal padding of the grid. */
 const tableCell = "px-6"
 
 /**
  * Box of the real `Table`'s wrapper: same ring, radius, background, `min-h-[300px]` reservation and
- * `-mx-4 md:mx-0` bleed, so swapping one for the other moves nothing.
+ * `-mx-4 md:mx-0` bleed, so swapping one for the other moves nothing around it.
  *
  * Duplicated from `table.tsx` rather than exported from there because that module is merged and
  * consumed; the two are kept in step by the contract documented on {@link SkeletonTable}.
@@ -355,28 +422,44 @@ export function SkeletonText({ lines, widths, class: className }: SkeletonTextPr
  * Table-shaped placeholder that mirrors a real `Table`'s boxes.
  *
  * The wrapper is the real wrapper's utility list, the header row is the real header row's, and each
- * body row is one real body row tall — {@link tableRowHeightRem} — with `*:px-6`-equivalent padding.
- * Columns are a `grid-template-columns` of equal fractions on the header *and* every body row, which
- * is what lines a column's left edge up down the whole table: a real `<table>` does that for free, a
- * stack of divs has to be told.
+ * body row is one real body row tall — {@link tableRowHeightRem}. Both carry the real `*:px-6` /
+ * `*:py-4` and `*:py-3` cell padding on themselves, because a `grid` row cannot push padding into
+ * its children the way `Table`'s `*:` variant does. Columns are a `grid-template-columns` on the
+ * header *and* every body row, which is what lines a column's left edge up down the whole table: a
+ * real `<table>` does that for free, a stack of divs has to be told.
+ *
+ * ## What is measured, and what is not
+ *
+ * The dimensions are checked against a real `Table` in Chromium, not derived: a single-line body row
+ * measures `53px` on both sides — the real `<td>` is `52.5px` and the `tbody`'s `divide-y` hairline
+ * brings the band to `53px`, which the skeleton row's own `border-t` matches. The header is `44px`
+ * here against `44.5px` there, half a pixel a `grid` row cannot land on. Both numbers and how they
+ * were obtained are on {@link tableRowHeightRem} and {@link tableHeaderHeightRem}.
  *
  * ## Guaranteeing no layout shift
  *
- * "The same box dimensions" is only meaningful when both sides agree on the inputs, so the contract
- * lives on the caller's side of it. The skeleton matches the real `Table` when:
+ * The skeleton matches the real `Table`'s **boxes** when:
  *
  * 1. `columns` is the real table's column count, or `widths` is the array its widths came from.
- * 2. That array also goes to {@link columnWidthPercents} for the real table's `<colgroup>` — same
- *    function, same percentages, so the two scale identically at any viewport.
- * 3. `rows` times {@link tableRowHeightRem} covers the real body: an empty table reserves `0` rows
+ * 2. `rows` times {@link tableRowHeightRem} covers the real body: an empty table reserves `0` rows
  *    and passes `reserveHeight={false}` to release the `min-h-[300px]`; a populated one reserves
  *    what it will show.
- * 4. The same `class` goes to both, since both accept one and the real table owns its own margin.
+ * 3. The same `class` goes to both, since both accept one and the real table owns its own margin.
+ * 4. Cell content stays on one line. A wrapped cell makes the real row taller than the single line
+ *    the skeleton reserved for it, and no prop-only component can measure copy it has never seen.
  *
- * Anything the caller's cells do beyond that — wrapping to two lines, a `Table` that is narrower
- * than its wrapper — is outside what a props-only component can know. It is the honest limit of this
- * contract rather than something the component hides: a skeleton can reserve boxes, not measure copy
- * it has never seen.
+ * ## Column widths are an approximation, not a mirror
+ *
+ * `widths` splits the grid by weight. A real `Table` is `table-auto`, which sizes columns from cell
+ * content, so the two agree on the first column and diverge from there: for one four-column table
+ * the real split measured `24.8 / 23.0 / 27.2 / 25.0 %` against the grid's `31.6 / 31.6 / 21.0 /
+ * 10.5 %`. Close enough that the skeleton does not jump between row boundaries, not close enough to
+ * call them equal.
+ *
+ * Making them equal is a `Table` API change, not a prop of this component: it needs
+ * `table-layout: fixed` plus a width list `Table` accepts, and `Table`'s props (`TableProps`) expose
+ * only slot children and builds its own `<table>`, so a caller cannot inject a `<colgroup>` today.
+ * Until that lands, `widths` is the caller's best description of the shape, not a contract.
  *
  * ## Announcements
  *
@@ -391,7 +474,11 @@ export function SkeletonTable(
 ) {
   const geometry = tableGeometry({ rows, columns, widths })
   const showRows = geometry.cells > 0
-  const track = { gridTemplateColumns: geometry.gridTemplateColumns }
+  // The grid tracks are the caller's `widths` verbatim, or an equal share each when none were given.
+  // `columnWidthPercents` normalises the same array for the percentages the markup stamps.
+  const track = { gridTemplateColumns: gridTracks(widths, geometry.columns) }
+  const headerBarRem = tableHeaderHeightRem() * SKELETON_METRICS.barHeightRatio
+  const bodyBarRem = geometry.rowHeightRem * SKELETON_METRICS.barHeightRatio
 
   return (
     <div
@@ -405,15 +492,16 @@ export function SkeletonTable(
       {showRows && (
         <div
           class={cn(tableHeaderRow, "grid py-3", tableCell)}
-          style={track}
+          style={{ ...track, height: `${tableHeaderHeightRem()}rem` }}
           data-skeleton-row="header"
         >
           {geometry.columnWidths.map((column) => (
-            <div key={column.index} data-skeleton-cell={column.index} data-width={column.percent}>
-              <div
-                class={cn(bar, "w-full")}
-                style={{ height: `${tableHeaderHeightRem() / 2}rem` }}
-              />
+            <div
+              key={column.index}
+              data-skeleton-cell={column.index}
+              data-column-percent={column.percent}
+            >
+              <div class={cn(bar, "w-full")} style={{ height: `${headerBarRem}rem` }} />
             </div>
           ))}
         </div>
@@ -422,7 +510,7 @@ export function SkeletonTable(
         Array.from({ length: geometry.rows }, (_, row) => (
           <div
             key={row}
-            class={cn(tableBodyRow, "grid", tableCell)}
+            class={cn(tableBodyRow, "grid py-4", tableCell)}
             style={{ ...track, height: `${geometry.rowHeightRem}rem` }}
             data-skeleton-row={row}
           >
@@ -430,12 +518,9 @@ export function SkeletonTable(
               <div
                 key={column.index}
                 data-skeleton-cell={column.index}
-                data-width={column.percent}
+                data-column-percent={column.percent}
               >
-                <div
-                  class={cn(bar, "w-full")}
-                  style={{ height: `${geometry.rowHeightRem / 2}rem` }}
-                />
+                <div class={cn(bar, "w-full")} style={{ height: `${bodyBarRem}rem` }} />
               </div>
             ))}
           </div>
