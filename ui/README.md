@@ -28,6 +28,10 @@ Preact + Tailwind primitives extracted from `gb`, `financy` and `offer-lens`.
 | `LoadingSpinner`  | `loading-spinner`  | `label`, `size`                                       |
 | `OnOffButtons`    | `on-off-buttons`   | `value`, `amount`, `onSwitch`                         |
 | `PageTitle`       | `page-title`       | `children`, `class`                                   |
+| `SkeletonCards`   | `skeletons`        | `columns`, `rows`, `lines`                            |
+| `SkeletonStatus`  | `skeletons`        | `label` (the loading announcement)                    |
+| `SkeletonTable`   | `skeletons`        | `rows`, `columns`, `widths`, `reserveHeight`          |
+| `SkeletonText`    | `skeletons`        | `lines`, `widths`                                     |
 | `Table`           | `table`            | `headerSlot`, `bodySlots`, `footerSlot`, `rowDataE2E` |
 | `Tabs`            | `tabs`             | `tabs`, `active`, `onChange`, `orientation`, `lazy`   |
 | `Toastr`          | `toastr`           | `toasts`, `onDismiss`                                 |
@@ -76,6 +80,51 @@ from the tabs whose panel it omitted. Ids are derived from each `TabItem.id` (`$
 
 `Toastr` auto-dismisses each toast after `toast.duration` milliseconds (default 5000, `0` keeps it
 until dismissed) and reports it through `onDismiss` — the caller owns the stack.
+
+## Skeletons
+
+`LoadingSkeleton` is the generic placeholder. The `skeletons` subpath adds variants whose boxes come
+from the counts the real component takes: `SkeletonText`, `SkeletonTable`, `SkeletonCards`.
+
+Every subtree is `aria-hidden="true"` and none of them announces anything. The announcement is a
+sibling live region, `SkeletonStatus` (`role="status"`, `aria-live="polite"`, `sr-only` text), so one
+region can cover a table, a grid and a paragraph that load together, and the caller owns the copy:
+
+```tsx
+{
+  loading.value
+    ? (
+      <>
+        <SkeletonStatus label="Loading invoices" />
+        <SkeletonTable rows={5} columns={4} widths={[3, 3, 2, 1]} />
+      </>
+    )
+    : <Table headerSlot={…} bodySlots={…} />
+}
+```
+
+`SkeletonTable` mirrors the real `Table`'s wrapper, header row and one-line body row. The heights are
+measurements, not arithmetic: Chromium renders a body row at **53px** and the header at **44.5px** on
+both sides, so a row sits at the same offset whether the caller renders the skeleton or the table. The
+wrapper costs **0.5px** at a full 12-row table — `681px` against `681.5px`, one rounding step of its own
+`pb-px` — which is spent on keeping the rows aligned rather than the box. `tableRowHeightRem()` returns
+the body value and `tableHeaderHeightRem()` the header value, both pinned by tests that assert the
+literal rather than restating the implementation.
+
+**A cell must fit one line.** The skeleton reserves one line per body row, so a cell that wraps is
+taller than its placeholder: measured, a cell wrapping to four lines at a 560px viewport pushed its row
+to `73px`, `20px` past what was reserved, and the drift accumulates down the table. Keep cell content to
+one line, or reach for `SkeletonCards` and `SkeletonText` where the content is prose.
+
+**Column widths are an approximation, not a mirror.** `widths` splits the grid by weight, while the
+real `Table` is `table-auto` and sizes columns from cell content: for one four-column table the real
+split measured `24.8 / 23.0 / 27.2 / 25.0 %` against the grid's `31.6 / 31.6 / 21.0 / 10.5 %`. Close
+enough that the skeleton does not jump between column boundaries, not close enough to call equal —
+and making them equal needs a `Table` API change plus `table-layout: fixed`, which `Table` does not
+offer today. `columnWidthPercents(widths)` is what reports the split, and `tableGeometry({ rows,
+columns, widths })` the rest of the geometry; both are assertable without a DOM. The checklist a
+caller can satisfy, and the one case no props-only component can cover, are on `SkeletonTable`'s
+JSDoc.
 
 ## Tests
 

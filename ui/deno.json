@@ -31,6 +31,7 @@
     "./pagination": "./pagination.tsx",
     "./progress": "./progress.tsx",
     "./radio": "./radio.tsx",
+    "./skeletons": "./skeletons.tsx",
     "./table": "./table.tsx",
     "./tabs": "./tabs.tsx",
     "./toastr": "./toastr.tsx",
