@@ -1,3 +1,16 @@
+# Triggers are declared rather than inferred: without a `when` block Woodpecker
+# falls back to a default it reports as a `bad_habit` warning, and that default
+# runs the pipeline on every event type.
+#
+# `branch` is checked against the *target* branch of a pull request, so this
+# still runs on every PR into `main` — from a fork or a feature branch — and on
+# a push to `main` itself. Tags, releases and PR-metadata edits are excluded:
+# nothing publishes from a tag in this repo, and `pull_request_metadata` fires
+# on a title or label edit, which cannot change a check result.
+when:
+  - event: [push, pull_request]
+    branch: main
+
 steps:
   check:
     image: denoland/deno:2.9.7

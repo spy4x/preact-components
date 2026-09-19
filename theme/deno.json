@@ -7,7 +7,11 @@
   },
   "tasks": {
     // This package alone. The workspace `test` task covers these suites too —
-    // `deno test` discovers every member — with the same two grants.
-    "test": "deno test -A integration"
+    // `deno test` discovers every member — with the same two grants, which are
+    // as narrow as the suite allows: the compile suites read their own sources
+    // and the Deno npm cache for the pinned Tailwind compiler. Nothing here
+    // needs `net`, `run` or `write`, so `-A` was over-broad. `--allow-env`
+    // stays only to keep this task the same command CI runs.
+    "test": "deno test --no-prompt --allow-read --allow-env integration"
   }
 }

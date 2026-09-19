@@ -11,9 +11,9 @@ An app writes this at the top of its stylesheet, in this order:
 
 ```css
 @import "tailwindcss";
-@import "@tailwindcss/forms";
 @import "@preact-components/theme/tokens.css";
 @import "@preact-components/theme/preset.css";
+@plugin "@tailwindcss/forms";
 ```
 
 Then tell Tailwind where the library's components live, so the classes they use
@@ -24,11 +24,36 @@ are emitted:
 ```
 
 `@tailwindcss/forms` is the one peer this preset assumes: the form controls are
-tuned to sit on top of it, and its rules must lose to `preset.css` on source
-order. The repo pins it in the root `deno.jsonc`.
+tuned to sit on top of it. It is a JavaScript plugin — `main: src/index.js`, no
+style entry — so an app loads it with `@plugin`, not `@import`, and it goes
+**last**, after `preset.css`. Both end up in the same `@layer base`, so there is
+one cascade layer and **source order decides inside it**: forms' own selectors —
+`[type="text"]`, `select`, `textarea`, at (0,1,0) — are imported later and
+therefore beat any of the preset's form rules that are wrapped in `:where()`,
+whose gate contributes no specificity at all. Do not move forms above the preset.
+That reasoning comes from the layer layout of the compiled sheet rather than from
+a measured build: forms is not loaded by this repo's demo, so nothing here
+exercises it end to end. The repo pins forms in the root `deno.jsonc`.
 
 For dark mode, put `dark` on `<html>`. The preset defines the `dark` variant as
 `&:where(.dark, .dark *)`, so no `@custom-variant` is needed in the app.
+
+Also put `theme-base` on `<body>`, and note that this is the only thing that
+decides whether the preset's host-level rules apply at all: they do nothing until
+`.theme-base` is present. With it, adding `.dark` paints form controls, the
+OS-rendered `option` list and the table shell; without it, the preset leaves that
+markup exactly as the app left it, no matter where `.dark` sits. That is the
+guarantee this gate buys — scope, not appearance — and it is why the example above
+is written the way it is. The two are wrapped differently, deliberately: the dark
+chrome is `:where(.dark) :where(.theme-base) …`, while the document rules are a
+plain `.theme-base { … }` — that block sets the light palette too, so it cannot be
+scoped to `.dark`.
+
+Which element carries which class is **not** interchangeable. The dark chrome
+needs `.dark` on an **ancestor** — the outer element, `<html>` — and
+`.theme-base` on a **descendant** of it, `<body>`. Put both classes on one
+element, or put them the other way round, and the descendant part of the selector
+has nothing to match.
 
 If the app's bundler cannot resolve a package `@import`, import by relative path
 — these are plain CSS files:
@@ -53,11 +78,20 @@ If the app's bundler cannot resolve a package `@import`, import by relative path
   status tones.
 - **Type** — `h1`–`h5`, `link`, `page-layout`, `list-ul`, plus `theme-base` for
   the document-level font, colour and canvas. Nothing is applied to the host
-  page by importing the preset; `theme-base` is put on `<body>` when wanted.
+  page by importing the preset; `theme-base` is put on `<body>` when wanted, and
+  every rule that would otherwise restyle the host is gated behind it — the
+  document rules above and the `.dark` form, table and `option` chrome in the
+  next bullet.
 - **Buttons** — `btn` with `btn-primary`, `btn-danger`, `btn-warning`,
   `btn-success` and their `-outline` variants; `btn-icon`, `btn-link`,
   `btn-input-icon`, `btn-disabled`. `btn` carries its own `:disabled` styling.
-- **Forms** — `input`, `select`, `textarea`, `label`, `checkbox`, `radio`.
+- **Forms** — `input`, `select`, `textarea`, `label`, `checkbox`, `radio`. In
+  dark mode the OS-rendered `option` list, the popup chrome and the table
+  (`table`, `th`, `td` borders) are repainted by `:where(.dark)
+  :where(.theme-base) …` rules, so they apply only inside `theme-base`, and only
+  while `.dark` is on an ancestor. Components that already carry `.input` /
+  `.select` / `.textarea` are painted by those utilities; these rules are what
+  covers the parts a class cannot reach.
 - **Surfaces** — `card`, `card-header`, `card-body`, `card-footer`, `scrollbar`.
 - **Data display** — `num`, `kpi`, `kpi-label`, `kpi-value`, `bar`.
 - **Map** — `map-marker` inside a `status-on` / `status-off` / `status-unknown`

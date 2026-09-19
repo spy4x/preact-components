@@ -6,9 +6,9 @@
  * the whole library by overriding custom properties.
  *
  *   @import "tailwindcss";
- *   @import "@tailwindcss/forms";
  *   @import "@preact-components/theme/tokens.css";
  *   @import "@preact-components/theme/preset.css";
+ *   @plugin "@tailwindcss/forms";
  *
  * Every token is read through `var(--token, default)`. The fallback is what
  * makes the order forgiving: drop `tokens.css` and the preset still renders in
@@ -17,6 +17,8 @@
  *
  * Dark mode is class based — put `dark` on `<html>` and Tailwind's `dark`
  * variant, customised below, flips both the tokens and any `dark:` utility.
+ * The preset's own host-level rules stay quiet until `theme-base` is on
+ * `<body>`; see the README for why, and for which rule is which.
  */
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -309,36 +311,67 @@
 }
 
 /*
- * Chrome the popup is painted by, not by class: `@tailwindcss/forms` styles the
- * control itself and cannot reach the OS-rendered option list. Imported before
- * `preset.css`, forms' own rules lose to these on source order.
+ * Chrome the popup is painted by, not by class: no utility can reach the
+ * OS-rendered option list, the table shell, or the popup roles an app builds by
+ * hand. This block is what covers those. An element that also carries `.input`
+ * or `.select` is painted by that utility too, and both read the same token.
+ *
+ * Gated on the same opt-in as the document rules above, because these restyle
+ * host elements: ungated, putting `.dark` anywhere above a table or a select
+ * would repaint that host markup whether or not the app ever asked for the
+ * preset's chrome. That is the guarantee `theme-base` makes and the whole value
+ * of the gate. Measured on the demo page, holding the class placement constant
+ * and swapping only this selector form:
+ *
+ *   opt-in present:  option/table background, th/td border — identical gated or not
+ *   opt-in absent:   gated leaves them untouched; ungated still repaints them
+ *
+ * So the gate buys scope, not appearance. Nothing here depends on the gate for
+ * how the shipped page looks; everything here depends on it for not touching a
+ * page that never opted in.
+ *
+ * Order inside the gate is load-bearing, and follows the host's placement:
+ * `dark` goes on `<html>` and `theme-base` on `<body>` (see README), so on such
+ * a page a control is a descendant of `.dark` first and of `.theme-base`
+ * second. Written the other way round every part is still present and the rule
+ * matches nothing at all — which is what shipped in #87. The suite therefore
+ * evaluates these selectors against that ancestor chain, not against their text.
+ *
+ * `:where()` keeps both classes out of the specificity arithmetic, deliberately.
+ * `@tailwindcss/forms` is loaded after this preset and would land in a later
+ * `@layer base`, where layer order outranks a class — but forms is not loaded by
+ * the demo build, so that comparison is reasoned from the compiled layer layout
+ * and not measured. What is measured: this block sits in the `@layer base` block
+ * below `@layer utilities`, so a component carrying `.input` or `.select` is
+ * painted by the utility, and these rules decide only the chrome no utility
+ * claims.
  */
 @layer base {
-  .dark select,
-  .dark input,
-  .dark textarea,
-  .dark [role="combobox"],
-  .dark [role="listbox"] {
+  :where(.dark) :where(.theme-base) select,
+  :where(.dark) :where(.theme-base) input,
+  :where(.dark) :where(.theme-base) textarea,
+  :where(.dark) :where(.theme-base) [role="combobox"],
+  :where(.dark) :where(.theme-base) [role="listbox"] {
     background-color: var(--color-surface, oklch(0.278 0.033 256.848));
     border-color: var(--color-border-control, oklch(0.446 0.03 256.802));
     color: var(--color-foreground, oklch(0.985 0.002 247.839));
   }
 
-  .dark option {
+  :where(.dark) :where(.theme-base) option {
     background-color: var(--color-surface, oklch(0.278 0.033 256.848));
     color: var(--color-foreground, oklch(0.985 0.002 247.839));
   }
 
-  .dark table {
+  :where(.dark) :where(.theme-base) table {
     background-color: var(--color-surface, oklch(0.278 0.033 256.848));
   }
 
-  .dark thead {
+  :where(.dark) :where(.theme-base) thead {
     background-color: var(--color-border-subtle, oklch(0.373 0.034 259.733));
   }
 
-  .dark th,
-  .dark td {
+  :where(.dark) :where(.theme-base) th,
+  :where(.dark) :where(.theme-base) td {
     border-color: var(--color-border-control, oklch(0.446 0.03 256.802));
   }
 }
