@@ -13,29 +13,33 @@ Preact + Tailwind primitives extracted from `gb`, `financy` and `offer-lens`.
 
 ## Components
 
-| Component         | Subpath            | Ports / key props                                     |
-| ----------------- | ------------------ | ----------------------------------------------------- |
-| `Badge`           | `badge`            | `text`, `color`, `type`                               |
-| `Button`          | `button`           | `variant`, `size`, native button attrs                |
-| `ConfidenceMeter` | `confidence-meter` | `value` (clamped 0–100), `label`                      |
-| `CopyButton`      | `copy-button`      | `textToCopy`, `copy?` (clipboard port)                |
-| `Combobox`        | `combobox`         | `items`, `value`, `onChange`, `getLabel?`, `filter?`  |
-| `Dropdown`        | `dropdown`         | `trigger`, `children`, `vertical`, `horizontal`       |
-| `ErrorState`      | `error-state`      | `message` (renders nothing when empty)                |
-| `GeoButton`       | `geo-button`       | `onLocation`, `onError?`                              |
-| `LoadingScreen`   | `loading-screen`   | `message`, `description`                              |
-| `LoadingSkeleton` | `loading-skeleton` | `rows`                                                |
-| `LoadingSpinner`  | `loading-spinner`  | `label`, `size`                                       |
-| `OnOffButtons`    | `on-off-buttons`   | `value`, `amount`, `onSwitch`                         |
-| `PageTitle`       | `page-title`       | `children`, `class`                                   |
-| `SkeletonCards`   | `skeletons`        | `columns`, `rows`, `lines`                            |
-| `SkeletonStatus`  | `skeletons`        | `label` (the loading announcement)                    |
-| `SkeletonTable`   | `skeletons`        | `rows`, `columns`, `widths`, `reserveHeight`          |
-| `SkeletonText`    | `skeletons`        | `lines`, `widths`                                     |
-| `Table`           | `table`            | `headerSlot`, `bodySlots`, `footerSlot`, `rowDataE2E` |
-| `Tabs`            | `tabs`             | `tabs`, `active`, `onChange`, `orientation`, `lazy`   |
-| `Toastr`          | `toastr`           | `toasts`, `onDismiss`                                 |
-| `ToggleSwitch`    | `toggle-switch`    | `value`, `onToggle`, `disabled`, `label`              |
+| Component         | Subpath             | Ports / key props                                                      |
+| ----------------- | ------------------- | ---------------------------------------------------------------------- |
+| `Avatar`          | `avatar`            | `name`, `src`, `alt`, `size`                                           |
+| `AvatarGroup`     | `avatar`            | `items`, `max`, `label`, `size` (a `role="group"`, not a list)         |
+| `Badge`           | `badge`             | `text`, `color`, `type`                                                |
+| `Button`          | `button`            | `variant`, `size`, native button attrs                                 |
+| `ConfidenceMeter` | `confidence-meter`  | `value` (optional; clamped 0–100, unknown renders no reading), `label` |
+| `CopyButton`      | `copy-button`       | `textToCopy`, `copy?` (clipboard port)                                 |
+| `Combobox`        | `combobox`          | `items`, `value`, `onChange`, `getLabel?`, `filter?`                   |
+| `DateRangePicker` | `date-range-picker` | `range`, `onChange`, `timeZone`, `presets`, `labels`                   |
+| `Dropdown`        | `dropdown`          | `trigger`, `children`, `vertical`, `horizontal`                        |
+| `ErrorState`      | `error-state`       | `message` (renders nothing when empty)                                 |
+| `GeoButton`       | `geo-button`        | `onLocation`, `onError?`                                               |
+| `LoadingScreen`   | `loading-screen`    | `message`, `description`                                               |
+| `LoadingSkeleton` | `loading-skeleton`  | `rows`                                                                 |
+| `LoadingSpinner`  | `loading-spinner`   | `label`, `size`                                                        |
+| `OnOffButtons`    | `on-off-buttons`    | `value`, `amount`, `onSwitch`                                          |
+| `PageTitle`       | `page-title`        | `children`, `class`                                                    |
+| `Progress`        | `progress`          | `value`, `max`, `label`, `id` (a caption needs an `id`)                |
+| `SkeletonCards`   | `skeletons`         | `columns`, `rows`, `lines`                                             |
+| `SkeletonStatus`  | `skeletons`         | `label` (the loading announcement)                                     |
+| `SkeletonTable`   | `skeletons`         | `rows`, `columns`, `widths`, `reserveHeight`                           |
+| `SkeletonText`    | `skeletons`         | `lines`, `widths`                                                      |
+| `Table`           | `table`             | `headerSlot`, `bodySlots`, `footerSlot`, `rowDataE2E`                  |
+| `Tabs`            | `tabs`              | `tabs`, `active`, `onChange`, `orientation`, `lazy`                    |
+| `Toastr`          | `toastr`            | `toasts`, `onDismiss`                                                  |
+| `ToggleSwitch`    | `toggle-switch`     | `value`, `onToggle`, `disabled`, `label`                               |
 
 ## Usage
 

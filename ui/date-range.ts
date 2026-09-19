@@ -13,8 +13,13 @@
  * caller's, per the library's no-hardcoded-strings rule.
  *
  * Supported window: the four-digit ISO years 0001–9999, e.g. every instant a UI clock can hold.
- * There is no year 0000, so the window's lower edge is the first of January 0001. Nothing here
- * leaves the window on purpose, and the escapes that remain are named rather than implied:
+ * The window is four digits wide, not 0001 upward: year 0000 **is** a representable year — ISO 8601
+ * calls it 1 BC, `Date` keeps it, and {@link parseIsoDate} and {@link formatIsoDate} both accept it,
+ * so {@link shiftMonth} answers `0000-12-01` for the month before `0001-01-01` rather than
+ * rejecting it. 0000 is outside the window because a UI clock cannot hold it, and what makes it an
+ * escape is that `Intl` disagrees with `Date` about the era, not that the year does not exist.
+ * Nothing here leaves the window on purpose, and the escapes that remain are named rather than
+ * implied:
  *
  * - An instant at or above year 10000 is outside the window twice over. {@link calendarDateInZone}
  *   still pads and reports the year with five digits (`"10000-01-01"`), so `today` echoes that
@@ -30,7 +35,10 @@
  *   era-aware date model; documented, not fixed.
  * - December 9999 throws for `this-month`, `this-quarter` and `last-12-months`: each asks for the
  *   end of a month that lies past 9999-12-31. 9999 is inside the window; a range of it that ends
- *   on its last day is not. The other presets resolve.
+ *   on its last day is not. The other presets resolve. December 9999 is also the one month where
+ *   {@link shiftMonth} itself is asked for a year 10000 date, and like {@link addDays} it throws
+ *   rather than answering `10000-01-01`; the presets above were already failing on that value one
+ *   step later, when {@link parseIsoDate} rejected it.
  */
 
 const MS_PER_DAY = 86_400_000
@@ -120,6 +128,24 @@ function pad2(value: number): string {
   return String(value).padStart(2, "0")
 }
 
+/**
+ * A year as `Date` writes it into an ISO string, four digits inside the window.
+ *
+ * `toISOString` keeps plain four-digit years and switches to a signed six-digit expanded year
+ * outside them — `+010000` for year 10000, `-000001` for 1 BC — which is the difference
+ * {@link formatIsoDate} reads to tell a date from half of one. Reproduced on the number here so a
+ * month step can be checked against the same rule without building the instant it would have to
+ * write: the string comparison against {@link ISO_DATE_PATTERN} is then what rejects the step.
+ *
+ * @param year The arithmetic year, which may be negative or five digits wide.
+ * @returns Four digits inside `0000…9999`; outside it, six digits with the matching sign.
+ */
+function paddedYear(year: number): string {
+  if (year >= 10000) return `+${String(year).padStart(6, "0")}`
+  if (year < 0) return `-${String(-year).padStart(6, "0")}`
+  return String(year).padStart(4, "0")
+}
+
 function isSameRange(a: DateRange, b: DateRange): boolean {
   return a.from === b.from && a.to === b.to
 }
@@ -187,12 +213,34 @@ export function addDays(date: string, days: number): string {
  *
  * Month arithmetic, not day arithmetic: "one month before 31 March" has to land on 1 February,
  * which adding 28, 30 or 31 days cannot guarantee.
+ *
+ * The result is checked against the supported window before it is returned, for the same reason
+ * {@link addDays} checks its own: a month step is ordinary arithmetic, and one step past the window
+ * produces `10000-01-01` — a string that looks like a date, is five digits wide, and is not a date.
+ * The check is the same one `toISOString` would make, expressed on the string this builds, so the
+ * message is the module's existing one rather than a new convention, and the answer throws instead
+ * of clamping to 9999-12-01. Consumers that feed the result back into {@link parseIsoDate} — the
+ * presets do — already rejected the escaped value; this makes the export itself reject it.
+ *
+ * @param date An existing `YYYY-MM-DD` date.
+ * @param months Months to step, negative to go back.
+ * @returns The first day of the target month, `YYYY-MM-DD`.
+ * @throws On a `date` that is not a `YYYY-MM-DD` date, and on a target month whose year `Date`
+ * writes with a sign — one month past `9999-12-01` is year 10000, one month before `0001-01-01` is
+ * year 0, and only the second is a four-digit year this module carries on purpose.
  */
 export function shiftMonth(date: string, months: number): string {
   const iso = formatIsoDate(parseIsoDate(date))
   const total = Number(iso.slice(0, 4)) * 12 + (Number(iso.slice(5, 7)) - 1) + months
   const year = Math.floor(total / 12)
-  return `${String(year).padStart(4, "0")}-${pad2(total - year * 12 + 1)}-01`
+  const result = `${paddedYear(year)}-${pad2(total - year * 12 + 1)}-01`
+  // `Date` writes year 10000 as `+010000`, so the rejection shares `formatIsoDate`'s shape without
+  // building the instant: a target month that does not fit a four-digit year is one `Date` would
+  // spell with a sign, and `ISO_DATE_PATTERN` is what says so.
+  if (!ISO_DATE_PATTERN.test(result)) {
+    throw new Error(`expected a date in the 0001-9999 window, received: ${result.slice(0, 10)}`)
+  }
+  return result
 }
 
 /** First day of the month `date` falls in. */

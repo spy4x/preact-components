@@ -35,9 +35,14 @@ const tierTextClasses: Record<ConfidenceTier, string> = {
  * clamp and no honest `aria-valuenow`, and an infinite score is outside the `0…100` a confidence
  * is defined on — clamping it would publish a maximal-confidence reading that nobody measured.
  * Both bands and value are therefore `null`, and the meter renders no fill, no percentage and no
- * `aria-valuenow`. This is the same policy `clampProgress` follows for an unmeasurable reading,
- * kept as its own function: the ranges, the `NaN` policy and the return shape all differ, and a
- * shared helper would need a `{ max, onNaN }` policy argument to cover both.
+ * `aria-valuenow`. {@link clampProgress} agrees on `NaN` and on an absent reading — both are
+ * unmeasurable there too — and on nothing else: it has a `max` to clamp onto, so it spends
+ * `±Infinity` on a bound (`-Infinity` → `0`, `Infinity` → `max`), while a confidence is defined on
+ * a fixed `0…100` this component takes no `max` for. Clamping an infinite score onto `100` would
+ * therefore publish a maximal-confidence reading nobody measured, which is the fabrication the
+ * whole unmeasurable branch exists to avoid. Kept as its own function rather than shared: the
+ * ranges, the `±Infinity` policy and the return shape all differ, and a shared helper would need a
+ * `{ max, onNonFinite }` policy argument to cover both.
  *
  * @param value Raw score; may be out of range or not a number at all.
  * @returns The clamped score and its {@link ConfidenceTier}, both `null` when unmeasurable.

@@ -76,14 +76,20 @@ function FieldDemo() {
         />
       </Field>
 
-      <Field id="guide-archived" label="Archived" suffix hint="Hides the row from the list">
+      <Field
+        id="guide-archived"
+        label="Archived"
+        suffix
+        hint="Hides the row from the list"
+        labelFor={false}
+      >
         <Checkbox
           checked={archived.value}
           onChange={(event) => archived.value = event.currentTarget.checked}
         />
       </Field>
 
-      <Field id="guide-channel" label="Notification method" disabled>
+      <Field id="guide-channel" label="Notification method" disabled labelFor={false}>
         <RadioGroup
           legend="Notification method"
           name="guide-channel"
@@ -281,8 +287,9 @@ export const fieldDemos = {
   <Input value={email.value} onInput={(event) => email.value = event.currentTarget.value} />
 </Field>
 
-// The label under the control, and a control that is its own label:
-<Field id="archived" label="Archived" suffix>
+// The label under the control, and a control that is its own label — the opt-out keeps the label
+// from pointing a for at something that cannot carry one:
+<Field id="archived" label="Archived" suffix labelFor={false}>
   <Checkbox checked={archived.value} />
 </Field>`,
     render: () => <FieldDemo />,
