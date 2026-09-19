@@ -104,9 +104,11 @@ describe("EmptyState copy slots", () => {
   })
 
   it("renders the caller's action control untouched", () => {
-    const html = render(<EmptyState title="No invoices yet" action={<button>Retry</button>} />)
+    const html = render(
+      <EmptyState title="No invoices yet" action={<button type="button">Retry</button>} />,
+    )
 
-    expect(html).toContain('<div class="mt-4"><button>Retry</button></div>')
+    expect(html).toContain('<div class="mt-4"><button type="button">Retry</button></div>')
   })
 
   it("appends a caller class", () => {
@@ -125,7 +127,9 @@ describe("EmptyState copy slots", () => {
 
 describe("EmptyState hardcoded wording", () => {
   it("renders no text the caller did not pass", () => {
-    const html = render(<EmptyState title="No invoices yet" action={<button>Retry</button>} />)
+    const html = render(
+      <EmptyState title="No invoices yet" action={<button type="button">Retry</button>} />,
+    )
 
     expect(visibleText(html)).toBe("No invoices yet Retry")
   })
