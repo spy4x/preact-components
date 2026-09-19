@@ -11,6 +11,7 @@
     "./confidence-meter": "./confidence-meter.tsx",
     "./confirm-dialog": "./confirm-dialog.tsx",
     "./copy-button": "./copy-button.tsx",
+    "./copyable-text": "./copyable-text.tsx",
     "./combobox": "./combobox.tsx",
     "./date-range": "./date-range.ts",
     "./date-range-picker": "./date-range-picker.tsx",

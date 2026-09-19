@@ -53,6 +53,7 @@ export {
   requireLabel,
 } from "./confirm-dialog.tsx"
 export { CopyButton, type CopyButtonProps } from "./copy-button.tsx"
+export { CopyableText, type CopyableTextProps } from "./copyable-text.tsx"
 export {
   activeDescendant,
   Combobox,
