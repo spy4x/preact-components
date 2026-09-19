@@ -5,6 +5,7 @@
 
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
+import { catalogueNames, catalogueSections } from "@preact-components/ui-guide/registry"
 import { componentFromFragment, demoElementId, demoSlug, demoUrl } from "./deep-link.ts"
 
 /** Names in the shape `ui/` exports them. */
@@ -65,6 +66,29 @@ describe("componentFromFragment", () => {
 
   it("returns undefined rather than throwing on a malformed escape", () => {
     expect(componentFromFragment("#%E0%A4%A", NAMES)).toBeUndefined()
+  })
+})
+
+describe("the catalogue's own names", () => {
+  it("gives every card a slug of its own", () => {
+    // The navigation writes one fragment per card, so two names that slugify the same would leave a
+    // chip pointing at another component's card. Read off the registry rather than a fixture: the
+    // catalogue grew past `ui/` and will grow again.
+    const slugs = catalogueNames.map(demoSlug)
+    expect(new Set(slugs).size, "two catalogue names share a slug").toBe(slugs.length)
+  })
+
+  it("resolves every chip's fragment back to its own component", () => {
+    for (const name of catalogueNames) {
+      expect(componentFromFragment(`#${demoSlug(name)}`, catalogueNames), name).toBe(name)
+    }
+  })
+
+  it("addresses a card for every name its sections render", () => {
+    // What the build asserts against the prerendered HTML, checked here without a build: the chips
+    // and the cards are keyed off the same list.
+    const sectionNames = catalogueSections.flatMap((section) => section.names)
+    expect([...sectionNames].sort()).toEqual([...catalogueNames].sort())
   })
 })
 

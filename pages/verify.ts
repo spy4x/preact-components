@@ -20,7 +20,7 @@
 
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
-import { componentNames } from "@preact-components/ui-guide/registry"
+import { catalogueNames, catalogueSections } from "@preact-components/ui-guide/registry"
 import { demoElementId } from "./src/deep-link.ts"
 import { type PreviewServer, serveDist } from "./serve.ts"
 import { DEFAULT_BASE, normalizeBase } from "./src/site.ts"
@@ -115,11 +115,19 @@ async function staticPhase(): Promise<void> {
     ".theme-base and .btn rules found",
   )
 
-  const cards = componentNames.filter((name) => html.includes(`id="${demoElementId(name)}"`))
+  // Counted against the catalogue rather than the `ui` barrel: the cards the guide renders are the
+  // registry's, and every covered package contributes some.
+  const cards = catalogueNames.filter((name) => html.includes(`id="${demoElementId(name)}"`))
   check(
     "every component has a prerendered card",
-    cards.length === componentNames.length,
-    `${cards.length}/${componentNames.length}`,
+    cards.length === catalogueNames.length,
+    `${cards.length}/${catalogueNames.length}`,
+  )
+  const sections = catalogueSections.filter((section) => html.includes(`id="${section.id}"`))
+  check(
+    "every catalogue section is prerendered",
+    sections.length === catalogueSections.length,
+    sections.map((section) => section.id).join(", "),
   )
   check("the icon gallery is prerendered", /data-icon="Icon/.test(html), "data-icon cells in HTML")
   check("snippets are prerendered", html.includes("<details>"), "usage snippets in HTML")

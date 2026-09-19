@@ -2,7 +2,7 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import { UIGuide, uiGuideRoute } from "./+index.tsx"
-import { componentNames, demoRegistry, type PartialDemoRegistry } from "./registry.ts"
+import { catalogueNames, demoRegistry, type PartialDemoRegistry, pendingDemos } from "./registry.ts"
 import { iconNames } from "./icons.tsx"
 
 /** One entry removed from the shipped registry, to reach the banner a partial one produces. */
@@ -13,12 +13,12 @@ function without(...names: Array<keyof typeof demoRegistry>): PartialDemoRegistr
 }
 
 describe("UIGuide", () => {
-  it("renders one demo card per exported component", () => {
+  it("renders one demo card per registered component", () => {
     const html = render(<UIGuide />)
 
-    expect(componentNames.length).toBeGreaterThan(0)
-    expect(html.match(/id="demo-/g)?.length).toBe(componentNames.length)
-    for (const name of componentNames) {
+    expect(catalogueNames.length).toBeGreaterThan(0)
+    expect(html.match(/id="demo-/g)?.length).toBe(catalogueNames.length)
+    for (const name of catalogueNames) {
       expect(html, name).toContain(`id="demo-${name}"`)
     }
   })
@@ -36,6 +36,8 @@ describe("UIGuide", () => {
   it("renders each section, the instructions and the icon gallery", () => {
     const html = render(<UIGuide />)
 
+    // Spelled out rather than read from the registry: a section that is dropped from the registry
+    // would otherwise disappear from both sides of the assertion.
     for (
       const heading of [
         "General instructions",
@@ -44,12 +46,34 @@ describe("UIGuide", () => {
         "Display",
         "Feedback",
         "Inputs",
+        "Charts",
+        "System",
+        "CRUD",
+        "Signals",
       ]
     ) {
       expect(html, heading).toContain(heading)
     }
+    for (const heading of ["badges", "charts", "system", "crud", "signals"]) {
+      expect(html, heading).toContain(`id="${heading}"`)
+    }
     expect(html).toContain('id="icons"')
     expect(html).toContain('id="instructions"')
+  })
+
+  it("lists the components whose demos are declared pending", () => {
+    const html = render(<UIGuide />)
+
+    expect(pendingDemos.length).toBeGreaterThan(0)
+    expect(html).toContain("Not demonstrated yet")
+    for (const entry of pendingDemos) {
+      expect(html, entry.packageName).toContain(entry.packageName)
+      for (const name of entry.names) {
+        expect(html, name).toContain(name)
+        // A declared gap is not a card: the worklist names it, the sections do not render it.
+        expect(html, name).not.toContain(`id="demo-${name}"`)
+      }
+    }
   })
 
   it("shows nothing of the icon gallery's fallback when no search is set", () => {

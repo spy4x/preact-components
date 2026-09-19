@@ -16,6 +16,15 @@
 @source "../ui";
 @source "../ui-guide";
 @source "../icons";
+/*
+ * The packages the catalogue gained sections for. A class only their components use has to be
+ * scanned or the card renders unstyled on the deployed page; `tailwind-sources.test.ts` fails when a
+ * covered package has no source here.
+ */
+@source "../charts";
+@source "../system";
+@source "../crud";
+@source "../signals";
 @source "./src";
 
 /*

@@ -6,8 +6,9 @@
  * and register it in its own navigation, which is what the source guide in `gb` never did.
  *
  * Everything below the title is generated from {@link demoRegistry}, so the page cannot show a
- * component the registry does not know about, and cannot miss one the `ui` package exports
- * without either failing `deno check` or showing up in the warning banner.
+ * component the registry does not know about, and cannot miss one a covered package exports without
+ * either failing `deno check` or showing up in one of the two notices at the top: the red banner for
+ * a gap nobody declared, the amber worklist for the components whose demos are declared pending.
  */
 
 import { PageTitle } from "@preact-components/ui"
@@ -16,11 +17,14 @@ import { cn } from "@preact-components/signals/cn"
 import { IconGallery } from "./icons.tsx"
 import { CatalogInstructions } from "./instructions.tsx"
 import {
+  catalogueNames,
   catalogueSections,
-  type ComponentName,
+  type DemoedName,
   demoRegistry,
   missingDemos,
+  packageIds,
   type PartialDemoRegistry,
+  pendingDemos,
 } from "./registry.ts"
 
 export interface UIGuideProps {
@@ -38,7 +42,7 @@ export interface UIGuideProps {
 
 /** One demo: its name, its summary, its JSX and its live example. */
 function DemoCard({ name, children, snippet, summary }: {
-  name: ComponentName
+  name: DemoedName
   children: ComponentChildren
   snippet: string
   summary: string
@@ -64,12 +68,12 @@ function DemoCard({ name, children, snippet, summary }: {
 }
 
 /**
- * Banner listing exported components with no demo.
+ * Banner listing components the catalogue means to demonstrate and this registry does not carry.
  *
  * A complete registry renders nothing, so a healthy catalogue never shows it. When the guide is
  * handed a partial registry the gap is stated at the top of the page rather than being invisible.
  */
-function MissingDemoBanner({ names }: { names: ComponentName[] }) {
+function MissingDemoBanner({ names }: { names: DemoedName[] }) {
   return (
     <div
       role="alert"
@@ -88,7 +92,39 @@ function MissingDemoBanner({ names }: { names: ComponentName[] }) {
 }
 
 /**
- * The live catalogue: instructions, one section per group of primitives, and the icon gallery.
+ * The declared gaps: components whose demos are listed in `PENDING_DEMOS` rather than written.
+ *
+ * A quieter notice than the banner above, and the difference matters: the banner is for a gap
+ * nobody accounted for, this is for one somebody wrote down in review. It renders `null` once every
+ * package is written up, which is the point of keeping the list in the registry instead of here.
+ */
+function PendingDemos() {
+  if (pendingDemos.length === 0) return null
+
+  return (
+    <div
+      data-e2e="ui-guide-pending-demos"
+      class="rounded-lg border border-amber-500 bg-amber-50 p-4 text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100"
+    >
+      <p class="font-medium">Not demonstrated yet</p>
+      <p class="mt-1 text-sm">
+        These components are declared in <code>registry.ts</code>{" "}
+        and their demos are still being written. Nothing here is missing by accident.
+      </p>
+      <ul class="mt-2 space-y-1 text-xs">
+        {pendingDemos.map((entry) => (
+          <li key={entry.package}>
+            <code class="font-mono">{entry.packageName}</code>{" "}
+            {entry.names.map((name) => <code key={name} class="mr-1 font-mono">{name}</code>)}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+/**
+ * The live catalogue: instructions, one section per package, and the icon gallery.
  *
  * @param props See {@link UIGuideProps}.
  */
@@ -100,13 +136,17 @@ export function UIGuide({ registry = demoRegistry, copy, class: className }: UIG
       <div>
         <PageTitle>UI Guide</PageTitle>
         <p class="text-sm text-gray-500 dark:text-gray-400">
-          Every component <code>@preact-components/ui</code>{" "}
-          exports, one demo each, plus the icon gallery. Generated from the registry — a component
-          with no demo is called out below.
+          Every component <code>{`@preact-components/{${packageIds.join(", ")}}`}</code> exports —
+          {" "}
+          {catalogueNames.length}{" "}
+          live demos, with the JSX next to each — plus the icon gallery. Generated from the
+          registry, so a component with no demo fails the build rather than quietly not being here.
         </p>
       </div>
 
       {missing.length > 0 ? <MissingDemoBanner names={missing} /> : null}
+
+      <PendingDemos />
 
       <CatalogInstructions />
 
@@ -173,15 +213,25 @@ export const uiGuideRoute: UiGuideRoute = {
 
 export { IconGallery, type IconGalleryProps, iconNames } from "./icons.tsx"
 export {
+  catalogueNames,
   catalogueSections,
   type ComponentName,
   componentNames,
+  type ComponentNamesOf,
   type Demo,
+  type DemoedName,
   type DemoRegistry,
   demoRegistry,
-  HELPER_EXPORTS,
+  EXCLUDED_PACKAGES,
+  exportsOf,
   missingDemos,
+  type PackageId,
+  packageIds,
+  PACKAGES,
+  packageSpecifier,
   type PartialDemoRegistry,
+  PENDING_DEMOS,
+  pendingDemos,
   registryDrift,
   type SectionId,
 } from "./registry.ts"

@@ -55,20 +55,26 @@ says so; `deno task --cwd pages verify --static` skips the browser on purpose.
 ## How a build works
 
 1. **`deno check`** over `build.ts`, `serve.ts`, `verify.ts`, `src/prerender.tsx` and `src/+main.tsx`.
-   The catalogue's drift guard _is_ a type error — a component exported with no demo, a demo for a
-   component that no longer exists, a rename that only reached one side — so the Pages build inherits
-   it instead of shipping a page the guide would have refused to compile.
+   The catalogue's drift guard _is_ a type error, one report per covered package — a component
+   exported with no demo and no pending entry, a demo for a component that no longer exists, a
+   rename that only reached one side — so the Pages build inherits it instead of shipping a page the
+   guide would have refused to compile.
 2. **Tailwind** compiles `styles.css` with its own `compile()` API, over every class name its Rust
-   scanner finds in the sources the stylesheet's `@source` rules name (`ui/`, `ui-guide/`, `icons/`,
-   this directory). `tokens.css` and `preset.css` are inlined, and the candidate list is scanned
+   scanner finds in the sources the stylesheet's `@source` rules name (every package the catalogue
+   draws components from — `ui/`, `charts/`, `system/`, `crud/`, `signals/` — plus `ui-guide/`,
+   `icons/` and this directory; `src/tailwind-sources.test.ts` fails when one is missing). `tokens.css` and `preset.css` are inlined, and the candidate list is scanned
    rather than listed, so a class inside a template string is emitted exactly as it would be for an
    app.
-3. **`deno bundle --platform browser`** produces the island — 39 modules including Preact, one copy,
-   at the version the root import map pins.
+3. **`deno bundle --platform browser`** produces the island — one Preact copy, at the version the
+   root import map pins. The registry reads each covered package's barrel at runtime to derive its
+   component names, so a bundled package's whole graph is retained: 774 modules and 431 kB minified
+   against 39 and 136 kB while `ui/` was the only source, most of the difference being d3 behind the
+   charts barrel. Splitting the runtime name lists from the component imports is the follow-up.
 4. **Prerender**: `renderToString(<App />)` inside Deno, wrapped by `document.ts`. Before writing
-   anything, the build asserts that every name in `componentNames` has a `demo-<Name>` card in the
-   markup it is about to publish, because deep links are the one thing this page adds to the
-   catalogue and a rename in `ui-guide` must fail the build rather than ship dead links.
+   anything, the build asserts that every name in `catalogueNames` — every card the sections render,
+   across all covered packages — has a `demo-<Name>` card in the markup it is about to publish,
+   because deep links are the one thing this page adds to the catalogue and a rename in `ui-guide`
+   must fail the build rather than ship dead links.
 
 Both assets are content-hashed (`main.2e09c12c.css`), so a redeploy cannot pair a new document with
 a cached island.
@@ -141,6 +147,11 @@ See the PR for the transcript. In short:
 
 ## Not here
 
-`crud/`, `charts/`, `system/` and `map/` have no demos: `ui-guide` covers the `ui/` barrel plus the
-icon gallery, and the registry's guard means adding a section to `ui-guide` is all a new component
-needs to appear here — no change to this directory, no extra wiring.
+`map/` does not exist yet. `theme/` is CSS; `icons/` is the gallery rather than demo cards; and the
+four sections that were placeholders when this page was first deployed — `charts/`, `system/`,
+`crud/`, `signals/` — now have a card each, with the components still to be written up declared in
+`ui-guide/registry.ts`'s `PENDING_DEMOS` and printed on the page.
+
+Adding a section to `ui-guide` is still all a new component needs to appear here: the registry's
+guard and the stylesheet's `@source` list are the only two things to touch, and both fail the build
+when a package is added without them.
