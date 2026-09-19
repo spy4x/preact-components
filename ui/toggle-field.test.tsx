@@ -70,8 +70,8 @@ describe("ToggleField", () => {
       />,
     )
 
-    expect(html).toContain('aria-describedby="archive-hint"')
-    expect(html).toContain('id="archive-hint"')
+    expect(describedIds(html)).toEqual([["archive-hint"]])
+    expect(idsIn(html)).toContain("archive-hint")
     expect(html).toContain("Hidden from the active list")
     expect(html).toContain("text-gray-500")
   })
@@ -104,8 +104,12 @@ describe("ToggleField", () => {
       />,
     )
 
-    expect(html).toContain('aria-describedby="archive-error archive-hint"')
-    expect(html).toContain('id="archive-error"')
+    // Every id the control points at must exist in the row, in that order: error first, so the
+    // rejection is announced before the hint.
+    expect(describedIds(html)).toEqual([["archive-error", "archive-hint"]])
+    expect(idsIn(html)).toEqual(
+      expect.arrayContaining(["archive-error", "archive-hint"]),
+    )
     expect(html).toContain('aria-live="polite"')
     expect(html).toContain("The plan does not include archiving")
     expect(html).toContain("text-red-700")
@@ -136,6 +140,9 @@ describe("ToggleField", () => {
     // The native attribute, read off the button's own tag: a bare `disabled` substring proves
     // nothing, because every switch's class list carries `disabled:cursor-not-allowed`.
     expect(buttonTags(html).some((tag) => /\sdisabled(\s|>|$)/.test(tag))).toBe(true)
+    // A disabled row centres its two halves instead of pushing them apart: a dimmed label flung to
+    // the far side of a dead control is the visual the settings pages asked us to avoid.
+    expect(wrapperRowClasses(html)).not.toContain("justify-between")
     // The dimmed label is the visual half and must not be the only half: `aria-disabled` alone
     // leaves the switch focusable and clickable, which is why the attribute is on the control.
     expect(labelClasses(html)).toContain("opacity-50")
@@ -146,6 +153,7 @@ describe("ToggleField", () => {
 
     expect(buttonTags(html).some((tag) => /\sdisabled(\s|>|$)/.test(tag))).toBe(false)
     expect(labelClasses(html)).not.toContain("opacity-50")
+    expect(wrapperRowClasses(html)).toContain("justify-between")
   })
 
   it("reports its state as a switch", () => {
@@ -269,6 +277,28 @@ function childrenOf(vnode: VNode): VNode[] {
     throw new TypeError(`no child to walk into from <${String(vnode.type)}>`)
   }
   return children
+}
+
+/**
+ * The ids the switch names in its `aria-describedby`, split on whitespace.
+ *
+ * Reading the reference alone would pass with any string; reading the doc alone would pass with an
+ * unwired paragraph. Only the pair proves the description is linked, so the tests assert both.
+ */
+function describedIds(html: string): string[][] {
+  return [...html.matchAll(/aria-describedby="([^"]*)"/g)].map((match) => match[1].split(" "))
+}
+
+/** Every `id` attribute in the markup. */
+function idsIn(html: string): string[] {
+  return [...html.matchAll(/\sid="([^"]*)"/g)].map((match) => match[1])
+}
+
+/** The class list of the label-and-control row. */
+function wrapperRowClasses(html: string): string[] {
+  const classes = html.match(/<div class="(flex[^"]*)"/)?.[1]
+  if (classes === undefined) throw new TypeError("no flex row in the markup")
+  return classes.split(" ")
 }
 
 /**
