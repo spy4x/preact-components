@@ -12,16 +12,16 @@ workspace member only so it can import its sibling packages the way an app does.
 
 ## What runs at that URL
 
-| Piece             | Where it comes from                                                                                                |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------ |
-| The catalogue     | `UIGuide` from `@preact-components/ui-guide`, unmodified — instructions, five sections, 15 demos, the icon gallery |
-| The host page     | `src/app.tsx` — header, a component index with deep links, the colour-scheme switch, the footer                    |
-| The styles        | `theme/tokens.css` + `theme/preset.css`, compiled by Tailwind into one stylesheet                                  |
-| The interactivity | `src/+main.tsx`, one Preact island that hydrates the prerendered markup                                            |
+| Piece             | Where it comes from                                                                                                       |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| The catalogue     | `UIGuide` from `@preact-components/ui-guide`, unmodified — instructions, every section of the catalogue, the icon gallery |
+| The host page     | `src/app.tsx` — header, a component index with deep links, the colour-scheme switch, the footer                           |
+| The styles        | `theme/tokens.css` + `theme/preset.css`, compiled by Tailwind into one stylesheet                                         |
+| The interactivity | `src/+main.tsx`, one Preact island that hydrates the prerendered markup                                                   |
 
 Static files only. `index.html` ships the whole catalogue prerendered, so it reads with JavaScript
 off; the island is what makes the dropdowns open, the switches toggle, the icon filter filter, the
-toasts fire and the deep links scroll.
+usage blocks copy, the toasts fire and the deep links scroll.
 
 ## Files
 
@@ -133,24 +133,29 @@ they address component names, which are the library's public API.
 
 ## Verification
 
-`deno task --cwd pages verify` runs both phases against the built artefact; a full run is 25 checks.
+`deno task --cwd pages verify` runs both phases against the built artefact; a full run is 41 checks.
 See the PR for the transcript. In short:
 
-- **Static**: base-prefixed `href`/`src` that resolve to files that exist; `body.theme-base`; all 15
-  components prerendered with a `demo-<Name>` card; icon cells and usage snippets in the HTML; tokens
-  and preset rules present in the compiled CSS; a bundle of the expected size carrying the host page.
+- **Static**: base-prefixed `href`/`src` that resolve to files that exist; `body.theme-base`; every
+  card prerendered with a `demo-<Name>` id, every one of them carrying a `Usage` block and a
+  labelled copy control; icon cells in the HTML; tokens and preset rules present in the compiled CSS;
+  a bundle of the expected size carrying the host page.
 - **Browser** (headless Chromium over the DevTools Protocol, page served at the deployed base):
   hydration, Dropdown open/close, ToggleSwitch, OnOffButtons, the icon filter over 101 glyphs,
-  click-to-copy, a toast pushed from the demo stack, a deep link marking/scrolling/titling, the
-  palette toggle, computed styles proving `preset.css` is live, and zero console errors, page
-  exceptions or failed requests.
+  click-to-copy in the gallery, a click on every usage block's copy control putting that block's text
+  on the clipboard, typing into a class-chapter `.input` and toggling its `.checkbox`/`.radio`, the
+  `.scrollbar` scrolling, a toast pushed from the demo stack, a deep link marking/scrolling/titling,
+  the palette toggle, computed styles proving `preset.css` is live (`h-12` input, `radius-primary`
+  card, `text-2xl` KPI value, `0.375rem` bar), and zero console errors, page exceptions or failed
+  requests.
 
 ## Not here
 
-`map/` does not exist yet. `theme/` is CSS; `icons/` is the gallery rather than demo cards; and the
-four sections that were placeholders when this page was first deployed — `charts/`, `system/`,
-`crud/`, `signals/` — now have a card each, with the components still to be written up declared in
-`ui-guide/registry.ts`'s `PENDING_DEMOS` and printed on the page.
+`map/` does not exist yet. `theme/` is CSS, so its classes get cards of their own in the catalogue's
+`forms` and `surfaces` sections rather than component cards; `icons/` is the gallery rather than demo
+cards; and the four sections that were placeholders when this page was first deployed — `charts/`,
+`system/`, `crud/`, `signals/` — now have a card each, with the components still to be written up
+declared in `ui-guide/registry.ts`'s `PENDING_DEMOS` and printed on the page.
 
 Adding a section to `ui-guide` is still all a new component needs to appear here: the registry's
 guard and the stylesheet's `@source` list are the only two things to touch, and both fail the build

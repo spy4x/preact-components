@@ -11,7 +11,7 @@
  * a gap nobody declared, the amber worklist for the components whose demos are declared pending.
  */
 
-import { PageTitle } from "@preact-components/ui"
+import { CopyButton, PageTitle } from "@preact-components/ui"
 import type { ComponentChildren } from "preact"
 import { cn } from "@preact-components/signals/cn"
 import { IconGallery } from "./icons.tsx"
@@ -19,6 +19,7 @@ import { CatalogInstructions } from "./instructions.tsx"
 import {
   catalogueNames,
   catalogueSections,
+  classDemos,
   type DemoedName,
   demoRegistry,
   missingDemos,
@@ -35,34 +36,79 @@ export interface UIGuideProps {
    * warning banner, which is the visible half of the drift guard.
    */
   registry?: PartialDemoRegistry
-  /** Clipboard port, forwarded to the icon gallery. */
+  /** Clipboard port, forwarded to every copy control in the catalogue. */
   copy?: (text: string) => void | Promise<void>
   class?: string
 }
 
-/** One demo: its name, its summary, its JSX and its live example. */
-function DemoCard({ name, children, snippet, summary }: {
+/** Props of one catalogue card: its identity, the port, and the live example as children. */
+export interface DemoCardProps {
+  /** Card id, and the name of the component for a component card. */
   name: DemoedName
-  children: ComponentChildren
-  snippet: string
+  /** Heading: `<Name />` for a component card, the card's own title for a class card. */
+  label: string
+  /** One or two sentences on the contract, under the heading. */
   summary: string
-}) {
+  /** The JSX the usage block prints and the copy button puts on the clipboard. */
+  snippet: string
+  /** Classes the card applies; a class card renders them as chips. */
+  classes?: string[]
+  /** Clipboard port, forwarded to the copy button. */
+  copy?: (text: string) => void | Promise<void>
+  /** The live example. */
+  children: ComponentChildren
+}
+
+/**
+ * One demo: its heading, the live example, and the copyable JSX behind it.
+ *
+ * The copy button sits beside the `details` rather than inside its `summary`: a button inside a
+ * summary toggles the disclosure as well as copying, and the snippet has to be copyable without
+ * opening it. `copyLabel` is the accessible name and the tooltip, so the control is not one of forty
+ * identical "Copy" buttons to a screen reader.
+ *
+ * @param props See {@link DemoCardProps}.
+ */
+export function DemoCard(
+  { name, label, summary, snippet, classes, copy, children }: DemoCardProps,
+) {
   return (
     <article
       id={`demo-${name}`}
       class="scroll-mt-8 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
     >
       <h3 class="font-mono text-sm font-semibold text-purple-700 dark:text-purple-400">
-        {`<${name} />`}
+        {label}
       </h3>
+      {classes && classes.length > 0
+        ? (
+          <div class="mt-1.5 flex flex-wrap gap-1.5">
+            {classes.map((className) => (
+              <code
+                key={className}
+                class="rounded-md border border-purple-600 px-1.5 py-0.5 font-mono text-xs text-purple-600 dark:text-purple-400"
+              >
+                .{className}
+              </code>
+            ))}
+          </div>
+        )
+        : null}
       <p class="mt-1 mb-3 text-sm text-gray-600 dark:text-gray-300">{summary}</p>
       <div class="mb-3 overflow-visible rounded-md bg-gray-50 p-4 dark:bg-gray-900">{children}</div>
-      <details>
-        <summary class="cursor-pointer text-xs text-gray-500 dark:text-gray-400">Usage</summary>
-        <pre class="mt-2 overflow-x-auto rounded-md bg-gray-900 p-3 text-xs text-gray-100">
-          <code>{snippet}</code>
-        </pre>
-      </details>
+      <div class="flex items-start justify-between gap-3" data-e2e="usage">
+        <details class="min-w-0 flex-1">
+          <summary class="cursor-pointer text-xs text-gray-500 dark:text-gray-400">Usage</summary>
+          <pre class="mt-2 overflow-x-auto rounded-md bg-gray-900 p-3 text-xs text-gray-100">
+            <code>{snippet}</code>
+          </pre>
+        </details>
+        <CopyButton
+          textToCopy={snippet}
+          copy={copy}
+          copyLabel={`Copy the ${label} snippet`}
+        />
+      </div>
     </article>
   )
 }
@@ -166,11 +212,26 @@ export function UIGuide({ registry = demoRegistry, copy, class: className }: UIG
               <p class="text-sm text-gray-500 dark:text-gray-400">{section.blurb}</p>
             </div>
             <div class="grid grid-cols-1 gap-4">
-              {demos.map(([name, demo]) => (
-                <DemoCard key={name} name={name} summary={demo.summary} snippet={demo.snippet}>
-                  {demo.render()}
-                </DemoCard>
-              ))}
+              {demos.map(([name, demo]) => {
+                // A class card is headed by its own title and lists the classes it applies; a
+                // component card is headed by the component. `classDemos` is keyed by card id, so a
+                // component name can never collide with one.
+                const classDemo = section.kind === "class" ? classDemos[name] : undefined
+
+                return (
+                  <DemoCard
+                    key={name}
+                    name={name}
+                    label={classDemo?.title ?? `<${name} />`}
+                    summary={demo.summary}
+                    snippet={demo.snippet}
+                    classes={classDemo?.classes}
+                    copy={copy}
+                  >
+                    {demo.render()}
+                  </DemoCard>
+                )
+              })}
             </div>
           </section>
         )
@@ -215,6 +276,11 @@ export { IconGallery, type IconGalleryProps, iconNames } from "./icons.tsx"
 export {
   catalogueNames,
   catalogueSections,
+  CLASS_PACKAGE,
+  type ClassDemo,
+  type ClassDemoFragment,
+  classDemoNames,
+  classDemos,
   type ComponentName,
   componentNames,
   type ComponentNamesOf,
@@ -234,4 +300,6 @@ export {
   pendingDemos,
   registryDrift,
   type SectionId,
+  type SectionKind,
+  type SectionPackage,
 } from "./registry.ts"

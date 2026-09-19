@@ -2,12 +2,14 @@
  * Verify the built artefact — statically, then in a real browser.
  *
  * The static phase reads `dist/` and asserts the document's shape: base-prefixed asset paths that
- * exist, prerendered cards for every component, and a stylesheet that actually carries the theme.
- * That alone would not prove the page *works* — a prerendered catalogue is not an interactive one —
- * so the second phase serves `dist/` at the same base GitHub Pages uses, drives headless Chromium
- * over the DevTools Protocol, and exercises what the issue asks for: the dropdown, the switches, the
- * icon filter, click-to-copy, the toasts, the deep links, the colour scheme — then reports any
- * console error, page exception or failed request the run produced.
+ * exist, prerendered cards for every component and every theme-class card, a copy control on every
+ * usage block, and a stylesheet that actually carries the theme. That alone would not prove the page
+ * *works* — a prerendered catalogue is not an interactive one — so the second phase serves `dist/`
+ * at the same base GitHub Pages uses, drives headless Chromium over the DevTools Protocol, and
+ * exercises what the issues ask for: the dropdown, the switches, the icon filter, click-to-copy in
+ * the gallery and on every usage block, the form controls of the class chapter, the surface classes
+ * as computed styles, the scroll container, the toasts, the deep links, the colour scheme — then
+ * reports any console error, page exception or failed request the run produced.
  *
  * ```bash
  * deno task build && deno task verify          # both phases
@@ -117,11 +119,11 @@ async function staticPhase(): Promise<void> {
 
   // Counted against the catalogue rather than the `ui` barrel: the cards the guide renders are the
   // registry's, and every covered package contributes some.
-  const cards = catalogueNames.filter((name) => html.includes(`id="${demoElementId(name)}"`))
+  const named = catalogueNames.filter((name) => html.includes(`id="${demoElementId(name)}"`))
   check(
     "every component has a prerendered card",
-    cards.length === catalogueNames.length,
-    `${cards.length}/${catalogueNames.length}`,
+    named.length === catalogueNames.length,
+    `${named.length}/${catalogueNames.length}`,
   )
   const sections = catalogueSections.filter((section) => html.includes(`id="${section.id}"`))
   check(
@@ -130,7 +132,44 @@ async function staticPhase(): Promise<void> {
     sections.map((section) => section.id).join(", "),
   )
   check("the icon gallery is prerendered", /data-icon="Icon/.test(html), "data-icon cells in HTML")
-  check("snippets are prerendered", html.includes("<details>"), "usage snippets in HTML")
+
+  // Read one card at a time: the host page's navigation has copy buttons of its own, so a count over
+  // the whole document would pass with no card carrying one. An `<article>` holds no nested article,
+  // which is what makes the non-greedy match a card.
+  const cards = [...html.matchAll(/<article id="demo-[^"]+"[\s\S]*?<\/article>/g)].map((match) =>
+    match[0]
+  )
+  const withoutSnippet = cards.filter((card) =>
+    !/data-e2e="usage"><details[^>]*><summary[^>]*>Usage<\/summary><pre[^>]*><code>/.test(card)
+  )
+  const withoutCopy = cards.filter((card) =>
+    !/data-e2e="usage"[\s\S]*?aria-label="Copy the [^"]+ snippet"/.test(card)
+  )
+
+  check(
+    "every card prerenders its usage snippet",
+    cards.length === catalogueNames.length && withoutSnippet.length === 0,
+    `${
+      cards.length - withoutSnippet.length
+    }/${catalogueNames.length} cards carry the details/pre pair`,
+  )
+  check(
+    "every card's usage block has a labelled copy control",
+    cards.length === catalogueNames.length && withoutCopy.length === 0,
+    `${cards.length - withoutCopy.length}/${catalogueNames.length} cards label their copy control`,
+  )
+
+  // The class chapter is the part of the stylesheet a component cannot demonstrate; assert the
+  // sections ship their cards rather than trusting the section loop above to imply it.
+  const classCards = catalogueSections
+    .filter((section) => section.kind === "class")
+    .flatMap((section) => section.names)
+  const rendered = classCards.filter((name) => html.includes(`id="${demoElementId(name)}"`))
+  check(
+    "every theme-class card is prerendered",
+    rendered.length === classCards.length,
+    `${rendered.length}/${classCards.length} — ${classCards.join(", ")}`,
+  )
 }
 
 /** Fetch one built asset and assert it is served at the deployed base. */
@@ -333,6 +372,269 @@ async function interactionChecks(devtools: Devtools): Promise<void> {
     "clicking an icon copies its JSX",
     copy.status.includes("copied") && copy.status.includes(`<${copy.name} />`),
     copy.status.trim(),
+  )
+
+  // #30: every usage block's own copy control, clicked for real, has to put that block's text on the
+  // clipboard. `navigator.clipboard` is stubbed in the page rather than read back, because reading
+  // it needs a permission this run does not grant; the stub is what the page's own copy path calls.
+  const copyBlocks = await devtools.evaluate<{
+    patched: boolean
+    cards: number
+    unlabelled: string[]
+    unconverted: string[]
+    missing: string[]
+    feedback: boolean
+  }>(`(async () => {
+    const settle = () => new Promise((done) => setTimeout(done, 0))
+    const copied = []
+    const writeText = (text) => {
+      copied.push(text)
+      return Promise.resolve()
+    }
+    try {
+      navigator.clipboard.writeText = writeText
+    } catch {
+      Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true })
+    }
+
+    const cards = [...document.querySelectorAll('article[id^="demo-"]')]
+    const missing = []
+    const unconverted = []
+    const unlabelled = []
+    let feedback = false
+
+    for (const [index, card] of cards.entries()) {
+      const block = card.querySelector('[data-e2e="usage"]')
+      const button = block?.querySelector("button")
+      if (!block || !button) {
+        missing.push(card.id)
+        continue
+      }
+      if (!(button.getAttribute("aria-label") ?? "").startsWith("Copy the ")) {
+        unlabelled.push(card.id)
+      }
+
+      const before = button.innerHTML
+      copied.length = 0
+      button.click()
+      await settle()
+      if (index === 0) feedback = button.innerHTML !== before
+      if (copied[0] !== block.querySelector("pre code").textContent) unconverted.push(card.id)
+    }
+
+    return {
+      patched: navigator.clipboard.writeText === writeText,
+      cards: cards.length,
+      unlabelled,
+      unconverted,
+      missing,
+      feedback,
+    }
+  })()`)
+  check(
+    "every usage block copies its own text, through a labelled control",
+    copyBlocks.patched && copyBlocks.cards > 30 && copyBlocks.missing.length === 0 &&
+      copyBlocks.unlabelled.length === 0 && copyBlocks.unconverted.length === 0,
+    `${copyBlocks.cards} blocks, ${copyBlocks.missing.length} without a control, ` +
+      `${copyBlocks.unconverted.length} copied the wrong text, ` +
+      `${copyBlocks.unlabelled.length} unlabelled`,
+  )
+  check(
+    "the copy control confirms the copy",
+    copyBlocks.feedback,
+    "the glyph changed after the click",
+  )
+
+  // The form chapter is a section of the theme rather than of `ui/`, so the interaction is the
+  // native one: type into `.input`, toggle `.checkbox`, pick a `.radio`. The computed styles are
+  // what says the class itself reached the browser, not only the markup.
+  const forms = await devtools.evaluate<{
+    echoBefore: string
+    echoAfter: string
+    inputHeight: string
+    inputRadius: string
+    checkboxBefore: string
+    checkboxAfter: string
+    checkboxSize: string
+    radio: string
+    inlineButton: string
+  }>(`(async () => {
+    const settle = () => new Promise((done) => setTimeout(done, 30))
+    const echo = (card) => document.querySelector("#demo-" + card + ' [data-e2e="controlled-value"]')
+      .textContent.trim()
+
+    const input = document.querySelector("#demo-class-input input.input")
+    const echoBefore = echo("class-input")
+    input.value = "ada@example.com"
+    input.dispatchEvent(new Event("input", { bubbles: true }))
+    await settle()
+
+    const box = document.querySelector("#demo-class-checkbox input.checkbox")
+    const checkboxBefore = echo("class-checkbox")
+    box.click()
+    await settle()
+
+    const radio = document.querySelector('#demo-class-radio input.radio[value="sms"]')
+    radio.click()
+    await settle()
+
+    return {
+      echoBefore,
+      echoAfter: echo("class-input"),
+      inputHeight: getComputedStyle(input).height,
+      inputRadius: getComputedStyle(input).borderRadius,
+      checkboxBefore,
+      checkboxAfter: echo("class-checkbox"),
+      checkboxSize: getComputedStyle(box).width,
+      radio: echo("class-radio"),
+      inlineButton: document.querySelector("#demo-class-input-button button.btn-input-icon")
+        .getAttribute("aria-label"),
+    }
+  })()`)
+  check(
+    "typing into a `.input` drives the demo's controlled value",
+    forms.echoBefore !== forms.echoAfter && forms.echoAfter.includes("ada@example.com"),
+    `${forms.echoBefore} → ${forms.echoAfter}`,
+  )
+  check(
+    "the form classes reach the browser",
+    forms.inputHeight === "48px" && forms.inputRadius === "8px" &&
+      forms.checkboxSize === "20px",
+    `.input ${forms.inputHeight}/radius ${forms.inputRadius} (h-12, radius-primary), ` +
+      `.checkbox ${forms.checkboxSize} (size-5)`,
+  )
+  check(
+    "a `.checkbox` and a `.radio` report through the native events",
+    forms.checkboxBefore !== forms.checkboxAfter && forms.radio.includes("sms"),
+    `${forms.checkboxBefore} → ${forms.checkboxAfter}; radio ${forms.radio}`,
+  )
+  check(
+    "the inline `.btn-input-icon` is labelled for assistive tech",
+    forms.inlineButton === "Search",
+    `aria-label="${forms.inlineButton}"`,
+  )
+
+  // The `Fields` section's primitives: what `Field` wires is exactly what the browser makes
+  // observable — the label's `for`, the control's `id`, and the ids of the messages the control
+  // describes itself by, including the one it stops describing itself by once the error clears.
+  const fields = await devtools.evaluate<{
+    echoBefore: string
+    echoAfter: string
+    controlId: string
+    labelFor: string
+    beforeInvalid: string | null
+    beforeDescribedBy: string
+    afterInvalid: string | null
+    afterDescribedBy: string
+    errorText: string
+  }>(`(async () => {
+    const settle = () => new Promise((done) => setTimeout(done, 30))
+    const echo = () =>
+      document.querySelector('#demo-Field [data-e2e="controlled-value"]').textContent.trim()
+    const email = document.querySelector("#demo-Field input[type=email]")
+    const read = () => ({
+      invalid: email.getAttribute("aria-invalid"),
+      describedBy: email.getAttribute("aria-describedby") ?? "",
+    })
+
+    const echoBefore = echo()
+    const before = read()
+    email.value = "ada@example.com"
+    email.dispatchEvent(new Event("input", { bubbles: true }))
+    await settle()
+
+    return {
+      echoBefore,
+      echoAfter: echo(),
+      controlId: email.id,
+      labelFor: document.querySelector("#demo-Field label[for='guide-email']")?.getAttribute("for") ?? "",
+      beforeInvalid: before.invalid,
+      beforeDescribedBy: before.describedBy,
+      afterInvalid: read().invalid,
+      afterDescribedBy: read().describedBy,
+      errorText: document.querySelector("#guide-email-error")?.textContent ?? "",
+    }
+  })()`)
+  check(
+    "typing into a `Field`'s control drives the demo's controlled value",
+    fields.echoBefore !== fields.echoAfter && fields.echoAfter.includes("ada@example.com"),
+    fields.echoAfter,
+  )
+  check(
+    "`Field` wires the label's `for` to the control's `id`",
+    fields.controlId === "guide-email" && fields.labelFor === "guide-email",
+    `for="${fields.labelFor}" id="${fields.controlId}"`,
+  )
+  check(
+    "`Field` describes the control by its error and its hint, and drops the error once it clears",
+    fields.beforeInvalid === "true" &&
+      fields.beforeDescribedBy === "guide-email-error guide-email-hint" &&
+      fields.afterInvalid === null && fields.afterDescribedBy === "guide-email-hint" &&
+      fields.errorText === "",
+    `invalid=${fields.beforeInvalid} "${fields.beforeDescribedBy}" → ` +
+      `invalid=${fields.afterInvalid} "${fields.afterDescribedBy}"`,
+  )
+
+  // The surface chapter has no control of its own: its interaction is the copy button its cards
+  // carry (asserted above per card, for every section) plus the scroll container, which is driven
+  // here. The rest is the stylesheet applying, read off computed styles.
+  const surfaces = await devtools.evaluate<{
+    cardRadius: string
+    headerBorder: string
+    footerBorder: string
+    kpiValue: string
+    numAlign: string
+    barHeight: string
+    scrolled: boolean
+    overflow: boolean
+    canvas: string
+    surface: string
+    link: string
+    list: string
+  }>(`(async () => {
+    const style = (selector) => getComputedStyle(document.querySelector(selector))
+    const scroller = document.querySelector('#demo-class-scrollbar [data-e2e="scrollbar"]')
+    const overflow = scroller.scrollWidth > scroller.clientWidth
+    scroller.scrollLeft = 120
+    await new Promise((done) => setTimeout(done, 50))
+
+    return {
+      cardRadius: style("#demo-class-card .card").borderRadius,
+      headerBorder: style("#demo-class-card .card-header").borderBottomWidth,
+      footerBorder: style("#demo-class-card .card-footer").borderTopWidth,
+      kpiValue: style("#demo-class-data-display .kpi-value").fontSize,
+      numAlign: style("#demo-class-data-display .num").textAlign,
+      barHeight: style("#demo-class-data-display .bar").height,
+      scrolled: scroller.scrollLeft > 0,
+      overflow,
+      canvas: style("#demo-class-colour-atoms .bg-canvas").backgroundColor,
+      surface: style("#demo-class-colour-atoms .bg-surface").backgroundColor,
+      link: style("#demo-class-typography .link").textDecorationLine,
+      list: style("#demo-class-typography .list-ul").listStyleType,
+    }
+  })()`)
+  check(
+    "the surface classes reach the browser",
+    surfaces.cardRadius === "8px" && surfaces.headerBorder === "1px" &&
+      surfaces.footerBorder === "1px" && surfaces.kpiValue === "24px" &&
+      surfaces.barHeight === "6px",
+    `card radius ${surfaces.cardRadius}, header ${surfaces.headerBorder}, ` +
+      `footer ${surfaces.footerBorder}, kpi-value ${surfaces.kpiValue}, bar ${surfaces.barHeight}`,
+  )
+  check(
+    "`.num` right-aligns and `.list-ul`/`.link` style their text",
+    surfaces.numAlign === "right" && surfaces.list === "disc" && surfaces.link === "underline",
+    `num ${surfaces.numAlign}, list ${surfaces.list}, link ${surfaces.link}`,
+  )
+  check(
+    "`.scrollbar` is a real horizontal scroller",
+    surfaces.overflow && surfaces.scrolled,
+    `overflow ${surfaces.overflow}, scrolled to a non-zero offset`,
+  )
+  check(
+    "`.bg-canvas` and `.bg-surface` are two different tokens",
+    surfaces.canvas !== surfaces.surface,
+    `${surfaces.canvas} vs ${surfaces.surface}`,
   )
 
   const toasts = await devtools.evaluate<{ pushed: boolean; text: string }>(

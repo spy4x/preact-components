@@ -13,6 +13,7 @@ import { iconNames, UIGuide } from "@preact-components/ui-guide"
 import {
   catalogueNames,
   catalogueSections,
+  classDemoNames,
   type DemoedName,
   demoRegistry,
   packageIds,
@@ -27,6 +28,16 @@ const THEME_KEY = "pc-theme"
 
 /** How long a chip reports "copied" before it goes back to "copy". */
 const COPIED_FEEDBACK_MS = 1600
+
+/**
+ * Clipboard port handed to the catalogue, and used by the chip row.
+ *
+ * The library's own helper, so the legacy `execCommand` path is not reimplemented here and the two
+ * ways to copy a snippet — the chip and the usage block's own button — behave the same.
+ *
+ * @param text Text to place on the clipboard.
+ */
+const copyText = (text: string): void => copyToClipboard(text)
 
 /**
  * The page.
@@ -48,7 +59,7 @@ export function App() {
         <Intro />
         <ComponentIndex />
       </main>
-      <UIGuide />
+      <UIGuide copy={copyText} />
       <SiteFooter />
     </div>
   )
@@ -125,12 +136,13 @@ function Intro() {
     <section class="space-y-3">
       <h1 class="h1">The whole library, running in your browser</h1>
       <p class="max-w-2xl text-sm text-gray-600 dark:text-gray-300">
-        {catalogueNames.length} live component demos from {packageIds.length} packages —{" "}
-        <code>{`@preact-components/{${packageIds.join(", ")}}`}</code> — and {iconNames.length}{" "}
-        icons from{" "}
+        {catalogueNames.length} live demos — components from{" "}
+        <code>{`@preact-components/{${packageIds.join(", ")}}`}</code> and {classDemoNames.length}
+        {" "}
+        cards of <code>theme/</code> classes — plus {iconNames.length} icons from{" "}
         <code>@preact-components/icons</code>, with the JSX next to each. Nothing here is a
         screenshot: the dropdowns open, the switches report through their ports, the icon filter
-        runs in the page.
+        runs in the page, every usage block copies.
       </p>
       <p class="text-sm text-gray-600 dark:text-gray-300">
         <code class="rounded bg-gray-100 px-2 py-1 font-mono text-xs dark:bg-gray-800">
@@ -176,8 +188,8 @@ function ComponentIndex() {
   }, [])
 
   const copySnippet = (name: DemoedName) => {
-    // The library's own clipboard helper, so the legacy `execCommand` path is not reimplemented.
-    copyToClipboard(demoRegistry[name].snippet)
+    // The same port the catalogue's own copy controls get, so both routes copy identically.
+    copyText(demoRegistry[name].snippet)
     setCopied(name)
     setTimeout(
       () => setCopied((current) => (current === name ? undefined : current)),

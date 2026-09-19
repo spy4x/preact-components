@@ -45,6 +45,15 @@
  * `record.ts`'s `entries()`, so adding a variant to a component fails `deno check` until the
  * catalogue shows it.
  *
+ * **Classes are a second kind of section.** Two sections — `forms` and `surfaces` — document the
+ * style classes `theme/preset.css` ships rather than components, and they declare `package: "theme"`
+ * so the component guard above ignores them: a class name is not an export, and pretending it were
+ * would be the "document what does not exist" failure in the other direction. Their cards are keyed
+ * by a card id and carry the classes they apply, and `classes.test.tsx` is their guard — it reads
+ * `preset.css`, renders the catalogue, and fails when a class the preset defines is demonstrated
+ * nowhere and named in no exclusion. The registry's half of that contract is {@link classDemos}:
+ * every class card, in one record the guard and the renderer read.
+ *
  * `icons/` needs neither an entry nor a helper list: the gallery reads `Object.entries(import * as
  * icons)`, so a new glyph appears in the catalogue by itself.
  */
@@ -61,8 +70,11 @@ import { chartsDemos } from "./sections/charts.tsx"
 import { crudDemos } from "./sections/crud.tsx"
 import { displayDemos } from "./sections/display.tsx"
 import { feedbackDemos } from "./sections/feedback.tsx"
+import { fieldDemos } from "./sections/fields.tsx"
+import { formDemos } from "./sections/forms.tsx"
 import { inputDemos } from "./sections/inputs.tsx"
 import { signalsDemos } from "./sections/signals.tsx"
+import { surfaceDemos } from "./sections/surfaces.tsx"
 import { systemDemos } from "./sections/system.tsx"
 
 /**
@@ -298,7 +310,7 @@ export type PackageId = keyof typeof PACKAGES
 export const packageIds: PackageId[] = Object.keys(PACKAGES) as PackageId[]
 
 /** `@preact-components/<id>` — the specifier a reader copies out of the guide. */
-export function packageSpecifier(id: PackageId): string {
+export function packageSpecifier(id: SectionPackage): string {
   return `@preact-components/${id}`
 }
 
@@ -338,6 +350,41 @@ export interface Demo {
  * the fragment either. Both directions are errors at the section that is wrong.
  */
 export type DemoFragment<Names extends ComponentName> = Record<Names, Demo>
+
+/**
+ * The package the class sections document.
+ *
+ * `theme/` exports no components, so it is not a {@link PACKAGES} entry and its exports are never
+ * enumerated; a class section names it to say which package's vocabulary its cards belong to, and
+ * that is what keeps its card ids out of the component drift guard.
+ */
+export const CLASS_PACKAGE = "theme" as const
+
+/** A section's package: one of the covered component packages, or the theme's classes. */
+export type SectionPackage = PackageId | typeof CLASS_PACKAGE
+
+/**
+ * One card of a class section: the same shape as {@link Demo}, plus what only a class card has.
+ *
+ * The key a class card is registered under is a card id (`"colour-atoms"`), not a class name, so the
+ * card carries its own heading; `classes` is the list it is about, rendered as chips and checked
+ * against its own rendered markup by `classes.test.tsx`.
+ */
+export interface ClassDemo extends Demo {
+  /** Card heading, e.g. `"Colour atoms"`. */
+  title: string
+  /** Classes this card applies, in display order. */
+  classes: string[]
+}
+
+/**
+ * The compile-time tie between a class section's cards and the cards it declares.
+ *
+ * The counterpart of {@link DemoFragment} for the sections that document classes: `Names` is the
+ * section's own card-id union, so a card named in the union with no demo does not compile, and a
+ * card that is not a {@link ClassDemo} — no heading, no class list — does not either.
+ */
+export type ClassDemoFragment<Names extends string> = Record<Names, ClassDemo>
 
 /**
  * Components a covered package exports that the catalogue does not demonstrate yet.
@@ -395,15 +442,23 @@ export const PENDING_DEMOS = {
 /** Components declared as not-yet-demonstrated, for one package. */
 export type PendingNames<P extends PackageId> = (typeof PENDING_DEMOS)[P][number]
 
+/** What a section's cards are keyed by: a covered package's components, or the theme's classes. */
+export type SectionKind = "component" | "class"
+
 /** Heading, blurb and demos of one catalogue section, before it is resolved for rendering. */
 interface SectionSpec {
-  /** Package whose component names this section's demos are keyed by. */
-  package: PackageId
+  /**
+   * Package the section's demo keys belong to.
+   *
+   * `theme` marks a class section: its keys are card ids and its cards are {@link ClassDemo}s, so
+   * neither the component drift guard nor {@link ComponentNamesOf} applies to them.
+   */
+  package: SectionPackage
   /** Heading shown above the section. */
   title: string
   /** One or two sentences on what the section covers. */
   blurb: string
-  /** The section's demos, keyed by component name. */
+  /** The section's demos, keyed by component name or, for a class section, by card id. */
   demos: Record<string, Demo>
 }
 
@@ -448,6 +503,27 @@ const catalogue = {
     blurb: "Controlled switches and the dropdown trigger-panel pair.",
     demos: inputDemos,
   },
+  fields: {
+    package: "ui",
+    title: "Fields",
+    blurb:
+      "The controlled form primitives: `Field` owns the label wiring and the messages, and `Input`/`Textarea`/`Select`/`Checkbox`/`Radio` are the native elements with the preset's class on them.",
+    demos: fieldDemos,
+  },
+  forms: {
+    package: CLASS_PACKAGE,
+    title: "Forms",
+    blurb:
+      "The form classes `preset.css` ships, with no component wrapped around them: the controls, a label in either placement, and the input with a button inside it. The `Fields` section above shows the same classes through the `ui/` primitives.",
+    demos: formDemos,
+  },
+  surfaces: {
+    package: CLASS_PACKAGE,
+    title: "Surfaces and utilities",
+    blurb:
+      "The half of the stylesheet an app applies to its own markup: card surfaces, the scroll container, the type scale, KPI tiles, and every colour atom.",
+    demos: surfaceDemos,
+  },
   charts: {
     package: "charts",
     title: "Charts",
@@ -490,13 +566,15 @@ export type DemoedName = { [S in SectionId]: keyof DemosOf<S> }[SectionId]
 /** One rendered section: its identity, its copy, the package it documents and its cards. */
 export interface CatalogueSection {
   id: SectionId
+  /** Whether the section's cards are components or theme classes. */
+  kind: SectionKind
   /** Heading shown above the section. */
   title: string
   /** One or two sentences on what the section covers. */
   blurb: string
-  /** Package the section's demo keys belong to. */
-  package: PackageId
-  /** Package specifier, e.g. `@preact-components/ui`. */
+  /** Package the section's keys belong to: a component package, or `theme`. */
+  package: SectionPackage
+  /** Package specifier, e.g. `@preact-components/ui` or `@preact-components/theme`. */
   packageName: string
   /** Names with a demo in this section, in render order. */
   names: DemoedName[]
@@ -508,6 +586,7 @@ export const catalogueSections: CatalogueSection[] = (Object.keys(catalogue) as 
     const section = catalogue[id]
     return {
       id,
+      kind: section.package === CLASS_PACKAGE ? "class" : "component",
       title: section.title,
       blurb: section.blurb,
       package: section.package,
@@ -734,11 +813,33 @@ export const demoRegistry: DemoRegistry = {
   ...displayDemos,
   ...feedbackDemos,
   ...inputDemos,
+  ...fieldDemos,
+  ...formDemos,
+  ...surfaceDemos,
   ...chartsDemos,
   ...systemDemos,
   ...crudDemos,
   ...signalsDemos,
 }
+
+/**
+ * Every class demonstration the catalogue renders, keyed by card id.
+ *
+ * Derived from the class sections rather than written out again, so a section added later is in here
+ * without a second list. The cast is the price of {@link Demo} being the base shape of a section's
+ * `demos`: a section whose package is the theme's carries {@link ClassDemo}s, which the registry's
+ * `Record<string, Demo>` widens away. `classes.test.tsx` asserts the shape survived.
+ */
+export const classDemos: Record<string, ClassDemo> = Object.fromEntries(
+  catalogueSections
+    .filter((section) => section.kind === "class")
+    .flatMap((section) => section.names.map((name) => [name, demoRegistry[name]])),
+) as Record<string, ClassDemo>
+
+/** Card ids of the class sections, in render order: the demos that document classes, not components. */
+export const classDemoNames: string[] = catalogueSections
+  .filter((section) => section.kind === "class")
+  .flatMap((section) => section.names)
 
 /**
  * Components the sections mean to demonstrate but this registry does not carry.
