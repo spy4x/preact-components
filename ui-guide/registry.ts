@@ -9,10 +9,19 @@
  * 1. **Compile-time drift, per package.** {@link ComponentNamesOf} is `Exclude<keyof typeof ns, …>`
  *    over one package's helpers. {@link PENDING_DEMOS} and every section's `demos` are written over
  *    those unions, and {@link DriftReport} reports `{ missingDemo: "Name" }` — naming the component
- *    and the package it belongs to — when an export is neither demoed, nor pending, nor a declared
- *    helper, and `{ unexpectedDemo: "Name" }` when a demo is keyed to a name its package does not
- *    export. A rename, a deletion and an invention are all `deno check` failures, at the package
- *    that is wrong.
+ *    and the package it belongs to — when an export of a package **outside**
+ *    {@link AUTO_PENDING_PACKAGES} is neither demoed, nor pending, nor a declared helper. It reports
+ *    `{ unexpectedDemo: "Name" }` when a demo is keyed to a name its package does not export. A
+ *    rename, a deletion and an invention are all `deno check` failures, at the package that is
+ *    wrong.
+ *
+ *    For a package **inside** {@link AUTO_PENDING_PACKAGES} the pending set is derived from the
+ *    exports, so `missingDemo` is unreachable by construction: an undemoed export is published on
+ *    the worklist instead of failing the build. That is the trade — the package under construction
+ *    can add a component without a second branch editing the guide, and in exchange *removing* a
+ *    demo there is caught by the section's own `satisfies DemoFragment<…>` and by whichever test
+ *    names the component, not by this report. The two are not equally strong, and claiming otherwise
+ *    would be the more expensive mistake.
  * 2. **Declared gaps.** A component whose demo is honestly not written yet goes in
  *    {@link PENDING_DEMOS}, not in a helper list. That list is typed over the same union, so a stale
  *    entry (a rename, a removal, a component demoed since) fails the build as
@@ -635,19 +644,35 @@ export const pendingDemos: PendingDemosByPackage[] = (Object.keys(PACKAGES) as P
  * order; {@link AUTO_PENDING_PACKAGES} contributes whatever the exports have grown since, in module
  * order, so a component nobody has written up is named rather than silently absent.
  *
+ * The export list is a parameter rather than a module read so `registry.test.ts` can drive the
+ * resolver with a component that is deliberately neither demoed nor declared. In the shipped tree
+ * every `ui` component has a demo, so a test passed `exportsOf(id).components` would compare two
+ * empty lists and still pass with the mechanism deleted — the seam is what keeps the guard testable.
+ *
  * @param id Package to read.
+ * @param components The package's component exports; defaults to what its barrel actually exports.
  * @returns The package's pending component names.
  */
-export function pendingNamesOf(id: PackageId): string[] {
+export function pendingNamesOf(id: PackageId, components?: readonly string[]): string[] {
   const declared: readonly string[] = PENDING_DEMOS[id]
-  if (!(AUTO_PENDING_PACKAGES as readonly string[]).includes(id)) return [...declared]
+  if (!isAutoPending(id)) return [...declared]
 
   const demoed = new Set<string>(demoedNamesFor(id))
   const known = new Set(declared)
-  const undeclared = exportsOf(id).components.filter((name) =>
+  const undeclared = (components ?? exportsOf(id).components).filter((name) =>
     !demoed.has(name) && !known.has(name)
   )
   return [...declared, ...undeclared]
+}
+
+/**
+ * Whether a package's undemoed exports are pending without a {@link PENDING_DEMOS} entry.
+ *
+ * @param id Package to test.
+ * @returns `true` for a package listed in {@link AUTO_PENDING_PACKAGES}.
+ */
+export function isAutoPending(id: PackageId): boolean {
+  return (AUTO_PENDING_PACKAGES as readonly string[]).includes(id)
 }
 
 /**
