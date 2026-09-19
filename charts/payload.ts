@@ -1,5 +1,5 @@
 import { type } from "arktype"
-import { TIME_FRAMES, type TimeFrame, type TimeSeriesPoint } from "./d3-line-chart.tsx"
+import { TIME_FRAMES, type TimeFrame, type TimeSeriesPoint } from "./time-series.ts"
 
 /**
  * Data layer for the chart components: the shape a stats endpoint is expected to return, the loader

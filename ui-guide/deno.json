@@ -8,6 +8,11 @@
   "imports": {
     // The root import map carries no renderer, and every test here asserts on real
     // server-rendered markup rather than on vnode shape. Same pinned version as `ui/`.
-    "preact-render-to-string": "npm:preact-render-to-string@6.7.0"
+    "preact-render-to-string": "npm:preact-render-to-string@6.7.0",
+    // `registry.ts` imports the charts barrel, which re-exports the d3 islands, so this package's
+    // type graph reaches `d3-line-chart.tsx`. d3 left the root import map (see `charts/README.md`),
+    // so the specifier has to be declared wherever it is resolved. Pinned to the same version as
+    // `charts/deno.json` — one d3 in the workspace.
+    "d3": "npm:d3@7.9.0"
   }
 }
