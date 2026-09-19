@@ -1,11 +1,14 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
+import * as d3 from "d3"
 import {
+  assertD3Available,
   D3LineChart,
   DEFAULT_D3_LINE_CHART_COLORS,
   defaultTooltipFormat,
   formatTimeTick,
+  MISSING_D3_LINE_ERROR,
   type TimeSeriesPoint,
   yDomainFor,
 } from "./d3-line-chart.tsx"
@@ -152,5 +155,24 @@ describe("D3LineChart", () => {
 
   it("keeps the caller's class", () => {
     expect(render(<D3LineChart data={series} timeFrame="days" class="mt-6" />)).toContain("mt-6")
+  })
+})
+
+describe("assertD3Available", () => {
+  it("accepts a d3 namespace that can draw", () => {
+    expect(() => assertD3Available(d3)).not.toThrow()
+  })
+
+  it("names the dependency a consumer is missing, and what to do about it", () => {
+    // What a stubbed or half-installed d3 looks like at runtime.
+    expect(() => assertD3Available({ select: () => undefined })).toThrow(MISSING_D3_LINE_ERROR)
+    expect(() => assertD3Available({})).toThrow(MISSING_D3_LINE_ERROR)
+    expect(() => assertD3Available(undefined)).toThrow(MISSING_D3_LINE_ERROR)
+  })
+
+  it("tells the reader which charts do not need d3, so the fix is a choice", () => {
+    expect(MISSING_D3_LINE_ERROR).toContain("optional peer")
+    expect(MISSING_D3_LINE_ERROR).toContain("npm:d3@7.9.0")
+    expect(MISSING_D3_LINE_ERROR).toContain("zero-JS charts")
   })
 })

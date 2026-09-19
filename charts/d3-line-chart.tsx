@@ -2,17 +2,10 @@ import * as d3 from "d3"
 import type { JSX } from "preact"
 import { useEffect, useRef } from "preact/hooks"
 import { DEFAULT_AXIS_COLOR, DEFAULT_SURFACE_COLOR, DEFAULT_TEXT_COLOR } from "./colors.ts"
+import type { TimeFrame, TimeSeriesPoint } from "./time-series.ts"
 
-export const TIME_FRAMES = ["minutes", "hours", "days"] as const
-
-/** Bucket granularity of a series, which decides the X tick format. */
-export type TimeFrame = typeof TIME_FRAMES[number]
-
-export interface TimeSeriesPoint {
-  /** Bucket timestamp. An ISO string, an epoch number or a `Date` are all accepted. */
-  timeGroup: string | number | Date
-  value: number
-}
+/** The shared vocabulary is defined in `time-series.ts`; this path keeps re-exporting it. */
+export { TIME_FRAMES, type TimeFrame, type TimeSeriesPoint } from "./time-series.ts"
 
 export interface D3LineChartColors {
   line: string
@@ -73,6 +66,30 @@ export interface D3LineChartProps {
 const MARGIN = { top: 20, right: 20, bottom: 40, left: 50 }
 const DEFAULT_WIDTH = 628
 
+/** Actionable message for a consumer whose bundler handed this island a `d3` that carries nothing. */
+export const MISSING_D3_LINE_ERROR =
+  "@preact-components/charts/d3-line-chart needs d3, which is an optional peer of this package: " +
+  "the SVG charts (bars, donut-chart, kpi, line-chart, scales) and metric-panel never load it. " +
+  "Add the dependency yourself — `deno add npm:d3@7.9.0` or `npm i d3@7.9.0` — or import only the " +
+  "zero-JS charts."
+
+/**
+ * Refuse to draw unless d3 offers its line generator.
+ *
+ * `d3` is deliberately not in the root import map (see `charts/README.md`), so a consumer who never
+ * adds it fails to resolve the specifier at all — Deno and every bundler report that loudly at build
+ * time, which is the good outcome. This guard covers the case that survives to runtime: `d3`
+ * resolves to something that carries no generator (a stub, a failed optional dependency, a wrong
+ * package pinned under the name). Without it the failure is `d3.line is not a function` inside a
+ * `useEffect`, with no hint that the fix is a dependency.
+ *
+ * Exported and unit-tested precisely because the effect that calls it needs a DOM.
+ */
+export function assertD3Available(candidate: unknown): void {
+  const line = (candidate as { line?: unknown } | null | undefined)?.line
+  if (typeof line !== "function") throw new Error(MISSING_D3_LINE_ERROR)
+}
+
 /**
  * Client-side line chart rendered imperatively with `d3` v7.
  *
@@ -83,7 +100,8 @@ const DEFAULT_WIDTH = 628
  * given.
  *
  * Nothing touches the DOM until the effect runs, so the component server-renders as an empty,
- * labelled `svg`.
+ * labelled `svg`. Importing this module at all requires `d3` to resolve; the effect additionally
+ * refuses to draw with a `d3` that has no line generator, and says so.
  */
 export function D3LineChart({
   data,
@@ -116,6 +134,9 @@ export function D3LineChart({
     const svgElement = svgRef.current
     const wrapperElement = wrapperRef.current
     if (!svgElement || !wrapperElement || data.length === 0) return
+
+    // Fails here with a nameable fix instead of "d3.line is not a function" deep inside `render`.
+    assertD3Available(d3)
 
     const svg = d3.select(svgElement)
     const tooltip = tooltipRef.current

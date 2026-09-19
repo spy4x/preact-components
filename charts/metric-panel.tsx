@@ -1,7 +1,7 @@
 import type { ComponentChildren, JSX } from "preact"
 import { useCallback, useEffect, useState } from "preact/hooks"
-import type { TimeFrame, TimeSeriesPoint } from "./d3-line-chart.tsx"
 import { type DateRange, loadChartPayload } from "./payload.ts"
+import type { TimeFrame, TimeSeriesPoint } from "./time-series.ts"
 
 /** Human-readable failure, as a stats port reports it. */
 export interface MetricError {

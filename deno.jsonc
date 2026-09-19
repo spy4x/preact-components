@@ -62,8 +62,11 @@
     "clsx": "npm:clsx@2.1.1",
     "tailwind-merge": "npm:tailwind-merge@3.7.0",
 
-    // Charts
-    "d3": "npm:d3@7.9.0",
+    // No d3 here on purpose. This map is ambient for every consumer of every package, and d3 is
+    // used by exactly one module — `charts/d3-line-chart.tsx` — so the specifier lives in
+    // `charts/deno.json` instead. `ui-guide/deno.json` declares it too, because the registry
+    // type-checks that module through the barrel. A consumer that wants the interactive charts adds
+    // d3 themselves; see `charts/README.md`.
 
     // Tailwind, pinned to the version spy4x/template builds with
     "tailwindcss": "npm:tailwindcss@4.1.12",
