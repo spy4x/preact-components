@@ -28,6 +28,10 @@ Preact + Tailwind primitives extracted from `gb`, `financy` and `offer-lens`.
 | `LoadingSpinner`  | `loading-spinner`  | `label`, `size`                                       |
 | `OnOffButtons`    | `on-off-buttons`   | `value`, `amount`, `onSwitch`                         |
 | `PageTitle`       | `page-title`       | `children`, `class`                                   |
+| `SkeletonCards`   | `skeletons`        | `columns`, `rows`, `lines`                            |
+| `SkeletonStatus`  | `skeletons`        | `label` (the loading announcement)                    |
+| `SkeletonTable`   | `skeletons`        | `rows`, `columns`, `widths`, `reserveHeight`          |
+| `SkeletonText`    | `skeletons`        | `lines`, `widths`                                     |
 | `Table`           | `table`            | `headerSlot`, `bodySlots`, `footerSlot`, `rowDataE2E` |
 | `Tabs`            | `tabs`             | `tabs`, `active`, `onChange`, `orientation`, `lazy`   |
 | `Toastr`          | `toastr`           | `toasts`, `onDismiss`                                 |
@@ -76,6 +80,34 @@ from the tabs whose panel it omitted. Ids are derived from each `TabItem.id` (`$
 
 `Toastr` auto-dismisses each toast after `toast.duration` milliseconds (default 5000, `0` keeps it
 until dismissed) and reports it through `onDismiss` — the caller owns the stack.
+
+## Skeletons
+
+`LoadingSkeleton` is the generic placeholder. The `skeletons` subpath adds variants whose boxes come
+from the counts the real component takes: `SkeletonText`, `SkeletonTable`, `SkeletonCards`.
+
+Every subtree is `aria-hidden="true"` and none of them announces anything. The announcement is a
+sibling live region, `SkeletonStatus` (`role="status"`, `aria-live="polite"`, `sr-only` text), so one
+region can cover a table, a grid and a paragraph that load together, and the caller owns the copy:
+
+```tsx
+{
+  loading.value
+    ? (
+      <>
+        <SkeletonStatus label="Loading invoices" />
+        <SkeletonTable rows={5} columns={4} widths={[3, 3, 2, 1]} />
+      </>
+    )
+    : <Table headerSlot={…} bodySlots={…} />
+}
+```
+
+`SkeletonTable` mirrors the real `Table`'s wrapper, header row and one-line body row (3.25rem). The
+widths are a pure function, `columnWidthPercents(widths)`, so the same array puts the real table's
+`<colgroup>` on the same percentages and the substitution moves nothing; geometrically the whole
+answer comes from `tableGeometry({ rows, columns, widths })`. Full contract, including the three
+cases where it does not hold, on `SkeletonTable`'s JSDoc.
 
 ## Tests
 
