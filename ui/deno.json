@@ -23,7 +23,8 @@
     "./radio": "./radio.tsx",
     "./table": "./table.tsx",
     "./toastr": "./toastr.tsx",
-    "./toggle-switch": "./toggle-switch.tsx"
+    "./toggle-switch": "./toggle-switch.tsx",
+    "./tooltip": "./tooltip.tsx"
   },
   "imports": {
     // The root import map carries no renderer; the colocated tests assert on real rendered markup.
