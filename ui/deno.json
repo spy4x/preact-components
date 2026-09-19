@@ -20,6 +20,7 @@
     "./loading-spinner": "./loading-spinner.tsx",
     "./on-off-buttons": "./on-off-buttons.tsx",
     "./page-title": "./page-title.tsx",
+    "./pagination": "./pagination.tsx",
     "./radio": "./radio.tsx",
     "./table": "./table.tsx",
     "./toastr": "./toastr.tsx",
