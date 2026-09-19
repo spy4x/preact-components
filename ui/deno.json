@@ -8,6 +8,7 @@
     "./confidence-meter": "./confidence-meter.tsx",
     "./copy-button": "./copy-button.tsx",
     "./dropdown": "./dropdown.tsx",
+    "./empty-state": "./empty-state.tsx",
     "./error-state": "./error-state.tsx",
     "./geo-button": "./geo-button.tsx",
     "./loading-screen": "./loading-screen.tsx",
