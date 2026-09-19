@@ -166,6 +166,34 @@ describe("shiftMonth", () => {
     expect(shiftMonth("2026-08-01", 25)).toBe("2028-09-01")
     expect(shiftMonth("2026-08-01", -20)).toBe("2024-12-01")
   })
+
+  it("does not clamp: a month past 9999-12 is an error, not 9999-12-01", () => {
+    // This export built its answer directly and never passed through `formatIsoDate`, so it handed
+    // back `10000-01-01` — five digits, not a date — while `addDays` and every other step rejected
+    // the equivalent instant. Same convention as `addDays`: throw, and name the same window.
+    expect(() => shiftMonth("9999-12-01", 1))
+      .toThrow("expected a date in the 0001-9999 window, received: +010000-01")
+    expect(() => shiftMonth("9999-11-01", 3))
+      .toThrow("expected a date in the 0001-9999 window, received: +010000-02")
+    expect(() => shiftMonth("9999-12-31", 12))
+      .toThrow("expected a date in the 0001-9999 window, received: +010000-12")
+  })
+
+  it("still resolves the months of 9999 that stay inside the window", () => {
+    // The boundary is the month result, not the year: 9999 itself is supported, and so is the step
+    // that lands on its own first day.
+    expect(shiftMonth("9999-12-01", 0)).toBe("9999-12-01")
+    expect(shiftMonth("9999-11-15", 1)).toBe("9999-12-01")
+    expect(shiftMonth("9999-12-15", -1)).toBe("9999-11-01")
+  })
+
+  it("steps back out of 0001 into the year 0 the window excludes", () => {
+    // Pinned, not fixed: year 0000 is a four-digit year `Date` keeps and `parseIsoDate` accepts, so
+    // the window's lower edge is not a throw — it is a value the doc calls unsupported. Same
+    // behaviour `addDays("0001-01-01", -1)` has, and the one the module docs name.
+    expect(shiftMonth("0001-01-01", -1)).toBe("0000-12-01")
+    expect(shiftMonth("0001-02-01", -1)).toBe("0001-01-01")
+  })
 })
 
 describe("startOfMonth and endOfMonth", () => {
@@ -487,12 +515,17 @@ describe("rangeForPreset", () => {
   it("throws in December 9999 for the presets that need a day past the window", () => {
     // 9999 is inside the documented window; `this-month` and `this-quarter` still throw, because
     // the end of that month or quarter is 10000-01-01, which is not a date. Same class of message
-    // as any other unusable value — the module has one loud-failure convention, not three.
+    // as any other unusable value — the module has one loud-failure convention, not three — and the
+    // window wording is `addDays`'s, because `shiftMonth` now rejects the step itself rather than
+    // handing `parseIsoDate` a five-digit year to reject one call later.
+    //
+    // `last-12-months` is here as its own regression: it asks for `endOfMonth(today)`, not for a
+    // shifted month, so it reaches the same boundary through the other of the two callers.
     const options = { now: new Date("9999-12-15T12:00:00Z"), timeZone: "UTC" }
 
     for (const preset of ["this-month", "this-quarter", "last-12-months"] as const) {
       expect(() => rangeForPreset(preset, options))
-        .toThrow("expected a YYYY-MM-DD date, received: 10000-01-01")
+        .toThrow("expected a date in the 0001-9999 window, received: +010000-01")
     }
   })
 
