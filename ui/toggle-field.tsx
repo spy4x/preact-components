@@ -72,8 +72,8 @@ const hintText = "mt-2 text-sm text-gray-500 dark:text-gray-400"
 /**
  * Render one switch row.
  *
- * @throws Never from here: the switch is a component, not a cloned element, so there is no child to
- * validate.
+ * No `@throws`: the control is a component, not a cloned element, so there is no child to validate —
+ * unlike `Field`, whose `wireElement` throws when it is handed something it cannot put an `id` on.
  */
 export function ToggleField({
   id,
