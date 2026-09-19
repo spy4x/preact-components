@@ -39,7 +39,24 @@ describe("ToggleField", () => {
     const click = clickLabel(field({ id: "archive", label: "Archive", value: true, onToggle }))
 
     expect(click.labelId).toBe("archive-label")
-    expect(click.defaultPrevented()).toBe(true)
+    expect(click.defaultPrevented).toBe(true)
+  })
+
+  it("refuses to toggle a disabled switch from the label", () => {
+    // The native attribute keeps a browser from dispatching the click, but nothing keeps a dispatcher
+    // from calling the handler: a programmatic click, an assistive tool, or a wrapper that composed
+    // the vnode. A disabled control has to be a constraint, not a hint — `onToggle` writing through
+    // to a store would flip the value behind the user's back. {@link clickLabel}'s fake event refuses
+    // a second `preventDefault` and swallows the default action, so this passes only when the handler
+    // returns before it reports.
+    const seen: boolean[] = []
+    const push = (next: boolean) => seen.push(next)
+
+    clickLabel(
+      field({ id: "archive", label: "Archive", value: true, disabled: true, onToggle: push }),
+    )
+
+    expect(seen).toEqual([])
   })
 
   it("sends the flipped value when the label is activated", () => {
@@ -90,6 +107,15 @@ describe("ToggleField", () => {
 
     expect(html).not.toContain("archive-hint")
     expect(html).not.toContain('aria-describedby="')
+  })
+
+  it("wires nothing for a description of whitespace, which describes nothing", () => {
+    const html = render(
+      <ToggleField id="archive" label="Archive" value onToggle={onToggle} description="  " />,
+    )
+
+    expect(html).not.toContain('aria-describedby="')
+    expect(html).not.toContain("archive-hint")
   })
 
   it("links the error as a live region alongside the description", () => {
@@ -244,7 +270,7 @@ function field(props: ToggleFieldProps): VNode {
  */
 function clickLabel(
   vnode: VNode,
-): { labelId: string | undefined; defaultPrevented: () => boolean } {
+): { labelId: string | undefined; defaultPrevented: boolean } {
   const row = childrenOf(vnode)[0]
   const label = childrenOf(row)[0]
   const handlers = label.props as { id?: string; onClick?: (event: Event) => void }
@@ -252,9 +278,20 @@ function clickLabel(
     throw new TypeError("ToggleField's label carries no click handler, so clicking it does nothing")
   }
   let prevented = false
-  handlers.onClick({ preventDefault: () => prevented = true } as unknown as Event)
+  // `preventDefault` latches and the event throws on a second call, which is the default action of a
+  // real click: it runs at most once, and this fake refuses to be run twice. A handler that stopped
+  // the default action and then went on to toggle anyway cannot be written against this object —
+  // calling `preventDefault` and calling it *as a guard* are different things, which is the
+  // distinction the reviewer asked for.
+  handlers.onClick({
+    preventDefault: () => {
+      if (prevented) throw new TypeError("preventDefault called twice")
+      prevented = true
+    },
+    stopPropagation: () => {},
+  } as unknown as Event)
 
-  return { labelId: handlers.id, defaultPrevented: () => prevented }
+  return { labelId: handlers.id, defaultPrevented: prevented }
 }
 
 /**

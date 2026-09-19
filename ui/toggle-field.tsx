@@ -48,6 +48,10 @@ export interface ToggleFieldProps {
    * Description under the row, expected and rendered as the field's `hint`: same slot, same classes,
    * and the id `Field` would have generated (`${id}-hint`). It is not a separate concept, and a
    * second one would mean two descriptions competing for the same `aria-describedby`.
+   *
+   * Content of nothing but whitespace is treated as absent — a lone space describes as little as an
+   * empty string does — so it is rendered but not referred to. Anything else is passed through
+   * untrimmed, since the caller's own spacing is theirs to keep.
    */
   description?: ComponentChildren
   /**
@@ -88,19 +92,19 @@ export function ToggleField({
 }: ToggleFieldProps) {
   const message = typeof error === "string" && error.length > 0 ? error : undefined
   const errorId = message === undefined ? undefined : `${id}-error`
-  // A description wires its paragraph only when it has something to say; an empty string would leave
-  // `aria-describedby` pointing at an element that describes nothing, and `""` is what a computed
-  // description degrades to when its input is missing. `Field` draws the same line at its `hint`:
-  // message ids are for content, never for the mere presence of the prop.
+  // A description wires its paragraph only when it has something to say. `""` is what a computed
+  // description degrades to when its input is missing, and `" "` is what a template literal produces
+  // when its parts are all empty; either would leave one id in `aria-describedby` pointing at a
+  // paragraph that reads as nothing. `Field` draws the same line at its `hint`: message ids are for
+  // content, never for the mere presence of the prop.
   const hasDescription = typeof description === "string"
-    ? description.length > 0
+    ? description.trim().length > 0
     : description !== undefined && description !== null && description !== false
   const hintId = hasDescription ? `${id}-hint` : undefined
   const labelId = `${id}-label`
   // `A B` with an empty half would describe the control with an element that does not exist, so the
   // ids are joined only when there are ids to join — same rule as `Field`.
   const describedBy = [errorId, hintId].filter(Boolean).join(" ") || undefined
-  const toggle = () => onToggle(!value)
 
   return (
     <div class={className}>
@@ -109,8 +113,13 @@ export function ToggleField({
           id={labelId}
           class={cn(labelText, disabled && "opacity-50")}
           onClick={(event) => {
+            // Always, even when disabled: the browser does not activate a button through a label, so
+            // without this the synthetic click a `dispatchEvent` or a user script produces would reach
+            // the switch. `ToggleSwitch` refuses while disabled too — both are needed, because a
+            // browser that one day does activate label-to-button would arrive through this handler.
             event.preventDefault()
-            toggle()
+            if (disabled) return
+            onToggle(!value)
           }}
         >
           {label}
