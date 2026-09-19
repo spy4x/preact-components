@@ -189,14 +189,16 @@ export function tableRowHeightRem(): number {
 /**
  * Height a skeleton header row renders at, in `rem`.
  *
- * Measured: `44.5px` on a `display: grid` row with `py-3` and a 1px top border, equal to the real
- * `Table` header row. The half pixel is reachable because the value is a quarter-rem
- * (`2.78125rem`), which lands on a device pixel at the root sizes this library supports.
+ * Measured: `44.5px` on a `display: grid` row with `py-3`, equal to the real `Table` header row.
+ * The hairline under the header is the `thead`'s border-bottom, mirrored by the first body row's
+ * `border-t`; the header row's own border-top measures `0px` on both sides. The half pixel is
+ * reachable because the value is a quarter-rem (`2.78125rem`), which lands on a device pixel at the
+ * root sizes this library supports.
  *
  * At this height the skeleton's first body row starts at the same offset as the real table's, at
- * every width measured — round-down at `2.75rem` left every row 0.5px high. The cost is 0.5px on the
- * wrapper: `681px` against `681.5px`, which is one rounding step of the wrapper's own `pb-px`, and
- * is spent to keep the rows aligned rather than the box.
+ * every width measured — round-down at `2.75rem` left every row 0.5px high. The wrapper's residual
+ * `0.5px` (`681px` against `681.5px`) comes from the last skeleton body row, which measures
+ * `52.5px` like the real one, not from this header row.
  *
  * @returns `2.78125`rem, `44.5px`.
  */
