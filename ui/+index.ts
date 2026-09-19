@@ -6,6 +6,21 @@
  * (`@preact-components/ui/badge`) when the barrel would pull in more than you need.
  */
 
+export {
+  Avatar,
+  type AvatarFace,
+  avatarFace,
+  type AvatarFaceInput,
+  AvatarGroup,
+  type AvatarGroupProps,
+  type AvatarMember,
+  type AvatarProps,
+  type AvatarSize,
+  groupLabel,
+  type GroupSplit,
+  groupSplit,
+  initials,
+} from "./avatar.tsx"
 export { Badge, type BadgeColor, type BadgeProps, type BadgeType } from "./badge.tsx"
 export {
   Button,
