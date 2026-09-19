@@ -106,8 +106,9 @@ region can cover a table, a grid and a paragraph that load together, and the cal
 `SkeletonTable` mirrors the real `Table`'s wrapper, header row and one-line body row. The heights are
 measurements, not arithmetic: Chromium renders a body row at **53px** and the header at **44.5px** on
 both sides, so a row sits at the same offset whether the caller renders the skeleton or the table. The
-wrapper costs **0.5px** at a full 12-row table — `681px` against `681.5px`, one rounding step of its own
-`pb-px` — which is spent on keeping the rows aligned rather than the box. `tableRowHeightRem()` returns
+wrapper costs **0.5px** at a full 12-row table — `681px` against `681.5px`. The residual is the last
+skeleton body row, which a one-row `tbody` measures at `52.5px` like the real table's; pinning that row
+to `3.28125rem` closes the wrapper to `681px` with `0.00px` drift on every row. `tableRowHeightRem()` returns
 the body value and `tableHeaderHeightRem()` the header value, both pinned by tests that assert the
 literal rather than restating the implementation.
 

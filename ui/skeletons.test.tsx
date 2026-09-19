@@ -288,7 +288,7 @@ describe("SkeletonTable", () => {
   it("gives the bars the measured heights, so the placeholders paint", () => {
     // The bars carry an explicit height because a bare block in a grid row collapses to the font's
     // content box. Dropping it, or changing how it is derived, leaves the whole placeholder at
-    // 0.00px and nothing else in this file notices: 26.5px and 22px are the only figures here that
+    // 0.00px and nothing else in this file notices: 16px and 20px are the only figures here that
     // cover it, and they are literals on purpose.
     const rows = markedRows(render(<SkeletonTable rows={1} columns={2} />))
     const header = rows.find((row) => row.marker === "header")!
