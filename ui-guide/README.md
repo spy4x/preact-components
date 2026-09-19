@@ -137,37 +137,52 @@ demonstrates after all, fails.
 
 ## Coverage
 
-20 components have a card each, across eleven sections, plus 12 cards for the theme's classes. The
-other 25 components — of `charts`, `system` and `crud` — are declared in `PENDING_DEMOS` and printed
-as the worklist under the title:
+One row per section, in render order, naming the demos it registers. Between them the sections cover
+every component the catalogue demonstrates and every class of `preset.css` that something demonstrates.
 
-| Section                    | Package   | Cards                                                                                |
-| -------------------------- | --------- | ------------------------------------------------------------------------------------ |
-| **Badges**                 | `ui`      | `Badge`                                                                              |
-| **Buttons**                | `ui`      | `Button`, `CopyButton`, `GeoButton`                                                  |
-| **Display**                | `ui`      | `PageTitle`, `ConfidenceMeter`, `Table`                                              |
-| **Feedback**               | `ui`      | `ErrorState`, `LoadingSpinner`, `LoadingSkeleton`, `LoadingScreen`, `Toastr`         |
-| **Inputs**                 | `ui`      | `ToggleSwitch`, `OnOffButtons`, `Dropdown`                                           |
-| **Forms**                  | `theme`   | `.input`, `.select`, `.textarea`, `.label`, `.checkbox`, `.radio`, `.btn-input-icon` |
-| **Surfaces and utilities** | `theme`   | `.card`, `.scrollbar`, the type scale, the KPI tile, the colour atoms                |
-| **Charts**                 | `charts`  | `Bars` — 7 components pending                                                        |
-| **System**                 | `system`  | `Breadcrumb` — 7 components pending                                                  |
-| **CRUD**                   | `crud`    | `CrudList` — 11 components pending                                                   |
-| **Signals**                | `signals` | `For`, `Show` — the package's only components                                        |
+The counts are deliberately not repeated here: the guide prints them under its own title, and
+`pages/build.ts` asserts a prerendered card per entry of `catalogueNames` against the emitted HTML, so
+the number that matters is checked where it is produced rather than transcribed into prose.
 
-The five `ui` sections are written up; the four newer cards are placeholders with a one-line summary
-and a live render, and their section blurbs say so — the real demos land in follow-up PRs. `signals`
-gets two cards rather than one because it has exactly two components and both are a signal and a
-line of JSX; the parts that make the package hard to read (`buildModelStore`, `createListState`,
-`createToastStore`, `useUrlFilters`) are factories, declared as helpers, and need a written-up
-example rather than a card.
+| Section                    | Package   | Cards                                                                                    |
+| -------------------------- | --------- | ---------------------------------------------------------------------------------------- |
+| **Badges**                 | `ui`      | `Badge`                                                                                  |
+| **Buttons**                | `ui`      | `Button`, `CopyButton`, `GeoButton`                                                      |
+| **Display**                | `ui`      | `PageTitle`, `ConfidenceMeter`, `Table`                                                  |
+| **Feedback**               | `ui`      | `ErrorState`, `LoadingSpinner`, `LoadingSkeleton`, `LoadingScreen`, `Toastr`             |
+| **Inputs**                 | `ui`      | `ToggleSwitch`, `OnOffButtons`, `Dropdown`                                               |
+| **Fields**                 | `ui`      | `Field`, `Input`, `Textarea`, `Select`, `Checkbox`, `Radio`, `RadioGroup`, `InputButton` |
+| **Forms**                  | `theme`   | `.input`, `.select`, `.textarea`, `.label`, `.checkbox`, `.radio`, `.btn-input-icon`     |
+| **Surfaces and utilities** | `theme`   | `.card`, `.scrollbar`, the type scale, the KPI tile, the colour atoms                    |
+| **Charts**                 | `charts`  | `Bars`, and the rest of the package on the worklist                                      |
+| **System**                 | `system`  | `Breadcrumb`, and the rest on the worklist                                               |
+| **CRUD**                   | `crud`    | `CrudList`, and the rest on the worklist                                                 |
+| **Signals**                | `signals` | `For`, `Show` — the package's only components                                            |
 
-The two class sections exist because the preset styles markup the library does not own: a page built
-out of these packages writes its own cards, form controls and containers. `forms` is native controls
-with a preset class and nothing wrapped around them; `surfaces` is the card, the scroll container,
-the type scale, the KPI tile and the colour atoms. Their cards declare `package: "theme"`, which is
-what keeps card ids like `colour-atoms` out of the component drift guard, and their contract — a
-heading, a class list that matches their own markup — is enforced by `classes.test.tsx`.
+Nothing here states how many components are _missing_ a demo, on purpose: that number moves with every
+component PR, and the guide already prints it under its own title. Read the worklist on the page, or
+`pendingDemos`, which is derived from the packages' barrels — `PENDING_DEMOS` for the packages ported
+whole, the export list itself for one under construction. A count in this file was wrong twice while
+this section was being written, which is the argument against a third one.
+
+The `ui` sections are written up; the `charts`, `system` and `crud` cards are placeholders with a
+one-line summary and a live render, and their section blurbs say so — the real demos land in
+follow-up PRs. `signals` gets two cards rather than one because it has exactly two components and both
+are a signal and a line of JSX; the parts that make the package hard to read (`buildModelStore`,
+`createListState`, `createToastStore`, `useUrlFilters`) are factories, declared as helpers, and need a
+written-up example rather than a card.
+
+`Fields` is the `ui/` half of the form story — the controlled primitives, each with the demo an app
+writes — and `forms`/`surfaces` are the other half: the preset styles markup the library does not own,
+so a page built out of these packages writes its own cards, controls and containers. `forms` is native
+controls with a preset class and nothing wrapped around them; `surfaces` is the card, the scroll
+container, the type scale, the KPI tile and the colour atoms.
+
+The class cards declare `package: "theme"`, which is what keeps them out of the component drift guard,
+and their ids are namespaced (`class-input`, `class-card`) because a card id becomes a URL fragment:
+`input` and `Input` write the same slug, and `card` collides with `Card`, which merged while this
+section was being written. Their other contract — a heading, and a class list that matches their own markup — is enforced
+by `classes.test.tsx`.
 
 The registry is checked against the barrels, not against this table, so the table cannot drift either
 — `registry.test.ts` fails if a section gains or loses a component, and it fails if a covered package
@@ -192,13 +207,14 @@ The clipboard goes through the `copy` port, which falls back to `copyToClipboard
 Every card's `Usage` block has a `CopyButton` beside it — the `ui/` component the catalogue already
 demonstrates, not a second one — wired to that card's own snippet and to the `copy` port the guide
 was rendered with. The button sits next to the `<details>` rather than inside its `<summary>`, where a
-click would toggle the disclosure as well as copying. Its accessible name is the card it belongs to
-(`Copy the <Badge /> snippet`), so the catalogue is not thirty identical "Copy" buttons to a screen
-reader, and the checkmark `CopyButton` shows for 1.5s is the visual confirmation.
+click would toggle the disclosure as well as copying. Its accessible name is the card it belongs
+to, so the catalogue is not one long row of identical "Copy" buttons to a screen reader: the attribute
+ships escaped (`aria-label="Copy the &lt;Badge /&gt; snippet"`, which reads as `Copy the <Badge />
+snippet`), and the checkmark `CopyButton` shows for 1.5s is the visual confirmation.
 
 `copy.test.tsx` asserts the wiring at the props level, since the repository has no DOM harness: it
 walks the element tree `UIGuide` returns, finds each card's `CopyButton` and checks the `textToCopy`
-and `copy` it was handed. `pages/verify.ts` is what proves the click: it clicks all 32 usage blocks in
+and `copy` it was handed. `pages/verify.ts` is what proves the click: it clicks every usage block in
 a real browser and compares each clipboard write to the text of the block it came from.
 
 ## Not carried over

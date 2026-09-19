@@ -12,12 +12,12 @@ workspace member only so it can import its sibling packages the way an app does.
 
 ## What runs at that URL
 
-| Piece             | Where it comes from                                                                                                  |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------- |
-| The catalogue     | `UIGuide` from `@preact-components/ui-guide`, unmodified — instructions, eleven sections, 32 demos, the icon gallery |
-| The host page     | `src/app.tsx` — header, a component index with deep links, the colour-scheme switch, the footer                      |
-| The styles        | `theme/tokens.css` + `theme/preset.css`, compiled by Tailwind into one stylesheet                                    |
-| The interactivity | `src/+main.tsx`, one Preact island that hydrates the prerendered markup                                              |
+| Piece             | Where it comes from                                                                                                       |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| The catalogue     | `UIGuide` from `@preact-components/ui-guide`, unmodified — instructions, every section of the catalogue, the icon gallery |
+| The host page     | `src/app.tsx` — header, a component index with deep links, the colour-scheme switch, the footer                           |
+| The styles        | `theme/tokens.css` + `theme/preset.css`, compiled by Tailwind into one stylesheet                                         |
+| The interactivity | `src/+main.tsx`, one Preact island that hydrates the prerendered markup                                                   |
 
 Static files only. `index.html` ships the whole catalogue prerendered, so it reads with JavaScript
 off; the island is what makes the dropdowns open, the switches toggle, the icon filter filter, the
@@ -133,11 +133,11 @@ they address component names, which are the library's public API.
 
 ## Verification
 
-`deno task --cwd pages verify` runs both phases against the built artefact; a full run is 38 checks.
+`deno task --cwd pages verify` runs both phases against the built artefact; a full run is 41 checks.
 See the PR for the transcript. In short:
 
-- **Static**: base-prefixed `href`/`src` that resolve to files that exist; `body.theme-base`; all 32
-  cards prerendered with a `demo-<Name>` id, every one of them carrying a `Usage` block and a
+- **Static**: base-prefixed `href`/`src` that resolve to files that exist; `body.theme-base`; every
+  card prerendered with a `demo-<Name>` id, every one of them carrying a `Usage` block and a
   labelled copy control; icon cells in the HTML; tokens and preset rules present in the compiled CSS;
   a bundle of the expected size carrying the host page.
 - **Browser** (headless Chromium over the DevTools Protocol, page served at the deployed base):
