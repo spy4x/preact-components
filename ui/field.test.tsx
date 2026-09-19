@@ -37,9 +37,16 @@ describe("Field", () => {
       </Field>,
     )
 
+    // Every `for`-shaped token, not just the well-formed ones. `labelFors` reads `for="…"` only, so
+    // the two ways this wiring breaks are invisible to it: `preact-render-to-string` writes
+    // `for=""` as the **bare** attribute (`<label for>A</label>`), and `for={undefined}` as no
+    // attribute at all — the latter is the renderer's own behaviour, which is why the assertion that
+    // used to sit here was `not.toContain('for=""')`: that string never appears, so it could not
+    // fail. `forTokens` answers `[""]` and `[]` for the two broken forms, so this is the assertion
+    // that goes red for them.
+    expect(forTokens(html)).toEqual(["email"])
     expect(labelFors(html)).toEqual(["email"])
     expect(html.match(/id="email"/g)).toEqual(['id="email"'])
-    expect(html).not.toContain('for=""')
   })
 
   it("keeps a single for when the label wraps text that repeats the id", () => {
@@ -479,6 +486,21 @@ describe("labelable", () => {
 /** Every `for` attribute in the markup, in document order. */
 function labelFors(html: string): string[] {
   return [...html.matchAll(/(?<![-\w])for="([^"]*)"/g)].map((match) => match[1])
+}
+
+/**
+ * Every `for`-shaped token in the markup, well-formed or not, as its attribute value.
+ *
+ * The superset of {@link labelFors} that a broken `Field` wiring shows up in. `preact-render-to-string`
+ * renders `for=""` as the bare attribute `<label for>` — no `=`, so `labelFors` skips it — and
+ * `for={undefined}` as no attribute at all, which `labelFors` cannot report either. Both answer `""`
+ * here, while a well-formed `for="email"` answers `"email"`, so one list asserts the value and the
+ * absence of the stray forms together.
+ */
+function forTokens(html: string): string[] {
+  const values = [...html.matchAll(/(?<![-\w])for="([^"]*)"/g)].map((match) => match[1])
+  const bare = html.match(/(?<![-\w])for(?=[\s>/])/g) ?? []
+  return [...values, ...bare.map(() => "")]
 }
 
 /**
