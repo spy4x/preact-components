@@ -15,6 +15,8 @@ Preact + Tailwind primitives extracted from `gb`, `financy` and `offer-lens`.
 
 | Component         | Subpath             | Ports / key props                                                      |
 | ----------------- | ------------------- | ---------------------------------------------------------------------- |
+| `Avatar`          | `avatar`            | `name`, `src`, `alt`, `size`                                           |
+| `AvatarGroup`     | `avatar`            | `items`, `max`, `label`, `size` (a `role="group"`, not a list)         |
 | `Badge`           | `badge`             | `text`, `color`, `type`                                                |
 | `Button`          | `button`            | `variant`, `size`, native button attrs                                 |
 | `ConfidenceMeter` | `confidence-meter`  | `value` (optional; clamped 0–100, unknown renders no reading), `label` |
