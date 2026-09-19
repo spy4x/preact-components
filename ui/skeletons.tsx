@@ -124,48 +124,61 @@ export const SKELETON_METRICS = {
    */
   bodyRowHeightRem: 3.3125,
   /**
-   * `height` a skeleton header row declares on itself: `2.75rem` = `44px`, against the real
-   * header row's `44.5px`. Half a pixel short because the real value is a subpixel a
-   * `grid` row cannot land on; it is the closest whole-pixel height above the header's 44px of
-   * content and padding, and it is the measurement, not a derivation.
+   * `height` a skeleton header row declares on itself: `2.78125rem` = `44.5px`, the real header
+   * row's measured height. A `grid` row lands on a half pixel, because a quarter-rem is a whole
+   * number of device pixels at every root size this library supports — `3.3125rem` for the body row
+   * is the same quarter-rem grid. Pinned as a measurement, not derived.
    */
-  headerRowHeightRem: 2.75,
-  /**
-   * Line box one text line occupies, as a fraction of `lineHeightRem`.
-   *
-   * A `text-sm` line is `1.25rem` of line-height and renders a `20px` box, but a bare block inside
-   * a grid row collapses to the font's own content box — `17px` — unless it is given a height. The
-   * bars are sized from this entry so they occupy a real line box instead of shrinking the row.
-   */
-  lineBoxRatio: 1,
-  /** Fraction of a row's height a placeholder bar fills, leaving the rest as optical padding. */
-  barHeightRatio: 0.5,
+  headerRowHeightRem: 2.78125,
+  /** Fraction of a line box a placeholder bar fills, so the pulsing block reads as text. */
+  barHeightRatio: 0.8,
 } as const
 
 /**
- * Height a placeholder bar needs to occupy one `text-sm` line box, in `rem`.
+ * Height one `text-sm` line box occupies, in `rem`.
+ *
+ * A bare block inside a grid row collapses to the font's own content box — `17px` for this font,
+ * where the line box is `20px` — so a bar given only a width paints nothing recognisable. This is
+ * the height such a bar has to claim. It is a property of the **font**, not of the row: tying it to
+ * the row's height instead made the bar move every time the row's padding was corrected.
  *
  * @returns `1.25rem`, the measured line box of the font `Table` uses.
  */
 export function lineBoxRem(): number {
-  return SKELETON_METRICS.lineHeightRem * SKELETON_METRICS.lineBoxRatio
+  return SKELETON_METRICS.lineHeightRem
+}
+
+/**
+ * Height a placeholder bar renders at, in `rem`.
+ *
+ * Short of a full line box by {@link SKELETON_METRICS}`.barHeightRatio`, which keeps the bar inside
+ * its row instead of touching the row above it, and keeps it clear of the row's own `py-4`.
+ *
+ * @returns `1rem`, `16px`.
+ */
+export function barHeightRem(): number {
+  return lineBoxRem() * SKELETON_METRICS.barHeightRatio
 }
 
 /**
  * Height a skeleton body row renders at, in `rem`.
  *
- * **This is a measurement, not arithmetic on the padding.** It reads `53px` in Chromium 151 beside
- * a real single-line `Table` row: that row's `<td>` measures `52.5px` — the `text-sm` line box plus
- * `py-4`, with the half pixel the font's own content box adds — and the `tbody`'s `divide-y`
- * hairline makes the painted band `53px`. The skeleton row carries its own 1px `border-t` and holds
- * the same `20px` line box the real cell does, so the two bands line up exactly.
+ * **This is a measurement, not arithmetic on the padding.** In Chromium 151 a real single-line
+ * `Table` row measures `53px`, and so does this one, so the two bands start and end at the same
+ * offset. The value is empirical because the real number is a browser rounding step, not a sum: a
+ * one-row `tbody` measures `52.5px`, a multi-row one measures `53px` on every row but the last,
+ * which is `52.5px` again. There is no arithmetic on `text-sm`, `py-4` and `divide-y` that produces
+ * both, so the skeleton is pinned to the height it meets in the common case — a table with a
+ * populated body — and keeps every row of a uniform grid at that height.
  *
  * Deriving `3.25rem` here — or adding the padding to a declared height — is the bug this constant
  * replaced: `box-sizing: border-box` absorbs the padding, so a declared `3.25rem` row rendered
  * `52px` and every row drifted a pixel.
  *
- * A cell wrapping to two lines makes the real row taller than one reserved row; the caller keeps
- * cell content to one line where it wants the substitution to be invisible.
+ * A cell wrapping to two lines makes the real row taller than one reserved row: measured, a cell
+ * wrapping to four lines at a 560px viewport took its row to `73px`, `20px` past what the skeleton
+ * reserved for it. The caller keeps cell content to one line where it wants the substitution to be
+ * invisible, and `SkeletonText` per card is what a multi-line cell needs.
  *
  * @returns `3.3125`rem, `53px`.
  */
@@ -176,11 +189,16 @@ export function tableRowHeightRem(): number {
 /**
  * Height a skeleton header row renders at, in `rem`.
  *
- * Measured: `44px` on a `display: grid` row with `py-3` and a 1px top border, against the real
- * `Table` header row's `44.5px` — a subpixel a grid row cannot hit, so the skeleton is 0.5px short
- * over the whole header and identical in every other respect.
+ * Measured: `44.5px` on a `display: grid` row with `py-3` and a 1px top border, equal to the real
+ * `Table` header row. The half pixel is reachable because the value is a quarter-rem
+ * (`2.78125rem`), which lands on a device pixel at the root sizes this library supports.
  *
- * @returns `2.75`rem, `44px`.
+ * At this height the skeleton's first body row starts at the same offset as the real table's, at
+ * every width measured — round-down at `2.75rem` left every row 0.5px high. The cost is 0.5px on the
+ * wrapper: `681px` against `681.5px`, which is one rounding step of the wrapper's own `pb-px`, and
+ * is spent to keep the rows aligned rather than the box.
+ *
+ * @returns `2.78125`rem, `44.5px`.
  */
 export function tableHeaderHeightRem(): number {
   return SKELETON_METRICS.headerRowHeightRem
@@ -364,15 +382,23 @@ export function skeletonStatusRole(): "status" {
 /** Pulse shared with `LoadingSkeleton`, so both shimmer identically. */
 const bar = "animate-pulse rounded bg-gray-200 dark:bg-gray-700"
 
-/** Line box of a `text-sm` paragraph, as {@link lineBoxRem} measures it. */
-const textLineRem = lineBoxRem()
+/**
+ * Height of a text-line bar.
+ *
+ * The same bar the table rows use, so a paragraph and a table's cells read as one texture rather
+ * than two. It is a constant rather than a per-call read because {@link SkeletonText} renders many
+ * of them and the value does not vary between them.
+ */
+const textLineRem = barHeightRem()
 
 /** Cell padding of a real `Table` cell (`*:px-6`), reused as the horizontal padding of the grid. */
 const tableCell = "px-6"
 
 /**
  * Box of the real `Table`'s wrapper: same ring, radius, background, `min-h-[300px]` reservation and
- * `-mx-4 md:mx-0` bleed, so swapping one for the other moves nothing around it.
+ * `-mx-4 md:mx-0` bleed, so the box around the rows is the same one. The rows inside it are what the
+ * heights on {@link tableRowHeightRem} pin, and the wrapper measures `681px` against `681.5px` at a
+ * full 12-row table — see {@link tableHeaderHeightRem} for why that half pixel is spent there.
  *
  * Duplicated from `table.tsx` rather than exported from there because that module is merged and
  * consumed; the two are kept in step by the contract documented on {@link SkeletonTable}.
@@ -433,11 +459,10 @@ export function SkeletonText({ lines, widths, class: className }: SkeletonTextPr
  *
  * ## What is measured, and what is not
  *
- * The dimensions are checked against a real `Table` in Chromium, not derived: a single-line body row
- * measures `53px` on both sides — the real `<td>` is `52.5px` and the `tbody`'s `divide-y` hairline
- * brings the band to `53px`, which the skeleton row's own `border-t` matches. The header is `44px`
- * here against `44.5px` there, half a pixel a `grid` row cannot land on. Both numbers and how they
- * were obtained are on {@link tableRowHeightRem} and {@link tableHeaderHeightRem}.
+ * The dimensions are checked against a real `Table` in Chromium, not derived: a body row is `53px`
+ * on both sides and the header `44.5px` on both sides, so a row starts at the same offset whether
+ * the caller renders the skeleton or the table. Both numbers and how they were obtained are on
+ * {@link tableRowHeightRem} and {@link tableHeaderHeightRem}.
  *
  * ## Guaranteeing no layout shift
  *
@@ -480,8 +505,7 @@ export function SkeletonTable(
   // The grid tracks are the caller's `widths` verbatim, or an equal share each when none were given.
   // `columnWidthPercents` normalises the same array for the percentages the markup stamps.
   const track = { gridTemplateColumns: gridTracks(widths, geometry.columns) }
-  const headerBarRem = tableHeaderHeightRem() * SKELETON_METRICS.barHeightRatio
-  const bodyBarRem = geometry.rowHeightRem * SKELETON_METRICS.barHeightRatio
+  const barRem = barHeightRem()
 
   return (
     <div
@@ -504,7 +528,7 @@ export function SkeletonTable(
               data-skeleton-cell={column.index}
               data-column-percent={column.percent}
             >
-              <div class={cn(bar, "w-full")} style={{ height: `${headerBarRem}rem` }} />
+              <div class={cn(bar, "w-full")} style={{ height: `${barRem}rem` }} />
             </div>
           ))}
         </div>
@@ -523,7 +547,7 @@ export function SkeletonTable(
                 data-skeleton-cell={column.index}
                 data-column-percent={column.percent}
               >
-                <div class={cn(bar, "w-full")} style={{ height: `${bodyBarRem}rem` }} />
+                <div class={cn(bar, "w-full")} style={{ height: `${barRem}rem` }} />
               </div>
             ))}
           </div>

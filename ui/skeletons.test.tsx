@@ -2,6 +2,7 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import {
+  barHeightRem,
   columnWidthPercents,
   lineBoxRem,
   SKELETON_METRICS,
@@ -112,11 +113,11 @@ describe("tableGeometry", () => {
     expect(tableGeometry({ columns: 2 }).rowHeightRem).toBe(3.3125)
   })
 
-  it("reserves 44px (2.75rem) for a header row", () => {
-    // The real header row is 44.5px; half a pixel is not reachable by a grid row, and 44 is the
-    // closest whole-pixel height above the header's own content and padding.
-    expect(tableHeaderHeightRem()).toBe(2.75)
-    expect(tableHeaderHeightRem() * 16).toBe(44)
+  it("reserves 44.5px (2.78125rem) for a header row", () => {
+    // The real header row measures 44.5px, and a grid row can land on it: 2.78125rem is a
+    // quarter-rem, the same device-pixel grid the body row's 3.3125rem sits on.
+    expect(tableHeaderHeightRem()).toBe(2.78125)
+    expect(tableHeaderHeightRem() * 16).toBe(44.5)
     expect(tableHeaderHeightRem()).toBeLessThan(tableRowHeightRem())
   })
 
@@ -201,6 +202,14 @@ describe("SkeletonText", () => {
     expect(render(<SkeletonText lines={1} />)).toContain("width:100%")
   })
 
+  it("gives every line the measured bar height", () => {
+    // Same coverage the table's bars get: without an explicit height a line collapses to the font's
+    // own content box, and a bar that paints nothing should not pass a suite.
+    const html = render(<SkeletonText lines={2} />)
+
+    expect(countOccurrences(html, "height:1rem")).toBe(2)
+  })
+
   it("takes every line width from the prop", () => {
     const html = render(<SkeletonText lines={2} widths={[80, "full"]} />)
 
@@ -273,7 +282,23 @@ describe("SkeletonTable", () => {
 
     expect(rows).toHaveLength(3)
     expect(rows.filter((row) => row.markup.includes("height:3.3125rem"))).toHaveLength(2)
-    expect(rows.filter((row) => row.markup.includes("height:2.75rem"))).toHaveLength(1)
+    expect(rows.filter((row) => row.markup.includes("height:2.78125rem"))).toHaveLength(1)
+  })
+
+  it("gives the bars the measured heights, so the placeholders paint", () => {
+    // The bars carry an explicit height because a bare block in a grid row collapses to the font's
+    // content box. Dropping it, or changing how it is derived, leaves the whole placeholder at
+    // 0.00px and nothing else in this file notices: 26.5px and 22px are the only figures here that
+    // cover it, and they are literals on purpose.
+    const rows = markedRows(render(<SkeletonTable rows={1} columns={2} />))
+    const header = rows.find((row) => row.marker === "header")!
+    const body = rows.find((row) => row.marker === "0")!
+
+    expect(body.markup).toContain("height:1rem")
+    expect(header.markup).toContain("height:1rem")
+    expect(barHeightRem()).toBe(1)
+    expect(barHeightRem() * 16).toBe(16)
+    expect(lineBoxRem()).toBe(1.25)
   })
 
   it("carries the cell padding the real row carries", () => {

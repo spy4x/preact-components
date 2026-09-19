@@ -104,11 +104,17 @@ region can cover a table, a grid and a paragraph that load together, and the cal
 ```
 
 `SkeletonTable` mirrors the real `Table`'s wrapper, header row and one-line body row. The heights are
-measurements, not arithmetic: Chromium renders a single-line body row at **53px** on both sides —
-identical, so a swap does not move the page — and the header at `44px` against the real `44.5px`, the
-half pixel a `grid` row cannot land on. `tableRowHeightRem()` returns the body value and
-`tableHeaderHeightRem()` the header value, both pinned by tests that assert the literal rather than
-restating the implementation.
+measurements, not arithmetic: Chromium renders a body row at **53px** and the header at **44.5px** on
+both sides, so a row sits at the same offset whether the caller renders the skeleton or the table. The
+wrapper costs **0.5px** at a full 12-row table — `681px` against `681.5px`, one rounding step of its own
+`pb-px` — which is spent on keeping the rows aligned rather than the box. `tableRowHeightRem()` returns
+the body value and `tableHeaderHeightRem()` the header value, both pinned by tests that assert the
+literal rather than restating the implementation.
+
+**A cell must fit one line.** The skeleton reserves one line per body row, so a cell that wraps is
+taller than its placeholder: measured, a cell wrapping to four lines at a 560px viewport pushed its row
+to `73px`, `20px` past what was reserved, and the drift accumulates down the table. Keep cell content to
+one line, or reach for `SkeletonCards` and `SkeletonText` where the content is prose.
 
 **Column widths are an approximation, not a mirror.** `widths` splits the grid by weight, while the
 real `Table` is `table-auto` and sizes columns from cell content: for one four-column table the real
