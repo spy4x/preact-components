@@ -4,6 +4,8 @@ Reusable Preact + Tailwind components, design tokens, icons and signals helpers 
 
 Extracted from real products so the same button, table, chart and CRUD scaffold is written once.
 
+Demo: https://spy4x.github.io/preact-components
+
 ## Scope
 
 ```
