@@ -80,6 +80,34 @@ export {
   selectableIndex,
   typingState,
 } from "./combobox.tsx"
+export {
+  DateRangePicker,
+  type DateRangePickerLabels,
+  type DateRangePickerProps,
+  type DateRangePresetOption,
+} from "./date-range-picker.tsx"
+export {
+  addDays,
+  calendarDateInZone,
+  type DateRange,
+  type DateRangePreset,
+  dateRangePresets,
+  endOfMonth,
+  endOfQuarter,
+  endOfYear,
+  formatIsoDate,
+  isSameDay,
+  isValidDateRange,
+  parseIsoDate,
+  presetForRange,
+  type PresetForRangeOptions,
+  rangeForPreset,
+  type RangeForPresetOptions,
+  shiftMonth,
+  startOfMonth,
+  startOfQuarter,
+  startOfYear,
+} from "./date-range.ts"
 export { Dropdown, type DropdownProps } from "./dropdown.tsx"
 export { EmptyState, type EmptyStateProps } from "./empty-state.tsx"
 export { ErrorState, type ErrorStateProps } from "./error-state.tsx"
