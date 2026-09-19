@@ -14,6 +14,7 @@ import {
   EXCLUDED_PACKAGES,
   exportsOf,
   helperExportNames,
+  isConventionalHelper,
   missingDemos,
   type PackageId,
   packageIds,
@@ -78,11 +79,32 @@ describe("demo registry", () => {
   })
 
   it("declares no helper export that its package does not export", () => {
-    // A stale entry here would not fail the type guard — `Exclude` ignores a name that is not in
-    // the namespace — so the length is what catches a helper that has been renamed or dropped.
+    // A stale entry would not fail the type guard — `Exclude` ignores a name that is not in the
+    // namespace — so this is what catches a helper that has been renamed or dropped. Only the
+    // *declared* half is a list; the rest come from the naming convention, so the comparison is
+    // against the declarations the barrel still satisfies rather than against every helper.
     for (const id of packageIds) {
-      expect(exportsOf(id).helpers.length, id).toBe(PACKAGES[id].helpers.length)
+      const exported = new Set(Object.keys(barrels[id]))
+      const stale = PACKAGES[id].helpers.filter((name) => !exported.has(name))
+      expect(stale, id).toEqual([])
     }
+  })
+
+  it("derives a conventional helper without a declaration", () => {
+    // The counterpart of the PascalCase rule, and the reason a component PR no longer has to list
+    // its pure functions: a camelCase export is a helper by convention. Both halves of the split
+    // are pinned here, so removing either the convention or the declarations fails this test.
+    const { components, helpers } = exportsOf("ui")
+    const helperNames = new Set(helpers)
+    const componentSet = new Set<string>(components)
+
+    expect(helperNames.has("clampConfidence"), "declared, camelCase").toBe(true)
+    expect(helperNames.has("pageRange"), "undeclared, camelCase").toBe(true)
+    expect(componentSet.has("Pagination"), "PascalCase stays a component").toBe(true)
+    expect(isConventionalHelper("clampProgress"), "camelCase").toBe(true)
+    expect(isConventionalHelper("DEFAULT_AXIS_COLOR"), "SCREAMING_CASE").toBe(true)
+    expect(isConventionalHelper("D3LineChart"), "digit-led PascalCase is a component").toBe(false)
+    expect(isConventionalHelper("EmptyState"), "PascalCase is a component").toBe(false)
   })
 
   it("acknowledges every helper whose name looks like a component", () => {

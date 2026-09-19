@@ -59,9 +59,11 @@ import { systemDemos } from "./sections/system.tsx"
 /**
  * Value exports of `@preact-components/ui` that are helpers, not components.
  *
- * `registry.test.ts` asserts every name here is really exported and that no helper of any package
- * is PascalCase unless {@link PASCAL_CASE_HELPERS} says so: calling a component a helper is the one
- * way a name could leave the drift guard without anybody noticing.
+ * Only the ones the naming convention cannot see: a helper whose name is PascalCase looks like a
+ * component and has to be typed in here, and `registry.test.ts` holds that list to
+ * {@link PASCAL_CASE_HELPERS}. Everything lowercase-first is derived by
+ * {@link isConventionalHelper} instead of being listed, so a new `clampProgress` or `pageRange`
+ * does not land on the worklist as an undemoed component.
  */
 export const UI_HELPERS = ["buttonClasses", "clampConfidence"] as const
 
@@ -218,6 +220,27 @@ export const PASCAL_CASE_HELPERS = [
   "ThemeValue",
   "ValidationType",
 ] as const
+
+/**
+ * Whether a name follows the helper convention rather than the component one.
+ *
+ * Components are PascalCase (`Card`, `EmptyState`); helpers are camelCase or SCREAMING_CASE
+ * (`clampProgress`, `DEFAULT_AXIS_COLOR`). The guide used to require every helper to be listed by
+ * hand, which meant each component PR added four pure functions to the worklist as "undemoed
+ * components" until somebody remembered — a maintenance tax on the exact PRs the auto-pending
+ * mechanism exists to unblock. `PASCAL_CASE_HELPERS` still carries the exceptions, because a helper
+ * that *is* PascalCase is the one case the convention cannot see.
+ *
+ * Deliberately narrow: only the first character decides, so `D3LineChart` and `OnOffButtons` stay
+ * components. A name that is neither (an all-caps acronym) is treated as a component, which is the
+ * safe direction — it demands a demo rather than silently excusing one.
+ *
+ * @param name Value export name.
+ * @returns `true` when the name reads as a helper rather than a component.
+ */
+export function isConventionalHelper(name: string): boolean {
+  return /^[a-z]/.test(name) || /^[A-Z][A-Z0-9_]*$/.test(name) && name.includes("_")
+}
 
 /**
  * Packages that carry a `deno.json` and are deliberately not demo sources.
@@ -575,11 +598,11 @@ export const registryDrift: DriftReport = {
   signals: true,
 }
 
-/** Component names and declared helpers of one package, read from its barrel. */
+/** Component names and helpers of one package, read from its barrel. */
 export interface PackageExports<P extends PackageId = PackageId> {
   /** Component names, in module order. */
   components: Array<ComponentNamesOf<P>>
-  /** Declared helpers the barrel really exports, in module order. */
+  /** Helpers the barrel really exports, in module order. */
   helpers: string[]
 }
 
@@ -590,8 +613,13 @@ export interface PackageExports<P extends PackageId = PackageId> {
  * down to `string`, so the cast back is the price of deriving the lists instead of maintaining
  * them — and `registry.test.ts` compares both halves against the barrel they came from.
  *
+ * A helper counts as such when its package declares it **or** its name follows the helper
+ * convention ({@link isConventionalHelper}). The declaration is what catches the exception, a
+ * PascalCase helper; the convention is what keeps a new `clampProgress` from being filed as an
+ * undemoed component until somebody lists it.
+ *
  * @param id Package to read.
- * @returns The package's component names and the declared helpers it actually exports.
+ * @returns The package's component names and the helpers it actually exports.
  */
 export function exportsOf<P extends PackageId>(id: P): PackageExports<P> {
   const source: { namespace: object; helpers: readonly string[] } = PACKAGES[id]
@@ -599,8 +627,10 @@ export function exportsOf<P extends PackageId>(id: P): PackageExports<P> {
   const exported = Object.keys(source.namespace)
 
   return {
-    components: exported.filter((name) => !declared.has(name)) as Array<ComponentNamesOf<P>>,
-    helpers: exported.filter((name) => declared.has(name)),
+    components: exported.filter(
+      (name) => !declared.has(name) && !isConventionalHelper(name),
+    ) as Array<ComponentNamesOf<P>>,
+    helpers: exported.filter((name) => declared.has(name) || isConventionalHelper(name)),
   }
 }
 
