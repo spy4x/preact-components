@@ -4,7 +4,7 @@
  * The guide covers five packages: `ui`, `charts`, `system`, `crud` and `signals`. Each package's
  * component names are derived from that package's own module namespace rather than kept in a list,
  * so the catalogue cannot document an export that no longer exists and cannot lose one in silence.
- * Five guards, all checked rather than commented:
+ * Six guards, all checked rather than commented:
  *
  * 1. **Compile-time drift, per package.** {@link ComponentNamesOf} is `Exclude<keyof typeof ns, …>`
  *    over one package's helpers. {@link PENDING_DEMOS} and every section's `demos` are written over
@@ -35,10 +35,33 @@
  *    a `deno.json` that is neither a {@link PACKAGES} source nor an {@link EXCLUDED_PACKAGES} entry
  *    with a reason, so a package added later has to make a deliberate decision instead of simply not
  *    appearing in the guide.
- * 5. **New exports.** Component names are the namespace minus the declared helpers, so the sixth
- *    guard is arithmetic: an export that is in neither set is a component, and a component with no
- *    demo and no pending entry fails guard 1. A helper list is the one hand-written classification
- *    left; {@link PASCAL_CASE_HELPERS} makes demoting a component into one a deliberate line.
+ * 5. **Undeclared exports.** Helpers are declared, not inferred from a name, so component names are
+ *    the namespace minus the declared helpers and the guard is arithmetic: an export that is in
+ *    neither set is a component, and a component with no demo and no pending entry fails guard 1. A
+ *    helper list is the one hand-written classification left; {@link PASCAL_CASE_HELPERS} keeps
+ *    demoting a component into one a deliberate line.
+ * 6. **Subpath exports.** Every covered package's `deno.json` enumerates its subpath modules, and
+ *    the barrel was derived from that set by hand with nothing checking the two against each other —
+ *    so a component a consumer can reach through a subpath was invisible to guards 1–5 whenever
+ *    nobody added it to the barrel. `subpath-exports.test.ts` imports every declared subpath module
+ *    and asserts that each of its value exports is either re-exported from the barrel or declared a
+ *    helper, and that each of the barrel's own value exports is either declared a helper or comes
+ *    from a subpath module. Both directions of the barrel/subpath pair are then checked instead of
+ *    assumed, and neither a component nor a helper can be added without a deliberate line. The
+ *    `exports` object is read three ways, each seeing a different failure: parsed as JSON (with
+ *    comments blanked by a string-aware pass), which is the floor no formatting and no comment can
+ *    move; enumerated as subpath keys, each of which must yield exactly one entry — a module that
+ *    gets imported, or a named non-source target; and imported, so a specifier that resolves to
+ *    nothing fails the file at load with `Module not found`. The import is the one read that cannot
+ *    be an assertion — reading a module's exports is what requires importing it — and it only fires
+ *    while the enumeration still finds the module, which is why the parsed floor exists beside it.
+ *    A key the parser found and the reader did not is named in the failure rather than left as a
+ *    diff between two lists the same reader built. Two per-package lists exist for a helper the
+ *    barrel does not re-export ({@link SUBPATH_ONLY_HELPERS} for `ui`), and they are asserted
+ *    disjoint in both directions, so guards 1–5 and guard 6 agree about every declared name instead
+ *    of one calling the other's declaration stale. Helpers are also required to be *declared*: a
+ *    camelCase value export that no list names is the `applyScrollLock` defect — counted as a
+ *    component, published on the worklist, and never accounted for.
  *
  * Prop vocabulary is guarded one level down, per component: a demo iterates a `Record<Union, …>`
  * keyed by a prop's own union type (`ButtonVariant`, `BadgeColor`, `SpinnerSize`, …) through
@@ -78,17 +101,130 @@ import { surfaceDemos } from "./sections/surfaces.tsx"
 import { systemDemos } from "./sections/system.tsx"
 
 /**
- * Value exports of `@preact-components/ui` that are helpers, not components.
+ * Value exports of `@preact-components/ui` that are helpers, not components, and that the barrel
+ * exports.
  *
- * Only the ones the naming convention cannot see: a helper whose name is PascalCase looks like a
- * component and has to be typed in here, and `registry.test.ts` holds that list to
- * {@link PASCAL_CASE_HELPERS}. Everything lowercase-first is derived by
- * {@link isConventionalHelper} instead of being listed, so a new `clampProgress` or `pageRange`
- * does not land on the worklist as an undemoed component.
+ * Complete for the barrel, and disjoint from {@link SUBPATH_ONLY_HELPERS}, which is the same
+ * completeness claim for the helpers the barrel omits: every declared name is exported by exactly
+ * one of the two, and a name may be declared in only one —
+ * `subpath-exports.test.ts` asserts both. A value export is a helper because it is written here,
+ * never because of how it is named. A name the convention would once have read as a helper —
+ * `clampProgress`, `pageRange` — is a component until it is declared, so it needs a demo or a
+ * {@link PENDING_DEMOS} entry and cannot disappear into the helper set in silence. The price is
+ * this list: a new pure function in `ui/` costs one line here, the same line the sibling packages
+ * have always charged. `registry.test.ts` holds both halves of the split to the barrel.
  */
-export const UI_HELPERS = ["buttonClasses", "clampConfidence"] as const
+export const UI_HELPERS = [
+  // The modal: the pure internals, and the two helpers its siblings own (clipboard, geolocation).
+  "applyScrollLock",
+  "backdropClickDismisses",
+  "clientWidthWithoutScrollbar",
+  "dialogHeldFocus",
+  "dialogTitleId",
+  "DISMISS_KEY",
+  "isBackdropClick",
+  "isDismissKey",
+  "restoreFocus",
+  "scrollLockPadding",
+  "shouldRetargetFocus",
+  // Fields, controls and their key handling.
+  "activeDescendant",
+  "comboboxKey",
+  "comboboxKeyAction",
+  "comboboxListboxId",
+  "comboboxOptionId",
+  "confirmVariant",
+  "defaultGetLabel",
+  "filterItems",
+  "fold",
+  "leavesCombobox",
+  "listboxContent",
+  "matchesQuery",
+  "naming",
+  "nextComboboxState",
+  "nextTabIndex",
+  "openingState",
+  "requireLabel",
+  "selectableIndex",
+  "typingState",
+  // Dates: the presets, the ISO plumbing and the zone arithmetic behind `DateRangePicker`.
+  "addDays",
+  "calendarDateInZone",
+  "dateRangePresets",
+  "endOfMonth",
+  "endOfQuarter",
+  "endOfYear",
+  "formatIsoDate",
+  "isSameDay",
+  "isValidDateRange",
+  "parseIsoDate",
+  "presetForRange",
+  "rangeForPreset",
+  "shiftMonth",
+  "startOfMonth",
+  "startOfQuarter",
+  "startOfYear",
+  // Fractions and measurements the primitives compute rather than render.
+  "buttonClasses",
+  "clampConfidence",
+  "clampProgress",
+  "columnWidthPercents",
+  "formatProgressPercent",
+  "pageRange",
+  "progressWidthPercent",
+  "skeletonCount",
+  "skeletonStatusRole",
+  "SKELETON_METRICS",
+  "tableGeometry",
+  "tableHeaderHeightRem",
+  "tableRowHeightRem",
+  "textGeometry",
+  // Avatar initials and the group label a face falls back to.
+  "avatarFace",
+  "groupLabel",
+  "groupSplit",
+  "initials",
+] as const
 
-/** Value exports of `@preact-components/charts` that are helpers, not components. */
+/**
+ * Value exports of `@preact-components/ui` that are helpers and are exported by a subpath module
+ * only — the barrel does not re-export them.
+ *
+ * They are internal to the component they serve (`copyToClipboard` is `CopyButton`'s clipboard
+ * call, `labelTarget` is `Field`'s label wiring) and a consumer reaches them through
+ * `@preact-components/ui/copy-button` if it needs them. They are declared separately because the
+ * drift guard reads the barrel and a declaration the barrel does not carry cannot be held to it:
+ * `registry.test.ts` checks this half against nothing, and `subpath-exports.test.ts` checks it
+ * against the subpath modules. Declaring one of these in {@link UI_HELPERS} instead would make that
+ * check — and `registry.test.ts`'s — report a healthy declaration as stale, and declaring a
+ * barrel-backed helper here would hide it from the barrel check, so the two lists are asserted to be
+ * disjoint.
+ *
+ * A name here is still a helper for the drift guard — {@link PACKAGES} concats the two lists — so it
+ * stays out of the worklist and off the cards.
+ */
+export const SUBPATH_ONLY_HELPERS = [
+  "backdropDismissesByDefault",
+  "barHeightRem",
+  "bindEscapeClose",
+  "copyToClipboard",
+  "escapeCloseStrategy",
+  "failedAfterSrcChange",
+  "labelTarget",
+  "lineBoxRem",
+  "platformCloseHandler",
+  "requestGeolocation",
+  "supportsClosedBy",
+] as const
+
+/**
+ * Value exports of `@preact-components/charts` that are helpers, not components.
+ *
+ * `MISSING_D3_LINE_ERROR` and `assertD3Available` are the two `d3-line-chart` internals a consumer
+ * reaches through that subpath: the message thrown when `d3` is absent, and the check that throws
+ * it. The barrel does not re-export either, which is a `charts/` decision, not a guide one — they
+ * are declared here so the subpath/barrel pair is accounted for rather than silently excused.
+ */
 export const CHARTS_HELPERS = [
   "DEFAULT_AXIS_COLOR",
   "DEFAULT_CHART_PALETTE",
@@ -97,7 +233,9 @@ export const CHARTS_HELPERS = [
   "DEFAULT_SURFACE_COLOR",
   "DEFAULT_TEXT_COLOR",
   "DEFAULT_TRACK_COLOR",
+  "MISSING_D3_LINE_ERROR",
   "TIME_FRAMES",
+  "assertD3Available",
   "barPercent",
   "chartPayloadSchema",
   "createInViewObserver",
@@ -243,21 +381,32 @@ export const PASCAL_CASE_HELPERS = [
 ] as const
 
 /**
- * Whether a name follows the helper convention rather than the component one.
+ * Whether a helper name follows the convention {@link UI_HELPERS} and its siblings are written in.
  *
- * Components are PascalCase (`Card`, `EmptyState`); helpers are camelCase or SCREAMING_CASE
- * (`clampProgress`, `DEFAULT_AXIS_COLOR`). The guide used to require every helper to be listed by
- * hand, which meant each component PR added four pure functions to the worklist as "undemoed
- * components" until somebody remembered — a maintenance tax on the exact PRs the auto-pending
- * mechanism exists to unblock. `PASCAL_CASE_HELPERS` still carries the exceptions, because a helper
- * that *is* PascalCase is the one case the convention cannot see.
+ * Helpers are camelCase or SCREAMING_CASE (`clampProgress`, `DEFAULT_AXIS_COLOR`); components are
+ * PascalCase (`Card`, `EmptyState`). Nothing is classified by this function — `exportsOf` counts a
+ * value as a helper only when its package declares it — so the convention is a shape a declaration
+ * is checked against, and a name it does not match cannot be declared without an argument in
+ * review.
+ *
+ * What that trades away, stated plainly: a component deliberately named in camelCase
+ * (`clampProgress` rendering markup) would, once declared here, be filed as a helper and leave the
+ * drift guard, the worklist and `missingDemo` without an error — the one hole the declaration
+ * requirement does not close, because a declaration is also how a helper is recorded. Every other
+ * route is closed: the name cannot arrive in the barrel alone (guard 6), it cannot skip the helper
+ * lists while looking like a component ({@link PASCAL_CASE_HELPERS}), and it cannot be added to a
+ * subpath without either declaration or a barrel entry (guard 6). Both of those checks read the
+ * declared lists themselves rather than the barrel-intersected split, so `SUBPATH_ONLY_HELPERS` is
+ * covered too. A component named camelCase is therefore a deliberate line in a helper list, which is
+ * what review is for.
  *
  * Deliberately narrow: only the first character decides, so `D3LineChart` and `OnOffButtons` stay
- * components. A name that is neither (an all-caps acronym) is treated as a component, which is the
- * safe direction — it demands a demo rather than silently excusing one.
+ * components. `SCREAMING_CASE` needs its underscore to be seen as one — `DEFAULT_AXIS_COLOR` is a
+ * helper name, while an all-caps acronym with no underscore is treated as a component, which is the
+ * safe direction: it demands a demo rather than silently excusing one.
  *
  * @param name Value export name.
- * @returns `true` when the name reads as a helper rather than a component.
+ * @returns `true` when the name reads the way a declared helper's name does.
  */
 export function isConventionalHelper(name: string): boolean {
   return /^[a-z]/.test(name) || /^[A-Z][A-Z0-9_]*$/.test(name) && name.includes("_")
@@ -291,12 +440,14 @@ export const EXCLUDED_PACKAGES = {
 /**
  * Every package the catalogue derives component names from.
  *
- * The barrel is the runtime half of the derivation (guard 5 in the module doc) and the helper list
- * is the only hand-written part of it. Adding a package here is what makes its every export a
- * component somebody has to account for.
+ * The barrel is the runtime half of the derivation (guard 5 in the module doc) and the helper lists
+ * are the only hand-written part of it. Adding a package here is what makes its every export a
+ * component somebody has to account for. `ui` names two lists because ten of its helpers are
+ * reachable through a subpath and not through the barrel: both halves are declarations, and both are
+ * checked against the side of the pair that exports them.
  */
 export const PACKAGES = {
-  ui: { namespace: ui, helpers: UI_HELPERS },
+  ui: { namespace: ui, helpers: [...UI_HELPERS, ...SUBPATH_ONLY_HELPERS] },
   charts: { namespace: charts, helpers: CHARTS_HELPERS },
   system: { namespace: system, helpers: SYSTEM_HELPERS },
   crud: { namespace: crud, helpers: CRUD_HELPERS },
@@ -701,10 +852,11 @@ export interface PackageExports<P extends PackageId = PackageId> {
  * down to `string`, so the cast back is the price of deriving the lists instead of maintaining
  * them — and `registry.test.ts` compares both halves against the barrel they came from.
  *
- * A helper counts as such when its package declares it **or** its name follows the helper
- * convention ({@link isConventionalHelper}). The declaration is what catches the exception, a
- * PascalCase helper; the convention is what keeps a new `clampProgress` from being filed as an
- * undemoed component until somebody lists it.
+ * A value export is a helper when its package declares it, and a component otherwise. Nothing is
+ * classified from the name here: a name that reads like a helper but is in no list is a component,
+ * so it has to be demoed or declared pending rather than quietly excused. The names are held to the
+ * convention the other way round — `registry.test.ts` fails when a declared helper is named like a
+ * component, which is what {@link PASCAL_CASE_HELPERS} records.
  *
  * @param id Package to read.
  * @returns The package's component names and the helpers it actually exports.
@@ -715,10 +867,8 @@ export function exportsOf<P extends PackageId>(id: P): PackageExports<P> {
   const exported = Object.keys(source.namespace)
 
   return {
-    components: exported.filter(
-      (name) => !declared.has(name) && !isConventionalHelper(name),
-    ) as Array<ComponentNamesOf<P>>,
-    helpers: exported.filter((name) => declared.has(name) || isConventionalHelper(name)),
+    components: exported.filter((name) => !declared.has(name)) as Array<ComponentNamesOf<P>>,
+    helpers: exported.filter((name) => declared.has(name)),
   }
 }
 

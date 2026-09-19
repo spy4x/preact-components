@@ -27,6 +27,8 @@ import {
   pendingDemos,
   pendingNamesOf,
   registryDrift,
+  SUBPATH_ONLY_HELPERS,
+  UI_HELPERS,
 } from "./registry.ts"
 
 /**
@@ -43,6 +45,34 @@ function without(...names: Array<keyof typeof demoRegistry>): Partial<typeof dem
 
 /** Each covered package's barrel, keyed the way {@link PACKAGES} keys it. */
 const barrels: Record<PackageId, object> = { ui, charts, system, crud, signals }
+
+/**
+ * Declared helpers a package exports from a subpath module and not from its barrel.
+ *
+ * Stated once, per package, because the two lists are checked against opposite sides of the same
+ * pair: a declaration here is not stale just because the barrel omits it, and
+ * `subpath-exports.test.ts` is the guard that reads the modules instead. `ui` states its eleven in
+ * `SUBPATH_ONLY_HELPERS`; `charts` reaches the two d3 internals through `./d3-line-chart` only.
+ */
+const subpathOnlyHelpers: Record<PackageId, readonly string[]> = {
+  ui: SUBPATH_ONLY_HELPERS,
+  charts: ["MISSING_D3_LINE_ERROR", "assertD3Available"],
+  system: [],
+  crud: [],
+  signals: [],
+}
+
+/**
+ * Every declared helper of every covered package, read from {@link PACKAGES}.
+ *
+ * The convention checks below use this rather than `exportsOf(id).helpers`, which is only the
+ * barrel-intersected split: a name a package exports from a subpath module alone is in the declared
+ * union and in no barrel, so reading the split left that half of the lists unchecked — a PascalCase
+ * component declared in `SUBPATH_ONLY_HELPERS` was invisible to both convention tests.
+ */
+function declaredHelpers(): string[] {
+  return packageIds.flatMap((id) => [...PACKAGES[id].helpers])
+}
 
 /**
  * A component name no package exports, no section demos and no list declares.
@@ -89,42 +119,94 @@ describe("demo registry", () => {
     }
   })
 
-  it("declares no helper export that its package does not export", () => {
+  it("declares no helper its package's barrel does not export", () => {
     // A stale entry would not fail the type guard — `Exclude` ignores a name that is not in the
-    // namespace — so this is what catches a helper that has been renamed or dropped. Only the
-    // *declared* half is a list; the rest come from the naming convention, so the comparison is
-    // against the declarations the barrel still satisfies rather than against every helper.
+    // namespace — so this is what catches a helper that has been renamed or dropped. The declared
+    // half is the barrel's, so the comparison is against the barrel, and the names a package
+    // deliberately exports from a subpath module alone are the stated exception:
+    // `subpath-exports.test.ts` holds those to the module that exports them, per package.
+    //
+    // This is *liveness* only — that every declared name exists. The converse, that every helper
+    // exists in a list, cannot be decided from the barrel without a second component manifest, which
+    // is the maintenance the declaration design exists to remove; the convention-shaped half of it
+    // is asserted in `subpath-exports.test.ts` instead, where the declared lists are compared against
+    // both sides of the pair and a `ui`-style camelCase export has to appear in one of them.
     for (const id of packageIds) {
       const exported = new Set(Object.keys(barrels[id]))
-      const stale = PACKAGES[id].helpers.filter((name) => !exported.has(name))
+      const subpathOnly = subpathOnlyHelpers[id]
+      const stale = PACKAGES[id].helpers.filter((name) =>
+        !exported.has(name) && !subpathOnly.includes(name)
+      )
       expect(stale, id).toEqual([])
     }
+
+    // The two lists of one package must not overlap, in either direction, because each direction
+    // hides a different defect:
+    //
+    // * a barrel-backed name declared in the subpath-only list is checked against no barrel at all —
+    //   the barrel check below skips it and `subpath-exports.test.ts` finds it on the module it came
+    //   from, so nothing ever confirms it is on the barrel. This test does, here.
+    // * a name in both lists is ambiguous: the drift guard subtracts it once, and whichever list a
+    //   reader trusts, the other is a declaration nothing verifies. Only `ui` can be checked this
+    //   way, because it is the only package with a second list; `charts`' two subpath-only names are
+    //   named in this file instead and cannot appear in `CHARTS_HELPERS` as well.
+    for (const id of packageIds) {
+      const subpathOnly = new Set(subpathOnlyHelpers[id])
+      const barrelBacked = Object.keys(barrels[id]).filter((name) => subpathOnly.has(name))
+      expect(barrelBacked, `${id}: declared as both barrel-backed and subpath-only`).toEqual([])
+    }
+
+    const bothLists = UI_HELPERS.filter((name) =>
+      (SUBPATH_ONLY_HELPERS as readonly string[]).includes(name)
+    )
+    expect(bothLists, "ui: declared in both helper lists").toEqual([])
+
+    expect(
+      subpathOnlyHelpers.ui.length,
+      "the exception is not a blanket exemption",
+    ).toBeLessThan(UI_HELPERS.length)
   })
 
-  it("derives a conventional helper without a declaration", () => {
-    // The counterpart of the PascalCase rule, and the reason a component PR no longer has to list
-    // its pure functions: a camelCase export is a helper by convention. Both halves of the split
-    // are pinned here, so removing either the convention or the declarations fails this test.
+  it("classifies a value export as a helper only when its package declares it", () => {
+    // Both halves of the split are pinned here, so removing either the declaration or the
+    // arithmetic fails this test. A name the helper convention would once have absorbed on sight —
+    // `pageRange`, `clampProgress` — is a component until it is written into `UI_HELPERS`, which is
+    // what stopped an undeclared camelCase export from leaving the guard with nothing to say.
     const { components, helpers } = exportsOf("ui")
     const helperNames = new Set(helpers)
     const componentSet = new Set<string>(components)
 
     expect(helperNames.has("clampConfidence"), "declared, camelCase").toBe(true)
-    expect(helperNames.has("pageRange"), "undeclared, camelCase").toBe(true)
+    expect(helperNames.has("pageRange"), "declared, camelCase").toBe(true)
     expect(componentSet.has("Pagination"), "PascalCase stays a component").toBe(true)
+    expect(componentSet.has("pageRange"), "an undeclared name is a component").toBe(false)
     expect(isConventionalHelper("clampProgress"), "camelCase").toBe(true)
     expect(isConventionalHelper("DEFAULT_AXIS_COLOR"), "SCREAMING_CASE").toBe(true)
+    expect(isConventionalHelper("TIMEOUT"), "no underscore to read").toBe(false)
     expect(isConventionalHelper("D3LineChart"), "digit-led PascalCase is a component").toBe(false)
     expect(isConventionalHelper("EmptyState"), "PascalCase is a component").toBe(false)
+  })
+
+  it("declares every helper whose name does not read as one", () => {
+    // With names no longer deciding anything, this is the remaining tie between a declaration and
+    // the naming convention: a declared helper that does not read as a helper is a deliberate line.
+    // Two shapes are legal — a PascalCase name, which `PASCAL_CASE_HELPERS` records and the next
+    // test pins to the enums, and the all-caps sentinel `CONFLICT`. Anything else is an invitation
+    // to name the helper the way its siblings are named. Read from `PACKAGES`, so a name declared in
+    // a package's subpath-only list is checked here too.
+    const offConvention = declaredHelpers().filter((name) => !isConventionalHelper(name))
+
+    expect(offConvention.sort()).toEqual(["CONFLICT", ...PASCAL_CASE_HELPERS].sort())
   })
 
   it("acknowledges every helper whose name looks like a component", () => {
     // A component demoted into a helper list leaves the drift guard with no error at all, which is
     // the one silent hole in it. Components are PascalCase and these are not, so the demotion has
-    // to be written into `PASCAL_CASE_HELPERS` too.
-    const pascalCase = packageIds.flatMap((id) =>
-      exportsOf(id).helpers.filter((name) => /^[A-Z][a-z]/.test(name))
-    )
+    // to be written into `PASCAL_CASE_HELPERS` too — whichever of the package's two lists it lands
+    // in, which is why this reads the declared union and not the barrel-intersected split: that
+    // split excludes `SUBPATH_ONLY_HELPERS` wholesale, so a PascalCase component parked there would
+    // have been asserted about by nothing.
+    const pascalCase = declaredHelpers().filter((name) => /^[A-Z][a-z]/.test(name))
 
     expect(pascalCase.sort()).toEqual([...PASCAL_CASE_HELPERS].sort())
   })
