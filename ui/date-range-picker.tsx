@@ -18,7 +18,11 @@ export interface DateRangePresetOption {
 
 /** Every string the panel renders. Passed in so the library stays locale-free. */
 export interface DateRangePickerLabels {
-  /** Accessible name of the trigger and of the panel. */
+  /**
+   * Accessible name of the panel, applied as `aria-label` on it. The trigger takes its name from
+   * its own visible text instead — WCAG 2.5.3 needs the accessible name to contain the visible
+   * label, and an `aria-label` here would replace the range the user sees. Same split as `Dropdown`.
+   */
   menuLabel: string
   /** Trigger text while no range is chosen. */
   placeholder: string
@@ -73,7 +77,10 @@ const fieldLabelClasses = "block text-xs font-medium text-gray-700 dark:text-gra
  *
  * The panel is hand-written rather than built on `Dropdown`: that primitive wraps its panel in
  * `role="menu"`, and a menu may not contain the form controls the custom range needs. The
- * outside-click and Escape handling follow the same handler-only-`document` pattern.
+ * outside-click and Escape handling follow the same handler-only-`document` pattern, and so does
+ * naming: `labels.menuLabel` labels the panel, while the trigger is named by its content — the
+ * placeholder or the chosen range — so its accessible name contains its visible text (WCAG 2.5.3,
+ * Label in Name). An `aria-label` on the trigger would override that text instead of extending it.
  *
  * @param props See {@link DateRangePickerProps}.
  */
@@ -171,7 +178,6 @@ export function DateRangePicker(
         onClick={togglePanel}
         aria-expanded={isOpen.value}
         aria-controls={panelId}
-        aria-label={labels.menuLabel}
         data-e2e={dataE2E}
       >
         <span>{triggerText}</span>
