@@ -11,6 +11,11 @@
  * so they are not presets here; a caller that needs instants converts `from` to the start of that
  * day and `to` to the end of it in its own zone. Nothing in this file is locale-aware: copy is the
  * caller's, per the library's no-hardcoded-strings rule.
+ *
+ * Supported window: the four-digit ISO years 0001–9999, e.g. every instant a UI clock can hold.
+ * `Intl` returns unpadded years below 1000 and `Date` switches to six-digit expanded years
+ * (`+010000-01-01`) above 9999; the first is padded here, and an instant outside the window fails
+ * {@link parseIsoDate}'s round trip rather than yielding a plausible wrong date.
  */
 
 const MS_PER_DAY = 86_400_000
@@ -203,6 +208,9 @@ export function isValidDateRange(range: DateRange): boolean {
  * returns. `formatToParts` is used instead of parsing a formatted string, so a locale's field
  * order or separators cannot leak into the result, and the parts are assembled from the zone's own
  * calendar rather than from the host clock.
+ *
+ * The year is padded to four digits because `Intl` does not: `year: "numeric"` reports year 999 as
+ * `"999"`, and an unpadded year would leave every date in it unparsable by {@link parseIsoDate}.
  */
 export function calendarDateInZone(instant: Date, timeZone: string): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -218,32 +226,17 @@ export function calendarDateInZone(instant: Date, timeZone: string): string {
   if (!year || !month || !day) {
     throw new Error(`could not read a calendar date in ${timeZone}`)
   }
-  return `${year}-${month}-${day}`
+  return `${year.padStart(4, "0")}-${month}-${day}`
 }
 
 /**
- * The inclusive range a preset describes.
+ * The range a preset describes on a known day.
  *
- * Relative presets are resolved from `now` in `timeZone`, so the result is a function of its
- * arguments alone; `"custom"` echoes the caller's range after validating it.
- *
- * @param preset Preset to resolve.
- * @param options Injected instant, zone, and the range `"custom"` reads.
- * @throws When `now` or `timeZone` cannot name a day, or `"custom"` is missing a usable range.
+ * Split out of {@link rangeForPreset} so a caller resolving many presets against one instant —
+ * {@link presetForRange} does, once per candidate — pays for the zone lookup once instead of per
+ * candidate. Nothing here is zone-aware: `today` is already a calendar date.
  */
-export function rangeForPreset(preset: DateRangePreset, options: RangeForPresetOptions): DateRange {
-  const { now, timeZone, custom } = options
-
-  if (preset === "custom") {
-    if (!custom) throw new Error(`the "custom" preset needs a range in options.custom`)
-    if (!isValidDateRange(custom)) {
-      throw new Error(`expected an ordered range, received: ${custom.from} … ${custom.to}`)
-    }
-    return { from: custom.from, to: custom.to }
-  }
-
-  const today = calendarDateInZone(now, timeZone)
-
+function rangeFromToday(preset: Exclude<DateRangePreset, "custom">, today: string): DateRange {
   switch (preset) {
     case "today":
       return { from: today, to: today }
@@ -278,7 +271,7 @@ export function rangeForPreset(preset: DateRangePreset, options: RangeForPresetO
     case "this-year":
       return { from: startOfYear(today), to: endOfYear(today) }
     case "last-year": {
-      const first = `${Number(startOfYear(today).slice(0, 4)) - 1}-01-01`
+      const first = `${String(Number(startOfYear(today).slice(0, 4)) - 1).padStart(4, "0")}-01-01`
       return { from: first, to: endOfYear(first) }
     }
     default:
@@ -287,11 +280,42 @@ export function rangeForPreset(preset: DateRangePreset, options: RangeForPresetO
 }
 
 /**
+ * The inclusive range a preset describes.
+ *
+ * Relative presets are resolved from `now` in `timeZone`, so the result is a function of its
+ * arguments alone; `"custom"` echoes the caller's range after validating it.
+ *
+ * @param preset Preset to resolve.
+ * @param options Injected instant, zone, and the range `"custom"` reads.
+ * @throws When `now` or `timeZone` cannot name a day, or `"custom"` is missing a usable range.
+ */
+export function rangeForPreset(preset: DateRangePreset, options: RangeForPresetOptions): DateRange {
+  const { now, timeZone, custom } = options
+
+  if (preset === "custom") {
+    if (!custom) throw new Error(`the "custom" preset needs a range in options.custom`)
+    if (!isValidDateRange(custom)) {
+      throw new Error(`expected an ordered range, received: ${custom.from} … ${custom.to}`)
+    }
+    return { from: custom.from, to: custom.to }
+  }
+
+  return rangeFromToday(preset, calendarDateInZone(now, timeZone))
+}
+
+/**
  * The first preset whose range equals `range`, or `undefined` when none does.
  *
  * Lets a caller highlight the active option without tracking a preset of its own. `"custom"` is
- * never a match — it describes no range — and the first candidate in `presets` wins when two
- * presets coincide, which is why the canonical order runs narrowest to widest.
+ * never a match — it describes no range.
+ *
+ * Two presets can describe the same range, and then the first candidate in `presets` wins: the
+ * answer is a property of {@link dateRangePresets} order, not of the preset the caller had in mind.
+ * The canonical order collides by construction, on 143 days of 2024–2027 — `this-month` with
+ * `last-30-days` (`2024-04-01 → 2024-04-30`), `this-year` with `last-12-months`
+ * (`2024-01-01 → 2024-12-31`), `this-quarter` with `last-90-days` (`2025-01-01 → 2025-03-31`) —
+ * and each resolves to the earlier one. A caller that has to highlight what the user actually
+ * picked should keep the preset in its own state rather than derive it from the range.
  */
 export function presetForRange(
   range: DateRange,
@@ -299,7 +323,11 @@ export function presetForRange(
 ): DateRangePreset | undefined {
   if (!isValidDateRange(range)) return undefined
   const { now, timeZone, presets = dateRangePresets } = options
+  // One zone lookup for the whole candidate list: every candidate is resolved against the same
+  // instant, so rebuilding that date per candidate is the same answer at 14 times the cost.
+  const today = calendarDateInZone(now, timeZone)
+
   return presets.find((preset) =>
-    preset !== "custom" && isSameRange(rangeForPreset(preset, { now, timeZone }), range)
+    preset !== "custom" && isSameRange(rangeFromToday(preset, today), range)
   )
 }

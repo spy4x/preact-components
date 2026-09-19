@@ -86,10 +86,28 @@ export {
   type DateRangePickerProps,
   type DateRangePresetOption,
 } from "./date-range-picker.tsx"
-// Types only: the pure maths is reachable from `@preact-components/ui/date-range`, and exporting the
-// functions here would ask the ui-guide registry for demos they cannot have — they are helpers, not
-// components.
-export { type DateRange, type DateRangePreset } from "./date-range.ts"
+export {
+  addDays,
+  calendarDateInZone,
+  type DateRange,
+  type DateRangePreset,
+  dateRangePresets,
+  endOfMonth,
+  endOfQuarter,
+  endOfYear,
+  formatIsoDate,
+  isSameDay,
+  isValidDateRange,
+  parseIsoDate,
+  presetForRange,
+  type PresetForRangeOptions,
+  rangeForPreset,
+  type RangeForPresetOptions,
+  shiftMonth,
+  startOfMonth,
+  startOfQuarter,
+  startOfYear,
+} from "./date-range.ts"
 export { Dropdown, type DropdownProps } from "./dropdown.tsx"
 export { EmptyState, type EmptyStateProps } from "./empty-state.tsx"
 export { ErrorState, type ErrorStateProps } from "./error-state.tsx"

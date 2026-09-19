@@ -222,6 +222,13 @@ describe("calendarDateInZone", () => {
     expect(calendarDateInZone(new Date("2026-01-05T12:00:00Z"), "UTC")).toBe("2026-01-05")
   })
 
+  it("pads a year below 1000 to the four-digit ISO form", () => {
+    // `Intl` reports year 999 as "999"; unpadded, every date in it would be unparsable and every
+    // calendar preset would throw.
+    expect(calendarDateInZone(new Date("0999-01-01T00:00:00Z"), "UTC")).toBe("0999-01-01")
+    expect(calendarDateInZone(new Date("0001-06-01T00:00:00Z"), "UTC")).toBe("0001-06-01")
+  })
+
   it("reads the spring-forward day in Europe/Paris, not the UTC day", () => {
     // 23:30Z on 28 March is already 00:30 on 29 March in Paris (CET+1, the last hour before the
     // clocks jump). Computing in UTC would claim the day before the transition.
@@ -393,6 +400,16 @@ describe("rangeForPreset", () => {
       .toEqual({ from: "2026-08-23", to: "2026-08-23" })
   })
 
+  it("resolves a preset in a year before 1000", () => {
+    // The four-digit window the module documents: a three-digit year must not escape the maths.
+    const options = { now: new Date("0999-06-15T12:00:00Z"), timeZone: "UTC" }
+
+    expect(rangeForPreset("today", options)).toEqual({ from: "0999-06-15", to: "0999-06-15" })
+    expect(rangeForPreset("this-month", options)).toEqual({ from: "0999-06-01", to: "0999-06-30" })
+    expect(rangeForPreset("this-year", options)).toEqual({ from: "0999-01-01", to: "0999-12-31" })
+    expect(rangeForPreset("last-year", options)).toEqual({ from: "0998-01-01", to: "0998-12-31" })
+  })
+
   it("resolves the spring-forward day in Europe/Paris", () => {
     const options = { now: new Date("2026-03-28T23:30:00Z"), timeZone: "Europe/Paris" }
 
@@ -549,11 +566,72 @@ describe("presetForRange", () => {
     })).toBeUndefined()
   })
 
-  it("round-trips every preset through rangeForPreset", () => {
+  it("resolves the preset whose range matches, at one instant", () => {
+    // One instant in Q3, where no two presets coincide. That is all this establishes: precedence
+    // between coinciding presets is a separate, pinned rule below.
     for (const preset of dateRangePresets.filter((entry) => entry !== "custom")) {
       const range = rangeForPreset(preset, { now: NOW, timeZone: "Europe/Paris" })
 
       expect(presetForRange(range, { now: NOW, timeZone: "Europe/Paris" })).toBe(preset)
     }
+  })
+
+  it("resolves a range two presets describe to the earlier one in the canonical order", () => {
+    // Each row is one collision class: `later` and `earlier` return the same `range`, and the
+    // earlier preset in `dateRangePresets` is the one `presetForRange` names.
+    const coincidences: Array<[string, DateRangePreset, DateRangePreset, DateRange]> = [
+      [
+        "2024-04-30T12:00:00Z",
+        "this-month",
+        "last-30-days",
+        { from: "2024-04-01", to: "2024-04-30" },
+      ],
+      [
+        "2024-12-01T12:00:00Z",
+        "this-year",
+        "last-12-months",
+        { from: "2024-01-01", to: "2024-12-31" },
+      ],
+      [
+        "2025-03-31T12:00:00Z",
+        "this-quarter",
+        "last-90-days",
+        { from: "2025-01-01", to: "2025-03-31" },
+      ],
+    ]
+
+    for (const [instant, later, earlier, range] of coincidences) {
+      const now = new Date(instant)
+
+      expect(rangeForPreset(later, { now, timeZone: "UTC" })).toEqual(range)
+      expect(rangeForPreset(earlier, { now, timeZone: "UTC" })).toEqual(range)
+      expect(presetForRange(range, { now, timeZone: "UTC" })).toBe(earlier)
+    }
+  })
+
+  it("never names a preset later than the one that produced the range", () => {
+    // Every day of 2024–2027 × the 14 defined presets. 143 of these 20 454 pairs coincide with an
+    // earlier preset, and the rule is the same for all of them: the winner describes the range and
+    // never sits later in the canonical order.
+    const presets: readonly DateRangePreset[] = dateRangePresets.filter((entry) =>
+      entry !== "custom"
+    )
+    let coincidences = 0
+
+    for (let day = 0; day < 1461; day++) {
+      const options = { now: new Date(Date.UTC(2024, 0, 1 + day, 12)), timeZone: "UTC" }
+      const ranges = presets.map((preset) => ({ preset, range: rangeForPreset(preset, options) }))
+
+      for (const { preset, range } of ranges) {
+        const winner = presetForRange(range, options)
+        if (!winner) throw new Error(`no preset described ${preset}'s range from ${range.from}`)
+
+        expect(ranges.find((entry) => entry.preset === winner)?.range).toEqual(range)
+        expect(presets.indexOf(winner)).toBeLessThanOrEqual(presets.indexOf(preset))
+        if (winner !== preset) coincidences++
+      }
+    }
+
+    expect(coincidences).toBe(143)
   })
 })
