@@ -10,9 +10,19 @@
  * exports the stylesheets and nothing else.
  */
 
+import { basename, dirname, join } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
 const PACKAGE_NAME = "tailwindcss"
+
+/**
+ * The package's own `package.json`, which its `exports` map publishes.
+ *
+ * Resolved through the workspace import map rather than spelled as an `npm:`
+ * specifier, so Deno answers with the file it actually installed — wherever
+ * `DENO_DIR` points.
+ */
+const MANIFEST_SPECIFIER = `${PACKAGE_NAME}/package.json`
 
 const packageRoots = new Map<string, string>()
 
@@ -82,32 +92,94 @@ function compareVersions(a: string, b: string): number {
 }
 
 /**
- * Locate an installed Tailwind CSS package in the Deno npm registry cache.
+ * Locate an installed Tailwind CSS package through Deno's own resolver.
  *
- * `import.meta.resolve()` hands back the `npm:` specifier unchanged rather than
- * a file path, so the cache is read directly. The requested version wins: older
- * versions of the same package are often cached alongside it and their file
- * layout is not interchangeable.
+ * The location is never guessed: Deno is asked to resolve the package's
+ * `package.json`, which the workspace import map turns into the pinned `npm:`
+ * specifier. Deriving the path from `HOME` — what this used to do — ignores
+ * `DENO_DIR` and fails wherever the cache lives elsewhere, CI containers
+ * included.
  *
- * @param version Preferred version; falls back to the highest cached version.
+ * An earlier docstring here claimed `import.meta.resolve()` hands the `npm:`
+ * specifier back unchanged. That is true only of a bare `npm:tailwindcss@<v>`,
+ * which is not part of the module graph; a specifier the import map resolves
+ * comes back as a `file:` URL naming the installed copy.
+ *
+ * @param version Preferred version. Deno resolves one version — the pin — so any
+ *   other version is used only when the cache already holds it beside that copy.
  * @returns Absolute path to the directory holding the package's `package.json`.
- * @throws If `HOME` is unset or the package is not cached.
+ * @throws If `tailwindcss` does not resolve to a file path.
  */
 export function tailwindPackageRoot(version?: string): string {
-  const home = Deno.env.get("HOME")
-  if (!home) {
-    throw new Error("HOME is required to locate the Deno npm cache")
+  const root = dirname(fileURLToPath(resolvePackageManifest()))
+  const versionsDirectory = dirname(root)
+  const versions = readDirectoryNames(versionsDirectory)
+
+  // The copy Deno resolved is authoritative, and its parent is only a version
+  // directory when that copy lives in it: true of the npm registry cache Deno
+  // fills, false of a `node_modules` tree, where the package sits alone.
+  if (!version || !versions.includes(basename(root))) {
+    return root
   }
 
-  const versionsDirectory = `${home}/.cache/deno/npm/registry.npmjs.org/${PACKAGE_NAME}`
-  const versions: string[] = []
-  for (const entry of Deno.readDirSync(versionsDirectory)) {
-    if (entry.isDirectory) {
-      versions.push(entry.name)
+  return join(versionsDirectory, chooseCachedVersion(versions, version))
+}
+
+/**
+ * Names of the directories directly inside `directory`.
+ *
+ * @param directory Directory to enumerate.
+ * @returns The entry names, or an empty list when the directory is unreadable.
+ */
+function readDirectoryNames(directory: string): string[] {
+  const names: string[] = []
+  try {
+    for (const entry of Deno.readDirSync(directory)) {
+      if (entry.isDirectory) {
+        names.push(entry.name)
+      }
     }
+    return names
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Resolve the pinned package's `package.json` through the workspace import map.
+ *
+ * @returns The resolved `file:` URL.
+ * @throws If Deno answers with the specifier itself instead of a path.
+ */
+function resolvePackageManifest(): string {
+  let resolved = ""
+  try {
+    resolved = import.meta.resolve(MANIFEST_SPECIFIER)
+  } catch (cause) {
+    throw cannotLocatePackage(`deno could not resolve "${MANIFEST_SPECIFIER}" (${cause})`)
   }
 
-  return `${versionsDirectory}/${chooseCachedVersion(versions, version)}`
+  if (!resolved.startsWith("file:")) {
+    throw cannotLocatePackage(
+      `deno resolved "${MANIFEST_SPECIFIER}" to "${resolved}" rather than to a path`,
+    )
+  }
+
+  return resolved
+}
+
+/**
+ * Build the failure every unsolvable lookup shares.
+ *
+ * @param detail What Deno did instead of resolving the manifest.
+ * @returns The error to throw, naming the missing piece and the command that fixes it.
+ */
+function cannotLocatePackage(detail: string): Error {
+  return new Error(
+    `cannot locate ${PACKAGE_NAME}: ${detail}. The workspace import map must map ` +
+      `"${PACKAGE_NAME}/" to its pinned npm specifier — run ` +
+      "`deno cache theme/integration/smoke.test.ts` to populate the npm cache.",
+  )
 }
 
 /**

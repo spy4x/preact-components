@@ -83,8 +83,26 @@ describe("stylesheets that resolve through the Tailwind cache", () => {
       .toBe(true)
   })
 
+  it("resolves the package exactly where deno resolves it", () => {
+    // Regression guard: the root used to be built from `HOME`
+    // (`${HOME}/.cache/deno/npm/registry.npmjs.org/...`), which ignores `DENO_DIR`
+    // and therefore misses the cache in CI. Deno's own resolution always names
+    // the installed copy, whatever `DENO_DIR` and `HOME` point at.
+    const manifest = fileURLToPath(import.meta.resolve("tailwindcss/package.json"))
+    expect(tailwindPackageRoot(VERSION)).toBe(manifest.slice(0, manifest.lastIndexOf("/")))
+  })
+
+  it("returns a directory holding the assets the preset imports", () => {
+    const root = tailwindPackageRoot(VERSION)
+    for (const asset of ["package.json", "theme.css", "preflight.css", "utilities.css"]) {
+      expect(Deno.statSync(`${root}/${asset}`).isFile).toBe(true)
+    }
+  })
+
   it("falls back to a cached version when the requested one is absent", () => {
-    expect(tailwindPackageRoot("0.0.1-not-cached")).toContain("/registry.npmjs.org/tailwindcss/")
+    const root = tailwindPackageRoot("0.0.1-not-cached")
+    expect(root).toContain("/registry.npmjs.org/tailwindcss/")
+    expect(Deno.statSync(`${root}/package.json`).isFile).toBe(true)
   })
 
   it("memoises the package location across resolutions", () => {
