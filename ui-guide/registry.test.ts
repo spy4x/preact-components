@@ -6,6 +6,7 @@ import * as signals from "@preact-components/signals"
 import * as system from "@preact-components/system"
 import * as ui from "@preact-components/ui"
 import {
+  AUTO_PENDING_PACKAGES,
   catalogueNames,
   catalogueSections,
   componentNames,
@@ -20,6 +21,7 @@ import {
   PASCAL_CASE_HELPERS,
   PENDING_DEMOS,
   pendingDemos,
+  pendingNamesOf,
   registryDrift,
 } from "./registry.ts"
 
@@ -156,9 +158,11 @@ describe("demo registry", () => {
   it("accounts for every component of every covered package", () => {
     // The runtime mirror of the type-level guard, read straight off the module namespace: a
     // component that is neither demoed nor declared pending fails here as well as at `deno check`.
+    // `pendingNamesOf` is the same resolver the type level uses, so an auto-pending package (`ui`)
+    // is accounted for by its exports rather than by a hand-kept list.
     for (const id of packageIds) {
       const demoed = demoedFor(id)
-      const pending: string[] = [...PENDING_DEMOS[id]]
+      const pending = pendingNamesOf(id)
 
       expect([...demoed, ...pending].sort(), id).toEqual(
         [...exportsOf(id).components].sort(),
@@ -177,8 +181,20 @@ describe("demo registry", () => {
       expect(entry.packageName).toBe(`@preact-components/${entry.package}`)
     }
     expect(pendingDemos.map((entry) => entry.package)).toEqual(
-      packageIds.filter((id) => PENDING_DEMOS[id].length > 0),
+      packageIds.filter((id) => pendingNamesOf(id).length > 0),
     )
+  })
+
+  it("names an auto-pending package's undemoed exports without an explicit list", () => {
+    // The property that keeps a `ui/` component PR mergeable on its own: a new export nobody has
+    // demoed is published as a gap rather than blocking the build. `ui`'s explicit list is empty on
+    // purpose, so anything named here came from the exports themselves.
+    for (const id of AUTO_PENDING_PACKAGES) {
+      expect(PENDING_DEMOS[id], `${id}: explicit list is meant to stay empty`).toEqual([])
+
+      const undemoed = exportsOf(id).components.filter((name) => !demoedFor(id).includes(name))
+      expect(pendingNamesOf(id), id).toEqual(undemoed)
+    }
   })
 
   it("reports nothing for the complete registry", () => {

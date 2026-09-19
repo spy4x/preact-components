@@ -317,6 +317,14 @@ export type DemoFragment<Names extends ComponentName> = Record<Names, Demo>
  * demotion back to `true` as `{ stalePending: "Name" }`.
  */
 export const PENDING_DEMOS = {
+  /**
+   * Empty on purpose, and it should stay that way.
+   *
+   * `ui` is the package under construction: every component PR adds an export here and its demo in
+   * its own change. Spelling those names out would mean a `ui/` PR cannot pass `deno task check`
+   * until somebody edits the guide in a second branch, which is the coupling this whole mechanism
+   * exists to remove. {@link AUTO_PENDING_PACKAGES} is what keeps `ui` covered instead.
+   */
   ui: [],
   charts: [
     "CompareChart",
@@ -493,10 +501,42 @@ type DemoedNames<P extends PackageId> = {
   [S in SectionId]: (typeof catalogue)[S]["package"] extends P ? keyof DemosOf<S> : never
 }[SectionId]
 
+/**
+ * Packages whose undemoed components are pending by default.
+ *
+ * A component a `ui/` PR adds is, by construction, a component whose demo lands in that same PR or
+ * the next one. Requiring a hand-kept {@link PENDING_DEMOS} entry for it would mean the component PR
+ * cannot pass `deno task check` on its own — the guard would block the very change it is meant to
+ * describe, and the fix would live in a second branch. That coupling is the reason the guard was
+ * generalised; leaving it in place for `ui` alone would defeat the generalisation.
+ *
+ * The property that matters survives: a component that is neither demoed nor declared pending is
+ * still a hard `missingDemo` failure. What changes is only where "declared pending" comes from —
+ * an explicit list for the packages that were ported whole, and the export set itself for the
+ * package under construction.
+ *
+ * `ui` is the only entry. When a second package is built component-by-component it joins this list,
+ * and {@link PENDING_DEMOS} keeps serving the packages ported in one go.
+ */
+export const AUTO_PENDING_PACKAGES = ["ui"] as const satisfies readonly PackageId[]
+
+/** A package whose undemoed exports are pending without needing a {@link PENDING_DEMOS} entry. */
+export type AutoPendingPackage = (typeof AUTO_PENDING_PACKAGES)[number]
+
+/**
+ * Components of `P` with no demo that no list has to declare.
+ *
+ * Empty for every package outside {@link AUTO_PENDING_PACKAGES}, so the explicit list stays the
+ * only source of truth where there is one.
+ */
+type AutoPendingNames<P extends PackageId> = P extends AutoPendingPackage
+  ? Exclude<ComponentNamesOf<P>, DemoedNames<P>>
+  : never
+
 /** Component exports a package has neither demoed nor declared pending. */
 type MissingDemos<P extends PackageId> = Exclude<
   ComponentNamesOf<P>,
-  DemoedNames<P> | PendingNames<P>
+  DemoedNames<P> | PendingNames<P> | AutoPendingNames<P>
 >
 
 /** Demo keys that are not components of the package the section declares. */
@@ -580,13 +620,47 @@ export interface PendingDemosByPackage {
 }
 
 /** Packages with components still to be demonstrated, in {@link PACKAGES} order. */
-export const pendingDemos: PendingDemosByPackage[] = (Object.keys(PENDING_DEMOS) as PackageId[])
+export const pendingDemos: PendingDemosByPackage[] = (Object.keys(PACKAGES) as PackageId[])
   .map((id) => ({
     package: id,
     packageName: packageSpecifier(id),
-    names: [...PENDING_DEMOS[id]],
+    names: pendingNamesOf(id),
   }))
   .filter((entry) => entry.names.length > 0)
+
+/**
+ * Components of one package that are exported, undemoed and declared — the worklist, in module order.
+ *
+ * The declared {@link PENDING_DEMOS} entries come first because they are in the author's chosen
+ * order; {@link AUTO_PENDING_PACKAGES} contributes whatever the exports have grown since, in module
+ * order, so a component nobody has written up is named rather than silently absent.
+ *
+ * @param id Package to read.
+ * @returns The package's pending component names.
+ */
+export function pendingNamesOf(id: PackageId): string[] {
+  const declared: readonly string[] = PENDING_DEMOS[id]
+  if (!(AUTO_PENDING_PACKAGES as readonly string[]).includes(id)) return [...declared]
+
+  const demoed = new Set<string>(demoedNamesFor(id))
+  const known = new Set(declared)
+  const undeclared = exportsOf(id).components.filter((name) =>
+    !demoed.has(name) && !known.has(name)
+  )
+  return [...declared, ...undeclared]
+}
+
+/**
+ * Components one package's sections register a demo for, in render order.
+ *
+ * The runtime mirror of the {@link DemoedNames} type, which is private to the type level.
+ *
+ * @param id Package to read.
+ * @returns The package's demoed component names.
+ */
+export function demoedNamesFor(id: PackageId): string[] {
+  return catalogueSections.filter((section) => section.package === id).flatMap((s) => s.names)
+}
 
 /** The complete registry: one demo per component every section documents. */
 export type DemoRegistry = Record<DemoedName, Demo>
