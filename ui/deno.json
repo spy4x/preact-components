@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "exports": {
     ".": "./+index.ts",
+    "./avatar": "./avatar.tsx",
     "./badge": "./badge.tsx",
     "./button": "./button.tsx",
     "./card": "./card.tsx",
