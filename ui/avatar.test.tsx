@@ -1,7 +1,35 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
-import { Avatar, avatarFace, AvatarGroup, groupLabel, groupSplit, initials } from "./avatar.tsx"
+import {
+  Avatar,
+  avatarFace,
+  AvatarGroup,
+  failedAfterSrcChange,
+  groupLabel,
+  groupSplit,
+  initials,
+} from "./avatar.tsx"
+
+/**
+ * A decomposed Hangul name — `"깁 철수"` written as jamo, one syllable per two or three code points.
+ *
+ * Built from explicit escapes with no literal jamo in the source, so no editor, formatter or
+ * file-encoding round-trip can quietly normalise the input and make {@link initials} look correct
+ * for the wrong reason. Every syllable is an LVT run of three jamo — `깁` is U+1100 U+1175 U+11B8,
+ * `철` is U+110E U+1165 U+11AF, `수` is U+1109 U+116E — so the name is 9 code points (8 jamo and a
+ * space) against 4 precomposed, and NFC composes each run in place without touching the space.
+ * `NFC_FOLDED_INITIALS` is the two composed syllables the correct answer is made of.
+ */
+const NFD_JAMO_NAME = "\u1100\u1175\u11B8 \u110E\u1165\u11AF\u1109\u116E"
+const NFC_JAMO_NAME = "\uAE41 \uCCA0\uC218"
+const NFC_FOLDED_INITIALS = "\uAE41\uCCA0"
+
+/** `"E"` + U+0301 COMBINING ACUTE ACCENT + `"mile Zola"` — decomposed Latin, never precomposed. */
+const NFD_ACCENT_NAME = "E\u0301mile Zola"
+
+/** The same name precomposed: U+00C9 LATIN CAPITAL LETTER E WITH ACUTE + `"mile Zola"`. */
+const NFC_ACCENT_NAME = "\u00C9mile Zola"
 
 describe("initials", () => {
   it("takes the first letter of the first two words", () => {
@@ -37,6 +65,18 @@ describe("initials", () => {
 
   it("takes one code point, not one UTF-16 unit, of a combined Latin name", () => {
     expect(initials("Émile Zola")).toBe("ÉZ")
+  })
+
+  it("reads a decomposed accent as the letter, not as an accent after it", () => {
+    expect(initials(NFD_ACCENT_NAME)).toBe("ÉZ")
+    expect(initials(NFD_ACCENT_NAME)).toBe(initials(NFC_ACCENT_NAME))
+  })
+
+  it("composes every decomposed letter of a name, not just the first", () => {
+    expect(initials("A\u030Angela O\u0308ztu\u0308rk")).toBe("\u00C5\u00D6")
+    expect(initials("A\u030Angela O\u0308ztu\u0308rk")).toBe(
+      initials("\u00C5ngela \u00D6zt\u00FCrk"),
+    )
   })
 
   it("takes a digit as an initial", () => {
@@ -75,6 +115,58 @@ describe("initials for CJK names", () => {
     // is followed by the Latin one.
     expect(initials("李明 John")).toBe("李明")
     expect(initials("李 John")).toBe("李J")
+  })
+})
+
+describe("initials with decomposed Unicode", () => {
+  it("normalises the name before splitting it into words", () => {
+    expect(NFD_JAMO_NAME.normalize("NFC")).toBe(NFC_JAMO_NAME)
+  })
+
+  it("keeps the decomposed jamo in the fixture, so the input is really NFD", () => {
+    // 9 code points (3 + 3 + 2 jamo and a space) against 4 composed. A source encoding that quietly
+    // normalised the literal, or a jamo dropped from a syllable, would leave the input partly
+    // composed and make the next tests pass for the wrong reason, so both are pinned here first.
+    expect([...NFD_JAMO_NAME].length).toBe(9)
+    expect([...NFC_JAMO_NAME].length).toBe(4)
+    expect(NFD_JAMO_NAME).not.toBe(NFC_JAMO_NAME)
+    expect([...NFD_JAMO_NAME].every((c) => !/[\uAC00-\uD7A3]/.test(c))).toBe(true)
+    expect([...NFD_JAMO_NAME].some((c) => /[\u1100-\u11FF]/.test(c))).toBe(true)
+  })
+
+  it("counts a decomposed syllable as one word, not as two or three", () => {
+    // The bug: each jamo is Script=Hangul, so without normalisation every jamo is its own word and
+    // the answer is the first jamo pair — U+1100 U+1175 — rather than the first two syllables.
+    expect(initials(NFD_JAMO_NAME)).toBe(NFC_FOLDED_INITIALS)
+    expect(initials(NFD_JAMO_NAME)).not.toBe("\u1100\u1175")
+  })
+
+  it("reads a decomposed syllable the same as the precomposed one", () => {
+    expect(initials(NFD_JAMO_NAME)).toBe(initials(NFC_JAMO_NAME))
+    expect([...initials(NFD_JAMO_NAME)].length).toBe(2)
+    expect([...initials("\u1100\u1175\u11B8")].length).toBe(1)
+    expect(initials("\u1100\u1175\u11B8")).toBe(NFC_FOLDED_INITIALS.slice(0, 1))
+    expect(initials("\u110E\u1165\u11AF\u1109\u116E")).toBe("\uCCA0\uC218")
+  })
+
+  it("reads a mixed NFC/NFD name as its composed form", () => {
+    // U+AE41 (NFC) first, then the same syllable written as decomposed jamo: two words either way,
+    // and both characters in the result are Hangul Syllables rather than jamo.
+    const mixed = initials("\uAE41 \u1100\u1175\u11B8")
+
+    expect(mixed).toBe(`${NFC_FOLDED_INITIALS.slice(0, 1)}${NFC_FOLDED_INITIALS.slice(0, 1)}`)
+    expect(mixed).toBe(initials(initials(NFD_JAMO_NAME).slice(0, 1) + " \u1100\u1175\u11B8"))
+    expect(/^[\uAC00-\uD7A3]{2}$/.test(mixed)).toBe(true)
+    // A decomposed Latin word beside a decomposed Hangul one: two words, one initial each.
+    expect(initials("\u1100\u1175\u11B8 E\u0301mile")).toBe(
+      `${NFC_FOLDED_INITIALS.slice(0, 1)}\u00C9`,
+    )
+  })
+
+  it("keeps a Hangul syllable whole rather than half of a jamo pair", () => {
+    expect([...initials(NFD_JAMO_NAME)[0]].length).toBe(1)
+    expect(initials(NFD_JAMO_NAME)).not.toContain("\u1100")
+    expect(initials("\u1100\u1175\u11B8 \u11AF")).toBe("\uAE41\u11AF")
   })
 })
 
@@ -148,6 +240,33 @@ describe("avatarFace", () => {
 
   it("prefers the image over a name it could draw initials from", () => {
     expect(avatarFace({ src: "/ada.png", name: "Ada Lovelace" })).toBe("image")
+  })
+})
+
+describe("failedAfterSrcChange", () => {
+  it("keeps a failure while the source stays the same", () => {
+    expect(failedAfterSrcChange("/ada.png", "/ada.png", true)).toBe(true)
+    expect(failedAfterSrcChange("/ada.png", "/ada.png", false)).toBe(false)
+    expect(failedAfterSrcChange(null, null, true)).toBe(true)
+  })
+
+  it("clears a failure when the source becomes a different URL", () => {
+    expect(failedAfterSrcChange("/ada.png", "/grace.png", true)).toBe(false)
+    expect(failedAfterSrcChange(null, "/ada.png", true)).toBe(false)
+    expect(failedAfterSrcChange("/ada.png", null, true)).toBe(false)
+    expect(failedAfterSrcChange("/ada.png", "", true)).toBe(false)
+  })
+
+  it("treats absent, null and empty as the same source", () => {
+    expect(failedAfterSrcChange(undefined, null, true)).toBe(true)
+    expect(failedAfterSrcChange(null, undefined, true)).toBe(true)
+    expect(failedAfterSrcChange(undefined, "", true)).toBe(true)
+    expect(failedAfterSrcChange("", undefined, true)).toBe(true)
+  })
+
+  it("never invents a failure for a source that had none", () => {
+    expect(failedAfterSrcChange("/ada.png", "/grace.png", false)).toBe(false)
+    expect(failedAfterSrcChange(null, "/ada.png", false)).toBe(false)
   })
 })
 
@@ -244,6 +363,26 @@ describe("Avatar", () => {
     expect(bareAltCount(render(<Avatar src="/ada.png" />))).toBe(1)
   })
 
+  it("trims the name before it becomes the image's alt text", () => {
+    expect(render(<Avatar src="/ada.png" name="  Ada Lovelace  " />))
+      .toContain('alt="Ada Lovelace"')
+  })
+
+  it("trims the name before it becomes the fallback box's label", () => {
+    const html = render(<Avatar name="  Ada Lovelace  " />)
+
+    expect(html).toContain('aria-label="Ada Lovelace"')
+    expect(html).not.toContain(">  Ada")
+  })
+
+  it("leaves a whitespace-only name unnamed instead of labelling the box with spaces", () => {
+    const html = render(<Avatar name="   " />)
+
+    expect(html).not.toContain("aria-label")
+    expect(html).not.toContain('role="img"')
+    expect(html).toContain('aria-hidden="true"')
+  })
+
   it("draws the initials when no image is given", () => {
     const html = render(<Avatar name="Ada Lovelace" />)
 
@@ -319,14 +458,24 @@ describe("AvatarGroup", () => {
     { name: "Alan Turing", src: "/alan.png" },
   ]
 
-  it("renders one avatar per member in a labelled list", () => {
+  it("renders one avatar per member in a labelled group", () => {
     const html = render(<AvatarGroup items={members} />)
 
-    expect(html).toMatch(/^<ul/)
-    expect(html).toContain('role="list"')
+    expect(html).toMatch(/^<div/)
+    expect(html).toContain('role="group"')
     expect(html).toContain('aria-label="Avatars (3)"')
     expect((html.match(/<img/g) ?? []).length).toBe(3)
-    expect((html.match(/<li/g) ?? []).length).toBe(3)
+    expect((html.match(/-space-x-2 flex/g) ?? []).length).toBe(1)
+  })
+
+  it("is a group, not a list, so no item count contradicts the total", () => {
+    const html = render(<AvatarGroup items={members} max={2} label="Project members" />)
+
+    expect(html).not.toContain('role="list"')
+    expect(html).not.toContain("<ul")
+    expect(html).not.toContain("<li")
+    expect(html).toContain('role="group"')
+    expect(html).toContain('aria-label="Project members (3)"')
   })
 
   it("overlaps the stack", () => {
@@ -346,7 +495,8 @@ describe("AvatarGroup", () => {
 
     expect(html).toContain("+1")
     expect((html.match(/<img/g) ?? []).length).toBe(2)
-    expect((html.match(/<li/g) ?? []).length).toBe(3)
+    expect(html).toContain('aria-label="Avatars (3)"')
+    expect(chipCount(html)).toBe(1)
   })
 
   it("reports the total, chip included, on the group label", () => {
@@ -367,14 +517,16 @@ describe("AvatarGroup", () => {
     const html = render(<AvatarGroup items={members} max={4} />)
 
     expect(html).not.toContain(">+")
-    expect((html.match(/<li/g) ?? []).length).toBe(3)
+    expect(chipCount(html)).toBe(0)
+    expect((html.match(/<img/g) ?? []).length).toBe(3)
   })
 
   it("renders no chip for an empty group", () => {
     const html = render(<AvatarGroup items={[]} />)
 
     expect(html).toContain('aria-label="Avatars (0)"')
-    expect(html).not.toContain("<li")
+    expect(html).not.toContain("<img")
+    expect(chipCount(html)).toBe(0)
     expect(html).not.toContain(">+")
   })
 
@@ -406,4 +558,14 @@ describe("AvatarGroup", () => {
  */
 function bareAltCount(html: string): number {
   return (html.match(/alt(?=[\s>])/g) ?? []).length
+}
+
+/**
+ * Count the `+N` chips in a group's markup.
+ *
+ * Replaces the old `<li>` count, which pinned the tag rather than the thing it stood for: the chip
+ * is hidden from assistive tech and there is no list to belong to any more.
+ */
+function chipCount(html: string): number {
+  return (html.match(/aria-hidden="true"[^>]*>\+/g) ?? []).length
 }

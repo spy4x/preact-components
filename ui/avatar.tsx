@@ -52,23 +52,33 @@ function initialOf(word: string): string {
  *
  * The rule, exactly:
  *
- * 1. A word is a maximal run of non-space characters, except that each CJK character is a word of
+ * 1. The name is normalised to NFC first. A decomposed Hangul syllable is two or three jamo, and
+ *    each jamo is `Script=Hangul`, so without normalisation one syllable counts as two or three
+ *    words: the decomposed spelling of `"깁철"` returns its first two jamo rather than its first two
+ *    syllables. NFC composes each jamo run in place, leaving the space between words alone. Latin
+ *    decomposes the same way — `"E\u0301mile Zola"` is `"EZ"` where the precomposed `"Émile Zola"`
+ *    is `"ÉZ"` — but there the base letter is the initial either way, so Hangul is the visible one.
+ * 2. A word is a maximal run of non-space characters, except that each CJK character is a word of
  *    its own — `"王小明"` is three words, `"Anne-Marie"` is one.
- * 2. A word's initial is its first code point that is a letter or a digit. Leading punctuation is
+ * 3. A word's initial is its first code point that is a letter or a digit. Leading punctuation is
  *    skipped (`"-John"` is `"J"`); a word with neither (an emoji, a symbol) contributes nothing.
- * 3. The result is the first initial plus the second when there is one, so a name of three or more
+ * 4. The result is the first initial plus the second when there is one, so a name of three or more
  *    words still yields two characters — `"John Paul Smith"` is `"JP"`, never `"JPS"`.
- * 4. The result is uppercased, so `initials("js")` is `"JS"`. A character that uppercases to more
+ * 5. The result is uppercased, so `initials("js")` is `"JS"`. A character that uppercases to more
  *    than one — the German `"ß"` — expands, and the result is then longer than two characters.
- * 5. A name with nothing usable — `""`, `"   "`, `null`, `undefined`, `"!!!"`, `"😀"` — returns
+ * 6. A name with nothing usable — `""`, `"   "`, `null`, `undefined`, `"!!!"`, `"😀"` — returns
  *    `""`, which is what sends an avatar to its generic-icon face.
  *
  * Two tradeoffs worth stating. The CJK rule gives two characters (`"王小明"` → `"王小"`) rather than
  * the surname alone, because that is one rule for every script; a design that wants `"王"` has to
- * say so. And there is deliberately no `Intl.Segmenter`: it is a fine platform API, but its only
- * win here is a whole grapheme for a name that starts with a ZWJ emoji sequence, it is absent from
- * the `ES2020` lib this repository compiles against, and code-point iteration already handles
- * combining marks and single-code-point emoji with no platform probe and no type assertion.
+ * say so. And there is deliberately no `Intl.Segmenter`: code-point iteration is already enough for
+ * the scripts this rule splits, astral ideographs (Extension B, `"𠀀"`) and single-code-point emoji
+ * included, so Segmenter would buy only the whole grapheme of a name that starts with a ZWJ emoji
+ * sequence, and it would cost a platform probe for a runtime without it plus a type assertion for
+ * the `Intl` typings. Availability is *not* the reason: `deno.jsonc` compiles against
+ * `["ES2020", "DOM", "DOM.Iterable", "deno.ns"]`, and `deno.ns` supplies esnext `Intl`, so
+ * `new Intl.Segmenter(...)` type-checks clean here — an earlier revision of this comment claimed
+ * otherwise and was wrong.
  *
  * @param name Full name, in any script. `null` and `undefined` are treated as empty.
  * @returns One or two upper-case characters, or `""` when the name has no usable initial.
@@ -78,7 +88,7 @@ export function initials(name?: string | null): string {
 
   const found: string[] = []
 
-  for (const word of name.match(wordPattern) ?? []) {
+  for (const word of name.normalize("NFC").match(wordPattern) ?? []) {
     const initial = initialOf(word)
     if (initial) found.push(initial)
     if (found.length === 2) break
@@ -111,6 +121,35 @@ export function avatarFace({ src, failed = false, name }: AvatarFaceInput): Avat
   if (src && !failed) return "image"
 
   return initials(name) ? "initials" : "icon"
+}
+
+/**
+ * Carry an avatar's "this image failed" flag across a change of `src`.
+ *
+ * An avatar with a broken URL keeps its initials face forever because `failed` is only ever set —
+ * so a caller that swaps the bad URL for a good one, or re-uses one component instance for a new
+ * user, is stuck on the fallback. A failure is a fact about one URL, so it has to be dropped when
+ * that URL changes. This is the pure half of that rule, so the browser-only React-shaped half —
+ * the render-time state comparison that applies it inside {@link Avatar} — stays out of the tests.
+ *
+ * Absent, `null` and `""` are one and the same value here: `src` is an optional prop, and
+ * `undefined → null` is not a change of URL, so it must not clear a real failure.
+ *
+ * The tradeoff: two broken URLs in a row means the second one is attempted once before it errors,
+ * because nothing else can tell a good URL from a bad one without loading it. Losing one load of
+ * latency there buys a working image for every caller that swaps in a good URL.
+ *
+ * @param previous Source URL the component was watching before this render.
+ * @param current Source URL it is watching now.
+ * @param failed Whether the previous URL had already failed to load.
+ * @returns Whether the failure still applies to the current URL.
+ */
+export function failedAfterSrcChange(
+  previous: string | null | undefined,
+  current: string | null | undefined,
+  failed: boolean,
+): boolean {
+  return (previous ?? "") === (current ?? "") ? failed : false
 }
 
 /** How an {@link AvatarGroup} splits its members between the stack and the `+N` chip. */
@@ -194,7 +233,12 @@ const stackRing = "ring-2 ring-white dark:ring-gray-800"
 export interface AvatarProps {
   /** Full name. Supplies the initials, and the accessible name when `alt` is not given. */
   name?: string | null
-  /** Image URL. Rendered while it loads and after it loads, until the browser reports an error. */
+  /**
+   * Image URL. Rendered while it loads and after it loads, until the browser reports an error.
+   *
+   * A load failure is remembered per URL, not forever: changing `src` clears it, so a caller can
+   * replace a dead URL with a live one and get the image back.
+   */
   src?: string | null
   /**
    * Accessible name. Defaults to `name`.
@@ -223,12 +267,28 @@ export interface AvatarProps {
  *
  * Server-renderable, and props-and-ports only: the first render is the image face, the `error`
  * listener that switches to the initials is attached in the browser, and the state that flips is
- * local to this component. The error path itself is therefore not covered by the colocated
- * tests — they render markup with `preact-render-to-string` and this repository has no DOM
- * harness; {@link avatarFace} is the testable half of that decision.
+ * local to this component. That state does not outlive its `src` — a failure belongs to one URL, so
+ * {@link failedAfterSrcChange} clears it when the URL changes, and a caller can swap a dead URL for
+ * a live one or re-use the instance for a different member. The application half of it is the
+ * render-time comparison of the previous `src` against the current one, not an effect: rendering
+ * the new image in the same pass beats letting one frame of the old failure show through.
+ *
+ * The browser-only halves are not covered by the colocated tests — they render markup with
+ * `preact-render-to-string` and this repository has no DOM harness. {@link avatarFace} and
+ * {@link failedAfterSrcChange} are the testable halves of the two decisions; the `error` event and
+ * the reset that follows a `src` change are not verified here, only disclosed.
  */
 export function Avatar({ name, src, alt, size = "md", class: className }: AvatarProps) {
   const [failed, setFailed] = useState(false)
+  const [watching, setWatching] = useState(src)
+
+  if ((watching ?? "") !== (src ?? "")) {
+    const carried = failedAfterSrcChange(watching, src, failed)
+
+    setWatching(src)
+    if (carried !== failed) setFailed(carried)
+  }
+
   const face = avatarFace({ src, failed, name })
   const text = initials(name)
   const label = alt ?? (typeof name === "string" ? name.trim() : "")
@@ -288,11 +348,12 @@ export interface AvatarGroupProps {
 /**
  * Overlapping avatar stack for a handful of members, with a `+N` chip for the rest.
  *
- * The stack is one labelled list, not N labelled images: every avatar in it is decorative
- * (`alt=""`), and the single accessible name comes from {@link groupLabel} — the caller's `label`
- * plus the total count. That is what keeps a name from being announced twice, and what keeps the
- * members behind the chip reachable once the chip itself is `aria-hidden`, its number already
- * spoken by the group's label.
+ * `role="group"`, not a list. Every avatar in the stack is decorative (`alt=""`) and unnamed, so the
+ * list would announce `"list, 4 items"` beside a label that says `"Project members (6)"` — a total
+ * that the item count visibly contradicts. A group carries the same single accessible name from
+ * {@link groupLabel} and no second count, which keeps the members behind the chip reachable once
+ * the chip itself is `aria-hidden`, its number already spoken by the label. There is no ordering to
+ * convey either, so nothing is lost: the faces are one object, not a sequence.
  *
  * `max` and the item count are split by {@link groupSplit}, so the stack shows `max` avatars and
  * the chip reads `+<total - max>`. Nothing is rendered for the chip when nothing overflows.
@@ -303,23 +364,23 @@ export function AvatarGroup(
   const { visible, overflow } = groupSplit(items.length, max)
 
   return (
-    <ul
-      role="list"
+    <div
+      role="group"
       aria-label={groupLabel(label, items.length)}
       class={cn("-space-x-2 flex flex-wrap items-center", className)}
     >
       {items.slice(0, visible).map((item, index) => (
-        <li key={index} class="flex">
+        <span key={index} class="flex">
           <Avatar name={item.name} src={item.src} alt="" size={size} class={stackRing} />
-        </li>
+        </span>
       ))}
       {overflow > 0 && (
-        <li class="flex">
+        <span class="flex">
           <span aria-hidden="true" class={cn(base, boxClasses[size], stackRing, textClasses[size])}>
             {`+${overflow}`}
           </span>
-        </li>
+        </span>
       )}
-    </ul>
+    </div>
   )
 }
