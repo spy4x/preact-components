@@ -38,6 +38,33 @@ export {
   requireLabel,
 } from "./confirm-dialog.tsx"
 export { CopyButton, type CopyButtonProps } from "./copy-button.tsx"
+export {
+  activeDescendant,
+  Combobox,
+  type ComboboxKey,
+  comboboxKey,
+  type ComboboxKeyAction,
+  comboboxKeyAction,
+  type ComboboxKeyResult,
+  type ComboboxListboxContent,
+  comboboxListboxId,
+  type ComboboxNamingProps,
+  comboboxOptionId,
+  type ComboboxOptionState,
+  type ComboboxProps,
+  type ComboboxState,
+  defaultGetLabel,
+  filterItems,
+  fold,
+  leavesCombobox,
+  listboxContent,
+  matchesQuery,
+  naming,
+  nextComboboxState,
+  openingState,
+  selectableIndex,
+  typingState,
+} from "./combobox.tsx"
 export { Dropdown, type DropdownProps } from "./dropdown.tsx"
 export { EmptyState, type EmptyStateProps } from "./empty-state.tsx"
 export { ErrorState, type ErrorStateProps } from "./error-state.tsx"

@@ -10,6 +10,7 @@
     "./confidence-meter": "./confidence-meter.tsx",
     "./confirm-dialog": "./confirm-dialog.tsx",
     "./copy-button": "./copy-button.tsx",
+    "./combobox": "./combobox.tsx",
     "./dropdown": "./dropdown.tsx",
     "./empty-state": "./empty-state.tsx",
     "./error-state": "./error-state.tsx",
