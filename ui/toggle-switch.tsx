@@ -7,6 +7,18 @@ export interface ToggleSwitchProps {
   disabled?: boolean
   /** Accessible name, applied as `aria-label`. */
   label?: string
+  /**
+   * `id` of the `<button>`. The switch renders the button itself and forwards nothing, so this is
+   * the only way a caller can point a label, an `aria-describedby` or a test at the control.
+   */
+  id?: string
+  /**
+   * Ids of the elements that name this switch. The button cannot take a `for`, so a visible label
+   * outside it names it through this attribute instead — see {@link ToggleField}.
+   */
+  "aria-labelledby"?: string
+  /** Ids of the elements that describe this switch, typically its error and its hint. */
+  "aria-describedby"?: string
   class?: string
 }
 
@@ -21,13 +33,27 @@ const knob =
  *
  * Controlled: it renders `value` and reports the intended new value through `onToggle`, which
  * is where persistence belongs.
+ *
+ * The wiring props above exist because the control is a `<button>`: a wrapper cannot put an `id` on
+ * it by cloning, and it cannot attach a working `for`. A labelled row is
+ * {@link ToggleField} — import it rather than re-deriving the association.
  */
 export function ToggleSwitch(
-  { value, onToggle, disabled, label, class: className }: ToggleSwitchProps,
+  {
+    value,
+    onToggle,
+    disabled,
+    label,
+    id,
+    "aria-labelledby": ariaLabelledBy,
+    "aria-describedby": ariaDescribedBy,
+    class: className,
+  }: ToggleSwitchProps,
 ) {
   return (
     <button
       type="button"
+      id={id}
       class={cn(
         track,
         value ? "bg-purple-900 dark:bg-purple-700" : "bg-gray-200 dark:bg-gray-600",
@@ -36,6 +62,8 @@ export function ToggleSwitch(
       role="switch"
       aria-checked={value}
       aria-label={label}
+      aria-labelledby={ariaLabelledBy}
+      aria-describedby={ariaDescribedBy}
       disabled={disabled}
       onClick={() => onToggle(!value)}
     >
