@@ -30,5 +30,6 @@ export { LoadingSpinner, type LoadingSpinnerProps, type SpinnerSize } from "./lo
 export { OnOffButtons, type OnOffButtonsProps } from "./on-off-buttons.tsx"
 export { PageTitle, type PageTitleProps } from "./page-title.tsx"
 export { Table, type TableProps } from "./table.tsx"
+export { nextTabIndex, type TabItem, type TabOrientation, Tabs, type TabsProps } from "./tabs.tsx"
 export { type ToastItem, Toastr, type ToastrProps, type ToastVariant } from "./toastr.tsx"
 export { ToggleSwitch, type ToggleSwitchProps } from "./toggle-switch.tsx"

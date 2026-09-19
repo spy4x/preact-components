@@ -16,6 +16,7 @@
     "./on-off-buttons": "./on-off-buttons.tsx",
     "./page-title": "./page-title.tsx",
     "./table": "./table.tsx",
+    "./tabs": "./tabs.tsx",
     "./toastr": "./toastr.tsx",
     "./toggle-switch": "./toggle-switch.tsx"
   },
