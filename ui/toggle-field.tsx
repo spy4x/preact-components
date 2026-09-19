@@ -11,10 +11,14 @@ import { ToggleSwitch } from "./toggle-switch.tsx"
  * progress, select, textarea), so a `for` pointing at a button is inert markup: the label reads as
  * associated with nothing and activating it activates nothing. Two consequences:
  *
- * 1. `Field` emits `for={id}` unconditionally on its own label and offers no override, so every
- *    `ToggleSwitch` passed to it would carry a dead `for`. It also puts the control in a `mt-2`
- *    block below the label, which is neither the row a settings page needs nor fixable from
- *    outside.
+ * 1. `Field` would hand nothing useful here. It has the override a dead `for` needs —
+ *    `labelFor={false}` is exactly the flag a caller who wants a bare label passes — but it cannot
+ *    render this row: the control is the only child of a `mt-2` block and the label is rendered
+ *    outside it, either above or below, where a settings row puts the label and the switch side by
+ *    side (`justify-between items-center gap-3`) and spends `mt-2` on the message paragraphs
+ *    underneath. That placement is neither the row a settings page needs nor fixable from outside,
+ *    and reusing `Field` for its class tokens alone would mean rendering `mt-2` on a control that has
+ *    to sit next to its label.
  * 2. There is no `for` to write, so the association is split across the two mechanisms that do
  *    work for a button: `aria-labelledby` gives the switch the label text as its accessible name,
  *    and an `onClick` on the label performs the activation the browser will not. The handler calls

@@ -180,6 +180,12 @@ export function barHeightRem(): number {
  * reserved for it. The caller keeps cell content to one line where it wants the substitution to be
  * invisible, and `SkeletonText` per card is what a multi-line cell needs.
  *
+ * This row is where the wrapper's residual half pixel is spent. At a full 12-row table the skeleton
+ * wrapper measures `681px` against the real one's `681.5px`, and the difference is the **last** body
+ * row: a one-row `tbody` measures `52.5px` on both sides, where a populated one measures `53px` on
+ * every row but the last, so the two wrappers differ by exactly that half pixel at the end.
+ * {@link tableHeaderHeightRem} is not where it comes from.
+ *
  * @returns `3.3125`rem, `53px`.
  */
 export function tableRowHeightRem(): number {
@@ -400,7 +406,8 @@ const tableCell = "px-6"
  * Box of the real `Table`'s wrapper: same ring, radius, background, `min-h-[300px]` reservation and
  * `-mx-4 md:mx-0` bleed, so the box around the rows is the same one. The rows inside it are what the
  * heights on {@link tableRowHeightRem} pin, and the wrapper measures `681px` against `681.5px` at a
- * full 12-row table — see {@link tableHeaderHeightRem} for why that half pixel is spent there.
+ * full 12-row table — see {@link tableRowHeightRem} for why that half pixel is spent on the last
+ * body row rather than on the header.
  *
  * Duplicated from `table.tsx` rather than exported from there because that module is merged and
  * consumed; the two are kept in step by the contract documented on {@link SkeletonTable}.
