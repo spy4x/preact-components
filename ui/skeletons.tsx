@@ -155,11 +155,14 @@ export function lineBoxRem(): number {
  * Height a skeleton body row renders at, in `rem`.
  *
  * **This is a measurement, not arithmetic on the padding.** It reads `53px` in Chromium 151 beside
- * a real single-line `Table` row: that row's `<td>` is `52.5px` of `text-sm` line box (`20px`) plus
- * `py-4` (`32px`) plus the `tbody`'s `divide-y` hairline, and the skeleton row carries its own 1px
- * `border-t`, so the two occupy the same band. Deriving `3.25rem` here — or adding the padding to a
- * declared height — is the bug this constant replaced: `box-sizing: border-box` absorbs the padding,
- * so a declared `3.25rem` row renders `52px` and every row drifts a pixel.
+ * a real single-line `Table` row: that row's `<td>` measures `52.5px` — the `text-sm` line box plus
+ * `py-4`, with the half pixel the font's own content box adds — and the `tbody`'s `divide-y`
+ * hairline makes the painted band `53px`. The skeleton row carries its own 1px `border-t` and holds
+ * the same `20px` line box the real cell does, so the two bands line up exactly.
+ *
+ * Deriving `3.25rem` here — or adding the padding to a declared height — is the bug this constant
+ * replaced: `box-sizing: border-box` absorbs the padding, so a declared `3.25rem` row rendered
+ * `52px` and every row drifted a pixel.
  *
  * A cell wrapping to two lines makes the real row taller than one reserved row; the caller keeps
  * cell content to one line where it wants the substitution to be invisible.
