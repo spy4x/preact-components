@@ -35,6 +35,10 @@ export interface ModalProps {
    * Close-request port, called on Escape, a backdrop click, the header control and (from
    * `ConfirmDialog`) the cancel action. Return `false` to refuse: the dialog stays open. Refusal is
    * what makes the close cancellable; every other return value, `undefined` included, accepts it.
+   *
+   * Escape is the one path with an exception, and only on a platform that ignores `closedby` (no
+   * shipping WebKit): there the platform closes the dialog itself, so the port is notified and its
+   * refusal cannot be honoured — see the support contract on {@link Modal}.
    */
   onClose?: () => boolean | void
   /**
@@ -84,11 +88,44 @@ export interface ModalProps {
  * covered by that suite — and by no committed test in this repository:** that `showModal()` really
  * traps focus, that the `::backdrop` click reaches the predicate, that `body { padding-right }`
  * really removes the shift, that focus returns to the trigger, and that a refused Escape really keeps
- * the dialog open. `pages/verify.ts` drives headless Chromium over CDP but contains no modal,
+ * the dialog open where the platform honours `closedby` (see the support contract below).
+ * `pages/verify.ts` drives headless Chromium over CDP but contains no modal,
  * dialog or backdrop assertion at all (`grep -icE "modal|dialog|backdrop" pages/verify.ts` is `0`), so
  * it is not the place these are checked. They were verified with a throwaway CDP probe that was
  * deleted rather than committed, which means nothing in the tree reproduces those numbers — treat
  * them as reported, not as re-runnable. A consumer can check their own dialog the same way.
+ *
+ * **The `closedby` support contract, and what changes without it.** A refused Escape is honourable
+ * only where the platform honours `closedby`: the attribute keeps the platform's uncancellable close
+ * out of the picture, and the component's own `keydown` listener then routes Escape through
+ * {@link ModalProps.onClose} before anything has closed. No shipping WebKit honours it — Chrome/Edge
+ * 134+, Firefox 141+, Safari preview only — so the attribute alone is not a contract. Where
+ * `HTMLDialogElement` has no `closedBy` the attribute is inert, Escape closes the dialog whatever the
+ * port answers, and the component listens for the platform's `cancel` event instead: `cancel` is not
+ * cancelable — `preventDefault()` inside it is a measured no-op — so the port is *told*, never asked,
+ * and the component's own open state follows the dialog. That last part is the whole point of the
+ * branch: believing a refusal there is what left the component reporting `"refused"` for a dialog
+ * that had already closed. {@link supportsClosedBy} detects the capability,
+ * {@link escapeCloseStrategy} turns it into a plan, {@link bindEscapeClose} registers it and
+ * {@link platformCloseHandler} is the fallback's reaction.
+ *
+ * Component-initiated closes are unaffected and stay refusable everywhere: a refused header control
+ * or backdrop click keeps the dialog open on every platform, because nothing has closed it yet. Two
+ * consequences of the fallback, stated plainly. On a platform that ignores `closedby` a refusing port
+ * is still notified — it is how the caller learns the dialog went — but its refusal is not honoured,
+ * because it cannot be. And a caller that owns `open` itself must move that flag to `false` when
+ * told, or its own state will claim an open dialog the platform has closed; this component cannot
+ * settle a flag it does not own. Which of the two branches ran is decided at effect time from
+ * `HTMLDialogElement.prototype`, so the rendered markup never varies — the attribute is always there.
+ *
+ * The numbers behind this paragraph are reported, not reproducible from the tree, exactly as the
+ * browser-only list above: measured in headless Chromium with `HTMLDialogElement.prototype.closedBy`
+ * deleted *and* the `closedby` attribute stripped from the mounted element — a WebKit-like engine,
+ * simulated the same throwaway way, not WebKit itself. With this branch a refusing port was told once,
+ * the state settled, the element unmounted and the page's scroll lock released; before it, the dialog
+ * closed while the element stayed rendered and both `body` and the document element stayed
+ * `overflow: hidden`. No shipping WebKit exists on that machine, so what a real Safari does with the
+ * `cancel` listener remains unverified.
  *
  * **The `open` attribute is deliberately not rendered.** A `<dialog open>` is a *non-modal* dialog:
  * it sits in the document flow with no top layer, no focus containment and no `cancel` event, and
@@ -189,7 +226,8 @@ export function Modal(
       scrollLockPadding(widthBefore, widthLocked),
     )
 
-    // Escape is handled here, not by the platform. Two measured facts make that necessary:
+    // Escape is handled here, not by the platform — but *how* depends on whether the platform honours
+    // `closedby`. Two measured facts set the table:
     //
     // 1. The `cancel` event is **not cancelable** — `event.preventDefault()` inside it is a no-op and
     //    the dialog closes anyway (verified for a raw `<dialog>` in Chromium 151, with and without
@@ -198,19 +236,44 @@ export function Modal(
     //    even fire — but `keydown` still reaches the dialog, which is the event that can be routed
     //    through the port before anything has decided to close.
     //
-    // `closedby="none"` is on the rendered element for exactly this reason: it takes the
-    // uncancellable platform close out of the picture so the refusal is ours to honour. `close()`
-    // still works, which is what `requestClose` calls once the port accepts.
+    // `closedby="none"` is on the rendered element for exactly this reason: it takes the uncancellable
+    // platform close out of the picture so the refusal is ours to honour. `close()` still works, which
+    // is what `requestClose` calls once the port accepts. But the attribute is honoured by Chrome/Edge
+    // 134+ and Firefox 141+ and by no shipping WebKit, so it cannot be the whole mechanism: on a
+    // platform that ignores it, Escape closes the dialog regardless of the port. `escapeCloseStrategy`
+    // picks the listener for each world, `bindEscapeClose` registers exactly one of them, and
+    // `platformCloseHandler` is what the fallback does about a close it cannot stop.
+    const escapeStrategy = escapeCloseStrategy(
+      supportsClosedBy(globalThis.HTMLDialogElement?.prototype),
+    )
+
+    // Where `closedby` is honoured, this listener *is* the Escape behaviour. Nothing has closed the
+    // dialog yet, so the port can refuse and the refusal holds: `requestClose` leaves the dialog open.
     const onKeyDown = (event: KeyboardEvent) => {
       // The dialog may already be closing down a path that did not refresh this render, which is what
       // the second argument rules out.
       if (!isDismissKey(event, dialog.open || dialog.matches(":modal"))) return
       requestClose(dialog)
     }
-    dialog.addEventListener("keydown", onKeyDown)
+
+    // Where it is ignored, the platform owns Escape: `cancel` fires with the close already under way
+    // and uncancellable, so the port is told rather than asked and the component's own state is
+    // settled closed. That is what stops a refusing port from being left believing an open dialog
+    // that the browser has already closed. The lifecycle cleanup then runs as for any other close:
+    // scroll lock released, focus restored.
+    const onCancel = platformCloseHandler({
+      refusalHolds: escapeStrategy.refusalHolds,
+      onClose,
+      settleOpen,
+    })
+
+    const unbindEscape = bindEscapeClose(dialog, escapeStrategy, {
+      keydown: onKeyDown,
+      cancel: onCancel,
+    })
 
     return () => {
-      dialog.removeEventListener("keydown", onKeyDown)
+      unbindEscape()
       lock.release()
 
       // Decide before closing, because `close()` moves focus itself: measured, `dialog.close()` leaves
@@ -526,10 +589,11 @@ export const DISMISS_KEY = "Escape"
 /**
  * Whether a keyboard event is a request to dismiss the dialog.
  *
- * Pure, and the whole rule the dialog's `keydown` handler applies: Escape only. The platform's own
- * Escape path is disabled by `closedby="none"` because the `cancel` event is not cancelable — see the
- * handler's comment — so this predicate plus `requestClose` *is* the Escape behaviour, not a
- * decoration on top of the platform's.
+ * Pure, and the whole rule the dialog's `keydown` handler applies: Escape only. Where the platform
+ * honours `closedby`, its own Escape path is disabled by `closedby="none"` because the `cancel` event
+ * is not cancelable — see the handler's comment — so this predicate plus `requestClose` *is* the
+ * Escape behaviour there, not a decoration on top of the platform's. Where it does not, the platform
+ * closes on Escape itself and `keydown` is not consulted at all; see {@link escapeCloseStrategy}.
  *
  * @param event The keyboard event.
  * @param open Whether the dialog is still open; a dismissed dialog is not asked to close twice.
@@ -538,6 +602,152 @@ export const DISMISS_KEY = "Escape"
 export function isDismissKey(event: { key: string }, open: boolean): boolean {
   if (!open) return false
   return event.key === DISMISS_KEY
+}
+
+/**
+ * Whether a dialog implementation knows the `closedby` attribute.
+ *
+ * The support floor this component is written against: `closedby` is honoured by Chrome/Edge 134+
+ * and Firefox 141+, and by **no shipping WebKit** — Safari has it in preview only. Presence on the
+ * prototype is the check, deliberately not the property's value: `closedBy` is a reflected IDL
+ * accessor, so reading it on the prototype itself has no element to reflect and throws, while `"in"`
+ * answers without invoking the getter.
+ *
+ * The prototype arrives as an argument rather than being read from a global here, because a global is
+ * not a value a DOM-free suite can swap: {@link Modal} passes `globalThis.HTMLDialogElement?.prototype`
+ * at effect time, and the tests pass plain objects.
+ *
+ * @param dialogPrototype `HTMLDialogElement.prototype`, or any object whose property chain should
+ *   answer. Pass the prototype, not the constructor — a constructor carries no `closedBy` of its own.
+ * @returns `true` when the implementation exposes `closedBy`, i.e. when the attribute is honoured.
+ */
+export function supportsClosedBy(dialogPrototype: unknown): boolean {
+  if (dialogPrototype === null || dialogPrototype === undefined) return false
+  // `in` throws on a primitive, and a capability check that throws inside an effect is worse than one
+  // that reports no support.
+  if (typeof dialogPrototype !== "object" && typeof dialogPrototype !== "function") return false
+  return "closedBy" in dialogPrototype
+}
+
+/**
+ * How Escape is handled on a platform, given whether it honours `closedby`.
+ *
+ * A decision table, and the only place this file encodes the support matrix. It is exported because
+ * the two branches cannot both be observed from a DOM-free suite: which listener the effect registers
+ * is a decision, so the decision is a value a test can hold.
+ *
+ * Where `closedby` is honoured, the attribute stops the platform's uncancellable close and the
+ * component's own `keydown` listener is the whole Escape behaviour, so the port is *asked* before
+ * anything closes and a refusal holds. Where it is not, the platform closes the dialog on Escape
+ * itself; all that is left is to hear about it, so the `cancel` listener is registered and the port
+ * is *told* with the close already under way. The two are mutually exclusive on purpose: registering
+ * both would route one Escape through the port twice — a refused `keydown` would be followed by the
+ * platform's `cancel` for the same keystroke.
+ */
+export interface EscapeCloseStrategy {
+  /** Register a `keydown` listener: the port is consulted before anything has closed. */
+  readonly listensForKeydown: boolean
+  /** Register a `cancel` listener: the platform is closing already and the port is told after. */
+  readonly listensForCancel: boolean
+  /**
+   * Whether the close port's `false` keeps the dialog open on this path.
+   *
+   * `false` wherever {@link EscapeCloseStrategy.listensForCancel} is, and that is the difference that
+   * matters: a refusal that cannot hold must not be reported as holding.
+   */
+  readonly refusalHolds: boolean
+}
+
+/**
+ * Choose the Escape plan for a platform.
+ *
+ * @param closedBySupported Whether the platform honours `closedby`; see {@link supportsClosedBy}.
+ * @returns The listeners to register and whether a refusal can hold on this platform.
+ */
+export function escapeCloseStrategy(closedBySupported: boolean): EscapeCloseStrategy {
+  if (closedBySupported) {
+    return { listensForKeydown: true, listensForCancel: false, refusalHolds: true }
+  }
+  return { listensForKeydown: false, listensForCancel: true, refusalHolds: false }
+}
+
+/** The listener surface {@link bindEscapeClose} needs: a structural subset of `HTMLDialogElement`. */
+export interface EscapeCloseTarget {
+  /**
+   * Register a listener; the platform passes the event. Declared with method syntax, as the DOM does,
+   * so the narrower `keydown` handler is accepted without a cast.
+   */
+  addEventListener(type: string, listener: (event: Event) => void): void
+  /** Remove the same listener reference. */
+  removeEventListener(type: string, listener: (event: Event) => void): void
+}
+
+/** The two handlers an {@link EscapeCloseStrategy} can ask for, keyed by the event they belong to. */
+export interface EscapeCloseHandlers {
+  /** Used where the platform honours `closedby`. */
+  keydown: (event: KeyboardEvent) => void
+  /** Used where it does not. */
+  cancel: () => void
+}
+
+/**
+ * Register the one Escape listener a strategy asks for, and hand back how to undo it.
+ *
+ * Structurally typed so the decision "which event carries Escape here" is drivable and assertable
+ * with a stub target — this repository has no DOM, and a listener left behind or registered twice is
+ * exactly the kind of defect that would otherwise reach a browser unobserved.
+ *
+ * @param target The dialog element, or a stub that records what was registered.
+ * @param strategy The plan; see {@link escapeCloseStrategy}.
+ * @param handlers Both handlers, of which exactly one is registered.
+ * @returns Removes the registered listener, and nothing else.
+ */
+export function bindEscapeClose(
+  target: EscapeCloseTarget,
+  strategy: EscapeCloseStrategy,
+  handlers: EscapeCloseHandlers,
+): () => void {
+  if (strategy.listensForKeydown) {
+    // The DOM types a listener's parameter as `Event`; this handler narrows to the event it is
+    // registered for, which `keydown` always delivers. One cast, at the one place the DOM's typing is
+    // wider than the port — same shape as the cast in `dialogHeldFocus`.
+    const listener = handlers.keydown as (event: Event) => void
+    target.addEventListener("keydown", listener)
+    return () => target.removeEventListener("keydown", listener)
+  }
+  const listener = handlers.cancel
+  target.addEventListener("cancel", listener)
+  return () => target.removeEventListener("cancel", listener)
+}
+
+/** What {@link platformCloseHandler} needs: the strategy's verdict, the port and the state setter. */
+export interface PlatformCloseDeps {
+  /** Whether a refusal can hold on this path; see {@link EscapeCloseStrategy.refusalHolds}. */
+  refusalHolds: boolean
+  /** The caller's close port, notified and not consulted. */
+  onClose?: () => boolean | void
+  /** Settle the component's own open state. A no-op for a caller-owned (`open` prop) dialog. */
+  settleOpen: (open: boolean) => void
+}
+
+/**
+ * Build the handler for a close the platform performs itself: Escape where `closedby` is ignored.
+ *
+ * This is the branch that removes the state desync the issue measured. The port is **told, never
+ * asked**, because there is nothing left to ask: `cancel` is not cancelable — `preventDefault()`
+ * inside it is a no-op — and the dialog closes whatever the port answers. Discarding that answer is
+ * the point: reporting a refusal here is what left a caller believing an open dialog that the
+ * browser had already closed. So the component's own open state follows the dialog instead. Where the
+ * refusal could hold, the keydown path is in charge and this handler is never registered.
+ *
+ * @param deps The strategy's verdict, the close port and the state setter.
+ * @returns The `cancel` listener.
+ */
+export function platformCloseHandler(deps: PlatformCloseDeps): () => void {
+  return () => {
+    deps.onClose?.()
+    if (!deps.refusalHolds) deps.settleOpen(false)
+  }
 }
 
 /**

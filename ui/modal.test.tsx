@@ -6,17 +6,22 @@ import {
   backdropClickDismisses,
   backdropDismissesByDefault,
   type BackdropHitTarget,
+  bindEscapeClose,
   clientWidthWithoutScrollbar,
   dialogHeldFocus,
   type DialogRect,
   dialogTitleId,
   DISMISS_KEY,
+  type EscapeCloseHandlers,
+  escapeCloseStrategy,
   isBackdropClick,
   isDismissKey,
   Modal,
+  platformCloseHandler,
   restoreFocus,
   scrollLockPadding,
   shouldRetargetFocus,
+  supportsClosedBy,
 } from "./modal.tsx"
 /**
  * The modal's source, for assertions about a parameter default.
@@ -173,6 +178,36 @@ describe("Modal", () => {
     expect(render(<Modal open title="Delete">body</Modal>)).toContain('closedby="none"')
   })
 
+  it("renders closedby=none whichever platform will read it", () => {
+    // Regression guard for the fix's shape. The attribute is static markup while the platform branch
+    // lives in the effect — this suite renders on the server, where there is no `HTMLDialogElement`
+    // to detect with, so the two platforms cannot produce different markup here. Where the attribute
+    // is honoured it is the mechanism a refusal leans on; where it is ignored it is inert and the
+    // `cancel` fallback takes over. Dropping it from either world would break the supported one.
+    const html = render(<Modal open title="Delete">body</Modal>)
+
+    expect(html).toContain('closedby="none"')
+    expect(html.match(/closedby=/g)?.length).toBe(1)
+  })
+
+  it("gates its Escape branch on the platform, not on the attribute alone", () => {
+    // The load-bearing line of the fix, pinned at the source. `supportsClosedBy`, `escapeCloseStrategy`
+    // and `bindEscapeClose` are all covered directly below, but nothing in a DOM-free suite observes
+    // *which* of them the effect consults: a refactor that passed `true` unconditionally would leave
+    // the fallback dead code with every other test in this file still green.
+    const source = modalDialogSource()
+
+    expect(source).toContain("supportsClosedBy(globalThis.HTMLDialogElement?.prototype)")
+    expect(source).toContain('addEventListener("cancel"')
+    expect(source).toContain('removeEventListener("cancel"')
+    // The fallback's wiring, as text. Passing the state setter through is not behaviour a DOM-free
+    // suite can observe, but unhooking it — handing `platformCloseHandler` a no-op `settleOpen` — is
+    // the one mutation of this fix that would otherwise go unnoticed, and it is exactly the mutation
+    // that puts the state desync back. Stated for what it is: a presence check, not a behavioural one.
+    expect(source).toContain("platformCloseHandler({")
+    expect(source).toContain("settleOpen,")
+  })
+
   it("tints the surface in the danger register", () => {
     expect(render(<Modal open title="Delete" tone="danger" />)).toContain("border-red-300")
   })
@@ -287,6 +322,197 @@ describe("isDismissKey", () => {
     // The handler can fire for a dialog that is already closing down another path; a second request
     // would call the caller's close port twice for one dismissal.
     expect(isDismissKey({ key: "Escape" }, false)).toBe(false)
+  })
+})
+
+describe("supportsClosedBy", () => {
+  it("detects the attribute where the prototype exposes it", () => {
+    // What Chrome/Edge 134+ and Firefox 141+ answer for `HTMLDialogElement.prototype`. Safari, whose
+    // WebKit honours `closedby` in preview only, is the other branch.
+    expect(supportsClosedBy({ closedBy: "auto" })).toBe(true)
+  })
+
+  it("answers from presence alone, never by reading the property", () => {
+    // The reason this cannot be a value check: `closedBy` is a reflected IDL accessor, so reading it
+    // on the prototype itself has no element to reflect and throws `Illegal invocation`. `in` asks
+    // whether the property is there without invoking its getter, which is the whole question.
+    const proto = Object.defineProperty({}, "closedBy", {
+      get() {
+        throw new Error("Illegal invocation")
+      },
+    })
+
+    expect(supportsClosedBy(proto)).toBe(true)
+  })
+
+  it("reports no support on a prototype without it", () => {
+    // A shipping WebKit prototype: no `closedBy`, escape closes the dialog regardless of the port.
+    expect(supportsClosedBy({})).toBe(false)
+  })
+
+  it("reports no support when there is no prototype at all", () => {
+    // `globalThis.HTMLDialogElement?.prototype` in an environment that has no dialog element.
+    expect(supportsClosedBy(undefined)).toBe(false)
+    expect(supportsClosedBy(null)).toBe(false)
+  })
+
+  it("reports no support for a value that is not a prototype", () => {
+    // `in` throws a `TypeError` on a primitive, and a capability probe that throws inside the
+    // lifecycle effect would take the dialog's whole mount down with it.
+    expect(supportsClosedBy("closedBy")).toBe(false)
+    expect(supportsClosedBy(0)).toBe(false)
+  })
+})
+
+describe("escapeCloseStrategy", () => {
+  it("asks the port first where the platform honours closedby", () => {
+    expect(escapeCloseStrategy(true)).toEqual({
+      listensForKeydown: true,
+      listensForCancel: false,
+      refusalHolds: true,
+    })
+  })
+
+  it("listens for the platform's own close where it does not", () => {
+    expect(escapeCloseStrategy(false)).toEqual({
+      listensForKeydown: false,
+      listensForCancel: true,
+      refusalHolds: false,
+    })
+  })
+
+  it("never asks for both listeners, which would report one Escape twice", () => {
+    // Mutual exclusion is the point: a refused `keydown` request followed by the platform's `cancel`
+    // for the same keystroke would call the caller's close port twice for one dismissal.
+    for (const supported of [true, false]) {
+      const strategy = escapeCloseStrategy(supported)
+
+      expect(strategy.listensForKeydown, String(supported)).toBe(supported)
+      expect(strategy.listensForCancel, String(supported)).toBe(!supported)
+    }
+  })
+
+  it("lets a refusal hold exactly where the keydown path is in charge", () => {
+    // The claim the fallback rests on. Where `cancel` is the event the dialog is already closing —
+    // `preventDefault()` inside it is a no-op — so a port answering `false` must not be recorded as
+    // having refused: that phantom is the state desync this fix removes.
+    for (const supported of [true, false]) {
+      const strategy = escapeCloseStrategy(supported)
+
+      expect(strategy.refusalHolds, String(supported)).toBe(strategy.listensForKeydown)
+      expect(strategy.refusalHolds, String(supported)).toBe(!strategy.listensForCancel)
+    }
+  })
+})
+
+describe("bindEscapeClose", () => {
+  const handlers: EscapeCloseHandlers = { keydown: () => {}, cancel: () => {} }
+
+  /** A target that records what a browser would have been asked to do. */
+  function recordingTarget() {
+    const calls: (string | ((event: Event) => void))[] = []
+    return {
+      calls,
+      addEventListener(type: string, listener: (event: Event) => void) {
+        calls.push(type, listener)
+      },
+      removeEventListener(type: string, listener: (event: Event) => void) {
+        calls.push(`-${type}`, listener)
+      },
+    }
+  }
+
+  it("registers the keydown listener where the platform honours closedby", () => {
+    const target = recordingTarget()
+
+    bindEscapeClose(target, escapeCloseStrategy(true), handlers)
+
+    expect(target.calls).toEqual(["keydown", handlers.keydown])
+  })
+
+  it("registers the cancel listener where it does not", () => {
+    const target = recordingTarget()
+
+    bindEscapeClose(target, escapeCloseStrategy(false), handlers)
+
+    expect(target.calls).toEqual(["cancel", handlers.cancel])
+  })
+
+  it("registers exactly one listener, so one Escape is not routed twice", () => {
+    for (const supported of [true, false]) {
+      const target = recordingTarget()
+
+      bindEscapeClose(target, escapeCloseStrategy(supported), handlers)
+
+      expect(target.calls.length, String(supported)).toBe(2)
+    }
+  })
+
+  it("unbinds the very listener it bound", () => {
+    const target = recordingTarget()
+    const unbind = bindEscapeClose(target, escapeCloseStrategy(false), handlers)
+
+    unbind()
+
+    // Same event and the same function reference. A mismatch leaks a live listener, and a listener
+    // left on a dialog whose render is gone routes Escape into a port that no longer exists.
+    expect(target.calls).toEqual(["cancel", handlers.cancel, "-cancel", handlers.cancel])
+  })
+})
+
+describe("platformCloseHandler", () => {
+  it("tells the port, discards a refusal, and settles the state instead", () => {
+    // The exact desync the issue measured: `onClose` answering `false` while the platform closed the
+    // dialog anyway, leaving the component believing it is open. The port hears about the close and
+    // its answer is thrown away, because it cannot be honoured — and the state follows the dialog.
+    const seen: unknown[] = []
+    const handler = platformCloseHandler({
+      refusalHolds: false,
+      onClose: () => {
+        seen.push("onClose")
+        return false
+      },
+      settleOpen: (open) => seen.push(open),
+    })
+
+    handler()
+
+    expect(seen).toEqual(["onClose", false])
+  })
+
+  it("settles the state even when the caller has no port to tell", () => {
+    const settled: boolean[] = []
+    platformCloseHandler({ refusalHolds: false, settleOpen: (open) => settled.push(open) })()
+
+    expect(settled).toEqual([false])
+  })
+
+  it("does not double-count a close the port accepted", () => {
+    // An accepting port returns `undefined`, the common case; the state still settles once, so the
+    // component never needs a second close event to catch up with the browser.
+    const settled: boolean[] = []
+    platformCloseHandler({
+      refusalHolds: false,
+      onClose: () => {},
+      settleOpen: (open) => settled.push(open),
+    })()
+
+    expect(settled).toEqual([false])
+  })
+
+  it("leaves the state alone where a refusal can hold", () => {
+    // Unreachable with today's platforms — this handler is registered only on the branch where a
+    // refusal cannot hold — but it is the other side of the decision table, and it is what a future
+    // platform with a cancellable `cancel` would land on. Gating the settle on the strategy's verdict
+    // is why the verdict is carried in here at all.
+    const settled: boolean[] = []
+    platformCloseHandler({
+      refusalHolds: true,
+      onClose: () => false,
+      settleOpen: (open) => settled.push(open),
+    })()
+
+    expect(settled).toEqual([])
   })
 })
 
