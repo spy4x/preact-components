@@ -9,6 +9,7 @@
 
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
+import { packageIds } from "@preact-components/ui-guide/registry"
 import { normalizeSource, normalizeSources } from "./tailwind-sources.ts"
 
 describe("normalizeSource", () => {
@@ -51,5 +52,19 @@ describe("normalizeSources", () => {
         { base: "/repo/pages/", pattern: "./src", negated: false },
       ]).map((entry) => entry.base),
     ).toEqual(["/repo/ui", "/repo/pages/src"])
+  })
+})
+
+describe("styles.css", () => {
+  it("scans every package the catalogue draws components from", async () => {
+    // A section whose package is not scanned renders unstyled: the markup is right and the classes
+    // are silently absent from the emitted CSS. Read from the stylesheet itself rather than from a
+    // list here, so adding a package to the registry fails until it is scanned too.
+    const stylesheet = await Deno.readTextFile(new URL("../styles.css", import.meta.url))
+
+    expect(packageIds.length).toBeGreaterThan(0)
+    for (const id of packageIds) {
+      expect(stylesheet, id).toContain(`@source "../${id}"`)
+    }
   })
 })

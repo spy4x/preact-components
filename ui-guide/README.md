@@ -1,8 +1,9 @@
 # `@preact-components/ui-guide`
 
 The live component catalogue, shipped as a component so every app that imports the library gets it
-free. It renders one demo per component `@preact-components/ui` exports, the icon gallery, and the
-design-system rules the components are meant to be assembled in.
+free. It renders one demo per component of every package it covers — `ui`, `charts`, `system`, `crud`
+and `signals` — the icon gallery, and the design-system rules components are meant to be assembled
+in.
 
 Ported from `financy`'s modular `routes/ui-guide/*` (the better structure of the two source guides)
 and `gb`'s `islands/system/UIGuide.tsx`, whose icon gallery is kept verbatim in spirit.
@@ -47,30 +48,44 @@ alive.
 
 ### 1. Compile-time: rename, removal and a missing demo fail `deno check`
 
-`registry.ts` derives its vocabulary from the package instead of maintaining a list:
+`registry.ts` derives each package's vocabulary from that package's own module namespace instead of
+maintaining a list:
 
 ```ts
-export type ComponentName = Exclude<keyof typeof ui, HelperExport> // 15 components
-export type DemoFragment<Names extends ComponentName> = Record<Names, Demo>
+export type ComponentNamesOf<P extends PackageId> = Exclude<
+  keyof (typeof PACKAGES)[P]["namespace"],
+  (typeof PACKAGES)[P]["helpers"][number]
+>
+export type ComponentName = { [P in PackageId]: ComponentNamesOf<P> }[PackageId]
 ```
 
-Each section registers its demos through `satisfies DemoFragment<"Badge" | …>`, `registry.ts`
-compares the union of everything registered against `keyof typeof ui`, and `registryDrift` is typed
-`DriftReport` — a conditional type that collapses to `true` only while the two match exactly. Four
-kinds of drift all fail the build, each naming the offending component:
+A section declares the package it documents (`package: "ui"`), registers its demos through
+`satisfies DemoFragment<"Badge" | …>`, and `registryDrift` is typed `DriftReport` — one conditional
+report per package, collapsing to `true` only while that package's demos, pending list and helpers
+account for its exports exactly. Five kinds of drift all fail the build, each naming the offending
+component and, with it, the package whose report is wrong:
 
-| Drift                                     | Error                                                            |
-| ----------------------------------------- | ---------------------------------------------------------------- |
-| component exported with no demo           | `Type 'boolean' is not assignable to '{ missingDemo: "Badge" }'` |
-| demo for a component that is not exported | `'{ unexpectedDemo: "BadgePill" }'`                              |
-| rename that reached only one side         | `'"BadgePill"' does not satisfy the constraint 'ComponentName'`  |
-| one demo dropped from a section fragment  | `Property 'Badge' is missing in type 'DemoFragment<"Badge">'`    |
+| Drift                                          | Error                                                            |
+| ---------------------------------------------- | ---------------------------------------------------------------- |
+| exported with no demo and no pending entry     | `Type 'boolean' is not assignable to '{ missingDemo: "Badge" }'` |
+| demo for a component that is not exported      | `'{ unexpectedDemo: "BadgePill" }'`                              |
+| a pending component that has been demoed since | `'{ stalePending: "BadgePill" }'`                                |
+| a component demoted into a helper list         | `Type '"Badge"' is not assignable to type '"buttonClasses" …'`   |
+| one demo dropped from a section fragment       | `Property 'Badge' is missing in type 'DemoFragment<"Badge">'`    |
 
 Prop vocabulary is guarded one level down: demos iterate a `Record<Union, …>` keyed by a prop's own
 union type (`ButtonVariant`, `BadgeColor`, `SpinnerSize`, `BadgeType`, `ToastVariant`), so adding a
 variant to a component fails `deno check` until the catalogue shows it.
 
-### 2. Runtime: a component without a demo is visible, not absent
+### 2. Declared gaps are a list, not an omission
+
+A component whose demo is honestly not written yet belongs in `PENDING_DEMOS`, not in a helper list: a
+helper says "this is not a component", a pending entry says "this is one, and nobody has written it
+up". The list is typed over the same union, so it cannot name something the package does not export,
+and the guide prints it (`pendingDemos`) as an amber worklist under the title. `charts`, `system` and
+`crud` each have one live card and the rest of their components on that list.
+
+### 3. Runtime: a component without a demo is visible, not absent
 
 `missingDemos(registry)` is what the catalogue renders. It is exported and takes the registry as an
 argument precisely so it can be driven with an incomplete one: `catalogue.test.tsx` passes registries
@@ -79,8 +94,19 @@ is right, while `registry.test.ts` asserts the report is empty for the real regi
 
 A total registry means the banner never shows in a healthy tree — the compile-time guard fires first.
 The banner is the backstop for a deliberately trimmed guide, and it is tested rather than assumed.
+`missingDemos` covers the cards the sections declare; the declared gaps are `pendingDemos`' business,
+which is why a healthy page shows the amber list and no red banner.
 
-### 3. The theme's class names are checked against the theme
+### 4. A package added later has to make a decision
+
+`registry.test.ts` walks the top-level directories for a `deno.json` and fails when one is neither a
+`PACKAGES` source nor an `EXCLUDED_PACKAGES` entry with a reason. Covering a package and excluding it
+are both one line, both typed, and both visible in review — the difference between a package that is
+deliberately out of the guide and one nobody noticed. That is how `icons/` (the gallery reads the
+barrel itself), `theme/` (CSS), `pages/` (the demo's host app, not a package) and `ui-guide/` itself
+are written down.
+
+### 5. The theme's class names are checked against the theme
 
 `instructions.tsx` renders the design-system rules from `documentedClasses`, and
 `instructions.test.ts` reads `theme/preset.css` and fails if any documented class is not defined
@@ -90,18 +116,31 @@ test pins that behaviour down.
 
 ## Coverage
 
-All 15 components `@preact-components/ui` exports are demoed, grouped into five sections:
+20 components have a card each, across nine sections. The other 25 — of `charts`, `system` and
+`crud` — are declared in `PENDING_DEMOS` and printed as the worklist under the title:
 
-| Section      | Components                                                                   |
-| ------------ | ---------------------------------------------------------------------------- |
-| **Badges**   | `Badge`                                                                      |
-| **Buttons**  | `Button`, `CopyButton`, `GeoButton`                                          |
-| **Display**  | `PageTitle`, `ConfidenceMeter`, `Table`                                      |
-| **Feedback** | `ErrorState`, `LoadingSpinner`, `LoadingSkeleton`, `LoadingScreen`, `Toastr` |
-| **Inputs**   | `ToggleSwitch`, `OnOffButtons`, `Dropdown`                                   |
+| Section      | Package   | Components                                                                   |
+| ------------ | --------- | ---------------------------------------------------------------------------- |
+| **Badges**   | `ui`      | `Badge`                                                                      |
+| **Buttons**  | `ui`      | `Button`, `CopyButton`, `GeoButton`                                          |
+| **Display**  | `ui`      | `PageTitle`, `ConfidenceMeter`, `Table`                                      |
+| **Feedback** | `ui`      | `ErrorState`, `LoadingSpinner`, `LoadingSkeleton`, `LoadingScreen`, `Toastr` |
+| **Inputs**   | `ui`      | `ToggleSwitch`, `OnOffButtons`, `Dropdown`                                   |
+| **Charts**   | `charts`  | `Bars` — 7 components pending                                                |
+| **System**   | `system`  | `Breadcrumb` — 7 components pending                                          |
+| **CRUD**     | `crud`    | `CrudList` — 11 components pending                                           |
+| **Signals**  | `signals` | `For`, `Show` — the package's only components                                |
 
-The registry is checked against the barrel, not against this table, so the table cannot drift either
-— `registry.test.ts` fails if a section gains or loses a component.
+The five `ui` sections are written up; the four newer cards are placeholders with a one-line summary
+and a live render, and their section blurbs say so — the real demos land in follow-up PRs. `signals`
+gets two cards rather than one because it has exactly two components and both are a signal and a
+line of JSX; the parts that make the package hard to read (`buildModelStore`, `createListState`,
+`createToastStore`, `useUrlFilters`) are factories, declared as helpers, and need a written-up
+example rather than a card.
+
+The registry is checked against the barrels, not against this table, so the table cannot drift either
+— `registry.test.ts` fails if a section gains or loses a component, and it fails if a covered package
+has a component that is neither demoed nor pending.
 
 Two demos needed a `class` override to be renderable inside a page: `LoadingScreen` is a
 full-viewport overlay and `Toastr` is pinned to the page corner, so both are shown inside a
@@ -139,9 +178,9 @@ deno task check             # from the repository root, what CI runs
 deno test --allow-read --allow-env ui-guide/   # this package alone
 ```
 
-Four suites: `registry.test.ts` (drift guard), `catalogue.test.tsx` (every demo renders, banner
-behaviour, route descriptor), `icons.test.tsx` (gallery exhaustiveness, filter), and
-`instructions.test.ts` (theme class drift). Tests render real markup with `preact-render-to-string`
+Four suites: `registry.test.ts` (drift guard, package coverage, pending bookkeeping),
+`catalogue.test.tsx` (every demo renders, banner and worklist behaviour, route descriptor),
+`icons.test.tsx` (gallery exhaustiveness, filter), and `instructions.test.ts` (theme class drift). Tests render real markup with `preact-render-to-string`
 and assert on it; no DOM, no browser.
 
 `preact-render-to-string` is pinned in this package's `deno.json` for the same reason as in `ui/`:

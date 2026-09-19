@@ -27,7 +27,7 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 import { demoElementId } from "./src/deep-link.ts"
 import { renderDocument } from "./src/document.ts"
 import { renderApp } from "./src/prerender.tsx"
-import { componentNames } from "@preact-components/ui-guide/registry"
+import { catalogueNames } from "@preact-components/ui-guide/registry"
 import { DEFAULT_BASE, DEFAULT_ORIGIN, normalizeBase } from "./src/site.ts"
 import { normalizeSources } from "./src/tailwind-sources.ts"
 
@@ -182,9 +182,10 @@ async function main(): Promise<void> {
   const appHtml = renderApp()
 
   // The one thing this page adds to the catalogue is its deep links, and they address `demo-<Name>`
-  // ids the guide renders. Asserting them here means a rename in `ui-guide` fails the Pages build
-  // instead of shipping links that point nowhere.
-  const missing = componentNames.filter((name) => !appHtml.includes(`id="${demoElementId(name)}"`))
+  // ids the guide renders. The navigation has a chip per card in every section — `ui/`'s and the
+  // other packages' alike — so the assertion is over the whole catalogue rather than over the ui
+  // barrel: a card missing from any section would ship a link that points nowhere.
+  const missing = catalogueNames.filter((name) => !appHtml.includes(`id="${demoElementId(name)}"`))
   if (missing.length > 0) {
     throw new Error(`no demo card for ${missing.join(", ")} — deep links would point nowhere`)
   }
@@ -211,7 +212,7 @@ async function main(): Promise<void> {
   await Deno.writeFile(join(DIST_DIRECTORY, "index.html"), html)
 
   console.log(
-    `  index.html ${kilobytes(html.length)} · prerendered ${componentNames.length} components\n` +
+    `  index.html ${kilobytes(html.length)} · prerendered ${catalogueNames.length} components\n` +
       `  assets/${assetNames.css} ${kilobytes(stylesheet.length)}\n` +
       `  assets/${assetNames.js} ${kilobytes(island.length)}\n` +
       `  served from ${ORIGIN}${BASE}`,

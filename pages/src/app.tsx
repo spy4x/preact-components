@@ -11,10 +11,11 @@ import { buttonClasses } from "@preact-components/ui/button"
 import { copyToClipboard } from "@preact-components/ui/copy-button"
 import { iconNames, UIGuide } from "@preact-components/ui-guide"
 import {
+  catalogueNames,
   catalogueSections,
-  type ComponentName,
-  componentNames,
+  type DemoedName,
   demoRegistry,
+  packageIds,
 } from "@preact-components/ui-guide/registry"
 import { cn } from "@preact-components/signals/cn"
 import { useEffect, useState } from "preact/hooks"
@@ -124,11 +125,12 @@ function Intro() {
     <section class="space-y-3">
       <h1 class="h1">The whole library, running in your browser</h1>
       <p class="max-w-2xl text-sm text-gray-600 dark:text-gray-300">
-        {componentNames.length} components from <code>@preact-components/ui</code> and{" "}
-        {iconNames.length} icons from{" "}
-        <code>@preact-components/icons</code>, one live demo each, with the JSX next to it. Nothing
-        here is a screenshot: the dropdowns open, the switches report through their ports, the icon
-        filter runs in the page.
+        {catalogueNames.length} live component demos from {packageIds.length} packages —{" "}
+        <code>{`@preact-components/{${packageIds.join(", ")}}`}</code> — and {iconNames.length}{" "}
+        icons from{" "}
+        <code>@preact-components/icons</code>, with the JSX next to each. Nothing here is a
+        screenshot: the dropdowns open, the switches report through their ports, the icon filter
+        runs in the page.
       </p>
       <p class="text-sm text-gray-600 dark:text-gray-300">
         <code class="rounded bg-gray-100 px-2 py-1 font-mono text-xs dark:bg-gray-800">
@@ -140,19 +142,19 @@ function Intro() {
 }
 
 /**
- * The navigation: one chip per component, grouped the way the catalogue groups them.
+ * The navigation: one chip per component, in the sections the catalogue renders, across packages.
  *
  * It owns the deep links, because it is also what writes them. On load and on every `hashchange` it
  * resolves `location.hash` to a component, marks that card in the catalogue ({@link demoElementId})
  * and scrolls it into view; `styles.css` outlines whatever carries `data-deep-link`.
  */
 function ComponentIndex() {
-  const [active, setActive] = useState<ComponentName | undefined>(undefined)
-  const [copied, setCopied] = useState<ComponentName | undefined>(undefined)
+  const [active, setActive] = useState<DemoedName | undefined>(undefined)
+  const [copied, setCopied] = useState<DemoedName | undefined>(undefined)
 
   useEffect(() => {
     const applyFragment = () => {
-      const name = componentFromFragment(location.hash, componentNames)
+      const name = componentFromFragment(location.hash, catalogueNames)
       setActive(name)
       document.title = name ? `${name} — ${PAGE_TITLE}` : PAGE_TITLE
 
@@ -173,7 +175,7 @@ function ComponentIndex() {
     return () => globalThis.removeEventListener("hashchange", applyFragment)
   }, [])
 
-  const copySnippet = (name: ComponentName) => {
+  const copySnippet = (name: DemoedName) => {
     // The library's own clipboard helper, so the legacy `execCommand` path is not reimplemented.
     copyToClipboard(demoRegistry[name].snippet)
     setCopied(name)
