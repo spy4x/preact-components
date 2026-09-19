@@ -9,6 +9,9 @@ import {
   AUTO_PENDING_PACKAGES,
   catalogueNames,
   catalogueSections,
+  CLASS_PACKAGE,
+  classDemoNames,
+  classDemos,
   componentNames,
   demoRegistry,
   EXCLUDED_PACKAGES,
@@ -147,12 +150,50 @@ describe("demo registry", () => {
     expect(Object.keys(demoRegistry).length).toBe(catalogueNames.length)
   })
 
-  it("registers no demo for a name its package does not export", () => {
-    for (const name of Object.keys(demoRegistry)) {
-      const owners = packageIds.filter((id) =>
-        (exportsOf(id).components as string[]).includes(name)
-      )
-      expect(owners.length, `${name} is not a component of any covered package`).toBe(1)
+  it("registers no component demo for a name its package does not export", () => {
+    // Class sections are exempt by construction: their keys are card ids (`"colour-atoms"`), not
+    // export names, and their demos are not type-checked against a barrel. `classes.test.tsx` is the
+    // guard for those.
+    for (const section of catalogueSections.filter((entry) => entry.kind === "component")) {
+      for (const name of section.names) {
+        const owners = packageIds.filter((id) =>
+          (exportsOf(id).components as string[]).includes(name)
+        )
+        expect(owners.length, `${name} is not a component of any covered package`).toBe(1)
+      }
+    }
+  })
+
+  it("files the class demos under the theme package, keyed apart from component names", () => {
+    const classSections = catalogueSections.filter((section) => section.kind === "class")
+    expect(classSections.length).toBeGreaterThan(0)
+
+    const exported = new Set<string>(
+      packageIds.flatMap((id) => exportsOf(id).components as string[]),
+    )
+    for (const section of classSections) {
+      expect(section.package, section.id).toBe(CLASS_PACKAGE)
+      expect(section.packageName, section.id).toBe("@preact-components/theme")
+      expect(Object.keys(classDemos), section.id).toEqual(expect.arrayContaining(section.names))
+    }
+
+    for (const name of classDemoNames) {
+      // The registry is flat, so a card id that looked like a component name would shadow it: the
+      // section that named it second would silently render one card for two entries.
+      expect(/^[A-Z]/.test(name), `${name} looks like a component name`).toBe(false)
+      expect(exported.has(name), `${name} collides with an exported component`).toBe(false)
+    }
+  })
+
+  it("gives every class demo a heading, a class list and a demo's own fields", () => {
+    expect(Object.keys(classDemos).sort()).toEqual([...classDemoNames].sort())
+
+    for (const [name, demo] of Object.entries(classDemos)) {
+      expect(demo.title.length, name).toBeGreaterThan(0)
+      expect(demo.classes.length, `${name} claims no class`).toBeGreaterThan(0)
+      expect(demo.summary.length, name).toBeGreaterThan(10)
+      expect(demo.snippet, name).toContain("<")
+      expect(typeof demo.render, name).toBe("function")
     }
   })
 
@@ -177,7 +218,7 @@ describe("demo registry", () => {
     expect(catalogueSections.length).toBeGreaterThan(packageIds.length)
 
     for (const section of catalogueSections) {
-      expect(packageIds, section.id).toContain(section.package)
+      expect([...packageIds, CLASS_PACKAGE], section.id).toContain(section.package)
       expect(section.packageName, section.id).toBe(`@preact-components/${section.package}`)
       expect(section.title.length, section.id).toBeGreaterThan(0)
       expect(section.blurb.length, section.id).toBeGreaterThan(10)

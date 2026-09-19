@@ -2,7 +2,13 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import { UIGuide, uiGuideRoute } from "./+index.tsx"
-import { catalogueNames, demoRegistry, type PartialDemoRegistry, pendingDemos } from "./registry.ts"
+import {
+  catalogueNames,
+  classDemos,
+  demoRegistry,
+  type PartialDemoRegistry,
+  pendingDemos,
+} from "./registry.ts"
 import { iconNames } from "./icons.tsx"
 
 /** One entry removed from the shipped registry, to reach the banner a partial one produces. */
@@ -46,6 +52,8 @@ describe("UIGuide", () => {
         "Display",
         "Feedback",
         "Inputs",
+        "Forms",
+        "Surfaces and utilities",
         "Charts",
         "System",
         "CRUD",
@@ -54,11 +62,33 @@ describe("UIGuide", () => {
     ) {
       expect(html, heading).toContain(heading)
     }
-    for (const heading of ["badges", "charts", "system", "crud", "signals"]) {
+    for (const heading of ["badges", "forms", "surfaces", "charts", "system", "crud", "signals"]) {
       expect(html, heading).toContain(`id="${heading}"`)
     }
     expect(html).toContain('id="icons"')
     expect(html).toContain('id="instructions"')
+  })
+
+  it("renders one usage block per card, each with a copy control", () => {
+    const html = render(<UIGuide />)
+
+    // The block the copy button belongs to. Counted rather than sampled: a card that shipped
+    // without one is the failure this asserts against.
+    expect(html.match(/data-e2e="usage"/g)?.length).toBe(catalogueNames.length)
+    expect(html.match(/aria-label="Copy the /g)?.length).toBe(catalogueNames.length)
+    expect(html).toContain(">Usage<")
+  })
+
+  it("heads a class card with its title and chips for the classes it applies", () => {
+    const html = render(<UIGuide />)
+
+    for (const [name, demo] of Object.entries(classDemos)) {
+      expect(html, name).toContain(`id="demo-${name}"`)
+      expect(html, demo.title).toContain(demo.title)
+      for (const className of demo.classes) {
+        expect(html, `.${className}`).toContain(`>.${className}<`)
+      }
+    }
   })
 
   it("lists the components whose demos are declared pending", () => {

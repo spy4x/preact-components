@@ -7,6 +7,11 @@
  * is the single list the page renders from and the one `instructions.test.ts` checks against
  * `theme/preset.css` — a class that is renamed or dropped in the theme fails the test here instead
  * of decorating a page nobody re-reads.
+ *
+ * `instructions.test.ts` covers one direction: *documented* implies *defined*. The other direction —
+ * a class `preset.css` defines that nothing demonstrates — is `classes.test.tsx`'s, and it is the
+ * one that let `.btn-sm` and `.h6` outlive their last real caller. See {@link UNDEMONSTRATED_CLASSES}
+ * and {@link demonstratedClasses}.
  */
 
 /** Classes documented by {@link CatalogInstructions}, grouped by what they are for. */
@@ -80,6 +85,80 @@ export function definedClasses(css: string): Set<string> {
   }
   for (const match of withoutComments.matchAll(/\.([a-zA-Z][\w-]*)/g)) {
     names.add(match[1])
+  }
+  return names
+}
+
+/** Why the map's five classes have no demo: they are Leaflet marker states, not utilities. */
+const MAP_CLASSES_REASON =
+  "Styled only as the descendant of a status wrapper (`.status-on .map-marker`) and only meaningful on a Leaflet marker. `map/` is not a package the catalogue covers, so nothing in the guide renders one."
+
+/**
+ * Why the button family has no demo: the component is the API, the class form is `crud/`'s.
+ *
+ * Kept as one string because the twelve entries share one decision — see `README.md`, "Class-name
+ * demos".
+ */
+const BUTTON_CLASSES_REASON =
+  'Demonstrated through `ui/Button` (`variant` × `size`), which inlines its own utilities, and consumed in class form by `crud/`. A `.btn-primary` card next to `<Button variant="primary">` would document two APIs for one control.'
+
+/**
+ * Classes `preset.css` defines that the catalogue deliberately does not apply, with the reason.
+ *
+ * The exclusion half of the class guard: `classes.test.tsx` fails when a class is neither
+ * demonstrated by the rendered guide nor named here with a reason, so the two ways out of a gap are
+ * to demonstrate the class or to write down why nobody should. A class only named here is still
+ * visible in review and in the test's own record — which is the property the source guides lacked:
+ * they kept both classes alive by documenting them while nothing used them.
+ *
+ * Every entry is checked against reality in both directions, so this record cannot rot: an entry the
+ * preset no longer defines, and an entry the guide demonstrates after all, both fail.
+ */
+export const UNDEMONSTRATED_CLASSES: Record<string, string> = {
+  "theme-base":
+    "Document-level rules for `<body>`. The catalogue renders inside a host page that applies it (`pages/src/document.ts`), so a demo of it would repaint the page around the demo.",
+  "dark":
+    "A variant marker on `<html>`, not a class an element wears. The host page's colour-scheme toggle owns it and `pages/verify.ts` drives it.",
+  "map-marker": MAP_CLASSES_REASON,
+  "status-unknown": MAP_CLASSES_REASON,
+  "status-on": MAP_CLASSES_REASON,
+  "status-off": MAP_CLASSES_REASON,
+  "power-anomaly": MAP_CLASSES_REASON,
+  "btn": BUTTON_CLASSES_REASON,
+  "btn-primary": BUTTON_CLASSES_REASON,
+  "btn-primary-outline": BUTTON_CLASSES_REASON,
+  "btn-danger": BUTTON_CLASSES_REASON,
+  "btn-danger-outline": BUTTON_CLASSES_REASON,
+  "btn-warning": BUTTON_CLASSES_REASON,
+  "btn-warning-outline": BUTTON_CLASSES_REASON,
+  "btn-success": BUTTON_CLASSES_REASON,
+  "btn-success-outline": BUTTON_CLASSES_REASON,
+  "btn-icon": BUTTON_CLASSES_REASON,
+  "btn-link": BUTTON_CLASSES_REASON,
+  "btn-disabled": BUTTON_CLASSES_REASON,
+}
+
+/**
+ * Class names a rendered catalogue applies, read out of its `class` attributes.
+ *
+ * The measured half of the class guard, and deliberately not a hand-kept list: the failure mode
+ * being guarded against — `.btn-sm` and `.h6` outliving their last caller — is exactly what a
+ * hand-kept "demonstrated" list does when it is not maintained. This reads what the page really
+ * renders, so removing a class from a demo removes it from the set.
+ *
+ * Snippet text is inert: `preact-render-to-string` escapes `"` inside a `<pre><code>` block, so a
+ * `class="…"` inside a usage snippet is text, not an attribute, and cannot be counted as a
+ * demonstration. `classes.test.tsx` pins that down.
+ *
+ * @param html Rendered catalogue markup, e.g. `render(<UIGuide />)`.
+ * @returns Every class token the markup applies.
+ */
+export function demonstratedClasses(html: string): Set<string> {
+  const names = new Set<string>()
+  for (const match of html.matchAll(/class="([^"]*)"/g)) {
+    for (const name of match[1].split(/\s+/)) {
+      if (name) names.add(name)
+    }
   }
   return names
 }
