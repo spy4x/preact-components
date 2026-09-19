@@ -42,6 +42,46 @@ function panelIdOf(html: string): string {
   return html.match(/aria-controls="([^"]+)"/)?.[1] ?? ""
 }
 
+/**
+ * The trigger, as `[start tag, markup inside it]`, located exactly.
+ *
+ * Found by `aria-controls` rather than by being the first `<button>`: the panel holds preset
+ * buttons whose attributes must never be mistaken for the trigger's. The scan is index-based
+ * because class utilities contain `"`, which a character-class pattern reads as a tag end.
+ */
+function triggerOf(html: string): [string, string] {
+  for (let at = html.indexOf("<button"); at !== -1; at = html.indexOf("<button", at + 1)) {
+    const open = html.indexOf(">", at)
+    const tag = html.slice(at, open + 1)
+    if (!tag.includes("aria-controls=")) continue
+    return [tag, html.slice(open + 1)]
+  }
+  return ["", ""]
+}
+
+/**
+ * The accessible name the trigger would compute to, as far as rendered markup can decide it.
+ *
+ * The algorithm, per accname: `aria-labelledby`, else `aria-label`, else the element's own
+ * content, with `aria-hidden="true"` subtrees skipped — which is how the `▾` glyph drops out. Only
+ * markup is available here; anything a browser adds is out of reach.
+ */
+function triggerAccessibleName(html: string): string {
+  const [tag, content] = triggerOf(html)
+  const labelledBy = tag.match(/aria-labelledby="([^"]+)"/)?.[1]
+  if (labelledBy !== undefined) {
+    return labelledBy
+      .split(/\s+/)
+      .map((id) => html.match(new RegExp(`id="${id}"[^>]*>([^<]*)<`))?.[1]?.trim() ?? "")
+      .join(" ")
+      .trim()
+  }
+  const label = tag.match(/aria-label="([^"]*)"/)?.[1]
+  if (label !== undefined) return label
+
+  return (content.match(/^<span>([^<]*)<\/span>/)?.[1] ?? "").trim()
+}
+
 describe("DateRangePicker", () => {
   it("shows the caller's placeholder while no range is chosen", () => {
     const html = renderPicker()
@@ -82,11 +122,46 @@ describe("DateRangePicker", () => {
     expect(html).toContain('role="group"')
   })
 
-  it("names the trigger and the panel for assistive tech", () => {
+  it("names the panel for assistive tech, and lets the trigger be named by its own text", () => {
     const html = renderPicker()
 
-    expect(html).toContain('aria-label="Date range"')
     expect(html).toContain('role="group"')
+    expect(html).toContain('aria-label="Date range"')
+    // The label belongs to the panel. On the trigger it would *replace* the range the user reads,
+    // which is the WCAG 2.5.3 failure this pins — see the label-in-name cases below.
+    expect(triggerOf(html)[0]).not.toContain("aria-label")
+    expect(html.match(/aria-label="Date range"/g)?.length).toBe(1)
+  })
+
+  it("gives the trigger an accessible name that contains its visible text", () => {
+    // WCAG 2.5.3 Label in Name: a user who speaks "Pick a range" must match this control. The
+    // placeholder is the whole visible label, so the accessible name is exactly it — no extra aria
+    // is needed to satisfy the criterion, and adding a second label is what broke it.
+    const html = renderPicker()
+    const name = triggerAccessibleName(html)
+
+    expect(name).toBe("Pick a range")
+    expect(name).toContain("Pick a range")
+    expect(name).not.toContain("Date range")
+  })
+
+  it("keeps the visible range inside the accessible name once a range is chosen", () => {
+    // The state that actually matters: the visible label is now the range, and an `aria-label`
+    // would hide it behind "Date range". The arrow glyph is `aria-hidden` and must not leak in.
+    const html = renderPicker({ range: { from: "2026-08-01", to: "2026-08-23" } })
+    const name = triggerAccessibleName(html)
+
+    expect(name).toContain("2026-08-01 → 2026-08-23")
+    expect(name).not.toContain("▾")
+  })
+
+  it("keeps a caller's formatted range and placeholder both inside the accessible name", () => {
+    const formatted = renderPicker({
+      range: { from: "2026-08-01", to: "2026-08-23" },
+      formatRange: (range) => `${range.from} until ${range.to}`,
+    })
+
+    expect(triggerAccessibleName(formatted)).toContain("2026-08-01 until 2026-08-23")
   })
 
   it("keeps a form-submitting button out of the trigger", () => {
