@@ -2,8 +2,8 @@
 
 The live component catalogue, shipped as a component so every app that imports the library gets it
 free. It renders one demo per component of every package it covers — `ui`, `charts`, `system`, `crud`
-and `signals` — the icon gallery, and the design-system rules components are meant to be assembled
-in.
+and `signals` — one card per group of `theme/preset.css` classes, the icon gallery, and the
+design-system rules components are meant to be assembled in.
 
 Ported from `financy`'s modular `routes/ui-guide/*` (the better structure of the two source guides)
 and `gb`'s `islands/system/UIGuide.tsx`, whose icon gallery is kept verbatim in spirit.
@@ -30,11 +30,11 @@ const nav = [...appLinks, { href: uiGuideRoute.path, label: uiGuideRoute.label }
 <uiGuideRoute.component />
 ```
 
-| Prop       | Meaning                                                                            |
-| ---------- | ---------------------------------------------------------------------------------- |
-| `registry` | Registry to render; defaults to the complete one. A partial one raises the banner. |
-| `copy`     | Clipboard port, forwarded to the icon gallery. Defaults to `navigator.clipboard`.  |
-| `class`    | Extra utilities on the catalogue's root.                                           |
+| Prop       | Meaning                                                                                                                            |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `registry` | Registry to render; defaults to the complete one. A partial one raises the banner.                                                 |
+| `copy`     | Clipboard port, forwarded to every copy control — each card's usage block and the icon gallery. Defaults to `navigator.clipboard`. |
+| `class`    | Extra utilities on the catalogue's root.                                                                                           |
 
 Nothing here imports an app's state: the two things a catalogue needs from its host — where to put a
 copied snippet — arrive as ports.
@@ -106,7 +106,7 @@ deliberately out of the guide and one nobody noticed. That is how `icons/` (the 
 barrel itself), `theme/` (CSS), `pages/` (the demo's host app, not a package) and `ui-guide/` itself
 are written down.
 
-### 5. The theme's class names are checked against the theme
+### 5. The theme's class names are checked against the theme, in both directions
 
 `instructions.tsx` renders the design-system rules from `documentedClasses`, and
 `instructions.test.ts` reads `theme/preset.css` and fails if any documented class is not defined
@@ -114,22 +114,46 @@ there. `definedClasses()` strips comments before searching, because the preset e
 of `.h6` and `.btn-sm` in prose and a substring search would count that mention as a definition — a
 test pins that behaviour down.
 
+The other direction is `classes.test.tsx`, and it is the one that matters for dead CSS: a class
+`preset.css` defines that nothing demonstrates has to be either demonstrated or named in
+`UNDEMONSTRATED_CLASSES` with a reason, or the suite fails. Two decisions are worth stating:
+
+- **A test rather than a type.** The class list lives in CSS — Tailwind `@utility` blocks and plain
+  selectors — so there is no union for TypeScript to derive a `Record` from without a code-generation
+  step and a generated file in the tree. The test reads the two sets instead: defined from
+  `preset.css`, demonstrated from the _rendered_ catalogue's `class` attributes. No codegen, no new
+  dependency, and the same shape as `instructions.test.ts`.
+- **Demonstrated is measured, not listed.** A hand-kept "demonstrated" list is precisely how
+  `.btn-sm` and `.h6` outlived their last caller. `demonstratedClasses(render(<UIGuide />))` reads
+  what the page really applies, so removing a class from a demo removes it from the set — and a class
+  named only inside a usage snippet is text, not markup, and does not count.
+
+The exclusions are the honest half: `theme-base` and `dark` are the host page's, the five `.map-*`
+classes are Leaflet marker states in a package the guide does not cover, and the twelve `.btn*`
+classes stay documented-but-not-demonstrated because `ui/Button` is the API for a button and `crud/`
+is the class-form consumer (see "Class-name demos" below). Each entry carries its reason, and each is
+checked for staleness — an excluded class the preset no longer defines, or that the catalogue
+demonstrates after all, fails.
+
 ## Coverage
 
-20 components have a card each, across nine sections. The other 25 — of `charts`, `system` and
-`crud` — are declared in `PENDING_DEMOS` and printed as the worklist under the title:
+20 components have a card each, across eleven sections, plus 12 cards for the theme's classes. The
+other 25 components — of `charts`, `system` and `crud` — are declared in `PENDING_DEMOS` and printed
+as the worklist under the title:
 
-| Section      | Package   | Components                                                                   |
-| ------------ | --------- | ---------------------------------------------------------------------------- |
-| **Badges**   | `ui`      | `Badge`                                                                      |
-| **Buttons**  | `ui`      | `Button`, `CopyButton`, `GeoButton`                                          |
-| **Display**  | `ui`      | `PageTitle`, `ConfidenceMeter`, `Table`                                      |
-| **Feedback** | `ui`      | `ErrorState`, `LoadingSpinner`, `LoadingSkeleton`, `LoadingScreen`, `Toastr` |
-| **Inputs**   | `ui`      | `ToggleSwitch`, `OnOffButtons`, `Dropdown`                                   |
-| **Charts**   | `charts`  | `Bars` — 7 components pending                                                |
-| **System**   | `system`  | `Breadcrumb` — 7 components pending                                          |
-| **CRUD**     | `crud`    | `CrudList` — 11 components pending                                           |
-| **Signals**  | `signals` | `For`, `Show` — the package's only components                                |
+| Section                    | Package   | Cards                                                                                |
+| -------------------------- | --------- | ------------------------------------------------------------------------------------ |
+| **Badges**                 | `ui`      | `Badge`                                                                              |
+| **Buttons**                | `ui`      | `Button`, `CopyButton`, `GeoButton`                                                  |
+| **Display**                | `ui`      | `PageTitle`, `ConfidenceMeter`, `Table`                                              |
+| **Feedback**               | `ui`      | `ErrorState`, `LoadingSpinner`, `LoadingSkeleton`, `LoadingScreen`, `Toastr`         |
+| **Inputs**                 | `ui`      | `ToggleSwitch`, `OnOffButtons`, `Dropdown`                                           |
+| **Forms**                  | `theme`   | `.input`, `.select`, `.textarea`, `.label`, `.checkbox`, `.radio`, `.btn-input-icon` |
+| **Surfaces and utilities** | `theme`   | `.card`, `.scrollbar`, the type scale, the KPI tile, the colour atoms                |
+| **Charts**                 | `charts`  | `Bars` — 7 components pending                                                        |
+| **System**                 | `system`  | `Breadcrumb` — 7 components pending                                                  |
+| **CRUD**                   | `crud`    | `CrudList` — 11 components pending                                                   |
+| **Signals**                | `signals` | `For`, `Show` — the package's only components                                        |
 
 The five `ui` sections are written up; the four newer cards are placeholders with a one-line summary
 and a live render, and their section blurbs say so — the real demos land in follow-up PRs. `signals`
@@ -137,6 +161,13 @@ gets two cards rather than one because it has exactly two components and both ar
 line of JSX; the parts that make the package hard to read (`buildModelStore`, `createListState`,
 `createToastStore`, `useUrlFilters`) are factories, declared as helpers, and need a written-up
 example rather than a card.
+
+The two class sections exist because the preset styles markup the library does not own: a page built
+out of these packages writes its own cards, form controls and containers. `forms` is native controls
+with a preset class and nothing wrapped around them; `surfaces` is the card, the scroll container,
+the type scale, the KPI tile and the colour atoms. Their cards declare `package: "theme"`, which is
+what keeps card ids like `colour-atoms` out of the component drift guard, and their contract — a
+heading, a class list that matches their own markup — is enforced by `classes.test.tsx`.
 
 The registry is checked against the barrels, not against this table, so the table cannot drift either
 — `registry.test.ts` fails if a section gains or loses a component, and it fails if a covered package
@@ -156,6 +187,20 @@ icon is in the catalogue the moment it is exported. `icons.test.tsx` matches the
 The clipboard goes through the `copy` port, which falls back to `copyToClipboard` from
 `@preact-components/ui/copy-button` so the legacy `execCommand` path is not reimplemented here.
 
+## Copying a snippet
+
+Every card's `Usage` block has a `CopyButton` beside it — the `ui/` component the catalogue already
+demonstrates, not a second one — wired to that card's own snippet and to the `copy` port the guide
+was rendered with. The button sits next to the `<details>` rather than inside its `<summary>`, where a
+click would toggle the disclosure as well as copying. Its accessible name is the card it belongs to
+(`Copy the <Badge /> snippet`), so the catalogue is not thirty identical "Copy" buttons to a screen
+reader, and the checkmark `CopyButton` shows for 1.5s is the visual confirmation.
+
+`copy.test.tsx` asserts the wiring at the props level, since the repository has no DOM harness: it
+walks the element tree `UIGuide` returns, finds each card's `CopyButton` and checks the `textToCopy`
+and `copy` it was handed. `pages/verify.ts` is what proves the click: it clicks all 32 usage blocks in
+a real browser and compares each clipboard write to the text of the block it came from.
+
 ## Not carried over
 
 - **`financy`'s `currency.tsx` (221 LOC) — dropped.** It demonstrates `CurrencyDisplay`,
@@ -166,8 +211,12 @@ The clipboard goes through the `copy` port, which falls back to `copyToClipboard
   real assertions.
 - **`.btn-sm` and `.h6` demos — dropped.** The theme dropped both classes; the guide now has a test
   that stops them coming back (see above).
-- **Class-name demos in general.** `Button` is demonstrated through `variant`/`size`, not through
-  `btn btn-primary`, so the guide cannot outlive the API it documents.
+- **Class-name demos in general — reversed, in part.** `gb`'s failure was documenting classes nothing
+  used, not demonstrating classes at all; the two source guides had no way to tell the two apart.
+  `forms` and `surfaces` demonstrate the classes no component covers, and `classes.test.tsx` is what
+  the source guides lacked. The button family stays excluded: `Button` is demonstrated through
+  `variant`/`size`, not through `btn btn-primary`, because one control with two documented APIs is a
+  worse guide than one with a documented API and one documented class family.
 - **Routing, navigation and toasts wiring.** `gb`'s guide called `navigate()` and
   `state.clipboard.copy()`. Those are ports here, and the route is a descriptor the app registers.
 
@@ -178,9 +227,12 @@ deno task check             # from the repository root, what CI runs
 deno test --allow-read --allow-env ui-guide/   # this package alone
 ```
 
-Four suites: `registry.test.ts` (drift guard, package coverage, pending bookkeeping),
-`catalogue.test.tsx` (every demo renders, banner and worklist behaviour, route descriptor),
-`icons.test.tsx` (gallery exhaustiveness, filter), and `instructions.test.ts` (theme class drift). Tests render real markup with `preact-render-to-string`
+Six suites: `registry.test.ts` (drift guard, package coverage, pending bookkeeping, the class
+sections), `catalogue.test.tsx` (every demo renders, banner and worklist behaviour, route descriptor,
+a usage block and copy control per card), `icons.test.tsx` (gallery exhaustiveness, filter),
+`instructions.test.ts` (a documented class is defined), `classes.test.tsx` (a defined class is
+demonstrated, or excluded with a reason) and `copy.test.tsx` (every card's copy control is wired to
+its own snippet and to the injected port). Tests render real markup with `preact-render-to-string`
 and assert on it; no DOM, no browser.
 
 `preact-render-to-string` is pinned in this package's `deno.json` for the same reason as in `ui/`:
