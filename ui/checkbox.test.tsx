@@ -54,13 +54,60 @@ describe("Checkbox", () => {
 
   it("fits the Field contract, whose wiring reaches the box", () => {
     const html = render(
+      <Field id="archive" label="Archived" error="Pick a state" labelFor={false}>
+        <Checkbox id="archive" checked={false} />
+      </Field>,
+    )
+
+    // A `for` here would point at the checkbox's `<label>`, which is not a labelable element: the
+    // reference resolves against nothing, and the control ends up with two labels naming it.
+    expect(html).not.toContain("for=")
+    expect(html).toContain('id="archive"')
+    expect(html).toContain('aria-describedby="archive-error"')
+    // One label names the control — the one that wraps the box. The `Field` label is still rendered
+    // above it as the row's visual heading; it claims nothing.
+    expect(labelAssociations(html, "archive")).toEqual([0, 1])
+  })
+
+  it("is named twice when Field keeps its default for", () => {
+    // The markup the issue reports, asserted so the test above is not a tautology, and so a
+    // caller who migrates sees exactly what changes.
+    const html = render(
       <Field id="archive" label="Archived" error="Pick a state">
         <Checkbox id="archive" checked={false} />
       </Field>,
     )
 
     expect(html).toContain('for="archive"')
-    expect(html).toContain('id="archive"')
-    expect(html).toContain('aria-describedby="archive-error"')
+    // `[forTargets, labelAncestors]`: `Field`'s label points at the checkbox and the checkbox's own
+    // label contains its input — two label elements naming one control, neither wrapping the other.
+    expect(labelAssociations(html, "archive")).toEqual([1, 1])
   })
 })
+
+/**
+ * The two ways a `<label>` can name the control carrying `id`, counted separately.
+ *
+ * Per the HTML spec a label names a control either by `for` or by containing it, which is how
+ * `Checkbox` binds its `<input>`. Keeping the two columns apart is what makes the duplicate visible:
+ * `Field`'s label points at the control from above and never wraps it, so the opt-out reports
+ * `[0, 1]` and the default reports `[1, 1]` — one control, two label elements.
+ *
+ * The control is the innermost element carrying the `id`, because a label that contains the control
+ * also contains whatever contains it.
+ */
+function labelAssociations(
+  html: string,
+  id: string,
+): [forTargets: number, labelAncestors: number] {
+  const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  const openingTags = [
+    ...html.matchAll(new RegExp(`<[a-z]+[^>]*\\bid="${escaped}"[^>]*>`, "g")),
+  ].map((match) => match[0])
+  const forTargets =
+    [...html.matchAll(/(?<![-\w])for="([^"]*)"/g)].filter((match) => match[1] === id).length
+  const labelAncestors = openingTags.length === 0 ? 0 : html.split("<label").slice(1).filter(
+    (part) => part.includes(openingTags[openingTags.length - 1]),
+  ).length
+  return [forTargets, labelAncestors]
+}
