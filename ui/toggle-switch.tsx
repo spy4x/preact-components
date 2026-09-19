@@ -7,6 +7,18 @@ export interface ToggleSwitchProps {
   disabled?: boolean
   /** Accessible name, applied as `aria-label`. */
   label?: string
+  /**
+   * `id` of the `<button>`. The switch renders the button itself and forwards nothing, so this is
+   * the only way a caller can point a label, an `aria-describedby` or a test at the control.
+   */
+  id?: string
+  /**
+   * Ids of the elements that name this switch. The button cannot take a `for`, so a visible label
+   * outside it names it through this attribute instead — see {@link ToggleField}.
+   */
+  "aria-labelledby"?: string
+  /** Ids of the elements that describe this switch, typically its error and its hint. */
+  "aria-describedby"?: string
   class?: string
 }
 
@@ -21,13 +33,34 @@ const knob =
  *
  * Controlled: it renders `value` and reports the intended new value through `onToggle`, which
  * is where persistence belongs.
+ *
+ * The wiring props above exist because the control is a `<button>`: a wrapper cannot put an `id` on
+ * it by cloning, and it cannot attach a working `for`. A labelled row is
+ * {@link ToggleField} — import it rather than re-deriving the association.
+ *
+ * **A disabled switch refuses to report.** The native `disabled` attribute stops a browser from
+ * dispatching a click at all, so the guard has no effect on mouse and keyboard use — it is there for
+ * every path that does not go through hit testing: a programmatic `click()`, an assistive tool that
+ * synthesises an activation, or a wrapper that calls the handler it composed. Without it a disabled
+ * control is a *hint* rather than a constraint, and a caller who forwarded `onToggle` into a store
+ * would flip it. The control owns this because it is the only thing that knows its own `disabled`.
  */
 export function ToggleSwitch(
-  { value, onToggle, disabled, label, class: className }: ToggleSwitchProps,
+  {
+    value,
+    onToggle,
+    disabled,
+    label,
+    id,
+    "aria-labelledby": ariaLabelledBy,
+    "aria-describedby": ariaDescribedBy,
+    class: className,
+  }: ToggleSwitchProps,
 ) {
   return (
     <button
       type="button"
+      id={id}
       class={cn(
         track,
         value ? "bg-purple-900 dark:bg-purple-700" : "bg-gray-200 dark:bg-gray-600",
@@ -36,8 +69,13 @@ export function ToggleSwitch(
       role="switch"
       aria-checked={value}
       aria-label={label}
+      aria-labelledby={ariaLabelledBy}
+      aria-describedby={ariaDescribedBy}
       disabled={disabled}
-      onClick={() => onToggle(!value)}
+      onClick={() => {
+        if (disabled) return
+        onToggle(!value)
+      }}
     >
       <span aria-hidden="true" class={cn(knob, value ? "translate-x-5" : "translate-x-0")} />
     </button>

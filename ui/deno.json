@@ -34,6 +34,7 @@
     "./table": "./table.tsx",
     "./tabs": "./tabs.tsx",
     "./toastr": "./toastr.tsx",
+    "./toggle-field": "./toggle-field.tsx",
     "./toggle-switch": "./toggle-switch.tsx",
     "./tooltip": "./tooltip.tsx"
   },
