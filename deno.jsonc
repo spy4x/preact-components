@@ -8,6 +8,9 @@
     "./crud",
     "./icons",
     "./map",
+    // Not a package: the GitHub Pages demo. It is a member so it can pin its own build-only
+    // dependencies in `pages/deno.json` instead of adding them to the import map below.
+    "./pages",
     "./signals",
     "./system",
     "./theme",

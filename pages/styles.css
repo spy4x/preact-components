@@ -1,0 +1,39 @@
+/*
+ * The demo's stylesheet — the same order an app writes (see `theme/README.md`), with the
+ * `@tailwindcss/forms` peer left out: the catalogue renders no bare form control, and that package
+ * is a Tailwind 3 JavaScript plugin whose `@plugin` load needs a `node_modules` tree this build
+ * deliberately does not have. `preset.css` styles the controls the demos actually show.
+ *
+ * `@source` is what `build.ts` scans for class names: the library's packages, so a class a
+ * component only mentions inside a template string is still emitted, plus this directory for the
+ * host page's own utilities.
+ */
+
+@import "tailwindcss";
+@import "../theme/tokens.css";
+@import "../theme/preset.css";
+
+@source "../ui";
+@source "../ui-guide";
+@source "../icons";
+@source "./src";
+
+/*
+ * Deep-link target. The catalogue renders `id="demo-<Name>"` and the host page's navigation
+ * resolves a `#<slug>` fragment onto that card, marking it here.
+ */
+article[id^="demo-"][data-deep-link] {
+  outline: 2px solid var(--color-primary, oklch(0.38 0.17 293));
+  outline-offset: 2px;
+}
+
+/* The header is sticky, so an anchored card needs more room than the catalogue's `scroll-mt-8`. */
+article[id^="demo-"] {
+  scroll-margin-top: 5rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
