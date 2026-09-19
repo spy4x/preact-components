@@ -105,9 +105,10 @@ region can cover a table, a grid and a paragraph that load together, and the cal
 
 `SkeletonTable` mirrors the real `Table`'s wrapper, header row and one-line body row (3.25rem). The
 widths are a pure function, `columnWidthPercents(widths)`, so the same array puts the real table's
-`<colgroup>` on the same percentages and the substitution moves nothing; geometrically the whole
-answer comes from `tableGeometry({ rows, columns, widths })`. Full contract, including the three
-cases where it does not hold, on `SkeletonTable`'s JSDoc.
+`<colgroup>` on the same percentages and the substitution moves nothing; the rest of the answer comes
+from `tableGeometry({ rows, columns, widths })`, which is assertable without a DOM. The four-point
+checklist a caller has to satisfy, and the one case no props-only component can cover, are on
+`SkeletonTable`'s JSDoc.
 
 ## Tests
 

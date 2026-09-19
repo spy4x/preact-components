@@ -374,8 +374,9 @@ export function SkeletonText({ lines, widths, class: className }: SkeletonTextPr
  * 4. The same `class` goes to both, since both accept one and the real table owns its own margin.
  *
  * Anything the caller's cells do beyond that — wrapping to two lines, a `Table` that is narrower
- * than its wrapper — is outside what a props-only component can know, and is the honest limit of
- * this contract rather than something the component hides.
+ * than its wrapper — is outside what a props-only component can know. It is the honest limit of this
+ * contract rather than something the component hides: a skeleton can reserve boxes, not measure copy
+ * it has never seen.
  *
  * ## Announcements
  *
