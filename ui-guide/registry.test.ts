@@ -40,6 +40,14 @@ function without(...names: Array<keyof typeof demoRegistry>): Partial<typeof dem
 /** Each covered package's barrel, keyed the way {@link PACKAGES} keys it. */
 const barrels: Record<PackageId, object> = { ui, charts, system, crud, signals }
 
+/**
+ * A component name no package exports, no section demos and no list declares.
+ *
+ * The auto-pending path is unreachable from the shipped tree — every `ui` component has a demo — so
+ * the resolver is driven with this instead, and the guard is proved by deleting the mechanism.
+ */
+const UNDEMOED_PROBE = "UndemoedProbe"
+
 /** Every component name the sections demo for one package. */
 function demoedFor(id: PackageId): string[] {
   return catalogueSections.filter((section) => section.package === id).flatMap((s) => s.names)
@@ -187,14 +195,33 @@ describe("demo registry", () => {
 
   it("names an auto-pending package's undemoed exports without an explicit list", () => {
     // The property that keeps a `ui/` component PR mergeable on its own: a new export nobody has
-    // demoed is published as a gap rather than blocking the build. `ui`'s explicit list is empty on
-    // purpose, so anything named here came from the exports themselves.
-    for (const id of AUTO_PENDING_PACKAGES) {
-      expect(PENDING_DEMOS[id], `${id}: explicit list is meant to stay empty`).toEqual([])
+    // demoed is published as a gap rather than blocking the build.
+    //
+    // Two shapes make this test vacuous, and both are easy to write by accident:
+    //   * comparing the resolver against the real export list — in the shipped tree every `ui`
+    //     component has a demo, so that is `[]` against `[]`;
+    //   * iterating whatever is under test — `for (const id of AUTO_PENDING_PACKAGES)` runs zero
+    //     times once the list is emptied, which is precisely the mutation it should catch.
+    //
+    // So the package is named literally and the probe is asserted to land in the worklist.
+    expect(AUTO_PENDING_PACKAGES, "ui is the package this seam exists for").toContain("ui")
+    expect(PENDING_DEMOS.ui, "ui's explicit list is meant to stay empty").toEqual([])
+    expect(pendingNamesOf("ui", [UNDEMOED_PROBE])).toEqual([UNDEMOED_PROBE])
+  })
 
-      const undemoed = exportsOf(id).components.filter((name) => !demoedFor(id).includes(name))
-      expect(pendingNamesOf(id), id).toEqual(undemoed)
-    }
+  it("leaves an undeclared component of a declared-list package to the type guard", () => {
+    // The other half of the contrast, asserted against a package named literally for the same
+    // reason: such a component is `MissingDemos<P>`, a `deno check` failure, and naming it here
+    // would turn a hard error into an amber note.
+    expect(pendingNamesOf("charts", [UNDEMOED_PROBE])).not.toContain(UNDEMOED_PROBE)
+    expect(pendingNamesOf("charts", [UNDEMOED_PROBE])).toEqual([...PENDING_DEMOS.charts])
+  })
+
+  it("keeps a demoed component out of the pending list", () => {
+    // The worklist must not contradict the cards rendered directly below it.
+    const [demoed] = demoedFor("ui")
+    expect(demoed, "ui needs at least one demo to compare against").toBeDefined()
+    expect(pendingNamesOf("ui", [demoed!])).toEqual([])
   })
 
   it("reports nothing for the complete registry", () => {
