@@ -14,11 +14,11 @@ import type { ClassDemoFragment } from "../registry.ts"
 
 /** The cards of the surface chapter, in render order. */
 export type SurfaceDemoName =
-  | "card"
-  | "scrollbar"
-  | "typography"
-  | "data-display"
-  | "colour-atoms"
+  | "class-card"
+  | "class-scrollbar"
+  | "class-typography"
+  | "class-data-display"
+  | "class-colour-atoms"
 
 /** The four-part surface: header, body, footer, all three edges from the tokens. */
 function CardDemo() {
@@ -192,7 +192,7 @@ function ColourAtomsDemo() {
 }
 
 export const surfaceDemos = {
-  card: {
+  "class-card": {
     title: "Card",
     classes: ["card", "card-header", "card-body", "card-footer", "link", "text-muted"],
     summary:
@@ -209,7 +209,7 @@ export const surfaceDemos = {
 </div>`,
     render: () => <CardDemo />,
   },
-  scrollbar: {
+  "class-scrollbar": {
     title: "Scroll container",
     classes: ["scrollbar", "card", "card-body", "border-subtle", "rounded-primary", "text-muted"],
     summary:
@@ -221,7 +221,7 @@ export const surfaceDemos = {
 </div>`,
     render: () => <ScrollbarDemo />,
   },
-  typography: {
+  "class-typography": {
     title: "Type scale",
     classes: [
       "h1",
@@ -245,7 +245,7 @@ export const surfaceDemos = {
 </div>`,
     render: () => <TypographyDemo />,
   },
-  "data-display": {
+  "class-data-display": {
     title: "KPI tiles and numbers",
     classes: ["kpi", "kpi-label", "kpi-value", "bar", "num", "border-subtle", "text-muted"],
     summary:
@@ -259,7 +259,7 @@ export const surfaceDemos = {
 <td class="num">1 284</td>`,
     render: () => <DataDisplayDemo />,
   },
-  "colour-atoms": {
+  "class-colour-atoms": {
     title: "Colour atoms",
     classes: [
       "text-primary",

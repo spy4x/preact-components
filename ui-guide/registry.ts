@@ -70,6 +70,7 @@ import { chartsDemos } from "./sections/charts.tsx"
 import { crudDemos } from "./sections/crud.tsx"
 import { displayDemos } from "./sections/display.tsx"
 import { feedbackDemos } from "./sections/feedback.tsx"
+import { fieldDemos } from "./sections/fields.tsx"
 import { formDemos } from "./sections/forms.tsx"
 import { inputDemos } from "./sections/inputs.tsx"
 import { signalsDemos } from "./sections/signals.tsx"
@@ -502,11 +503,18 @@ const catalogue = {
     blurb: "Controlled switches and the dropdown trigger-panel pair.",
     demos: inputDemos,
   },
+  fields: {
+    package: "ui",
+    title: "Fields",
+    blurb:
+      "The controlled form primitives: `Field` owns the label wiring and the messages, and `Input`/`Textarea`/`Select`/`Checkbox`/`Radio` are the native elements with the preset's class on them.",
+    demos: fieldDemos,
+  },
   forms: {
     package: CLASS_PACKAGE,
     title: "Forms",
     blurb:
-      "The form classes `preset.css` ships and no component wraps: the controls, a label in either placement, and the input with a button inside it.",
+      "The form classes `preset.css` ships, with no component wrapped around them: the controls, a label in either placement, and the input with a button inside it. The `Fields` section above shows the same classes through the `ui/` primitives.",
     demos: formDemos,
   },
   surfaces: {
@@ -805,6 +813,7 @@ export const demoRegistry: DemoRegistry = {
   ...displayDemos,
   ...feedbackDemos,
   ...inputDemos,
+  ...fieldDemos,
   ...formDemos,
   ...surfaceDemos,
   ...chartsDemos,

@@ -17,13 +17,13 @@ import type { ClassDemoFragment } from "../registry.ts"
 
 /** The cards of the form chapter, in render order. */
 export type FormDemoName =
-  | "input"
-  | "select"
-  | "textarea"
-  | "label"
-  | "checkbox"
-  | "radio"
-  | "btn-input-icon"
+  | "class-input"
+  | "class-select"
+  | "class-textarea"
+  | "class-label"
+  | "class-checkbox"
+  | "class-radio"
+  | "class-input-button"
 
 /** Controlled: `value` in, `onInput` out, and the live value printed under the control. */
 function InputDemo() {
@@ -284,7 +284,7 @@ function InputButtonDemo() {
 }
 
 export const formDemos = {
-  input: {
+  "class-input": {
     title: "Input",
     classes: ["input", "label", "text-muted"],
     summary:
@@ -298,7 +298,7 @@ export const formDemos = {
 />`,
     render: () => <InputDemo />,
   },
-  select: {
+  "class-select": {
     title: "Select",
     classes: ["select", "label", "text-muted"],
     summary:
@@ -310,7 +310,7 @@ export const formDemos = {
 </select>`,
     render: () => <SelectDemo />,
   },
-  textarea: {
+  "class-textarea": {
     title: "Textarea",
     classes: ["textarea", "label", "text-muted"],
     summary:
@@ -324,7 +324,7 @@ export const formDemos = {
 />`,
     render: () => <TextareaDemo />,
   },
-  label: {
+  "class-label": {
     title: "Labels and their placement",
     classes: ["label", "input", "checkbox", "text-muted", "text-danger"],
     summary:
@@ -340,7 +340,7 @@ export const formDemos = {
 <label class="label" for="ref">Reference</label>`,
     render: () => <LabelDemo />,
   },
-  checkbox: {
+  "class-checkbox": {
     title: "Checkbox",
     classes: ["checkbox", "label", "text-muted"],
     summary:
@@ -357,7 +357,7 @@ export const formDemos = {
 </label>`,
     render: () => <CheckboxDemo />,
   },
-  radio: {
+  "class-radio": {
     title: "Radio",
     classes: ["radio", "label", "text-muted"],
     summary:
@@ -373,7 +373,7 @@ export const formDemos = {
 </fieldset>`,
     render: () => <RadioDemo />,
   },
-  "btn-input-icon": {
+  "class-input-button": {
     title: "Input with an inline button",
     classes: ["btn-input-icon", "input", "text-muted"],
     summary:

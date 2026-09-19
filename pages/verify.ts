@@ -463,31 +463,31 @@ async function interactionChecks(devtools: Devtools): Promise<void> {
     const echo = (card) => document.querySelector("#demo-" + card + ' [data-e2e="controlled-value"]')
       .textContent.trim()
 
-    const input = document.querySelector("#demo-input input.input")
-    const echoBefore = echo("input")
+    const input = document.querySelector("#demo-class-input input.input")
+    const echoBefore = echo("class-input")
     input.value = "ada@example.com"
     input.dispatchEvent(new Event("input", { bubbles: true }))
     await settle()
 
-    const box = document.querySelector("#demo-checkbox input.checkbox")
-    const checkboxBefore = echo("checkbox")
+    const box = document.querySelector("#demo-class-checkbox input.checkbox")
+    const checkboxBefore = echo("class-checkbox")
     box.click()
     await settle()
 
-    const radio = document.querySelector('#demo-radio input.radio[value="sms"]')
+    const radio = document.querySelector('#demo-class-radio input.radio[value="sms"]')
     radio.click()
     await settle()
 
     return {
       echoBefore,
-      echoAfter: echo("input"),
+      echoAfter: echo("class-input"),
       inputHeight: getComputedStyle(input).height,
       inputRadius: getComputedStyle(input).borderRadius,
       checkboxBefore,
-      checkboxAfter: echo("checkbox"),
+      checkboxAfter: echo("class-checkbox"),
       checkboxSize: getComputedStyle(box).width,
-      radio: echo("radio"),
-      inlineButton: document.querySelector("#demo-btn-input-icon button.btn-input-icon")
+      radio: echo("class-radio"),
+      inlineButton: document.querySelector("#demo-class-input-button button.btn-input-icon")
         .getAttribute("aria-label"),
     }
   })()`)
@@ -514,6 +514,67 @@ async function interactionChecks(devtools: Devtools): Promise<void> {
     `aria-label="${forms.inlineButton}"`,
   )
 
+  // The `Fields` section's primitives: what `Field` wires is exactly what the browser makes
+  // observable — the label's `for`, the control's `id`, and the ids of the messages the control
+  // describes itself by, including the one it stops describing itself by once the error clears.
+  const fields = await devtools.evaluate<{
+    echoBefore: string
+    echoAfter: string
+    controlId: string
+    labelFor: string
+    beforeInvalid: string | null
+    beforeDescribedBy: string
+    afterInvalid: string | null
+    afterDescribedBy: string
+    errorText: string
+  }>(`(async () => {
+    const settle = () => new Promise((done) => setTimeout(done, 30))
+    const echo = () =>
+      document.querySelector('#demo-Field [data-e2e="controlled-value"]').textContent.trim()
+    const email = document.querySelector("#demo-Field input[type=email]")
+    const read = () => ({
+      invalid: email.getAttribute("aria-invalid"),
+      describedBy: email.getAttribute("aria-describedby") ?? "",
+    })
+
+    const echoBefore = echo()
+    const before = read()
+    email.value = "ada@example.com"
+    email.dispatchEvent(new Event("input", { bubbles: true }))
+    await settle()
+
+    return {
+      echoBefore,
+      echoAfter: echo(),
+      controlId: email.id,
+      labelFor: document.querySelector("#demo-Field label[for='guide-email']")?.getAttribute("for") ?? "",
+      beforeInvalid: before.invalid,
+      beforeDescribedBy: before.describedBy,
+      afterInvalid: read().invalid,
+      afterDescribedBy: read().describedBy,
+      errorText: document.querySelector("#guide-email-error")?.textContent ?? "",
+    }
+  })()`)
+  check(
+    "typing into a `Field`'s control drives the demo's controlled value",
+    fields.echoBefore !== fields.echoAfter && fields.echoAfter.includes("ada@example.com"),
+    fields.echoAfter,
+  )
+  check(
+    "`Field` wires the label's `for` to the control's `id`",
+    fields.controlId === "guide-email" && fields.labelFor === "guide-email",
+    `for="${fields.labelFor}" id="${fields.controlId}"`,
+  )
+  check(
+    "`Field` describes the control by its error and its hint, and drops the error once it clears",
+    fields.beforeInvalid === "true" &&
+      fields.beforeDescribedBy === "guide-email-error guide-email-hint" &&
+      fields.afterInvalid === null && fields.afterDescribedBy === "guide-email-hint" &&
+      fields.errorText === "",
+    `invalid=${fields.beforeInvalid} "${fields.beforeDescribedBy}" → ` +
+      `invalid=${fields.afterInvalid} "${fields.afterDescribedBy}"`,
+  )
+
   // The surface chapter has no control of its own: its interaction is the copy button its cards
   // carry (asserted above per card, for every section) plus the scroll container, which is driven
   // here. The rest is the stylesheet applying, read off computed styles.
@@ -532,24 +593,24 @@ async function interactionChecks(devtools: Devtools): Promise<void> {
     list: string
   }>(`(async () => {
     const style = (selector) => getComputedStyle(document.querySelector(selector))
-    const scroller = document.querySelector('#demo-scrollbar [data-e2e="scrollbar"]')
+    const scroller = document.querySelector('#demo-class-scrollbar [data-e2e="scrollbar"]')
     const overflow = scroller.scrollWidth > scroller.clientWidth
     scroller.scrollLeft = 120
     await new Promise((done) => setTimeout(done, 50))
 
     return {
-      cardRadius: style("#demo-card .card").borderRadius,
-      headerBorder: style("#demo-card .card-header").borderBottomWidth,
-      footerBorder: style("#demo-card .card-footer").borderTopWidth,
-      kpiValue: style("#demo-data-display .kpi-value").fontSize,
-      numAlign: style("#demo-data-display .num").textAlign,
-      barHeight: style("#demo-data-display .bar").height,
+      cardRadius: style("#demo-class-card .card").borderRadius,
+      headerBorder: style("#demo-class-card .card-header").borderBottomWidth,
+      footerBorder: style("#demo-class-card .card-footer").borderTopWidth,
+      kpiValue: style("#demo-class-data-display .kpi-value").fontSize,
+      numAlign: style("#demo-class-data-display .num").textAlign,
+      barHeight: style("#demo-class-data-display .bar").height,
       scrolled: scroller.scrollLeft > 0,
       overflow,
-      canvas: style("#demo-colour-atoms .bg-canvas").backgroundColor,
-      surface: style("#demo-colour-atoms .bg-surface").backgroundColor,
-      link: style("#demo-typography .link").textDecorationLine,
-      list: style("#demo-typography .list-ul").listStyleType,
+      canvas: style("#demo-class-colour-atoms .bg-canvas").backgroundColor,
+      surface: style("#demo-class-colour-atoms .bg-surface").backgroundColor,
+      link: style("#demo-class-typography .link").textDecorationLine,
+      list: style("#demo-class-typography .list-ul").listStyleType,
     }
   })()`)
   check(

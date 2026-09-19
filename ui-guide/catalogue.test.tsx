@@ -52,6 +52,7 @@ describe("UIGuide", () => {
         "Display",
         "Feedback",
         "Inputs",
+        "Fields",
         "Forms",
         "Surfaces and utilities",
         "Charts",
@@ -62,7 +63,18 @@ describe("UIGuide", () => {
     ) {
       expect(html, heading).toContain(heading)
     }
-    for (const heading of ["badges", "forms", "surfaces", "charts", "system", "crud", "signals"]) {
+    for (
+      const heading of [
+        "badges",
+        "fields",
+        "forms",
+        "surfaces",
+        "charts",
+        "system",
+        "crud",
+        "signals",
+      ]
+    ) {
       expect(html, heading).toContain(`id="${heading}"`)
     }
     expect(html).toContain('id="icons"')

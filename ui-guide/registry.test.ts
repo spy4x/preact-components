@@ -178,9 +178,11 @@ describe("demo registry", () => {
     }
 
     for (const name of classDemoNames) {
-      // The registry is flat, so a card id that looked like a component name would shadow it: the
-      // section that named it second would silently render one card for two entries.
-      expect(/^[A-Z]/.test(name), `${name} looks like a component name`).toBe(false)
+      // A card id that looked like a component name — `input` next to `Input`, `card` next to a
+      // future `Card` — would slug to the same fragment as that component's card, and the host
+      // page's navigation writes one fragment per card. `class-` keeps the two namespaces apart by
+      // construction rather than by a collision test somebody has to re-run when a component lands.
+      expect(name.startsWith("class-"), `${name} is not namespaced`).toBe(true)
       expect(exported.has(name), `${name} collides with an exported component`).toBe(false)
     }
   })
