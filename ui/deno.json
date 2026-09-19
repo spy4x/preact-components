@@ -21,6 +21,7 @@
     "./on-off-buttons": "./on-off-buttons.tsx",
     "./page-title": "./page-title.tsx",
     "./pagination": "./pagination.tsx",
+    "./progress": "./progress.tsx",
     "./radio": "./radio.tsx",
     "./table": "./table.tsx",
     "./tabs": "./tabs.tsx",
