@@ -13,9 +13,24 @@
  * caller's, per the library's no-hardcoded-strings rule.
  *
  * Supported window: the four-digit ISO years 0001–9999, e.g. every instant a UI clock can hold.
- * `Intl` returns unpadded years below 1000 and `Date` switches to six-digit expanded years
- * (`+010000-01-01`) above 9999; the first is padded here, and an instant outside the window fails
- * {@link parseIsoDate}'s round trip rather than yielding a plausible wrong date.
+ * There is no year 0000, so the window's lower edge is the first of January 0001. Nothing here
+ * leaves the window on purpose, and the escapes that remain are named rather than implied:
+ *
+ * - An instant at or above year 10000 is outside the window twice over. {@link calendarDateInZone}
+ *   still pads and reports the year with five digits (`"10000-01-01"`), so `today` echoes that
+ *   string; every arithmetic preset, and {@link parseIsoDate} itself, reject it as
+ *   `expected a YYYY-MM-DD date, received: 10000-01-01`.
+ * - An instant at or below year 0 is outside it too, and no era is read. `Intl` calls `0000-06-15`
+ *   year `"1"` — that date is 1 BC — so {@link calendarDateInZone} pads it to `"0001-06-15"`, a
+ *   plausible wrong date one year ahead, and `today` echoes it. `last-year` from 0001, whose maths
+ *   is string arithmetic on the padded year, answers with the nonexistent range
+ *   `0000-01-01 … 0000-12-31`. Everything that goes through `Date` instead — `addDays`,
+ *   {@link formatIsoDate}, {@link parseIsoDate} — keeps year 0000 as `Date` writes it, so the two
+ *   halves of the module disagree about that one year and nothing detects it. Unfixable without an
+ *   era-aware date model; documented, not fixed.
+ * - December 9999 throws for `this-month`, `this-quarter` and `last-12-months`: each asks for the
+ *   end of a month that lies past 9999-12-31. 9999 is inside the window; a range of it that ends
+ *   on its last day is not. The other presets resolve.
  */
 
 const MS_PER_DAY = 86_400_000
@@ -128,12 +143,41 @@ export function parseIsoDate(date: string): number {
   return ms
 }
 
-/** The `YYYY-MM-DD` calendar date of midnight-UTC milliseconds. */
+/**
+ * The `YYYY-MM-DD` calendar date of midnight-UTC milliseconds.
+ *
+ * Returns a `YYYY-MM-DD` string, or throws rather than returning half of one. `toISOString`
+ * switches to a signed six-digit expanded year outside the four-digit window — `+010000-01-01`
+ * past 9999, `-000001-06-15` in 1 BC — and the bare `slice(0, 10)` this used to be returned
+ * `+010000-01` instead. Adding a day to 9999-12-31 is the ordinary way to reach it.
+ *
+ * Known residual: `Date` treats `0000` as a year, so `0000-06-15` — 1 BC — keeps a plain
+ * four-digit year, passes this check, and round-trips through {@link parseIsoDate} unchanged. Only
+ * {@link calendarDateInZone} disagrees, reporting the era's year `"1"`; see its own note.
+ *
+ * @param ms Milliseconds since the Unix epoch, in UTC.
+ * @throws When `ms` is an invalid instant, or `Date` writes its year with a sign.
+ */
 export function formatIsoDate(ms: number): string {
-  return new Date(ms).toISOString().slice(0, 10)
+  const iso = new Date(ms).toISOString()
+  if (!/^\d{4}-\d{2}-/.test(iso)) {
+    throw new Error(`expected a date in the 0001-9999 window, received: ${iso.slice(0, 10)}`)
+  }
+  return iso.slice(0, 10)
 }
 
-/** The date `days` after `date` (negative goes back). DST-proof: fixed UTC day steps. */
+/**
+ * The date `days` after `date` (negative goes back). DST-proof: fixed UTC day steps.
+ *
+ * Fails loudly past either edge of the supported window rather than clamping: a clamp would return
+ * 9999-12-31 for a question the caller did not ask — a plausible wrong date, the failure this
+ * module exists to prevent — and would hide their off-by-N. Throwing also matches the convention
+ * already here, where {@link parseIsoDate} rejects `2026-02-31` instead of rolling it into March.
+ *
+ * @throws On a `date` that is not a `YYYY-MM-DD` date, and on an answer `toISOString` writes with
+ * a signed year. One day back from `0001-01-01` lands in 1 BC, which `addDays("0001-01-01", -1)`
+ * reaches only because string arithmetic cannot see that `"0000"` is not a year.
+ */
 export function addDays(date: string, days: number): string {
   return formatIsoDate(parseIsoDate(date) + days * MS_PER_DAY)
 }
@@ -211,6 +255,12 @@ export function isValidDateRange(range: DateRange): boolean {
  *
  * The year is padded to four digits because `Intl` does not: `year: "numeric"` reports year 999 as
  * `"999"`, and an unpadded year would leave every date in it unparsable by {@link parseIsoDate}.
+ * Two consequences of that padding are documented rather than fixed, because both need an instant a
+ * UI clock cannot hold. A year-10000 instant comes back with five digits (`"10000-01-01"`), which
+ * {@link parseIsoDate} rejects. A 1 BC instant, `0000-06-15`, comes back as `"0001-06-15"`: no era
+ * is formatted, and without one the era's year is `"1"`, so the padding invents a year. Reading the
+ * era would mean formatting for it, and every date here is deliberately era-less — `Date` itself
+ * keeps year 0000 and agrees with the rest of the module, not with this function.
  */
 export function calendarDateInZone(instant: Date, timeZone: string): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
