@@ -31,6 +31,12 @@ export {
   type ConfidenceMeterProps,
   type ConfidenceTier,
 } from "./confidence-meter.tsx"
+export {
+  ConfirmDialog,
+  type ConfirmDialogProps,
+  confirmVariant,
+  requireLabel,
+} from "./confirm-dialog.tsx"
 export { CopyButton, type CopyButtonProps } from "./copy-button.tsx"
 export { Dropdown, type DropdownProps } from "./dropdown.tsx"
 export { EmptyState, type EmptyStateProps } from "./empty-state.tsx"
@@ -56,6 +62,28 @@ export { InputButton, type InputButtonProps } from "./input-button.tsx"
 export { LoadingScreen, type LoadingScreenProps } from "./loading-screen.tsx"
 export { LoadingSkeleton, type LoadingSkeletonProps } from "./loading-skeleton.tsx"
 export { LoadingSpinner, type LoadingSpinnerProps, type SpinnerSize } from "./loading-spinner.tsx"
+export {
+  applyScrollLock,
+  backdropClickDismisses,
+  type BackdropHitTarget,
+  clientWidthWithoutScrollbar,
+  dialogHeldFocus,
+  type DialogRect,
+  dialogTitleId,
+  type DialogTone,
+  DISMISS_KEY,
+  type FocusableElement,
+  isBackdropClick,
+  isDismissKey,
+  Modal,
+  type ModalProps,
+  restoreFocus,
+  type ScrollLock,
+  type ScrollLockHost,
+  scrollLockPadding,
+  type ScrollLockTarget,
+  shouldRetargetFocus,
+} from "./modal.tsx"
 export { OnOffButtons, type OnOffButtonsProps } from "./on-off-buttons.tsx"
 export { PageTitle, type PageTitleProps } from "./page-title.tsx"
 export { pageRange, type PageRangeItem, Pagination, type PaginationProps } from "./pagination.tsx"
