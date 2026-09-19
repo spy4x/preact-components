@@ -16,6 +16,16 @@ export {
 } from "./button.tsx"
 export { Checkbox, type CheckboxProps } from "./checkbox.tsx"
 export {
+  Card,
+  CardBody,
+  type CardBodyProps,
+  CardFooter,
+  type CardFooterProps,
+  CardHeader,
+  type CardHeaderProps,
+  type CardProps,
+} from "./card.tsx"
+export {
   clampConfidence,
   ConfidenceMeter,
   type ConfidenceMeterProps,
