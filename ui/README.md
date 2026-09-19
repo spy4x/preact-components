@@ -19,6 +19,7 @@ Preact + Tailwind primitives extracted from `gb`, `financy` and `offer-lens`.
 | `Button`          | `button`           | `variant`, `size`, native button attrs                |
 | `ConfidenceMeter` | `confidence-meter` | `value` (clamped 0–100), `label`                      |
 | `CopyButton`      | `copy-button`      | `textToCopy`, `copy?` (clipboard port)                |
+| `Combobox`        | `combobox`         | `items`, `value`, `onChange`, `getLabel?`, `filter?`  |
 | `Dropdown`        | `dropdown`         | `trigger`, `children`, `vertical`, `horizontal`       |
 | `ErrorState`      | `error-state`      | `message` (renders nothing when empty)                |
 | `GeoButton`       | `geo-button`       | `onLocation`, `onError?`                              |

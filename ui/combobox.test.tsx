@@ -1,0 +1,941 @@
+import { expect } from "@std/expect"
+import { readFileSync } from "node:fs"
+import { describe, it } from "@std/testing/bdd"
+import { render } from "preact-render-to-string"
+import {
+  activeDescendant,
+  Combobox,
+  type ComboboxKey,
+  comboboxKey,
+  comboboxKeyAction,
+  comboboxListboxId,
+  comboboxOptionId,
+  type ComboboxState,
+  defaultGetLabel,
+  filterItems,
+  fold,
+  leavesCombobox,
+  listboxContent,
+  matchesQuery,
+  naming,
+  nextComboboxState,
+  openingState,
+  selectableIndex,
+  typingState,
+} from "./combobox.tsx"
+
+/** Closed, nothing highlighted: the state every reducer case starts from unless it says otherwise. */
+const closed: ComboboxState = { activeIndex: -1, isOpen: false }
+
+/** Open with `active` highlighted. */
+const openAt = (active: number): ComboboxState => ({ activeIndex: active, isOpen: true })
+
+describe("fold", () => {
+  it("lower-cases", () => {
+    expect(fold("Bitcoin")).toBe("bitcoin")
+  })
+
+  it("strips diacritics", () => {
+    expect(fold("São Paulo")).toBe("sao paulo")
+    expect(fold("ÉCU")).toBe("ecu")
+    expect(fold("Zürich")).toBe("zurich")
+  })
+
+  it("leaves text without diacritics untouched", () => {
+    expect(fold("usd/eur 100%")).toBe("usd/eur 100%")
+  })
+
+  it("is idempotent", () => {
+    expect(fold(fold("Ünïcödé"))).toBe(fold("Ünïcödé"))
+  })
+})
+
+describe("defaultGetLabel", () => {
+  it("stringifies a string", () => {
+    expect(defaultGetLabel("BTC")).toBe("BTC")
+  })
+
+  it("stringifies a number", () => {
+    expect(defaultGetLabel(42)).toBe("42")
+  })
+
+  it("stringifies an object rather than throwing", () => {
+    expect(defaultGetLabel({ id: 1 })).toBe("[object Object]")
+  })
+})
+
+describe("matchesQuery", () => {
+  it("matches everything against an empty query", () => {
+    expect(matchesQuery("BTC", "")).toBe(true)
+  })
+
+  it("treats a whitespace-only query as empty", () => {
+    expect(matchesQuery("BTC", "   ")).toBe(true)
+  })
+
+  it("matches a substring", () => {
+    expect(matchesQuery("Bitcoin", "coin")).toBe(true)
+  })
+
+  it("matches case-insensitively", () => {
+    expect(matchesQuery("Bitcoin", "BIT")).toBe(true)
+    expect(matchesQuery("bitcoin", "BIT")).toBe(true)
+  })
+
+  it("ignores diacritics on both sides", () => {
+    expect(matchesQuery("São Paulo", "sao")).toBe(true)
+    expect(matchesQuery("Sao Paulo", "são")).toBe(true)
+  })
+
+  it("ignores surrounding whitespace in the query", () => {
+    expect(matchesQuery("Bitcoin", "  coin  ")).toBe(true)
+  })
+
+  it("rejects a query the label does not contain", () => {
+    expect(matchesQuery("Bitcoin", "ethereum")).toBe(false)
+    expect(matchesQuery("Bitcoin", "coins")).toBe(false)
+  })
+
+  it("matches against the label the caller supplies", () => {
+    const item = { code: "BTC", name: "Bitcoin" }
+    expect(matchesQuery(item, "coin", (entry) => entry.name)).toBe(true)
+    expect(matchesQuery(item, "coin", (entry) => entry.code)).toBe(false)
+  })
+
+  it("keeps the file's own row when the query is empty even for objects", () => {
+    expect(matchesQuery({ code: "BTC" }, "")).toBe(true)
+  })
+})
+
+describe("filterItems", () => {
+  const items = ["Bitcoin", "Ethereum", "Litecoin"]
+
+  it("returns every item for an empty query", () => {
+    expect(filterItems(items, "")).toEqual(items)
+  })
+
+  it("returns every item for a whitespace-only query", () => {
+    expect(filterItems(items, "  ")).toEqual(items)
+  })
+
+  it("keeps the original order", () => {
+    expect(filterItems(items, "coin")).toEqual(["Bitcoin", "Litecoin"])
+  })
+
+  it("is case-insensitive", () => {
+    expect(filterItems(items, "ETHER")).toEqual(["Ethereum"])
+  })
+
+  it("matches mid-word, not just a prefix", () => {
+    expect(filterItems(items, "her")).toEqual(["Ethereum"])
+  })
+
+  it("returns an empty list when nothing matches", () => {
+    expect(filterItems(items, "dogecoin")).toEqual([])
+  })
+
+  it("returns an empty list for an empty input list", () => {
+    expect(filterItems([], "")).toEqual([])
+    expect(filterItems([], "btc")).toEqual([])
+  })
+
+  it("never mutates the input", () => {
+    const source = [...items]
+    filterItems(source, "coin")
+    expect(source).toEqual(items)
+  })
+
+  it("filters objects through the caller's getLabel", () => {
+    const rows = [{ code: "BTC", name: "Bitcoin" }, { code: "ETH", name: "Ethereum" }]
+    expect(filterItems(rows, "ether", (row) => row.name).map((row) => row.code)).toEqual(["ETH"])
+  })
+
+  it("folds diacritics in both the label and the query", () => {
+    expect(filterItems(["São Paulo", "Santiago"], "sao")).toEqual(["São Paulo"])
+  })
+})
+
+describe("nextComboboxState", () => {
+  it("opens on ArrowDown from closed and activates the first option", () => {
+    expect(nextComboboxState(closed, "ArrowDown", 3)).toEqual({
+      activeIndex: 0,
+      isOpen: true,
+      handled: true,
+    })
+  })
+
+  it("moves down one from a fresh open", () => {
+    expect(nextComboboxState(openAt(0), "ArrowDown", 3).activeIndex).toBe(1)
+  })
+
+  it("wraps from the last option to the first", () => {
+    expect(nextComboboxState(openAt(2), "ArrowDown", 3).activeIndex).toBe(0)
+  })
+
+  it("wraps from the first option up to the last", () => {
+    expect(nextComboboxState(openAt(0), "ArrowUp", 3).activeIndex).toBe(2)
+  })
+
+  it("opens on ArrowUp from closed and activates the last option", () => {
+    expect(nextComboboxState(closed, "ArrowUp", 3)).toEqual({
+      activeIndex: 2,
+      isOpen: true,
+      handled: true,
+    })
+  })
+
+  it("treats a stale out-of-range active index as no active option", () => {
+    expect(nextComboboxState({ activeIndex: 7, isOpen: true }, "ArrowDown", 3).activeIndex).toBe(0)
+    expect(nextComboboxState({ activeIndex: 7, isOpen: true }, "ArrowUp", 3).activeIndex).toBe(2)
+    expect(nextComboboxState({ activeIndex: -4, isOpen: true }, "ArrowDown", 3).activeIndex).toBe(0)
+  })
+
+  it("keeps the list open and nothing active when the filtered list is empty", () => {
+    expect(nextComboboxState(closed, "ArrowDown", 0)).toEqual({
+      activeIndex: -1,
+      isOpen: true,
+      handled: true,
+    })
+    expect(nextComboboxState(openAt(-1), "ArrowUp", 0)).toEqual({
+      activeIndex: -1,
+      isOpen: true,
+      handled: true,
+    })
+  })
+
+  it("activates the single option from both directions", () => {
+    expect(nextComboboxState(closed, "ArrowDown", 1).activeIndex).toBe(0)
+    expect(nextComboboxState(closed, "ArrowUp", 1).activeIndex).toBe(0)
+    expect(nextComboboxState(openAt(0), "ArrowDown", 1).activeIndex).toBe(0)
+    expect(nextComboboxState(openAt(0), "ArrowUp", 1).activeIndex).toBe(0)
+  })
+
+  it("opens with nothing active on Alt+ArrowDown", () => {
+    expect(nextComboboxState(closed, "Alt+ArrowDown", 3)).toEqual({
+      activeIndex: -1,
+      isOpen: true,
+      handled: true,
+    })
+  })
+
+  it("clears the highlight without closing on Alt+ArrowDown", () => {
+    expect(nextComboboxState(openAt(2), "Alt+ArrowDown", 3)).toEqual({
+      activeIndex: -1,
+      isOpen: true,
+      handled: true,
+    })
+  })
+
+  it("closes on Alt+ArrowUp from both states", () => {
+    expect(nextComboboxState(openAt(1), "Alt+ArrowUp", 3)).toEqual({
+      activeIndex: -1,
+      isOpen: false,
+      handled: true,
+    })
+    expect(nextComboboxState(closed, "Alt+ArrowUp", 3).isOpen).toBe(false)
+  })
+
+  it("jumps to the first option on Home while open", () => {
+    expect(nextComboboxState(openAt(2), "Home", 3).activeIndex).toBe(0)
+  })
+
+  it("jumps to the last option on End while open", () => {
+    expect(nextComboboxState(openAt(0), "End", 3).activeIndex).toBe(2)
+  })
+
+  it("ignores Home and End while closed, so the caret keeps them", () => {
+    expect(nextComboboxState(closed, "Home", 3)).toEqual({
+      activeIndex: -1,
+      isOpen: false,
+      handled: true,
+    })
+    expect(nextComboboxState(closed, "End", 3)).toEqual({
+      activeIndex: -1,
+      isOpen: false,
+      handled: true,
+    })
+  })
+
+  it("ignores Home and End when the filtered list is empty", () => {
+    expect(nextComboboxState(openAt(-1), "Home", 0).activeIndex).toBe(-1)
+    expect(nextComboboxState(openAt(-1), "End", 0).activeIndex).toBe(-1)
+  })
+
+  it("closes on Enter and clears the highlight, leaving the choice to the caller", () => {
+    expect(nextComboboxState(openAt(1), "Enter", 3)).toEqual({
+      activeIndex: -1,
+      isOpen: false,
+      handled: true,
+    })
+  })
+
+  it("ignores Enter while closed", () => {
+    expect(nextComboboxState(closed, "Enter", 3)).toEqual({
+      activeIndex: -1,
+      isOpen: false,
+      handled: true,
+    })
+  })
+
+  it("closes on Escape, keeping the query where it is", () => {
+    expect(nextComboboxState(openAt(2), "Escape", 3)).toEqual({
+      activeIndex: -1,
+      isOpen: false,
+      handled: true,
+    })
+  })
+
+  it("ignores Escape while closed", () => {
+    expect(nextComboboxState(closed, "Escape", 3).isOpen).toBe(false)
+  })
+
+  it("never mutates the state it was given", () => {
+    const state = openAt(1)
+    nextComboboxState(state, "ArrowDown", 3)
+    expect(state).toEqual({ activeIndex: 1, isOpen: true })
+  })
+
+  it("answers every key in the table", () => {
+    const keys: ComboboxKey[] = [
+      "ArrowDown",
+      "ArrowUp",
+      "Alt+ArrowDown",
+      "Alt+ArrowUp",
+      "Home",
+      "End",
+      "Enter",
+      "Escape",
+    ]
+    for (const key of keys) {
+      for (const count of [0, 1, 3]) {
+        expect(nextComboboxState(closed, key, count).handled).toBe(true)
+        expect(nextComboboxState(openAt(0), key, count).handled).toBe(true)
+      }
+    }
+  })
+})
+
+describe("comboboxKey", () => {
+  it("maps a plain arrow key", () => {
+    expect(comboboxKey({ key: "ArrowDown", altKey: false })).toBe("ArrowDown")
+    expect(comboboxKey({ key: "ArrowUp", altKey: false })).toBe("ArrowUp")
+  })
+
+  it("maps the alt-arrow pair", () => {
+    expect(comboboxKey({ key: "ArrowDown", altKey: true })).toBe("Alt+ArrowDown")
+    expect(comboboxKey({ key: "ArrowUp", altKey: true })).toBe("Alt+ArrowUp")
+  })
+
+  it("maps Home, End, Enter and Escape", () => {
+    expect(comboboxKey({ key: "Home", altKey: false })).toBe("Home")
+    expect(comboboxKey({ key: "End", altKey: false })).toBe("End")
+    expect(comboboxKey({ key: "Enter", altKey: false })).toBe("Enter")
+    expect(comboboxKey({ key: "Escape", altKey: false })).toBe("Escape")
+  })
+
+  it("ignores typing so the platform keeps it", () => {
+    expect(comboboxKey({ key: "a", altKey: false })).toBeUndefined()
+    expect(comboboxKey({ key: " ", altKey: false })).toBeUndefined()
+  })
+
+  it("ignores Tab, which moves focus out", () => {
+    expect(comboboxKey({ key: "Tab", altKey: false })).toBeUndefined()
+  })
+
+  it("ignores alt-modified keys it has no rule for", () => {
+    expect(comboboxKey({ key: "Home", altKey: true })).toBeUndefined()
+    expect(comboboxKey({ key: "Enter", altKey: true })).toBeUndefined()
+  })
+})
+
+describe("comboboxKeyAction", () => {
+  it("keeps the caret keys for the browser while closed", () => {
+    expect(comboboxKeyAction("Home", closed, 3).preventDefault).toBe(false)
+    expect(comboboxKeyAction("End", closed, 3).preventDefault).toBe(false)
+  })
+
+  it("takes the caret keys over once the list is open", () => {
+    expect(comboboxKeyAction("Home", openAt(2), 3)).toEqual({
+      state: { activeIndex: 0, isOpen: true },
+      preventDefault: true,
+      select: -1,
+    })
+    expect(comboboxKeyAction("End", openAt(0), 3).state.activeIndex).toBe(2)
+    expect(comboboxKeyAction("End", openAt(0), 3).preventDefault).toBe(true)
+  })
+
+  it("consumes the arrows, which would otherwise scroll the page", () => {
+    expect(comboboxKeyAction("ArrowDown", closed, 3).preventDefault).toBe(true)
+    expect(comboboxKeyAction("ArrowUp", openAt(0), 3).preventDefault).toBe(true)
+    expect(comboboxKeyAction("Alt+ArrowDown", closed, 3).preventDefault).toBe(true)
+    expect(comboboxKeyAction("Alt+ArrowUp", openAt(0), 3).preventDefault).toBe(true)
+  })
+
+  it("consumes Escape, which Safari would use to clear the input", () => {
+    expect(comboboxKeyAction("Escape", openAt(1), 3)).toEqual({
+      state: { activeIndex: -1, isOpen: false },
+      preventDefault: true,
+      select: -1,
+    })
+    expect(comboboxKeyAction("Escape", closed, 3).preventDefault).toBe(true)
+  })
+
+  it("selects the highlighted option on Enter", () => {
+    expect(comboboxKeyAction("Enter", openAt(1), 3)).toEqual({
+      state: { activeIndex: -1, isOpen: false },
+      preventDefault: true,
+      select: 1,
+    })
+  })
+
+  it("selects nothing on Enter with no highlight", () => {
+    expect(comboboxKeyAction("Enter", openAt(-1), 3).select).toBe(-1)
+  })
+
+  it("selects nothing on Enter while closed", () => {
+    expect(comboboxKeyAction("Enter", closed, 3)).toEqual({
+      state: { activeIndex: -1, isOpen: false },
+      preventDefault: true,
+      select: -1,
+    })
+  })
+
+  it("opens on the arrows and reports the new highlight", () => {
+    expect(comboboxKeyAction("ArrowDown", closed, 3).state).toEqual({
+      activeIndex: 0,
+      isOpen: true,
+    })
+    expect(comboboxKeyAction("Alt+ArrowDown", closed, 3).state).toEqual({
+      activeIndex: -1,
+      isOpen: true,
+    })
+  })
+})
+
+describe("ids and aria-activedescendant", () => {
+  it("derives the listbox id from the base id", () => {
+    expect(comboboxListboxId("cb")).toBe("cb-listbox")
+  })
+
+  it("derives an option id per index", () => {
+    expect(comboboxOptionId("cb", 0)).toBe("cb-option-0")
+    expect(comboboxOptionId("cb", 2)).toBe("cb-option-2")
+  })
+
+  it("points at the active option while open", () => {
+    expect(activeDescendant("cb", openAt(0))).toBe("cb-option-0")
+    expect(activeDescendant("cb", openAt(2))).toBe("cb-option-2")
+  })
+
+  it("omits the pointer when nothing is highlighted", () => {
+    expect(activeDescendant("cb", openAt(-1))).toBeUndefined()
+  })
+
+  it("omits the pointer while closed, so it never dangles", () => {
+    expect(activeDescendant("cb", { activeIndex: 0, isOpen: false })).toBeUndefined()
+  })
+})
+
+describe("Combobox markup", () => {
+  const items = ["BTC", "ETH", "USD"]
+
+  it("starts closed and announces itself as a collapsed combobox", () => {
+    const html = render(<Combobox items={items} onChange={() => {}} />)
+
+    expect(html).toContain('role="combobox"')
+    expect(html).toContain('aria-expanded="false"')
+    expect(html).toContain('aria-autocomplete="list"')
+  })
+
+  it("carries no active descendant while closed", () => {
+    expect(render(<Combobox items={items} value="ETH" onChange={() => {}} />))
+      .not.toContain("aria-activedescendant")
+  })
+
+  it("points aria-controls at the listbox it renders, even closed", () => {
+    const html = render(<Combobox items={items} onChange={() => {}} />)
+    const controls = /aria-controls="([^"]+)"/.exec(html)?.[1]
+    const listbox = /<ul[^>]*id="([^"]+)"/.exec(html)?.[1]
+
+    expect(controls).toBeDefined()
+    expect(controls).toBe(listbox)
+    expect(html).toContain('role="listbox"')
+  })
+
+  it("hides the listbox with the attribute while closed, at markup level", () => {
+    const html = render(<Combobox items={items} onChange={() => {}} />)
+    const listboxId = /aria-controls="([^"]+)"/.exec(html)?.[1]
+
+    // The `hidden` attribute, not a utility class: the popup must disappear without the stylesheet.
+    expect(listboxId).toBeDefined()
+    expect(html).toContain(`<ul id="${listboxId}" role="listbox" hidden`)
+    expect(html.match(/role="option"/g)?.length).toBe(3)
+  })
+
+  it("marks the selected option and only that one", () => {
+    const html = render(<Combobox items={items} value="ETH" onChange={() => {}} />)
+
+    expect(html.match(/aria-selected="true"/g)?.length).toBe(1)
+    expect(html.match(/aria-selected="false"/g)?.length).toBe(2)
+    const selected = /<li[^>]*aria-selected="true"[^>]*>(ETH)<\/li>/.exec(html)
+    expect(selected).not.toBeNull()
+  })
+
+  it("paints the selected option, and leaves the unselected ones on the base text colour", () => {
+    const html = render(<Combobox items={items} value="ETH" onChange={() => {}} />)
+
+    expect(html).toContain("bg-blue-50 font-medium text-blue-700")
+    // `cn` resolves last-wins, so the base colour must not survive on an unselected row as a
+    // stray `text-gray-900` that the selected row's blue lost to.
+    expect(html.match(/text-gray-900/g)?.length).toBe(2)
+  })
+
+  it("renders one option per item, in order, with ids derived from the input id", () => {
+    const html = render(<Combobox items={items} onChange={() => {}} />)
+    const baseId = /<input[^>]*id="([^"]+)"/.exec(html)?.[1]
+
+    expect(baseId).toBeDefined()
+    for (const [index, item] of items.entries()) {
+      expect(html).toContain(`id="${comboboxOptionId(baseId!, index)}"`)
+      expect(html).toContain(`>${item}</li>`)
+    }
+  })
+
+  it("uses the placeholder and shows no value without a selection", () => {
+    const html = render(
+      <Combobox items={items} onChange={() => {}} placeholder="Pick a coin" />,
+    )
+
+    expect(html).toContain('placeholder="Pick a coin"')
+    // Preact drops the `=""` of an empty string attribute, so the closed input renders as `value`.
+    expect(html).toContain(" value ")
+  })
+
+  it("renders labels through getLabel", () => {
+    const rows = [{ code: "BTC", name: "Bitcoin" }]
+    const html = render(
+      <Combobox items={rows} onChange={() => {}} getLabel={(row) => row.name} />,
+    )
+
+    expect(html).toContain("Bitcoin")
+    expect(html).not.toContain("BTC")
+  })
+
+  it("shows the empty message when the query matches nothing", () => {
+    const html = render(<Combobox items={items} onChange={() => {}} query="zzz" />)
+
+    expect(html).toContain("No matches")
+    expect(html.match(/role="option"/g)).toBeNull()
+  })
+
+  it("keeps the listbox empty when the query matches nothing, with no non-option child", () => {
+    const html = render(<Combobox items={items} onChange={() => {}} query="zzz" />)
+    const listbox = /<ul id="[^"]+" role="listbox"[^>]*>(.*?)<\/ul>/.exec(html)?.[1]
+
+    // `role="listbox"` may only contain `role="option"` or `role="group"`, so the message lives
+    // outside it; a message row inside is an `aria-required-children` violation.
+    expect(listbox).toBe("")
+    expect(html).not.toContain('role="presentation"')
+  })
+
+  it("announces the empty state through a status region the input describes", () => {
+    const html = render(<Combobox items={items} onChange={() => {}} query="zzz" />)
+    const statusId = /<span id="([^"]+)" role="status"/.exec(html)?.[1]
+
+    expect(statusId).toBeDefined()
+    expect(html).toContain('role="status"')
+    expect(html).toContain('aria-live="polite"')
+    expect(html).toContain(`aria-describedby="${statusId}"`)
+  })
+
+  it("renders no status region while the list has options", () => {
+    const html = render(<Combobox items={items} onChange={() => {}} />)
+
+    expect(html).not.toContain('role="status"')
+    expect(html).not.toContain("aria-describedby")
+  })
+
+  it("takes the empty message from the caller, as text or as a function of the query", () => {
+    expect(render(<Combobox items={items} onChange={() => {}} query="zzz" emptyMessage="Nada" />))
+      .toContain("Nada")
+    expect(
+      render(
+        <Combobox
+          items={items}
+          onChange={() => {}}
+          query="zzz"
+          emptyMessage={(text) => `Nothing for ${text}`}
+        />,
+      ),
+    ).toContain("Nothing for zzz")
+  })
+
+  it("shows the selection in the input while closed", () => {
+    const html = render(<Combobox items={items} value="ETH" onChange={() => {}} />)
+
+    expect(html).toContain('value="ETH"')
+  })
+
+  it("shows no value at all when nothing is selected", () => {
+    const html = render(<Combobox items={items} value={null} onChange={() => {}} />)
+
+    expect(html).toContain(" value ")
+    expect(html).not.toContain('value="')
+  })
+
+  it("shows no value when the selection is not one of the items", () => {
+    expect(render(<Combobox items={items} value="EUR" onChange={() => {}} />))
+      .not.toContain('value="EUR"')
+  })
+
+  it("shows a numeric selection", () => {
+    const html = render(<Combobox items={[1, 2, 3]} value={2} onChange={() => {}} />)
+
+    expect(html).toContain('value="2"')
+    expect(html.match(/aria-selected="true"/g)?.length).toBe(1)
+  })
+
+  it("counts the selection by value, not by label, for objects", () => {
+    const rows = [{ id: 1, name: "One" }, { id: 2, name: "Two" }]
+    const html = render(
+      <Combobox
+        items={rows}
+        value={rows[1]}
+        onChange={() => {}}
+        getLabel={(row) => row.name}
+      />,
+    )
+
+    expect(html).toContain('value="Two"')
+    expect(html).toContain('<li id="P0-0-option-1" role="option" aria-selected="true"')
+  })
+
+  it("filters the option list by the controlled query", () => {
+    const html = render(<Combobox items={items} onChange={() => {}} query="et" />)
+
+    expect(html.match(/role="option"/g)?.length).toBe(1)
+    expect(html).toContain(">ETH</li>")
+    expect(html).not.toContain(">USD</li>")
+  })
+
+  it("takes a custom filter wholesale", () => {
+    const html = render(
+      <Combobox items={items} onChange={() => {}} query="ignored" filter={(all) => [...all]} />,
+    )
+
+    expect(html.match(/role="option"/g)?.length).toBe(3)
+  })
+
+  it("lets renderOption own the option content", () => {
+    const html = render(
+      <Combobox
+        items={items}
+        value="BTC"
+        onChange={() => {}}
+        renderOption={(item, state) => (
+          <span data-e2e={item}>{state.selected ? "picked" : "idle"}</span>
+        )}
+      />,
+    )
+
+    expect(html).toContain('data-e2e="BTC"')
+    expect(html).toContain("picked")
+    expect(html).toContain("idle")
+  })
+
+  it("marks a disabled item and leaves the rest alone", () => {
+    const html = render(
+      <Combobox items={items} onChange={() => {}} isItemDisabled={(item) => item === "ETH"} />,
+    )
+
+    expect(html.match(/aria-disabled="true"/g)?.length).toBe(1)
+  })
+
+  it("renders no clear button without a selection or a query", () => {
+    expect(render(<Combobox items={items} onChange={() => {}} />))
+      .not.toContain('aria-label="Clear selection"')
+  })
+
+  it("renders a named clear button when something is selected", () => {
+    const html = render(<Combobox items={items} value="ETH" onChange={() => {}} />)
+
+    expect(html).toContain('aria-label="Clear selection"')
+    expect(html).toContain('type="button"')
+  })
+
+  it("renders the clear button when only the query has content", () => {
+    expect(render(<Combobox items={items} onChange={() => {}} query="bt" />))
+      .toContain('aria-label="Clear selection"')
+  })
+
+  it("takes the clear button's accessible name from the caller", () => {
+    expect(render(<Combobox items={items} value="ETH" onChange={() => {}} clearLabel="Effacer" />))
+      .toContain('aria-label="Effacer"')
+  })
+
+  it("can turn the clear button off", () => {
+    expect(
+      render(
+        <Combobox items={items} value="ETH" onChange={() => {}} showClearButton={false} />,
+      ),
+    ).not.toContain("aria-label=")
+  })
+
+  it("names the input and the listbox for assistive tech", () => {
+    const html = render(<Combobox items={items} onChange={() => {}} ariaLabel="Currency" />)
+
+    expect(html.match(/aria-label="Currency"/g)?.length).toBe(2)
+  })
+
+  it("takes an id so a visible label can point at the input", () => {
+    const html = render(<Combobox items={items} onChange={() => {}} id="coin" ariaLabel="Coin" />)
+
+    expect(html).toContain('<input id="coin"')
+    expect(html).toContain('aria-controls="coin-listbox"')
+    expect(html).toContain('<ul id="coin-listbox"')
+    expect(html).toContain('id="coin-option-0"')
+  })
+
+  it("can be named by the caller's own label instead of aria-label", () => {
+    const html = render(
+      <Combobox
+        items={items}
+        onChange={() => {}}
+        id="coin"
+        aria-labelledby="coin-label"
+      />,
+    )
+
+    expect(html.match(/aria-labelledby="coin-label"/g)?.length).toBe(2)
+    expect(html).not.toContain("aria-label=")
+  })
+
+  it("falls back to a generated id when the caller passes none", () => {
+    const html = render(<Combobox items={items} onChange={() => {}} ariaLabel="Coin" />)
+    const id = /<input id="([^"]+)"/.exec(html)?.[1]
+
+    expect(id).toBeDefined()
+    expect(html).toContain(`aria-controls="${id}-listbox"`)
+  })
+
+  it("appends caller classes instead of replacing the component's own", () => {
+    const html = render(
+      <Combobox
+        items={items}
+        onChange={() => {}}
+        class="w-64"
+        inputClass="pl-9"
+        listboxClass="max-h-40"
+      />,
+    )
+
+    expect(html).toContain("w-64")
+    expect(html).toContain("pl-9")
+    expect(html).toContain("input")
+    expect(html).toContain("max-h-40")
+  })
+
+  it("gives every combobox on a page its own ids", () => {
+    const html = render(
+      <div>
+        <Combobox items={items} onChange={() => {}} />
+        <Combobox items={items} onChange={() => {}} />
+      </div>,
+    )
+    const ids = [...html.matchAll(/<input[^>]*id="([^"]+)"/g)].map((match) => match[1])
+
+    expect(ids.length).toBe(2)
+    expect(new Set(ids).size).toBe(2)
+  })
+})
+
+describe("selectableIndex", () => {
+  const list = ["a", "b", "c"]
+
+  it("prefers the selected index", () => {
+    expect(selectableIndex(list, 2)).toBe(2)
+  })
+
+  it("falls back to the first item when nothing is selected", () => {
+    expect(selectableIndex(list, -1)).toBe(0)
+  })
+
+  it("falls back to the first item when the selection is filtered out", () => {
+    expect(selectableIndex(["x", "y"], 0)).toBe(0)
+    expect(selectableIndex([], 0)).toBe(-1)
+  })
+
+  it("ignores a preference out of range", () => {
+    expect(selectableIndex(list, 9)).toBe(0)
+  })
+
+  it("skips a disabled preference for the first enabled item", () => {
+    expect(selectableIndex(list, 0, (item) => item === "a")).toBe(1)
+  })
+
+  it("skips disabled items when there is no preference", () => {
+    expect(selectableIndex(list, -1, (item) => item !== "b")).toBe(1)
+  })
+
+  it("reports nothing to highlight when every item is disabled", () => {
+    expect(selectableIndex(list, 1, () => true)).toBe(-1)
+  })
+
+  it("reports nothing to highlight for an empty list", () => {
+    expect(selectableIndex([], -1)).toBe(-1)
+  })
+})
+
+describe("leavesCombobox", () => {
+  /** Stand-in for the input: `isSameNode` is all the function asks of a node. */
+  const input = { isSameNode: (other: unknown) => other === input }
+  /** Stand-in for anything else focus can land on. */
+  const elsewhere = { isSameNode: () => false } as unknown as Node
+
+  it("stays when focus is still on the input", () => {
+    expect(leavesCombobox(input, input as unknown as Node)).toBe(false)
+  })
+
+  it("leaves when focus moves to another element", () => {
+    expect(leavesCombobox(input, elsewhere)).toBe(true)
+  })
+
+  it("does not treat a null relatedTarget as a leave, so a click on an option keeps the list", () => {
+    expect(leavesCombobox(input, null)).toBe(false)
+  })
+
+  it("leaves for a descendant that is not the input — the clear button", () => {
+    expect(leavesCombobox(input, elsewhere)).toBe(true)
+  })
+
+  it("leaves for the scrolling listbox itself, which Chrome makes a tab stop", () => {
+    const scroller = { isSameNode: (other: unknown) => other === input } as unknown as Node
+    expect(leavesCombobox(input, scroller)).toBe(true)
+  })
+
+  it("wires the component's blur handler to this rule, not to root containment", () => {
+    // The original defect: a root-containment test reports "still inside" for the clear button and for
+    // the scrolling popup, so a Tab onto either one left the list open. This pins the component to
+    // `leavesCombobox` — reverting the handler makes the test go red.
+    const source = readFileSync(new URL("./combobox.tsx", import.meta.url), "utf8")
+
+    expect(source).toContain(
+      "if (!leavesCombobox(event.currentTarget, event.relatedTarget as Node | null)) return",
+    )
+    expect(source).not.toContain("rootRef.current?.contains(next)")
+  })
+})
+
+describe("naming", () => {
+  it("reports aria-labelledby when the caller points at a label", () => {
+    expect(naming({ "aria-labelledby": "coin-label" })).toBe("aria-labelledby")
+  })
+
+  it("reports aria-label when the caller gives a plain name", () => {
+    expect(naming({ ariaLabel: "Coin" })).toBe("aria-label")
+  })
+
+  it("prefers aria-labelledby when both are set, as the accessibility tree does", () => {
+    expect(naming({ ariaLabel: "Coin", "aria-labelledby": "coin-label" })).toBe("aria-labelledby")
+  })
+
+  it("reports no name when neither is set, which is the failure mode it guards", () => {
+    expect(naming({})).toBeNull()
+    expect(naming({ ariaLabel: "" })).toBeNull()
+  })
+})
+
+describe("listboxContent", () => {
+  const items = ["BTC", "ETH"]
+
+  it("returns the options untouched when the filter left something", () => {
+    expect(listboxContent(items, "bt")).toEqual({ options: items, emptyMessage: undefined })
+  })
+
+  it("empties the listbox and produces the message when nothing matched", () => {
+    expect(listboxContent([], "zzz")).toEqual({ options: [], emptyMessage: "No matches" })
+  })
+
+  it("takes the caller's message", () => {
+    expect(listboxContent([], "zzz", "Nada").emptyMessage).toBe("Nada")
+  })
+
+  it("resolves a function-form message with the query", () => {
+    expect(listboxContent([], "zzz", (query) => `Nothing for ${query}`).emptyMessage)
+      .toBe("Nothing for zzz")
+  })
+
+  it("never returns a message next to options, which would mean a listbox child that is not an option", () => {
+    const content = listboxContent(items, "", "No matches")
+    expect(content.options.length > 0 && content.emptyMessage !== undefined).toBe(false)
+  })
+})
+
+describe("typingState", () => {
+  it("opens and highlights the first item the query left", () => {
+    expect(typingState(["Ethereum"])).toEqual({ activeIndex: 0, isOpen: true })
+  })
+
+  it("opens with nothing highlighted when the query left nothing", () => {
+    expect(typingState([])).toEqual({ activeIndex: -1, isOpen: true })
+  })
+
+  it("skips a disabled item, so Enter after typing cannot land on one", () => {
+    expect(typingState(["BTC", "ETH"], (item) => item === "BTC").activeIndex).toBe(1)
+  })
+
+  it("opens when every item is disabled, with nothing highlighted", () => {
+    expect(typingState(["BTC"], () => true)).toEqual({ activeIndex: -1, isOpen: true })
+  })
+
+  it("feeds Enter: the keystroke path selects the highlighted row", () => {
+    const afterTyping = typingState(filterItems(["Bitcoin", "Ethereum"], "eth"))
+    const enter = comboboxKeyAction("Enter", afterTyping, 1)
+
+    expect(afterTyping.activeIndex).toBe(0)
+    expect(enter.select).toBe(0)
+  })
+
+  it("keeps Enter a no-op after a query that matched nothing", () => {
+    const afterTyping = typingState(filterItems(["Bitcoin"], "zzz"))
+    const enter = comboboxKeyAction("Enter", afterTyping, 0)
+
+    expect(afterTyping.activeIndex).toBe(-1)
+    expect(enter.select).toBe(-1)
+  })
+})
+
+describe("openingState", () => {
+  const items = ["BTC", "ETH", "USD"]
+
+  it("highlights the selected item when the list still has it", () => {
+    const visible = filterItems(items, "eth")
+    expect(openingState(items, items.indexOf("ETH"), visible)).toEqual({
+      activeIndex: 0,
+      isOpen: true,
+    })
+  })
+
+  it("falls back to the first item when the selection is filtered out", () => {
+    const visible = filterItems(items, "usd")
+    expect(openingState(items, items.indexOf("ETH"), visible).activeIndex).toBe(0)
+  })
+
+  it("highlights nothing when the list is empty", () => {
+    expect(openingState(items, 1, []).activeIndex).toBe(-1)
+  })
+
+  it("skips a disabled selection for the first enabled item", () => {
+    const state = openingState(items, 0, items, (item) => item === "BTC")
+    expect(state.activeIndex).toBe(1)
+  })
+
+  it("reports nothing to highlight when every item is disabled", () => {
+    expect(openingState(items, 0, items, () => true).activeIndex).toBe(-1)
+  })
+
+  it("always opens", () => {
+    expect(openingState(items, -1, items).isOpen).toBe(true)
+    expect(openingState(items, -1, []).isOpen).toBe(true)
+  })
+})
