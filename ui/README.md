@@ -28,6 +28,7 @@ Preact + Tailwind primitives extracted from `gb`, `financy` and `offer-lens`.
 | `OnOffButtons`    | `on-off-buttons`   | `value`, `amount`, `onSwitch`                         |
 | `PageTitle`       | `page-title`       | `children`, `class`                                   |
 | `Table`           | `table`            | `headerSlot`, `bodySlots`, `footerSlot`, `rowDataE2E` |
+| `Tabs`            | `tabs`             | `tabs`, `active`, `onChange`, `orientation`, `lazy`   |
 | `Toastr`          | `toastr`           | `toasts`, `onDismiss`                                 |
 | `ToggleSwitch`    | `toggle-switch`    | `value`, `onToggle`, `disabled`, `label`              |
 
@@ -52,7 +53,25 @@ Wiring side effects through ports, so the package stays app-agnostic:
 />
 
 <Toastr toasts={app.toast.list.value} onDismiss={(id) => app.toast.remove(id)} />
+
+<Tabs
+  active={section.value}
+  onChange={(id) => section.set(id)}
+  tabs={[
+    { id: "metrics", label: "Metrics", content: <MetricsList /> },
+    { id: "logs", label: "Logs", content: <LogList />, disabled: !canReadLogs },
+  ]}
+/>
 ```
+
+`Tabs` is controlled — `active` in, `onChange` out, no selection state of its own — and it is not a
+router, so the caller wires it to whatever state it uses. By default every panel is rendered and the
+inactive ones are `hidden` (attribute plus utility), which keeps each `aria-controls` resolving and
+every panel in the accessibility tree; `lazy` renders only the active panel and drops `aria-controls`
+from the tabs whose panel it omitted. Ids are derived from each `TabItem.id` (`${id}-tab`,
+`${id}-panel`) and never generated, so keep them unique per document. Arrow keys follow `orientation`
+— Left/Right horizontal, Up/Down vertical — plus Home/End; the decision table is the exported
+`nextTabIndex`.
 
 `Toastr` auto-dismisses each toast after `toast.duration` milliseconds (default 5000, `0` keeps it
 until dismissed) and reports it through `onDismiss` — the caller owns the stack.

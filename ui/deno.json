@@ -22,6 +22,7 @@
     "./page-title": "./page-title.tsx",
     "./radio": "./radio.tsx",
     "./table": "./table.tsx",
+    "./tabs": "./tabs.tsx",
     "./toastr": "./toastr.tsx",
     "./toggle-switch": "./toggle-switch.tsx"
   },

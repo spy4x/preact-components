@@ -56,5 +56,6 @@ export {
   type RadioProps,
 } from "./radio.tsx"
 export { Table, type TableProps } from "./table.tsx"
+export { nextTabIndex, type TabItem, type TabOrientation, Tabs, type TabsProps } from "./tabs.tsx"
 export { type ToastItem, Toastr, type ToastrProps, type ToastVariant } from "./toastr.tsx"
 export { ToggleSwitch, type ToggleSwitchProps } from "./toggle-switch.tsx"
