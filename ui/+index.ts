@@ -48,6 +48,7 @@ export { LoadingSkeleton, type LoadingSkeletonProps } from "./loading-skeleton.t
 export { LoadingSpinner, type LoadingSpinnerProps, type SpinnerSize } from "./loading-spinner.tsx"
 export { OnOffButtons, type OnOffButtonsProps } from "./on-off-buttons.tsx"
 export { PageTitle, type PageTitleProps } from "./page-title.tsx"
+export { pageRange, type PageRangeItem, Pagination, type PaginationProps } from "./pagination.tsx"
 export {
   Radio,
   RadioGroup,
