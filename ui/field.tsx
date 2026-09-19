@@ -55,6 +55,14 @@ export interface FieldWiring extends FieldControlWiring {
  */
 export type FieldChild = VNode | ((wiring: FieldWiring) => VNode)
 
+/**
+ * What {@link Field}'s own label points at through `for`.
+ *
+ * The name is only the prop's; the spelling of the DOM attribute is `for`, and the two are the same
+ * thing seen from either end.
+ */
+export type FieldLabelFor = boolean | string
+
 export interface FieldProps {
   /**
    * `id` of the control. Required, and **not generated**: the id is the one piece of a field a
@@ -76,6 +84,20 @@ export interface FieldProps {
   required?: boolean
   /** Renders the label dimmed. The `disabled` attribute itself belongs on the control. */
   disabled?: boolean
+  /**
+   * `for` target of the label above. `true` (the default) points it at `id`, the control itself.
+   *
+   * Pass `false` when the control supplies its own labelling — a {@link Checkbox} and every
+   * {@link Radio} render a `<label>` that wraps their `<input>`, and a `RadioGroup` is a
+   * `<fieldset>` named by its `<legend>`. Neither a `<label>` nor a `<fieldset>` is a **labelable
+   * element**, so `for` cannot resolve against one: pointing it at them yields a dead reference,
+   * names the control twice, and leaves `Field` with two labels competing for one control.
+   *
+   * Pass a string only to aim the label at some *other* element that is labelable — the inner
+   * `<input>` of a wrapper, say. `Field` never guesses: the decision is the caller's, and inferred
+   * from markup it would be fragile.
+   */
+  labelFor?: FieldLabelFor
   /** Extra utilities on the wrapper, typically the grid span of the row. */
   class?: string
 }
@@ -114,12 +136,18 @@ const hintText = "mt-2 text-sm text-gray-500 dark:text-gray-400"
  * caller's own `aria-describedby`, say — destructure it before returning:
  *
  * ```tsx
- * const child = <SomeControl class="mt-2" />
- * const other = child.props["aria-describedby"]
+ * {(wiring) => {
+ *   const child = <SomeControl class="mt-2" />
+ *   const other = child.props["aria-describedby"]
+ *   return <SomeControl id={wiring.id} aria-describedby={other} />
+ * }}
  * ```
  *
- * const other = child.props["aria-describedby"]
- * ```
+ * A function child **bypasses** the `aria-invalid` marking on an error: `wireElement` is what adds
+ * it, and a function child is handed the wiring instead of being cloned, so the caller sets
+ * `aria-invalid` on the control itself when it wants it. The wiring carries `id`,
+ * `aria-describedby`, `errorId` and `hintId` — deliberately not `aria-invalid`, which is a control
+ * state rather than an id to reference.
  *
  * Precedence, both forms: the caller's own `aria-describedby` is **kept alongside** the messages
  * `Field` adds, never replaced by them. `<Field id="a" error="E"><input aria-describedby="own" /></Field>`
@@ -131,8 +159,28 @@ const hintText = "mt-2 text-sm text-gray-500 dark:text-gray-400"
  * of the messages reference it. Duplicate `for` attributes in a consumer were the bug that put this
  * component on the roadmap, so the wiring is asserted in `field.test.tsx`, not assumed.
  *
+ * The label's `for` is emitted only against something that can carry it. A `for` resolves against
+ * **labelable elements** — `button`, `input` of a type other than `hidden`, `meter`, `output`,
+ * `progress`, `select`, `textarea` — and nothing else: a `<fieldset>` is not labelable, and neither
+ * is a `<label>`. So a control that labels itself, or that names a group of controls, is passed with
+ * `labelFor={false}`:
+ *
+ * ```tsx
+ * <Field id={id} label="Notification method" labelFor={false}>
+ *   <RadioGroup legend="Notification method" name={name} options={options} id={id} />
+ * </Field>
+ * ```
+ *
+ * The `id` prop is still required and still lands on the control, so `aria-describedby` keeps
+ * working; only the label's `for` goes away, because the group's `<legend>` (or the `Checkbox`'s own
+ * wrapping `<label>`) is what names it. Without `labelFor={false}` the label emits
+ * `for="notification-method"` pointing at a `<fieldset>`, which is a dead reference, and on a
+ * `Checkbox` it is a second label for the same `<input>`.
+ *
  * An `error` also marks the control `aria-invalid`, which is the only place a screen reader learns a
- * value was rejected — `aria-describedby` announces the message but not the invalid state.
+ * value was rejected — `aria-describedby` announces the message but not the invalid state. That
+ * marking is `wireElement`'s, so it applies to the element-child form only: a function child is
+ * handed the wiring and sets `aria-invalid` itself.
  */
 export function Field(
   {
@@ -144,6 +192,7 @@ export function Field(
     hint,
     required,
     disabled,
+    labelFor,
     class: className,
   }: FieldProps,
 ) {
@@ -159,7 +208,7 @@ export function Field(
   const labelElement = label === undefined || label === null
     ? null
     : (
-      <label for={id} class={cn("label", disabled && "opacity-50")}>
+      <label for={labelTarget(labelFor, id)} class={cn("label", disabled && "opacity-50")}>
         {label}
         {required && <span aria-hidden="true" class="ml-1 text-red-700 dark:text-red-300">*</span>}
       </label>
@@ -173,6 +222,34 @@ export function Field(
       {message !== undefined && <p id={errorId} class={errorText} aria-live="polite">{message}</p>}
       {hintId !== undefined && <p id={hintId} class={hintText}>{hint as ComponentChild}</p>}
     </div>
+  )
+}
+
+/**
+ * The `for` value of {@link Field}'s label, given the caller's {@link FieldProps.labelFor}.
+ *
+ * Resolved here, in one pure place, rather than inline in the component: what a `for` may point at
+ * is the whole point of this file, and `field.test.tsx` asserts it both through the rendered markup
+ * and directly.
+ *
+ * `undefined` means the label carries no `for` attribute at all, which is the only correct output
+ * when the control or group owns its own labelling. Note that `undefined` is therefore *not* the
+ * absent prop: a caller who passes nothing gets `true`'s behaviour, because `true` is the default.
+ *
+ * @param labelFor The caller's `labelFor`: `true` or `undefined` for the field's own control, a
+ * non-empty string for another element, `false` to omit the attribute.
+ * @param id The field's `id`, used when `labelFor` is `true` or absent.
+ * @returns The `for` value, or `undefined` to omit the attribute.
+ * @throws When `labelFor` is neither a boolean nor a non-empty string — a plain-JS caller never
+ * sees the type, and `for=""` in the markup is a reference to nothing.
+ */
+export function labelTarget(labelFor: FieldLabelFor | undefined, id: string): string | undefined {
+  if (labelFor === false) return undefined
+  if (labelFor === undefined || labelFor === true) return id
+  if (typeof labelFor === "string" && labelFor.length > 0) return labelFor
+  throw new TypeError(
+    `Field(${id}): labelFor must be true, false, undefined or a non-empty id, got ` +
+      `${JSON.stringify(labelFor)}.`,
   )
 }
 
