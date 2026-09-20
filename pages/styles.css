@@ -45,9 +45,14 @@
 /*
  * Deep-link target. The catalogue renders `id="demo-<Name>"` and the host page's rail resolves a
  * `#/…` demo route onto that card, marking it here.
+ *
+ * The outline reads `--color-primary-muted`, not `--color-primary`: in the dark palette the latter is
+ * near-black chrome (`oklch(0.21 0.006 285.885)`) against a `--color-surface` card
+ * (`oklch(0.278 0.033 256.848)`), which is an outline nobody can see. The muted token is the accent
+ * in both palettes — purple-600 light, purple-400 dark.
  */
 article[id^="demo-"][data-deep-link] {
-  outline: 2px solid var(--color-primary, oklch(0.38 0.17 293));
+  outline: 2px solid var(--color-primary-muted, oklch(0.558 0.288 302.321));
   outline-offset: 2px;
 }
 
