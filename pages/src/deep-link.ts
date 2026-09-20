@@ -6,11 +6,19 @@
  * files only — `/preact-components/badge` would be a 404, there is no rewrite rule that could
  * point it at `index.html`. A fragment also survives a move to a custom domain.
  *
+ * The page is now multipage by hash route (`#/inputs`, `#/inputs/toggle-switch`), and that grammar
+ * lives in `@preact-components/ui-guide/routes`: it is the library's, so an app registering the
+ * guide inherits the same URLs the demo uses. What stays here is the card-level half — the
+ * `demo-<Name>` element id, and the names-explicit fragment lookup — plus the one slug rule, which
+ * is {@link routeSlug}'s and is re-exported as {@link demoSlug} so nothing keeps a second copy of it.
+ *
  * `uiGuideRoute.path` (`/ui-guide`) is deliberately not used: it is a descriptor an app registers
  * in its own router, and this page is the app. The public URL is `/preact-components/`.
  *
  * Pure functions, no DOM: the host page owns the scrolling, these own the mapping.
  */
+
+import { routeSlug } from "@preact-components/ui-guide/routes"
 
 /** The catalogue's card id for a component: what {@link demoElementId} produces. */
 export function demoElementId(name: string): string {
@@ -20,14 +28,15 @@ export function demoElementId(name: string): string {
 /**
  * URL slug of a component: `ToggleSwitch` becomes `toggle-switch`.
  *
- * Every component `ui/` exports is camel-cased from words, so splitting on a lower-to-upper
- * boundary is enough; an acronym would need its own rule and there is none.
+ * The rule itself is {@link routeSlug}, which the route model uses for section ids and demo names
+ * alike; this name is kept because the deep-link half of the page has always read it, and because
+ * a slug that disagreed with the resolver's would ship a link the page could not open.
  *
  * @param name Component export name.
  * @returns The slug the navigation links to.
  */
 export function demoSlug(name: string): string {
-  return name.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase()
+  return routeSlug(name)
 }
 
 /**

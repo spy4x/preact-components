@@ -25,20 +25,21 @@ usage blocks copy, the toasts fire and the deep links scroll.
 
 ## Files
 
-| File                      | Contents                                                                             |
-| ------------------------- | ------------------------------------------------------------------------------------ |
-| `build.ts`                | Type-checks, compiles the stylesheet, bundles the island, prerenders, writes `dist/` |
-| `styles.css`              | The app-order stylesheet an app writes, plus the `@source` rules the scanner reads   |
-| `verify.ts`               | Asserts the artefact's shape, then drives the built page in headless Chromium        |
-| `serve.ts`                | Static server that mounts `dist/` at the deployed base (`deno task preview`)         |
-| `src/app.tsx`             | The host page — the app shell this library deliberately does not ship                |
-| `src/+main.tsx`           | The island: `hydrate(<App />, #root)`                                                |
-| `src/prerender.tsx`       | The server half: `renderToString(<App />)`, same component                           |
-| `src/document.ts`         | The HTML document template, including the pre-paint colour-scheme script             |
-| `src/deep-link.ts`        | Fragment ⇄ component mapping (`#toggle-switch` ⇄ `ToggleSwitch`)                     |
-| `src/tailwind-sources.ts` | Rewrites the `@source` entries Tailwind hands back into what its scanner resolves    |
-| `src/site.ts`             | Base path, origin, title, description, favicon                                       |
-| `dist/`                   | The artefact. Gitignored, and excluded from the repo's fmt/lint/type-check walk      |
+| File                      | Contents                                                                                                  |
+| ------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `build.ts`                | Type-checks, compiles the stylesheet, bundles the island, prerenders, writes `dist/`                      |
+| `styles.css`              | The app-order stylesheet an app writes, plus the `@source` rules the scanner reads                        |
+| `verify.ts`               | Asserts the artefact's shape, then drives the built page in headless Chromium                             |
+| `serve.ts`                | Static server that mounts `dist/` at the deployed base (`deno task preview`)                              |
+| `src/app.tsx`             | The host page — the app shell this library deliberately does not ship                                     |
+| `src/+main.tsx`           | The island: `hydrate(<App />, #root)`                                                                     |
+| `src/prerender.tsx`       | The server half: `renderToString(<App />)`, same component                                                |
+| `src/document.ts`         | The HTML document template, including the pre-paint colour-scheme script and the route echo               |
+| `src/deep-link.ts`        | Fragment ⇄ component mapping (`#toggle-switch` ⇄ `ToggleSwitch`); the slug rule is `ui-guide/routes.ts`'s |
+| `src/route-echo.ts`       | Emits the route table into the document and reads it back out, validated with `arktype`                   |
+| `src/tailwind-sources.ts` | Rewrites the `@source` entries Tailwind hands back into what its scanner resolves                         |
+| `src/site.ts`             | Base path, origin, title, description, favicon                                                            |
+| `dist/`                   | The artefact. Gitignored, and excluded from the repo's fmt/lint/type-check walk                           |
 
 ## Commands
 
@@ -79,27 +80,54 @@ says so; `deno task --cwd pages verify --static` skips the browser on purpose.
 Both assets are content-hashed (`main.2e09c12c.css`), so a redeploy cannot pair a new document with
 a cached island.
 
-## Deep links
+## Routes: hash routing, not paths
 
-A fragment, not a path:
+The catalogue is multipage, and every page is a **hash route**:
 
 ```
-https://spy4x.github.io/preact-components/#toggle-switch
+https://spy4x.github.io/preact-components/#/inputs                 section
+https://spy4x.github.io/preact-components/#/inputs/toggle-switch   demo card
+https://spy4x.github.io/preact-components/#toggle-switch           the legacy deep link, still resolved
 ```
 
-- **Pages serves files only.** `/preact-components/toggle-switch` would be a 404 — there is no rewrite
-  rule that could point it at `index.html`. A fragment needs no server behaviour at all, and it
-  survives a move to a custom domain.
-- The catalogue already renders `id="demo-<Name>"` per component. `deep-link.ts` maps between that id
-  and a kebab-case slug, and accepts `#toggle-switch`, `#ToggleSwitch` and `#demo-ToggleSwitch`
-  alike. `src/deep-link.test.ts` pins the mapping down.
-- On load and on every `hashchange` the host page marks the card with `data-deep-link` (outlined by
-  `styles.css`), scrolls it into view and rewrites `document.title`.
-- `uiGuideRoute.path` (`/ui-guide`) is intentionally _not_ used: the descriptor is a route an app
-  registers in its own router, and this page _is_ the app. The demo's URL is the site root.
+The grammar lives in the library — `@preact-components/ui-guide/routes`, described in
+`ui-guide/README.md` — because an app registering the guide inherits the same URLs. The host page
+consumes it: `src/app.tsx` calls `parseRoute(location.hash)` on load and on every `hashchange`, marks
+the demo's card with `data-deep-link` (outlined by `styles.css`), scrolls it into view and rewrites
+`document.title`; a section route scrolls the section; an index match clears the mark and does
+nothing else, which is what keeps the browser's own anchors (`#top`, `#icons`) working.
+
+Why hash rather than per-route prerendered files:
+
+- **Pages serves files only.** `/preact-components/inputs` would be a 404 — there is no rewrite rule
+  that could point it at `index.html`. One prerendered document per route would work, but it needs a
+  build-system change (a document per route plus a link-rewriting pass) to buy nothing a fragment
+  does not already give, and it would leave the demo unable to move to a custom domain unchanged.
+- **The cost, stated plainly:** uglier URLs, and one fragment namespace shared with the deep links
+  that already shipped — which is also why those deep links were kept rather than rewritten.
+- `src/deep-link.ts` keeps the card half of the mapping: `demo-<Name>` ids, and the names-explicit
+  fragment lookup `#toggle-switch`, `#ToggleSwitch`, `#demo-ToggleSwitch`. Its `demoSlug` delegates
+  to the route model's `routeSlug`, so there is one slug rule in the repository, not two.
+- `uiGuideRoute.path` (`/ui-guide`) is still intentionally _not_ used: the descriptor is a route an
+  app registers in its own router, and this page _is_ the app. The demo's URL is the site root.
 
 Every chip in the component index is such a link, and the `copy` button beside it puts that
 component's JSX on the clipboard — the same snippets the catalogue shows under "Usage".
+
+### The route echo
+
+Under hash routing the one `index.html` **is** every route, so there is no per-route emission to
+check. Instead `src/document.ts` embeds the route table (`routeTable()`, from the route model) as
+`<script type="application/json" id="ui-guide-routes">`, and `build.ts` reads it back out of the
+rendered document and runs it through `routeTableDrift()`: every entry must resolve back to its own
+section or demo, be canonical, appear once, and account for every section and demo in the catalogue.
+A link the resolver would not accept fails the build rather than shipping, and it fails _before_
+`dist/` is cleared. `src/route-echo.ts` owns the emit/read pair (validated with `arktype`), `verify.ts`
+checks the same property on the artefact that is actually served, and `src/route-echo.test.ts`
+exercises the reader against a missing echo, a malformed payload and a tampered href.
+
+Nothing reads the echo at runtime: the cost is ~5 kB of JSON in a 297 kB document that already ships
+the whole catalogue prerendered.
 
 ## Deploy
 
@@ -133,7 +161,7 @@ they address component names, which are the library's public API.
 
 ## Verification
 
-`deno task --cwd pages verify` runs both phases against the built artefact; a full run is 41 checks.
+`deno task --cwd pages verify` runs both phases against the built artefact; a full run is 47 checks.
 See the PR for the transcript. In short:
 
 - **Static**: base-prefixed `href`/`src` that resolve to files that exist; `body.theme-base`; every
@@ -145,7 +173,9 @@ See the PR for the transcript. In short:
   click-to-copy in the gallery, a click on every usage block's copy control putting that block's text
   on the clipboard, typing into a class-chapter `.input` and toggling its `.checkbox`/`.radio`, the
   `.scrollbar` scrolling, a toast pushed from the demo stack, a deep link marking/scrolling/titling,
-  the palette toggle, computed styles proving `preset.css` is live (`h-12` input, `radius-primary`
+  the canonical demo route, a section route and an unknown route falling back to the landing page —
+  the three of which are the hash-routing grammar, driven in the browser because the resolver's own
+  tests cannot prove the island wired it up — the palette toggle, computed styles proving `preset.css` is live (`h-12` input, `radius-primary`
   card, `text-2xl` KPI value, `0.375rem` bar), and zero console errors, page exceptions or failed
   requests.
 

@@ -18,9 +18,10 @@ import {
   demoRegistry,
   packageIds,
 } from "@preact-components/ui-guide/registry"
+import { demoHref, parseRoute, routeHref } from "@preact-components/ui-guide/routes"
 import { cn } from "@preact-components/signals/cn"
 import { useEffect, useState } from "preact/hooks"
-import { componentFromFragment, demoElementId, demoSlug } from "./deep-link.ts"
+import { demoElementId } from "./deep-link.ts"
 import { PAGE_TITLE, REPOSITORY } from "./site.ts"
 
 /** Storage key shared with the bootstrap script in `<head>` (`document.ts`). */
@@ -156,35 +157,53 @@ function Intro() {
 /**
  * The navigation: one chip per component, in the sections the catalogue renders, across packages.
  *
- * It owns the deep links, because it is also what writes them. On load and on every `hashchange` it
- * resolves `location.hash` to a component, marks that card in the catalogue ({@link demoElementId})
- * and scrolls it into view; `styles.css` outlines whatever carries `data-deep-link`.
+ * It owns the hash routes, because it is also what writes them: each chip links to the canonical
+ * `#/<section>/<demo>` (the legacy `#<demo>` still resolves, and `#top`/`#icons` are left to the
+ * browser), and the section headings link to `#/<section>`. On load and on every `hashchange`
+ * {@link parseRoute} turns `location.hash` into a route: a demo route marks that card
+ * ({@link demoElementId}, outlined by `styles.css`) and scrolls it into view, a section route scrolls
+ * the section, and the index route — an empty or unknown hash — clears the mark and does nothing else,
+ * so the browser keeps its own anchors. `document.title` follows the route.
+ *
+ * What the effect does not do is hide the other sections: the document is prerendered whole, so a
+ * reader without JavaScript gets the whole catalogue, and which sections an active route *shows* is
+ * the visual pass's decision, not the route model's.
  */
 function ComponentIndex() {
   const [active, setActive] = useState<DemoedName | undefined>(undefined)
   const [copied, setCopied] = useState<DemoedName | undefined>(undefined)
 
   useEffect(() => {
-    const applyFragment = () => {
-      const name = componentFromFragment(location.hash, catalogueNames)
+    const applyRoute = () => {
+      const route = parseRoute(location.hash)
+      const name = route.kind === "demo" ? route.name : undefined
       setActive(name)
-      document.title = name ? `${name} — ${PAGE_TITLE}` : PAGE_TITLE
+      document.title = name
+        ? `${name} — ${PAGE_TITLE}`
+        : route.kind === "section"
+        ? `${route.title} — ${PAGE_TITLE}`
+        : PAGE_TITLE
 
       for (const marked of document.querySelectorAll("[data-deep-link]")) {
         marked.removeAttribute("data-deep-link")
       }
 
-      if (!name) return
-      const card = document.getElementById(demoElementId(name))
-      if (!card) return
+      if (route.kind === "demo") {
+        const card = document.getElementById(demoElementId(route.name))
+        if (!card) return
+        card.setAttribute("data-deep-link", "")
+        card.scrollIntoView({ block: "start" })
+        return
+      }
 
-      card.setAttribute("data-deep-link", "")
-      card.scrollIntoView({ block: "start" })
+      if (route.kind === "section") {
+        document.getElementById(route.sectionId)?.scrollIntoView({ block: "start" })
+      }
     }
 
-    applyFragment()
-    globalThis.addEventListener("hashchange", applyFragment)
-    return () => globalThis.removeEventListener("hashchange", applyFragment)
+    applyRoute()
+    globalThis.addEventListener("hashchange", applyRoute)
+    return () => globalThis.removeEventListener("hashchange", applyRoute)
   }, [])
 
   const copySnippet = (name: DemoedName) => {
@@ -203,7 +222,7 @@ function ComponentIndex() {
       {catalogueSections.map((section) => (
         <div key={section.id} class="space-y-2">
           <h3 class="text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">
-            {section.title}
+            <a href={routeHref(section.id)} class="hover:underline">{section.title}</a>
           </h3>
           <ul class="flex flex-wrap gap-2">
             {section.names.map((name) => (
@@ -217,7 +236,7 @@ function ComponentIndex() {
                 )}
               >
                 <a
-                  href={`#${demoSlug(name)}`}
+                  href={demoHref(section.id, name)}
                   aria-current={active === name ? "true" : undefined}
                   class={cn(
                     "px-2 py-1 font-mono text-xs",
@@ -243,10 +262,11 @@ function ComponentIndex() {
         </div>
       ))}
       <p class="text-xs text-gray-500 dark:text-gray-400">
-        Every chip is a deep link — <code>#{demoSlug("Badge")}</code>,{" "}
-        <code>#{demoSlug("ToggleSwitch")}</code>{" "}
-        and friends open this page with that demo outlined — and <em>copy</em>{" "}
-        puts its JSX on the clipboard.
+        Every chip is a hash route — <code>{demoHref("badges", "Badge")}</code>,{" "}
+        <code>{demoHref("inputs", "ToggleSwitch")}</code>{" "}
+        and friends open this page at that demo, outlined and scrolled to; the section headings open
+        the section on its own, and the old bare fragments (<code>#toggle-switch</code>) still
+        resolve. <em>copy</em> puts a snippet's JSX on the clipboard.
       </p>
     </nav>
   )

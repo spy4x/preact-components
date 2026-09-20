@@ -39,6 +39,41 @@ const nav = [...appLinks, { href: uiGuideRoute.path, label: uiGuideRoute.label }
 Nothing here imports an app's state: the two things a catalogue needs from its host — where to put a
 copied snippet — arrive as ports.
 
+## Routes
+
+`routes.ts` is the catalogue's URL grammar, exported as its own subpath
+(`@preact-components/ui-guide/routes`) and from the barrel. It is pure — no DOM, no `window`, no
+`location` — so the decision it makes is unit-testable and the host owns the effects.
+
+| Hash                     | Match                                                                   |
+| ------------------------ | ----------------------------------------------------------------------- |
+| `""`, `#`, `#/`          | index, `reason: "empty"`                                                |
+| `#/inputs`               | section `inputs` — its slug is `routeSlug(id)`, nothing hand-kept       |
+| `#/inputs/toggle-switch` | demo `ToggleSwitch`, canonical href from `demoHref(section, name)`      |
+| `#toggle-switch`         | the same demo: the bare fragment this page shipped before, kept working |
+| `#/nonsense`             | index, `reason: "unknown"` — the sentinel, never a throw                |
+
+Three decisions worth stating, because a later wave will build on them:
+
+- **The routes derive from `catalogueSections`.** `routeSlug` of the section id is the section slug
+  and `routeSlug` of the component name is the demo slug — one slug rule, the same one
+  `pages/src/deep-link.ts`'s `demoSlug` delegates to. A section added to `registry.ts` is routable
+  with no second edit, and `routes.test.ts` fails if the resolver stops accepting one or if the
+  number of routes stops equalling the number of sections. There is deliberately **no**
+  `Record<SectionId, …>` of routes: `SectionId` is a type while the ids at runtime come from a plain
+  array, so a mapped type could only be fed by a hand-kept list.
+- **A demo must live in the section its URL names.** `#/buttons/toggle-switch` is `"unknown"`, not a
+  silent redirect to `inputs`: the build checks one canonical href per demo, and accepting a second
+  would weaken that check.
+- **The index match means "not ours".** A bare fragment that is not a demo name — `#icons`, `#top`, a
+  section's own DOM id — resolves to the index route, so a host leaves the DOM alone and the
+  browser's native anchor handling keeps working. `#inputs` scrolling to the `inputs` section is the
+  browser's `id`, not a route.
+
+`routeTable()` is the route table a host can echo into its single document, and `routeTableDrift()`
+is the build guard over it: `pages/build.ts` embeds the table, reads it back out of the emitted HTML
+and fails when an entry is missing, duplicated, non-canonical, or one the resolver would not accept.
+
 ## The drift guard
 
 This is the part that makes the catalogue stay true, and it is the part the source guides lacked.
@@ -243,8 +278,10 @@ deno task check             # from the repository root, what CI runs
 deno test --allow-read --allow-env ui-guide/   # this package alone
 ```
 
-Six suites: `registry.test.ts` (drift guard, package coverage, pending bookkeeping, the class
-sections), `catalogue.test.tsx` (every demo renders, banner and worklist behaviour, route descriptor,
+Seven suites: `registry.test.ts` (drift guard, package coverage, pending bookkeeping, the class
+sections), `routes.test.ts` (the resolver, the href builders, a route for every section driven from
+`catalogueSections`, and the drift check that `pages/build.ts` runs over the emitted route echo),
+`catalogue.test.tsx` (every demo renders, banner and worklist behaviour, route descriptor,
 a usage block and copy control per card), `icons.test.tsx` (gallery exhaustiveness, filter),
 `instructions.test.ts` (a documented class is defined), `classes.test.tsx` (a defined class is
 demonstrated, or excluded with a reason) and `copy.test.tsx` (every card's copy control is wired to

@@ -7,6 +7,8 @@
  * makes hydration match rather than repair.
  */
 
+import type { RouteTable } from "@preact-components/ui-guide/routes"
+import { renderRouteTable } from "./route-echo.ts"
 import { FAVICON, PAGE_DESCRIPTION, PAGE_TITLE } from "./site.ts"
 
 export interface DocumentOptions {
@@ -20,6 +22,15 @@ export interface DocumentOptions {
   islandSrc: string
   /** Prerendered catalogue markup for `#root`. Inserted verbatim — it is generated, not user input. */
   appHtml: string
+  /**
+   * Routes the navigation links to, echoed into the document.
+   *
+   * The single `index.html` is the whole site under hash routing, so this is the closest thing to a
+   * per-route emission there is: `build.ts` renders the document, reads this table back out of it,
+   * and fails when an entry is not one the resolver accepts. Nothing reads it at runtime — the cost
+   * is a few kilobytes of JSON in a document that already ships the whole catalogue.
+   */
+  routeTable: RouteTable
 }
 
 /**
@@ -46,7 +57,7 @@ const THEME_BOOTSTRAP = `<script>
  * @returns The file written to `dist/index.html`.
  */
 export function renderDocument(
-  { base, origin, cssHref, islandSrc, appHtml }: DocumentOptions,
+  { base, origin, cssHref, islandSrc, appHtml, routeTable }: DocumentOptions,
 ): string {
   const canonical = `${origin}${base}`
 
@@ -67,6 +78,7 @@ export function renderDocument(
     <link rel="icon" href="${FAVICON}">
     <link rel="stylesheet" href="${cssHref}">
     ${THEME_BOOTSTRAP}
+    ${renderRouteTable(routeTable)}
   </head>
   <body class="theme-base">
     <div id="root">${appHtml}</div>

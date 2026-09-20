@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "exports": {
     ".": "./+index.tsx",
-    "./registry": "./registry.ts"
+    "./registry": "./registry.ts",
+    "./routes": "./routes.ts"
   },
   "imports": {
     // The root import map carries no renderer, and every test here asserts on real
