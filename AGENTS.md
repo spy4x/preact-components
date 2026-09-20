@@ -15,16 +15,18 @@ its own PR, each owning exactly one top-level directory.
 | `ui/`       | Badge, Table, Dropdown, ToggleSwitch, OnOffButtons, PageTitle, Toast, Button |
 | `system/`   | Shell, Nav, Auth, StateInit, SEOHead, Breadcrumb, Menu, SWUpdater            |
 | `charts/`   | server-rendered SVG kit (scales) + d3 wrappers                               |
-| `map/`      | Map, GeoButton (lazy Leaflet)                                                |
 | `signals/`  | For/Show/map, buildModelStore, useListState, useUrlFilters, cn()             |
 | `crud/`     | CrudList, CrudEditor, AssociationEditor                                      |
 | `ui-guide/` | live component catalogue route                                               |
 
 ## Adding a package
 
-`deno.jsonc` already lists every package directory in `"workspace"`. **Do not edit the workspace
-array.** Deno skips a listed member whose directory does not exist yet (warning, exit 0), so a
-package joins the workspace the moment you create its own config:
+`deno.jsonc` lists every package directory in `"workspace"`, and a member is added or removed
+**deliberately, in the same change as its `<pkg>/deno.json`** — never on the assumption that it is
+coming. Deno skips a listed member whose directory does not exist (warning, exit 0), which is why a
+pre-listed member is easy to leave behind: `"./map"` sat there long after `Map` was recorded as
+deliberately not built, and every Deno invocation printed a not-found warning until it was dropped.
+So a package joins the workspace when you create its own config, and the array is edited with it:
 
 ```bash
 mkdir ui
