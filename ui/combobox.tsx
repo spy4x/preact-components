@@ -734,9 +734,10 @@ export function Combobox<T>({
             openList()
           }}
           onKeyDown={handleKeyDown}
-          onBlur={(event) => { // Only one thing counts as "still here": focus staying on the input. A `Tab` from the input
-            // lands on a descendant — the clear button, or the scrolling popup itself — and that is a
-            // leave, not a stay.
+          // Only one thing counts as "still here": focus staying on the input. A `Tab` from the input
+          // lands on a descendant — the clear button, or the scrolling popup itself — and that is a
+          // leave, not a stay.
+          onBlur={(event) => {
             if (!leavesCombobox(event.currentTarget, event.relatedTarget as Node | null)) return
             close()
           }}
