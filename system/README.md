@@ -7,15 +7,15 @@ Extracted from `antonshubin.com`, `mig` and `financy`.
 
 ## Rules this package follows
 
-- **Props and ports, never a global store.** `SEOHead` takes the page head as props, `ThemeToggle`
-  takes a `mode` and reports the next one, `SWUpdater` takes the reload and error ports. The only
-  state a component owns is the state the browser handed it.
+- **Props and ports, never a global store.** `SEOHead` takes the page head as props,
+  `BlogImageEnhancer` takes an `onOpen` port, `SWUpdater` takes the reload and error ports. The
+  only state a component owns is the state the browser handed it.
 - **Server-renderable.** `document`, `navigator`, `location` and the clock are touched inside an
   effect, an event handler, or a pure function whose result the caller passes back in.
   `SWUpdater` renders `""` on the server, and `Calendar` takes `today` so a render is deterministic.
-- **No `theme/` dependency.** Utilities are inlined, like `ui/`. `icons/` supplies the five glyphs
-  these components draw (`IconChevronLeft`, `IconChevronRight`, `IconSun`, `IconMoon`,
-  `IconThemeAuto`, `IconSpinner`, `IconXMark`) rather than duplicating SVG.
+- **No `theme/` dependency.** Utilities are inlined, like `ui/`. `icons/` supplies the three glyphs
+  these components draw (`IconChevronLeft`, `IconChevronRight`, `IconXMark`) rather than
+  duplicating SVG.
 
 ## Components
 
@@ -24,7 +24,6 @@ Extracted from `antonshubin.com`, `mig` and `financy`.
 | `SEOHead`           | `seo-head`            | `title`, `description`, `canonical`, `ogImage?`, `jsonLd?`, `noindex?` |
 | `SWUpdater`         | `sw-updater`          | `scriptUrl?`, `reload?`, `onUpdate?`, `onError?`                       |
 | `Calendar`          | `calendar`            | `monthAnchor`, `minDate`, `maxDate`, `slotsByDate`, `onSelectDate?`    |
-| `ThemeToggle`       | `theme-toggle`        | `mode`, `onChange`, `placeholder?`                                     |
 | `BlogImageEnhancer` | `blog-image-enhancer` | `containerSelector?`, `imageSelector?`, `fallbackAlt?`, `onOpen?`      |
 
 Helpers, all pure: `head.ts` (breadcrumb derivation from a canonical URL, `createHeadStore`,
@@ -88,10 +87,6 @@ arrive after hydration still work, and cleanup is complete.
   listener per image and never removed them; delegation also survives images that appear after
   hydration. Escape needs no listener of its own: `<dialog>` closes natively and the `close` event
   clears the state, so the dialog and the state cannot disagree.
-- **`ThemeToggle` holds no preference.** A `signals/theme.ts` store would have coupled the library
-  to one app's storage; `mode` + `onChange` lets the app own persistence, and an absent `mode`
-  means "not read yet", which is exactly the SSR case. The FOUC-free `<head>` bootstrap script
-  stays app-side.
 
 ## Not in this package
 
@@ -108,8 +103,7 @@ arrive after hydration still work, and cleanup is complete.
 
 `deno task check` from the repository root runs this suite with the rest of the workspace. Every
 component is rendered with `preact-render-to-string` and asserted on real markup: emitted head tag
-sets, the dual-mode swap, a 42-cell grid for a month that starts on any weekday, and the theme
-cycle.
+sets, the dual-mode swap, and a 42-cell grid for a month that starts on any weekday.
 
 Where a component only works against a browser API, that API is a sealed boundary the tests can
 replace: `SWUpdater`'s listeners are driven by a fake registration, and `resolveImage` by an

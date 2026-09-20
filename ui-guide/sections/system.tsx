@@ -1,7 +1,7 @@
 /**
  * The System section.
  *
- * All eight of the package's components are here. Six render from props with no platform access at
+ * All four of the package's components are here. Two render from props with no platform access at
  * all; two are platform integration and are handled with an explicit, stated reduction rather than a
  * demo that claims behaviour it cannot show. Those two are the interesting part of this file, so
  * here is the reasoning in full:
@@ -21,10 +21,10 @@
  *   printed — and says plainly that mounting the component needs a browser, a worker and two
  *   deploys.
  *
- * The rest are honest full demos. `Calendar`, `TimeSlots` and `ThemeToggle` all read state, so each
- * lives in its own component with its own local state, and every date is injected: `Calendar` takes
- * `today` and `timeZone` as props precisely so a render can be pinned, and it is pinned to
- * `2026-03-10`/`UTC` here. `TimeSlots` is a pure function of its props.
+ * The rest are honest full demos. `Calendar` reads state, so it lives in its own component with its
+ * own local state, and every date is injected: it takes `today` and `timeZone` as props precisely so
+ * a render can be pinned, and it is pinned to `2026-03-10`/`UTC` here. `BlogImageEnhancer` renders
+ * its dialog closed, with nothing else to pin.
  */
 
 import { BlogImageEnhancer } from "@preact-components/system/blog-image-enhancer"
@@ -37,7 +37,6 @@ import {
   watchForUpdate,
   type WorkerLike,
 } from "@preact-components/system/sw-updater"
-import { ThemeToggle, themeToggleLabel } from "@preact-components/system/theme-toggle"
 import { Button } from "@preact-components/ui"
 import { useSignal } from "@preact/signals"
 import type { DemoFragment } from "../registry.ts"
@@ -275,36 +274,6 @@ function CalendarInteractiveDemo() {
   )
 }
 
-/** Three toggles, one per mode, plus the placeholder the app renders before it has read storage. */
-function ThemeToggleDemo() {
-  const mode = useSignal<"auto" | "light" | "dark">("auto")
-  return (
-    <div class="space-y-3">
-      <div class="flex flex-wrap items-center gap-3">
-        <span class="text-xs text-gray-500 dark:text-gray-400">
-          one per mode, then the cycle, then the unread placeholder
-        </span>
-        <ThemeToggle mode="auto" onChange={() => {}} />
-        <ThemeToggle mode="light" onChange={() => {}} />
-        <ThemeToggle mode="dark" onChange={() => {}} />
-      </div>
-      <div class="flex flex-wrap items-center gap-3">
-        <ThemeToggle mode={mode.value} onChange={(next) => mode.value = next} />
-        <span class="text-xs text-gray-500 dark:text-gray-400">
-          {mode.value}: {themeToggleLabel(mode.value)}
-        </span>
-      </div>
-      <div class="flex flex-wrap items-center gap-3">
-        <ThemeToggle onChange={() => {}} />
-        <span class="text-xs text-gray-500 dark:text-gray-400">
-          no <code>mode</code>{" "}
-          — the inert, same-size placeholder rendered while the stored preference is still unknown
-        </span>
-      </div>
-    </div>
-  )
-}
-
 export const systemDemos = {
   Calendar: {
     summary:
@@ -325,15 +294,6 @@ export const systemDemos = {
         <CalendarInteractiveDemo />
       </div>
     ),
-  },
-  ThemeToggle: {
-    summary:
-      "One icon button cycling `auto → light → dark`. Mode in, mode out: the component holds no preference and reads no storage, so the app owns where the setting lives and can keep tabs in sync. `mode` is optional because the stored preference is unknowable during server rendering — with no `mode` it renders an inert, same-size placeholder, which is what stops the layout shifting when the real button hydrates. `nextThemeMode` and `themeToggleLabel` are exported for the app's own keyboard shortcuts and status text.",
-    snippet: `<ThemeToggle mode={mode.value} onChange={(next) => mode.value = next} />
-
-// Before the stored preference is known — the placeholder, not a wrong icon:
-<ThemeToggle onChange={(next) => mode.value = next} />`,
-    render: () => <ThemeToggleDemo />,
   },
   SEOHead: {
     summary:

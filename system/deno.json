@@ -8,8 +8,7 @@
     "./sw-updater": "./sw-updater.tsx",
     "./date": "./date.ts",
     "./calendar": "./calendar.tsx",
-    "./blog-image-enhancer": "./blog-image-enhancer.tsx",
-    "./theme-toggle": "./theme-toggle.tsx"
+    "./blog-image-enhancer": "./blog-image-enhancer.tsx"
   },
   "imports": {
     // The root import map carries no renderer; the colocated tests assert on real rendered markup.

@@ -70,10 +70,3 @@ export {
   watchForUpdate,
   type WorkerLike,
 } from "./sw-updater.tsx"
-export {
-  nextThemeMode,
-  type ThemeMode,
-  ThemeToggle,
-  themeToggleLabel,
-  type ThemeToggleProps,
-} from "./theme-toggle.tsx"
