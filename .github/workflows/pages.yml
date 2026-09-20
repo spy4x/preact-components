@@ -51,8 +51,14 @@ jobs:
       - name: Build the demo
         run: deno task --cwd pages build
 
+      # `CHROME_PATH` pins the browser to the one whose version was just printed. Without it
+      # `verify.ts` walks its candidate list and this runner answers `chromium-browser` first, so
+      # the log reported one browser and drove another. Naming it also makes a runner image that
+      # dropped Chrome fail here, loudly, instead of quietly running something else.
       - name: Verify the demo in a real browser
         run: deno task --cwd pages verify
+        env:
+          CHROME_PATH: google-chrome
 
       # Pages artefacts are for the deploy alone: a pull request neither publishes nor needs one.
       - name: Upload the Pages artefact
