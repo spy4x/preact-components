@@ -298,18 +298,28 @@ describe("sortRows is a consistent order", () => {
     expect(sortColumn(["apple", 2, true])).toEqual([true, 2, "apple"])
   })
 
-  it("orders booleans as off then on", () => {
+  it("orders booleans as off then on, among the numbers", () => {
     expect(sortColumn([true, false, true])).toEqual([false, true, true])
+    // The pair that separates the two readings: as numbers the booleans lead, as the words they
+    // print they would follow `"alpha"`. A fixture of booleans alone sorts the same either way.
+    expect(sortColumn(["alpha", true, false])).toEqual([false, true, "alpha"])
   })
 
-  it("orders bigints by their value, not by their digits", () => {
+  it("orders bigints by their value, among the numbers", () => {
     expect(sortColumn([3n, 21n, 100n])).toEqual([3n, 21n, 100n])
+    // Same trap: `[3n, 21n, 100n]` comes out in that order whether it is read as three numbers or
+    // as three digit strings under numeric collation. Against a number, the two readings differ —
+    // `1n` sorts below `5` as a number, and behind it as the text `"1"` would.
+    expect(sortColumn([5, 1n])).toEqual([1n, 5])
   })
 
-  it("orders dates by their time", () => {
+  it("orders dates by their time, among the numbers", () => {
     const early = new Date("2025-06-01T00:00:00Z")
     const late = new Date("2026-01-02T00:00:00Z")
     expect(sortColumn([late, early])).toEqual([early, late])
+    // And the pair that separates the readings, without depending on what a date prints: read as
+    // a time it is a number and leads, read as text it follows `"apple"`.
+    expect(sortColumn(["apple", new Date(0)])).toEqual([new Date(0), "apple"])
   })
 
   it("sorts a date that carries no time under what it prints", () => {

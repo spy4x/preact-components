@@ -160,6 +160,12 @@ than a mistyped row in the UI.
   before every textual one**: a number, a boolean, a `bigint` and a `Date` are ordered by their
   number, and everything else by the text it prints.
 
+  **A numeric string is textual.** `"9"` is text, so it sorts after `1000`, and a column that mixes
+  the two shows every real number first and every quoted one after. This is the first thing a real
+  column hits, because values arriving from a form, a query string or a CSV are strings however
+  numeric they look: coerce the column where you load it — `Number(cell)` — rather than expecting
+  the sort to guess.
+
   Deciding by kind first is what makes the order a real one. The first version of this fix chose its
   method per pair — two strings as text, anything else numerically — and that is not transitive: `5`
   beats `"1e3"` numerically, `"1e3"` beats `"2"` as text, and `"2"` beats `5` numerically, so those
@@ -167,9 +173,13 @@ than a mistyped row in the UI.
   `Array.prototype.sort` is entitled to return anything when its comparator contradicts itself.
   `sortRows is a consistent order` in the test file is the guard: it checks transitivity over every
   triple of a set holding one cell of each kind, and sorts all 720 orderings of a mixed column to
-  assert they come out as one table. Two caveats the rule does carry: a `bigint` past
-  `Number.MAX_SAFE_INTEGER` can tie with its neighbour, and a `Date` with no valid time sorts with
-  the text, as `Invalid Date`.
+  assert they come out as one table. Three caveats the rule does carry: a `bigint` past
+  `Number.MAX_SAFE_INTEGER` can tie with its neighbour; a `Date` with no valid time sorts with the
+  text, as `Invalid Date`; and a cell whose string conversion throws — an object made with
+  `Object.create(null)`, or one with a throwing `toString` — throws out of `sortRows` when it meets
+  a textual cell. That last one predates this rule and is not defended against here: a table cell
+  holds something a table can show, and swallowing the throw would hide the real problem one layer
+  further from where it was created.
 - **`useUrlFilters` needs a DOM and a wouter router**, so only its value coercion
   (`resolveFilterValue`, `shouldPersistFilter`) is unit-tested here; the hook itself is wired the
   same way as every other hook in this repo — assert it in the app that renders it.
