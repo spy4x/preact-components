@@ -23,9 +23,11 @@
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { catalogueNames, catalogueSections } from "@preact-components/ui-guide/registry"
+import { routeTableDrift } from "@preact-components/ui-guide/routes"
 import { demoElementId } from "./src/deep-link.ts"
+import { routeTableFromHtml } from "./src/route-echo.ts"
 import { type PreviewServer, serveDist } from "./serve.ts"
-import { DEFAULT_BASE, normalizeBase } from "./src/site.ts"
+import { DEFAULT_BASE, normalizeBase, PAGE_TITLE } from "./src/site.ts"
 
 /** This file's directory: the demo's root, `pages/`. */
 const PAGES_DIRECTORY = dirname(fileURLToPath(import.meta.url))
@@ -169,6 +171,38 @@ async function staticPhase(): Promise<void> {
     "every theme-class card is prerendered",
     rendered.length === classCards.length,
     `${rendered.length}/${classCards.length} — ${classCards.join(", ")}`,
+  )
+
+  // Hash routing: under it the one document *is* every route, so the artefact's own route echo is
+  // checked here as well as at build time — this reads the bytes that are actually served, and the
+  // third check is the one that says the navigation links to the routes the resolver accepts.
+  let routes: ReturnType<typeof routeTableFromHtml> | undefined
+  try {
+    routes = routeTableFromHtml(html)
+  } catch {
+    routes = undefined
+  }
+
+  check(
+    "the document echoes the route table",
+    routes !== undefined,
+    routes ? `${routes.sections.length} sections, ${routes.demos.length} demos` : "no route echo",
+  )
+  const routeDrift = routes ? routeTableDrift(routes) : ["the document carries no route echo"]
+  check(
+    "every echoed route resolves back to its own section or demo",
+    routeDrift.length === 0,
+    routeDrift.length === 0 ? "every entry round-tripped" : routeDrift.join(" | "),
+  )
+
+  // A route no chip points at would be a page nobody can reach; a chip pointing at a route the
+  // resolver refuses would be a dead link. Both directions, over the whole catalogue.
+  const routeEntries = [...(routes?.sections ?? []), ...(routes?.demos ?? [])]
+  const linked = routeEntries.filter((entry) => html.includes(`href="${entry.href}"`))
+  check(
+    "every emitted route is a link in the prerendered navigation",
+    linked.length > 0 && linked.length === routeEntries.length,
+    `${linked.length}/${routeEntries.length} routes carry their canonical href`,
   )
 }
 
@@ -673,6 +707,76 @@ async function interactionChecks(devtools: Devtools): Promise<void> {
     `#toggle-switch → ${deepLink.title}`,
   )
 
+  // The route model, driven the way a reader drives it. Everything above resolves a *component*
+  // fragment, which is the shape the page shipped before hash routing; this walks the canonical
+  // grammar — a demo route, a section route, and an unknown route falling back to the landing page —
+  // because the resolver's own tests cannot prove the island wired it up.
+  const routes = await devtools.evaluate<{
+    demoMarked: boolean
+    demoCurrent: string
+    demoTitle: string
+    sectionTop: number
+    sectionMarked: number
+    sectionCurrent: string
+    sectionTitle: string
+    unknownMarked: number
+    unknownTitle: string
+    unknownChipCurrent: string
+  }>(
+    `(async () => {
+      const settle = () => new Promise((done) => setTimeout(done, 400))
+      const marked = () => document.querySelectorAll("[data-deep-link]").length
+      const current = () => document.querySelector('a[aria-current="true"]')?.textContent ?? ""
+
+      location.hash = "#/inputs/toggle-switch"
+      await settle()
+      const demo = {
+        demoMarked: document.querySelector("#demo-ToggleSwitch").hasAttribute("data-deep-link"),
+        demoCurrent: current(),
+        demoTitle: document.title,
+      }
+
+      location.hash = "#/inputs"
+      await settle()
+      const section = {
+        sectionTop: Math.round(document.getElementById("inputs").getBoundingClientRect().top),
+        sectionMarked: marked(),
+        sectionCurrent: current(),
+        sectionTitle: document.title,
+      }
+
+      location.hash = "#/nonsense"
+      await settle()
+
+      return {
+        ...demo,
+        ...section,
+        unknownMarked: marked(),
+        unknownTitle: document.title,
+        unknownChipCurrent: current(),
+      }
+    })()`,
+  )
+  check(
+    "the canonical demo route marks, titles and highlights its own chip",
+    routes.demoMarked && routes.demoCurrent === "ToggleSwitch" &&
+      routes.demoTitle.startsWith("ToggleSwitch"),
+    `#/inputs/toggle-switch → ${routes.demoTitle}, chip "${routes.demoCurrent}"`,
+  )
+  check(
+    "the section route scrolls to its section and clears the card's mark",
+    routes.sectionMarked === 0 && routes.sectionTitle.startsWith("Inputs") &&
+      routes.sectionTop >= 0 && routes.sectionTop < 200,
+    `#/inputs → ${routes.sectionTitle}, section top ${routes.sectionTop}px, ` +
+      `${routes.sectionMarked} cards marked`,
+  )
+  check(
+    "an unknown route falls back to the landing page without marking anything",
+    routes.unknownMarked === 0 && routes.unknownChipCurrent === "" &&
+      routes.unknownTitle === PAGE_TITLE,
+    `#/nonsense → "${routes.unknownTitle}"`,
+  )
+
   const theme = await devtools.evaluate<{ before: boolean; after: boolean; pressed: string }>(
     `(async () => {
       const button = [...document.querySelectorAll("header button")]
@@ -702,7 +806,14 @@ async function interactionChecks(devtools: Devtools): Promise<void> {
     light: string
     dark: string
     outline: string
-  }>(`(() => {
+  }>(`(async () => {
+    // The outline below is the deep-link rule, so the card has to be the link's target first. This
+    // used to be left over from the check that ran before; stating it here is what makes the probe
+    // independent of the order the checks happen to run in, and it re-proves the canonical route
+    // marks a card after an unknown hash cleared it.
+    location.hash = "#/inputs/toggle-switch"
+    await new Promise((done) => setTimeout(done, 400))
+
     const root = document.documentElement
     const wasDark = root.classList.contains("dark")
     const canvas = () => getComputedStyle(document.body).backgroundColor
@@ -734,7 +845,7 @@ async function interactionChecks(devtools: Devtools): Promise<void> {
   check(
     "the deep link outlines its card",
     styled.outline === "2px",
-    `outline-width ${styled.outline} from styles.css`,
+    `outline-width ${styled.outline} from styles.css, with the canonical route as the last hash`,
   )
 }
 

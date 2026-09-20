@@ -3,7 +3,9 @@
  *
  * One static directory, no server. `index.html` carries the whole catalogue prerendered, plus the
  * href and src of two content-hashed assets, so a redeploy can never serve a new document against a
- * cached island or stylesheet.
+ * cached island or stylesheet. It also carries the **route echo** — every hash route the navigation
+ * links to — which the build reads back and holds against the resolver, since under hash routing the
+ * one document is the whole site and a link the resolver would not accept must fail here.
  *
  * **Why Deno-only.** `template` and `gb` bundle with Vite, and Vite would work here — but it would
  * need a `package.json`, a `node_modules` tree and a second lockfile in CI, plus hand-written
@@ -18,6 +20,7 @@
  *    `icons/`, the host page).
  * 3. `deno bundle` produces the island.
  * 4. `App` prerenders, `renderDocument` frames it, and the artefact is written.
+ * 5. The route echo is read out of the rendered document and round-tripped through the resolver.
  */
 
 import { Scanner } from "@tailwindcss/oxide"
@@ -27,7 +30,9 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 import { demoElementId } from "./src/deep-link.ts"
 import { renderDocument } from "./src/document.ts"
 import { renderApp } from "./src/prerender.tsx"
+import { routeTableFromHtml } from "./src/route-echo.ts"
 import { catalogueNames } from "@preact-components/ui-guide/registry"
+import { routeTable, routeTableDrift } from "@preact-components/ui-guide/routes"
 import { DEFAULT_BASE, DEFAULT_ORIGIN, normalizeBase } from "./src/site.ts"
 import { normalizeSources } from "./src/tailwind-sources.ts"
 
@@ -180,6 +185,9 @@ async function main(): Promise<void> {
   await run("deno", ["check", ...CHECKED_ENTRIES])
   const [stylesheet, island] = [await compileStylesheet(), await bundleIsland()]
   const appHtml = renderApp()
+  // Every route the guide can be opened at, derived from the catalogue's registry rather than kept
+  // here: the echo further down is this value, read back out of the document that ships it.
+  const routes = routeTable()
 
   // The one thing this page adds to the catalogue is its deep links, and they address `demo-<Name>`
   // ids the guide renders. The navigation has a chip per card in every section — `ui/`'s and the
@@ -190,29 +198,46 @@ async function main(): Promise<void> {
     throw new Error(`no demo card for ${missing.join(", ")} — deep links would point nowhere`)
   }
 
-  await Deno.remove(DIST_DIRECTORY, { recursive: true }).catch(() => {})
-  await Deno.mkdir(join(DIST_DIRECTORY, "assets"), { recursive: true })
-
   const assetNames = {
     css: `main.${await fingerprint(stylesheet)}.css`,
     js: `main.${await fingerprint(island)}.js`,
   }
+
+  const html = renderDocument({
+    base: BASE,
+    origin: ORIGIN,
+    cssHref: `${BASE}assets/${assetNames.css}`,
+    islandSrc: `${BASE}assets/${assetNames.js}`,
+    appHtml,
+    routeTable: routes,
+  })
+
+  // Under hash routing the one `index.html` *is* every route, so the emission check is this: read
+  // the route table back out of the document that is about to be published and hold every entry
+  // against the resolver that has to accept it. A href the resolver would not open — a renamed
+  // section, a demo keyed to another section's card, a hand-edited payload — fails here rather than
+  // shipping a link the page cannot follow. The table is read from the rendered HTML and not from
+  // the value passed in, so what is checked is what ships. This runs before `dist/` is cleared: a
+  // build that cannot ship its own links should leave the previous artefact alone.
+  const emitted = routeTableFromHtml(html)
+  const drift = routeTableDrift(emitted)
+  if (drift.length > 0) {
+    throw new Error(
+      `the route echo does not round-trip through the resolver:\n  ${drift.join("\n  ")}`,
+    )
+  }
+
+  await Deno.remove(DIST_DIRECTORY, { recursive: true }).catch(() => {})
+  await Deno.mkdir(join(DIST_DIRECTORY, "assets"), { recursive: true })
+
   await Deno.writeFile(join(DIST_DIRECTORY, "assets", assetNames.css), stylesheet)
   await Deno.writeFile(join(DIST_DIRECTORY, "assets", assetNames.js), island)
 
-  const html = new TextEncoder().encode(
-    renderDocument({
-      base: BASE,
-      origin: ORIGIN,
-      cssHref: `${BASE}assets/${assetNames.css}`,
-      islandSrc: `${BASE}assets/${assetNames.js}`,
-      appHtml,
-    }),
-  )
-  await Deno.writeFile(join(DIST_DIRECTORY, "index.html"), html)
+  await Deno.writeFile(join(DIST_DIRECTORY, "index.html"), new TextEncoder().encode(html))
 
   console.log(
     `  index.html ${kilobytes(html.length)} · prerendered ${catalogueNames.length} components\n` +
+      `  routes ${routes.sections.length} sections, ${routes.demos.length} demos, all resolved\n` +
       `  assets/${assetNames.css} ${kilobytes(stylesheet.length)}\n` +
       `  assets/${assetNames.js} ${kilobytes(island.length)}\n` +
       `  served from ${ORIGIN}${BASE}`,
