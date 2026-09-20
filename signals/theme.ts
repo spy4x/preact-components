@@ -5,8 +5,8 @@ import { computed, effect, type ReadonlySignal, type Signal, signal } from "@pre
  *
  * The source store was a module-level singleton that read `localStorage` and touched `document` at
  * import time, which is why it could not be shared, reset, or tested. Here nothing is read until
- * {@link ThemeStore.attach} runs, and every outside world — storage, the OS media query, the
- * document — arrives as a port.
+ * {@link ThemeStore.attach} runs — or until {@link ThemeStore.set} writes, which is a caller asking
+ * for it — and every outside world — storage, the OS media query, the document — arrives as a port.
  */
 
 /** What the user chose in the UI. */
@@ -58,17 +58,30 @@ export interface ThemePorts {
 
 /** A theme store: preference in, resolved theme out, plus the DOM wiring. */
 export interface ThemeStore {
-  /** The user's choice. Writable so a settings form can bind to it. */
+  /**
+   * The user's choice. Writable so a settings form can bind to it.
+   *
+   * `"system"` until {@link ThemeStore.attach} has read the stored preference, because nothing is
+   * read out of storage before then.
+   */
   preference: Signal<ThemePreference>
-  /** What the OS asks for, when a media source was available. */
+  /** What the OS asks for: light until {@link ThemeStore.attach} has asked the media source. */
   system: ReadonlySignal<Theme>
   /** The theme to paint: the preference, or the OS one when the preference is `"system"`. */
   actual: ReadonlySignal<Theme>
-  /** Store a preference and persist it. */
+  /** Store a preference and persist it. A storage that refuses the write is ignored. */
   set(preference: ThemePreference): void
   /** Flip light↔dark. From `"system"`, flips away from whatever the OS currently asks for. */
   toggle(): void
-  /** Start applying the theme and watching the OS. Returns a disposer. */
+  /**
+   * Read the stored preference and the OS one, start applying the theme and watch for OS changes.
+   *
+   * This is where the outside world is first read. The stored preference is loaded once, on the
+   * first attach, so a re-attach cannot undo a {@link ThemeStore.set} whose write to storage
+   * failed; the OS query is re-read every time, because it may have changed while detached.
+   *
+   * @returns A disposer; {@link ThemeStore.dispose} is the same thing.
+   */
   attach(): () => void
   /** Run the disposer from `attach`. Idempotent. */
   dispose(): void
@@ -105,7 +118,12 @@ function defaultMedia(query: string): ThemeMediaQuery | null {
 }
 
 /**
- * Create a theme store.
+ * Create a theme store. Reads nothing: the first read of the outside world is `attach()`.
+ *
+ * A module-level `createThemeStore()` is the normal way to hold one, and it runs on the server too.
+ * Deno's `localStorage` is a real file shared by the whole process, so a preference read or written
+ * during server rendering would be one visitor's choice applied to every request — which is why the
+ * storage port, like the media query, is resolved on first use and not here.
  *
  * @example
  * ```ts
@@ -118,23 +136,55 @@ export function createThemeStore(ports: ThemePorts = {}): ThemeStore {
   const storageKey = ports.storageKey ?? DEFAULT_STORAGE_KEY
   const systemQuery = ports.systemQuery ?? DARK_SCHEME_QUERY
   const apply = ports.apply ?? applyToDocument
-  const storage = ports.storage === undefined ? defaultStorage() : ports.storage
-  const source = ports.media === undefined ? defaultMedia : ports.media
-  const query = source?.(systemQuery) ?? null
 
-  const stored = storage?.getItem(storageKey) ?? null
-  const preference = signal<ThemePreference>(
-    // A value written by an older or unrelated version is ignored rather than trusted.
-    isThemePreference(stored) ? stored : ThemeValue.SYSTEM,
-  )
-  const system = signal<Theme>(query?.matches ? ThemeValue.DARK : ThemeValue.LIGHT)
+  const preference = signal<ThemePreference>(ThemeValue.SYSTEM)
+  const system = signal<Theme>(ThemeValue.LIGHT)
   const actual = computed<Theme>(() =>
     preference.value === ThemeValue.SYSTEM ? system.value : preference.value
   )
 
+  // `undefined` means "not resolved yet"; `null` is a resolved absence, which is what an explicit
+  // `storage: null` and a runtime with no `localStorage` both come to.
+  let storage: ThemeStorage | null | undefined
+  let query: ThemeMediaQuery | null | undefined
+
+  /** The storage port, resolved on the first read or write and remembered. */
+  function storagePort(): ThemeStorage | null {
+    if (storage === undefined) {
+      storage = ports.storage === undefined ? defaultStorage() : ports.storage
+    }
+    return storage
+  }
+
+  /** The media query, resolved on the first attach and remembered, so listeners pair up. */
+  function mediaQuery(): ThemeMediaQuery | null {
+    if (query === undefined) {
+      const source = ports.media === undefined ? defaultMedia : ports.media
+      query = source?.(systemQuery) ?? null
+    }
+    return query
+  }
+
+  /** The stored preference, or `null` when there is none this version understands. */
+  function readStored(): ThemePreference | null {
+    try {
+      const stored = storagePort()?.getItem(storageKey) ?? null
+      // A value written by an older or unrelated version is ignored rather than trusted.
+      return isThemePreference(stored) ? stored : null
+    } catch {
+      // A browser that refuses storage reads has no preference to offer, which is not an error.
+      return null
+    }
+  }
+
   const set = (next: ThemePreference): void => {
     preference.value = next
-    storage?.setItem(storageKey, next)
+    try {
+      storagePort()?.setItem(storageKey, next)
+    } catch {
+      // A browser in private mode throws here. The theme still changes for this page; losing it on
+      // reload beats throwing out of the click handler that set it.
+    }
   }
 
   const toggle = (): void => {
@@ -149,6 +199,7 @@ export function createThemeStore(ports: ThemePorts = {}): ThemeStore {
   }
 
   let detach: (() => void) | null = null
+  let loaded = false
 
   const onSystemChange = (event: { matches: boolean }): void => {
     system.value = event.matches ? ThemeValue.DARK : ThemeValue.LIGHT
@@ -156,10 +207,17 @@ export function createThemeStore(ports: ThemePorts = {}): ThemeStore {
 
   function attach(): () => void {
     dispose()
-    query?.addEventListener?.("change", onSystemChange)
+    if (!loaded) {
+      loaded = true
+      const stored = readStored()
+      if (stored) preference.value = stored
+    }
+    const watched = mediaQuery()
+    system.value = watched?.matches ? ThemeValue.DARK : ThemeValue.LIGHT
+    watched?.addEventListener?.("change", onSystemChange)
     const stopEffect = effect(() => apply(actual.value))
     detach = () => {
-      query?.removeEventListener?.("change", onSystemChange)
+      watched?.removeEventListener?.("change", onSystemChange)
       stopEffect()
       detach = null
     }

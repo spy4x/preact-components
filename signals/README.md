@@ -138,8 +138,14 @@ than a mistyped row in the UI.
 - **`useUrlFilters` needs a DOM and a wouter router**, so only its value coercion
   (`resolveFilterValue`, `shouldPersistFilter`) is unit-tested here; the hook itself is wired the
   same way as every other hook in this repo — assert it in the app that renders it.
-- **`createThemeStore` reads the OS once at creation** and keeps watching only after `attach()`,
-  which is also what applies the theme.
+- **`createThemeStore` reads nothing until `attach()`.** Creating the store touches neither
+  `localStorage` nor `matchMedia`, so a module-level `createThemeStore()` is inert on a server —
+  which matters on Deno, where `localStorage` is a real file shared by every request the process
+  serves. `attach()` loads the stored preference (once, on the first attach), reads the OS
+  preference, starts watching it and applies the theme; until then `preference` is `"system"` and
+  `system` is light. `set()` is the other caller-initiated read: it persists through the storage
+  port, and a storage that refuses the write — a browser in private mode throws on `setItem` — is
+  ignored rather than allowed to throw out of the click handler.
 - **`as` assertions.** The package uses a handful, and only one is unavoidable: the spread of
   `extraOps`/`selectors` onto the base store in `build-model-store.ts`, where TypeScript cannot verify
   a spread of `Extra | undefined` against a generic `Extra`. The rest are local narrowing inside one
