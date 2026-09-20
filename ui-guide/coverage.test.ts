@@ -76,9 +76,10 @@ describe("the coverage rule", () => {
     expect(coverageProblems(EXPORTS)).toEqual([])
 
     // A floor under the read itself: an export list that collapsed to nothing would agree with an
-    // empty demo set and report no problem at all.
+    // empty demo set and report no problem at all. Set well below every catalogued package's real
+    // count, including `system`'s post-#160 count of 20 once six single-application pieces left it.
     for (const id of packageIds) {
-      expect(EXPORTS[id].length, `${id}: value exports read`).toBeGreaterThan(20)
+      expect(EXPORTS[id].length, `${id}: value exports read`).toBeGreaterThan(10)
       expect(demoedNamesOf(id).length, `${id}: cards`).toBeGreaterThan(0)
     }
   })
