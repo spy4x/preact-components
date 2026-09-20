@@ -164,9 +164,11 @@ export type BadgeProps = typeof badgeProps.infer
 ## Dependencies
 
 **Pin exactly. Never `^`, never `~`, never a floating tag.** The lockfile is committed; a version
-bump is its own commit with scope `deps`. Versions are pinned to what `spy4x/template` already
-resolves where the two repos overlap, so a consuming app ends up with one Preact, one signals and
-one Tailwind, not two of each.
+bump is its own commit with scope `deps`. Exact pinning is checked by hand with
+`grep -rnoE '"(npm|jsr):[^"]*[\^~]' --include='deno.json' --include='deno.jsonc' .`, which must
+return nothing. Whether these pins match `spy4x/template` and `spy4x/ts-libs` where the repos
+overlap is **not** checked by anything here — compare them by hand with
+`grep -oE '"(arktype|preact|@preact/signals)@[0-9][^"_]*' deno.lock` run in each repo.
 
 Current pins (root `deno.jsonc`, the single source of truth):
 
