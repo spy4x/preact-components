@@ -48,13 +48,16 @@ export {
 } from "./seo-head.tsx"
 export {
   type ContainerLike,
+  DEFAULT_UPDATE_MESSAGE,
   type RegistrationLike,
   reloadOnControllerChange,
   serviceWorkerContainer,
   type ServiceWorkerHost,
   skipWaiting,
+  startUpdates,
   SWUpdater,
   type SWUpdaterProps,
+  type UpdateStart,
   type UpdateWatcher,
   watchForUpdate,
   type WorkerLike,

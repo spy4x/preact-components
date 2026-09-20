@@ -8,8 +8,8 @@ Extracted from `antonshubin.com`, `mig` and `financy`.
 ## Rules this package follows
 
 - **Props and ports, never a global store.** `SEOHead` takes the page head as props,
-  `BlogImageEnhancer` takes an `onOpen` port, `SWUpdater` takes the reload and error ports. The
-  only state a component owns is the state the browser handed it.
+  `BlogImageEnhancer` takes an `onOpen` port, `SWUpdater` takes the service-worker container, the
+  reload and the error ports. The only state a component owns is the state the browser handed it.
 - **Server-renderable.** `document`, `navigator`, `location` and the clock are touched inside an
   effect, an event handler, or a pure function whose result the caller passes back in.
   `SWUpdater` renders `""` on the server, and `Calendar` takes `today` so a render is deterministic.
@@ -22,7 +22,7 @@ Extracted from `antonshubin.com`, `mig` and `financy`.
 | Component           | Subpath               | Ports / key props                                                      |
 | ------------------- | --------------------- | ---------------------------------------------------------------------- |
 | `SEOHead`           | `seo-head`            | `title`, `description`, `canonical`, `ogImage?`, `jsonLd?`, `noindex?` |
-| `SWUpdater`         | `sw-updater`          | `scriptUrl?`, `reload?`, `onUpdate?`, `onError?`                       |
+| `SWUpdater`         | `sw-updater`          | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`   |
 | `Calendar`          | `calendar`            | `monthAnchor`, `minDate`, `maxDate`, `slotsByDate`, `onSelectDate?`    |
 | `BlogImageEnhancer` | `blog-image-enhancer` | `containerSelector?`, `imageSelector?`, `fallbackAlt?`, `onOpen?`      |
 
@@ -75,6 +75,34 @@ renders nothing but that empty dialog, so a reader without JavaScript loses only
 click layer is delegated to the container: one listener instead of one per image, images that
 arrive after hydration still work, and cleanup is complete.
 
+## The service-worker contract
+
+`SWUpdater` registers the worker and shows one bar: "New version available", with Reload and
+Dismiss. Three things about it are the host's business rather than this package's.
+
+**The container comes from `navigator`.** `globalThis.navigator.serviceWorker` is where a browser
+keeps it; there is no `globalThis.serviceWorker` in a page. A host that already owns its
+registration passes its own container as the `container` prop, which is also how a test drives the
+component without a browser.
+
+**The message is a contract with the worker.** Pressing Reload posts `{ action: "skipWaiting" }` to
+the waiting worker, and the worker has to recognise it:
+
+```js
+self.addEventListener("message", (event) => {
+  if (event.data?.action === "skipWaiting") self.skipWaiting()
+})
+```
+
+A worker that speaks another dialect — `{ type: "SKIP_WAITING" }` is the other common one — takes
+the message it expects through the `updateMessage` prop. Get this wrong and the button is silently
+dead: nothing takes over, so nothing reloads.
+
+**Only the tab that asked reloads.** `controllerchange` fires in every tab the new worker takes
+over, so the listener that reloads is armed by the Reload button and not by the registration.
+Without that, one visitor pressing Reload reloads every open tab, including the one with a
+half-filled form, and a first install reloads the page mid-visit.
+
 ## Decisions worth knowing
 
 - **Timezone-free grid arithmetic.** `mig` did its day maths and weekday lookups through a host
@@ -107,6 +135,11 @@ component is rendered with `preact-render-to-string` and asserted on real markup
 sets, the dual-mode swap, and a 42-cell grid for a month that starts on any weekday.
 
 Where a component only works against a browser API, that API is a sealed boundary the tests can
-replace: `SWUpdater`'s listeners are driven by a fake registration, and `resolveImage` by an
-element stub. No jsdom, and no request that a test not exist for a branch that only a browser
-reaches.
+replace: `SWUpdater`'s listeners are driven by a fake registration, its registration by a fake
+container through `startUpdates`, and `resolveImage` by an element stub. No jsdom, and no request
+that a test not exist for a branch that only a browser reaches.
+
+What a fake cannot prove is that the component finds a real browser's container at all — which is
+exactly the bug every fake here was blind to. The proof lives in `pages/checks/system.ts` and
+runs under `deno task --cwd pages verify`: headless Chromium registers the demo worker, a second
+script at the same scope leaves a worker waiting, and the bar has to appear.
