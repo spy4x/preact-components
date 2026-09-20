@@ -1,4 +1,4 @@
-import { cn } from "@preact-components/signals/cn"
+import { cn } from "@preact-components/cn"
 
 /** Palette entries a {@link Badge} can use. */
 export type BadgeColor = "red" | "orange" | "green" | "gray" | "blue" | "purple" | "purpleNav"

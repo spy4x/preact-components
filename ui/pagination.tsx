@@ -1,4 +1,4 @@
-import { cn } from "@preact-components/signals/cn"
+import { cn } from "@preact-components/cn"
 import { Button } from "./button.tsx"
 
 /** One item of the range a pagination control renders: a real page, or a collapsed run of pages. */

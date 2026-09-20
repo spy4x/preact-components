@@ -21,7 +21,8 @@ ui/          Badge, Table, Dropdown, ToggleSwitch, OnOffButtons, PageTitle, Toas
 system/      Shell, Nav, Auth, StateInit, SEOHead, Breadcrumb, Menu, SWUpdater
 charts/      server-rendered SVG kit (scales) + d3 wrappers
 icons/       merged icon set (+ brand glyphs)
-signals/     For/Show/map, buildModelStore, useListState, useUrlFilters, table-state, cn()
+cn/          cn() — class-name join + Tailwind conflict resolution
+signals/     For/Show/map, buildModelStore, useListState, useUrlFilters, table-state
 crud/        CrudList, CrudEditor, AssociationEditor
 ui-guide/    live component catalogue route
 ```

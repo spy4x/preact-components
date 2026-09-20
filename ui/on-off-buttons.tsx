@@ -1,4 +1,4 @@
-import { cn } from "@preact-components/signals/cn"
+import { cn } from "@preact-components/cn"
 import { Button } from "./button.tsx"
 
 export interface OnOffButtonsProps {

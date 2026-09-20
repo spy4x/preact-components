@@ -13,7 +13,7 @@
 
 import { CopyButton, PageTitle } from "@preact-components/ui"
 import type { ComponentChildren } from "preact"
-import { cn } from "@preact-components/signals/cn"
+import { cn } from "@preact-components/cn"
 import { IconGallery } from "./icons.tsx"
 import { CatalogInstructions } from "./instructions.tsx"
 import {

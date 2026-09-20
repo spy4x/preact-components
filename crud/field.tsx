@@ -1,4 +1,4 @@
-import { cn } from "@preact-components/signals/cn"
+import { cn } from "@preact-components/cn"
 import type { ReadonlySignal, Signal } from "@preact/signals"
 import type { ComponentChildren } from "preact"
 import { Fragment } from "preact"

@@ -30,7 +30,6 @@ export {
   type CopyFeedback,
   createClipboard,
 } from "./clipboard.ts"
-export { cn } from "./cn.ts"
 export {
   createInitialListState,
   createListState,

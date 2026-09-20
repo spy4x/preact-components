@@ -8,7 +8,7 @@
  * string on the chip.
  */
 
-import { cn } from "@preact-components/signals/cn"
+import { cn } from "@preact-components/cn"
 
 /** The three buckets a slot can fall into. */
 export type TimeSlotPeriod = "morning" | "afternoon" | "evening"

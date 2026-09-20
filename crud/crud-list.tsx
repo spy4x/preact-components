@@ -1,5 +1,5 @@
 import { IconEllipsisVertical, IconPlus, IconSearch } from "@preact-components/icons"
-import { cn } from "@preact-components/signals/cn"
+import { cn } from "@preact-components/cn"
 import { Badge } from "@preact-components/ui/badge"
 import { Dropdown } from "@preact-components/ui/dropdown"
 import { ErrorState } from "@preact-components/ui/error-state"

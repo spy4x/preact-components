@@ -17,7 +17,7 @@
  */
 
 import { type } from "arktype"
-import { cn } from "@preact-components/signals/cn"
+import { cn } from "@preact-components/cn"
 import { IconSpinner } from "@preact-components/icons"
 import { useEffect, useState } from "preact/hooks"
 

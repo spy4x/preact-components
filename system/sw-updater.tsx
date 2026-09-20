@@ -10,7 +10,7 @@
  * the page yet — never tells the visitor to reload.
  */
 
-import { cn } from "@preact-components/signals/cn"
+import { cn } from "@preact-components/cn"
 import { useEffect, useState } from "preact/hooks"
 
 /** The slice of `ServiceWorker` this package uses. */

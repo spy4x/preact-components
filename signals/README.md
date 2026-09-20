@@ -6,7 +6,7 @@ No Preact component, no Tailwind class, no application singleton.
 ```ts
 import { buildModelStore } from "@preact-components/signals/build-model-store"
 // or
-import { buildModelStore, cn, createToastStore } from "@preact-components/signals"
+import { buildModelStore, createToastStore } from "@preact-components/signals"
 ```
 
 ## Why it exists
@@ -30,7 +30,6 @@ per-app copy of the same idea: roley's `listStateFactory` (five entity stores), 
 | `map-entry`         | `setMapEntry` / `deleteMapEntry` — immutable `Map` writes            |
 | `use-url-filters`   | `useUrlFilters` — two-way binding between URL params and signals     |
 | `+signals`          | `<For>`, `<Show>`, `Signal.prototype.map` (`…/signals/signals`)      |
-| `cn`                | `cn()` — `clsx` + `tailwind-merge`                                   |
 
 `types.ts` holds the shared shapes (`OperationState`, `OperationResult`, `ErrType`, `ValidationError`,
 `RemoteEvent`, `ToastMessage`, …) and is re-exported from the barrel.
@@ -127,8 +126,6 @@ than a mistyped row in the UI.
 
 ## Notes and sharp edges
 
-- **`cn` is the original scaffold module** — unchanged, still exported from
-  `@preact-components/signals/cn`.
 - **`+signals` patches `Signal.prototype`** when imported, adding `.map(fn)` as JSX sugar. Importing
   the barrel imports it.
 - **`For`'s `fallback` is for an absent array**, not an empty one; an empty array renders nothing.

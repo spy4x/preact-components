@@ -1,4 +1,4 @@
-import { cn } from "@preact-components/signals/cn"
+import { cn } from "@preact-components/cn"
 
 /** Coarse banding of a confidence score. */
 export type ConfidenceTier = "low" | "medium" | "high"

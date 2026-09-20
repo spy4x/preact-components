@@ -1,5 +1,5 @@
 import { IconUser } from "@preact-components/icons"
-import { cn } from "@preact-components/signals/cn"
+import { cn } from "@preact-components/cn"
 import type { JSX } from "preact"
 import { useState } from "preact/hooks"
 

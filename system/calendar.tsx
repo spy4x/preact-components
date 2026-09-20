@@ -10,7 +10,7 @@
  * leading/trailing days bleed in from the neighbouring months as a "peek".
  */
 
-import { cn } from "@preact-components/signals/cn"
+import { cn } from "@preact-components/cn"
 import { IconChevronLeft, IconChevronRight } from "@preact-components/icons"
 import {
   addDaysIso,

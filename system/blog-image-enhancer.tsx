@@ -11,7 +11,7 @@
  * source version left a listener on every image for the life of the page.
  */
 
-import { cn } from "@preact-components/signals/cn"
+import { cn } from "@preact-components/cn"
 import { IconXMark } from "@preact-components/icons"
 import { useEffect, useRef, useState } from "preact/hooks"
 

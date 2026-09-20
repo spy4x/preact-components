@@ -1,4 +1,4 @@
-import { cn } from "@preact-components/signals/cn"
+import { cn } from "@preact-components/cn"
 
 export interface LoadingSkeletonProps {
   /** Number of placeholder cards below the header card. Defaults to 3. */

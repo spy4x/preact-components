@@ -15,7 +15,8 @@ its own PR, each owning exactly one top-level directory.
 | `ui/`       | Badge, Table, Dropdown, ToggleSwitch, OnOffButtons, PageTitle, Toast, Button |
 | `system/`   | Shell, Nav, Auth, StateInit, SEOHead, Breadcrumb, Menu, SWUpdater            |
 | `charts/`   | server-rendered SVG kit (scales) + d3 wrappers                               |
-| `signals/`  | For/Show/map, buildModelStore, useListState, useUrlFilters, cn()             |
+| `cn/`       | `cn()` — class-name join + Tailwind conflict resolution                      |
+| `signals/`  | For/Show/map, buildModelStore, useListState, useUrlFilters                   |
 | `crud/`     | CrudList, CrudEditor, AssociationEditor                                      |
 | `ui-guide/` | live component catalogue route                                               |
 
@@ -48,7 +49,7 @@ Rules for a package config:
 - Do not add an `imports` block unless you need a specifier the root does not provide. Shared deps
   (preact, signals, arktype, d3, tailwind, `@std/*`, tailwind-merge, wouter-preact) live in
   the root import map so every package resolves one copy.
-- Sibling imports use the member name: `import { cn } from "@preact-components/signals/cn"`.
+- Sibling imports use the member name: `import { cn } from "@preact-components/cn"`.
 
 Type-checking, formatting, linting and tests are discovered by walking the tree, so a new package is
 covered without touching root config or `infra/scripts/type-check.ts`.

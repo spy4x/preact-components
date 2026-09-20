@@ -382,7 +382,6 @@ export const SIGNALS_HELPERS = [
   "RemoteEvent",
   "ThemeValue",
   "buildModelStore",
-  "cn",
   "connectionError",
   "createClipboard",
   "createInitialListState",
@@ -460,6 +459,10 @@ export function isConventionalHelper(name: string): boolean {
  * guide: covering it and excluding it are both one line, and both are visible in review.
  */
 export const EXCLUDED_PACKAGES = {
+  cn: {
+    reason:
+      "One function, no component to demo — see cn/README.md for the theme-class rule instead of a catalogue card.",
+  },
   icons: {
     reason:
       "Covered by the icon gallery: it reads the barrel itself, so a new glyph is in the catalogue with no registry entry.",

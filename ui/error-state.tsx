@@ -1,4 +1,4 @@
-import { cn } from "@preact-components/signals/cn"
+import { cn } from "@preact-components/cn"
 
 export interface ErrorStateProps {
   /** Message to show. Empty, `null` or `undefined` renders nothing. */
