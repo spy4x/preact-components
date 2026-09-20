@@ -683,6 +683,10 @@ async function interactionChecks(devtools: Devtools): Promise<void> {
   )
   check("Toastr pushes a toast from the demo stack", toasts.pushed, `clicked "${toasts.text}"`)
 
+  // The deep link, driven in the canonical form the navigation now writes: `#/inputs/toggle-switch`,
+  // not the `#toggle-switch` this page shipped before hash routing. The hashchange listener is what
+  // turns that hash into a mark, a scroll and a title, so removing the listener reds this check —
+  // which is what makes it a detection rather than a restatement of the markup.
   const deepLink = await devtools.evaluate<{
     marked: boolean
     current: string
@@ -690,7 +694,7 @@ async function interactionChecks(devtools: Devtools): Promise<void> {
     scrolled: boolean
   }>(
     `(async () => {
-      location.hash = "#toggle-switch"
+      location.hash = "#/inputs/toggle-switch"
       await new Promise((done) => setTimeout(done, 800))
       return {
         marked: document.querySelector("#demo-ToggleSwitch").hasAttribute("data-deep-link"),
@@ -704,21 +708,21 @@ async function interactionChecks(devtools: Devtools): Promise<void> {
     "a deep link marks, scrolls to and titles its demo",
     deepLink.marked && deepLink.scrolled && deepLink.current === "ToggleSwitch" &&
       deepLink.title.startsWith("ToggleSwitch"),
-    `#toggle-switch → ${deepLink.title}`,
+    `#/inputs/toggle-switch → ${deepLink.title}`,
   )
 
-  // The route model, driven the way a reader drives it. Everything above resolves a *component*
-  // fragment, which is the shape the page shipped before hash routing; this walks the canonical
-  // grammar — a demo route, a section route, and an unknown route falling back to the landing page —
-  // because the resolver's own tests cannot prove the island wired it up.
+  // The rest of the grammar, driven the way a reader drives it: the legacy bare fragment this page
+  // shipped before hash routing and still resolves, a section route, and an unknown route falling
+  // back to the landing page. The resolver's own unit tests cannot prove the island wired any of it.
   const routes = await devtools.evaluate<{
-    demoMarked: boolean
-    demoCurrent: string
-    demoTitle: string
+    legacyMarked: boolean
+    legacyCurrent: string
+    legacyTitle: string
     sectionTop: number
     sectionMarked: number
     sectionCurrent: string
     sectionTitle: string
+    markedBeforeUnknown: number
     unknownMarked: number
     unknownTitle: string
     unknownChipCurrent: string
@@ -728,12 +732,12 @@ async function interactionChecks(devtools: Devtools): Promise<void> {
       const marked = () => document.querySelectorAll("[data-deep-link]").length
       const current = () => document.querySelector('a[aria-current="true"]')?.textContent ?? ""
 
-      location.hash = "#/inputs/toggle-switch"
+      location.hash = "#toggle-switch"
       await settle()
-      const demo = {
-        demoMarked: document.querySelector("#demo-ToggleSwitch").hasAttribute("data-deep-link"),
-        demoCurrent: current(),
-        demoTitle: document.title,
+      const legacy = {
+        legacyMarked: document.querySelector("#demo-ToggleSwitch").hasAttribute("data-deep-link"),
+        legacyCurrent: current(),
+        legacyTitle: document.title,
       }
 
       location.hash = "#/inputs"
@@ -745,12 +749,20 @@ async function interactionChecks(devtools: Devtools): Promise<void> {
         sectionTitle: document.title,
       }
 
+      // Mark a card again before the unknown route, so the assertion below is a *transition* — the
+      // mark has to be there first and gone after — and not something a host with no listener at all
+      // would satisfy by never marking anything.
+      location.hash = "#/inputs/toggle-switch"
+      await settle()
+      const markedBeforeUnknown = marked()
+
       location.hash = "#/nonsense"
       await settle()
 
       return {
-        ...demo,
+        ...legacy,
         ...section,
+        markedBeforeUnknown,
         unknownMarked: marked(),
         unknownTitle: document.title,
         unknownChipCurrent: current(),
@@ -758,10 +770,10 @@ async function interactionChecks(devtools: Devtools): Promise<void> {
     })()`,
   )
   check(
-    "the canonical demo route marks, titles and highlights its own chip",
-    routes.demoMarked && routes.demoCurrent === "ToggleSwitch" &&
-      routes.demoTitle.startsWith("ToggleSwitch"),
-    `#/inputs/toggle-switch → ${routes.demoTitle}, chip "${routes.demoCurrent}"`,
+    "the legacy fragment still resolves to the same card",
+    routes.legacyMarked && routes.legacyCurrent === "ToggleSwitch" &&
+      routes.legacyTitle.startsWith("ToggleSwitch"),
+    `#toggle-switch → ${routes.legacyTitle}, chip "${routes.legacyCurrent}"`,
   )
   check(
     "the section route scrolls to its section and clears the card's mark",
@@ -771,10 +783,11 @@ async function interactionChecks(devtools: Devtools): Promise<void> {
       `${routes.sectionMarked} cards marked`,
   )
   check(
-    "an unknown route falls back to the landing page without marking anything",
-    routes.unknownMarked === 0 && routes.unknownChipCurrent === "" &&
-      routes.unknownTitle === PAGE_TITLE,
-    `#/nonsense → "${routes.unknownTitle}"`,
+    "an unknown route falls back to the landing page and clears the mark",
+    routes.markedBeforeUnknown === 1 && routes.unknownMarked === 0 &&
+      routes.unknownChipCurrent === "" && routes.unknownTitle === PAGE_TITLE,
+    `#/nonsense → "${routes.unknownTitle}", ${routes.markedBeforeUnknown} marked before → ` +
+      `${routes.unknownMarked} after`,
   )
 
   const theme = await devtools.evaluate<{ before: boolean; after: boolean; pressed: string }>(
