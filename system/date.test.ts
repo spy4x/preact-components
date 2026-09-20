@@ -4,7 +4,6 @@ import {
   addDaysIso,
   isoDateInTz,
   isoToday,
-  isValidTimeZone,
   monthFirstWeekday,
   monthLabel,
   shiftMonth,
@@ -138,16 +137,5 @@ describe("isoToday", () => {
 
   it("agrees with isoDateInTz for the same instant", () => {
     expect(isoToday("Asia/Tokyo")).toBe(isoDateInTz(new Date(), "Asia/Tokyo"))
-  })
-})
-
-describe("isValidTimeZone", () => {
-  it("accepts a known zone", () => {
-    expect(isValidTimeZone("Europe/Berlin")).toBe(true)
-  })
-
-  it("rejects a typo", () => {
-    expect(isValidTimeZone("Europe/Berlin ")).toBe(false)
-    expect(isValidTimeZone("not/a-zone")).toBe(false)
   })
 })

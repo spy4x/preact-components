@@ -94,15 +94,15 @@ describe("Calendar", () => {
   it("greys out days after the horizon", () => {
     const html = render(<Calendar {...base} minDate="2026-08-03" maxDate="2026-08-15" />)
 
-    expect(html).toContain('title="2026-08-16 — outside the booking window"')
+    expect(html).toContain('title="2026-08-16 — outside the allowed range"')
     expect(html).not.toContain('href="?date=2026-08-16"')
     expect(html).toContain('href="?date=2026-08-15"')
   })
 
-  it("distinguishes a fully booked day from a day with no availability", () => {
+  it("distinguishes a day with no slots left from a day with no availability", () => {
     const html = render(<Calendar {...base} />)
 
-    expect(html).toContain('title="2026-08-12 — fully booked"')
+    expect(html).toContain('title="2026-08-12 — no slots left"')
     expect(html).toContain('title="2026-08-19 — no times available"')
     expect(html).toContain("line-through")
   })

@@ -1,7 +1,7 @@
 /**
  * The System section.
  *
- * All eight of the package's components are here. Six render from props with no platform access at
+ * All four of the package's components are here. Two render from props with no platform access at
  * all; two are platform integration and are handled with an explicit, stated reduction rather than a
  * demo that claims behaviour it cannot show. Those two are the interesting part of this file, so
  * here is the reasoning in full:
@@ -21,17 +21,15 @@
  *   printed — and says plainly that mounting the component needs a browser, a worker and two
  *   deploys.
  *
- * The rest are honest full demos. `Calendar`, `TimeSlots` and `ThemeToggle` all read state, so each
- * lives in its own component with its own local state, and every date is injected: `Calendar` takes
- * `today` and `timeZone` as props precisely so a render can be pinned, and it is pinned to
- * `2026-03-10`/`UTC` here. `TimeSlots` is a pure function of its props.
+ * The rest are honest full demos. `Calendar` reads state, so it lives in its own component with its
+ * own local state, and every date is injected: it takes `today` and `timeZone` as props precisely so
+ * a render can be pinned, and it is pinned to `2026-03-10`/`UTC` here. `BlogImageEnhancer` renders
+ * its dialog closed, with nothing else to pin.
  */
 
 import { BlogImageEnhancer } from "@preact-components/system/blog-image-enhancer"
-import { BookingSubmit } from "@preact-components/system/booking-submit"
-import { Breadcrumb } from "@preact-components/system/breadcrumb"
 import { Calendar } from "@preact-components/system/calendar"
-import type { Crumb, PageHead } from "@preact-components/system/head"
+import type { PageHead } from "@preact-components/system/head"
 import { seoHeadTags } from "@preact-components/system/seo-head"
 import {
   type RegistrationLike,
@@ -39,18 +37,9 @@ import {
   watchForUpdate,
   type WorkerLike,
 } from "@preact-components/system/sw-updater"
-import { ThemeToggle, themeToggleLabel } from "@preact-components/system/theme-toggle"
-import { TimeSlots } from "@preact-components/system/time-slots"
-import { Button, Input } from "@preact-components/ui"
+import { Button } from "@preact-components/ui"
 import { useSignal } from "@preact/signals"
 import type { DemoFragment } from "../registry.ts"
-
-/** Three crumbs, because the component renders nothing for a trail shorter than two. */
-const trail: readonly Crumb[] = [
-  { name: "Docs", href: "/docs" },
-  { name: "Components", href: "/docs/components" },
-  { name: "Breadcrumb" },
-]
 
 /** A page head with every optional tag populated, so the card shows the whole set, not a subset. */
 const pageHead: PageHead = {
@@ -238,36 +227,6 @@ function BlogImageEnhancerDemo() {
   )
 }
 
-/** A form that goes nowhere, so the submit gate is exercised without a server to post to. */
-function BookingSubmitDemo() {
-  const problem = useSignal("")
-  return (
-    <form
-      class="space-y-3"
-      onSubmit={(event) => {
-        // The demo has no endpoint. `BookingSubmit` still prevents the submit when a rule fails, so
-        // the only way to reach here is a form that passed validation.
-        event.preventDefault()
-        problem.value = "Validation passed, so the native submit would run here."
-      }}
-    >
-      <Input name="guest" placeholder="Guest name" aria-label="Guest name" />
-      <Input name="email" placeholder="you@example.com" aria-label="Email" />
-      <BookingSubmit
-        label="Confirm booking"
-        timeZoneField="guestTz"
-        fields={[
-          { name: "guest", required: "Please enter the guest's name.", min: 2 },
-          { name: "email", required: "Please enter an email address." },
-        ]}
-      />
-      {problem.value !== "" && (
-        <p class="text-xs text-green-700 dark:text-green-400">{problem.value}</p>
-      )}
-    </form>
-  )
-}
-
 /**
  * The grid with every cell kind on screen at once.
  *
@@ -315,88 +274,10 @@ function CalendarInteractiveDemo() {
   )
 }
 
-/** Slots on a fixed date, with the host-local and visitor-zone times deliberately different. */
-const slots = [
-  { time: "08:00", displayTime: "09:00", available: true },
-  { time: "09:30", displayTime: "10:30", available: false },
-  { time: "11:00", displayTime: "12:00", available: true },
-  { time: "14:00", displayTime: "15:00", available: true },
-  { time: "16:30", displayTime: "17:30", available: true },
-  { time: "19:00", displayTime: "20:00", available: true },
-  { time: "21:30", displayTime: "22:30", available: true },
-]
-
-/** `onSelectSlot` absent: every available chip is an `<a href>`, and nothing hydrates. */
-function TimeSlotsLinkDemo() {
-  return (
-    <TimeSlots
-      date="2026-03-12"
-      dateLabel="Thursday, 12 March 2026"
-      slots={slots}
-      selectedSlot="11:00"
-    />
-  )
-}
-
-/** `onSelectSlot` present: the chips become buttons and pick locally. */
-function TimeSlotsInteractiveDemo() {
-  const picked = useSignal<string | null>(null)
-  return (
-    <div class="space-y-2">
-      <TimeSlots
-        date="2026-03-12"
-        dateLabel="Thursday, 12 March 2026"
-        slots={slots}
-        selectedSlot={picked.value}
-        onSelectSlot={(_, slot) => picked.value = slot}
-      />
-      <p class="text-xs text-gray-500 dark:text-gray-400">
-        onSelectSlot: {picked.value ?? "nothing picked"}
-      </p>
-    </div>
-  )
-}
-
-/** Three toggles, one per mode, plus the placeholder the app renders before it has read storage. */
-function ThemeToggleDemo() {
-  const mode = useSignal<"auto" | "light" | "dark">("auto")
-  return (
-    <div class="space-y-3">
-      <div class="flex flex-wrap items-center gap-3">
-        <span class="text-xs text-gray-500 dark:text-gray-400">
-          one per mode, then the cycle, then the unread placeholder
-        </span>
-        <ThemeToggle mode="auto" onChange={() => {}} />
-        <ThemeToggle mode="light" onChange={() => {}} />
-        <ThemeToggle mode="dark" onChange={() => {}} />
-      </div>
-      <div class="flex flex-wrap items-center gap-3">
-        <ThemeToggle mode={mode.value} onChange={(next) => mode.value = next} />
-        <span class="text-xs text-gray-500 dark:text-gray-400">
-          {mode.value}: {themeToggleLabel(mode.value)}
-        </span>
-      </div>
-      <div class="flex flex-wrap items-center gap-3">
-        <ThemeToggle onChange={() => {}} />
-        <span class="text-xs text-gray-500 dark:text-gray-400">
-          no <code>mode</code>{" "}
-          — the inert, same-size placeholder rendered while the stored preference is still unknown
-        </span>
-      </div>
-    </div>
-  )
-}
-
 export const systemDemos = {
-  Breadcrumb: {
-    summary:
-      "Renders its trail from props: the last crumb is the current page (`aria-current`), the ones before it are links. A trail of fewer than two crumbs renders nothing.",
-    snippet: `<Breadcrumb items={[{ name: "Docs", href: "/docs" }, { name: "Breadcrumb" }]} />`,
-    render: () => <Breadcrumb items={trail} />,
-  },
   Calendar: {
     summary:
-      "Six-week month grid. **Dual-mode**: with no `onSelectDate` every cell is an `<a href>` and a month arrow with nothing to show is a `<span>` rather than a dead link; supplying the callback turns the cells into `<button>`. `today` and `timeZone` are props, so a render can be pinned — this card passes `2026-03-10` and `UTC` and reads no clock. A date missing from `slotsByDate` has no availability, a `0` is fully booked, and the two are visually alike but carry different accessible labels. Cells also show today, past dates, dates outside the window, and a scarcity dot at or below `lowSlotsThreshold`.",
+      "Six-week month grid. **Dual-mode**: with no `onSelectDate` every cell is an `<a href>` and a month arrow with nothing to show is a `<span>` rather than a dead link; supplying the callback turns the cells into `<button>`. `today` and `timeZone` are props, so a render can be pinned — this card passes `2026-03-10` and `UTC` and reads no clock. A date missing from `slotsByDate` has no availability, a `0` has no slots left, and the two are visually alike but carry different accessible labels. Cells also show today, past dates, dates outside the window, and a scarcity dot at or below `lowSlotsThreshold`.",
     snippet: `<Calendar
   monthAnchor="2026-03-01"
   minDate="2026-03-01"
@@ -413,32 +294,6 @@ export const systemDemos = {
         <CalendarInteractiveDemo />
       </div>
     ),
-  },
-  TimeSlots: {
-    summary:
-      "Availability chips bucketed into morning, afternoon and evening. **Dual-mode**, exactly like `Calendar`: with no `onSelectSlot` each free chip is an `<a href>`; supplying it makes them `<button>`. Grouping uses `displayTime` when the caller supplies it — the visitor's own zone — and falls back to the host-local `time` the server books against, so the bucket always agrees with the string on the chip. The evening bucket wraps midnight; a booked chip is a struck-through `<span aria-disabled>`, never a disabled button.",
-    snippet: `<TimeSlots
-  date="2026-03-12"
-  dateLabel="Thursday, 12 March 2026"
-  slots={[{ time: "09:00", available: true }, { time: "09:30", available: false }]}
-  selectedSlot="09:00"
-  onSelectSlot={(date, slot) => picked.value = slot}
-/>`,
-    render: () => (
-      <div class="space-y-4">
-        <TimeSlotsLinkDemo />
-        <TimeSlotsInteractiveDemo />
-      </div>
-    ),
-  },
-  ThemeToggle: {
-    summary:
-      "One icon button cycling `auto → light → dark`. Mode in, mode out: the component holds no preference and reads no storage, so the app owns where the setting lives and can keep tabs in sync. `mode` is optional because the stored preference is unknowable during server rendering — with no `mode` it renders an inert, same-size placeholder, which is what stops the layout shifting when the real button hydrates. `nextThemeMode` and `themeToggleLabel` are exported for the app's own keyboard shortcuts and status text.",
-    snippet: `<ThemeToggle mode={mode.value} onChange={(next) => mode.value = next} />
-
-// Before the stored preference is known — the placeholder, not a wrong icon:
-<ThemeToggle onChange={(next) => mode.value = next} />`,
-    render: () => <ThemeToggleDemo />,
   },
   SEOHead: {
     summary:
@@ -476,21 +331,5 @@ const tags = seoHeadTags(head)`,
   onOpen={(image) => analytics.track("lightbox", image.src)}
 />`,
     render: () => <BlogImageEnhancerDemo />,
-  },
-  BookingSubmit: {
-    summary:
-      "A submit button that never shows a spinner over an invalid form. Two things happen before the native post: the form is validated locally — walking `fields` in declaration order so the message is about the earliest field — and the visitor's `Intl` time zone is written into a hidden field on mount so the server can render the confirmation in their zone. The server stays the trust boundary; this is UX. **The hidden timezone field is empty in this server-rendered card and fills in on hydration**, and the form below posts nowhere: this guide has no endpoint. The validation gate itself is `gateSubmit`, exported and pure.",
-    snippet: `<form onSubmit={save}>
-  <Input name="guest" />
-  <Input name="email" />
-  <BookingSubmit
-    label="Confirm booking"
-    fields={[
-      { name: "guest", required: "Please enter the guest's name.", min: 2 },
-      { name: "email", required: "Please enter an email address.", check: emailProblem },
-    ]}
-  />
-</form>`,
-    render: () => <BookingSubmitDemo />,
   },
 } satisfies DemoFragment

@@ -54,9 +54,9 @@ export function describeCalendarDay(day: CalendarDay): string {
     case "past":
       return `${day.date} — past`
     case "after":
-      return `${day.date} — outside the booking window`
+      return `${day.date} — outside the allowed range`
     case "full":
-      return `${day.date} — fully booked`
+      return `${day.date} — no slots left`
     case "unavailable":
       return `${day.date} — no times available`
     default:
@@ -81,7 +81,7 @@ export interface CalendarProps {
   maxDate: string
   /**
    * Remaining slots per `YYYY-MM-DD`. A date the map omits has no availability, and a `0` marks
-   * the day as fully booked — the cell looks the same, the accessible label does not.
+   * the day as having no slots left — the cell looks the same, the accessible label does not.
    */
   slotsByDate?: Readonly<Record<string, number>>
   selectedDate?: string | null
@@ -266,7 +266,7 @@ export function Calendar(
 
           const scarce = !day.selected && typeof slots === "number" && slots > 0 &&
             slots <= lowSlotsThreshold
-          const stateClass = day.selected ? selectedClass : day.today ? todayClass : bookableClass
+          const stateClass = day.selected ? selectedClass : day.today ? todayClass : selectableClass
           const attributes = {
             "aria-label": copy.day(day),
             // `as const` keeps the type at `"date" | undefined`, which is the token Preact's
@@ -310,13 +310,13 @@ const fullClass = "line-through decoration-gray-300 dark:decoration-gray-600"
 const selectedClass = "bg-purple-900 font-semibold text-white hover:bg-purple-800"
 const todayClass =
   "bg-purple-50 font-semibold text-purple-800 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-200 dark:hover:bg-purple-900/50"
-const bookableClass = "text-gray-900 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-700"
+const selectableClass = "text-gray-900 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-700"
 
 /**
  * Resolve a cell to a reason or `null`.
  *
  * Order matters: out-of-month and out-of-horizon are checked before availability, because a day
- * outside the booking window must not look merely "busy".
+ * outside the allowed range must not look merely "busy".
  */
 function dayReason(
   date: string,

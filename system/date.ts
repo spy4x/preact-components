@@ -29,16 +29,6 @@ export function isoToday(timeZone: string): string {
   return isoDateInTz(new Date(), timeZone)
 }
 
-/** Whether `Intl` knows a zone. Guards a prop that arrives from an env var or a client hint. */
-export function isValidTimeZone(timeZone: string): boolean {
-  try {
-    new Intl.DateTimeFormat("en-US", { timeZone })
-    return true
-  } catch {
-    return false
-  }
-}
-
 function isoToUtcMs(date: string): number {
   const ms = Date.parse(`${date}T00:00:00Z`)
   if (Number.isNaN(ms)) throw new Error(`expected a YYYY-MM-DD date, received: ${date}`)
