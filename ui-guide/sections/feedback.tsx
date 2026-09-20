@@ -26,6 +26,7 @@ import {
   SkeletonText,
   type SpinnerSize,
   tableGeometry,
+  textGeometry,
   type ToastItem,
   Toastr,
   type ToastVariant,
@@ -75,22 +76,19 @@ const lineWidthSets: Array<{ label: string; widths?: SkeletonLineWidth[] }> = [
 /**
  * The three line widths `SkeletonText` resolves from one `widths` list, as its own text.
  *
- * Printed under each paragraph so the cycling rule is readable rather than inferred: a list shorter
- * than `lines` repeats, an omitted or empty one is `full` every time, and the keyword is the same as
- * `100`. Pure, so the claim the card makes is asserted in `sections/demo-decisions.test.ts` rather
- * than trusted.
+ * Printed under each paragraph so the cycling rule is readable rather than inferred. The numbers are
+ * read back out of `textGeometry` rather than recomputed here: an earlier revision of this helper
+ * had the cycling rule of its own, and it printed `full` where the component resolves `100` for a
+ * literal `"full"` in a list — a card quoting the wrong number while its own test passed, because
+ * the test was measuring the copy. Delegating to the component's function is what makes the card
+ * report what the placeholder really renders, and it is the same rule the sibling
+ * {@link skeletonTableNote} follows with `tableGeometry`.
  *
  * @param widths The list the card passed, or `undefined` for the no-`widths` case.
  * @returns Three resolved widths, joined for display.
  */
 export function skeletonWidthReport(widths?: readonly SkeletonLineWidth[]): string {
-  return [0, 1, 2]
-    .map((index) => {
-      if (widths === undefined || widths.length === 0) return "full"
-
-      return widths[index % widths.length] ?? "full"
-    })
-    .join(" / ")
+  return textGeometry(3, widths).linePercents.join(" / ")
 }
 
 const toastButton =

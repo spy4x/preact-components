@@ -333,30 +333,45 @@ describe("demo registry", () => {
   })
 
   it("publishes the declared gaps, packaged and named", () => {
-    expect(pendingDemos.length).toBeGreaterThan(0)
-
+    // No `toBeGreaterThan(0)` on the worklist. It used to demand a non-empty list, which made the
+    // catalogue's own goal state — every covered package written up, nothing left to defer — a
+    // failing build. `ui` was the last name on it and issue #105 tracks the four guards that assumed
+    // otherwise; this is the one of the four that lives here, asserted as the state instead.
     for (const entry of pendingDemos) {
-      expect(entry.names.length).toBeGreaterThan(0)
+      expect(entry.names.length, `${entry.package} is on the worklist with nothing to say`)
+        .toBeGreaterThan(0)
       expect(entry.packageName).toBe(`@preact-components/${entry.package}`)
     }
+    // Tied to the resolver in every state, empty included: the notice is derived from these two, so
+    // an entry that no longer resolves cannot linger on the page and a resolved gap cannot be left
+    // off it.
+    //
+    // Stated plainly, because a reader will notice it: with the worklist empty this compares `[]`
+    // with `[]`, and both sides come from the same resolver — so it is a wiring invariant, not an
+    // independent expectation. What it catches is `pendingDemos` ceasing to be derived (a hard-coded
+    // list, a filter the wrong way round). It is deliberately *not* the evidence that the resolver
+    // works: that is the probe test below, which drives `pendingNamesOf` with a name no package
+    // exports, and `catalogue.test.tsx`'s render test built on the same seam.
     expect(pendingDemos.map((entry) => entry.package)).toEqual(
       packageIds.filter((id) => pendingNamesOf(id).length > 0),
     )
   })
 
   it("drops a written-up package from the worklist", () => {
-    // The three packages whose declared lists this change emptied: each had a `PENDING_DEMOS` entry
-    // per undemoed component, each is now written up in full, and a package with nothing left to
-    // declare must not keep an empty entry on the page. The `ui` entry above is the contrast — an
-    // auto-pending package is on the worklist whenever it has an undemoed export, with no list.
+    // The three packages whose declared lists #102 emptied: each had a `PENDING_DEMOS` entry per
+    // undemoed component, each is now written up in full, and a package with nothing left to declare
+    // must not keep an empty entry on the page. `ui` joined them when its last demos landed, so the
+    // worklist is now empty for every covered package — which is why the test above no longer demands
+    // a non-empty list, and why this one asserts the state of the page rather than a contrast.
     //
     // The opposite mistake — leaving a *demoed* name in `PENDING_DEMOS` — is a `deno check` failure
     // (`{ stalePending: "Name" }`), which is a compile error and therefore not assertable here.
-    for (const id of ["charts", "system", "crud"] as const) {
+    for (const id of ["ui", "charts", "system", "crud"] as const) {
       expect(PENDING_DEMOS[id], `${id} still declares a pending demo`).toEqual([])
       expect(pendingNamesOf(id), `${id} resolves a pending name`).toEqual([])
       expect(pendingDemos.map((entry) => entry.package), `${id} on the worklist`).not.toContain(id)
     }
+    expect(pendingDemos, "every covered package is written up").toEqual([])
   })
 
   it("names an auto-pending package's undemoed exports without an explicit list", () => {
@@ -369,7 +384,9 @@ describe("demo registry", () => {
     //   * iterating whatever is under test — `for (const id of AUTO_PENDING_PACKAGES)` runs zero
     //     times once the list is emptied, which is precisely the mutation it should catch.
     //
-    // So the package is named literally and the probe is asserted to land in the worklist.
+    // So the package is named literally and the probe is asserted to land in the worklist. This is
+    // the test that survives the worklist emptying: it drives the seam with a name no export list
+    // contains, so it holds whatever `ui/` ships next.
     expect(AUTO_PENDING_PACKAGES, "ui is the package this seam exists for").toContain("ui")
     expect(PENDING_DEMOS.ui, "ui's explicit list is meant to stay empty").toEqual([])
     expect(pendingNamesOf("ui", [UNDEMOED_PROBE])).toEqual([UNDEMOED_PROBE])

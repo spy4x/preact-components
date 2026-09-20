@@ -19,6 +19,7 @@ import {
   type DateRangePreset,
   type DateRangePresetOption,
   Dropdown,
+  isValidDateRange,
   OnOffButtons,
   rangeForPreset,
   ToggleField,
@@ -257,17 +258,22 @@ const datePresetOptions: readonly DateRangePresetOption[] = [
 /**
  * What a card's status line says about a range the caller holds or would commit.
  *
- * The panel enables Apply on the same two conditions — both ends present, and the range ordered —
- * so a range this reports as `incomplete` is one the picker would refuse to commit. Stated in the
- * card rather than shown as a disabled button, because the button is inside a closed panel.
+ * The verdict is `isValidDateRange`, the very function the panel gates its Apply button on, so a
+ * range this reports as incomplete is one the picker would refuse — the claim on the card is the
+ * component's rule rather than a second one shaped like it. An earlier revision compared the two
+ * strings directly, which is the same answer for well-formed input and a different one for anything
+ * else: a raw `<=` accepts `"2026-2-15"` and `"nonsense"` alike, where `parseIsoDate` rejects both.
+ *
+ * Reported in the card rather than shown as a `disabled` button, because the button lives inside a
+ * panel the server render emits closed.
  *
  * @param range Range to report on.
  * @returns A sentence describing it, or that it cannot be applied.
  */
 export function dateRangeTouched(range: DateRange): string {
-  const complete = range.from !== "" && range.to !== "" && range.from <= range.to
-
-  return complete ? `${range.from} → ${range.to}` : "incomplete — Apply stays disabled"
+  return isValidDateRange(range)
+    ? `${range.from} → ${range.to}`
+    : "incomplete — Apply stays disabled"
 }
 
 /**
