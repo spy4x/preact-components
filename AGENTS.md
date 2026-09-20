@@ -167,13 +167,16 @@ never into `pages/verify.ts` directly; assume it is unproven until a check there
 `pages/verify.ts` is still the script the task runs: it keeps the static phase and the browser
 startup, and calls every package's file in one fixed order. The shared helpers — `check`, `poll`,
 `pressKey`, the `Devtools` session — are defined once, in `pages/checks/harness.ts`, and imported
-from there rather than redefined. A file exists under `pages/checks/` for every workspace package,
-including the ones with no check yet, so two people adding checks to different packages never edit
-the same file. Today that means `Modal` alone: it opens as a real modal dialog with focus inside, a
-real Escape press closes it, and focus returns to the trigger. Every other component's keyboard and
-focus behaviour is still untested. `verify` fails when it finds no browser; `--static` is the one
-explicit way to leave the browser phase out. The GitHub workflow runs `check`, the build and `verify`
-on every pull request into `main`, and the Pages deploy waits for them.
+from there rather than redefined. Every workspace package whose components the catalogue demonstrates
+has a file under `pages/checks/`, including the ones with no check yet — that emptiness is
+deliberate, so a later pull request adding the first check to one of them touches nobody else's file.
+`cn/` is the one workspace member with none: it is a single class-name function, and there is nothing
+in it a browser could drive. `Modal` is so far the only component whose keyboard and focus behaviour
+any browser check covers: it opens as a real modal dialog with focus inside, a real Escape press
+closes it, and focus returns to the trigger. Every other component's keyboard and focus behaviour is
+still untested. `verify` fails when it finds no browser; `--static` is the one explicit way to leave
+the browser phase out. The GitHub workflow runs `check`, the build and `verify` on every pull request
+into `main`, and the Pages deploy waits for them.
 
 If a task fails because a specifier cannot be resolved, run the task that needs the new dependency once
 with network access and commit the updated `deno.lock`. **This is a convenience, not a gate:** a stale
