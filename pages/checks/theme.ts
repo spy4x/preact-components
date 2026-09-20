@@ -169,7 +169,7 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
     buttonBackground: string
     light: string
     dark: string
-  }>(`(() => {
+  }>(`(async () => {
     const root = document.documentElement
     const wasDark = root.classList.contains("dark")
     const canvas = () => getComputedStyle(document.body).backgroundColor
@@ -180,9 +180,29 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
     root.classList.toggle("dark", wasDark)
 
     const button = document.querySelector("#demo-Button button")
+    // The palette-toggle click just above this probe flips \`.dark\` on <html>, and \`.btn\`'s
+    // transition-colors utility animates the button's background-color across that flip. Sampled
+    // once, this probe caught the fill mid-transition — a different colour on every run, since how
+    // far the transition had gotten by the time this ran was a race against the click. Poll until
+    // two consecutive reads agree, so the sample is the settled colour (or, if nothing was
+    // transitioning, the first read repeats immediately) rather than a snapshot of motion — do not
+    // remove this as redundant.
+    let previous = getComputedStyle(button).backgroundColor
+    let buttonBackground = previous
+    for (let attempt = 0; attempt < 20; attempt++) {
+      await new Promise((done) => setTimeout(done, 30))
+      const next = getComputedStyle(button).backgroundColor
+      if (next === previous) {
+        buttonBackground = next
+        break
+      }
+      previous = next
+      buttonBackground = next
+    }
+
     return {
       buttonRadius: getComputedStyle(button).borderRadius,
-      buttonBackground: getComputedStyle(button).backgroundColor,
+      buttonBackground,
       light,
       dark,
     }
