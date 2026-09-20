@@ -5,7 +5,6 @@
     ".": "./+index.ts",
     "./build-model-store": "./build-model-store.ts",
     "./clipboard": "./clipboard.ts",
-    "./list-state": "./list-state.ts",
     "./map-entry": "./map-entry.ts",
     "./signals": "./+signals.tsx",
     "./table-state": "./table-state.ts",

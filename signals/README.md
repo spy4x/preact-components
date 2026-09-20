@@ -1,6 +1,6 @@
 # `@preact-components/signals`
 
-Signals state layer: a CRUD store factory, list and table state, and the small stores around them.
+Signals state layer: a CRUD store factory, table sort state, and the small stores around them.
 No Preact component, no Tailwind class, no application singleton.
 
 ```ts
@@ -13,15 +13,14 @@ import { buildModelStore, createToastStore } from "@preact-components/signals"
 
 `buildModelStore` is one 240-line factory that replaced eleven hand-rolled CRUD stores, and
 `build-model-store` here is that factory rewritten for arktype. The other modules each collapse a
-per-app copy of the same idea: roley's `listStateFactory` (five entity stores), financy's
-`theme`/`toast`/`clipboard` singletons, warthunder's sort codec.
+per-app copy of the same idea: financy's `theme`/`toast`/`clipboard` singletons, warthunder's
+sort codec.
 
 ## What is in the box
 
 | Module              | Exports                                                              |
 | ------------------- | -------------------------------------------------------------------- |
 | `build-model-store` | `buildModelStore` — CRUD over one REST collection, arktype-validated |
-| `list-state`        | `createListState` — `{list, operations}` on signals                  |
 | `table-state`       | `SortRule`, `toggleSort`, `sortRows`, `parseSort`, `serializeSort`   |
 | `theme`             | `createThemeStore` — light/dark/system, persistence, `matchMedia`    |
 | `toast`             | `createToastStore` — the store behind `Toastr`                       |
