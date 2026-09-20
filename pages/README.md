@@ -30,6 +30,7 @@ usage blocks copy, the toasts fire and the deep links scroll.
 | `build.ts`                | Type-checks, compiles the stylesheet, bundles the island, prerenders, writes `dist/`                      |
 | `styles.css`              | The app-order stylesheet an app writes, plus the `@source` rules the scanner reads                        |
 | `verify.ts`               | Asserts the artefact's shape, then drives the built page in headless Chromium                             |
+| `checks/`                 | One browser-check file per workspace package, plus the shared `Devtools`/`check` harness                  |
 | `serve.ts`                | Static server that mounts `dist/` at the deployed base (`deno task preview`)                              |
 | `src/app.tsx`             | The host page — the app shell this library deliberately does not ship                                     |
 | `src/+main.tsx`           | The island: `hydrate(<App />, #root)`                                                                     |

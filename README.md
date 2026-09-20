@@ -25,7 +25,7 @@ cn/          cn() — class-name join + Tailwind conflict resolution
 signals/     For/Show/map, buildModelStore, useListState, useUrlFilters, table-state
 crud/        CrudList, CrudEditor, AssociationEditor
 ui-guide/    live component catalogue route
-pages/       demo app (GitHub Pages site and the browser checks in verify.ts), not published
+pages/       demo app (GitHub Pages site and the browser checks under pages/checks/), not published
 ```
 
 ## Rules
