@@ -7,8 +7,8 @@
  * `attach()`.
  *
  * Import one module from its own subpath (`@preact-components/signals/build-model-store`) when the
- * barrel would pull in more than you need. Importing this barrel also evaluates `+signals.tsx`,
- * which patches `Signal.prototype.map` — see that module's JSDoc.
+ * barrel would pull in more than you need. Importing it changes nothing globally: this package
+ * renders nothing, augments no prototype and registers no listener.
  */
 
 export {
@@ -31,7 +31,6 @@ export {
   createClipboard,
 } from "./clipboard.ts"
 export { deleteMapEntry, setMapEntry } from "./map-entry.ts"
-export { For, Show } from "./+signals.tsx"
 export {
   parseSort,
   removeSortRule,

@@ -1,9 +1,9 @@
 # `@preact-components/ui-guide`
 
 The live component catalogue, shipped as a component so every app that imports the library gets it
-free. It renders one demo per component of every package it covers — `ui`, `charts`, `system`, `crud`
-and `signals` — one card per group of `theme/preset.css` classes, the icon gallery, and the
-design-system rules components are meant to be assembled in.
+free. It renders one demo per component of every package it covers — `ui`, `charts`, `system` and
+`crud` — one card per group of `theme/preset.css` classes, the icon gallery, and the design-system
+rules components are meant to be assembled in.
 
 Ported from `financy`'s modular `routes/ui-guide/*` (the better structure of the two source guides)
 and `gb`'s `islands/system/UIGuide.tsx`, whose icon gallery is kept verbatim in spirit.
@@ -92,12 +92,12 @@ some section, or a line in the allow-list below.
 
 Four kinds of drift fail `deno task test`, each naming the component and the package it belongs to:
 
-| Drift                                              | Message                                                                    |
-| -------------------------------------------------- | -------------------------------------------------------------------------- |
-| exported with no card and no allow-list entry      | `signals exports Show and no section demonstrates it — write a demo, or …` |
-| a card keyed to a name the package does not export | `the ui sections demo Badge, which ui does not export`                     |
-| an allow-list entry the package does not export    | `ui does not export FakeHelper, which EXPORTS_WITHOUT_DEMO names`          |
-| an allow-list entry whose component has a card     | `ui's Badge has a demo, so its EXPORTS_WITHOUT_DEMO entry is stale`        |
+| Drift                                              | Message                                                                     |
+| -------------------------------------------------- | --------------------------------------------------------------------------- |
+| exported with no card and no allow-list entry      | `crud exports CrudList and no section demonstrates it — write a demo, or …` |
+| a card keyed to a name the package does not export | `the ui sections demo Badge, which ui does not export`                      |
+| an allow-list entry the package does not export    | `ui does not export FakeHelper, which EXPORTS_WITHOUT_DEMO names`           |
+| an allow-list entry whose component has a card     | `ui's Badge has a demo, so its EXPORTS_WITHOUT_DEMO entry is stale`         |
 
 This used to be about 580 lines of conditional types, so the failure arrived at `deno check` rather
 than at `deno test`. Both run in the same `deno task check`, so the earlier arrival bought nothing,
@@ -115,8 +115,8 @@ variant to a component fails `deno check` until the catalogue shows it.
 name and a sentence. Two things belong in it, and they read the same way to the check — this export
 is component-shaped and no card is expected:
 
-- **Not a component.** Every entry today is an `enum`, which is an object rather than something to
-  render: `ValidationType` in `crud`, `ErrType`, `RemoteEvent` and `ThemeValue` in `signals`.
+- **Not a component.** The one entry today is an `enum`, which is an object rather than something
+  to render: `ValidationType` in `crud`.
 - **A card somebody still owes.** A component whose demo is honestly not written yet goes here with
   a reason saying so, instead of being quietly absent.
 
@@ -183,13 +183,14 @@ each of which is a reason a reader is looking rather than a package boundary:
 | **Surfaces and page furniture** | `display`, `feedback`, `surfaces`, `forms` | What a page shows and the feedback it shows instead, plus the two sections documenting `preset.css`'s own class families — the same material one level down. |
 | **Inputs**                      | `inputs`, `fields`                         | One story in two halves: `ui/`'s controlled primitives, and the same controls written as the preset class on a native element.                               |
 | **Data and resources**          | `charts`, `crud`                           | The two packages that only matter once there is a resource behind the page.                                                                                  |
-| **App shell**                   | `system`, `signals`                        | The chrome an adopter wires first, and the signals layer it is assembled through — a layer, not a sibling of the component packages.                         |
+| **App shell**                   | `system`                                   | The chrome an adopter wires first: navigation, heads, the service-worker prompt, the calendar.                                                               |
 
-`signals` sits under the app shell rather than beside the component packages on purpose: `For` and
-`Show` are components, but the package is read as the layer an app's shell is built through. `forms`
-sits with `surfaces` and not with `fields`, which puts the two class-family sections next to each
-other: they document the same thing (classes on markup the library does not own) at the two levels
-a page meets them.
+The app shell is a group of one. `signals/` was read beside it — the layer a shell is assembled
+through — until that package stopped exporting components and left the catalogue; the group stays
+because "the chrome I wire first" is a reader's own reason for looking, not a leftover of the
+package it once shared a heading with. `forms` sits with `surfaces` and not with `fields`, which
+puts the two class-family sections next to each other: they document the same thing (classes on
+markup the library does not own) at the two levels a page meets them.
 
 ### The group is a property of the section
 
@@ -256,20 +257,19 @@ The counts are deliberately not repeated here: the guide prints them under its o
 `pages/build.ts` asserts a prerendered card per entry of `catalogueNames` against the emitted HTML, so
 the number that matters is checked where it is produced rather than transcribed into prose.
 
-| Section                    | Package   | Cards                                                                                    |
-| -------------------------- | --------- | ---------------------------------------------------------------------------------------- |
-| **Badges**                 | `ui`      | `Badge`                                                                                  |
-| **Buttons**                | `ui`      | `Button`, `CopyButton`, `GeoButton`                                                      |
-| **Display**                | `ui`      | `PageTitle`, `ConfidenceMeter`, `Table`                                                  |
-| **Feedback**               | `ui`      | `ErrorState`, `LoadingSpinner`, `LoadingSkeleton`, `LoadingScreen`, `Toastr`             |
-| **Inputs**                 | `ui`      | `ToggleSwitch`, `OnOffButtons`, `Dropdown`                                               |
-| **Fields**                 | `ui`      | `Field`, `Input`, `Textarea`, `Select`, `Checkbox`, `Radio`, `RadioGroup`, `InputButton` |
-| **Forms**                  | `theme`   | `.input`, `.select`, `.textarea`, `.label`, `.checkbox`, `.radio`, `.btn-input-icon`     |
-| **Surfaces and utilities** | `theme`   | `.card`, `.scrollbar`, the type scale, the KPI tile, the colour atoms                    |
-| **Charts**                 | `charts`  | a card per component the package exports                                                 |
-| **System**                 | `system`  | a card per component the package exports                                                 |
-| **CRUD**                   | `crud`    | a card per component the package exports                                                 |
-| **Signals**                | `signals` | `For`, `Show` — the package's only components                                            |
+| Section                    | Package  | Cards                                                                                    |
+| -------------------------- | -------- | ---------------------------------------------------------------------------------------- |
+| **Badges**                 | `ui`     | `Badge`                                                                                  |
+| **Buttons**                | `ui`     | `Button`, `CopyButton`, `GeoButton`                                                      |
+| **Display**                | `ui`     | `PageTitle`, `ConfidenceMeter`, `Table`                                                  |
+| **Feedback**               | `ui`     | `ErrorState`, `LoadingSpinner`, `LoadingSkeleton`, `LoadingScreen`, `Toastr`             |
+| **Inputs**                 | `ui`     | `ToggleSwitch`, `OnOffButtons`, `Dropdown`                                               |
+| **Fields**                 | `ui`     | `Field`, `Input`, `Textarea`, `Select`, `Checkbox`, `Radio`, `RadioGroup`, `InputButton` |
+| **Forms**                  | `theme`  | `.input`, `.select`, `.textarea`, `.label`, `.checkbox`, `.radio`, `.btn-input-icon`     |
+| **Surfaces and utilities** | `theme`  | `.card`, `.scrollbar`, the type scale, the KPI tile, the colour atoms                    |
+| **Charts**                 | `charts` | a card per component the package exports                                                 |
+| **System**                 | `system` | a card per component the package exports                                                 |
+| **CRUD**                   | `crud`   | a card per component the package exports                                                 |
 
 Nothing here states how many components are _missing_ a card, on purpose: that number moves with every
 component PR. Read `EXPORTS_WITHOUT_DEMO` in `coverage.ts`, which is where a card somebody still owes
@@ -278,10 +278,9 @@ argument against a third one.
 
 The `ui` sections are written up; the `charts`, `system` and `crud` cards are placeholders with a
 one-line summary and a live render, and their section blurbs say so — the real demos land in
-follow-up PRs. `signals` gets two cards rather than one because it has exactly two components and both
-are a signal and a line of JSX; the parts that make the package hard to read (`buildModelStore`,
-`createListState`, `createToastStore`, `useUrlFilters`) are factories, declared as helpers, and need a
-written-up example rather than a card.
+follow-up PRs. `signals/` has no section at all: it is excluded in `coverage.ts` because everything
+it exports is a factory or a pure function (`buildModelStore`, `createToastStore`, `useUrlFilters`,
+`sortRows`), which a written-up example in its own README serves better than a card would.
 
 `Fields` is the `ui/` half of the form story — the controlled primitives, each with the demo an app
 writes — and `forms`/`surfaces` are the other half: the preset styles markup the library does not own,

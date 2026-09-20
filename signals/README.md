@@ -28,10 +28,34 @@ sort codec.
 | `validate`          | `validate(schema, value)` → `{ error, data }`                        |
 | `map-entry`         | `setMapEntry` / `deleteMapEntry` — immutable `Map` writes            |
 | `use-url-filters`   | `useUrlFilters` — two-way binding between URL params and signals     |
-| `+signals`          | `<For>`, `<Show>`, `Signal.prototype.map` (`…/signals/signals`)      |
 
 `types.ts` holds the shared shapes (`OperationState`, `OperationResult`, `ErrType`, `ValidationError`,
 `RemoteEvent`, `ToastMessage`, …) and is re-exported from the barrel.
+
+## `For` and `Show` live in the dependency, not here
+
+This package used to ship its own `<For>` and `<Show>`. The pinned `@preact/signals` 2.5.1 ships
+both, so ours are gone and the import moves:
+
+```ts
+import { For, Show } from "@preact/signals/utils"
+```
+
+The subpath resolves through the root import map's `@preact/signals` entry; there is nothing new to
+pin. The two are not drop-in identical, and one of the differences is silent:
+
+- **`fallback` renders for an _empty_ array.** Ours rendered nothing for an empty array and used
+  `fallback` only for a missing one, so a list that legitimately empties out now shows the fallback
+  where it used to show nothing. Decide per call site which you meant.
+- **`each` must hold an array.** It takes `Signal<T[]>`, `ReadonlySignal<T[]>` or a function
+  returning one; a signal holding `null` or `undefined` is not accepted, so give that signal a `[]`
+  default or put the `<For>` inside a `<Show>`.
+- **`fallback` and `children` are `ComponentChildren`** rather than a single `JSX.Element` — wider,
+  not narrower: a string fallback and a list of children both type-check now.
+- **`Show` also takes a getter** (`when={() => …}` as well as `when={signal}`), and its `children`
+  function receives the value narrowed to non-nullable.
+- **`Signal.prototype.map` has no replacement.** It was a patch on a type this package does not own,
+  and `<For each={items}>{…}</For>` is what it expanded to, so write that.
 
 ## Design rules this package follows
 
@@ -125,9 +149,10 @@ than a mistyped row in the UI.
 
 ## Notes and sharp edges
 
-- **`+signals` patches `Signal.prototype`** when imported, adding `.map(fn)` as JSX sugar. Importing
-  the barrel imports it.
-- **`For`'s `fallback` is for an absent array**, not an empty one; an empty array renders nothing.
+- **Importing this package changes nothing globally.** It renders nothing, augments no prototype
+  and registers no listener, and `+index.test.ts` is the guard on that. `<For>` and `<Show>` used to
+  live here and the module patched `Signal.prototype.map` as a side effect of being imported, which
+  reached every consumer of every package that imported this one.
 - **`sortRows` puts an empty cell last, ascending and descending.** `null`, `undefined`, `""` and
   `NaN` are all "this column says nothing about this row", and a reader looks for those rows at the
   bottom whichever way the column points; two empty cells tie, so the next rule decides. The
@@ -150,11 +175,10 @@ than a mistyped row in the UI.
   a spread of `Extra | undefined` against a generic `Extra`. The rest are local narrowing inside one
   function, each next to the check that justifies it — `parseSort` after its allow-list and direction
   tests, `resolveFilterValue` and the `filters` map in `useUrlFilters` where a generic `T` loses its
-  key mapping, `responseError` after `typeof body === "object"`, and `Signal.prototype.map` handing
-  its element through `For`. To audit them:
+  key mapping, and `responseError` after `typeof body === "object"`. To audit them:
 
   ```bash
-  grep -n " as " signals/*.ts signals/*.tsx | grep -v "\.test\." | grep -v "as const"
+  grep -n " as " signals/*.ts | grep -v "\.test\." | grep -v "as const"
   ```
 - **A reused toast id replaces that toast** and cancels the timer the old entry was carrying; it does
   not append a second entry a `remove(id)` could not tell apart.
@@ -165,7 +189,8 @@ than a mistyped row in the UI.
 deno test signals/          # from the repository root
 ```
 
-Every module has a colocated test except the barrel and `types.ts`, which is types and enums only.
+Every module has a colocated test except `types.ts`, which is types and enums only; the barrel's
+own test is about what importing it does to the process rather than about an export of its own.
 The model store is exercised against a fake `fetch`; toasts against a fake clock — no network, no
 timers left running. `useUrlFilters` is the one exception: it needs a DOM and a router, so only its
 pure coercion helpers are covered here.
