@@ -34,7 +34,9 @@ copy keeps its own. A project that was deleted before its components were extrac
 source for anything here; do not name it.
 
 This is a public repository. Do not put a private application's code, file paths, file lists or
-business vocabulary into anything that lands here — components, docs, PRs or issues.
+business vocabulary into anything that lands here — components, docs, PRs or issues. Existing
+mentions of that kind are known and their removal is tracked in #127; do not assume the repository
+is already clean, and do not remove them as part of an unrelated change.
 
 ## Adding a package
 
@@ -118,8 +120,8 @@ gh pr create --fill --base main
 
 ## Review
 
-A separate reviewer agent, one that did not write the change, reviews every PR. Review happens
-before the PR is opened, or, for a PR opened early under `[WIP]`, before that prefix is dropped.
+A separate reviewer agent reviews every PR. Review happens before the PR is opened, or, for a PR
+opened early under `[WIP]`, before that prefix is dropped.
 
 The reviewer runs the checks itself — a reported green run is not evidence — and verifies a test by
 breaking the code it is supposed to protect: remove the fix and confirm the test goes red. A test
