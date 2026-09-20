@@ -170,6 +170,81 @@ is the class-form consumer (see "Class-name demos" below). Each entry carries it
 checked for staleness — an excluded class the preset no longer defines, or that the catalogue
 demonstrates after all, fails.
 
+## The groups
+
+Twelve sections in one scroll is a wall, not a structure. The catalogue reads them in five groups,
+each of which is a reason a reader is looking rather than a package boundary:
+
+| Group                           | Sections                                   | Why these are read together                                                                                                                                  |
+| ------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Foundations**                 | `badges`, `buttons`                        | The two cards whose whole content is a mark: the palette, and the button surface. One control's visible difference from another is a fill and a size.        |
+| **Surfaces and page furniture** | `display`, `feedback`, `surfaces`, `forms` | What a page shows and the feedback it shows instead, plus the two sections documenting `preset.css`'s own class families — the same material one level down. |
+| **Inputs**                      | `inputs`, `fields`                         | One story in two halves: `ui/`'s controlled primitives, and the same controls written as the preset class on a native element.                               |
+| **Data and resources**          | `charts`, `crud`                           | The two packages that only matter once there is a resource behind the page.                                                                                  |
+| **App shell**                   | `system`, `signals`                        | The chrome an adopter wires first, and the signals layer it is assembled through — a layer, not a sibling of the component packages.                         |
+
+`signals` sits under the app shell rather than beside the component packages on purpose: `For` and
+`Show` are components, but the package is read as the layer an app's shell is built through. `forms`
+sits with `surfaces` and not with `fields`, which puts the two class-family sections next to each
+other: they document the same thing (classes on markup the library does not own) at the two levels
+a page meets them.
+
+### The group is a property of the section
+
+`registry.ts` attaches the group to the section — `SectionSpec.group: GroupId` — and derives
+`catalogueGroups` from those specs. So there is one order, the groups', and one membership: a
+section cannot be filed twice, and a section with no `group` does not type-check. `catalogueSections`
+is the flattening of `catalogueGroups`, which is why the flat array `routes.ts`, `pages/` and
+`verify.ts` read cannot disagree with the grouped view the page draws.
+
+| Failure                                                         | Caught by                                                                                                   |
+| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| a section with no group                                         | `deno check` — `TS2741` "Property `group` is missing … required in type `SectionSpec`", at that section     |
+| a group that is not one of the five, or a misspelling of one    | `deno check` — `TS2322` `"tools"` is not assignable to `GroupId`                                            |
+| a section id that names no section, or no spec for one          | `deno check` — `TS1360` (id in `SectionId`, no spec) or `TS2353` (spec keyed to an id not in the union)     |
+| a group with no heading / a heading for no group                | `deno check` — `TS2741` "Property `tools` is missing" in the heading record, or `TS2353` for a leftover one |
+| a literal duplicate section key                                 | `deno check` — `TS1117` "An object literal cannot have multiple properties with the same name"              |
+| a section cloned under a second id                              | `registry.test.ts` — "a name appears in two sections", and `routes.test.ts` — "two demo names share a slug" |
+| the derived record losing a section, or doubling one            | `registry.test.ts` — the groups against `catalogueSections`                                                 |
+| the group vocabulary renamed, reordered or dropped              | `registry.test.ts` — five hand-written literals, in render order                                            |
+| the page rendering a section outside its group, or out of order | `catalogue.test.tsx` — "renders the sections in the groups' order", against a hand-written id sequence      |
+
+Both memberships and the guards behind them are worth stating precisely, because an earlier revision
+of this documentation claimed two things that are false:
+
+- **"Exactly one group" is structural, not a checked list** — a section has one `group` field, so "in
+  two groups" is inexpressible, and the compiler is what says so. What no shape can see is a section
+  whose `group` is a _valid_ group it does not belong in: that is a reading matter, and the render
+  test only catches it because the correct order is written down by hand.
+- **A partition guard over member lists _is_ expressible; the obvious formulations are not.**
+  `readonly SectionId[]` per group is satisfied by `[]`, and TypeScript erases duplicate tuple
+  members — `["badges", "badges"] as const` is the union `"badges"` with a reported length of 1 — so
+  union arithmetic and `Distinct`-style recursion cannot see a repeat. Asserting each group's literal
+  _width_ can: `{ [G in GroupId]: Members[G]["length"] }` against written-out numbers goes red when a
+  member is dropped, moved into another group, or invented. (Probed with the real diagnostics; the
+  probe and its outputs are in the PR for #99.) The groups-first record is therefore a working
+  alternative, and this shape was chosen over it because it states one fact once: the section says
+  which group it is in, and the record is compiled from that, where the width assertions are a second
+  place the same fact has to be written.
+
+The heading copy lives in `registry.ts` beside the ids (`groupHeadings`), because a heading is prose:
+a group whose sections are all still there can still be headed wrongly, and only a reader can say.
+
+### Heading levels are the outline
+
+`h1` the page title → `h2` a group → `h3` a section and its cards → `h4` a class card. One level per
+nesting the document has, which is why the sections moved from `h2` to `h3` when the groups arrived:
+a section is no longer a top-level division of the page. No test pins a section's level, so treat this
+as a stated decision rather than a guarded one: `catalogue.test.tsx` checks the group headings and the
+rendered order, and nothing asserts a section's heading level.
+
+This is the one change a **host** can notice, because a stylesheet may key on the level. Hosts that
+selected section blurbs as `section[id] > div > h2 + p` should widen the selector to
+`:is(h1, h2, h3, h4, h5, h6)`; the published package's markup is not shaped by the demo's CSS. The
+reverse is deliberately preserved: the group wrapper sits _around_ each `<section id>`, so a
+section's own `div.grid` stays a direct child of it and structural selectors such as
+`main section[id] > div.grid` keep matching.
+
 ## Coverage
 
 One row per section, in render order, naming the demos it registers. Between them the sections cover
@@ -278,7 +353,8 @@ deno task check             # from the repository root, what CI runs
 deno test --allow-read --allow-env ui-guide/   # this package alone
 ```
 
-Eight suites: `registry.test.ts` (drift guard, package coverage, pending bookkeeping, the class
+Eight suites: `registry.test.ts` (drift guard, the group partition and its vocabulary, package
+coverage, pending bookkeeping, the class
 sections), `subpath-exports.test.ts` (guard 6: every value export of every declared subpath module is
 either barrelled or declared a helper, and the barrel carries nothing a subpath does not — the
 `exports` object read three ways, and the two helper lists asserted disjoint), `routes.test.ts` (the

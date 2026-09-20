@@ -11,6 +11,25 @@ import {
 } from "./registry.ts"
 import { iconNames } from "./icons.tsx"
 
+/**
+ * Which section ids each rendered group must hold, in render order, spelled out.
+ *
+ * Hand-written on purpose: read from `catalogueGroups`, an assertion would shrink with the very
+ * thing it polices — a section dropped from a group would be missing from both sides. This is the
+ * independent copy, so the expectation breaks when the data does.
+ *
+ * `registry.test.ts` checks the partition against the registry; this map checks the *page* against
+ * a second opinion, which is why it is not derived. It also catches a section listed under the
+ * wrong group, which the registry cannot see: a valid group is a valid group there.
+ */
+const SECTIONS_IN_GROUPS: Record<string, string[]> = {
+  "group-foundations": ["badges", "buttons"],
+  "group-surfaces": ["display", "feedback", "forms", "surfaces"],
+  "group-inputs": ["inputs", "fields"],
+  "group-data": ["charts", "crud"],
+  "group-application": ["system", "signals"],
+}
+
 /** One entry removed from the shipped registry, to reach the banner a partial one produces. */
 function without(...names: Array<keyof typeof demoRegistry>): PartialDemoRegistry {
   const partial: PartialDemoRegistry = { ...demoRegistry }
@@ -79,6 +98,78 @@ describe("UIGuide", () => {
     }
     expect(html).toContain('id="icons"')
     expect(html).toContain('id="instructions"')
+  })
+
+  it("renders the sections in the groups' order, each under its own group heading", () => {
+    const html = render(<UIGuide />)
+
+    // Two things are asserted here, and only one of them a test can see at all. **The order** — the
+    // ids are read in document order and compared against a hand-written sequence, so a rendered
+    // order that stopped matching the registry is red. Read from `catalogueSections`, this would
+    // compare the page against the registry's own flattening and could not detect a wrong order at
+    // all. **The group headings** — that each group is drawn, with its own `h2`, above its sections.
+    //
+    // What this is *not* is a containment check: `ids.slice` between two group markers proves
+    // nothing about nesting, because anything before the first group (`instructions`) can never be
+    // inside any run. Nesting is structural in the renderer (a section is a child of its group
+    // element) and the partition is `registry.test.ts`'s. Said plainly because the first version of
+    // this test claimed more than it checked.
+    for (
+      const heading of [
+        "Foundations",
+        "Surfaces and page furniture",
+        "Inputs",
+        "Data and resources",
+        "App shell",
+      ]
+    ) {
+      expect(html, heading).toContain(`>${heading}</h2>`)
+    }
+
+    const ids = [...html.matchAll(/id="([a-z-]+)"/g)].map((match) => match[1])
+    const groups = ids.filter((id) => id.startsWith("group-") && !id.endsWith("-heading"))
+
+    expect(groups).toEqual([
+      "group-foundations",
+      "group-surfaces",
+      "group-inputs",
+      "group-data",
+      "group-application",
+    ])
+
+    // Every section the catalogue renders, in the order it must appear: group by group, and the
+    // groups in the order above. Filtered to the ids this file names, because the document also
+    // carries a card anchor (`demo-…`), a form control and a gallery cell per demo. The gallery is
+    // last, which is what makes the run between the first and last group sections-only: nothing else
+    // may appear among them.
+    const known = new Set([
+      "instructions",
+      "icons",
+      ...Object.values(SECTIONS_IN_GROUPS).flat(),
+      ...groups,
+    ])
+    const rendered = ids.filter((id) => known.has(id))
+
+    expect(
+      rendered,
+      "the rendered order stopped matching the groups' order, or a section left its group",
+    ).toEqual([
+      "instructions",
+      ...groups.flatMap((group) => [group, ...SECTIONS_IN_GROUPS[group]]),
+      "icons",
+    ])
+
+    // Asserted twice on purpose: the sequence above is what catches a section rendered out of
+    // place, and this names the group it stopped matching, because a diff over the whole document
+    // order says only that *something* moved.
+    for (const [index, group] of groups.entries()) {
+      const start = rendered.indexOf(group)
+      const nextGroup = groups[index + 1]
+      const after = rendered.slice(start + 1)
+      const run = nextGroup ? after.slice(0, after.indexOf(nextGroup)) : after.slice(0, -1)
+
+      expect(run, `${group} renders the wrong sections`).toEqual(SECTIONS_IN_GROUPS[group])
+    }
   })
 
   it("renders one usage block per card, each with a copy control", () => {
