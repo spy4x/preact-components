@@ -180,6 +180,14 @@ tailwindcss                     4.1.12
 @tailwindcss/forms              0.5.10
 ```
 
+**What is mechanically checked, and what is not.** Exact pinning is enforced by Deno: every specifier
+above is an exact pin, the committed `deno.lock` fixes every resolved version and integrity hash, and
+`deno task check` fails against a stale lockfile. `ts:check` additionally fails on an import of a
+specifier no config declares — a gate on resolution, not on permission. **No check in CI verifies the
+dependency allowlist**, so adding an excluded component library at an exact pin would pass every
+check. The component-library policy and the audit a reviewer is expected to run are in
+[`docs/no-third-party-components.md`](./docs/no-third-party-components.md).
+
 ## Hard rules
 
 - Never commit a secret, token, credential, `.env` value or raw production URL.
