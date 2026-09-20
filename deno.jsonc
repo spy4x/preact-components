@@ -11,6 +11,7 @@
   // on every invocation. Add it back together with the package, in one change.
   "workspace": [
     "./charts",
+    "./cn",
     "./crud",
     "./icons",
     // Not a package: the GitHub Pages demo. It is a member so it can pin its own build-only
@@ -63,7 +64,7 @@
     // Validation — arktype only, never zod
     "arktype": "npm:arktype@2.2.3",
 
-    // Class name helper
+    // Class name helper — see `cn/` for the small function built on it
     "tailwind-merge": "npm:tailwind-merge@3.7.0",
 
     // No d3 here on purpose. This map is ambient for every consumer of every package, and d3 is

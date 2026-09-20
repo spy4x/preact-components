@@ -1,4 +1,4 @@
-import { cn } from "@preact-components/signals/cn"
+import { cn } from "@preact-components/cn"
 
 /** Semantic colour of the filled portion, mapped onto the `theme/` colour atoms. */
 export type ProgressTone = "primary" | "success" | "warning" | "danger"

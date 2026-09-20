@@ -1,4 +1,4 @@
-import { cn } from "@preact-components/signals/cn"
+import { cn } from "@preact-components/cn"
 import { LoadingSpinner } from "./loading-spinner.tsx"
 
 export interface LoadingScreenProps {

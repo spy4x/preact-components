@@ -32,7 +32,7 @@ import {
   routeHref,
   type RouteMatch,
 } from "@preact-components/ui-guide/routes"
-import { cn } from "@preact-components/signals/cn"
+import { cn } from "@preact-components/cn"
 import { useEffect, useState } from "preact/hooks"
 import { demoElementId } from "./deep-link.ts"
 import { PAGE_TITLE, REPOSITORY } from "./site.ts"

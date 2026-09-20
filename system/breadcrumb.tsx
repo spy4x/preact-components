@@ -6,7 +6,7 @@
  * reader announces where the page sits even though its own name is not a link.
  */
 
-import { cn } from "@preact-components/signals/cn"
+import { cn } from "@preact-components/cn"
 import type { Crumb } from "./head.ts"
 
 export interface BreadcrumbProps {

@@ -1,4 +1,4 @@
-import { cn } from "@preact-components/signals/cn"
+import { cn } from "@preact-components/cn"
 
 /**
  * Shape-matching skeletons: variants whose boxes are computed from the same counts and widths the

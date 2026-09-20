@@ -1,4 +1,4 @@
-import { cn } from "@preact-components/signals/cn"
+import { cn } from "@preact-components/cn"
 import type { ComponentChildren } from "preact"
 import { useEffect, useRef, useState } from "preact/hooks"
 import { Button } from "./button.tsx"

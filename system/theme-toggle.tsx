@@ -8,7 +8,7 @@
  * shifting when the real button hydrates.
  */
 
-import { cn } from "@preact-components/signals/cn"
+import { cn } from "@preact-components/cn"
 import { IconMoon, IconSun, IconThemeAuto } from "@preact-components/icons"
 import type { ComponentChildren } from "preact"
 

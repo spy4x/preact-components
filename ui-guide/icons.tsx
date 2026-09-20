@@ -10,7 +10,7 @@
 import * as icons from "@preact-components/icons"
 import { copyToClipboard } from "@preact-components/ui/copy-button"
 import { useSignal } from "@preact/signals"
-import { cn } from "@preact-components/signals/cn"
+import { cn } from "@preact-components/cn"
 import type { ComponentType } from "preact"
 
 /** One glyph, with the prop surface every icon in the package shares. */

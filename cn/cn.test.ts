@@ -36,4 +36,8 @@ describe("cn", () => {
   it("returns an empty string when nothing survives", () => {
     expect(cn(false, null, undefined)).toBe("")
   })
+
+  it("keeps both theme component classes, which it does not know how to merge", () => {
+    expect(cn("btn-primary", "btn-danger")).toBe("btn-primary btn-danger")
+  })
 })

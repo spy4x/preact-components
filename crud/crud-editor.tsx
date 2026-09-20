@@ -1,5 +1,5 @@
 import { IconLoading } from "@preact-components/icons"
-import { cn } from "@preact-components/signals/cn"
+import { cn } from "@preact-components/cn"
 import { PageTitle } from "@preact-components/ui/page-title"
 import { type ReadonlySignal, type Signal, useSignal, useSignalEffect } from "@preact/signals"
 import type { Type } from "arktype"

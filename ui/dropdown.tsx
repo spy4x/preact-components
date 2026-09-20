@@ -1,4 +1,4 @@
-import { cn } from "@preact-components/signals/cn"
+import { cn } from "@preact-components/cn"
 import { useSignal } from "@preact/signals"
 import type { ComponentChildren } from "preact"
 import { useEffect, useRef } from "preact/hooks"

@@ -1,4 +1,4 @@
-import { cn } from "@preact-components/signals/cn"
+import { cn } from "@preact-components/cn"
 import { CopyButton, copyToClipboard } from "./copy-button.tsx"
 import { useEffect, useState } from "preact/hooks"
 
