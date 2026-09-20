@@ -1,7 +1,7 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
-import { UIGuide, uiGuideRoute } from "./+index.tsx"
+import { PendingDemos, UIGuide, uiGuideRoute } from "./+index.tsx"
 import {
   catalogueNames,
   classDemos,
@@ -116,6 +116,27 @@ describe("UIGuide", () => {
         expect(html, name).not.toContain(`id="demo-${name}"`)
       }
     }
+  })
+
+  it("publishes a worklist entry it is handed, not only the shipped one", () => {
+    // The shipped list is now `ui` alone — charts, system and crud are written up — so the notice
+    // would still render if `PendingDemos` ignored its own input and hard-coded the registry read.
+    // This drives the component with an entry no registry contains.
+    const entry = {
+      package: "charts" as const,
+      packageName: "@preact-components/charts",
+      names: ["SyntheticPendingProbe"],
+    }
+    const html = render(<PendingDemos entries={[entry]} />)
+
+    expect(html).toContain("Not demonstrated yet")
+    expect(html).toContain(entry.packageName)
+    expect(html).toContain(entry.names[0])
+    expect(catalogueNames, entry.names[0]).not.toContain(entry.names[0])
+  })
+
+  it("renders nothing for the worklist when it is handed no entries", () => {
+    expect(render(<PendingDemos entries={[]} />)).toBe("")
   })
 
   it("shows nothing of the icon gallery's fallback when no search is set", () => {

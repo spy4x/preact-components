@@ -556,37 +556,25 @@ export const PENDING_DEMOS = {
    * exists to remove. {@link AUTO_PENDING_PACKAGES} is what keeps `ui` covered instead.
    */
   ui: [],
-  charts: [
-    "CompareChart",
-    "D3LineChart",
-    "DonutChart",
-    "Kpi",
-    "KpiGrid",
-    "LineChart",
-    "MetricPanel",
-  ],
-  system: [
-    "BlogImageEnhancer",
-    "BookingSubmit",
-    "Calendar",
-    "SEOHead",
-    "SWUpdater",
-    "ThemeToggle",
-    "TimeSlots",
-  ],
-  crud: [
-    "AssociationEditor",
-    "CheckboxField",
-    "CrudEditor",
-    "DeletionValidation",
-    "FieldIssues",
-    "NumberField",
-    "RowAction",
-    "RowActions",
-    "SelectField",
-    "TextareaField",
-    "TextField",
-  ],
+  /**
+   * Empty since the charts section was written up: all seven names that stood here — `CompareChart`,
+   * `D3LineChart`, `DonutChart`, `Kpi`, `KpiGrid`, `LineChart`, `MetricPanel` — have a card now, and
+   * a name left here would be the `{ stalePending }` failure described above. The list stays declared
+   * rather than deleted, because `charts` is not an {@link AUTO_PENDING_PACKAGES} entry: a component
+   * added to the package tomorrow is a `missingDemo` failure until somebody writes it up.
+   */
+  charts: [],
+  /**
+   * Empty since the system section was written up. `SEOHead` and `SWUpdater` are demonstrated
+   * through their own exported pure halves rather than by rendering the platform behaviour they
+   * depend on — the reasoning is in `sections/system.tsx` and on the cards themselves.
+   */
+  system: [],
+  /**
+   * Empty since the CRUD section was written up. The store every editor in that section reads is a
+   * small in-memory implementation of the structural interfaces in `store.ts`, not a mock of one.
+   */
+  crud: [],
   signals: [],
 } as const satisfies { [P in PackageId]: readonly ComponentNamesOf<P>[] }
 
@@ -679,21 +667,21 @@ const catalogue = {
     package: "charts",
     title: "Charts",
     blurb:
-      "Server-rendered charts and the d3 islands. `Bars` is live below and needs nothing but its data; the rest of the package is on the worklist at the top of the page.",
+      "Server-rendered charts and the d3 islands. The zero-JS SVGs are live and need nothing but their data; the two islands draw in an effect, so their cards are their real server render and a browser is where the drawing happens.",
     demos: chartsDemos,
   },
   system: {
     package: "system",
     title: "System",
     blurb:
-      "Application chrome and platform integration: navigation, heads, the service-worker prompt, the dual-mode calendar. `Breadcrumb` is live below; the rest is on the worklist.",
+      "Application chrome and platform integration: navigation, heads, the service-worker prompt, the dual-mode calendar. Everything is live; the two platform-integration cards say on the card what they demonstrate and what they leave to a browser.",
     demos: systemDemos,
   },
   crud: {
     package: "crud",
     title: "CRUD",
     blurb:
-      "The list and editor scaffolding a resource page is rebuilt from — props and slots, no entity and no store assumed. `CrudList` is live below; the rest is on the worklist.",
+      "The list and editor scaffolding a resource page is rebuilt from — props and slots, no entity and no store assumed. Every card drives a small in-memory store built from the structural interfaces the package declares.",
     demos: crudDemos,
   },
   signals: {
