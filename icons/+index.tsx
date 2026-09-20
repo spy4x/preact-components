@@ -1,11 +1,12 @@
 /**
  * Merged icon set — every glyph the library ships, deduped by SVG body.
  *
- * Merged by hand from five apps (template, gb, antonshubin.com, offer-lens, mig) and kept as
- * plain source afterwards, one function per glyph. Four style families are mixed and the
+ * Merged by hand from six apps (template, gb, antonshubin.com, offer-lens, mig, roley) and kept
+ * as plain source afterwards, one function per glyph. Five style families are mixed and the
  * licence provenance of the glyphs is unverified: see README.md for both caveats.
  *
  * https://github.com/spy4x/preact-components/issues/2 (merge)
+ * https://github.com/spy4x/preact-components/issues/15 (roley remainder)
  * https://github.com/spy4x/preact-components/issues/10 (FOSS replacement / provenance)
  */
 
@@ -2016,6 +2017,363 @@ export function IconZap(props: IconProps) {
       class={`shrink-0 ${props.class || "size-5"}`}
     >
       <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    </svg>
+  )
+}
+
+/** Heroicons v1 outline (stroke-2) · from roley. */
+export function IconArrowsPointingOut(props: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      class={`shrink-0 ${props.class || "size-5"}`}
+    >
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
+      />
+    </svg>
+  )
+}
+
+/** Heroicons v1 outline (stroke-2) · from roley. */
+export function IconCloudArrowUp(props: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      class={`shrink-0 ${props.class || "size-5"}`}
+    >
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+      />
+    </svg>
+  )
+}
+
+/** Heroicons v1 outline (stroke-2) · from roley. The source's default was `h-6 w-6`. */
+export function IconSuccess(props: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      class={`shrink-0 ${props.class || "size-6"}`}
+    >
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+      />
+    </svg>
+  )
+}
+
+/** Heroicons v1 outline (stroke-2) · from roley. */
+export function IconDocumentDuplicate(props: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      class={`shrink-0 ${props.class || "size-5"}`}
+    >
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+      />
+    </svg>
+  )
+}
+
+/** Heroicons v1 outline (stroke-2) · from roley. */
+export function IconDocumentText(props: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      class={`shrink-0 ${props.class || "size-5"}`}
+    >
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+      />
+    </svg>
+  )
+}
+
+/** Heroicons v1 outline (stroke-2) · from roley. */
+export function IconDownload(props: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      class={`shrink-0 ${props.class || "size-5"}`}
+    >
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+      />
+    </svg>
+  )
+}
+
+/** Custom filled glyph (no stroke) · from roley. Filled and strokeless where the rest of the set is
+ *  outlined, and carried over on `roley`'s own 25×24 grid. The `d`, `fill-rule` and `clip-rule` are
+ *  the source's byte for byte; `fill="none"` on the root and the source's `width`/`height` were
+ *  dropped, and the one path's `fill` moved onto the root as `currentColor` — the same substitution
+ *  as `IconPlaySolid`'s hard-coded red. */
+export function IconExternalLink(props: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 25 24"
+      fill="currentColor"
+      class={`shrink-0 ${props.class || "size-5"}`}
+    >
+      <path
+        fill-rule="evenodd"
+        clip-rule="evenodd"
+        d="M14.6045 12.1942C14.1023 12.6964 13.288 12.6964 12.7871 12.1942C12.2849 11.6933 12.2849 10.879 12.7871 10.3768L20.5912 2.5714H15.6962C14.9864 2.5714 14.4105 1.99551 14.4105 1.2857C14.4105 0.575891 14.9864 0 15.6962 0H23.6957C24.4056 0 24.9814 0.575891 24.9814 1.2857V9.28515C24.9814 9.99496 24.4056 10.5709 23.6957 10.5709C22.9859 10.5709 22.41 9.99496 22.41 9.28515V4.39024L14.6045 12.1942ZM3.55287 5.57164C3.55287 3.91497 4.89618 2.57167 6.55286 2.57167H9.40954C10.1194 2.57167 10.6952 1.99578 10.6952 1.28597C10.6952 0.576165 10.1194 0.000274328 9.40954 0.000274328H6.55286C3.47518 0.000274328 0.981445 2.49532 0.981445 5.57164V18.4286C0.981445 21.505 3.47518 24 6.55286 24H19.41C22.4863 24 24.9814 21.505 24.9814 18.4286V15.572C24.9814 14.8622 24.4055 14.2863 23.6957 14.2863C22.9859 14.2863 22.41 14.8622 22.41 15.572V18.4286C22.41 20.0853 21.0666 21.4286 19.41 21.4286H6.55286C4.89618 21.4286 3.55287 20.0853 3.55287 18.4286V5.57164Z"
+      />
+    </svg>
+  )
+}
+
+/** Heroicons v1 outline (stroke-2) · from roley. */
+export function IconFilm(props: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      class={`shrink-0 ${props.class || "size-5"}`}
+    >
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"
+      />
+    </svg>
+  )
+}
+
+/** Heroicons v1 outline (stroke-2) · from roley. */
+export function IconLockClosed(props: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      class={`shrink-0 ${props.class || "size-5"}`}
+    >
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+      />
+    </svg>
+  )
+}
+
+/** Heroicons v2 solid · from roley. */
+export function IconLockClosedFilled(props: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 20 20"
+      fill="currentColor"
+      class={`shrink-0 ${props.class || "size-5"}`}
+    >
+      <path
+        fill-rule="evenodd"
+        clip-rule="evenodd"
+        d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+      />
+    </svg>
+  )
+}
+
+/** Heroicons v1 outline (stroke-2) · from roley. */
+export function IconLockOpen(props: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      class={`shrink-0 ${props.class || "size-5"}`}
+    >
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"
+      />
+    </svg>
+  )
+}
+
+/** Heroicons v1 outline (stroke-2) · from roley. */
+export function IconMicrophone(props: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      class={`shrink-0 ${props.class || "size-5"}`}
+    >
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+      />
+    </svg>
+  )
+}
+
+/** Heroicons v1 outline (stroke-2) · from roley. */
+export function IconPlayCircle(props: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      class={`shrink-0 ${props.class || "size-5"}`}
+    >
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+      />
+      <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  )
+}
+
+/** Heroicons v2 solid · from roley. The source hard-coded red; `currentColor` is kept so the
+ *  caller picks the colour, as every other glyph in this set does. */
+export function IconPlaySolid(props: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      class={`shrink-0 ${props.class || "size-5"}`}
+    >
+      <path d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
+    </svg>
+  )
+}
+
+/** Heroicons v1 outline (stroke-2) · from roley. */
+export function IconRefresh(props: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      class={`shrink-0 ${props.class || "size-5"}`}
+    >
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+      />
+    </svg>
+  )
+}
+
+/** Heroicons v1 outline (stroke-2) · from roley. */
+export function IconSmile(props: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      class={`shrink-0 ${props.class || "size-5"}`}
+    >
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+      />
+    </svg>
+  )
+}
+
+/** Heroicons v1 outline (stroke-2) · from roley. */
+export function IconStopCircle(props: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      class={`shrink-0 ${props.class || "size-5"}`}
+    >
+      <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"
+      />
+    </svg>
+  )
+}
+
+/** Heroicons v1 outline (stroke-2) · from roley. */
+export function IconVideoCamera(props: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      class={`shrink-0 ${props.class || "size-5"}`}
+    >
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+      />
     </svg>
   )
 }

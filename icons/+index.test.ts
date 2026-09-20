@@ -68,12 +68,24 @@ describe("icon set", () => {
     // Two same-named `export function`s are rejected at type-check time (TS2393); a name
     // that slipped through would collapse in the module namespace and shrink this count.
     // The number is the documented total in README.md — bump both when adding a glyph.
-    expect(names.length).toBe(101)
+    // Deliberately a literal, never `Object.keys(icons).length`: a guard derived from the
+    // module would shrink with the thing it polices and catch nothing.
+    expect(names.length).toBe(119)
     expect(new Set(names).size).toBe(names.length)
   })
 
   it("ships no two exports with the same glyph", () => {
     const keys = iconEntries.map(([name]) => glyphKey(vnodeOf(name, {})))
+    // Grouped by glyph so a failure names the collision instead of only its count: a duplicate
+    // body merged under a second name is the one regression this suite exists to stop.
+    const byGlyph = new Map<string, string[]>()
+    for (const [index, key] of keys.entries()) {
+      const group = byGlyph.get(key) ?? []
+      group.push(iconEntries[index][0])
+      byGlyph.set(key, group)
+    }
+    const collisions = [...byGlyph.values()].filter((group) => group.length > 1)
+    expect(collisions, `duplicate glyph bodies: ${JSON.stringify(collisions)}`).toEqual([])
     expect(new Set(keys).size).toBe(keys.length)
   })
 
