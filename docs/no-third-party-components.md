@@ -120,7 +120,7 @@ Nothing else is permitted. A new dependency needs a written justification in the
 (`AGENTS.md` → _Code style_ → "Minimise dependencies"), and the burden is on the addition, not on the
 refusal.
 
-## How the rule is enforced
+## How the rule is held to — and what is not checked
 
 Stated precisely, because an overclaimed guard is worse than no guard. **The short version: nothing
 mechanical enforces this policy. CI does not check it. Review does.**
