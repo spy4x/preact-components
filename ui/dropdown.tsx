@@ -278,6 +278,10 @@ export function Dropdown(props: DropdownProps) {
     setTimeout(() => {
       const root = rootRef.current
       // Already closed — an outside click, which `handleClickOutside` answers first — or gone.
+      // Deliberate belt and braces, with no check behind it: a review removed this line and
+      // nothing went red, because a closed panel is `display:none`, its items cannot take focus,
+      // and the restore below is already a no-op. Kept because it states the intent where a later
+      // change could make it matter, not because it is load-bearing today.
       if (!isOpen.value || !root) return
 
       const active = document.activeElement
