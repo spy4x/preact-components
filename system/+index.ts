@@ -99,13 +99,3 @@ export {
   themeToggleLabel,
   type ThemeToggleProps,
 } from "./theme-toggle.tsx"
-export {
-  groupSlotsByPeriod,
-  periodFor,
-  type TimeSlot,
-  type TimeSlotGroup,
-  type TimeSlotPeriod,
-  timeSlotPeriodLabels,
-  TimeSlots,
-  type TimeSlotsProps,
-} from "./time-slots.tsx"

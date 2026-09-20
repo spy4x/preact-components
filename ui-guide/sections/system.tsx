@@ -40,7 +40,6 @@ import {
   type WorkerLike,
 } from "@preact-components/system/sw-updater"
 import { ThemeToggle, themeToggleLabel } from "@preact-components/system/theme-toggle"
-import { TimeSlots } from "@preact-components/system/time-slots"
 import { Button, Input } from "@preact-components/ui"
 import { useSignal } from "@preact/signals"
 import type { DemoFragment } from "../registry.ts"
@@ -315,48 +314,6 @@ function CalendarInteractiveDemo() {
   )
 }
 
-/** Slots on a fixed date, with the host-local and visitor-zone times deliberately different. */
-const slots = [
-  { time: "08:00", displayTime: "09:00", available: true },
-  { time: "09:30", displayTime: "10:30", available: false },
-  { time: "11:00", displayTime: "12:00", available: true },
-  { time: "14:00", displayTime: "15:00", available: true },
-  { time: "16:30", displayTime: "17:30", available: true },
-  { time: "19:00", displayTime: "20:00", available: true },
-  { time: "21:30", displayTime: "22:30", available: true },
-]
-
-/** `onSelectSlot` absent: every available chip is an `<a href>`, and nothing hydrates. */
-function TimeSlotsLinkDemo() {
-  return (
-    <TimeSlots
-      date="2026-03-12"
-      dateLabel="Thursday, 12 March 2026"
-      slots={slots}
-      selectedSlot="11:00"
-    />
-  )
-}
-
-/** `onSelectSlot` present: the chips become buttons and pick locally. */
-function TimeSlotsInteractiveDemo() {
-  const picked = useSignal<string | null>(null)
-  return (
-    <div class="space-y-2">
-      <TimeSlots
-        date="2026-03-12"
-        dateLabel="Thursday, 12 March 2026"
-        slots={slots}
-        selectedSlot={picked.value}
-        onSelectSlot={(_, slot) => picked.value = slot}
-      />
-      <p class="text-xs text-gray-500 dark:text-gray-400">
-        onSelectSlot: {picked.value ?? "nothing picked"}
-      </p>
-    </div>
-  )
-}
-
 /** Three toggles, one per mode, plus the placeholder the app renders before it has read storage. */
 function ThemeToggleDemo() {
   const mode = useSignal<"auto" | "light" | "dark">("auto")
@@ -411,23 +368,6 @@ export const systemDemos = {
       <div class="space-y-4">
         <CalendarDemo />
         <CalendarInteractiveDemo />
-      </div>
-    ),
-  },
-  TimeSlots: {
-    summary:
-      "Availability chips bucketed into morning, afternoon and evening. **Dual-mode**, exactly like `Calendar`: with no `onSelectSlot` each free chip is an `<a href>`; supplying it makes them `<button>`. Grouping uses `displayTime` when the caller supplies it — the visitor's own zone — and falls back to the host-local `time` the server books against, so the bucket always agrees with the string on the chip. The evening bucket wraps midnight; a booked chip is a struck-through `<span aria-disabled>`, never a disabled button.",
-    snippet: `<TimeSlots
-  date="2026-03-12"
-  dateLabel="Thursday, 12 March 2026"
-  slots={[{ time: "09:00", available: true }, { time: "09:30", available: false }]}
-  selectedSlot="09:00"
-  onSelectSlot={(date, slot) => picked.value = slot}
-/>`,
-    render: () => (
-      <div class="space-y-4">
-        <TimeSlotsLinkDemo />
-        <TimeSlotsInteractiveDemo />
       </div>
     ),
   },

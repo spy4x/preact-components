@@ -25,7 +25,6 @@ Extracted from `antonshubin.com`, `mig` and `financy`.
 | `Breadcrumb`        | `breadcrumb`          | `items`, `label?`, `separator?`                                        |
 | `SWUpdater`         | `sw-updater`          | `scriptUrl?`, `reload?`, `onUpdate?`, `onError?`                       |
 | `Calendar`          | `calendar`            | `monthAnchor`, `minDate`, `maxDate`, `slotsByDate`, `onSelectDate?`    |
-| `TimeSlots`         | `time-slots`          | `date`, `dateLabel`, `slots`, `onSelectSlot?`                          |
 | `ThemeToggle`       | `theme-toggle`        | `mode`, `onChange`, `placeholder?`                                     |
 | `BlogImageEnhancer` | `blog-image-enhancer` | `containerSelector?`, `imageSelector?`, `fallbackAlt?`, `onOpen?`      |
 | `BookingSubmit`     | `booking-submit`      | `label`, `fields?` \| `validate?`, `timeZoneField?`, `readTimeZone?`   |
@@ -61,9 +60,9 @@ root entry alone, and the whole script tag is skipped when the graph is empty.
 
 ## The dual-mode contract
 
-`Calendar` and `TimeSlots` render `<button>` when the caller supplies a select handler and `<a
-href>` when it does not. One definition therefore serves the hydrated island and the no-JS or
-embedded fallback, and the URL stays the source of truth in both:
+`Calendar` renders `<button>` when the caller supplies a select handler and `<a href>` when it does
+not. One definition therefore serves the hydrated island and the no-JS or embedded fallback, and
+the URL stays the source of truth in both:
 
 ```tsx
 <Calendar {...month} onSelectDate={(date) => navigate(`?date=${date}`)} />  // island
@@ -128,8 +127,8 @@ regex.
 `deno task check` from the repository root runs this suite with the rest of the workspace. Every
 component is rendered with `preact-render-to-string` and asserted on real markup: emitted head tag
 sets, breadcrumb hiding and `aria-current`, the dual-mode swap, a 42-cell grid for a month that
-starts on any weekday, the midnight-wrapping period buckets, the theme cycle, route ordering, and
-the submit gate's blocked/allowed branches with the exact focus target each one produces.
+starts on any weekday, the theme cycle, route ordering, and the submit gate's blocked/allowed
+branches with the exact focus target each one produces.
 
 Where a component only works against a browser API, that API is a sealed boundary the tests can
 replace: `SWUpdater`'s listeners are driven by a fake registration, `gateSubmit` by a reader and
