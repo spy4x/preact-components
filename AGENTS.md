@@ -112,8 +112,11 @@ Runs `fmt:check`, `lint`, `ts:check` and `test`. All four must pass with zero er
 | `deno task test`     | run all tests                                    |
 | `deno task fix`      | `lint --fix` then format                         |
 
-If `deno task check` fails because the lockfile is stale, run the task that needs the new dependency
-once with network access and commit the updated `deno.lock`. Never delete or hand-edit the lockfile.
+If a task fails because a specifier cannot be resolved, run the task that needs the new dependency once
+with network access and commit the updated `deno.lock`. **This is a convenience, not a gate:** a stale
+or missing lock entry does not fail anything by itself — Deno downloads and rewrites the lockfile — so
+a task does not fail merely because the lockfile is out of date. `deno task check` never inspects a
+version and never passes `--frozen`. Never delete or hand-edit the lockfile.
 
 ## Code style
 
@@ -181,6 +184,18 @@ d3                               7.9.0
 tailwindcss                     4.1.12
 @tailwindcss/forms              0.5.10
 ```
+
+**What is mechanically checked, and what is not.** Assume nothing here is. Exact pinning is a
+convention held by review: `deno.lock` is committed and Deno keeps it in sync automatically, but it is
+a record of what was resolved, **not a gate** — a changed or added specifier is downloaded, the
+lockfile is rewritten, and the task exits 0. Only an explicit `deno cache --frozen` fails, and no task
+passes it. `ts:check` fails on a **bare** specifier no config declares (`TS2307`) — that is all it
+covers, so it is a gate on resolution rather than permission: adding an excluded library to an import
+map resolves and passes, and a scheme-qualified specifier written inline in a source file
+(`npm:@radix-ui/react-dialog@1.0.0`) is declared in no config, passes `deno check`, and is invisible to
+the greps. **No check in CI verifies the dependency allowlist.** The component-library policy, the two
+audit greps a reviewer is expected to run, and the full list of what neither catches are in
+[`docs/no-third-party-components.md`](./docs/no-third-party-components.md).
 
 ## Hard rules
 

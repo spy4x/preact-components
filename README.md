@@ -29,10 +29,12 @@ ui-guide/    live component catalogue route
 ## Rules
 
 - **Preact + Tailwind only.** No React.
-- **No third-party component library.** No shadcn, Radix, Headless UI, Material or Chakra. Components
-  are implemented here, on our own stack, with roles, labels, keyboard handling and focus written by
-  hand. See [issue #34](https://github.com/spy4x/preact-components/issues/34) for the full policy and
-  [`docs/not-building.md`](./docs/not-building.md) for what that rules out and why.
+- **No third-party component library.** No shadcn, Radix, Headless UI, Material, Chakra, Ark UI or
+  React Aria — and no vendored copies of them. Components are implemented here, on our own stack,
+  with roles, labels, keyboard handling and focus written by hand. Nothing mechanical enforces this;
+  review does, and CI does not check it. Full policy, allowed set and the exact limits of the check:
+  [`docs/no-third-party-components.md`](./docs/no-third-party-components.md). What the policy rules
+  out and why: [`docs/not-building.md`](./docs/not-building.md).
 - **Props and ports, not global stores.** Components take what they need; they do not import an
   app's state singleton.
 - **The icon gallery is the self-documenting piece** — a new icon appears in the catalogue with no
