@@ -219,8 +219,24 @@ async function readAsset(href: string): Promise<string> {
   }
 }
 
-/** Find a Chromium to drive, or `undefined` when the machine has none. */
-async function findChromium(): Promise<string | undefined> {
+/** The outcome of looking for a browser to drive. */
+interface ChromiumLookup {
+  /** The executable to drive, or `undefined` when nothing ran. */
+  executable?: string
+  /** Evidence for the check: what ran, or what was tried and did not. */
+  detail: string
+}
+
+/**
+ * Find a Chromium to drive.
+ *
+ * `CHROME_PATH`, when set, is the only candidate: a configured path that does not run is a
+ * misconfiguration, and silently falling back to some other browser on the machine would hide it.
+ * The returned detail says which of the two happened, because the caller turns it into a check.
+ *
+ * @returns The executable and how it was found, or no executable and why there is none.
+ */
+async function findChromium(): Promise<ChromiumLookup> {
   const configured = Deno.env.get("CHROME_PATH")
   const candidates = configured ? [configured] : CHROMIUM_CANDIDATES
 
@@ -231,22 +247,28 @@ async function findChromium(): Promise<string | undefined> {
         stdout: "null",
         stderr: "null",
       }).output()
-      if (success) return candidate
+      if (success) return { executable: candidate, detail: `${candidate} --version ran` }
     } catch {
       // Not installed; try the next one.
     }
   }
 
-  return undefined
+  return {
+    detail: configured
+      ? `CHROME_PATH is set to \`${configured}\` and that path did not run`
+      : `none of ${CHROMIUM_CANDIDATES.join(", ")} ran — set CHROME_PATH, ` +
+        `or pass --static to skip the browser on purpose`,
+  }
 }
 
 /** Drive the page in headless Chromium and assert the interactions. */
 async function browserPhase(): Promise<void> {
-  const chromium = await findChromium()
-  if (!chromium) {
-    console.log("\nno Chromium found — browser phase skipped (set CHROME_PATH to run it)")
-    return
-  }
+  // A missing browser is a failure, not a skip. This phase carries every assertion about behaviour
+  // the markup cannot show, so a run that quietly dropped it and still exited 0 reported a green
+  // check for code nothing had executed. `--static` is the one explicit way to leave it out.
+  const { executable: chromium, detail } = await findChromium()
+  check("a Chromium binary is available for the browser phase", chromium !== undefined, detail)
+  if (!chromium) return
 
   console.log(`\nbrowser phase — ${chromium}`)
 
@@ -297,6 +319,15 @@ async function browserPhase(): Promise<void> {
       "no console errors, exceptions or failed requests",
       errors.length === 0,
       errors.length === 0 ? `${server.url} loaded clean` : errors.join(" | "),
+    )
+  } catch (error) {
+    // A throw half-way through used to take `report()` with it: the process exited non-zero with a
+    // stack trace and printed none of the checks that had already passed. Recorded as one more
+    // failed check instead, so the run still reports and the reason sits in the same list.
+    check(
+      "the browser phase ran to completion",
+      false,
+      error instanceof Error ? error.message : String(error),
     )
   } finally {
     browser?.kill("SIGKILL")
@@ -1087,7 +1118,9 @@ class Devtools {
 }
 
 await staticPhase()
-if (!Deno.args.includes("--static")) {
+if (Deno.args.includes("--static")) {
+  console.log("\n--static — browser phase left out on purpose")
+} else {
   await browserPhase()
 }
 report()
