@@ -70,9 +70,10 @@
 
     // No d3 here on purpose. This map is ambient for every consumer of every package, and d3 is
     // used by exactly one module — `charts/d3-line-chart.tsx` — so the specifier lives in
-    // `charts/deno.json` instead. `ui-guide/deno.json` declares it too, because the registry
-    // type-checks that module through the barrel. A consumer that wants the interactive charts adds
-    // d3 themselves; see `charts/README.md`.
+    // `charts/deno.json` instead, which is the config Deno resolves that file's own imports
+    // through. No other member declares it: `ui-guide/` renders the d3 charts in its catalogue and
+    // still type-checks and bundles with no d3 entry of its own. A consumer that wants the
+    // interactive charts adds d3 themselves; see `charts/README.md`.
 
     // Tailwind, pinned to the version spy4x/template builds with
     "tailwindcss": "npm:tailwindcss@4.1.12",

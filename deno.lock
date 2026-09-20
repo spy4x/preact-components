@@ -533,7 +533,6 @@
       "ui-guide": {
         "dependencies": [
           "jsr:@std/jsonc@1.0.2",
-          "npm:d3@7.9.0",
           "npm:preact-render-to-string@6.7.0"
         ]
       }
