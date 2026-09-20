@@ -118,11 +118,14 @@ function clickBarButton(devtools: Devtools, label: string): Promise<boolean> {
  * scope, which installs and *waits* behind the first. `SWUpdater` is mounted only at that point, and
  * no container is passed to it, so finding the waiting worker is the component's own work.
  *
- * **The published site must never install a worker of its own**, which shapes three things here. The
- * demo worker has no `fetch` handler, opens no cache and never claims a client. It is scoped to
- * `sw-demo/`, a directory below this page, so the catalogue itself is never controlled — asserted
- * below rather than assumed. And nothing registers on load: the card has a button, this file presses
- * it, and the last check presses the card's reset control and confirms the registration is gone.
+ * **The published site must never install a worker of its own**, which shapes three things here, and
+ * all three are asserted rather than described. Nothing registers on load: the card has a button,
+ * this file presses it, and the first check reads a freshly loaded page that holds no registration
+ * at all. The worker is scoped to `sw-demo/`, a directory below this page, so the catalogue itself
+ * is never controlled — read off `navigator.serviceWorker.controller` twice, once at install and
+ * once after the hand-over. And the worker stores nothing and claims nobody, which is checked
+ * through `caches.keys()` and through an uncontrolled client, because a worker's inertness is a
+ * property of what the browser ends up holding and not of what its source says.
  *
  * Buttons are activated with `.click()` rather than a key press, which is measured and not assumed:
  * `ui.ts`'s Modal check records that headless Chromium does not turn Enter on a focused button into
@@ -134,6 +137,23 @@ export async function systemChecks(devtools: Devtools): Promise<void> {
   // A marker the page keeps until it navigates. Every assertion below is about a page that must not
   // reload, and a reload wipes this.
   await devtools.evaluate<null>(`(globalThis.__swUpdaterMark = "still the first load", null)`)
+
+  // A page inside the worker's scope, loaded before anything is registered, so it is an
+  // *uncontrolled* client. This is the only place `clients.claim()` can be seen: a client that was
+  // already open when a worker activates stays uncontrolled until it navigates, and claiming is
+  // exactly what overrides that. Every other client here is controlled whatever the worker does —
+  // a fresh navigation into an active scope is controlled by definition, and `skipWaiting()` alone
+  // moves an already-controlled client to the new worker, measured here and with no claim involved.
+  const probeUncontrolled = await devtools.evaluate<boolean>(`(async () => {
+    const frame = document.createElement("iframe")
+    frame.id = "sw-inert-probe"
+    frame.title = "A page opened inside the demo worker's scope before it was registered"
+    frame.src = new URL("sw-demo/", location.href).href
+    frame.style.cssText = "position:absolute;left:-9999px;width:0;height:0;border:0"
+    document.body.appendChild(frame)
+    await new Promise((done) => frame.addEventListener("load", done, { once: true }))
+    return frame.contentWindow.navigator.serviceWorker.controller === null
+  })()`)
   const before = await devtools.evaluate<SWState>(READ_STATE)
 
   await click(devtools, INSTALL)
@@ -173,22 +193,25 @@ export async function systemChecks(devtools: Devtools): Promise<void> {
       : "a bar was already on the page, so its appearance proves nothing",
   )
 
-  // `controllerchange` is dispatched at the container, and that is where the component listens.
-  // Built here rather than produced by a real hand-over on purpose: this page sits outside the demo
-  // worker's scope, so a real one can never reach it. An untrusted event still runs a listener — it
-  // only skips the browser's own default handling, and this event has none — so what this measures
-  // is whether a listener is attached at all, which is the whole question.
+  // `controllerchange` is constructed here and dispatched at the container, where the component
+  // listens. It cannot be a real one: this page sits outside the demo worker's scope by design, so
+  // a real hand-over never reaches it. An untrusted event still runs a listener — it only skips the
+  // browser's own default handling, and this event has none — so what these two checks measure is
+  // whether a listener is attached, and they are named for that and nothing more. Neither says
+  // anything about a second tab: no check here opens one.
   const unasked = await devtools.evaluate<SWState>(`(async () => {
     navigator.serviceWorker.dispatchEvent(new Event("controllerchange"))
     await new Promise((done) => setTimeout(done, 100))
     return ${READ_STATE}
   })()`)
   check(
-    "nothing reloads before the visitor presses Reload",
+    "no reload listener is armed before the visitor presses Reload",
     staged.bar !== "" && unasked.reloads === "0" && unasked.mark === "still the first load",
     staged.bar !== ""
-      ? `a controllerchange with the bar up called the reload port ${unasked.reloads} times, ` +
-        `and the page is ${unasked.mark || "gone — it reloaded"}`
+      ? `a controllerchange constructed in the page, dispatched with the bar up, called the ` +
+        `reload port ${unasked.reloads} times, and the page is ${
+          unasked.mark || "gone — it reloaded"
+        }`
       : "the bar never appeared, so an unarmed listener proves nothing",
   )
 
@@ -218,11 +241,57 @@ export async function systemChecks(devtools: Devtools): Promise<void> {
       `active ${scriptName(staged.active)} → ${scriptName(asked.active)}`,
   )
   check(
-    "the tab where Reload was pressed is the one that reloads",
+    "pressing Reload arms the listener, and it calls the reload port once",
     unasked.reloads === "0" && asked.reloads === "1",
-    `the reload port was called ${unasked.reloads} times before the press and ` +
-      `${asked.reloads} times after it, for the same kind of controllerchange`,
+    `the same constructed controllerchange called the reload port ${unasked.reloads} times ` +
+      `before the press and ${asked.reloads} times after it`,
   )
+
+  // What makes this worker safe to publish, asserted the way the browser answers it and never by
+  // reading the worker's source: a check that grepped `sw.js` for the word `fetch` would be a
+  // source-text assertion, which this repository treats as a defect, and it would pass a worker
+  // that grew a cache through a helper anyway.
+  //
+  // Both facts are read after a full install and a hand-over, which is the point at which a worker
+  // that cached or claimed would have done it. `caches.keys()` is origin-wide, so one response
+  // stored from inside the worker's own scope still shows up here. The probe frame is the claim
+  // detector described where it is created.
+  const inert = await devtools.evaluate<{
+    controller: string
+    probeController: string
+    caches: string[]
+  }>(`(async () => {
+    const probe = document.querySelector("#sw-inert-probe")
+    const probeWorker = probe && probe.contentWindow
+      ? probe.contentWindow.navigator.serviceWorker.controller
+      : null
+    return {
+      controller: navigator.serviceWorker.controller
+        ? navigator.serviceWorker.controller.scriptURL
+        : "none",
+      probeController: probeWorker ? probeWorker.scriptURL : "none",
+      caches: await caches.keys(),
+    }
+  })()`)
+  check(
+    "the demo worker stores nothing and never controls the catalogue page",
+    inert.controller === "none" && inert.caches.length === 0,
+    `after a full install and hand-over: this page's controller is ${inert.controller}, ` +
+      `and the origin holds ${inert.caches.length} cache(s)${
+        inert.caches.length ? ` — ${inert.caches.join(", ")}` : ""
+      }`,
+  )
+  check(
+    "the demo worker claims no client: a page open before it installed is still uncontrolled",
+    probeUncontrolled && handedOver && inert.probeController === "none",
+    probeUncontrolled && handedOver
+      ? `the frame inside the scope was uncontrolled before the install and its controller is ` +
+        `${inert.probeController} after two activations`
+      : probeUncontrolled
+      ? "no hand-over happened, so an unclaimed client proves nothing"
+      : "the probe frame was already controlled before anything was registered",
+  )
+  await devtools.evaluate<null>(`(document.querySelector("#sw-inert-probe").remove(), null)`)
 
   const dismissClicked = await clickBarButton(devtools, "Dismiss")
   const dismissed = dismissClicked && await poll(
