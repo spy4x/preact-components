@@ -6,6 +6,12 @@ Extracted from real products so the same button, table, chart and CRUD scaffold 
 
 Demo: https://spy4x.github.io/preact-components
 
+## Credits
+
+The design system, the component styling and the original markup in this repository come from
+Eirene — https://github.com/Eirene, https://isorokina.com/. This repository turned that work into a
+reusable Preact + signals package. See [`CREDITS.md`](./CREDITS.md).
+
 ## Scope
 
 ```
