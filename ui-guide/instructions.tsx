@@ -94,13 +94,19 @@ const MAP_CLASSES_REASON =
   "Styled only as the descendant of a status wrapper (`.status-on .map-marker`) and only meaningful on a Leaflet marker. `map/` is not a package the catalogue covers, so nothing in the guide renders one."
 
 /**
- * Why the button family has no demo: the component is the API, the class form is `crud/`'s.
+ * Why most of the button family has no demo: the component is the API, the class form is `crud/`'s.
  *
- * Kept as one string because the twelve entries share one decision — see `README.md`, "Class-name
+ * Kept as one string because the entries that share one decision — see `README.md`, "Class-name
  * demos".
+ *
+ * `btn`, `btn-primary` and `btn-link` are deliberately **not** in this record: `crud/CrudEditor`
+ * applies them to its own Save, Cancel and archive controls, so the `crud` section's card for it
+ * demonstrates them by rendering the real component. `classes.test.tsx` measures the demonstrated
+ * set from rendered markup, so leaving them here would be the stale-exclusion failure it also
+ * checks. A class leaves this list the moment something in the guide really applies it.
  */
 const BUTTON_CLASSES_REASON =
-  'Demonstrated through `ui/Button` (`variant` × `size`), which inlines its own utilities, and consumed in class form by `crud/`. A `.btn-primary` card next to `<Button variant="primary">` would document two APIs for one control.'
+  'Demonstrated through `ui/Button` (`variant` × `size`), which inlines its own utilities, and consumed in class form by `crud/`. A `.btn-danger` card next to `<Button variant="danger">` would document two APIs for one control.'
 
 /**
  * Classes `preset.css` defines that the catalogue deliberately does not apply, with the reason.
@@ -124,8 +130,6 @@ export const UNDEMONSTRATED_CLASSES: Record<string, string> = {
   "status-on": MAP_CLASSES_REASON,
   "status-off": MAP_CLASSES_REASON,
   "power-anomaly": MAP_CLASSES_REASON,
-  "btn": BUTTON_CLASSES_REASON,
-  "btn-primary": BUTTON_CLASSES_REASON,
   "btn-primary-outline": BUTTON_CLASSES_REASON,
   "btn-danger": BUTTON_CLASSES_REASON,
   "btn-danger-outline": BUTTON_CLASSES_REASON,
@@ -134,7 +138,6 @@ export const UNDEMONSTRATED_CLASSES: Record<string, string> = {
   "btn-success": BUTTON_CLASSES_REASON,
   "btn-success-outline": BUTTON_CLASSES_REASON,
   "btn-icon": BUTTON_CLASSES_REASON,
-  "btn-link": BUTTON_CLASSES_REASON,
   "btn-disabled": BUTTON_CLASSES_REASON,
 }
 

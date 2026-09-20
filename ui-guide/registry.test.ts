@@ -340,6 +340,21 @@ describe("demo registry", () => {
     )
   })
 
+  it("drops a written-up package from the worklist", () => {
+    // The three packages whose declared lists this change emptied: each had a `PENDING_DEMOS` entry
+    // per undemoed component, each is now written up in full, and a package with nothing left to
+    // declare must not keep an empty entry on the page. The `ui` entry above is the contrast — an
+    // auto-pending package is on the worklist whenever it has an undemoed export, with no list.
+    //
+    // The opposite mistake — leaving a *demoed* name in `PENDING_DEMOS` — is a `deno check` failure
+    // (`{ stalePending: "Name" }`), which is a compile error and therefore not assertable here.
+    for (const id of ["charts", "system", "crud"] as const) {
+      expect(PENDING_DEMOS[id], `${id} still declares a pending demo`).toEqual([])
+      expect(pendingNamesOf(id), `${id} resolves a pending name`).toEqual([])
+      expect(pendingDemos.map((entry) => entry.package), `${id} on the worklist`).not.toContain(id)
+    }
+  })
+
   it("names an auto-pending package's undemoed exports without an explicit list", () => {
     // The property that keeps a `ui/` component PR mergeable on its own: a new export nobody has
     // demoed is published as a gap rather than blocking the build.

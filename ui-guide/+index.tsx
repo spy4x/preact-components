@@ -26,6 +26,7 @@ import {
   packageIds,
   type PartialDemoRegistry,
   pendingDemos,
+  type PendingDemosByPackage,
 } from "./registry.ts"
 
 export interface UIGuideProps {
@@ -143,9 +144,20 @@ function MissingDemoBanner({ names }: { names: DemoedName[] }) {
  * A quieter notice than the banner above, and the difference matters: the banner is for a gap
  * nobody accounted for, this is for one somebody wrote down in review. It renders `null` once every
  * package is written up, which is the point of keeping the list in the registry instead of here.
+ *
+ * `entries` defaults to {@link pendingDemos} and is a parameter for the same reason
+ * {@link UIGuideProps.registry} is one: every package with a *declared* list — `charts`, `system`,
+ * `crud` — is written up, so the shipped list is now `ui`'s auto-pending exports alone, and a test
+ * that wanted to drive this notice with a shape of its own had no way to. `catalogue.test.tsx` passes
+ * a synthetic entry as well as asserting the shipped one.
  */
-function PendingDemos() {
-  if (pendingDemos.length === 0) return null
+export function PendingDemos({
+  entries = pendingDemos,
+}: {
+  /** Declared gaps to publish. Defaults to the shipped {@link pendingDemos}. */
+  entries?: PendingDemosByPackage[]
+}) {
+  if (entries.length === 0) return null
 
   return (
     <div
@@ -158,7 +170,7 @@ function PendingDemos() {
         and their demos are still being written. Nothing here is missing by accident.
       </p>
       <ul class="mt-2 space-y-1 text-xs">
-        {pendingDemos.map((entry) => (
+        {entries.map((entry) => (
           <li key={entry.package}>
             <code class="font-mono">{entry.packageName}</code>{" "}
             {entry.names.map((name) => <code key={name} class="mr-1 font-mono">{name}</code>)}
@@ -313,6 +325,7 @@ export {
   type PartialDemoRegistry,
   PENDING_DEMOS,
   pendingDemos,
+  type PendingDemosByPackage,
   registryDrift,
   type SectionId,
   type SectionKind,
