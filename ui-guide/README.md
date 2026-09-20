@@ -278,8 +278,11 @@ deno task check             # from the repository root, what CI runs
 deno test --allow-read --allow-env ui-guide/   # this package alone
 ```
 
-Seven suites: `registry.test.ts` (drift guard, package coverage, pending bookkeeping, the class
-sections), `routes.test.ts` (the resolver, the href builders, a route for every section driven from
+Eight suites: `registry.test.ts` (drift guard, package coverage, pending bookkeeping, the class
+sections), `subpath-exports.test.ts` (guard 6: every value export of every declared subpath module is
+either barrelled or declared a helper, and the barrel carries nothing a subpath does not — the
+`exports` object read three ways, and the two helper lists asserted disjoint), `routes.test.ts` (the
+resolver, the href builders, a route for every section driven from
 `catalogueSections`, and the drift check that `pages/build.ts` runs over the emitted route echo),
 `catalogue.test.tsx` (every demo renders, banner and worklist behaviour, route descriptor,
 a usage block and copy control per card), `icons.test.tsx` (gallery exhaustiveness, filter),
