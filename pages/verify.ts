@@ -388,7 +388,7 @@ async function interactionChecks(devtools: Devtools): Promise<void> {
     })()`,
   )
   check(
-    "the icon filter filters 101 glyphs live",
+    "the icon filter filters 119 glyphs live",
     filter.total > 90 && filter.filtered > 0 && filter.filtered < filter.total && filter.allMatch,
     `${filter.filtered}/${filter.total} — ${filter.status}`,
   )
