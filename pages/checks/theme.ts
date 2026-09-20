@@ -181,28 +181,18 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
 
     const button = document.querySelector("#demo-Button button")
     // The palette-toggle click just above this probe flips \`.dark\` on <html>, and \`.btn\`'s
-    // transition-colors utility animates the button's background-color across that flip. Sampled
-    // once, this probe caught the fill mid-transition — a different colour on every run, since how
-    // far the transition had gotten by the time this ran was a race against the click. Poll until
-    // two consecutive reads agree, so the sample is the settled colour (or, if nothing was
-    // transitioning, the first read repeats immediately) rather than a snapshot of motion — do not
-    // remove this as redundant.
-    let previous = getComputedStyle(button).backgroundColor
-    let buttonBackground = previous
-    for (let attempt = 0; attempt < 20; attempt++) {
-      await new Promise((done) => setTimeout(done, 30))
-      const next = getComputedStyle(button).backgroundColor
-      if (next === previous) {
-        buttonBackground = next
-        break
-      }
-      previous = next
-      buttonBackground = next
-    }
+    // transition-colors utility animates the button's background-color across that flip, so a read
+    // taken right after the click samples the fill mid-transition, not where it ends up. Waiting
+    // for two consecutive reads to agree does NOT fix this — that was tried here first, and it does
+    // not work: a headless page only advances a transition when it produces a frame, and nothing
+    // forces one between two reads a few milliseconds apart, so the very first comparison agrees,
+    // on a value that has not moved yet rather than one that has settled. Wait for the element's
+    // own running animations instead; once none are left, the browser has committed the end state.
+    await Promise.all(button.getAnimations().map((animation) => animation.finished))
 
     return {
       buttonRadius: getComputedStyle(button).borderRadius,
-      buttonBackground,
+      buttonBackground: getComputedStyle(button).backgroundColor,
       light,
       dark,
     }
