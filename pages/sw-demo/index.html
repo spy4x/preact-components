@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Service worker scope</title>
+  </head>
+  <body>
+    <h1>Service worker scope</h1>
+    <p>
+      The component catalogue's SWUpdater card loads this page in a hidden frame. A newly installed
+      service worker stays <em>waiting</em> only while the worker it replaces still controls a page,
+      and this page is that page: it sits inside the demo worker's scope, and the catalogue itself
+      sits above it and is never controlled.
+    </p>
+    <p>
+      Nothing is cached here and no request is intercepted. The card's own reset control unregisters
+      the worker again.
+    </p>
+  </body>
+</html>

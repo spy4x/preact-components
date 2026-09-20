@@ -49,6 +49,13 @@ const DIST_DIRECTORY = join(PAGES_DIRECTORY, "dist")
 const BASE = normalizeBase(Deno.env.get("PAGES_BASE") ?? DEFAULT_BASE)
 /** Origin written into the canonical and Open Graph URLs. */
 const ORIGIN = Deno.env.get("PAGES_ORIGIN") ?? DEFAULT_ORIGIN
+/**
+ * Directory copied verbatim into the artefact for the `SWUpdater` card: an inert service worker and
+ * one page inside its scope. Copied rather than bundled — a service worker is fetched by URL, and
+ * its scope is the directory it is served from, which is the whole point of keeping it here rather
+ * than at the site root. See `sw-demo/sw.js` for why a published site can carry it safely.
+ */
+const SW_DEMO_DIRECTORY = "sw-demo"
 
 /** Sources `deno check` must accept before a single byte is emitted. */
 const CHECKED_ENTRIES = [
@@ -183,6 +190,37 @@ function kilobytes(bytes: number): string {
   return `${(bytes / 1024).toFixed(1)} kB`
 }
 
+/**
+ * Copy `sw-demo/` into the artefact, file by file.
+ *
+ * An empty or missing directory throws instead of shipping a catalogue whose `SWUpdater` card
+ * registers a script that is not there: the card would show a registration error, and the browser
+ * check that drives it would fail with a message about the wrong thing.
+ *
+ * @returns The file names copied, for the build report.
+ */
+async function copyServiceWorkerDemo(): Promise<string[]> {
+  const source = join(PAGES_DIRECTORY, SW_DEMO_DIRECTORY)
+  const target = join(DIST_DIRECTORY, SW_DEMO_DIRECTORY)
+  await Deno.mkdir(target, { recursive: true })
+
+  const copied: string[] = []
+  for await (const entry of Deno.readDir(source)) {
+    if (!entry.isFile) continue
+    await Deno.copyFile(join(source, entry.name), join(target, entry.name))
+    copied.push(entry.name)
+  }
+
+  if (!copied.includes("sw.js") || !copied.includes("index.html")) {
+    throw new Error(
+      `${source} must hold sw.js and index.html for the SWUpdater card — found ` +
+        `${copied.join(", ") || "nothing"}`,
+    )
+  }
+
+  return copied.sort()
+}
+
 /** Build the artefact. */
 async function main(): Promise<void> {
   console.log(`pages build → ${DIST_DIRECTORY}`)
@@ -239,12 +277,14 @@ async function main(): Promise<void> {
   await Deno.writeFile(join(DIST_DIRECTORY, "assets", assetNames.js), island)
 
   await Deno.writeFile(join(DIST_DIRECTORY, "index.html"), new TextEncoder().encode(html))
+  const swDemo = await copyServiceWorkerDemo()
 
   console.log(
     `  index.html ${kilobytes(html.length)} · prerendered ${catalogueNames.length} components\n` +
       `  routes ${routes.sections.length} sections, ${routes.demos.length} demos, all resolved\n` +
       `  assets/${assetNames.css} ${kilobytes(stylesheet.length)}\n` +
       `  assets/${assetNames.js} ${kilobytes(island.length)}\n` +
+      `  ${SW_DEMO_DIRECTORY}/ ${swDemo.join(", ")} — registered only when a visitor asks\n` +
       `  served from ${ORIGIN}${BASE}`,
   )
 }
