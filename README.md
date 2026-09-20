@@ -32,8 +32,8 @@ ui-guide/    live component catalogue route
 - **Preact + Tailwind only.** No React.
 - **No third-party component library.** No shadcn, Radix, Headless UI, Material, Chakra, Ark UI or
   React Aria — and no vendored copies of them. Components are implemented here, on our own stack,
-  with roles, labels, keyboard handling and focus written by hand. Review enforces this; CI does not
-  check it. Full policy, allowed set and the exact limits of the check:
+  with roles, labels, keyboard handling and focus written by hand. Nothing mechanical enforces this;
+  review does, and CI does not check it. Full policy, allowed set and the exact limits of the check:
   [`docs/no-third-party-components.md`](./docs/no-third-party-components.md). What the policy rules
   out and why: [`docs/not-building.md`](./docs/not-building.md).
 - **Props and ports, not global stores.** Components take what they need; they do not import an

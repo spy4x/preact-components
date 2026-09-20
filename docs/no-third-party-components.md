@@ -102,73 +102,96 @@ The full dependency surface of the repository, each clause justified. Root impor
 `deno.jsonc` unless stated. This list is descriptive of the tree today — adding to it is a decision,
 not a maintenance chore.
 
-| Specifier                                           | Why it is allowed                                                                                                                                                                                                                                   |
-| --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `preact`, `preact/`                                 | The renderer. Not a component library — it provides no components, no styling and no behaviour. Owned by the library by construction.                                                                                                               |
-| `@preact/signals`, `@preact/signals-core`           | Reactive state primitives. A general-purpose primitive, shared with `spy4x/template` so an app resolves one copy.                                                                                                                                   |
-| `wouter-preact`                                     | URL routing. A small, well-solved problem that is not ours to reimplement, and it is a router rather than a component library.                                                                                                                      |
-| `arktype`                                           | Validation. `AGENTS.md` → _Validation_ names it the only permitted validator; it supplies runtime checks and the inferred type, nothing visual.                                                                                                     |
-| `clsx`, `tailwind-merge`                            | Class-string composition. Two functions, no components and no styling opinion of their own — they serve `theme/preset.css` rather than competing with it.                                                                                           |
-| `tailwindcss`, `tailwindcss/`, `@tailwindcss/forms` | The styling system itself, and the one deliberate styling opinion in the tree. `theme/preset.css` is built on it, so it is the substrate rather than a rival to it.                                                                                 |
-| `@std/assert`, `@std/expect`, `@std/testing`        | Test-only. Never reachable from a published entry point.                                                                                                                                                                                            |
-| `preact-render-to-string`                           | Test-only, declared per package that asserts on real rendered markup (`charts/`, `crud/`, `pages/`, `signals/`, `system/`, `ui/`, `ui-guide/`). Kept out of the root map so a consumer never inherits a renderer.                                   |
-| `d3`                                                | Optional peer of the interactive chart path only, declared in `charts/deno.json` and `ui-guide/deno.json` rather than the root map, so an SVG-only consumer never has it in their graph. See `charts/probe/no-d3-dependency.ts`, which proves that. |
-| `@tailwindcss/oxide`                                | Build-only, declared in `pages/deno.json`. Tailwind 4's class scanner, at the version the `tailwindcss` pin already resolves to; drives the demo build instead of shelling out to a CLI that needs a `node_modules` tree.                           |
-| `node:path`, `node:url`, `node:fs`                  | Deno's built-in Node-compatibility modules, used by build and test helper scripts. Platform, not third-party.                                                                                                                                       |
+| Specifier                                           | Why it is allowed                                                                                                                                                                                                                                                                                                                                                                                                      |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `preact`, `preact/`                                 | The renderer. Not a component library — it provides no components, no styling and no behaviour. Owned by the library by construction.                                                                                                                                                                                                                                                                                  |
+| `@preact/signals`, `@preact/signals-core`           | Reactive state primitives. A general-purpose primitive, shared with `spy4x/template` so an app resolves one copy.                                                                                                                                                                                                                                                                                                      |
+| `wouter-preact`                                     | URL routing. A small, well-solved problem that is not ours to reimplement, and it is a router rather than a component library.                                                                                                                                                                                                                                                                                         |
+| `arktype`                                           | Validation. `AGENTS.md` → _Validation_ names it the only permitted validator; it supplies runtime checks and the inferred type, nothing visual.                                                                                                                                                                                                                                                                        |
+| `clsx`, `tailwind-merge`                            | Class-string composition. Two functions, no components and no styling opinion of their own — they serve `theme/preset.css` rather than competing with it.                                                                                                                                                                                                                                                              |
+| `tailwindcss`, `tailwindcss/`, `@tailwindcss/forms` | The styling system itself, and the one deliberate styling opinion in the tree. `theme/preset.css` is built on it, so it is the substrate rather than a rival to it.                                                                                                                                                                                                                                                    |
+| `@std/assert`, `@std/expect`, `@std/testing`        | Test-only. Never reachable from a published entry point.                                                                                                                                                                                                                                                                                                                                                               |
+| `preact-render-to-string`                           | Declared per package that needs a renderer, and deliberately absent from the root map so a consumer never inherits one. Used by tests that assert on real rendered markup (`charts/`, `crud/`, `signals/`, `system/`, `ui/`, `ui-guide/`) **and by non-test build code** — `pages/src/prerender.tsx` prerenders the demo to markup at build time. It is not a component library: it renders components, it ships none. |
+| `d3`                                                | Optional peer of the interactive chart path only, declared in `charts/deno.json` and `ui-guide/deno.json` rather than the root map, so an SVG-only consumer never has it in their graph. See `charts/probe/no-d3-dependency.ts`, which proves that.                                                                                                                                                                    |
+| `@tailwindcss/oxide`                                | Build-only, declared in `pages/deno.json`. Tailwind 4's class scanner, at the version the `tailwindcss` pin already resolves to; drives the demo build instead of shelling out to a CLI that needs a `node_modules` tree.                                                                                                                                                                                              |
+| `node:path`, `node:url`, `node:fs`                  | Deno's built-in Node-compatibility modules, used by build and test helper scripts. Platform, not third-party.                                                                                                                                                                                                                                                                                                          |
 
 Nothing else is permitted. A new dependency needs a written justification in the PR body
-(`AGENTS.md` → _Dependencies_), and the burden is on the addition, not on the refusal.
+(`AGENTS.md` → _Code style_ → "Minimise dependencies"), and the burden is on the addition, not on the
+refusal.
 
 ## How the rule is enforced
 
-Stated precisely, because an overclaimed guard is worse than no guard.
+Stated precisely, because an overclaimed guard is worse than no guard. **The short version: nothing
+mechanical enforces this policy. CI does not check it. Review does.**
 
-### Mechanically enforced
+### The one mechanical gate, and what it does not gate
 
-Two things are checked mechanically. Neither of them is the allowlist.
+`deno task ts:check` runs `deno check` over every `.ts`/`.tsx` file in the tree
+(`infra/scripts/type-check.ts`), so an import of a specifier that no config declares fails the build.
 
-1. **Exact version pins.** Every specifier in every `deno.json`/`deno.jsonc` is an exact pin — no
-   `^`, no `~`, no floating tag. Checkable, and green today:
+That is a real gate, and it is a gate on **resolution, not on permission**. Adding an excluded
+component library to an import map resolves, type-checks and passes. It does not stop anything.
 
-   ```bash
-   grep -rnE ':\s*"(npm|jsr):[^"]*[\^~]' --include=deno.json --include=deno.jsonc . | grep -v node_modules
-   # no output, exit 1
-   ```
+### There is no lockfile gate — the lockfile is a record, not a check
 
-   What enforces it is Deno, not a checker written here: the committed `deno.lock` pins every
-   resolved version and integrity hash, and `deno task check` fails against a stale lockfile.
-2. **Declared imports resolve.** `deno task ts:check` runs `deno check` over every `.ts`/`.tsx` file
-   in the tree (`infra/scripts/type-check.ts`), so an import of a specifier that no config declares
-   fails the build. That is a real mechanical gate — but it is a gate on _resolution_, not on
-   _permission_. A specifier added to the import map resolves, and `deno check` passes.
+It is tempting to assume the committed `deno.lock` is the enforcement mechanism. **It is not.**
 
-### Not mechanically enforced
+Deno keeps the lockfile in sync automatically and does not fail when it is stale. Observed, under CI
+emulation on Deno 2.9.7 (the version in the CI image):
 
-**Nothing in CI checks the allowlist.** `deno task check` is the only command CI runs
-(`.woodpecker.yml`), and it is exactly `fmt:check`, `lint`, `ts:check` and `test`. There is no
-dependency-allowlist test, no audit script and no git hook in this repository: `infra/scripts/`
-contains `type-check.ts` alone, and there is no `.githooks` directory.
+```console
+$ # change an existing pin, clsx 2.1.1 -> 2.1.0, then run the check task
+$ deno task check
+Download https://registry.npmjs.org/clsx/-/clsx-2.1.0.tgz
+checks passed                      # exit 0 — and deno.lock was rewritten to 2.1.0
+
+$ # add a dependency absent from the lock, imported by a source file
+$ deno check src/mod.ts
+Download https://registry.npmjs.org/lodash
+Check src/mod.ts                   # exit 0 — lock rewritten to include lodash
+```
+
+Only an explicit `deno cache --frozen` fails, and **no task in this repository passes `--frozen`, and
+CI does not run `deno cache`.** So the lockfile records what was resolved; it does not refuse a change.
+Exact pinning is a **convention held by review**, and the grep below only shows a reviewer whether it
+is being held:
+
+```bash
+grep -rnE ':\s*"(npm|jsr):[^"]*[\^~]' --include=deno.json --include=deno.jsonc . | grep -v node_modules
+# no output, exit 1 — true of the tree today
+```
+
+A lockfile change appearing in a diff is the signal that a dependency was added or moved. That is
+review reading a diff, not CI failing a build.
+
+### Nothing in CI checks the allowlist
+
+`deno task check` is the only command CI runs (`.woodpecker.yml`), and it is exactly `fmt:check`,
+`lint`, `ts:check` and `test`. There is no dependency-allowlist test, no audit script, no a11y gate
+and no git hook anywhere in this repository: `infra/scripts/` contains `type-check.ts` alone, there
+is no `.githooks` directory, and `.github/workflows/` holds only `pages.yml`.
 
 The consequence, stated plainly: **a PR could add `@radix-ui/react-dialog` to the root import map at
 an exact pin, and every check in CI would pass.** The policy would be broken and the build would be
 green.
 
-What stops that is review, and the two audit greps above are how a reviewer checks it. Run them:
+What stops that is review. These two greps are how a reviewer checks it:
 
 ```bash
-# Specifier names: catches a library named directly as a key.
-grep -rniE "\"(radix|@radix|headlessui|@headlessui|shadcn|bits-ui|@chakra|@material|react-aria|@ark)" \
+# Form 1 — the specifier KEY, for a library named directly.
+grep -rniE '"@?(radix|bits-ui|headlessui|shadcn|chakra|ark-ui|react-aria|react-stately|mui|material)' \
   --include=deno.json --include=deno.jsonc . | grep -v node_modules
 
-# Version values: catches the same library behind an innocent-looking key.
-grep -rnE "npm:(@)?(radix|headlessui|shadcn|bits-ui|chakra|material-ui|react-aria|@ark)|jsr:(@)?(radix|shadcn|bits-ui)" \
+# Form 2 — the specifier VALUE, for the same library behind an indirect key.
+grep -rniE '(npm|jsr):(@)?(radix|bits-ui|headlessui|shadcn|chakra|ark-ui|react-aria|react-stately|mui|material)' \
   --include=deno.json --include=deno.jsonc . | grep -v node_modules
 ```
 
-**Both must be run.** The first alone is not sufficient and it is easy to mistake it for being
-sufficient: it matches a quoted specifier _key_, so it is blind to a library reached through an
-indirect key. This configuration is not caught by the key grep at all, and is caught by the value
-grep:
+**Both must be run — they are complementary, and each is blind where the other sees.** The key form is
+the weaker one and is easy to mistake for sufficient: it only matches a specifier _key_, so a library
+reached through an innocent key is invisible to it. This configuration is caught by the value form and
+missed entirely by the key form:
 
 ```jsonc
 "imports": {
@@ -176,23 +199,49 @@ grep:
 }
 ```
 
-Both greps are green on the tree today, and both were mutation-tested — a deliberately injected
-`@radix-ui/react-dialog` pin in a scratch copy is detected by each. A check that cannot fail is not
-a check.
+Both were mutation-tested. Every family in the table above, plus an indirect key, was injected into a
+scratch copy: the key form detects the 12 direct ones and misses the indirect key; the value form
+detects all 13. A check that cannot fail is not a check.
 
-### What neither grep can see
+### What the greps cover — a named subset, not a proof of absence
 
-- **Vendored source.** A library's implementation copied into the tree declares no specifier and no
-  version, so no grep over configs finds it. This is review-only, and the reason "vendored copies
-  count" is stated as part of the rule.
-- **Behaviour reimplemented poorly.** Nothing mechanical distinguishes our own focus trap from a
-  transcription of someone else's.
-- **Accessibility regressions.** No automated a11y check runs in this repository. The suites assert
-  on rendered markup and on ARIA attributes for many components, but coverage is per-component and
-  there is no axe-style gate.
-- **A dependency added under a name that does not match the greps** — the greps enumerate the
-  families named above, not the whole space of component libraries. They are a fast check for the
-  known offenders, not a proof of absence.
+Be clear about the shape of this check, because it is weaker than it looks:
+
+- **They cover a named list of families** — exactly the rows of the "Not allowed" table, and nothing
+  else. A component library outside that list is not caught, and the list is not the whole space of
+  component libraries. **This is not a proof that no component library is present.**
+- **Vendored source is invisible to both.** A library's implementation copied into the tree declares
+  no specifier and no version, so no grep over configs finds it. Review-only — and the reason "vendored
+  copies count" is stated as part of the rule.
+- **A URL value form is not caught.** `"x": "https://esm.sh/@radix-ui/react-dialog@1.0.0"` matches
+  neither grep, because neither looks for the `https:` form. The same goes for any other CDN or a
+  `git+https` specifier.
+- **They inspect configs only** — every `deno.json`/`deno.jsonc`. That is where a specifier has to be
+  declared, which is why it is enough in practice, but a source file importing an absolute URL bypasses
+  both.
+- **`material` is a broad token, deliberately.** It catches `@material/web`, `material-components-web`
+  and `@mui/material`, and it would also flag an innocent package whose name merely contains
+  `material`. On this tree both greps are clean, so the tradeoff costs nothing today; a false positive
+  costs a reviewer one glance, a false negative costs the policy.
+- **The value form is case-insensitive.** npm and JSR package names are lowercase by spec, so a
+  case-sensitive form would be correct — but `NPM:@RADIX-UI/...` in a config is a mistake worth
+  seeing rather than missing, so `-i` stays on.
+
+Behaviour reimplemented poorly, and accessibility regressions, are likewise not detectable here:
+nothing mechanical distinguishes our own focus trap from a transcription of someone else's, and no
+automated a11y check runs in this repository. The suites assert on rendered markup and on ARIA
+attributes for many components, but coverage is per-component.
+
+### The honest summary
+
+**CI pins nothing and checks nothing about dependencies. There is no mechanical enforcement of this
+policy at all — only review, helped by two greps over a named list of families.** A lockfile drift
+appears in the diff and is caught by a human reading it.
+
+If that is not enough for a given change, the fix is a real allowlist check — a test that parses every
+config's `imports` against a committed allowlist, and that reads `deno.lock` with an assertion instead
+of trusting it. **That test does not exist yet, and neither does any frozen-lockfile gate.** Adding one
+is a legitimate follow-up; claiming the current state is that check is not.
 
 ### The honest summary
 
@@ -229,6 +278,13 @@ this:
   expected to split the brand subset from the general set.
 - All 101 glyphs are inline source in `icons/+index.tsx`, `{ class?: string }` prop surface, no
   codegen, no build step, no runtime dependency beyond Preact.
+
+> **Staleness note.** These counts and the five-source list are read from `icons/README.md` as it
+> stands at the time of writing. PR #98 (`docs/issues-28-15-78`, open) rewrites that file to a
+> six-source merge, adds a `roley` row, and moves the count to 119. **The statements above depend on
+> #98 not having landed.** If #98 merges first, whichever lands second must reconcile this section
+> against it — the icon list is deliberately not restated from memory here, and `icons/README.md`
+> remains the authority either way.
 
 **This document does not resolve that question and must not be read as doing so.** No licence is
 asserted for the icon set, none is inferred, and no glyph has been changed, replaced or re-drawn.
