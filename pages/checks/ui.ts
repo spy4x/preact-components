@@ -330,7 +330,9 @@ async function dropdownChecks(devtools: Devtools): Promise<void> {
   const beforeActivate = await reopen(devtools)
   const afterActivate = await devtools.evaluate<DropdownState>(`(async () => {
     const items = [...globalThis.__verifyDropdown.panel.querySelectorAll('[role="menuitem"]')]
-    items[items.length - 1].click()
+    // A menu with no items is a failure this check should report, not an exception that takes the
+    // rest of the run down with it.
+    items[items.length - 1]?.click()
     await new Promise((done) => setTimeout(done, 80))
     return ${DROPDOWN_STATE}
   })()`)
