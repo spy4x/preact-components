@@ -94,7 +94,7 @@ describe("Calendar", () => {
   it("greys out days after the horizon", () => {
     const html = render(<Calendar {...base} minDate="2026-08-03" maxDate="2026-08-15" />)
 
-    expect(html).toContain('title="2026-08-16 — outside the booking window"')
+    expect(html).toContain('title="2026-08-16 — outside the allowed range"')
     expect(html).not.toContain('href="?date=2026-08-16"')
     expect(html).toContain('href="?date=2026-08-15"')
   })
