@@ -74,74 +74,76 @@ Three decisions worth stating, because a later wave will build on them:
 is the build guard over it: `pages/build.ts` embeds the table, reads it back out of the emitted HTML
 and fails when an entry is missing, duplicated, non-canonical, or one the resolver would not accept.
 
-## The drift guard
+## The coverage rule
 
 This is the part that makes the catalogue stay true, and it is the part the source guides lacked.
 Both of the source guides documented **class names** rather than component APIs, which is how `gb`
 ended up documenting `.btn-sm` and `.h6` — classes with zero usages that only its own ui-guide kept
 alive.
 
-### 1. Compile-time: rename, removal and a missing demo fail `deno check`
+### One rule: a PascalCase export is a component, and a component has a card
 
-`registry.ts` derives each package's vocabulary from that package's own module namespace instead of
-maintaining a list:
+`coverage.ts` reads every covered package's value exports — from its barrel, and from every subpath
+module its `deno.json` publishes, so a component reachable only through its own subpath is seen too
+— and splits them by name. A name with an initial capital and a lower-case letter after it is a
+component (`Badge`, `EmptyState`, `D3LineChart`); everything else is a helper (`clampProgress`,
+`DEFAULT_AXIS_COLOR`, `CONFLICT`) and needs no entry anywhere. Every component must have a card in
+some section, or a line in the allow-list below.
 
-```ts
-export type ComponentNamesOf<P extends PackageId> = Exclude<
-  keyof (typeof PACKAGES)[P]["namespace"],
-  (typeof PACKAGES)[P]["helpers"][number]
->
-export type ComponentName = { [P in PackageId]: ComponentNamesOf<P> }[PackageId]
-```
+Four kinds of drift fail `deno task test`, each naming the component and the package it belongs to:
 
-A section declares the package it documents (`package: "ui"`), registers its demos through
-`satisfies DemoFragment<"Badge" | …>`, and `registryDrift` is typed `DriftReport` — one conditional
-report per package, collapsing to `true` only while that package's demos, pending list and helpers
-account for its exports exactly. Five kinds of drift all fail the build, each naming the offending
-component and, with it, the package whose report is wrong:
+| Drift                                              | Message                                                                    |
+| -------------------------------------------------- | -------------------------------------------------------------------------- |
+| exported with no card and no allow-list entry      | `signals exports Show and no section demonstrates it — write a demo, or …` |
+| a card keyed to a name the package does not export | `the ui sections demo Badge, which ui does not export`                     |
+| an allow-list entry the package does not export    | `ui does not export FakeHelper, which EXPORTS_WITHOUT_DEMO names`          |
+| an allow-list entry whose component has a card     | `ui's Badge has a demo, so its EXPORTS_WITHOUT_DEMO entry is stale`        |
 
-| Drift                                          | Error                                                            |
-| ---------------------------------------------- | ---------------------------------------------------------------- |
-| exported with no demo and no pending entry     | `Type 'boolean' is not assignable to '{ missingDemo: "Badge" }'` |
-| demo for a component that is not exported      | `'{ unexpectedDemo: "BadgePill" }'`                              |
-| a pending component that has been demoed since | `'{ stalePending: "BadgePill" }'`                                |
-| a component demoted into a helper list         | `Type '"Badge"' is not assignable to type '"buttonClasses" …'`   |
-| one demo dropped from a section fragment       | `Property 'Badge' is missing in type 'DemoFragment<"Badge">'`    |
+This used to be about 580 lines of conditional types, so the failure arrived at `deno check` rather
+than at `deno test`. Both run in the same `deno task check`, so the earlier arrival bought nothing,
+and it cost 199 hand-written helper names in seven lists — the hand-kept list the design was meant
+to remove. The rule above needs none of them: a helper is recognised by how it is named, which is how
+every package already names one.
 
 Prop vocabulary is guarded one level down: demos iterate a `Record<Union, …>` keyed by a prop's own
 union type (`ButtonVariant`, `BadgeColor`, `SpinnerSize`, `BadgeType`, `ToastVariant`), so adding a
 variant to a component fails `deno check` until the catalogue shows it.
 
-### 2. Declared gaps are a list, not an omission
+### The allow-list is one list, and every entry carries its reason
 
-A component whose demo is honestly not written yet belongs in `PENDING_DEMOS`, not in a helper list: a
-helper says "this is not a component", a pending entry says "this is one, and nobody has written it
-up". The list is typed over the same union, so it cannot name something the package does not export,
-and the guide prints it (`pendingDemos`) as an amber worklist under the title. `charts`, `system` and
-`crud` each have one live card and the rest of their components on that list.
+`EXPORTS_WITHOUT_DEMO` in `coverage.ts` is the only list. It is keyed by package, and each entry is a
+name and a sentence. Two things belong in it, and they read the same way to the check — this export
+is component-shaped and no card is expected:
 
-### 3. Runtime: a component without a demo is visible, not absent
+- **Not a component.** Every entry today is an `enum`, which is an object rather than something to
+  render: `ValidationType` in `crud`, `ErrType`, `RemoteEvent` and `ThemeValue` in `signals`.
+- **A card somebody still owes.** A component whose demo is honestly not written yet goes here with
+  a reason saying so, instead of being quietly absent.
+
+Neither can be parked and forgotten: an entry the package no longer exports fails, and so does one
+whose component has a card after all.
+
+### A component without a card is visible, not absent
 
 `missingDemos(registry)` is what the catalogue renders. It is exported and takes the registry as an
 argument precisely so it can be driven with an incomplete one: `catalogue.test.tsx` passes registries
 with one and two entries removed and asserts the red banner names them and the singular/plural count
 is right, while `registry.test.ts` asserts the report is empty for the real registry.
 
-A total registry means the banner never shows in a healthy tree — the compile-time guard fires first.
-The banner is the backstop for a deliberately trimmed guide, and it is tested rather than assumed.
-`missingDemos` covers the cards the sections declare; the declared gaps are `pendingDemos`' business,
-which is why a healthy page shows the amber list and no red banner.
+A total registry means the banner never shows in a healthy tree — `coverage.test.ts` fires first, at
+the package rather than at the page. The banner is the backstop for a guide a host trimmed by hand,
+and it is tested rather than assumed.
 
-### 4. A package added later has to make a decision
+### A package added later has to make a decision
 
-`registry.test.ts` walks the top-level directories for a `deno.json` and fails when one is neither a
-`PACKAGES` source nor an `EXCLUDED_PACKAGES` entry with a reason. Covering a package and excluding it
-are both one line, both typed, and both visible in review — the difference between a package that is
+`coverage.test.ts` walks the top-level directories for a `deno.json` and fails when one is neither a
+`packageIds` entry nor an `EXCLUDED_PACKAGES` entry with a reason. Covering a package and excluding
+it are both one line, and both are visible in review — the difference between a package that is
 deliberately out of the guide and one nobody noticed. That is how `icons/` (the gallery reads the
 barrel itself), `theme/` (CSS), `pages/` (the demo's host app, not a package) and `ui-guide/` itself
 are written down.
 
-### 5. The theme's class names are checked against the theme, in both directions
+### The theme's class names are checked against the theme, in both directions
 
 `instructions.tsx` renders the design-system rules from `documentedClasses`, and
 `instructions.test.ts` reads `theme/preset.css` and fails if any documented class is not defined
@@ -163,10 +165,10 @@ The other direction is `classes.test.tsx`, and it is the one that matters for de
   what the page really applies, so removing a class from a demo removes it from the set — and a class
   named only inside a usage snippet is text, not markup, and does not count.
 
-The exclusions are the honest half: `theme-base` and `dark` are the host page's, the five `.map-*`
-classes are Leaflet marker states in a package the guide does not cover, and the twelve `.btn*`
-classes stay documented-but-not-demonstrated because `ui/Button` is the API for a button and `crud/`
-is the class-form consumer (see "Class-name demos" below). Each entry carries its reason, and each is
+The exclusions are the honest half: `theme-base` and `dark` are the host page's, the `.map-*` classes
+are Leaflet marker states in a package the guide does not cover, and the `.btn*` classes stay
+documented-but-not-demonstrated because `ui/Button` is the API for a button and `crud/` is the
+class-form consumer (see "Class-name demos" below). Each entry carries its reason, and each is
 checked for staleness — an excluded class the preset no longer defines, or that the catalogue
 demonstrates after all, fails.
 
@@ -205,8 +207,8 @@ is the flattening of `catalogueGroups`, which is why the flat array `routes.ts`,
 | a group with no heading / a heading for no group                | `deno check` — `TS2741` "Property `tools` is missing" in the heading record, or `TS2353` for a leftover one |
 | a literal duplicate section key                                 | `deno check` — `TS1117` "An object literal cannot have multiple properties with the same name"              |
 | a section cloned under a second id                              | `registry.test.ts` — "a name appears in two sections", and `routes.test.ts` — "two demo names share a slug" |
-| the derived record losing a section, or doubling one            | `registry.test.ts` — the groups against `catalogueSections`                                                 |
-| the group vocabulary renamed, reordered or dropped              | `registry.test.ts` — five hand-written literals, in render order                                            |
+| the derived record losing a section, or doubling one            | `catalogue.test.tsx` — the rendered ids against a hand-written sequence                                     |
+| the group vocabulary renamed, reordered or dropped              | `catalogue.test.tsx` — the rendered group ids and headings, written out in render order                     |
 | the page rendering a section outside its group, or out of order | `catalogue.test.tsx` — "renders the sections in the groups' order", against a hand-written id sequence      |
 
 Both memberships and the guards behind them are worth stating precisely, because an earlier revision
@@ -269,11 +271,10 @@ the number that matters is checked where it is produced rather than transcribed 
 | **CRUD**                   | `crud`    | `CrudList`, and the rest on the worklist                                                 |
 | **Signals**                | `signals` | `For`, `Show` — the package's only components                                            |
 
-Nothing here states how many components are _missing_ a demo, on purpose: that number moves with every
-component PR, and the guide already prints it under its own title. Read the worklist on the page, or
-`pendingDemos`, which is derived from the packages' barrels — `PENDING_DEMOS` for the packages ported
-whole, the export list itself for one under construction. A count in this file was wrong twice while
-this section was being written, which is the argument against a third one.
+Nothing here states how many components are _missing_ a card, on purpose: that number moves with every
+component PR. Read `EXPORTS_WITHOUT_DEMO` in `coverage.ts`, which is where a card somebody still owes
+is declared. A count in this file was wrong twice while this section was being written, which is the
+argument against a third one.
 
 The `ui` sections are written up; the `charts`, `system` and `crud` cards are placeholders with a
 one-line summary and a live render, and their section blurbs say so — the real demos land in
@@ -288,15 +289,15 @@ so a page built out of these packages writes its own cards, controls and contain
 controls with a preset class and nothing wrapped around them; `surfaces` is the card, the scroll
 container, the type scale, the KPI tile and the colour atoms.
 
-The class cards declare `package: "theme"`, which is what keeps them out of the component drift guard,
+The class cards declare `package: "theme"`, which is what keeps them out of the coverage rule,
 and their ids are namespaced (`class-input`, `class-card`) because a card id becomes a URL fragment:
 `input` and `Input` write the same slug, and `card` collides with `Card`, which merged while this
 section was being written. Their other contract — a heading, and a class list that matches their own markup — is enforced
 by `classes.test.tsx`.
 
-The registry is checked against the barrels, not against this table, so the table cannot drift either
-— `registry.test.ts` fails if a section gains or loses a component, and it fails if a covered package
-has a component that is neither demoed nor pending.
+The catalogue is checked against the packages' own exports, not against this table, so the table is
+prose and nothing reads it: `coverage.test.ts` fails when a covered package has a component with no
+card, whichever section it should have been in.
 
 Two demos needed a `class` override to be renderable inside a page: `LoadingScreen` is a
 full-viewport overlay and `Toastr` is pinned to the page corner, so both are shown inside a
@@ -353,19 +354,19 @@ deno task check             # from the repository root, what CI runs
 deno test --allow-read --allow-env ui-guide/   # this package alone
 ```
 
-Eight suites: `registry.test.ts` (drift guard, the group partition and its vocabulary, package
-coverage, pending bookkeeping, the class
-sections), `subpath-exports.test.ts` (guard 6: every value export of every declared subpath module is
-either barrelled or declared a helper, and the barrel carries nothing a subpath does not — the
-`exports` object read three ways, and the two helper lists asserted disjoint), `routes.test.ts` (the
-resolver, the href builders, a route for every section driven from
-`catalogueSections`, and the drift check that `pages/build.ts` runs over the emitted route echo),
-`catalogue.test.tsx` (every demo renders, banner and worklist behaviour, route descriptor,
-a usage block and copy control per card), `icons.test.tsx` (gallery exhaustiveness, filter),
-`instructions.test.ts` (a documented class is defined), `classes.test.tsx` (a defined class is
-demonstrated, or excluded with a reason) and `copy.test.tsx` (every card's copy control is wired to
+The suites: `coverage.test.ts` (the coverage rule, driven against the real packages and against
+inputs a healthy tree cannot produce, plus the package-directory decision), `registry.test.ts` (the
+catalogue's own data — one demo per card, every card in one section, the class cards namespaced apart
+from the components, and the missing-card report), `routes.test.ts` (the resolver, the href builders,
+a route for every section driven from `catalogueSections`, and the drift check that `pages/build.ts`
+runs over the emitted route echo), `catalogue.test.tsx` (every demo renders, the banner, the route
+descriptor, a usage block and copy control per card), `icons.test.tsx` (gallery exhaustiveness,
+filter), `instructions.test.ts` (a documented class is defined), `classes.test.tsx` (a defined class
+is demonstrated, or excluded with a reason) and `copy.test.tsx` (every card's copy control is wired to
 its own snippet and to the injected port). Tests render real markup with `preact-render-to-string`
 and assert on it; no DOM, no browser.
 
 `preact-render-to-string` is pinned in this package's `deno.json` for the same reason as in `ui/`:
-the root import map has no renderer. It is the only dependency this package adds.
+the root import map has no renderer. `@std/jsonc` is pinned there too, because `coverage.ts` reads
+each package's `exports` out of a `deno.json` and Deno writes those configs with comments; it is not
+reachable from any published entry point.

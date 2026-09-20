@@ -241,9 +241,9 @@ here, which would go stale the next time a check is added. In short:
 classes get cards of their own in the catalogue's
 `forms` and `surfaces` sections rather than component cards; `icons/` is the gallery rather than demo
 cards; and the four sections that were placeholders when this page was first deployed — `charts/`,
-`system/`, `crud/`, `signals/` — now have a card each, with the components still to be written up
-declared in `ui-guide/registry.ts`'s `PENDING_DEMOS` and printed on the page.
+`system/`, `crud/`, `signals/` — now have a card per component, with any card still to be written up
+declared in `ui-guide/coverage.ts`'s `EXPORTS_WITHOUT_DEMO` with its reason.
 
-Adding a section to `ui-guide` is still all a new component needs to appear here: the registry's
-guard and the stylesheet's `@source` list are the only two things to touch, and both fail the build
+Adding a card to a `ui-guide` section is still all a new component needs to appear here: the
+coverage rule and the stylesheet's `@source` list are the only two things to touch, and both fail
 when a package is added without them.
