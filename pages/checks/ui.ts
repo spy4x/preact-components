@@ -1,4 +1,4 @@
-import { check, type Devtools, ESCAPE, poll, pressKey } from "./harness.ts"
+import { check, type Devtools, poll, pressKey } from "./harness.ts"
 
 /** One side of a dropdown's open/closed state. */
 interface State {
@@ -213,7 +213,7 @@ async function modalChecks(devtools: Devtools): Promise<void> {
       `:modal=${opened.modal}, focus now on ${opened.activeLabel}`,
   )
 
-  await pressKey(devtools, ESCAPE)
+  await pressKey(devtools, "Escape")
   const closed = await poll(
     () =>
       devtools.evaluate<boolean>(`(() => {

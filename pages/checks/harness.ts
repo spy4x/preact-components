@@ -43,7 +43,7 @@ export function report(): never {
 }
 
 /** One key press, described the way the DevTools Protocol wants it. */
-export interface KeyPress {
+interface KeyPress {
   /** `KeyboardEvent.key`. */
   key: string
   /** `KeyboardEvent.code` — the physical key, which is what a `code`-based handler reads. */
@@ -52,8 +52,32 @@ export interface KeyPress {
   keyCode: number
 }
 
-/** Escape: the dismiss key every overlay in this library is supposed to listen for. */
-export const ESCAPE: KeyPress = { key: "Escape", code: "Escape", keyCode: 27 }
+/**
+ * Every key this library's components listen for, described once. `Space`'s `key` is a single
+ * space character, not an empty string — an earlier run of this kind sent an empty one, which
+ * Chromium accepts and no listener recognises.
+ *
+ * A table entry no check uses yet is not dead code the way an unused constant would be: it is
+ * vocabulary a keyboard check reaches for once its component is covered, the same way a dictionary
+ * carries a word before anyone quotes it.
+ */
+const KEYS = {
+  Escape: { key: "Escape", code: "Escape", keyCode: 27 },
+  Tab: { key: "Tab", code: "Tab", keyCode: 9 },
+  Enter: { key: "Enter", code: "Enter", keyCode: 13 },
+  Space: { key: " ", code: "Space", keyCode: 32 },
+  ArrowLeft: { key: "ArrowLeft", code: "ArrowLeft", keyCode: 37 },
+  ArrowUp: { key: "ArrowUp", code: "ArrowUp", keyCode: 38 },
+  ArrowRight: { key: "ArrowRight", code: "ArrowRight", keyCode: 39 },
+  ArrowDown: { key: "ArrowDown", code: "ArrowDown", keyCode: 40 },
+  Home: { key: "Home", code: "Home", keyCode: 36 },
+  End: { key: "End", code: "End", keyCode: 35 },
+  PageUp: { key: "PageUp", code: "PageUp", keyCode: 33 },
+  PageDown: { key: "PageDown", code: "PageDown", keyCode: 34 },
+} as const satisfies Record<string, KeyPress>
+
+/** A key {@link pressKey} knows how to send. */
+export type KeyName = keyof typeof KEYS
 
 /**
  * Press one key the way a person does — through the browser's own input pipeline.
@@ -63,14 +87,19 @@ export const ESCAPE: KeyPress = { key: "Escape", code: "Escape", keyCode: 27 }
  * event, and the browser skips its own default key handling for those. A synthetic Escape would
  * prove only that a listener was registered, never that pressing Escape does anything.
  *
- * Shared rather than inlined because the keyboard checks still to be written — arrow keys in
- * Dropdown, Tabs and Calendar, Tab out of a Combobox, Escape on a Tooltip — all need this same pair
- * of protocol messages.
+ * `press` takes a key **name**, looked up in {@link KEYS}, rather than a description a caller
+ * builds itself: the keyboard checks still to be written — arrow keys and Tab in Dropdown, arrow
+ * keys/Home/End/Page Up/Page Down in Calendar, Enter/Space on an image that behaves like a button —
+ * land in three different package files, and a name typed against one shared table is what keeps
+ * `Tab` or `ArrowDown` from being described twice in two of them. A lane adding a keyboard check
+ * reaches for a name here; it never has reason to edit this file. The table also makes pressing a
+ * key nobody described a type error rather than a silent no-op.
  *
  * @param devtools The connected session; the key goes to whatever the page has focused.
- * @param press The key to send.
+ * @param name The key to send — one of {@link KEYS}.
  */
-export async function pressKey(devtools: Devtools, press: KeyPress): Promise<void> {
+export async function pressKey(devtools: Devtools, name: KeyName): Promise<void> {
+  const press = KEYS[name]
   for (const type of ["keyDown", "keyUp"]) {
     await devtools.send("Input.dispatchKeyEvent", {
       type,
