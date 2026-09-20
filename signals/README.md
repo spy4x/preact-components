@@ -153,12 +153,23 @@ than a mistyped row in the UI.
   and registers no listener, and `+index.test.ts` is the guard on that. `<For>` and `<Show>` used to
   live here and the module patched `Signal.prototype.map` as a side effect of being imported, which
   reached every consumer of every package that imported this one.
-- **`sortRows` puts an empty cell last, ascending and descending.** `null`, `undefined`, `""` and
-  `NaN` are all "this column says nothing about this row", and a reader looks for those rows at the
-  bottom whichever way the column points; two empty cells tie, so the next rule decides. The
-  comparator is total by construction — a pair with no numeric difference falls back to comparing
-  the two values written out — because a comparator that returns `NaN` leaves the array in its input
-  order, which is how one blank cell used to stop a whole column sorting.
+- **`sortRows` reads a cell as one of three kinds, and the kind decides first.** Empty is `null`,
+  `undefined`, `""` and `NaN` — "this column says nothing about this row" — and **it sorts last
+  ascending and descending**, which is where a reader looks for those rows whichever way the column
+  points; two empty cells tie, so the next rule decides. Of the rest, **every numeric cell sorts
+  before every textual one**: a number, a boolean, a `bigint` and a `Date` are ordered by their
+  number, and everything else by the text it prints.
+
+  Deciding by kind first is what makes the order a real one. The first version of this fix chose its
+  method per pair — two strings as text, anything else numerically — and that is not transitive: `5`
+  beats `"1e3"` numerically, `"1e3"` beats `"2"` as text, and `"2"` beats `5` numerically, so those
+  three cells sort into three different tables depending on the order the rows arrive in, and
+  `Array.prototype.sort` is entitled to return anything when its comparator contradicts itself.
+  `sortRows is a consistent order` in the test file is the guard: it checks transitivity over every
+  triple of a set holding one cell of each kind, and sorts all 720 orderings of a mixed column to
+  assert they come out as one table. Two caveats the rule does carry: a `bigint` past
+  `Number.MAX_SAFE_INTEGER` can tie with its neighbour, and a `Date` with no valid time sorts with
+  the text, as `Invalid Date`.
 - **`useUrlFilters` needs a DOM and a wouter router**, so only its value coercion
   (`resolveFilterValue`, `shouldPersistFilter`) is unit-tested here; the hook itself is wired the
   same way as every other hook in this repo — assert it in the app that renders it.

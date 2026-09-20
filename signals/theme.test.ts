@@ -36,6 +36,26 @@ function refusingStorage(): ThemeStorage {
   }
 }
 
+/**
+ * A storage that hands back one stored value and refuses every write.
+ *
+ * The private-mode shape that matters most: the preference a previous session wrote is still
+ * readable, and nothing written now survives.
+ */
+function readOnlyStorage(stored: string): ThemeStorage & { reads: string[] } {
+  const reads: string[] = []
+  return {
+    reads,
+    getItem: (key: string) => {
+      reads.push(key)
+      return stored
+    },
+    setItem: () => {
+      throw new DOMException("The quota has been exceeded.", "QuotaExceededError")
+    },
+  }
+}
+
 /** A controllable stand-in for the OS media query, recording every query it is asked for. */
 function fakeMedia(matches: boolean) {
   const listeners: Array<(event: { matches: boolean }) => void> = []
@@ -234,6 +254,27 @@ describe("createThemeStore ports", () => {
     store.attach()
 
     expect(store.preference.value).toBe(ThemeValue.DARK)
+    store.dispose()
+  })
+
+  it("does not reload the stored preference when it attaches again", () => {
+    // The scenario the one-time load protects. The storage still holds what a previous session
+    // wrote and refuses everything written now, so the light the user just chose exists only in the
+    // signal: an `attach()` that read storage again would put the page back to dark behind them.
+    const storage = readOnlyStorage(ThemeValue.DARK)
+    const store = createThemeStore({ storage, media: null, apply: () => {} })
+
+    store.attach()
+    expect(store.preference.value, "the stored preference, on the first attach").toBe(
+      ThemeValue.DARK,
+    )
+
+    store.set(ThemeValue.LIGHT)
+    store.dispose()
+    store.attach()
+
+    expect(store.preference.value).toBe(ThemeValue.LIGHT)
+    expect(storage.reads, "storage read once, on the first attach").toEqual(["theme"])
     store.dispose()
   })
 

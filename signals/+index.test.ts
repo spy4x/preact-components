@@ -33,12 +33,16 @@ describe("importing @preact-components/signals", () => {
 
   it("exports no component", () => {
     // The package is factories and pure functions now, which is what `ui-guide/coverage.ts` was
-    // told when `signals` moved to its excluded list: a component-named export here would mean
-    // that reason is out of date.
-    const componentNamed = Object.keys(barrel).filter((name) =>
+    // told when `signals` moved to its excluded list: a component here would mean that reason is
+    // out of date. A component-named export is fine — every one today is an `enum` — so what is
+    // asserted is that none of them is callable, which is what a component is. Adding an enum
+    // leaves this test alone; adding a component fails it.
+    const componentNamed = Object.entries(barrel).filter(([name]) =>
       /^[A-Z]/.test(name) && /[a-z]/.test(name)
     )
+    expect(componentNamed.length, "component-named exports read").toBeGreaterThan(0)
 
-    expect(componentNamed).toEqual(["ErrType", "RemoteEvent", "ThemeValue"])
+    const callable = componentNamed.filter(([, value]) => typeof value === "function")
+    expect(callable.map(([name]) => name)).toEqual([])
   })
 })

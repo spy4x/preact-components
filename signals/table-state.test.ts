@@ -4,6 +4,7 @@ import {
   parseSort,
   removeSortRule,
   serializeSort,
+  type SortDirection,
   sortRows,
   type SortRule,
   toggleSort,
@@ -189,6 +190,133 @@ describe("sortRows with empty cells", () => {
     const cells: { cell: number | string }[] = [{ cell: 2 }, { cell: "apple" }, { cell: 1 }]
     expect(sortRows(cells, [{ key: "cell", direction: "asc" }]).map((row) => row.cell))
       .toEqual([1, 2, "apple"])
+  })
+
+  it("sorts a NaN with the empty cells and not with the numbers", () => {
+    // Words chosen to sort after the string `NaN` prints as: a NaN read as a number would lead the
+    // column, and a NaN read as text would lead it too. Empty puts it last, which is the decision.
+    const cells: { cell: number | string }[] = [
+      { cell: "orange" },
+      { cell: Number.NaN },
+      { cell: "zebra" },
+    ]
+    expect(sortRows(cells, [{ key: "cell", direction: "asc" }]).map((row) => row.cell))
+      .toEqual(["orange", "zebra", Number.NaN])
+    expect(sortRows(cells, [{ key: "cell", direction: "desc" }]).map((row) => row.cell))
+      .toEqual(["zebra", "orange", Number.NaN])
+  })
+})
+
+/** One column of loose cells, sorted: the shape every ordering test below reads. */
+function sortColumn(cells: unknown[], direction: SortDirection = "asc"): unknown[] {
+  return sortRows(cells.map((cell) => ({ cell })), [{ key: "cell", direction }])
+    .map((row) => row.cell)
+}
+
+/** Every ordering of `values`, so a test can ask what the sort does with each of them. */
+function permutations<T>(values: T[]): T[][] {
+  if (values.length <= 1) return [values]
+  return values.flatMap((value, index) =>
+    permutations([...values.slice(0, index), ...values.slice(index + 1)])
+      .map((rest) => [value, ...rest])
+  )
+}
+
+/** A cell as a failure message names it, since a table of cells is a table of anything. */
+function label(value: unknown): string {
+  if (typeof value === "string") return JSON.stringify(value)
+  if (typeof value === "bigint") return `${value}n`
+  if (value instanceof Date) return `Date(${value.getTime()})`
+  return String(value)
+}
+
+describe("sortRows is a consistent order", () => {
+  /**
+   * One cell of every kind the comparator can be shown, including the three the first version of
+   * this comparator ordered cyclically: `5` beat `"1e3"` numerically, `"1e3"` beat `"2"` as text,
+   * and `"2"` beat `5` numerically.
+   */
+  const probes: unknown[] = [
+    5,
+    "1e3",
+    "2",
+    0,
+    -1,
+    "apple",
+    "Apple",
+    true,
+    false,
+    10n,
+    new Date(0),
+    new Date("not a date"),
+    null,
+    undefined,
+    "",
+    Number.NaN,
+  ]
+
+  it("puts one cell before another for the same reason whichever pair it is shown", () => {
+    // Transitivity, which is the property `Array.prototype.sort` needs and the only one a handful of
+    // examples cannot establish: `a` at or before `b` and `b` at or before `c` has to mean `a` at or
+    // before `c`, for every three cells. A comparator that contradicts itself on one triple leaves
+    // the sort free to return anything, which is what the pair-by-pair version did.
+    const atOrBefore = probes.map((left) =>
+      probes.map((right) => Object.is(sortColumn([left, right])[0], left))
+    )
+    const contradictions: string[] = []
+
+    for (let a = 0; a < probes.length; a++) {
+      for (let b = 0; b < probes.length; b++) {
+        for (let c = 0; c < probes.length; c++) {
+          if (atOrBefore[a][b] && atOrBefore[b][c] && !atOrBefore[a][c]) {
+            contradictions.push(
+              `${label(probes[a])} ≤ ${label(probes[b])} ≤ ${label(probes[c])}, ` +
+                `but ${label(probes[c])} < ${label(probes[a])}`,
+            )
+          }
+        }
+      }
+    }
+
+    expect(contradictions, contradictions.slice(0, 5).join(" | ")).toEqual([])
+  })
+
+  it("sorts a mixed column the same way whatever order the rows arrive in", () => {
+    // The consequence a reader sees: the same six cells, entered in any of their 720 orders, come
+    // out as one table. The first version produced three different tables from these cells alone.
+    const cells = [5, "1e3", "2", "apple", true, undefined]
+    const results = new Set(
+      permutations(cells).map((order) => sortColumn(order).map(label).join(" ")),
+    )
+
+    expect(results.size, [...results].slice(0, 3).join(" / ")).toBe(1)
+    expect([...results][0]).toBe(`true 5 "1e3" "2" "apple" undefined`)
+  })
+
+  it("puts every numeric cell before every textual one", () => {
+    expect(sortColumn([5, "1e3", "2"])).toEqual([5, "1e3", "2"])
+    expect(sortColumn(["apple", 2, true])).toEqual([true, 2, "apple"])
+  })
+
+  it("orders booleans as off then on", () => {
+    expect(sortColumn([true, false, true])).toEqual([false, true, true])
+  })
+
+  it("orders bigints by their value, not by their digits", () => {
+    expect(sortColumn([3n, 21n, 100n])).toEqual([3n, 21n, 100n])
+  })
+
+  it("orders dates by their time", () => {
+    const early = new Date("2025-06-01T00:00:00Z")
+    const late = new Date("2026-01-02T00:00:00Z")
+    expect(sortColumn([late, early])).toEqual([early, late])
+  })
+
+  it("sorts a date that carries no time under what it prints", () => {
+    // `new Date("nope")` is a date object with a NaN time: not a number to sort by, and not empty
+    // either — it is a cell holding something, so it sorts with the text as `Invalid Date`.
+    const invalid = new Date("nope")
+    expect(sortColumn([invalid, 5, "apple"])).toEqual([5, "apple", invalid])
   })
 })
 
