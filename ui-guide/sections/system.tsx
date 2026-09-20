@@ -28,7 +28,6 @@
  */
 
 import { BlogImageEnhancer } from "@preact-components/system/blog-image-enhancer"
-import { BookingSubmit } from "@preact-components/system/booking-submit"
 import { Breadcrumb } from "@preact-components/system/breadcrumb"
 import { Calendar } from "@preact-components/system/calendar"
 import type { Crumb, PageHead } from "@preact-components/system/head"
@@ -40,7 +39,7 @@ import {
   type WorkerLike,
 } from "@preact-components/system/sw-updater"
 import { ThemeToggle, themeToggleLabel } from "@preact-components/system/theme-toggle"
-import { Button, Input } from "@preact-components/ui"
+import { Button } from "@preact-components/ui"
 import { useSignal } from "@preact/signals"
 import type { DemoFragment } from "../registry.ts"
 
@@ -237,36 +236,6 @@ function BlogImageEnhancerDemo() {
   )
 }
 
-/** A form that goes nowhere, so the submit gate is exercised without a server to post to. */
-function BookingSubmitDemo() {
-  const problem = useSignal("")
-  return (
-    <form
-      class="space-y-3"
-      onSubmit={(event) => {
-        // The demo has no endpoint. `BookingSubmit` still prevents the submit when a rule fails, so
-        // the only way to reach here is a form that passed validation.
-        event.preventDefault()
-        problem.value = "Validation passed, so the native submit would run here."
-      }}
-    >
-      <Input name="guest" placeholder="Guest name" aria-label="Guest name" />
-      <Input name="email" placeholder="you@example.com" aria-label="Email" />
-      <BookingSubmit
-        label="Confirm booking"
-        timeZoneField="guestTz"
-        fields={[
-          { name: "guest", required: "Please enter the guest's name.", min: 2 },
-          { name: "email", required: "Please enter an email address." },
-        ]}
-      />
-      {problem.value !== "" && (
-        <p class="text-xs text-green-700 dark:text-green-400">{problem.value}</p>
-      )}
-    </form>
-  )
-}
-
 /**
  * The grid with every cell kind on screen at once.
  *
@@ -416,21 +385,5 @@ const tags = seoHeadTags(head)`,
   onOpen={(image) => analytics.track("lightbox", image.src)}
 />`,
     render: () => <BlogImageEnhancerDemo />,
-  },
-  BookingSubmit: {
-    summary:
-      "A submit button that never shows a spinner over an invalid form. Two things happen before the native post: the form is validated locally — walking `fields` in declaration order so the message is about the earliest field — and the visitor's `Intl` time zone is written into a hidden field on mount so the server can render the confirmation in their zone. The server stays the trust boundary; this is UX. **The hidden timezone field is empty in this server-rendered card and fills in on hydration**, and the form below posts nowhere: this guide has no endpoint. The validation gate itself is `gateSubmit`, exported and pure.",
-    snippet: `<form onSubmit={save}>
-  <Input name="guest" />
-  <Input name="email" />
-  <BookingSubmit
-    label="Confirm booking"
-    fields={[
-      { name: "guest", required: "Please enter the guest's name.", min: 2 },
-      { name: "email", required: "Please enter an email address.", check: emailProblem },
-    ]}
-  />
-</form>`,
-    render: () => <BookingSubmitDemo />,
   },
 } satisfies DemoFragment
