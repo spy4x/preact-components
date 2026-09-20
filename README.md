@@ -20,7 +20,6 @@ ui/          Badge, Table, Dropdown, ToggleSwitch, OnOffButtons, PageTitle, Toas
              DeletionValidation, CopyButton, Export, DateTimeFilter, LoadingScreen, Skeleton
 system/      Shell, Nav, Auth, StateInit, SEOHead, Breadcrumb, Menu, SWUpdater
 charts/      server-rendered SVG kit (scales) + d3 wrappers
-map/         Map, GeoButton (lazy Leaflet)
 icons/       merged icon set (+ brand glyphs)
 signals/     For/Show/map, buildModelStore, useListState, useUrlFilters, table-state, cn()
 crud/        CrudList, CrudEditor, AssociationEditor

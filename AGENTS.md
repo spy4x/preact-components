@@ -15,7 +15,6 @@ its own PR, each owning exactly one top-level directory.
 | `ui/`       | Badge, Table, Dropdown, ToggleSwitch, OnOffButtons, PageTitle, Toast, Button |
 | `system/`   | Shell, Nav, Auth, StateInit, SEOHead, Breadcrumb, Menu, SWUpdater            |
 | `charts/`   | server-rendered SVG kit (scales) + d3 wrappers                               |
-| `map/`      | Map, GeoButton (lazy Leaflet)                                                |
 | `signals/`  | For/Show/map, buildModelStore, useListState, useUrlFilters, cn()             |
 | `crud/`     | CrudList, CrudEditor, AssociationEditor                                      |
 | `ui-guide/` | live component catalogue route                                               |

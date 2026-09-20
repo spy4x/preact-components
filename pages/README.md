@@ -181,7 +181,9 @@ See the PR for the transcript. In short:
 
 ## Not here
 
-`map/` does not exist yet. `theme/` is CSS, so its classes get cards of their own in the catalogue's
+`map/` is not here and is not coming: `Map` is a recorded "deliberately not built" entry in
+`docs/not-building.md`, because it needs Leaflet — a dependency decision. `theme/` is CSS, so its
+classes get cards of their own in the catalogue's
 `forms` and `surfaces` sections rather than component cards; `icons/` is the gallery rather than demo
 cards; and the four sections that were placeholders when this page was first deployed — `charts/`,
 `system/`, `crud/`, `signals/` — now have a card each, with the components still to be written up
