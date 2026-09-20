@@ -350,9 +350,10 @@ function SkeletonStatusDemo() {
  *
  * **This card is what the browser checks drive.** `deno task --cwd pages verify` presses the first
  * trigger below, asserts the dialog is `:modal` with focus inside it, sends a real Escape key press
- * and asserts the dialog closed and focus returned to that trigger. Top-layer stacking, focus
- * containment, the backdrop hit-test, scroll-lock compensation and the refused-Escape path are still
- * covered by no committed test.
+ * and asserts the dialog closed and focus returned to that trigger. That `:modal` reading is what
+ * says the dialog reached the top layer at all. Still covered by no committed test: what two
+ * dialogs open at once do to each other's stacking order, focus containment, the backdrop
+ * hit-test, scroll-lock compensation and the refused-Escape path.
  */
 function ModalDemo() {
   const open = useSignal<DialogTone | null>(null)

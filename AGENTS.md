@@ -121,8 +121,11 @@ Behaviour needs a second pair, in this order:
 | `deno task --cwd pages verify` | drive the built site in a real browser |
 
 Every test `deno task test` runs renders a component to an HTML string, so none of them executes an
-effect, a ref, a key press, a focus change or a timer. Anything that lives behind one of those is
-proven in a real browser through `pages/verify.ts` and nowhere else. `verify` fails when it finds no
+effect, a ref, a key press, a focus change or a timer. Behaviour behind one of those can only be
+proven in a real browser, and `pages/verify.ts` is where that proof has to be written — assume it is
+unproven until a check there covers it. Today that means `Modal` alone: it opens as a real modal
+dialog with focus inside, a real Escape press closes it, and focus returns to the trigger. Every
+other component's keyboard and focus behaviour is still untested. `verify` fails when it finds no
 browser; `--static` is the one explicit way to leave the browser phase out. The GitHub workflow runs
 `check`, the build and `verify` on every pull request into `main`, and the Pages deploy waits for
 them.

@@ -164,12 +164,28 @@ the whole catalogue prerendered.
 
 ## Deploy
 
-`.github/workflows/pages.yml` — the one place a GitHub workflow is the right tool, because Pages
-cannot be deployed by Woodpecker. The repository's normal CI stays in `.woodpecker.yml`.
+`.github/workflows/pages.yml` — a GitHub workflow for two reasons. Pages cannot be deployed by
+Woodpecker, and Woodpecker's image (`denoland/deno:2.9.7`) carries no browser, so it cannot run the
+browser phase of `verify`. Woodpecker still runs `deno task check` on the same events.
 
-On every push to `main` (and on manual dispatch): checkout → Deno 2.9.7 → `deno task --cwd pages
-build` → `actions/upload-pages-artifact` (`pages/dist`) → `actions/deploy-pages`. Only the default
-`GITHUB_TOKEN` is used, with `contents: read`, `pages: write`, `id-token: write`.
+The workflow triggers on pull requests into `main`, on pushes to `main`, and on manual dispatch.
+
+A `verify` job runs on all three: checkout → Deno 2.9.7 → print the browser version →
+`deno task check` → `deno task --cwd pages build` → `deno task --cwd pages verify`, with
+`CHROME_PATH` naming the runner's Google Chrome so the browser reported in the log is the browser
+that is driven. That job holds `contents: read` and nothing else.
+
+Only on `main`, never on a pull request, the same job then runs `actions/upload-pages-artifact` over
+`pages/dist`, and a separate `deploy` job runs `actions/configure-pages` and `actions/deploy-pages`.
+`deploy` `needs` the `verify` job, so a red check, a failed build or a failed `verify` blocks the
+publish. `pages: write` and `id-token: write` exist on `deploy` alone, which is also where
+`configure-pages` lives — it is the step that needs them, and the build never read its outputs,
+because the demo's base path is a constant in `src/site.ts`.
+
+Two concurrency groups, because the two paths want opposite things. Deploys share the group `pages`
+with `cancel-in-progress: false`: a half-published artefact is worse than a slightly stale one.
+Pull-request runs get `pages-pr-<ref>` with `cancel-in-progress: true`, so a review run is never
+queued behind a deploy, and a superseded commit's run is dropped.
 
 Pages is enabled on the repository with **Source: GitHub Actions** (`build_type: workflow`), which is
 what the workflow needs; a repository where that setting is still "Deploy from a branch" fails at the
