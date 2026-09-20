@@ -265,6 +265,12 @@ function SiteFooter() {
         <p>
           <a class="link" href={REPOSITORY} rel="noreferrer">github.com/spy4x/preact-components</a>
         </p>
+        <p>
+          Design, original markup, CSS and Tailwind by{" "}
+          <a class="link" href="https://github.com/Eirene" rel="noreferrer">Eirene</a>{" "}
+          (<a class="link" href="https://isorokina.com/" rel="noreferrer">isorokina.com</a>) — the
+          extraction into a Preact + signals package is this repository's work.
+        </p>
       </div>
     </footer>
   )
