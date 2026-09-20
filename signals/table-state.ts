@@ -40,11 +40,46 @@ export function removeSortRule<K extends string>(rules: SortRule<K>[], key: K): 
 }
 
 /**
+ * Whether a cell holds nothing a reader would call a value.
+ *
+ * `null`, `undefined`, the empty string and `NaN` are the four ways a column ends up with a blank
+ * cell, and a table shows all four the same way. `0` and `false` are values and are not empty.
+ */
+function isEmptyCell(value: unknown): boolean {
+  return value === null || value === undefined || value === "" ||
+    (typeof value === "number" && Number.isNaN(value))
+}
+
+/** Compare two strings the way a column of text sorts: case-insensitive, `"item 2"` before `"item 10"`. */
+function compareText(left: string, right: string): number {
+  return left.localeCompare(right, "en", { numeric: true, sensitivity: "base" })
+}
+
+/**
+ * Compare two non-empty cells, never returning `NaN`.
+ *
+ * Two strings compare as text. Anything else compares numerically, and a pair that has no numeric
+ * difference — a string against a number, an object against anything — falls back to comparing the
+ * two values written out, so the comparator stays total whatever a row holds.
+ */
+function compareCells(left: unknown, right: unknown): number {
+  if (typeof left === "string" && typeof right === "string") return compareText(left, right)
+  const difference = Number(left) - Number(right)
+  return Number.isNaN(difference) ? compareText(String(left), String(right)) : difference
+}
+
+/**
  * Sort rows by every rule in order.
  *
  * Strings compare with `localeCompare` at numeric granularity (`"item 2"` before `"item 10"`),
  * everything else numerically. Rows that tie on every rule keep their input order, so the sort is
  * stable and a re-render never shuffles equal rows.
+ *
+ * **An empty cell sorts last in both directions** — `null`, `undefined`, `""` and `NaN` — because
+ * that is where a reader looks for the rows a column says nothing about, whichever way the column
+ * is pointing. Two empty cells tie, so the next rule decides. Comparing them arithmetically is what
+ * produced `NaN` from `Number(undefined)`, and a comparator that returns `NaN` leaves the array in
+ * its input order: one blank cell used to stop the whole column sorting.
  */
 export function sortRows<T, K extends Extract<keyof T, string>>(
   rows: T[],
@@ -54,9 +89,12 @@ export function sortRows<T, K extends Extract<keyof T, string>>(
     for (const rule of rules) {
       const left = a.row[rule.key]
       const right = b.row[rule.key]
-      const result = typeof left === "string" && typeof right === "string"
-        ? left.localeCompare(right, "en", { numeric: true, sensitivity: "base" })
-        : Number(left) - Number(right)
+      const leftEmpty = isEmptyCell(left)
+      const rightEmpty = isEmptyCell(right)
+      // Returned before the direction is applied: empty last means last either way.
+      if (leftEmpty !== rightEmpty) return leftEmpty ? 1 : -1
+      if (leftEmpty) continue
+      const result = compareCells(left, right)
       if (result !== 0) return rule.direction === "asc" ? result : -result
     }
     return a.index - b.index

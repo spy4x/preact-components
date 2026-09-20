@@ -120,6 +120,78 @@ describe("sortRows", () => {
   })
 })
 
+describe("sortRows with empty cells", () => {
+  interface Score {
+    name: string
+    score: number | undefined
+  }
+
+  const scores: Score[] = [
+    { name: "three", score: 3 },
+    { name: "none", score: undefined },
+    { name: "one", score: 1 },
+    { name: "two", score: 2 },
+  ]
+
+  it("orders the rows that have a value when one row has none", () => {
+    expect(sortRows(scores, [{ key: "score", direction: "asc" }]).map((row) => row.name))
+      .toEqual(["one", "two", "three", "none"])
+  })
+
+  it("keeps a row with no value last when the column is reversed", () => {
+    expect(sortRows(scores, [{ key: "score", direction: "desc" }]).map((row) => row.name))
+      .toEqual(["three", "two", "one", "none"])
+  })
+
+  it("puts a null and a NaN where it puts a missing value", () => {
+    const mixed: { name: string; score: number | null }[] = [
+      { name: "nan", score: Number.NaN },
+      { name: "two", score: 2 },
+      { name: "null", score: null },
+      { name: "one", score: 1 },
+    ]
+    expect(sortRows(mixed, [{ key: "score", direction: "asc" }]).map((row) => row.name))
+      .toEqual(["one", "two", "nan", "null"])
+  })
+
+  it("reads an empty string as an empty cell rather than as the first word", () => {
+    const labels: { label: string }[] = [{ label: "beta" }, { label: "" }, { label: "alpha" }]
+    expect(sortRows(labels, [{ key: "label", direction: "asc" }]).map((row) => row.label))
+      .toEqual(["alpha", "beta", ""])
+    expect(sortRows(labels, [{ key: "label", direction: "desc" }]).map((row) => row.label))
+      .toEqual(["beta", "alpha", ""])
+  })
+
+  it("lets the next rule decide between two empty cells", () => {
+    const pairs: Score[] = [
+      { name: "second", score: undefined },
+      { name: "first", score: 1 },
+      { name: "first", score: undefined },
+    ]
+    expect(
+      sortRows(pairs, [
+        { key: "score", direction: "asc" },
+        { key: "name", direction: "asc" },
+      ]).map((row) => row.name),
+    ).toEqual(["first", "first", "second"])
+  })
+
+  it("keeps two empty cells in their input order when no rule separates them", () => {
+    const blanks: Score[] = [
+      { name: "second", score: undefined },
+      { name: "first", score: undefined },
+    ]
+    expect(sortRows(blanks, [{ key: "score", direction: "asc" }]).map((row) => row.name))
+      .toEqual(["second", "first"])
+  })
+
+  it("still orders a column that mixes a number with a word", () => {
+    const cells: { cell: number | string }[] = [{ cell: 2 }, { cell: "apple" }, { cell: 1 }]
+    expect(sortRows(cells, [{ key: "cell", direction: "asc" }]).map((row) => row.cell))
+      .toEqual([1, 2, "apple"])
+  })
+})
+
 describe("parseSort", () => {
   const allowed = ["name", "spawns", "kills"] as const
   const fallback: SortRule<typeof allowed[number]>[] = [{ key: "spawns", direction: "desc" }]

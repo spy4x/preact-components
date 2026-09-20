@@ -129,6 +129,12 @@ than a mistyped row in the UI.
 - **`+signals` patches `Signal.prototype`** when imported, adding `.map(fn)` as JSX sugar. Importing
   the barrel imports it.
 - **`For`'s `fallback` is for an absent array**, not an empty one; an empty array renders nothing.
+- **`sortRows` puts an empty cell last, ascending and descending.** `null`, `undefined`, `""` and
+  `NaN` are all "this column says nothing about this row", and a reader looks for those rows at the
+  bottom whichever way the column points; two empty cells tie, so the next rule decides. The
+  comparator is total by construction — a pair with no numeric difference falls back to comparing
+  the two values written out — because a comparator that returns `NaN` leaves the array in its input
+  order, which is how one blank cell used to stop a whole column sorting.
 - **`useUrlFilters` needs a DOM and a wouter router**, so only its value coercion
   (`resolveFilterValue`, `shouldPersistFilter`) is unit-tested here; the hook itself is wired the
   same way as every other hook in this repo — assert it in the app that renders it.
