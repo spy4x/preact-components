@@ -15,7 +15,12 @@
  *
  * Steps, in order:
  *
- * 1. `deno check` — the catalogue's drift guard *is* a type error, so the build must not skip it.
+ * 1. `deno check` over this directory's sources, which reaches the whole catalogue through them.
+ *    It no longer catches a component with no demo — that is `coverage.ts`'s rule, and it fails
+ *    `deno task test` — but it is still what stops the page shipping a graph that does not compile:
+ *    a demo whose component changed its props, a section whose card no longer type-checks, and the
+ *    per-component prop records (`Record<ButtonVariant, …>`) that go red when a variant is added
+ *    and the catalogue does not show it.
  * 2. Tailwind compiles `styles.css` over the sources its `@source` rules name (`ui/`, `ui-guide/`,
  *    `icons/`, the host page).
  * 3. `deno bundle` produces the island.
@@ -57,8 +62,8 @@ const CHECKED_ENTRIES = [
 /**
  * Run a command in this directory and fail the build when it does.
  *
- * Output is inherited rather than captured: a drift error from `deno check` names the component that
- * caused it, and that is the whole value of the message.
+ * Output is inherited rather than captured: a type error names the file and the line that caused it,
+ * and that is the whole value of the message.
  *
  * @param command Executable to run.
  * @param args Arguments, in order.

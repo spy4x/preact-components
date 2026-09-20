@@ -101,7 +101,7 @@ Four kinds of drift fail `deno task test`, each naming the component and the pac
 
 This used to be about 580 lines of conditional types, so the failure arrived at `deno check` rather
 than at `deno test`. Both run in the same `deno task check`, so the earlier arrival bought nothing,
-and it cost 199 hand-written helper names in seven lists — the hand-kept list the design was meant
+and it cost a hand-written helper name per helper, in seven lists — the hand-kept list it was meant
 to remove. The rule above needs none of them: a helper is recognised by how it is named, which is how
 every package already names one.
 
@@ -266,9 +266,9 @@ the number that matters is checked where it is produced rather than transcribed 
 | **Fields**                 | `ui`      | `Field`, `Input`, `Textarea`, `Select`, `Checkbox`, `Radio`, `RadioGroup`, `InputButton` |
 | **Forms**                  | `theme`   | `.input`, `.select`, `.textarea`, `.label`, `.checkbox`, `.radio`, `.btn-input-icon`     |
 | **Surfaces and utilities** | `theme`   | `.card`, `.scrollbar`, the type scale, the KPI tile, the colour atoms                    |
-| **Charts**                 | `charts`  | `Bars`, and the rest of the package on the worklist                                      |
-| **System**                 | `system`  | `Breadcrumb`, and the rest on the worklist                                               |
-| **CRUD**                   | `crud`    | `CrudList`, and the rest on the worklist                                                 |
+| **Charts**                 | `charts`  | a card per component the package exports                                                 |
+| **System**                 | `system`  | a card per component the package exports                                                 |
+| **CRUD**                   | `crud`    | a card per component the package exports                                                 |
 | **Signals**                | `signals` | `For`, `Show` — the package's only components                                            |
 
 Nothing here states how many components are _missing_ a card, on purpose: that number moves with every

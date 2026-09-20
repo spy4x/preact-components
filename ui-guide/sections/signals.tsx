@@ -7,7 +7,8 @@
  *
  * The stores are the part a reader actually struggles with (`buildModelStore`, `createListState`,
  * `createTableState`, `useUrlFilters`), and they need a written-up live example rather than a card:
- * they are listed as helpers in `../registry.ts`, not as pending demos.
+ * they are helpers by name, and the coverage rule asks for a card only from a PascalCase export, so
+ * neither a card nor an allow-list entry is owed for them.
  */
 
 import { For, Show } from "@preact-components/signals/signals"
