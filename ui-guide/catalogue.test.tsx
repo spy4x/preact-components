@@ -12,6 +12,45 @@ import {
 import { iconNames } from "./icons.tsx"
 
 /**
+ * The first index at which two id sequences differ, or `undefined` when they agree.
+ *
+ * The document order is asserted as one comparison, so a failure would otherwise print a diff over
+ * every id in the catalogue — which says that *something* moved, not where. This turns the same
+ * comparison into a named position: the caller names the group whose run stopped matching there.
+ *
+ * @param actual Ids as rendered, in document order.
+ * @param expected Ids as this file requires them.
+ * @returns The differing index, or `undefined`.
+ */
+function firstDifference(actual: string[], expected: string[]): number | undefined {
+  const length = Math.max(actual.length, expected.length)
+
+  for (let index = 0; index < length; index++) {
+    if (actual[index] !== expected[index]) return index
+  }
+
+  return undefined
+}
+
+/**
+ * The group whose run of rendered sections stopped matching, for a failure message.
+ *
+ * The expected sequence is `group, its sections, next group, …`, so the position of the mismatch is
+ * enough to say which group is wrong without a second comparison: the last group marker at or
+ * before it owns the ids after it. When the mismatch *is* a group marker, that group is the one
+ * whose sections were rendered where the marker should be — the one to look at either way.
+ *
+ * @param expected The sequence this file requires.
+ * @param index Where the rendered ids and the expected ones stop agreeing.
+ * @returns The group's id, or `"the catalogue"` for a mismatch before every group.
+ */
+function atFault(expected: string[], index: number): string {
+  const markers = expected.slice(0, index + 1).filter((id) => id.startsWith("group-"))
+
+  return markers.at(-1) ?? "the catalogue"
+}
+
+/**
  * Which section ids each rendered group must hold, in render order, spelled out.
  *
  * Hand-written on purpose: read from `catalogueGroups`, an assertion would shrink with the very
@@ -100,7 +139,7 @@ describe("UIGuide", () => {
     expect(html).toContain('id="instructions"')
   })
 
-  it("renders the sections in the groups' order, each under its own group heading", () => {
+  it("renders the sections in the groups' order, and files each one in its group", () => {
     const html = render(<UIGuide />)
 
     // Two things are asserted here, and only one of them a test can see at all. **The order** — the
@@ -150,26 +189,29 @@ describe("UIGuide", () => {
     ])
     const rendered = ids.filter((id) => known.has(id))
 
-    expect(
-      rendered,
-      "the rendered order stopped matching the groups' order, or a section left its group",
-    ).toEqual([
+    const expected = [
       "instructions",
       ...groups.flatMap((group) => [group, ...SECTIONS_IN_GROUPS[group]]),
       "icons",
-    ])
-
-    // Asserted twice on purpose: the sequence above is what catches a section rendered out of
-    // place, and this names the group it stopped matching, because a diff over the whole document
-    // order says only that *something* moved.
-    for (const [index, group] of groups.entries()) {
-      const start = rendered.indexOf(group)
-      const nextGroup = groups[index + 1]
-      const after = rendered.slice(start + 1)
-      const run = nextGroup ? after.slice(0, after.indexOf(nextGroup)) : after.slice(0, -1)
-
-      expect(run, `${group} renders the wrong sections`).toEqual(SECTIONS_IN_GROUPS[group])
+    ]
+    // One comparison, named: the whole sequence is asserted, and the failure is reported against the
+    // group whose run stopped matching rather than as a diff over every id. An earlier revision
+    // asserted this *and* a per-group run loop; the loop could never fail once this passed — its run
+    // is a slice of the same comparison — so it was deleted rather than kept as a guard that proves
+    // nothing, and its label moved here.
+    const differing = firstDifference(rendered, expected)
+    const at = differing ?? 0
+    const mismatch = differing === undefined ? {} : {
+      rendered: rendered[at],
+      expected: expected[at],
+      where: atFault(expected, at),
     }
+
+    expect(
+      mismatch,
+      `${mismatch.where} renders the wrong sections: ${JSON.stringify(mismatch.rendered)} where ` +
+        `the groups' order requires ${JSON.stringify(mismatch.expected)}`,
+    ).toEqual({})
   })
 
   it("renders one usage block per card, each with a copy control", () => {

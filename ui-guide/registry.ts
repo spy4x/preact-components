@@ -624,23 +624,6 @@ export type PendingNames<P extends PackageId> = (typeof PENDING_DEMOS)[P][number
 /** What a section's cards are keyed by: a covered package's components, or the theme's classes. */
 export type SectionKind = "component" | "class"
 
-/** Heading, blurb and demos of one catalogue section, before it is resolved for rendering. */
-interface SectionSpec {
-  /**
-   * Package the section's demo keys belong to.
-   *
-   * `theme` marks a class section: its keys are card ids and its cards are {@link ClassDemo}s, so
-   * neither the component drift guard nor {@link ComponentNamesOf} applies to them.
-   */
-  package: SectionPackage
-  /** Heading shown above the section. */
-  title: string
-  /** One or two sentences on what the section covers. */
-  blurb: string
-  /** The section's demos, keyed by component name or, for a class section, by card id. */
-  demos: Record<string, Demo>
-}
-
 /**
  * The group a section belongs to, as the reader's reason for looking rather than as a package
  * boundary.
