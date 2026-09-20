@@ -496,6 +496,23 @@ describe("Combobox render cost", () => {
   })
 })
 
+/**
+ * The id the input's `aria-describedby` points at.
+ *
+ * Throws rather than returning `undefined`: a combobox with an empty list that describes nothing is
+ * the failure these tests exist to catch, and it must not read as "no assertion to make here".
+ */
+function describedStatusId(html: string): string {
+  const id = /aria-describedby="([^"]+)"/.exec(html)?.[1]
+  if (id === undefined) throw new Error(`the input describes nothing: ${html.slice(0, 200)}`)
+  return id
+}
+
+/** How many times the exact attribute `id="…"` appears in rendered markup. */
+function countId(html: string, id: string): number {
+  return html.split(`id="${id}"`).length - 1
+}
+
 describe("Combobox markup", () => {
   const items = ["BTC", "ETH", "USD"]
 
@@ -617,12 +634,66 @@ describe("Combobox markup", () => {
 
   it("announces the empty state through a status region the input describes", () => {
     const html = render(<Combobox items={items} onChange={() => {}} query="zzz" />)
-    const statusId = /<span id="([^"]+)" role="status"/.exec(html)?.[1]
+    const statusId = /<[a-z]+ id="([^"]+)" role="status"/.exec(html)?.[1]
 
     expect(statusId).toBeDefined()
     expect(html).toContain('role="status"')
     expect(html).toContain('aria-live="polite"')
     expect(html).toContain(`aria-describedby="${statusId}"`)
+  })
+
+  it("renders the empty message once, in the element the input describes", () => {
+    const html = render(
+      <Combobox items={items} onChange={() => {}} query="zzz" emptyMessage="Nada" />,
+    )
+    const statusId = describedStatusId(html)
+
+    // The regression this pins: the message used to be rendered twice — visibly, and again in a
+    // visually hidden `role="status"` copy that `aria-describedby` pointed at — so one empty
+    // keystroke was both described and announced.
+    const elements = countId(html, statusId)
+    expect(
+      elements,
+      `aria-describedby="${statusId}" resolves to ${elements} elements; it must resolve to exactly 1`,
+    ).toBe(1)
+
+    const copies = html.split("Nada").length - 1
+    expect(
+      copies,
+      `the empty message "Nada" is rendered in ${copies} elements; it must be rendered exactly once`,
+    ).toBe(1)
+
+    const at = html.indexOf(`id="${statusId}"`)
+    const text = html.slice(html.indexOf(">", at) + 1, html.indexOf("<", html.indexOf(">", at) + 1))
+    expect(text, `the described element carries ${JSON.stringify(text)}`).toContain("Nada")
+    expect(html, "a second, sr-only copy would be described and announced twice").not.toContain(
+      "sr-only",
+    )
+  })
+
+  it("renders a JSX empty state in the described element too", () => {
+    const html = render(
+      <Combobox
+        items={items}
+        onChange={() => {}}
+        query="zzz"
+        emptyMessage={() => <em>Nada</em>}
+      />,
+    )
+    const statusId = describedStatusId(html)
+
+    expect(
+      countId(html, statusId),
+      `aria-describedby="${statusId}" resolves to ${countId(html, statusId)} elements`,
+    ).toBe(1)
+
+    // The caller's node is the described element's content, not a sibling the input does not point
+    // at — which is what a hidden copy of the message would be.
+    const opening = html.indexOf(`id="${statusId}"`)
+    const after = html.slice(html.indexOf(">", opening) + 1, html.indexOf(">", opening) + 60)
+    expect(after, `the described element starts with ${JSON.stringify(after)}`).toContain(
+      "<em>Nada</em>",
+    )
   })
 
   it("renders no status region while the list has options", () => {

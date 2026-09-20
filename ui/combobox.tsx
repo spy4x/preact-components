@@ -808,22 +808,22 @@ export function Combobox<T>({
       {
         /*
         The empty message lives outside the `role="listbox"` on purpose: a listbox's children must be
-        `option` or `group`, so a message row inside it is an `aria-required-children` violation. It is
-        rendered twice with one source of truth — visibly for sighted users, and in a `role="status"`
-        live region that `aria-describedby` links to the input so the change is announced. Visually
-        hidden rather than `hidden`, so assistive tech still reads it.
+        `option` or `group`, so a message row inside it is an `aria-required-children` violation. It
+        is rendered **once**, as the visible paragraph, which carries the id the input points at with
+        `aria-describedby` and is itself the `role="status"` live region. A second, visually hidden
+        copy of the same text would be both described and announced, which is how one keystroke ends
+        up reading the message twice.
       */
       }
       {content.emptyMessage !== undefined && (
-        <>
-          <p class="px-3 py-2 text-center text-sm text-gray-500 dark:text-gray-400">
-            {content.emptyMessage}
-          </p>
-          <span id={statusId} role="status" aria-live="polite" class="sr-only">
-            {/* Only text is announced: a JSX empty state is visible but has nothing to read out. */}
-            {typeof content.emptyMessage === "string" ? content.emptyMessage : ""}
-          </span>
-        </>
+        <p
+          id={statusId}
+          role="status"
+          aria-live="polite"
+          class="px-3 py-2 text-center text-sm text-gray-500 dark:text-gray-400"
+        >
+          {content.emptyMessage}
+        </p>
       )}
     </div>
   )
