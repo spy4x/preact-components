@@ -10,10 +10,14 @@
     // The root import map carries no renderer, and every test here asserts on real
     // server-rendered markup rather than on vnode shape. Same pinned version as `ui/`.
     "preact-render-to-string": "npm:preact-render-to-string@6.7.0",
-    // `registry.ts` imports the charts barrel, which re-exports the d3 islands, so this package's
+    // `coverage.ts` imports the charts barrel, which re-exports the d3 islands, so this package's
     // type graph reaches `d3-line-chart.tsx`. d3 left the root import map (see `charts/README.md`),
     // so the specifier has to be declared wherever it is resolved. Pinned to the same version as
     // `charts/deno.json` — one d3 in the workspace.
-    "d3": "npm:d3@7.9.0"
+    "d3": "npm:d3@7.9.0",
+    // `coverage.ts` reads each package's `exports` out of its `deno.json`, and Deno writes those
+    // configs with comments. Declared here rather than in the root map because nothing else in the
+    // workspace parses a config, and `coverage.ts` is not one of this package's published exports.
+    "@std/jsonc": "jsr:@std/jsonc@1.0.2"
   }
 }
