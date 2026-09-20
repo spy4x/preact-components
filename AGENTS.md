@@ -46,7 +46,7 @@ Rules for a package config:
 - `name` is `@preact-components/<directory>` — that is how sibling packages import you.
 - `exports` lists exactly the entry points that exist today. Adding a file does not add an export.
 - Do not add an `imports` block unless you need a specifier the root does not provide. Shared deps
-  (preact, signals, arktype, d3, tailwind, `@std/*`, clsx, tailwind-merge, wouter-preact) live in
+  (preact, signals, arktype, d3, tailwind, `@std/*`, tailwind-merge, wouter-preact) live in
   the root import map so every package resolves one copy.
 - Sibling imports use the member name: `import { cn } from "@preact-components/signals/cn"`.
 
@@ -178,7 +178,6 @@ arktype                          2.2.3
 @std/assert                     1.0.19
 @std/expect                     1.0.20
 @std/testing                    1.0.20
-clsx                             2.1.1
 tailwind-merge                   3.7.0
 d3                               7.9.0
 tailwindcss                     4.1.12

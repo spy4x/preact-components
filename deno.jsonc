@@ -63,8 +63,7 @@
     // Validation — arktype only, never zod
     "arktype": "npm:arktype@2.2.3",
 
-    // Class name helpers
-    "clsx": "npm:clsx@2.1.1",
+    // Class name helper
     "tailwind-merge": "npm:tailwind-merge@3.7.0",
 
     // No d3 here on purpose. This map is ambient for every consumer of every package, and d3 is
