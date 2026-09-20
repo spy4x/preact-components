@@ -891,6 +891,156 @@ async function interactionChecks(devtools: Devtools): Promise<void> {
     styled.outline === "2px",
     `outline-width ${styled.outline} from styles.css, with the canonical route as the last hash`,
   )
+
+  // Last on purpose: a Modal that refuses to close would sit in the top layer over everything, so a
+  // failure here cannot take an unrelated check down with it.
+  await modalChecks(devtools)
+}
+
+/** One key press, described the way the DevTools Protocol wants it. */
+interface KeyPress {
+  /** `KeyboardEvent.key`. */
+  key: string
+  /** `KeyboardEvent.code` — the physical key, which is what a `code`-based handler reads. */
+  code: string
+  /** Virtual key code; Chromium wants it in both the Windows and the native field. */
+  keyCode: number
+}
+
+/** Escape: the dismiss key every overlay in this library is supposed to listen for. */
+const ESCAPE: KeyPress = { key: "Escape", code: "Escape", keyCode: 27 }
+
+/**
+ * Press one key the way a person does — through the browser's own input pipeline.
+ *
+ * `Input.dispatchKeyEvent` is the point of this helper, and the obvious alternative is not
+ * equivalent: `dispatchEvent(new KeyboardEvent(...))` inside the page produces an **untrusted**
+ * event, and the browser skips its own default key handling for those. A synthetic Escape would
+ * prove only that a listener was registered, never that pressing Escape does anything.
+ *
+ * Shared rather than inlined because the keyboard checks still to be written — arrow keys in
+ * Dropdown, Tabs and Calendar, Tab out of a Combobox, Escape on a Tooltip — all need this same pair
+ * of protocol messages.
+ *
+ * @param devtools The connected session; the key goes to whatever the page has focused.
+ * @param press The key to send.
+ */
+async function pressKey(devtools: Devtools, press: KeyPress): Promise<void> {
+  for (const type of ["keyDown", "keyUp"]) {
+    await devtools.send("Input.dispatchKeyEvent", {
+      type,
+      key: press.key,
+      code: press.code,
+      windowsVirtualKeyCode: press.keyCode,
+      nativeVirtualKeyCode: press.keyCode,
+    })
+  }
+}
+
+/**
+ * Modal's keyboard and focus contract, driven in the browser that owns it.
+ *
+ * Three facts that no string-rendering test can reach: the element really enters the top layer, a
+ * real Escape press closes it, and focus goes back to the button that opened it. All three live
+ * behind an effect, a ref and a listener, which is exactly the shape this repository's unit tests
+ * cannot execute.
+ *
+ * The trigger is parked on `globalThis` instead of being re-queried, so the focus assertion compares
+ * element identity: a selector would also match a freshly rendered button that never had focus.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function modalChecks(devtools: Devtools): Promise<void> {
+  const trigger = await devtools.evaluate<{ label: string; focused: boolean }>(`(() => {
+    const card = document.querySelector("#demo-Modal")
+    const button = [...card.querySelectorAll("button")]
+      .find((candidate) => candidate.textContent.trim().startsWith("default"))
+    globalThis.__verifyModalTrigger = button
+    button.focus()
+    return { label: button.textContent.trim(), focused: document.activeElement === button }
+  })()`)
+
+  // `.click()` rather than a real Enter press, and measured rather than assumed: with Enter sent
+  // through `Input.dispatchKeyEvent` on the focused trigger this run read `dialog.open=false` —
+  // headless Chromium does not turn that key press into the activation click a person's Enter
+  // produces. The Escape press below *is* a real key event, because that is the path under test.
+  await devtools.evaluate<null>(`(globalThis.__verifyModalTrigger.click(), null)`)
+  // Wait for `:modal`, not merely for the element: Preact renders the `<dialog>` first and calls
+  // `showModal()` from an effect a tick later, so an element-presence poll returns while the dialog
+  // is still a closed, non-modal node and reads `open === false`.
+  await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `document.querySelector("#demo-Modal dialog")?.matches(":modal") === true`,
+      ),
+    3_000,
+  )
+  await poll(
+    () => devtools.evaluate<boolean>(`document.querySelector("#demo-Modal dialog") !== null`),
+    3_000,
+  )
+
+  const opened = await devtools.evaluate<{
+    open: boolean
+    modal: boolean
+    focusInside: boolean
+    activeLabel: string
+  }>(`(() => {
+    const dialog = document.querySelector("#demo-Modal dialog")
+    const active = document.activeElement
+    return {
+      open: dialog?.open === true,
+      modal: dialog?.matches(":modal") === true,
+      focusInside: dialog !== null && dialog.contains(active),
+      activeLabel: (active?.getAttribute("aria-label") ?? active?.tagName ?? "none").trim(),
+    }
+  })()`)
+  check(
+    "activating Modal's trigger opens a modal dialog and moves focus into it",
+    trigger.focused && opened.open && opened.modal && opened.focusInside,
+    `trigger focused=${trigger.focused}, dialog.open=${opened.open}, ` +
+      `:modal=${opened.modal}, focus now on ${opened.activeLabel}`,
+  )
+
+  await pressKey(devtools, ESCAPE)
+  const closed = await poll(
+    () =>
+      devtools.evaluate<boolean>(`(() => {
+        const dialog = document.querySelector("#demo-Modal dialog")
+        return dialog === null || dialog.open === false
+      })()`),
+    3_000,
+  )
+  // A transition, open → closed, not just the closed half: a dialog that never opened is trivially
+  // closed, and that is precisely what a broken opening step would leave behind.
+  check(
+    "a real Escape key press closes the Modal",
+    opened.open && closed,
+    opened.open
+      ? closed
+        ? "Input.dispatchKeyEvent Escape → the dialog left the top layer"
+        : "the dialog was still open 3s after the key press"
+      : "the dialog was never open, so this proves nothing about Escape",
+  )
+
+  const restored = await poll(
+    () => devtools.evaluate<boolean>(`document.activeElement === globalThis.__verifyModalTrigger`),
+    3_000,
+  )
+  const active = await devtools.evaluate<string>(`(() => {
+    const active = document.activeElement
+    if (active === globalThis.__verifyModalTrigger) return "the trigger"
+    return (active?.tagName ?? "nothing") + " " + (active?.textContent ?? "").trim().slice(0, 40)
+  })()`)
+  // Also a transition: focus has to have left the trigger for the dialog first, or "focus is on the
+  // trigger" would hold for a dialog that never took it.
+  check(
+    "closing the Modal returns focus to the button that opened it",
+    opened.focusInside && restored,
+    opened.focusInside
+      ? `trigger "${trigger.label}" — document.activeElement is ${active}`
+      : "focus never moved into the dialog, so a restore proves nothing",
+  )
 }
 
 /** One side of a dropdown's open/closed state. */
