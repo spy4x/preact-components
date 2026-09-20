@@ -50,8 +50,17 @@ deno task --cwd pages preview    # serve the built directory at /preact-componen
 ```
 
 `verify` needs a Chromium binary (it looks for `chromium-browser`, `chromium`, `google-chrome`,
-`google-chrome-stable`, `chrome`, or `$CHROME_PATH`). Without one it runs the static phase only and
-says so; `deno task --cwd pages verify --static` skips the browser on purpose.
+`google-chrome-stable`, `chrome`, or `$CHROME_PATH`). **Not finding one is a failure:** the run
+records a failed check and exits non-zero, because the browser phase carries every assertion about
+behaviour the markup cannot show, and a run that quietly dropped it reported green for code nothing
+had executed. A `$CHROME_PATH` that does not run fails the same way, and says the configured path
+did not run rather than falling back to some other browser on the machine.
+`deno task --cwd pages verify --static` is the one explicit way to leave the browser phase out.
+
+This is also the repository's browser test path, and CI runs it. `.github/workflows/pages.yml` runs
+`deno task check`, the build and `verify` on every pull request into `main` and on every push to
+`main`, on a runner image that ships Google Chrome. The deploy job waits for that job, so a red
+check or a red `verify` blocks the publish.
 
 ## How a build works
 
@@ -185,8 +194,9 @@ they address component names, which are the library's public API.
 
 ## Verification
 
-`deno task --cwd pages verify` runs both phases against the built artefact; a full run is 47 checks.
-See the PR for the transcript. In short:
+`deno task --cwd pages verify` runs both phases against the built artefact and prints its own
+total — `<passed>/<total> checks passed` on the last line — so read that rather than a number typed
+here, which would go stale the next time a check is added. In short:
 
 - **Static**: base-prefixed `href`/`src` that resolve to files that exist; `body.theme-base`; every
   card prerendered with a `demo-<Name>` id, every one of them carrying a `Usage` block and a
@@ -202,6 +212,11 @@ See the PR for the transcript. In short:
   tests cannot prove the island wired it up — the palette toggle, computed styles proving `preset.css` is live (`h-12` input, `radius-primary`
   card, `text-2xl` KPI value, `0.375rem` bar), and zero console errors, page exceptions or failed
   requests.
+- **Keyboard and focus** (the same browser phase, driven with real key events through
+  `Input.dispatchKeyEvent` rather than a synthesised `KeyboardEvent`, which the browser treats as
+  untrusted and does not act on): Modal's trigger opens a `:modal` dialog and moves focus into it,
+  an Escape press closes it, and focus lands back on the same trigger element. Dropdown, Tabs,
+  Combobox, Tooltip, DateRangePicker and Calendar are still to come.
 
 ## Not here
 

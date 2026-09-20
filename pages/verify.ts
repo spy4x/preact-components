@@ -8,16 +8,21 @@
  * at the same base GitHub Pages uses, drives headless Chromium over the DevTools Protocol, and
  * exercises what the issues ask for: the dropdown, the switches, the icon filter, click-to-copy in
  * the gallery and on every usage block, the form controls of the class chapter, the surface classes
- * as computed styles, the scroll container, the toasts, the deep links, the colour scheme — then
- * reports any console error, page exception or failed request the run produced.
+ * as computed styles, the scroll container, the toasts, the deep links, the colour scheme, and
+ * Modal's keyboard and focus contract — then reports any console error, page exception or failed
+ * request the run produced.
  *
  * ```bash
  * deno task build && deno task verify          # both phases
- * deno task verify --static                    # skip the browser
+ * deno task verify --static                    # leave the browser out on purpose
  * ```
  *
- * Chromium is a local verification tool only: it is not in the Pages workflow, which has no browser
- * assertion to make about a static file deploy.
+ * **This is the repository's browser test path, and CI runs it.** Every unit test in the workspace
+ * renders to an HTML string, so no effect, ref, key press or focus change is executed by any of
+ * them; anything that lives behind one is proven here or nowhere. `.github/workflows/pages.yml`
+ * runs `deno task check`, the build and this script on every pull request into `main` and on every
+ * push to `main`, and the deploy job waits for all three. A missing or unusable browser is a failed
+ * check, not a skip — `--static` is the one explicit way to leave the browser phase out.
  */
 
 import { dirname, join } from "node:path"

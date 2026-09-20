@@ -106,12 +106,26 @@ Runs `fmt:check`, `lint`, `ts:check` and `test`. All four must pass with zero er
 
 | Task                 | Does                                             |
 | -------------------- | ------------------------------------------------ |
-| `deno task check`    | all checks; the only command CI runs             |
+| `deno task check`    | all checks; run by both CIs                      |
 | `deno task fmt`      | format (`fmt:check` in CI)                       |
 | `deno task lint`     | lint (`lint:fix` to apply suggestions)           |
 | `deno task ts:check` | `deno check` over every `.ts`/`.tsx` in the tree |
 | `deno task test`     | run all tests                                    |
 | `deno task fix`      | `lint --fix` then format                         |
+
+Behaviour needs a second pair, in this order:
+
+| Task                           | Does                                   |
+| ------------------------------ | -------------------------------------- |
+| `deno task --cwd pages build`  | build the demo site                    |
+| `deno task --cwd pages verify` | drive the built site in a real browser |
+
+Every test `deno task test` runs renders a component to an HTML string, so none of them executes an
+effect, a ref, a key press, a focus change or a timer. Anything that lives behind one of those is
+proven in a real browser through `pages/verify.ts` and nowhere else. `verify` fails when it finds no
+browser; `--static` is the one explicit way to leave the browser phase out. The GitHub workflow runs
+`check`, the build and `verify` on every pull request into `main`, and the Pages deploy waits for
+them.
 
 If a task fails because a specifier cannot be resolved, run the task that needs the new dependency once
 with network access and commit the updated `deno.lock`. **This is a convenience, not a gate:** a stale
