@@ -48,8 +48,9 @@
     }
   },
   "imports": {
-    // Preact + signals. Versions are pinned to the ones spy4x/template already
-    // resolves, so an app that consumes this library gets a single Preact copy.
+    // Preact + signals, pinned exactly. Whether these match `spy4x/template` and
+    // `spy4x/ts-libs` is not checked by anything here — see AGENTS.md → Dependencies
+    // for the grep that compares lockfiles by hand.
     "preact": "npm:preact@10.28.2",
     "preact/": "npm:/preact@10.28.2/",
     "@preact/signals": "npm:@preact/signals@2.5.1",
