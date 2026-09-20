@@ -62,6 +62,46 @@
  *    of one calling the other's declaration stale. Helpers are also required to be *declared*: a
  *    camelCase value export that no list names is the `applyScrollLock` defect — counted as a
  *    component, published on the worklist, and never accounted for.
+ * 7. **The section partition.** The catalogue is read in groups — {@link catalogueGroups} — and the
+ *    grouping is checked rather than declared. The section is the unit that holds it: {@link
+ *    SectionSpec}'s `group` is typed over {@link GroupId}, so a group that is not one of the five, a
+ *    misspelling of one, and a section left with no group are all `deno check` failures at the
+ *    section whose spec is wrong, and both directions of {@link groupHeadings} — a group with no
+ *    heading, and a heading for no group — are checked the same way. "Every section in exactly one
+ *    group" then needs no list to be exhaustive over, because it is a property of the section
+ *    rather than an entry in a second record: a section cannot be filed twice, and a section the
+ *    union does not name cannot be written at all. {@link catalogueGroups} is derived from those
+ *    specs, so the record the page and the navigation read cannot disagree with them.
+ *
+ *    **What was traded, stated precisely**, because an earlier revision of this comment claimed
+ *    both of these were impossible and the reviewer was right that they are not:
+ *
+ *    * *A groups-first record works.* Deriving {@link SectionId} from the group members and
+ *      annotating `catalogue` over it compiles — the cycle is real only when `satisfies`-ing the
+ *      record against `SectionId`, which is what this design does instead. Nothing about guard 1
+ *      depends on the direction: an invented key fails in both shapes, at the same `TS2353`.
+ *    * *A type-level partition is expressible.* It was not the obvious formulations that were
+ *      unavailable: a union misses a repeat because TypeScript erases duplicate tuple members
+ *      (`["badges", "badges"] as const` is the union `"badges"`, so `Distinct`-style recursion sees
+ *      one member, and the tuple's reported length is 1, not 2), and `readonly SectionId[]` admits
+ *      `[]`. What does work is asserting the *width* of each group — `{ [G in GroupId]: Members[G]
+ *      ["length"] }` against literals — which goes red when a member is dropped, moved into another
+ *      group, or invented. Probed, with the real diagnostics, in the PR body.
+ *
+ *    So the section field is **not** adopted for safety, and the groups-first shape is **not**
+ *    rejected as inexpressible. It is a simpler record: the group is stated once, on the section,
+ *    and `catalogueGroups` is compiled from it. The groups-first shape states membership twice —
+ *    once as the section's position in a list, once as the literal width the partition check needs
+ *    — and its partition guards exist only in the shape where a member list is the source of truth.
+ *    Fewer places for one fact is the whole argument, and it is a small one.
+ *
+ *    What neither shape can see is a section whose `group` is a valid id but the *wrong* one. That
+ *    is a reading matter; `catalogue.test.tsx` checks the rendered order against a hand-written
+ *    sequence, so a wrong filing is caught by a human writing the correction down, not by a type.
+ *    `registry.test.ts` holds the derived record to the partition it claims: every group non-empty,
+ *    and the groups' sections exactly {@link catalogue}'s, which is what a section filed twice
+ *    breaks. A new section costs two edits the compiler demands as one decision — its id in
+ *    {@link SectionId} and its spec, group included — and no third list.
  *
  * Prop vocabulary is guarded one level down, per component: a demo iterates a `Record<Union, …>`
  * keyed by a prop's own union type (`ButtonVariant`, `BadgeColor`, `SpinnerSize`, …) through
@@ -602,21 +642,159 @@ interface SectionSpec {
 }
 
 /**
- * The sections of the catalogue, in render order.
+ * The group a section belongs to, as the reader's reason for looking rather than as a package
+ * boundary.
  *
- * Declaration order is reading order: the `ui` primitives first, then the packages a reader reaches
- * for next — charts, application chrome, CRUD scaffolding — and the state layer last, because it is
- * the one that reads as a concept rather than as a picture. Each fragment is keyed by the components
- * it documents, and the drift guard reads the package from the same entry.
+ * The five ids are the one hand-kept list in the grouping: reading order for the groups themselves,
+ * because a group is a heading and headings do not fall out of a record the way an array order does.
+ * Everything else derives. `foundations` carries the two cards whose whole content is a mark — the
+ * palette and the button surface. `surfaces` is what a page is made of: the things it shows, the
+ * feedback it shows when there is nothing to show, and the two sections that document
+ * `preset.css`'s own class families. `inputs` is one story in two halves, `ui/`'s controlled
+ * primitives and the native controls the same classes style. `data` is the two packages that only
+ * matter once there is a resource. `application` is the app shell an adopter wires first, and
+ * `signals` sits with it because it is the layer that shell is assembled through rather than a
+ * sibling of the component packages.
  */
+export const catalogueGroupIds = [
+  "foundations",
+  "surfaces",
+  "inputs",
+  "data",
+  "application",
+] as const
+
+/** Identifier of a top-level group, e.g. `"inputs"`. */
+export type GroupId = (typeof catalogueGroupIds)[number]
+
+/**
+ * One group as a reader sees it: an id with the heading and the sentence above its sections.
+ *
+ * The headings are hand-written for the same reason the ids are: a heading is prose, and prose
+ * cannot be derived from a key without reading worse than the key. What *is* derived is the
+ * membership, in {@link catalogueGroups} — so the expensive half (which sections are in it) cannot
+ * go stale, and the cheap half is a line of copy.
+ */
+export interface CatalogueGroup {
+  /** The group, e.g. `"inputs"`. */
+  id: GroupId
+  /** Heading shown above the group, e.g. `"Inputs"`. */
+  title: string
+  /** One sentence on what the group collects, and why those sections are read together. */
+  blurb: string
+}
+
+/**
+ * The five groups' headings, in {@link catalogueGroupIds} order.
+ *
+ * Annotated over `Record<GroupId, …>`, so a group added to {@link catalogueGroupIds} without a
+ * heading is a missing property and a heading for a group that does not exist is excess — the same
+ * two-way tie the module doc's guard 7 describes, one level up. Nothing here names a section: the
+ * members come from the specs, so this record cannot lose one.
+ */
+const groupHeadings: Record<GroupId, { title: string; blurb: string }> = {
+  foundations: {
+    title: "Foundations",
+    blurb:
+      "The two cards that are a surface before they are anything else: the palette, and the button.",
+  },
+  surfaces: {
+    title: "Surfaces and page furniture",
+    blurb:
+      "What a page shows and the feedback it shows instead: headings, meters and tables; the loading, error and toast states; and the two sections that document `preset.css`'s own controls and utilities, which is what an app applies to markup the library does not own.",
+  },
+  inputs: {
+    title: "Inputs",
+    blurb:
+      "One story in two halves: `ui/`'s controlled primitives, and the same controls written as the preset's class on a native element.",
+  },
+  data: {
+    title: "Data and resources",
+    blurb:
+      "The two packages that only matter once there is a resource behind the page: the server-rendered charts and the CRUD scaffolding a resource page is rebuilt from.",
+  },
+  application: {
+    title: "App shell",
+    blurb:
+      "The chrome an adopter wires first — navigation, heads, the service-worker prompt — and the signals package it is assembled through, which is a layer rather than a sibling of the component packages.",
+  },
+}
+
+/** The groups with their headings, in render order: what the page and its navigation iterate. */
+export const catalogueGroupsWithHeadings: CatalogueGroup[] = catalogueGroupIds.map((id) => ({
+  id,
+  title: groupHeadings[id].title,
+  blurb: groupHeadings[id].blurb,
+}))
+
+/** Heading, blurb, group and demos of one catalogue section, before it is resolved for rendering. */
+interface SectionSpec {
+  /**
+   * Package the section's demo keys belong to.
+   *
+   * `theme` marks a class section: its keys are card ids and its cards are {@link ClassDemo}s, so
+   * neither the component drift guard nor {@link ComponentNamesOf} applies to them.
+   */
+  package: SectionPackage
+  /**
+   * The group the section is read in.
+   *
+   * Typed over {@link GroupId}, which is what makes the grouping checked rather than declared: an
+   * invented group, a renamed one and a typo are all `deno check` failures naming the section whose
+   * spec is wrong. This is also why "every section appears in exactly one group" needs no separate
+   * list to be exhaustive over — a section's group is a property of the section, so a section
+   * cannot be in two groups, and a section with no `group` does not type-check at all. The trade,
+   * stated plainly: a section cannot be moved between groups without editing its spec, which is one
+   * line in the same file, and the compiler is what demands it.
+   */
+  group: GroupId
+  /** Heading shown above the section. */
+  title: string
+  /** One or two sentences on what the section covers. */
+  blurb: string
+  /** The section's demos, keyed by component name or, for a class section, by card id. */
+  demos: Record<string, Demo>
+}
+
+/**
+ * Identifier of a catalogue section.
+ *
+ * The one hand-kept list of sections, and guard 1 still reads it: `catalogue` is annotated over
+ * this union, so a section id that names nothing fails `deno check` with a `catalogue` property the
+ * record does not have, and a section the union does not name fails with a missing property naming
+ * the id. What changed with the grouping is only *where* the union comes from. It was
+ * `keyof typeof catalogue`, which cannot survive the group being a property of the section: the
+ * annotation that makes `catalogue` total is a reference to the union, and a union derived from the
+ * record the annotation constrains is a cycle TypeScript rejects (`TS2454`/`TS7022`). Writing the
+ * ids out is what breaks it, at the cost of one line the compiler demands in exactly the same
+ * place, for the same edit. The alternative — deriving the union and dropping the totality check —
+ * was rejected: that is guard 1 weakened, and totalling `catalogue` is what makes "a section id
+ * that does not exist" a build failure rather than a test one.
+ */
+export type SectionId =
+  | "badges"
+  | "buttons"
+  | "display"
+  | "feedback"
+  | "inputs"
+  | "fields"
+  | "forms"
+  | "surfaces"
+  | "charts"
+  | "system"
+  | "crud"
+  | "signals"
+
 const catalogue = {
   badges: {
+    group: "foundations",
     package: "ui",
     title: "Badges",
     blurb: "Every palette entry, filled and outlined.",
     demos: badgeDemos,
   },
   buttons: {
+    group: "foundations",
     package: "ui",
     title: "Buttons",
     blurb:
@@ -624,25 +802,31 @@ const catalogue = {
     demos: buttonDemos,
   },
   display: {
+    group: "surfaces",
     package: "ui",
     title: "Display",
-    blurb: "Headings, meters and the table shell.",
+    blurb:
+      "Everything that presents rather than collects: the page title, headings, the table shell, the meters, the card parts, tabs, pagination and the avatar family.",
     demos: displayDemos,
   },
   feedback: {
+    group: "surfaces",
     package: "ui",
     title: "Feedback",
     blurb:
-      "Loading, error and toast surfaces. The overlay-style ones are pinned inside a box here.",
+      "What a page shows while it is busy, empty or broken: spinners and skeletons, the error and empty states, the toast, and the two dialogs. The overlay-style ones are pinned inside a box here.",
     demos: feedbackDemos,
   },
   inputs: {
+    group: "inputs",
     package: "ui",
     title: "Inputs",
-    blurb: "Controlled switches and the dropdown trigger-panel pair.",
+    blurb:
+      "The controlled controls `ui/` owns: switches, the dropdown's trigger-panel pair, and the composite pickers built from them. The `Fields` section below is the text-and-form half of the same story.",
     demos: inputDemos,
   },
   fields: {
+    group: "inputs",
     package: "ui",
     title: "Fields",
     blurb:
@@ -650,6 +834,7 @@ const catalogue = {
     demos: fieldDemos,
   },
   forms: {
+    group: "surfaces",
     package: CLASS_PACKAGE,
     title: "Forms",
     blurb:
@@ -657,6 +842,7 @@ const catalogue = {
     demos: formDemos,
   },
   surfaces: {
+    group: "surfaces",
     package: CLASS_PACKAGE,
     title: "Surfaces and utilities",
     blurb:
@@ -664,6 +850,7 @@ const catalogue = {
     demos: surfaceDemos,
   },
   charts: {
+    group: "data",
     package: "charts",
     title: "Charts",
     blurb:
@@ -671,6 +858,7 @@ const catalogue = {
     demos: chartsDemos,
   },
   system: {
+    group: "application",
     package: "system",
     title: "System",
     blurb:
@@ -678,6 +866,7 @@ const catalogue = {
     demos: systemDemos,
   },
   crud: {
+    group: "data",
     package: "crud",
     title: "CRUD",
     blurb:
@@ -685,16 +874,58 @@ const catalogue = {
     demos: crudDemos,
   },
   signals: {
+    group: "application",
     package: "signals",
     title: "Signals",
     blurb:
       "The state layer. `For` and `Show` are the package's only components; everything else is a factory an app calls itself (`buildModelStore`, `createListState`, `createToastStore`, `useUrlFilters`), so the section is short by design.",
     demos: signalsDemos,
   },
-} as const satisfies Record<string, SectionSpec>
+} as const satisfies Record<SectionId, SectionSpec>
 
-/** Identifier of a catalogue section. */
-export type SectionId = keyof typeof catalogue
+/**
+ * The sections of every group, in reading order: the catalogue's flat order, bucketed.
+ *
+ * Derived rather than declared, in the direction that keeps one edit per section: a section says
+ * which group it belongs to and this record is written from that, so the two cannot disagree and a
+ * new section joins its group by declaring it. Order is kept — each section is appended in
+ * {@link catalogue}'s declaration order, which is the reading order within a group (badges before
+ * buttons, a class section after the `ui/` sections it mirrors).
+ *
+ * The accumulator is annotated because the groups are written out once here and TypeScript cannot
+ * derive a total `Record` from a loop: the annotation is the claim that the loop fills every group,
+ * and the loop's input is the catalogue, so the claim is about the catalogue and not about a second
+ * list. `registry.test.ts` checks what it assumes — every group non-empty, and the sections across
+ * the groups exactly the catalogue's, which is what a section filed twice would break.
+ */
+export const catalogueGroups: Record<GroupId, readonly SectionId[]> = (() => {
+  const grouped: Record<GroupId, SectionId[]> = {
+    foundations: [],
+    surfaces: [],
+    inputs: [],
+    data: [],
+    application: [],
+  }
+
+  // `Object.keys` is what widens the ids to `string`; the cast back is the price of iterating a
+  // record whose keys are already a union of literals.
+  for (const id of Object.keys(catalogue) as SectionId[]) {
+    grouped[catalogue[id].group].push(id)
+  }
+
+  return grouped
+})()
+
+/**
+ * The groups' sections as one array, in group order then declaration order.
+ *
+ * The flattening {@link catalogueSections} is built from, and the reason the page can draw group
+ * headings without a second order to keep in step: it is the groups read back, so the flat render
+ * order and the grouped view are the same list.
+ */
+export const sectionIds: SectionId[] = catalogueGroupIds.flatMap((groupId) => [
+  ...catalogueGroups[groupId],
+])
 
 /** The demos one section registers, keyed by component name. */
 type DemosOf<S extends SectionId> = (typeof catalogue)[S]["demos"]
@@ -705,6 +936,13 @@ export type DemoedName = { [S in SectionId]: keyof DemosOf<S> }[SectionId]
 /** One rendered section: its identity, its copy, the package it documents and its cards. */
 export interface CatalogueSection {
   id: SectionId
+  /**
+   * The group the section is read in.
+   *
+   * Resolved from the spec, so a host rendering its own navigation and the page drawing group
+   * headings read the same value: the one the section itself decided.
+   */
+  group: GroupId
   /** Whether the section's cards are components or theme classes. */
   kind: SectionKind
   /** Heading shown above the section. */
@@ -719,24 +957,30 @@ export interface CatalogueSection {
   names: DemoedName[]
 }
 
-/** The sections in render order, resolved against {@link catalogue}. */
-export const catalogueSections: CatalogueSection[] = (Object.keys(catalogue) as SectionId[]).map(
-  (id) => {
-    const section = catalogue[id]
-    return {
-      id,
-      kind: section.package === CLASS_PACKAGE ? "class" : "component",
-      title: section.title,
-      blurb: section.blurb,
-      package: section.package,
-      packageName: packageSpecifier(section.package),
-      // A section's own fragment is a `Record` over the subset of its package's component names it
-      // documents, so its keys are component names by construction; `Object.keys` is what widens
-      // them to `string`.
-      names: Object.keys(section.demos) as DemoedName[],
-    }
-  },
-)
+/**
+ * The sections in render order, resolved against {@link catalogue}.
+ *
+ * The order is {@link sectionIds}: groups first, declaration order within them, which is the one
+ * order the catalogue keeps. The flat array stays the interface — `pages/`, `routes.ts` and
+ * `verify.ts` all iterate sections — and none of them has to know that the page draws a heading
+ * every few of them.
+ */
+export const catalogueSections: CatalogueSection[] = sectionIds.map((id) => {
+  const section = catalogue[id]
+  return {
+    id,
+    group: section.group,
+    kind: section.package === CLASS_PACKAGE ? "class" : "component",
+    title: section.title,
+    blurb: section.blurb,
+    package: section.package,
+    packageName: packageSpecifier(section.package),
+    // A section's own fragment is a `Record` over the subset of its package's component names it
+    // documents, so its keys are component names by construction; `Object.keys` is what widens them
+    // to `string`.
+    names: Object.keys(section.demos) as DemoedName[],
+  }
+})
 
 /**
  * Names with a demo, in render order — every card the catalogue renders, `ui`'s first.

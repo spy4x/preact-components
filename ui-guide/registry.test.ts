@@ -7,6 +7,9 @@ import * as system from "@preact-components/system"
 import * as ui from "@preact-components/ui"
 import {
   AUTO_PENDING_PACKAGES,
+  catalogueGroupIds,
+  catalogueGroups,
+  catalogueGroupsWithHeadings,
   catalogueNames,
   catalogueSections,
   CLASS_PACKAGE,
@@ -27,6 +30,7 @@ import {
   pendingDemos,
   pendingNamesOf,
   registryDrift,
+  sectionIds,
   SUBPATH_ONLY_HELPERS,
   UI_HELPERS,
 } from "./registry.ts"
@@ -409,6 +413,76 @@ describe("demo registry", () => {
     for (const entry of pendingDemos) {
       for (const name of entry.names) {
         expect(catalogueNames, name).not.toContain(name)
+      }
+    }
+  })
+})
+
+describe("catalogue groups", () => {
+  it("groups every section into exactly one group, and loses none", () => {
+    // The derived record against the sections it was derived from, in both directions: a section
+    // filed into two groups would leave every group non-empty and still be rendered twice, which is
+    // the failure the type-level half cannot see (a section says which group it is in, so it cannot
+    // *express* two — but the bucketing loop is where a copy-paste could double one up).
+    const grouped = catalogueGroupIds.flatMap((id) => catalogueGroups[id])
+
+    expect(new Set(grouped).size, "a section is filed into two groups").toBe(grouped.length)
+    expect([...grouped].sort()).toEqual([...catalogueSections.map((s) => s.id)].sort())
+    expect(sectionIds).toEqual(grouped)
+  })
+
+  it("leaves no group empty and names no group the record does not have", () => {
+    // Read from `catalogueGroupIds` rather than from `Object.keys(catalogueGroups)`: the latter
+    // would run zero times once the list was emptied, which is the mutation this is meant to catch.
+    expect(catalogueGroupIds.length).toBeGreaterThan(1)
+
+    for (const id of catalogueGroupIds) {
+      expect(catalogueGroups[id], `${id} is not a group`).toBeDefined()
+      expect(catalogueGroups[id].length, `${id} has no sections`).toBeGreaterThan(0)
+    }
+
+    expect(Object.keys(catalogueGroups).sort()).toEqual([...catalogueGroupIds].sort())
+  })
+
+  it("keeps the group vocabulary to the five ids, renaming or dropping none", () => {
+    // The expected set is written out here — five literals, in render order — and it is the *only*
+    // thing in this test that can fail: everything else is arithmetic over the value under test.
+    //
+    // The first version of this test also parsed the committed source for the `catalogueGroupIds`
+    // declaration and compared the ids it found against `[...catalogueGroupIds]`, which is the same
+    // array read twice and therefore a tautology — it could not fail, and the reviewer said so. What
+    // actually fired was the literal below; this removes the paragraph that claimed otherwise.
+    //
+    // Order is part of the vocabulary: the groups are a reading order, so a reordering is a change
+    // to the product, not a refactor.
+    expect(catalogueGroupIds).toEqual([
+      "foundations",
+      "surfaces",
+      "inputs",
+      "data",
+      "application",
+    ])
+  })
+
+  it("heads every group, in the order the group ids declare", () => {
+    expect(catalogueGroupsWithHeadings.length).toBe(catalogueGroupIds.length)
+    expect(catalogueGroupsWithHeadings.map((group) => group.id)).toEqual([...catalogueGroupIds])
+
+    for (const group of catalogueGroupsWithHeadings) {
+      expect(group.title.length, group.id).toBeGreaterThan(0)
+      expect(group.blurb.length, `${group.id} has no blurb`).toBeGreaterThan(40)
+    }
+  })
+
+  it("files every group's sections under the group they are rendered in", () => {
+    // The tie between the record and the resolved sections: `CatalogueSection.group` is what the
+    // page buckets on, so a section whose spec said one group and resolved to another would render
+    // under a heading its own data contradicts.
+    for (const id of catalogueGroupIds) {
+      for (const sectionId of catalogueGroups[id]) {
+        const section = catalogueSections.find((candidate) => candidate.id === sectionId)
+        expect(section, `${sectionId} is in a group but not in the catalogue`).toBeDefined()
+        expect(section?.group, sectionId).toBe(id)
       }
     }
   })
