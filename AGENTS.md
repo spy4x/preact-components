@@ -8,17 +8,18 @@ its own PR, each owning exactly one top-level directory.
 
 ## Package layout
 
-| Directory   | Contents                                                                     |
-| ----------- | ---------------------------------------------------------------------------- |
-| `theme/`    | design-system CSS + tailwind preset                                          |
-| `icons/`    | merged icon set, `+index.tsx`                                                |
-| `ui/`       | Badge, Table, Dropdown, ToggleSwitch, OnOffButtons, PageTitle, Toast, Button |
-| `system/`   | Shell, Nav, Auth, StateInit, SEOHead, Breadcrumb, Menu, SWUpdater            |
-| `charts/`   | server-rendered SVG kit (scales) + d3 wrappers                               |
-| `cn/`       | `cn()` — class-name join + Tailwind conflict resolution                      |
-| `signals/`  | For/Show/map, buildModelStore, useListState, useUrlFilters                   |
-| `crud/`     | CrudList, CrudEditor, AssociationEditor                                      |
-| `ui-guide/` | live component catalogue route                                               |
+| Directory   | Contents                                                                          |
+| ----------- | --------------------------------------------------------------------------------- |
+| `theme/`    | design-system CSS + tailwind preset                                               |
+| `icons/`    | merged icon set, `+index.tsx`                                                     |
+| `ui/`       | Badge, Table, Dropdown, ToggleSwitch, OnOffButtons, PageTitle, Toast, Button      |
+| `system/`   | Shell, Nav, Auth, StateInit, SEOHead, Breadcrumb, Menu, SWUpdater                 |
+| `charts/`   | server-rendered SVG kit (scales) + d3 wrappers                                    |
+| `cn/`       | `cn()` — class-name join + Tailwind conflict resolution                           |
+| `signals/`  | For/Show/map, buildModelStore, useListState, useUrlFilters                        |
+| `crud/`     | CrudList, CrudEditor, AssociationEditor                                           |
+| `ui-guide/` | live component catalogue route                                                    |
+| `pages/`    | demo app (GitHub Pages site and the browser checks in `verify.ts`), not published |
 
 ## What belongs in this library
 
