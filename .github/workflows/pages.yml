@@ -1,27 +1,38 @@
 name: Pages
 
-# GitHub Pages can only be deployed by a GitHub workflow — Woodpecker cannot reach it. The
-# repository's normal CI stays in `.woodpecker.yml`; this file exists for the deploy alone.
+# Two things live here, and the second is why this file is no longer deploy-only.
+#
+# GitHub Pages can only be deployed by a GitHub workflow — Woodpecker cannot reach it. Woodpecker
+# still runs `deno task check` on the same events, but it runs it in `denoland/deno:2.9.7`, which
+# has no browser, so it cannot run `pages/verify.ts`. That script is where every assertion about
+# keyboard, focus and effects lives, because this repository's unit tests render to a string and can
+# see none of it. GitHub's `ubuntu-latest` image ships Google Chrome, which `verify.ts` already
+# looks for by name, so the browser phase runs here and nowhere else.
+#
+# The deploy therefore waits for all three: a red `check`, a red build or a red `verify` blocks the
+# publish.
 on:
+  pull_request:
+    branches: [main]
   push:
     branches: [main]
   workflow_dispatch:
 
-# Least privilege: Pages needs to write the deployment and mint an OIDC token for it.
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-# One deploy at a time, and never cancel one in flight: a half-published artefact is worse than a
-# slightly stale one.
+# A deploy in flight is never cancelled — a half-published artefact is worse than a slightly stale
+# one — so deploys keep the one non-cancelling `pages` group. Pull-request runs get a group of their
+# own, per ref, and do cancel: queueing a review run behind a deploy would make this the slowest
+# check on the pull request, and a superseded commit's run is of no interest.
 concurrency:
-  group: pages
-  cancel-in-progress: false
+  group: ${{ github.event_name == 'pull_request' && format('pages-pr-{0}', github.ref) || 'pages' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  build:
+  verify:
     runs-on: ubuntu-latest
+    # Least privilege: this job reads the repository and nothing else. Writing the deployment and
+    # minting its OIDC token belong to the deploy job below.
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -29,23 +40,43 @@ jobs:
         with:
           deno-version: v2.9.7
 
-      - uses: actions/configure-pages@v5
+      # Printed so a runner image that stopped shipping Chrome is one line in the log rather than a
+      # puzzle further down. `verify` fails on a missing browser either way.
+      - name: Report the browser the verify step will drive
+        run: google-chrome --version
 
-      # `deno task check` runs in Woodpecker on every push; this job only has to prove that the
-      # artefact builds, and the build type-checks the catalogue itself before emitting anything.
+      - name: Check
+        run: deno task check
+
       - name: Build the demo
         run: deno task --cwd pages build
 
-      - uses: actions/upload-pages-artifact@v3
+      - name: Verify the demo in a real browser
+        run: deno task --cwd pages verify
+
+      # Pages artefacts are for the deploy alone: a pull request neither publishes nor needs one.
+      - name: Upload the Pages artefact
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
         with:
           path: pages/dist
 
   deploy:
-    needs: build
+    needs: verify
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    # The two write permissions exist only here, in the one job that publishes.
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      # Kept, and moved out of the build job: it is the step that needs `pages: write`, and the
+      # build never read its outputs — the demo's base path is a constant in `pages/src/site.ts`.
+      - uses: actions/configure-pages@v5
+
       - id: deployment
         uses: actions/deploy-pages@v4

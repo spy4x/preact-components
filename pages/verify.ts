@@ -1034,6 +1034,12 @@ async function modalChecks(devtools: Devtools): Promise<void> {
   })()`)
   // Also a transition: focus has to have left the trigger for the dialog first, or "focus is on the
   // trigger" would hold for a dialog that never took it.
+  //
+  // What this check does *not* guard, measured rather than assumed: the component's own
+  // `restoreFocus`. Deleting the `target.focus()` call from `ui/modal.tsx`, rebuilding and
+  // re-running left this green, because Chromium itself returns focus to the element that was
+  // focused before `showModal()` when a dialog closes. So this asserts the behaviour a person
+  // experiences; it cannot tell the component's restore from the platform's.
   check(
     "closing the Modal returns focus to the button that opened it",
     opened.focusInside && restored,
