@@ -23,17 +23,6 @@ export {
   describeCalendarDay,
 } from "./calendar.tsx"
 export {
-  addDaysIso,
-  isoDateInTz,
-  isoToday,
-  isValidTimeZone,
-  monthFirstWeekday,
-  monthLabel,
-  shiftMonth,
-  startOfMonth,
-  weekdayLabels,
-} from "./date.ts"
-export {
   breadcrumbFromCanonical,
   type BreadcrumbListItem,
   type BreadcrumbListJsonLd,

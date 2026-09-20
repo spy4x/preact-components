@@ -27,8 +27,9 @@ Extracted from `antonshubin.com`, `mig` and `financy`.
 | `BlogImageEnhancer` | `blog-image-enhancer` | `containerSelector?`, `imageSelector?`, `fallbackAlt?`, `onOpen?`      |
 
 Helpers, all pure: `head.ts` (breadcrumb derivation from a canonical URL, `createHeadStore`,
-`humanizeSlug`), `date.ts` (ISO day and month arithmetic, weekday and month labels), and
-`resolveImage` (click target → lightbox image).
+`humanizeSlug`) and `resolveImage` (click target → lightbox image). `date.ts`'s ISO day and month
+arithmetic is private to this package — `Calendar`'s own dependency, kept out of the barrel and out
+of `exports`.
 
 ```tsx
 import { SEOHead } from "@preact-components/system"

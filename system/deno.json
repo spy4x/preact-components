@@ -6,7 +6,6 @@
     "./head": "./head.ts",
     "./seo-head": "./seo-head.tsx",
     "./sw-updater": "./sw-updater.tsx",
-    "./date": "./date.ts",
     "./calendar": "./calendar.tsx",
     "./blog-image-enhancer": "./blog-image-enhancer.tsx"
   },
