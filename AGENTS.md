@@ -202,6 +202,20 @@ no ambient context the host did not hand over.
 This is what lets `spy4x/template` and any other app share the same `ui/` package without the
 library knowing which app it is running in.
 
+### The `crud/` data contract
+
+`crud/` assumes three things about any app that uses it:
+
+- a row is never really deleted — it carries a `deletedAt` date, toggled through an Archive and
+  Restore action (soft delete);
+- the store is shaped like `buildModelStore` from `signals/`; `crud/store.ts` describes the slice it
+  reads as two structural interfaces, `CrudListStore` and `CrudEditorStore`, which a real
+  `buildModelStore` satisfies with no adapter;
+- one `canChange` flag decides whether the current user may edit.
+
+This is the standard for every app built from `spy4x/template`. See `crud/README.md` for the exact
+store interfaces.
+
 ## Validation
 
 **arktype only. No zod, no valibot, no hand-rolled validators.** Use `type(...)` from `arktype` for
