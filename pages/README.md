@@ -15,7 +15,7 @@ workspace member only so it can import its sibling packages the way an app does.
 | Piece             | Where it comes from                                                                                                       |
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | The catalogue     | `UIGuide` from `@preact-components/ui-guide`, unmodified — instructions, every section of the catalogue, the icon gallery |
-| The host page     | `src/app.tsx` — header, a component index with deep links, the colour-scheme switch, the footer                           |
+| The host page     | `src/app.tsx` — header, a sticky route landing bar, a section rail with deep links, the colour-scheme switch, the footer  |
 | The styles        | `theme/tokens.css` + `theme/preset.css`, compiled by Tailwind into one stylesheet                                         |
 | The interactivity | `src/+main.tsx`, one Preact island that hydrates the prerendered markup                                                   |
 
@@ -92,10 +92,34 @@ https://spy4x.github.io/preact-components/#toggle-switch           the legacy de
 
 The grammar lives in the library — `@preact-components/ui-guide/routes`, described in
 `ui-guide/README.md` — because an app registering the guide inherits the same URLs. The host page
-consumes it: `src/app.tsx` calls `parseRoute(location.hash)` on load and on every `hashchange`, marks
-the demo's card with `data-deep-link` (outlined by `styles.css`), scrolls it into view and rewrites
-`document.title`; a section route scrolls the section; an index match clears the mark and does
-nothing else, which is what keeps the browser's own anchors (`#top`, `#icons`) working.
+consumes it: `src/app.tsx`'s `useRoute()` calls `parseRoute(location.hash)` on load and on every
+`hashchange`, and the rail — which is also what writes the links — marks the demo's card with
+`data-deep-link` (outlined by `styles.css`), scrolls it into view and rewrites `document.title`; a
+section route scrolls the section; an index match clears the mark and does nothing else, which is
+what keeps the browser's own anchors (`#top`, `#icons`) working.
+
+The page is laid out as a multipage document rather than one long scroll, and `styles.css` carries
+the three numbers that shape it:
+
+- **A sticky route bar** (`data-route-landing`, `top-14`, one row tall) states the route the reader
+  is on — a section's title, blurb and demo count, or the demo's canonical URL. It exists because a
+  hash route lands mid-document: without it, `#/inputs` scrolls to a bare `<h2>`. It is a live region,
+  because a hash change is not a navigation a screen reader would otherwise announce.
+- **A rail** lists the twelve sections as links to their own pages — `#/inputs` is the primary
+  affordance — with each section's demos behind a `<details>` the route opens. Below `lg` it is a
+  wrapped row of section links with only the active section's demos; from `lg` up it is a sticky
+  scrolling column beside the catalogue. Every demo link is in the prerendered document either way,
+  which is what `verify.ts`'s "every emitted route is a link in the prerendered navigation" reads.
+- **A 65ch prose measure** (`--prose-measure`) for every paragraph, and a card grid of
+  `repeat(auto-fill, minmax(min(100%, 20rem), 1fr))` in which a card holding a table or a dropdown
+  panel spans the row.
+
+The grid, the measure and the sticky offsets are the host's rules over containers `ui-guide/` owns —
+`UIGuide` renders `grid grid-cols-1` and its own page padding. That is a deliberate trade: the rail
+belongs to the demo, not to the library, and a component that hard-coded a two-column grid would
+impose this page's layout on every app that registers it. The cost is structural selectors
+(`section[id] > div.grid`, `section[id] > div > h2 + p`) that reach into markup this package does not
+own, and a package-side change to those containers would need the rules revisited with it.
 
 Why hash rather than per-route prerendered files:
 
@@ -111,8 +135,8 @@ Why hash rather than per-route prerendered files:
 - `uiGuideRoute.path` (`/ui-guide`) is still intentionally _not_ used: the descriptor is a route an
   app registers in its own router, and this page _is_ the app. The demo's URL is the site root.
 
-Every chip in the component index is such a link, and the `copy` button beside it puts that
-component's JSX on the clipboard — the same snippets the catalogue shows under "Usage".
+Every link in the rail is such a route, and the `copy` chip beside each demo puts that component's
+JSX on the clipboard — the same snippets the catalogue shows under "Usage".
 
 ### The route echo
 
