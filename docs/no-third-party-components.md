@@ -65,6 +65,11 @@ glyph of ours is annotated `from template` and all six are stock Heroicons v1 pa
 shared upstream, not a port. See [`icons/README.md`](../icons/README.md) and "Deferred decisions"
 below for what the icon set's provenance actually is.
 
+> **Depends on PR #98 not landing first.** This paragraph asserts that `roley` is not an icon source.
+> PR #98 (`docs/issues-28-15-78`, open) adds a `roley` row to `icons/README.md`'s source table. If it
+> merges first, the sentence above is false and must be reconciled — see the staleness note in
+> "Deferred decisions" that restates it.
+
 ## Behaviour is implemented, not imported
 
 This is what the policy costs, and it is not optional:
@@ -125,29 +130,49 @@ refusal.
 Stated precisely, because an overclaimed guard is worse than no guard. **The short version: nothing
 mechanical enforces this policy. CI does not check it. Review does.**
 
-### The one mechanical gate, and what it does not gate
+### The one mechanical gate — and how narrow it is
 
 `deno task ts:check` runs `deno check` over every `.ts`/`.tsx` file in the tree
-(`infra/scripts/type-check.ts`), so an import of a specifier that no config declares fails the build.
+(`infra/scripts/type-check.ts`). **It fails only on a _bare_ specifier that no config declares**, with
+`TS2307: not a dependency and not in import map`. That is the whole of its coverage.
 
-That is a real gate, and it is a gate on **resolution, not on permission**. Adding an excluded
-component library to an import map resolves, type-checks and passes. It does not stop anything.
+It is a gate on **resolution, not on permission**, in two distinct ways:
+
+1. **A bare specifier added to an import map resolves, type-checks and passes.** The map is the
+   permission, and nothing else checks the map.
+2. **A scheme-qualified specifier written inline in a source file is declared in no config at all and
+   passes green.** Observed:
+
+   ```console
+   $ printf 'import * as Radix from "npm:@radix-ui/react-dialog@1.0.0"\nexport const p = Radix\n' > probe/inline-dep.ts
+   $ deno check probe/inline-dep.ts
+   Download https://registry.npmjs.org/@radix-ui/react-dialog/-/react-dialog-1.0.0.tgz
+   ...
+   Check probe/inline-dep.ts          # exit 0
+   ```
+
+   No config declares it, both audit greps below are clean on it, and the suite is unaffected — an
+   excluded component library reached this way passes CI entirely. It is also invisible to the greps,
+   which read configs only, and to the lockfile-as-record, which simply gains the entries.
+
+So the gate does not mean "a dependency must be declared to be permitted". It means only that Deno
+cannot resolve a bare word nobody mapped. Treat it as a resolvability check, not a permission check.
 
 ### There is no lockfile gate — the lockfile is a record, not a check
 
 It is tempting to assume the committed `deno.lock` is the enforcement mechanism. **It is not.**
 
-Deno keeps the lockfile in sync automatically and does not fail when it is stale. Observed, under CI
-emulation on Deno 2.9.7 (the version in the CI image):
+Deno keeps the lockfile in sync automatically and does not fail when it is stale. Observed under CI
+emulation — `CI=true DENO_DIR=$(mktemp -d)` — on Deno 2.9.7 (the version in the CI image):
 
 ```console
 $ # change an existing pin, clsx 2.1.1 -> 2.1.0, then run the check task
-$ deno task check
+$ CI=true DENO_DIR=$(mktemp -d) deno task check
 Download https://registry.npmjs.org/clsx/-/clsx-2.1.0.tgz
-checks passed                      # exit 0 — and deno.lock was rewritten to 2.1.0
+Checks passed!                     # exit 0 — and deno.lock was rewritten to 2.1.0
 
 $ # add a dependency absent from the lock, imported by a source file
-$ deno check src/mod.ts
+$ CI=true DENO_DIR=$(mktemp -d) deno check src/mod.ts
 Download https://registry.npmjs.org/lodash
 Check src/mod.ts                   # exit 0 — lock rewritten to include lodash
 ```
@@ -174,7 +199,8 @@ is no `.githooks` directory, and `.github/workflows/` holds only `pages.yml`.
 
 The consequence, stated plainly: **a PR could add `@radix-ui/react-dialog` to the root import map at
 an exact pin, and every check in CI would pass.** The policy would be broken and the build would be
-green.
+green. The same is true of the inline form above — here it is written in the map, which is the shape
+both greps are built to see; the inline form in a source file is not seen by either.
 
 What stops that is review. These two greps are how a reviewer checks it:
 
@@ -199,9 +225,10 @@ missed entirely by the key form:
 }
 ```
 
-Both were mutation-tested. Every family in the table above, plus an indirect key, was injected into a
-scratch copy: the key form detects the 12 direct ones and misses the indirect key; the value form
-detects all 13. A check that cannot fail is not a check.
+Both were mutation-tested. Every family in the table above — all 14 forms, each as a direct key and
+each behind an innocent key — was injected into a scratch copy: the key form detects all 14 direct
+formulations and misses the indirect key; the value form detects all 14 in both positions. A check that
+cannot fail is not a check.
 
 ### What the greps cover — a named subset, not a proof of absence
 
@@ -210,15 +237,24 @@ Be clear about the shape of this check, because it is weaker than it looks:
 - **They cover a named list of families** — exactly the rows of the "Not allowed" table, and nothing
   else. A component library outside that list is not caught, and the list is not the whole space of
   component libraries. **This is not a proof that no component library is present.**
+- **They inspect configs only** — every `deno.json`/`deno.jsonc`. **This is the significant hole:** a
+  specifier written inline in a source file is declared in no config, so neither grep can see it:
+
+  ```ts
+  import * as Radix from "npm:@radix-ui/react-dialog@1.0.0"
+  ```
+
+  No config declares it, the greps are clean, and `deno check` passes it (see "The one mechanical gate"
+  above). A forbidden dependency can enter the tree this way and pass every check CI runs. Configs are
+  where imports are _conventionally_ declared in this repository — an inline scheme-qualified specifier
+  would be caught in review as a style violation long before the policy question — but that is a review
+  argument, not a mechanical one.
 - **Vendored source is invisible to both.** A library's implementation copied into the tree declares
   no specifier and no version, so no grep over configs finds it. Review-only — and the reason "vendored
   copies count" is stated as part of the rule.
 - **A URL value form is not caught.** `"x": "https://esm.sh/@radix-ui/react-dialog@1.0.0"` matches
   neither grep, because neither looks for the `https:` form. The same goes for any other CDN or a
   `git+https` specifier.
-- **They inspect configs only** — every `deno.json`/`deno.jsonc`. That is where a specifier has to be
-  declared, which is why it is enough in practice, but a source file importing an absolute URL bypasses
-  both.
 - **`material` is a broad token, deliberately.** It catches `@material/web`, `material-components-web`
   and `@mui/material`, and it would also flag an innocent package whose name merely contains
   `material`. On this tree both greps are clean, so the tradeoff costs nothing today; a false positive
@@ -242,13 +278,6 @@ If that is not enough for a given change, the fix is a real allowlist check — 
 config's `imports` against a committed allowlist, and that reads `deno.lock` with an assertion instead
 of trusting it. **That test does not exist yet, and neither does any frozen-lockfile gate.** Adding one
 is a legitimate follow-up; claiming the current state is that check is not.
-
-### The honest summary
-
-CI pins versions exactly and review enforces the rest. If that is not enough for a given change,
-the fix is a real allowlist check — a test that parses every config's `imports` against a committed
-allowlist — and that test does not exist yet. Adding one is a legitimate follow-up; claiming the
-current greps are that check is not.
 
 ## Deferred decisions
 
@@ -285,6 +314,13 @@ this:
 > #98 not having landed.** If #98 merges first, whichever lands second must reconcile this section
 > against it — the icon list is deliberately not restated from memory here, and `icons/README.md`
 > remains the authority either way.
+>
+> **The same applies to the `roley` paragraph earlier in this document** — "`roley` and `evisa` are
+> design-intent sources, never code sources" — which states that `roley` is _not_ among the icon
+> sources and explains its six geometry-identical glyphs as shared Heroicons v1 upstream. If #98 merges
+> first and adds `roley` as a source, that sentence becomes false, and the explanation of the six
+> glyphs needs re-reading rather than deleting: the shared-upstream reasoning may still hold, but it
+> would no longer be the whole story. Reconcile that paragraph too, not only the counts above.
 
 **This document does not resolve that question and must not be read as doing so.** No licence is
 asserted for the icon set, none is inferred, and no glyph has been changed, replaced or re-drawn.
