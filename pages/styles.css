@@ -71,14 +71,20 @@ section[id] {
  *
  * `.measure` is the host's own prose. The catalogue renders its intro and its section blurbs itself
  * and the host owns no markup there, so those two also carry the measure — as deliberately shallow
- * structural selectors: `section > div > h2 + p` and `section > div > div > h2 + p` reach the
- * section heading and the icon gallery's, and a card's own heading is three levels down, inside its
- * `<article>`, so nothing inside a card is matched.
+ * structural selectors: `section > div > :is(h1…h6) + p` reaches the section heading and the icon
+ * gallery's, and a card's own heading is three levels down, inside its `<article>`, so nothing
+ * inside a card is matched.
+ *
+ * The heading level is matched as a set rather than as `h2`, because the level belongs to
+ * `ui-guide/`: `feat/ui-guide-groups` demotes a section heading to `h3` under its group heading, and
+ * a `+ h2` sibling combinator would stop matching every section blurb there — silently, since the
+ * measure is a `max-width` and nothing renders differently except the line length. Measured with that
+ * change on top: 12 of 12 section blurbs at 521px with this selector, 0 of 12 at 960px without it.
  */
 .measure,
-main section[id] > div > h2 + p,
-main section[id] > div > div > h2 + p,
-main section > div > h1 + p {
+main section[id] > div > :is(h1, h2, h3, h4, h5, h6) + p,
+main section[id] > div > div > :is(h1, h2, h3, h4, h5, h6) + p,
+main section > div > :is(h1, h2, h3, h4, h5, h6) + p {
   max-width: var(--prose-measure);
 }
 
@@ -86,10 +92,11 @@ main section > div > h1 + p {
  * The card grid.
  *
  * `UIGuide` renders its cards as `grid grid-cols-1` — one column, forty rows — and the host styles
- * that container rather than editing `ui-guide/`, which this wave does not own. `auto-fit` with a
- * per-section minimum fills the column at a readable card width instead of stretching one card
- * across it, and the `min(100%, …)` guard is what keeps a narrow viewport at one full-width column
- * rather than a card wider than the page.
+ * that container rather than editing `ui-guide/`, which this wave does not own. `auto-fill` with a
+ * minimum card width lays the column out at a readable card size instead of stretching one card
+ * across it, and leaves a section with a single card on one track rather than a full-width card; the
+ * `min(100%, …)` guard is what keeps a narrow viewport at one full-width column rather than a card
+ * wider than the page.
  */
 main section[id] > div.grid {
   grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--card-min)), 1fr));
