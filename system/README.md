@@ -29,8 +29,7 @@ Extracted from `antonshubin.com`, `mig` and `financy`.
 | `BlogImageEnhancer` | `blog-image-enhancer` | `containerSelector?`, `imageSelector?`, `fallbackAlt?`, `onOpen?`      |
 
 Helpers, all pure: `head.ts` (breadcrumb derivation from a canonical URL, `createHeadStore`,
-`humanizeSlug`), `date.ts` (ISO day and month arithmetic, weekday and month labels),
-`flatten-routes.ts` (children-first, most-specific-first ordering for a `wouter` `<Switch>`), and
+`humanizeSlug`), `date.ts` (ISO day and month arithmetic, weekday and month labels), and
 `resolveImage` (click target → lightbox image).
 
 ```tsx
@@ -112,7 +111,7 @@ arrive after hydration still work, and cleanup is complete.
 `deno task check` from the repository root runs this suite with the rest of the workspace. Every
 component is rendered with `preact-render-to-string` and asserted on real markup: emitted head tag
 sets, breadcrumb hiding and `aria-current`, the dual-mode swap, a 42-cell grid for a month that
-starts on any weekday, the theme cycle, and route ordering.
+starts on any weekday, and the theme cycle.
 
 Where a component only works against a browser API, that API is a sealed boundary the tests can
 replace: `SWUpdater`'s listeners are driven by a fake registration, and `resolveImage` by an

@@ -35,14 +35,6 @@ export {
   weekdayLabels,
 } from "./date.ts"
 export {
-  flattenRoutes,
-  hrefSegments,
-  orderedRoutes,
-  type RouteNode,
-  routeSpecificity,
-  sortRoutes,
-} from "./flatten-routes.ts"
-export {
   breadcrumbFromCanonical,
   type BreadcrumbListItem,
   type BreadcrumbListJsonLd,
