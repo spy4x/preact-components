@@ -436,6 +436,66 @@ describe("ids and aria-activedescendant", () => {
   })
 })
 
+/**
+ * An `items` array that counts the element reads made through it.
+ *
+ * `indexOf` walks the array by reading every slot, so a per-row scan shows up as a read count that
+ * grows with the square of the item count — the property the single-pass index has to keep, and one
+ * that is visible from the order of operations alone. No clock, no warm-up, no flake: a timing
+ * assertion is not evidence of complexity.
+ */
+function countingItems(values: string[]): { items: string[]; reads: () => number } {
+  let reads = 0
+  const items = new Proxy(values, {
+    get(target, property, receiver) {
+      if (typeof property === "string" && /^\d+$/.test(property)) reads++
+      return Reflect.get(target, property, receiver)
+    },
+  })
+  return { items, reads: () => reads }
+}
+
+/** Distinct labels, so a fixture is reproducible and every index is addressable. */
+function labels(count: number): string[] {
+  return Array.from({ length: count }, (_, index) => `Item ${index}`)
+}
+
+/** Element reads the whole combobox makes rendering `count` items with the last one selected. */
+function readsPerRender(count: number): number {
+  const { items, reads } = countingItems(labels(count))
+  render(<Combobox items={items} value={items[count - 1]} onChange={() => {}} />)
+  return reads()
+}
+
+describe("Combobox render cost", () => {
+  it("reads the item list once per render, not once per option", () => {
+    const size = 200
+    const total = readsPerRender(size)
+
+    // A single pass is `2n + 1`: one walk to build the index, one to filter, one read of the
+    // selected item. The bound leaves room; a per-row scan is `n² + 2n + 1` here, 40 401.
+    expect(
+      total,
+      `rendering ${size} options read the item array ${total} times; an index built in one pass reads it O(n)`,
+    ).toBeLessThanOrEqual(3 * size)
+  })
+
+  it("stays linear when the list grows", () => {
+    const small = readsPerRender(100)
+    const large = readsPerRender(300)
+    const ratio = large / small
+
+    // Three times the items must not cost nine times the reads: 100 -> 300 items is 9x for a
+    // per-row scan and 3x for a single pass.
+    expect(
+      ratio,
+      `3x the items cost ${
+        ratio.toFixed(2)
+      }x the item reads (${small} -> ${large}); a per-row scan costs 9x`,
+    ).toBeLessThanOrEqual(6)
+  })
+})
+
 describe("Combobox markup", () => {
   const items = ["BTC", "ETH", "USD"]
 
@@ -479,6 +539,23 @@ describe("Combobox markup", () => {
     expect(html.match(/aria-selected="false"/g)?.length).toBe(2)
     const selected = /<li[^>]*aria-selected="true"[^>]*>(ETH)<\/li>/.exec(html)
     expect(selected).not.toBeNull()
+  })
+
+  it("marks the selected rows through the item index, duplicates included", () => {
+    const html = render(<Combobox items={["BTC", "ETH", "BTC"]} value="BTC" onChange={() => {}} />)
+
+    // `items.indexOf("BTC")` reports 0 for both rows, and the index keeps that first-occurrence
+    // rule: the duplicate rows stay selected exactly as they did before the lookup changed.
+    expect(html.match(/aria-selected="true"/g)?.length).toBe(2)
+  })
+
+  it("treats a NaN selection as no selection, as indexOf does", () => {
+    const html = render(
+      <Combobox items={[1, Number.NaN, 3]} value={Number.NaN} onChange={() => {}} />,
+    )
+
+    expect(html.match(/aria-selected="true"/g)).toBeNull()
+    expect(html.match(/aria-selected="false"/g)?.length).toBe(3)
   })
 
   it("paints the selected option, and leaves the unselected ones on the base text colour", () => {
