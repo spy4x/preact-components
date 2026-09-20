@@ -344,11 +344,16 @@ function SkeletonStatusDemo() {
  * The two dialog tones, each behind its own trigger.
  *
  * Mounting is opening: the component renders `null` while closed, and the press mounts it, which is
- * what makes the effect call `showModal()`. **The dialog's actual behaviour is browser-only and is
- * not covered by any committed test** — `showModal`, top-layer stacking, focus containment, the
- * backdrop hit-test, Escape, scroll-lock compensation and focus restoration are the browser's, and
- * this repository has no DOM harness. What is covered is what the component renders and the pure
+ * what makes the effect call `showModal()`. The dialog's actual behaviour is the browser's, and this
+ * repository has no DOM harness, so the unit suite covers what the component renders and the pure
  * decisions it makes (`isBackdropClick`, `escapeCloseStrategy`, `shouldRetargetFocus`).
+ *
+ * **This card is what the browser checks drive.** `deno task --cwd pages verify` presses the first
+ * trigger below, asserts the dialog is `:modal` with focus inside it, sends a real Escape key press
+ * and asserts the dialog closed and focus returned to that trigger. That `:modal` reading is what
+ * says the dialog reached the top layer at all. Still covered by no committed test: what two
+ * dialogs open at once do to each other's stacking order, focus containment, the backdrop
+ * hit-test, scroll-lock compensation and the refused-Escape path.
  */
 function ModalDemo() {
   const open = useSignal<DialogTone | null>(null)

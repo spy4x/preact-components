@@ -8,16 +8,21 @@
  * at the same base GitHub Pages uses, drives headless Chromium over the DevTools Protocol, and
  * exercises what the issues ask for: the dropdown, the switches, the icon filter, click-to-copy in
  * the gallery and on every usage block, the form controls of the class chapter, the surface classes
- * as computed styles, the scroll container, the toasts, the deep links, the colour scheme — then
- * reports any console error, page exception or failed request the run produced.
+ * as computed styles, the scroll container, the toasts, the deep links, the colour scheme, and
+ * Modal's keyboard and focus contract — then reports any console error, page exception or failed
+ * request the run produced.
  *
  * ```bash
  * deno task build && deno task verify          # both phases
- * deno task verify --static                    # skip the browser
+ * deno task verify --static                    # leave the browser out on purpose
  * ```
  *
- * Chromium is a local verification tool only: it is not in the Pages workflow, which has no browser
- * assertion to make about a static file deploy.
+ * **This is the repository's browser test path, and CI runs it.** Every unit test in the workspace
+ * renders to an HTML string, so no effect, ref, key press or focus change is executed by any of
+ * them; anything that lives behind one is proven here or nowhere. `.github/workflows/pages.yml`
+ * runs `deno task check`, the build and this script on every pull request into `main` and on every
+ * push to `main`, and the deploy job waits for all three. A missing or unusable browser is a failed
+ * check, not a skip — `--static` is the one explicit way to leave the browser phase out.
  */
 
 import { dirname, join } from "node:path"
@@ -219,8 +224,24 @@ async function readAsset(href: string): Promise<string> {
   }
 }
 
-/** Find a Chromium to drive, or `undefined` when the machine has none. */
-async function findChromium(): Promise<string | undefined> {
+/** The outcome of looking for a browser to drive. */
+interface ChromiumLookup {
+  /** The executable to drive, or `undefined` when nothing ran. */
+  executable?: string
+  /** Evidence for the check: what ran, or what was tried and did not. */
+  detail: string
+}
+
+/**
+ * Find a Chromium to drive.
+ *
+ * `CHROME_PATH`, when set, is the only candidate: a configured path that does not run is a
+ * misconfiguration, and silently falling back to some other browser on the machine would hide it.
+ * The returned detail says which of the two happened, because the caller turns it into a check.
+ *
+ * @returns The executable and how it was found, or no executable and why there is none.
+ */
+async function findChromium(): Promise<ChromiumLookup> {
   const configured = Deno.env.get("CHROME_PATH")
   const candidates = configured ? [configured] : CHROMIUM_CANDIDATES
 
@@ -231,22 +252,28 @@ async function findChromium(): Promise<string | undefined> {
         stdout: "null",
         stderr: "null",
       }).output()
-      if (success) return candidate
+      if (success) return { executable: candidate, detail: `${candidate} --version ran` }
     } catch {
       // Not installed; try the next one.
     }
   }
 
-  return undefined
+  return {
+    detail: configured
+      ? `CHROME_PATH is set to \`${configured}\` and that path did not run`
+      : `none of ${CHROMIUM_CANDIDATES.join(", ")} ran — set CHROME_PATH, ` +
+        `or pass --static to skip the browser on purpose`,
+  }
 }
 
 /** Drive the page in headless Chromium and assert the interactions. */
 async function browserPhase(): Promise<void> {
-  const chromium = await findChromium()
-  if (!chromium) {
-    console.log("\nno Chromium found — browser phase skipped (set CHROME_PATH to run it)")
-    return
-  }
+  // A missing browser is a failure, not a skip. This phase carries every assertion about behaviour
+  // the markup cannot show, so a run that quietly dropped it and still exited 0 reported a green
+  // check for code nothing had executed. `--static` is the one explicit way to leave it out.
+  const { executable: chromium, detail } = await findChromium()
+  check("a Chromium binary is available for the browser phase", chromium !== undefined, detail)
+  if (!chromium) return
 
   console.log(`\nbrowser phase — ${chromium}`)
 
@@ -297,6 +324,15 @@ async function browserPhase(): Promise<void> {
       "no console errors, exceptions or failed requests",
       errors.length === 0,
       errors.length === 0 ? `${server.url} loaded clean` : errors.join(" | "),
+    )
+  } catch (error) {
+    // A throw half-way through used to take `report()` with it: the process exited non-zero with a
+    // stack trace and printed none of the checks that had already passed. Recorded as one more
+    // failed check instead, so the run still reports and the reason sits in the same list.
+    check(
+      "the browser phase ran to completion",
+      false,
+      error instanceof Error ? error.message : String(error),
     )
   } finally {
     browser?.kill("SIGKILL")
@@ -860,6 +896,158 @@ async function interactionChecks(devtools: Devtools): Promise<void> {
     styled.outline === "2px",
     `outline-width ${styled.outline} from styles.css, with the canonical route as the last hash`,
   )
+
+  // Last on purpose: a Modal that refuses to close would sit in the top layer over everything, so a
+  // failure here cannot take an unrelated check down with it.
+  await modalChecks(devtools)
+}
+
+/** One key press, described the way the DevTools Protocol wants it. */
+interface KeyPress {
+  /** `KeyboardEvent.key`. */
+  key: string
+  /** `KeyboardEvent.code` — the physical key, which is what a `code`-based handler reads. */
+  code: string
+  /** Virtual key code; Chromium wants it in both the Windows and the native field. */
+  keyCode: number
+}
+
+/** Escape: the dismiss key every overlay in this library is supposed to listen for. */
+const ESCAPE: KeyPress = { key: "Escape", code: "Escape", keyCode: 27 }
+
+/**
+ * Press one key the way a person does — through the browser's own input pipeline.
+ *
+ * `Input.dispatchKeyEvent` is the point of this helper, and the obvious alternative is not
+ * equivalent: `dispatchEvent(new KeyboardEvent(...))` inside the page produces an **untrusted**
+ * event, and the browser skips its own default key handling for those. A synthetic Escape would
+ * prove only that a listener was registered, never that pressing Escape does anything.
+ *
+ * Shared rather than inlined because the keyboard checks still to be written — arrow keys in
+ * Dropdown, Tabs and Calendar, Tab out of a Combobox, Escape on a Tooltip — all need this same pair
+ * of protocol messages.
+ *
+ * @param devtools The connected session; the key goes to whatever the page has focused.
+ * @param press The key to send.
+ */
+async function pressKey(devtools: Devtools, press: KeyPress): Promise<void> {
+  for (const type of ["keyDown", "keyUp"]) {
+    await devtools.send("Input.dispatchKeyEvent", {
+      type,
+      key: press.key,
+      code: press.code,
+      windowsVirtualKeyCode: press.keyCode,
+      nativeVirtualKeyCode: press.keyCode,
+    })
+  }
+}
+
+/**
+ * Modal's keyboard and focus contract, driven in the browser that owns it.
+ *
+ * Three facts that no string-rendering test can reach: the element really enters the top layer, a
+ * real Escape press closes it, and focus goes back to the button that opened it. All three live
+ * behind an effect, a ref and a listener, which is exactly the shape this repository's unit tests
+ * cannot execute.
+ *
+ * The trigger is parked on `globalThis` instead of being re-queried, so the focus assertion compares
+ * element identity: a selector would also match a freshly rendered button that never had focus.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function modalChecks(devtools: Devtools): Promise<void> {
+  const trigger = await devtools.evaluate<{ label: string; focused: boolean }>(`(() => {
+    const card = document.querySelector("#demo-Modal")
+    const button = [...card.querySelectorAll("button")]
+      .find((candidate) => candidate.textContent.trim().startsWith("default"))
+    globalThis.__verifyModalTrigger = button
+    button.focus()
+    return { label: button.textContent.trim(), focused: document.activeElement === button }
+  })()`)
+
+  // `.click()` rather than a real Enter press, and measured rather than assumed: with Enter sent
+  // through `Input.dispatchKeyEvent` on the focused trigger this run read `dialog.open=false` —
+  // headless Chromium does not turn that key press into the activation click a person's Enter
+  // produces. The Escape press below *is* a real key event, because that is the path under test.
+  await devtools.evaluate<null>(`(globalThis.__verifyModalTrigger.click(), null)`)
+  // Wait for `:modal`, not merely for the element: Preact renders the `<dialog>` first and calls
+  // `showModal()` from an effect a tick later, so an element-presence poll returns while the dialog
+  // is still a closed, non-modal node and reads `open === false`.
+  await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `document.querySelector("#demo-Modal dialog")?.matches(":modal") === true`,
+      ),
+    3_000,
+  )
+
+  const opened = await devtools.evaluate<{
+    open: boolean
+    modal: boolean
+    focusInside: boolean
+    activeLabel: string
+  }>(`(() => {
+    const dialog = document.querySelector("#demo-Modal dialog")
+    const active = document.activeElement
+    return {
+      open: dialog?.open === true,
+      modal: dialog?.matches(":modal") === true,
+      focusInside: dialog !== null && dialog.contains(active),
+      activeLabel: (active?.getAttribute("aria-label") ?? active?.tagName ?? "none").trim(),
+    }
+  })()`)
+  check(
+    "activating Modal's trigger opens a modal dialog and moves focus into it",
+    trigger.focused && opened.open && opened.modal && opened.focusInside,
+    `trigger focused=${trigger.focused}, dialog.open=${opened.open}, ` +
+      `:modal=${opened.modal}, focus now on ${opened.activeLabel}`,
+  )
+
+  await pressKey(devtools, ESCAPE)
+  const closed = await poll(
+    () =>
+      devtools.evaluate<boolean>(`(() => {
+        const dialog = document.querySelector("#demo-Modal dialog")
+        return dialog === null || dialog.open === false
+      })()`),
+    3_000,
+  )
+  // A transition, open → closed, not just the closed half: a dialog that never opened is trivially
+  // closed, and that is precisely what a broken opening step would leave behind.
+  check(
+    "a real Escape key press closes the Modal",
+    opened.open && closed,
+    opened.open
+      ? closed
+        ? "Input.dispatchKeyEvent Escape → the dialog left the top layer"
+        : "the dialog was still open 3s after the key press"
+      : "the dialog was never open, so this proves nothing about Escape",
+  )
+
+  const restored = await poll(
+    () => devtools.evaluate<boolean>(`document.activeElement === globalThis.__verifyModalTrigger`),
+    3_000,
+  )
+  const active = await devtools.evaluate<string>(`(() => {
+    const active = document.activeElement
+    if (active === globalThis.__verifyModalTrigger) return "the trigger"
+    return (active?.tagName ?? "nothing") + " " + (active?.textContent ?? "").trim().slice(0, 40)
+  })()`)
+  // Also a transition: focus has to have left the trigger for the dialog first, or "focus is on the
+  // trigger" would hold for a dialog that never took it.
+  //
+  // What this check does *not* guard, measured rather than assumed: the component's own
+  // `restoreFocus`. Deleting the `target.focus()` call from `ui/modal.tsx`, rebuilding and
+  // re-running left this green, because Chromium itself returns focus to the element that was
+  // focused before `showModal()` when a dialog closes. So this asserts the behaviour a person
+  // experiences; it cannot tell the component's restore from the platform's.
+  check(
+    "closing the Modal returns focus to the button that opened it",
+    opened.focusInside && restored,
+    opened.focusInside
+      ? `trigger "${trigger.label}" — document.activeElement is ${active}`
+      : "focus never moved into the dialog, so a restore proves nothing",
+  )
 }
 
 /** One side of a dropdown's open/closed state. */
@@ -1087,7 +1275,9 @@ class Devtools {
 }
 
 await staticPhase()
-if (!Deno.args.includes("--static")) {
+if (Deno.args.includes("--static")) {
+  console.log("\n--static — browser phase left out on purpose")
+} else {
   await browserPhase()
 }
 report()

@@ -192,10 +192,14 @@ review reading a diff, not CI failing a build.
 
 ### Nothing in CI checks the allowlist
 
-`deno task check` is the only command CI runs (`.woodpecker.yml`), and it is exactly `fmt:check`,
-`lint`, `ts:check` and `test`. There is no dependency-allowlist test, no audit script, no a11y gate
-and no git hook anywhere in this repository: `infra/scripts/` contains `type-check.ts` alone, there
-is no `.githooks` directory, and `.github/workflows/` holds only `pages.yml`.
+Woodpecker (`.woodpecker.yml`) runs `deno task check`, which is exactly `fmt:check`, `lint`,
+`ts:check` and `test`. The GitHub workflow (`.github/workflows/pages.yml`) runs `deno task check`
+as well, plus `deno task --cwd pages build` and `deno task --cwd pages verify`, on every pull
+request into `main` and before every deploy. Not one of those looks at a dependency: `verify` drives
+the built demo in a browser and asserts what the page does, never what it was built from. There is
+no dependency-allowlist test, no audit script, no a11y gate and no git hook anywhere in this
+repository: `infra/scripts/` contains `type-check.ts` alone, there is no `.githooks` directory, and
+`.github/workflows/` holds only `pages.yml`.
 
 The consequence, stated plainly: **a PR could add `@radix-ui/react-dialog` to the root import map at
 an exact pin, and every check in CI would pass.** The policy would be broken and the build would be

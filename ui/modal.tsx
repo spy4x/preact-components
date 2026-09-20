@@ -85,13 +85,21 @@ export interface ModalProps {
  * ({@link isBackdropClick}, {@link backdropClickDismisses}, {@link scrollLockPadding},
  * {@link shouldRetargetFocus}, {@link restoreFocus}, {@link dialogTitleId}) and the colocated suite
  * covers them exhaustively plus the rendered markup. **Browser-verified only, and therefore not
- * covered by that suite — and by no committed test in this repository:** that `showModal()` really
- * traps focus, that the `::backdrop` click reaches the predicate, that `body { padding-right }`
- * really removes the shift, that focus returns to the trigger, and that a refused Escape really keeps
- * the dialog open where the platform honours `closedby` (see the support contract below).
- * `pages/verify.ts` drives headless Chromium over CDP but contains no modal,
- * dialog or backdrop assertion at all (`grep -icE "modal|dialog|backdrop" pages/verify.ts` is `0`), so
- * it is not the place these are checked. They were verified with a throwaway CDP probe that was
+ * covered by that suite:** that `showModal()` really traps focus, that the `::backdrop` click reaches
+ * the predicate, that `body { padding-right }` really removes the shift, that Escape closes the
+ * dialog, that focus returns to the trigger, and that a refused Escape really keeps the dialog open
+ * where the platform honours `closedby` (see the support contract below).
+ *
+ * Three of those are now committed checks, run in CI: `deno task --cwd pages verify` drives the
+ * guide's `Modal` demo in headless Chromium and asserts that the trigger opens a `:modal` dialog,
+ * that focus moves into it, that a **real** Escape key press (`Input.dispatchKeyEvent`, not a
+ * synthesised `KeyboardEvent`, which the browser treats as untrusted) closes it, and that focus
+ * lands back on the same trigger element. The last of those asserts the behaviour rather than this
+ * component's part in it: measured, deleting the `target.focus()` call below leaves the check green,
+ * because Chromium restores focus to the pre-`showModal()` element by itself.
+ *
+ * **Still covered by no committed test:** focus trapping, the backdrop click, the scroll-lock
+ * compensation, and the refused-Escape path. Those were verified with a throwaway CDP probe that was
  * deleted rather than committed, which means nothing in the tree reproduces those numbers — treat
  * them as reported, not as re-runnable. A consumer can check their own dialog the same way.
  *
