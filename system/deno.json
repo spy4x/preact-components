@@ -5,7 +5,6 @@
     ".": "./+index.ts",
     "./head": "./head.ts",
     "./seo-head": "./seo-head.tsx",
-    "./breadcrumb": "./breadcrumb.tsx",
     "./sw-updater": "./sw-updater.tsx",
     "./date": "./date.ts",
     "./calendar": "./calendar.tsx",

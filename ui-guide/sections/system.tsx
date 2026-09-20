@@ -28,9 +28,8 @@
  */
 
 import { BlogImageEnhancer } from "@preact-components/system/blog-image-enhancer"
-import { Breadcrumb } from "@preact-components/system/breadcrumb"
 import { Calendar } from "@preact-components/system/calendar"
-import type { Crumb, PageHead } from "@preact-components/system/head"
+import type { PageHead } from "@preact-components/system/head"
 import { seoHeadTags } from "@preact-components/system/seo-head"
 import {
   type RegistrationLike,
@@ -42,13 +41,6 @@ import { ThemeToggle, themeToggleLabel } from "@preact-components/system/theme-t
 import { Button } from "@preact-components/ui"
 import { useSignal } from "@preact/signals"
 import type { DemoFragment } from "../registry.ts"
-
-/** Three crumbs, because the component renders nothing for a trail shorter than two. */
-const trail: readonly Crumb[] = [
-  { name: "Docs", href: "/docs" },
-  { name: "Components", href: "/docs/components" },
-  { name: "Breadcrumb" },
-]
 
 /** A page head with every optional tag populated, so the card shows the whole set, not a subset. */
 const pageHead: PageHead = {
@@ -314,12 +306,6 @@ function ThemeToggleDemo() {
 }
 
 export const systemDemos = {
-  Breadcrumb: {
-    summary:
-      "Renders its trail from props: the last crumb is the current page (`aria-current`), the ones before it are links. A trail of fewer than two crumbs renders nothing.",
-    snippet: `<Breadcrumb items={[{ name: "Docs", href: "/docs" }, { name: "Breadcrumb" }]} />`,
-    render: () => <Breadcrumb items={trail} />,
-  },
   Calendar: {
     summary:
       "Six-week month grid. **Dual-mode**: with no `onSelectDate` every cell is an `<a href>` and a month arrow with nothing to show is a `<span>` rather than a dead link; supplying the callback turns the cells into `<button>`. `today` and `timeZone` are props, so a render can be pinned — this card passes `2026-03-10` and `UTC` and reads no clock. A date missing from `slotsByDate` has no availability, a `0` is fully booked, and the two are visually alike but carry different accessible labels. Cells also show today, past dates, dates outside the window, and a scarcity dot at or below `lowSlotsThreshold`.",

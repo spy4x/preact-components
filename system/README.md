@@ -22,7 +22,6 @@ Extracted from `antonshubin.com`, `mig` and `financy`.
 | Component           | Subpath               | Ports / key props                                                      |
 | ------------------- | --------------------- | ---------------------------------------------------------------------- |
 | `SEOHead`           | `seo-head`            | `title`, `description`, `canonical`, `ogImage?`, `jsonLd?`, `noindex?` |
-| `Breadcrumb`        | `breadcrumb`          | `items`, `label?`, `separator?`                                        |
 | `SWUpdater`         | `sw-updater`          | `scriptUrl?`, `reload?`, `onUpdate?`, `onError?`                       |
 | `Calendar`          | `calendar`            | `monthAnchor`, `minDate`, `maxDate`, `slotsByDate`, `onSelectDate?`    |
 | `ThemeToggle`       | `theme-toggle`        | `mode`, `onChange`, `placeholder?`                                     |
@@ -33,8 +32,7 @@ Helpers, all pure: `head.ts` (breadcrumb derivation from a canonical URL, `creat
 `resolveImage` (click target → lightbox image).
 
 ```tsx
-import { Breadcrumb, SEOHead } from "@preact-components/system"
-import { breadcrumbsFromCanonical } from "@preact-components/system/head"
+import { SEOHead } from "@preact-components/system"
 
 <SEOHead
   title="Widgets — Acme"
@@ -43,7 +41,6 @@ import { breadcrumbsFromCanonical } from "@preact-components/system/head"
   siteName="Acme"
   ogImage="https://acme.example/og/widgets.png"
 />
-<Breadcrumb items={breadcrumbsFromCanonical(page.canonical, page.title)} />
 ```
 
 `SEOHead` renders a fragment of `<title>`, `<meta>`, `<link>` and one `<script type=
@@ -52,8 +49,9 @@ same set as data for a head pipeline that is not a component tree, and it is wha
 on.
 
 The JSON-LD `@graph` always ends with a `BreadcrumbList` derived from the canonical URL, so
-structured data and the visible trail cannot disagree. It is skipped when the trail would be the
-root entry alone, and the whole script tag is skipped when the graph is empty.
+structured data agrees with a breadcrumb trail the host renders from the same
+`breadcrumbsFromCanonical` helper (`head.ts`). It is skipped when the trail would be the root entry
+alone, and the whole script tag is skipped when the graph is empty.
 
 ## The dual-mode contract
 
@@ -110,8 +108,8 @@ arrive after hydration still work, and cleanup is complete.
 
 `deno task check` from the repository root runs this suite with the rest of the workspace. Every
 component is rendered with `preact-render-to-string` and asserted on real markup: emitted head tag
-sets, breadcrumb hiding and `aria-current`, the dual-mode swap, a 42-cell grid for a month that
-starts on any weekday, and the theme cycle.
+sets, the dual-mode swap, a 42-cell grid for a month that starts on any weekday, and the theme
+cycle.
 
 Where a component only works against a browser API, that API is a sealed boundary the tests can
 replace: `SWUpdater`'s listeners are driven by a fake registration, and `resolveImage` by an

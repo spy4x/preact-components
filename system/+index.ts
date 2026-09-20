@@ -14,7 +14,6 @@ export {
   type LightboxImage,
   resolveImage,
 } from "./blog-image-enhancer.tsx"
-export { Breadcrumb, type BreadcrumbProps } from "./breadcrumb.tsx"
 export {
   Calendar,
   type CalendarDay,
