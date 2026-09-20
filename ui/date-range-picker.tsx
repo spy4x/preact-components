@@ -21,7 +21,9 @@ export interface DateRangePickerLabels {
   /**
    * Accessible name of the panel, applied as `aria-label` on it. The trigger takes its name from
    * its own visible text instead — WCAG 2.5.3 needs the accessible name to contain the visible
-   * label, and an `aria-label` here would replace the range the user sees. Same split as `Dropdown`.
+   * label, and an `aria-label` here would replace the range the user sees. Same split as
+   * `Dropdown`, which spells it out as a required prop: `triggerNamedByContent` is this case, and
+   * `triggerLabel` is the icon-trigger case this component does not have.
    */
   menuLabel: string
   /** Trigger text while no range is chosen. */
