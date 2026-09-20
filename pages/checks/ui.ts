@@ -176,15 +176,22 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
  * opening step leaves behind.
  *
  * Every key is a real press through `Input.dispatchKeyEvent`, and the stray click is a real
- * press-and-release through `Input.dispatchMouseEvent` at viewport coordinates. `.click()` appears
- * in three places and for one reason: opening the menu the first time, reopening it in
- * {@link reopen}, and activating a menu item. A real Enter press on a focused button does not
- * become an activation click in headless Chromium — what the Modal checks measured on a trigger,
- * and what a probe run of this file measured again on a focused `role="menuitem"` button, which
- * left the menu open at `aria-expanded="true"` with focus still on the item. So `.click()` stands
- * in for the step the browser will not perform. The consequence worth naming: the keyboard path to
- * *activating* an item belongs to the browser, and nothing here proves it, while every other key
- * this issue is about — the arrows, Home, End, Escape, Tab — is proven by a real press.
+ * press-and-release through `Input.dispatchMouseEvent` at viewport coordinates.
+ *
+ * `.click()` stands in for activation in five places: the open-and-close check presses the trigger
+ * twice, the focus-move check presses it once, {@link reopen} presses it once per reopening, and
+ * the pointer half of item activation presses an item. The reason is one measurement, made twice:
+ * a real **Enter** press on a focused button does not become an activation click in headless
+ * Chromium. The Modal checks found that on a trigger, and a probe run of this file found it again
+ * on a focused `role="menuitem"` button, which stayed at `aria-expanded="true"` with focus on the
+ * item.
+ *
+ * **Space is different, and it is the key to reach for.** A real Space press through the same
+ * helper *does* activate a focused menu item: the menu closes and focus goes back to the trigger,
+ * which is what the Space check below asserts. So the honest statement of what is unproven here is
+ * narrow — Enter as this helper sends it, on a button, in this browser — and not "keyboard
+ * activation". Every other key this issue is about, the arrows with Home and End, Escape and Tab,
+ * is proven by a real press.
  *
  * The card holds four dropdowns; this drives the first, the icon trigger named "Row actions" over
  * three items. Its two link items point at this page's own `#inputs` route, so nothing here
@@ -353,8 +360,80 @@ async function dropdownChecks(devtools: Devtools): Promise<void> {
       : "the menu was never open, so activating an item proves nothing",
   )
 
+  // The keyboard half of the same thing, and the last key in the issue's table that nothing else
+  // here proves. Space and Enter are not interchangeable in this browser: a real Space press on a
+  // focused button produces the activation click, a real Enter press does not — measured both
+  // ways, and the reason the checks above reach for `.click()`.
+  const beforeSpace = await reopen(devtools)
+  await pressKey(devtools, "End")
+  const onLastItem = await devtools.evaluate<DropdownState>(DROPDOWN_STATE)
+  await pressKey(devtools, "Space")
+  const closedBySpace = await poll(
+    () => devtools.evaluate<boolean>(`${DROPDOWN_STATE}.hidden === true`),
+    3_000,
+  )
+  const afterSpace = await devtools.evaluate<DropdownState>(DROPDOWN_STATE)
+  check(
+    "a real Space press activates the focused Dropdown item and closes the menu",
+    beforeSpace.expanded === "true" && onLastItem.inPanel && closedBySpace && afterSpace.onTrigger,
+    !onLastItem.inPanel
+      ? "focus was never on an item, so the key press proves nothing about activating one"
+      : `End then Space on "${onLastItem.label}": aria-expanded ${beforeSpace.expanded} → ` +
+        `${afterSpace.expanded}, focus on ` +
+        (afterSpace.onTrigger ? "the trigger" : `"${afterSpace.label}"`),
+  )
+
   await strayClickCheck(devtools)
   await triggerNameCheck(devtools)
+}
+
+/** Where a real mouse press actually landed, recorded by the page as the browser dispatched it. */
+interface Hit {
+  /** `true` when the event's target is inside the panel. */
+  insidePanel: boolean
+  /** `true` when the target is inside a menu item. */
+  onItem: boolean
+  /** `true` when the target is anywhere inside the component. */
+  insideRoot: boolean
+  /** The target's tag name, for the message. */
+  tag: string
+  /** Where the browser says the press happened. */
+  x: number
+  y: number
+}
+
+/** The point to click, derived from the panel's geometry, with the derivation's own evidence. */
+interface Spot {
+  x: number
+  y: number
+  /** Height of the padding strip between the panel's top edge and the first item's. */
+  strip: number
+  /** `true` when the point is inside the viewport, where a dispatched click can reach it. */
+  inViewport: boolean
+  /** What `elementFromPoint` says is there, before the click. */
+  insidePanel: boolean
+  onItem: boolean
+  tag: string
+}
+
+/**
+ * Wait until the page has stopped scrolling.
+ *
+ * The click point is computed in one protocol round trip and dispatched in the next, so anything
+ * that moves the page in between turns a correct measurement into a click that lands elsewhere.
+ * `focus()` scrolls an element into view when it has to, and this component moves focus from an
+ * effect and from a deferred read, so a scroll can arrive later than the call that caused it.
+ *
+ * @param devtools The connected session.
+ */
+async function settledScroll(devtools: Devtools): Promise<void> {
+  let previous = Number.NaN
+  await poll(async () => {
+    const current = await devtools.evaluate<number>(`Math.round(globalThis.scrollY)`)
+    const settled = current === previous
+    previous = current
+    return settled
+  }, 3_000)
 }
 
 /**
@@ -367,38 +446,66 @@ async function dropdownChecks(devtools: Devtools): Promise<void> {
  * reports when focus leaves the page altogether. A menu that treats the two alike vanishes when a
  * person clicks a few pixels off the entry they wanted, and leaves their focus on `<body>`.
  *
- * The point clicked is measured rather than assumed: `elementFromPoint` says what is really there,
- * and the check asserts it was inside the panel and not inside an item before believing anything
- * that follows.
+ * Two things this check must never do, both learned from a review that caught it doing them. It
+ * must not guess a coordinate: the point is derived from the panel's own top edge and the first
+ * item's, so "the padding" is a measured strip rather than a hopeful two pixels, and the
+ * derivation is asserted before it is used. And it must not report a click it did not land as a
+ * broken menu: the page records the target of the real `mousedown` as the browser dispatches it,
+ * so a press that arrived somewhere else says so in its own words. Both failures look identical
+ * from the outside — the menu is shut and focus is on the page — and only one of them is this
+ * component's fault.
  *
  * @param devtools The connected session, on a hydrated page.
  */
 async function strayClickCheck(devtools: Devtools): Promise<void> {
-  // The coordinates are viewport pixels, so the panel has to be on screen for the click to land
-  // where the measurement says it will.
-  await devtools.evaluate<null>(
-    `(globalThis.__verifyDropdown.trigger.scrollIntoView({ block: "center" }), null)`,
-  )
   const before = await reopen(devtools)
-  const spot = await devtools.evaluate<{
-    x: number
-    y: number
-    insidePanel: boolean
-    onItem: boolean
-    tag: string
-  }>(`(() => {
+  // Centre the panel rather than the trigger: the panel is what gets clicked, and the coordinates
+  // are viewport pixels, so it has to be on screen and it has to have stopped moving.
+  await devtools.evaluate<null>(
+    `(globalThis.__verifyDropdown.panel.scrollIntoView({ block: "center" }), null)`,
+  )
+  await settledScroll(devtools)
+
+  const spot = await devtools.evaluate<Spot>(`(() => {
     const { panel } = globalThis.__verifyDropdown
-    const rect = panel.getBoundingClientRect()
-    const x = Math.round(rect.left + rect.width / 2)
-    const y = Math.round(rect.top + 2)
+    const item = panel.querySelector('[role="menuitem"]')
+    const panelRect = panel.getBoundingClientRect()
+    // Everything between the panel's own top edge and the first item's is padding by construction,
+    // whatever the utilities happen to be, so the midpoint of that strip is the safest point in it.
+    const strip = item === null ? 0 : item.getBoundingClientRect().top - panelRect.top
+    const x = Math.round(panelRect.left + panelRect.width / 2)
+    const y = Math.round(panelRect.top + strip / 2)
     const target = document.elementFromPoint(x, y)
     return {
       x,
       y,
+      strip,
+      inViewport: x >= 0 && y >= 0 && x < globalThis.innerWidth && y < globalThis.innerHeight,
       insidePanel: target !== null && panel.contains(target),
       onItem: target !== null && target.closest('[role="menuitem"]') !== null,
       tag: target === null ? "nothing" : target.tagName,
     }
+  })()`)
+  const derived = spot.strip >= 2 && spot.inViewport && spot.insidePanel && !spot.onItem
+
+  // One-shot, capture phase, installed before the press: this is the browser's own answer to
+  // "what did that click hit", which no later re-reading of the point can give once the menu has
+  // closed and the panel stopped being displayed.
+  await devtools.evaluate<null>(`(() => {
+    const { panel, root } = globalThis.__verifyDropdown
+    globalThis.__verifyStrayHit = null
+    document.addEventListener("mousedown", (event) => {
+      const target = event.target
+      globalThis.__verifyStrayHit = {
+        insidePanel: panel.contains(target),
+        onItem: target !== null && target.closest('[role="menuitem"]') !== null,
+        insideRoot: root.contains(target),
+        tag: target === null ? "nothing" : target.tagName,
+        x: event.clientX,
+        y: event.clientY,
+      }
+    }, { capture: true, once: true })
+    return null
   })()`)
 
   for (const type of ["mousePressed", "mouseReleased"]) {
@@ -415,16 +522,30 @@ async function strayClickCheck(devtools: Devtools): Promise<void> {
   // so give it that tick before reading, rather than letting the result depend on the timing.
   await poll(() => devtools.evaluate<boolean>(`${DROPDOWN_STATE}.inPanel === true`), 2_000)
   const after = await devtools.evaluate<DropdownState>(DROPDOWN_STATE)
+  const hit = await devtools.evaluate<Hit | null>(`globalThis.__verifyStrayHit ?? null`)
+  const landed = hit !== null && hit.insidePanel && !hit.onItem
 
   check(
     "a click on the Dropdown's padding leaves the menu open with focus on its item",
-    spot.insidePanel && !spot.onItem && before.expanded === "true" && before.inPanel &&
+    derived && landed && before.expanded === "true" && before.inPanel &&
       after.expanded === "true" && after.inPanel && after.label === before.label,
-    !spot.insidePanel || spot.onItem
-      ? `the point (${spot.x}, ${spot.y}) is ${spot.tag}, not the panel's own padding`
+    !derived
+      ? `no padding to click: a ${spot.strip}px strip at (${spot.x}, ${spot.y}) reading ` +
+        `${spot.tag}${spot.inViewport ? "" : ", outside the viewport"} — this proves nothing`
+      : hit === null
+      ? `the press never reached the page, so this proves nothing about the menu`
+      : !landed
+      ? `the press landed on ${hit.tag} at (${hit.x}, ${hit.y}), ` +
+        (hit.onItem
+          ? "a menu item"
+          : hit.insideRoot
+          ? "inside the component but not the panel"
+          : "outside the component") +
+        `, not the ${spot.strip}px padding strip aimed at (${spot.x}, ${spot.y}) — a missed ` +
+        `click, which proves nothing about the menu`
       : before.inPanel
-      ? `clicked ${spot.tag} at (${spot.x}, ${spot.y}): aria-expanded ${before.expanded} → ` +
-        `${after.expanded}, focus "${before.label}" → ` +
+      ? `pressed ${hit.tag} at (${hit.x}, ${hit.y}) in a ${spot.strip}px strip: aria-expanded ` +
+        `${before.expanded} → ${after.expanded}, focus "${before.label}" → ` +
         (after.inPanel ? `"${after.label}"` : `${after.label}, outside the menu`)
       : "the menu was never open with focus inside, so a stray click proves nothing",
   )
@@ -432,6 +553,26 @@ async function strayClickCheck(devtools: Devtools): Promise<void> {
   // Leave it closed for whatever runs next, the way every other check here does.
   await pressKey(devtools, "Escape")
   await poll(() => devtools.evaluate<boolean>(`${DROPDOWN_STATE}.hidden === true`), 3_000)
+}
+
+/**
+ * How many dropdown triggers each catalogue card renders.
+ *
+ * Written down rather than counted, and that is the point. The first version of the check below
+ * compared one query of `button[aria-haspopup="menu"]` against another query of the same selector
+ * over the same document, which cannot disagree: a review deleted a dropdown from the catalogue
+ * and the check reported seven triggers, all named, and passed. A count is only worth asserting
+ * against something that does not come from the thing being counted, so this is the catalogue's
+ * own knowledge of what it renders — four anchorings on the `Dropdown` card, one row menu per row
+ * of the `CrudList` demo, and the `RowActions` card's own.
+ *
+ * A card that gains or loses a dropdown turns the check red until this table is updated with it,
+ * which is one line and is visible in review. That is the intended cost.
+ */
+const DROPDOWN_TRIGGERS_PER_CARD: Record<string, number> = {
+  "demo-Dropdown": 4,
+  "demo-CrudList": 3,
+  "demo-RowActions": 1,
 }
 
 /**
@@ -447,7 +588,9 @@ async function strayClickCheck(devtools: Devtools): Promise<void> {
  *
  * `button[aria-haspopup="menu"]` is every `Dropdown` trigger in the document and nothing else —
  * that attribute appears in one component. The card ids come from a separate query in document
- * order, which is the order the protocol returns as well, so a failure names the card to open.
+ * order, which is the order the protocol returns as well, so a failure names the card to open, and
+ * the tally is compared against {@link DROPDOWN_TRIGGERS_PER_CARD} so that a catalogue which
+ * quietly renders fewer is a failure rather than a smaller number.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -481,16 +624,31 @@ async function triggerNameCheck(devtools: Devtools): Promise<void> {
     else named.push(`${where}: "${name}"`)
   }
 
+  const counted = new Map<string, number>()
+  for (const card of cards) counted.set(card, (counted.get(card) ?? 0) + 1)
+  const expected = Object.entries(DROPDOWN_TRIGGERS_PER_CARD)
+  const expectedTotal = expected.reduce((total, [, count]) => total + count, 0)
+  const miscounted = [
+    ...expected
+      .filter(([card, count]) => (counted.get(card) ?? 0) !== count)
+      .map(([card, count]) => `${card}: expected ${count}, found ${counted.get(card) ?? 0}`),
+    ...[...counted.keys()]
+      .filter((card) => !(card in DROPDOWN_TRIGGERS_PER_CARD))
+      .map((card) => `${card}: ${counted.get(card)} the expected set does not know about`),
+  ]
+
   check(
     "every Dropdown trigger in the catalogue has an accessible name",
-    nodeIds.length > 0 && nodeIds.length === cards.length && unnamed.length === 0,
-    nodeIds.length === 0
-      ? "no dropdown trigger found, so this proves nothing"
+    miscounted.length === 0 && nodeIds.length === expectedTotal &&
+      nodeIds.length === cards.length && unnamed.length === 0,
+    miscounted.length > 0 || nodeIds.length !== expectedTotal
+      ? `the catalogue renders ${nodeIds.length} dropdown triggers, not the ${expectedTotal} it ` +
+        `should — ${miscounted.join("; ")}`
       : unnamed.length > 0
       ? `${unnamed.length} of ${nodeIds.length} announce as an unnamed button: ${
         unnamed.join(", ")
       }`
-      : `${nodeIds.length} triggers, each named by Chromium — ${named.join(", ")}`,
+      : `all ${nodeIds.length} expected triggers named by Chromium — ${named.join(", ")}`,
   )
 }
 
