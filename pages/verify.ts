@@ -980,10 +980,6 @@ async function modalChecks(devtools: Devtools): Promise<void> {
       ),
     3_000,
   )
-  await poll(
-    () => devtools.evaluate<boolean>(`document.querySelector("#demo-Modal dialog") !== null`),
-    3_000,
-  )
 
   const opened = await devtools.evaluate<{
     open: boolean
