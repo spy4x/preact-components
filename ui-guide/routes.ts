@@ -33,24 +33,18 @@
  * number of sections, and {@link routeTableDrift} — which `pages/build.ts` runs over the echo it
  * reads back out of the emitted document — reports a section or a demo with no route at all.
  *
- * A type-level `Record<SectionId, …>` is deliberately not the guard here. `SectionId` is
- * `keyof typeof catalogue` in `registry.ts`, while the ids at runtime come from
- * `catalogueSections: CatalogueSection[]` — a plain array with no tuple of literals to be exhaustive
- * over — so a mapped type could only be fed by a second, hand-kept list, which is the drift this
- * module exists to avoid. Deriving at runtime and checking against the array is the honest form of
- * the same guarantee, and the build fails, not just the test.
+ * A type-level `Record<SectionId, …>` is deliberately not the guard here. The ids at runtime come
+ * from `catalogueSections: CatalogueSection[]` — a plain array with no tuple of literals to be
+ * exhaustive over — so a mapped type could only be fed by a second, hand-kept list, which is the
+ * drift this module exists to avoid. Deriving at runtime and checking against the array is the
+ * honest form of the same guarantee, and the build fails, not just the test.
  *
  * Pure by construction — no DOM, no `window`, no `location`, no renderer — so every decision below is
  * unit-testable without a browser. The host page owns the effects: {@link parseRoute} answers *which*
  * route a hash is, and `pages/src/app.tsx` is what scrolls, marks and titles.
  */
 
-import {
-  type CatalogueSection,
-  catalogueSections,
-  type DemoedName,
-  type SectionId,
-} from "./registry.ts"
+import { type CatalogueSection, catalogueSections, type SectionId } from "./registry.ts"
 
 /** Matched the landing route: the catalogue's index, and the fallback for anything that is not one. */
 export interface IndexRouteMatch {
@@ -88,7 +82,7 @@ export interface DemoRouteMatch {
   /** Section the demo lives in — derived from the registry, not from the URL segment. */
   sectionId: SectionId
   /** Component export name, or the card id of a class card, e.g. `class-input`. */
-  name: DemoedName
+  name: string
   /** Canonical href, `#/inputs/toggle-switch`. */
   href: string
   /**
@@ -422,7 +416,7 @@ function normaliseHash(hash: string): { body: string; hash: string } {
 /** One demo match, canonical href included. */
 function demoRoute(
   section: CatalogueSection,
-  name: DemoedName,
+  name: string,
   source: "hash" | "fragment",
   hash: string,
 ): DemoRouteMatch {
@@ -451,7 +445,7 @@ function indexRoute(reason: "empty" | "unknown", hash: string): IndexRouteMatch 
  * @param segment Decoded URL segment, already lowered by the caller when it is a fragment.
  * @returns The name, or `undefined` when the section demos nothing of that name.
  */
-function nameIn(section: CatalogueSection, segment: string): DemoedName | undefined {
+function nameIn(section: CatalogueSection, segment: string): string | undefined {
   const wanted = segment.toLowerCase()
   return section.names.find((name) => name.toLowerCase() === wanted || routeSlug(name) === wanted)
 }

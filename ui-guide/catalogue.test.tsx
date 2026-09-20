@@ -1,15 +1,8 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
-import { PendingDemos, UIGuide, uiGuideRoute } from "./+index.tsx"
-import {
-  catalogueNames,
-  classDemos,
-  demoRegistry,
-  type PartialDemoRegistry,
-  pendingDemos,
-  pendingNamesOf,
-} from "./registry.ts"
+import { UIGuide, uiGuideRoute } from "./+index.tsx"
+import { catalogueNames, classDemos, demoRegistry, type PartialDemoRegistry } from "./registry.ts"
 import { iconNames } from "./icons.tsx"
 
 /**
@@ -69,14 +62,6 @@ const SECTIONS_IN_GROUPS: Record<string, string[]> = {
   "group-data": ["charts", "crud"],
   "group-application": ["system", "signals"],
 }
-
-/**
- * A component name no package exports, for the two ways of producing an undemoed name.
- *
- * The shipped worklist is empty and the shipped registry is total, so both notices need an input a
- * healthy tree cannot produce. `registry.test.ts` names its own probe literally for the same reason.
- */
-const SYNTHETIC_PENDING_PROBE = "SyntheticPendingProbe"
 
 /** One entry removed from the shipped registry, to reach the banner a partial one produces. */
 function without(...names: Array<keyof typeof demoRegistry>): PartialDemoRegistry {
@@ -243,52 +228,6 @@ describe("UIGuide", () => {
         expect(html, `.${className}`).toContain(`>.${className}<`)
       }
     }
-  })
-
-  it("lists the components whose demos are declared pending", () => {
-    const html = render(<UIGuide />)
-
-    // The worklist is empty and that is the milestone, not a failure: `ui` was the last package with
-    // anything on it, so there is nothing for the notice to render. This assertion used to demand
-    // `pendingDemos.length > 0`, which forbade the state the whole mechanism exists to reach — see
-    // issue #105 and `registry.test.ts`'s counterparts, re-pinned for the same reason.
-    expect(pendingDemos).toEqual([])
-    expect(html).not.toContain("Not demonstrated yet")
-
-    // The render path is not left uncovered by that: the two tests below drive the notice with an
-    // entry no registry contains, and with an empty list.
-    for (const entry of pendingDemos) {
-      expect(html, entry.packageName).toContain(entry.packageName)
-      for (const name of entry.names) {
-        expect(html, name).toContain(name)
-        // A declared gap is not a card: the worklist names it, the sections do not render it.
-        expect(html, name).not.toContain(`id="demo-${name}"`)
-      }
-    }
-  })
-
-  it("publishes a worklist entry it is handed, not only the shipped one", () => {
-    // The shipped worklist is empty — every covered package is written up — so this is where the
-    // notice's render path is covered now, and it is the stronger test: with no shipped entry to
-    // read, a `PendingDemos` that ignored its own input and hard-coded the registry read would render
-    // nothing at all and fail here. The entry is synthesised from `pendingNamesOf`'s own seam, so the
-    // name it carries is one the resolver would really produce and no registry contains.
-    const entry = {
-      package: "ui" as const,
-      packageName: "@preact-components/ui",
-      names: pendingNamesOf("ui", [SYNTHETIC_PENDING_PROBE]),
-    }
-    const html = render(<PendingDemos entries={[entry]} />)
-
-    expect(entry.names).toEqual([SYNTHETIC_PENDING_PROBE])
-    expect(html).toContain("Not demonstrated yet")
-    expect(html).toContain(entry.packageName)
-    expect(html).toContain(entry.names[0])
-    expect(catalogueNames, entry.names[0]).not.toContain(entry.names[0])
-  })
-
-  it("renders nothing for the worklist when it is handed no entries", () => {
-    expect(render(<PendingDemos entries={[]} />)).toBe("")
   })
 
   it("shows nothing of the icon gallery's fallback when no search is set", () => {
