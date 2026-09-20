@@ -24,6 +24,21 @@ const EXPORTS = await packageExports()
 /** A component name no package exports and no section demonstrates. */
 const GHOST = "GhostWidget"
 
+/**
+ * The problems one deliberately broken input adds, and nothing else.
+ *
+ * Every fixture below asserts on its own injection alone. Asserting the whole list instead would
+ * tie each of them to the catalogue being clean, so one genuinely missing demo would print six
+ * failures naming five components invented for these tests and one real one.
+ *
+ * @param problems What the rule reported for the broken input.
+ * @returns The problems the shipped tree does not already report.
+ */
+function injectedBy(problems: string[]): string[] {
+  const shipped = new Set(coverageProblems(EXPORTS))
+  return problems.filter((problem) => !shipped.has(problem))
+}
+
 /** The shipped allow-list with one package's entries replaced. */
 function allowing(
   id: PackageId,
@@ -79,7 +94,7 @@ describe("the coverage rule", () => {
   })
 
   it("names a component that no section demonstrates", () => {
-    const problems = coverageProblems({ ...EXPORTS, ui: [...EXPORTS.ui, GHOST] })
+    const problems = injectedBy(coverageProblems({ ...EXPORTS, ui: [...EXPORTS.ui, GHOST] }))
 
     expect(problems.length, problems.join(" | ")).toBe(1)
     expect(problems[0]).toContain(GHOST)
@@ -87,13 +102,16 @@ describe("the coverage rule", () => {
   })
 
   it("leaves a helper-named export alone", () => {
-    expect(coverageProblems({ ...EXPORTS, ui: [...EXPORTS.ui, "ghostHelper"] })).toEqual([])
+    expect(injectedBy(coverageProblems({ ...EXPORTS, ui: [...EXPORTS.ui, "ghostHelper"] })))
+      .toEqual([])
   })
 
   it("names an allow-list entry the package does not export", () => {
-    const problems = coverageProblems(
-      EXPORTS,
-      allowing("ui", [{ name: GHOST, reason: "Invented for this test." }]),
+    const problems = injectedBy(
+      coverageProblems(
+        EXPORTS,
+        allowing("ui", [{ name: GHOST, reason: "Invented for this test." }]),
+      ),
     )
 
     expect(problems.length, problems.join(" | ")).toBe(1)
@@ -103,9 +121,11 @@ describe("the coverage rule", () => {
 
   it("names an allow-list entry whose component has a demo after all", () => {
     const demoed = demoedNamesOf("ui")[0]
-    const problems = coverageProblems(
-      EXPORTS,
-      allowing("ui", [{ name: demoed, reason: "A demo somebody still owes." }]),
+    const problems = injectedBy(
+      coverageProblems(
+        EXPORTS,
+        allowing("ui", [{ name: demoed, reason: "A demo somebody still owes." }]),
+      ),
     )
 
     expect(problems.length, problems.join(" | ")).toBe(1)
@@ -115,10 +135,9 @@ describe("the coverage rule", () => {
 
   it("names a demo keyed to a name its package does not export", () => {
     const demoed = demoedNamesOf("ui")[0]
-    const problems = coverageProblems({
-      ...EXPORTS,
-      ui: EXPORTS.ui.filter((name) => name !== demoed),
-    })
+    const problems = injectedBy(
+      coverageProblems({ ...EXPORTS, ui: EXPORTS.ui.filter((name) => name !== demoed) }),
+    )
 
     expect(problems.length, problems.join(" | ")).toBe(1)
     expect(problems[0]).toContain(demoed)
