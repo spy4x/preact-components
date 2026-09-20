@@ -325,8 +325,8 @@ snippet`), and the checkmark `CopyButton` shows for 1.5s is the visual confirmat
 
 `copy.test.tsx` asserts the wiring at the props level, since the repository has no DOM harness: it
 walks the element tree `UIGuide` returns, finds each card's `CopyButton` and checks the `textToCopy`
-and `copy` it was handed. `pages/verify.ts` is what proves the click: it clicks every usage block in
-a real browser and compares each clipboard write to the text of the block it came from.
+and `copy` it was handed. `pages/checks/ui-guide.ts` is what proves the click: it clicks every usage
+block in a real browser and compares each clipboard write to the text of the block it came from.
 
 ## Not carried over
 

@@ -6,7 +6,7 @@
  * caller's clipboard port reaches it. There is no DOM harness in this repository, so the assertions
  * are made on the element tree a card returns — the props level — rather than by clicking. The
  * handler `CopyButton` builds from those props belongs to `ui/copy-button.test.tsx`, and the browser
- * phase of `pages/verify.ts` is what proves a real click writes the block's text.
+ * phase of `pages/checks/ui-guide.ts` is what proves a real click writes the block's text.
  */
 
 import { expect } from "@std/expect"

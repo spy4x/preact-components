@@ -124,7 +124,7 @@ export const UNDEMONSTRATED_CLASSES: Record<string, string> = {
   "theme-base":
     "Document-level rules for `<body>`. The catalogue renders inside a host page that applies it (`pages/src/document.ts`), so a demo of it would repaint the page around the demo.",
   "dark":
-    "A variant marker on `<html>`, not a class an element wears. The host page's colour-scheme toggle owns it and `pages/verify.ts` drives it.",
+    "A variant marker on `<html>`, not a class an element wears. The host page's colour-scheme toggle owns it and `pages/checks/theme.ts` drives it.",
   "map-marker": MAP_CLASSES_REASON,
   "status-unknown": MAP_CLASSES_REASON,
   "status-on": MAP_CLASSES_REASON,

@@ -8,18 +8,18 @@ its own PR, each owning exactly one top-level directory.
 
 ## Package layout
 
-| Directory   | Contents                                                                          |
-| ----------- | --------------------------------------------------------------------------------- |
-| `theme/`    | design-system CSS + tailwind preset                                               |
-| `icons/`    | merged icon set, `+index.tsx`                                                     |
-| `ui/`       | Badge, Table, Dropdown, ToggleSwitch, OnOffButtons, PageTitle, Toast, Button      |
-| `system/`   | Shell, Nav, Auth, StateInit, SEOHead, Breadcrumb, Menu, SWUpdater                 |
-| `charts/`   | server-rendered SVG kit (scales) + d3 wrappers                                    |
-| `cn/`       | `cn()` — class-name join + Tailwind conflict resolution                           |
-| `signals/`  | For/Show/map, buildModelStore, useListState, useUrlFilters                        |
-| `crud/`     | CrudList, CrudEditor, AssociationEditor                                           |
-| `ui-guide/` | live component catalogue route                                                    |
-| `pages/`    | demo app (GitHub Pages site and the browser checks in `verify.ts`), not published |
+| Directory   | Contents                                                                                 |
+| ----------- | ---------------------------------------------------------------------------------------- |
+| `theme/`    | design-system CSS + tailwind preset                                                      |
+| `icons/`    | merged icon set, `+index.tsx`                                                            |
+| `ui/`       | Badge, Table, Dropdown, ToggleSwitch, OnOffButtons, PageTitle, Toast, Button             |
+| `system/`   | Shell, Nav, Auth, StateInit, SEOHead, Breadcrumb, Menu, SWUpdater                        |
+| `charts/`   | server-rendered SVG kit (scales) + d3 wrappers                                           |
+| `cn/`       | `cn()` — class-name join + Tailwind conflict resolution                                  |
+| `signals/`  | For/Show/map, buildModelStore, useListState, useUrlFilters                               |
+| `crud/`     | CrudList, CrudEditor, AssociationEditor                                                  |
+| `ui-guide/` | live component catalogue route                                                           |
+| `pages/`    | demo app (GitHub Pages site and the browser checks under `pages/checks/`), not published |
 
 ## What belongs in this library
 
@@ -161,13 +161,19 @@ Behaviour needs a second pair, in this order:
 
 Every test `deno task test` runs renders a component to an HTML string, so none of them executes an
 effect, a ref, a key press, a focus change or a timer. Behaviour behind one of those can only be
-proven in a real browser, and `pages/verify.ts` is where that proof has to be written — assume it is
-unproven until a check there covers it. Today that means `Modal` alone: it opens as a real modal
-dialog with focus inside, a real Escape press closes it, and focus returns to the trigger. Every
-other component's keyboard and focus behaviour is still untested. `verify` fails when it finds no
-browser; `--static` is the one explicit way to leave the browser phase out. The GitHub workflow runs
-`check`, the build and `verify` on every pull request into `main`, and the Pages deploy waits for
-them.
+proven in a real browser: write that proof into the package's own file under `pages/checks/` —
+`pages/checks/ui.ts` for a `ui/` component, `pages/checks/system.ts` for a `system/` one, and so on —
+never into `pages/verify.ts` directly; assume it is unproven until a check there covers it.
+`pages/verify.ts` is still the script the task runs: it keeps the static phase and the browser
+startup, and calls every package's file in one fixed order. The shared helpers — `check`, `poll`,
+`pressKey`, the `Devtools` session — are defined once, in `pages/checks/harness.ts`, and imported
+from there rather than redefined. A file exists under `pages/checks/` for every workspace package,
+including the ones with no check yet, so two people adding checks to different packages never edit
+the same file. Today that means `Modal` alone: it opens as a real modal dialog with focus inside, a
+real Escape press closes it, and focus returns to the trigger. Every other component's keyboard and
+focus behaviour is still untested. `verify` fails when it finds no browser; `--static` is the one
+explicit way to leave the browser phase out. The GitHub workflow runs `check`, the build and `verify`
+on every pull request into `main`, and the Pages deploy waits for them.
 
 If a task fails because a specifier cannot be resolved, run the task that needs the new dependency once
 with network access and commit the updated `deno.lock`. **This is a convenience, not a gate:** a stale
