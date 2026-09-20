@@ -274,6 +274,21 @@ export const uiGuideRoute: UiGuideRoute = {
 
 export { IconGallery, type IconGalleryProps, iconNames } from "./icons.tsx"
 export {
+  demoHref,
+  type DemoRouteEntry,
+  type DemoRouteMatch,
+  type IndexRouteMatch,
+  parseRoute,
+  routeHref,
+  type RouteMatch,
+  routeSlug,
+  type RouteTable,
+  routeTable,
+  routeTableDrift,
+  type SectionRouteEntry,
+  type SectionRouteMatch,
+} from "./routes.ts"
+export {
   catalogueNames,
   catalogueSections,
   CLASS_PACKAGE,
