@@ -56,6 +56,22 @@ and the parts that are genuinely identical are the parts that live here.
 What each slot receives is small: the editor's body gets `{ vm, vl }` — the model signal and the
 validation signal — and the list gets `header`, `row` and `actions`.
 
+## The data contract
+
+Decided in [#118](https://github.com/spy4x/preact-components/issues/118): `crud/` assumes three
+things about any app that uses it, and this is the agreed standard for every app built from
+`spy4x/template`.
+
+- A row is never really deleted — it carries a `deletedAt` timestamp; the editor sets and clears it
+  through an optional archive checkbox, submitted with the form's normal update, and the list
+  separates active rows from archived ones with a status filter.
+- The store is shaped like `buildModelStore` from `signals/`.
+- One `canChange` port — a function returning a boolean, supplied by the app because the library has
+  no auth — decides whether the current user may edit; `CrudList` takes the same kind of port as
+  `canAdd`.
+
+The next section gives the exact store interfaces this scaffold reads.
+
 ## The store contract
 
 `signals/` is a sibling package, and this one reads it through two **structural** interfaces

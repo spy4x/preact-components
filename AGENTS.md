@@ -8,17 +8,35 @@ its own PR, each owning exactly one top-level directory.
 
 ## Package layout
 
-| Directory   | Contents                                                                     |
-| ----------- | ---------------------------------------------------------------------------- |
-| `theme/`    | design-system CSS + tailwind preset                                          |
-| `icons/`    | merged icon set, `+index.tsx`                                                |
-| `ui/`       | Badge, Table, Dropdown, ToggleSwitch, OnOffButtons, PageTitle, Toast, Button |
-| `system/`   | Shell, Nav, Auth, StateInit, SEOHead, Breadcrumb, Menu, SWUpdater            |
-| `charts/`   | server-rendered SVG kit (scales) + d3 wrappers                               |
-| `cn/`       | `cn()` — class-name join + Tailwind conflict resolution                      |
-| `signals/`  | For/Show/map, buildModelStore, useListState, useUrlFilters                   |
-| `crud/`     | CrudList, CrudEditor, AssociationEditor                                      |
-| `ui-guide/` | live component catalogue route                                               |
+| Directory   | Contents                                                                          |
+| ----------- | --------------------------------------------------------------------------------- |
+| `theme/`    | design-system CSS + tailwind preset                                               |
+| `icons/`    | merged icon set, `+index.tsx`                                                     |
+| `ui/`       | Badge, Table, Dropdown, ToggleSwitch, OnOffButtons, PageTitle, Toast, Button      |
+| `system/`   | Shell, Nav, Auth, StateInit, SEOHead, Breadcrumb, Menu, SWUpdater                 |
+| `charts/`   | server-rendered SVG kit (scales) + d3 wrappers                                    |
+| `cn/`       | `cn()` — class-name join + Tailwind conflict resolution                           |
+| `signals/`  | For/Show/map, buildModelStore, useListState, useUrlFilters                        |
+| `crud/`     | CrudList, CrudEditor, AssociationEditor                                           |
+| `ui-guide/` | live component catalogue route                                                    |
+| `pages/`    | demo app (GitHub Pages site and the browser checks in `verify.ts`), not published |
+
+## What belongs in this library
+
+A component belongs here when a future project can reuse it, even if only one app uses it today —
+a calendar stays, a booking slot picker goes. What disqualifies a component: business wording, one
+app's data model, or a renamed copy of something generic that already exists.
+
+The flow runs one way: an existing app feeds `spy4x/ts-libs` and this library, and this library
+feeds `spy4x/template`, which future projects start from. An existing app is never refactored to
+call into this library, and "remove" means delete from this library only — the app that had the
+copy keeps its own. A project that was deleted before its components were extracted is not a
+source for anything here; do not name it.
+
+This is a public repository. Do not put a private application's code, file paths, file lists or
+business vocabulary into anything that lands here — components, docs, PRs or issues. Existing
+mentions of that kind are known and their removal is tracked in #127; do not assume the repository
+is already clean, and do not remove them as part of an unrelated change.
 
 ## Adding a package
 
@@ -95,11 +113,26 @@ docs: document the workspace member rule
   incomplete and drop the prefix when the work is done.
 - Base every PR on `main`. One package per PR — keep diffs disjoint from other packages.
 - Update the PR body after every significant change; state the decisions you made.
-- Do not merge your own PR. Human review merges it.
 
 ```bash
 gh pr create --fill --base main
 ```
+
+## Review
+
+A separate reviewer agent reviews every PR. Review happens before the PR is opened, or, for a PR
+opened early under `[WIP]`, before that prefix is dropped.
+
+The reviewer runs the checks itself — a reported green run is not evidence — and verifies a test by
+breaking the code it is supposed to protect: remove the fix and confirm the test goes red. A test
+that passes either way is rejected. The reviewer never fixes what it finds; a rejection goes back to
+the author with the precise changes required, and rejection is a normal outcome, not a failure.
+
+The verdict and its evidence are posted as a PR comment, so GitHub's own review record stays empty
+by design — an empty review record does not mean a PR went unreviewed.
+
+The repository owner merges. An agent merges only when the owner delegated merge authority for that
+run, and only after the reviewer passed.
 
 ## Pre-commit checklist
 
@@ -172,6 +205,23 @@ no ambient context the host did not hand over.
 This is what lets `spy4x/template` and any other app share the same `ui/` package without the
 library knowing which app it is running in.
 
+### The `crud/` data contract
+
+`crud/` assumes three things about any app that uses it:
+
+- a row is never really deleted — it carries a `deletedAt` timestamp; the editor sets and clears it
+  through an optional archive checkbox, submitted with the form's normal update, and the list
+  separates active rows from archived ones with a status filter;
+- the store is shaped like `buildModelStore` from `signals/`; `crud/store.ts` describes the slice it
+  reads as two structural interfaces, `CrudListStore` and `CrudEditorStore`, and `crud/store.test.ts`
+  proves a real `buildModelStore` satisfies both with no adapter;
+- one `canChange` port — a function returning a boolean, supplied by the app because the library has
+  no auth — decides whether the current user may edit; `CrudList` takes the same kind of port as
+  `canAdd`.
+
+This is the standard for every app built from `spy4x/template`. See `crud/README.md` for the exact
+store interfaces.
+
 ## Validation
 
 **arktype only. No zod, no valibot, no hand-rolled validators.** Use `type(...)` from `arktype` for
@@ -227,4 +277,5 @@ audit greps a reviewer is expected to run, and the full list of what neither cat
 - Never commit a secret, token, credential, `.env` value or raw production URL.
 - One logical change per commit. Keep commits small.
 - Do not reformat or edit a directory another agent owns.
-- Do not merge. Human review merges.
+- Do not merge without a passing review from a separate reviewer, and only the owner or an agent
+  the owner authorised for that run merges.
