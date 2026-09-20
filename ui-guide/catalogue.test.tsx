@@ -51,9 +51,9 @@ function atFault(expected: string[], index: number): string {
  * thing it polices — a section dropped from a group would be missing from both sides. This is the
  * independent copy, so the expectation breaks when the data does.
  *
- * `registry.test.ts` checks the partition against the registry; this map checks the *page* against
- * a second opinion, which is why it is not derived. It also catches a section listed under the
- * wrong group, which the registry cannot see: a valid group is a valid group there.
+ * Filing a section is structural — `SectionSpec.group` is one field, so a section cannot be in two
+ * groups and a section with no group does not compile — and this map is the second opinion about
+ * *which* group each one belongs in, which no type can have: a valid group id is a valid group id.
  */
 const SECTIONS_IN_GROUPS: Record<string, string[]> = {
   "group-foundations": ["badges", "buttons"],
@@ -145,8 +145,8 @@ describe("UIGuide", () => {
     // What this is *not* is a containment check: `ids.slice` between two group markers proves
     // nothing about nesting, because anything before the first group (`instructions`) can never be
     // inside any run. Nesting is structural in the renderer (a section is a child of its group
-    // element) and the partition is `registry.test.ts`'s. Said plainly because the first version of
-    // this test claimed more than it checked.
+    // element) and filing a section is structural: `SectionSpec.group` is one field. Said plainly
+    // because the first version of this test claimed more than it checked.
     for (
       const heading of [
         "Foundations",
@@ -240,7 +240,7 @@ describe("UIGuide", () => {
   it("names a component that has no demo", () => {
     const html = render(<UIGuide registry={without("ToggleSwitch")} />)
 
-    expect(html).toContain("1 exported component has no demo")
+    expect(html).toContain("1 card is missing from this registry")
     expect(html).toContain("ToggleSwitch")
     expect(html).not.toContain('id="demo-ToggleSwitch"')
   })
@@ -248,13 +248,13 @@ describe("UIGuide", () => {
   it("names every missing component, and counts them as a plural", () => {
     const html = render(<UIGuide registry={without("ToggleSwitch", "Toastr")} />)
 
-    expect(html).toContain("2 exported components have no demo")
+    expect(html).toContain("2 cards are missing from this registry")
     expect(html).toContain("ToggleSwitch")
     expect(html).toContain("Toastr")
   })
 
   it("renders no banner for the complete registry", () => {
-    expect(render(<UIGuide />)).not.toContain("has no demo")
+    expect(render(<UIGuide />)).not.toContain("missing from this registry")
   })
 
   it("forwards the clipboard port to the icon gallery", () => {

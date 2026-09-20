@@ -31,8 +31,8 @@ export interface UIGuideProps {
   /**
    * Registry to render. Defaults to {@link demoRegistry}, the complete one.
    *
-   * Pass a partial registry to render a trimmed guide; the components left out are named in a
-   * warning banner, which is the visible half of the drift guard.
+   * Pass a partial registry to render a trimmed guide; the cards left out are named in a warning
+   * banner, so a guide that renders less than the catalogue says so on the page.
    */
   registry?: PartialDemoRegistry
   /** Clipboard port, forwarded to every copy control in the catalogue. */
@@ -126,11 +126,12 @@ function MissingDemoBanner({ names }: { names: string[] }) {
       class="rounded-lg border border-red-500 bg-red-50 p-4 text-red-800 dark:border-red-700 dark:bg-red-950 dark:text-red-100"
     >
       <p class="font-medium">
-        {names.length} exported {names.length === 1 ? "component has" : "components have"} no demo
+        {names.length} {names.length === 1 ? "card is" : "cards are"} missing from this registry
       </p>
       <p class="mt-1 text-sm">
-        Write a card in the section that owns it, or an allow-list entry in{" "}
-        <code>coverage.ts</code>, for:{" "}
+        The catalogue lists {names.length === 1 ? "it" : "them"}{" "}
+        and the registry this guide was rendered with does not carry{" "}
+        {names.length === 1 ? "it" : "them"}:{" "}
         {names.map((name) => <code key={name} class="mr-1 font-mono">{name}</code>)}
       </p>
     </div>
