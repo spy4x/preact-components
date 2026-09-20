@@ -436,6 +436,83 @@ describe("ids and aria-activedescendant", () => {
   })
 })
 
+/**
+ * An `items` array that counts the element reads made through it.
+ *
+ * `indexOf` walks the array by reading every slot, so a per-row scan shows up as a read count that
+ * grows with the square of the item count — the property the single-pass index has to keep, and one
+ * that is visible from the order of operations alone. No clock, no warm-up, no flake: a timing
+ * assertion is not evidence of complexity.
+ */
+function countingItems(values: string[]): { items: string[]; reads: () => number } {
+  let reads = 0
+  const items = new Proxy(values, {
+    get(target, property, receiver) {
+      if (typeof property === "string" && /^\d+$/.test(property)) reads++
+      return Reflect.get(target, property, receiver)
+    },
+  })
+  return { items, reads: () => reads }
+}
+
+/** Distinct labels, so a fixture is reproducible and every index is addressable. */
+function labels(count: number): string[] {
+  return Array.from({ length: count }, (_, index) => `Item ${index}`)
+}
+
+/** Element reads the whole combobox makes rendering `count` items with the last one selected. */
+function readsPerRender(count: number): number {
+  const { items, reads } = countingItems(labels(count))
+  render(<Combobox items={items} value={items[count - 1]} onChange={() => {}} />)
+  return reads()
+}
+
+describe("Combobox render cost", () => {
+  it("reads the item list once per render, not once per option", () => {
+    const size = 200
+    const total = readsPerRender(size)
+
+    // A single pass is `2n + 1`: one walk to build the index, one to filter, one read of the
+    // selected item. The bound leaves room; a per-row scan is `n² + 2n + 1` here, 40 401.
+    expect(
+      total,
+      `rendering ${size} options read the item array ${total} times; an index built in one pass reads it O(n)`,
+    ).toBeLessThanOrEqual(3 * size)
+  })
+
+  it("stays linear when the list grows", () => {
+    const small = readsPerRender(100)
+    const large = readsPerRender(300)
+    const ratio = large / small
+
+    // Three times the items must not cost nine times the reads: 100 -> 300 items is 9x for a
+    // per-row scan and 3x for a single pass.
+    expect(
+      ratio,
+      `3x the items cost ${
+        ratio.toFixed(2)
+      }x the item reads (${small} -> ${large}); a per-row scan costs 9x`,
+    ).toBeLessThanOrEqual(6)
+  })
+})
+
+/**
+ * The id the input's `aria-describedby` points at.
+ *
+ * Throws rather than returning `undefined`: a combobox with an empty list that describes nothing is
+ * the failure these tests exist to catch, and it must not read as "no assertion to make here".
+ */
+function describedStatusId(html: string): string {
+  const id = /aria-describedby="([^"]+)"/.exec(html)?.[1]
+  if (id === undefined) throw new Error(`the input describes nothing: ${html.slice(0, 200)}`)
+  return id
+}
+
+/** How many times the exact attribute `id="…"` appears in rendered markup. */
+function countId(html: string, id: string): number {
+  return html.split(`id="${id}"`).length - 1
+}
+
 describe("Combobox markup", () => {
   const items = ["BTC", "ETH", "USD"]
 
@@ -479,6 +556,23 @@ describe("Combobox markup", () => {
     expect(html.match(/aria-selected="false"/g)?.length).toBe(2)
     const selected = /<li[^>]*aria-selected="true"[^>]*>(ETH)<\/li>/.exec(html)
     expect(selected).not.toBeNull()
+  })
+
+  it("marks the selected rows through the item index, duplicates included", () => {
+    const html = render(<Combobox items={["BTC", "ETH", "BTC"]} value="BTC" onChange={() => {}} />)
+
+    // `items.indexOf("BTC")` reports 0 for both rows, and the index keeps that first-occurrence
+    // rule: the duplicate rows stay selected exactly as they did before the lookup changed.
+    expect(html.match(/aria-selected="true"/g)?.length).toBe(2)
+  })
+
+  it("treats a NaN selection as no selection, as indexOf does", () => {
+    const html = render(
+      <Combobox items={[1, Number.NaN, 3]} value={Number.NaN} onChange={() => {}} />,
+    )
+
+    expect(html.match(/aria-selected="true"/g)).toBeNull()
+    expect(html.match(/aria-selected="false"/g)?.length).toBe(3)
   })
 
   it("paints the selected option, and leaves the unselected ones on the base text colour", () => {
@@ -540,12 +634,66 @@ describe("Combobox markup", () => {
 
   it("announces the empty state through a status region the input describes", () => {
     const html = render(<Combobox items={items} onChange={() => {}} query="zzz" />)
-    const statusId = /<span id="([^"]+)" role="status"/.exec(html)?.[1]
+    const statusId = /<[a-z]+ id="([^"]+)" role="status"/.exec(html)?.[1]
 
     expect(statusId).toBeDefined()
     expect(html).toContain('role="status"')
     expect(html).toContain('aria-live="polite"')
     expect(html).toContain(`aria-describedby="${statusId}"`)
+  })
+
+  it("renders the empty message once, in the element the input describes", () => {
+    const html = render(
+      <Combobox items={items} onChange={() => {}} query="zzz" emptyMessage="Nada" />,
+    )
+    const statusId = describedStatusId(html)
+
+    // The regression this pins: the message used to be rendered twice — visibly, and again in a
+    // visually hidden `role="status"` copy that `aria-describedby` pointed at — so one empty
+    // keystroke was both described and announced.
+    const elements = countId(html, statusId)
+    expect(
+      elements,
+      `aria-describedby="${statusId}" resolves to ${elements} elements; it must resolve to exactly 1`,
+    ).toBe(1)
+
+    const copies = html.split("Nada").length - 1
+    expect(
+      copies,
+      `the empty message "Nada" is rendered in ${copies} elements; it must be rendered exactly once`,
+    ).toBe(1)
+
+    const at = html.indexOf(`id="${statusId}"`)
+    const text = html.slice(html.indexOf(">", at) + 1, html.indexOf("<", html.indexOf(">", at) + 1))
+    expect(text, `the described element carries ${JSON.stringify(text)}`).toContain("Nada")
+    expect(html, "a second, sr-only copy would be described and announced twice").not.toContain(
+      "sr-only",
+    )
+  })
+
+  it("renders a JSX empty state in the described element too", () => {
+    const html = render(
+      <Combobox
+        items={items}
+        onChange={() => {}}
+        query="zzz"
+        emptyMessage={() => <em>Nada</em>}
+      />,
+    )
+    const statusId = describedStatusId(html)
+
+    expect(
+      countId(html, statusId),
+      `aria-describedby="${statusId}" resolves to ${countId(html, statusId)} elements`,
+    ).toBe(1)
+
+    // The caller's node is the described element's content, not a sibling the input does not point
+    // at — which is what a hidden copy of the message would be.
+    const opening = html.indexOf(`id="${statusId}"`)
+    const after = html.slice(html.indexOf(">", opening) + 1, html.indexOf(">", opening) + 60)
+    expect(after, `the described element starts with ${JSON.stringify(after)}`).toContain(
+      "<em>Nada</em>",
+    )
   })
 
   it("renders no status region while the list has options", () => {

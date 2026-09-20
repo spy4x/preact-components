@@ -208,6 +208,51 @@ export function comboboxKeyAction(
 }
 
 /**
+ * Index the `items` prop by item identity, in one pass.
+ *
+ * The listbox asks "is this row the selected one?" once per rendered row. Answering that with
+ * `items.indexOf(item)` reads the whole prop per row, so a render costs `n²` identity comparisons:
+ * at 5k items that is ~25M of them per keystroke, on top of the DOM work. One `Map` built here
+ * answers each row in constant time, which leaves the render loop costing what the DOM costs.
+ *
+ * First occurrence wins, which is what `indexOf` reports for a repeated item, so the map answers
+ * exactly what the lookup it replaced answered.
+ *
+ * Deliberately unexported: `ui-guide`'s subpath guard requires every `ui` value export to be either
+ * barrelled or declared a helper, and neither of those files belongs to this change. The linearity
+ * is asserted through the component instead — `combobox.test.tsx`, "Combobox render cost".
+ *
+ * @param items The item list, in the order it will be rendered.
+ * @returns Item to the index of its first occurrence in `items`.
+ */
+function itemIndex<T>(items: readonly T[]): ReadonlyMap<T, number> {
+  const positions = new Map<T, number>()
+  for (const [index, item] of items.entries()) {
+    if (!positions.has(item)) positions.set(item, index)
+  }
+  return positions
+}
+
+/**
+ * Index of `value` in `items`, or `-1` when it is not one of them: what `items.indexOf(value)`
+ * answers, without the scan.
+ *
+ * `NaN` is guarded explicitly because the two lookups disagree about it: `indexOf` compares with
+ * `===`, under which `NaN` matches nothing, while a `Map` keyed on `NaN` finds it. `-0` and `0` are
+ * the same value to both. A `null` or missing `value` is "no selection", never an index.
+ *
+ * @param positions The item index from {@link itemIndex}.
+ * @param value Selected item, or `null`/`undefined` for none.
+ */
+function selectionIndex<T>(
+  positions: ReadonlyMap<T, number>,
+  value: T | null | undefined,
+): number {
+  if (value === null || value === undefined || Number.isNaN(value)) return -1
+  return positions.get(value) ?? -1
+}
+
+/**
  * Whether a focus change **out of the input** closes the popup.
  *
  * The containment test has to mean "focus is still on the input", not "focus is still somewhere in the
@@ -513,6 +558,9 @@ function Cross() {
  * only state inside is visual (open-or-not, the draft query, the highlighted index). Its rules live
  * in {@link nextComboboxState} and {@link filterItems}, exported and testable without a DOM.
  *
+ * The item list is indexed once per render ({@link itemIndex}), so asking which row is the selected
+ * one is a lookup per row rather than a scan of `items` per row.
+ *
  * ```tsx
  * <Combobox
  *   items={["BTC", "ETH", "USD"]}
@@ -566,7 +614,12 @@ export function Combobox<T>({
   const visible = visibleItems(draft)
   const listboxId = comboboxListboxId(id)
   const statusId = `${id}-status`
-  const selectedIndex = value === null || value === undefined ? -1 : items.indexOf(value)
+  // One pass over `items` per render, and then the selection tests below cost a lookup each. Rebuilt
+  // rather than memoised on `items` on purpose: a caller that mutates its list in place keeps the
+  // same array reference, and a cached index would then answer with the stale positions — a wrong
+  // selection is worse than the O(n) walk that a render already does over the same array.
+  const positions = itemIndex(items)
+  const selectedIndex = selectionIndex(positions, value)
   const hasSelection = selectedIndex >= 0
   const hasText = draft.length > 0
   const content = listboxContent(visible, draft, emptyMessage)
@@ -681,9 +734,10 @@ export function Combobox<T>({
             openList()
           }}
           onKeyDown={handleKeyDown}
-          onBlur={(event) => { // Only one thing counts as "still here": focus staying on the input. A `Tab` from the input
-            // lands on a descendant — the clear button, or the scrolling popup itself — and that is a
-            // leave, not a stay.
+          // Only one thing counts as "still here": focus staying on the input. A `Tab` from the input
+          // lands on a descendant — the clear button, or the scrolling popup itself — and that is a
+          // leave, not a stay.
+          onBlur={(event) => {
             if (!leavesCombobox(event.currentTarget, event.relatedTarget as Node | null)) return
             close()
           }}
@@ -721,7 +775,8 @@ export function Combobox<T>({
         )}
       >
         {content.options.map((item, index) => {
-          const selected = items.indexOf(item) === selectedIndex
+          // A lookup, not a scan: reading `items` per row is what made this loop quadratic.
+          const selected = positions.get(item) === selectedIndex
           const active = index === activeIndex.value
           const disabled = isDisabled(item)
           return (
@@ -754,22 +809,22 @@ export function Combobox<T>({
       {
         /*
         The empty message lives outside the `role="listbox"` on purpose: a listbox's children must be
-        `option` or `group`, so a message row inside it is an `aria-required-children` violation. It is
-        rendered twice with one source of truth — visibly for sighted users, and in a `role="status"`
-        live region that `aria-describedby` links to the input so the change is announced. Visually
-        hidden rather than `hidden`, so assistive tech still reads it.
+        `option` or `group`, so a message row inside it is an `aria-required-children` violation. It
+        is rendered **once**, as the visible paragraph, which carries the id the input points at with
+        `aria-describedby` and is itself the `role="status"` live region. A second, visually hidden
+        copy of the same text would be both described and announced, which is how one keystroke ends
+        up reading the message twice.
       */
       }
       {content.emptyMessage !== undefined && (
-        <>
-          <p class="px-3 py-2 text-center text-sm text-gray-500 dark:text-gray-400">
-            {content.emptyMessage}
-          </p>
-          <span id={statusId} role="status" aria-live="polite" class="sr-only">
-            {/* Only text is announced: a JSX empty state is visible but has nothing to read out. */}
-            {typeof content.emptyMessage === "string" ? content.emptyMessage : ""}
-          </span>
-        </>
+        <p
+          id={statusId}
+          role="status"
+          aria-live="polite"
+          class="px-3 py-2 text-center text-sm text-gray-500 dark:text-gray-400"
+        >
+          {content.emptyMessage}
+        </p>
       )}
     </div>
   )

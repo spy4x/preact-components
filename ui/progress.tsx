@@ -140,8 +140,10 @@ export function Progress({
   // without a name to point at.
   const labelId = label !== undefined && id !== undefined ? `${id}-label` : undefined
   // An unmeasurable reading is published as ARIA's own implicit `0…100` range, with no
-  // `aria-valuenow`: a legal, nameable indeterminate progressbar rather than one whose
-  // `aria-valuemax` would sit at or below `aria-valuemin`.
+  // `aria-valuenow`: a legal, nameable indeterminate progressbar. ARIA requires `aria-valuemax` to
+  // be greater than **or equal to** `aria-valuemin`, so a caller `max` is not normally the range
+  // this publishes — `max <= 0` is precisely what makes the reading unmeasurable, and `0` is legal
+  // but empty while anything below `0` would sit under `aria-valuemin="0"`, which is not.
   const valuemax = fraction === null ? 100 : max
   // `showValue` defaults on, but a percentage with no reading behind it is noise: keep the header
   // row only when it holds something, instead of an empty flex row that still costs a gap.
