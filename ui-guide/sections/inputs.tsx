@@ -684,11 +684,4 @@ export const inputDemos = {
       </div>
     ),
   },
-} satisfies DemoFragment<
-  | "Combobox"
-  | "DateRangePicker"
-  | "Dropdown"
-  | "OnOffButtons"
-  | "ToggleField"
-  | "ToggleSwitch"
->
+} satisfies DemoFragment

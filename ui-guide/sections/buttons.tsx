@@ -149,4 +149,4 @@ export const buttonDemos = {
 />`,
     render: () => <GeoButtonDemo />,
   },
-} satisfies DemoFragment<"Button" | "CopyButton" | "GeoButton">
+} satisfies DemoFragment

@@ -14,7 +14,7 @@ import { describe, it } from "@std/testing/bdd"
 import { CopyButton, copyToClipboard } from "@preact-components/ui/copy-button"
 import { render } from "preact-render-to-string"
 import { DemoCard, type DemoCardProps, UIGuide } from "./+index.tsx"
-import { catalogueNames, classDemos, type DemoedName, demoRegistry } from "./registry.ts"
+import { catalogueNames, classDemos, demoRegistry } from "./registry.ts"
 
 /** A clipboard port, in the shape `UIGuideProps.copy` takes. */
 type CopyPort = (text: string) => void | Promise<void>
@@ -71,7 +71,7 @@ function elementsIn(node: unknown): Element[] {
 
 /** One card's copy control, and what the card handed it. */
 interface WiredCopy {
-  name: DemoedName
+  name: string
   /** The text the control was handed. */
   textToCopy: string
   /** The port the control was handed; `undefined` when the guide was rendered without one. */

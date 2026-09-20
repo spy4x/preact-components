@@ -54,6 +54,12 @@ Rules for a package config:
 Type-checking, formatting, linting and tests are discovered by walking the tree, so a new package is
 covered without touching root config or `infra/scripts/type-check.ts`.
 
+The catalogue has to be told about the package: add its directory to `packageIds` in
+`ui-guide/registry.ts` and give every component it exports a card, or add it to `EXCLUDED_PACKAGES`
+in `ui-guide/coverage.ts` with a reason. A package directory with neither fails `deno task test`.
+Adding a component to a catalogued package means adding its card to that package's section in
+`ui-guide/sections/`; a helper — anything not named in PascalCase — needs nothing.
+
 ## Branch-first workflow
 
 Create the branch before any edit. Never commit to `main`.

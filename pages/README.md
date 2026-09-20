@@ -65,10 +65,10 @@ check or a red `verify` blocks the publish.
 ## How a build works
 
 1. **`deno check`** over `build.ts`, `serve.ts`, `verify.ts`, `src/prerender.tsx` and `src/+main.tsx`.
-   The catalogue's drift guard _is_ a type error, one report per covered package — a component
-   exported with no demo and no pending entry, a demo for a component that no longer exists, a
-   rename that only reached one side — so the Pages build inherits it instead of shipping a page the
-   guide would have refused to compile.
+   Those sources reach the whole catalogue, so the page cannot ship a graph that does not compile:
+   a demo whose component changed its props, a card that no longer type-checks, a prop record that
+   went red when a variant was added. Whether every component _has_ a card is a different question,
+   answered by `ui-guide/coverage.ts` at `deno task test`, which CI runs before this build.
 2. **Tailwind** compiles `styles.css` with its own `compile()` API, over every class name its Rust
    scanner finds in the sources the stylesheet's `@source` rules name (every package the catalogue
    draws components from — `ui/`, `charts/`, `system/`, `crud/`, `signals/` — plus `ui-guide/`,
@@ -76,10 +76,10 @@ check or a red `verify` blocks the publish.
    rather than listed, so a class inside a template string is emitted exactly as it would be for an
    app.
 3. **`deno bundle --platform browser`** produces the island — one Preact copy, at the version the
-   root import map pins. The registry reads each covered package's barrel at runtime to derive its
-   component names, so a bundled package's whole graph is retained: 799 modules minified against 39
-   while `ui/` was the only source, most of the difference being d3 behind the charts barrel.
-   Splitting the runtime name lists from the component imports is the follow-up.
+   root import map pins. The catalogue demonstrates every component of every package it covers, and
+   the charts section renders the d3 islands live, so the bundle carries those packages and d3 with
+   them. The build prints the module count and the byte size it produced; read them there rather
+   than here.
 4. **Prerender**: `renderToString(<App />)` inside Deno, wrapped by `document.ts`. Before writing
    anything, the build asserts that every name in `catalogueNames` — every card the sections render,
    across all covered packages — has a `demo-<Name>` card in the markup it is about to publish,
@@ -241,9 +241,9 @@ here, which would go stale the next time a check is added. In short:
 classes get cards of their own in the catalogue's
 `forms` and `surfaces` sections rather than component cards; `icons/` is the gallery rather than demo
 cards; and the four sections that were placeholders when this page was first deployed — `charts/`,
-`system/`, `crud/`, `signals/` — now have a card each, with the components still to be written up
-declared in `ui-guide/registry.ts`'s `PENDING_DEMOS` and printed on the page.
+`system/`, `crud/`, `signals/` — now have a card per component, with any card still to be written up
+declared in `ui-guide/coverage.ts`'s `EXPORTS_WITHOUT_DEMO` with its reason.
 
-Adding a section to `ui-guide` is still all a new component needs to appear here: the registry's
-guard and the stylesheet's `@source` list are the only two things to touch, and both fail the build
+Adding a card to a `ui-guide` section is still all a new component needs to appear here: the
+coverage rule and the stylesheet's `@source` list are the only two things to touch, and both fail
 when a package is added without them.

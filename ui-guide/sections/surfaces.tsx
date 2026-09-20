@@ -12,14 +12,6 @@
 
 import type { ClassDemoFragment } from "../registry.ts"
 
-/** The cards of the surface chapter, in render order. */
-export type SurfaceDemoName =
-  | "class-card"
-  | "class-scrollbar"
-  | "class-typography"
-  | "class-data-display"
-  | "class-colour-atoms"
-
 /** The four-part surface: header, body, footer, all three edges from the tokens. */
 function CardDemo() {
   return (
@@ -286,4 +278,4 @@ export const surfaceDemos = {
 <span class="bg-canvas border-subtle border px-2 py-1 text-xs">bg-canvas</span>`,
     render: () => <ColourAtomsDemo />,
   },
-} satisfies ClassDemoFragment<SurfaceDemoName>
+} satisfies ClassDemoFragment

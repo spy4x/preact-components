@@ -137,12 +137,11 @@ main section[id] > div.grid > article {
 }
 
 /*
- * `PendingDemos` renders its names as adjacent inline `<code>`s with no soft-wrap opportunity, so a
- * long worklist widens the whole document instead of wrapping (measured before this rule: 1330px of
- * horizontal overflow at a 375px viewport). Contained here rather than in `ui-guide/`, which this
- * wave does not own; the package-side fix is a follow-up in the PR.
+ * The missing-demo banner renders its names as adjacent inline `<code>`s with no soft-wrap
+ * opportunity, so a long list widens the whole document instead of wrapping (measured before this
+ * rule: 1330px of horizontal overflow at a 375px viewport). Contained here rather than in
+ * `ui-guide/`; the package-side fix is a follow-up.
  */
-[data-e2e="ui-guide-pending-demos"] li,
 [data-e2e="ui-guide-missing-demos"] p {
   display: flex;
   flex-wrap: wrap;

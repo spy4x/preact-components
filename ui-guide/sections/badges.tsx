@@ -47,4 +47,4 @@ export const badgeDemos = {
 <Badge text="draft" color="gray" type="outline" />`,
     render: () => <BadgeMatrix />,
   },
-} satisfies DemoFragment<"Badge">
+} satisfies DemoFragment

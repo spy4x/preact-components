@@ -6,9 +6,9 @@
  * and register it in its own navigation, which is what the source guide in `gb` never did.
  *
  * Everything below the title is generated from {@link demoRegistry}, so the page cannot show a
- * component the registry does not know about, and cannot miss one a covered package exports without
- * either failing `deno check` or showing up in one of the two notices at the top: the red banner for
- * a gap nobody declared, the amber worklist for the components whose demos are declared pending.
+ * component the registry does not know about. A component a covered package exports and no section
+ * demonstrates fails `deno task test` in `coverage.ts`; a registry a host trimmed by hand is named
+ * in the red banner at the top of the page instead of quietly shrinking it.
  */
 
 import { CopyButton, PageTitle } from "@preact-components/ui"
@@ -21,21 +21,18 @@ import {
   catalogueNames,
   catalogueSections,
   classDemos,
-  type DemoedName,
   demoRegistry,
   missingDemos,
   packageIds,
   type PartialDemoRegistry,
-  pendingDemos,
-  type PendingDemosByPackage,
 } from "./registry.ts"
 
 export interface UIGuideProps {
   /**
    * Registry to render. Defaults to {@link demoRegistry}, the complete one.
    *
-   * Pass a partial registry to render a trimmed guide; the components left out are named in a
-   * warning banner, which is the visible half of the drift guard.
+   * Pass a partial registry to render a trimmed guide; the cards left out are named in a warning
+   * banner, so a guide that renders less than the catalogue says so on the page.
    */
   registry?: PartialDemoRegistry
   /** Clipboard port, forwarded to every copy control in the catalogue. */
@@ -46,7 +43,7 @@ export interface UIGuideProps {
 /** Props of one catalogue card: its identity, the port, and the live example as children. */
 export interface DemoCardProps {
   /** Card id, and the name of the component for a component card. */
-  name: DemoedName
+  name: string
   /** Heading: `<Name />` for a component card, the card's own title for a class card. */
   label: string
   /** One or two sentences on the contract, under the heading. */
@@ -121,7 +118,7 @@ export function DemoCard(
  * A complete registry renders nothing, so a healthy catalogue never shows it. When the guide is
  * handed a partial registry the gap is stated at the top of the page rather than being invisible.
  */
-function MissingDemoBanner({ names }: { names: DemoedName[] }) {
+function MissingDemoBanner({ names }: { names: string[] }) {
   return (
     <div
       role="alert"
@@ -129,55 +126,14 @@ function MissingDemoBanner({ names }: { names: DemoedName[] }) {
       class="rounded-lg border border-red-500 bg-red-50 p-4 text-red-800 dark:border-red-700 dark:bg-red-950 dark:text-red-100"
     >
       <p class="font-medium">
-        {names.length} exported {names.length === 1 ? "component has" : "components have"} no demo
+        {names.length} {names.length === 1 ? "card is" : "cards are"} missing from this registry
       </p>
       <p class="mt-1 text-sm">
-        Add an entry to <code>registry.ts</code> for:{" "}
+        The catalogue lists {names.length === 1 ? "it" : "them"}{" "}
+        and the registry this guide was rendered with does not carry{" "}
+        {names.length === 1 ? "it" : "them"}:{" "}
         {names.map((name) => <code key={name} class="mr-1 font-mono">{name}</code>)}
       </p>
-    </div>
-  )
-}
-
-/**
- * The declared gaps: components whose demos are listed in `PENDING_DEMOS` rather than written.
- *
- * A quieter notice than the banner above, and the difference matters: the banner is for a gap
- * nobody accounted for, this is for one somebody wrote down in review. It renders `null` once every
- * package is written up, which is the point of keeping the list in the registry instead of here.
- *
- * `entries` defaults to {@link pendingDemos} and is a parameter for the same reason
- * {@link UIGuideProps.registry} is one: every package with a *declared* list — `charts`, `system`,
- * `crud` — is written up, so the shipped list is now `ui`'s auto-pending exports alone, and a test
- * that wanted to drive this notice with a shape of its own had no way to. `catalogue.test.tsx` passes
- * a synthetic entry as well as asserting the shipped one.
- */
-export function PendingDemos({
-  entries = pendingDemos,
-}: {
-  /** Declared gaps to publish. Defaults to the shipped {@link pendingDemos}. */
-  entries?: PendingDemosByPackage[]
-}) {
-  if (entries.length === 0) return null
-
-  return (
-    <div
-      data-e2e="ui-guide-pending-demos"
-      class="rounded-lg border border-amber-500 bg-amber-50 p-4 text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100"
-    >
-      <p class="font-medium">Not demonstrated yet</p>
-      <p class="mt-1 text-sm">
-        These components are declared in <code>registry.ts</code>{" "}
-        and their demos are still being written. Nothing here is missing by accident.
-      </p>
-      <ul class="mt-2 space-y-1 text-xs">
-        {entries.map((entry) => (
-          <li key={entry.package}>
-            <code class="font-mono">{entry.packageName}</code>{" "}
-            {entry.names.map((name) => <code key={name} class="mr-1 font-mono">{name}</code>)}
-          </li>
-        ))}
-      </ul>
     </div>
   )
 }
@@ -223,8 +179,6 @@ export function UIGuide({ registry = demoRegistry, copy, class: className }: UIG
       </div>
 
       {missing.length > 0 ? <MissingDemoBanner names={missing} /> : null}
-
-      <PendingDemos />
 
       <CatalogInstructions />
 
@@ -350,32 +304,23 @@ export {
   catalogueGroups,
   catalogueGroupsWithHeadings,
   catalogueNames,
+  type CatalogueSection,
   catalogueSections,
   CLASS_PACKAGE,
   type ClassDemo,
   type ClassDemoFragment,
   classDemoNames,
   classDemos,
-  type ComponentName,
-  componentNames,
-  type ComponentNamesOf,
   type Demo,
-  type DemoedName,
+  type DemoFragment,
   type DemoRegistry,
   demoRegistry,
-  EXCLUDED_PACKAGES,
-  exportsOf,
   type GroupId,
   missingDemos,
   type PackageId,
   packageIds,
-  PACKAGES,
   packageSpecifier,
   type PartialDemoRegistry,
-  PENDING_DEMOS,
-  pendingDemos,
-  type PendingDemosByPackage,
-  registryDrift,
   type SectionId,
   sectionIds,
   type SectionKind,

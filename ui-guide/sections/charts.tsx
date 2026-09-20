@@ -1,8 +1,8 @@
 /**
  * The Charts section.
  *
- * All eight of the package's components are live here: the seven that were on the worklist plus
- * `Bars`. The split the package itself makes is the section's structure — the zero-JS half
+ * Every component the package exports is live here. The split the package itself makes is the
+ * section's structure — the zero-JS half
  * (`Bars`, `LineChart`, `DonutChart`, `Kpi`, `KpiGrid`, `MetricPanel`) renders plain markup and
  * hydrates nothing, and the interactive half (`D3LineChart`, `CompareChart`) draws imperatively
  * with d3 in an effect.
@@ -285,13 +285,4 @@ export const chartsDemos = {
       />
     ),
   },
-} satisfies DemoFragment<
-  | "Bars"
-  | "CompareChart"
-  | "D3LineChart"
-  | "DonutChart"
-  | "Kpi"
-  | "KpiGrid"
-  | "LineChart"
-  | "MetricPanel"
->
+} satisfies DemoFragment

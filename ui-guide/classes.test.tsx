@@ -1,8 +1,9 @@
 /**
  * The class guard: what `theme/preset.css` defines has to be demonstrated, or named with a reason.
  *
- * The registry guard covers *components* — a component with no demo fails `deno check`. Nothing
- * covered *classes*, which is how `.btn-sm` and `.h6` outlived their last real caller in the source
+ * The coverage rule covers *components* — a component a package exports and no section demonstrates
+ * fails `deno task test`, in `coverage.ts`. Nothing covered
+ * *classes*, which is how `.btn-sm` and `.h6` outlived their last real caller in the source
  * guide. This suite closes that hole, and it is a test rather than a type because the class list
  * lives in CSS: Tailwind's `@utility` blocks and plain selectors are not a TypeScript union, and
  * deriving one would mean a code-generation step and a generated file in the tree. Reading

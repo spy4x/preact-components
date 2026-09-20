@@ -610,17 +610,4 @@ export const feedbackDemos = {
     snippet: `<Toastr toasts={app.toast.list.value} onDismiss={(id) => app.toast.remove(id)} />`,
     render: () => <ToastrDemo />,
   },
-} satisfies DemoFragment<
-  | "ConfirmDialog"
-  | "EmptyState"
-  | "ErrorState"
-  | "LoadingScreen"
-  | "LoadingSkeleton"
-  | "LoadingSpinner"
-  | "Modal"
-  | "SkeletonCards"
-  | "SkeletonStatus"
-  | "SkeletonTable"
-  | "SkeletonText"
-  | "Toastr"
->
+} satisfies DemoFragment

@@ -22,7 +22,6 @@ import {
   type CatalogueSection,
   catalogueSections,
   classDemoNames,
-  type DemoedName,
   demoRegistry,
   packageIds,
 } from "@preact-components/ui-guide/registry"
@@ -279,7 +278,7 @@ interface RailState {
   /** Section the current route lives in, `undefined` on the landing route. */
   section: string | undefined
   /** Demo the current route names, `undefined` unless the hash is a demo route. */
-  demo: DemoedName | undefined
+  demo: string | undefined
 }
 
 /**
@@ -307,7 +306,7 @@ interface RailState {
  */
 function GuideRail() {
   const route = useRoute()
-  const [copied, setCopied] = useState<DemoedName | undefined>(undefined)
+  const [copied, setCopied] = useState<string | undefined>(undefined)
 
   const state: RailState = {
     section: route === undefined || route.kind === "index" ? undefined : route.sectionId,
@@ -348,7 +347,7 @@ function GuideRail() {
     }
   }, [route])
 
-  const copySnippet = (name: DemoedName) => {
+  const copySnippet = (name: string) => {
     // The same port the catalogue's own copy controls get, so both routes copy identically.
     copyText(demoRegistry[name].snippet)
     setCopied(name)
@@ -395,9 +394,9 @@ interface RailSectionProps {
   section: CatalogueSection
   state: RailState
   /** Demo whose snippet was just copied, so the chip can say so. */
-  copied: DemoedName | undefined
+  copied: string | undefined
   /** Clipboard port the copy chip calls; the rail owns the "copied" feedback. */
-  copy: (name: DemoedName) => void
+  copy: (name: string) => void
 }
 
 /**
