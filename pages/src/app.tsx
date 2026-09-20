@@ -455,8 +455,8 @@ function RailSection({ section, state, copied, copy }: RailSectionProps) {
                 aria-current={state.demo === name ? "true" : undefined}
                 title={`${name} — ${section.title}`}
                 class={cn(
-                  // The chip's text is exactly the component name: `verify.ts` reads the active
-                  // chip's `textContent` to prove the deep link marked the right one.
+                  // The chip's text is exactly the component name: `pages/checks/pages.ts` reads
+                  // the active chip's `textContent` to prove the deep link marked the right one.
                   "min-w-0 flex-1 truncate rounded px-2 py-0.5 font-mono text-xs",
                   state.demo === name
                     ? "bg-purple-900 text-purple-50 dark:bg-purple-700 dark:text-purple-50"
