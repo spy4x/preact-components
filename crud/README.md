@@ -62,10 +62,13 @@ Decided in [#118](https://github.com/spy4x/preact-components/issues/118): `crud/
 things about any app that uses it, and this is the agreed standard for every app built from
 `spy4x/template`.
 
-- A row is never really deleted — it carries a `deletedAt` date, toggled through an Archive and
-  Restore action (soft delete).
+- A row is never really deleted — it carries a `deletedAt` timestamp; the editor sets and clears it
+  through an optional archive checkbox, submitted with the form's normal update, and the list
+  separates active rows from archived ones with a status filter.
 - The store is shaped like `buildModelStore` from `signals/`.
-- One `canChange` flag decides whether the current user may edit.
+- One `canChange` port — a function returning a boolean, supplied by the app because the library has
+  no auth — decides whether the current user may edit; `CrudList` takes the same kind of port as
+  `canAdd`.
 
 The next section gives the exact store interfaces this scaffold reads.
 

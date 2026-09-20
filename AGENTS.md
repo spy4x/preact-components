@@ -207,12 +207,15 @@ library knowing which app it is running in.
 
 `crud/` assumes three things about any app that uses it:
 
-- a row is never really deleted — it carries a `deletedAt` date, toggled through an Archive and
-  Restore action (soft delete);
+- a row is never really deleted — it carries a `deletedAt` timestamp; the editor sets and clears it
+  through an optional archive checkbox, submitted with the form's normal update, and the list
+  separates active rows from archived ones with a status filter;
 - the store is shaped like `buildModelStore` from `signals/`; `crud/store.ts` describes the slice it
-  reads as two structural interfaces, `CrudListStore` and `CrudEditorStore`, which a real
-  `buildModelStore` satisfies with no adapter;
-- one `canChange` flag decides whether the current user may edit.
+  reads as two structural interfaces, `CrudListStore` and `CrudEditorStore`, and `crud/store.test.ts`
+  proves a real `buildModelStore` satisfies both with no adapter;
+- one `canChange` port — a function returning a boolean, supplied by the app because the library has
+  no auth — decides whether the current user may edit; `CrudList` takes the same kind of port as
+  `canAdd`.
 
 This is the standard for every app built from `spy4x/template`. See `crud/README.md` for the exact
 store interfaces.
