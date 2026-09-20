@@ -75,11 +75,15 @@ describe("the coverage rule", () => {
   it("accounts for every component every catalogued package exports", () => {
     expect(coverageProblems(EXPORTS)).toEqual([])
 
-    // A floor under the read itself: an export list that collapsed to nothing would agree with an
-    // empty demo set and report no problem at all. Set well below every catalogued package's real
-    // count, including `system`'s post-#160 count of 20 once six single-application pieces left it.
+    // A floor under the read itself: a list that collapsed to nothing would agree with an empty
+    // demo set and report no problem at all. The floor is zero, not a package's current count — a
+    // count would need revising every time a package's real export surface legitimately grows or
+    // shrinks, which defeats the point of a guard that is supposed to catch a broken read rather
+    // than a resized package. A *partial* collapse (the barrel read but not its subpath modules,
+    // say) does not need a count either: the bidirectional check on the line above already fails on
+    // the name of the first card whose component the read missed, whatever the package's total is.
     for (const id of packageIds) {
-      expect(EXPORTS[id].length, `${id}: value exports read`).toBeGreaterThan(10)
+      expect(EXPORTS[id].length, `${id}: value exports read`).toBeGreaterThan(0)
       expect(demoedNamesOf(id).length, `${id}: cards`).toBeGreaterThan(0)
     }
   })
