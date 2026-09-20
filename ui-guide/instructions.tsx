@@ -1,6 +1,6 @@
 /**
- * The prose half of the theme work: what the design-system classes are for, and the drift guard
- * that keeps this page from documenting classes that do not exist.
+ * The prose half of the theme work: what the design-system classes are for, and the test that
+ * keeps this page from documenting classes that do not exist.
  *
  * The class names below are rendered as text rather than applied to the catalogue's own markup, so
  * the guide still reads correctly in an app that never imported `preset.css`. `documentedClasses`
