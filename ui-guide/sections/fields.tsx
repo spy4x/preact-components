@@ -3,7 +3,7 @@
  *
  * Adapted from the section the `ui/` form-primitive PR wrote and dropped, because `ui-guide/` was
  * outside its scope. The per-component summaries are that PR's own contract notes, kept rather than
- * rewritten; what changed here is the registry shape (`DemoFragment` over the component names), and
+ * rewritten; what changed here is the registry shape (a `DemoFragment` of cards), and
  * the demos themselves, which are the controlled form an app writes: a signal per field, `value` in,
  * `onInput`/`onChange` out, and `Field` owning the `id`/`for`/`aria-describedby` wiring.
  *
@@ -376,6 +376,4 @@ export const fieldDemos = {
 />`,
     render: () => <InputButtonDemo />,
   },
-} satisfies DemoFragment<
-  "Field" | "Input" | "InputButton" | "Radio" | "RadioGroup" | "Select" | "Textarea" | "Checkbox"
->
+} satisfies DemoFragment

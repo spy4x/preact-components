@@ -776,20 +776,4 @@ export const displayDemos = {
 </Tooltip>`,
     render: () => <TooltipDemo />,
   },
-} satisfies DemoFragment<
-  | "Avatar"
-  | "AvatarGroup"
-  | "Card"
-  | "CardBody"
-  | "CardFooter"
-  | "CardHeader"
-  | "ConfidenceMeter"
-  | "CopyableText"
-  | "CopyableTextBody"
-  | "PageTitle"
-  | "Pagination"
-  | "Progress"
-  | "Table"
-  | "Tabs"
-  | "Tooltip"
->
+} satisfies DemoFragment

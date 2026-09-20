@@ -60,4 +60,4 @@ export const signalsDemos = {
 </Show>`,
     render: () => <ShowDemo />,
   },
-} satisfies DemoFragment<"For" | "Show">
+} satisfies DemoFragment

@@ -537,13 +537,13 @@ export interface Demo {
 }
 
 /**
- * The compile-time tie between a section's demos and the components that exist.
+ * The shape a section's demos have: one {@link Demo} per card, keyed by component name.
  *
- * `Names` is constrained to {@link ComponentName}, so a name that is no longer exported does not
- * satisfy it, and `Record<Names, Demo>` means a name in the union with no demo does not satisfy
- * the fragment either. Both directions are errors at the section that is wrong.
+ * Which names belong in it is `coverage.ts`'s business, at test time and against the packages
+ * themselves. A section states the shape so a card missing a summary, a snippet or a render
+ * function is an error where it is written.
  */
-export type DemoFragment<Names extends ComponentName> = Record<Names, Demo>
+export type DemoFragment = Record<string, Demo>
 
 /**
  * The package the class sections document.
@@ -572,13 +572,13 @@ export interface ClassDemo extends Demo {
 }
 
 /**
- * The compile-time tie between a class section's cards and the cards it declares.
+ * The shape a class section's cards have: one {@link ClassDemo} per card id.
  *
- * The counterpart of {@link DemoFragment} for the sections that document classes: `Names` is the
- * section's own card-id union, so a card named in the union with no demo does not compile, and a
- * card that is not a {@link ClassDemo} — no heading, no class list — does not either.
+ * The counterpart of {@link DemoFragment} for the sections that document classes, and it carries
+ * what only a class card has: a card with no heading and no class list is an error where it is
+ * written. `classes.test.tsx` is what holds the cards to `preset.css`.
  */
-export type ClassDemoFragment<Names extends string> = Record<Names, ClassDemo>
+export type ClassDemoFragment = Record<string, ClassDemo>
 
 /**
  * Components a covered package exports that the catalogue does not demonstrate yet.

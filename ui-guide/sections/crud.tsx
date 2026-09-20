@@ -683,17 +683,4 @@ export const crudDemos = {
 />`,
     render: () => <FieldIssueDemo />,
   },
-} satisfies DemoFragment<
-  | "AssociationEditor"
-  | "CheckboxField"
-  | "CrudEditor"
-  | "CrudList"
-  | "DeletionValidation"
-  | "FieldIssues"
-  | "NumberField"
-  | "RowAction"
-  | "RowActions"
-  | "SelectField"
-  | "TextareaField"
-  | "TextField"
->
+} satisfies DemoFragment

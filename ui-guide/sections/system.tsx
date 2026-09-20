@@ -493,13 +493,4 @@ const tags = seoHeadTags(head)`,
 </form>`,
     render: () => <BookingSubmitDemo />,
   },
-} satisfies DemoFragment<
-  | "BlogImageEnhancer"
-  | "BookingSubmit"
-  | "Breadcrumb"
-  | "Calendar"
-  | "SEOHead"
-  | "SWUpdater"
-  | "ThemeToggle"
-  | "TimeSlots"
->
+} satisfies DemoFragment

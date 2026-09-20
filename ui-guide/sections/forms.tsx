@@ -15,16 +15,6 @@ import { IconSearch } from "@preact-components/icons"
 import { useSignal } from "@preact/signals"
 import type { ClassDemoFragment } from "../registry.ts"
 
-/** The cards of the form chapter, in render order. */
-export type FormDemoName =
-  | "class-input"
-  | "class-select"
-  | "class-textarea"
-  | "class-label"
-  | "class-checkbox"
-  | "class-radio"
-  | "class-input-button"
-
 /** Controlled: `value` in, `onInput` out, and the live value printed under the control. */
 function InputDemo() {
   const email = useSignal("")
@@ -386,4 +376,4 @@ export const formDemos = {
 </div>`,
     render: () => <InputButtonDemo />,
   },
-} satisfies ClassDemoFragment<FormDemoName>
+} satisfies ClassDemoFragment

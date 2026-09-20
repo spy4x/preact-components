@@ -285,13 +285,4 @@ export const chartsDemos = {
       />
     ),
   },
-} satisfies DemoFragment<
-  | "Bars"
-  | "CompareChart"
-  | "D3LineChart"
-  | "DonutChart"
-  | "Kpi"
-  | "KpiGrid"
-  | "LineChart"
-  | "MetricPanel"
->
+} satisfies DemoFragment
