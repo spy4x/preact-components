@@ -188,7 +188,10 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
     // forces one between two reads a few milliseconds apart, so the very first comparison agrees,
     // on a value that has not moved yet rather than one that has settled. Wait for the element's
     // own running animations instead; once none are left, the browser has committed the end state.
-    await Promise.all(button.getAnimations().map((animation) => animation.finished))
+    // \`finished\` rejects if an animation is cancelled instead — a cancelled animation just means
+    // there is nothing left to wait for, and the read right below is what actually judges the
+    // colour, so losing the whole browser phase to that rejection would be out of all proportion.
+    await Promise.all(button.getAnimations().map((animation) => animation.finished.catch(() => {})))
 
     return {
       buttonRadius: getComputedStyle(button).borderRadius,
