@@ -277,7 +277,7 @@ function CalendarInteractiveDemo() {
 export const systemDemos = {
   Calendar: {
     summary:
-      "Six-week month grid. **Dual-mode**: with no `onSelectDate` every cell is an `<a href>` and a month arrow with nothing to show is a `<span>` rather than a dead link; supplying the callback turns the cells into `<button>`. `today` and `timeZone` are props, so a render can be pinned — this card passes `2026-03-10` and `UTC` and reads no clock. A date missing from `slotsByDate` has no availability, a `0` is fully booked, and the two are visually alike but carry different accessible labels. Cells also show today, past dates, dates outside the window, and a scarcity dot at or below `lowSlotsThreshold`.",
+      "Six-week month grid. **Dual-mode**: with no `onSelectDate` every cell is an `<a href>` and a month arrow with nothing to show is a `<span>` rather than a dead link; supplying the callback turns the cells into `<button>`. `today` and `timeZone` are props, so a render can be pinned — this card passes `2026-03-10` and `UTC` and reads no clock. A date missing from `slotsByDate` has no availability, a `0` has no slots left, and the two are visually alike but carry different accessible labels. Cells also show today, past dates, dates outside the window, and a scarcity dot at or below `lowSlotsThreshold`.",
     snippet: `<Calendar
   monthAnchor="2026-03-01"
   minDate="2026-03-01"

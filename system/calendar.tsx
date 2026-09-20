@@ -56,7 +56,7 @@ export function describeCalendarDay(day: CalendarDay): string {
     case "after":
       return `${day.date} — outside the allowed range`
     case "full":
-      return `${day.date} — fully booked`
+      return `${day.date} — no slots left`
     case "unavailable":
       return `${day.date} — no times available`
     default:
@@ -81,7 +81,7 @@ export interface CalendarProps {
   maxDate: string
   /**
    * Remaining slots per `YYYY-MM-DD`. A date the map omits has no availability, and a `0` marks
-   * the day as fully booked — the cell looks the same, the accessible label does not.
+   * the day as having no slots left — the cell looks the same, the accessible label does not.
    */
   slotsByDate?: Readonly<Record<string, number>>
   selectedDate?: string | null

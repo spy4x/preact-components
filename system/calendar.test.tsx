@@ -99,10 +99,10 @@ describe("Calendar", () => {
     expect(html).toContain('href="?date=2026-08-15"')
   })
 
-  it("distinguishes a fully booked day from a day with no availability", () => {
+  it("distinguishes a day with no slots left from a day with no availability", () => {
     const html = render(<Calendar {...base} />)
 
-    expect(html).toContain('title="2026-08-12 — fully booked"')
+    expect(html).toContain('title="2026-08-12 — no slots left"')
     expect(html).toContain('title="2026-08-19 — no times available"')
     expect(html).toContain("line-through")
   })
