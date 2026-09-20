@@ -174,7 +174,7 @@ preact                          10.28.2
 @preact/signals                  2.5.1
 @preact/signals-core            1.12.1
 wouter-preact                    3.9.0
-arktype                         2.1.29
+arktype                          2.2.3
 @std/assert                     1.0.19
 @std/expect                     1.0.20
 @std/testing                    1.0.20

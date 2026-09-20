@@ -12,8 +12,7 @@
     "npm:@preact/signals@2.5.1": "2.5.1_preact@10.28.2",
     "npm:@tailwindcss/forms@0.5.10": "0.5.10_tailwindcss@4.1.12",
     "npm:@tailwindcss/oxide@4.1.12": "4.1.12",
-    "npm:arktype@2.1.29": "2.1.29",
-    "npm:clsx@2.1.1": "2.1.1",
+    "npm:arktype@2.2.3": "2.2.3",
     "npm:d3@7.9.0": "7.9.0",
     "npm:preact-render-to-string@6.7.0": "6.7.0_preact@10.28.2",
     "npm:preact@10.28.2": "10.28.2",
@@ -54,14 +53,14 @@
     }
   },
   "npm": {
-    "@ark/schema@0.56.0": {
-      "integrity": "sha512-ECg3hox/6Z/nLajxXqNhgPtNdHWC9zNsDyskwO28WinoFEnWow4IsERNz9AnXRhTZJnYIlAJ4uGn3nlLk65vZA==",
+    "@ark/schema@0.56.2": {
+      "integrity": "sha512-Qx4D2JFbBWpntiHZaTv7bGG4H/M2rigiknezKg/WVyDSaLdE4YCcWAOoFB7pjjDqHbbV2OqRfntm1nnXvwMexg==",
       "dependencies": [
         "@ark/util"
       ]
     },
-    "@ark/util@0.56.0": {
-      "integrity": "sha512-BghfRC8b9pNs3vBoDJhcta0/c1J1rsoS1+HgVUreMFPdhz/CRAKReAu57YEllNaSy98rWAdY1gE+gFup7OXpgA=="
+    "@ark/util@0.56.2": {
+      "integrity": "sha512-9kU2sUE38FZEGG7l3hamYMBieLYEJh2L1mrYD2eXpT+78EnQSV1bhjxJhnxGBMSTbtwpBSDNSK+K60WvaI/DTQ=="
     },
     "@isaacs/fs-minipass@4.0.1": {
       "integrity": "sha512-wgm9Ehl2jpeqP3zw/7mo3kRHFp5MEDhqAdwy1fTGkHAwnkGOVsgpvQhL8B5n1qlb01jV3n/bI0ZfZp5lWA1k4w==",
@@ -167,14 +166,14 @@
       ],
       "scripts": true
     },
-    "arkregex@0.0.5": {
-      "integrity": "sha512-ncYjBdLlh5/QnVsAA8De16Tc9EqmYM7y/WU9j+236KcyYNUXogpz3sC4ATIZYzzLxwI+0sEOaQLEmLmRleaEXw==",
+    "arkregex@0.0.8": {
+      "integrity": "sha512-PJcx6G1kQTgLKPUbeYlYecDRaKq15AMSGVajlKFYWlPeJRQL+j3dKE6tyMs40HZ99djS1l9Vhl3ezAHy9JBIqQ==",
       "dependencies": [
         "@ark/util"
       ]
     },
-    "arktype@2.1.29": {
-      "integrity": "sha512-jyfKk4xIOzvYNayqnD8ZJQqOwcrTOUbIU4293yrzAjA3O1dWh61j71ArMQ6tS/u4pD7vabSPe7nG3RCyoXW6RQ==",
+    "arktype@2.2.3": {
+      "integrity": "sha512-7W+0RLTUNJiBFIIZXwOQxSR8Z273IAd6IvqBeG9+gHnQKFsIx2C0iOtGTmMrPnlX4qLXyc5+ll7A0BIj9WrbTg==",
       "dependencies": [
         "@ark/schema",
         "@ark/util",
@@ -183,9 +182,6 @@
     },
     "chownr@3.0.0": {
       "integrity": "sha512-+IxzY9BZOQd/XuYPRmrvEVjF/nqj5kgT4kEq7VofrDoM1MxoRjEWkrCC3EtLi59TVawxTAn+orJwFQcrqEN1+g=="
-    },
-    "clsx@2.1.1": {
-      "integrity": "sha512-eYm0QWBtUrBWZWG0d386OGAw16Z995PiOVo2B7bjWSbHedGl5e0ZWaq65kOGgUSNesEIDkB9ISbTg/JK9dhCZA=="
     },
     "commander@7.2.0": {
       "integrity": "sha512-QrWXB+ZQSVPmIWIhtEO9H+gwHaMGYiF5ChvoJ+K9ZGHG/sVsa6yiesAD1GC/x46sET00Xlwo1u49RVVVzvcSkw=="
@@ -462,7 +458,8 @@
         "minipass",
         "minizlib",
         "yallist"
-      ]
+      ],
+      "deprecated": true
     },
     "wouter-preact@3.9.0_preact@10.28.2": {
       "integrity": "sha512-rldHdAwygx1yTn8zdopPy7v1uJyYTOF9WFuRg2GYT3zJGUSQZ2d97HfpQQezlxhWxpSEpWFl1YM9EwzekCXIUw==",
@@ -484,8 +481,7 @@
       "npm:@preact/signals-core@1.12.1",
       "npm:@preact/signals@2.5.1",
       "npm:@tailwindcss/forms@0.5.10",
-      "npm:arktype@2.1.29",
-      "npm:clsx@2.1.1",
+      "npm:arktype@2.2.3",
       "npm:preact@10.28.2",
       "npm:tailwind-merge@3.7.0",
       "npm:tailwindcss@4.1.12",
