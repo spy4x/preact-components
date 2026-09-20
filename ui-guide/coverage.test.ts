@@ -5,6 +5,10 @@
 
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
+import * as charts from "@preact-components/charts"
+import * as crud from "@preact-components/crud"
+import * as signals from "@preact-components/signals"
+import * as system from "@preact-components/system"
 import * as ui from "@preact-components/ui"
 import {
   type AllowedExport,
@@ -20,6 +24,14 @@ import { type PackageId, packageIds } from "./registry.ts"
 
 /** Every catalogued package's value exports, read once for the whole file. */
 const EXPORTS = await packageExports()
+
+/**
+ * Every package's barrel, imported directly — ground truth `packageExports()`'s read is checked
+ * against below, independent of the function under test: whatever `coverage.ts` does internally,
+ * these imports run the same way a caller's own `import * as ui from "@preact-components/ui"`
+ * would, so a bug in the read cannot also corrupt what it is compared to.
+ */
+const BARRELS: Record<PackageId, object> = { ui, charts, system, crud, signals }
 
 /** A component name no package exports and no section demonstrates. */
 const GHOST = "GhostWidget"
@@ -75,27 +87,41 @@ describe("the coverage rule", () => {
   it("accounts for every component every catalogued package exports", () => {
     expect(coverageProblems(EXPORTS)).toEqual([])
 
-    // A floor under the read itself: a list that collapsed to nothing would agree with an empty
-    // demo set and report no problem at all. The floor is zero, not a package's current count — a
-    // count would need revising every time a package's real export surface legitimately grows or
-    // shrinks, which defeats the point of a guard that is supposed to catch a broken read rather
-    // than a resized package. A *partial* collapse (the barrel read but not its subpath modules,
-    // say) does not need a count either: the bidirectional check on the line above already fails on
-    // the name of the first card whose component the read missed, whatever the package's total is.
+    // A floor under the read itself, derived from `BARRELS` rather than picked: whatever a
+    // package's real barrel exports for real, `packageExports()`'s read of that package must
+    // contain too. This is not a count, so nothing here needs revising when a package's real
+    // surface grows or shrinks — and unlike the bidirectional check above, which only misses a
+    // *component*-named export, this one also catches a read that silently drops a helper, which
+    // carries no card and so nothing else here would ever ask after it.
     for (const id of packageIds) {
-      expect(EXPORTS[id].length, `${id}: value exports read`).toBeGreaterThan(0)
+      const barrelNames = Object.keys(BARRELS[id])
+      const lost = barrelNames.filter((name) => !EXPORTS[id].includes(name))
+
+      expect(lost, `${id}: barrel names the read lost`).toEqual([])
       expect(demoedNamesOf(id).length, `${id}: cards`).toBeGreaterThan(0)
     }
   })
 
   it("reads a package's subpath modules, not only its barrel", async () => {
     // The hole this closes: a component exported from its own module and never re-exported is
-    // reachable through the subpath and was invisible to a barrel-only check.
-    const exported = await valueExportsOf("ui")
+    // reachable through the subpath and was invisible to a barrel-only check. Two packages
+    // currently carry a name like that; a third package having none of its own yet is not a bug,
+    // so this names the two rather than looping blind over every package.
+    const cases: Partial<Record<PackageId, string>> = {
+      ui: "copyToClipboard",
+      charts: "assertD3Available",
+    }
 
-    expect(Object.keys(ui), "the barrel does not carry it").not.toContain("copyToClipboard")
-    expect(exported, "@preact-components/ui/copy-button does").toContain("copyToClipboard")
-    expect(exported.length).toBeGreaterThan(Object.keys(ui).length)
+    for (const [id, name] of Object.entries(cases) as [PackageId, string][]) {
+      const barrelNames = Object.keys(BARRELS[id])
+      const exported = await valueExportsOf(id)
+
+      expect(barrelNames, `the ${id} barrel does not carry it`).not.toContain(name)
+      expect(exported, `@preact-components/${id}'s own module does`).toContain(name)
+      expect(exported.length, `${id}: subpath reading adds names`).toBeGreaterThan(
+        barrelNames.length,
+      )
+    }
   })
 
   it("names a component that no section demonstrates", () => {
