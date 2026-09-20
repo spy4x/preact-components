@@ -166,7 +166,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
  * Everything here is behind an effect, a ref or a listener, so no string-rendering test can reach
  * any of it: opening moves focus into the menu, the arrow keys with Home and End walk the items,
  * a real Escape press closes the menu and hands the trigger its focus back, Tab out closes it
- * behind the user, and activating an item closes it too.
+ * behind the user, activating an item closes it too, and a click that misses an item does not.
  *
  * Two habits the Modal checks below set, and for the same reasons. The trigger, panel and root are
  * parked on `globalThis` rather than re-queried, so every focus assertion compares element identity
@@ -175,11 +175,16 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
  * trigger" are both true of a menu that never opened, which is precisely the state a broken
  * opening step leaves behind.
  *
- * The keys are real presses through `Input.dispatchKeyEvent`. The trigger is activated with
- * `.click()`, which is what the Modal checks measured: a real Enter press on a focused button does
- * not become an activation click in headless Chromium, so `.click()` stands in for the one step
- * the browser will not perform. Every key under test — the arrows, Home, End, Escape, Tab — is a
- * real press.
+ * Every key is a real press through `Input.dispatchKeyEvent`, and the stray click is a real
+ * press-and-release through `Input.dispatchMouseEvent` at viewport coordinates. `.click()` appears
+ * in three places and for one reason: opening the menu the first time, reopening it in
+ * {@link reopen}, and activating a menu item. A real Enter press on a focused button does not
+ * become an activation click in headless Chromium — what the Modal checks measured on a trigger,
+ * and what a probe run of this file measured again on a focused `role="menuitem"` button, which
+ * left the menu open at `aria-expanded="true"` with focus still on the item. So `.click()` stands
+ * in for the step the browser will not perform. The consequence worth naming: the keyboard path to
+ * *activating* an item belongs to the browser, and nothing here proves it, while every other key
+ * this issue is about — the arrows, Home, End, Escape, Tab — is proven by a real press.
  *
  * The card holds four dropdowns; this drives the first, the icon trigger named "Row actions" over
  * three items. Its two link items point at this page's own `#inputs` route, so nothing here
@@ -292,11 +297,13 @@ async function dropdownChecks(devtools: Devtools): Promise<void> {
   check(
     "a real Escape key press closes the Dropdown",
     beforeEscape.expanded === "true" && beforeEscape.inPanel && closedByEscape,
-    beforeEscape.expanded === "true"
-      ? closedByEscape
-        ? "Input.dispatchKeyEvent Escape → the panel is hidden again"
-        : "the panel was still open 3s after the key press"
-      : "the menu was never open, so this proves nothing about Escape",
+    beforeEscape.expanded !== "true"
+      ? "the menu was never open, so this proves nothing about Escape"
+      : !beforeEscape.inPanel
+      ? "focus was never in the menu, so the key press never reached it"
+      : closedByEscape
+      ? "Input.dispatchKeyEvent Escape → the panel is hidden again"
+      : "the panel was still open 3s after the key press",
   )
   check(
     "closing the Dropdown with Escape returns focus to the trigger",
@@ -344,6 +351,146 @@ async function dropdownChecks(devtools: Devtools): Promise<void> {
         `${beforeActivate.expanded} → ${afterActivate.expanded}, focus on ` +
         (afterActivate.onTrigger ? "the trigger" : `"${afterActivate.label}"`)
       : "the menu was never open, so activating an item proves nothing",
+  )
+
+  await strayClickCheck(devtools)
+  await triggerNameCheck(devtools)
+}
+
+/**
+ * A left click that misses an item leaves the menu open, with focus still on an item.
+ *
+ * This is the one check in the file driven with a real mouse event rather than `.click()`, and it
+ * has to be: the whole point is that the click lands on something unfocusable — the panel's own
+ * padding, the strip above the first item — so there is no element to call `.click()` on. The
+ * browser reports that as a `focusout` whose `relatedTarget` is `null`, which is exactly what it
+ * reports when focus leaves the page altogether. A menu that treats the two alike vanishes when a
+ * person clicks a few pixels off the entry they wanted, and leaves their focus on `<body>`.
+ *
+ * The point clicked is measured rather than assumed: `elementFromPoint` says what is really there,
+ * and the check asserts it was inside the panel and not inside an item before believing anything
+ * that follows.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function strayClickCheck(devtools: Devtools): Promise<void> {
+  // The coordinates are viewport pixels, so the panel has to be on screen for the click to land
+  // where the measurement says it will.
+  await devtools.evaluate<null>(
+    `(globalThis.__verifyDropdown.trigger.scrollIntoView({ block: "center" }), null)`,
+  )
+  const before = await reopen(devtools)
+  const spot = await devtools.evaluate<{
+    x: number
+    y: number
+    insidePanel: boolean
+    onItem: boolean
+    tag: string
+  }>(`(() => {
+    const { panel } = globalThis.__verifyDropdown
+    const rect = panel.getBoundingClientRect()
+    const x = Math.round(rect.left + rect.width / 2)
+    const y = Math.round(rect.top + 2)
+    const target = document.elementFromPoint(x, y)
+    return {
+      x,
+      y,
+      insidePanel: target !== null && panel.contains(target),
+      onItem: target !== null && target.closest('[role="menuitem"]') !== null,
+      tag: target === null ? "nothing" : target.tagName,
+    }
+  })()`)
+
+  for (const type of ["mousePressed", "mouseReleased"]) {
+    await devtools.send("Input.dispatchMouseEvent", {
+      type,
+      x: spot.x,
+      y: spot.y,
+      button: "left",
+      buttons: type === "mousePressed" ? 1 : 0,
+      clickCount: 1,
+    })
+  }
+  // The component answers this one tick late on purpose — it has to read where focus ended up —
+  // so give it that tick before reading, rather than letting the result depend on the timing.
+  await poll(() => devtools.evaluate<boolean>(`${DROPDOWN_STATE}.inPanel === true`), 2_000)
+  const after = await devtools.evaluate<DropdownState>(DROPDOWN_STATE)
+
+  check(
+    "a click on the Dropdown's padding leaves the menu open with focus on its item",
+    spot.insidePanel && !spot.onItem && before.expanded === "true" && before.inPanel &&
+      after.expanded === "true" && after.inPanel && after.label === before.label,
+    !spot.insidePanel || spot.onItem
+      ? `the point (${spot.x}, ${spot.y}) is ${spot.tag}, not the panel's own padding`
+      : before.inPanel
+      ? `clicked ${spot.tag} at (${spot.x}, ${spot.y}): aria-expanded ${before.expanded} → ` +
+        `${after.expanded}, focus "${before.label}" → ` +
+        (after.inPanel ? `"${after.label}"` : `${after.label}, outside the menu`)
+      : "the menu was never open with focus inside, so a stray click proves nothing",
+  )
+
+  // Leave it closed for whatever runs next, the way every other check here does.
+  await pressKey(devtools, "Escape")
+  await poll(() => devtools.evaluate<boolean>(`${DROPDOWN_STATE}.hidden === true`), 3_000)
+}
+
+/**
+ * Every dropdown trigger the catalogue renders has an accessible name, as the browser computes it.
+ *
+ * `triggerLabel` and `triggerNamedByContent` make *omitting* a name a type error, but no type can
+ * tell whether a caller's children render any text, so `triggerNamedByContent` on an icon-only
+ * trigger compiles and produces a button a screen reader announces as just "button" — the defect
+ * the issue opened with, reached through the prop meant to prevent it. This is where that can be
+ * caught. The name is asked of Chromium through `Accessibility.getPartialAXTree` rather than
+ * recomputed here, because re-implementing the naming algorithm inside the check would only prove
+ * the check agrees with itself.
+ *
+ * `button[aria-haspopup="menu"]` is every `Dropdown` trigger in the document and nothing else —
+ * that attribute appears in one component. The card ids come from a separate query in document
+ * order, which is the order the protocol returns as well, so a failure names the card to open.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function triggerNameCheck(devtools: Devtools): Promise<void> {
+  const selector = `button[aria-haspopup="menu"]`
+  await devtools.send("DOM.enable")
+  await devtools.send("Accessibility.enable")
+
+  const { root } = await devtools.send<{ root: { nodeId: number } }>("DOM.getDocument", {
+    depth: 1,
+  })
+  const { nodeIds } = await devtools.send<{ nodeIds: number[] }>("DOM.querySelectorAll", {
+    nodeId: root.nodeId,
+    selector,
+  })
+  const cards = await devtools.evaluate<string[]>(
+    `[...document.querySelectorAll('${selector}')]
+      .map((trigger) => trigger.closest("[id^=demo-]")?.id ?? "outside any card")`,
+  )
+
+  const unnamed: string[] = []
+  const named: string[] = []
+  for (const [index, nodeId] of nodeIds.entries()) {
+    const { nodes } = await devtools.send<{ nodes: Array<{ name?: { value?: string } }> }>(
+      "Accessibility.getPartialAXTree",
+      { nodeId, fetchRelatives: false },
+    )
+    const name = (nodes[0]?.name?.value ?? "").trim()
+    const where = cards[index] ?? `trigger ${index + 1}`
+    if (name === "") unnamed.push(where)
+    else named.push(`${where}: "${name}"`)
+  }
+
+  check(
+    "every Dropdown trigger in the catalogue has an accessible name",
+    nodeIds.length > 0 && nodeIds.length === cards.length && unnamed.length === 0,
+    nodeIds.length === 0
+      ? "no dropdown trigger found, so this proves nothing"
+      : unnamed.length > 0
+      ? `${unnamed.length} of ${nodeIds.length} announce as an unnamed button: ${
+        unnamed.join(", ")
+      }`
+      : `${nodeIds.length} triggers, each named by Chromium — ${named.join(", ")}`,
   )
 }
 
