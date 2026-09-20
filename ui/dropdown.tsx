@@ -22,7 +22,17 @@ export type DropdownTriggerName =
     triggerNamedByContent?: never
   }
   | {
-    /** The trigger's own visible text is its name, so no `aria-label` is written over it. */
+    /**
+     * The trigger's own visible text is its name, so no `aria-label` is written over it.
+     *
+     * Passing this is a promise that `trigger` renders text. No type can check it — a component
+     * cannot know what a caller's children will render — so the promise is the caller's to keep.
+     * Break it, by passing this on a trigger that renders only an icon, and the button has no
+     * accessible name at all: a screen reader announces "button" and nothing else, which is the
+     * defect `triggerLabel` exists to prevent. `pages/checks/ui.ts` asks the browser for the
+     * computed name of every dropdown trigger the catalogue renders, so a broken promise inside
+     * this repository fails the browser phase.
+     */
     triggerNamedByContent: true
     triggerLabel?: never
   }
@@ -253,8 +263,33 @@ export function Dropdown(props: DropdownProps) {
   // already takes focus out of the menu; this listener is what notices and closes behind it.
   const handleFocusOut = (event: FocusEvent) => {
     const next = event.relatedTarget as Node | null
-    if (next && rootRef.current?.contains(next)) return
-    isOpen.value = false
+    if (next) {
+      if (!rootRef.current?.contains(next)) isOpen.value = false
+      return
+    }
+
+    // A null `relatedTarget` means two opposite things: focus left for somewhere the event cannot
+    // name, and focus went **nowhere**. The second is an ordinary left click on the panel's own
+    // padding — the strip above the first item, the gap between two rows — which blurs the item
+    // and lands on nothing. Closing on that loses the menu and the user's place over a click a
+    // few pixels off target. The event cannot tell them apart, so this waits a tick and reads
+    // where focus actually ended up.
+    const left = event.target as HTMLElement | null
+    setTimeout(() => {
+      const root = rootRef.current
+      // Already closed — an outside click, which `handleClickOutside` answers first — or gone.
+      if (!isOpen.value || !root) return
+
+      const active = document.activeElement
+      if (active !== null && active !== document.body && !root.contains(active)) {
+        isOpen.value = false
+        return
+      }
+      // Focus went nowhere and the menu is still open, so the click was inside it. Hand the item
+      // its focus back: leaving focus on `<body>` would keep the menu open with its arrow keys
+      // dead, which is no better than closing it.
+      if (!root.contains(active)) left?.focus()
+    }, 0)
   }
 
   // Activating an item ends the interaction, so the menu closes and hands focus back. The click
