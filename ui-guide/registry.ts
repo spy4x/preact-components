@@ -195,7 +195,7 @@ const groupHeadings: Record<GroupId, { title: string; blurb: string }> = {
   application: {
     title: "App shell",
     blurb:
-      "The chrome an adopter wires first: navigation, the heads a page needs, the service-worker prompt and the calendar. The state layer these are assembled through is `signals/`, which has nothing to render and so has no section here — read its own README instead.",
+      "The chrome an adopter wires first: the heads a page needs, the service-worker prompt, the dual-mode calendar and the blog image enhancer. The state layer these are assembled through is `signals/`, which has nothing to render and so has no section here — read its own README instead.",
   },
 }
 
@@ -332,7 +332,7 @@ const catalogue = {
     package: "system",
     title: "System",
     blurb:
-      "Application chrome and platform integration: navigation, heads, the service-worker prompt, the dual-mode calendar. Everything is live; the two platform-integration cards say on the card what they demonstrate and what they leave to a browser.",
+      "Application chrome and platform integration: heads, the service-worker prompt, the dual-mode calendar. Everything is live; the two platform-integration cards say on the card what they demonstrate and what they leave to a browser.",
     demos: systemDemos,
   },
   crud: {
