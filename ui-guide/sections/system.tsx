@@ -15,11 +15,17 @@
  *   content. What is *not* claimed is that the tags reach a document head — this package has no head
  *   pipeline, and the guide has none to offer.
  * - **`SWUpdater` renders `null` until a waiting service worker is detected**, so its server render is
- *   nothing at all. There is no markup-level reduction that says anything true: the bar cannot exist
- *   without `navigator.serviceWorker`, a registration and a real deploy. The card demonstrates the
- *   pure half instead — `watchForUpdate`, on a fake registration, in every branch, with the outcome
- *   printed — and says plainly that mounting the component needs a browser, a worker and two
- *   deploys.
+ *   nothing at all. The card has two halves. The first drives the pure function the component is
+ *   built on — `watchForUpdate`, on a fake registration, in every branch, with the outcome printed.
+ *   The second is the component itself against a real service worker, and it is deliberately
+ *   visitor-triggered: this catalogue is published, so **nothing registers a worker on page load**.
+ *   Pressing the card's button installs `sw-demo/sw.js`, a worker with no `fetch` handler, no cache
+ *   and no `clients.claim()`, scoped to `sw-demo/` — one directory below this page, which therefore
+ *   is never controlled by it. The button then registers the same script under a second version
+ *   marker, which is a genuine update: the new worker installs and *waits*, because the first one
+ *   still controls the hidden frame the card opened inside the scope. That is the state `SWUpdater`
+ *   exists for, so mounting it there shows the real bar. The card's reset control unregisters
+ *   everything again, and `pages/checks/system.ts` drives all of it in headless Chromium.
  *
  * The rest are honest full demos. `Calendar` reads state, so it lives in its own component with its
  * own local state, and every date is injected: it takes `today` and `timeZone` as props precisely so
@@ -39,6 +45,7 @@ import {
 } from "@preact-components/system/sw-updater"
 import { Button } from "@preact-components/ui"
 import { useSignal } from "@preact/signals"
+import { useRef } from "preact/hooks"
 import type { DemoFragment } from "../registry.ts"
 
 /** A page head with every optional tag populated, so the card shows the whole set, not a subset. */
@@ -185,16 +192,174 @@ function SwUpdaterDemo() {
         )
         : (
           <p class="text-xs text-gray-500 dark:text-gray-400">
-            Nothing has been watched yet. The rendered component is below — and it is empty.
+            Nothing has been watched yet. Each button runs the real function against a registration
+            it builds on the spot.
           </p>
         )}
-      <div class="rounded-md border border-dashed border-gray-300 p-3 dark:border-gray-600">
-        <p class="mb-1 text-xs text-gray-500 dark:text-gray-400">
-          &lt;SWUpdater /&gt; on this page, server-rendered:
-        </p>
-        <SWUpdater reload={() => {}} />
+    </div>
+  )
+}
+
+/** Where the demo worker is served from, relative to whatever path this guide is mounted at. */
+const DEMO_SCOPE = "sw-demo/"
+/** The demo worker's script, without its version marker. */
+const DEMO_SCRIPT = "sw-demo/sw.js"
+
+/** Resolve a demo asset against the page, so the card works under any base path. */
+function demoUrl(path: string): string {
+  return new URL(path, globalThis.location.href).href
+}
+
+/**
+ * Poll until `read` returns something, or give up.
+ *
+ * Service-worker state machines advance on their own schedule — `active`, `waiting` and
+ * `controller` all appear a beat after the promise that led to them resolves — so the card waits
+ * for the state rather than assuming it.
+ */
+async function waitFor<T>(read: () => T | null | undefined, timeoutMs = 10_000): Promise<T | null> {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    const value = read()
+    if (value) return value
+    await new Promise((done) => setTimeout(done, 50))
+  }
+  return null
+}
+
+/**
+ * `SWUpdater` against a real service worker, staged by the visitor.
+ *
+ * **Nothing here happens on page load.** This catalogue is a published site, and a worker installed
+ * by merely opening a page would sit in real visitors' browsers; the button is the consent. What it
+ * installs is `sw-demo/sw.js`, which has no `fetch` handler, opens no cache and never calls
+ * `clients.claim()`, scoped to `sw-demo/` — a directory below this page, so this page is never
+ * controlled by it.
+ *
+ * Producing the state `SWUpdater` exists for takes a real update cycle, which is the rest of what
+ * the button does:
+ *
+ * 1. register the script with `?v=1` and wait for it to activate;
+ * 2. load `sw-demo/` in a hidden frame, which that worker then controls — a new worker stays
+ *    *waiting* only while the one it replaces still controls a page, and this page is not in scope;
+ * 3. register the same script with `?v=2`. A different URL is a different script, so the browser
+ *    installs it, and it waits behind version 1.
+ *
+ * Only then is `<SWUpdater>` mounted, pointed at `?v=2`. It finds the waiting worker through
+ * `navigator.serviceWorker` for itself — the card passes it no container — and shows the bar.
+ * Reload posts the skip-waiting message to that worker, which is what hands over. The reload port
+ * is replaced by a counter, because a guide that reloaded itself would be unreadable.
+ */
+function SwUpdaterLiveDemo() {
+  const log = useSignal<string[]>([])
+  const scriptUrl = useSignal<string | null>(null)
+  const scopeUrl = useSignal("")
+  const reloads = useSignal(0)
+  const busy = useSignal(false)
+  const frame = useRef<HTMLIFrameElement | null>(null)
+
+  const note = (line: string) => log.value = [...log.value, line]
+
+  const stageUpdate = async () => {
+    if (busy.value) return
+    busy.value = true
+    log.value = []
+    try {
+      const container = globalThis.navigator?.serviceWorker
+      if (!container) {
+        note("This browser has no service workers, so there is nothing to demonstrate.")
+        return
+      }
+
+      const scope = demoUrl(DEMO_SCOPE)
+      const first = await container.register(demoUrl(`${DEMO_SCRIPT}?v=1`), { scope })
+      note(`Registered version 1 at ${new URL(scope).pathname}.`)
+      if (!await waitFor(() => first.active)) {
+        note("Version 1 never activated — stopping here rather than claiming an update.")
+        return
+      }
+      note("Version 1 is active. It controls nothing yet, and never controls this page.")
+
+      const created = document.createElement("iframe")
+      created.title = "A page inside the demo worker's scope"
+      created.src = scope
+      created.style.cssText = "position:absolute;left:-9999px;width:0;height:0;border:0"
+      document.body.appendChild(created)
+      frame.current?.remove()
+      frame.current = created
+      await new Promise((done) => created.addEventListener("load", done, { once: true }))
+      const controlled = await waitFor(() =>
+        created.contentWindow?.navigator.serviceWorker.controller
+      )
+      note(
+        controlled
+          ? "A hidden frame inside the scope is now controlled by version 1."
+          : "The hidden frame was not controlled — version 2 will activate instead of waiting.",
+      )
+
+      const second = await container.register(demoUrl(`${DEMO_SCRIPT}?v=2`), { scope })
+      const waiting = await waitFor(() => second.waiting)
+      if (!waiting) {
+        note("Version 2 took over immediately, so nothing is waiting and there is no bar to show.")
+        return
+      }
+
+      note("Version 2 is installed and waiting. <SWUpdater> mounts below and finds it itself.")
+      scopeUrl.value = scope
+      scriptUrl.value = demoUrl(`${DEMO_SCRIPT}?v=2`)
+    } catch (error) {
+      note(`The demo could not stage an update: ${error}`)
+    } finally {
+      busy.value = false
+    }
+  }
+
+  const reset = async () => {
+    scriptUrl.value = null
+    reloads.value = 0
+    frame.current?.remove()
+    frame.current = null
+    const container = globalThis.navigator?.serviceWorker
+    const registration = await container?.getRegistration(demoUrl(DEMO_SCOPE))
+    if (registration) await registration.unregister()
+    log.value = ["Reset: this page has no service worker registered any more."]
+  }
+
+  return (
+    <div class="space-y-3">
+      <div class="flex flex-wrap items-center gap-2">
+        <Button variant="outline" size="sm" data-e2e="sw-install" onClick={stageUpdate}>
+          Install a worker and stage an update
+        </Button>
+        <Button variant="outline" size="sm" data-e2e="sw-reset" onClick={reset}>
+          Unregister and reset
+        </Button>
+        <span class="text-xs text-gray-500 dark:text-gray-400">
+          reload port called <span data-e2e="sw-reloads">{reloads.value}</span> times
+        </span>
+      </div>
+      <ul class="space-y-1 text-xs text-gray-600 dark:text-gray-300" data-e2e="sw-log">
+        {log.value.map((line, index) => <li key={index}>{line}</li>)}
+      </ul>
+      <div
+        class="rounded-md border border-dashed border-gray-300 p-3 dark:border-gray-600"
+        data-e2e="sw-mount"
+      >
+        {scriptUrl.value
+          ? (
+            <SWUpdater
+              scriptUrl={scriptUrl.value}
+              scope={scopeUrl.value}
+              reload={() => reloads.value++}
+              onDismiss={() => note("The visitor dismissed the bar.")}
+              onError={(error) => note(`Registration failed: ${error}`)}
+            />
+          )
+          : null}
         <p class="text-xs text-gray-400 dark:text-gray-500">
-          (nothing — it renders null until a worker is waiting)
+          {scriptUrl.value
+            ? "<SWUpdater> is mounted. Its bar is the orange one at the top of the window."
+            : "<SWUpdater> is not mounted: it registers a worker, so it waits for the button."}
         </p>
       </div>
     </div>
@@ -313,14 +478,22 @@ const tags = seoHeadTags(head)`,
   },
   SWUpdater: {
     summary:
-      "Registers the service worker and offers a reload once a new version is *waiting*. **It renders `null` until then**, which is what makes it safe to mount in a layout for every visitor — and it means this component has no honest markup-level demo: the bar cannot exist without `navigator.serviceWorker`, a registration and a real deploy. The card therefore exercises the pure half it is built from, `watchForUpdate`, against a fake registration, in all three branches: a worker already waiting, a first install where no controller exists (silent, because reloading gains the visitor nothing), and an update arriving while the page is controlled. `skipWaiting`, `reloadOnControllerChange` and `serviceWorkerContainer` are exported the same way. The empty box at the bottom is `<SWUpdater />` itself, on this page, for real.",
+      'Registers the service worker and offers a reload once a new version is *waiting*. **It renders `null` until then**, which is what makes it safe to mount in a layout for every visitor. The container comes from `navigator.serviceWorker`, read inside the effect so a server render touches nothing. Nothing reloads until the visitor presses Reload: `controllerchange` fires in every open tab, so the listener that reloads is armed by the button and not by the registration — otherwise a first install reloads the page mid-visit and one tab\'s Reload reloads the tab with the half-filled form. Pressing Reload posts `{ action: "skipWaiting" }` to the waiting worker, which is a **contract**: a worker that expects a different message ignores it and the button does nothing, so the message is the `updateMessage` prop. The bar can be dismissed, and every string it shows has an English default and a prop. The first half of this card drives the pure function underneath, `watchForUpdate`, against a fake registration in all three branches. The second half is the component itself against a real worker — press the button, because this site is published and nothing registers a worker on its own.',
     snippet: `<SWUpdater
   scriptUrl="/sw.js"
   reload={() => globalThis.location.reload()}
   onUpdate={() => app.toast.info({ body: "Updating…" })}
   onError={(error) => app.report(error)}
-/>`,
-    render: () => <SwUpdaterDemo />,
+/>
+
+// Only when the worker speaks another dialect — the default is { action: "skipWaiting" }:
+<SWUpdater scriptUrl="/sw.js" updateMessage={{ type: "SKIP_WAITING" }} />`,
+    render: () => (
+      <div class="space-y-4">
+        <SwUpdaterDemo />
+        <SwUpdaterLiveDemo />
+      </div>
+    ),
   },
   BlogImageEnhancer: {
     summary:
