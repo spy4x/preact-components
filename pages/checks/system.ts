@@ -1937,6 +1937,57 @@ async function lateMonthChecks(devtools: Devtools): Promise<void> {
       : `the refusal never put the focus back on ${beforeBlur.date}`,
   )
 
+  // The mirror of the check above, and the only place `preventScroll` is exercised. The reader
+  // keeps the focus on their day this time and scrolls the page away from the calendar, so the
+  // month arrives under a focus that is still the calendar's but is nowhere near the viewport.
+  // The focus has to follow the month; the page must not follow the focus.
+  await settleLateCard(devtools)
+  await frameCard(devtools, LATE)
+  const stagedAway = await standOnDay(devtools, LATE_GRID, LATE_DAY)
+  const beforeAway = await read(devtools, LATE_STATE, NO_CARD)
+  await pressKey(devtools, "PageDown")
+  const restoredAway = await poll(
+    () => read(devtools, `${LATE_STATE}.date === ${JSON.stringify(LATE_DAY)}`, false),
+    3_000,
+  )
+  // Scrolling moves no focus, so the reader is still standing on their day — off screen.
+  await read(devtools, `(globalThis.scrollTo({ top: 0, behavior: "instant" }), true)`, false)
+  const scrolledTo = await settleScroll(devtools)
+  const stillOnDay = await read(
+    devtools,
+    `${LATE_STATE}.date === ${JSON.stringify(LATE_DAY)}`,
+    false,
+  )
+  const awayWanted = `2026-04-${LATE_DAY.slice(8, 10)}`
+  await poll(
+    () =>
+      read(
+        devtools,
+        `(() => { const state = ${LATE_STATE}; return state.count === ${
+          beforeAway.count + 1
+        } && state.date === ${JSON.stringify(awayWanted)} })()`,
+        false,
+      ),
+    5_000,
+  )
+  const afterAway = await read(devtools, LATE_STATE, NO_CARD)
+  const scrollAfterAway = await settleScroll(devtools)
+
+  check(
+    "a month arriving under a reader scrolled away moves the focus without moving the page",
+    stagedAway && restoredAway && stillOnDay && scrolledTo === 0 &&
+      afterAway.count === beforeAway.count + 1 && afterAway.onDay &&
+      afterAway.date === awayWanted && scrollAfterAway === 0,
+    stagedAway && restoredAway
+      ? `the reader stayed on ${LATE_DAY} and scrolled the page to ${scrolledTo}; the month then ` +
+        `went ${beforeAway.extra} → ${afterAway.extra || "nothing"}, the focus went to ` +
+        `${afterAway.date || afterAway.focused} — wanted ${awayWanted} — and the page is at ` +
+        `${scrollAfterAway}`
+      : stagedAway
+      ? `the refusal never put the focus back on ${LATE_DAY}`
+      : `the focus was never staged on ${LATE_DAY} of the late-answering card`,
+  )
+
   // Back on the month this card starts on before the last burst, which needs the same day.
   await settleLateCard(devtools)
 
