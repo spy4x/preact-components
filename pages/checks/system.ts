@@ -1782,14 +1782,57 @@ async function lateMonthChecks(devtools: Devtools): Promise<void> {
       : `the focus was not on ${wanted} after the late answer, so this measures nothing`,
   )
 
+  // Two presses with nothing between them, against an owner that answers neither of them yet. This
+  // is the case that caught a hole in the handling above rather than confirming it: the presses ask
+  // for two months, because each counts from the cursor and neither has been answered, and a slow
+  // owner then draws those two months one at a time. The first to arrive is a month to pass
+  // through, not the answer, so the request has to survive it — an earlier version of the fix
+  // consumed the request on the first arrival and the reader was left on the document body when
+  // the second month replaced the cells.
+  const beforeBurst = await read(devtools, LATE_STATE, NO_CARD)
+  const burstMonth = monthAfter(beforeBurst.extra, 2)
+  const burstWanted = `${burstMonth.slice(0, 8)}${dayNumber(beforeBurst.date)}`
+  await pressKey(devtools, "PageDown")
+  await pressKey(devtools, "PageDown")
+  await poll(
+    () =>
+      read(
+        devtools,
+        `(() => { const state = ${LATE_STATE}; return state.extra === ${
+          JSON.stringify(burstMonth)
+        } && state.date === ${JSON.stringify(burstWanted)} })()`,
+        false,
+      ),
+    5_000,
+  )
+  const afterBurst = await read(devtools, LATE_STATE, NO_CARD)
+
+  check(
+    "two Page Downs a late owner has yet to answer move two months, and keep the focus",
+    beforeBurst.date === arrowTarget && beforeBurst.extra === "2026-04-01" &&
+      afterBurst.count === beforeBurst.count + 2 && afterBurst.extra === burstMonth &&
+      afterBurst.onDay && !afterBurst.onBody && afterBurst.date === burstWanted &&
+      afterBurst.tabStop === burstWanted,
+    beforeBurst.date === arrowTarget
+      ? `from ${beforeBurst.date} with ${beforeBurst.extra} on screen, Page Down Page Down with ` +
+        `no render in between: the card drew ${afterBurst.count - beforeBurst.count} more ` +
+        `answer(s) and is showing ${afterBurst.extra || "nothing"}, and the focus is on ` +
+        `${afterBurst.date || afterBurst.focused}, wanted ${burstWanted} in ${burstMonth}`
+      : `the focus was not on ${arrowTarget} before the burst, so it measures nothing`,
+  )
+
   // Back to the month the card started on, with nothing asserted on it, so a later run of this
   // file finds the card where it left it.
-  await read(
-    devtools,
-    `(document.querySelector('${LATE} button[aria-label^="Previous month"]')?.click(), true)`,
-    false,
-  )
-  await poll(() => read(devtools, `${LATE_STATE}.extra === "2026-03-01"`, false), 5_000)
+  for (let step = 0; step < 6; step++) {
+    const now = await read(devtools, `${LATE_STATE}.extra`, "")
+    if (now === "2026-03-01" || now === "") break
+    await read(
+      devtools,
+      `(document.querySelector('${LATE} button[aria-label^="Previous month"]')?.click(), true)`,
+      false,
+    )
+    await poll(() => read(devtools, `${LATE_STATE}.extra !== ${JSON.stringify(now)}`, false), 5_000)
+  }
 }
 
 /**

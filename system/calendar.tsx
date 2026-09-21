@@ -318,15 +318,27 @@ export function Calendar(
     // refusal that stays a refusal never reaches this at all.
     const dropped = droppedRequest.current
     if (dropped && keyboardTarget.current === null && monthKey !== dropped.waitingIn) {
-      droppedRequest.current = null
-      // The day asked for, when the month asked for is the one that arrived. An owner that
-      // answered with some third month — clamping the request into a range — has not answered this
-      // request, so the reader goes to that month's own Tab stop rather than nowhere.
-      const landing = days.some((day) => day.inMonth && day.date === dropped.landing)
-        ? dropped.landing
-        : activeDate
+      const honoured = days.some((day) => day.inMonth && day.date === dropped.landing)
+      // Some month arrived, but not necessarily the one that was asked for. Two presses in a burst
+      // ask for two months and a slow owner draws them one at a time, so the first arrival is a
+      // month to pass through rather than the answer; and an owner that answered with some third
+      // month of its own has not answered this request either. Either way the reader goes to the
+      // month on screen rather than nowhere, and the request is kept until its own month is drawn.
+      const landing = honoured ? dropped.landing : activeDate
+      droppedRequest.current = honoured ? null : { waitingIn: monthKey, landing: dropped.landing }
       if (landing && focusIsOurs()) {
+        // Moved here and now, never queued through `keyboardTarget` for the next render to carry
+        // out. The month is already drawn, so the cell already exists — and a queued move is
+        // indistinguishable from a month request, which a second late answer arriving in the
+        // meantime would read as a refusal of a month nobody asked for, dropping the real request
+        // on the floor. That is what left a burst of two presses on the document body.
+        //
+        // `keyboardTarget` is still set across the call, the same way the answered path below sets
+        // it, so the cell's own `focus` handler leaves both the Tab stop and the kept request
+        // alone.
         keyboardTarget.current = landing
+        gridRef.current?.querySelector<HTMLElement>(`[data-calendar-date="${landing}"]`)?.focus()
+        keyboardTarget.current = null
         cursorDate.current = landing
         setRequestedDate(landing)
       }
@@ -360,8 +372,6 @@ export function Calendar(
           ? parked
           : activeDate
         parkedFrom.current = null
-        // Kept in case this was slowness rather than a refusal; see the top of this effect.
-        droppedRequest.current = { waitingIn: monthKey, landing: target }
 
         // The cursor is deliberately not assigned here. The render this asks for reconciles it —
         // `activeDate` is `back` in that render — and a second assignment would be a line no check
@@ -375,6 +385,12 @@ export function Calendar(
         if (back && document.activeElement === gridRef.current) {
           gridRef.current?.querySelector<HTMLElement>(`[data-calendar-date="${back}"]`)?.focus()
         }
+
+        // Remembered after that call and not before it: the focus lands on a day, whose own
+        // `focus` handler forgets any outstanding request, and it is this request that has to
+        // survive. Kept in case the caller was slow rather than unwilling — see the top of this
+        // effect.
+        droppedRequest.current = { waitingIn: monthKey, landing: target }
       }
       return
     }
@@ -566,7 +582,11 @@ export function Calendar(
       // component moved itself is skipped: it would otherwise overwrite the day a key press just
       // asked for, and the press would be lost.
       onFocus: () => {
-        if (keyboardTarget.current === null) setRequestedDate(day.date)
+        if (keyboardTarget.current !== null) return
+        // Standing on a day of their own choosing, so there is no lost focus left to rescue and a
+        // month that arrives late is an ordinary month change rather than an answer owed to them.
+        droppedRequest.current = null
+        setRequestedDate(day.date)
       },
     }
 
