@@ -1,7 +1,7 @@
 import { IconEllipsisVertical, IconPlus, IconSearch } from "@preact-components/icons"
 import { cn } from "@preact-components/cn"
 import { Badge } from "@preact-components/ui/badge"
-import { Dropdown } from "@preact-components/ui/dropdown"
+import { Dropdown, DropdownItem } from "@preact-components/ui/dropdown"
 import { ErrorState } from "@preact-components/ui/error-state"
 import { PageTitle } from "@preact-components/ui/page-title"
 import { Table } from "@preact-components/ui/table"
@@ -259,21 +259,24 @@ export interface RowActionProps {
   children: ComponentChildren
 }
 
-/** One item of a {@link RowActions} menu. */
+/**
+ * One item of a {@link RowActions} menu.
+ *
+ * The element itself is a `DropdownItem`, so it carries `role="menuitem"` and the arrow keys of
+ * the menu around it can reach it. The spacing row it sits in is `role="none"`, which keeps it a
+ * direct child of the menu as far as assistive tech is concerned.
+ */
 export function RowAction({ href, onClick, danger, disabled, children }: RowActionProps) {
-  const classes = cn(
-    "flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700",
-    danger && "text-red-600 dark:text-red-400",
-  )
   return (
     <div class="py-1" role="none">
-      {href !== undefined
-        ? <a href={href} class={classes}>{children}</a>
-        : (
-          <button type="button" class={classes} disabled={disabled} onClick={onClick}>
-            {children}
-          </button>
-        )}
+      <DropdownItem
+        href={href}
+        onClick={onClick}
+        disabled={disabled}
+        class={cn(danger && "text-red-600 dark:text-red-400")}
+      >
+        {children}
+      </DropdownItem>
     </div>
   )
 }
@@ -281,8 +284,12 @@ export function RowAction({ href, onClick, danger, disabled, children }: RowActi
 /** The per-row actions menu: a vertical ellipsis trigger over {@link RowAction} items. */
 export function RowActions({ children, label }: { children: ComponentChildren; label?: string }) {
   return (
-    <Dropdown trigger={<IconEllipsisVertical />} menuLabel={label ?? "Actions"}>
-      <div class="divide-y divide-gray-100 dark:divide-gray-600">{children}</div>
+    <Dropdown
+      trigger={<IconEllipsisVertical />}
+      triggerLabel={label ?? "Actions"}
+      menuLabel={label ?? "Actions"}
+    >
+      <div class="divide-y divide-gray-100 dark:divide-gray-600" role="none">{children}</div>
     </Dropdown>
   )
 }

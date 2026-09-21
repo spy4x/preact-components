@@ -19,6 +19,7 @@ import {
   type DateRangePreset,
   type DateRangePresetOption,
   Dropdown,
+  DropdownItem,
   isValidDateRange,
   OnOffButtons,
   rangeForPreset,
@@ -34,9 +35,6 @@ import {
   IconUser,
 } from "@preact-components/icons"
 import type { DemoFragment } from "../registry.ts"
-
-const menuItem =
-  "flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
 
 /** Controlled: the switch renders `value` and reports the intended value through `onToggle`. */
 function ToggleSwitchDemo() {
@@ -99,6 +97,14 @@ function OnOffButtonsDemo() {
   )
 }
 
+/**
+ * The four anchorings, every item a `DropdownItem`.
+ *
+ * The icon triggers pass `triggerLabel`, because they render no text a screen reader could read;
+ * the text trigger passes `triggerNamedByContent` instead, so its own words stay its name. The
+ * links point at `#inputs`, this section's own route: a menu item is either a real link or a real
+ * button, never an anchor with a script URL in its `href`.
+ */
 function DropdownDemo() {
   const selected = useSignal("Select action…")
 
@@ -107,20 +113,24 @@ function DropdownDemo() {
       <div class="space-y-2">
         <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">Default icon trigger</h4>
         <div class="flex justify-center rounded-lg border border-gray-200 p-4 dark:border-gray-700">
-          <Dropdown trigger={<IconEllipsisVertical class="size-5" />} menuLabel="Row actions">
-            <div class="py-1">
-              <a href="javascript:;" class={menuItem}>
+          <Dropdown
+            trigger={<IconEllipsisVertical class="size-5" />}
+            triggerLabel="Row actions"
+            menuLabel="Row actions"
+          >
+            <div class="py-1" role="none">
+              <DropdownItem href="#inputs">
                 <IconUser class="size-4" />
                 View profile
-              </a>
-              <a href="javascript:;" class={menuItem}>
+              </DropdownItem>
+              <DropdownItem href="#inputs">
                 <IconCog6Tooth class="size-4" />
                 Settings
-              </a>
-              <button type="button" class={`${menuItem} text-red-600 dark:text-red-400`}>
+              </DropdownItem>
+              <DropdownItem class="text-red-600 dark:text-red-400" onClick={() => {}}>
                 <IconTrashBin class="size-4" />
                 Delete
-              </button>
+              </DropdownItem>
             </div>
           </Dropdown>
         </div>
@@ -136,20 +146,16 @@ function DropdownDemo() {
                 <IconChevronDown class="size-4" />
               </span>
             }
+            triggerNamedByContent
             triggerClasses="w-56 justify-between border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
             panelClasses="min-w-[200px]"
             menuLabel="Bulk actions"
           >
-            <div class="py-1">
+            <div class="py-1" role="none">
               {["Create new item", "Import data", "Export data", "Archive items"].map((action) => (
-                <button
-                  key={action}
-                  type="button"
-                  class={menuItem}
-                  onClick={() => selected.value = action}
-                >
+                <DropdownItem key={action} onClick={() => selected.value = action}>
                   {action}
-                </button>
+                </DropdownItem>
               ))}
             </div>
           </Dropdown>
@@ -161,10 +167,15 @@ function DropdownDemo() {
           `vertical="up"` — last table rows
         </h4>
         <div class="flex justify-center rounded-lg border border-gray-200 p-4 dark:border-gray-700">
-          <Dropdown trigger={<IconEllipsisVertical class="size-5" />} vertical="up">
-            <div class="py-1">
-              <a href="javascript:;" class={menuItem}>Edit item</a>
-              <a href="javascript:;" class={menuItem}>Duplicate</a>
+          <Dropdown
+            trigger={<IconEllipsisVertical class="size-5" />}
+            triggerLabel="Last row actions"
+            menuLabel="Last row actions"
+            vertical="up"
+          >
+            <div class="py-1" role="none">
+              <DropdownItem href="#inputs">Edit item</DropdownItem>
+              <DropdownItem onClick={() => {}}>Duplicate</DropdownItem>
             </div>
           </Dropdown>
         </div>
@@ -175,9 +186,14 @@ function DropdownDemo() {
           `horizontal="left"`
         </h4>
         <div class="flex justify-center rounded-lg border border-gray-200 p-4 dark:border-gray-700">
-          <Dropdown trigger={<IconEllipsisVertical class="size-5" />} horizontal="left">
-            <div class="py-1">
-              <a href="javascript:;" class={menuItem}>Left action</a>
+          <Dropdown
+            trigger={<IconEllipsisVertical class="size-5" />}
+            triggerLabel="Left-anchored actions"
+            menuLabel="Left-anchored actions"
+            horizontal="left"
+          >
+            <div class="py-1" role="none">
+              <DropdownItem onClick={() => {}}>Left action</DropdownItem>
             </div>
           </Dropdown>
         </div>
@@ -623,11 +639,39 @@ export const inputDemos = {
   },
   Dropdown: {
     summary:
-      "Trigger plus panel that closes on outside click. Open/closed is local state, so the panel is `hidden` in the server render.",
-    snippet: `<Dropdown trigger={<IconEllipsisVertical />} vertical="up" menuLabel="Row actions">
-  <a href={editHref} class="…">Edit</a>
+      "Trigger plus a real menu. Opening it moves focus to the first item; Arrow Down and Arrow Up walk the items with Home and End at the ends; Escape closes it and gives the trigger its focus back; and it closes as soon as focus leaves, which one Tab press does because the items are out of the tab order. Outside-click still dismisses it. The trigger's accessible name is required and comes in two shapes, because one `aria-label` cannot serve both: `triggerLabel` names an icon trigger, and `triggerNamedByContent` declares that a trigger's own visible text is its name so nothing is written over it. Open/closed is local state, so the panel is `hidden` in the server render, and every `document` access sits in an effect or a handler.",
+    snippet: `<Dropdown
+  trigger={<IconEllipsisVertical />}
+  triggerLabel="Row actions"
+  menuLabel="Row actions"
+  vertical="up"
+>
+  <DropdownItem href={editHref}>Edit</DropdownItem>
+  <DropdownItem onClick={archive}>Archive</DropdownItem>
 </Dropdown>`,
     render: () => <DropdownDemo />,
+  },
+  DropdownItem: {
+    summary:
+      'One item of a `Dropdown`\'s menu: a link with `href` and a `<button>` without one. It exists because `role="menuitem"` cannot be applied from outside — `Dropdown` receives its children already rendered, and a menu whose children carry no role is, to a screen reader, a menu with nothing in it. The item is out of the tab order, because inside a menu the arrow keys move between items and Tab leaves altogether. A disabled item is skipped by those keys rather than landed on.',
+    snippet: `<DropdownItem href="/regions/1/edit">Edit</DropdownItem>
+<DropdownItem class="text-red-600" onClick={archive}>Archive</DropdownItem>
+<DropdownItem disabled onClick={archive}>Archive</DropdownItem>`,
+    render: () => (
+      <div
+        class="w-56 rounded-md border border-gray-200 py-1 dark:border-gray-700"
+        role="menu"
+        aria-orientation="vertical"
+        aria-label="Item shapes"
+      >
+        <DropdownItem href="#inputs">A link, because it has one</DropdownItem>
+        <DropdownItem onClick={() => {}}>A button, because it does not</DropdownItem>
+        <DropdownItem class="text-red-600 dark:text-red-400" onClick={() => {}}>
+          Destructive, through `class`
+        </DropdownItem>
+        <DropdownItem disabled onClick={() => {}}>Disabled</DropdownItem>
+      </div>
+    ),
   },
   ToggleField: {
     summary:

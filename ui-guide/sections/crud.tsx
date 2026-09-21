@@ -559,11 +559,19 @@ export const crudDemos = {
   },
   RowAction: {
     summary:
-      "One item of a row's action menu. With `href` it is a link and without one a `<button>`, which is how one component covers a navigation and an operation without the caller branching. `danger` renders it red; `disabled` disables the button. It is deliberately not a menu — `RowActions` supplies the popup, the trigger and the ARIA, so the item stays a plain element.",
+      'One item of a row\'s action menu. With `href` it is a link and without one a `<button>`, which is how one component covers a navigation and an operation without the caller branching. `danger` renders it red; `disabled` disables the button, and the menu\'s arrow keys skip it. The element itself is a `DropdownItem`, so it carries `role="menuitem"` and the menu around it can move focus to it; the spacing row it sits in is `role="none"`, which keeps it a direct child of the menu for assistive tech. `RowActions` still supplies the popup and the trigger.',
     snippet: `<RowAction href={\`/regions/\${row.id}/edit\`}>Edit</RowAction>
 <RowAction danger onClick={() => archive(row.id)}>Archive</RowAction>`,
     render: () => (
-      <div class="w-56 divide-y divide-gray-100 rounded-md border border-gray-200 dark:divide-gray-600 dark:border-gray-700">
+      // A menu item belongs to a menu, so the card renders one rather than leaving four of them
+      // loose in a `<div>`, which is a menu item with no menu as far as a screen reader is
+      // concerned. `RowActions` is what supplies this wrapper in real use.
+      <div
+        class="w-56 divide-y divide-gray-100 rounded-md border border-gray-200 dark:divide-gray-600 dark:border-gray-700"
+        role="menu"
+        aria-orientation="vertical"
+        aria-label="Item shapes"
+      >
         <RowAction href="#crud">A link, because it has one</RowAction>
         <RowAction onClick={() => {}}>A button, because it does not</RowAction>
         <RowAction danger onClick={() => {}}>Danger</RowAction>
@@ -573,7 +581,7 @@ export const crudDemos = {
   },
   RowActions: {
     summary:
-      "The per-row actions menu: a vertical-ellipsis `Dropdown` trigger over `RowAction` items, with the label defaulting to `Actions`. It is the only piece that knows it is a popup, which is why the trigger, the menu label and the ARIA live here rather than on the item.",
+      'The per-row actions menu: a vertical-ellipsis `Dropdown` trigger over `RowAction` items, with the label defaulting to `Actions` and naming both the trigger and the menu. It is the piece that knows it is a popup, so the trigger, the menu label and the keyboard contract live here — opening it moves focus to the first action, the arrow keys walk them, and Escape closes it and returns focus to the trigger. The item supplies its own `role="menuitem"`, because that role cannot be applied to a child from outside.',
     snippet: `<RowActions label="Region actions">
   <RowAction href="/regions/1/edit">Edit</RowAction>
   <RowAction onClick={archive}>Archive</RowAction>
