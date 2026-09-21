@@ -154,22 +154,35 @@ nothing without `onSelectMonth`, because in link mode the month lives in the URL
 that navigated the page is not something the dual-mode contract promises — the arrows are links
 there, and Tab reaches them.
 
-**A month is asked for, never taken.** `onSelectMonth` is a request, and leaving the month where it
-is — a controlled calendar clamping to a range the reader may not leave, for instance — is a
-supported answer. A refused press then costs the reader nothing: the month on screen does not
-change, and the focus goes back to the day it started from instead of staying on the grid
-container, so their next arrow press moves a day rather than being spent walking back to where they
-already were. Page Up and Page Down are the only two keys this can happen to; the arrows refuse to
-leave the month they are in and Home and End are clipped to it, so neither ever asks for a month.
+**A month is asked for, never taken.** `onSelectMonth` is a request, and the reader keeps their
+place in the grid whatever the owner answers. Page Up and Page Down are the only two keys this can
+happen to: the arrows refuse to leave the month they are in and Home and End are clipped to it, so
+neither ever asks for a month.
 
-Whether a request was refused is decided by the render that follows the call, and by no timer, so
-an owner that changes `monthAnchor` a render later has already been read as a refusal. Answer in
-the render the call triggers, or keep showing the month the calendar has.
+| The owner                             | Where the key press leaves the focus        |
+| ------------------------------------- | ------------------------------------------- |
+| draws the month in the same render    | the same day number in the new month        |
+| leaves `monthAnchor` where it was     | the day the press started from              |
+| draws the month a render or more late | the same day number, once the month arrives |
+| draws a _different_ month, late       | that month's own Tab stop                   |
 
-One thing the calendar will not do on a refusal is take the focus back from somewhere else. If the
-reader has moved it out of the grid while the request was outstanding — onto the month arrow, onto
-any other control on the page — the focus is left where they put it and only the cursor is
-restored.
+The middle row is the one to design a caller around, because a calendar clamping the month to a
+range the reader may not leave does it on purpose. A press refused that way costs the reader
+nothing: the month on screen does not change, and the focus goes back to the day it started from
+instead of staying on the grid container, so their next arrow press moves a day rather than being
+spent walking back to where they already were.
+
+The last two rows are what an owner that checks or fetches before it answers gets, and it needs no
+cooperation from the caller. A refusal can only be judged by the render that follows the call, so a
+late answer is read as a refusal first and the reader is put back on their day; the request is kept,
+and when the month it asked for is drawn the press is finished as if it had been prompt. Without
+that the late month would replace the cell the focus had just been restored to and the focus would
+fall to the document body, which no key can recover from.
+
+One thing the calendar will not do is take the focus back from somewhere the reader put it. It moves
+the focus only out of the three places it puts it itself — the grid container while a month is
+outstanding, the day it restored on a refusal, and nowhere at all. A reader who has moved the focus
+onto the month arrow or onto any other control on the page keeps it.
 
 **The roving tabindex is applied by an effect, not rendered.** Taking Tab away from twenty-eight
 cells is only safe once a key handler is there to give the movement back, so a page that has not

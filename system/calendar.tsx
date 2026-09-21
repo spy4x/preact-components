@@ -12,12 +12,13 @@
  * **The keyboard.** Once hydrated the whole grid is one Tab stop, with the focus roving inside it:
  * the arrow keys step a day and a week, Home and End go to the ends of the week, and Page Up and
  * Page Down ask the caller for the neighbouring month through `onSelectMonth`. Every key the grid
- * answers is also cancelled, so paging a month does not scroll the page under the reader. A caller
- * who is asked for a month and does not draw it costs the reader nothing: the focus goes back to
- * the day it was on, so the press changes neither the month nor where the reader is standing.
- * Before
- * hydration — a no-JS page, or an embedded render — the cells keep the natural tab order they are
- * rendered with, which is the only way through them when nothing is listening for a key.
+ * answers is also cancelled, so paging a month does not scroll the page under the reader. A month
+ * is asked for rather than taken, and the reader keeps their place whatever the answer is: a caller
+ * who draws the month lands them on the same day number in it, a caller who leaves the month where
+ * it was leaves them on the day they pressed from, and a caller who draws it a render or more later
+ * still lands them on that same day number when it arrives. Before hydration — a no-JS page, or an
+ * embedded render — the cells keep the natural tab order they are rendered with, which is the only
+ * way through them when nothing is listening for a key.
  *
  * **The week is the locale's.** Both the column order and the header text come from `Intl` (see
  * `date.ts`), so the grid starts on Monday in London, on Sunday in New York and on Saturday in
@@ -130,16 +131,23 @@ export interface CalendarProps {
    * Called when a month arrow is picked, and when Page Up or Page Down is pressed inside the grid.
    * Same interactive/link contract as `onSelectDate`.
    *
-   * It is a request rather than an instruction, and refusing it is a supported answer: a controlled
-   * calendar whose owner leaves `monthAnchor` where it was — because the month asked for is outside
-   * an allowed range, say — keeps the month on screen, and the key press that asked for it leaves
-   * the focus on the day it started from rather than on the grid.
+   * It is a request rather than an instruction, and every answer to it keeps the reader's place.
+   * Three answers are supported, and a key press is where the difference shows:
    *
-   * **Answer it in the render it triggers.** Whether a request was refused is decided by that one
-   * render and by nothing else — no timer is involved — so an owner that changes `monthAnchor` a
-   * render later has already been read as a refusal, and the cursor and the focus have already
-   * gone back to the day the reader was standing on. A month that arrives that late is treated as
-   * a month change the owner made on its own account rather than as an answer to the press.
+   * - **Drawn in the render the call triggers.** The focus lands on the same day number in the new
+   *   month, which is what Page Up and Page Down promise.
+   * - **Not drawn at all.** A controlled calendar whose owner leaves `monthAnchor` where it was —
+   *   because the month asked for is outside a range the reader may leave, say — keeps the month on
+   *   screen, and the press leaves the focus on the day it started from rather than on the grid.
+   * - **Drawn a render or more later.** An owner that checks or fetches before it answers is read
+   *   as the previous case first, because a refusal can only be judged by the render that follows
+   *   the call. When the month it asked for is drawn after all, the calendar finishes the press:
+   *   the focus goes to that same day number. An owner that answers late with a *different* month
+   *   has answered a request of its own, and the reader lands on that month's Tab stop instead.
+   *
+   * The focus is only ever moved from somewhere the calendar itself put it — the grid container, or
+   * the day it restored on a refusal, or nowhere at all. A reader who moved the focus elsewhere
+   * while the answer was outstanding keeps it.
    */
   onSelectMonth?: (monthAnchor: string) => void
   /** Day href in link mode. Defaults to `?date=YYYY-MM-DD`, preserving the current path. */
@@ -271,7 +279,7 @@ export function Calendar(
   const keyboardTarget = useRef<string | null>(null)
 
   // The day the focus was standing on when a month request parked it on the grid, so a request the
-  // caller refuses can put both the cursor and the focus back on it.
+  // caller refuses can put the reader back on it.
   //
   // `activeDate` is not that day and cannot stand in for it. A refused request leaves
   // `requestedDate` pointing into a month nothing will draw, so the render that carries the refusal
@@ -279,8 +287,52 @@ export function Calendar(
   // day the reader was standing on is exactly the one candidate that render no longer has.
   const parkedFrom = useRef<string | null>(null)
 
+  // A month request that was dropped, kept in case the caller draws that month after all.
+  //
+  // An owner that checks something before it answers — a fetch for the new month's availability is
+  // the ordinary case — changes `monthAnchor` a render or more after the call, which is late enough
+  // to have been read as a refusal. Without this the reader paid for that: the day the refusal put
+  // them back on is one of the cells the late month replaces, so the focus fell to `<body>` and no
+  // key reached the grid at all. Remembering the day the dropped press asked for lets the late
+  // month be answered exactly as a prompt one would have been.
+  const droppedRequest = useRef<{ waitingIn: string; landing: string } | null>(null)
+
+  /**
+   * Whether the focus is this component's to move, rather than somewhere the reader put it.
+   *
+   * Three answers count as the component's: nothing is focused, the document body has it because a
+   * cell the focus was on has just been replaced, or the grid container is holding it while a month
+   * is being asked for. Anything else — a month arrow, a control elsewhere on the page — is the
+   * reader's own position and is never taken from them.
+   */
+  const focusIsOurs = () => {
+    const active = document.activeElement
+    return active === null || active === document.body ||
+      active === document.documentElement || active === gridRef.current
+  }
+
   if (keyboardTarget.current === null) cursorDate.current = activeDate
   useEffect(() => {
+    // A month that was asked for, dropped, and drawn after all. The month on screen changing is
+    // what says the caller has answered at last; until it does there is nothing to decide, and a
+    // refusal that stays a refusal never reaches this at all.
+    const dropped = droppedRequest.current
+    if (dropped && keyboardTarget.current === null && monthKey !== dropped.waitingIn) {
+      droppedRequest.current = null
+      // The day asked for, when the month asked for is the one that arrived. An owner that
+      // answered with some third month — clamping the request into a range — has not answered this
+      // request, so the reader goes to that month's own Tab stop rather than nowhere.
+      const landing = days.some((day) => day.inMonth && day.date === dropped.landing)
+        ? dropped.landing
+        : activeDate
+      if (landing && focusIsOurs()) {
+        keyboardTarget.current = landing
+        cursorDate.current = landing
+        setRequestedDate(landing)
+      }
+      return
+    }
+
     const target = keyboardTarget.current
     if (target === null) return
 
@@ -293,12 +345,12 @@ export function Calendar(
       // own grid, and throw away a request the very next render was about to answer — the focus
       // then stayed on the grid itself and never reached a day at all.
       //
-      // When it is this render's own request and the grid still cannot show it, the caller has
-      // ignored `onSelectMonth`. The request is dropped rather than held for ever, and the cursor
-      // and the focus both go back to the day the reader was on, which is the only pair of moves
-      // that leaves a refused press costing nothing: a cursor left in a month nothing draws makes
-      // the next press count from nowhere, and a focus left on the grid makes the next press be
-      // spent walking back to the day the reader never left.
+      // When it is this render's own request and the grid still cannot show it, the caller has not
+      // answered `onSelectMonth` in the render the call triggered. The request is dropped rather
+      // than held for ever, and the reader goes back to the day they were on — the Tab stop
+      // through `setRequestedDate`, and the focus with it when the focus is still where this
+      // component parked it. That is what leaves a refused press costing nothing: without it the
+      // next arrow press is spent walking back to a day the reader never left.
       if (target === requestedDate && !days.some((day) => day.inMonth && day.date === target)) {
         keyboardTarget.current = null
         const parked = parkedFrom.current
@@ -308,12 +360,18 @@ export function Calendar(
           ? parked
           : activeDate
         parkedFrom.current = null
-        cursorDate.current = back
+        // Kept in case this was slowness rather than a refusal; see the top of this effect.
+        droppedRequest.current = { waitingIn: monthKey, landing: target }
 
-        // Only from where this component parked it. A reader who moved the focus somewhere else
-        // while the request was outstanding — another control, another part of the page — is not
-        // pulled back into a calendar they have left, and `keyboardTarget` is already cleared
-        // above, so the cell's own `focus` handler moves the Tab stop with the focus.
+        // The cursor is deliberately not assigned here. The render this asks for reconciles it —
+        // `activeDate` is `back` in that render — and a second assignment would be a line no check
+        // could ever distinguish from its absence.
+        if (back) setRequestedDate(back)
+
+        // The focus moves only from where this component parked it. A reader who moved it
+        // somewhere else while the request was outstanding — another control, another part of the
+        // page — is not pulled back into a calendar they have left. `keyboardTarget` is already
+        // cleared above, so the cell's own `focus` handler agrees rather than fighting this.
         if (back && document.activeElement === gridRef.current) {
           gridRef.current?.querySelector<HTMLElement>(`[data-calendar-date="${back}"]`)?.focus()
         }
@@ -325,6 +383,12 @@ export function Calendar(
     // Cleared after the focus call and not before it, so the `focus` handler below can tell the
     // focus this moved from the focus a reader moved.
     keyboardTarget.current = null
+    // A month request that was answered clears both: the day it was parked away from, and any
+    // request dropped before it. `parkedFrom` is what says this *was* a month request — an arrow
+    // key never sets it — so a day moved to inside the month on screen leaves a dropped request
+    // alone, and a caller still to answer it late is still answered.
+    if (parkedFrom.current !== null) droppedRequest.current = null
+    parkedFrom.current = null
   }, [activeDate, requestedDate])
 
   /**
