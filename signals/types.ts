@@ -132,7 +132,19 @@ export interface ToastMessage {
   title?: string
   body: string
   type?: ToastVariant
-  /** Auto-dismiss delay in milliseconds; `0` keeps the toast until it is dismissed. */
+  /**
+   * Auto-dismiss delay in milliseconds, spelled the way `Toastr` spells it in
+   * `@preact-components/ui` — one name on both sides of that boundary, so a delay set here is the
+   * delay the component runs. `0` keeps the toast until somebody dismisses it.
+   *
+   * Omitting it leaves the delay to whatever renders the toast; `Toastr` uses five seconds.
+   */
+  duration?: number
+  /**
+   * @deprecated Renamed to `duration`, which is what `Toastr` reads. Still accepted for one
+   * release so a caller written against the old name keeps working; when both are given,
+   * `duration` wins.
+   */
   timeout?: number
 }
 
