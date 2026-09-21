@@ -1,4 +1,5 @@
 import type { ComponentChildren } from "preact"
+import { useId } from "preact/hooks"
 import { Button } from "./button.tsx"
 import { type DialogTone, Modal } from "./modal.tsx"
 
@@ -10,15 +11,20 @@ export interface ConfirmDialogProps {
   /** Body content, for richer panels than a sentence. Mutually exclusive with `message`. */
   children?: ComponentChildren
   /**
-   * Label of the confirming action. **Required**: the library ships no product copy, so the caller
-   * writes the verb. `"Delete"`, `"Archive"`, `"Leave"` — whatever the action actually does.
+   * Label of the confirming action. Defaults to {@link CONFIRM_LABEL}.
+   *
+   * Name the verb whenever you can — `"Delete"`, `"Archive"`, `"Leave"` — because a button that
+   * says what it does is the difference between a confirmation and a riddle. The default is there
+   * so a blank string reaching this prop through a variable renders a usable button rather than
+   * failing the page; see {@link labelOr}.
    */
-  confirmLabel: string
+  confirmLabel?: string
   /**
-   * Label of the cancelling action, which is also the accessible name of the header dismiss control.
-   * **Required**, for the same reason as {@link ConfirmDialogProps.confirmLabel}.
+   * Label of the cancelling action, which is also the accessible name of the header dismiss
+   * control. Defaults to {@link CANCEL_LABEL}, for the same reason as
+   * {@link ConfirmDialogProps.confirmLabel}.
    */
-  cancelLabel: string
+  cancelLabel?: string
   /**
    * Injected confirm port. Called with the click event, so a caller can read a form field or a
    * checkbox out of the dialog. The dialog does **not** close itself — the caller closes it from the
@@ -55,10 +61,14 @@ export interface ConfirmDialogProps {
  *
  * A thin composition of {@link Modal} — every behaviour (top layer, focus containment, Escape,
  * scroll lock, backdrop hit-test, focus restore) is the modal's, and the only thing added here is
- * the three-part anatomy and the refusal wiring. `title`, {@link ConfirmDialogProps.confirmLabel}
- * and {@link ConfirmDialogProps.cancelLabel} are required rather than defaulted, because a default
- * like `"OK"` would be the library inventing product copy for an action as irreversible as
- * deletion; the caller names the verb it is asking about.
+ * the three-part anatomy, the refusal wiring and the announcement.
+ *
+ * **What a screen reader gets, and why it is two things.** The panel is an `alertdialog`, the role
+ * for a dialog that stops everything until it is answered, and it points `aria-describedby` at the
+ * element holding its question. Without the description the announcement is a title and two
+ * buttons: the user is asked to choose "Delete" or "Keep it" and never told what is being deleted,
+ * which is the one dialog where that matters most. Without the role the question is there to be
+ * found but is not read out with the name.
  *
  * Escape, the header dismiss control and (when enabled) a backdrop click all route through
  * {@link ConfirmDialogProps.onCancel}, so one port can refuse every implicit close.
@@ -72,8 +82,10 @@ export interface ConfirmDialogProps {
  * `InvalidStateError` on such an element. An open panel therefore appears at hydration, not in the
  * server string.
  *
- * The same DOM gap as `Modal` applies: modal interaction is browser-verified only, and by no
- * committed test — `pages/verify.ts` has no modal assertions.
+ * The same DOM gap as `Modal` applies: what a modal does once it is open is the browser's, and the
+ * checks that drive it live in `pages/checks/ui.ts`. They drive `Modal`'s own card; this panel's
+ * markup — the role, the description and the two labels — is covered by the colocated suite, which
+ * is where a rendered string can answer.
  */
 export function ConfirmDialog(
   {
@@ -91,11 +103,15 @@ export function ConfirmDialog(
     class: className,
   }: ConfirmDialogProps,
 ) {
-  // `throw` rather than a silent default: an unlabelled action button is a product bug, and the
-  // library has no copy of its own to fall back on. TypeScript already rejects a missing label; this
-  // catches the `""` and `" "` a caller reaches through a variable.
-  const confirmText = requireLabel(confirmLabel, "confirmLabel")
-  const cancelText = requireLabel(cancelLabel, "cancelLabel")
+  // An English default rather than a throw: every user-visible string in this package has one, and
+  // a caller that reaches a blank label through a variable gets a usable button instead of a
+  // rendered component that raises. The prop still overrides, and a product that wants its own verb
+  // names it — see `labelOr`.
+  const confirmText = labelOr(confirmLabel, CONFIRM_LABEL)
+  const cancelText = labelOr(cancelLabel, CANCEL_LABEL)
+  // The question's own id, from the framework's hook for the same reason `Modal`'s title id is:
+  // unique on a page, and the same string in the server's render and the browser's.
+  const questionId = `confirm-question-${useId()}`
 
   return (
     <Modal
@@ -103,6 +119,8 @@ export function ConfirmDialog(
       onClose={onCancel}
       title={title}
       titleId={titleId}
+      role="alertdialog"
+      ariaDescribedBy={hasQuestion(children ?? message) ? questionId : undefined}
       cancelLabel={cancelText}
       tone={tone}
       closeOnBackdrop={closeOnBackdrop}
@@ -117,32 +135,61 @@ export function ConfirmDialog(
         </>
       }
     >
-      {children ?? (
-        <p class="text-sm text-gray-600 dark:text-gray-300">
-          {message}
-        </p>
-      )}
+      <div id={questionId}>
+        {children ?? (
+          <p class="text-sm text-gray-600 dark:text-gray-300">
+            {message}
+          </p>
+        )}
+      </div>
     </Modal>
   )
 }
 
+/** English default for the confirming action, used when the caller names no verb. */
+export const CONFIRM_LABEL = "Confirm"
+
+/** English default for the cancelling action, which also names the header dismiss control. */
+export const CANCEL_LABEL = "Cancel"
+
 /**
- * Reject an action that has no label.
+ * The caller's label, or the library's English default.
  *
- * Exported so the failure is testable without rendering a component, and so a host app can run the
- * same guard over its own translated strings.
+ * The package's rule for every user-visible string: an English default, and a prop that overrides
+ * it. This used to throw instead, on the argument that a library inventing the verb for a delete is
+ * worse than a loud failure. The argument does not survive contact with the failure mode: the throw
+ * happened during a render, so a translation that came back blank took the whole page down rather
+ * than the one button, and a caller has to guard every label it passes to avoid it. A button
+ * reading "Confirm" is a smaller wrong than a page that does not render, and a product that wants
+ * its own verb passes one.
  *
- * @param label The caller's label.
- * @param name Prop name, used in the message.
+ * Exported so a host app can resolve its own translated strings the same way, and so the rule is
+ * testable without rendering a component.
+ *
+ * @param label The caller's label; blank and whitespace-only count as absent.
+ * @param fallback The default to fall back to — {@link CONFIRM_LABEL} or {@link CANCEL_LABEL}.
  * @returns The trimmed label, for the visible control and the accessible name.
- * @throws {Error} When the label is missing or blank.
  */
-export function requireLabel(label: string | undefined, name: string): string {
+export function labelOr(label: string | undefined, fallback: string): string {
   const text = typeof label === "string" ? label.trim() : ""
-  if (!text) {
-    throw new Error(`ConfirmDialog: \`${name}\` is required — the library ships no product copy.`)
-  }
-  return text
+  return text === "" ? fallback : text
+}
+
+/**
+ * Whether the panel's body holds something worth being described by.
+ *
+ * `aria-describedby` is a promise that the referenced element says something. Pointing it at an
+ * empty wrapper is worse than leaving it out: the caller believes the dialog reads its question,
+ * and the screen reader reads the name and then silence. So the reference is written only when a
+ * message or children arrived, and blank strings count as nothing — that is what an unfilled
+ * template renders to.
+ *
+ * @param body The panel's children, or its message when there are none.
+ * @returns `true` when the body has content to announce.
+ */
+export function hasQuestion(body: ComponentChildren): boolean {
+  if (body === undefined || body === null || typeof body === "boolean") return false
+  return typeof body === "string" ? body.trim() !== "" : true
 }
 
 /**

@@ -1,7 +1,14 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
-import { ConfirmDialog, confirmVariant, requireLabel } from "./confirm-dialog.tsx"
+import {
+  CANCEL_LABEL,
+  CONFIRM_LABEL,
+  ConfirmDialog,
+  confirmVariant,
+  hasQuestion,
+  labelOr,
+} from "./confirm-dialog.tsx"
 
 /** The props every case has to supply: the library ships no product copy. */
 function dialog(overrides: Partial<Parameters<typeof ConfirmDialog>[0]> = {}) {
@@ -35,8 +42,58 @@ describe("ConfirmDialog", () => {
     const html = render(dialog())
 
     expect(html).toContain("<dialog")
-    expect(html).toContain('role="dialog"')
     expect(html).toContain('aria-modal="true"')
+  })
+
+  it("announces itself as a dialog demanding an answer", () => {
+    // `alertdialog`, not `dialog`: a confirmation interrupts, and the role is what tells a screen
+    // reader to read the question out with the name instead of waiting to be asked for the body.
+    const html = render(dialog())
+
+    expect(html).toContain('role="alertdialog"')
+    expect(html).not.toContain('role="dialog"')
+  })
+
+  it("reads out the question it is asking", () => {
+    // The whole announcement, followed end to end: the dialog names an element, that element
+    // exists exactly once, and the sentence the caller passed is inside it. Asserting the
+    // attribute alone would pass for a dialog describing itself by nothing.
+    const html = render(dialog({ message: "Delete invoice INV-0007? This cannot be undone." }))
+    const described = html.match(/aria-describedby="([^"]+)"/)?.[1] as string
+    const carriesId = html.match(new RegExp(`id="${described}"`, "g")) ?? []
+    const body = html.split(`id="${described}"`)[1] ?? ""
+
+    expect(described).toBeTruthy()
+    expect(carriesId.length).toBe(1)
+    expect(body).toContain("Delete invoice INV-0007? This cannot be undone.")
+  })
+
+  it("describes itself by the children when they replace the message", () => {
+    const html = render(dialog({ children: <strong>Three rows go for good.</strong> }))
+    const described = html.match(/aria-describedby="([^"]+)"/)?.[1] as string
+    const body = html.split(`id="${described}"`)[1] ?? ""
+
+    expect(described).toBeTruthy()
+    expect(body).toContain("<strong>Three rows go for good.</strong>")
+  })
+
+  it("describes itself by nothing when there is no question to read", () => {
+    // A reference to an empty element is worse than none: the caller believes the dialog reads its
+    // question and the screen reader reads the name and then silence.
+    expect(render(dialog())).not.toContain("aria-describedby")
+  })
+
+  it("gives two panels on one page different question ids", () => {
+    const html = render(
+      <div>
+        {dialog({ message: "Delete this one?" })}
+        {dialog({ message: "Delete that one?" })}
+      </div>,
+    )
+    const ids = [...html.matchAll(/aria-describedby="([^"]+)"/g)].map((match) => match[1])
+
+    expect(ids.length).toBe(2)
+    expect(ids[1]).not.toBe(ids[0])
   })
 
   it("takes its accessible name from the title", () => {
@@ -85,6 +142,26 @@ describe("ConfirmDialog", () => {
 
     expect(html).toContain("Archive invoice")
     expect(html).not.toContain(">OK<")
+  })
+
+  it("labels both actions with an English default when the caller names neither", () => {
+    const html = render(
+      <ConfirmDialog title="Delete invoice?" onConfirm={() => {}} onCancel={() => {}} />,
+    )
+
+    expect(html).toContain(`>${CONFIRM_LABEL}</button>`)
+    expect(html).toContain(`>${CANCEL_LABEL}</button>`)
+    expect(html).toContain(`aria-label="${CANCEL_LABEL}"`)
+  })
+
+  it("renders the panel rather than raising when a label arrives blank", () => {
+    // A blank label reaches this prop through a variable — an unfilled translation, a key that
+    // resolved to `""`. Raising during a render took the page down over one button; the default
+    // takes the button.
+    const html = render(dialog({ cancelLabel: "   " }))
+
+    expect(html).toContain(`>${CANCEL_LABEL}</button>`)
+    expect(html).toContain(">Delete</button>")
   })
 
   it("confirms with the primary button by default", () => {
@@ -165,26 +242,43 @@ describe("confirmVariant", () => {
   })
 })
 
-describe("requireLabel", () => {
+describe("labelOr", () => {
   it("passes a named action through", () => {
-    expect(requireLabel("Delete", "confirmLabel")).toBe("Delete")
+    expect(labelOr("Delete", CONFIRM_LABEL)).toBe("Delete")
   })
 
   it("trims the label it passes on", () => {
-    expect(requireLabel("  Archive  ", "confirmLabel")).toBe("Archive")
+    expect(labelOr("  Archive  ", CONFIRM_LABEL)).toBe("Archive")
   })
 
-  it("refuses a missing confirm label", () => {
-    expect(() => requireLabel(undefined, "confirmLabel")).toThrow(
-      "`confirmLabel` is required",
-    )
+  it("falls back to the English default when the caller names nothing", () => {
+    expect(labelOr(undefined, CONFIRM_LABEL)).toBe("Confirm")
+    expect(labelOr(undefined, CANCEL_LABEL)).toBe("Cancel")
   })
 
-  it("refuses a blank label a caller reached through a variable", () => {
-    expect(() => render(dialog({ cancelLabel: "   " }))).toThrow("`cancelLabel` is required")
+  it("falls back for a blank label a caller reached through a variable", () => {
+    expect(labelOr("   ", CANCEL_LABEL)).toBe("Cancel")
+  })
+})
+
+describe("hasQuestion", () => {
+  it("counts a sentence", () => {
+    expect(hasQuestion("This cannot be undone.")).toBe(true)
   })
 
-  it("refuses to invent product copy for the confirming action", () => {
-    expect(() => requireLabel("", "confirmLabel")).toThrow("ships no product copy")
+  it("counts rendered content", () => {
+    expect(hasQuestion(<strong>gone for good</strong>)).toBe(true)
+  })
+
+  it("counts an unfilled template as nothing", () => {
+    expect(hasQuestion("   ")).toBe(false)
+    expect(hasQuestion("")).toBe(false)
+  })
+
+  it("counts an absent body as nothing", () => {
+    expect(hasQuestion(undefined)).toBe(false)
+    expect(hasQuestion(null)).toBe(false)
+    // What `{showDetail && <p>…</p>}` renders to when the flag is off.
+    expect(hasQuestion(false)).toBe(false)
   })
 })

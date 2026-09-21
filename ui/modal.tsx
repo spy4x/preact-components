@@ -7,6 +7,18 @@ import { Button } from "./button.tsx"
 export type DialogTone = "default" | "danger"
 
 /**
+ * How a {@link Modal} announces itself to assistive technology.
+ *
+ * `"dialog"` is the ordinary panel. `"alertdialog"` is the one that stops everything until it is
+ * answered — a destructive confirmation is the case the role exists for — and a screen reader
+ * treats it the way it treats an alert: it interrupts, and it reads the dialog's description out
+ * with its name rather than waiting to be asked for the body. The role does not supply that
+ * description; the dialog still has to point at the element holding the question through
+ * {@link ModalProps.ariaDescribedBy}.
+ */
+export type DialogRole = "dialog" | "alertdialog"
+
+/**
  * Whether a click on the backdrop dismisses a {@link Modal} that says nothing about the policy.
  *
  * Named so the component's default and the predicate's default are one value instead of two literals
@@ -54,8 +66,29 @@ export interface ModalProps {
   title?: ComponentChildren
   /** Accessible name used when there is no title. Ignored when a title is given; the title wins. */
   ariaLabel?: string
+  /**
+   * Id of the element that describes the dialog — the question it asks, the sentence it opens with.
+   *
+   * Written as `aria-describedby`, which is what makes a screen reader read the body out after the
+   * name instead of announcing a title and two buttons. This component does not generate it: the
+   * description lives in the caller's own children, so only the caller can say which element it is.
+   * `ConfirmDialog` is the worked example.
+   *
+   * Left out, nothing is referenced. A description pointing at a missing or empty element is worse
+   * than none, because a screen reader then reads a name and silence where the caller believes it
+   * reads the question.
+   */
+  ariaDescribedBy?: string
   /** Id for the title element. Generated when absent. */
   titleId?: string
+  /**
+   * How the dialog announces itself. Defaults to `"dialog"`; see {@link DialogRole}.
+   *
+   * This is about the announcement, not the tone: {@link ModalProps.tone} paints a destructive panel
+   * red, and a red panel that a screen reader reads as an ordinary dialog is exactly the mismatch
+   * this prop exists to close.
+   */
+  role?: DialogRole
   /** Body content. */
   children?: ComponentChildren
   /** Footer content, right-aligned below the body. */
@@ -155,10 +188,12 @@ export function Modal(
     onClose,
     title,
     ariaLabel,
+    ariaDescribedBy,
     titleId,
     children,
     footer,
     cancelLabel,
+    role = "dialog",
     tone = "default",
     closeOnBackdrop = backdropDismissesByDefault,
     dataE2E,
@@ -351,8 +386,9 @@ export function Modal(
       ref={dialogRef}
       closedby="none"
       data-e2e={dataE2E}
-      role="dialog"
+      role={role}
       aria-modal="true"
+      aria-describedby={ariaDescribedBy}
       {...labelAttributes}
       class={cn(
         "m-auto w-full max-w-md rounded-lg border border-gray-200 bg-white p-0 text-gray-900 shadow-xl backdrop:bg-black/50 backdrop:backdrop-blur-xs open:flex open:flex-col dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100",

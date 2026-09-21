@@ -47,10 +47,13 @@ export {
   type ConfidenceTier,
 } from "./confidence-meter.tsx"
 export {
+  CANCEL_LABEL,
+  CONFIRM_LABEL,
   ConfirmDialog,
   type ConfirmDialogProps,
   confirmVariant,
-  requireLabel,
+  hasQuestion,
+  labelOr,
 } from "./confirm-dialog.tsx"
 export { CopyButton, type CopyButtonProps } from "./copy-button.tsx"
 export {
@@ -153,6 +156,7 @@ export {
   clientWidthWithoutScrollbar,
   dialogHeldFocus,
   type DialogRect,
+  type DialogRole,
   dialogTitleId,
   type DialogTone,
   DISMISS_KEY,

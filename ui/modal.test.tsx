@@ -78,6 +78,28 @@ describe("Modal", () => {
     expect(html).toContain('aria-modal="true"')
   })
 
+  it("stays a plain dialog unless the caller asks for an alert", () => {
+    expect(render(<Modal open title="Delete">body</Modal>)).toContain('role="dialog"')
+    expect(render(<Modal open role="alertdialog" title="Delete">body</Modal>))
+      .toContain('role="alertdialog"')
+  })
+
+  it("describes itself by the element the caller names", () => {
+    // The caller owns the description, because the element holding it is the caller's own child.
+    const html = render(
+      <Modal open title="Delete" ariaDescribedBy="wipe-warning">
+        <p id="wipe-warning">Three rows go for good.</p>
+      </Modal>,
+    )
+
+    expect(html).toContain('aria-describedby="wipe-warning"')
+    expect(html).toContain('<p id="wipe-warning">Three rows go for good.</p>')
+  })
+
+  it("writes no description attribute when the caller names no element", () => {
+    expect(render(<Modal open title="Delete">body</Modal>)).not.toContain("aria-describedby")
+  })
+
   it("takes its accessible name from the title element", () => {
     const html = render(<Modal open title="Delete invoice?">body</Modal>)
     const referenced = html.match(/aria-labelledby="([^"]+)"/)?.[1] as string
