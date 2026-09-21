@@ -316,17 +316,16 @@ this:
   codegen, no build step, no runtime dependency beyond Preact.
 
 > **Partly reconciled.** The pull request this note used to wait on, #98, has landed, so the count
-> above
-> is read from the tree rather than from a pending change. `icons/+index.tsx` exports 119 glyphs
-> and `icons/README.md` says 119, but those are not two independent readings:
+> above is read from the tree rather than from a pending change. `icons/+index.tsx` exports 119
+> glyphs and `icons/README.md` says 119, but those are not two independent readings:
 > `icons/check-readme.ts` parses the number out of the README and fails when it disagrees with the
 > export count, so they are one fact with a guard on it. The independent pin is
 > `icons/+index.test.ts`, which asserts the number as a literal on purpose — a guard derived from
 > the module would shrink with the thing it polices. The browser suite is not a third: its icon
 > check is named for 119 and asserts only that more than ninety glyphs are shown, so it would pass
-> at ninety-one. The source list above has **not** been reconciled and is one source short; it is deliberately not restated from memory
-> here, `icons/README.md` remains the authority, and correcting it is part of #127, which owns the
-> wider sweep of this document.
+> at ninety-one. The source list above has **not** been reconciled and is one source short; it is
+> deliberately not restated from memory here, `icons/README.md` remains the authority, and
+> correcting it is part of #127, which owns the wider sweep of this document.
 >
 > **The same applies to the paragraph earlier in this document** naming two projects as
 > design-intent sources rather than code sources, which says one of them is not among the icon
