@@ -1515,6 +1515,49 @@ describe("buildModelStore remote change against a request in flight", () => {
     expect(store.state.value.list[0].name).toBe("Theirs")
   })
 
+  it("is undone by our own later answer when a remote delete did not move updatedAt", async () => {
+    const { impl, pending } = deferredFetch()
+    const store = buildTimedStore(impl)
+    await store.onWs([stampedRow(1, "North", LOADED_AT)], RemoteEvent.LIST)
+
+    const updating = store.update(1, { name: "Mine" })
+    // A server whose `DELETE` writes `deleted_at` directly and leaves `updatedAt` alone. The event
+    // is applied whatever the clock says, but the row it leaves carries the instant it had before.
+    await store.onWs([archivedAt(stampedRow(1, "North", LOADED_AT), LATER)], RemoteEvent.DELETED)
+    expect(store.list.deleted.value.map((r) => r.id)).toEqual([1])
+
+    // Our own `PATCH` did move it, so this answer is strictly later than the row the delete left —
+    // not a tie — and it wins, which puts the row back undeleted. This test pins documented
+    // behaviour rather than behaviour anybody wants: see "What the clock rule costs you" in
+    // `signals/README.md`. Its mirror below is why the rule is not changed to fix it.
+    pending[0].settle(Response.json(stampedRow(1, "Mine", LATER)))
+    await updating
+
+    expect(store.state.value.list[0].name).toBe("Mine")
+    expect(store.list.deleted.value).toEqual([])
+  })
+
+  it("lands our undelete on a deleted row stamped the same instant as our answer", async () => {
+    const { impl, pending } = deferredFetch()
+    const store = buildTimedStore(impl)
+    await store.onWs(
+      [archivedAt(stampedRow(1, "North", LOADED_AT), LOADED_AT)],
+      RemoteEvent.LIST,
+    )
+
+    const restoring = store.undelete(1)
+    // The mirror of the test above, and the reason the tie rule stays as it is. A server that does
+    // not move `updatedAt` when it restores a row answers with the same instant the held row
+    // carries. Giving a deleted held row the tie — the obvious fix for the test above — would
+    // refuse this answer, and the user's own restore would simply not appear, with no error and no
+    // notification to explain it. Change the tie rule and both of these go red together.
+    pending[0].settle(Response.json(stampedRow(1, "North", LOADED_AT)))
+    await restoring
+
+    expect(store.list.deleted.value).toEqual([])
+    expect(store.state.value.list[0].name).toBe("North")
+  })
+
   it("does not show a row twice when its remote create beats our own answer back", async () => {
     const { impl, pending } = deferredFetch()
     const store = buildTimedStore(impl)
@@ -2353,45 +2396,28 @@ describe("buildModelStore across a reset", () => {
 })
 
 /**
- * A subscription a test can open, deliver into and close.
+ * The application's subscription to the feed, as a double.
  *
- * It stands for the websocket feed an application owns. A closed feed drops what the server sends
- * through it, which is the whole of what tearing the subscription down means, and the only reason
- * the order these two tests are about has any effect.
+ * `arrive` delivers the frame immediately when the subscription is attached and drops it when it is
+ * not, because that is the only thing an application controls. A frame the server has written
+ * reaches the callback at a moment nobody chooses, so a test says where in the sign-out it lands by
+ * writing `arrive` at that line — and a double that queued frames until the test asked for them
+ * would make every order below come out the same, which is exactly the defect these tests replace.
  */
 function fakeFeed(store: { onWs: (items: unknown[], event: RemoteEvent) => Promise<void> }) {
-  const queued: Array<[unknown[], RemoteEvent]> = []
   let attached = false
   return {
     /** Attach the subscription, as `openFeed` does in the README. */
     open: () => {
       attached = true
     },
-    /**
-     * Tear the subscription down. What the server has sent and nobody has delivered goes with it.
-     *
-     * That is the one property the README's rule rests on, and the only thing an application can
-     * do about a frame already on its way: a closed socket calls nobody back, and the subscription
-     * opened for the next session does not inherit the last one's backlog.
-     */
+    /** Tear it down. A closed socket calls nobody back, which is the whole of the protection. */
     close: () => {
       attached = false
-      queued.length = 0
     },
-    /**
-     * The server sends an event. It is not delivered yet — that is the whole point.
-     *
-     * A frame the server has written reaches the callback some time later and the application has
-     * no say in when. Delivering it inside `send` would make these tests about an order the
-     * application never gets to choose.
-     */
-    send: (items: unknown[], event: RemoteEvent) => {
-      queued.push([items, event])
-    },
-    /** Everything still waiting arrives now, if anybody is listening. */
-    deliver: async () => {
-      if (!attached) return
-      for (const [items, event] of queued.splice(0)) await store.onWs(items, event)
+    /** The server's frame arrives now, at this line. */
+    arrive: async (items: unknown[], event: RemoteEvent) => {
+      if (attached) await store.onWs(items, event)
     },
   }
 }
@@ -2401,68 +2427,113 @@ function fakeFeed(store: { onWs: (items: unknown[], event: RemoteEvent) => Promi
  *
  * The store cannot close this gap itself — a remote event carries nothing saying which session it
  * was sent for, and only the application owns the subscription — so the README is the whole of the
- * protection, and these two tests are what keep it honest. The old session's row is stamped later
- * than the new session's throughout, so the freshness rule would let it through: the closed feed is
- * the only thing keeping it out, and the test cannot pass for the other reason.
+ * protection and these tests are what keep it honest. Each one puts the old session's frame at a
+ * different line of the sign-out, which is the only variable that matters: the application cannot
+ * choose when the frame arrives, only whether the subscription is still attached when it does.
+ *
+ * The old session's row is stamped later than the new session's throughout, so the freshness rule
+ * would let it through wherever it lands. The subscription's state is the only thing keeping it out.
  */
 describe("buildModelStore feed lifecycle around a reset", () => {
   const OLD_SESSION = "2024-12-01T00:00:00.000Z"
 
-  it("closes the feed before resetting, so a late event cannot reach the next session", async () => {
+  /** Sign in a store and hand back its feed, with the first session's list already loaded. */
+  async function signedIn() {
     const { impl } = queueFetch()
     const store = buildTimedStore(impl)
     const server = fakeFeed(store)
-
     server.open()
-    server.send([stampedRow(1, "First tenant zone", LOADED_AT)], RemoteEvent.LIST)
-    await server.deliver()
+    await server.arrive([stampedRow(1, "First tenant zone", LOADED_AT)], RemoteEvent.LIST)
+    return { store, server }
+  }
 
-    // The server sends an event for the session that is about to end. It has left the server and
-    // it has not been delivered, which is the window the whole rule is about.
-    server.send([stampedRow(1, "First tenant zone, edited", OLD_SESSION)], RemoteEvent.UPDATED)
+  it("closes the feed before resetting, so a frame arriving mid-sign-out is dropped", async () => {
+    const { store, server } = await signedIn()
 
-    // Sign-out, in the documented order: close, then reset. Closing first is the only moment the
-    // application controls — it cannot know when the frame above would have been delivered.
+    // Sign-out, in the documented order: close, then reset. The old session's frame arrives in
+    // between, which is the worst moment for it and the moment the order exists to cover.
     server.close()
+    await server.arrive(
+      [stampedRow(2, "First tenant zone, made elsewhere", OLD_SESSION)],
+      RemoteEvent.CREATED,
+    )
     store.reset()
 
-    // Sign-in, in the documented order: load, then attach.
+    // Nothing of the old session survived into the empty store the next sign-in starts from.
+    expect(store.state.value.list).toEqual([])
+
     await store.onWs([stampedRow(1, "Second tenant zone", LOADED_AT)], RemoteEvent.LIST)
     server.open()
-
-    // Delivery happens now, with the new session's list already in place — the worst moment for
-    // it. The close is what keeps the old session's frame out.
-    await server.deliver()
-
     expect(store.state.value.list.map((r) => r.name)).toEqual(["Second tenant zone"])
 
-    // And the subscription really is live, so the assertion above did not pass because nothing was
-    // listening: an event for the session the store has now arrives exactly as it should.
-    server.send([stampedRow(1, "Second tenant zone, edited", LATER)], RemoteEvent.UPDATED)
-    await server.deliver()
+    // And the subscription really is live, so the assertions above did not pass because nothing
+    // was listening: a frame for the session the store has now arrives exactly as it should.
+    await server.arrive([stampedRow(1, "Second tenant zone, edited", LATER)], RemoteEvent.UPDATED)
     expect(store.state.value.list.map((r) => r.name)).toEqual(["Second tenant zone, edited"])
   })
 
+  it("shows the old session's rows when the reset happens before the close", async () => {
+    const { store, server } = await signedIn()
+
+    // The same two lines the other way round. The frame arrives in the window that opens, and the
+    // subscription is still attached, so it is applied to the store the next session will use.
+    store.reset()
+    await server.arrive(
+      [stampedRow(2, "First tenant zone, made elsewhere", OLD_SESSION)],
+      RemoteEvent.CREATED,
+    )
+    server.close()
+
+    // One tenant's row sitting in the next tenant's store, on screen until the new list arrives.
+    // A `"created"` frame is the one that shows it: an `"updated"` or `"deleted"` frame delivered
+    // here is folded into the empty list and discarded, which is why this test uses a create.
+    expect(store.state.value.list.map((r) => r.name)).toEqual(["First tenant zone, made elsewhere"])
+  })
+
   it("lets the old session's event overwrite the new session's row when the feed is not closed", async () => {
-    const { impl } = queueFetch()
-    const store = buildTimedStore(impl)
-    const server = fakeFeed(store)
+    const { store, server } = await signedIn()
 
-    server.open()
-    server.send([stampedRow(1, "First tenant zone", LOADED_AT)], RemoteEvent.LIST)
-    await server.deliver()
-
-    server.send([stampedRow(1, "First tenant zone, edited", OLD_SESSION)], RemoteEvent.UPDATED)
-
-    // The same sign-out with the close left out, which is what the README warns against: the
-    // subscription outlives the session it belonged to.
+    // The sign-out with no close at all: the subscription outlives the session it belonged to, and
+    // the frame arrives once the next session's list is in place.
     store.reset()
     await store.onWs([stampedRow(1, "Second tenant zone", LOADED_AT)], RemoteEvent.LIST)
-    await server.deliver()
+    await server.arrive(
+      [stampedRow(1, "First tenant zone, edited", OLD_SESSION)],
+      RemoteEvent.UPDATED,
+    )
 
     // One tenant's row under the other tenant's id, which is exactly the failure the generation
     // number prevents for requests and cannot prevent for events.
     expect(store.state.value.list.map((r) => r.name)).toEqual(["First tenant zone, edited"])
+  })
+
+  it("reaches the same list whether the feed is attached before or after the list loads", async () => {
+    const madeElsewhere = [stampedRow(2, "Made elsewhere", OLD_SESSION)]
+    const list = [stampedRow(1, "Second tenant zone", LOADED_AT)]
+
+    const early = await signedIn()
+    early.store.reset()
+    early.server.open()
+    // Attached first: the frame is applied, and a `"created"` row really does appear.
+    await early.server.arrive(madeElsewhere, RemoteEvent.CREATED)
+    expect(early.store.state.value.list.map((r) => r.name)).toEqual(["Made elsewhere"])
+    await early.store.onWs(list, RemoteEvent.LIST)
+
+    const late = await signedIn()
+    late.store.reset()
+    late.server.close()
+    // Attached after: the same frame reaches nobody, so nothing appears in the meantime.
+    await late.server.arrive(madeElsewhere, RemoteEvent.CREATED)
+    expect(late.store.state.value.list).toEqual([])
+    await late.store.onWs(list, RemoteEvent.LIST)
+    late.server.open()
+
+    // The two orders end in the same list, because the `"list"` event replaces it outright either
+    // way. So attaching first is not unsafe, it just shows a row and takes it away again — which
+    // is why the README calls loading first the simpler order rather than the required one.
+    expect(early.store.state.value.list.map((r) => r.name))
+      .toEqual(late.store.state.value.list.map((r) => r.name))
+    expect(late.store.state.value.list.map((r) => r.name)).toEqual(["Second tenant zone"])
   })
 })
 

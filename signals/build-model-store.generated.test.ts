@@ -470,9 +470,10 @@ function modelCase(plan: Plan) {
     remote({ event, id, name, stamp, deleted }: RemoteChange) {
       if (!present.has(id)) return
       const row = rows.get(id)!
-      // An `"updated"` event is weighed against the held row. A `"deleted"` one is not: the server
-      // saying a row is archived is not a claim about the rest of its columns, and it replaces the
-      // held row whatever the clock says.
+      // An `"updated"` event is weighed against the held row. A `"deleted"` one is not weighed at
+      // all: it replaces the held row wholesale, including its `updatedAt`, so it can carry an
+      // older copy over a newer one and wind that row's clock backwards. The model follows the
+      // store rather than approving of it — #201 tracks the behaviour.
       if (event === RemoteEvent.UPDATED && STAMPS[stamp] < row.stamp!) return
       row.name = name
       row.deleted = deleted

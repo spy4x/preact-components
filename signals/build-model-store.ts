@@ -190,10 +190,10 @@ export interface BuildModelStoreConfig<
    * It is asked about the two incoming rows that are weighed at all, so one clock orders them
    * against each other: an `"updated"` remote event, and the answer to one of this client's own
    * requests. It is not asked about a `"deleted"` or a `"list"` event, each of which replaces what
-   * it names outright. The default compares `updatedAt`, falls back to `createdAt` for a model that
-   * has neither side
-   * stamped with an `updatedAt`, and accepts the incoming row whenever the two cannot be ordered —
-   * including when the model carries no timestamp column at all. See {@link defaultIsNewer}.
+   * it names outright. The default compares `updatedAt`, falls back to `createdAt` for a model
+   * that has neither side stamped with an `updatedAt`, and accepts the incoming row whenever the
+   * two cannot be ordered — including when the model carries no timestamp column at all. See
+   * {@link defaultIsNewer}.
    */
   isNewer?: (incoming: SchemaOutput<F>, existing: SchemaOutput<F>) => boolean
   /**
