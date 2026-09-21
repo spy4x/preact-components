@@ -1961,7 +1961,9 @@ async function tooltipChecks(devtools: Devtools): Promise<void> {
         `${atRest.opacity}), and a hidden hint cannot be pointed at by anyone`
       : bridge.strip < 2
       ? `the hint has no bridge: a ${bridge.strip}px strip between the surface's edge and the ` +
-        `bubble's, so whatever separates the two is not part of the hint`
+        `bubble's, so whatever separates the two is not part of the hint. This measures the strip ` +
+        `above the bubble, which is where the bridge is for the card's bottom-anchored row — a ` +
+        `row given another placement in ui-guide/sections/display.tsx reads 0 here too`
       : bridge.gap > 1
       ? `${bridge.gap}px of dead space between the trigger and the hint's own box: a pointer ` +
         `crossing it leaves the trigger, and the hint goes before the pointer arrives`
@@ -2049,8 +2051,15 @@ async function escapeOverPointerCheck(devtools: Devtools): Promise<void> {
   await devtools.evaluate<null>(`(globalThis.__verifyFocusBefore = document.activeElement, null)`)
   const before = await devtools.evaluate<TooltipState>(TOOLTIP_STATE)
 
-  await pressKey(devtools, "Escape")
-  const gone = await poll(() => devtools.evaluate<boolean>(TOOLTIP_DISMISSED), 3_000)
+  // Pressed inside the poll rather than before it. Nothing here can say the component's effect has
+  // attached its listener — the wait that got the pointer this far is on `:hover`, which the
+  // browser flips without a render — so a single press could land before the listener does and
+  // leave this waiting three seconds for a dismissal nobody heard. Escape is idempotent here: once
+  // the hint is dismissed, pressing it again sets the same flag.
+  const gone = await poll(async () => {
+    await pressKey(devtools, "Escape")
+    return await devtools.evaluate<boolean>(TOOLTIP_DISMISSED)
+  }, 3_000)
   const after = await devtools.evaluate<TooltipState>(TOOLTIP_STATE)
   const focusHeld = await devtools.evaluate<boolean>(
     `document.activeElement === globalThis.__verifyFocusBefore`,
@@ -2115,8 +2124,12 @@ async function escapeOnFocusCheck(devtools: Devtools): Promise<void> {
   const revealed = await poll(() => devtools.evaluate<boolean>(TOOLTIP_SHOWN), 3_000)
   const focused = await devtools.evaluate<TooltipState>(TOOLTIP_STATE)
 
-  await pressKey(devtools, "Escape")
-  const gone = await poll(() => devtools.evaluate<boolean>(TOOLTIP_DISMISSED), 3_000)
+  // Inside the poll, for the reason the check above gives: the reveal this waited on is a CSS
+  // state, so nothing has said the listener is attached yet, and a repeated Escape costs nothing.
+  const gone = await poll(async () => {
+    await pressKey(devtools, "Escape")
+    return await devtools.evaluate<boolean>(TOOLTIP_DISMISSED)
+  }, 3_000)
   const after = await devtools.evaluate<TooltipState>(TOOLTIP_STATE)
 
   check(
