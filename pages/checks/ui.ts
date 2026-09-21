@@ -2869,12 +2869,17 @@ async function accessibleDescription(
       selector,
     })
     if (!found.nodeId) return null
-    const tree = await devtools.send<
-      { nodes: Array<{ description?: { value?: { value?: string } } }> }
-    >("Accessibility.getPartialAXTree", { nodeId: found.nodeId, fetchRelatives: false })
+    // `description` is a computed string — `{ type, value }` — and it is absent altogether when the
+    // browser computes none. An earlier revision read `description.value.value`, which is undefined
+    // for every node, so the check passed against an input that really was described: the break
+    // that would not go red is what found it.
+    const tree = await devtools.send<{ nodes: Array<{ description?: { value?: string } }> }>(
+      "Accessibility.getPartialAXTree",
+      { nodeId: found.nodeId, fetchRelatives: false },
+    )
     const node = tree.nodes.at(0)
     if (node === undefined) return null
-    return node.description?.value?.value ?? ""
+    return node.description?.value ?? ""
   } catch {
     return null
   }
