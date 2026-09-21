@@ -346,7 +346,9 @@ async function liveRegionChecks(devtools: Devtools): Promise<void> {
     "the update message arrives inside the live region that was already in the page",
     idle?.text === "" && barUp && announced.same && announced.connected &&
       announced.bar.includes(QUIET_MESSAGE) && announced.text.includes(QUIET_MESSAGE),
-    idle?.text === ""
+    !idle
+      ? "there was no live region in the page before the update, so nothing arrived in one"
+      : idle.text === ""
       ? barUp
         ? `the element parked while the region was empty is ${
           announced.same ? "the same element" : "NOT the element"
@@ -359,7 +361,9 @@ async function liveRegionChecks(devtools: Devtools): Promise<void> {
   check(
     "a MutationObserver watching that region records the message arriving as a change to it",
     idle?.children === 0 && announced.mutationsOnRegion >= 1 && announced.added >= 1,
-    idle?.children === 0
+    !idle
+      ? "there was no region to attach an observer to before the update"
+      : idle.children === 0
       ? `an observer attached to the empty region recorded ${announced.mutationsOnRegion} ` +
         `change(s) to that node and ${announced.added} node(s) added to it — a region created ` +
         `together with its message would have recorded none, because the observer would have ` +
