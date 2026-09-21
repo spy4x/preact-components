@@ -2997,7 +2997,8 @@ async function countArrivesCheck(devtools: Devtools, pristine: RegionReading): P
       ? `the region holding the count is a different element from the one parked while it was ` +
         `empty (same: ${narrowed.same}, the parked one still in the document: ` +
         `${narrowed.connected}) — the page threw the watched region away and built a new one ` +
-        `around the message, which is the shape a screen reader does not announce`
+        `around the message, which is the shape a screen reader does not announce. It reads ` +
+        `"${narrowed.text}", so a check that looked only for the right text would have passed`
       : narrowed.text !== `${list.options} coins left`
       ? `the region reads "${narrowed.text}" over ${list.options} matching options, rather than ` +
         `the count the card passes as a prop`
