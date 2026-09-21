@@ -92,6 +92,7 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
     canvas: string
     surface: string
     link: string
+    linkHovered: boolean
     list: string
   }>(`(async () => {
     const style = (selector) => getComputedStyle(document.querySelector(selector))
@@ -112,6 +113,13 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
       canvas: style("#demo-class-colour-atoms .bg-canvas").backgroundColor,
       surface: style("#demo-class-colour-atoms .bg-surface").backgroundColor,
       link: style("#demo-class-typography .link").textDecorationLine,
+      // The .link class applies hover:no-underline, and an applied hover variant is gated by
+      // "@media (hover: hover)" exactly like a utility written in the markup — checked against
+      // the built stylesheet, not assumed. The browser is now hover-capable, so a pointer
+      // resting on this link would take the underline away and this check would read the hovered
+      // state as the resting one. Nothing moves a pointer before this file runs today; asserted
+      // so that a later check which does fails here by name.
+      linkHovered: document.querySelector("#demo-class-typography .link").matches(":hover"),
       list: style("#demo-class-typography .list-ul").listStyleType,
     }
   })()`)
@@ -125,8 +133,13 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
   )
   check(
     "`.num` right-aligns and `.list-ul`/`.link` style their text",
-    surfaces.numAlign === "right" && surfaces.list === "disc" && surfaces.link === "underline",
-    `num ${surfaces.numAlign}, list ${surfaces.list}, link ${surfaces.link}`,
+    surfaces.numAlign === "right" && surfaces.list === "disc" && surfaces.link === "underline" &&
+      !surfaces.linkHovered,
+    surfaces.linkHovered
+      ? `a pointer was resting on the link when its decoration was read, so ${surfaces.link} is ` +
+        `the hovered state and says nothing about the resting one`
+      : `num ${surfaces.numAlign}, list ${surfaces.list}, link ${surfaces.link}, read with ` +
+        `nothing hovering it`,
   )
   check(
     "`.scrollbar` is a real horizontal scroller",
@@ -167,6 +180,7 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
   const styled = await devtools.evaluate<{
     buttonRadius: string
     buttonBackground: string
+    buttonHovered: boolean
     light: string
     dark: string
   }>(`(async () => {
@@ -196,14 +210,26 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
     return {
       buttonRadius: getComputedStyle(button).borderRadius,
       buttonBackground: getComputedStyle(button).backgroundColor,
+      // The browser is launched with a hover-capable pointer (see \`pages/verify.ts\`), so
+      // \`.btn-primary\`'s \`hover:bg-purple-800\` now applies whenever a pointer happens to be
+      // resting on this button — and a fill read in that state is the hover fill rather than the
+      // one this check is about. Nothing moves a pointer before \`theme.ts\` today, which is the
+      // only reason the reading is safe; asserted rather than relied on, so a later check that
+      // moves one first fails here by name instead of quietly reading the wrong colour.
+      buttonHovered: button.matches(":hover"),
       light,
       dark,
     }
   })()`)
   check(
     "Tailwind utilities style the components in the browser",
-    styled.buttonRadius === "6px" && styled.buttonBackground !== "rgba(0, 0, 0, 0)",
-    `Button radius ${styled.buttonRadius} (rounded-md), primary fill ${styled.buttonBackground}`,
+    styled.buttonRadius === "6px" && styled.buttonBackground !== "rgba(0, 0, 0, 0)" &&
+      !styled.buttonHovered,
+    styled.buttonHovered
+      ? `a pointer was resting on the Button card when its fill was read, so ` +
+        `${styled.buttonBackground} is the hover fill and says nothing about the resting one`
+      : `Button radius ${styled.buttonRadius} (rounded-md), primary fill ` +
+        `${styled.buttonBackground}, read with nothing hovering it`,
   )
   check(
     "tokens.css switches the palette on the .dark class",

@@ -279,6 +279,17 @@ async function browserPhase(): Promise<void> {
         "--disable-gpu",
         "--disable-dev-shm-usage",
         "--no-first-run",
+        // Tell the browser it has a mouse. Headless Chromium otherwise answers `(hover: none)` and
+        // `(pointer: none)`, and Tailwind compiles every `hover:` and `group-hover:` utility inside
+        // `@media (hover: hover)` — so without this flag not one hover style in the library applies
+        // in any check, and a tooltip that appears on hover cannot be shown by hovering. The two
+        // emulation routes were both measured not to cover these features: neither
+        // `Emulation.setEmulatedMedia` (with `hover`/`pointer` and with `any-hover`/`any-pointer`)
+        // nor a device-metrics override changes what `matchMedia` answers. `2` is Blink's
+        // "hover" hover type and `4` its "fine" pointer type. `hoverCapability` below is the check
+        // that this flag is still doing its job.
+        "--blink-settings=primaryHoverType=2,availableHoverTypes=2," +
+        "primaryPointerType=4,availablePointerTypes=4",
         "--remote-debugging-port=0",
         `--user-data-dir=${profile}`,
         "about:blank",
@@ -301,6 +312,8 @@ async function browserPhase(): Promise<void> {
       10_000,
     )
     check("the island hydrates the prerendered page", hydrated, "data-hydrated set by an effect")
+
+    await hoverCapability(devtools)
 
     if (hydrated) {
       await interactionChecks(devtools)
@@ -327,6 +340,32 @@ async function browserPhase(): Promise<void> {
     if (profile) await Deno.remove(profile, { recursive: true }).catch(() => {})
     await server?.close()
   }
+}
+
+/**
+ * Assert that the browser answers the two media features Tailwind gates hover styles behind.
+ *
+ * This is an environment check rather than a component one, which is why it lives here next to the
+ * hydration check rather than in a package's file: it asserts what the launch flags in
+ * {@link browserPhase} bought, and it runs before any package's checks so that a run whose hover
+ * styles were all gated out says so at the top rather than leaving a dozen later checks to fail for
+ * a reason none of them names. Without the `--blink-settings` flag both of these read `false`.
+ *
+ * @param devtools The connected session.
+ */
+async function hoverCapability(devtools: Devtools): Promise<void> {
+  const media = await devtools.evaluate<{ hover: boolean; pointer: boolean }>(`(() => ({
+    hover: matchMedia("(hover: hover)").matches,
+    pointer: matchMedia("(pointer: fine)").matches,
+  }))()`).catch(() => undefined)
+
+  check(
+    "the browser reports that it can hover, so hover styles apply",
+    media?.hover === true && media?.pointer === true,
+    media === undefined
+      ? "the page did not answer matchMedia"
+      : `(hover: hover) ${media.hover}, (pointer: fine) ${media.pointer}`,
+  )
 }
 
 /**
