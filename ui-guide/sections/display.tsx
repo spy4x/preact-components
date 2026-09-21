@@ -373,6 +373,7 @@ export function paginationNote(page: number, pageCount: number): string {
  */
 function PaginationDemo() {
   const short = useSignal(1)
+  const asked = useSignal(0)
   const long = useSignal(12)
   const empty = useSignal(1)
 
@@ -387,9 +388,17 @@ function PaginationDemo() {
         <Pagination
           page={short.value}
           pageCount={5}
-          onChange={(page) => short.value = page}
+          onChange={(page) => {
+            asked.value = page
+            short.value = page
+          }}
           label="Five pages"
         />
+        <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="pagination-requested">
+          last page asked for through onChange: {asked.value === 0 ? "none yet" : asked.value}{" "}
+          — a disabled control asks for nothing at all, which is the only way to tell it from one
+          whose request the component clamped back to the page it was already on.
+        </p>
       </div>
 
       <div class="space-y-2">

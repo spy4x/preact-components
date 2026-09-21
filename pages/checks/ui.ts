@@ -3465,6 +3465,10 @@ async function dateRangeChecks(devtools: Devtools): Promise<void> {
         `(aria-expanded ${beforeEscape.expanded} → ${afterEscape.expanded}) and focus is on the ` +
         `trigger`,
   )
+
+  // The trigger answers Space, and the block after this one presses Space four times, so hand the
+  // focus back rather than leaving it on a control that would open this panel again.
+  await blurActive(devtools)
 }
 
 /** One read of the pager being driven: which page it is on, and what its two end controls are. */
@@ -3475,6 +3479,15 @@ interface PagerState {
   page: number
   previousDisabled: boolean
   nextDisabled: boolean
+  /**
+   * `true` when a control carries the **native** `disabled` attribute.
+   *
+   * Read so that a failure can name the mistake rather than its symptom. Chromium takes focus off a
+   * focused button the moment that attribute appears, so a component that reached for it would fail
+   * these checks with "focus is on the page", which is the reported defect's own message and says
+   * nothing about the cause.
+   */
+  nativelyDisabled: boolean
   onPrevious: boolean
   onNext: boolean
   /**
@@ -3483,6 +3496,15 @@ interface PagerState {
    * find, and losing the element is the whole defect.
    */
   sameControls: boolean
+  /**
+   * The last page the card's `onChange` was asked for, or `0` before it has been asked for any.
+   *
+   * Read from the card rather than from the pager, and it is the only way to see a request the
+   * component then clamped away: asking for page 6 of 5 leaves the pager on page 5, which is
+   * exactly where it already was. Removing the guard from the disabled control's handler and
+   * rebuilding left every check in this file green until the card started reporting this.
+   */
+  requested: number
   /** The focused element's text, cut short, for the failure message. */
   label: string
 }
@@ -3503,30 +3525,39 @@ const PAGER_SETUP = `(() => {
     nav,
     previous: controls[0] ?? null,
     next: controls[1] ?? null,
+    readout: document.querySelector('#demo-Pagination [data-e2e="pagination-requested"]'),
   }
-  return { found: nav !== null, controls: controls.length }
+  return {
+    found: nav !== null,
+    controls: controls.length,
+    readout: globalThis.__verifyPager.readout !== null,
+  }
 })()`
 
 /** The pager's page, its two controls' state and where focus is, read in one round trip. */
 const PAGER_STATE = `(() => {
-  const { nav, previous, next } = globalThis.__verifyPager ?? {}
+  const { nav, previous, next, readout } = globalThis.__verifyPager ?? {}
   if (!nav || !previous || !next) {
     return {
       ok: false, page: 0, previousDisabled: false, nextDisabled: false,
-      onPrevious: false, onNext: false, sameControls: false, label: "",
+      nativelyDisabled: false, onPrevious: false, onNext: false, sameControls: false,
+      requested: -1, label: "",
     }
   }
   const active = document.activeElement
   const current = nav.querySelector('[aria-current="page"]')
   const buttons = [...nav.children].filter((node) => node.tagName === "BUTTON")
+  const asked = (readout?.textContent ?? "").match(/onChange: (\\d+)/)
   return {
     ok: true,
     page: current === null ? 0 : Number((current.textContent ?? "").trim()),
     previousDisabled: previous.getAttribute("aria-disabled") === "true",
     nextDisabled: next.getAttribute("aria-disabled") === "true",
+    nativelyDisabled: previous.disabled === true || next.disabled === true,
     onPrevious: active === previous,
     onNext: active === next,
     sameControls: buttons.length === 2 && buttons[0] === previous && buttons[1] === next,
+    requested: readout === null ? -1 : (asked === null ? 0 : Number(asked[1])),
     label: active === document.body
       ? "the page"
       : (active?.textContent ?? "").trim().slice(0, 40),
@@ -3556,12 +3587,14 @@ const PAGER_STATE = `(() => {
  */
 async function paginationChecks(devtools: Devtools): Promise<void> {
   await pointerToCorner(devtools)
-  const found = await devtools.evaluate<{ found: boolean; controls: number }>(PAGER_SETUP)
+  const found = await devtools.evaluate<{ found: boolean; controls: number; readout: boolean }>(
+    PAGER_SETUP,
+  )
 
   const toEnd = await walkPager(devtools, "next", 4)
   check(
     "paging a Pagination to its last page leaves Next focused and disabled",
-    found.found && found.controls === 2 && toEnd.ok && toEnd.start.page === 1 &&
+    found.found && found.controls === 2 && found.readout && toEnd.ok && toEnd.start.page === 1 &&
       !toEnd.beforeLast.nextDisabled && toEnd.beforeLast.onNext && toEnd.beforeLast.page === 4 &&
       toEnd.after.page === 5 && toEnd.after.nextDisabled && toEnd.after.onNext &&
       toEnd.after.sameControls,
@@ -3569,6 +3602,9 @@ async function paginationChecks(devtools: Devtools): Promise<void> {
       ? "there is no five-page Pagination on the card to drive"
       : found.controls !== 2
       ? `the nav renders ${found.controls} end controls, not the two this check drives`
+      : !found.readout
+      ? "the card reports no page it was asked for, so the check below it could not tell a " +
+        "request the component clamped from no request at all"
       : toEnd.start.page !== 1
       ? `the pager started on page ${toEnd.start.page} rather than page 1, so this proves nothing`
       : !toEnd.ok
@@ -3579,6 +3615,10 @@ async function paginationChecks(devtools: Devtools): Promise<void> {
       ? "Next was already disabled on page 4, so the last press was never a real one"
       : toEnd.after.page !== 5
       ? `the last Space press left the pager on page ${toEnd.after.page}, so it never reached the end`
+      : toEnd.after.nativelyDisabled
+      ? `Next carries the native disabled attribute at the last page, so Chromium took focus off ` +
+        `it — focus is on ${toEnd.after.label}. That is the reported defect by another route; ` +
+        `aria-disabled says the same thing to a screen reader and leaves focus alone`
       : !toEnd.after.nextDisabled
       ? "the pager is on its last page and Next still says it can act"
       : !toEnd.after.onNext
@@ -3588,22 +3628,40 @@ async function paginationChecks(devtools: Devtools): Promise<void> {
         `enabled to disabled while staying the same element with focus`,
   )
 
+  // The page number alone cannot answer this one. `Pagination` clamps what it is given, so a
+  // disabled Next whose handler still ran would ask the card for page 6 of 5 and the card would
+  // render page 5 — the page it was already on. The card reports the page it was *asked* for, and
+  // that is the reading with a different answer for the two implementations.
   const dead = await devtools.evaluate<PagerState>(PAGER_STATE)
-  await pressKey(devtools, "Space")
-  await poll(() => devtools.evaluate<boolean>(`${PAGER_STATE}.page !== ${dead.page}`), 1_000)
+  // Pressed only once Next is the focused element, for the reason {@link walkPager} gives: a key
+  // press with focus somewhere else drives whatever is there and leaves it for a later block.
+  if (dead.onNext && dead.nextDisabled) {
+    await pressKey(devtools, "Space")
+    await poll(
+      () => devtools.evaluate<boolean>(`${PAGER_STATE}.requested !== ${dead.requested}`),
+      1_000,
+    )
+  }
   const afterDead = await devtools.evaluate<PagerState>(PAGER_STATE)
   check(
     "a Space press on Pagination's disabled Next asks for no page at all",
-    dead.nextDisabled && dead.onNext && afterDead.page === dead.page && afterDead.onNext,
+    dead.nextDisabled && dead.onNext && dead.requested === 5 &&
+      afterDead.requested === dead.requested && afterDead.page === dead.page && afterDead.onNext,
     !dead.nextDisabled || !dead.onNext
       ? "Next was not both focused and disabled before the press, so this proves nothing"
+      : dead.requested !== 5
+      ? `the card reports ${dead.requested} as the last page it was asked for, not the 5 the walk ` +
+        `above asked for, so a further request could not be told from it`
+      : afterDead.requested !== dead.requested
+      ? `the press asked the card for page ${afterDead.requested} — aria-disabled does not stop ` +
+        `the click, and the handler did not either; the pager still reads page ${afterDead.page} ` +
+        `only because it clamps what it is given`
       : afterDead.page !== dead.page
-      ? `a press on the disabled Next moved the pager from page ${dead.page} to ` +
-        `${afterDead.page} — aria-disabled does not stop the click, and the handler did not either`
+      ? `a press on the disabled Next moved the pager from page ${dead.page} to ${afterDead.page}`
       : !afterDead.onNext
       ? `the press took focus off Next, onto ${afterDead.label}`
-      : `a real Space press on the disabled Next left the pager on page ${afterDead.page} with ` +
-        `focus still on it`,
+      : `a real Space press on the disabled Next asked the card for nothing (still page ` +
+        `${afterDead.requested}), left the pager on page ${afterDead.page}, and kept focus on it`,
   )
 
   const toStart = await walkPager(devtools, "previous", 4)
@@ -3620,6 +3678,9 @@ async function paginationChecks(devtools: Devtools): Promise<void> {
       ? `focus was on ${toStart.beforeLast.label} before the last press, not on Previous`
       : toStart.after.page !== 1
       ? `the last Space press left the pager on page ${toStart.after.page}, not back at the start`
+      : toStart.after.nativelyDisabled
+      ? `Previous carries the native disabled attribute at page 1, so Chromium took focus off it ` +
+        `— focus is on ${toStart.after.label}; aria-disabled is what keeps it`
       : !toStart.after.previousDisabled
       ? "the pager is on page 1 and Previous still says it can act"
       : !toStart.after.onPrevious
@@ -3627,6 +3688,23 @@ async function paginationChecks(devtools: Devtools): Promise<void> {
       : `Space from page 5: ${toStart.pages.join(" → ")}, and on the last press Previous went ` +
         `from enabled to disabled while staying the same element with focus`,
   )
+
+  // Leave nothing focused. The blocks after this one send their own key presses, and a control
+  // still holding focus here would answer one of them.
+  await blurActive(devtools)
+}
+
+/**
+ * Take focus off whatever holds it, so a later block's key press cannot be answered by this one's
+ * control.
+ *
+ * @param devtools The connected session.
+ */
+async function blurActive(devtools: Devtools): Promise<void> {
+  await devtools.evaluate<null>(`(() => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+    return null
+  })()`)
 }
 
 /** What one walk of the pager from one end to the other saw. */
@@ -3653,6 +3731,12 @@ interface Walk {
  * because that is the half of the transition the checks are about: enabled and focused there,
  * disabled and still focused after.
  *
+ * **Nothing is pressed until the control has the focus.** A key press goes wherever the page has
+ * focus, so a walk whose control is missing would otherwise send four Space presses at whatever the
+ * check before this one left focused — and a mutation run proved that is not theoretical: with the
+ * end controls unmounted there was no Next to park, the presses landed on the date range picker's
+ * trigger, and a Modal check two blocks later failed for a reason that named neither component.
+ *
  * @param devtools The connected session.
  * @param control Which end control to drive.
  * @param presses How many presses reach the end from where the pager is now.
@@ -3665,6 +3749,21 @@ async function walkPager(
 ): Promise<Walk> {
   await devtools.evaluate<null>(`(globalThis.__verifyPager?.${control}?.focus(), null)`)
   const start = await devtools.evaluate<PagerState>(PAGER_STATE)
+
+  const focused = control === "next" ? start.onNext : start.onPrevious
+  if (!start.ok || !focused) {
+    return {
+      ok: false,
+      note: start.ok
+        ? `the ${control} control would not take focus — it stayed on ${start.label}, so nothing ` +
+          `was pressed`
+        : "the card is missing the nav or one of its end controls, so nothing was pressed",
+      start,
+      beforeLast: start,
+      after: start,
+      pages: [start.page],
+    }
+  }
 
   const pages = [start.page]
   let beforeLast = start
