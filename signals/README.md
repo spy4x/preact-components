@@ -125,23 +125,24 @@ zone.init() // one session watch, with a disposer
 
 ### Endpoints it calls
 
-| Operation  | Request                           | Result                                |
-| ---------- | --------------------------------- | ------------------------------------- |
-| `create`   | `POST ${endpoint}`                | appends the parsed row                |
-| `update`   | `PATCH ${endpoint}/${id}`         | replaces the row in place             |
-| `delete`   | `DELETE ${endpoint}/${id}`        | replaces the row — a soft delete      |
-| `undelete` | `POST ${endpoint}/${id}/undelete` | replaces the row                      |
-| `remove`   | none                              | drops the row and its operation slots |
+| Operation  | Request                           | Result                                 |
+| ---------- | --------------------------------- | -------------------------------------- |
+| `create`   | `POST ${endpoint}`                | appends the parsed row, or folds it in |
+| `update`   | `PATCH ${endpoint}/${id}`         | replaces the row in place              |
+| `delete`   | `DELETE ${endpoint}/${id}`        | replaces the row — a soft delete       |
+| `undelete` | `POST ${endpoint}/${id}/undelete` | replaces the row                       |
+| `remove`   | none                              | drops the row and its operation slots  |
 
 `paths.one` and `paths.undelete` override the two URLs. Every response body must be a full row:
 that is what `schemas.full` is for, and a body that does not match becomes a payload error rather
-than a mistyped row in the UI. Each of those replacements is subject to the ordering rule below.
+than a mistyped row in the UI. Each of those replacements is subject to the rules below.
 
 ### Which answer the store keeps
 
-Three rules decide what a row looks like once several answers have arrived for it: the session the
-request was made in, the order the requests were made in, and, for a remote event, a freshness
-check.
+Four rules decide what a row looks like once several answers have arrived for it: the session the
+request was made in, the order the requests were made in, a freshness check on a remote event, and
+that same freshness check between the answer to one of your own requests and the row the list is
+holding when it lands.
 
 **An answer is only ever applied to the session that asked for it.** `reset()` raises a generation
 number; every request reads it when it starts and compares it when its answer lands. An answer from
@@ -170,11 +171,10 @@ reading as in progress — they clear the slots outright rather than settling th
 
 A create has no id until the server answers, so "the same row" cannot mean a row there. Two creates
 in flight make two different rows and both are appended; the only thing they contend for is the
-single `createOp` slot, which the newest of them settles.
-
-Nothing orders a remote event against a local request. An `"updated"` event that arrives while your
-own `PATCH` is in flight is applied whenever the freshness check accepts it, and your own answer
-then replaces it.
+single `createOp` slot, which the newest of them settles. The one id a create can collide with is
+its own, when the server broadcast the new row before answering the client that asked for it: the
+list is looked in rather than appended to blindly, so the row appears once, and which of the two
+copies it keeps is the clock rule below.
 
 **A remote `"updated"` event is judged by `updatedAt`.** `isNewer` decides whether an incoming row
 replaces the one being held. The default reads the first of `updatedAt`, `createdAt` that either row
@@ -185,18 +185,86 @@ the row changed, so where the two rows cannot be ordered the event wins — a ch
 clock must not silently drop the write. Pass your own `isNewer` for a model that versions its rows
 some other way.
 
+**A remote `"deleted"` event is not weighed at all.** It replaces the held row wholesale — its name,
+its columns and its `updatedAt` — whatever the clock says, and that is pre-existing behaviour this
+change did not touch. Two consequences to know about. A delete carrying an older copy of the row
+overwrites a newer one. And because the whole row is replaced, the held row's `updatedAt` moves to
+whatever the event carried, so such an event can wind a row's clock backwards and leave the rule
+below judging this client's next write against the wrong instant. Issue #201 tracks it.
+
+**The later of a remote change and your own answer wins.** When the answer to one of your own
+requests comes back, it is compared against the row the list is holding — by the same `isNewer`,
+including one you supplied yourself — and the list keeps the later of the two. So a row somebody
+else deleted while your save was on the wire stays deleted, and a colleague's newer edit is not
+replaced by your older one — both of those on the condition that the server moved the row's
+`updatedAt` when it made the change, which is what the last paragraph of this section is about.
+Your own answer is the incoming row, so a tie goes to it, and so does every pair the check cannot
+order at all: for a model carrying no usable timestamp this rule changes nothing, and your own
+answer always wins exactly as it used to.
+
+The comparison governs the list and nothing else. An answer that loses it still settles its
+operation slot, still lowers `inProgress`, still announces itself through the toast port, and still
+resolves the promise the caller is waiting on with what the server said. The write did succeed —
+your row simply is not the newest thing known about it any more — and a store that went quiet here
+would leave the user watching a spinner stop with nothing said while the row shows somebody else's
+text. There is no port for "succeeded but superseded": an application that wants to say so has to
+compare `await store.update(…)` against `store.one.byId(id).value` itself.
+
+**The order the three rules that judge your own answer apply in is fixed, and each of them can only
+refuse.** The fourth rule above is not among them — it judges a remote event, which is not an answer
+to anything this client asked for. The session first: an answer from before a `reset()` is disowned
+and never reaches the other two. Then the request order: an answer older than one already applied
+for that row is dropped and never reaches the clock. Then the clock, which decides the list alone.
+None of them can be bypassed by another — an answer fresh by its row's counter may still lose to a
+remote change, and an answer that wins the clock is not thereby excused the other two — and through
+all of them the caller that asked for the request still learns its own outcome.
+
+**What the clock rule costs you.** It is worth only as much as the server's `updatedAt`. A model
+with no `updatedAt` falls back to `createdAt`, which a write does not move, so the two compare equal
+and your own answer wins — the rule is inert there rather than wrong, and a model that wants its
+writes ordered against other people's has to carry `updatedAt`. Two application servers whose clocks
+disagree will order two changes by the skew rather than by what happened.
+
+And the case this rule exists for needs the delete to move the clock. A server that soft-deletes
+without moving `updatedAt` sends a `"deleted"` event that still replaces the held row — that event
+is never weighed — but the row it leaves carries the instant it had before the delete. The answer
+to the write you already had outstanding then ties with it or beats it, and either way it wins and
+puts the row back undeleted. It beats it whenever your own `PATCH` did move `updatedAt` and the
+`DELETE` did not, which is the ordinary shape of an endpoint that writes `deleted_at` directly, so
+do not read this as a risk that only equal instants carry. The row a colleague deleted reappears,
+which is exactly what this rule was added to stop.
+
+The rule is deliberately not changed to fix it. Giving a deleted held row the tie would break
+`undelete` in mirror image: on a server that does not move `updatedAt` when it restores a row, your
+own restore would be refused and simply not appear, with no error and no notification to explain
+it — somebody else's change reappearing is a lesser failure than your own change vanishing. Both
+consequences are pinned by
+`is undone by our own later answer when a remote delete did not move updatedAt` and
+`lands our undelete on a deleted row stamped the same instant as our answer`, so the change that
+would fix the first — refusing any answer that would restore a deleted held row — turns both of
+them red at once. A soft delete in this library's data contract is an update, and a server that
+writes it as one moves `updatedAt` with it; one that does not should pass its own `isNewer`.
+
+Where any of that is true, pass your own `isNewer` and compare a version column instead. It is
+asked for the two comparisons the rule is made of — a remote `"updated"` event against the held
+row, and your own answer against the held row — and the store never goes around it for either. It
+is not asked about a `"deleted"` or a `"list"` event, because neither of those is weighed against
+anything.
+
 ### Extension points
 
 - `extraOps(context)` — domain operations, merged onto the returned store. The context hands over
   `state`, `patch`, `setUpdateOp`, `setDeleteOp`, `request`, `toast`, `pathFor`, `generation` and
   `isCurrentGeneration`, so a domain operation behaves like a built-in one without the generic type
-  ever learning about it. Two things it does not inherit, because the store cannot see inside it.
+  ever learning about it. Three things it does not inherit, because the store cannot see inside it.
   The request ordering above: `setUpdateOp` writes the slot as it is told, so two domain operations
-  in flight for one row settle in the order their answers arrive. And the session rule: read
+  in flight for one row settle in the order their answers arrive. The session rule: read
   `context.generation()` before the request, and write nothing when
   `context.isCurrentGeneration(captured)` comes back false. That is also how an app-owned collection
   loader should be written — the store has no `fetch` of its own for the list, so `listOp` is
-  resolved either by a remote event or by such a loader.
+  resolved either by a remote event or by such a loader. And the clock: a domain operation that
+  writes a row into the list through `patch` writes it whatever the list is holding, so compare the
+  two yourself — with the same `isNewer` you gave the store — before you do.
 - `selectors(context)` — derived signals, merged the same way. `extraOps` wins a key collision.
 - `session` — a signal or getter. `init()` watches it: when it goes falsy after having been truthy,
   the store resets (and `onReset` runs, for state the app owns). It calls `reset()` rather than
@@ -335,11 +403,66 @@ some other way.
   slices are cleared and before `onReset` runs, which is also why a cleanup that throws partway
   through a reset still leaves the old session's requests disowned.
 
-  **It covers requests, not remote events.** An event delivered through `onWs` after a reset is
-  applied to whichever session the store has when the call is made, even when the server sent it for
-  the session that ended: `applyRemote` runs synchronously inside the call, so the store has no
-  in-flight window of its own to judge and no way to tell which session an event belongs to — only
-  the application can. Ordering remote events is tracked in #173.
+  **It covers requests, not remote events, and closing that gap is your job.** An event delivered
+  through `onWs` after a reset is applied to whichever session the store has when the call is made,
+  even when the server sent it for the session that ended. `applyRemote` runs synchronously inside
+  the call, so the store has no in-flight window of its own to judge, and an event carries nothing
+  saying which session it was sent for — only the application knows, because only the application
+  owns the subscription. So the rule is yours to hold: **tear the subscription down before you
+  reset.** That one is a requirement. Re-attaching after the next session's list has loaded is a
+  preference, and the difference between the two is set out below.
+
+  ```ts
+  /** The live subscription, held where both halves of the session can reach it. */
+  let feed: { close: () => void } | null = null
+
+  async function signOut(): Promise<void> {
+    // Close first, reset second. A frame already on its way is applied to whichever session the
+    // store has when it arrives, and you do not control when that is.
+    feed?.close()
+    feed = null
+    store.reset()
+  }
+
+  async function signIn(): Promise<void> {
+    // Load first, attach second. Either order ends with the same list; this one cannot show a row
+    // and then take it away again.
+    await loadList()
+    feed = openFeed((items, event) => store.onWs(items, event))
+  }
+  ```
+
+  **Why closing first is a requirement.** Once `reset()` has run, a frame the old session's
+  subscription is still delivering is applied to the store the next session will use, and where it
+  lands depends on timing you have no say in. Arriving before the new list, a `"created"` frame
+  appends the old session's row and a `"list"` frame fills the whole list with the old session's
+  rows — one tenant's data on screen in another tenant's session until the new list replaces it.
+  Arriving after the new list, an `"updated"` or `"deleted"` frame overwrites the new session's row
+  under the same id and nothing replaces it at all. Closing before the reset is the only point in
+  the sequence you control, which is what makes it the rule. Three tests hold it, one for the frame
+  arriving at each of those moments: `closes the feed before resetting, so a frame arriving
+  mid-sign-out is dropped`, `shows the old session's rows when the reset happens before the close`,
+  and `lets the old session's event overwrite the new session's row when the feed is not closed`.
+
+  **Why the attach order is only a preference.** Both orders end with the same list, so neither is
+  safer than the other, and this is an equivalence rather than a rule. Attach first and a frame
+  arriving before the list is either discarded — an `"updated"` or `"deleted"` one is folded into an
+  empty list — or applied and then thrown away by the `"list"` event, which replaces the list
+  outright; a `"created"` one is the case where a row appears and then vanishes. Load first and that
+  frame simply never reaches you. So the only thing separating them is that flicker, and loading
+  first is the simpler order rather than the correct one.
+  `reaches the same list whether the feed is attached before or after the list loads` holds both
+  halves of that: the transient row under the early attach, and the two lists being equal at
+  the end.
+
+  Either way a frame sent in the window is lost, so an application that cannot afford to miss one
+  loads again after attaching, or lets the feed's own `"list"` event resynchronise the collection.
+
+  A stamped event port was considered instead of all of this, so the store could compare an event
+  against its generation the way it compares a request. It was left out: every application would
+  have to carry the stamp through its feed for a failure any of them can prevent with one line in
+  the right place, and the store would have to hold a wider contract for it. Say so here rather than
+  widening it.
 
   A domain operation added through `extraOps` does not inherit the rule — the store cannot see
   inside it — and the extension points above say how one holds it.
@@ -367,7 +490,8 @@ when it breaks. That is not hypothetical: a freshness check comparing the wrong 
 counter shared by every row both survived a green suite here. The generated file varies those axes
 instead, from a fixed seed, and checks the store against a model of the rules after every step. It
 covers what no finite set of fixtures can — row identity, how many rows are in flight, how long the
-list is, which status came back, and whether the store was reset between a request and its answer —
+list is, which status came back, whether the store was reset between a request and its answer, and
+whether somebody else changed the row through the feed while that request was outstanding —
 and its own header says what it does not cover, how many of its cases reach each of those shapes,
 and how to reproduce a failure from the number it prints. It is not a description of the store: read
 the named tests for that.
