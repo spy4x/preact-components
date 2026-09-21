@@ -381,9 +381,148 @@ describe("buildModelStore delete and undelete", () => {
     expect(calls).toEqual([])
     expect(store.state.value.list.map((r) => r.id)).toEqual([2])
   })
+
+  it("drops a removed row's operation slots", async () => {
+    const { impl, pending } = deferredFetch()
+    const store = buildStore({ fetch: impl })
+    await store.onWs([row(1, "North")], RemoteEvent.LIST)
+
+    const updating = store.update(1, { name: "Renamed" })
+    expect(store.op.update(1).value?.inProgress).toBe(true)
+
+    store.remove(1)
+
+    // The row is gone and so is everything said about it: no slot left saying "saving" for a row
+    // the list no longer holds.
+    expect(store.op.update(1).value).toBeUndefined()
+    expect(store.op.delete(1).value).toBeUndefined()
+
+    pending[0].settle(Response.json(row(1, "Renamed")))
+    await updating
+  })
+
+  it("archives a row through an update whose answer carries deletedAt", async () => {
+    const archived = new Date("2024-03-01T00:00:00.000Z")
+    const { impl } = queueFetch(Response.json(row(1, "North", archived)))
+    const store = buildStore({ fetch: impl })
+    await store.onWs([row(1, "North")], RemoteEvent.LIST)
+
+    await store.update(1, { name: "North" })
+
+    // An archive checkbox is an ordinary update that sets the column, and the answer is a full row
+    // that replaces what is held — so the row moves to the archived slice.
+    expect(store.list.deleted.value.map((r) => r.id)).toEqual([1])
+    expect(store.list.nonDeleted.value).toEqual([])
+  })
 })
 
 describe("buildModelStore requests answered out of order", () => {
+  it("numbers a second write to a row after the first has answered", async () => {
+    const { impl, pending } = deferredFetch()
+    const store = buildStore({ fetch: impl })
+    await store.onWs([row(1, "North")], RemoteEvent.LIST)
+
+    const first = store.update(1, { name: "First" })
+    pending[0].settle(Response.json(row(1, "First")))
+    await first
+    expect(store.op.update(1).value?.inProgress).toBe(false)
+
+    // The ordinary thing a user does: edit, wait, edit again. A row's numbers keep going up across
+    // that gap, so the second write is newer than the first and not a repeat of it.
+    const second = store.update(1, { name: "Second" })
+    expect(store.op.update(1).value?.inProgress).toBe(true)
+    pending[1].settle(Response.json(row(1, "Second")))
+    await second
+
+    expect(store.state.value.list[0].name).toBe("Second")
+    expect(store.op.update(1).value?.inProgress).toBe(false)
+  })
+
+  it("returns a dropped update answer to the caller that made it", async () => {
+    const { impl, pending } = deferredFetch()
+    const store = buildStore({ fetch: impl })
+    await store.onWs([row(1, "North")], RemoteEvent.LIST)
+
+    const first = store.update(1, { name: "First" })
+    const second = store.update(1, { name: "Second" })
+
+    pending[1].settle(Response.json(row(1, "Second")))
+    await second
+    pending[0].settle(Response.json(row(1, "First")))
+    const dropped = await first
+
+    // The caller is told what the server said about its own request; the store holds the newer one.
+    expect(dropped.error).toBeNull()
+    expect(dropped.result?.name).toBe("First")
+    expect(store.state.value.list[0].name).toBe("Second")
+  })
+
+  it("returns a dropped delete answer to the caller that made it", async () => {
+    const { impl, pending } = deferredFetch()
+    const store = buildStore({ fetch: impl })
+    await store.onWs([row(1, "North")], RemoteEvent.LIST)
+
+    const deleting = store.delete(1)
+    const updating = store.update(1, { name: "Renamed" })
+
+    pending[1].settle(Response.json(row(1, "Renamed")))
+    await updating
+    pending[0].settle(Response.json(row(1, "North", new Date("2024-03-01T00:00:00.000Z"))))
+    const dropped = await deleting
+
+    expect(dropped.error).toBeNull()
+    expect(dropped.result?.id).toBe(1)
+    expect(Boolean(dropped.result?.deletedAt)).toBe(true)
+    // The store kept the newer update, so the row is not archived.
+    expect(store.list.deleted.value).toEqual([])
+  })
+
+  it("applies a remote update that arrives while our own write is in flight", async () => {
+    const { impl, pending } = deferredFetch()
+    const store = buildStore({ fetch: impl })
+    await store.onWs([row(1, "North")], RemoteEvent.LIST)
+
+    const updating = store.update(1, { name: "Mine" })
+    await store.onWs(
+      [{ ...row(1, "Theirs"), createdAt: new Date("2025-01-01T00:00:00.000Z") }],
+      RemoteEvent.UPDATED,
+    )
+
+    // Remote events are not sequenced against local requests: the event is applied as soon as the
+    // freshness check accepts it, and our own answer replaces it when it lands.
+    expect(store.state.value.list[0].name).toBe("Theirs")
+
+    pending[0].settle(Response.json(row(1, "Mine")))
+    await updating
+    expect(store.state.value.list[0].name).toBe("Mine")
+  })
+
+  it("does not let an answer from before a reset settle a request made after it", async () => {
+    const { impl, pending } = deferredFetch()
+    const store = buildStore({ fetch: impl })
+    await store.onWs([row(1, "North")], RemoteEvent.LIST)
+
+    const before = store.update(1, { name: "Before" })
+    store.reset()
+    await store.onWs([row(1, "North")], RemoteEvent.LIST)
+    const after = store.update(1, { name: "After" })
+
+    pending[0].settle(Response.json(row(1, "Before")))
+    await before
+
+    // A counter that started again at the reset would let this older answer settle the newer
+    // request's slot. It does not — though it does reach the list, which is the sharp edge the
+    // README describes.
+    expect(store.op.update(1).value?.inProgress).toBe(true)
+    expect(store.state.value.list[0].name).toBe("Before")
+
+    pending[1].settle(Response.json(row(1, "After")))
+    await after
+
+    expect(store.op.update(1).value?.inProgress).toBe(false)
+    expect(store.state.value.list[0].name).toBe("After")
+  })
+
   it("keeps the newer value when two updates to one row answer oldest last", async () => {
     const { impl, pending } = deferredFetch()
     const toast = toastRecorder()
