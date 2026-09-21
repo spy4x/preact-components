@@ -210,14 +210,34 @@ _change_ to a region it is already watching, and commonly says nothing at all ab
 arrives with its message already inside it. Marking an element that only exists once it has
 something to say therefore buys nothing.
 
-Three components follow it. `SWUpdater` is below. `Toastr` in `ui/` keeps its stack in the page
-with zero toasts in it, and `Combobox` in `ui/` keeps the region that reports "No matches" there
-before anybody has typed.
+Two components follow it today. `SWUpdater` is below, and `Toastr` in `ui/` keeps its stack in the
+page with zero toasts in it. `Combobox` in `ui/` is the third place the rule applies and **does not
+follow it yet**: the paragraph that reports "No matches" is rendered only when there are no answers,
+so that region is created carrying its message, which is the shape this section exists to remove.
+`ui/README.md` records it as a known limit and issue #186 is open to fix it — this section is not
+saying the combobox is already done.
 
-An always-present region costs a host page nothing in layout as long as it carries no padding, no
-border and no minimum height of its own, which is why `SWUpdater`'s region carries no class at all:
-empty, it is a zero-height element that paints nothing. What it does cost is one more node in the
-accessibility tree, which is the trade being made.
+**Where to mount it.** `SWUpdater`'s region carries no class, so it is an ordinary in-flow element
+with no padding, no border and no minimum height: empty, it is zero pixels tall and paints nothing.
+That is not the same as costing nothing everywhere, because a parent can space a child that has no
+height. Measured in Chromium, against a column of two 24px paragraphs that is 64px tall on its own:
+
+| Parent                     | Empty region in it | Cost |
+| -------------------------- | ------------------ | ---- |
+| plain block flow           | 64px               | 0px  |
+| Tailwind `space-y-4`       | 64px               | 0px  |
+| `flex` column with `gap-4` | 80px               | 16px |
+| `grid` with `gap-4`        | 80px               | 16px |
+
+A `gap` is allocated for every child, height or no height, so a gapped flex or grid parent pays one
+whole gap for an element nobody can see. `space-y-*` costs nothing because it works by margins, and
+the margin it puts on the region collapses with the one on the element above it. **So mount
+`<SWUpdater />` where its parent does not use `gap`** — as a direct child of `<body>`, or of a plain
+layout container. `Toastr`'s stack never faces this question, because it is laid out `fixed` and is
+out of flow wherever it is mounted.
+
+What an always-present region costs everywhere is one more node in the accessibility tree, which is
+the trade being made.
 
 **No screen reader has been run against this repository.** What is demonstrated is markup and the
 order in which the DOM changes — the region is in the page first, and the message arrives as a
