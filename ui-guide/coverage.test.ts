@@ -4,6 +4,7 @@
  */
 
 import { expect } from "@std/expect"
+import { parse } from "@std/jsonc"
 import { describe, it } from "@std/testing/bdd"
 import * as charts from "@preact-components/charts"
 import * as crud from "@preact-components/crud"
@@ -17,9 +18,13 @@ import {
   EXPORTS_WITHOUT_DEMO,
   isComponentName,
   packageExports,
+  subpathModulesOf,
   valueExportsOf,
 } from "./coverage.ts"
 import { type PackageId, packageIds } from "./registry.ts"
+
+/** The repository root: the parent of every package directory, same as `coverage.ts`'s own. */
+const ROOT = new URL("../", import.meta.url)
 
 /** Every catalogued package's value exports, read once for the whole file. */
 const EXPORTS = await packageExports()
@@ -34,6 +39,65 @@ const BARRELS: Record<PackageId, object> = { ui, charts, system, crud }
 
 /** A component name no package exports and no section demonstrates. */
 const GHOST = "GhostWidget"
+
+/**
+ * Every subpath module that carries at least one name its package's barrel does not, keyed by
+ * package and then by the module's own subpath (`"./avatar"`, not a file path).
+ *
+ * Walks {@link subpathModulesOf}, the same list `valueExportsOf` reads, so this can never name a
+ * module the read does not also see, and a module added to a package's `exports` later is picked up
+ * here without editing this file. Each module is imported and inspected directly, never through
+ * `valueExportsOf`: the fixture has to say what a module exports independently of the function it is
+ * checking, or a break in that function could hide the break from its own guard.
+ *
+ * @returns Barrel-absent names per subpath, per package; a package with none of its own is present
+ *   with an empty object rather than omitted.
+ */
+async function subpathOnlyNames(): Promise<Record<PackageId, Record<string, string[]>>> {
+  const byPackage = {} as Record<PackageId, Record<string, string[]>>
+
+  for (const id of packageIds) {
+    const barrelNames = new Set(Object.keys(BARRELS[id]))
+    const byModule: Record<string, string[]> = {}
+
+    for (const { subpath, href } of await subpathModulesOf(id)) {
+      const namespace = await import(href) as object
+      const extra = Object.keys(namespace).filter((name) => !barrelNames.has(name))
+      if (extra.length > 0) byModule[subpath] = extra
+    }
+
+    byPackage[id] = byModule
+  }
+
+  return byPackage
+}
+
+/** {@link subpathOnlyNames}, read once for the whole file. */
+const SUBPATH_ONLY_NAMES = await subpathOnlyNames()
+
+/**
+ * One package's subpath keys, read straight from its `deno.json` `exports` map — independent of
+ * {@link subpathModulesOf}, so a bug in that helper cannot also corrupt what checks it.
+ *
+ * Applies the same two filters `subpathModulesOf` applies (drop the barrel entry `"."`, drop a
+ * target that is not `.ts`/`.tsx`) to the map itself, and stops there: this reads the declaration,
+ * it does not resolve a target into an import URL or import anything, so it stays a second reading
+ * of the config rather than a second implementation of the helper it checks.
+ *
+ * @param id Package to read.
+ * @returns Every subpath key the config declares for a TypeScript target, besides the barrel.
+ */
+async function declaredSubpaths(id: PackageId): Promise<string[]> {
+  const config = parse(await Deno.readTextFile(new URL(`./${id}/deno.json`, ROOT)))
+  const declared = (config as { exports?: Record<string, unknown> } | null)?.exports ?? {}
+
+  return Object.entries(declared)
+    .filter(([subpath, target]) =>
+      subpath !== "." && typeof target === "string" &&
+      /\.tsx?$/.test(target)
+    )
+    .map(([subpath]) => subpath)
+}
 
 /**
  * The problems one deliberately broken input adds, and nothing else.
@@ -101,26 +165,59 @@ describe("the coverage rule", () => {
     }
   })
 
-  it("reads a package's subpath modules, not only its barrel", async () => {
+  describe("reads every subpath module, not only the barrel", () => {
     // The hole this closes: a component exported from its own module and never re-exported is
-    // reachable through the subpath and was invisible to a barrel-only check. Two packages
-    // currently carry a name like that; a third package having none of its own yet is not a bug,
-    // so this names the two rather than looping blind over every package.
-    const cases: Partial<Record<PackageId, string>> = {
-      ui: "copyToClipboard",
-      charts: "assertD3Available",
+    // reachable through the subpath and was invisible to a barrel-only check. One `it` per module
+    // named in SUBPATH_ONLY_NAMES, so a read that skips exactly one module fails with that module's
+    // name rather than passing because some other module covered for it.
+
+    it("lists exactly the TypeScript subpaths each package's deno.json publishes", async () => {
+      // subpathModulesOf is what SUBPATH_ONLY_NAMES (and the per-module steps below) are derived
+      // from, so a bug that drops a module from that helper's own output would drop it from the
+      // fixture too, and no `it` would ever be registered to notice. This checks the helper against
+      // an independent reading of the same deno.json, so that kind of drop fails here directly
+      // instead of failing to fail anywhere.
+      for (const id of packageIds) {
+        const declared = (await declaredSubpaths(id)).sort()
+        const fromHelper = (await subpathModulesOf(id)).map((m) => m.subpath).sort()
+
+        expect(fromHelper, `${id}: subpathModulesOf vs deno.json exports`).toEqual(declared)
+      }
+    })
+
+    let moduleCount = 0
+
+    for (const id of packageIds) {
+      for (const [subpath, names] of Object.entries(SUBPATH_ONLY_NAMES[id])) {
+        moduleCount++
+        it(`${id}${subpath} reaches valueExportsOf beyond the barrel`, async () => {
+          // The names under test have to be genuinely barrel-absent, checked against the barrel
+          // module imported directly rather than through valueExportsOf — otherwise a filter that
+          // picked the wrong names (inverted, or broken some other way) would still pass, since every
+          // assertion below would then be true by construction.
+          const barrelNames = new Set(Object.keys(BARRELS[id]))
+          const notBarrelAbsent = names.filter((name) => barrelNames.has(name))
+          expect(notBarrelAbsent, `${id}${subpath}: names the barrel already carries`).toEqual([])
+
+          const exported = await valueExportsOf(id)
+          for (const name of names) {
+            expect(exported, `${id}${subpath} exports ${name}`).toContain(name)
+          }
+        })
+      }
     }
 
-    for (const [id, name] of Object.entries(cases) as [PackageId, string][]) {
-      const barrelNames = Object.keys(BARRELS[id])
-      const exported = await valueExportsOf(id)
-
-      expect(barrelNames, `the ${id} barrel does not carry it`).not.toContain(name)
-      expect(exported, `@preact-components/${id}'s own module does`).toContain(name)
-      expect(exported.length, `${id}: subpath reading adds names`).toBeGreaterThan(
-        barrelNames.length,
-      )
-    }
+    it("found at least one such module in a package known to have them", () => {
+      // A derivation that silently found nothing would register zero steps above and this whole
+      // describe block would pass having asserted nothing — exactly the vacuous pass the loop is
+      // supposed to rule out. Measured on the shipped tree: ui publishes six subpath modules with a
+      // barrel-absent name, charts publishes one. Asserted as a floor, not a count, so this does not
+      // need editing when a module is added, renamed, or re-exported through a barrel later.
+      expect(moduleCount, "subpath modules with a barrel-absent name, across all packages")
+        .toBeGreaterThan(0)
+      expect(Object.keys(SUBPATH_ONLY_NAMES.ui).length, "ui").toBeGreaterThan(0)
+      expect(Object.keys(SUBPATH_ONLY_NAMES.charts).length, "charts").toBeGreaterThan(0)
+    })
   })
 
   it("names a component that no section demonstrates", () => {
