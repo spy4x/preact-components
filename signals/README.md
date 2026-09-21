@@ -139,8 +139,15 @@ than a mistyped row in the UI. Each of those replacements is subject to the orde
 
 ### Which answer the store keeps
 
-Two rules decide what a row looks like once several answers have arrived for it: the order the
-requests were made in, and, for a remote event, a freshness check.
+Three rules decide what a row looks like once several answers have arrived for it: the session the
+request was made in, the order the requests were made in, and, for a remote event, a freshness
+check.
+
+**An answer is only ever applied to the session that asked for it.** `reset()` raises a generation
+number; every request reads it when it starts and compares it when its answer lands. An answer from
+an earlier generation is handed back to its caller and otherwise ignored, so a save still on the
+wire when the user signed out cannot reach the list the next sign-in loads. There is a longer note
+on this below, because until recently it was a sharp edge rather than a promise.
 
 **Requests are ordered by when they were made, not by when they answer.** Every write to a row
 draws a number from one counter that the row's `update`, `undelete` and `delete` share. An answer
@@ -181,14 +188,21 @@ some other way.
 ### Extension points
 
 - `extraOps(context)` — domain operations, merged onto the returned store. The context hands over
-  `state`, `patch`, `setUpdateOp`, `setDeleteOp`, `request`, `toast` and `pathFor`, so a domain
-  operation behaves like a built-in one without the generic type ever learning about it. One thing
-  it does not inherit is the request ordering above: `setUpdateOp` writes the slot as it is told, so
-  two domain operations in flight for one row settle in the order their answers arrive.
+  `state`, `patch`, `setUpdateOp`, `setDeleteOp`, `request`, `toast`, `pathFor`, `generation` and
+  `isCurrentGeneration`, so a domain operation behaves like a built-in one without the generic type
+  ever learning about it. Two things it does not inherit, because the store cannot see inside it.
+  The request ordering above: `setUpdateOp` writes the slot as it is told, so two domain operations
+  in flight for one row settle in the order their answers arrive. And the session rule: read
+  `context.generation()` before the request, and write nothing when
+  `context.isCurrentGeneration(captured)` comes back false. That is also how an app-owned collection
+  loader should be written — the store has no `fetch` of its own for the list, so `listOp` is
+  resolved either by a remote event or by such a loader.
 - `selectors(context)` — derived signals, merged the same way. `extraOps` wins a key collision.
 - `session` — a signal or getter. `init()` watches it: when it goes falsy after having been truthy,
-  the store resets (and `onReset` runs, for state the app owns). Unlike the 17 copies this replaces,
-  the effect has a disposer. `dispose()` runs it; `init()` returns it.
+  the store resets (and `onReset` runs, for state the app owns). It calls `reset()` rather than
+  clearing the slices itself, so the generation rises the same way it does for an application that
+  resets by hand — there is one way to start a new session. Unlike the 17 copies this replaces, the
+  effect has a disposer. `dispose()` runs it; `init()` returns it.
 
 ## Notes and sharp edges
 
@@ -297,15 +311,38 @@ some other way.
   which is how the message reaches the form. A write for the same row that is still on the wire
   settles the slot again when its own answer lands. `create` does the same to the create slot, which
   another create may still be holding.
-- **An answer from before a `reset()` still reaches the list.** The request counters deliberately
-  survive a reset, so an answer to a request made before it cannot settle the slot of a request made
-  after it — that is what the counters are for, and counters that started again at zero would let
-  exactly that happen. The list is not protected the same way: the older answer is still the newest
-  the store has heard for that row, so it replaces that row in the freshly loaded list until a newer
-  answer arrives. After a logout and a login, a save from the previous session can land in the new
-  session's list under the same id. This is what the store does today, written down rather than left
-  to be inferred; `does not let an answer from before a reset settle a request made after it` is the
-  test that pins both halves of it.
+- **A request `reset()` leaves behind can no longer change anything.** `reset()` is what an
+  application calls when somebody signs out. It raises a generation number that every operation
+  reads when it issues its request and compares when the answer comes back, so an answer belonging
+  to the session that ended writes nothing into the one that followed: not the list, not an
+  operation slot, not a notification. It does not matter how many resets have happened in between,
+  or whether the id it names still exists. The caller is still told the truth about its own
+  request — `await store.update(…)` resolves with the row the server returned, or with the failure
+  it returned, exactly as it would have — so a form waiting on that promise can stop waiting and
+  say what happened; it is only the shared store that stays out of it.
+
+  This used to be the other way round for the list. The per-row counters already refused to let an
+  older answer settle a newer request's slot, but nothing stopped that answer replacing the row in
+  the freshly loaded list. Where row ids are unique across the whole table that was a briefly stale
+  name; where they restart per tenant it put one tenant's row under an id naming a different one,
+  and a save from the editor made it permanent. #181 closed it. `buildModelStore across a reset` in
+  the test file is the set of tests that pins the rule, and the generated cases reset the store
+  mid-run and check the whole store against a model of it.
+
+  The rule is about the request's own session, so a request issued _during_ a reset — from inside
+  `onReset`, or by an effect reacting to the list being cleared — belongs to the **new** session and
+  its answer is applied normally. The generation rises on the first line of `reset()`, before the
+  slices are cleared and before `onReset` runs, which is also why a cleanup that throws partway
+  through a reset still leaves the old session's requests disowned.
+
+  **It covers requests, not remote events.** An event delivered through `onWs` after a reset is
+  applied to whichever session the store has when the call is made, even when the server sent it for
+  the session that ended: `applyRemote` runs synchronously inside the call, so the store has no
+  in-flight window of its own to judge and no way to tell which session an event belongs to — only
+  the application can. Ordering remote events is tracked in #173.
+
+  A domain operation added through `extraOps` does not inherit the rule — the store cannot see
+  inside it — and the extension points above say how one holds it.
 
 ## Tests
 
@@ -328,8 +365,9 @@ arrangement each and hold everything else still — three small row ids, two req
 statuses, a list of one or two rows — and a rule that reads an axis none of them varies cannot fail
 when it breaks. That is not hypothetical: a freshness check comparing the wrong column and a request
 counter shared by every row both survived a green suite here. The generated file varies those axes
-instead, from a fixed seed, and checks the store against a model of the rule after every answer. It
+instead, from a fixed seed, and checks the store against a model of the rules after every step. It
 covers what no finite set of fixtures can — row identity, how many rows are in flight, how long the
-list is, which status came back — and its own header says what it does not cover and how to
-reproduce a failure from the number it prints. It is not a description of the store: read the named
-tests for that.
+list is, which status came back, and whether the store was reset between a request and its answer —
+and its own header says what it does not cover, how many of its cases reach each of those shapes,
+and how to reproduce a failure from the number it prints. It is not a description of the store: read
+the named tests for that.

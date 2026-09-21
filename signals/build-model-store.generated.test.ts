@@ -5,34 +5,53 @@
  * three small row ids, two requests at a time, four statuses, a list of one or two rows. A rule
  * that reads an axis no fixture varies cannot fail when it breaks, which is how a freshness check
  * reading the wrong column and a request counter shared by every row both survived a green suite.
- * This file varies those axes instead, and checks the store against a model of the rule.
+ * This file varies those axes instead, and checks the store against a model of the rules.
  *
  * **What it covers.** One to five rows, each with at least one request, with ids up to 100,000.
  * Two to six `update`, `delete` and `undelete` requests in any mix, answered with a row that may
  * carry a deletion whichever operation asked for it, with one of nine reported statuses, a 500, a
- * connection failure, or a body the schema rejects. Making and answering are interleaved, so a row
- * is written to again after an earlier write has settled in 398 of the 600 cases, while two
- * requests are outstanding on one row at once in 320 of them and an answer is actually dropped as
- * stale in 239 — see {@link MAKE_BIAS}. After every step it checks each row's name, whether it is
- * soft-deleted, both operation flags, whether each slot carries an error, and the notifications so
- * far.
+ * connection failure, or a body the schema rejects. Making and answering are interleaved, so a
+ * request is made after an answer has already landed in 818 of the 1,200 cases, while two requests
+ * are outstanding on one row at once in 599 of them and an answer is actually dropped as stale in
+ * 273 — see {@link MAKE_BIAS}.
+ *
+ * It also resets the store mid-case, which is what an application does when somebody signs out: 625
+ * cases reset at least once, and in all 625 an answer arrives for a request that was issued before
+ * a reset. In 188 of those the answer has two resets behind it rather than one; in 269 the row it
+ * names is one the next session did not load at all; and in 305 the answer would have been written
+ * into the next session's list under the rule this store had before it counted its resets — see
+ * {@link RESET_CHANCE}. The list the next session loads carries the same ids under different names,
+ * so an answer that lands where it should not is visible rather than merely redundant.
+ *
+ * After every step it checks each row's name, whether it is soft-deleted, both operation flags,
+ * whether each slot carries an error, and the notifications so far.
  *
  * **What it does not cover.** The freshness rule, whose axes are bounded and enumerated beside the
- * fixtures instead; creates, which have no row identity to vary; `extraOps`; the session watch;
- * `remove` and `reset`; remote events; the body text of a failure notification, only its title;
+ * fixtures instead; creates; `extraOps`; the session watch; `remove`; remote events, including what
+ * one does when it arrives after a reset; the body text of a failure notification, only its title;
  * calls made re-entrantly from an effect; and anything about timing beyond the order in which
- * things happen. The cap of five rows is a cap, not a proof: a store that forgot a row's counter
- * only once six rows had been written to would pass every case here, exactly as one that forgot at
- * four passed while the cap was four. It reads only what the store shows — the list and the operation slots — never the
- * value an operation returns to its caller or the `result` a slot carries; the named tests cover
- * those. It is also not a description of the store: it says the rule holds across these axes,
- * never what the rule is, and a reader who wants to know what the store promises should read the
- * named tests.
+ * things happen.
+ *
+ * Three of those are covered by named tests instead, and deliberately. **Creates** have no row
+ * identity for a model to key on, and the one thing two creates contend for — the single `createOp`
+ * slot — has an enumerable set of orders rather than an open one, so `two creates either side of a
+ * reset` in `build-model-store.test.ts` writes both of them out by hand. **The session watch**
+ * reaches `reset()` by the same path this file drives directly, and that it does so is pinned by
+ * `disowns a request left in flight when the session watch signs the user out`. **What an operation
+ * returns to its caller** is read by the named tests for every operation and both outcomes; this
+ * file reads only the list and the operation slots, never a returned value and never the `result` a
+ * slot carries.
+ *
+ * The cap of five rows is a cap, not a proof: a store that forgot a row's counter only once six
+ * rows had been written to would pass every case here, exactly as one that forgot at four passed
+ * while the cap was four. The same goes for the cap of two resets per case. And this file is not a
+ * description of the store: it says the rules hold across these axes, never what they are, and a
+ * reader who wants to know what the store promises should read the named tests.
  *
  * **Reproducing a failure.** Every case comes from `SEED + index` and nothing else, so it is the
  * same on every machine and every run, and a failed assertion prints that number with the plan it
- * produced: the rows, every request with the answer waiting for it, and the interleaving of making
- * and answering that the case runs.
+ * produced: the rows, every request with the answer waiting for it, and the interleaving of making,
+ * answering and resetting that the case runs.
  */
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
@@ -48,13 +67,44 @@ const SEED = 20240921
  * It is the dial between the two shapes this file exists to draw. Biased towards answering, cases
  * are mostly one request at a time and the sequencing rule is never exercised; biased towards
  * making, every request is outstanding at once and a row is never written to twice in sequence.
- * At 0.7 over 600 cases: two requests overlap on one row in 320 cases, an answer is actually
- * dropped as stale in 239, and 398 make a request after an answer has already landed. Lowering
- * either number is how this file stops testing what it is for; the counts are cheap to re-measure
- * and worth re-measuring after any change to the draw.
+ * At 0.7 over 1,200 cases: two requests overlap on one row in 599 cases, an answer is actually
+ * dropped as stale for its row in 273, and 818 make a request after an answer has already landed.
+ * Lowering any of these is how this file stops testing what it is for; the counts are cheap to
+ * re-measure and worth re-measuring after any change to the draw.
+ *
+ * {@link CASES} went from 600 to 1,200 when resets joined the draw. A reset step is a step spent on
+ * neither making nor answering, and an answer that crosses one is judged by the generation rather
+ * than by its row's counter, so at 600 cases the three counts above fell to 300, 140 and 411. The
+ * counts above are what they are because there are twice as many cases, and a smaller share of each
+ * case is now about the counter; the suite still runs in well under a second.
  */
 const MAKE_BIAS = 0.7
-const CASES = 600
+const CASES = 1200
+
+/**
+ * How often a step resets the store while an answer is still on the wire.
+ *
+ * A reset is what an application does when somebody signs out, and the case this file exists to
+ * draw around it is an answer arriving after it — so a reset is only ever drawn while at least one
+ * request is outstanding. At 0.1, with at most {@link MAX_RESETS} per case, 625 of the 1,200 cases
+ * reset at least once, and every one of those 625 has an answer arriving for a request issued
+ * before a reset. In 305 of them at least one such answer would have reached the next session's
+ * list under the rule this store had before it counted its resets — that number is the one to
+ * watch, because it counts the cases that can tell the two rules apart, and if it falls this file
+ * has stopped testing what it was extended for. Raising the chance raises it and costs coverage of
+ * the per-row counters, which is the trade {@link MAKE_BIAS} describes.
+ *
+ * Measure that number by replaying these plans against the **old** store, not by reasoning about
+ * the current one. Under the old rule every answer was numbered, including one from an earlier
+ * session, so it advanced its row's counter and could make a later answer stale. Counting a
+ * crossing answer as fresh without that advance — which is how the current store numbers — gives
+ * 313 rather than 305, and 313 is the answer to a question nobody asked.
+ */
+const RESET_CHANCE = 0.1
+/** At most this many resets per case, so a case still spends most of its steps on requests. */
+const MAX_RESETS = 2
+/** Chance that a row the store knew about is loaded again by the session after a reset. */
+const SESSION_KEEP = 0.75
 
 const dateSchema = type("Date | string.date.iso.parse")
 const rowSchema = type({ id: "number", name: "string", deletedAt: dateSchema.or("null") })
@@ -99,8 +149,20 @@ function rng(seed: number): () => number {
   }
 }
 
-/** A request is made, or one already made is answered. `at` indexes `requests`. */
-type Step = { make: number } | { answer: number }
+/** One row of the list the session loads after a reset. */
+interface SessionRow {
+  id: number
+  name: string
+}
+
+/**
+ * A request is made, one already made is answered, or the store is reset and a new session loads.
+ *
+ * `make` and `answer` index `requests`. `reset` carries the rows the next session's list holds,
+ * which is a subset of the case's ids — so an answer can arrive for a row the new session has under
+ * a different name, and for a row it does not have at all.
+ */
+type Step = { make: number } | { answer: number } | { reset: SessionRow[] }
 
 interface Plan {
   ids: number[]
@@ -152,7 +214,22 @@ function planCase(seed: number): Plan {
   const steps: Step[] = []
   const outstanding: number[] = []
   let made = 0
-  while (steps.length < requests.length * 2) {
+  let resets = 0
+  // The loop used to be bounded by `requests.length * 2`, which counts one make and one answer per
+  // request. A reset is a step that is neither, so the bound is now the condition it stood for.
+  while (made < requests.length || outstanding.length > 0) {
+    // Only ever reset with something on the wire: a reset with nothing outstanding tests the same
+    // clearing the named tests already cover, and spends a case on it.
+    if (outstanding.length > 0 && resets < MAX_RESETS && next() < RESET_CHANCE) {
+      resets += 1
+      const session = resets
+      steps.push({
+        reset: ids
+          .filter(() => next() < SESSION_KEEP)
+          .map((id) => ({ id, name: `session${session}-row-${id}` })),
+      })
+      continue
+    }
     const mustMake = outstanding.length === 0
     const mustAnswer = made === requests.length
     if (!mustAnswer && (mustMake || next() < MAKE_BIAS)) {
@@ -171,7 +248,13 @@ function describePlan(seed: number, { ids, requests, steps }: Plan): string {
       r.deletedAt ? "+deleted" : ""
     }`
   )
-  const order = steps.map((step) => "make" in step ? `make ${step.make}` : `answer ${step.answer}`)
+  const order = steps.map((step) =>
+    "make" in step
+      ? `make ${step.make}`
+      : "answer" in step
+      ? `answer ${step.answer}`
+      : `reset→session of [${step.reset.map((entry) => entry.id).join("/")}]`
+  )
   return `seed ${seed}; rows ${ids.join("/")}; ${made.join(", ")}; ${order.join(" → ")}`
 }
 
@@ -189,8 +272,17 @@ interface RowState {
 }
 
 /**
- * The rule, restated as a model: an answer older than one already applied is dropped, and only a
- * request with nothing newer behind it settles a slot, which releases the row's other slot too.
+ * The rules, restated as a model.
+ *
+ * Two of them. **Within a session**: an answer older than one already applied is dropped, and only
+ * a request with nothing newer behind it settles a slot, which releases the row's other slot too.
+ * **Across sessions**: an answer to a request issued before a `reset()` does nothing at all — it
+ * touches neither slot, nor the list, nor the notifications — because the session it belongs to is
+ * over and the id it names may belong to a different row in the session the store has now.
+ *
+ * The sequence numbers are deliberately *not* wound back by a reset, because the store does not
+ * wind them back either: a model that cleared them would agree with a store that cleared them, and
+ * the point of a model is to disagree.
  */
 function modelCase(plan: Plan) {
   const rows = new Map<number, RowState>(
@@ -201,21 +293,48 @@ function modelCase(plan: Plan) {
       failed: [false, false],
     }]),
   )
+  /** Ids the current session's list holds. The list a row is not in cannot show a change to it. */
+  const present = new Set<number>(plan.ids)
   const issued = new Map<number, number>()
   const applied = new Map<number, number>()
+  const madeIn = new Map<Planned, number>()
   const said: string[] = []
+  let generation = 0
   return {
     rows,
     said,
-    /** Fold in one request being made. */
-    make({ row: id, kind, seq }: Planned) {
+    /** Fold in one request being made, remembering the session it was made in. */
+    make(request: Planned) {
+      const { row: id, kind, seq } = request
+      madeIn.set(request, generation)
       issued.set(id, seq)
       const row = rows.get(id)!
       row.busy[slotOf(kind)] = true
       row.failed[slotOf(kind)] = false
     },
+    /** Fold in a reset and the list the next session loads. */
+    reset(loaded: SessionRow[]) {
+      generation += 1
+      const byId = new Map(loaded.map((entry) => [entry.id, entry.name]))
+      present.clear()
+      for (const [id, row] of rows) {
+        // Every slot is cleared outright rather than settled, and the new list decides every name:
+        // a row the next session does not load is simply not there.
+        row.busy = [false, false]
+        row.failed = [false, false]
+        row.deleted = false
+        const name = byId.get(id)
+        row.name = name ?? "missing"
+        if (name !== undefined) present.add(id)
+      }
+    },
     /** Fold in one answer, in the order the answers arrive. */
-    answer({ row: id, kind, seq, answer, name, deletedAt }: Planned) {
+    answer(request: Planned) {
+      const { row: id, kind, seq, answer, name, deletedAt } = request
+      // The answer belongs to a session the store has left. It is returned to its caller, which
+      // this file never reads, and changes nothing the store shows.
+      if (madeIn.get(request) !== generation) return
+
       const row = rows.get(id)!
       const slot = slotOf(kind)
       const fresh = seq > (applied.get(id) ?? 0)
@@ -233,9 +352,13 @@ function modelCase(plan: Plan) {
       if (!fresh) return
       if (settles) row.failed[slot] = false
       // Read from the row the server sent, not from the kind of request: the store's promise is
-      // that a response body replaces the held row, whichever operation asked for it.
-      row.name = name
-      row.deleted = deletedAt !== null
+      // that a response body replaces the held row, whichever operation asked for it. A row the
+      // current session never loaded is not in the list, so there is nothing to replace — the
+      // store still announces the write, because the request itself succeeded.
+      if (present.has(id)) {
+        row.name = name
+        row.deleted = deletedAt !== null
+      }
       said.push(WORDS[kind][0])
     },
   }
@@ -309,10 +432,19 @@ describe("buildModelStore over generated cases", () => {
               : store.undelete(request.row),
           )
           model.make(request)
-        } else {
+        } else if ("answer" in step) {
           settlers[settlerOf.get(step.answer)!](responseFor(plan.requests[step.answer]))
           await running.get(step.answer)
           model.answer(plan.requests[step.answer])
+        } else {
+          // Somebody signed out and somebody else signed in: the store is cleared and the next
+          // session's list arrives, carrying its own rows under the same ids.
+          store.reset()
+          await store.onWs(
+            step.reset.map(({ id, name }) => ({ id, name, deletedAt: null })),
+            RemoteEvent.LIST,
+          )
+          model.reset(step.reset)
         }
 
         for (const id of plan.ids) {
