@@ -171,17 +171,21 @@ from there rather than redefined. Every workspace package whose components the c
 has a file under `pages/checks/`, including the ones with no check yet — that emptiness is
 deliberate, so a later pull request adding the first check to one of them touches nobody else's file.
 `cn/` is the one workspace member with none: it is a single class-name function, and there is nothing
-in it a browser could drive. Six components have their keyboard, focus or effect behaviour covered there: `Modal`,
-`Dropdown`, `Toastr` and `Combobox` with `Tooltip` in `ui/`, and `Calendar`, `ImageLightbox` and
-`SWUpdater` in `system/`, alongside the filter hook in `signals/`. Everything else is still
-untested, and a component nobody has written a check for is unproven rather than working.
+in it a browser could drive. Eleven components have behaviour covered there that no string render could reach. In `ui/`:
+`Modal`, `Dropdown`, `Toastr`, `Combobox`, `Tooltip`, `Field`, `ToggleSwitch` and `OnOffButtons`.
+In `system/`: `Calendar`, `ImageLightbox` and `SWUpdater`. The filter hook in `signals/` is
+covered too, by a demo the host page renders rather than a catalogue card. Read that list off
+`pages/checks/` rather than from here when it matters — this sentence has been wrong twice.
+Everything else is untested, and a component nobody has written a check for is unproven rather
+than working.
 
 Two facts about that browser, both measured rather than assumed, and both worth knowing before
 you write a check: a real Enter press does **not** activate a focused button there, so a trigger
-is activated with a click and the check says so; a real Space press **does**. And no hover style
-applies at all, because the browser reports that it cannot hover and Tailwind compiles hover
-styles behind that capability — see the issue tracking it before you write a check that depends
-on hovering. `verify` fails when it finds no browser; `--static` is the one explicit way to leave
+is activated with a click and the check says so; a real Space press **does**. And the browser reports that it cannot hover,
+so every Tailwind `hover:` and `group-hover:` utility is compiled behind that capability and none
+of them matches — a hand-written `&:hover` in `theme/preset.css` is emitted ungated and does
+still apply, so the gap is the utilities rather than hovering as such. See the issue tracking it
+before you write a check that depends on a hover style. `verify` fails when it finds no browser; `--static` is the one explicit way to leave
 the browser phase out. The GitHub workflow runs `check`, the build and `verify` on every pull request
 into `main`, and the Pages deploy waits for them.
 

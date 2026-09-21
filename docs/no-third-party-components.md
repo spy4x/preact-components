@@ -309,15 +309,15 @@ this:
   independent of any icon licence: brand marks are not freely relicensable even when the drawing is
   your own. This is the part most likely to need its own decision, and it is why any replacement is
   expected to split the brand subset from the general set.
-- All 101 glyphs are inline source in `icons/+index.tsx`, `{ class?: string }` prop surface, no
+- All 119 glyphs are inline source in `icons/+index.tsx`, `{ class?: string }` prop surface, no
   codegen, no build step, no runtime dependency beyond Preact.
 
-> **Staleness note.** These counts and the five-source list are read from `icons/README.md` as it
-> stands at the time of writing. PR #98 (`docs/issues-28-15-78`, open) rewrites that file to a
-> six-source merge, adds a `roley` row, and moves the count to 119. **The statements above depend on
-> #98 not having landed.** If #98 merges first, whichever lands second must reconcile this section
-> against it — the icon list is deliberately not restated from memory here, and `icons/README.md`
-> remains the authority either way.
+> **Partly reconciled.** The pull request this note used to wait on has landed, so the count above
+> is now read from the tree rather than from a pending change: `icons/+index.tsx` exports 119
+> glyphs, `icons/README.md` says 119, and the browser suite asserts 119. The source list above it
+> has **not** been reconciled and is one source short. It is deliberately not restated from memory
+> here; `icons/README.md` remains the authority, and correcting the list is part of #127, which
+> owns the wider sweep of this document.
 >
 > **The same applies to the `roley` paragraph earlier in this document** — "`roley` and `evisa` are
 > design-intent sources, never code sources" — which states that `roley` is _not_ among the icon

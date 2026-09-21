@@ -332,9 +332,10 @@ async function browserPhase(): Promise<void> {
 /**
  * Run every workspace package's browser checks, in the one fixed order this file owns.
  *
- * Every package is named here, including the two that own no check yet — `crud` and `charts` — so
- * that a later PR adding a package's first check edits only that package's file under
- * `pages/checks/`, never this list. `signals` has no catalogue section any more and still has a
+ * Every package with something a browser can drive is named here, including the two that own no
+ * check yet — `crud` and `charts` — so that a later PR adding a package's first check edits only
+ * that package's file under `pages/checks/`, never this list. `cn` is the one workspace member
+ * missing on purpose: it is a single class-name function with nothing to drive. `signals` has no catalogue section any more and still has a
  * file: its checks drive the demo the host page renders.
  *
  * `ui` runs last on purpose: its Modal checks (kept last within `ui.ts` for the same reason) open a
