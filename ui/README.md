@@ -22,7 +22,7 @@ Preact + Tailwind primitives extracted from `gb`, `financy` and `offer-lens`.
 | `ConfidenceMeter` | `confidence-meter`  | `value` (optional; clamped 0–100, unknown renders no reading), `label`                                        |
 | `CopyButton`      | `copy-button`       | `textToCopy`, `copy?` (clipboard port)                                                                        |
 | `Combobox`        | `combobox`          | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `ariaLabel?`, `aria-labelledby?`, `id?`                 |
-| `DateRangePicker` | `date-range-picker` | `range`, `onChange`, `timeZone`, `presets`, `labels`                                                          |
+| `DateRangePicker` | `date-range-picker` | `range`, `onChange`, `timeZone`, `presets`, `labels?` (every key optional)                                    |
 | `Dropdown`        | `dropdown`          | `trigger`, `triggerLabel` or `triggerNamedByContent` (one is required), `menuLabel`, `vertical`, `horizontal` |
 | `DropdownItem`    | `dropdown`          | `href`, `onClick`, `disabled`, `class` — a `role="menuitem"`, out of the tab order                            |
 | `ErrorState`      | `error-state`       | `message` (renders nothing when empty)                                                                        |
@@ -32,6 +32,7 @@ Preact + Tailwind primitives extracted from `gb`, `financy` and `offer-lens`.
 | `LoadingSpinner`  | `loading-spinner`   | `label`, `size`                                                                                               |
 | `OnOffButtons`    | `on-off-buttons`    | `value`, `amount`, `onSwitch`                                                                                 |
 | `PageTitle`       | `page-title`        | `children`, `class`                                                                                           |
+| `Pagination`      | `pagination`        | `page`, `pageCount`, `onChange`, `label`, `previousLabel`, `nextLabel`, `pageLabel`                           |
 | `Progress`        | `progress`          | `value`, `max`, `label`, `id` (a caption needs an `id`)                                                       |
 | `SkeletonCards`   | `skeletons`         | `columns`, `rows`, `lines`                                                                                    |
 | `SkeletonStatus`  | `skeletons`         | `label` (the loading announcement)                                                                            |
@@ -204,6 +205,97 @@ was would point `aria-activedescendant` at an element the page no longer holds. 
 list on screen, so it is dropped for as long as the list is too short to hold it: shrink the list and
 the highlight goes, grow it back and it returns to the row it was on. Only the value every reader
 takes is clamped; the position itself is kept, because a list that comes back is the same list.
+
+## DateRangePicker
+
+A preset list and a custom from/to panel, controlled: `range` in, `onChange` out. `timeZone` is
+required because the server's zone is not the visitor's, and the clock is either injected through
+`now` or read inside a click handler, never during render.
+
+**Every string the panel shows has an English default, so `labels` and every key in it are
+optional.** A caller who says nothing gets `"Date range"`, `"Any dates"`, `"From"`, `"To"`,
+`"Apply"` and `"Cancel"`; a caller who needs one word changed passes that one word and keeps the
+rest. A key passed as `undefined` falls back the same way an omitted one does. The one string with
+no default is a preset's own `label`, which arrives with the preset: the caller decides both which
+presets to offer and how to word each of them for its audience.
+
+```tsx
+<DateRangePicker
+  range={range.value}
+  onChange={(next) => range.value = next}
+  timeZone="Europe/Paris"
+  presets={[
+    { preset: "last-7-days", label: "Sieben Tage" },
+    { preset: "custom", label: "Eigener Zeitraum" },
+  ]}
+  labels={{ placeholder: "Alle Daten", apply: "Übernehmen" }}
+/>
+```
+
+**Focus follows the panel**, which is the difference between a keyboard user keeping their place and
+losing it. Opening moves focus to the pressed preset — so a reader announces the choice the panel
+opens on — or to the first preset when nothing is pressed, or to the panel itself when there are no
+presets at all. The move happens in an effect rather than in the click handler, because the panel is
+rendered with the `hidden` attribute and Chromium refuses to focus anything inside a `display: none`
+subtree: a `focus()` call in the same tick as the state change fires no focus event at all.
+
+Every close the user drove from inside the panel hands focus back to the trigger: Escape, choosing a
+preset, Apply and Cancel, and pressing the trigger a second time. The one close that does not is a
+click outside the component, because the person has just put focus somewhere deliberately and
+pulling it back would take it off what they clicked. Focus merely _leaving_ the panel is not a close
+here — a Tab out leaves the panel open behind you, which is the one dismissal path this component
+does not have.
+
+`Custom…` is marked pressed while the custom fields are the live choice — the button was activated,
+either field was typed into, or the caller's `selectedPreset` is `"custom"` — and stops being
+pressed when another preset takes over or the draft is cancelled. It reads that state from the same
+signal the fields write, so what a screen reader announces and what the panel shows cannot disagree.
+
+## Pagination
+
+Page numbers with the long runs collapsed, plus previous and next. Controlled: `page` is rendered as
+given (clamped into `1…pageCount`) and every request leaves through `onChange`. `pageCount={0}`
+renders nothing at all, so a list that found no rows needs no special case at the call site.
+
+**Previous and Next are always rendered, and carry `aria-disabled="true"` where they cannot act.**
+Both obvious alternatives lose the keyboard user's place at the exact moment they reach the end,
+which is while they are pressing the control: unmounting it destroys the element under their focus,
+and setting the native `disabled` attribute on a focused button takes focus off it — measured in the
+headless Chromium this repository drives, where `document.activeElement` went from the button to
+`<body>` on the line that set the attribute. Chromium's accessibility tree reports the control as
+disabled for either spelling, so nothing is given up. What `aria-disabled` does not do is stop the
+press — a real Space press still fires a click on such a button — so each handler checks the end it
+guards before calling `onChange`.
+
+**The window keeps two pages on each side of the current one.** The first and last page are always
+shown, the window slides back inside the range rather than shrinking when it reaches an end, and a
+`…` always stands for at least two pages: where a mark would have hidden a single page, that page is
+written out instead, because the mark takes the same room and says less. `pageRange(page, pageCount,
+size)` is that rule on its own, exported and unit-tested; `size` says how long a range may be before
+it collapses at all, and the collapsed window's width does not depend on it.
+
+```
+pageRange(5, 10)   1 2 3 4 5 6 7 … 10
+pageRange(15, 30)  1 … 13 14 15 16 17 … 30
+pageRange(30, 30)  1 … 26 27 28 29 30
+```
+
+Every string is a prop with an English default: `label` names the `nav` landmark (`"Pagination"`),
+`previousLabel` and `nextLabel` name the two controls, and `pageLabel` names one page number. That
+last one is a function of the number rather than a string, because a translation needs the number
+and where it falls in the sentence is the translator's business.
+
+```tsx
+<Pagination
+  page={page.value}
+  pageCount={24}
+  onChange={(next) => page.value = next}
+  label="Rechnungsseiten"
+  previousLabel="Zurück"
+  nextLabel="Weiter"
+  pageLabel={(number) => `Seite ${number}`}
+/>
+```
 
 ## Skeletons
 
