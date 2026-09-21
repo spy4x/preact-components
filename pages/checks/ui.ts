@@ -2951,23 +2951,77 @@ async function liveRegionChecks(devtools: Devtools): Promise<void> {
   )
 
   await countArrivesCheck(devtools, pristine)
-  const describedAfter = await accessibleDescription(devtools, `#${ANNOUNCE_ID}`)
+  const describedCounting = await accessibleDescription(devtools, `#${ANNOUNCE_ID}`)
   await emptyMessageCheck(devtools)
-
-  check(
-    "a Combobox's live region is never the input's accessible description, before or after",
-    describedBefore === "" && describedAfter === "",
-    describedBefore === null || describedAfter === null
-      ? `the accessibility tree could not be read for #${ANNOUNCE_ID}, so this proves nothing`
-      : `the browser computes the input's description as ` +
-        `"${describedBefore}" before it was used and "${describedAfter}" with the count in the ` +
-        `region: a status is not a description, and an empty element pointed at by ` +
-        `aria-describedby would put an empty description in the tree`,
-  )
+  await describedByCheck(devtools, describedBefore, describedCounting)
 
   await pressKey(devtools, "Escape")
   await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "false"`), 3_000)
   await pointerToCorner(devtools)
+}
+
+/**
+ * What the browser computes as the input's accessible description, in each state the region has.
+ *
+ * Read out of the accessibility tree over the protocol rather than off the markup, because
+ * "described by an element that happens to be empty" and "not described at all" are the same
+ * attribute and different trees, and it is the tree a reader reads.
+ *
+ * The rule being pinned is that the description follows the empty message and only the empty
+ * message. It is a transition, so all of it is asserted: nothing on an untouched field, nothing
+ * while a count is in the region, the message once the query matches nothing, still the message on
+ * the closed field the query was abandoned on — which is the state a server-filtered field is
+ * rendered in, and the one the description exists for, since a live region announces a change and
+ * says nothing at all when focus arrives — and nothing again once the field is cleared.
+ *
+ * @param devtools The connected session, with the field open and the empty message in its region.
+ * @param untouched The description read before the field was touched.
+ * @param counting The description read while the region held the count.
+ */
+async function describedByCheck(
+  devtools: Devtools,
+  untouched: string | null,
+  counting: string | null,
+): Promise<void> {
+  const message = await accessibleDescription(devtools, `#${ANNOUNCE_ID}`)
+
+  // Tab leaves the input for the clear button, which the component treats as a leave: the list
+  // closes and the query stays, so this is the abandoned-query state a person reaches by walking
+  // away from a search — and the state a controlled `query` renders on its own.
+  await pressKey(devtools, "Tab")
+  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "false"`), 3_000)
+  const closed = await accessibleDescription(devtools, `#${ANNOUNCE_ID}`)
+
+  const clear = `globalThis.__verifyCombobox?.input?.parentElement?.querySelector("button") ?? null`
+  const pressed = await clickAt(devtools, await aimAt(devtools, clear), clear)
+  await poll(() => devtools.evaluate<boolean>(`${REGION_STATE}.text === ""`), 3_000)
+  const emptied = await accessibleDescription(devtools, `#${ANNOUNCE_ID}`)
+
+  const readings = [untouched, counting, message, closed, emptied]
+  const named =
+    `untouched "${untouched}", counting "${counting}", nothing matching "${message}", ` +
+    `closed on the abandoned query "${closed}", cleared "${emptied}"`
+
+  check(
+    "a Combobox's input is described by its live region for the empty message alone",
+    !readings.includes(null) && untouched === "" && counting === "" &&
+      message === "No coin left" && closed === "No coin left" && emptied === "" &&
+      pressed?.onTarget === true,
+    readings.includes(null)
+      ? `the accessibility tree could not be read for #${ANNOUNCE_ID}, so this proves nothing`
+      : pressed?.onTarget !== true
+      ? `the press never landed on the clear button, so the field was never emptied`
+      : untouched !== "" || counting !== ""
+      ? `the field carries a description before anybody has asked it anything (untouched ` +
+        `"${untouched}", with a count in the region "${counting}"): a count is about the last ` +
+        `keystroke, and a description is re-read as part of the field every time it is announced`
+      : message !== "No coin left" || closed !== "No coin left"
+      ? `a field showing the empty message computes its description as "${message}", and the ` +
+        `closed field the query was abandoned on as "${closed}": a live region says nothing when ` +
+        `focus arrives, so a reader tabbing into a server-filtered field rendered with a query ` +
+        `matching nothing would be told nothing about the message on its face`
+      : `"" → "" → "No coin left" → "No coin left" → "": ${named}`,
+  )
 }
 
 /**
