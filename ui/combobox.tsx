@@ -310,7 +310,8 @@ export interface ComboboxListboxContent<T, M = string> {
  * signature is flattened once and the resolver is testable on its own.
  *
  * `M` keeps whatever the caller's function-form message returns, so a JSX empty state survives into
- * the markup. Only the `string` case becomes live-region text — see the component.
+ * the markup. Whatever it is, the component renders it inside the one live region it keeps, so a
+ * JSX empty state is announced by its text exactly as a string one is.
  *
  * @param visible Items the filter left.
  * @param query The query that produced them, handed to a function-form message.
@@ -465,11 +466,21 @@ export interface ComboboxProps<T> extends ComboboxNamingProps {
   /**
    * Shown instead of the list when the query matches nothing. A string, or a function of the query.
    *
-   * English default, `"No matches"`, and one of the two strings this component ships; pass your own
-   * to translate it or to say something more useful. It is shown only once the list is open or the
-   * field has a query in it — a combobox nobody has touched answers a question nobody asked.
+   * English default, `"No matches"`; pass your own to translate it or to say something more
+   * useful. It is shown only once the list is open or the field has a query in it — a combobox
+   * nobody has touched answers a question nobody asked.
    */
   emptyMessage?: string | ((query: string) => ComponentChildren)
+  /**
+   * How many options the query left, worded for a screen reader, as a function of that number.
+   *
+   * English default, `"1 match"` / `"12 matches"`; pass your own to translate it or to count
+   * something the default cannot name. It is announced only while the field carries a query and
+   * that query leaves at least one option — when it leaves none, {@link ComboboxProps.emptyMessage}
+   * is the answer instead. Nobody sees this text: it is rendered inside the live region, visually
+   * hidden, because the matching rows are already on screen for anyone who can read them.
+   */
+  countMessage?: (count: number) => string
   /**
    * `id` of the search input, and the base of every id derived from it: the listbox and each option.
    * Pass one when a visible `<label for>` should point at the input. Without it a `useId()` value is
@@ -538,6 +549,19 @@ function Chevron() {
   )
 }
 
+/**
+ * English default for {@link ComboboxProps.countMessage}: `"1 match"`, `"12 matches"`.
+ *
+ * Deliberately unexported, like {@link itemIndex}: `ui-guide`'s subpath guard wants every `ui` value
+ * export either barrelled or declared a helper, and a default string belongs to the component rather
+ * than to a caller. The component's tests pin the wording.
+ *
+ * @param count How many options the query left; never negative.
+ */
+function defaultCountMessage(count: number): string {
+  return count === 1 ? "1 match" : `${count} matches`
+}
+
 /** Clear glyph, inline for the same reason as {@link Chevron}. */
 function Cross() {
   return (
@@ -587,9 +611,21 @@ function Cross() {
  * without a key press is options arriving under an open, empty popup: a list that lands with
  * nothing highlighted would leave `Enter` doing nothing until an arrow key was pressed.
  *
+ * One live region is rendered with the field and never taken away — on the server too — and the
+ * answers go into it: the count of matching options while a query is narrowing the list, the empty
+ * message when the query leaves nothing. Assistive technology announces a *change* to a region it
+ * is already watching and commonly says nothing about a region that arrives with its message
+ * already inside it, so a region created together with its text announces nothing. Empty it has no
+ * box, and it sits inside this component's own root, so a host's `flex` or `grid` container never
+ * spaces a child it cannot see.
+ *
+ * `aria-describedby` points the input at that region while the empty message is what it holds, and
+ * never while the count is: the message is a standing fact a reader should be told on focus, and a
+ * count is about the last keystroke rather than about the field.
+ *
  * Every string it shows is a prop with an English default: `placeholder` (`"Select…"`),
- * `emptyMessage` (`"No matches"`) and `clearLabel` (`"Clear selection"`). Pass your own to
- * translate them or to say something the default cannot.
+ * `emptyMessage` (`"No matches"`), `countMessage` (`"12 matches"`) and `clearLabel`
+ * (`"Clear selection"`). Pass your own to translate them or to say something the default cannot.
  */
 export function Combobox<T>({
   items,
@@ -601,6 +637,7 @@ export function Combobox<T>({
   isItemDisabled,
   placeholder = "Select…",
   emptyMessage = "No matches",
+  countMessage = defaultCountMessage,
   id: callerId,
   ariaLabel,
   "aria-labelledby": ariaLabelledBy,
@@ -649,6 +686,12 @@ export function Combobox<T>({
   // network used to render and announce "No matches" on a control nobody had touched. Open, or
   // with a query in it, the message is the honest answer to a real question and is shown.
   const answersEmpty = content.emptyMessage !== undefined && (isOpen.value || hasText)
+  // The count answers one question — "what did my typing leave?" — so it is narrower than the
+  // message above on purpose: opening the list is answered by the list itself, which a reader
+  // announces along with the highlighted row, and a count repeated on every open would be noise
+  // over the top of it. Nothing to count is not a count of nothing: an empty result is the empty
+  // message's job, and announcing both would say the same thing twice.
+  const announcesCount = hasText && visible.length > 0
   /**
    * The highlight, clamped to the list that is actually on screen.
    *
@@ -803,6 +846,17 @@ export function Combobox<T>({
           placeholder={placeholder}
           aria-label={ariaLabel}
           aria-labelledby={ariaLabelledBy}
+          // Described by the region while the empty message is what it holds, and never while the
+          // count is. The two are different kinds of sentence. "No matches" is a standing fact
+          // about the field and stays true for as long as it is on screen, so a reader coming to
+          // the field — tabbing into a server-filtered one that was rendered with a query matching
+          // nothing, say — should be told it: a live region announces a change and says nothing on
+          // focus, so without this the field would be silent about a message sitting in plain
+          // sight. A count is not a fact about the field but about the last keystroke, and a
+          // description is re-read every time the input is announced, so "12 matches" would be
+          // spoken as part of the field's identity long after the number was true. Zero matches
+          // never carries a count, so while `answersEmpty` holds the region's text is exactly the
+          // empty message and nothing else.
           aria-describedby={answersEmpty ? statusId : undefined}
           aria-expanded={isOpen.value}
           aria-controls={listboxId}
@@ -906,24 +960,35 @@ export function Combobox<T>({
       </ul>
       {
         /*
-        The empty message lives outside the `role="listbox"` on purpose: a listbox's children must be
-        `option` or `group`, so a message row inside it is an `aria-required-children` violation. It
-        is rendered **once**, as the visible paragraph, which carries the id the input points at with
-        `aria-describedby` and is itself the `role="status"` live region. A second, visually hidden
-        copy of the same text would be both described and announced, which is how one keystroke ends
-        up reading the message twice.
+        The live region, rendered on every render and empty until the field has been used.
+
+        It is the container rather than a hidden element beside the message, which is the shape
+        `Toastr` and `SWUpdater` settled on: the message is written once, so the visible text and
+        the announced text cannot drift apart, and there is no second copy for a reader to meet
+        twice while browsing. The count has no visible counterpart, so that one is `sr-only` — the
+        rows it counts are already on screen for anyone who can see them.
+
+        Both live outside the `role="listbox"`: a listbox's children must be `option` or `group`,
+        so a message row inside it is an `aria-required-children` violation.
+
+        Empty, the region is an ordinary in-flow element with no class, no padding, no border and
+        no minimum height, so it is zero pixels tall. It is a child of this component's own root —
+        a plain block container — rather than of the host's, which is what keeps a host's `flex` or
+        `grid` gap from being charged for an element nobody can see.
+
+        `aria-atomic` is written out although `role="status"` implies it, so the next person reads
+        the intent: a reader announces the whole sentence rather than the one text node that
+        changed.
       */
       }
-      {answersEmpty && (
-        <p
-          id={statusId}
-          role="status"
-          aria-live="polite"
-          class="px-3 py-2 text-center text-sm text-gray-500 dark:text-gray-400"
-        >
-          {content.emptyMessage}
-        </p>
-      )}
+      <div id={statusId} role="status" aria-live="polite" aria-atomic="true">
+        {answersEmpty && (
+          <p class="px-3 py-2 text-center text-sm text-gray-500 dark:text-gray-400">
+            {content.emptyMessage}
+          </p>
+        )}
+        {announcesCount && <span class="sr-only">{countMessage(visible.length)}</span>}
+      </div>
     </div>
   )
 }

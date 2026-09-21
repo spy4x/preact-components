@@ -487,9 +487,9 @@ function UtcOffsetCombobox() {
 /**
  * An empty list, and the moment its options turn up.
  *
- * Untouched, this field says nothing at all — no message on screen, and nothing in a live region
- * for a screen reader to read out. "No matches" is an answer, and nobody has asked it anything
- * yet. Open it, or type in it, and the message appears as the answer it is.
+ * Untouched, this field says nothing at all — no message on screen, and an empty live region for a
+ * screen reader to find nothing in. "No matches" is an answer, and nobody has asked it anything
+ * yet. Open it, or type in it, and the message arrives inside that region as the answer it is.
  *
  * The button is the other half of the same story, and the reason it waits rather than loading on
  * the spot: a press that filled the list immediately could only be made with the popup closed,
@@ -532,16 +532,61 @@ function LoadingCombobox() {
           : `${options.value.length} options · ${comboboxStatusLabel(currency.value, "")}`}
       </p>
       <p class="text-xs text-gray-500 dark:text-gray-400">
-        An empty `items` list. Closed and untouched it renders no message and no live region; open
-        it and the empty message answers the question that opening it asked. Arm the button, open
-        the field, and watch the options land underneath it: the message goes, and the first row is
+        An empty `items` list. Closed and untouched its live region is there and empty; open it and
+        the empty message answers the question that opening it asked. Arm the button, open the
+        field, and watch the options land underneath it: the message goes, and the first row is
         highlighted, so `Enter` picks something without an arrow key first.
       </p>
     </div>
   )
 }
 
-/** Every combobox on the card: strings, objects, a controlled query, a long list and an empty one. */
+/**
+ * The live region, and what typing puts into it.
+ *
+ * Every other field on this card is driven by a check that opens it, so none of them is still
+ * untouched by the time the region is worth looking at — and "the region was there before anybody
+ * touched the field" is exactly what has to be observed. This one exists to be read first and then
+ * typed in, and `pages/checks/ui.ts` drives nothing else on it.
+ *
+ * Both strings are the caller's rather than the component's defaults, so a check that found the
+ * English wording would be reading a hard-coded string somewhere instead of the prop it is about.
+ * The count is `sr-only`, so the only visible sign of it on the card is the report below the field.
+ */
+function AnnouncingCombobox() {
+  const coin = useSignal<string | null>(null)
+  const query = useSignal("")
+
+  return (
+    <div class="space-y-2">
+      <Combobox
+        items={coins}
+        value={coin.value}
+        onChange={(next) => coin.value = next}
+        onQueryChange={(next) => query.value = next}
+        id="guide-combobox-announce"
+        ariaLabel="Coin, with the count announced"
+        placeholder="Type to narrow the list…"
+        emptyMessage="No coin left"
+        countMessage={(count) => count === 1 ? "1 coin left" : `${count} coins left`}
+      />
+      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
+        {comboboxStatusLabel(coin.value, query.value)}
+      </p>
+      <p class="text-xs text-gray-500 dark:text-gray-400">
+        The `role="status"` region under this field is in the page from the first render, empty.
+        Type, and the count of what is left arrives inside that same element — visually hidden,
+        because the rows themselves are the sighted answer. Type something that matches nothing and
+        the empty message takes its place. Clear the field and it goes quiet again.
+      </p>
+    </div>
+  )
+}
+
+/**
+ * Every combobox on the card: strings, objects, a controlled query, a long list, an empty one, and
+ * the one that shows what the live region holds at each moment.
+ */
 function ComboboxDemo() {
   return (
     <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
@@ -566,6 +611,12 @@ function ComboboxDemo() {
       <div class="space-y-2">
         <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">Nothing to offer yet</h4>
         <LoadingCombobox />
+      </div>
+      <div class="space-y-2 sm:col-span-2">
+        <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">
+          What is announced, and when
+        </h4>
+        <AnnouncingCombobox />
       </div>
       <p class="text-xs text-gray-500 dark:text-gray-400 sm:col-span-2">
         The popup is in the markup at all times and marked `hidden` while closed, so what is
@@ -822,7 +873,7 @@ export const inputDemos = {
   },
   Combobox: {
     summary:
-      'Searchable single-select: the ARIA combobox pattern by hand, with `role="listbox"` options and focus never leaving the input — the highlight is announced through `aria-activedescendant`, moved by the keyboard alone and followed by the list, which scrolls to keep it on screen. Items may be any `T` once `getLabel` says what to render and match; `filter` replaces the built-in substring match, and a controlled `query` with `onQueryChange` is the server-side shape. Every string it shows defaults to English and takes an override: `placeholder`, `emptyMessage` and `clearLabel`. The empty message waits until the field is open or has a query in it, so a field nobody has touched — one whose options are still loading, say — never claims there are no matches.',
+      'Searchable single-select: the ARIA combobox pattern by hand, with `role="listbox"` options and focus never leaving the input — the highlight is announced through `aria-activedescendant`, moved by the keyboard alone and followed by the list, which scrolls to keep it on screen. Items may be any `T` once `getLabel` says what to render and match; `filter` replaces the built-in substring match, and a controlled `query` with `onQueryChange` is the server-side shape. Every string it shows defaults to English and takes an override: `placeholder`, `emptyMessage`, `countMessage` and `clearLabel`. One `role="status"` region is rendered with the field and never taken away, empty until the field has been used, and the answers arrive inside it: how many options the query left, or the empty message when it left none. The empty message waits until the field is open or has a query in it, so a field nobody has touched — one whose options are still loading, say — never claims there are no matches.',
     snippet: `<Combobox
   items={cities}
   value={city.value}

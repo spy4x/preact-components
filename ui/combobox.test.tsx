@@ -497,14 +497,37 @@ describe("Combobox render cost", () => {
 })
 
 /**
- * The id the input's `aria-describedby` points at.
+ * The whole live region, its own opening tag included.
  *
- * Throws rather than returning `undefined`: a combobox with an empty list that describes nothing is
- * the failure these tests exist to catch, and it must not read as "no assertion to make here".
+ * The region is the last child of the component's root, so its markup runs from its opening tag to
+ * just before the root's closing tag — which is what lets these tests assert that a message is
+ * *inside* it rather than merely somewhere in the same render.
+ *
+ * Throws rather than returning `undefined`: a combobox with no live region at all is the failure
+ * these tests exist to catch, and it must not read as "no assertion to make here".
  */
-function describedStatusId(html: string): string {
-  const id = /aria-describedby="([^"]+)"/.exec(html)?.[1]
-  if (id === undefined) throw new Error(`the input describes nothing: ${html.slice(0, 200)}`)
+function statusRegion(html: string): string {
+  const at = html.indexOf(' role="status"')
+  if (at < 0) throw new Error(`no live region in this render: ${html.slice(0, 200)}`)
+  return html.slice(html.lastIndexOf("<", at), html.length - "</div>".length)
+}
+
+/** The `id` of that region. */
+function statusRegionId(html: string): string {
+  const id = /id="([^"]+)"/.exec(statusRegion(html))?.[1]
+  if (id === undefined) throw new Error(`the live region carries no id: ${statusRegion(html)}`)
+  return id
+}
+
+/** The exact markup of an empty live region belonging to the input with this id. */
+function emptyRegion(inputId: string): string {
+  return `<div id="${inputId}-status" role="status" aria-live="polite" aria-atomic="true"></div>`
+}
+
+/** The `id` the component gave its input. */
+function inputId(html: string): string {
+  const id = /<input[^>]*id="([^"]+)"/.exec(html)?.[1]
+  if (id === undefined) throw new Error(`no input in this render: ${html.slice(0, 200)}`)
   return id
 }
 
@@ -632,29 +655,76 @@ describe("Combobox markup", () => {
     expect(html).not.toContain('role="presentation"')
   })
 
-  it("announces the empty state through a status region the input describes", () => {
-    const html = render(<Combobox items={items} onChange={() => {}} query="zzz" />)
-    const statusId = /<[a-z]+ id="([^"]+)" role="status"/.exec(html)?.[1]
+  it("renders one empty live region before there is anything to announce", () => {
+    const html = render(<Combobox items={items} onChange={() => {}} />)
 
-    expect(statusId).toBeDefined()
-    expect(html).toContain('role="status"')
-    expect(html).toContain('aria-live="polite"')
-    expect(html).toContain(`aria-describedby="${statusId}"`)
+    // The whole of this change, in one string: a marked, empty region in the first render — the
+    // server render included — so that a message can later arrive as a *change* to an element a
+    // reader was already watching. A region created together with its message is the shape
+    // assistive technology announces least reliably.
+    expect(html).toContain(emptyRegion(inputId(html)))
+    expect(html.match(/role="status"/g)?.length).toBe(1)
   })
 
-  it("renders the empty message once, in the element the input describes", () => {
+  it("gives every combobox on the page its own live region", () => {
+    const html = render(
+      <div>
+        <Combobox items={items} onChange={() => {}} ariaLabel="First" />
+        <Combobox items={items} onChange={() => {}} ariaLabel="Second" />
+      </div>,
+    )
+    const regions = html.match(/id="([^"]+)-status"/g) ?? []
+    const inputs = html.match(/<input[^>]*id="([^"]+)"/g) ?? []
+
+    // Two fields, two regions, no id in common: a shared region would have one field's answer
+    // arriving in the other field's ear.
+    expect(inputs.length).toBe(2)
+    expect(regions.length).toBe(2)
+    expect(new Set(regions).size).toBe(2)
+  })
+
+  it("describes the input by the region while the empty message is in it, and never otherwise", () => {
+    const untouched = render(<Combobox items={items} onChange={() => {}} />)
+    const counting = render(<Combobox items={items} onChange={() => {}} query="t" />)
+    const nothing = render(<Combobox items={items} onChange={() => {}} query="zzz" />)
+
+    // The two sentences the region can hold are different kinds of thing. "No matches" is a
+    // standing fact about the field: a live region announces a change and says nothing on focus,
+    // so a reader arriving at a server-filtered field that was rendered with a query matching
+    // nothing would otherwise be told nothing about a message sitting in plain sight. A count is
+    // about the last keystroke rather than about the field, and a description is re-read every
+    // time the input is announced, so it would be spoken as part of the field's identity long
+    // after the number was true.
+    expect(untouched).not.toContain("aria-describedby")
+    expect(counting).not.toContain("aria-describedby")
+    expect(nothing).toContain(`aria-describedby="${statusRegionId(nothing)}"`)
+    expect(countId(nothing, statusRegionId(nothing))).toBe(1)
+  })
+
+  it("describes a closed field that a controlled query left with nothing to show", () => {
+    // The state a server-filtered field is rendered in before anybody touches it: the caller's
+    // `query` in a prop, no option matching it, the list closed. This is the case that made the
+    // description worth keeping — measured on the change before this one, the browser computed
+    // the input's description here as "No matches", and dropping the attribute made it empty.
+    const html = render(<Combobox items={items} onChange={() => {}} query="zzz" />)
+
+    expect(html).toContain('aria-expanded="false"')
+    expect(html).toContain(`aria-describedby="${statusRegionId(html)}"`)
+  })
+
+  it("puts the empty message inside the region that was already there, once", () => {
     const html = render(
       <Combobox items={items} onChange={() => {}} query="zzz" emptyMessage="Nada" />,
     )
-    const statusId = describedStatusId(html)
+    const statusId = statusRegionId(html)
 
     // The regression this pins: the message used to be rendered twice — visibly, and again in a
-    // visually hidden `role="status"` copy that `aria-describedby` pointed at — so one empty
-    // keystroke was both described and announced.
+    // visually hidden `role="status"` copy — so one empty keystroke was both described and
+    // announced. One region, holding the one visible copy, is what replaced that.
     const elements = countId(html, statusId)
     expect(
       elements,
-      `aria-describedby="${statusId}" resolves to ${elements} elements; it must resolve to exactly 1`,
+      `id="${statusId}" resolves to ${elements} elements; it must resolve to exactly 1`,
     ).toBe(1)
 
     const copies = html.split("Nada").length - 1
@@ -662,16 +732,10 @@ describe("Combobox markup", () => {
       copies,
       `the empty message "Nada" is rendered in ${copies} elements; it must be rendered exactly once`,
     ).toBe(1)
-
-    const at = html.indexOf(`id="${statusId}"`)
-    const text = html.slice(html.indexOf(">", at) + 1, html.indexOf("<", html.indexOf(">", at) + 1))
-    expect(text, `the described element carries ${JSON.stringify(text)}`).toContain("Nada")
-    expect(html, "a second, sr-only copy would be described and announced twice").not.toContain(
-      "sr-only",
-    )
+    expect(statusRegion(html), "the message must be inside the live region").toContain("Nada")
   })
 
-  it("renders a JSX empty state in the described element too", () => {
+  it("renders a JSX empty state inside the live region too", () => {
     const html = render(
       <Combobox
         items={items}
@@ -680,27 +744,17 @@ describe("Combobox markup", () => {
         emptyMessage={() => <em>Nada</em>}
       />,
     )
-    const statusId = describedStatusId(html)
 
-    expect(
-      countId(html, statusId),
-      `aria-describedby="${statusId}" resolves to ${countId(html, statusId)} elements`,
-    ).toBe(1)
-
-    // The caller's node is the described element's content, not a sibling the input does not point
-    // at — which is what a hidden copy of the message would be.
-    const opening = html.indexOf(`id="${statusId}"`)
-    const after = html.slice(html.indexOf(">", opening) + 1, html.indexOf(">", opening) + 60)
-    expect(after, `the described element starts with ${JSON.stringify(after)}`).toContain(
-      "<em>Nada</em>",
-    )
+    // The caller's node is the region's content, not a sibling beside it — which is what a hidden
+    // copy of the message would be, and what would make the two drift apart.
+    expect(statusRegion(html)).toContain("<em>Nada</em>")
+    expect(html.split("Nada").length - 1).toBe(1)
   })
 
-  it("renders no status region while the list has options", () => {
+  it("keeps the live region empty while the list has options and nobody has typed", () => {
     const html = render(<Combobox items={items} onChange={() => {}} />)
 
-    expect(html).not.toContain('role="status"')
-    expect(html).not.toContain("aria-describedby")
+    expect(statusRegion(html)).toBe(emptyRegion(inputId(html)))
   })
 
   it("says nothing about matches on an untouched field whose list is empty", () => {
@@ -710,9 +764,8 @@ describe("Combobox markup", () => {
     const html = render(<Combobox items={[]} onChange={() => {}} ariaLabel="Currency" />)
 
     expect(html).not.toContain("No matches")
-    expect(html).not.toContain('role="status"')
-    expect(html).not.toContain("aria-live")
-    expect(html).not.toContain("aria-describedby")
+    // The region is there, which is the point of it; what it must not carry is a word.
+    expect(statusRegion(html)).toBe(emptyRegion(inputId(html)))
     // Still a working, collapsed combobox — it is silent, not broken.
     expect(html).toContain('aria-expanded="false"')
     expect(html).toContain('role="listbox"')
@@ -728,7 +781,8 @@ describe("Combobox markup", () => {
 
     expect(text).not.toContain("Still loading the list")
     expect(fromQuery).not.toContain("Nothing for")
-    expect(fromQuery).not.toContain('role="status"')
+    expect(statusRegion(text)).toBe(emptyRegion(inputId(text)))
+    expect(statusRegion(fromQuery)).toBe(emptyRegion(inputId(fromQuery)))
   })
 
   it("answers with the empty message once the field carries a query", () => {
@@ -738,9 +792,8 @@ describe("Combobox markup", () => {
     const typed = render(<Combobox items={[]} onChange={() => {}} query="btc" />)
 
     expect(untouched).not.toContain("No matches")
-    expect(typed).toContain("No matches")
-    expect(typed).toContain('role="status"')
-    expect(typed).toContain(`aria-describedby="${describedStatusId(typed)}"`)
+    expect(statusRegion(untouched)).toBe(emptyRegion(inputId(untouched)))
+    expect(statusRegion(typed)).toContain("No matches")
   })
 
   it("treats a caller's empty query like no query at all", () => {
@@ -750,18 +803,69 @@ describe("Combobox markup", () => {
     const asked = render(<Combobox items={[]} onChange={() => {}} query="btc" />)
 
     expect(silent).not.toContain("No matches")
-    expect(silent).not.toContain('role="status"')
-    expect(silent).not.toContain("aria-describedby")
-    expect(asked).toContain("No matches")
+    expect(statusRegion(silent)).toBe(emptyRegion(inputId(silent)))
+    expect(statusRegion(asked)).toContain("No matches")
   })
 
   it("says nothing on an untouched field holding one option, or several", () => {
     for (const list of [["BTC"], items]) {
       const html = render(<Combobox items={list} onChange={() => {}} />)
 
-      expect(html, `a closed field over ${list.length} option(s)`).not.toContain('role="status"')
+      expect(statusRegion(html), `a closed field over ${list.length} option(s)`)
+        .toBe(emptyRegion(inputId(html)))
       expect(html).not.toContain("No matches")
     }
+  })
+
+  it("announces how many options the query left, inside that same region", () => {
+    // `"t"` folds into `"BTC"` and `"ETH"` but not `"USD"`, so the number is a fact about the
+    // list rather than a copy of it — case-folded, like every other match this component makes.
+    const html = render(<Combobox items={items} onChange={() => {}} query="t" />)
+
+    expect(statusRegion(html)).toContain('<span class="sr-only">2 matches</span>')
+    expect(statusRegionId(html)).toBe(`${inputId(html)}-status`)
+  })
+
+  it("counts a single match in the singular", () => {
+    expect(statusRegion(render(<Combobox items={items} onChange={() => {}} query="U" />)))
+      .toContain(">1 match<")
+  })
+
+  it("takes the count wording from the caller, and defaults it to English otherwise", () => {
+    expect(statusRegion(render(<Combobox items={items} onChange={() => {}} query="t" />)))
+      .toContain(">2 matches<")
+    expect(
+      statusRegion(
+        render(
+          <Combobox
+            items={items}
+            onChange={() => {}}
+            query="t"
+            countMessage={(count) => `noch ${count} Treffer`}
+          />,
+        ),
+      ),
+    ).toContain(">noch 2 Treffer<")
+  })
+
+  it("counts nothing on a field nobody has typed in, however long its list is", () => {
+    // The count answers typing. A field that has only been rendered has not been asked anything,
+    // which is the rule an earlier fix put on the empty message and this one keeps.
+    const html = render(<Combobox items={items} onChange={() => {}} />)
+
+    expect(html).not.toContain("matches")
+    expect(statusRegion(html)).toBe(emptyRegion(inputId(html)))
+  })
+
+  it("announces the empty message rather than a count of nothing", () => {
+    // Both in one region would say the same thing twice, and "0 matches" says it worse. It is
+    // also what makes the description above safe: while the input is described by the region,
+    // the region's text is the empty message and nothing else.
+    const html = render(<Combobox items={items} onChange={() => {}} query="zzz" />)
+
+    expect(statusRegion(html)).toContain("No matches")
+    expect(statusRegion(html)).not.toContain("sr-only")
+    expect(html).toContain(`aria-describedby="${statusRegionId(html)}"`)
   })
 
   it("takes an overridden placeholder, and defaults it to English otherwise", () => {

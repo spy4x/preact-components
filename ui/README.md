@@ -172,27 +172,84 @@ browser checks prove the hover half through hit testing rather than through the 
 ## Combobox
 
 Every string it shows is a prop with an English default: `placeholder` (`"Select…"`), `emptyMessage`
-(`"No matches"`) and `clearLabel` (`"Clear selection"`).
+(`"No matches"`), `countMessage` (`"1 match"` / `"12 matches"`) and `clearLabel`
+(`"Clear selection"`).
 
-**The empty message waits to be asked.** It is rendered, and announced, only once the list is open or
-the field carries a query. A field nobody has touched — one whose options are still arriving over the
-network, for instance — says nothing at all rather than claiming there is nothing to match. When
-those options land while the popup is open, the message goes and the first usable row takes the
-highlight, so `Enter` picks something without an arrow key first: a list that arrives with nothing
-highlighted tells a screen reader that nothing arrived.
+**One live region, rendered with the field and never taken away.** Every combobox renders a single
+`role="status"` element with `aria-live="polite"` and `aria-atomic="true"` on every render, the
+server render included, and it is empty until the field has been used. Answers are put into it and
+taken out of it; it is never created along with one. This is the library-wide rule that `Toastr`
+here and `SWUpdater` in `system/` also follow, and the reason is the same in all three: assistive
+technology announces a _change_ to a region it is already watching, and commonly says nothing at all
+about a region that arrives with its message already inside it.
 
-**A known limit of that.** The element carrying the message is itself the live region, so it enters
-the page already holding its text instead of sitting there empty and then changing — which is the
-case screen readers announce least reliably. `Toastr` in this package does the opposite, and says
-why. The browser check proves the region appears and that the input describes it; it does not prove
-a reader spoke it.
+**What goes into it, and when.** Two answers, and neither is given before it is asked:
 
-**What that costs when it fails**: somebody opens a field whose options have not arrived and is told
-nothing at all. From where they sit that is the defect this component just fixed — the only
-difference is that the words now on the screen are true. The fix is an empty `role="status"` kept in
-every combobox from the start, which is a live region on every field on the page; that trade belongs
-to the three components in this library with the same shape rather than to this one alone, and is
-tracked in [#186](https://github.com/spy4x/preact-components/issues/186).
+| The field                                    | What the region holds |
+| -------------------------------------------- | --------------------- |
+| rendered, never opened, never typed in       | nothing               |
+| opened, no query                             | nothing               |
+| a query, and options left                    | `countMessage(count)` |
+| a query — or an open list — and nothing left | `emptyMessage`        |
+
+The count answers typing, which is the one thing a screen-reader user otherwise gets no feedback
+about: the rows are on screen for anyone who can see them, so the count is `sr-only` and nobody else
+meets it. Opening the list is answered by the list — a reader announces the expanded listbox and the
+highlighted row — so a count repeated on every open would be noise over the top of it. The empty
+message keeps the wider rule it already had: it is the answer to a question, and opening the field
+asks one. A field nobody has touched, one whose options are still arriving over the network for
+instance, says nothing at all rather than claiming there is nothing to match. When those options land
+while the popup is open, the message goes and the first usable row takes the highlight, so `Enter`
+picks something without an arrow key first: a list that arrives with nothing highlighted tells a
+screen reader that nothing arrived.
+
+**It is written once.** The empty message is the visible paragraph, rendered inside the region rather
+than copied into a hidden twin beside it, so the words on screen and the words announced cannot drift
+apart and a reader browsing the page does not meet the same sentence twice.
+
+**What it costs a host: nothing.** The region carries no class, no padding, no border and no minimum
+height, so it is zero pixels tall while it is empty — and it is a child of the component's own root,
+which is a plain block container, rather than a sibling of the field in the host's layout. A parent
+that holds a whole combobox is therefore charged for one combobox-shaped box either way. Measured in
+Chromium against a clone of the shipped field, in a column of two 24px paragraphs, taking the region
+out and putting it back: **0px in every one of block flow, block flow with `space-y-4`, a `flex`
+column with `gap-4`, a `flex` column with `space-y-4`, a `grid` with `gap-4`, and a `grid` with
+`space-y-4`**. That is the one thing that differs from `SWUpdater`, whose region _is_ its whole
+output and therefore lands directly in the host's container, where a `flex` or `grid` gap does charge
+16px for it. What an always-present region costs everywhere is one more node in the accessibility
+tree, and here that is one per field rather than one per page — the trade [#186] weighed and took.
+
+**The input is described by the region while the empty message is in it, and never while the count
+is.** The two sentences the region can hold are different kinds of thing. "No matches" is a standing
+fact about the field, true for as long as it is on screen, and a live region announces a _change_ and
+says nothing at all when focus arrives — so without a description, somebody tabbing into a
+server-filtered field that was rendered with a query matching nothing would be told about the field
+and nothing about the message on its face. `aria-describedby` therefore points at the region exactly
+while `answersEmpty` holds. A count is not a fact about the field but about the last keystroke, and a
+description is re-read every time the input is announced, so "12 matches" would be spoken as part of
+the field's identity long after the number was true, and in the one moment it is new it would be both
+described and announced. A query that matches nothing never carries a count, so while the input is
+described the region's text is the empty message and nothing else.
+
+Measured in Chromium through the DevTools protocol, which is the tree a reader reads rather than the
+markup: the input's accessible description is `""` on an untouched field, `""` while the region holds
+a count, the empty message once the query matches nothing, still the empty message on the closed
+field that query was abandoned on, and `""` again once the field is cleared.
+
+**A known limit of that.** A combobox closed by a click outside it, or by focus moving away, keeps
+its draft query — only `Escape` and choosing an option drop it — so a field that has a selection can
+close showing that selection while its region still holds the answer to the query that was abandoned.
+Nothing is spoken, because nothing changed, but a reader browsing the page meets a count, or a "no
+matches", that does not describe what the field is showing. This is not new: the same shape applied to
+the empty message before the region was made permanent.
+
+**No screen reader has been run against this repository.** What is demonstrated is markup and the
+order in which the DOM changes — the region is in the page first, and the message arrives as a
+mutation of that same element. `pages/checks/ui.ts` parks a reference to the region and a
+`MutationObserver` on it while it is empty, so a check cannot pass by finding a region that turned up
+carrying its text. That is not a demonstration that any particular screen reader speaks.
+
+[#186]: https://github.com/spy4x/preact-components/issues/186
 
 The highlight belongs to the keyboard: the arrow keys move it, the popup scrolls to keep it on screen
 — `block: "nearest"`, so a row already in view does not move the list at all — and no pointer handler
