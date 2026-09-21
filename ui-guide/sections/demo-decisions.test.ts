@@ -144,8 +144,8 @@ describe("paginationNote", () => {
   })
 
   it("collapses the runs on either side of a long range", () => {
-    // The two ends are always shown and the window keeps the current page mid-span, which is the
-    // rule `pageRange` scores its candidates for.
+    // The two ends are always shown and the current page keeps two neighbours on each side, which
+    // is the window `pageRange` centres on it.
     expect(paginationNote(12, 24)).toBe("1 … 10 11 12 13 14 … 24")
   })
 

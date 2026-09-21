@@ -274,7 +274,14 @@ const fixedNow = new Date("2026-02-15T12:00:00Z")
 const fixedZone = "Europe/Paris"
 const fixedToday: DateRange = { from: "2026-02-09", to: "2026-02-15" }
 
-/** Every string the panel renders. The library ships no copy, so the caller writes all six. */
+/**
+ * The panel's copy, spelled out in full for the first card only.
+ *
+ * Every key here is what the component would have defaulted to anyway, and writing them out is the
+ * point of the first card: it documents what the object holds. The second card passes this object
+ * nowhere — it hands over `placeholder` alone — so the two cards between them render both paths,
+ * the caller supplying all six and the component supplying five of them.
+ */
 const dateLabels: DateRangePickerLabels = {
   menuLabel: "Date range",
   placeholder: "Any dates",
@@ -692,11 +699,16 @@ function DateRangePickerDemo() {
 }
 
 /**
- * The picker with nothing chosen and a draft the caller would refuse.
+ * The picker with nothing chosen, a draft the caller would refuse, and five default labels.
  *
  * Nothing chosen is what a filter bar starts as: the trigger reads `placeholder` and the caller's
- * `range` is `null`. The reversed pair on the right is the validation case — the panel accepts it as
- * text and cannot commit it.
+ * `range` is `null`. The reversed pair below is the validation case — the panel accepts it as text
+ * and cannot commit it.
+ *
+ * This card is also where the library's own copy is rendered. It passes `placeholder` and nothing
+ * else, so the panel's name, both field labels and both buttons are the component's English
+ * defaults; the card above passes all six. Between them the catalogue shows both paths, which
+ * matters because a default that nothing renders is a default nobody has looked at.
  */
 function DateRangePickerEmptyDemo() {
   const range = useSignal<DateRange | null>(null)
@@ -714,7 +726,7 @@ function DateRangePickerEmptyDemo() {
           { preset: "yesterday", label: "Yesterday" },
           { preset: "custom", label: "Custom…" },
         ]}
-        labels={{ ...dateLabels, placeholder: "All time" }}
+        labels={{ placeholder: "All time" }}
         dataE2E="guide-date-range-empty"
       />
       <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
@@ -727,6 +739,12 @@ function DateRangePickerEmptyDemo() {
         A draft the caller would refuse reads {dateRangeTouched(rejected)}{" "}
         — the same rule the Apply button follows, which is why the reversed pair cannot be
         committed.
+      </p>
+      <p class="text-xs text-gray-500 dark:text-gray-400">
+        Only <code>placeholder</code>{" "}
+        is passed here. “Date range”, “From”, “To”, “Apply” and “Cancel” inside the panel are the
+        component's own English defaults, so a caller with nothing to translate writes no copy at
+        all.
       </p>
     </div>
   )
@@ -818,7 +836,7 @@ export const inputDemos = {
   },
   DateRangePicker: {
     summary:
-      "Preset menu plus a custom from/to panel over `rangeForPreset`. The value is controlled, every string is a prop, and `timeZone` is required because the server's zone is not the visitor's. The clock is either injected through `now` or read inside a click handler, never during render, so the first render is deterministic. The panel is a `role=\"group\"` rather than a menu, because it contains form controls.",
+      "Preset menu plus a custom from/to panel over `rangeForPreset`. The value is controlled, every string in the panel defaults to English and can be overridden one key at a time, and `timeZone` is required because the server's zone is not the visitor's. The clock is either injected through `now` or read inside a click handler, never during render, so the first render is deterministic. The panel is a `role=\"group\"` rather than a menu, because it contains form controls. Focus follows the panel: opening moves it to the pressed preset, and Escape, a preset, Apply and Cancel all hand it back to the trigger.",
     snippet: `<DateRangePicker
   range={range.value}
   onChange={(next) => range.value = next}
@@ -827,16 +845,11 @@ export const inputDemos = {
     { preset: "last-7-days", label: "Last 7 days" },
     { preset: "custom", label: "Custom…" },
   ]}
-  labels={{
-    menuLabel: "Date range",
-    placeholder: "Any dates",
-    from: "From",
-    to: "To",
-    apply: "Apply",
-    cancel: "Cancel",
-  }}
   selectedPreset="last-7-days"
-/>`,
+/>
+
+// Every label is English by default; override only the ones you need to.
+<DateRangePicker {...props} labels={{ placeholder: "All time" }} />`,
     render: () => (
       <div class="space-y-6">
         <DateRangePickerDemo />

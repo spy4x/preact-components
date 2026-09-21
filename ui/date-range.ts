@@ -9,8 +9,8 @@
  *
  * Tradeoff: a date-only model cannot express gb's sub-day frames (`Last1Hour` … `Last24Hours`),
  * so they are not presets here; a caller that needs instants converts `from` to the start of that
- * day and `to` to the end of it in its own zone. Nothing in this file is locale-aware: copy is the
- * caller's, per the library's no-hardcoded-strings rule.
+ * day and `to` to the end of it in its own zone. Nothing in this file is locale-aware: it computes
+ * dates and holds no copy at all, so nothing here needs a default or an override.
  *
  * Supported window: the four-digit ISO years 0001–9999, e.g. every instant a UI clock can hold.
  * The window is four digits wide, not 0001 upward: year 0000 **is** a representable year — ISO 8601
@@ -83,8 +83,11 @@ export type DateRangePreset =
 /**
  * Canonical presentation order, narrowest to widest, custom last.
  *
- * Carries no labels on purpose: user-facing copy is a prop, so the picker is handed its option
- * list (label included) by the caller and the library never ships an English string.
+ * Carries no labels on purpose. This module is the maths, and copy belongs to the component layer
+ * above it: `DateRangePicker` is handed its option list, each option's label included, by the
+ * caller. The panel's own six strings do have English defaults there — every user-visible string in
+ * this library does — but a preset's label is not one of them, because the caller chooses both
+ * which presets to offer and how to word each of them.
  */
 export const dateRangePresets: readonly DateRangePreset[] = [
   "today",

@@ -42,7 +42,8 @@ const DROPDOWN_STATE = `(() => {
 
 /**
  * `ui/`'s browser checks: Dropdown's pointer and keyboard contract, ToggleSwitch, OnOffButtons,
- * `Field`, Tooltip, Combobox, Toastr, and — last — Modal's keyboard and focus contract.
+ * `Field`, Tooltip, Combobox, Toastr, DateRangePicker's focus contract, Pagination's end controls,
+ * and — last — Modal's keyboard and focus contract.
  *
  * This file runs last of every package's, and Modal's checks run last inside it, for the same
  * reason: Modal opens a real modal dialog, and a dialog that refused to close would sit in the top
@@ -146,6 +147,8 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await tooltipChecks(devtools)
   await comboboxChecks(devtools)
   await toastrChecks(devtools)
+  await dateRangeChecks(devtools)
+  await paginationChecks(devtools)
 
   // Last on purpose: a Modal that refuses to close would sit in the top layer over everything, so a
   // failure here cannot take an unrelated check down with it.
@@ -3258,4 +3261,810 @@ async function clickAt(devtools: Devtools, aim: Aim, target: string): Promise<La
  */
 async function typeInto(devtools: Devtools, text: string): Promise<void> {
   await devtools.send("Input.insertText", { text })
+}
+
+/** One read of the date range picker: the panel's state, and where focus sits relative to it. */
+interface PickerState {
+  /** `false` when the card is missing the trigger or the panel it names; every check reports that. */
+  ok: boolean
+  /** `true` when the panel is on screen: the `hidden` attribute is gone and it has a box. */
+  open: boolean
+  expanded: string | null
+  onTrigger: boolean
+  /** `true` when the focused element is the panel or anything inside it. */
+  inPanel: boolean
+  /** `true` when the focused element carries `aria-pressed="true"` — the preset the panel opens on. */
+  focusPressed: boolean
+  /** `true` when the focused element is the panel's own start-date field. */
+  onFromField: boolean
+  /** `aria-pressed` of the `Custom…` preset, or `null` when there is no such button. */
+  customPressed: string | null
+  /** How many presets say they are pressed; a swap rather than an addition would keep this at one. */
+  pressedCount: number
+  /** The focused element's text or test hook, cut short, for the failure message. */
+  label: string
+}
+
+/**
+ * Park the picker's card, trigger and panel on `globalThis`.
+ *
+ * The panel is found through the trigger's own `aria-controls` rather than by a second selector, so
+ * a trigger pointing at an id nothing answers to is reported here rather than silently handing the
+ * checks a different element. Parked by identity, like every other component's, because the focus
+ * assertions compare elements and a re-query would also match one that had just been re-rendered.
+ */
+const PICKER_SETUP = `(() => {
+  const card = document.querySelector("#demo-DateRangePicker")
+  const trigger = card?.querySelector('[data-e2e="guide-date-range"]') ?? null
+  const panelId = trigger?.getAttribute("aria-controls") ?? ""
+  globalThis.__verifyPicker = {
+    trigger,
+    panel: panelId === "" ? null : document.getElementById(panelId),
+    // The second picker's trigger: a focusable control on the same card and outside this one, for
+    // the check that presses Escape from somewhere the person has walked to.
+    away: card?.querySelector('[data-e2e="guide-date-range-empty"]') ?? null,
+  }
+  return {
+    card: card !== null,
+    trigger: trigger !== null,
+    panel: globalThis.__verifyPicker.panel !== null,
+  }
+})()`
+
+/** The panel's state and where focus is, read in one round trip. */
+const PICKER_STATE = `(() => {
+  const { trigger, panel } = globalThis.__verifyPicker ?? {}
+  if (!trigger || !panel) {
+    return {
+      ok: false, open: false, expanded: null, onTrigger: false, inPanel: false,
+      focusPressed: false, onFromField: false, customPressed: null, pressedCount: -1, label: "",
+    }
+  }
+  const active = document.activeElement
+  const custom = panel.querySelector('[data-e2e="date-range-preset-custom"]')
+  const from = panel.querySelector('[data-e2e="date-range-from"]')
+  const text = active === document.body
+    ? "the page"
+    : ((active?.textContent ?? "").trim() || active?.getAttribute?.("data-e2e") ||
+      (active?.tagName ?? ""))
+  return {
+    ok: true,
+    open: !panel.hasAttribute("hidden") && panel.getBoundingClientRect().height > 0,
+    expanded: trigger.getAttribute("aria-expanded"),
+    onTrigger: active === trigger,
+    inPanel: panel.contains(active),
+    focusPressed: active?.getAttribute?.("aria-pressed") === "true",
+    onFromField: from !== null && active === from,
+    customPressed: custom === null ? null : custom.getAttribute("aria-pressed"),
+    pressedCount: panel.querySelectorAll('button[aria-pressed="true"]').length,
+    label: String(text).slice(0, 40),
+  }
+})()`
+
+/**
+ * DateRangePicker's focus contract, driven in the browser that owns it.
+ *
+ * Nothing here is reachable from a test that renders to a string. Opening the panel is a signal
+ * write, the focus move is an effect that runs one render later, the dismissal is a real key press,
+ * and `aria-pressed` on `Custom…` changes only when a handler writes the signal the fields read.
+ *
+ * The three checks are one journey, in the order a person would take it, and each one's "before"
+ * is the state the one above it left behind. That is deliberate rather than convenient: the Escape
+ * check has to start from focus **inside** the panel and not on the trigger, or "focus is on the
+ * trigger afterwards" would also be true of a press that did nothing at all, and the surest way to
+ * be somewhere else is to have just been sent there by the check before.
+ *
+ * Every assertion is a transition for the same reason the Dropdown and Modal checks above give: a
+ * panel that never opened is closed, and its trigger keeps whatever focus it had, so an end state
+ * on its own cannot tell a working component from an inert one.
+ *
+ * The card drives the first of the two pickers on it, the one with `selectedPreset="last-7-days"`,
+ * which is what makes the opening check able to say *where* focus landed without knowing the card's
+ * copy: the element it lands on is the one carrying `aria-pressed="true"`.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function dateRangeChecks(devtools: Devtools): Promise<void> {
+  await pointerToCorner(devtools)
+  const found = await devtools.evaluate<{ card: boolean; trigger: boolean; panel: boolean }>(
+    PICKER_SETUP,
+  )
+
+  const opened = await devtools.evaluate<PickerState>(`(() => {
+    // Focus the trigger first, so "focus moved into the panel" is a move from a known place rather
+    // than from wherever the check before this one left it.
+    globalThis.__verifyPicker?.trigger?.focus()
+    return ${PICKER_STATE}
+  })()`)
+  await devtools.evaluate<null>(`(globalThis.__verifyPicker?.trigger?.click(), null)`)
+  await poll(() => devtools.evaluate<boolean>(`${PICKER_STATE}.inPanel === true`), 3_000)
+  const inside = await devtools.evaluate<PickerState>(PICKER_STATE)
+
+  check(
+    "opening the DateRangePicker's panel moves focus from the trigger into the panel",
+    found.trigger && found.panel && opened.ok && opened.onTrigger && !opened.open &&
+      inside.open && inside.inPanel && !inside.onTrigger && inside.focusPressed,
+    !found.card
+      ? "there is no DateRangePicker card on the page to drive"
+      : !found.trigger || !found.panel
+      ? `the card has ${found.trigger ? "a trigger" : "no trigger"} and ${
+        found.panel ? "a panel" : "no panel it names through aria-controls"
+      }`
+      : !opened.onTrigger
+      ? `focus would not go to the trigger, it stayed on ${opened.label}, so there is no move to ` +
+        `measure`
+      : opened.open
+      ? "the panel was already open before the trigger was pressed, so this proves nothing"
+      : !inside.open
+      ? `the panel never opened: aria-expanded ${opened.expanded} → ${inside.expanded}`
+      : !inside.inPanel
+      ? `the panel opened and focus stayed on ${
+        inside.onTrigger ? "the trigger" : inside.label
+      }, so a keyboard user has to tab into it`
+      : !inside.focusPressed
+      ? `focus went to "${inside.label}", which is not the preset the panel opens on`
+      : `focus on the trigger → "${inside.label}", the pressed preset, with aria-expanded ` +
+        `${opened.expanded} → ${inside.expanded} and the panel no longer hidden`,
+  )
+
+  const pressedCustom = await devtools.evaluate<PickerState>(`(async () => {
+    const custom = globalThis.__verifyPicker?.panel
+      ?.querySelector('[data-e2e="date-range-preset-custom"]') ?? null
+    custom?.click()
+    await new Promise((done) => setTimeout(done, 80))
+    return ${PICKER_STATE}
+  })()`)
+
+  // The count is what rules out the second cause. `aria-pressed="true"` on `Custom…` would also be
+  // explained by the card swapping its `selectedPreset` over to custom, and that swap would leave
+  // one pressed preset where there had been one. Gaining a second is the state the fields read.
+  check(
+    "using the DateRangePicker's custom fields marks the Custom preset pressed",
+    inside.customPressed === "false" && pressedCustom.customPressed === "true" &&
+      inside.pressedCount === 1 && pressedCustom.pressedCount === 2 && pressedCustom.onFromField,
+    inside.customPressed === null
+      ? "the panel renders no Custom preset, so there is nothing to mark"
+      : inside.customPressed !== "false"
+      ? `Custom was already aria-pressed="${inside.customPressed}" before it was used`
+      : pressedCustom.customPressed !== "true"
+      ? `Custom is in use and still reads aria-pressed="${pressedCustom.customPressed}", so a ` +
+        `screen reader says the panel is on some other preset`
+      : pressedCustom.pressedCount !== 2
+      ? `${pressedCustom.pressedCount} presets say they are pressed, not the caller's one plus ` +
+        `Custom — the card changed its own selection, so this proves nothing about the fields`
+      : !pressedCustom.onFromField
+      ? `Custom is marked pressed but focus went to ${pressedCustom.label} rather than the start ` +
+        `date field, so the fields were never reached`
+      : `aria-pressed on Custom false → true with focus on the start date field, and the caller's ` +
+        `own pressed preset still pressed beside it (${inside.pressedCount} → ` +
+        `${pressedCustom.pressedCount})`,
+  )
+
+  const beforeEscape = await devtools.evaluate<PickerState>(PICKER_STATE)
+  await pressKey(devtools, "Escape")
+  const closed = await poll(
+    () => devtools.evaluate<boolean>(`${PICKER_STATE}.open === false`),
+    3_000,
+  )
+  const afterEscape = await devtools.evaluate<PickerState>(PICKER_STATE)
+
+  check(
+    "a real Escape press closes the DateRangePicker and hands focus back to its trigger",
+    beforeEscape.open && beforeEscape.inPanel && !beforeEscape.onTrigger && closed &&
+      afterEscape.onTrigger,
+    !beforeEscape.open
+      ? "the panel was not open, so this proves nothing about Escape"
+      : !beforeEscape.inPanel
+      ? `focus was on ${beforeEscape.label}, outside the panel, so the press never came from inside it`
+      : beforeEscape.onTrigger
+      ? "focus was already on the trigger before the press, so finding it there afterwards would " +
+        "prove nothing"
+      : !closed
+      ? `the panel was still open 3s after a real Escape press from "${beforeEscape.label}"`
+      : !afterEscape.onTrigger
+      ? `the panel closed and focus fell to ${afterEscape.label}, so the next Tab starts from ` +
+        `somewhere the person never went`
+      : `Input.dispatchKeyEvent Escape from "${beforeEscape.label}": the panel is hidden again ` +
+        `(aria-expanded ${beforeEscape.expanded} → ${afterEscape.expanded}) and focus is on the ` +
+        `trigger`,
+  )
+
+  await returnPathChecks(devtools)
+  await escapeFromOutsideCheck(devtools)
+  await outsideClickCheck(devtools)
+
+  // The trigger answers Space, and the block after this one presses Space four times, so hand the
+  // focus back rather than leaving it on a control that would open this panel again.
+  await blurActive(devtools)
+}
+
+/**
+ * One way of closing the panel from inside it, and how a check drives it.
+ *
+ * A table rather than four near-identical functions, because the four differ only in the control
+ * they press and every other line of the check is the same transition. Each entry still gets its
+ * **own** `check(...)` naming it, so a failure says which path broke rather than that one of four
+ * did; a single assertion over all four would hide three of them behind the first.
+ */
+interface ReturnPath {
+  /** Completes the sentence "closing the DateRangePicker by …". */
+  name: string
+  /**
+   * A page expression that performs the close. It answers with `""` when it acted, and otherwise
+   * with the reason it could not — a control that is missing or disabled is a check this run cannot
+   * make, which is a different thing from a component that lost the focus.
+   */
+  act: string
+}
+
+const RETURN_PATHS: readonly ReturnPath[] = [
+  {
+    name: "choosing a preset",
+    act: `(() => {
+      const button = globalThis.__verifyPicker?.panel
+        ?.querySelector('[data-e2e="date-range-preset-this-month"]') ?? null
+      if (button === null) return "the panel renders no this-month preset to choose"
+      button.click()
+      return ""
+    })()`,
+  },
+  {
+    name: "applying the custom range",
+    act: `(() => {
+      const button = globalThis.__verifyPicker?.panel
+        ?.querySelector('[data-e2e="date-range-apply"]') ?? null
+      if (button === null) return "the panel renders no apply control"
+      if (button.disabled) return "the apply control is disabled, so the draft never committed"
+      button.click()
+      return ""
+    })()`,
+  },
+  {
+    name: "cancelling the custom draft",
+    // Found as the control before apply rather than by its words: the cancel button's text is the
+    // caller's copy and may be in any language, while its position beside apply is the component's.
+    act: `(() => {
+      const apply = globalThis.__verifyPicker?.panel
+        ?.querySelector('[data-e2e="date-range-apply"]') ?? null
+      const button = apply?.previousElementSibling ?? null
+      if (button === null || button.tagName !== "BUTTON") {
+        return "the panel renders no cancel control beside apply"
+      }
+      button.click()
+      return ""
+    })()`,
+  },
+  {
+    name: "pressing the trigger a second time",
+    act: `(() => {
+      const trigger = globalThis.__verifyPicker?.trigger ?? null
+      if (trigger === null) return "the card has no trigger to press"
+      trigger.click()
+      return ""
+    })()`,
+  },
+]
+
+/**
+ * The four ways of closing the panel from inside it that Escape is not.
+ *
+ * `ui/README.md` states all five as fact, and by this repository's rule a behaviour behind a
+ * handler is proven under `pages/checks/` or it is not proven. Escape had a check; these four had
+ * the component's word for it.
+ *
+ * Each is a transition, and the "before" reading is what makes it one: the panel open **with focus
+ * inside it and not on the trigger**, so "focus is on the trigger afterwards" cannot also be true
+ * of a press that did nothing. The panel is reopened for each path, because each one closes it.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function returnPathChecks(devtools: Devtools): Promise<void> {
+  for (const path of RETURN_PATHS) {
+    const opened = await openPickerPanel(devtools)
+    const refused = await devtools.evaluate<string>(path.act)
+    const closed = await poll(
+      () => devtools.evaluate<boolean>(`${PICKER_STATE}.open === false`),
+      3_000,
+    )
+    const after = await devtools.evaluate<PickerState>(PICKER_STATE)
+
+    check(
+      `closing the DateRangePicker by ${path.name} returns focus to its trigger`,
+      opened.open && opened.inPanel && !opened.onTrigger && refused === "" && closed &&
+        after.onTrigger,
+      !opened.open
+        ? "the panel would not open, so there is nothing to close"
+        : !opened.inPanel || opened.onTrigger
+        ? `focus was on ${opened.label} rather than inside the panel, so a return to the trigger ` +
+          `would prove nothing`
+        : refused !== ""
+        ? refused
+        : !closed
+        ? `${path.name} left the panel open 3s later`
+        : !after.onTrigger
+        ? `${path.name} closed the panel and focus fell to ${after.label}, so the next Tab starts ` +
+          `from somewhere the person never went`
+        : `focus "${opened.label}" → the trigger, with the panel hidden again (aria-expanded ` +
+          `${opened.expanded} → ${after.expanded})`,
+    )
+  }
+}
+
+/**
+ * An Escape press from outside an open panel closes it and leaves focus where it is.
+ *
+ * The case exists because a Tab out does not close this panel: it stays open behind the person,
+ * who can then be several controls away when they reach for Escape. Returning focus there would
+ * drag them back across the page — the very thing this component was changed to stop — so the
+ * Escape branch returns focus only when the component still contains `document.activeElement`.
+ *
+ * Focus is put on the outside control with `.focus()` rather than by tabbing to it. The tab order
+ * between the panel and anything else belongs to the catalogue page, not to this component, so
+ * walking it would assert the page's layout; the outside control is the second picker's trigger,
+ * which is focusable, is outside this picker's root, and does not open anything of its own until it
+ * is clicked. The Escape itself is a real key press, which is the path under test.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function escapeFromOutsideCheck(devtools: Devtools): Promise<void> {
+  const opened = await openPickerPanel(devtools)
+  const moved = await devtools.evaluate<{ ok: boolean; took: boolean; outside: boolean }>(`(() => {
+    const away = globalThis.__verifyPicker?.away ?? null
+    const trigger = globalThis.__verifyPicker?.trigger ?? null
+    if (away === null || trigger === null) return { ok: false, took: false, outside: false }
+    away.focus()
+    return {
+      ok: true,
+      took: document.activeElement === away,
+      // Asserted rather than assumed: a control that turned out to be inside this component would
+      // make the whole check a restatement of the one above it.
+      outside: !(trigger.closest("div")?.contains(away) ?? true),
+    }
+  })()`)
+
+  await pressKey(devtools, "Escape")
+  const closed = await poll(
+    () => devtools.evaluate<boolean>(`${PICKER_STATE}.open === false`),
+    3_000,
+  )
+  const after = await devtools.evaluate<PickerState & { stillAway: boolean }>(`(() => ({
+    ...${PICKER_STATE},
+    stillAway: document.activeElement === (globalThis.__verifyPicker?.away ?? null),
+  }))()`)
+
+  check(
+    "a real Escape press from outside an open DateRangePicker leaves focus where it is",
+    opened.open && moved.ok && moved.took && moved.outside && closed && after.stillAway &&
+      !after.onTrigger,
+    !opened.open
+      ? "the panel would not open, so there is nothing to press Escape at"
+      : !moved.ok
+      ? "the card has no second control to move focus to, so there is no outside to press from"
+      : !moved.took
+      ? "focus would not leave the panel, so the press did not come from outside it"
+      : !moved.outside
+      ? "the control focus was moved to is inside this picker, so this repeats the check above"
+      : !closed
+      ? "the panel was still open 3s after a real Escape press from outside it"
+      : after.onTrigger
+      ? "Escape from outside dragged focus back onto the trigger, several controls from where the " +
+        "person had got to — which is the defect this component was changed to stop, arriving by " +
+        "the fix for it"
+      : !after.stillAway
+      ? `Escape from outside closed the panel and moved focus to ${after.label} rather than ` +
+        `leaving it alone`
+      : "focus outside the component → a real Escape press → the panel is hidden and focus has " +
+        "not moved at all",
+  )
+}
+
+/**
+ * A real click outside an open panel closes it and leaves focus on what was clicked.
+ *
+ * The one close path driven by a genuine `Input.dispatchMouseEvent` rather than a scripted
+ * `.click()`, and it has to be: the behaviour under test belongs to a `mousedown` listener on the
+ * document, and a scripted click dispatches no `mousedown` at all.
+ *
+ * What is clicked is the card's own `Usage` summary, which is outside the picker, is focusable, and
+ * moves focus nowhere itself — unlike the other picker on the card, which would open its own panel
+ * and take focus into it, so that "focus is not on the first trigger" would hold for a component
+ * that had tried to pull it back and merely lost the race. The point is derived from the summary's
+ * own box and checked with `elementFromPoint` before the press, and the page records where the
+ * browser actually delivered it, so a press that landed elsewhere is reported as a missed press
+ * rather than as a broken component.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function outsideClickCheck(devtools: Devtools): Promise<void> {
+  await devtools.evaluate<null>(
+    `(document.querySelector('#demo-DateRangePicker [data-e2e="usage"] summary')
+      ?.scrollIntoView({ block: "center" }), null)`,
+  )
+  await settledScroll(devtools)
+  await pointerToCorner(devtools)
+
+  const opened = await openPickerPanel(devtools)
+  const target = `document.querySelector('#demo-DateRangePicker [data-e2e="usage"] summary')`
+  const aim = await aimAt(devtools, target)
+  const landing = await clickAt(devtools, aim, target)
+  const closed = await poll(
+    () => devtools.evaluate<boolean>(`${PICKER_STATE}.open === false`),
+    3_000,
+  )
+  const after = await devtools.evaluate<PickerState & { onClicked: boolean }>(`(() => ({
+    ...${PICKER_STATE},
+    onClicked: document.activeElement ===
+      document.querySelector('#demo-DateRangePicker [data-e2e="usage"] summary'),
+  }))()`)
+
+  check(
+    "a real click outside an open DateRangePicker closes it without taking focus back",
+    opened.open && opened.inPanel && aim.onTarget && landing !== null && landing.onTarget &&
+      closed && !after.onTrigger && after.onClicked,
+    !opened.open || !opened.inPanel
+      ? "the panel would not open with focus inside, so there is nothing to click away from"
+      : !aim.onTarget
+      ? `there is nothing to click at (${aim.x}, ${aim.y}) — the point reads ${aim.tag}` +
+        (aim.inViewport ? "" : ", outside the viewport")
+      : landing === null
+      ? "the press never reached the page, so this proves nothing about the panel"
+      : !landing.onTarget
+      ? `the press landed on ${landing.tag} at (${landing.x}, ${landing.y}) rather than the ` +
+        `summary aimed at (${aim.x}, ${aim.y}) — a missed press, which proves nothing`
+      : !closed
+      ? "the panel was still open 3s after a real click outside it"
+      : after.onTrigger
+      ? "the outside click pulled focus back onto the trigger, taking it off the control the " +
+        "person had just clicked"
+      : !after.onClicked
+      ? `the panel closed and focus went to ${after.label} rather than staying on what was clicked`
+      : `pressed ${landing.tag} at (${landing.x}, ${landing.y}): the panel is hidden and focus is ` +
+        `on the control that was clicked, not back on the trigger`,
+  )
+
+  // Leave the usage block as it was found; the press toggled it open.
+  await devtools.evaluate<null>(
+    `(() => {
+      const details = document.querySelector('#demo-DateRangePicker [data-e2e="usage"] details')
+      if (details !== null) details.open = false
+      return null
+    })()`,
+  )
+}
+
+/**
+ * Open the parked picker's panel and wait until focus has landed inside it.
+ *
+ * Every check that closes the panel needs the same starting point, and it has to be waited for
+ * rather than assumed: focus moves from an effect, one render after the click.
+ *
+ * @param devtools The connected session.
+ * @returns The state at the moment the panel was open with focus inside — the "before" half of the
+ * transition the caller is about to assert. A panel that failed to open returns that failure, and
+ * the caller's check says so rather than passing quietly.
+ */
+async function openPickerPanel(devtools: Devtools): Promise<PickerState> {
+  await devtools.evaluate<null>(`(globalThis.__verifyPicker?.trigger?.click(), null)`)
+  await poll(() => devtools.evaluate<boolean>(`${PICKER_STATE}.inPanel === true`), 3_000)
+
+  return await devtools.evaluate<PickerState>(PICKER_STATE)
+}
+
+/** One read of the pager being driven: which page it is on, and what its two end controls are. */
+interface PagerState {
+  /** `false` when the card is missing the nav or one of its controls. */
+  ok: boolean
+  /** The page marked `aria-current="page"`, or `0` when none is. */
+  page: number
+  previousDisabled: boolean
+  nextDisabled: boolean
+  /**
+   * `true` when a control carries the **native** `disabled` attribute.
+   *
+   * Read so that a failure can name the mistake rather than its symptom. Chromium takes focus off a
+   * focused button the moment that attribute appears, so a component that reached for it would fail
+   * these checks with "focus is on the page", which is the reported defect's own message and says
+   * nothing about the cause.
+   */
+  nativelyDisabled: boolean
+  onPrevious: boolean
+  onNext: boolean
+  /**
+   * `true` while the two parked controls are still the ones the nav renders, compared by identity.
+   * A control Preact unmounted and put back is a different element that a selector would still
+   * find, and losing the element is the whole defect.
+   */
+  sameControls: boolean
+  /**
+   * The last page the card's `onChange` was asked for, or `0` before it has been asked for any.
+   *
+   * Read from the card rather than from the pager, and it is the only way to see a request the
+   * component then clamped away: asking for page 6 of 5 leaves the pager on page 5, which is
+   * exactly where it already was. Removing the guard from the disabled control's handler and
+   * rebuilding left every check in this file green until the card started reporting this.
+   */
+  requested: number
+  /** The focused element's text, cut short, for the failure message. */
+  label: string
+}
+
+/**
+ * Park the five-page pager's nav and its two end controls.
+ *
+ * The controls are the `nav`'s own button children — the page numbers live inside the `ul` between
+ * them — so nothing here depends on the card's copy, which is the caller's and may be translated.
+ * The nav is picked by its accessible name because the card renders three of them.
+ */
+const PAGER_SETUP = `(() => {
+  const nav = document.querySelector('#demo-Pagination nav[aria-label="Five pages"]')
+  const controls = nav === null
+    ? []
+    : [...nav.children].filter((node) => node.tagName === "BUTTON")
+  globalThis.__verifyPager = {
+    nav,
+    previous: controls[0] ?? null,
+    next: controls[1] ?? null,
+    readout: document.querySelector('#demo-Pagination [data-e2e="pagination-requested"]'),
+  }
+  return {
+    found: nav !== null,
+    controls: controls.length,
+    readout: globalThis.__verifyPager.readout !== null,
+  }
+})()`
+
+/** The pager's page, its two controls' state and where focus is, read in one round trip. */
+const PAGER_STATE = `(() => {
+  const { nav, previous, next, readout } = globalThis.__verifyPager ?? {}
+  if (!nav || !previous || !next) {
+    return {
+      ok: false, page: 0, previousDisabled: false, nextDisabled: false,
+      nativelyDisabled: false, onPrevious: false, onNext: false, sameControls: false,
+      requested: -1, label: "",
+    }
+  }
+  const active = document.activeElement
+  const current = nav.querySelector('[aria-current="page"]')
+  const buttons = [...nav.children].filter((node) => node.tagName === "BUTTON")
+  const asked = (readout?.textContent ?? "").match(/onChange: (\\d+)/)
+  return {
+    ok: true,
+    page: current === null ? 0 : Number((current.textContent ?? "").trim()),
+    previousDisabled: previous.getAttribute("aria-disabled") === "true",
+    nextDisabled: next.getAttribute("aria-disabled") === "true",
+    nativelyDisabled: previous.disabled === true || next.disabled === true,
+    onPrevious: active === previous,
+    onNext: active === next,
+    sameControls: buttons.length === 2 && buttons[0] === previous && buttons[1] === next,
+    requested: readout === null ? -1 : (asked === null ? 0 : Number(asked[1])),
+    label: active === document.body
+      ? "the page"
+      : (active?.textContent ?? "").trim().slice(0, 40),
+  }
+})()`
+
+/**
+ * Pagination's end controls survive being paged to the end, with the focus that was on them.
+ *
+ * The defect was that they did not exist there: a control that cannot act was left out of the
+ * render, so the last Space press a keyboard user made destroyed the button under their finger and
+ * dropped focus to the page. No string-rendering test can see any of this — it needs a focused
+ * element, a real key press, and a component that re-renders in between.
+ *
+ * Two things every reading here insists on beyond the obvious. Focus is compared by **identity**
+ * against the element parked before the paging started, because a selector would also match a
+ * freshly mounted Next button that never had focus — which is exactly the state the defect leaves
+ * behind, minus the focus. And the page number is read from `aria-current="page"` after each press,
+ * so a control that kept its focus by never doing anything is a failure rather than a pass.
+ *
+ * Space, not Enter: a real Enter press does not activate a focused button in this browser, measured
+ * twice already by the Dropdown and Modal checks above. A real Space press does, and it still does
+ * on a button carrying `aria-disabled` — which is why the component guards its own handler, and why
+ * the last check below presses a disabled control and asserts nothing happened.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function paginationChecks(devtools: Devtools): Promise<void> {
+  await pointerToCorner(devtools)
+  const found = await devtools.evaluate<{ found: boolean; controls: number; readout: boolean }>(
+    PAGER_SETUP,
+  )
+
+  const toEnd = await walkPager(devtools, "next", 4)
+  check(
+    "paging a Pagination to its last page leaves Next focused and disabled",
+    found.found && found.controls === 2 && found.readout && toEnd.ok && toEnd.start.page === 1 &&
+      !toEnd.beforeLast.nextDisabled && toEnd.beforeLast.onNext && toEnd.beforeLast.page === 4 &&
+      toEnd.after.page === 5 && toEnd.after.nextDisabled && toEnd.after.onNext &&
+      toEnd.after.sameControls,
+    !found.found
+      ? "there is no five-page Pagination on the card to drive"
+      : found.controls !== 2
+      ? `the nav renders ${found.controls} end controls, not the two this check drives`
+      : !found.readout
+      ? "the card reports no page it was asked for, so the check below it could not tell a " +
+        "request the component clamped from no request at all"
+      : toEnd.start.page !== 1
+      ? `the pager started on page ${toEnd.start.page} rather than page 1, so this proves nothing`
+      : !toEnd.ok
+      ? toEnd.note
+      : !toEnd.beforeLast.onNext
+      ? `focus was on ${toEnd.beforeLast.label} before the last press, not on Next`
+      : toEnd.beforeLast.nextDisabled
+      ? "Next was already disabled on page 4, so the last press was never a real one"
+      : toEnd.after.page !== 5
+      ? `the last Space press left the pager on page ${toEnd.after.page}, so it never reached the end`
+      : toEnd.after.nativelyDisabled
+      ? `Next carries the native disabled attribute at the last page, so Chromium took focus off ` +
+        `it — focus is on ${toEnd.after.label}. That is the reported defect by another route; ` +
+        `aria-disabled says the same thing to a screen reader and leaves focus alone`
+      : !toEnd.after.nextDisabled
+      ? "the pager is on its last page and Next still says it can act"
+      : !toEnd.after.onNext
+      ? `Next lost focus on reaching the last page — it went to ${toEnd.after.label}, which is the ` +
+        `defect this check exists for`
+      : `Space from page 1: ${toEnd.pages.join(" → ")}, and on the last press Next went from ` +
+        `enabled to disabled while staying the same element with focus`,
+  )
+
+  // The page number alone cannot answer this one. `Pagination` clamps what it is given, so a
+  // disabled Next whose handler still ran would ask the card for page 6 of 5 and the card would
+  // render page 5 — the page it was already on. The card reports the page it was *asked* for, and
+  // that is the reading with a different answer for the two implementations.
+  const dead = await devtools.evaluate<PagerState>(PAGER_STATE)
+  // Pressed only once Next is the focused element, for the reason {@link walkPager} gives: a key
+  // press with focus somewhere else drives whatever is there and leaves it for a later block.
+  if (dead.onNext && dead.nextDisabled) {
+    await pressKey(devtools, "Space")
+    await poll(
+      () => devtools.evaluate<boolean>(`${PAGER_STATE}.requested !== ${dead.requested}`),
+      1_000,
+    )
+  }
+  const afterDead = await devtools.evaluate<PagerState>(PAGER_STATE)
+  check(
+    "a Space press on Pagination's disabled Next asks for no page at all",
+    dead.nextDisabled && dead.onNext && dead.requested === 5 &&
+      afterDead.requested === dead.requested && afterDead.page === dead.page && afterDead.onNext,
+    !dead.nextDisabled || !dead.onNext
+      ? "Next was not both focused and disabled before the press, so this proves nothing"
+      : dead.requested !== 5
+      ? `the card reports ${dead.requested} as the last page it was asked for, not the 5 the walk ` +
+        `above asked for, so a further request could not be told from it`
+      : afterDead.requested !== dead.requested
+      ? `the press asked the card for page ${afterDead.requested} — aria-disabled does not stop ` +
+        `the click, and the handler did not either; the pager still reads page ${afterDead.page} ` +
+        `only because it clamps what it is given`
+      : afterDead.page !== dead.page
+      ? `a press on the disabled Next moved the pager from page ${dead.page} to ${afterDead.page}`
+      : !afterDead.onNext
+      ? `the press took focus off Next, onto ${afterDead.label}`
+      : `a real Space press on the disabled Next asked the card for nothing (still page ` +
+        `${afterDead.requested}), left the pager on page ${afterDead.page}, and kept focus on it`,
+  )
+
+  const toStart = await walkPager(devtools, "previous", 4)
+  check(
+    "paging a Pagination back to its first page leaves Previous focused and disabled",
+    toStart.ok && toStart.start.page === 5 && !toStart.beforeLast.previousDisabled &&
+      toStart.beforeLast.onPrevious && toStart.beforeLast.page === 2 && toStart.after.page === 1 &&
+      toStart.after.previousDisabled && toStart.after.onPrevious && toStart.after.sameControls,
+    toStart.start.page !== 5
+      ? `the pager started on page ${toStart.start.page} rather than page 5, so this proves nothing`
+      : !toStart.ok
+      ? toStart.note
+      : !toStart.beforeLast.onPrevious
+      ? `focus was on ${toStart.beforeLast.label} before the last press, not on Previous`
+      : toStart.after.page !== 1
+      ? `the last Space press left the pager on page ${toStart.after.page}, not back at the start`
+      : toStart.after.nativelyDisabled
+      ? `Previous carries the native disabled attribute at page 1, so Chromium took focus off it ` +
+        `— focus is on ${toStart.after.label}; aria-disabled is what keeps it`
+      : !toStart.after.previousDisabled
+      ? "the pager is on page 1 and Previous still says it can act"
+      : !toStart.after.onPrevious
+      ? `Previous lost focus on reaching page 1 — it went to ${toStart.after.label}`
+      : `Space from page 5: ${toStart.pages.join(" → ")}, and on the last press Previous went ` +
+        `from enabled to disabled while staying the same element with focus`,
+  )
+
+  // Leave nothing focused. The blocks after this one send their own key presses, and a control
+  // still holding focus here would answer one of them.
+  await blurActive(devtools)
+}
+
+/**
+ * Take focus off whatever holds it, so a later block's key press cannot be answered by this one's
+ * control.
+ *
+ * @param devtools The connected session.
+ */
+async function blurActive(devtools: Devtools): Promise<void> {
+  await devtools.evaluate<null>(`(() => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+    return null
+  })()`)
+}
+
+/** What one walk of the pager from one end to the other saw. */
+interface Walk {
+  /** `false` when a press did not move the pager; `note` says which one. */
+  ok: boolean
+  note: string
+  /** Where the pager was before the first press. */
+  start: PagerState
+  /** The state read immediately before the press that reaches the end. */
+  beforeLast: PagerState
+  /** The state read after that press. */
+  after: PagerState
+  /** Every page the walk visited, the starting one first. */
+  pages: number[]
+}
+
+/**
+ * Focus one end control and press Space until the pager reaches that end.
+ *
+ * Each press is followed by a wait for the page number to change rather than a fixed sleep, so a
+ * slow render is a slow check instead of a false failure, and a press that genuinely did nothing is
+ * reported as the press it was. The reading taken just before the final press is kept separately
+ * because that is the half of the transition the checks are about: enabled and focused there,
+ * disabled and still focused after.
+ *
+ * **Nothing is pressed until the control has the focus.** A key press goes wherever the page has
+ * focus, so a walk whose control is missing would otherwise send four Space presses at whatever the
+ * check before this one left focused — and a mutation run proved that is not theoretical: with the
+ * end controls unmounted there was no Next to park, the presses landed on the date range picker's
+ * trigger, and a Modal check two blocks later failed for a reason that named neither component.
+ *
+ * @param devtools The connected session.
+ * @param control Which end control to drive.
+ * @param presses How many presses reach the end from where the pager is now.
+ * @returns The walk, whether or not every press landed.
+ */
+async function walkPager(
+  devtools: Devtools,
+  control: "next" | "previous",
+  presses: number,
+): Promise<Walk> {
+  await devtools.evaluate<null>(`(globalThis.__verifyPager?.${control}?.focus(), null)`)
+  const start = await devtools.evaluate<PagerState>(PAGER_STATE)
+
+  const focused = control === "next" ? start.onNext : start.onPrevious
+  if (!start.ok || !focused) {
+    return {
+      ok: false,
+      note: start.ok
+        ? `the ${control} control would not take focus — it stayed on ${start.label}, so nothing ` +
+          `was pressed`
+        : "the card is missing the nav or one of its end controls, so nothing was pressed",
+      start,
+      beforeLast: start,
+      after: start,
+      pages: [start.page],
+    }
+  }
+
+  const pages = [start.page]
+  let beforeLast = start
+  let current = start
+  let note = ""
+  let ok = true
+
+  for (let press = 1; press <= presses; press++) {
+    beforeLast = current
+    await pressKey(devtools, "Space")
+    const moved = await poll(
+      () => devtools.evaluate<boolean>(`${PAGER_STATE}.page !== ${current.page}`),
+      3_000,
+    )
+    current = await devtools.evaluate<PagerState>(PAGER_STATE)
+    pages.push(current.page)
+    if (!moved && ok) {
+      ok = false
+      note = `press ${press} of ${presses} left the pager on page ${current.page}, with focus on ` +
+        `${current.label}`
+    }
+  }
+
+  return { ok, note, start, beforeLast, after: current, pages }
 }
