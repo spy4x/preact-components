@@ -27,12 +27,12 @@ import {
   type SpinnerSize,
   tableGeometry,
   textGeometry,
-  type ToastItem,
   Toastr,
   type ToastVariant,
 } from "@preact-components/ui"
+import { createToastStore } from "@preact-components/signals/toast"
 import { useSignal } from "@preact/signals"
-import { useState } from "preact/hooks"
+import { useMemo, useState } from "preact/hooks"
 import { IconFolder, IconPlus, IconTrashBin } from "@preact-components/icons"
 import { entries } from "../record.ts"
 import type { DemoFragment } from "../registry.ts"
@@ -132,6 +132,9 @@ const autoDismissMs = 1200
 /** Body of that toast, and the string the browser check watches for. */
 const autoDismissBody = "auto — dismissed by its own timer"
 
+/** Body of the long-lived toast, so a failure message can name which one outstayed its welcome. */
+const longBody = "long — outlives the component's own default"
+
 /**
  * What the extend control raises every toast on screen to, in milliseconds.
  *
@@ -142,22 +145,35 @@ const autoDismissBody = "auto — dismissed by its own timer"
 const extendMs = 2500
 
 /**
- * `Toastr` is also positioned for the page corner. The stack is owned here, not by the component:
- * `onDismiss` is the port, `duration: 0` keeps a toast until the demo dismisses it, one button
- * pushes a toast that dismisses itself, and one raises the duration of everything on screen.
+ * A delay far longer than the component's own five-second default, in milliseconds.
  *
- * The dashed box is what shows the new empty-stack contract: the live area is inside it before
+ * The card pushes one of these so the browser check can watch a toast live past the moment the
+ * default would have taken it. Twenty seconds is the number #174 was written about, and the check
+ * waits six of them rather than all twenty — five is the number that has to be beaten.
+ */
+const longDurationMs = 20_000
+
+/**
+ * `Toastr` is also positioned for the page corner, and the stack comes out of a real
+ * `createToastStore` — the wiring both READMEs show, so the browser checks drive the documented
+ * path rather than a shortcut only this card takes. The store holds the list and nothing else:
+ * `onDismiss` is `store.remove`, `duration: 0` keeps a toast until somebody dismisses it, one
+ * button pushes a toast that dismisses itself, one pushes a toast with a delay far past the
+ * component's default, and one raises the duration of everything on screen by pushing each entry
+ * back under its own id.
+ *
+ * The dashed box is what shows the empty-stack contract: the live area is inside it before
  * anything is pushed, and it is zero pixels tall, so the box looks exactly as it did when the
  * component rendered `null` for an empty stack.
  */
 function ToastrDemo() {
-  const stack = useSignal<ToastItem[]>([])
-  const nextId = useSignal(0)
+  // One store for the life of the card. It owns no timers and no effects, so there is nothing to
+  // tear down and nothing a re-render could restart.
+  const store = useMemo(() => createToastStore(), [])
+  const toasts = store.list.value
 
-  const push = (type: ToastVariant, duration: number, body: string) => {
-    nextId.value += 1
-    stack.value = [{ id: nextId.value, type, duration, body }, ...stack.value]
-  }
+  const push = (type: ToastVariant, duration: number, body: string) =>
+    store.add({ type, duration, body })
 
   return (
     <div class="space-y-3">
@@ -185,10 +201,24 @@ function ToastrDemo() {
         <button
           type="button"
           class={toastButton}
+          data-e2e="toast-long"
+          data-duration={longDurationMs}
+          onClick={() => push("info", longDurationMs, longBody)}
+        >
+          long ({longDurationMs}ms)
+        </button>
+        <button
+          type="button"
+          class={toastButton}
           data-e2e="toast-extend"
           data-duration={extendMs}
-          onClick={() =>
-            stack.value = stack.value.map((toast) => ({ ...toast, duration: extendMs }))}
+          onClick={() => {
+            // Re-adding under the same id replaces that entry in place, which is the store's own
+            // rule; the component sees the duration change and refills that toast's budget.
+            for (const toast of store.list.value) {
+              store.add({ ...toast, duration: extendMs })
+            }
+          }}
         >
           extend to {extendMs}ms
         </button>
@@ -196,13 +226,18 @@ function ToastrDemo() {
           type="button"
           class={toastButton}
           data-e2e="toast-clear"
-          onClick={() => stack.value = []}
+          onClick={() => store.clear()}
         >
-          clear {stack.value.length ? `(${stack.value.length})` : ""}
+          clear {toasts.length ? `(${toasts.length})` : ""}
         </button>
       </div>
+      <p class="text-xs text-gray-500 dark:text-gray-400">
+        The store is holding <span data-e2e="toast-store-count">{toasts.length}</span>{" "}
+        toast(s). It is the same number the live area below shows, because the component removes
+        through the store rather than beside it.
+      </p>
       <div class="min-h-24 rounded-lg border border-dashed border-gray-300 p-4 dark:border-gray-600">
-        {stack.value.length === 0
+        {toasts.length === 0
           ? (
             <p class="text-sm text-gray-500 dark:text-gray-400">
               Nothing pushed yet. The live area is already in the box below, empty and zero pixels
@@ -211,18 +246,18 @@ function ToastrDemo() {
           )
           : null}
         <Toastr
-          toasts={stack.value}
-          onDismiss={(id) => stack.value = stack.value.filter((toast) => toast.id !== id)}
+          toasts={toasts}
+          onDismiss={(id) => store.remove(String(id))}
           dataE2E="guide-toastr"
           class="static max-w-sm"
         />
       </div>
       <p class="text-xs text-gray-500 dark:text-gray-400">
         Put the pointer over the stack, or tab into it, and every timer stops; each one picks up the
-        time it had left when you leave, rather than starting over. Raising a toast's `duration` is
-        the one thing that refills its budget, which is what the extend control does. The error
-        toast is a `role="alert"`, so it interrupts a screen reader; the rest are `role="status"`
-        inside a polite region.
+        time it had left when you leave, rather than starting over — including these, which came out
+        of the store. Raising a toast's `duration` is the one thing that refills its budget, which
+        is what the extend control does. The error toast is a `role="alert"`, so it interrupts a
+        screen reader; the rest are `role="status"` inside a polite region.
       </p>
     </div>
   )
@@ -731,10 +766,10 @@ export const feedbackDemos = {
   },
   Toastr: {
     summary:
-      'Stack of transient notifications. The caller owns the stack: it arrives as `toasts` and removal is the `onDismiss` port, which the per-toast auto-dismiss timer also calls. The stack is in the document at all times, empty included — a named region marked `aria-live="polite"`, because an area created together with its first message is commonly not announced at all; empty it has no children and no height, so it costs a landmark rather than layout. An error toast carries `role="alert"` and interrupts, every other variant `role="status"`. The timer pauses while the pointer is over the stack or focus is inside it and resumes with the time it had left, so the dismiss control is reachable rather than a race; raising a toast\'s `duration` while it is on screen refills the budget instead, which is how a caller extends one. Every string is a prop with an English default — `label`, `dismissLabel`, and `ToastItem.dismissLabel` for one toast — and `data-e2e` is rendered only when `dataE2E` is passed.',
+      'Stack of transient notifications. The caller owns the stack: it arrives as `toasts` and removal is the `onDismiss` port, which the per-toast auto-dismiss timer also calls. **This component owns every dismiss timer**, including for toasts that came out of `createToastStore` — that store holds the list and schedules nothing, because the side that can see a pointer resting on a toast is the side that should be timing it. The stack is in the document at all times, empty included — a named region marked `aria-live="polite"`, because an area created together with its first message is commonly not announced at all; empty it has no children and no height, so it costs a landmark rather than layout. An error toast carries `role="alert"` and interrupts, every other variant `role="status"`. The timer pauses while the pointer is over the stack or focus is inside it and resumes with the time it had left, so the dismiss control is reachable rather than a race; `duration: 0` means keep this toast until somebody dismisses it, and raising a toast\'s `duration` while it is on screen refills the budget, which is how a caller extends one. Every string is a prop with an English default — `label`, `dismissLabel`, and `ToastItem.dismissLabel` for one toast — and `data-e2e` is rendered only when `dataE2E` is passed.',
     snippet: `<Toastr
   toasts={app.toast.list.value}
-  onDismiss={(id) => app.toast.remove(id)}
+  onDismiss={(id) => app.toast.remove(String(id))}
   label="Benachrichtigungen"
   dismissLabel="Ausblenden"
 />
