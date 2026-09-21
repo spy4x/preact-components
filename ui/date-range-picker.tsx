@@ -107,11 +107,14 @@ const pressedPresetClasses = "bg-gray-100 text-gray-900 dark:bg-gray-700 dark:te
  * Label in Name). An `aria-label` on the trigger would override that text instead of extending it.
  *
  * **Focus follows the panel**, which is the difference between a keyboard user keeping their place
- * and losing it. Opening moves focus inside; every close the user drove from inside the panel hands
- * focus back to the trigger. The one close that does not is an outside click, because the person
- * has just put focus somewhere on purpose and pulling it back would take it off what they clicked.
- * Focus merely *leaving* the panel is not a close at all here — the panel stays open behind a Tab,
- * as it always has.
+ * and losing it. Opening moves focus inside; a close the person drove **from inside** the panel
+ * hands focus back to the trigger, because the next render hides the element their focus is on.
+ *
+ * A close driven from outside it does not, and there are two of those. An outside click leaves
+ * focus on whatever was clicked. And an Escape press is only a return when focus was still inside
+ * the component: the panel stays open behind a Tab — focus merely leaving it is not a close here,
+ * as it never has been — so Escape can arrive from somewhere the person has since walked to, and
+ * pulling them back there would be one more way to lose their place rather than a way to keep it.
  *
  * @param props See {@link DateRangePickerProps}.
  */
@@ -173,7 +176,9 @@ export function DateRangePicker(
    * The effect below sees only the open state, and the open state cannot say *why* it changed —
    * which is the whole question, since an outside click and an Escape press leave the panel closed
    * in exactly the same way. The reason is known here, so it is recorded in a ref the effect reads
-   * once and clears.
+   * once and clears. Two callers decide `returnFocus` by asking where focus is rather than by
+   * knowing: the outside-click branch and the Escape branch, because either can be driven by a
+   * person who is no longer inside the component.
    *
    * This closure is also the one the document listeners capture on the first render and keep. That
    * is safe because everything it touches is stable across renders: a ref object and a signal.
@@ -227,7 +232,13 @@ export function DateRangePicker(
       }
     }
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (isOpen.value && event.key === "Escape") closePanel(true)
+      if (!isOpen.value || event.key !== "Escape") return
+      // The same question the outside-click branch asks, and for the same reason. A Tab out leaves
+      // this panel open behind the person, so an Escape press can arrive from somewhere they have
+      // since walked to; returning focus then would drag them back across the page, which is the
+      // defect this component was fixed for rather than a fix for it. Focus goes back only when
+      // they were still inside when they pressed the key.
+      closePanel(rootRef.current?.contains(document.activeElement) === true)
     }
     document.addEventListener("mousedown", handlePointerDown)
     document.addEventListener("keydown", handleKeyDown)
