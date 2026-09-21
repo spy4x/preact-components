@@ -645,17 +645,15 @@ function CalendarInteractiveDemo() {
  *
  * `monthAnchor` is a constant here, and that constant *is* the refusal: the callback is supplied,
  * so Page Up, Page Down and both month arrows really do ask, and March is what the owner keeps
- * showing
- * whatever they ask for. It is the shape a caller ends up with whenever the month is clamped to a
- * range the reader may not leave, and the reason it has a card is that the calendar's answer to it
- * is a focus move nothing else on this page demonstrates: the press changes neither the month nor
- * where the reader is standing.
+ * showing whatever they ask for. It is the shape a caller ends up with whenever the month is
+ * clamped to a range the reader may not leave, and the reason it has a card is that the calendar's
+ * answer to it is a focus move nothing else on this page demonstrates: the press changes neither
+ * the month nor where the reader is standing.
  *
  * Both counters are on screen because a refusal is otherwise indistinguishable from a key press
  * that never arrived. The reset control is an ordinary button outside the calendar, which is also
- * what a
- * reader — or a check — needs in order to move the focus out of the grid while a request is
- * outstanding and watch the calendar leave it alone.
+ * what a reader — or a check — needs in order to move the focus out of the grid while a request
+ * is outstanding and watch the calendar leave it alone.
  */
 function CalendarRefusingDemo() {
   const asked = useSignal("nothing yet")
@@ -704,28 +702,55 @@ function CalendarRefusingDemo() {
   )
 }
 
-/** How long the card below waits before it answers, in milliseconds. */
+/** How long this card's slower owner waits before it answers, in milliseconds. */
 const LATE_ANSWER_MS = 300
+
+/** The two ways the card below can be late, as a reader picks them. */
+const LATE_MODES = [
+  { id: "timer", label: `A timer, ${LATE_ANSWER_MS} ms` },
+  { id: "microtask", label: "A microtask" },
+]
 
 /**
  * A controlled calendar whose owner draws the month it was asked for, but not straight away.
  *
  * This is the shape of every owner that checks something before it answers — a fetch for the new
- * month's availability is the ordinary case — reduced to a timer so the card is deterministic and
- * needs no network. It is here because the calendar cannot tell a slow yes from a no at the moment
- * it has to decide: a refusal is judged by the render that follows the call, so this owner is read
- * as a refusal first and the reader is put back on their day, and the press is finished when the
- * month finally arrives. Both counters are on screen because that two-step answer is otherwise
+ * month's availability is the ordinary case — reduced to something deterministic that needs no
+ * network. It is here because the calendar cannot tell a slow yes from a no at the moment it has
+ * to decide: a refusal is judged by the render that follows the call, so this owner is read as a
+ * refusal first and the reader is put back on their day, and the press is finished when the month
+ * finally arrives. Both counters are on screen because that two-step answer is otherwise
  * invisible, and because a check needs to know the month really was asked for.
+ *
+ * The two kinds of lateness are both offered because they are not the same for a reader holding a
+ * key down. An owner that answers on a microtask has answered before the next key press is
+ * delivered, so two presses move two months. An owner slower than the reader's fingers has not,
+ * so the second press is made against the month still on screen and asks for the same month again:
+ * two presses, both of them answered, one month. Neither loses a press, and the difference is
+ * visible here in the two counters.
  */
 function CalendarLateDemo() {
   const month = useSignal("2026-03-01")
   const asked = useSignal("nothing yet")
   const answered = useSignal(0)
   const picked = useSignal<string | null>(null)
+  const mode = useSignal("timer")
 
   return (
     <div class="space-y-3" data-e2e="calendar-late">
+      <div class="flex flex-wrap items-center gap-2">
+        {LATE_MODES.map(({ id, label }) => (
+          <Button
+            key={id}
+            variant={mode.value === id ? "primary" : "outline"}
+            size="sm"
+            data-e2e={`calendar-late-mode-${id}`}
+            onClick={() => mode.value = id}
+          >
+            {label}
+          </Button>
+        ))}
+      </div>
       <Calendar
         monthAnchor={month.value}
         minDate="2026-01-01"
@@ -739,14 +764,17 @@ function CalendarLateDemo() {
           asked.value = anchor
           // The whole demo: the month asked for is drawn, but not in the render this call is part
           // of, which is the only render in which the calendar can read the answer as a yes.
-          setTimeout(() => {
+          const draw = () => {
             month.value = anchor
             answered.value = answered.value + 1
-          }, LATE_ANSWER_MS)
+          }
+          if (mode.value === "microtask") queueMicrotask(draw)
+          else setTimeout(draw, LATE_ANSWER_MS)
         }}
       />
       <p class="text-xs text-gray-500 dark:text-gray-400">
-        This owner answers {LATE_ANSWER_MS} ms after it is asked. Last month asked for:{" "}
+        This owner answers late, by{" "}
+        <span data-e2e="calendar-late-mode">{mode.value}</span>. Last month asked for:{" "}
         <span data-e2e="calendar-late-asked">{asked.value}</span>; answers drawn:{" "}
         <span data-e2e="calendar-late-answered">{answered.value}</span>; showing:{" "}
         <span data-e2e="calendar-late-month">{month.value}</span>.

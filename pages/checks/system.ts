@@ -1376,53 +1376,54 @@ function readProbe(devtools: Devtools): Promise<RefusalProbe> {
 }
 
 /**
- * Arm a one-shot recorder for the next Page Up or Page Down inside the refusing card's grid.
+ * Arm a one-shot recorder for the moment the refusing card's grid takes the focus itself.
  *
- * This is how the *intermediate* state is read without a race. Whether the focus waits on the grid
- * while a month is being asked for, and what happens when the reader moves it away during that
- * wait, are both facts about a single frame: the component parks the focus inside its own `keydown`
- * handler and moves it again from an effect a frame later, so a reading taken over the protocol
- * after the press may arrive on either side of that effect. A listener registered on the grid
- * *after* the component's own runs in the same dispatch and always on the near side of it — same
- * target, later registration, so second — which makes both readings deterministic rather than a
- * race this file would lose one run in five.
+ * This is how the *intermediate* state is read without a race, and the event it listens for is the
+ * point. A month request parks the focus on the grid container while it waits for the new cells,
+ * and the wait is now shorter than a single key dispatch: the calendar decides in a layout effect,
+ * and the microtask checkpoint that runs between two listeners on the same `keydown` is enough for
+ * that effect to have run and moved the focus on again. A listener on the key therefore sees the
+ * end of the story and never the middle. A `focusin` listener on the grid sees the middle, because
+ * it is called synchronously from inside the parking `focus()` call itself.
  *
- * The key itself is still a real press through the browser's input pipeline. Nothing here
- * substitutes for the component's handler; the listener only watches it, and optionally moves the
- * focus the way a reader pressing Tab in that same frame would.
+ * Arming it with a selector also gives the checks the only way to be somewhere else *while* a
+ * request is outstanding, which is the window rule 2 of this behaviour is about. The move happens
+ * inside the same call, before the caller has even been asked for the month.
+ *
+ * The key is still a real press through the browser's input pipeline. Nothing here substitutes for
+ * the component's handler; the listener only watches what that handler does.
  *
  * @param devtools The connected session.
- * @param moveTo A selector to move the focus to once the component has parked it, or `""` to
- *               leave the focus alone and only record where it landed.
+ * @param moveTo A selector to move the focus to the instant the grid takes it, or `""` to record
+ *               the parking and leave the focus alone.
  * @returns Whether there was a grid to arm.
  */
 function armRefusalProbe(devtools: Devtools, moveTo: string): Promise<boolean> {
   return read(
     devtools,
     `(() => {
-      // Arming twice must not leave two listeners on the page. The press a probe is armed for is
-      // sometimes the very press that never arrives — that is the failure these checks report —
-      // so the listener cannot be trusted to remove itself, and the previous one is taken off here
+      // Arming twice must not leave two listeners on the page. The parking a probe waits for is
+      // sometimes the very thing that does not happen — that is the failure these checks report —
+      // so the listener cannot be trusted to remove itself, and the previous one comes off here
       // before another goes on.
       if (globalThis.__calendarRefusalOff) globalThis.__calendarRefusalOff()
       const grid = document.querySelector('${REFUSED_GRID}')
       if (!grid) return false
       const move = ${JSON.stringify(moveTo)}
       globalThis.__calendarRefusal = {
-        ran: false, from: "", parked: false, focused: "the key never reached the grid", movedTo: "",
+        ran: false, from: "", parked: false, focused: "the grid never took the focus", movedTo: "",
       }
       const listener = (event) => {
-        if (event.key !== "PageDown" && event.key !== "PageUp") return
-        grid.removeEventListener("keydown", listener)
+        if (event.target !== grid) return
+        grid.removeEventListener("focusin", listener)
         const record = globalThis.__calendarRefusal
-        const active = document.activeElement
-        const target = event.target
+        const cameFrom = event.relatedTarget
         record.ran = true
-        record.from = target && target.getAttribute
-          ? (target.getAttribute("data-calendar-date") || "")
+        record.parked = true
+        record.from = cameFrom && cameFrom.getAttribute
+          ? (cameFrom.getAttribute("data-calendar-date") || "")
           : ""
-        record.parked = active === grid
-        record.focused = active ? active.tagName.toLowerCase() : "nothing"
+        record.focused = "the grid container itself"
         if (move) {
           const elsewhere = document.querySelector(move)
           if (elsewhere) elsewhere.focus()
@@ -1431,8 +1432,8 @@ function armRefusalProbe(devtools: Devtools, moveTo: string): Promise<boolean> {
             : "nothing — the move did not land"
         }
       }
-      grid.addEventListener("keydown", listener)
-      globalThis.__calendarRefusalOff = () => grid.removeEventListener("keydown", listener)
+      grid.addEventListener("focusin", listener)
+      globalThis.__calendarRefusalOff = () => grid.removeEventListener("focusin", listener)
       return true
     })()`,
     false,
@@ -1579,10 +1580,10 @@ async function refusedMonthChecks(devtools: Devtools): Promise<void> {
     "the focus waits on the grid itself while a month change is outstanding",
     probeDown.ran && probeDown.from === REFUSED_DAY && probeDown.parked,
     probeDown.ran
-      ? `a listener registered on the grid after the component's own — same target, so it runs ` +
-        `second in the same dispatch — saw Page Down pressed on ${probeDown.from} and the focus ` +
-        `already moved to ${probeDown.parked ? "the grid container" : probeDown.focused}`
-      : "no Page Down reached the refusing card's grid, so nothing was recorded",
+      ? `a focusin listener on the grid, called from inside the component's own focus() call, saw ` +
+        `the container take the focus from ${probeDown.from || "nowhere"} — the wait is shorter ` +
+        `than the key dispatch, so only a listener on the focus move itself can see it`
+      : "the refusing card's grid never took the focus, so no month was being waited for",
   )
 
   // The cursor the next press counts from has to come back with the focus. It is a separate fact
@@ -1704,6 +1705,28 @@ async function refusedMonthChecks(devtools: Devtools): Promise<void> {
 }
 
 /**
+ * Put the late-answering card back on the month it starts on, with nothing asserted on it.
+ *
+ * Its owner answers every month arrow too, so the walk is a poll per step rather than a click and
+ * a guess, and it gives up rather than looping if the card stops answering.
+ *
+ * @param devtools The connected session.
+ */
+async function settleLateCard(devtools: Devtools): Promise<void> {
+  for (let step = 0; step < 8; step++) {
+    const now = await read(devtools, `${LATE_STATE}.extra`, "")
+    if (now === "2026-03-01" || now === "") break
+    const direction = now < "2026-03-01" ? "Next" : "Previous"
+    await read(
+      devtools,
+      `(document.querySelector('${LATE} button[aria-label^="${direction} month"]')?.click(), true)`,
+      false,
+    )
+    await poll(() => read(devtools, `${LATE_STATE}.extra !== ${JSON.stringify(now)}`, false), 5_000)
+  }
+}
+
+/**
  * What an owner that draws the month it was asked for, but later, does to the reader's place.
  *
  * This is the case the refusal handling above creates and has to finish. A refusal can only be
@@ -1782,15 +1805,20 @@ async function lateMonthChecks(devtools: Devtools): Promise<void> {
       : `the focus was not on ${wanted} after the late answer, so this measures nothing`,
   )
 
-  // Two presses with nothing between them, against an owner that answers neither of them yet. This
-  // is the case that caught a hole in the handling above rather than confirming it: the presses ask
-  // for two months, because each counts from the cursor and neither has been answered, and a slow
-  // owner then draws those two months one at a time. The first to arrive is a month to pass
-  // through, not the answer, so the request has to survive it — an earlier version of the fix
-  // consumed the request on the first arrival and the reader was left on the document body when
-  // the second month replaced the cells.
+  // Two presses with nothing between them, against an owner slower than the reader's fingers.
+  //
+  // Both presses reach the calendar and both are answered — that is the property to hold, and it
+  // is the one that was broken: before the handling moved into a layout effect, the second press
+  // landed while nothing inside the grid held the focus and reached no handler at all, so the card
+  // counted one call for two presses. Both now count.
+  //
+  // They move one month between them, not two, and that is the honest consequence rather than a
+  // second defect. Each press is answered by the render that follows it, and that render still
+  // shows the old month, so each press is read as refused and the reader is put back where they
+  // were; the second therefore asks for the same month the first did. The same burst against an
+  // owner that answers on a microtask moves two months, and the check below this one holds that.
   const beforeBurst = await read(devtools, LATE_STATE, NO_CARD)
-  const burstMonth = monthAfter(beforeBurst.extra, 2)
+  const burstMonth = monthAfter(beforeBurst.extra, 1)
   const burstWanted = `${burstMonth.slice(0, 8)}${dayNumber(beforeBurst.date)}`
   await pressKey(devtools, "PageDown")
   await pressKey(devtools, "PageDown")
@@ -1798,8 +1826,8 @@ async function lateMonthChecks(devtools: Devtools): Promise<void> {
     () =>
       read(
         devtools,
-        `(() => { const state = ${LATE_STATE}; return state.extra === ${
-          JSON.stringify(burstMonth)
+        `(() => { const state = ${LATE_STATE}; return state.count === ${
+          beforeBurst.count + 2
         } && state.date === ${JSON.stringify(burstWanted)} })()`,
         false,
       ),
@@ -1808,7 +1836,7 @@ async function lateMonthChecks(devtools: Devtools): Promise<void> {
   const afterBurst = await read(devtools, LATE_STATE, NO_CARD)
 
   check(
-    "two Page Downs a late owner has yet to answer move two months, and keep the focus",
+    "two Page Downs a slow owner has yet to answer are both answered, and keep the focus",
     beforeBurst.date === arrowTarget && beforeBurst.extra === "2026-04-01" &&
       afterBurst.count === beforeBurst.count + 2 && afterBurst.extra === burstMonth &&
       afterBurst.onDay && !afterBurst.onBody && afterBurst.date === burstWanted &&
@@ -1816,23 +1844,162 @@ async function lateMonthChecks(devtools: Devtools): Promise<void> {
     beforeBurst.date === arrowTarget
       ? `from ${beforeBurst.date} with ${beforeBurst.extra} on screen, Page Down Page Down with ` +
         `no render in between: the card drew ${afterBurst.count - beforeBurst.count} more ` +
-        `answer(s) and is showing ${afterBurst.extra || "nothing"}, and the focus is on ` +
-        `${afterBurst.date || afterBurst.focused}, wanted ${burstWanted} in ${burstMonth}`
+        `answer(s) — one per press — and is showing ${afterBurst.extra || "nothing"}, one month ` +
+        `on, with the focus on ${afterBurst.date || afterBurst.focused} and the Tab stop on ` +
+        `${afterBurst.tabStop || "nowhere"}, both wanted ${burstWanted}`
       : `the focus was not on ${arrowTarget} before the burst, so it measures nothing`,
   )
 
-  // Back to the month the card started on, with nothing asserted on it, so a later run of this
-  // file finds the card where it left it.
-  for (let step = 0; step < 6; step++) {
-    const now = await read(devtools, `${LATE_STATE}.extra`, "")
-    if (now === "2026-03-01" || now === "") break
-    await read(
-      devtools,
-      `(document.querySelector('${LATE} button[aria-label^="Previous month"]')?.click(), true)`,
-      false,
-    )
-    await poll(() => read(devtools, `${LATE_STATE}.extra !== ${JSON.stringify(now)}`, false), 5_000)
-  }
+  // Page Down and then Page Up, which is a press superseded before its answer arrives. Two months
+  // arrive for two requests and the cells the focus is on are replaced twice, so this is the
+  // sequence that used to end with nothing focused at all.
+  //
+  // What is asserted is what the calendar owns: the reader ends on a day cell, on the day number
+  // they were on. *Which* month they end on is the owner's arithmetic and not the calendar's —
+  // both presses were read as refused, so both counted from the month on screen, and the owner
+  // drew the month after it and then the month before it in that order. The month is reported in
+  // the detail rather than pinned, because pinning it would be pinning the demo's owner.
+  const beforePair = await read(devtools, LATE_STATE, NO_CARD)
+  await pressKey(devtools, "PageDown")
+  await pressKey(devtools, "PageUp")
+  await poll(
+    () =>
+      read(
+        devtools,
+        `(() => { const state = ${LATE_STATE}; return state.count === ${
+          beforePair.count + 2
+        } && state.extra === ${JSON.stringify(beforePair.extra)} })()`,
+        false,
+      ),
+    5_000,
+  )
+  const afterPair = await read(devtools, LATE_STATE, NO_CARD)
+
+  check(
+    "Page Down then Page Up at a slow owner ends on a day, not on nothing",
+    beforePair.date !== "" && afterPair.count === beforePair.count + 2 &&
+      afterPair.onDay && !afterPair.onBody &&
+      dayNumber(afterPair.date) === dayNumber(beforePair.date) &&
+      afterPair.tabStop === afterPair.date,
+    beforePair.date !== ""
+      ? `from ${beforePair.date} in ${beforePair.heading}: Page Down Page Up drew ` +
+        `${afterPair.count - beforePair.count} answers and left the card showing ` +
+        `${afterPair.extra || "nothing"}, with the focus on ` +
+        `${afterPair.date || afterPair.focused} and the Tab stop on ` +
+        `${
+          afterPair.tabStop || "nowhere"
+        } — the day number the reader was on, in whichever month ` +
+        `the owner's two answers left behind`
+      : "the focus never reached a day of the late-answering card",
+  )
+
+  // A reader who leaves while a press is unanswered is left alone, and the page is not scrolled to
+  // a calendar they are not looking at. The blur is a page-side call rather than a key, because
+  // blurring is not what is under test; the press before it and the month after it are real.
+  const beforeBlur = await read(devtools, LATE_STATE, NO_CARD)
+  await pressKey(devtools, "PageDown")
+  // Wait for the refusal to put them back on their day: that is the state the reader leaves from,
+  // and leaving before it would be measuring a different thing.
+  const restored = await poll(
+    () => read(devtools, `${LATE_STATE}.date === ${JSON.stringify(beforeBlur.date)}`, false),
+    3_000,
+  )
+  // Blur, then take the page somewhere else, so that a focus this calendar steals has to scroll
+  // the page back to show it and the scroll position can say whether it did.
+  const parked = await read(
+    devtools,
+    `(() => {
+      if (document.activeElement && document.activeElement.blur) document.activeElement.blur()
+      globalThis.scrollTo({ top: 0, behavior: "instant" })
+      return document.activeElement === document.body
+    })()`,
+    false,
+  )
+  const scrollBefore = await settleScroll(devtools)
+  const answeredAfterBlur = await poll(
+    () => read(devtools, `${LATE_STATE}.count === ${beforeBlur.count + 1}`, false),
+    5_000,
+  )
+  const afterBlur = await read(devtools, LATE_STATE, NO_CARD)
+  const scrollAfter = await settleScroll(devtools)
+
+  check(
+    "a month that arrives after the reader has left does not pull the focus back",
+    restored && parked && answeredAfterBlur && afterBlur.extra !== beforeBlur.extra &&
+      afterBlur.onBody && !afterBlur.onDay && scrollBefore >= 0 && scrollAfter === scrollBefore,
+    restored && parked
+      ? `Page Down put the focus back on ${beforeBlur.date}, the reader blurred and scrolled ` +
+        `away, and the month then went ${beforeBlur.extra} → ${afterBlur.extra || "nothing"}: ` +
+        `the focus is on ${afterBlur.focused} and the page is at ${scrollAfter}, having been at ` +
+        `${scrollBefore}`
+      : restored
+      ? "the blur did not leave the document body holding the focus, so nothing was measured"
+      : `the refusal never put the focus back on ${beforeBlur.date}`,
+  )
+
+  // Back on the month this card starts on before the last burst, which needs the same day.
+  await settleLateCard(devtools)
+
+  // The same burst against the other kind of lateness. An owner that answers on a microtask has
+  // drawn the month before the browser delivers the next key, so the second press is made against
+  // the month the first one brought and asks for the one after it: two presses, two months. This
+  // is the case that says the window is closed rather than merely narrowed — the calendar decides
+  // in a layout effect, synchronously with the commit that removed the cells, so there is no
+  // moment at which a key can arrive to find nothing inside the grid listening.
+  await read(
+    devtools,
+    `(document.querySelector('${LATE} [data-e2e="calendar-late-mode-microtask"]')?.click(), true)`,
+    false,
+  )
+  await poll(() => read(devtools, `${LATE_STATE}.asked !== ""`, false), 1_000)
+  const inMicrotaskMode = await read(
+    devtools,
+    `document.querySelector('${LATE} [data-e2e="calendar-late-mode"]')?.textContent.trim() ===` +
+      ` "microtask"`,
+    false,
+  )
+  await frameCard(devtools, LATE)
+  const stagedQuick = inMicrotaskMode && await standOnDay(devtools, LATE_GRID, LATE_DAY)
+  const beforeQuick = await read(devtools, LATE_STATE, NO_CARD)
+  const quickMonth = monthAfter(beforeQuick.extra, 2)
+  const quickWanted = `${quickMonth.slice(0, 8)}${dayNumber(LATE_DAY)}`
+  await pressKey(devtools, "PageDown")
+  await pressKey(devtools, "PageDown")
+  await poll(
+    () =>
+      read(
+        devtools,
+        `(() => { const state = ${LATE_STATE}; return state.count === ${
+          beforeQuick.count + 2
+        } && state.date === ${JSON.stringify(quickWanted)} })()`,
+        false,
+      ),
+    5_000,
+  )
+  const afterQuick = await read(devtools, LATE_STATE, NO_CARD)
+
+  check(
+    "two Page Downs at an owner that answers on a microtask move two months",
+    stagedQuick && beforeQuick.date === LATE_DAY && afterQuick.count === beforeQuick.count + 2 &&
+      afterQuick.extra === quickMonth && afterQuick.onDay && !afterQuick.onBody &&
+      afterQuick.date === quickWanted,
+    stagedQuick
+      ? `from ${beforeQuick.date} with ${beforeQuick.extra} on screen, Page Down Page Down with ` +
+        `no render in between: the card drew ${afterQuick.count - beforeQuick.count} answers and ` +
+        `is showing ${afterQuick.extra || "nothing"}, with the focus on ` +
+        `${afterQuick.date || afterQuick.focused}, wanted ${quickWanted} in ${quickMonth}`
+      : inMicrotaskMode
+      ? `the focus was never staged on ${LATE_DAY} of the late-answering card`
+      : "the card would not switch to answering on a microtask",
+  )
+
+  // Back where this block found the card, with nothing asserted on it.
+  await read(
+    devtools,
+    `(document.querySelector('${LATE} [data-e2e="calendar-late-mode-timer"]')?.click(), true)`,
+    false,
+  )
+  await settleLateCard(devtools)
 }
 
 /**
