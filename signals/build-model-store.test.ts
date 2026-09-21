@@ -542,6 +542,57 @@ describe("buildModelStore requests answered out of order", () => {
     expect(store.op.delete(1).value?.inProgress).toBe(false)
   })
 
+  it("keeps saving when an older update never reaches the server", async () => {
+    const { impl, pending } = deferredFetch()
+    const toast = toastRecorder()
+    const store = buildStore({ fetch: impl, toast: toast.port })
+    await store.onWs([row(1, "North")], RemoteEvent.LIST)
+
+    const first = store.update(1, { name: "First" })
+    const second = store.update(1, { name: "Second" })
+
+    pending[0].settle(new Error("network down"))
+    await first
+
+    // A request that never reached the server is answered like any other — sequenced, and silent,
+    // because the host already surfaces a connection failure.
+    expect(store.op.update(1).value?.inProgress).toBe(true)
+    expect(store.op.update(1).value?.error).toBeNull()
+    expect(toast.messages).toEqual([])
+
+    pending[1].settle(Response.json(row(1, "Second")))
+    await second
+
+    expect(store.op.update(1).value?.inProgress).toBe(false)
+    expect(store.state.value.list[0].name).toBe("Second")
+  })
+
+  it("keeps saving when an older delete answers with a body the schema rejects", async () => {
+    const { impl, pending } = deferredFetch()
+    const toast = toastRecorder()
+    const store = buildStore({ fetch: impl, toast: toast.port })
+    await store.onWs([row(1, "North")], RemoteEvent.LIST)
+
+    const deleting = store.delete(1)
+    const updating = store.update(1, { name: "Renamed" })
+
+    pending[0].settle(Response.json({ id: "not a number" }))
+    await deleting
+
+    // A payload the schema rejects is a failure like a rejected status, and it is sequenced the
+    // same way: reported, because nothing newer has answered, and settling nothing.
+    expect(toast.messages[0].body).toContain("Malformed zone response")
+    expect(store.op.delete(1).value?.inProgress).toBe(true)
+    expect(store.op.update(1).value?.inProgress).toBe(true)
+
+    pending[1].settle(Response.json(row(1, "Renamed")))
+    await updating
+
+    expect(store.op.delete(1).value?.inProgress).toBe(false)
+    expect(store.op.update(1).value?.inProgress).toBe(false)
+    expect(store.state.value.list[0].name).toBe("Renamed")
+  })
+
   it("drops an older update that succeeds after the newest one has failed", async () => {
     const { impl, pending } = deferredFetch()
     const toast = toastRecorder()
@@ -1042,9 +1093,12 @@ describe("buildModelStore remote update freshness", () => {
     const { impl } = queueFetch()
     const store = buildTimedStore(impl)
     const at = "2024-06-01T00:00:00.000Z"
-    await store.onWs([timedRow(1, "North", "2024-01-01T00:00:00.000Z", at)], RemoteEvent.LIST)
+    await store.onWs([timedRow(1, "North", "2024-02-01T00:00:00.000Z", at)], RemoteEvent.LIST)
 
-    await store.onWs([timedRow(1, "Edited", "2024-01-01T00:00:00.000Z", at)], RemoteEvent.UPDATED)
+    // The two `createdAt` values differ, and the incoming row's is the older of them: a tie on
+    // `updatedAt` that fell through to the fallback column would drop this event, and a fixture
+    // whose columns both tie cannot tell those two behaviours apart.
+    await store.onWs([timedRow(1, "Edited", "2023-01-01T00:00:00.000Z", at)], RemoteEvent.UPDATED)
 
     expect(store.state.value.list[0].name).toBe("Edited")
   })
