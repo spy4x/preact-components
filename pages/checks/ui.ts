@@ -46,7 +46,7 @@ const DROPDOWN_STATE = `(() => {
  *
  * This file runs last of every package's, and Modal's checks run last inside it, for the same
  * reason: Modal opens a real modal dialog, and a dialog that refused to close would sit in the top
- * layer above every check that ran after it. See `pages/verify.ts`'s `interactionChecks` for where
+ * layer above every check that ran after it. See `PACKAGE_BLOCKS` in `pages/verify.ts` for where
  * the run order across every package is fixed.
  *
  * @param devtools The connected session, on a hydrated page.
@@ -1876,9 +1876,9 @@ const TOOLTIP_DISMISSED =
  * `pointer-events-none` the centre of the hint reads whatever is *behind* the hint, so the
  * derivation fails and the check says so in those words.
  *
- * Nothing here throws. A missing row is a failed check naming what is missing, because an
- * exception would end the browser phase and silently drop every package whose file runs after
- * this one.
+ * Nothing here throws. A missing row is a failed check naming what is missing, because an exception
+ * would cost every check left in this file — including Modal's, which run after it — and replace
+ * them with one failure that names `ui` rather than the row.
  *
  * @param devtools The connected session, on a hydrated page.
  */

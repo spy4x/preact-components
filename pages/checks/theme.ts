@@ -204,7 +204,8 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
     // own running animations instead; once none are left, the browser has committed the end state.
     // \`finished\` rejects if an animation is cancelled instead — a cancelled animation just means
     // there is nothing left to wait for, and the read right below is what actually judges the
-    // colour, so losing the whole browser phase to that rejection would be out of all proportion.
+    // colour, so losing the rest of this package's checks to that rejection would be out of all
+    // proportion.
     await Promise.all(button.getAnimations().map((animation) => animation.finished.catch(() => {})))
 
     return {

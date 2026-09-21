@@ -1389,9 +1389,12 @@ async function linkedImageCheck(devtools: Devtools): Promise<void> {
  *
  * Answers `""` for anything that is not a date, and never throws: these helpers are called on
  * readings, a reading can come back empty when the page was not in the state a check expected, and
- * a throw here would end the whole browser phase and drop every package after this one. Measured,
- * not feared — an earlier version threw `Invalid time value` on an empty reading and the run
- * reported 46 checks instead of 92.
+ * a throw here costs the rest of this package's own block — every check after it in this file,
+ * replaced by one failure that names the package rather than the reading. Measured, not feared — an
+ * earlier version threw `Invalid time value` on an empty reading and the run reported 46 checks
+ * instead of 92. It used to be worse than the rest of one block: until `pages/verify.ts` began
+ * running each package isolated from the others, a throw here ended the whole browser phase and
+ * dropped every package after this one.
  */
 function dayAfter(date: string, days: number): string {
   const parsed = /^\d{4}-\d{2}-\d{2}$/.test(date) ? Date.parse(`${date}T00:00:00Z`) : NaN
