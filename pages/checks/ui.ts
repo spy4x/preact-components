@@ -2587,10 +2587,13 @@ interface ComboboxReading {
   /** `true` when `aria-activedescendant` names an element the page no longer holds. */
   activeDangles: boolean
   describedBy: string | null
-  /** The status element's role, or `null` when the component renders no status at all. */
+  /** The live region's role, or `null` when the component renders no region at all. */
   statusRole: string | null
   statusLive: string | null
+  statusAtomic: string | null
   statusText: string
+  /** How many element children the region holds; `0` is the empty region the field starts with. */
+  statusChildren: number
   inputValue: string
   /** The popup's scroll position and box, which is where a highlight goes to get lost. */
   scrollTop: number
@@ -2620,12 +2623,15 @@ function comboboxSetup(id: string): string {
 }
 
 /**
- * The parked combobox's list, highlight, status element and popup geometry, in one round trip.
+ * The parked combobox's list, highlight, live region and popup geometry, in one round trip.
  *
- * The status element is looked up by the id the component derives rather than by `role="status"`:
- * the whole point of the first check below is that on an untouched field there is no such element
- * to find, and a reading has to be able to say "there is none" without a selector coming back
- * empty for some unrelated reason.
+ * The region is looked up by the id the component derives rather than by `role="status"`: a reading
+ * has to be able to say "this field has none" without a selector coming back empty because it
+ * found some other component's region instead.
+ *
+ * `statusText` is the whole answer to "what would a reader be told", and `statusChildren` separates
+ * the two ways of being empty — a region holding an empty message element, and a region holding
+ * nothing at all.
  */
 const COMBOBOX_STATE = `(() => {
   const { id, input, list } = globalThis.__verifyCombobox ?? {}
@@ -2633,7 +2639,8 @@ const COMBOBOX_STATE = `(() => {
     return {
       ok: false, expanded: null, listHidden: false, options: -1, active: null, activeText: "",
       activeDangles: false,
-      describedBy: null, statusRole: null, statusLive: null, statusText: "", inputValue: "",
+      describedBy: null, statusRole: null, statusLive: null, statusAtomic: null, statusText: "",
+      statusChildren: -1, inputValue: "",
       scrollTop: -1, clientHeight: -1, scrollHeight: -1, activeInView: false, pageScrollY: -1,
     }
   }
@@ -2651,7 +2658,9 @@ const COMBOBOX_STATE = `(() => {
     describedBy: input.getAttribute("aria-describedby"),
     statusRole: status?.getAttribute("role") ?? null,
     statusLive: status?.getAttribute("aria-live") ?? null,
+    statusAtomic: status?.getAttribute("aria-atomic") ?? null,
     statusText: (status?.textContent ?? "").trim().slice(0, 40),
+    statusChildren: status?.childElementCount ?? -1,
     inputValue: input.value,
     scrollTop: Math.round(list.scrollTop),
     clientHeight: Math.round(list.clientHeight),
@@ -2679,10 +2688,388 @@ const COMBOBOX_STATE = `(() => {
  * @param devtools The connected session, on a hydrated page.
  */
 async function comboboxChecks(devtools: Devtools): Promise<void> {
+  await liveRegionChecks(devtools)
   await untouchedComboboxCheck(devtools)
   await arrivingOptionsCheck(devtools)
   await highlightChecks(devtools)
   await reopenCheck(devtools)
+}
+
+/** One reading of the parked live region: what it is, what it holds, and what it has recorded. */
+interface RegionReading {
+  /** `false` when the card has no such region, or nothing was parked; every other field is noise. */
+  ok: boolean
+  role: string | null
+  live: string | null
+  atomic: string | null
+  /** Everything a reader would be told, trimmed. `""` is the empty region the field starts with. */
+  text: string
+  children: number
+  /** `true` when the region the page holds now is the very element parked before the field was used. */
+  same: boolean
+  /** `true` when the parked element is still in the document. */
+  connected: boolean
+  /** Mutation records the observer saw **on that node itself**. */
+  mutations: number
+  added: number
+  removed: number
+  /** The region's own height in pixels; `0` is what an empty one must cost. */
+  height: number
+  /** Border, padding, margin and `min-height`, so "no box" is reported rather than implied. */
+  box: string
+}
+
+/** What a parent of a whole combobox is charged for the region inside it, one layout mode a row. */
+interface RegionCost {
+  name: string
+  withRegion: number
+  without: number
+  cost: number
+}
+
+/** The id of the catalogue field these checks own, and the base of its derived ids. */
+const ANNOUNCE_ID = "guide-combobox-announce"
+
+/**
+ * Park that field's live region and start watching it, while it is still empty.
+ *
+ * The observer is attached to the **region itself** with `childList`, and the callback throws away
+ * any record whose target is not that node. This is what makes the check unable to pass against the
+ * old code: a region that is created along with its message is a child arriving in the region's
+ * *parent*, and an observer given the parent with `subtree` would count that as a change. Given the
+ * node itself, an observer records nothing at all when the page replaces it — which is exactly the
+ * difference being asserted.
+ */
+const REGION_PARK = `(() => {
+  const region = document.getElementById(${JSON.stringify(`${ANNOUNCE_ID}-status`)})
+  if (region === null) return false
+  const parked = { region, mutations: 0, added: 0, removed: 0 }
+  const observer = new MutationObserver((records) => {
+    for (const record of records) {
+      if (record.target !== region) continue
+      parked.mutations += 1
+      parked.added += record.addedNodes.length
+      parked.removed += record.removedNodes.length
+    }
+  })
+  observer.observe(region, { childList: true })
+  parked.observer = observer
+  globalThis.__verifyRegion = parked
+  return true
+})()`
+
+/** The parked region as it stands now, identity and observer tally included. */
+const REGION_STATE = `(() => {
+  const parked = globalThis.__verifyRegion
+  const region = document.getElementById(${JSON.stringify(`${ANNOUNCE_ID}-status`)})
+  if (!parked || region === null) {
+    return {
+      ok: false, role: null, live: null, atomic: null, text: "", children: -1, same: false,
+      connected: false, mutations: -1, added: -1, removed: -1, height: -1, box: "",
+    }
+  }
+  const style = getComputedStyle(region)
+  return {
+    ok: true,
+    role: region.getAttribute("role"),
+    live: region.getAttribute("aria-live"),
+    atomic: region.getAttribute("aria-atomic"),
+    text: (region.textContent ?? "").trim().slice(0, 60),
+    children: region.childElementCount,
+    same: region === parked.region,
+    connected: parked.region.isConnected,
+    mutations: parked.mutations,
+    added: parked.added,
+    removed: parked.removed,
+    height: Math.round(region.getBoundingClientRect().height),
+    box: [
+      style.borderTopWidth, style.borderBottomWidth, style.paddingTop, style.paddingBottom,
+      style.marginTop, style.marginBottom, style.minHeight,
+    ].join(" "),
+  }
+})()`
+
+/**
+ * What a host's container is charged for the always-present region, in six layout modes.
+ *
+ * The question a host actually faces is not what the region measures but what its *parent* spaces,
+ * and the answer turns on where the region lives. `SWUpdater`'s region is the component's whole
+ * output, so a host's `flex` or `grid` gap is charged for it; this one is a child of the combobox's
+ * own root, so what the host lays out is one combobox-shaped box either way.
+ *
+ * Measured rather than argued: the real field is cloned into each parent, the parent is measured,
+ * the clone's region is taken out, and the parent is measured again. The clone is mounted off
+ * screen and removed before the expression returns.
+ */
+const REGION_COST = `(() => {
+  const region = document.getElementById(${JSON.stringify(`${ANNOUNCE_ID}-status`)})
+  const root = region?.parentElement ?? null
+  if (root === null) return { ok: false, rows: [] }
+  const host = document.createElement("div")
+  host.style.cssText = "position:absolute;left:-10000px;top:0;width:320px"
+  document.body.appendChild(host)
+  const modes = [
+    ["block flow, no spacing", ""],
+    ["block flow with space-y-4", "space-y-4"],
+    ["flex column with gap-4", "flex flex-col gap-4"],
+    ["flex column with space-y-4", "flex flex-col space-y-4"],
+    ["grid with gap-4", "grid gap-4"],
+    ["grid with space-y-4", "grid space-y-4"],
+  ]
+  const rows = modes.map(([name, cls]) => {
+    const parent = document.createElement("div")
+    parent.className = cls
+    const first = document.createElement("p")
+    first.style.cssText = "height:24px;margin:0"
+    const last = first.cloneNode(true)
+    const field = root.cloneNode(true)
+    parent.append(first, field, last)
+    host.appendChild(parent)
+    const withRegion = Math.round(parent.getBoundingClientRect().height)
+    field.querySelector('[role="status"]')?.remove()
+    const without = Math.round(parent.getBoundingClientRect().height)
+    return { name, withRegion, without, cost: withRegion - without }
+  })
+  host.remove()
+  return { ok: true, rows }
+})()`
+
+/**
+ * The accessible **description** the browser computes for one element, as the tree reports it.
+ *
+ * Read over the DevTools Protocol rather than from the markup, because "described by an element
+ * that happens to be empty" and "not described at all" are the same attribute and different trees,
+ * and it is the tree a screen reader reads.
+ *
+ * @param devtools The connected session.
+ * @param selector A CSS selector for the element.
+ * @returns The description, `""` when the tree reports none, or `null` when it could not be read.
+ */
+async function accessibleDescription(
+  devtools: Devtools,
+  selector: string,
+): Promise<string | null> {
+  try {
+    await devtools.send("Accessibility.enable")
+    const document_ = await devtools.send<{ root: { nodeId: number } }>("DOM.getDocument", {
+      depth: 0,
+    })
+    const found = await devtools.send<{ nodeId: number }>("DOM.querySelector", {
+      nodeId: document_.root.nodeId,
+      selector,
+    })
+    if (!found.nodeId) return null
+    const tree = await devtools.send<
+      { nodes: Array<{ description?: { value?: { value?: string } } }> }
+    >("Accessibility.getPartialAXTree", { nodeId: found.nodeId, fetchRelatives: false })
+    const node = tree.nodes.at(0)
+    if (node === undefined) return null
+    return node.description?.value?.value ?? ""
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The live region the combobox keeps: there before it is needed, and changed rather than replaced.
+ *
+ * Three things a rendered string cannot show, and one of them is the whole issue. That the region
+ * is in the page before anybody has touched the field, a unit test can pin. That a message *arrives
+ * as a change to that same element* cannot be pinned anywhere but here, and it is the difference
+ * between a screen reader announcing the count and saying nothing at all: assistive technology
+ * announces a change to a region it is already watching, and commonly ignores a region that turns
+ * up with its message already inside it.
+ *
+ * So the element is parked while it is genuinely empty and compared by identity afterwards, and a
+ * `MutationObserver` is attached to that same node beforehand. A check that merely found "a status
+ * region with the right text in it" after typing would pass against the old code just as well; both
+ * of these go red on it, which the pull request shows by doing it.
+ *
+ * The field is the card's own, driven by nothing else, and both its strings come from props the
+ * card passes — so no English default hard-coded anywhere could satisfy what is read back.
+ *
+ * @param devtools The connected session, on a hydrated page, before the card has been touched.
+ */
+async function liveRegionChecks(devtools: Devtools): Promise<void> {
+  await devtools.evaluate<null>(comboboxSetup(ANNOUNCE_ID))
+  await scrollToParked(devtools)
+  const parked = await devtools.evaluate<boolean>(REGION_PARK)
+  const pristine = await devtools.evaluate<RegionReading>(REGION_STATE)
+  const field = await devtools.evaluate<ComboboxReading>(COMBOBOX_STATE)
+  const cost = await devtools.evaluate<{ ok: boolean; rows: RegionCost[] }>(REGION_COST)
+  const describedBefore = await accessibleDescription(devtools, `#${ANNOUNCE_ID}`)
+
+  const noBox = pristine.box === "0px 0px 0px 0px 0px 0px 0px"
+  const charged = cost.rows.filter((row) => row.cost !== 0)
+  const costTable = cost.rows.map((row) => `${row.name} ${row.cost}px`).join(", ")
+
+  check(
+    "a Combobox's live region is in the page, empty and costing nothing, before the field is used",
+    parked && pristine.ok && pristine.role === "status" && pristine.live === "polite" &&
+      pristine.atomic === "true" && pristine.text === "" && pristine.children === 0 &&
+      pristine.height === 0 && noBox && field.ok && field.expanded === "false" &&
+      cost.ok && charged.length === 0,
+    !parked || !pristine.ok
+      ? `the Combobox card has no live region with id ${ANNOUNCE_ID}-status, so there is nothing ` +
+        `for a message to arrive in`
+      : field.expanded !== "false"
+      ? `the field was already open (aria-expanded ${field.expanded}) when this ran, so it is not ` +
+        `the untouched state this check is about`
+      : pristine.role !== "status" || pristine.live !== "polite" || pristine.atomic !== "true"
+      ? `the region is marked role="${pristine.role}" aria-live="${pristine.live}" ` +
+        `aria-atomic="${pristine.atomic}", and a reader announces a polite, atomic status`
+      : pristine.text !== "" || pristine.children !== 0
+      ? `an untouched field's region already reads "${pristine.text}" in ${pristine.children} ` +
+        `element(s) — nobody has asked it anything`
+      : pristine.height !== 0 || !noBox
+      ? `the empty region is ${pristine.height}px tall with border/padding/margin/min-height of ` +
+        `${pristine.box}, so it takes space on a field that is saying nothing`
+      : !cost.ok
+      ? "the region's own root could not be cloned, so what a parent is charged was not measured"
+      : charged.length > 0
+      ? `a parent holding the whole field is charged ${
+        charged.map((row) => `${row.cost}px in a ${row.name}`).join(", ")
+      } for the empty region`
+      : `role="status" aria-live="polite" aria-atomic="true", 0 element children, text "", 0px ` +
+        `tall with border/padding/margin/min-height ${pristine.box} — and a parent holding the ` +
+        `whole field is charged nothing for it in any layout mode: ${costTable}`,
+  )
+
+  await countArrivesCheck(devtools, pristine)
+  const describedAfter = await accessibleDescription(devtools, `#${ANNOUNCE_ID}`)
+  await emptyMessageCheck(devtools)
+
+  check(
+    "a Combobox's live region is never the input's accessible description, before or after",
+    describedBefore === "" && describedAfter === "",
+    describedBefore === null || describedAfter === null
+      ? `the accessibility tree could not be read for #${ANNOUNCE_ID}, so this proves nothing`
+      : `the browser computes the input's description as ` +
+        `"${describedBefore}" before it was used and "${describedAfter}" with the count in the ` +
+        `region: a status is not a description, and an empty element pointed at by ` +
+        `aria-describedby would put an empty description in the tree`,
+  )
+
+  await pressKey(devtools, "Escape")
+  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "false"`), 3_000)
+  await pointerToCorner(devtools)
+}
+
+/**
+ * Typing narrows the list, and the count of what is left arrives in the region that was there.
+ *
+ * The assertion is a transition and an identity, not an end state: empty before, the caller's own
+ * count afterwards, in an element compared with `===` against the one parked while it was empty,
+ * with the observer attached to that node reporting the change it saw.
+ *
+ * Text is inserted the way every other combobox check here types — through the browser's own input
+ * pipeline — so the component's `onInput` runs on a trusted event.
+ *
+ * @param devtools The connected session, with the region parked and watched.
+ * @param pristine The reading taken before the field was touched, for the failure message.
+ */
+async function countArrivesCheck(devtools: Devtools, pristine: RegionReading): Promise<void> {
+  const target = `globalThis.__verifyCombobox?.input ?? null`
+  const landing = await clickAt(devtools, await aimAt(devtools, target), target)
+  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "true"`), 3_000)
+  const opened = await devtools.evaluate<RegionReading>(REGION_STATE)
+
+  await typeInto(devtools, "u")
+  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.inputValue === "u"`), 3_000)
+  await poll(() => devtools.evaluate<boolean>(`${REGION_STATE}.text !== ""`), 3_000)
+  const narrowed = await devtools.evaluate<RegionReading>(REGION_STATE)
+  const list = await devtools.evaluate<ComboboxReading>(COMBOBOX_STATE)
+
+  check(
+    "a Combobox's match count arrives as a change to the live region that was already there",
+    pristine.ok && landing?.onTarget === true && opened.text === "" && opened.mutations === 0 &&
+      list.options > 0 && narrowed.same && narrowed.connected &&
+      narrowed.text === `${list.options} coins left` && narrowed.mutations >= 1 &&
+      narrowed.added >= 1,
+    landing?.onTarget !== true
+      ? `the press never landed on the field, so nothing was typed into it — this proves nothing`
+      : opened.text !== "" || opened.mutations !== 0
+      ? `opening the field alone put "${opened.text}" into the region (${opened.mutations} ` +
+        `change(s)), so the count below is not what typing produced`
+      : list.options === 0
+      ? `the query left no options at all, so there was no count for the region to carry`
+      : !narrowed.same || !narrowed.connected
+      ? `the region holding the count is a different element from the one parked while it was ` +
+        `empty (same: ${narrowed.same}, the parked one still in the document: ` +
+        `${narrowed.connected}) — the page threw the watched region away and built a new one ` +
+        `around the message, which is the shape a screen reader does not announce`
+      : narrowed.text !== `${list.options} coins left`
+      ? `the region reads "${narrowed.text}" over ${list.options} matching options, rather than ` +
+        `the count the card passes as a prop`
+      : narrowed.mutations < 1 || narrowed.added < 1
+      ? `an observer watching the parked region recorded ${narrowed.mutations} change(s) and ` +
+        `${narrowed.added} added node(s) while the count appeared: the message did not arrive in ` +
+        `the element that was being watched`
+      : `the element parked while the region was empty is the same element that now reads ` +
+        `"${narrowed.text}" over ${list.options} options, it is still in the document, and an ` +
+        `observer attached to that node beforehand recorded ${narrowed.mutations} change(s) and ` +
+        `${narrowed.added} added node(s) — a region created together with its message would have ` +
+        `recorded none`,
+  )
+}
+
+/**
+ * The other two states of the same region: nothing matches, and the field is cleared.
+ *
+ * Three transitions in one walk, because each is only worth asserting against the one before it: a
+ * query that matches nothing replaces the count with the empty message, the clear button empties
+ * the region, and typing again brings the message back as a fresh change rather than as text that
+ * was never taken away.
+ *
+ * @param devtools The connected session, with the field open and a count in its region.
+ */
+async function emptyMessageCheck(devtools: Devtools): Promise<void> {
+  await typeInto(devtools, "zz")
+  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.options === 0`), 3_000)
+  await poll(() => devtools.evaluate<boolean>(`${REGION_STATE}.text === "No coin left"`), 3_000)
+  const nothing = await devtools.evaluate<RegionReading>(REGION_STATE)
+
+  // The component's own clear button, pressed for real: the way a person empties the field.
+  const clear = `globalThis.__verifyCombobox?.input?.parentElement?.querySelector("button") ?? null`
+  const pressed = await clickAt(devtools, await aimAt(devtools, clear), clear)
+  await poll(() => devtools.evaluate<boolean>(`${REGION_STATE}.text === ""`), 3_000)
+  const cleared = await devtools.evaluate<RegionReading>(REGION_STATE)
+
+  const target = `globalThis.__verifyCombobox?.input ?? null`
+  await clickAt(devtools, await aimAt(devtools, target), target)
+  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "true"`), 3_000)
+  await typeInto(devtools, "zz")
+  await poll(() => devtools.evaluate<boolean>(`${REGION_STATE}.text === "No coin left"`), 3_000)
+  const again = await devtools.evaluate<RegionReading>(REGION_STATE)
+
+  check(
+    "a Combobox's empty message replaces the count in that region, leaves it, and comes back",
+    nothing.same && nothing.text === "No coin left" && pressed?.onTarget === true &&
+      cleared.same && cleared.text === "" && cleared.children === 0 &&
+      cleared.mutations > nothing.mutations && again.same && again.connected &&
+      again.text === "No coin left" && again.mutations > cleared.mutations,
+    nothing.text !== "No coin left"
+      ? `a query matching nothing left the region reading "${nothing.text}" rather than the ` +
+        `empty message the card passes`
+      : pressed?.onTarget !== true
+      ? `the press never landed on the clear button, so the field was never emptied`
+      : cleared.text !== "" || cleared.children !== 0
+      ? `clearing the field left "${cleared.text}" in the region (${cleared.children} element ` +
+        `children), so it never went quiet`
+      : cleared.mutations <= nothing.mutations
+      ? `the observer recorded no change to the parked region when the message left it ` +
+        `(${nothing.mutations} → ${cleared.mutations})`
+      : !again.same || !again.connected
+      ? `typing again put the message in a different element (same: ${again.same}, the parked ` +
+        `one still in the document: ${again.connected})`
+      : again.text !== "No coin left" || again.mutations <= cleared.mutations
+      ? `typing again left the region reading "${again.text}" after ` +
+        `${again.mutations - cleared.mutations} further change(s), so the message did not arrive ` +
+        `a second time`
+      : `count → "${nothing.text}" → cleared by a real press on the clear button, empty with 0 ` +
+        `children → typed again, "${again.text}" — one element throughout, with the observer ` +
+        `recording ${again.mutations} changes to it in all`,
+  )
 }
 
 /**
@@ -2752,7 +3139,7 @@ async function arrivingOptionsCheck(devtools: Devtools): Promise<void> {
     armed.ok && landing?.onTarget === true && waiting.expanded === "true" &&
       waiting.options === 0 && waiting.statusRole === "status" && waiting.active === null &&
       landed && arrived.expanded === "true" && arrived.options > 0 &&
-      arrived.statusRole === null && arrived.describedBy === null &&
+      arrived.statusText === "" && arrived.describedBy === null &&
       arrived.active === "guide-combobox-empty-option-0" && arrived.activeText.length > 0 &&
       !arrived.activeDangles && emptied && departed.expanded === "true" &&
       departed.active === null && !departed.activeDangles,
@@ -2771,9 +3158,9 @@ async function arrivingOptionsCheck(devtools: Devtools): Promise<void> {
       ? `no options arrived within ${armed.delay * 4}ms of arming a ${armed.delay}ms wait`
       : arrived.expanded !== "true"
       ? "the popup closed while the options were arriving, so nothing landed underneath it"
-      : arrived.statusRole !== null || arrived.describedBy !== null
-      ? `${arrived.options} options arrived and the field still shows a ${arrived.statusRole} ` +
-        `reading "${arrived.statusText}"${
+      : arrived.statusText !== "" || arrived.describedBy !== null
+      ? `${arrived.options} options arrived and the field's live region still reads ` +
+        `"${arrived.statusText}"${
           arrived.describedBy === null ? "" : `, with the input still describing itself by it`
         }`
       : arrived.active !== "guide-combobox-empty-option-0"
@@ -2794,9 +3181,9 @@ async function arrivingOptionsCheck(devtools: Devtools): Promise<void> {
               "that does not exist, on a field that says there are no matches"
             : ""
         }`
-      : `open and empty: a polite status reading "${waiting.statusText}" and no ` +
-        `aria-activedescendant → ${arrived.options} options landed ${armed.delay}ms later: the ` +
-        `status is gone, the input describes nothing, and the highlight is on ` +
+      : `open and empty: a polite live region reading "${waiting.statusText}" and no ` +
+        `aria-activedescendant → ${arrived.options} options landed ${armed.delay}ms later: that ` +
+        `same region is empty again, the input describes nothing, and the highlight is on ` +
         `"${arrived.activeText}" → the caller took them away again: no rows, no ` +
         `aria-activedescendant, and the popup still open`,
   )
@@ -2836,25 +3223,27 @@ async function untouchedComboboxCheck(devtools: Devtools): Promise<void> {
   await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "false"`), 3_000)
   const closed = await devtools.evaluate<ComboboxReading>(COMBOBOX_STATE)
 
+  // "Silent" is now about what the region holds, not about whether there is one: the region is
+  // always in the page, and the rule is that it carries no word until the field has been used.
   const silent = (reading: ComboboxReading) =>
-    reading.statusRole === null && reading.describedBy === null
+    reading.statusRole === "status" && reading.statusText === "" && reading.statusChildren === 0
   check(
     "a Combobox with no options says nothing until it is opened, and answers only then",
     untouched.ok && untouched.expanded === "false" && untouched.options === 0 &&
       silent(untouched) && aim.onTarget && landing?.onTarget === true &&
       opened.expanded === "true" && opened.statusRole === "status" &&
-      opened.statusLive === "polite" && opened.statusText.length > 0 &&
-      opened.describedBy === "guide-combobox-empty-status" && silent(closed),
+      opened.statusLive === "polite" && opened.statusText.length > 0 && silent(closed),
     !untouched.ok
       ? "the Combobox card has no field with id guide-combobox-empty"
       : untouched.options !== 0
       ? `the field under test renders ${untouched.options} options, so it is not the empty one ` +
         `this check is about`
+      : untouched.statusRole !== "status"
+      ? `an untouched field renders no live region at all (role ${untouched.statusRole}), so a ` +
+        `message would have to create one to arrive`
       : !silent(untouched)
-      ? `an untouched, closed field renders a ${untouched.statusRole} reading ` +
-        `"${untouched.statusText}"${
-          untouched.describedBy === null ? "" : `, and the input describes itself by it`
-        } — nobody has asked it anything`
+      ? `an untouched, closed field's live region already reads "${untouched.statusText}" ` +
+        `(${untouched.statusChildren} element children) — nobody has asked it anything`
       : !aim.onTarget || landing?.onTarget !== true
       ? `the press never landed on the field: ${
         landing === null
@@ -2866,15 +3255,14 @@ async function untouchedComboboxCheck(devtools: Devtools): Promise<void> {
       : opened.statusRole !== "status" || opened.statusLive !== "polite"
       ? `opened, the field renders no polite status region to answer with (role ` +
         `${opened.statusRole}, aria-live ${opened.statusLive})`
-      : opened.describedBy !== "guide-combobox-empty-status"
-      ? `opened, the input describes itself by ${opened.describedBy} rather than by its own ` +
-        `status element`
+      : opened.statusText.length === 0
+      ? `opened, the live region is still empty, so the field answered nothing`
       : !silent(closed)
-      ? `closing the field left the ${closed.statusRole} on screen reading ` +
-        `"${closed.statusText}", so once touched it never goes quiet again`
-      : `untouched: no status, no aria-describedby → opened by a real click at (${landing.x}, ` +
-        `${landing.y}): a polite status reading "${opened.statusText}", pointed at by ` +
-        `aria-describedby → closed with Escape: quiet again`,
+      ? `closing the field left the region reading "${closed.statusText}", so once touched it ` +
+        `never goes quiet again`
+      : `untouched: an empty polite region and no aria-describedby → opened by a real click at ` +
+        `(${landing.x}, ${landing.y}): that region now reads "${opened.statusText}" → closed ` +
+        `with Escape: empty again`,
   )
 }
 
