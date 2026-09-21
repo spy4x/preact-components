@@ -1253,16 +1253,20 @@ const REFUSED_STATE = `(() => {
   const reset = document.querySelector('${REFUSED_RESET}')
   const active = document.activeElement
   const date = active && active.getAttribute ? (active.getAttribute("data-calendar-date") || "") : ""
+  // Named rather than tagged, because "the focus is on div" is the one failure this file exists to
+  // report and a reader should not have to work out which div that is.
+  const describe = (element) => {
+    if (!element) return "nothing"
+    if (element === grid) return "the grid container itself"
+    const name = element.getAttribute("aria-label") || element.getAttribute("data-e2e") || ""
+    return element.tagName.toLowerCase() + (name ? ' "' + name + '"' : "")
+  }
   return {
     date,
     onDay: Boolean(grid && active && grid.contains(active) && date),
     onGrid: Boolean(grid) && active === grid,
     onReset: Boolean(reset) && active === reset,
-    focused: active
-      ? active.tagName.toLowerCase() + (active.getAttribute("aria-label")
-        ? ' "' + active.getAttribute("aria-label") + '"'
-        : "")
-      : "nothing",
+    focused: describe(active),
     heading: heading ? heading.textContent.trim() : "",
     refused: count && count.textContent.trim() ? Number(count.textContent.trim()) : -1,
     asked: askedFor ? askedFor.textContent.trim() : "",
@@ -1472,7 +1476,8 @@ async function refusedMonthChecks(devtools: Devtools): Promise<void> {
     stagedDown
       ? `from ${beforeDown.date} in ${beforeDown.heading}: the card was asked for ` +
         `${afterDown.asked} and its refusal count went ${beforeDown.refused} → ` +
-        `${afterDown.refused}, the heading stayed ${afterDown.heading || "unreadable"}, and the ` +
+        `${afterDown.refused}, the heading went ${beforeDown.heading} → ` +
+        `${afterDown.heading || "unreadable"}, and the ` +
         `focus is on ${afterDown.date || afterDown.focused}`
       : `the focus was never staged on ${REFUSED_DAY} of the refusing card`,
   )
@@ -1505,7 +1510,8 @@ async function refusedMonthChecks(devtools: Devtools): Promise<void> {
       afterArrow.refused === afterDown.refused,
     afterDown.date === REFUSED_DAY
       ? `${afterDown.date} → Arrow Right → ${afterArrow.date || afterArrow.focused}, wanted ` +
-        `${arrowTarget}; the month is still ${afterArrow.heading || "unreadable"} and nothing ` +
+        `${arrowTarget}; the month went ${afterDown.heading} → ` +
+        `${afterArrow.heading || "unreadable"} and nothing ` +
         `further was asked for (count ${afterArrow.refused})`
       : `the focus was not on ${REFUSED_DAY} after the refusal, so this measures nothing`,
   )
@@ -1540,7 +1546,7 @@ async function refusedMonthChecks(devtools: Devtools): Promise<void> {
       ? `from ${beforeUp.date} in ${beforeUp.heading}: the card was asked for ${afterUp.asked}, ` +
         `its refusal count went ${beforeUp.refused} → ${afterUp.refused}, the focus waited on ` +
         `${probeUp.parked ? "the grid" : probeUp.focused} and came back to ` +
-        `${afterUp.date || afterUp.focused} with the heading still ` +
+        `${afterUp.date || afterUp.focused} with the heading going ${beforeUp.heading} → ` +
         `${afterUp.heading || "unreadable"}`
       : `the focus was never staged on ${REFUSED_DAY} for the Page Up press`,
   )
