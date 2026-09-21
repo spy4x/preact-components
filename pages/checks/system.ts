@@ -653,9 +653,6 @@ const LOCALE_CARD = '#demo-Calendar [data-e2e="calendar-locale"]'
 /** The card whose owner refuses every month change, and the pieces of it its checks read. */
 const REFUSED = '#demo-Calendar [data-e2e="calendar-refused"]'
 const REFUSED_GRID = `${REFUSED} [role="grid"]`
-const REFUSED_HEADING = `${REFUSED} h3`
-const REFUSED_COUNT = `${REFUSED} [data-e2e="calendar-refused-count"]`
-const REFUSED_ASKED = `${REFUSED} [data-e2e="calendar-refused-asked"]`
 /** An ordinary button of that card, outside the calendar: somewhere to move the focus to. */
 const REFUSED_RESET = `${REFUSED} [data-e2e="calendar-refused-reset"]`
 /**
@@ -668,6 +665,12 @@ const REFUSED_RESET = `${REFUSED} [data-e2e="calendar-refused-reset"]`
  * would land on the 10th and fail here. The card gives it slots, so it is a bookable `<button>`.
  */
 const REFUSED_DAY = "2026-03-19"
+
+/** The card whose owner draws the month it was asked for, but a timer later. */
+const LATE = '#demo-Calendar [data-e2e="calendar-late"]'
+const LATE_GRID = `${LATE} [role="grid"]`
+/** The day its checks stand on: the same 19th, and for the same reason. */
+const LATE_DAY = "2026-03-19"
 
 /** The card the lightbox checks drive. */
 const LIGHTBOX = "#demo-ImageLightbox"
@@ -1066,6 +1069,7 @@ async function calendarChecks(devtools: Devtools): Promise<void> {
 
   await localeChecks(devtools)
   await refusedMonthChecks(devtools)
+  await lateMonthChecks(devtools)
 }
 
 /**
@@ -1224,66 +1228,113 @@ async function burstChecks(devtools: Devtools): Promise<void> {
   }
 }
 
-/** Where the focus is on the refusing card, what that card shows, and what it has been asked. */
-interface RefusedState {
+/** Where the focus is on one calendar card, what the card shows, and what it says it was asked. */
+interface CardState {
   /** `data-calendar-date` of the focused element, or `""` when the focus is not on a day. */
   date: string
   /** Whether the focused element is a day cell of *this* card's grid. */
   onDay: boolean
   /** Whether the focus is on the grid container itself — where a pending request parks it. */
   onGrid: boolean
-  /** Whether the focus is on the card's own reset button, which is outside the calendar. */
-  onReset: boolean
+  /** Whether nothing holds the focus: the document body, the root element, or no element at all. */
+  onBody: boolean
   /** What the focused element is, for a failure message. */
   focused: string
-  /** The month heading, e.g. `March 2026`. A refused request may not change it. */
+  /** `data-e2e` of the focused element, or `""` — how a check names a control it moved focus to. */
+  focusedHook: string
+  /** The month heading, e.g. `March 2026`. */
   heading: string
-  /** How many month changes the card says it has refused; `-1` when the count could not be read. */
-  refused: number
-  /** The last month anchor the card was asked for. */
+  /** The one day the grid offers as its Tab stop, which is where Shift-Tab would come back to. */
+  tabStop: string
+  /** The month anchor the card says it was last asked for. */
   asked: string
+  /** The card's own counter; `-1` when it could not be read. */
+  count: number
+  /** One more piece of the card's text, when it has one to read. */
+  extra: string
 }
 
-/** Read {@link RefusedState}. Written to survive every element it names being absent. */
-const REFUSED_STATE = `(() => {
-  const grid = document.querySelector('${REFUSED_GRID}')
-  const heading = document.querySelector('${REFUSED_HEADING}')
-  const count = document.querySelector('${REFUSED_COUNT}')
-  const askedFor = document.querySelector('${REFUSED_ASKED}')
-  const reset = document.querySelector('${REFUSED_RESET}')
-  const active = document.activeElement
-  const date = active && active.getAttribute ? (active.getAttribute("data-calendar-date") || "") : ""
-  // Named rather than tagged, because "the focus is on div" is the one failure this file exists to
-  // report and a reader should not have to work out which div that is.
-  const describe = (element) => {
-    if (!element) return "nothing"
-    if (element === grid) return "the grid container itself"
-    const name = element.getAttribute("aria-label") || element.getAttribute("data-e2e") || ""
-    return element.tagName.toLowerCase() + (name ? ' "' + name + '"' : "")
-  }
-  return {
-    date,
-    onDay: Boolean(grid && active && grid.contains(active) && date),
-    onGrid: Boolean(grid) && active === grid,
-    onReset: Boolean(reset) && active === reset,
-    focused: describe(active),
-    heading: heading ? heading.textContent.trim() : "",
-    refused: count && count.textContent.trim() ? Number(count.textContent.trim()) : -1,
-    asked: askedFor ? askedFor.textContent.trim() : "",
-  }
-})()`
-
 /** A reading that says "nothing could be read", so a check built on it fails rather than passes. */
-const NO_REFUSED: RefusedState = {
+const NO_CARD: CardState = {
   date: "",
   onDay: false,
   onGrid: false,
-  onReset: false,
+  onBody: false,
   focused: "the page could not be read",
+  focusedHook: "",
   heading: "",
-  refused: -1,
+  tabStop: "",
   asked: "",
+  count: -1,
+  extra: "",
 }
+
+/**
+ * Build the expression that reads {@link CardState} for one card.
+ *
+ * Written to survive every element it names being absent: a card that is not on the page reads back
+ * as {@link NO_CARD} rather than throwing, because a throw here costs every later check in this
+ * file rather than the one that was looking for the card.
+ *
+ * @param card Selector of the card's wrapper.
+ * @param hooks `data-e2e` names of the card's own text, inside that wrapper: the month it was asked
+ *              for, its counter, and optionally one more piece.
+ */
+function cardState(
+  card: string,
+  hooks: { asked: string; count: string; extra?: string },
+): string {
+  return `(() => {
+    const card = document.querySelector('${card}')
+    const grid = card ? card.querySelector('[role="grid"]') : null
+    const heading = card ? card.querySelector('h3') : null
+    const stop = grid ? grid.querySelector('[data-calendar-date][tabindex="0"]') : null
+    const active = document.activeElement
+    const text = (hook) => {
+      const node = hook && card ? card.querySelector('[data-e2e="' + hook + '"]') : null
+      return node ? node.textContent.trim() : ""
+    }
+    const date = active && active.getAttribute
+      ? (active.getAttribute("data-calendar-date") || "")
+      : ""
+    // Named rather than tagged, because "the focus is on div" is the one failure this file exists
+    // to report and a reader should not have to work out which div that is.
+    const describe = (element) => {
+      if (!element) return "nothing"
+      if (element === grid) return "the grid container itself"
+      if (element === document.body) return "the document body — nothing holds the focus"
+      const name = element.getAttribute("aria-label") || element.getAttribute("data-e2e") || ""
+      return element.tagName.toLowerCase() + (name ? ' "' + name + '"' : "")
+    }
+    const counted = text(${JSON.stringify(hooks.count)})
+    return {
+      date,
+      onDay: Boolean(grid && active && grid.contains(active) && date),
+      onGrid: Boolean(grid) && active === grid,
+      onBody: !active || active === document.body || active === document.documentElement,
+      focused: describe(active),
+      focusedHook: active && active.getAttribute ? (active.getAttribute("data-e2e") || "") : "",
+      heading: heading ? heading.textContent.trim() : "",
+      tabStop: stop ? stop.getAttribute("data-calendar-date") : "",
+      asked: text(${JSON.stringify(hooks.asked)}),
+      count: counted ? Number(counted) : -1,
+      extra: text(${JSON.stringify(hooks.extra ?? "")}),
+    }
+  })()`
+}
+
+/** The refusing card's reading. */
+const REFUSED_STATE = cardState(REFUSED, {
+  asked: "calendar-refused-asked",
+  count: "calendar-refused-count",
+})
+
+/** The late-answering card's reading; `count` is how many answers it has drawn. */
+const LATE_STATE = cardState(LATE, {
+  asked: "calendar-late-asked",
+  count: "calendar-late-answered",
+  extra: "calendar-late-month",
+})
 
 /** What the recorder below saw at the end of the key dispatch it was armed for. */
 interface RefusalProbe {
@@ -1303,8 +1354,25 @@ const NO_PROBE: RefusalProbe = {
   ran: false,
   from: "",
   parked: false,
-  focused: "the page could not be read",
+  focused: "no probe was armed, so nothing was recorded",
   movedTo: "",
+}
+
+/**
+ * Read what the probe recorded, or a reading that fails every check built on it.
+ *
+ * The fallback is inlined into the expression rather than left to {@link read}, and the difference
+ * is not cosmetic: `read` substitutes its fallback only when the *page* throws, and an unset global
+ * does not throw — it evaluates to `undefined`, which arrives here as `undefined` and makes the
+ * very next property access throw on this side instead. That throw costs the rest of this
+ * package's block, which is the same cost a missing card should report as one failed check.
+ */
+function readProbe(devtools: Devtools): Promise<RefusalProbe> {
+  return read(
+    devtools,
+    `globalThis.__calendarRefusal ?? ${JSON.stringify(NO_PROBE)}`,
+    NO_PROBE,
+  )
 }
 
 /**
@@ -1332,6 +1400,11 @@ function armRefusalProbe(devtools: Devtools, moveTo: string): Promise<boolean> {
   return read(
     devtools,
     `(() => {
+      // Arming twice must not leave two listeners on the page. The press a probe is armed for is
+      // sometimes the very press that never arrives — that is the failure these checks report —
+      // so the listener cannot be trusted to remove itself, and the previous one is taken off here
+      // before another goes on.
+      if (globalThis.__calendarRefusalOff) globalThis.__calendarRefusalOff()
       const grid = document.querySelector('${REFUSED_GRID}')
       if (!grid) return false
       const move = ${JSON.stringify(moveTo)}
@@ -1359,6 +1432,21 @@ function armRefusalProbe(devtools: Devtools, moveTo: string): Promise<boolean> {
         }
       }
       grid.addEventListener("keydown", listener)
+      globalThis.__calendarRefusalOff = () => grid.removeEventListener("keydown", listener)
+      return true
+    })()`,
+    false,
+  )
+}
+
+/** Take any armed probe off the page, listener and globals both. */
+function disarmRefusalProbe(devtools: Devtools): Promise<boolean> {
+  return read(
+    devtools,
+    `(() => {
+      if (globalThis.__calendarRefusalOff) globalThis.__calendarRefusalOff()
+      delete globalThis.__calendarRefusalOff
+      delete globalThis.__calendarRefusal
       return true
     })()`,
     false,
@@ -1366,7 +1454,7 @@ function armRefusalProbe(devtools: Devtools, moveTo: string): Promise<boolean> {
 }
 
 /**
- * Put the focus on one day of the refusing card and wait for the render that follows.
+ * Put the focus on one day of a card's grid and wait for the render that follows.
  *
  * The wait is not decoration. Focusing a cell tells the component where the reader is through the
  * cell's own `focus` handler, and the cursor every key press counts from is reconciled during the
@@ -1375,14 +1463,15 @@ function armRefusalProbe(devtools: Devtools, moveTo: string): Promise<boolean> {
  * through no fault of the component.
  *
  * @param devtools The connected session.
+ * @param grid Selector of the grid to stand in.
  * @param date The day to stand on, `YYYY-MM-DD`.
  * @returns Whether the focus landed there and the grid agreed it is now the Tab stop.
  */
-async function standOnRefusedDay(devtools: Devtools, date: string): Promise<boolean> {
+async function standOnDay(devtools: Devtools, grid: string, date: string): Promise<boolean> {
   const landed = await read(
     devtools,
     `(() => {
-      const cell = document.querySelector('${REFUSED_GRID} [data-calendar-date="${date}"]')
+      const cell = document.querySelector('${grid} [data-calendar-date="${date}"]')
       if (!cell) return false
       cell.focus()
       return document.activeElement === cell
@@ -1394,12 +1483,28 @@ async function standOnRefusedDay(devtools: Devtools, date: string): Promise<bool
     () =>
       read(
         devtools,
-        `document.querySelector('${REFUSED_GRID} [data-calendar-date="${date}"]')` +
+        `document.querySelector('${grid} [data-calendar-date="${date}"]')` +
           `?.getAttribute("tabindex") === "0"`,
         false,
       ),
     3_000,
   )
+}
+
+/** Put the card in the middle of the viewport and let the smooth scroll finish. */
+async function frameCard(devtools: Devtools, card: string): Promise<boolean> {
+  const framed = await read(
+    devtools,
+    `(() => {
+      const card = document.querySelector('${card}')
+      if (!card) return false
+      card.scrollIntoView({ block: "center", behavior: "instant" })
+      return true
+    })()`,
+    false,
+  )
+  await settleScroll(devtools)
+  return framed
 }
 
 /**
@@ -1432,22 +1537,11 @@ async function standOnRefusedDay(devtools: Devtools, date: string): Promise<bool
  * @param devtools The connected session, on a hydrated page.
  */
 async function refusedMonthChecks(devtools: Devtools): Promise<void> {
-  // Put the card in the middle of the viewport and let the smooth scroll finish, so that no
-  // reading below is taken of a page still moving.
-  const framed = await read(
-    devtools,
-    `(() => {
-      const card = document.querySelector('${REFUSED}')
-      if (!card) return false
-      card.scrollIntoView({ block: "center", behavior: "instant" })
-      return true
-    })()`,
-    false,
-  )
-  await settleScroll(devtools)
+  // Nothing below may be read off a page that is still scrolling.
+  const framed = await frameCard(devtools, REFUSED)
 
-  const stagedDown = framed && await standOnRefusedDay(devtools, REFUSED_DAY)
-  const beforeDown = await read(devtools, REFUSED_STATE, NO_REFUSED)
+  const stagedDown = framed && await standOnDay(devtools, REFUSED_GRID, REFUSED_DAY)
+  const beforeDown = await read(devtools, REFUSED_STATE, NO_CARD)
   await armRefusalProbe(devtools, "")
   await pressKey(devtools, "PageDown")
   // The whole transition in one predicate: the count has risen *and* the focus is back on the day.
@@ -1457,26 +1551,26 @@ async function refusedMonthChecks(devtools: Devtools): Promise<void> {
     () =>
       read(
         devtools,
-        `(() => { const state = ${REFUSED_STATE}; return state.refused === ${
-          beforeDown.refused + 1
+        `(() => { const state = ${REFUSED_STATE}; return state.count === ${
+          beforeDown.count + 1
         } && state.date === ${JSON.stringify(REFUSED_DAY)} })()`,
         false,
       ),
     3_000,
   )
-  const afterDown = await read(devtools, REFUSED_STATE, NO_REFUSED)
-  const probeDown = await read(devtools, "globalThis.__calendarRefusal", NO_PROBE)
+  const afterDown = await read(devtools, REFUSED_STATE, NO_CARD)
+  const probeDown = await readProbe(devtools)
 
   check(
     "a month change the owner refuses leaves Page Down's focus on the day it was pressed on",
     stagedDown && beforeDown.date === REFUSED_DAY && beforeDown.heading !== "" &&
-      beforeDown.refused >= 0 && afterDown.refused === beforeDown.refused + 1 &&
+      beforeDown.count >= 0 && afterDown.count === beforeDown.count + 1 &&
       afterDown.asked === "2026-04-01" && afterDown.heading === beforeDown.heading &&
       afterDown.onDay && afterDown.date === REFUSED_DAY,
     stagedDown
       ? `from ${beforeDown.date} in ${beforeDown.heading}: the card was asked for ` +
-        `${afterDown.asked} and its refusal count went ${beforeDown.refused} → ` +
-        `${afterDown.refused}, the heading went ${beforeDown.heading} → ` +
+        `${afterDown.asked} and its refusal count went ${beforeDown.count} → ` +
+        `${afterDown.count}, the heading went ${beforeDown.heading} → ` +
         `${afterDown.heading || "unreadable"}, and the ` +
         `focus is on ${afterDown.date || afterDown.focused}`
       : `the focus was never staged on ${REFUSED_DAY} of the refusing card`,
@@ -1501,50 +1595,50 @@ async function refusedMonthChecks(devtools: Devtools): Promise<void> {
     () => read(devtools, `${REFUSED_STATE}.date === ${JSON.stringify(arrowTarget)}`, false),
     3_000,
   )
-  const afterArrow = await read(devtools, REFUSED_STATE, NO_REFUSED)
+  const afterArrow = await read(devtools, REFUSED_STATE, NO_CARD)
 
   check(
     "the next arrow press after a refused month counts from the day the focus went back to",
     afterDown.date === REFUSED_DAY && afterArrow.onDay && afterArrow.date === arrowTarget &&
       afterArrow.heading === beforeDown.heading &&
-      afterArrow.refused === afterDown.refused,
+      afterArrow.count === afterDown.count,
     afterDown.date === REFUSED_DAY
       ? `${afterDown.date} → Arrow Right → ${afterArrow.date || afterArrow.focused}, wanted ` +
         `${arrowTarget}; the month went ${afterDown.heading} → ` +
         `${afterArrow.heading || "unreadable"} and nothing ` +
-        `further was asked for (count ${afterArrow.refused})`
+        `further was asked for (count ${afterArrow.count})`
       : `the focus was not on ${REFUSED_DAY} after the refusal, so this measures nothing`,
   )
 
   // The second month-crossing key, so the rule is not held by one input. Page Up goes the other
   // way and is refused the same way.
-  const stagedUp = await standOnRefusedDay(devtools, REFUSED_DAY)
-  const beforeUp = await read(devtools, REFUSED_STATE, NO_REFUSED)
+  const stagedUp = await standOnDay(devtools, REFUSED_GRID, REFUSED_DAY)
+  const beforeUp = await read(devtools, REFUSED_STATE, NO_CARD)
   await armRefusalProbe(devtools, "")
   await pressKey(devtools, "PageUp")
   await poll(
     () =>
       read(
         devtools,
-        `(() => { const state = ${REFUSED_STATE}; return state.refused === ${
-          beforeUp.refused + 1
+        `(() => { const state = ${REFUSED_STATE}; return state.count === ${
+          beforeUp.count + 1
         } && state.date === ${JSON.stringify(REFUSED_DAY)} })()`,
         false,
       ),
     3_000,
   )
-  const afterUp = await read(devtools, REFUSED_STATE, NO_REFUSED)
-  const probeUp = await read(devtools, "globalThis.__calendarRefusal", NO_PROBE)
+  const afterUp = await read(devtools, REFUSED_STATE, NO_CARD)
+  const probeUp = await readProbe(devtools)
 
   check(
     "a refused Page Up leaves the focus on its day too, so the rule is not one key's",
-    stagedUp && beforeUp.date === REFUSED_DAY && beforeUp.refused >= 0 &&
-      probeUp.ran && probeUp.parked && afterUp.refused === beforeUp.refused + 1 &&
+    stagedUp && beforeUp.date === REFUSED_DAY && beforeUp.count >= 0 &&
+      probeUp.ran && probeUp.parked && afterUp.count === beforeUp.count + 1 &&
       afterUp.asked === "2026-02-01" && afterUp.heading === beforeUp.heading &&
       afterUp.onDay && afterUp.date === REFUSED_DAY,
     stagedUp
       ? `from ${beforeUp.date} in ${beforeUp.heading}: the card was asked for ${afterUp.asked}, ` +
-        `its refusal count went ${beforeUp.refused} → ${afterUp.refused}, the focus waited on ` +
+        `its refusal count went ${beforeUp.count} → ${afterUp.count}, the focus waited on ` +
         `${probeUp.parked ? "the grid" : probeUp.focused} and came back to ` +
         `${afterUp.date || afterUp.focused} with the heading going ${beforeUp.heading} → ` +
         `${afterUp.heading || "unreadable"}`
@@ -1555,35 +1649,147 @@ async function refusedMonthChecks(devtools: Devtools): Promise<void> {
   // be. The recorder moves the focus to a button outside the calendar in the same dispatch as the
   // press, which is what a reader pressing Tab while the request is outstanding does, and the
   // calendar has to leave it there.
-  const stagedOut = await standOnRefusedDay(devtools, REFUSED_DAY)
-  const beforeOut = await read(devtools, REFUSED_STATE, NO_REFUSED)
+  const stagedOut = await standOnDay(devtools, REFUSED_GRID, REFUSED_DAY)
+  const beforeOut = await read(devtools, REFUSED_STATE, NO_CARD)
   await armRefusalProbe(devtools, REFUSED_RESET)
   await pressKey(devtools, "PageDown")
   const askedOut = await poll(
-    () => read(devtools, `${REFUSED_STATE}.refused === ${beforeOut.refused + 1}`, false),
+    () => read(devtools, `${REFUSED_STATE}.count === ${beforeOut.count + 1}`, false),
     3_000,
   )
   // A full second of asking whether the focus ever comes back to a day. A pass spends all of it;
   // a component that pulls the focus back answers within a frame and this returns early.
   const pulledBack = await poll(() => read(devtools, `${REFUSED_STATE}.onDay`, false), 1_000)
-  const afterOut = await read(devtools, REFUSED_STATE, NO_REFUSED)
-  const probeOut = await read(devtools, "globalThis.__calendarRefusal", NO_PROBE)
+  const afterOut = await read(devtools, REFUSED_STATE, NO_CARD)
+  const probeOut = await readProbe(devtools)
 
   check(
     "a refusal does not take the focus back from a control the reader moved it to",
     stagedOut && beforeOut.date === REFUSED_DAY && probeOut.ran && probeOut.parked &&
       probeOut.movedTo === "calendar-refused-reset" && askedOut && !pulledBack &&
-      afterOut.onReset && !afterOut.onDay && afterOut.date === "",
+      afterOut.focusedHook === "calendar-refused-reset" && !afterOut.onDay && afterOut.date === "",
     stagedOut && probeOut.ran
       ? `Page Down on ${beforeOut.date} parked the focus on ` +
         `${probeOut.parked ? "the grid" : probeOut.focused}, the same dispatch moved it to ` +
-        `${probeOut.movedTo || "nowhere"}, the card's refusal count went ${beforeOut.refused} → ` +
-        `${afterOut.refused}, and a second later the focus is on ${afterOut.focused} — ` +
+        `${probeOut.movedTo || "nowhere"}, the card's refusal count went ${beforeOut.count} → ` +
+        `${afterOut.count}, and a second later the focus is on ${afterOut.focused} — ` +
         `${pulledBack ? "it was pulled back onto a day" : "not pulled back onto a day"}`
       : stagedOut
       ? "no Page Down reached the refusing card's grid"
       : `the focus was never staged on ${REFUSED_DAY} for the move-away press`,
   )
+
+  // The other half of "the reader keeps their place", and the only half a check can isolate. Where
+  // the focus goes back is proved above; where the grid's *Tab stop* goes back to can only be seen
+  // on this path, because everywhere else the restoring focus call fires the cell's own `focus`
+  // handler, which sets the Tab stop as a side effect and hides whether the refusal branch set it.
+  // Here the focus is elsewhere, nothing else touches it, and the Tab stop is what a reader
+  // pressing Shift-Tab back into this calendar would land on: the day they pressed from, not the
+  // day the grid falls back to when it has no request to honour.
+  check(
+    "a refusal the reader has walked away from still puts the grid's Tab stop on their day",
+    stagedOut && beforeOut.tabStop === REFUSED_DAY && askedOut &&
+      afterOut.focusedHook === "calendar-refused-reset" && afterOut.tabStop === REFUSED_DAY,
+    stagedOut
+      ? `with the focus moved to ${afterOut.focusedHook || "nowhere"} during the request, the ` +
+        `grid's one Tab stop went ${beforeOut.tabStop || "nowhere"} → ` +
+        `${afterOut.tabStop || "nowhere"}; the day the grid falls back to on its own is ` +
+        `2026-03-10, the card's today`
+      : `the focus was never staged on ${REFUSED_DAY} for the move-away press`,
+  )
+
+  // Leave no listener and no global behind: the probe is armed for a press that sometimes never
+  // arrives, which is the one case its own listener cannot clean up after.
+  await disarmRefusalProbe(devtools)
+}
+
+/**
+ * What an owner that draws the month it was asked for, but later, does to the reader's place.
+ *
+ * This is the case the refusal handling above creates and has to finish. A refusal can only be
+ * judged by the render that follows the call, so an owner that checks or fetches before it answers
+ * — `onSelectMonth: async (month) => { await load(month); setMonth(month) }`, an ordinary thing to
+ * write — is read as a refusal first and the reader is put back on their day. The month that then
+ * arrives replaces that very cell, and without the dropped request being kept and honoured the
+ * focus falls to the document body, where no key reaches the grid at all: worse than the defect
+ * this pull request set out to fix, which at least left the focus on a grid that still answered
+ * keys.
+ *
+ * The card's owner is a timer rather than a fetch, so the wait is bounded and the page needs no
+ * network, and its two counters say what was asked and what was drawn — without them "the focus is
+ * on 19 April" would be just as true of an owner that answered at once, which is not what is being
+ * measured.
+ *
+ * The arrow press at the end is not a flourish. It is what says the cursor and the focus agree
+ * about the new month: a focus moved to 19 April while the cursor stayed on 19 March would answer
+ * Arrow Right with 20 March, and the reader would be thrown back a month.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function lateMonthChecks(devtools: Devtools): Promise<void> {
+  const framed = await frameCard(devtools, LATE)
+  const staged = framed && await standOnDay(devtools, LATE_GRID, LATE_DAY)
+  const before = await read(devtools, LATE_STATE, NO_CARD)
+
+  const wanted = `2026-04-${LATE_DAY.slice(8, 10)}`
+  await pressKey(devtools, "PageDown")
+  // The whole transition in one predicate: the owner has drawn one more answer *and* the focus is
+  // on the day the press asked for. Polling on the count alone would read the page between the
+  // month arriving and the effect that follows the focus to it.
+  await poll(
+    () =>
+      read(
+        devtools,
+        `(() => { const state = ${LATE_STATE}; return state.count === ${
+          before.count + 1
+        } && state.date === ${JSON.stringify(wanted)} })()`,
+        false,
+      ),
+    5_000,
+  )
+  const after = await read(devtools, LATE_STATE, NO_CARD)
+
+  check(
+    "an owner that draws the month a moment late still lands the focus on the day asked for",
+    staged && before.date === LATE_DAY && before.heading !== "" && before.count >= 0 &&
+      after.count === before.count + 1 && after.asked === "2026-04-01" &&
+      after.extra === "2026-04-01" && after.heading !== before.heading &&
+      after.onDay && !after.onBody && !after.onGrid && after.date === wanted,
+    staged
+      ? `from ${before.date} in ${before.heading}: the card was asked for ${after.asked}, its ` +
+        `count of answers drawn went ${before.count} → ${after.count} and it is showing ` +
+        `${after.extra || "nothing"}; the heading went ${before.heading} → ` +
+        `${after.heading || "unreadable"} and the focus is on ${after.date || after.focused}, ` +
+        `wanted ${wanted}`
+      : `the focus was never staged on ${LATE_DAY} of the late-answering card`,
+  )
+
+  const arrowTarget = dayAfter(wanted, 1)
+  await pressKey(devtools, "ArrowRight")
+  await poll(
+    () => read(devtools, `${LATE_STATE}.date === ${JSON.stringify(arrowTarget)}`, false),
+    3_000,
+  )
+  const afterArrow = await read(devtools, LATE_STATE, NO_CARD)
+
+  check(
+    "the arrow keys count from the new month once a late answer has been honoured",
+    after.date === wanted && afterArrow.onDay && afterArrow.date === arrowTarget &&
+      afterArrow.heading === after.heading,
+    after.date === wanted
+      ? `${after.date} → Arrow Right → ${afterArrow.date || afterArrow.focused} in ` +
+        `${afterArrow.heading || "no month"}, wanted ${arrowTarget}`
+      : `the focus was not on ${wanted} after the late answer, so this measures nothing`,
+  )
+
+  // Back to the month the card started on, with nothing asserted on it, so a later run of this
+  // file finds the card where it left it.
+  await read(
+    devtools,
+    `(document.querySelector('${LATE} button[aria-label^="Previous month"]')?.click(), true)`,
+    false,
+  )
+  await poll(() => read(devtools, `${LATE_STATE}.extra === "2026-03-01"`, false), 5_000)
 }
 
 /**
