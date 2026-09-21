@@ -104,7 +104,7 @@ function LiveFilters() {
           ?status=open&page=2
         </Link>
         <Link href="?" data-e2e="url-filters-link-none" class={CONTROL}>
-          ?
+          ? (no filters)
         </Link>
       </div>
 
