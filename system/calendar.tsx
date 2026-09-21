@@ -410,9 +410,11 @@ export function Calendar(
   }
 
   const onKeyDown = (event: KeyboardEvent) => {
-    // Every key below counts from here and never from the render. Two of the three things that
-    // depend on it are held by a check; this one is not, and a reader editing this handler should
-    // know which is which. A burst of key presses cannot tell the cursor from the rendered day,
+    // Every key below counts from here and never from the render. Which of the reads that depend
+    // on this cursor a check actually holds is worth knowing before editing the handler, and each
+    // one says so where it is written: the month `requestMonth` asks for is held, and so is the day
+    // a refused request goes back to; the month guard inside `moveTo` is not, and neither is this
+    // handler's own count. A burst of key presses cannot tell the cursor from the rendered day,
     // because each press arrives as its own protocol message and the page renders in between, so
     // the two agree by the time any press reads them. The month arrows are the exception — two
     // activations really can land before a render, and `pages/checks/system.ts` sends them.
