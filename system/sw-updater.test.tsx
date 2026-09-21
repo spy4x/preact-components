@@ -362,19 +362,30 @@ describe("reloadOnControllerChange", () => {
   })
 })
 
+/** The whole markup of a component with nothing to say: one empty, unstyled live region. */
+const EMPTY_REGION = `<div role="status" aria-live="polite" aria-atomic="true"></div>`
+
 describe("SWUpdater", () => {
-  it("renders nothing before an update exists", () => {
-    expect(render(<SWUpdater />)).toBe("")
+  it("renders an empty live region, and nothing else, before an update exists", () => {
+    // The equality is the assertion, character for character, and each part of it is load-bearing.
+    // The region has to be there — a region created together with its first message is commonly
+    // not announced at all. It has to be empty, or there is no change for a reader to hear. It
+    // carries `role="status"`, `aria-live="polite"` and `aria-atomic="true"`, so the whole sentence
+    // is announced politely rather than one changed text node. And it carries no `class` and no
+    // `style`, so a host page that mounts this in its layout gets no box, no border and no gap.
+    expect(render(<SWUpdater />)).toBe(EMPTY_REGION)
   })
 
-  it("registers nothing when it is rendered on a server", () => {
+  it("keeps the live region, and only the region, when it is rendered on a server", () => {
     // Server rendering runs no effect, which is exactly what makes the component safe to mount in
     // a layout: the container it was handed is never touched, so nothing is registered and no
-    // listener outlives the render.
+    // listener outlives the render. The region still has to reach the server-rendered markup,
+    // because being in the page *before* anything can be said is the entire point of it; the
+    // message must not, because nothing has happened yet.
     const container = recordingContainer(new FakeRegistration())
 
     expect(render(<SWUpdater container={container} message="Reload for the new version" />))
-      .toBe("")
+      .toBe(EMPTY_REGION)
     expect(container.calls).toEqual([])
   })
 })
