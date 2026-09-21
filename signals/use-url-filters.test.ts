@@ -1,13 +1,14 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import {
+  clearFilterFields,
   type FilterField,
   filterSearch,
   filterWrite,
   resolveFilterValue,
   shouldPersistFilter,
 } from "./use-url-filters.ts"
-import { signal } from "@preact/signals"
+import { effect, signal } from "@preact/signals"
 
 function stringField(urlParam: string, initialValue: string): FilterField<string> {
   return { signal: signal(initialValue), urlParam, initialValue }
@@ -162,5 +163,47 @@ describe("filterSearch", () => {
     // same answer as one handing over the router's own `?`-less string.
     expect(filterSearch("?status=open", [{ urlParam: "page", value: "2" }]))
       .toBe("status=open&page=2")
+  })
+})
+
+describe("clearFilterFields", () => {
+  it("takes every field back to its default", () => {
+    const fields = {
+      status: stringField("status", "all"),
+      page: numberField("page", 1),
+    }
+    fields.status.signal.value = "active"
+    fields.page.signal.value = 7
+
+    clearFilterFields(fields)
+
+    expect(fields.status.signal.value).toBe("all")
+    expect(fields.page.signal.value).toBe(1)
+  })
+
+  it("clears every field as one change, not one change per field", () => {
+    // What the hook does with this: one change is one write to the address, so one press of Back
+    // undoes a clear. Preact's signals adapter batches writes made inside an event handler, so a
+    // clear driven by a button looks the same either way — this is the path an application takes
+    // when it clears from a timer or after a request, where nothing else is batching.
+    const fields = {
+      status: stringField("status", "all"),
+      page: numberField("page", 1),
+    }
+    fields.status.signal.value = "active"
+    fields.page.signal.value = 7
+
+    let runs = 0
+    const stop = effect(() => {
+      fields.status.signal.value
+      fields.page.signal.value
+      runs++
+    })
+    const before = runs
+
+    clearFilterFields(fields)
+    stop()
+
+    expect(runs - before).toBe(1)
   })
 })

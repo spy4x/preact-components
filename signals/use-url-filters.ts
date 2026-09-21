@@ -90,6 +90,26 @@ export function filterWrite<T>(field: FilterField<T>, value: T): FilterWrite {
 }
 
 /**
+ * Take every field back to its default, as **one** change.
+ *
+ * The `batch` is the point. Preact's signals adapter already batches writes made inside an event
+ * handler, so a clear driven by a button behaves this way with or without it — measured on the
+ * Pages demo: one `pushState` either way. An application that clears from a timer, or after a
+ * request comes back, is outside that adapter's reach, and there each field would be a change of
+ * its own: a write per field, a history entry per field, and a reader who has to press Back once
+ * per filter to undo one clear. `use-url-filters.test.ts` is where that is held.
+ *
+ * @param fields The fields to reset.
+ */
+export function clearFilterFields<T extends Record<string, FilterField>>(fields: T): void {
+  batch(() => {
+    for (const field of Object.values(fields)) {
+      field.signal.value = field.initialValue
+    }
+  })
+}
+
+/**
  * The query string a set of filter values implies, starting from the one the address already has.
  *
  * Three rules live here, and they are the whole of what a write does — which is why this is a
@@ -229,15 +249,7 @@ export function useUrlFilters<T extends Record<string, FilterField>>(fields: T):
     setSearchParams(new URLSearchParams(next))
   })
 
-  // One `batch`, so the effect above runs once and clearing costs the reader one history entry
-  // rather than one per field that was set.
-  const clearFilters = (): void => {
-    batch(() => {
-      for (const field of Object.values(fields)) {
-        field.signal.value = field.initialValue
-      }
-    })
-  }
+  const clearFilters = (): void => clearFilterFields(fields)
 
   return {
     filters: Object.fromEntries(

@@ -257,12 +257,15 @@ some other way.
   fragment, so a fragment-routed page loses its route when a filter changes. Arriving, reading and
   remounting do not.
 - **One address change costs one history entry**, in either direction, so one press of Back moves
-  the reader once. `clearFilters` batches its writes, so clearing is one entry rather than one per
-  field.
+  the reader once. `clearFilters` batches its writes through `clearFilterFields`, so clearing is one
+  change rather than one per field. Preact's signals adapter batches writes inside an event handler
+  anyway, so a clear driven by a button looks the same either way; the batch is what covers an
+  application clearing from a timer or after a request.
 - **`useUrlFilters` needs a DOM and a wouter router**, so what can be tested here is what it does to
-  a query string: `resolveFilterValue`, `shouldPersistFilter`, `filterWrite` and `filterSearch` —
-  the last two hold the rules for dropping a default, carrying a parameter the filters do not own,
-  and answering with the same string when nothing changed. The binding itself is an effect, and no
+  a query string: `resolveFilterValue`, `shouldPersistFilter`, `filterWrite`, `filterSearch` and
+  `clearFilterFields` — which between them hold the rules for dropping a default, carrying a
+  parameter the filters do not own, answering with the same string when nothing changed, and
+  clearing as one change. The binding itself is an effect, and no
   test in this repository runs one: it is proven in a real browser by `pages/checks/signals.ts`,
   which drives a demo on the Pages host and asserts the filters change from one value to another as
   the address changes — including the history entry each change costs, an address the hook would

@@ -503,6 +503,10 @@ async function writeChecks(devtools: Devtools, before: FilterState): Promise<Fil
     `clicked clear on ${kept.search}: status ${kept.status} → ${cleared.status}, page ` +
       `${kept.page} → ${cleared.page}, address ${cleared.search}`,
   )
+  // This one passes with or without `clearFilterFields`'s `batch`, because Preact's signals adapter
+  // batches writes made inside an event handler and this clear is a click. What the batch covers is
+  // an application clearing from a timer or after a request, which no control here can reach;
+  // `signals/use-url-filters.test.ts` holds that, and goes red when the batch is removed.
   check(
     "clearing several filters at once costs one history entry, not one for each",
     cleared.entries - kept.entries === 1,
