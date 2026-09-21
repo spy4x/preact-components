@@ -2025,6 +2025,41 @@ describe("buildModelStore across a reset", () => {
     expect(answer.result?.name).toBe("Renamed")
   })
 
+  it("applies the answer to an update issued from inside onReset", async () => {
+    const { impl, pending } = deferredFetch()
+    const toast = toastRecorder()
+    let issued: Promise<unknown> | null = null
+    // Reloading what the new session needs is the ordinary thing an application does from here, so
+    // a request made in `onReset` belongs to the session starting rather than to the one just left.
+    // The generation is raised on the first line of `reset()`, before the slices are cleared and
+    // before this runs, which is what makes that true. Move the raise below them — into a `finally`
+    // around the body, say — and this request is made in the old generation and disowned when it
+    // answers: the list stays as the new session loaded it and the flag raised here is left up with
+    // nothing that can lower it. Nothing else in this file notices that move.
+    // Annotated rather than inferred: `onReset` reads `store`, and inference cannot resolve a type
+    // that refers to the value being declared.
+    const store: ReturnType<typeof buildStore> = buildStore({
+      fetch: impl,
+      toast: toast.port,
+      onReset: () => {
+        issued = store.update(1, { name: "Reloaded" })
+      },
+    })
+    await store.onWs([row(1, "First tenant zone")], RemoteEvent.LIST)
+
+    store.reset()
+    await store.onWs([row(1, "Second tenant zone")], RemoteEvent.LIST)
+    expect(store.op.update(1).value?.inProgress).toBe(true)
+
+    pending[0].settle(Response.json(row(1, "Reloaded")))
+    await issued
+
+    expect(store.state.value.list.map((r) => r.name)).toEqual(["Reloaded"])
+    expect(store.op.update(1).value?.inProgress).toBe(false)
+    expect(store.op.update(1).value?.result?.name).toBe("Reloaded")
+    expect(toast.messages).toEqual([{ body: "zone was updated" }])
+  })
+
   it("two creates either side of a reset, old answered first, leave the new one in flight", async () => {
     const { impl, pending } = deferredFetch()
     const toast = toastRecorder()
