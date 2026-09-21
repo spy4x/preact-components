@@ -89,8 +89,11 @@ function rng(seed: number): () => number {
 function planCase(seed: number): { ids: number[]; requests: Planned[]; order: number[] } {
   const next = rng(seed)
   const pick = <T>(items: readonly T[]): T => items[Math.floor(next() * items.length)]
+  // Drawn once. Redrawing the bound on every pass would stop the loop as soon as it came up short,
+  // which makes four-row cases rare and hides anything that only shows with four rows in flight.
+  const rowCount = 1 + Math.floor(next() * 4)
   const ids: number[] = []
-  while (ids.length < 1 + Math.floor(next() * 4)) {
+  while (ids.length < rowCount) {
     const id = 1 + Math.floor(next() * 100_000)
     if (!ids.includes(id)) ids.push(id)
   }
