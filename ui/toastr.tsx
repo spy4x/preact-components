@@ -11,7 +11,11 @@ export interface ToastItem {
   /** Defaults to `"info"`. */
   type?: ToastVariant
   /**
-   * Auto-dismiss delay in milliseconds. `0` keeps the toast until it is dismissed. Defaults to 5000.
+   * Auto-dismiss delay in milliseconds. `0` keeps the toast until it is dismissed. Defaults to
+   * {@link defaultToastDuration}, which is 5000.
+   *
+   * `createToastStore` in `@preact-components/signals` writes this same field, under this same
+   * name, so a store entry can be handed straight to this component.
    *
    * Changing it for a toast that is already on screen restarts that toast's budget at the new
    * value, which is how a caller extends one: a toast pushed for 1200ms and given 2500ms half a
@@ -30,9 +34,20 @@ export interface ToastItem {
 }
 
 export interface ToastrProps {
-  /** Current toast stack, newest first. Owned by the caller. */
+  /**
+   * Current toast stack, rendered top to bottom in the order given. Owned by the caller — this
+   * component never adds to it or reorders it.
+   *
+   * `createToastStore`'s `list` appends the newest toast last, so the documented wiring reads
+   * oldest at the top; a caller that wants the newest first hands over a reversed copy.
+   */
   toasts: ToastItem[]
-  /** Injected dismiss port; also called by the auto-dismiss timer. */
+  /**
+   * Injected dismiss port; also called by the auto-dismiss timer this component runs.
+   *
+   * Takes `string | number` because {@link ToastItem.id} does. A store whose ids are strings —
+   * `createToastStore` is one — is wired with `onDismiss={(id) => store.remove(String(id))}`.
+   */
   onDismiss: (id: string | number) => void
   /** Accessible name of the stack. Defaults to `"Notifications"`. */
   label?: string
@@ -56,7 +71,32 @@ const variantClasses: Record<ToastVariant, string> = {
   warning: "bg-yellow-700",
 }
 
-const defaultDuration = 5000
+/**
+ * How long a toast that names no duration of its own stays, in milliseconds.
+ *
+ * The only auto-dismiss default in the library. `createToastStore` in
+ * `@preact-components/signals` deliberately has none: it holds the list and this side runs the
+ * timers, so a store toast with no delay arrives here with `duration` absent and gets this.
+ */
+export const defaultToastDuration = 5000
+
+/**
+ * How long one toast has, in milliseconds: what it asked for, or {@link defaultToastDuration}.
+ *
+ * Exported because it is the single place the fallback is applied, and because it is what a test
+ * can ask about a toast built somewhere else — `resolveDuration(store.list.value[0])` is how the
+ * suite proves a delay set through `createToastStore` reaches this component rather than being
+ * silently replaced by the default. Both sides spelling the field `duration` is the whole of that
+ * contract, and it was spelled two different ways until #174.
+ *
+ * `??` rather than `||`: `0` is a value, and it means keep this toast until somebody dismisses it.
+ *
+ * @param toast Any toast-shaped value — only its `duration` is read.
+ * @returns The delay in milliseconds; `0` for a toast that never dismisses itself.
+ */
+export function resolveDuration(toast: Pick<ToastItem, "duration">): number {
+  return toast.duration ?? defaultToastDuration
+}
 
 /**
  * Stack of transient notifications in the top-right corner.
@@ -82,6 +122,13 @@ const defaultDuration = 5000
  * The auto-dismiss timer pauses while the pointer is over the stack or focus is inside it, and
  * resumes with the time it had left. Without that, reaching the dismiss control — or a link in a
  * toast's body — is a race against a five-second timer.
+ *
+ * **This component owns every dismiss timer, including for toasts that came out of a store.**
+ * `createToastStore` in `@preact-components/signals` holds the list and schedules nothing; the
+ * timer lives here because this is the side that can see a pointer resting on a toast. So the
+ * pause reaches a store-fed stack exactly as it reaches a hand-held one, which it did not until
+ * #175, and the delay a caller set on the store is the delay that runs, which it was not until
+ * #174.
  */
 export function Toastr(
   {
@@ -160,7 +207,7 @@ interface ToastProps {
  * would tear the timer down and build it again each time the page around the stack re-rendered.
  */
 function Toast({ toast, paused, onDismiss, dismissLabel }: ToastProps) {
-  const duration = toast.duration ?? defaultDuration
+  const duration = resolveDuration(toast)
   const remaining = useRef(duration)
   const dismiss = useRef(onDismiss)
 
