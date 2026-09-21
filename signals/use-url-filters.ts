@@ -1,5 +1,5 @@
 import { type Signal, useSignal, useSignalEffect } from "@preact/signals"
-import { useEffect } from "preact/hooks"
+import { useEffect, useRef } from "preact/hooks"
 import { useSearchParams } from "wouter-preact"
 
 /**
@@ -84,13 +84,17 @@ export function shouldPersistFilter<T>(field: FilterField<T>, value: T): boolean
  * The binding runs both ways for as long as the component is mounted. Any change to the address the
  * router reports — a link, a push, back, forward — re-reads every parameter into its signal, and a
  * parameter that has left the address takes its field back to `initialValue`. A change to a signal
- * writes the whole set back through the router.
+ * writes the whole set back through the router, and a parameter belonging to anything else on the
+ * page is carried through that write untouched.
  *
- * **A write replaces the whole address.** The router's `navigate` pushes `pathname?search`, which
- * carries no fragment, and the first write happens as soon as the filters have been read — not when
- * the reader first changes one. A page that keeps anything in the fragment loses it then: on the
- * Pages demo, `/preact-components/?status=open&page=3#/inputs/toggle-switch` became
- * `/preact-components/?status=open&page=3` the moment the card mounted.
+ * **One address change costs one history entry.** Nothing is written when the query string would
+ * come out the same, so mounting the hook on an address it agrees with writes nothing at all, and a
+ * reader who presses Back once moves once.
+ *
+ * **A write that does happen replaces the whole address.** The router's `navigate` pushes
+ * `pathname?search`, which carries no fragment, so a page keeping anything in the fragment — a hash
+ * route, an anchor — loses it when a filter changes. It survives everything else, mounting
+ * included.
  */
 export function useUrlFilters<T extends Record<string, FilterField>>(fields: T): UrlFilters<T> {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -117,23 +121,42 @@ export function useUrlFilters<T extends Record<string, FilterField>>(fields: T):
     isInitializing.value = false
   }, [search])
 
+  // The search string the next write starts from, kept here rather than read back out of the
+  // address: the write below needs it, and the callback form of `setSearchParams` only hands it over
+  // once the decision to navigate has already been taken. Assigned at render so a change made by
+  // anything else on the page is carried, and again by the write itself so two writes in one tick
+  // each start from what the one before them left.
+  const latestSearch = useRef(search)
+  latestSearch.current = search
+
   // signals → URL. Values are read first so this effect stays subscribed to every filter even on
   // the runs it skips.
+  //
+  // Nothing is pushed when the query string would come out the same. The read above flips
+  // `isInitializing`, which re-runs this effect on every address change — including the ones this
+  // effect made — so without the comparison every address change cost two history entries instead
+  // of one and the browser's Back button appeared to do nothing the first time it was pressed. The
+  // same needless write is what used to replace the whole address at mount, taking a fragment the
+  // page was carrying with it. A write that does change the query string still pushes a real entry,
+  // so Back walks the filter history the way a reader expects.
   useSignalEffect(() => {
     const pending = Object.values(fields).map((field) => [field, field.signal.value] as const)
     if (isInitializing.value) return
 
-    setSearchParams((previous) => {
-      const next = new URLSearchParams(previous)
-      for (const [field, value] of pending) {
-        if (shouldPersistFilter(field, value)) {
-          next.set(field.urlParam, String(value))
-        } else {
-          next.delete(field.urlParam)
-        }
+    // Built from the current search string, not from nothing: a parameter belonging to anything
+    // else on the page has to survive a filter write.
+    const next = new URLSearchParams(latestSearch.current)
+    for (const [field, value] of pending) {
+      if (shouldPersistFilter(field, value)) {
+        next.set(field.urlParam, String(value))
+      } else {
+        next.delete(field.urlParam)
       }
-      return next
-    })
+    }
+
+    if (next.toString() === latestSearch.current) return
+    latestSearch.current = next.toString()
+    setSearchParams(next)
   })
 
   const clearFilters = (): void => {

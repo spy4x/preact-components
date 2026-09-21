@@ -242,11 +242,20 @@ some other way.
   and `hashchange` by itself, so the listener was a duplicate, and one that read
   `globalThis.location.search` by hand rather than the half of the address its router was
   configured to use.
+- **`useUrlFilters` writes only when the query string would change.** Reading the address flips
+  `isInitializing`, which re-runs the signals-to-address effect, so without that comparison every
+  address change pushed a second, identical history entry and the browser's Back button did nothing
+  the first time a reader pressed it. It also meant a card that mounted on an address it already
+  agreed with replaced that address anyway, and the replacement — the router pushes
+  `pathname?search` — took any fragment the page was carrying with it. Both are gone. What is not:
+  a write that does change the query string still replaces the whole address, so a fragment-routed
+  page loses its route when a filter changes.
 - **`useUrlFilters` needs a DOM and a wouter router**, so only its value coercion
   (`resolveFilterValue`, `shouldPersistFilter`) is unit-tested here. The binding itself is an effect,
   and no test in this repository runs one: it is proven in a real browser by
   `pages/checks/signals.ts`, which drives a demo on the Pages host and asserts the filters change
-  from one value to another as the address changes.
+  from one value to another as the address changes — including the history entry each change costs,
+  a parameter belonging to something else on the page, and a field with a custom `parser`.
 - **`createThemeStore` reads nothing until `attach()`.** Creating the store touches neither
   `localStorage` nor `matchMedia`, so a module-level `createThemeStore()` is inert on a server —
   which matters on Deno, where `localStorage` is a real file shared by every request the process
