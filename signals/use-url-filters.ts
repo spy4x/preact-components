@@ -112,8 +112,9 @@ export function clearFilterFields<T extends Record<string, FilterField>>(fields:
 /**
  * The query string a set of filter values implies, starting from the one the address already has.
  *
- * Three rules live here, and they are the whole of what a write does — which is why this is a
- * function over two strings rather than something only a browser can run.
+ * Three rules live here, and they are the whole of what a write does **to the query string** —
+ * which is why this is a function over two strings rather than something only a browser can run.
+ * What the write then does to the rest of the address is {@link restoredAddress}.
  *
  * - A parameter the caller says nothing about is **carried through untouched**. An application's
  *   address holds more than one component's filters — a tab, a sort, a campaign tag — and a write
@@ -140,7 +141,7 @@ export function filterSearch(search: string, writes: readonly FilterWrite[]): st
   return next.toString()
 }
 
-/** The three parts of an address this hook has to put back together, as `location` reports them. */
+/** An address as `location` reports it, in the four pieces this hook has to read. */
 export interface AddressParts {
   /** `location.pathname`: the path, including whatever base path the site is served under. */
   pathname: string
@@ -148,17 +149,31 @@ export interface AddressParts {
   search: string
   /** `location.hash`: the fragment with its leading `#`, or empty. */
   hash: string
+  /**
+   * `location.href`: the whole address. It is here for one distinction the other three cannot
+   * make. An address ending in a bare `?` — which is what the router leaves behind when a write
+   * empties the query string, because it navigates to `pathname + "?" + ""` — reports `search` as
+   * the empty string, exactly like an address with no query string at all.
+   */
+  href: string
 }
 
 /**
- * The address that puts a fragment back after a write dropped it, or `undefined` when there is
- * nothing to put back.
+ * The address the write should have left behind, or `undefined` when that is already the address.
  *
- * The router's `navigate` is handed `pathname?search` and nothing else, and a target with no `#`
- * resolves to an address with no fragment — measured in Chromium: `history.pushState(null, "",
- * "/x?y=1")` on `/x#anchor` leaves `location.hash` empty. So the write is followed by a question
- * this function answers: did the address just lose a fragment it had a moment ago, and what is the
- * address that has it again?
+ * Two things are wrong with the address the router leaves, and both are things it appends or drops
+ * that no filter asked it to.
+ *
+ * **The fragment.** The router's `navigate` is handed `pathname?search` and nothing else, and a
+ * target with no `#` resolves to an address with no fragment — measured in Chromium:
+ * `history.pushState(null, "", "/x?y=1")` on `/x#anchor` leaves `location.hash` empty. So the write
+ * is followed by a question this function answers: did the address just lose a fragment it had a
+ * moment ago, and what is the address that has it again?
+ *
+ * **The bare `?`.** A write that empties the query string — clearing the last filter — navigates to
+ * `pathname + "?" + ""`, and the address keeps that question mark with nothing after it. Left
+ * alone, an address with a fragment and one without would end a clear differently (`/list#section`
+ * against `/list?`), for no reason a reader could see, so the same step takes it off.
  *
  * The condition is a **measurement of the address**, not a guess about which location hook the
  * router is using, and that is the point of doing it after the write rather than before. A router
@@ -166,7 +181,10 @@ export interface AddressParts {
  * part of navigating, so `after.hash` is not empty and this function answers `undefined`, leaving
  * that router's own write alone. Handing the fragment to `navigate` instead would have corrupted
  * exactly that case: `useHashLocation`'s navigate splits its target on `?`, so the fragment lands
- * percent-encoded inside the query string (`?page=2%23/list`).
+ * percent-encoded inside the query string (`?page=2%23/list`). No browser check in this repository
+ * exercises that guard, because the demo runs one router: proving it would take a second router on
+ * the page whose own navigation sets a different fragment. `use-url-filters.test.ts` holds it at
+ * the level this function works at, which is the address rather than the router.
  *
  * Everything is rebuilt from the address the write left behind, so a base path needs no special
  * handling: it is already in `after.pathname`, whether it came from the site's own prefix or from a
@@ -178,7 +196,11 @@ export interface AddressParts {
  * @returns The address to replace the current history entry with, or `undefined` for no change.
  */
 export function restoredAddress(fragment: string, after: AddressParts): string | undefined {
-  if (fragment === "" || after.hash !== "") return undefined
+  // Documented insurance rather than a proven branch: no browser check reaches this line, and
+  // making one would take a second router on the demo page that sets a different fragment while
+  // navigating. What holds it is `use-url-filters.test.ts`, over the address alone.
+  if (after.hash !== "") return undefined
+  if (fragment === "" && !after.href.endsWith("?")) return undefined
   return `${after.pathname}${after.search}${fragment}`
 }
 
@@ -221,6 +243,14 @@ export function restoredAddress(fragment: string, after: AddressParts): string |
  * changes. The router's `navigate` pushes `pathname?search` and carries no fragment of its own, so
  * the write puts one back when the address had one; {@link restoredAddress} is that step, and its
  * documentation says why it runs after the router rather than instead of it.
+ *
+ * **The one case where the fragment is still lost: a router that defers its navigation.** The step
+ * that puts the fragment back runs immediately after the router's write, so it depends on that
+ * write having already happened. A `<Router>` given an `aroundNav` that defers — wouter's own
+ * option, and what a view transition is configured with — navigates later, after this step has
+ * looked at an address nothing has changed yet and found nothing to do. What a reader sees is the
+ * original defect: the fragment disappears from the address bar when a filter changes, silently.
+ * No check in this repository covers it, because nothing here configures `aroundNav`.
  *
  * **One address change costs one history entry**, whichever direction it came from, so one press of
  * Back moves the reader once. `clearFilters` is one change, not one per field.
@@ -297,12 +327,14 @@ export function useUrlFilters<T extends Record<string, FilterField>>(fields: T):
     const fragment = globalThis.location.hash
     setSearchParams(new URLSearchParams(next))
     // The router's write is `history.pushState(state, "", pathname + "?" + search)`, which is a
-    // target with no `#` and therefore an address with no fragment. Putting it back through
-    // `replaceState` rather than through a second `navigate` is what keeps the cost at one history
-    // entry per filter change, and the router patches `replaceState` the same way it patches
-    // `pushState`, so it and every listener subscribed through it are told about the address this
-    // leaves behind. Nothing here fires a `hashchange` — the fragment never changed — and nothing
-    // scrolls the page back to the anchor.
+    // target with no `#` — therefore an address with no fragment — and one ending in a bare `?`
+    // when the query string came out empty. Tidying both through `replaceState` rather than
+    // through a second `navigate` is what keeps the cost at one history entry per filter change,
+    // and the router patches `replaceState` the same way it patches `pushState`, so it and every
+    // listener subscribed through it are told about the address this leaves behind. Nothing here
+    // fires a `hashchange` — the fragment never changed — and nothing scrolls the page back to the
+    // anchor. A router told to defer its navigation is the case this misses: see the note in the
+    // hook's own documentation above.
     const restored = restoredAddress(fragment, globalThis.location)
     if (restored !== undefined) {
       globalThis.history.replaceState(globalThis.history.state, "", restored)

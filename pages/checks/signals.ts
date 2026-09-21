@@ -658,8 +658,13 @@ async function backChecks(devtools: Devtools, before: FilterState): Promise<Filt
  * are counted. A write that put it back with a second `navigate` would cost two history entries,
  * and Back would appear to do nothing the first time it was pressed — so the entries are counted
  * and Back is pressed. A write that appended the fragment unconditionally would leave a bare `#` on
- * an address that never had one — so the last pair reads the whole address rather than
+ * an address that never had one — so the last three read the whole address rather than
  * `location.hash`, which is empty for both.
+ *
+ * The last of them is about the other thing the same step tidies. The router navigates to
+ * `pathname + "?" + ""` when a write empties the query string, so a clear used to end at `/list?`
+ * on an address with no fragment and at `/list#section` on one with a fragment, and only `href`
+ * can tell those two apart: `location.search` is empty for both.
  *
  * The group opens with a push, and every count is taken across an action that follows one: this
  * group starts where {@link backChecks} left the reader, one entry back from the end, and a push
@@ -777,5 +782,21 @@ async function fragmentChecks(devtools: Devtools, before: FilterState): Promise<
       written.search === "?status=open&page=2",
     `clicked next page on ${plain.href}: the query string moved ${plain.search} → ` +
       `${written.search} and the address settled at ${written.href}`,
+  )
+
+  // The same clear as above, on an address carrying no fragment. The router navigates to
+  // `pathname + "?" + ""`, so without the tidying step the two would end a clear differently:
+  // `…/#/url-filters-check/moved` with a fragment and `…/?` without one.
+  const emptied = await act(
+    devtools,
+    click("url-filters-clear"),
+    "a click on clear with no fragment on the address",
+  )
+  check(
+    "clearing on an address with no fragment leaves no bare question mark behind",
+    written.search === "?status=open&page=2" && emptied.search === "" &&
+      !emptied.href.endsWith("?") && !emptied.href.includes("#"),
+    `clicked clear on ${written.href}: the query string went "${emptied.search}" and the address ` +
+      `settled at ${emptied.href}`,
   )
 }

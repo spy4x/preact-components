@@ -11,7 +11,9 @@
  * would spell differently, such as the `?size=huge` link below — so a reader who touches no control
  * keeps the address they arrived on, fragment route included. Touching one writes, and the write
  * changes the query string and nothing else: this page keeps its own route in `#/…`, and that route
- * is still there afterwards.
+ * is still there afterwards. That holds for the plain `<Router>` below, which is the one this demo
+ * mounts; the hook's own documentation states the case it does not hold for, a router configured to
+ * defer its navigation.
  *
  * An earlier version of this file hid the card behind a "start the demo" button, because the hook
  * used to replace the whole address and take this page's route with it. The button is gone, and so

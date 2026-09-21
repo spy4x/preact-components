@@ -343,10 +343,20 @@ anything.
   route it has now — and puts it back with `history.replaceState`, which the router patches in the
   same breath as `pushState`. So the cost stays one history entry per filter change, every listener
   subscribed through the router is told, no `hashchange` is fired, and the page is not scrolled back
-  to the anchor. `restoredAddress` is that step, and it answers "nothing to do" when the address
+  to the anchor. The same step takes off the bare `?` the router leaves when a write empties the
+  query string, so a clear ends at `/list` and `/list#section` rather than at `/list?` and
+  `/list#section`. `restoredAddress` is that step, and it answers "nothing to do" when the address
   kept a fragment of its own — which is what a router keeping its location in the fragment
   (wouter's `useHashLocation`) does, and handing the fragment to `navigate` instead would have
-  landed it percent-encoded inside that router's query string.
+  landed it percent-encoded inside that router's query string. No browser check reaches that guard,
+  because the demo runs one router; `use-url-filters.test.ts` holds it over the address instead.
+- **The one case where the fragment is still lost: a router that defers its navigation.** Putting
+  the fragment back runs immediately after the router's write, so it depends on that write having
+  already happened. A `<Router>` given an `aroundNav` that defers — wouter's own option, and what a
+  view transition is configured with — navigates later, and the step finds an address nothing has
+  changed yet and does nothing. What a reader sees is the original defect: changing a filter takes
+  the fragment out of the address bar, silently. Nothing in this repository configures `aroundNav`,
+  so no check covers it.
 - **One address change costs one history entry**, in either direction, so one press of Back moves
   the reader once. `clearFilters` batches its writes through `clearFilterFields`, so clearing is one
   change rather than one per field. Preact's signals adapter batches writes inside an event handler
