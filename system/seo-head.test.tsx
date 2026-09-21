@@ -12,7 +12,19 @@ const PAGE: PageHead = {
   siteName: "Acme",
   twitterSite: "@acme",
   locale: "en_US",
+  crumbs: [
+    { name: "Home", href: "/" },
+    { name: "Products", href: "/products" },
+    { name: "Widgets" },
+  ],
 }
+
+/**
+ * A canonical address carrying every part that must not be published: credentials, a mixed-case
+ * host, the default port and a fragment. Its cleaned form differs visibly from what is handed in.
+ */
+const DIRTY_CANONICAL = "https://user:pw@ACME.Example:443/products/widgets?page=2#reviews"
+const CLEAN_CANONICAL = "https://acme.example/products/widgets?page=2"
 
 /** Every tag as a flat `key=value` bag, for order-insensitive lookups by name/property. */
 function tagMap(head: PageHead): Map<string, string> {
@@ -96,12 +108,6 @@ describe("seoHeadTags", () => {
     expect(tags.get("twitter:image")).toBeUndefined()
   })
 
-  it("rejects a relative canonical before emitting anything", () => {
-    expect(() => seoHeadTags({ ...PAGE, canonical: "/products/widgets" })).toThrow(
-      "canonical must be an absolute URL",
-    )
-  })
-
   it("emits one script tag, last, for the JSON-LD graph", () => {
     const tags = seoHeadTags(PAGE)
     const last = tags.at(-1)
@@ -112,8 +118,53 @@ describe("seoHeadTags", () => {
   })
 })
 
+describe("the canonical address seoHeadTags publishes", () => {
+  it("rejects a relative canonical before emitting anything", () => {
+    expect(() => seoHeadTags({ ...PAGE, canonical: "/products/widgets" })).toThrow(
+      "canonical must be an absolute URL",
+    )
+  })
+
+  it("rejects a javascript: canonical before emitting anything", () => {
+    expect(() => seoHeadTags({ ...PAGE, canonical: "javascript:alert(1)" })).toThrow(
+      "canonical must be an http or https URL",
+    )
+  })
+
+  it("rejects a scheme that is not the web, such as ftp", () => {
+    expect(() => seoHeadTags({ ...PAGE, canonical: "ftp://acme.example/widgets" })).toThrow(
+      "canonical must be an http or https URL",
+    )
+  })
+
+  it("puts the cleaned address in rel=canonical, not the string it was handed", () => {
+    const tags = tagMap({ ...PAGE, canonical: DIRTY_CANONICAL })
+
+    expect(tags.get("canonical")).toBe(CLEAN_CANONICAL)
+  })
+
+  it("puts the cleaned address in og:url too", () => {
+    const tags = tagMap({ ...PAGE, canonical: DIRTY_CANONICAL })
+
+    expect(tags.get("og:url")).toBe(CLEAN_CANONICAL)
+  })
+
+  it("prints no credentials anywhere in the tag set", () => {
+    const printed = JSON.stringify(seoHeadTags({ ...PAGE, canonical: DIRTY_CANONICAL }))
+
+    expect(printed).not.toContain("user:pw")
+    expect(printed).not.toContain("pw@")
+  })
+
+  it("accepts a plain http canonical rather than insisting on https", () => {
+    const tags = tagMap({ ...PAGE, canonical: "http://acme.example/products/widgets" })
+
+    expect(tags.get("canonical")).toBe("http://acme.example/products/widgets")
+  })
+})
+
 describe("seoHeadJsonLd", () => {
-  it("derives a BreadcrumbList from the canonical and the page title", () => {
+  it("emits the caller's crumbs as the BreadcrumbList", () => {
     const graph = graphOf(PAGE)
     const breadcrumb = graph.at(-1) as Record<string, unknown>
 
@@ -130,9 +181,38 @@ describe("seoHeadJsonLd", () => {
       {
         "@type": "ListItem",
         position: 3,
-        name: "Widgets — Acme",
+        name: "Widgets",
         item: "https://acme.example/products/widgets",
       },
+    ])
+  })
+
+  it("invents no breadcrumb for a deep path when the caller stated none", () => {
+    const graph = seoHeadJsonLd({
+      title: "A Post",
+      description: "A post.",
+      canonical: "https://acme.example/section/24/title",
+    })
+
+    expect(graph).toEqual([])
+  })
+
+  it("names a crumb what the caller called it, not what the path segment says", () => {
+    const graph = graphOf({
+      ...PAGE,
+      canonical: "https://acme.example/section/24/title",
+      crumbs: [
+        { name: "Field reports", href: "/section" },
+        { name: "August 2026", href: "/section/24" },
+        { name: "How I work" },
+      ],
+    })
+    const breadcrumb = graph.at(-1) as { itemListElement: { name: string }[] }
+
+    expect(breadcrumb.itemListElement.map((item) => item.name)).toEqual([
+      "Field reports",
+      "August 2026",
+      "How I work",
     ])
   })
 
@@ -144,22 +224,23 @@ describe("seoHeadJsonLd", () => {
     expect((graph[1] as Record<string, unknown>)["@type"]).toBe("BreadcrumbList")
   })
 
-  it("honours a custom root label", () => {
-    const graph = graphOf({ ...PAGE, homeLabel: "Start" })
-    const breadcrumb = graph.at(-1) as { itemListElement: { name: string }[] }
+  it("anchors the breadcrumb to the cleaned address, with one fragment marker", () => {
+    const graph = graphOf({ ...PAGE, canonical: DIRTY_CANONICAL })
+    const breadcrumb = graph.at(-1) as { "@id": string }
 
-    expect(breadcrumb.itemListElement[0].name).toBe("Start")
+    expect(breadcrumb["@id"]).toBe(`${CLEAN_CANONICAL}#breadcrumb`)
+    expect(breadcrumb["@id"].match(/#/g)).toHaveLength(1)
   })
 
-  it("skips the breadcrumb on a one-entry trail, such as the site root", () => {
-    const graph = seoHeadJsonLd({ ...PAGE, canonical: "https://acme.example/" })
+  it("skips a one-entry trail, which is noise in a rich result", () => {
+    const graph = seoHeadJsonLd({ ...PAGE, crumbs: [{ name: "Widgets" }] })
 
     expect(graph).toEqual([])
   })
 
-  it("skips the breadcrumb when the caller opts out", () => {
+  it("skips the breadcrumb when the caller states no crumbs", () => {
     const entity = { "@type": "WebSite" }
-    const graph = seoHeadJsonLd({ ...PAGE, breadcrumbs: false, jsonLd: [entity] })
+    const graph = seoHeadJsonLd({ ...PAGE, crumbs: undefined, jsonLd: [entity] })
 
     expect(graph).toEqual([entity])
   })
@@ -169,13 +250,12 @@ describe("seoHeadJsonLd", () => {
       title: "Acme",
       description: "Home.",
       canonical: "https://acme.example/",
-      breadcrumbs: false,
     })
 
     expect(tags.some((tag) => tag.tag === "script")).toBe(false)
   })
 
-  it("still emits the script for a root page that supplies its own entities", () => {
+  it("still emits the script for a page that supplies its own entities", () => {
     const tags = seoHeadTags({
       title: "Acme",
       description: "Home.",
@@ -184,6 +264,15 @@ describe("seoHeadJsonLd", () => {
     })
 
     expect(tags.at(-1)?.tag).toBe("script")
+  })
+
+  it("refuses a javascript: crumb href", () => {
+    expect(() =>
+      seoHeadJsonLd({
+        ...PAGE,
+        crumbs: [{ name: "Trap", href: "javascript:alert(1)" }, { name: "Widgets" }],
+      })
+    ).toThrow("crumb href must be an http or https URL")
   })
 })
 
@@ -215,12 +304,35 @@ describe("SEOHead", () => {
     expect(html).toContain('type="application/ld+json"')
   })
 
-  it("renders the JSON-LD body escaped in the markup", () => {
-    const html = render(<SEOHead {...PAGE} title="a </script> trick" />)
+  it("renders the cleaned canonical address, not the one it was handed", () => {
+    const html = render(<SEOHead {...PAGE} canonical={DIRTY_CANONICAL} />)
+
+    expect(html).toContain(`href="${CLEAN_CANONICAL}"`)
+    expect(html).not.toContain("pw@")
+    expect(html).not.toContain("#reviews")
+  })
+
+  it("renders a caller entity carrying a closing tag escaped in the markup", () => {
+    const html = render(
+      <SEOHead {...PAGE} jsonLd={[{ "@type": "Organization", name: "a </script> trick" }]} />,
+    )
     const body = html.slice(html.indexOf('type="application/ld+json"'))
 
     expect(body).toContain("\\u003c/script")
     // Only the element's own closing tag survives.
+    expect(body.indexOf("</script>")).toBe(body.lastIndexOf("</script>"))
+  })
+
+  it("renders a crumb name carrying a closing tag escaped too", () => {
+    const html = render(
+      <SEOHead
+        {...PAGE}
+        crumbs={[{ name: "</script><script>alert(1)</script>", href: "/" }, { name: "Widgets" }]}
+      />,
+    )
+    const body = html.slice(html.indexOf('type="application/ld+json"'))
+
+    expect(body).toContain("\\u003c/script")
     expect(body.indexOf("</script>")).toBe(body.lastIndexOf("</script>"))
   })
 

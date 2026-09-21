@@ -1,14 +1,12 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import {
-  breadcrumbFromCanonical,
+  breadcrumbItems,
   breadcrumbListJsonLd,
-  breadcrumbsFromCanonical,
   canonicalUrl,
   createHeadStore,
-  humanizeSlug,
+  normalizeCanonical,
   type PageHead,
-  pathSegments,
 } from "./head.ts"
 
 const DEFAULTS: PageHead = {
@@ -19,123 +17,196 @@ const DEFAULTS: PageHead = {
   ogType: "website",
 }
 
-describe("pathSegments", () => {
-  it("strips a trailing slash", () => {
-    expect(pathSegments("https://acme.example/blog/")).toEqual(["blog"])
-  })
-
-  it("treats a slash-less and a slash-suffixed path as the same trail", () => {
-    expect(pathSegments("https://acme.example/blog/post")).toEqual(
-      pathSegments("https://acme.example/blog/post/"),
-    )
-  })
-
-  it("ignores query, hash, port and protocol", () => {
-    expect(pathSegments("http://acme.example:8080/a/b?x=1#frag")).toEqual(["a", "b"])
-  })
-
-  it("returns no segments for the root", () => {
-    expect(pathSegments("https://acme.example/")).toEqual([])
-  })
-
-  it("decodes percent-escaped segments", () => {
-    expect(pathSegments("https://acme.example/hello%20world/two")).toEqual(["hello world", "two"])
-  })
-})
+/** The trail a route states for `/products/widgets`, root first, current page last. */
+const TRAIL = [
+  { name: "Home", href: "/" },
+  { name: "Products", href: "/products" },
+  { name: "Widgets" },
+]
 
 describe("canonicalUrl", () => {
   it("throws a readable error for a relative canonical", () => {
     expect(() => canonicalUrl("/blog")).toThrow("canonical must be an absolute URL")
   })
-})
 
-describe("humanizeSlug", () => {
-  it("title-cases each hyphenated word", () => {
-    expect(humanizeSlug("how-i-work")).toBe("How I Work")
-  })
-
-  it("handles underscores and already-capitalised words", () => {
-    expect(humanizeSlug("FAQ_page")).toBe("FAQ Page")
-  })
-
-  it("returns an empty string for an empty slug", () => {
-    expect(humanizeSlug("")).toBe("")
-  })
-})
-
-describe("breadcrumbsFromCanonical", () => {
-  it("returns root plus one crumb per segment, last one linkless", () => {
-    expect(breadcrumbsFromCanonical("https://acme.example/blog/2024/post", "A Post")).toEqual([
-      { name: "Home", href: "/" },
-      { name: "Blog", href: "/blog" },
-      { name: "2024", href: "/blog/2024" },
-      { name: "A Post" },
-    ])
-  })
-
-  it("produces the same trail with and without a trailing slash", () => {
-    expect(breadcrumbsFromCanonical("https://acme.example/blog/post", "Post")).toEqual(
-      breadcrumbsFromCanonical("https://acme.example/blog/post/", "Post"),
+  it("refuses a javascript: canonical", () => {
+    expect(() => canonicalUrl("javascript:alert(1)")).toThrow(
+      "canonical must be an http or https URL",
     )
   })
 
-  it("returns only the root for the site root", () => {
-    expect(breadcrumbsFromCanonical("https://acme.example/", "Acme")).toEqual([
-      { name: "Home", href: "/" },
-    ])
+  it("refuses a data: canonical", () => {
+    expect(() => canonicalUrl("data:text/html,hello")).toThrow(
+      "canonical must be an http or https URL",
+    )
   })
 
-  it("honours a custom home label and href", () => {
-    expect(
-      breadcrumbsFromCanonical("https://acme.example/docs", "Docs", {
-        homeLabel: "Start",
-        homeHref: "/app",
-      }),
-    ).toEqual([{ name: "Start", href: "/app" }, { name: "Docs" }])
+  it("refuses a scheme that is not the web, such as ftp", () => {
+    expect(() => canonicalUrl("ftp://acme.example/file")).toThrow(
+      "canonical must be an http or https URL",
+    )
   })
 
-  it("keeps an intermediate crumb even when it is the current page's parent", () => {
-    const trail = breadcrumbsFromCanonical("https://acme.example/a/b", "B")
+  it("accepts a plain http canonical unchanged", () => {
+    expect(canonicalUrl("http://acme.example/a").href).toBe("http://acme.example/a")
+  })
 
-    expect(trail[1]).toEqual({ name: "A", href: "/a" })
-    expect(trail[2]).toEqual({ name: "B" })
+  it("accepts a plain https canonical unchanged", () => {
+    expect(canonicalUrl("https://acme.example/a").href).toBe("https://acme.example/a")
   })
 })
 
-describe("breadcrumbFromCanonical", () => {
-  it("positions items from 1 and builds absolute item URLs", () => {
-    expect(breadcrumbFromCanonical("https://acme.example/blog/post", "A Post")).toEqual([
+describe("normalizeCanonical", () => {
+  it("drops a user name and password", () => {
+    expect(normalizeCanonical("https://user:pw@acme.example/a")).toBe("https://acme.example/a")
+  })
+
+  it("drops a fragment", () => {
+    expect(normalizeCanonical("https://acme.example/a#reviews")).toBe("https://acme.example/a")
+  })
+
+  it("keeps the query string, which identifies the page", () => {
+    expect(normalizeCanonical("https://acme.example/a?page=2")).toBe(
+      "https://acme.example/a?page=2",
+    )
+  })
+
+  it("drops the default port and keeps a non-default one", () => {
+    expect(normalizeCanonical("https://acme.example:443/a")).toBe("https://acme.example/a")
+    expect(normalizeCanonical("http://acme.example:8080/a")).toBe("http://acme.example:8080/a")
+  })
+
+  it("lower-cases the host and leaves the path's case alone", () => {
+    expect(normalizeCanonical("https://ACME.Example/Products/Widgets")).toBe(
+      "https://acme.example/Products/Widgets",
+    )
+  })
+
+  it("gives an origin with no path its root slash", () => {
+    expect(normalizeCanonical("https://acme.example")).toBe("https://acme.example/")
+  })
+
+  it("produces one clean address from everything at once", () => {
+    expect(normalizeCanonical("https://user:pw@ACME.Example:443/a/b?x=1#frag")).toBe(
+      "https://acme.example/a/b?x=1",
+    )
+  })
+
+  it("is unchanged by a second pass", () => {
+    const once = normalizeCanonical("https://user:pw@ACME.Example:443/a/b?x=1#frag")
+
+    expect(normalizeCanonical(once)).toBe(once)
+  })
+})
+
+describe("breadcrumbItems", () => {
+  it("numbers the caller's crumbs from 1 and keeps their order", () => {
+    expect(breadcrumbItems("https://acme.example/products/widgets", TRAIL)).toEqual([
       { "@type": "ListItem", position: 1, name: "Home", item: "https://acme.example/" },
-      { "@type": "ListItem", position: 2, name: "Blog", item: "https://acme.example/blog" },
-      { "@type": "ListItem", position: 3, name: "A Post", item: "https://acme.example/blog/post" },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Products",
+        item: "https://acme.example/products",
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: "Widgets",
+        item: "https://acme.example/products/widgets",
+      },
     ])
   })
 
-  it("is identical for the trailing-slash and slash-less form", () => {
-    expect(breadcrumbFromCanonical("https://acme.example/a/b/", "B")).toEqual(
-      breadcrumbFromCanonical("https://acme.example/a/b", "B"),
-    )
+  it("uses the caller's name verbatim, never a name read out of the path", () => {
+    const items = breadcrumbItems("https://acme.example/section/24/title", [
+      { name: "Field reports", href: "/section" },
+      { name: "August 2026", href: "/section/24" },
+      { name: "How I work" },
+    ])
+
+    expect(items.map((item) => item.name)).toEqual(["Field reports", "August 2026", "How I work"])
   })
 
-  it("keeps a subpath mount point out of the item URLs", () => {
-    const items = breadcrumbFromCanonical("https://acme.example/app/reports/daily", "Daily")
+  it("resolves a root-relative crumb href against the canonical origin", () => {
+    const items = breadcrumbItems("https://acme.example/a/b", [
+      { name: "A", href: "/a" },
+      { name: "B" },
+    ])
 
-    expect(items.at(-1)?.item).toBe("https://acme.example/app/reports/daily")
-    expect(items[1].item).toBe("https://acme.example/app")
+    expect(items[0].item).toBe("https://acme.example/a")
   })
 
-  it("returns just the root for the site root", () => {
-    expect(breadcrumbFromCanonical("https://acme.example/", "Acme")).toHaveLength(1)
+  it("resolves a crumb href relative to the page, not to the origin", () => {
+    const items = breadcrumbItems("https://acme.example/a/b/c", [
+      { name: "Sibling", href: "../sibling" },
+      { name: "C" },
+    ])
+
+    expect(items[0].item).toBe("https://acme.example/a/sibling")
+  })
+
+  it("keeps an absolute crumb href on another host", () => {
+    const items = breadcrumbItems("https://acme.example/a", [
+      { name: "Docs", href: "https://docs.example/start" },
+      { name: "A" },
+    ])
+
+    expect(items[0].item).toBe("https://docs.example/start")
+  })
+
+  it("gives the last crumb the page's own cleaned address", () => {
+    const items = breadcrumbItems("https://user:pw@acme.example/a?x=1#frag", [
+      { name: "Home", href: "/" },
+      { name: "A" },
+    ])
+
+    expect(items.at(-1)?.item).toBe("https://acme.example/a?x=1")
+  })
+
+  it("refuses a javascript: crumb href", () => {
+    expect(() =>
+      breadcrumbItems("https://acme.example/a", [
+        { name: "Trap", href: "javascript:alert(1)" },
+        { name: "A" },
+      ])
+    ).toThrow("crumb href must be an http or https URL")
+  })
+
+  it("drops a user name and password from a crumb href", () => {
+    const items = breadcrumbItems("https://acme.example/a", [
+      { name: "Admin", href: "https://user:pw@acme.example/admin" },
+      { name: "A" },
+    ])
+
+    expect(items[0].item).toBe("https://acme.example/admin")
+  })
+
+  it("returns nothing for an empty trail", () => {
+    expect(breadcrumbItems("https://acme.example/a", [])).toEqual([])
   })
 })
 
 describe("breadcrumbListJsonLd", () => {
   it("anchors the node to the page it describes", () => {
-    const node = breadcrumbListJsonLd("https://acme.example/blog", "Blog")
+    const node = breadcrumbListJsonLd("https://acme.example/blog", TRAIL)
 
     expect(node["@type"]).toBe("BreadcrumbList")
     expect(node["@id"]).toBe("https://acme.example/blog#breadcrumb")
-    expect(node.itemListElement).toHaveLength(2)
+    expect(node.itemListElement).toHaveLength(3)
+  })
+
+  it("anchors a canonical carrying a fragment with one fragment marker, not two", () => {
+    const node = breadcrumbListJsonLd("https://acme.example/a/b?x=1#frag", TRAIL)
+
+    expect(node["@id"]).toBe("https://acme.example/a/b?x=1#breadcrumb")
+    expect(node["@id"].match(/#/g)).toHaveLength(1)
+  })
+
+  it("refuses a canonical that is not an http or https address", () => {
+    expect(() => breadcrumbListJsonLd("javascript:alert(1)", TRAIL)).toThrow(
+      "canonical must be an http or https URL",
+    )
   })
 })
 
@@ -170,7 +241,7 @@ describe("createHeadStore", () => {
     expect(defaults.title).toBe(DEFAULTS.title)
   })
 
-  it("gives each store its own signal", () => {
+  it("gives each store its own signal, so one request cannot write another's head", () => {
     const one = createHeadStore(DEFAULTS)
     const two = createHeadStore(DEFAULTS)
     one.setHead({ title: "One" })
