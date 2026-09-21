@@ -107,12 +107,20 @@ than continuing it, which is how a caller extends a toast it has already shown.
 
 **The pause needs the caller to own the timing.** `Toastr` can only pause the timer it runs itself,
 the one driven by `ToastItem.duration`. `createToastStore` from `@preact-components/signals`, which
-the wiring above reads from, schedules a removal of its own for every toast it holds, so a toast
-pushed through that store is taken away on the store's schedule whatever the pointer is doing — and
-its `timeout` field never reaches the component's `duration` either, so the per-toast delay is lost
-as well and every toast lives the default 5000ms. Until that store hands its timing over, a caller
-who wants the pause keeps the stack itself and passes `duration`, the way the catalogue card does.
-The defect is filed against the store, not against this component.
+the wiring above reads from, does its own timing instead, and that costs a caller both halves of
+what this section promises. The store schedules a removal for every toast it holds, so a toast
+pushed through it is taken away on the store's schedule whatever the pointer is doing and the pause
+never reaches it —
+[#175](https://github.com/spy4x/preact-components/issues/175). And the store's `timeout` field
+never reaches the component's `duration`, so the component runs its own 5000ms default alongside
+the store's timer and a toast lives whichever of the two is **shorter**: a `timeout` longer than
+five seconds is quietly cut down to five, and `timeout: 0` — which that store documents as keeping
+the toast until somebody dismisses it by hand — schedules nothing of its own and so leaves the
+component's default to take the toast away after five seconds. The documented way to make a toast
+persist is the case this breaks worst —
+[#174](https://github.com/spy4x/preact-components/issues/174). Until the store hands its timing
+over, a caller who wants either of them keeps the stack itself and passes `duration`, the way the
+catalogue card does. Both defects are filed against the store; neither is this component's.
 
 Every string the stack shows is a prop with an English default: `label` names the region
 (`"Notifications"`), `dismissLabel` names every dismiss control (`"Dismiss"`), and one toast can
