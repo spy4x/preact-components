@@ -7,7 +7,15 @@
  * dependency the source version had in its grid maths — see the package README.
  *
  * A timezone only matters to answer "what is today", and that is `isoDateInTz`.
+ *
+ * Which day a week starts on, and what its days are called, are the locale's business rather than
+ * this module's: `localeFirstWeekday` and `weekdayLabels` read both out of `Intl`, so a grid laid
+ * out with them starts on Monday in London, on Sunday in New York and on Saturday in Cairo with no
+ * table of exceptions here.
  */
+
+/** `YYYY-MM-DD`, the only date shape this module accepts. */
+const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/
 
 /** `YYYY-MM-DD` for an instant in a zone, via `Intl` — no local-clock assumptions server-side. */
 export function isoDateInTz(instant: Date, timeZone: string): string {
@@ -24,14 +32,45 @@ export function isoDateInTz(instant: Date, timeZone: string): string {
   return `${year}-${month}-${day}`
 }
 
+/**
+ * Whether the platform can resolve this time zone.
+ *
+ * Which zones exist is a property of the build's `Intl` data and not of the caller's code, and
+ * `Intl.DateTimeFormat` answers an unknown one with a `RangeError`. A component that would rather
+ * fall back than throw out of its render asks this first.
+ *
+ * @param timeZone An IANA zone name, e.g. `Europe/Berlin`.
+ * @returns `true` when the platform knows it.
+ */
+export function isValidTimeZone(timeZone: string): boolean {
+  try {
+    return Boolean(Intl.DateTimeFormat("en-CA", { timeZone }).resolvedOptions().timeZone)
+  } catch {
+    return false
+  }
+}
+
 /** Today in a zone. The only place a clock is read. */
 export function isoToday(timeZone: string): string {
   return isoDateInTz(new Date(), timeZone)
 }
 
+/**
+ * `YYYY-MM-DD` to a UTC timestamp, refusing anything that is not a date the calendar has.
+ *
+ * The guard is a round-trip rather than a range test, because rolling over is what has to be
+ * caught: `Date.parse("2026-02-30T00:00:00Z")` answers 2 March without complaint, so a grid
+ * anchored on that string used to draw a month its caller never asked for.
+ */
 function isoToUtcMs(date: string): number {
-  const ms = Date.parse(`${date}T00:00:00Z`)
-  if (Number.isNaN(ms)) throw new Error(`expected a YYYY-MM-DD date, received: ${date}`)
+  const match = ISO_DATE.exec(date)
+  if (!match) throw new Error(`expected a YYYY-MM-DD date, received: ${date}`)
+
+  const ms = Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+  if (Number.isNaN(ms) || utcMsToIso(ms) !== date) {
+    throw new Error(`expected a date the calendar has, received: ${date}`)
+  }
+
   return ms
 }
 
@@ -69,15 +108,64 @@ export function shiftMonth(date: string, months: number): string {
   return `${shiftedYear}-${pad2(shiftedMonth)}-01`
 }
 
+/** How many days the month `date` falls in has. */
+export function daysInMonth(date: string): number {
+  return Number(addDaysIso(shiftMonth(date, 1), -1).slice(8, 10))
+}
+
 /**
- * Weekday of the first of `date`'s month, Monday-first (`0` = Monday … `6` = Sunday).
+ * The same day number in another month, clipped to that month's length.
  *
- * Monday-first is the ISO week order the grid is laid out in; the caller's locale only changes
- * the label text, not the column order.
+ * What a Page Up from 31 January needs: February has no 31st, so the nearest day that exists is
+ * the 28th or the 29th, and clipping is the one answer that keeps the cursor inside the month it
+ * has just moved to.
+ *
+ * @param date Any date in the target month.
+ * @param dayNumber The day wanted, 1-based.
+ * @returns That day in the target month, clipped to the month's last day.
  */
-export function monthFirstWeekday(date: string): number {
+export function dayInMonth(date: string, dayNumber: number): string {
+  const clipped = Math.min(Math.max(dayNumber, 1), daysInMonth(date))
+  return `${startOfMonth(date).slice(0, 8)}${pad2(clipped)}`
+}
+
+/**
+ * Weekday of the first of `date`'s month, counted from the week's own first day.
+ *
+ * The answer is how many leading cells a weekday-aligned grid needs before the 1st: `0` when the
+ * month opens on the week's first day, `6` when it opens on its last.
+ *
+ * @param date Any date in the month.
+ * @param firstWeekday The week's first day, `1` = Monday … `7` = Sunday, as `Intl` numbers them.
+ */
+export function monthFirstWeekday(date: string, firstWeekday = 1): number {
   const sundayFirst = new Date(isoToUtcMs(startOfMonth(date))).getUTCDay()
-  return (sundayFirst + 6) % 7
+  return (sundayFirst - (firstWeekday % 7) + 7) % 7
+}
+
+/**
+ * The day the locale's week starts on, `1` = Monday … `7` = Sunday.
+ *
+ * `Intl.Locale.getWeekInfo` is the platform's own answer — Monday across most of Europe, Sunday in
+ * the United States, Saturday across much of the Middle East — and a hard-coded Monday is the
+ * wrong grid for two of those three. A platform that does not carry the method falls back to
+ * Monday, which is the ISO week.
+ *
+ * @param locale A BCP 47 tag, e.g. `en-US`.
+ */
+export function localeFirstWeekday(locale = "en-GB"): number {
+  try {
+    // Two spellings, because the method replaced a property of the same name and an engine carries
+    // one or the other: reading only the newer one would quietly put every locale back on Monday.
+    const tag = new Intl.Locale(locale) as Intl.Locale & {
+      getWeekInfo?: () => { firstDay?: number }
+      weekInfo?: { firstDay?: number }
+    }
+    const firstDay = (tag.getWeekInfo?.() ?? tag.weekInfo)?.firstDay
+    return typeof firstDay === "number" && firstDay >= 1 && firstDay <= 7 ? firstDay : 1
+  } catch {
+    return 1
+  }
 }
 
 /** Localised "August 2026" for the month `date` falls in. */
@@ -86,12 +174,41 @@ export function monthLabel(date: string, locale = "en-GB"): string {
     .format(new Date(isoToUtcMs(startOfMonth(date))))
 }
 
-/** Seven localised weekday labels, Monday first. */
-export function weekdayLabels(locale = "en-GB"): string[] {
+/** Localised "23 August 2026" — the date as a person reads it, not as a machine writes it. */
+export function dayLabel(date: string, locale = "en-GB"): string {
+  return new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(isoToUtcMs(date)))
+}
+
+/** One weekday header: what its column shows, and what that abbreviation stands for. */
+export interface WeekdayLabel {
+  /** The abbreviation the column header shows, e.g. `Mon`. */
+  short: string
+  /** The full name, e.g. `Monday` — the column's accessible name. */
+  long: string
+}
+
+/**
+ * Seven localised weekday labels, starting on the locale's own first day.
+ *
+ * Both forms are returned because a header needs both, and neither can be had by cutting the other
+ * down: `short` is what `Intl` itself abbreviates to, and cutting *that* to two characters leaves
+ * every Arabic weekday reading `ال` and six of seven Vietnamese ones reading `Th`.
+ *
+ * @param locale A BCP 47 tag; it decides the language *and* the column order.
+ */
+export function weekdayLabels(locale = "en-GB"): WeekdayLabel[] {
   const monday = isoToUtcMs("2024-01-01") // a Monday
-  const format = new Intl.DateTimeFormat(locale, { weekday: "short", timeZone: "UTC" })
-  return Array.from(
-    { length: 7 },
-    (_, index) => format.format(new Date(monday + index * 86_400_000)),
-  )
+  const first = localeFirstWeekday(locale)
+  const short = new Intl.DateTimeFormat(locale, { weekday: "short", timeZone: "UTC" })
+  const long = new Intl.DateTimeFormat(locale, { weekday: "long", timeZone: "UTC" })
+
+  return Array.from({ length: 7 }, (_, index) => {
+    const day = new Date(monday + ((first - 1 + index) % 7) * 86_400_000)
+    return { short: short.format(day), long: long.format(day) }
+  })
 }

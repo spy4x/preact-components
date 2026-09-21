@@ -1,4 +1,4 @@
-import { check, type Devtools, poll } from "./harness.ts"
+import { check, type Devtools, poll, pressKey } from "./harness.ts"
 
 /** The card these checks drive, and the pieces of it they read. */
 const CARD = "#demo-SWUpdater"
@@ -105,7 +105,35 @@ function clickBarButton(devtools: Devtools, label: string): Promise<boolean> {
 }
 
 /**
- * `system/`'s browser checks: `SWUpdater` against a real service worker.
+ * `system/`'s browser checks: the calendar's keyboard, the lightbox's, and `SWUpdater` against a
+ * real service worker.
+ *
+ * The three run in that order, and the order is the point. The service-worker block below stages a
+ * real registration, a hidden frame inside its scope and a hand-over between two workers; it is the
+ * only part of this file with state outside the page, so nothing that could be affected by it runs
+ * after it. The lightbox opens a real modal `<dialog>`, which would sit in the top layer over every
+ * check that came after if it ever refused to close — `ui.ts` answers that risk by running Modal
+ * last of everything, and this file cannot, because `verify.ts` fixes the order of the packages. So
+ * the lightbox block closes its dialog unconditionally at the end and asserts that the top layer is
+ * empty, which is the same guarantee bought with a teardown instead of an ordering.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+export async function systemChecks(devtools: Devtools): Promise<void> {
+  await calendarChecks(devtools)
+  await imageLightboxChecks(devtools)
+  await serviceWorkerChecks(devtools)
+  check(
+    "every calendar and lightbox reading came back without a page exception",
+    pageErrors.length === 0,
+    pageErrors.length === 0
+      ? "each expression this file evaluated returned a value"
+      : pageErrors.join(" | "),
+  )
+}
+
+/**
+ * `SWUpdater` against a real service worker.
  *
  * This is the one behaviour in the package no test here can reach. Every unit test renders to an
  * HTML string and runs no effect, so the registration — the component's whole reason to exist — had
@@ -140,7 +168,7 @@ function clickBarButton(devtools: Devtools, label: string): Promise<boolean> {
  *
  * @param devtools The connected session, on a hydrated page.
  */
-export async function systemChecks(devtools: Devtools): Promise<void> {
+async function serviceWorkerChecks(devtools: Devtools): Promise<void> {
   // A marker the page keeps until it navigates. Every assertion below is about a page that must not
   // reload, and a reload wipes this.
   await devtools.evaluate<null>(`(globalThis.__swUpdaterMark = "still the first load", null)`)
@@ -333,4 +361,1053 @@ export async function systemChecks(devtools: Devtools): Promise<void> {
     staged.scope !== "" && cleared && after.registrations === 0,
     `${staged.registrations} registration(s) → ${after.registrations}, frame removed`,
   )
+}
+
+/** The card the calendar checks drive, and the pieces of it they read. */
+const CALENDAR = '#demo-Calendar [data-e2e="calendar-interactive"]'
+const GRID = `${CALENDAR} [role="grid"]`
+const HEADING = `${CALENDAR} h3`
+const HINT = `${CALENDAR} [data-calendar-hint]`
+const MONTH_ECHO = `${CALENDAR} [data-e2e="calendar-month"]`
+const LOCALE_CARD = '#demo-Calendar [data-e2e="calendar-locale"]'
+
+/** The card the lightbox checks drive. */
+const LIGHTBOX = "#demo-ImageLightbox"
+const DIALOG = `${LIGHTBOX} dialog`
+const PLAIN_IMAGE = `${LIGHTBOX} [data-e2e="lightbox-image"]`
+const LINKED_IMAGE = `${LIGHTBOX} [data-e2e="lightbox-linked-image"]`
+
+/**
+ * Page exceptions the readings below swallowed.
+ *
+ * A check must never throw: `verify.ts` records a throw as one failed check and stops the browser
+ * phase there, which would take `crud`, `charts` and `ui`'s checks down with it. So every reading
+ * goes through {@link read}, a reading that failed leaves its message here, and `systemChecks`
+ * turns the collection into a check of its own — otherwise a swallowed exception would be a silent
+ * pass, because an expression that throws inside `Runtime.evaluate` raises no protocol event for
+ * `verify.ts`'s console-error check to find.
+ */
+const pageErrors: string[] = []
+
+/**
+ * Evaluate an expression in the page, turning a page exception into a value.
+ *
+ * @param devtools The connected session.
+ * @param expression JavaScript to run.
+ * @param fallback What to return when the expression threw; it should be a value whose check reads
+ *                 as a failure, never one that reads as a pass.
+ */
+async function read<T>(devtools: Devtools, expression: string, fallback: T): Promise<T> {
+  try {
+    return await devtools.evaluate<T>(expression)
+  } catch (error) {
+    pageErrors.push(error instanceof Error ? error.message : String(error))
+    return fallback
+  }
+}
+
+/**
+ * Wait until the page has stopped scrolling, and answer where it stopped.
+ *
+ * The catalogue scrolls smoothly (`pages/styles.css` sets `scroll-behavior: smooth`), so a rectangle
+ * read straight after `scrollIntoView` is the rectangle of a page still on its way and a scroll
+ * position read then is still moving. Every measurement below that depends on either one waits here
+ * first — measured, not feared: without it a click aimed at an image landed 14 000 pixels down the
+ * document, and a scroll assertion read a hundred pixels of leftover animation as a key that
+ * scrolled the page.
+ *
+ * @param devtools The connected session.
+ * @returns The settled scroll position, or `-1` when it never settled.
+ */
+async function settleScroll(devtools: Devtools): Promise<number> {
+  let previous = -1
+  for (let attempt = 0; attempt < 30; attempt++) {
+    const now = await read(devtools, "Math.round(globalThis.scrollY)", -1)
+    if (now >= 0 && now === previous) return now
+    previous = now
+    await new Promise((done) => setTimeout(done, 100))
+  }
+  return -1
+}
+
+/** Where the focus is, and what the calendar is showing, in one round trip. */
+interface CalendarState {
+  /** `data-calendar-date` of the focused element, or `""` when focus is not on a day. */
+  date: string
+  /** Whether the focused element is a day cell of this grid. */
+  inGrid: boolean
+  /** What the focused element is, for a failure message. */
+  focused: string
+  /** The month heading, e.g. `March 2026`. */
+  heading: string
+  /** The anchor the card echoes back from `onSelectMonth`. */
+  month: string
+  /** The hint under the grid, and whether it is on screen. */
+  hint: string
+  hintShown: boolean
+  /** Dates of the focused cell's own row, in column order. */
+  row: string[]
+  /** The page's scroll position, which no key the grid answers may change. */
+  scrollY: number
+}
+
+/** Read {@link CalendarState}. Written to survive every element it names being absent. */
+const CALENDAR_STATE = `(() => {
+  const active = document.activeElement
+  const grid = document.querySelector('${GRID}')
+  const hint = document.querySelector('${HINT}')
+  const heading = document.querySelector('${HEADING}')
+  const month = document.querySelector('${MONTH_ECHO}')
+  const date = active && active.getAttribute ? (active.getAttribute("data-calendar-date") || "") : ""
+  const row = active && active.closest ? active.closest('[role="row"]') : null
+  return {
+    date,
+    inGrid: Boolean(grid && active && grid.contains(active) && date),
+    focused: active
+      ? active.tagName.toLowerCase() + (active.getAttribute("aria-label")
+        ? ' "' + active.getAttribute("aria-label") + '"'
+        : "")
+      : "nothing",
+    heading: heading ? heading.textContent.trim() : "",
+    month: month ? month.textContent.trim() : "",
+    hint: hint ? hint.textContent.trim() : "",
+    hintShown: Boolean(hint) && getComputedStyle(hint).display !== "none",
+    row: row
+      ? [...row.querySelectorAll("[data-calendar-date]")].map((cell) =>
+        cell.getAttribute("data-calendar-date")
+      )
+      : [],
+    scrollY: Math.round(globalThis.scrollY),
+  }
+})()`
+
+/** A reading that says "nothing could be read", so a check built on it fails rather than passes. */
+const NO_CALENDAR: CalendarState = {
+  date: "",
+  inGrid: false,
+  focused: "the page could not be read",
+  heading: "",
+  month: "",
+  hint: "",
+  hintShown: false,
+  row: [],
+  scrollY: -1,
+}
+
+/** Put the focus back on the grid's own Tab stop, between checks. */
+function focusGrid(devtools: Devtools): Promise<boolean> {
+  return read(
+    devtools,
+    `(() => {
+      const cell = document.querySelector('${GRID} [data-calendar-date][tabindex="0"]')
+      if (cell) cell.focus()
+      return Boolean(cell)
+    })()`,
+    false,
+  )
+}
+
+/**
+ * `Calendar`'s keyboard, driven in the browser that owns it.
+ *
+ * Every assertion here is a transition — the date focus was on before a key, and the date it is on
+ * after — because an end state proves nothing about movement: "focus is on the 15th" is equally
+ * true of a grid that has never moved at all. The one structural check, that the grid is a grid of
+ * rows and cells, is named for being structural.
+ *
+ * Nothing is activated with `.click()` except the locale buttons, which are ordinary buttons and
+ * not what is under test. Every key is a real press through the browser's own input pipeline.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function calendarChecks(devtools: Devtools): Promise<void> {
+  // The grid is put in the middle of the viewport before anything is pressed, so that a key which
+  // moves the focus one row cannot scroll the page merely by bringing a cell into view — the
+  // scroll assertions below would otherwise be measuring the wrong thing.
+  const start = await read(
+    devtools,
+    `(() => {
+      const card = document.querySelector('${CALENDAR}')
+      if (!card) return { staged: false, cells: 0, detail: "no interactive calendar on the page" }
+      card.scrollIntoView({ block: "center", behavior: "instant" })
+      const arrow = card.querySelector('button[aria-label^="Next month"]')
+      if (!arrow) return { staged: false, cells: 0, detail: "the card has no next-month button" }
+      arrow.focus()
+      const grid = card.querySelector('[role="grid"]')
+      const rect = grid ? grid.getBoundingClientRect() : null
+      return {
+        staged: document.activeElement === arrow,
+        cells: card.querySelectorAll("[data-calendar-date]").length,
+        fits: Boolean(rect) && rect.top >= 0 && rect.bottom <= globalThis.innerHeight,
+        detail: rect
+          ? "the grid occupies " + Math.round(rect.top) + "–" + Math.round(rect.bottom) +
+            " of a " + globalThis.innerHeight + "px viewport"
+          : "the card has no grid",
+      }
+    })()`,
+    { staged: false, cells: 0, fits: false, detail: "the page could not be read" },
+  )
+  await settleScroll(devtools)
+
+  await pressKey(devtools, "Tab")
+  const entered = await read(devtools, CALENDAR_STATE, NO_CALENDAR)
+  await pressKey(devtools, "Tab")
+  const left = await read(devtools, CALENDAR_STATE, NO_CALENDAR)
+
+  check(
+    "one Tab press reaches the whole month grid, and one more leaves it",
+    start.staged && entered.inGrid && !left.inGrid && start.cells > 27,
+    start.staged
+      ? `Tab from the month arrow landed on ${entered.date || "nothing"}, and the next Tab left ` +
+        `the grid for ${left.focused} — ${start.cells} days behind one Tab stop rather than ` +
+        `${start.cells} of them`
+      : `nothing to Tab into: ${start.detail}`,
+  )
+
+  await focusGrid(devtools)
+  await settleScroll(devtools)
+  const before = await read(devtools, CALENDAR_STATE, NO_CALENDAR)
+  await pressKey(devtools, "ArrowRight")
+  const right = await read(devtools, CALENDAR_STATE, NO_CALENDAR)
+  await pressKey(devtools, "ArrowDown")
+  const down = await read(devtools, CALENDAR_STATE, NO_CALENDAR)
+  await pressKey(devtools, "ArrowUp")
+  await pressKey(devtools, "ArrowLeft")
+  const back = await read(devtools, CALENDAR_STATE, NO_CALENDAR)
+
+  check(
+    "the arrow keys move the focus a day and a week through the grid",
+    before.date !== "" && right.date === dayAfter(before.date, 1) &&
+      down.date === dayAfter(before.date, 8) && back.date === before.date,
+    before.date
+      ? `${before.date} → right ${right.date || "nowhere"} → down ${down.date || "nowhere"} → ` +
+        `up and left ${back.date || "nowhere"}`
+      : "the focus never reached a day cell, so no movement could be measured",
+  )
+
+  // Staged in the middle of a week rather than wherever the arrows left off, so both presses have
+  // somewhere to go: "End did not move" and "End was already there" are the same reading, and a
+  // fixture whose first day happened to sit at the end of a row would make the second one true.
+  const midweek = await read(
+    devtools,
+    `(() => {
+      const grid = document.querySelector('${GRID}')
+      if (!grid) return { staged: false, from: "", first: "", last: "", reason: "no grid" }
+      for (const row of grid.querySelectorAll('[role="row"]')) {
+        const cells = [...row.querySelectorAll("[data-calendar-date]")]
+        if (cells.length < 3) continue
+        const middle = cells[Math.floor(cells.length / 2)]
+        middle.focus()
+        return {
+          staged: document.activeElement === middle,
+          from: middle.getAttribute("data-calendar-date"),
+          first: cells[0].getAttribute("data-calendar-date"),
+          last: cells[cells.length - 1].getAttribute("data-calendar-date"),
+          reason: "",
+        }
+      }
+      return { staged: false, from: "", first: "", last: "", reason: "no week with three days on it" }
+    })()`,
+    { staged: false, from: "", first: "", last: "", reason: "the page could not be read" },
+  )
+  await pressKey(devtools, "End")
+  const end = await read(devtools, CALENDAR_STATE, NO_CALENDAR)
+  await pressKey(devtools, "Home")
+  const home = await read(devtools, CALENDAR_STATE, NO_CALENDAR)
+
+  check(
+    "End and Home move the focus to the ends of the week it is on",
+    midweek.staged && midweek.from !== midweek.first && midweek.from !== midweek.last &&
+      end.date === midweek.last && home.date === midweek.first,
+    midweek.staged
+      ? `from ${midweek.from}, mid-week: End → ${end.date || "nowhere"} (the week ends on ` +
+        `${midweek.last}), Home → ${home.date || "nowhere"} (it starts on ${midweek.first})`
+      : `nothing was staged: ${midweek.reason}`,
+  )
+
+  const beforePaging = await read(devtools, CALENDAR_STATE, NO_CALENDAR)
+  await pressKey(devtools, "PageDown")
+  await poll(
+    () =>
+      read(
+        devtools,
+        `document.querySelector('${MONTH_ECHO}')?.textContent.trim() !== ${
+          JSON.stringify(beforePaging.month)
+        }`,
+        false,
+      ),
+    3_000,
+  )
+  const paged = await read(devtools, CALENDAR_STATE, NO_CALENDAR)
+  await pressKey(devtools, "PageUp")
+  await poll(
+    () =>
+      read(
+        devtools,
+        `document.querySelector('${MONTH_ECHO}')?.textContent.trim() === ${
+          JSON.stringify(beforePaging.month)
+        }`,
+        false,
+      ),
+    3_000,
+  )
+  const pagedBack = await read(devtools, CALENDAR_STATE, NO_CALENDAR)
+
+  check(
+    "Page Down and Page Up move the grid a month, keeping the focus on the same day number",
+    beforePaging.heading !== "" && paged.heading !== beforePaging.heading &&
+      paged.inGrid && dayNumber(paged.date) === dayNumber(beforePaging.date) &&
+      pagedBack.heading === beforePaging.heading && pagedBack.inGrid,
+    beforePaging.heading
+      ? `${beforePaging.heading} (${beforePaging.date}) → Page Down → ${paged.heading} ` +
+        `(${paged.date}) → Page Up → ${pagedBack.heading} (${pagedBack.date}); the card's ` +
+        `onSelectMonth echo went ${beforePaging.month} → ${paged.month} → ${pagedBack.month}`
+      : "the calendar showed no month, so paging could not be measured",
+  )
+
+  // Six real presses, and the page may not move under any of them: an arrow key scrolls a page by a
+  // line and Page Down by a screen, so a grid that answered a key without cancelling it would take
+  // the reader somewhere else entirely.
+  // The fit is asserted and not merely reported: a grid taller than the viewport would let a focus
+  // move scroll the page for a reason that has nothing to do with a key being cancelled, and this
+  // check would then be measuring something else while still reading green on a good day.
+  const scrolls = [before, right, down, back, paged, pagedBack].map((state) => state.scrollY)
+  check(
+    "no key the grid answers scrolls the page",
+    start.fits && before.scrollY >= 0 && scrolls.every((position) => position === before.scrollY),
+    before.scrollY >= 0
+      ? `scrollY across right, down, up, left, Page Down and Page Up: ${scrolls.join(" → ")} — ` +
+        `${start.fits ? "and the whole grid is in view" : "but it does not all fit"}, ` +
+        `${start.detail}`
+      : "the scroll position could not be read",
+  )
+
+  await burstChecks(devtools)
+
+  // Aimed rather than assumed: the focus is put on the day immediately left of the first bookable
+  // one, which the card's data makes a day with no availability, so one press right crosses from a
+  // day that cannot be picked to one that can. The reason used to live in a `title`, which is why
+  // the grid is also counted for them.
+  const staged = await read(
+    devtools,
+    `(() => {
+      const grid = document.querySelector('${GRID}')
+      if (!grid) return { staged: false, from: "", to: "", reason: "no grid on the page" }
+      const cells = [...grid.querySelectorAll("[data-calendar-date]")]
+      const bookable = cells.findIndex((cell) =>
+        cell.tagName === "A" || cell.tagName === "BUTTON"
+      )
+      if (bookable < 1) {
+        return { staged: false, from: "", to: "", reason: "no bookable day with a day before it" }
+      }
+      cells[bookable - 1].focus()
+      return {
+        staged: document.activeElement === cells[bookable - 1],
+        from: cells[bookable - 1].getAttribute("data-calendar-date"),
+        to: cells[bookable].getAttribute("data-calendar-date"),
+        reason: "",
+      }
+    })()`,
+    { staged: false, from: "", to: "", reason: "the page could not be read" },
+  )
+  const onDisabled = await read(
+    devtools,
+    `(() => {
+      const active = document.activeElement
+      const grid = document.querySelector('${GRID}')
+      return {
+        ...${CALENDAR_STATE},
+        disabled: Boolean(active && active.getAttribute("aria-disabled") === "true"),
+        label: active && active.getAttribute ? (active.getAttribute("aria-label") || "") : "",
+        titles: grid ? grid.querySelectorAll("[title]").length : -1,
+      }
+    })()`,
+    { ...NO_CALENDAR, disabled: false, label: "", titles: -1 },
+  )
+  await pressKey(devtools, "ArrowRight")
+  const onBookable = await read(devtools, CALENDAR_STATE, NO_CALENDAR)
+
+  check(
+    "a day that cannot be picked takes focus, and says why where a keyboard reaches it",
+    staged.staged && onDisabled.disabled && onDisabled.label.includes("no times available") &&
+      onDisabled.hintShown && onDisabled.hint === onDisabled.label &&
+      onBookable.date === staged.to && onBookable.hint.includes("available") &&
+      !onBookable.hint.includes("no times") && onDisabled.titles === 0,
+    staged.staged
+      ? `focus on ${onDisabled.date}: aria-disabled=${onDisabled.disabled}, named ` +
+        `"${onDisabled.label}", hint ${onDisabled.hintShown ? "shown" : "hidden"} reading ` +
+        `"${onDisabled.hint}"; one press right lands on ${onBookable.date} and the hint reads ` +
+        `"${onBookable.hint}"; ${onDisabled.titles} title attributes inside the grid`
+      : `nothing was staged: ${staged.reason}`,
+  )
+
+  const shape = await read(
+    devtools,
+    `(() => {
+      const grid = document.querySelector('${GRID}')
+      if (!grid) return { grid: false, rows: 0, headers: 0, cells: 0, named: false }
+      const labelledBy = grid.getAttribute("aria-labelledby")
+      const heading = labelledBy ? document.getElementById(labelledBy) : null
+      return {
+        grid: grid.getAttribute("role") === "grid",
+        rows: grid.querySelectorAll('[role="row"]').length,
+        headers: grid.querySelectorAll('[role="columnheader"]').length,
+        cells: grid.querySelectorAll('[role="gridcell"]').length,
+        named: Boolean(heading) && heading.textContent.trim().length > 0,
+      }
+    })()`,
+    { grid: false, rows: 0, headers: 0, cells: 0, named: false },
+  )
+  check(
+    "the days are announced as a named grid of rows and cells",
+    shape.grid && shape.rows === 7 && shape.headers === 7 && shape.cells === 42 && shape.named,
+    `role=grid ${shape.grid}, ${shape.rows} rows, ${shape.headers} column headers, ` +
+      `${shape.cells} grid cells, named after the month heading: ${shape.named}`,
+  )
+
+  await localeChecks(devtools)
+}
+
+/**
+ * Two presses of a key with nothing between them, for every key that moves the grid.
+ *
+ * This is the pattern the rest of the file was missing, and the reason three instances of one
+ * defect reached review. Every other check reads the page between one press and the next, which
+ * hands the component a render it would not get from a reader holding a key down; a component that
+ * works out where to go from what the last render is showing then looks correct, because there has
+ * always been a render. Pressing twice with no reading in between removes it.
+ *
+ * Each check below records where the cursor started, sends two real presses back to back, and only
+ * then waits — the wait is for the page to settle, never between the presses.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function burstChecks(devtools: Devtools): Promise<void> {
+  const anchor = await read(devtools, `${CALENDAR_STATE}.month`, "")
+
+  // Two activations of the month arrow inside one expression, which is the one place a component
+  // can be caught acting on a render that has not happened: a key press cannot do this, because
+  // each one arrives as its own protocol message and the page always renders in between, but two
+  // `.click()` calls in one statement run before anything is rendered at all. A month worked out
+  // from what the render is showing therefore answers both clicks with the same month.
+  //
+  // The arrow is an ordinary button and a click is how a person activates it, so this is the one
+  // check here that uses `.click()` on the thing under test rather than a real press.
+  const beforeClicks = await read(devtools, CALENDAR_STATE, NO_CALENDAR)
+  const twoAhead = monthAfter(beforeClicks.month, 2)
+  const clicked = await read(
+    devtools,
+    `(() => {
+      const arrow = document.querySelector('${CALENDAR} button[aria-label^="Next month"]')
+      if (!arrow) return false
+      arrow.click()
+      arrow.click()
+      return true
+    })()`,
+    false,
+  )
+  await poll(
+    () => read(devtools, `${CALENDAR_STATE}.month === ${JSON.stringify(twoAhead)}`, false),
+    3_000,
+  )
+  const afterClicks = await read(devtools, CALENDAR_STATE, NO_CALENDAR)
+  check(
+    "two activations of the month arrow in one frame ask for two months, not one",
+    clicked && beforeClicks.month !== "" && afterClicks.month === twoAhead,
+    clicked
+      ? `${beforeClicks.heading} → next next, with no render in between → ` +
+        `${afterClicks.heading} (${afterClicks.month || "nothing"}), wanted ${twoAhead}`
+      : "the card has no next-month button to activate",
+  )
+
+  await focusGrid(devtools)
+  const beforeDays = await read(devtools, CALENDAR_STATE, NO_CALENDAR)
+  const twoDaysOn = dayAfter(beforeDays.date, 2)
+  await pressKey(devtools, "ArrowRight")
+  await pressKey(devtools, "ArrowRight")
+  await poll(
+    () => read(devtools, `${CALENDAR_STATE}.date === ${JSON.stringify(twoDaysOn)}`, false),
+    3_000,
+  )
+  const afterDays = await read(devtools, CALENDAR_STATE, NO_CALENDAR)
+  check(
+    "two arrow presses with nothing between them move two days, not one",
+    beforeDays.date !== "" && afterDays.date === twoDaysOn,
+    beforeDays.date
+      ? `${beforeDays.date} → right right → ${afterDays.date || "nowhere"}, wanted ${twoDaysOn}`
+      : "the focus never reached a day cell",
+  )
+
+  const beforeMonths = await read(devtools, CALENDAR_STATE, NO_CALENDAR)
+  const twoMonthsOn = monthAfter(beforeMonths.month, 2)
+  await pressKey(devtools, "PageDown")
+  await pressKey(devtools, "PageDown")
+  const twoMonthsLanding = `${twoMonthsOn.slice(0, 8)}${dayNumber(beforeMonths.date)}`
+  await poll(
+    () => read(devtools, `${CALENDAR_STATE}.date === ${JSON.stringify(twoMonthsLanding)}`, false),
+    3_000,
+  )
+  const afterMonths = await read(devtools, CALENDAR_STATE, NO_CALENDAR)
+  check(
+    "two Page Down presses with nothing between them move two months, not one",
+    beforeMonths.month !== "" && afterMonths.month === twoMonthsOn &&
+      afterMonths.heading !== beforeMonths.heading &&
+      dayNumber(afterMonths.date) === dayNumber(beforeMonths.date),
+    beforeMonths.month
+      ? `${beforeMonths.heading} (${beforeMonths.month}) → Page Down Page Down → ` +
+        `${afterMonths.heading} (${afterMonths.month || "nothing"}), wanted ${twoMonthsOn}; the ` +
+        `focus went ${beforeMonths.date} → ${afterMonths.date || "nowhere"}`
+      : "the card echoed no month, so paging could not be measured",
+  )
+
+  // The other half of the same defect: the arrow is validated against a month, and after a Page Up
+  // the month it has to be validated against is the one the Page Up asked for.
+  const beforeMixed = await read(devtools, CALENDAR_STATE, NO_CALENDAR)
+  const oneMonthBack = monthAfter(beforeMixed.month, -1)
+  const mixedTarget = dayAfter(
+    `${oneMonthBack.slice(0, 8)}${dayNumber(beforeMixed.date)}`,
+    1,
+  )
+  await pressKey(devtools, "PageUp")
+  await pressKey(devtools, "ArrowRight")
+  await poll(
+    () => read(devtools, `${CALENDAR_STATE}.date === ${JSON.stringify(mixedTarget)}`, false),
+    3_000,
+  )
+  const afterMixed = await read(devtools, CALENDAR_STATE, NO_CALENDAR)
+  check(
+    "an arrow press straight after Page Up moves inside the month it landed on",
+    beforeMixed.date !== "" && afterMixed.month === oneMonthBack &&
+      afterMixed.date === mixedTarget,
+    beforeMixed.date
+      ? `${beforeMixed.date} → Page Up Arrow Right → ${afterMixed.date || "nowhere"} in ` +
+        `${afterMixed.heading || "no month"}, wanted ${mixedTarget}`
+      : "the focus never reached a day cell",
+  )
+
+  // Back where the checks after this one expect to find it, with one more burst on the way: two
+  // presses of Page Up cover the direction the two above did not.
+  const beforeBack = await read(devtools, CALENDAR_STATE, NO_CALENDAR)
+  const backTo = monthAfter(beforeBack.month, -1)
+  const backTarget = dayAfter(`${backTo.slice(0, 8)}${dayNumber(beforeBack.date)}`, -1)
+  await pressKey(devtools, "PageUp")
+  await pressKey(devtools, "ArrowLeft")
+  await poll(
+    () => read(devtools, `${CALENDAR_STATE}.date === ${JSON.stringify(backTarget)}`, false),
+    3_000,
+  )
+  const afterBack = await read(devtools, CALENDAR_STATE, NO_CALENDAR)
+  check(
+    "Page Up answers a burst the same way Page Down does",
+    beforeBack.month !== "" && afterBack.month === backTo && afterBack.date === backTarget,
+    beforeBack.month
+      ? `${beforeBack.date} → Page Up Arrow Left → ${afterBack.date || "nowhere"} in ` +
+        `${afterBack.heading || "no month"}, wanted ${backTarget}`
+      : "the card echoed no month",
+  )
+
+  // Teardown, with nothing asserted on it: the checks after this one read the month the card
+  // started on, and a burst that went wrong must not decide which month they read.
+  for (let step = 0; step < 12; step++) {
+    const now = await read(devtools, `${CALENDAR_STATE}.month`, "")
+    if (now === anchor || now === "") break
+    const direction = now < anchor ? "Next" : "Previous"
+    await read(
+      devtools,
+      `(document.querySelector('${CALENDAR} button[aria-label^="${direction} month"]')?.click(), true)`,
+      false,
+    )
+    await poll(
+      () => read(devtools, `${CALENDAR_STATE}.month !== ${JSON.stringify(now)}`, false),
+      2_000,
+    )
+  }
+}
+
+/**
+ * What changes about the grid when the locale does.
+ *
+ * Two claims, and the second is the one a browser is needed for: the column order follows the
+ * locale's own first day of the week, and a header carries whatever `Intl` abbreviates the weekday
+ * to. The expected labels are computed in the page from `Intl` itself rather than written down
+ * here, because the whole point is that they are not this repository's to choose.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function localeChecks(devtools: Devtools): Promise<void> {
+  const headersNow = `(() => {
+    const card = document.querySelector('${LOCALE_CARD}')
+    if (!card) return { tag: "", headers: [] }
+    const tag = card.querySelector('[data-e2e="calendar-locale-tag"]')
+    return {
+      tag: tag ? tag.textContent.trim() : "",
+      headers: [...card.querySelectorAll('[role="columnheader"]')].map((cell) =>
+        cell.textContent.trim()
+      ),
+    }
+  })()`
+  const empty = { tag: "", headers: [] as string[] }
+
+  const british = await read(devtools, headersNow, empty)
+  await read(
+    devtools,
+    `(document.querySelector('${LOCALE_CARD} [data-e2e="calendar-locale-en-US"]')?.click(), true)`,
+    false,
+  )
+  await poll(
+    () => read(devtools, `${headersNow}.tag === "en-US"`, false),
+    3_000,
+  )
+  const american = await read(devtools, headersNow, empty)
+  await read(
+    devtools,
+    `(document.querySelector('${LOCALE_CARD} [data-e2e="calendar-locale-ar-EG"]')?.click(), true)`,
+    false,
+  )
+  await poll(
+    () => read(devtools, `${headersNow}.tag === "ar-EG"`, false),
+    3_000,
+  )
+  const egyptian = await read(devtools, headersNow, empty)
+
+  // The browser's own answer for the same locale, built from `Intl` in the page: seven weekday
+  // abbreviations in the order the locale's week runs.
+  const expected = await read(
+    devtools,
+    `(() => {
+      const locale = new Intl.Locale("ar-EG")
+      const info = typeof locale.getWeekInfo === "function" ? locale.getWeekInfo() : locale.weekInfo
+      const first = info && info.firstDay ? info.firstDay : 1
+      const format = new Intl.DateTimeFormat("ar-EG", { weekday: "short", timeZone: "UTC" })
+      const monday = Date.parse("2024-01-01T00:00:00Z")
+      return Array.from({ length: 7 }, (_, index) =>
+        format.format(new Date(monday + ((first - 1 + index) % 7) * 86400000)))
+    })()`,
+    [] as string[],
+  )
+
+  check(
+    "the week starts on the day the reader's locale starts it on",
+    british.headers[0] === "Mon" && american.headers[0] === "Sun" &&
+      egyptian.headers[0] === expected[0] && expected.length === 7,
+    `first column: en-GB "${british.headers[0] ?? "none"}" → en-US ` +
+      `"${american.headers[0] ?? "none"}" → ar-EG "${egyptian.headers[0] ?? "none"}", where the ` +
+      `browser's own Intl says ar-EG starts on "${expected[0] ?? "none"}"`,
+  )
+  check(
+    "a weekday header is the locale's abbreviation, not its first two characters",
+    egyptian.headers.length === 7 && new Set(egyptian.headers).size === 7 &&
+      egyptian.headers.join("|") === expected.join("|"),
+    egyptian.headers.length === 7
+      ? `ar-EG headers ${egyptian.headers.join(" ")} — ${
+        new Set(egyptian.headers).size
+      } of 7 distinguishable, and cutting them to two characters would leave ${
+        new Set(egyptian.headers.map((header) => header.slice(0, 2))).size
+      }`
+      : "the locale card rendered no column headers",
+  )
+
+  await read(
+    devtools,
+    `(document.querySelector('${LOCALE_CARD} [data-e2e="calendar-locale-en-GB"]')?.click(), true)`,
+    false,
+  )
+}
+
+/** Whether the lightbox is open, and where its image sits. */
+interface LightboxState {
+  /** Whether the dialog is really in the top layer, not merely present. */
+  open: boolean
+  /** The focused element, for a failure message. */
+  focused: string
+  /** The page's scroll position. */
+  scrollY: number
+  /** How many dialogs — this one or any other — are in the top layer. */
+  modals: number
+}
+
+/** Read {@link LightboxState}. */
+const LIGHTBOX_STATE = `(() => {
+  const dialog = document.querySelector('${DIALOG}')
+  const active = document.activeElement
+  return {
+    open: Boolean(dialog) && dialog.matches(":modal"),
+    focused: active
+      ? active.tagName.toLowerCase() +
+        (active.getAttribute("aria-label") ? ' "' + active.getAttribute("aria-label") + '"' : "")
+      : "nothing",
+    scrollY: Math.round(globalThis.scrollY),
+    modals: document.querySelectorAll("dialog:modal").length,
+  }
+})()`
+
+const NO_LIGHTBOX: LightboxState = {
+  open: false,
+  focused: "the page could not be read",
+  scrollY: -1,
+  modals: -1,
+}
+
+/** Focus one of the card's images and settle the page, without pressing anything. */
+function focusImage(devtools: Devtools, selector: string): Promise<boolean> {
+  return read(
+    devtools,
+    `(() => {
+      const image = document.querySelector('${selector}')
+      if (!image) return false
+      image.scrollIntoView({ block: "center", behavior: "instant" })
+      image.focus()
+      return document.activeElement === image
+    })()`,
+    false,
+  )
+}
+
+/**
+ * Press the left mouse button and release it at one point of the viewport.
+ *
+ * A real, trusted click through the browser's input pipeline, which is what a backdrop check needs:
+ * calling `.click()` on the element the component listens for would prove the handler and say
+ * nothing about whether a click at that place ever reaches it.
+ *
+ * @param devtools The connected session.
+ * @param point Viewport coordinates, in CSS pixels.
+ */
+async function clickAt(devtools: Devtools, point: { x: number; y: number }): Promise<void> {
+  for (const type of ["mousePressed", "mouseReleased"]) {
+    await devtools.send("Input.dispatchMouseEvent", {
+      type,
+      x: point.x,
+      y: point.y,
+      button: "left",
+      buttons: type === "mousePressed" ? 1 : 0,
+      clickCount: 1,
+    })
+  }
+}
+
+/** A point worked out from an element's geometry, and what the browser says is actually there. */
+interface AimedClick {
+  /** Whether the point lands on what it was aimed at. */
+  onTarget: boolean
+  x: number
+  y: number
+  /** What `elementFromPoint` reports at that point. */
+  landedOn: string
+  /** Why no point could be worked out, when none could. */
+  reason: string
+}
+
+const MISSED: AimedClick = { onTarget: false, x: 0, y: 0, landedOn: "nothing", reason: "unread" }
+
+/**
+ * `ImageLightbox`'s keyboard and its backdrop, driven in the browser that owns them.
+ *
+ * Enter and Space are real key presses, and Space is provable here where it is not for an ordinary
+ * button: what opens the lightbox is the component's own `keydown` listener rather than the
+ * activation click headless Chromium declines to synthesise, so both keys reach it exactly as a
+ * person's would. The two clicks are real mouse events at points worked out from the geometry, and
+ * each point is checked against `elementFromPoint` before it is used — a press that landed
+ * somewhere else is reported as a missed click and never as a failure of the component.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function imageLightboxChecks(devtools: Devtools): Promise<void> {
+  const focusedPlain = await focusImage(devtools, PLAIN_IMAGE)
+  const marks = await read(
+    devtools,
+    `(() => {
+      const images = [...document.querySelectorAll('${LIGHTBOX} [data-lightbox] img')]
+      return {
+        total: images.length,
+        controls: images.filter((image) =>
+          image.getAttribute("tabindex") === "0" && image.getAttribute("role") === "button" &&
+          (image.getAttribute("aria-label") || "").length > 0
+        ).length,
+        names: images.map((image) => image.getAttribute("aria-label") || "unnamed"),
+      }
+    })()`,
+    { total: 0, controls: 0, names: [] as string[] },
+  )
+  check(
+    "every zoomable image is a control a keyboard can hold: a tab stop, a role and a name",
+    marks.total > 1 && marks.controls === marks.total && focusedPlain,
+    marks.total > 0
+      ? `${marks.controls}/${marks.total} images carry tabindex, role=button and a name ` +
+        `(${marks.names.join(", ")}), and one of them took focus: ${focusedPlain}`
+      : "the card rendered no images inside the watched container",
+  )
+
+  const beforeEnter = await read(devtools, LIGHTBOX_STATE, NO_LIGHTBOX)
+  await pressKey(devtools, "Enter")
+  await poll(() => read(devtools, `${LIGHTBOX_STATE}.open`, false), 3_000)
+  const afterEnter = await read(devtools, LIGHTBOX_STATE, NO_LIGHTBOX)
+  await pressKey(devtools, "Escape")
+  await poll(() => read(devtools, `${LIGHTBOX_STATE}.open === false`, false), 3_000)
+  const afterEscape = await read(devtools, LIGHTBOX_STATE, NO_LIGHTBOX)
+
+  check(
+    "a real Enter press on a focused image opens the lightbox, and Escape closes it again",
+    focusedPlain && !beforeEnter.open && afterEnter.open && !afterEscape.open,
+    focusedPlain
+      ? `closed → Enter → ${afterEnter.open ? "a modal dialog with focus on " : "still closed; "}` +
+        `${afterEnter.focused} → Escape → ${afterEscape.open ? "still open" : "closed"}`
+      : "the image never took focus, so a key press proves nothing about it",
+  )
+
+  // Space is the half of the button contract a check can really press: a real Space press *does*
+  // reach a listener in headless Chromium, and an uncancelled one scrolls the page by a screen.
+  //
+  // Both halves are measured, and the second needs the listener below rather than the scroll
+  // position alone. Measured, not assumed: with the component's `preventDefault` deleted the page
+  // still did not move, because the modal dialog the same press opens stops the document
+  // scrolling before the browser gets to act on the key. `defaultPrevented`, read on `document`
+  // after the component's own listener, is the fact that decides whether a page would scroll.
+  const focusedAgain = await focusImage(devtools, PLAIN_IMAGE)
+  await settleScroll(devtools)
+  await read(
+    devtools,
+    `(() => {
+      globalThis.__lightboxSpace = { presses: 0, prevented: null }
+      globalThis.__lightboxSpaceListener = (event) => {
+        if (event.key !== " ") return
+        globalThis.__lightboxSpace.presses++
+        globalThis.__lightboxSpace.prevented = event.defaultPrevented
+      }
+      document.addEventListener("keydown", globalThis.__lightboxSpaceListener)
+      return true
+    })()`,
+    false,
+  )
+  const beforeSpace = await read(devtools, LIGHTBOX_STATE, NO_LIGHTBOX)
+  await pressKey(devtools, "Space")
+  await poll(() => read(devtools, `${LIGHTBOX_STATE}.open`, false), 3_000)
+  const afterSpace = await read(devtools, LIGHTBOX_STATE, NO_LIGHTBOX)
+  const space = await read(
+    devtools,
+    `(() => {
+      document.removeEventListener("keydown", globalThis.__lightboxSpaceListener)
+      return globalThis.__lightboxSpace || { presses: 0, prevented: null }
+    })()`,
+    { presses: 0, prevented: null as boolean | null },
+  )
+
+  check(
+    "a real Space press opens the lightbox, cancelled so the page cannot scroll",
+    focusedAgain && !beforeSpace.open && afterSpace.open && space.presses === 1 &&
+      space.prevented === true && beforeSpace.scrollY >= 0 &&
+      afterSpace.scrollY === beforeSpace.scrollY,
+    focusedAgain
+      ? `closed → Space → ${afterSpace.open ? "open" : "still closed"}; the press reached ` +
+        `document ${space.presses} time(s) with defaultPrevented=${space.prevented}, and scrollY ` +
+        `went ${beforeSpace.scrollY} → ${afterSpace.scrollY}`
+      : "the image never took focus, so a key press proves nothing about it",
+  )
+
+  // The backdrop, aimed at rather than guessed: halfway between the left edge of the viewport and
+  // the left edge of the image, which is the dialog's own area whenever the image does not fill it.
+  const aim = await read(
+    devtools,
+    `(() => {
+      const dialog = document.querySelector('${DIALOG}')
+      const image = dialog ? dialog.querySelector("img") : null
+      if (!dialog || !image) return { onTarget: false, x: 0, y: 0, landedOn: "nothing", reason: "the lightbox is not open" }
+      const rect = image.getBoundingClientRect()
+      if (rect.left < 16) {
+        return { onTarget: false, x: 0, y: 0, landedOn: "nothing", reason: "the image reaches the edge of the viewport, so the dialog has no backdrop to click" }
+      }
+      const x = Math.round(rect.left / 2)
+      const y = Math.round(rect.top + rect.height / 2)
+      const at = document.elementFromPoint(x, y)
+      return {
+        onTarget: at === dialog,
+        x,
+        y,
+        landedOn: at ? at.tagName.toLowerCase() : "nothing",
+        reason: "the image sits " + Math.round(rect.left) + "px from the left edge",
+      }
+    })()`,
+    MISSED,
+  )
+  if (aim.onTarget) await clickAt(devtools, aim)
+  await poll(() => read(devtools, `${LIGHTBOX_STATE}.open === false`, false), 3_000)
+  const afterBackdrop = await read(devtools, LIGHTBOX_STATE, NO_LIGHTBOX)
+
+  check(
+    "a real click on the backdrop closes the lightbox",
+    afterSpace.open && aim.onTarget && !afterBackdrop.open,
+    afterSpace.open
+      ? aim.onTarget
+        ? `a click at ${aim.x},${aim.y} — ${aim.reason} — landed on the dialog itself and it ` +
+          `${afterBackdrop.open ? "stayed open" : "closed"}`
+        : `no click was sent: the point at ${aim.x},${aim.y} lands on ${aim.landedOn}, not the ` +
+          `dialog — ${aim.reason}`
+      : "the lightbox was not open, so a backdrop click proves nothing",
+  )
+
+  // The linked image leaves the lightbox open, and a real Escape press is what closes it — which
+  // is both the last assertion and the teardown every package after this file depends on.
+  //
+  // It is written as a transition for a reason worth keeping: this check used to close the dialog
+  // itself and then assert the top layer was empty, so its own action produced its outcome and no
+  // change to the component could turn it red.
+  await linkedImageCheck(devtools)
+  const beforeClose = await read(devtools, LIGHTBOX_STATE, NO_LIGHTBOX)
+  await pressKey(devtools, "Escape")
+  await poll(() => read(devtools, `${LIGHTBOX_STATE}.modals === 0`, false), 3_000)
+  const afterClose = await read(devtools, LIGHTBOX_STATE, NO_LIGHTBOX)
+
+  check(
+    "a real Escape press closes the lightbox and leaves the top layer empty after it",
+    beforeClose.open && beforeClose.modals === 1 && !afterClose.open && afterClose.modals === 0,
+    beforeClose.open
+      ? `${beforeClose.modals} dialog in the top layer → Escape → ${afterClose.modals}`
+      : "the lightbox was not open, so its closing proves nothing",
+  )
+
+  // Teardown, with nothing asserted on it: a dialog left open would sit over every check
+  // `verify.ts` runs after this file's, whatever went wrong above.
+  await read(
+    devtools,
+    `(() => {
+      const dialog = document.querySelector('${DIALOG}')
+      if (dialog && dialog.open) dialog.close()
+      return true
+    })()`,
+    false,
+  )
+}
+
+/**
+ * An image inside a link opens the lightbox and does not follow the link.
+ *
+ * The measurement is `defaultPrevented`, read by a listener on `document`: a browser follows a link
+ * click exactly when the event was not cancelled, and `document` is the last place the event
+ * reaches, after the container the component listens on. The same listener cancels the event
+ * itself, so the page cannot navigate whatever the component did — a check that left the browser on
+ * another site would take every check after it down as well.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function linkedImageCheck(devtools: Devtools): Promise<void> {
+  // Closed first, whatever the check before left behind: a dialog still in the top layer would
+  // cover the image this one aims at, and the miss would be reported against the wrong fix.
+  await read(
+    devtools,
+    `(() => {
+      const open = document.querySelector('${DIALOG}')
+      if (open && open.open) open.close()
+      return true
+    })()`,
+    false,
+  )
+  await read(
+    devtools,
+    `(() => {
+      globalThis.__lightboxLink = { clicks: 0, prevented: null, href: location.href }
+      globalThis.__lightboxListener = (event) => {
+        const target = event.target
+        const link = target && target.closest
+          ? target.closest('[data-e2e="lightbox-link"]')
+          : null
+        if (!link) return
+        globalThis.__lightboxLink.clicks++
+        globalThis.__lightboxLink.prevented = event.defaultPrevented
+        event.preventDefault()
+      }
+      document.addEventListener("click", globalThis.__lightboxListener)
+      return true
+    })()`,
+    false,
+  )
+
+  await read(
+    devtools,
+    `(document.querySelector('${LINKED_IMAGE}')?.scrollIntoView({ block: "center", behavior: "instant" }), true)`,
+    false,
+  )
+  await settleScroll(devtools)
+  const aim = await read(
+    devtools,
+    `(() => {
+      const image = document.querySelector('${LINKED_IMAGE}')
+      if (!image) return { onTarget: false, x: 0, y: 0, landedOn: "nothing", reason: "the card has no linked image" }
+      const rect = image.getBoundingClientRect()
+      const x = Math.round(rect.left + rect.width / 2)
+      const y = Math.round(rect.top + rect.height / 2)
+      const at = document.elementFromPoint(x, y)
+      return {
+        onTarget: at === image,
+        x,
+        y,
+        landedOn: at ? at.tagName.toLowerCase() : "nothing",
+        reason: Math.round(rect.width) + "×" + Math.round(rect.height) + " image",
+      }
+    })()`,
+    MISSED,
+  )
+  if (aim.onTarget) await clickAt(devtools, aim)
+  await poll(() => read(devtools, `${LIGHTBOX_STATE}.open`, false), 3_000)
+
+  const outcome = await read(
+    devtools,
+    `(() => {
+      const dialog = document.querySelector('${DIALOG}')
+      const record = globalThis.__lightboxLink || { clicks: 0, prevented: null, href: "" }
+      return {
+        open: Boolean(dialog) && dialog.matches(":modal"),
+        clicks: record.clicks,
+        prevented: record.prevented,
+        navigated: record.href !== "" && record.href !== location.href,
+      }
+    })()`,
+    { open: false, clicks: 0, prevented: null as boolean | null, navigated: false },
+  )
+
+  check(
+    "clicking an image inside a link opens the lightbox instead of following the link",
+    aim.onTarget && outcome.clicks === 1 && outcome.prevented === true && outcome.open &&
+      !outcome.navigated,
+    aim.onTarget
+      ? `a real click on the ${aim.reason} reached document with defaultPrevented=` +
+        `${outcome.prevented}, the lightbox is ${outcome.open ? "open" : "closed"}, and the page ` +
+        `${outcome.navigated ? "navigated away" : "is still where it was"}`
+      : `no click was sent: the point at ${aim.x},${aim.y} lands on ${aim.landedOn} — ${aim.reason}`,
+  )
+
+  // The lightbox is deliberately left open: the check after this one closes it with a real Escape
+  // press, which is the last thing this file proves and the teardown for everything after it.
+  await read(
+    devtools,
+    `(document.removeEventListener("click", globalThis.__lightboxListener), true)`,
+    false,
+  )
+}
+
+/**
+ * The ISO date `days` after `date`, for comparing one reading against another.
+ *
+ * Answers `""` for anything that is not a date, and never throws: these helpers are called on
+ * readings, a reading can come back empty when the page was not in the state a check expected, and
+ * a throw here would end the whole browser phase and drop every package after this one. Measured,
+ * not feared — an earlier version threw `Invalid time value` on an empty reading and the run
+ * reported 46 checks instead of 92.
+ */
+function dayAfter(date: string, days: number): string {
+  const parsed = /^\d{4}-\d{2}-\d{2}$/.test(date) ? Date.parse(`${date}T00:00:00Z`) : NaN
+  if (Number.isNaN(parsed)) return ""
+  return new Date(parsed + days * 86_400_000).toISOString().slice(0, 10)
+}
+
+/** The day-of-month of an ISO date, or `""` — what Page Up and Page Down have to preserve. */
+function dayNumber(date: string): string {
+  return date ? date.slice(8, 10) : ""
+}
+
+/** The first of the month `months` away from a `YYYY-MM-01` anchor. `""` for anything else. */
+function monthAfter(anchor: string, months: number): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(anchor)) return ""
+  const total = Number(anchor.slice(0, 4)) * 12 + Number(anchor.slice(5, 7)) - 1 + months
+  const month = String((total % 12) + 1).padStart(2, "0")
+  return `${Math.floor(total / 12)}-${month}-01`
 }

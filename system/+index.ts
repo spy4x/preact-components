@@ -8,13 +8,6 @@
  */
 
 export {
-  BlogImageEnhancer,
-  type BlogImageEnhancerProps,
-  type ImageElementLike,
-  type LightboxImage,
-  resolveImage,
-} from "./blog-image-enhancer.tsx"
-export {
   Calendar,
   type CalendarDay,
   type CalendarDayReason,
@@ -38,6 +31,13 @@ export {
   type PageHead,
   pathSegments,
 } from "./head.ts"
+export {
+  type ImageElementLike,
+  ImageLightbox,
+  type ImageLightboxProps,
+  type LightboxImage,
+  resolveImage,
+} from "./image-lightbox.tsx"
 export {
   type HeadTag,
   type HeadTagName,
