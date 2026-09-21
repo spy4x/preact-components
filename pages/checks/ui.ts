@@ -2068,10 +2068,12 @@ interface Corner {
  */
 async function hoverRevealCheck(devtools: Devtools): Promise<void> {
   await devtools.evaluate<null>(`(globalThis.__verifyTooltip?.trigger?.blur(), null)`)
-  await pointerToCorner(devtools)
+  // The point comes back from the helper that dispatched the move, so this reads the place the
+  // pointer actually went rather than a second copy of the same two numbers.
+  const parked = await pointerToCorner(devtools)
   const corner = await devtools.evaluate<Corner>(`(() => {
     const trigger = globalThis.__verifyTooltip?.trigger ?? null
-    const at = document.elementFromPoint(2, 2)
+    const at = document.elementFromPoint(${parked.x}, ${parked.y})
     return {
       tag: at === null ? "nothing" : at.tagName,
       onTrigger: trigger !== null && at !== null && (at === trigger || trigger.contains(at)),
@@ -2098,8 +2100,8 @@ async function hoverRevealCheck(devtools: Devtools): Promise<void> {
       ? "the Tooltip card has no live row — nothing matched '[data-e2e=\"tooltip-live\"]' with a " +
         "button and a role=tooltip inside it"
       : corner.onTrigger
-      ? `the pointer parked at (2, 2) is still on the trigger (elementFromPoint reads ` +
-        `${corner.tag}), so there is no unhovered state to start from`
+      ? `the pointer parked at (${parked.x}, ${parked.y}) is still on the trigger ` +
+        `(elementFromPoint reads ${corner.tag}), so there is no unhovered state to start from`
       : atRest.focused
       ? "the trigger still had focus at rest, and a hint revealed by focus would prove the focus " +
         "path over again rather than the pointer one"
@@ -2135,8 +2137,9 @@ async function hoverRevealCheck(devtools: Devtools): Promise<void> {
       ? `the hint stayed ${after.visibility} at opacity ${after.opacity} with the pointer back in ` +
         `the corner, so it never goes away and being up while hovered means nothing`
       : `at rest the hint reads visibility ${atRest.visibility} at opacity ${atRest.opacity}, ` +
-        `with focus off the trigger and the pointer parked over ${corner.tag} at (2, 2) → the ` +
-        `pointer was delivered onto ${onTrigger.landing.tag} at (${onTrigger.landing.x}, ` +
+        `with focus off the trigger and the pointer parked over ${corner.tag} at (${parked.x}, ` +
+        `${parked.y}) → the pointer was delivered onto ${onTrigger.landing.tag} at ` +
+        `(${onTrigger.landing.x}, ` +
         `${onTrigger.landing.y}) and the hint read visibility ${shown.visibility} at opacity ` +
         `${shown.opacity} over ${shown.rects} client rect(s), with focus still off the trigger → ` +
         `the pointer went back to the corner and it reads visibility ${after.visibility} again. ` +
@@ -2526,22 +2529,33 @@ async function movePointer(devtools: Devtools, aim: Aim, target: string): Promis
   return await devtools.evaluate<Landing | null>(`globalThis.__verifyPointer ?? null`)
 }
 
+/** The corner {@link pointerToCorner} parks the pointer in, in viewport coordinates. */
+const POINTER_CORNER = { x: 2, y: 2 } as const
+
 /**
  * Park the pointer in the viewport's top-left corner, clear of any card.
  *
  * Viewport coordinates do not scroll with the page, so a pointer left over one card ends up
  * resting on another as soon as the next check scrolls to it.
  *
+ * The coordinate comes back rather than being written down again by a caller that wants to read
+ * what is under the parked pointer. Two copies of the same two numbers in two functions would come
+ * apart the moment the corner moved, and the guard that reads the corner would then be reading a
+ * point the pointer is not at — with nothing going red to say so.
+ *
  * @param devtools The connected session.
+ * @returns Where the pointer now is.
  */
-async function pointerToCorner(devtools: Devtools): Promise<void> {
+async function pointerToCorner(devtools: Devtools): Promise<{ x: number; y: number }> {
   await devtools.send("Input.dispatchMouseEvent", {
     type: "mouseMoved",
-    x: 2,
-    y: 2,
+    x: POINTER_CORNER.x,
+    y: POINTER_CORNER.y,
     button: "none",
     buttons: 0,
   })
+
+  return POINTER_CORNER
 }
 
 /** Which row the browser has under the pointer, and what the two rows are painted. */
