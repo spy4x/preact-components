@@ -225,10 +225,22 @@ export function Modal(
   // closed to the step it was on when the dialog appeared, every time, and only when the user
   // pressed Escape rather than clicking.
   //
-  // Written during render rather than from an effect, so a close that lands between a render and its
-  // effects still routes through the port that render passed. Adding `onClose` to the effect's
-  // dependency list is the obvious alternative and is wrong: an inline port has a new identity every
-  // render, so the effect would tear the dialog down and re-open it under the user.
+  // Adding `onClose` to the effect's dependency list is the obvious alternative and is wrong: an
+  // inline port has a new identity every render, so the effect would tear the dialog down and
+  // re-open it under the user.
+  //
+  // **What makes the write below safe, and what would stop it.** It happens during the render, not
+  // from an effect, and that is a deliberate choice against this renderer's timing: Preact renders
+  // synchronously and defers effects behind a frame, so between a commit and its effects there is a
+  // real window in which a key press can land — and an effect-synced ref would still be holding the
+  // previous render's port for the whole of it. The write is safe here because a render in this
+  // renderer is never speculative: it is not started for a state the user may never see, never
+  // abandoned, and never replayed, so the value written is always the one the user is looking at.
+  // A renderer that rendered concurrently would break that and take this with it, because a
+  // discarded render would have written its port into the ref on the way out. Nothing in this
+  // repository can tell the two implementations apart — swap this for a `useEffect` that syncs the
+  // same ref and the whole suite and every browser check stay green — so the reason is written here
+  // rather than left to be rediscovered.
   const latest = useRef({ onClose, controlled: open !== undefined })
   latest.current = { onClose, controlled: open !== undefined }
   // The id comes from the framework's own hook, as everywhere else in this package. It is derived
