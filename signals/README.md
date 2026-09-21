@@ -11,7 +11,7 @@ import { buildModelStore, createToastStore } from "@preact-components/signals"
 
 ## Why it exists
 
-`buildModelStore` is one 240-line factory that replaced eleven hand-rolled CRUD stores, and
+`buildModelStore` is one factory that replaced eleven hand-rolled CRUD stores, and
 `build-model-store` here is that factory rewritten for arktype. The other modules each collapse a
 per-app copy of the same idea: financy's `theme`/`toast`/`clipboard` singletons, warthunder's
 sort codec.
@@ -135,13 +135,56 @@ zone.init() // one session watch, with a disposer
 
 `paths.one` and `paths.undelete` override the two URLs. Every response body must be a full row:
 that is what `schemas.full` is for, and a body that does not match becomes a payload error rather
-than a mistyped row in the UI.
+than a mistyped row in the UI. Each of those replacements is subject to the ordering rule below.
+
+### Which answer the store keeps
+
+Two rules decide what a row looks like once several answers have arrived for it: the order the
+requests were made in, and, for a remote event, a freshness check.
+
+**Requests are ordered by when they were made, not by when they answer.** Every write to a row
+draws a number from one counter that the row's `update`, `undelete` and `delete` share. An answer
+belonging to a request older than one already applied is dropped, so two quick edits leave the
+second one's value in the store however the network reorders them, and a delete that answers before
+an older update is not undone by it. A dropped answer is still returned to its own caller —
+`await store.update(…)` tells you what the server said about _your_ request, and the store tells you
+what it holds.
+
+**`inProgress` drops when the newest request for the row has answered.** Nothing that reached the
+network lowers it earlier, so no operation slot reports the work finished while the write that will
+change the row is still on the wire. An older request does not hold the flag up: once the newest one
+has settled, every answer still outstanding is one the store has already decided to discard, and
+both of the row's slots are released. So a slot can read "finished" while a superseded request is,
+strictly, still unanswered — there is nothing left that could change the row. Inside an operation,
+the only thing that lowers a flag with no answer at all is input a schema rejects, because it never
+reaches the network: the update schema for a row's slot, the create schema for the create slot.
+There is a sharp edge about it below. `remove(id)` and `reset()` are the other way a flag stops
+reading as in progress — they clear the slots outright rather than settling them.
+
+A create has no id until the server answers, so "the same row" cannot mean a row there. Two creates
+in flight make two different rows and both are appended; the only thing they contend for is the
+single `createOp` slot, which the newest of them settles.
+
+Nothing orders a remote event against a local request. An `"updated"` event that arrives while your
+own `PATCH` is in flight is applied whenever the freshness check accepts it, and your own answer
+then replaces it.
+
+**A remote `"updated"` event is judged by `updatedAt`.** `isNewer` decides whether an incoming row
+replaces the one being held. The default reads the first of `updatedAt`, `createdAt` that either row
+carries a usable value for, and accepts the incoming row when that value is at least as late as the
+stored one. Every other case accepts the incoming row too: equal timestamps, a pair where only one
+side carries the column, and a model with no timestamp column at all. The event is the server saying
+the row changed, so where the two rows cannot be ordered the event wins — a check that cannot read a
+clock must not silently drop the write. Pass your own `isNewer` for a model that versions its rows
+some other way.
 
 ### Extension points
 
 - `extraOps(context)` — domain operations, merged onto the returned store. The context hands over
   `state`, `patch`, `setUpdateOp`, `setDeleteOp`, `request`, `toast` and `pathFor`, so a domain
-  operation behaves like a built-in one without the generic type ever learning about it.
+  operation behaves like a built-in one without the generic type ever learning about it. One thing
+  it does not inherit is the request ordering above: `setUpdateOp` writes the slot as it is told, so
+  two domain operations in flight for one row settle in the order their answers arrive.
 - `selectors(context)` — derived signals, merged the same way. `extraOps` wins a key collision.
 - `session` — a signal or getter. `init()` watches it: when it goes falsy after having been truthy,
   the store resets (and `onReset` runs, for state the app owns). Unlike the 17 copies this replaces,
@@ -211,6 +254,21 @@ than a mistyped row in the UI.
   ```
 - **A reused toast id replaces that toast** and cancels the timer the old entry was carrying; it does
   not append a second entry a `remove(id)` could not tell apart.
+- **Input a schema rejects settles the slot even while a write is outstanding.** An `update(id, …)`
+  whose payload does not validate never reaches the network, so it takes no place in the row's
+  request sequence: it files the validation error in that row's slot and lowers `inProgress` there,
+  which is how the message reaches the form. A write for the same row that is still on the wire
+  settles the slot again when its own answer lands. `create` does the same to the create slot, which
+  another create may still be holding.
+- **An answer from before a `reset()` still reaches the list.** The request counters deliberately
+  survive a reset, so an answer to a request made before it cannot settle the slot of a request made
+  after it — that is what the counters are for, and counters that started again at zero would let
+  exactly that happen. The list is not protected the same way: the older answer is still the newest
+  the store has heard for that row, so it replaces that row in the freshly loaded list until a newer
+  answer arrives. After a logout and a login, a save from the previous session can land in the new
+  session's list under the same id. This is what the store does today, written down rather than left
+  to be inferred; `does not let an answer from before a reset settle a request made after it` is the
+  test that pins both halves of it.
 
 ## Tests
 
@@ -221,5 +279,18 @@ deno test signals/          # from the repository root
 Every module has a colocated test except `types.ts`, which is types and enums only; the barrel's
 own test is about what importing it does to the process rather than about an export of its own.
 The model store is exercised against a fake `fetch`; toasts against a fake clock — no network, no
-timers left running. `useUrlFilters` is the one exception: it needs a DOM and a router, so only its
+timers left running. The ordering rules above are tested with a second fake `fetch` that holds every
+request open until the test answers it, so two writes to one row can be put in flight and answered
+in the other order. `useUrlFilters` is the one exception: it needs a DOM and a router, so only its
 pure coercion helpers are covered here.
+
+The model store has a second file, `build-model-store.generated.test.ts`. The named tests fix one
+arrangement each and hold everything else still — three small row ids, two requests, a handful of
+statuses, a list of one or two rows — and a rule that reads an axis none of them varies cannot fail
+when it breaks. That is not hypothetical: a freshness check comparing the wrong column and a request
+counter shared by every row both survived a green suite here. The generated file varies those axes
+instead, from a fixed seed, and checks the store against a model of the rule after every answer. It
+covers what no finite set of fixtures can — row identity, how many rows are in flight, how long the
+list is, which status came back — and its own header says what it does not cover and how to
+reproduce a failure from the number it prints. It is not a description of the store: read the named
+tests for that.

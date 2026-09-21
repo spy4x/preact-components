@@ -36,6 +36,10 @@ import {
  *   gone, and `extraOps` is where they belong.
  * - **Honest lookups.** `op.delete` is not optional, and `one.byId` says `undefined` when the row is
  *   absent, which is what removed the nine `as XStore & {op: …}` casts downstream.
+ * - **Ordered by request, not by arrival.** Every write to a row is numbered, and an answer that
+ *   belongs to a request older than one already answered is dropped rather than applied. Without
+ *   it, two quick edits leave whichever answer came back last in the store, and an operation's
+ *   "in progress" flag drops while a later write is still outstanding.
  */
 
 /** Payload and row schemas for a model. */
@@ -156,8 +160,12 @@ export interface BuildModelStoreConfig<
     undelete?: (id: number) => string
   }
   /**
-   * Freshness check for `"updated"` remote events; a stale event is ignored.
-   * Defaults to comparing `createdAt`.
+   * Freshness check for `"updated"` remote events; an event judged older than the stored row is
+   * ignored.
+   *
+   * The default compares `updatedAt`, falls back to `createdAt` for a model that has neither side
+   * stamped with an `updatedAt`, and accepts the incoming row whenever the two cannot be ordered —
+   * including when the model carries no timestamp column at all. See {@link defaultIsNewer}.
    */
   isNewer?: (incoming: SchemaOutput<F>, existing: SchemaOutput<F>) => boolean
   /**
@@ -309,6 +317,60 @@ export function buildModelStore<
     patch({ deleteOps: setMapEntry(state.value.deleteOps, id, op) })
   }
 
+  /**
+   * Request sequences, one per row.
+   *
+   * Update, undelete and delete of a row draw from the same counter, so the ordering holds across
+   * kinds of request: a delete that answers before an older update is the newer request, and the
+   * update's answer is dropped instead of resurrecting the row.
+   *
+   * Entries are never dropped, neither by `remove` nor by `reset`. A counter that went back to zero
+   * would let the answer to a request issued before the reset settle the slot of one issued after
+   * it, which is the confusion the counter exists to prevent. The cost is one small object per row
+   * the store has ever written to.
+   */
+  const rowRequests = new Map<number, RequestSequence>()
+
+  /**
+   * The sequence every create draws from.
+   *
+   * A create has no id until the server answers, so "the same row" cannot mean a row here. Two
+   * creates in flight make two different rows and both belong in the list, so this sequence never
+   * suppresses the append — it guards only the one thing the two contend for, the single `createOp`
+   * slot, which only the newest create settles.
+   */
+  const createRequests: RequestSequence = { issued: 0, applied: 0 }
+
+  const sequenceOf = (id: number): RequestSequence => {
+    const existing = rowRequests.get(id)
+    if (existing) return existing
+    const started: RequestSequence = { issued: 0, applied: 0 }
+    rowRequests.set(id, started)
+    return started
+  }
+
+  /**
+   * Write a row's update slot, and release its delete slot.
+   *
+   * Only an answer that settles calls this — the newest request for the row, with nothing newer
+   * outstanding. A delete slot still flagged in progress at that moment belongs to a request whose
+   * answer will be dropped as stale, and nothing else would ever lower its flag.
+   */
+  const settleUpdateOp = (id: number, op: OperationState<Row, InputError>): void => {
+    patch({
+      updateOps: setMapEntry(state.value.updateOps, id, op),
+      deleteOps: released(state.value.deleteOps, id),
+    })
+  }
+
+  /** Write a row's delete slot, and release its update slot. See {@link settleUpdateOp}. */
+  const settleDeleteOp = (id: number, op: OperationState<Row, RequestError>): void => {
+    patch({
+      deleteOps: setMapEntry(state.value.deleteOps, id, op),
+      updateOps: released(state.value.updateOps, id),
+    })
+  }
+
   /** Report a failed request, unless it is one the host already surfaces. */
   const notify = (error: RequestError, title: string): void => {
     if (isSilentError(error)) return
@@ -326,18 +388,28 @@ export function buildModelStore<
       return { error, result: null }
     }
 
+    const seq = beginRequest(createRequests)
     patch({ createOp: { inProgress: true, error: null, result: null } })
     const outcome = await request(endpoint, jsonRequest("POST", payload), schemas.full)
+    const answer = answerRights(createRequests, seq)
     if (outcome.error) {
-      patch({ createOp: { inProgress: false, error: outcome.error, result: null } })
+      // Only the shared slot is contended here, so only `settles` is read: a create's own failure
+      // is its own news, and is reported whichever of the creates in flight it belongs to.
+      if (answer.settles) {
+        patch({ createOp: { inProgress: false, error: outcome.error, result: null } })
+      }
       notify(outcome.error, `Failed to create ${model}`)
       return { error: outcome.error, result: null }
     }
 
-    patch({
-      createOp: { inProgress: false, error: null, result: outcome.result },
-      list: [...state.value.list, outcome.result],
-    })
+    // The row is appended whichever create this is: two creates in flight are two different rows,
+    // and only the shared `createOp` slot has to pick one of them.
+    const list = [...state.value.list, outcome.result]
+    patch(
+      answer.settles
+        ? { createOp: { inProgress: false, error: null, result: outcome.result }, list }
+        : { list },
+    )
     toast.success({ body: `${model} was created` })
     return { error: null, result: outcome.result }
   }
@@ -353,30 +425,48 @@ export function buildModelStore<
       return { error, result: null }
     }
 
+    const sequence = sequenceOf(id)
+    const seq = beginRequest(sequence)
     setUpdateOp(id, { inProgress: true, error: null, result: null })
     const outcome = await request(pathFor(id), jsonRequest("PATCH", payload), schemas.full)
+    const answer = answerRights(sequence, seq)
     if (outcome.error) {
-      setUpdateOp(id, { inProgress: false, error: outcome.error, result: null })
-      notify(outcome.error, `Failed to update ${model}`)
+      if (answer.settles) {
+        settleUpdateOp(id, { inProgress: false, error: outcome.error, result: null })
+      }
+      if (answer.fresh) notify(outcome.error, `Failed to update ${model}`)
       return { error: outcome.error, result: null }
     }
+    // A newer request for this row has already been answered: this one lost the race it was in,
+    // and applying it would put back a value the user has since replaced.
+    if (!answer.fresh) return { error: null, result: outcome.result }
 
-    setUpdateOp(id, { inProgress: false, error: null, result: outcome.result })
+    if (answer.settles) {
+      settleUpdateOp(id, { inProgress: false, error: null, result: outcome.result })
+    }
     patch({ list: replaceRow(outcome.result) })
     toast.success({ body: `${model} was updated` })
     return { error: null, result: outcome.result }
   }
 
   async function removeRow(id: number): Promise<OperationResult<Row, RequestError>> {
+    const sequence = sequenceOf(id)
+    const seq = beginRequest(sequence)
     setDeleteOp(id, { inProgress: true, error: null, result: null })
     const outcome = await request(pathFor(id), { method: "DELETE" }, schemas.full)
+    const answer = answerRights(sequence, seq)
     if (outcome.error) {
-      setDeleteOp(id, { inProgress: false, error: outcome.error, result: null })
-      notify(outcome.error, `Failed to delete ${model}`)
+      if (answer.settles) {
+        settleDeleteOp(id, { inProgress: false, error: outcome.error, result: null })
+      }
+      if (answer.fresh) notify(outcome.error, `Failed to delete ${model}`)
       return { error: outcome.error, result: null }
     }
+    if (!answer.fresh) return { error: null, result: outcome.result }
 
-    setDeleteOp(id, { inProgress: false, error: null, result: outcome.result })
+    if (answer.settles) {
+      settleDeleteOp(id, { inProgress: false, error: null, result: outcome.result })
+    }
     // Replaced, not spliced: a delete is a soft delete and the row keeps its place in the list.
     patch({ list: replaceRow(outcome.result) })
     toast.success({ body: `${model} was deleted` })
@@ -384,15 +474,23 @@ export function buildModelStore<
   }
 
   async function undelete(id: number): Promise<OperationResult<Row, InputError>> {
+    const sequence = sequenceOf(id)
+    const seq = beginRequest(sequence)
     setUpdateOp(id, { inProgress: true, error: null, result: null })
     const outcome = await request(undeletePathFor(id), { method: "POST" }, schemas.full)
+    const answer = answerRights(sequence, seq)
     if (outcome.error) {
-      setUpdateOp(id, { inProgress: false, error: outcome.error, result: null })
-      notify(outcome.error, `Failed to restore ${model}`)
+      if (answer.settles) {
+        settleUpdateOp(id, { inProgress: false, error: outcome.error, result: null })
+      }
+      if (answer.fresh) notify(outcome.error, `Failed to restore ${model}`)
       return { error: outcome.error, result: null }
     }
+    if (!answer.fresh) return { error: null, result: outcome.result }
 
-    setUpdateOp(id, { inProgress: false, error: null, result: outcome.result })
+    if (answer.settles) {
+      settleUpdateOp(id, { inProgress: false, error: null, result: outcome.result })
+    }
     patch({ list: replaceRow(outcome.result) })
     toast.success({ body: `${model} was restored` })
     return { error: null, result: outcome.result }
@@ -600,21 +698,109 @@ function idle<T, E>(): OperationState<T, E> {
   return { inProgress: false, error: null, result: null }
 }
 
-/** Default freshness check: a remote row is newer when its `createdAt` is later. */
-function defaultIsNewer<M extends Model>(incoming: M, existing: M): boolean {
-  return timestamp(incoming.createdAt) > timestamp(existing.createdAt)
+/**
+ * Sequence numbers for one contested slot — one row, or the collection's create slot.
+ *
+ * `issued` is the number given to the most recently started request; `applied` is the number of the
+ * newest request whose answer the store has acted on. Both only ever go up, which is what lets an
+ * answer be judged by the request it belongs to rather than by the moment it happens to arrive.
+ */
+interface RequestSequence {
+  issued: number
+  applied: number
 }
 
-/** Best-effort timestamp for an `unknown` row column. Unusable values compare as `0`. */
-function timestamp(value: unknown): number {
-  if (value === null || value === undefined) return 0
-  if (value instanceof Date) return value.getTime()
-  if (typeof value === "number") return value
-  if (typeof value === "string") {
-    const parsed = new Date(value).getTime()
-    return Number.isNaN(parsed) ? 0 : parsed
+/**
+ * What the store may do with an answer that has just arrived.
+ *
+ * `fresh` is false when a newer request for the same row has already been answered: that answer is
+ * the store's truth and this one is discarded. `settles` is true only when no newer request was
+ * ever issued, which is the one condition under which an operation slot may stop saying "in
+ * progress" — a slot cleared while a newer write is outstanding tells the user the work is
+ * finished when it is not.
+ */
+interface AnswerRights {
+  fresh: boolean
+  settles: boolean
+}
+
+/** Number the next request drawn from `sequence`. */
+function beginRequest(sequence: RequestSequence): number {
+  sequence.issued += 1
+  return sequence.issued
+}
+
+/**
+ * Decide what the answer to request `seq` may do, and record it.
+ *
+ * Call it exactly once per answer: a fresh answer advances the sequence, so a second ask about the
+ * same answer reports it as stale. `settles` implies `fresh`, because the newest request issued is
+ * answered at most once and nothing later can have been applied before it.
+ */
+function answerRights(sequence: RequestSequence, seq: number): AnswerRights {
+  const fresh = seq > sequence.applied
+  if (fresh) sequence.applied = seq
+  return { fresh, settles: seq === sequence.issued }
+}
+
+/**
+ * The same map with `id`'s in-progress flag lowered.
+ *
+ * Returns the map itself when there is nothing to lower, so a slot nobody is waiting on does not
+ * churn the signal's identity.
+ */
+function released<T, E>(
+  ops: ReadonlyMap<number, OperationState<T, E>>,
+  id: number,
+): ReadonlyMap<number, OperationState<T, E>> {
+  const op = ops.get(id)
+  return op?.inProgress ? setMapEntry(ops, id, { ...op, inProgress: false }) : ops
+}
+
+/**
+ * Columns the default freshness check reads, in the order it prefers them.
+ *
+ * `updatedAt` first, because that is the column an edit moves. `createdAt` is the fallback for a
+ * model that has no `updatedAt` at all: it never moves after the row is written, so comparing it
+ * answers "not newer" for every genuine edit and drops the event.
+ */
+const FRESHNESS_COLUMNS = ["updatedAt", "createdAt"] as const
+
+/**
+ * Default freshness check for an `"updated"` remote event.
+ *
+ * It compares the first of `updatedAt`, `createdAt` that either row carries a usable value for, and
+ * accepts the incoming row when that value is at least as late as the stored one. Every other case
+ * accepts the incoming row: a pair where neither side carries a usable timestamp at all, and a pair
+ * where only one side carries the column being compared. A remote update event is the server's
+ * statement that the row changed, so where the two rows cannot be ordered the event wins — dropping
+ * it because the row has no clock loses the write, which is what this check exists to prevent.
+ *
+ * Equal timestamps accept the incoming row too. Two rows stamped the same instant should be the
+ * same row, and where they are not, the one the server has just sent is the authority.
+ */
+function defaultIsNewer<M extends Model>(incoming: M, existing: M): boolean {
+  for (const column of FRESHNESS_COLUMNS) {
+    const incomingAt = timestamp(incoming[column])
+    const existingAt = timestamp(existing[column])
+    if (incomingAt === null && existingAt === null) continue
+    if (incomingAt === null || existingAt === null) return true
+    return incomingAt >= existingAt
   }
-  return 0
+  return true
+}
+
+/** Best-effort timestamp for an `unknown` row column. `null` when it cannot be read as one. */
+function timestamp(value: unknown): number | null {
+  if (value instanceof Date) return finite(value.getTime())
+  if (typeof value === "number") return finite(value)
+  if (typeof value === "string") return finite(new Date(value).getTime())
+  return null
+}
+
+/** The millisecond count, or `null` when it is `NaN` or infinite. */
+function finite(milliseconds: number): number | null {
+  return Number.isFinite(milliseconds) ? milliseconds : null
 }
 
 function errorMessage(error: unknown): string {
