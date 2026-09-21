@@ -72,8 +72,11 @@ describe("pageRange", () => {
     expect(asText(pageRange(25, 50))).toBe("1 … 23 24 25 26 27 … 50")
   })
 
-  it("marks the single page it cannot hide", () => {
-    expect(asText(pageRange(5, 8))).toBe("1 … 4 5 6 7 8")
+  it("writes out a page rather than hiding it, even when that lists the whole range", () => {
+    // Eight pages, current in the middle: a window of five with both ends shown would leave page 2
+    // alone in front of it and page 8 has to be shown anyway, so both marks are worth less than
+    // the numbers they would stand for and every page is written out.
+    expect(asText(pageRange(5, 8))).toBe("1 2 3 4 5 6 7 8")
   })
 
   it("collapses only the tail when the current page is at the start", () => {
@@ -88,14 +91,50 @@ describe("pageRange", () => {
     expect(asText(pageRange(48, 50))).toBe("1 … 46 47 48 49 50")
   })
 
-  it("stops sliding once one more page would be hidden behind a mark", () => {
-    expect(asText(pageRange(4, 50))).toBe("1 2 3 4 5 … 50")
+  it("swallows the one page a mark would have hidden, at either end", () => {
+    // Page 4 of 50 keeps its two neighbours on each side, and the window then reaches back over
+    // page 2 — the only page a leading mark could have hidden — rather than dropping a neighbour.
+    // Page 47 is the same thing at the other end, and was already right before the window changed.
+    expect(asText(pageRange(4, 50))).toBe("1 2 3 4 5 6 … 50")
     expect(asText(pageRange(47, 50))).toBe("1 … 45 46 47 48 49 50")
   })
 
-  it("writes a page out rather than marking it when there is room for one mark", () => {
-    expect(asText(pageRange(4, 8))).toBe("1 2 3 4 5 … 8")
-    expect(asText(pageRange(5, 8))).toBe("1 … 4 5 6 7 8")
+  it("keeps neighbours on both sides of a middling page, which is what #159 reported", () => {
+    // The reported case, exactly: page 5 of 10 used to read "1 2 3 4 5 … 10", with the current page
+    // against the mark and nothing after it.
+    expect(asText(pageRange(5, 10))).toBe("1 2 3 4 5 6 7 … 10")
+    expect(asText(pageRange(6, 10))).toBe("1 … 4 5 6 7 8 9 10")
+  })
+
+  it("walks the current page across a long range and keeps it mid-window throughout", () => {
+    // One axis varied on its own: the same 30 pages, the current page moving from the first to the
+    // last. Every earlier fixture pinned the current page to a place where the defect did not show.
+    const positions = [1, 2, 3, 4, 5, 15, 26, 27, 28, 29, 30]
+    const seen = positions.map((page) => `${page}: ${asText(pageRange(page, 30))}`)
+
+    expect(seen).toEqual([
+      "1: 1 2 3 4 5 … 30",
+      "2: 1 2 3 4 5 … 30",
+      "3: 1 2 3 4 5 … 30",
+      "4: 1 2 3 4 5 6 … 30",
+      "5: 1 2 3 4 5 6 7 … 30",
+      "15: 1 … 13 14 15 16 17 … 30",
+      "26: 1 … 24 25 26 27 28 29 30",
+      "27: 1 … 25 26 27 28 29 30",
+      "28: 1 … 26 27 28 29 30",
+      "29: 1 … 26 27 28 29 30",
+      "30: 1 … 26 27 28 29 30",
+    ])
+  })
+
+  it("holds the window at one width once it is clear of both ends", () => {
+    // The window slides rather than shrinks, so a reader's eye does not have to re-find the control
+    // as they page through the middle of a long range.
+    const widths = [10, 15, 20, 30, 40].map((page) =>
+      pageRange(page, 50).filter((item) => "page" in item).length
+    )
+
+    expect(widths).toEqual([7, 7, 7, 7, 7])
   })
 
   it("clamps the current page into the range", () => {
@@ -109,9 +148,23 @@ describe("pageRange", () => {
     expect(pageRange(3, 4).some((item) => !("page" in item))).toBe(false)
   })
 
-  it("honours a caller-supplied window size", () => {
+  it("lists a range in full up to the size, and collapses the first one past it", () => {
+    // The other axis: the current page held at the middle while the total crosses the default
+    // `size` of 7 — under it, level with it, and past it.
+    expect(asText(pageRange(3, 6))).toBe("1 2 3 4 5 6")
+    expect(asText(pageRange(4, 7))).toBe("1 2 3 4 5 6 7")
+    expect(asText(pageRange(4, 9))).toBe("1 2 3 4 5 6 … 9")
+    expect(asText(pageRange(4, 12))).toBe("1 2 3 4 5 6 … 12")
+  })
+
+  it("moves where a range starts collapsing when the caller changes the size", () => {
+    // `size` decides how long a range may be before it collapses at all. It does not set the
+    // collapsed window's width, which is why the three long cases below all read the same.
+    expect(asText(pageRange(6, 11, 11))).toBe("1 2 3 4 5 6 7 8 9 10 11")
+    expect(asText(pageRange(6, 11, 10))).toBe("1 … 4 5 6 7 8 … 11")
     expect(asText(pageRange(25, 50, 5))).toBe("1 … 23 24 25 26 27 … 50")
     expect(asText(pageRange(25, 50, 2))).toBe("1 … 23 24 25 26 27 … 50")
+    expect(asText(pageRange(25, 50, 40))).toBe("1 … 23 24 25 26 27 … 50")
   })
 
   it("returns every item as a page or a gap", () => {
@@ -120,7 +173,11 @@ describe("pageRange", () => {
     }
   })
 
-  it("shows both ends and never hides a single page behind a mark", () => {
+  it("shows both ends, both neighbours and never hides a single page behind a mark", () => {
+    // The neighbour assertion is the one this loop was missing. Every other case in this file names
+    // one page of one range, and the three that happened to name a middling page of a middling
+    // range were the three the old window got wrong; the loop below ran over all of them and stayed
+    // green, because it only ever asked where the ends and the marks were.
     for (let pageCount = 1; pageCount <= 40; pageCount++) {
       for (let page = 1; page <= pageCount; page++) {
         const items = pageRange(page, pageCount)
@@ -132,6 +189,14 @@ describe("pageRange", () => {
         expect(pages).toContain(page)
         expect(new Set(pages).size).toBe(pages.length)
         expect(marks).toBeLessThanOrEqual(2)
+        // Two pages either side of the current one, as far as the range reaches. `sideWidth` is
+        // private to the component, so the promise is restated here as the number its JSDoc names.
+        for (let near = Math.max(1, page - 2); near <= Math.min(pageCount, page + 2); near++) {
+          expect(pages).toContain(near)
+        }
+        // And never more items than the documented ceiling, which is what stops "show a neighbour"
+        // being satisfied by listing everything.
+        expect(items.length).toBeLessThanOrEqual(pageCount <= 7 ? pageCount : 9)
 
         for (const [index, item] of items.entries()) {
           if ("page" in item) continue
@@ -152,13 +217,14 @@ describe("Pagination", () => {
     expect(render(<Pagination page={1} pageCount={0} onChange={() => {}} />)).toBe("")
   })
 
-  it("renders only the current page for one page", () => {
+  it("renders one page number for one page, with both controls present and disabled", () => {
     const html = render(<Pagination page={1} pageCount={1} onChange={() => {}} />)
 
     expect(html).toContain('aria-current="page"')
     expect(html).toContain(">1</button>")
-    expect(html).not.toContain("Previous")
-    expect(html).not.toContain("Next")
+    expect(html).toContain("Previous")
+    expect(html).toContain("Next")
+    expect(countOccurrences(html, 'aria-disabled="true"')).toBe(2)
   })
 
   it("labels the nav landmark", () => {
@@ -180,18 +246,20 @@ describe("Pagination", () => {
     expect(html).toContain('aria-current="page"')
   })
 
-  it("does not render a previous control on the first page", () => {
+  it("keeps the previous control on the first page and marks it disabled", () => {
     const html = render(<Pagination page={1} pageCount={3} onChange={() => {}} />)
 
-    expect(html).not.toContain("Previous")
-    expect(html).toContain("Next")
+    expect(html).toContain("Previous")
+    expect(countOccurrences(html, 'aria-disabled="true"')).toBe(1)
+    expect(html).toMatch(/<button[^>]*aria-disabled="true"[^>]*>Previous<\/button>/)
   })
 
-  it("does not render a next control on the last page", () => {
+  it("keeps the next control on the last page and marks it disabled", () => {
     const html = render(<Pagination page={3} pageCount={3} onChange={() => {}} />)
 
-    expect(html).toContain("Previous")
-    expect(html).not.toContain("Next")
+    expect(html).toContain("Next")
+    expect(countOccurrences(html, 'aria-disabled="true"')).toBe(1)
+    expect(html).toMatch(/<button[^>]*aria-disabled="true"[^>]*>Next<\/button>/)
   })
 
   it("renders both controls between the ends, and disables neither", () => {
@@ -199,9 +267,62 @@ describe("Pagination", () => {
 
     expect(html).toContain("Previous")
     expect(html).toContain("Next")
+    // The attribute, not the word: `aria-disabled:opacity-50` is a utility on both controls, so
+    // the substring is in the markup either way.
+    expect(html).not.toContain('aria-disabled="')
     // `disabled:opacity-50` is a utility on every button, so the attribute is spelled out.
     expect(html).not.toContain(' disabled=""')
     expect(html).not.toContain(" disabled>")
+  })
+
+  it("never uses the native disabled attribute, which would take focus off the pressed control", () => {
+    // The measurement behind the choice: in the browser `deno task --cwd pages verify` drives,
+    // setting `disabled` on the focused button moved `document.activeElement` to `<body>` on the
+    // same line, which is the bug this component was reported for. `pages/checks/ui.ts` proves the
+    // other half — that the control keeps focus when it becomes disabled for real.
+    for (const [page, pageCount] of [[1, 5], [5, 5], [1, 1]] as const) {
+      const html = render(<Pagination page={page} pageCount={pageCount} onChange={() => {}} />)
+
+      expect(html).not.toContain(' disabled=""')
+      expect(html).not.toContain(" disabled>")
+      expect(html).toContain('aria-disabled="true"')
+    }
+  })
+
+  it("ignores a press on the control that has nothing left to do", () => {
+    // `aria-disabled` does not stop the browser dispatching the click, so the handler has to.
+    let requested = 0
+    const first = Pagination({ page: 1, pageCount: 5, onChange: (next) => requested = next })
+
+    fireClick(first, "Previous")
+    expect(requested).toBe(0)
+
+    const last = Pagination({ page: 5, pageCount: 5, onChange: (next) => requested = next })
+
+    fireClick(last, "Next")
+    expect(requested).toBe(0)
+  })
+
+  it("names each page number Page N by default", () => {
+    const html = render(<Pagination page={1} pageCount={3} onChange={() => {}} />)
+
+    expect(html).toContain('aria-label="Page 1"')
+    expect(html).toContain('aria-label="Page 3"')
+  })
+
+  it("takes the page number's accessible name from the caller", () => {
+    const html = render(
+      <Pagination
+        page={1}
+        pageCount={3}
+        onChange={() => {}}
+        pageLabel={(page) => `Seite ${page} von 3`}
+      />,
+    )
+
+    expect(html).toContain('aria-label="Seite 1 von 3"')
+    expect(html).toContain('aria-label="Seite 3 von 3"')
+    expect(html).not.toContain('aria-label="Page 1"')
   })
 
   it("asks the owner for the page a number belongs to", () => {

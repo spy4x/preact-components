@@ -17,35 +17,53 @@ export interface PaginationProps {
   previousLabel?: string
   /** Text of the next control. Defaults to `"Next"`. */
   nextLabel?: string
+  /**
+   * Accessible name of one page number, as a function of that number. Defaults to
+   * `` (page) => `Page ${page}` ``.
+   *
+   * A function rather than a string, because a translation needs the number and where it falls in
+   * the sentence is the translator's business, not this component's.
+   */
+  pageLabel?: (page: number) => string
   class?: string
 }
 
-/** Most page numbers shown at once in a collapsed range, not counting a `…`. */
-const windowSize = 7
+/** Longest range still listed in full; past this the middle collapses. */
+const fullListLimit = 7
 
-/** Pages kept next to the current one when the window is wide enough to hold them. */
+/** Pages kept next to the current one, on each side. */
 const sideWidth = 2
 
 /**
  * Collapse a page range into the items a pagination control renders.
  *
  * Pure and DOM-free, so the collapsing rules are unit-testable on their own. A range no longer than
- * `size` is listed in full; past that the first and last page are always shown, the current page
- * keeps {@link sideWidth} neighbours around it, and a run nobody needs to see becomes a `…`. A `…`
- * is only ever used for at least two pages — a mark hiding one page shows less than writing it out
- * — and it does not count against `size`. `page` is clamped into `1…pageCount` first.
+ * `size` is listed in full. Past that, three rules hold together, in this order:
+ *
+ * - the first and last page are always shown;
+ * - the current page keeps {@link sideWidth} neighbours on **both** sides, as far as the ends of
+ *   the range allow — where the window runs off an end it slides back inside rather than shrinking,
+ *   so the control keeps one width wherever the reader is;
+ * - a `…` always stands for at least two pages. Where a window would leave a single page between
+ *   itself and an end, that page is written out instead of marked: a `…` takes the same room as the
+ *   number and says less.
+ *
+ * That last rule is why a collapsed range can show more page numbers than `size`: it swallows a
+ * page by dropping the `…` that would have hidden it, so the number of **items** rendered does not
+ * change and stays at `size + 2` at the very most. `page` is clamped into `1…pageCount` first.
  *
  * The `page` of a {@link PageRangeItem} is always a real page number; `"gap"` is a sentinel only
  * ever used by the `gap` branch of the union.
  *
  * @param page Current page, `1`-based. Non-integers are rounded.
  * @param pageCount Total number of pages; `0` or fewer yields `[]`.
- * @param size How many page numbers to show at most when the range is long enough. Defaults to
- *   `7`; values below `5` are raised, because a narrower window cannot show both ends and still
- *   give the current page a neighbour on each side.
+ * @param size How long a range may be and still be listed in full. Defaults to `7`; values below
+ *   `5` are raised, because a range shorter than that cannot show both ends and still give the
+ *   current page a neighbour on each side. It does not set the collapsed window's width —
+ *   {@link sideWidth} does — so raising it moves only the point at which collapsing starts.
  * @returns The items to render, in order: `[{ page: 1 }, { gap: "gap" }, …]`.
  */
-export function pageRange(page: number, pageCount: number, size = windowSize): PageRangeItem[] {
+export function pageRange(page: number, pageCount: number, size = fullListLimit): PageRangeItem[] {
   if (pageCount < 1) return []
 
   const current = Math.max(1, Math.min(pageCount, Math.round(page)))
@@ -55,69 +73,84 @@ export function pageRange(page: number, pageCount: number, size = windowSize): P
   }
 
   // Which pages the window shows, when the range is long enough to need one.
-  const { from, to } = bestWindow(current, pageCount, budget)
+  const { from, to } = windowAround(current, pageCount)
 
   const items: PageRangeItem[] = []
-  if (from > 2) items.push({ page: 1 }, { gap: "gap" })
+  if (from > 1) items.push({ page: 1 }, { gap: "gap" })
 
   for (let number = from; number <= to; number++) items.push({ page: number })
 
-  if (to < pageCount - 1) items.push({ gap: "gap" }, { page: pageCount })
-  else if (to < pageCount) items.push({ page: pageCount })
+  if (to < pageCount) items.push({ gap: "gap" }, { page: pageCount })
 
   return items
 }
 
 /**
- * Pick the run of page numbers a long range should show.
+ * The run of page numbers a long range shows around the current page.
  *
- * The rules overlap at the edges of a range, so the candidates are scored rather than derived: a
- * `…` must hide at least two pages, the current page must stay visible, and the widest window that
- * obeys both wins. Ties go to the window whose centre is closest to the current page, so the active
- * page sits mid-span instead of against a mark. Called only for `pageCount > budget`.
+ * Derived rather than searched. Centre {@link sideWidth} pages on each side of the current page,
+ * slide the window back inside the range if it hangs off an end, then let each edge swallow a page
+ * it would otherwise have hidden behind a `…` on its own. Both adjustments only ever widen the
+ * window, so the neighbours the first step granted are never taken away again — which is the
+ * property the old scoring search did not have: it rejected the centred window outright when a mark
+ * beside it would have hidden one page, and answered with an off-centre one instead, so page 5 of
+ * 10 was shown as `1 2 3 4 5 … 10` with no neighbour after it.
+ *
+ * Called only for `pageCount > budget`, and `budget` is at least `5`, so the range is always long
+ * enough to hold the window.
+ *
+ * @param current Current page, already clamped into `1…pageCount`.
+ * @param pageCount Total number of pages.
+ * @returns The inclusive first and last page of the window.
  */
-function bestWindow(
-  current: number,
-  pageCount: number,
-  budget: number,
-): { from: number; to: number } {
-  const widest = Math.min(pageCount - 2, budget, sideWidth * 2 + 1)
+function windowAround(current: number, pageCount: number): { from: number; to: number } {
+  let from = current - sideWidth
+  let to = current + sideWidth
 
-  for (let width = widest; width > 0; width--) {
-    let best: { from: number; to: number } | undefined
-    let closest = Number.POSITIVE_INFINITY
-
-    for (let from = 1; from + width - 1 <= pageCount; from++) {
-      const to = from + width - 1
-      if (current < from || current > to) continue
-      // A mark in front of the window hides `from - 2` pages; one behind it hides `pageCount - to`.
-      // Two is the fewest worth a mark, and a window that reaches an end needs no mark there.
-      if (from > 1 && from < 4) continue
-      if (to < pageCount - 1 && pageCount - to < 3) continue
-
-      const distance = Math.abs(current - (from + to) / 2)
-      if (distance < closest) {
-        best = { from, to }
-        closest = distance
-      }
-    }
-
-    if (best) return best
+  if (from < 1) {
+    to = Math.min(pageCount, to + (1 - from))
+    from = 1
+  }
+  if (to > pageCount) {
+    from = Math.max(1, from - (to - pageCount))
+    to = pageCount
   }
 
-  // A range this long always has a window of its own; this only fails safe on the impossible.
-  return { from: 1, to: widest }
+  // A mark in front of the window would hide pages `2 … from - 1`, and one behind it pages
+  // `to + 1 … pageCount - 1`. Fewer than two of them is not worth a mark, so the window takes them.
+  if (from <= 3) from = 1
+  if (to >= pageCount - 2) to = pageCount
+
+  return { from, to }
 }
+
+/**
+ * Utilities that make an `aria-disabled` control look and feel disabled.
+ *
+ * `Button`'s own `disabled:` utilities are gated on the native attribute, which this component does
+ * not use — see {@link Pagination} for why — so the same two effects are spelled out against the
+ * aria state instead.
+ */
+const ariaDisabledClasses = "aria-disabled:pointer-events-none aria-disabled:opacity-50"
 
 /**
  * Page numbers with the long runs collapsed, plus previous/next.
  *
  * Controlled: `page` is rendered as given (clamped) and every request leaves through `onChange`,
- * so a caller can drive it from a URL param or a signal. Nothing is kept internally.
+ * so a caller can drive it from a URL param or a signal. Nothing is kept internally. `pageCount` of
+ * `0` renders nothing; `1` renders the single page marked `aria-current="page"`, with both controls
+ * present and disabled.
  *
- * A control that cannot act is not rendered: there is no previous button on page 1 and no next
- * button on the last page. `pageCount` of `0` renders nothing; `1` renders the single page marked
- * `aria-current="page"`.
+ * **Previous and Next are always rendered**, and carry `aria-disabled="true"` where they cannot
+ * act. The two obvious alternatives both lose the keyboard user's place at the moment they reach
+ * the end, which is exactly when they are pressing the control: unmounting it destroys the element
+ * under their focus, and setting the native `disabled` attribute on a focused button takes focus
+ * off it — measured in the headless Chromium this repository drives, where `document.activeElement`
+ * went from the button to `<body>` on the same line that set the attribute. `aria-disabled` leaves
+ * focus alone, and Chromium's accessibility tree reports the control as disabled for either
+ * spelling, so nothing is given up by choosing it. What it does not do is stop the press: a real
+ * Space press still fires a click on an `aria-disabled` button, measured the same way, so each
+ * handler checks the end it guards before calling `onChange`.
  */
 export function Pagination(
   {
@@ -127,20 +160,29 @@ export function Pagination(
     label = "Pagination",
     previousLabel = "Previous",
     nextLabel = "Next",
+    pageLabel = (pageNumber) => `Page ${pageNumber}`,
     class: className,
   }: PaginationProps,
 ) {
   if (pageCount < 1) return null
 
   const current = Math.max(1, Math.min(pageCount, Math.round(page)))
+  const atStart = current === 1
+  const atEnd = current === pageCount
 
   return (
     <nav aria-label={label} class={cn("flex items-center justify-center gap-1", className)}>
-      {current > 1 && (
-        <Button variant="outline" size="sm" onClick={() => onChange(current - 1)}>
-          {previousLabel}
-        </Button>
-      )}
+      <Button
+        variant="outline"
+        size="sm"
+        class={ariaDisabledClasses}
+        aria-disabled={atStart ? "true" : undefined}
+        onClick={() => {
+          if (!atStart) onChange(current - 1)
+        }}
+      >
+        {previousLabel}
+      </Button>
       <ul class="flex items-center gap-1">
         {pageRange(current, pageCount).map((item, index) =>
           !("page" in item)
@@ -155,7 +197,7 @@ export function Pagination(
                   variant={item.page === current ? "secondary" : "outline"}
                   size="sm"
                   aria-current={item.page === current ? "page" : undefined}
-                  aria-label={`Page ${item.page}`}
+                  aria-label={pageLabel(item.page)}
                   onClick={() => onChange(item.page)}
                 >
                   {item.page}
@@ -164,15 +206,17 @@ export function Pagination(
             )
         )}
       </ul>
-      {current < pageCount && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onChange(current + 1)}
-        >
-          {nextLabel}
-        </Button>
-      )}
+      <Button
+        variant="outline"
+        size="sm"
+        class={ariaDisabledClasses}
+        aria-disabled={atEnd ? "true" : undefined}
+        onClick={() => {
+          if (!atEnd) onChange(current + 1)
+        }}
+      >
+        {nextLabel}
+      </Button>
     </nav>
   )
 }

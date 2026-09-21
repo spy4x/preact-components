@@ -367,8 +367,9 @@ export function paginationNote(page: number, pageCount: number): string {
  *
  * The current page is the caller's state, so the card is a real pagination control: press a page
  * number, Previous or Next and the highlight moves. What the card also shows is the control that
- * *cannot* act being absent — page 1 renders no Previous button, and a `pageCount` of `0` renders
- * nothing at all, which the pair on the right demonstrates.
+ * *cannot* act staying where it is and going dim — page 1 keeps its Previous button, disabled, so
+ * that paging to an end with the keyboard does not destroy the button under the user's finger —
+ * and a `pageCount` of `0` rendering nothing at all, which the pair at the bottom demonstrates.
  */
 function PaginationDemo() {
   const short = useSignal(1)
@@ -379,19 +380,31 @@ function PaginationDemo() {
     <div class="space-y-6">
       <div class="space-y-2">
         <p class="text-xs text-gray-500 dark:text-gray-400">
-          pageCount=5 · page {short.value} — no Previous on page 1, no Next on the last page:{" "}
-          {paginationNote(short.value, 5)}
+          pageCount=5 · page {short.value}{" "}
+          — Previous is disabled on page 1 and Next on the last page, and neither leaves the page,
+          so a keyboard user keeps the control they were pressing: {paginationNote(short.value, 5)}
         </p>
-        <Pagination page={short.value} pageCount={5} onChange={(page) => short.value = page} />
+        <Pagination
+          page={short.value}
+          pageCount={5}
+          onChange={(page) => short.value = page}
+          label="Five pages"
+        />
       </div>
 
       <div class="space-y-2">
         <p class="text-xs text-gray-500 dark:text-gray-400">
           pageCount=24 · page {long.value}{" "}
-          — the ends are always shown and a run nobody needs becomes an ellipsis, which never hides
-          a single page: {paginationNote(long.value, 24)}
+          — the ends are always shown, the current page keeps two neighbours on each side, and a run
+          nobody needs becomes an ellipsis, which never hides a single page:{" "}
+          {paginationNote(long.value, 24)}
         </p>
-        <Pagination page={long.value} pageCount={24} onChange={(page) => long.value = page} />
+        <Pagination
+          page={long.value}
+          pageCount={24}
+          onChange={(page) => long.value = page}
+          label="Twenty-four pages"
+        />
       </div>
 
       <div class="space-y-2">
@@ -738,7 +751,7 @@ export const displayDemos = {
   },
   Pagination: {
     summary:
-      "Page numbers with the long runs collapsed, plus previous/next. Controlled: `page` is rendered (clamped) and every request leaves through `onChange`. A control that cannot act is absent — no Previous on page 1, no Next on the last page — and `pageCount={0}` renders nothing.",
+      "Page numbers with the long runs collapsed, plus previous/next. Controlled: `page` is rendered (clamped) and every request leaves through `onChange`. A control that cannot act stays where it is and carries `aria-disabled` — unmounting it, or disabling it natively, would take focus off the button a keyboard user is pressing. `pageCount={0}` renders nothing, and every page number's name comes from `pageLabel`, which defaults to `Page N`.",
     snippet: `<Pagination page={page.value} pageCount={24} onChange={(page) => page.value = page} />
 
 // An empty result set needs no special case at the call site.
