@@ -118,14 +118,21 @@ function clickBarButton(devtools: Devtools, label: string): Promise<boolean> {
  * scope, which installs and *waits* behind the first. `SWUpdater` is mounted only at that point, and
  * no container is passed to it, so finding the waiting worker is the component's own work.
  *
- * **The published site must never install a worker of its own**, which shapes three things here, and
- * all three are asserted rather than described. Nothing registers on load: the card has a button,
- * this file presses it, and the first check reads a freshly loaded page that holds no registration
- * at all. The worker is scoped to `sw-demo/`, a directory below this page, so the catalogue itself
- * is never controlled — read off `navigator.serviceWorker.controller` twice, once at install and
- * once after the hand-over. And the worker stores nothing and claims nobody, which is checked
- * through `caches.keys()` and through an uncontrolled client, because a worker's inertness is a
- * property of what the browser ends up holding and not of what its source says.
+ * **The published site must never install a worker of its own**, which shapes three things here.
+ * Nothing registers on load: the card has a button, this file presses it, and the first check reads
+ * a freshly loaded page that holds no registration at all. The worker is scoped to `sw-demo/`, a
+ * directory below this page, so the catalogue itself is never controlled — read off
+ * `navigator.serviceWorker.controller` twice, once at install and once after the hand-over. And the
+ * worker stores nothing and claims nobody, checked through `caches.keys()` and through an
+ * uncontrolled client, because inertness is a property of what the browser ends up holding and not
+ * of what a source file says.
+ *
+ * **The limit of that last pair: they cover storage and claiming, not interception.** A worker that
+ * answered every request itself and stored nothing would leave both of them green — measured, with
+ * a `fetch` handler that does exactly that, and the suite stayed at 62 of 62. What confines such a
+ * worker is the scope and nothing else: it can only ever intercept requests for `sw-demo/`, which
+ * holds one page that only this card opens. That is judged enough, and proving the absence of
+ * interception would be more machinery than the risk deserves.
  *
  * Buttons are activated with `.click()` rather than a key press, which is measured and not assumed:
  * `ui.ts`'s Modal check records that headless Chromium does not turn Enter on a focused button into
