@@ -111,34 +111,57 @@ export function demoedNamesOf(id: PackageId): string[] {
 }
 
 /**
- * Every value export a consumer can reach in one package: the barrel, and every subpath module.
+ * A package's subpath modules, resolved from its `deno.json` `exports` map: everything the map
+ * publishes besides the barrel itself.
  *
- * The barrel alone is not enough. A component exported from its own module and never re-exported is
- * reachable through `@preact-components/ui/its-module` and would otherwise be invisible to this
- * check, which is how one shipped with no card before. `exports` is the package's own statement of
- * what it publishes, so it is what gets read; a target that is not a TypeScript source (the theme's
- * stylesheets) is skipped, and one that is declared as anything but a string is an error rather than
- * a silent skip.
+ * {@link valueExportsOf} walks this same list to decide which modules to read, and
+ * `coverage.test.ts` walks it too to build its fixtures, so the read and the test can never drift
+ * apart on which modules count as a package's subpath surface. A target that is not a TypeScript
+ * source (the theme's stylesheets) is skipped, and one declared as anything but a string is an error
+ * rather than a silent skip.
  *
  * @param id Package to read.
- * @returns Its value export names, barrel first, each once.
+ * @returns Each subpath entry's own key and its target module resolved to an importable URL.
  * @throws When the package config declares no `exports` object, or declares a non-string target.
  */
-export async function valueExportsOf(id: PackageId): Promise<string[]> {
+export async function subpathModulesOf(
+  id: PackageId,
+): Promise<Array<{ subpath: string; href: string }>> {
   const config = parse(await Deno.readTextFile(new URL(`./${id}/deno.json`, ROOT)))
   const declared = (config as { exports?: unknown } | null)?.exports
   if (typeof declared !== "object" || declared === null || Array.isArray(declared)) {
     throw new Error(`${id}/deno.json declares no exports object`)
   }
 
-  const names = new Set(Object.keys(BARRELS[id]))
+  const modules: Array<{ subpath: string; href: string }> = []
   for (const [subpath, target] of Object.entries(declared)) {
+    if (subpath === ".") continue
     if (typeof target !== "string") {
       throw new Error(`${id}/deno.json declares ${subpath} with a non-string target`)
     }
     if (!/\.tsx?$/.test(target)) continue
 
-    const namespace = await import(new URL(`./${id}/${target}`, ROOT).href) as object
+    modules.push({ subpath, href: new URL(`./${id}/${target}`, ROOT).href })
+  }
+
+  return modules
+}
+
+/**
+ * Every value export a consumer can reach in one package: the barrel, and every subpath module.
+ *
+ * The barrel alone is not enough. A component exported from its own module and never re-exported is
+ * reachable through `@preact-components/ui/its-module` and would otherwise be invisible to this
+ * check, which is how one shipped with no card before.
+ *
+ * @param id Package to read.
+ * @returns Its value export names, barrel first, each once.
+ * @throws When the package config declares no `exports` object, or declares a non-string target.
+ */
+export async function valueExportsOf(id: PackageId): Promise<string[]> {
+  const names = new Set(Object.keys(BARRELS[id]))
+  for (const { href } of await subpathModulesOf(id)) {
+    const namespace = await import(href) as object
     for (const name of Object.keys(namespace)) names.add(name)
   }
 
