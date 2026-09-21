@@ -702,11 +702,23 @@ async function fragmentChecks(devtools: Devtools, before: FilterState): Promise<
       `mean the fragment was put back with a second navigation`,
   )
 
+  // A second filter change, so the entry Back lands on is one the *hook* wrote rather than one
+  // this file pushed. Backing onto a pushed entry would prove nothing: that entry carries the
+  // fragment because the push put it there, whatever the hook did on the way past.
+  const twice = await act(
+    devtools,
+    click("url-filters-set-closed"),
+    "a second filter change, so Back lands on an entry the hook wrote",
+  )
   const back = await act(devtools, "history.back()", "one press of Back out of that filter change")
   check(
-    "one press of Back restores the query string with the fragment still on it",
-    back.search === "?status=open" && back.search !== paged.search && back.hash === ROUTE_FRAGMENT,
-    `${paged.search}${paged.hash} → ${back.search}${back.hash} in one press`,
+    "one press of Back restores the query string the hook wrote, fragment included",
+    // The two query strings are different literals, so asserting both is the transition; a third
+    // clause comparing them is a comparison TypeScript can already answer, and it refuses it.
+    twice.search === "?status=closed&page=2" && back.search === "?status=open&page=2" &&
+      back.hash === ROUTE_FRAGMENT,
+    `${twice.search}${twice.hash} → ${back.search}${back.hash} in one press — the entry Back ` +
+      `landed on is the one the first filter change wrote`,
   )
 
   // The card mounts here, while the address carries one fragment, and the page moves to another
