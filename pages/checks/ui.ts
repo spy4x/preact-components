@@ -143,17 +143,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
       `invalid=${fields.afterInvalid} "${fields.afterDescribedBy}"`,
   )
 
-  const toasts = await devtools.evaluate<{ pushed: boolean; text: string }>(
-    `(async () => {
-      const card = document.querySelector("#demo-Toastr")
-      const button = [...card.querySelectorAll("button")]
-        .find((candidate) => candidate.textContent.trim() === "success")
-      button.click()
-      await new Promise((done) => setTimeout(done, 50))
-      return { pushed: document.body.textContent.includes("pushed by the demo stack"), text: button.textContent.trim() }
-    })()`,
-  )
-  check("Toastr pushes a toast from the demo stack", toasts.pushed, `clicked "${toasts.text}"`)
+  await toastrChecks(devtools)
 
   // Last on purpose: a Modal that refuses to close would sit in the top layer over everything, so a
   // failure here cannot take an unrelated check down with it.
@@ -668,6 +658,475 @@ async function reopen(devtools: Devtools): Promise<DropdownState> {
   await poll(() => devtools.evaluate<boolean>(`${DROPDOWN_STATE}.inPanel === true`), 3_000)
 
   return await devtools.evaluate<DropdownState>(DROPDOWN_STATE)
+}
+
+/** What one read of the Toastr card's live area sees. */
+interface ToastrState {
+  /** `true` when the parked live area is still in the document. */
+  present: boolean
+  /** `true` when the parked element is still the one the card renders — identity, not a selector. */
+  same: boolean
+  live: string | null
+  role: string | null
+  name: string | null
+  /** Toasts in the stack, or `-1` when there is no live area to count them in. */
+  toasts: number
+  /** The stack's own box, rounded, or `-1` when there is none. */
+  height: number
+  width: number
+  /** The stack's text, cut short, for the failure message. */
+  text: string
+}
+
+/** The outcome of clearing the stack and pushing the one toast that dismisses itself. */
+interface Pushed {
+  ok: boolean
+  /** What was missing from the card, when `ok` is false. */
+  reason: string
+  /** The duration the card pushed, read off its own button rather than written down here. */
+  duration: number
+  toasts: number
+}
+
+/** How long a condition went on holding in the page, and whether it reached the end of a window. */
+interface Hold {
+  held: boolean
+  elapsedMs: number
+}
+
+/** Where a dispatched pointer move actually landed, as the page saw the browser deliver it. */
+interface Hover {
+  insideRegion: boolean
+  tag: string
+  x: number
+  y: number
+}
+
+/** A point to move the pointer to, with the reading that says what is there. */
+interface Point {
+  x: number
+  y: number
+  inViewport: boolean
+  insideRegion: boolean
+  tag: string
+}
+
+/**
+ * Park the Toastr card, its live area and its three demo controls on `globalThis`.
+ *
+ * Run before anything is pushed, which is the whole point: the live area has to be found in a page
+ * that has never shown a toast. A component that renders nothing for an empty stack parks `null`
+ * here, and every check below reports that rather than throwing.
+ */
+const TOASTR_SETUP = `(() => {
+  const card = document.querySelector("#demo-Toastr")
+  globalThis.__verifyToastr = {
+    card,
+    region: card?.querySelector('[data-e2e="guide-toastr"]') ?? null,
+    auto: card?.querySelector('[data-e2e="toast-auto"]') ?? null,
+    clear: card?.querySelector('[data-e2e="toast-clear"]') ?? null,
+    success: card?.querySelector('[data-e2e="toast-success"]') ?? null,
+  }
+  return null
+})()`
+
+/**
+ * The live area's markings, its contents and its box, read in one round trip.
+ *
+ * `same` compares the parked element with the one the card renders *now*, by identity. A selector
+ * on its own cannot tell an area that was always there from one the first toast brought with it,
+ * and that difference is the entire fix.
+ */
+const TOASTR_STATE = `(() => {
+  const region = globalThis.__verifyToastr?.region ?? null
+  if (region === null) {
+    return {
+      present: false, same: false, live: null, role: null, name: null,
+      toasts: -1, height: -1, width: -1, text: "",
+    }
+  }
+  const box = region.getBoundingClientRect()
+  return {
+    present: region.isConnected,
+    same: region === document.querySelector('#demo-Toastr [data-e2e="guide-toastr"]'),
+    live: region.getAttribute("aria-live"),
+    role: region.getAttribute("role"),
+    name: region.getAttribute("aria-label"),
+    toasts: region.children.length,
+    height: Math.round(box.height),
+    width: Math.round(box.width),
+    text: (region.textContent ?? "").trim().slice(0, 40),
+  }
+})()`
+
+/**
+ * Toastr's live area, its auto-dismiss timer and the two things that pause it.
+ *
+ * None of this is reachable from a test that renders to a string: the area has to exist in a page
+ * *before* the toast arrives, the timer is a `setTimeout`, and the pause is a pointer and a focus
+ * move. The audit that opened this found the timer untested in the plainest way — it stopped the
+ * timer from ever dismissing anything and the suite stayed green.
+ *
+ * Three habits the Dropdown and Modal checks above set, and one this one adds.
+ *
+ * The card's elements are parked on `globalThis` rather than re-queried, so the live-area check
+ * compares element identity: re-querying would also match an area the first toast created, which is
+ * exactly the defect under test. Every assertion is a transition — "no toast on screen" is true of
+ * a toast that never appeared. Nothing here throws: a missing control is a failed check with a
+ * message saying which one, because an exception ends the browser phase and silently drops every
+ * package whose file runs after this one.
+ *
+ * The addition is how the timer is driven. Waiting out the shipped five seconds, five times, is
+ * both slow and a guess, so the card carries a button that pushes a **short, explicit** duration and
+ * writes it on itself as `data-duration`; the checks read that number back and wait multiples of it.
+ * The pause assertions are the awkward kind — they claim something does *not* happen for a while —
+ * so they poll for the toast disappearing early instead of sleeping and hoping, and report the
+ * moment it went if it went. A failure therefore reads "the toast left after 1240ms with focus
+ * inside the stack" rather than "expected true".
+ *
+ * The pointer is moved to the top-left corner before the timer checks and asserted to be off the
+ * stack. It is not idle equipment: `strayClickCheck` above leaves the virtual pointer at viewport
+ * coordinates over the Dropdown card, and viewport coordinates do not scroll with the page, so
+ * without this the pointer can end up resting on the Toastr card and pausing the timer the check is
+ * about to measure.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function toastrChecks(devtools: Devtools): Promise<void> {
+  await devtools.evaluate<null>(TOASTR_SETUP)
+  const empty = await devtools.evaluate<ToastrState>(TOASTR_STATE)
+
+  const filled = await devtools.evaluate<ToastrState>(`(async () => {
+    globalThis.__verifyToastr?.success?.click()
+    await new Promise((done) => setTimeout(done, 80))
+    return ${TOASTR_STATE}
+  })()`)
+  const cleared = await devtools.evaluate<ToastrState>(`(async () => {
+    globalThis.__verifyToastr?.clear?.click()
+    await new Promise((done) => setTimeout(done, 80))
+    return ${TOASTR_STATE}
+  })()`)
+
+  check(
+    "Toastr's live area is in the page before any toast, and a toast arrives inside that same area",
+    empty.present && empty.toasts === 0 && empty.role === "region" && empty.live === "polite" &&
+      (empty.name ?? "").length > 0 && filled.same && filled.toasts === 1,
+    !empty.present
+      ? "no live area in the page before the first toast, so nothing was there to be changed"
+      : `an empty ${empty.role} named "${empty.name}" with aria-live="${empty.live}" went from ` +
+        `${empty.toasts} to ${filled.toasts} toasts ${
+          filled.same ? "in the same element" : "in a different element"
+        } — "${filled.text}"`,
+  )
+  check(
+    "an empty Toastr live area reserves no height",
+    empty.height === 0 && empty.width > 0 && filled.height > 0 && cleared.height === 0 &&
+      cleared.toasts === 0,
+    empty.present
+      ? `${empty.width}px wide and ${empty.height}px tall with an empty stack, ${filled.height}px ` +
+        `tall with one toast, back to ${cleared.height}px once it is cleared`
+      : "there was no live area to measure",
+  )
+
+  const parked = await pointerAway(devtools)
+  const pushed = await pushAutoToast(devtools)
+  const startedAt = Date.now()
+  const early = await holdsFor(
+    () =>
+      devtools.evaluate<boolean>(`(globalThis.__verifyToastr?.region?.children.length ?? 0) > 0`),
+    Math.round(pushed.duration / 2),
+  )
+  const left = await goneWithin(devtools, pushed.duration * 4)
+  const lifetime = Date.now() - startedAt
+  check(
+    "Toastr's own timer dismisses a toast",
+    pushed.ok && pushed.toasts === 1 && parked.insideRegion === false && early.held && left.held,
+    !pushed.ok
+      ? pushed.reason
+      : pushed.toasts !== 1
+      ? `the card pushed ${pushed.toasts} toasts instead of one, so this proves nothing`
+      : parked.insideRegion
+      ? `the pointer was resting on the stack (${parked.tag}), which pauses the timer, so this ` +
+        `proves nothing about it`
+      : !early.held
+      ? `a ${pushed.duration}ms toast was gone ${early.elapsedMs}ms after it was pushed, too soon ` +
+        `to be its own timer`
+      : left.held
+      ? `a ${pushed.duration}ms toast was still there ${early.elapsedMs}ms in and left on its own ` +
+        `${lifetime}ms after it was pushed`
+      : `a ${pushed.duration}ms toast was still on screen ${lifetime}ms after it was pushed`,
+  )
+
+  await focusPauseCheck(devtools)
+  await pointerPauseCheck(devtools)
+
+  // Leave the card as it was found, for whatever reads the page next.
+  await devtools.evaluate<null>(`(globalThis.__verifyToastr?.clear?.click(), null)`)
+}
+
+/**
+ * Focus inside the stack holds the timer, and the timer resumes once focus leaves.
+ *
+ * The control focused is a toast's own dismiss button — the one a keyboard user is reaching for
+ * when the five-second race is lost — and focus leaves to the card's clear button, which is outside
+ * the stack but still on the page. That is the stricter of the two paths the component has to get
+ * right: `focusout` carries a real `relatedTarget` there, and a component that resumed on any
+ * `focusout` would also resume while focus moved *between* two controls inside one toast.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function focusPauseCheck(devtools: Devtools): Promise<void> {
+  await pointerAway(devtools)
+  const pushed = await pushAutoToast(devtools)
+  const focused = await devtools.evaluate<{ ok: boolean; inside: boolean; label: string }>(`(() => {
+    const region = globalThis.__verifyToastr?.region ?? null
+    const control = region?.querySelector("button") ?? null
+    if (control === null) return { ok: false, inside: false, label: "" }
+    control.focus()
+    return {
+      ok: true,
+      inside: region.contains(document.activeElement),
+      label: control.getAttribute("aria-label") ?? "",
+    }
+  })()`)
+
+  const held = await holdsFor(
+    () =>
+      devtools.evaluate<boolean>(`(globalThis.__verifyToastr?.region?.children.length ?? 0) > 0`),
+    Math.round(pushed.duration * 2.5),
+  )
+  const out = await devtools.evaluate<{ ok: boolean; outside: boolean }>(`(() => {
+    const parked = globalThis.__verifyToastr ?? {}
+    if (!parked.clear || !parked.region) return { ok: false, outside: false }
+    parked.clear.focus()
+    return { ok: true, outside: !parked.region.contains(document.activeElement) }
+  })()`)
+  const resumed = await goneWithin(devtools, pushed.duration * 4)
+
+  check(
+    "focus inside the Toastr stack holds its timer, and leaving resumes it",
+    pushed.ok && pushed.toasts === 1 && focused.ok && focused.inside && held.held && out.ok &&
+      out.outside && resumed.held,
+    !pushed.ok
+      ? pushed.reason
+      : !focused.ok
+      ? "the toast carried no control to focus, so this proves nothing about a pause"
+      : !focused.inside
+      ? "focus never landed inside the stack, so the timer was never asked to pause"
+      : !held.held
+      ? `the toast left ${held.elapsedMs}ms after it was pushed with focus on "${focused.label}", ` +
+        `so a ${pushed.duration}ms timer did not pause`
+      : !out.outside
+      ? "focus never left the stack, so a resume proves nothing"
+      : resumed.held
+      ? `a ${pushed.duration}ms toast was still on screen ${held.elapsedMs}ms in with focus on ` +
+        `"${focused.label}", and went ${resumed.elapsedMs}ms after focus left`
+      : `the timer never resumed: still on screen ${resumed.elapsedMs}ms after focus left`,
+  )
+}
+
+/**
+ * The pointer over the stack holds the timer, and the timer resumes once the pointer leaves.
+ *
+ * The move is a real `Input.dispatchMouseEvent`, so the browser hit-tests it and produces the
+ * `mouseenter` the component listens for; a synthesised event in the page would prove only that a
+ * listener exists. Two things are measured rather than assumed, both for the same reason a missed
+ * click and a broken component look identical from outside: the point is derived from the toast's
+ * own box and checked against `elementFromPoint` before the move, and the page records where the
+ * browser actually delivered the move, so a pointer that landed somewhere else says so.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function pointerPauseCheck(devtools: Devtools): Promise<void> {
+  await pointerAway(devtools)
+  // The point is computed in one round trip and dispatched in the next, so the page has to have
+  // stopped moving in between — the same reason `strayClickCheck` waits above. The *stack* is what
+  // gets centred, not the card: the card is taller than the viewport, and centring it left the
+  // stack below the fold with no point to aim at.
+  await devtools.evaluate<null>(
+    `(globalThis.__verifyToastr?.region?.scrollIntoView({ block: "center" }), null)`,
+  )
+  await settledScroll(devtools)
+
+  const pushed = await pushAutoToast(devtools)
+  const spot = await devtools.evaluate<Point>(`(() => {
+    const region = globalThis.__verifyToastr?.region ?? null
+    const toast = region?.firstElementChild ?? null
+    if (toast === null) return { x: -1, y: -1, inViewport: false, insideRegion: false, tag: "nothing" }
+    const box = toast.getBoundingClientRect()
+    const x = Math.round(box.left + box.width / 2)
+    const y = Math.round(box.top + box.height / 2)
+    const target = document.elementFromPoint(x, y)
+    return {
+      x,
+      y,
+      inViewport: x >= 0 && y >= 0 && x < globalThis.innerWidth && y < globalThis.innerHeight,
+      insideRegion: target !== null && region.contains(target),
+      tag: target === null ? "nothing" : target.tagName,
+    }
+  })()`)
+
+  // One-shot, capture phase, installed before the move: the browser's own answer to "where did that
+  // pointer go", which cannot be recovered afterwards once the toast has left the page.
+  await devtools.evaluate<null>(`(() => {
+    const region = globalThis.__verifyToastr?.region ?? null
+    globalThis.__verifyToastHover = null
+    document.addEventListener("mouseover", (event) => {
+      globalThis.__verifyToastHover = {
+        insideRegion: region !== null && region.contains(event.target),
+        tag: event.target === null ? "nothing" : event.target.tagName,
+        x: event.clientX,
+        y: event.clientY,
+      }
+    }, { capture: true, once: true })
+    return null
+  })()`)
+  await devtools.send("Input.dispatchMouseEvent", {
+    type: "mouseMoved",
+    x: spot.x,
+    y: spot.y,
+    button: "none",
+    buttons: 0,
+  })
+  const hover = await devtools.evaluate<Hover | null>(`globalThis.__verifyToastHover ?? null`)
+
+  const held = await holdsFor(
+    () =>
+      devtools.evaluate<boolean>(`(globalThis.__verifyToastr?.region?.children.length ?? 0) > 0`),
+    Math.round(pushed.duration * 2.5),
+  )
+  const away = await pointerAway(devtools)
+  const resumed = await goneWithin(devtools, pushed.duration * 4)
+
+  check(
+    "the pointer over the Toastr stack holds its timer, and leaving resumes it",
+    pushed.ok && pushed.toasts === 1 && spot.inViewport && spot.insideRegion && hover !== null &&
+      hover.insideRegion && held.held && away.insideRegion === false && resumed.held,
+    !pushed.ok
+      ? pushed.reason
+      : !spot.inViewport || !spot.insideRegion
+      ? `nothing of the stack to point at: (${spot.x}, ${spot.y}) reads ${spot.tag}` +
+        `${spot.inViewport ? "" : ", outside the viewport"} — this proves nothing`
+      : hover === null
+      ? "the pointer move never reached the page, so this proves nothing about hovering"
+      : !hover.insideRegion
+      ? `the pointer landed on ${hover.tag} at (${hover.x}, ${hover.y}), outside the stack it was ` +
+        `aimed at — a missed move, which proves nothing`
+      : !held.held
+      ? `the toast left ${held.elapsedMs}ms after it was pushed with the pointer on ${hover.tag}, ` +
+        `so a ${pushed.duration}ms timer did not pause`
+      : away.insideRegion
+      ? "the pointer never left the stack, so a resume proves nothing"
+      : resumed.held
+      ? `a ${pushed.duration}ms toast was still on screen ${held.elapsedMs}ms in with the pointer ` +
+        `on ${hover.tag} at (${hover.x}, ${hover.y}), and went ${resumed.elapsedMs}ms after the ` +
+        `pointer moved to ${away.tag}`
+      : `the timer never resumed: still on screen ${resumed.elapsedMs}ms after the pointer left`,
+  )
+}
+
+/**
+ * Clear the stack and push the card's one self-dismissing toast.
+ *
+ * The duration comes back from the button's own `data-duration` rather than being written down
+ * here, so the checks wait multiples of what the card really pushed and the two cannot drift apart.
+ *
+ * @param devtools The connected session.
+ * @returns What the card did, including which control was missing when it could do nothing.
+ */
+async function pushAutoToast(devtools: Devtools): Promise<Pushed> {
+  return await devtools.evaluate<Pushed>(`(async () => {
+    const { region, auto, clear } = globalThis.__verifyToastr ?? {}
+    if (!region || !auto || !clear) {
+      const missing = !region
+        ? "its live area"
+        : !auto
+        ? 'its auto-dismiss button (data-e2e="toast-auto")'
+        : 'its clear button (data-e2e="toast-clear")'
+      return { ok: false, reason: "the Toastr card is missing " + missing, duration: 0, toasts: -1 }
+    }
+    clear.click()
+    await new Promise((done) => setTimeout(done, 50))
+    auto.click()
+    await new Promise((done) => setTimeout(done, 50))
+    const duration = Number(auto.dataset.duration ?? 0)
+    if (!Number.isFinite(duration) || duration <= 0) {
+      return {
+        ok: false,
+        reason: "the card's auto-dismiss button carries no usable data-duration",
+        duration: 0,
+        toasts: region.children.length,
+      }
+    }
+    return { ok: true, reason: "", duration, toasts: region.children.length }
+  })()`)
+}
+
+/**
+ * Move the pointer to the top-left corner of the viewport, off the stack.
+ *
+ * @param devtools The connected session.
+ * @returns What is under the corner, so a check can say the pointer really is clear of the stack.
+ */
+async function pointerAway(devtools: Devtools): Promise<Point> {
+  await devtools.send("Input.dispatchMouseEvent", {
+    type: "mouseMoved",
+    x: 2,
+    y: 2,
+    button: "none",
+    buttons: 0,
+  })
+
+  return await devtools.evaluate<Point>(`(() => {
+    const region = globalThis.__verifyToastr?.region ?? null
+    const target = document.elementFromPoint(2, 2)
+    return {
+      x: 2,
+      y: 2,
+      inViewport: true,
+      insideRegion: region !== null && target !== null && region.contains(target),
+      tag: target === null ? "nothing" : target.tagName,
+    }
+  })()`)
+}
+
+/**
+ * Watch a page condition for a window, and report the moment it stopped holding.
+ *
+ * The inverse of {@link poll}, and the shape a "this must *not* happen yet" assertion needs: a bare
+ * sleep followed by one read says nothing about when the thing it was watching gave way, which is
+ * the only number that makes a paused-timer failure readable without a second run.
+ *
+ * @param read The condition, which must not throw in the page.
+ * @param windowMs How long it has to keep holding.
+ */
+async function holdsFor(read: () => Promise<boolean>, windowMs: number): Promise<Hold> {
+  const startedAt = Date.now()
+  while (Date.now() - startedAt < windowMs) {
+    if (!await read()) return { held: false, elapsedMs: Date.now() - startedAt }
+    await new Promise((resolve) => setTimeout(resolve, 100))
+  }
+
+  return { held: true, elapsedMs: Date.now() - startedAt }
+}
+
+/**
+ * Wait for the stack to empty, and report how long that took.
+ *
+ * @param devtools The connected session.
+ * @param timeoutMs How long to wait before giving up.
+ */
+async function goneWithin(devtools: Devtools, timeoutMs: number): Promise<Hold> {
+  const startedAt = Date.now()
+  const held = await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `(globalThis.__verifyToastr?.region?.children.length ?? -1) === 0`,
+      ),
+    timeoutMs,
+  )
+
+  return { held, elapsedMs: Date.now() - startedAt }
 }
 
 /**
