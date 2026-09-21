@@ -662,6 +662,12 @@ export function Combobox<T>({
    * the pointer the input carries, the row that paints itself active, and the key handler's idea of
    * where the highlight is. Writing it back would cost a second render to settle a number nothing
    * reads.
+   *
+   * So a highlight is suspended rather than thrown away: shrink the list under it and the highlight
+   * goes, grow the list back and it returns to the row it was on, because the position was kept
+   * while only the value anything reads was clamped. That is the better of the two behaviours for a
+   * list that is being re-fetched, and it is the one to keep in mind when reading the effects
+   * below — none of them fires on the way down, because there is nothing for them to do.
    */
   const active = activeIndex.value >= visible.length ? -1 : activeIndex.value
   // Which channel names this combobox, so each of the two labelled elements picks a consistent one.

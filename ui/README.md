@@ -201,7 +201,9 @@ somebody else is holding. The row under the pointer is still painted, in CSS.
 **The highlight never outlives its row.** A list can shrink under an open popup — options withdrawn
 by a caller that re-fetches them, twenty-seven rows replaced by three — and a highlight left where it
 was would point `aria-activedescendant` at an element the page no longer holds. It is clamped to the
-list on screen, so it is simply dropped in that case.
+list on screen, so it is dropped for as long as the list is too short to hold it: shrink the list and
+the highlight goes, grow it back and it returns to the row it was on. Only the value every reader
+takes is clamped; the position itself is kept, because a list that comes back is the same list.
 
 ## Skeletons
 
