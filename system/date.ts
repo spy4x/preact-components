@@ -155,10 +155,13 @@ export function monthFirstWeekday(date: string, firstWeekday = 1): number {
  */
 export function localeFirstWeekday(locale = "en-GB"): number {
   try {
-    const weekInfo = (new Intl.Locale(locale) as Intl.Locale & {
+    // Two spellings, because the method replaced a property of the same name and an engine carries
+    // one or the other: reading only the newer one would quietly put every locale back on Monday.
+    const tag = new Intl.Locale(locale) as Intl.Locale & {
       getWeekInfo?: () => { firstDay?: number }
-    }).getWeekInfo?.()
-    const firstDay = weekInfo?.firstDay
+      weekInfo?: { firstDay?: number }
+    }
+    const firstDay = (tag.getWeekInfo?.() ?? tag.weekInfo)?.firstDay
     return typeof firstDay === "number" && firstDay >= 1 && firstDay <= 7 ? firstDay : 1
   } catch {
     return 1
