@@ -46,7 +46,7 @@ const DROPDOWN_STATE = `(() => {
  *
  * This file runs last of every package's, and Modal's checks run last inside it, for the same
  * reason: Modal opens a real modal dialog, and a dialog that refused to close would sit in the top
- * layer above every check that ran after it. See `pages/verify.ts`'s `interactionChecks` for where
+ * layer above every check that ran after it. See `PACKAGE_BLOCKS` in `pages/verify.ts` for where
  * the run order across every package is fixed.
  *
  * @param devtools The connected session, on a hydrated page.
@@ -337,7 +337,7 @@ async function dropdownChecks(devtools: Devtools): Promise<void> {
   const afterActivate = await devtools.evaluate<DropdownState>(`(async () => {
     const items = [...globalThis.__verifyDropdown.panel.querySelectorAll('[role="menuitem"]')]
     // A menu with no items is a failure this check should report, not an exception that takes the
-    // rest of the run down with it.
+    // rest of this file's checks down with it.
     items[items.length - 1]?.click()
     await new Promise((done) => setTimeout(done, 80))
     return ${DROPDOWN_STATE}
@@ -801,8 +801,9 @@ const TOASTR_STATE = `(() => {
  * compares element identity: re-querying would also match an area the first toast created, which is
  * exactly the defect under test. Every assertion is a transition — "no toast on screen" is true of
  * a toast that never appeared. Nothing here throws: a missing control is a failed check with a
- * message saying which one, because an exception ends the browser phase and silently drops every
- * package whose file runs after this one.
+ * message saying which one, because an exception costs every check left in this file — including
+ * Modal's, which run after it — and replaces them with one failure that names `ui` rather than the
+ * control.
  *
  * The addition is how the timer is driven. Waiting out the shipped five seconds, five times, is
  * both slow and a guess, so the card carries a button that pushes a **short, explicit** duration and
@@ -1876,9 +1877,9 @@ const TOOLTIP_DISMISSED =
  * `pointer-events-none` the centre of the hint reads whatever is *behind* the hint, so the
  * derivation fails and the check says so in those words.
  *
- * Nothing here throws. A missing row is a failed check naming what is missing, because an
- * exception would end the browser phase and silently drop every package whose file runs after
- * this one.
+ * Nothing here throws. A missing row is a failed check naming what is missing, because an exception
+ * would cost every check left in this file — including Modal's, which run after it — and replace
+ * them with one failure that names `ui` rather than the row.
  *
  * @param devtools The connected session, on a hydrated page.
  */

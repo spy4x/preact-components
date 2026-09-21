@@ -67,7 +67,7 @@ const UNREAD: FilterState = {
  *
  * `(missing)` rather than a thrown `TypeError` when the demo is not on the page: a check must never
  * throw, and a missing element is a failure this file should report by name rather than one that
- * ends the browser phase for every package after it.
+ * costs every check left in this file and reports `signals` instead.
  */
 const STATE = `(() => {
   const text = (name) => {

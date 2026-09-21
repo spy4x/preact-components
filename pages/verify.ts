@@ -28,9 +28,12 @@
  * check, not a skip — `--static` is the one explicit way to leave the browser phase out.
  *
  * The checks that need a hydrated page are not written here: each workspace package that has one
- * owns a file under `pages/checks/`, and `interactionChecks` below is the one place their run order
- * is fixed. `pages/checks/harness.ts` holds what more than one of those files needs in common — the
- * `Devtools` protocol client, the results ledger, `poll` and `pressKey`.
+ * owns a file under `pages/checks/`, and `PACKAGE_BLOCKS` below is the one place their run order is
+ * fixed. Each block is run isolated from the others, so a throw inside one package is one failed
+ * check naming that package and every later package still runs; the last line of the report then
+ * says which blocks, if any, are missing from the totals. `pages/checks/harness.ts` holds what more
+ * than one of those files needs in common — the `Devtools` protocol client, the results ledger,
+ * `poll` and `pressKey`.
  */
 
 import { dirname, join } from "node:path"
@@ -39,7 +42,18 @@ import { catalogueNames, catalogueSections } from "@preact-components/ui-guide/r
 import { routeTableDrift } from "@preact-components/ui-guide/routes"
 import { chartsChecks } from "./checks/charts.ts"
 import { crudChecks } from "./checks/crud.ts"
-import { check, connect, debuggingPort, type Devtools, poll, report } from "./checks/harness.ts"
+import {
+  check,
+  type CheckBlock,
+  commitBlocks,
+  connect,
+  debuggingPort,
+  type Devtools,
+  poll,
+  pressKey,
+  report,
+  runBlocks,
+} from "./checks/harness.ts"
 import { iconsChecks } from "./checks/icons.ts"
 import { pagesChecks } from "./checks/pages.ts"
 import { signalsChecks } from "./checks/signals.ts"
@@ -255,6 +269,11 @@ async function findChromium(): Promise<ChromiumLookup> {
 
 /** Drive the page in headless Chromium and assert the interactions. */
 async function browserPhase(): Promise<void> {
+  // Commit to the package blocks before anything can go wrong, so that a phase which dies during
+  // startup still reports which blocks it meant to run. `--static` never reaches this line, which
+  // is what keeps a deliberate skip from being reported as nine lost blocks.
+  commitBlocks(PACKAGE_BLOCKS.map((block) => block.name))
+
   // A missing browser is a failure, not a skip. This phase carries every assertion about behaviour
   // the markup cannot show, so a run that quietly dropped it and still exited 0 reported a green
   // check for code nothing had executed. `--static` is the one explicit way to leave it out.
@@ -316,7 +335,7 @@ async function browserPhase(): Promise<void> {
     await hoverCapability(devtools)
 
     if (hydrated) {
-      await interactionChecks(devtools)
+      await runBlocks(PACKAGE_BLOCKS, devtools, resetAfterThrow)
     }
 
     const errors = devtools.problems()
@@ -368,8 +387,85 @@ async function hoverCapability(devtools: Devtools): Promise<void> {
   )
 }
 
+/** Whether any dialog is currently open in the page. */
+function anyDialogOpen(devtools: Devtools): Promise<boolean> {
+  return devtools.evaluate<boolean>(`document.querySelector("dialog[open]") !== null`)
+}
+
 /**
- * Run every workspace package's browser checks, in the one fixed order this file owns.
+ * Close whatever dialog a throwing block left open, the way a person closes one.
+ *
+ * A dialog left in the top layer covers every check that runs after it, so something has to close
+ * it — but `dialog.close()` closes it behind the owning component's back. A controlled Modal keeps
+ * its open state in a signal the parent passed in; calling `close()` takes the element off the
+ * screen and leaves that signal reading `true`, so the component believes it is still open and its
+ * trigger stops working. Measured: a throw that left `ui`'s Modal open turned one contained failure
+ * into five red checks in the `ui` block that pass on a clean run, with details that read like a
+ * Modal defect.
+ *
+ * So Escape goes first. `pages/checks/ui.ts` proves that a real Escape press drives Modal's close
+ * port, which is the path that puts the component's own state and the DOM back in agreement.
+ * `dialog.close()` stays only as the fallback for a dialog that ignored Escape, and what the
+ * fallback cannot do is exactly what the paragraph above describes: it clears the top layer and
+ * nothing else, so a component whose open state lives outside the DOM is left believing it is open,
+ * and checks after it may fail for a reason that has nothing to do with them.
+ *
+ * The Escape press is sent **only** when a dialog is actually open. Tooltip, Dropdown and Combobox
+ * all listen for Escape, so an unconditional press would be the same class of mistake this function
+ * exists to avoid — a recovery quietly changing state a later block reads.
+ *
+ * @param devtools The connected session.
+ */
+async function closeOpenDialog(devtools: Devtools): Promise<void> {
+  if (!await anyDialogOpen(devtools)) return
+
+  await pressKey(devtools, "Escape")
+  if (await poll(async () => !await anyDialogOpen(devtools), 2_000)) return
+
+  await devtools.evaluate(`(() => {
+    for (const dialog of document.querySelectorAll("dialog[open]")) dialog.close()
+  })()`)
+}
+
+/**
+ * Put the page back into a neutral state after a package's checks threw part-way.
+ *
+ * This runs only on the throwing path — {@link runBlocks} never calls it between two blocks that
+ * finished — because an unconditional reset would hide the very failures this phase exists to
+ * catch: a dialog that refuses to close should break the next block loudly rather than be tidied
+ * away. What it undoes is the shared state a half-finished block plausibly leaves behind for the
+ * next one: an open dialog sitting in the top layer above everything (through
+ * {@link closeOpenDialog}, which explains why that step is not a bare `dialog.close()`), the
+ * pointer resting on a card (the browser can hover now, so a stray pointer changes styles and
+ * pauses toast timers), focus somewhere unexpected, and a scrolled page.
+ *
+ * It deliberately does **not** reload the page or reset the route. A block that navigated away is
+ * not recovered from here; the blocks after it fail loudly, which is the honest outcome, and a
+ * reload would cost a fresh hydration and could fail on its own.
+ *
+ * The scroll reset asks for `behavior: "instant"` on purpose. `pages/styles.css` sets
+ * `scroll-behavior: smooth` on the document, so a plain `scrollTo(0, 0)` starts an animation still
+ * running when the next block takes its first reading — measured: with that form, making `signals`
+ * throw broke the calendar's "no key the grid answers scrolls the page" check in the `system`
+ * block, which is a recovery inventing a failure rather than containing one.
+ *
+ * @param devtools The connected session.
+ */
+async function resetAfterThrow(devtools: Devtools): Promise<void> {
+  await closeOpenDialog(devtools)
+
+  await devtools.evaluate(`(() => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+    window.scrollTo({ top: 0, behavior: "instant" })
+  })()`)
+
+  // Takes the pointer off whatever card it was left on; the corner is as neutral a resting place as
+  // the protocol offers, since it refuses coordinates outside the viewport.
+  await devtools.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: 0, y: 0, buttons: 0 })
+}
+
+/**
+ * Every workspace package's browser checks, in the one fixed order this file owns.
  *
  * Every package with something a browser can drive is named here, including the two that own no
  * check yet — `crud` and `charts` — so that a later PR adding a package's first check edits only
@@ -381,20 +477,24 @@ async function hoverCapability(devtools: Devtools): Promise<void> {
  * `ui` runs last on purpose: its Modal checks (kept last within `ui.ts` for the same reason) open a
  * real modal dialog, and a dialog that refused to close would sit in the top layer above every check
  * that ran after it — a failure there would then take down checks that have nothing to do with it.
+ * Isolating the blocks from each other does not make that ordering redundant: it keeps a throw from
+ * dropping the later packages, while the order keeps a *passing* block from leaving the page in a
+ * state the next one cannot work in.
  *
- * @param devtools The connected session, on a hydrated page.
+ * One list, not nine calls, so the names the run commits to and the functions it calls cannot drift
+ * apart — {@link browserPhase} commits these names before it has a browser to run them with.
  */
-async function interactionChecks(devtools: Devtools): Promise<void> {
-  await themeChecks(devtools)
-  await iconsChecks(devtools)
-  await uiGuideChecks(devtools)
-  await pagesChecks(devtools)
-  await signalsChecks(devtools)
-  await systemChecks(devtools)
-  await crudChecks(devtools)
-  await chartsChecks(devtools)
-  await uiChecks(devtools)
-}
+const PACKAGE_BLOCKS: readonly CheckBlock<Devtools>[] = [
+  { name: "theme", run: themeChecks },
+  { name: "icons", run: iconsChecks },
+  { name: "ui-guide", run: uiGuideChecks },
+  { name: "pages", run: pagesChecks },
+  { name: "signals", run: signalsChecks },
+  { name: "system", run: systemChecks },
+  { name: "crud", run: crudChecks },
+  { name: "charts", run: chartsChecks },
+  { name: "ui", run: uiChecks },
+]
 
 await staticPhase()
 if (Deno.args.includes("--static")) {
