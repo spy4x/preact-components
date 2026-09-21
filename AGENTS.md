@@ -8,18 +8,18 @@ its own PR, each owning exactly one top-level directory.
 
 ## Package layout
 
-| Directory   | Contents                                                                                                                                                 |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `theme/`    | design-system CSS + tailwind preset                                                                                                                      |
-| `icons/`    | merged icon set, `+index.tsx`                                                                                                                            |
-| `ui/`       | Badge, Button, Table, Dropdown, Combobox, Modal, ConfirmDialog, Tooltip, Toastr, Tabs, Pagination, Field and the rest of the form and display primitives |
-| `system/`   | Calendar, ImageLightbox, SEOHead with its head store, SWUpdater                                                                                          |
-| `charts/`   | server-rendered SVG kit (scales) + d3 wrappers                                                                                                           |
-| `cn/`       | `cn()` — class-name join + Tailwind conflict resolution                                                                                                  |
-| `signals/`  | buildModelStore, useUrlFilters, table-state, theme, toast, clipboard, map-entry, validate — factories and pure functions, no components                  |
-| `crud/`     | CrudList, CrudEditor, AssociationEditor                                                                                                                  |
-| `ui-guide/` | live component catalogue route                                                                                                                           |
-| `pages/`    | demo app (GitHub Pages site and the browser checks under `pages/checks/`), not published                                                                 |
+| Directory   | Contents                                                                                 |
+| ----------- | ---------------------------------------------------------------------------------------- |
+| `theme/`    | design-system CSS + tailwind preset                                                      |
+| `icons/`    | merged icon set, `+index.tsx`                                                            |
+| `ui/`       | Badge, Button, Table, Dropdown, Combobox, Modal, Tooltip, Toastr — and the rest          |
+| `system/`   | Calendar, ImageLightbox, SEOHead + head store, SWUpdater                                 |
+| `charts/`   | server-rendered SVG kit (scales) + d3 wrappers                                           |
+| `cn/`       | `cn()` — class-name join + Tailwind conflict resolution                                  |
+| `signals/`  | buildModelStore, useUrlFilters, table-state, theme, toast, clipboard — no components     |
+| `crud/`     | CrudList, CrudEditor, AssociationEditor                                                  |
+| `ui-guide/` | live component catalogue route                                                           |
+| `pages/`    | demo app (GitHub Pages site and the browser checks under `pages/checks/`), not published |
 
 ## What belongs in this library
 
@@ -171,21 +171,23 @@ from there rather than redefined. Every workspace package whose components the c
 has a file under `pages/checks/`, including the ones with no check yet — that emptiness is
 deliberate, so a later pull request adding the first check to one of them touches nobody else's file.
 `cn/` is the one workspace member with none: it is a single class-name function, and there is nothing
-in it a browser could drive. Eleven components have behaviour covered there that no string render could reach. In `ui/`:
-`Modal`, `Dropdown`, `Toastr`, `Combobox`, `Tooltip`, `Field`, `ToggleSwitch` and `OnOffButtons`.
-In `system/`: `Calendar`, `ImageLightbox` and `SWUpdater`. The filter hook in `signals/` is
-covered too, by a demo the host page renders rather than a catalogue card. Read that list off
-`pages/checks/` rather than from here when it matters — this sentence has been wrong twice.
-Everything else is untested, and a component nobody has written a check for is unproven rather
-than working.
+in it a browser could drive.
+
+Which components are covered is not written here. It changes as this work continues, and three
+readings of the same tree put the figure at six, eleven and twelve, each of them wrong in a
+different way. `pages/checks/` **is** the list: open the file for the package you care about and
+read it. Treat a component whose check you cannot find as unproven rather than as working —
+that is the point of the list, not the count.
 
 Two facts about that browser, both measured rather than assumed, and both worth knowing before
 you write a check: a real Enter press does **not** activate a focused button there, so a trigger
-is activated with a click and the check says so; a real Space press **does**. And the browser reports that it cannot hover,
-so every Tailwind `hover:` and `group-hover:` utility is compiled behind that capability and none
-of them matches — a hand-written `&:hover` in `theme/preset.css` is emitted ungated and does
-still apply, so the gap is the utilities rather than hovering as such. See the issue tracking it
-before you write a check that depends on a hover style. `verify` fails when it finds no browser; `--static` is the one explicit way to leave
+is activated with a click and the check says so; a real Space press **does**. And the browser
+reports that it cannot
+hover. Tailwind compiles every `hover:` and `group-hover:` utility behind that capability
+whatever the browser says, so in this one none of them matches. A hand-written `&:hover` in
+`theme/preset.css` is emitted ungated and does still apply, so the gap is the utilities rather
+than hovering as such. See the issue tracking it before you write a check that leans on a hover
+style. `verify` fails when it finds no browser; `--static` is the one explicit way to leave
 the browser phase out. The GitHub workflow runs `check`, the build and `verify` on every pull request
 into `main`, and the Pages deploy waits for them.
 

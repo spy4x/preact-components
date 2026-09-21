@@ -313,18 +313,22 @@ this:
   codegen, no build step, no runtime dependency beyond Preact.
 
 > **Partly reconciled.** The pull request this note used to wait on has landed, so the count above
-> is now read from the tree rather than from a pending change: `icons/+index.tsx` exports 119
-> glyphs, `icons/README.md` says 119, and the browser suite asserts 119. The source list above it
-> has **not** been reconciled and is one source short. It is deliberately not restated from memory
-> here; `icons/README.md` remains the authority, and correcting the list is part of #127, which
-> owns the wider sweep of this document.
+> is read from the tree rather than from a pending change: `icons/+index.tsx` exports 119 glyphs
+> and `icons/README.md` says 119. Those are the two agreements, and they are independent of each
+> other. The browser suite is not a third — its icon check is named for 119 and asserts only that
+> more than ninety glyphs are shown, so it would pass at ninety-one. The source list above has
+> **not** been reconciled and is one source short; it is deliberately not restated from memory
+> here, `icons/README.md` remains the authority, and correcting it is part of #127, which owns the
+> wider sweep of this document.
 >
-> **The same applies to the `roley` paragraph earlier in this document** — "`roley` and `evisa` are
-> design-intent sources, never code sources" — which states that `roley` is _not_ among the icon
-> sources and explains its six geometry-identical glyphs as shared Heroicons v1 upstream. If #98 merges
-> first and adds `roley` as a source, that sentence becomes false, and the explanation of the six
-> glyphs needs re-reading rather than deleting: the shared-upstream reasoning may still hold, but it
-> would no longer be the whole story. Reconcile that paragraph too, not only the counts above.
+> **The same applies to the paragraph earlier in this document** naming two projects as
+> design-intent sources rather than code sources, which says one of them is not among the icon
+> sources and explains its six geometry-identical glyphs as a shared upstream. That pull request
+> has landed and did add it as a source, so the sentence is false now rather than conditionally.
+> The explanation of the six glyphs needs re-reading rather than deleting — the shared-upstream
+> reasoning may still hold, but it is no longer the whole story. That paragraph is part of the same
+> #127 sweep as the source list above, and for the same reason: it names projects this repository
+> should not be naming, so correcting it and removing them is one job rather than two.
 
 **This document does not resolve that question and must not be read as doing so.** No licence is
 asserted for the icon set, none is inferred, and no glyph has been changed, replaced or re-drawn.

@@ -74,7 +74,8 @@ check or a red `verify` blocks the publish.
    scanner finds in the sources the stylesheet's `@source` rules name (every package the catalogue
    draws components from — `ui/`, `charts/`, `system/`, `crud/` — plus `signals/`, whose styles reach
    the demo page rather than a card, `ui-guide/`,
-   `icons/` and this directory; `src/tailwind-sources.test.ts` fails when one is missing). `tokens.css` and `preset.css` are inlined, and the candidate list is scanned
+   `icons/` and this directory; `src/tailwind-sources.test.ts` fails when one is missing).
+   `tokens.css` and `preset.css` are inlined, and the candidate list is scanned
    rather than listed, so a class inside a template string is emitted exactly as it would be for an
    app.
 3. **`deno bundle --platform browser`** produces the island — one Preact copy, at the version the
