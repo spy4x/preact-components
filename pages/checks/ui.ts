@@ -3040,6 +3040,8 @@ async function runLiveRegionChecks(devtools: Devtools): Promise<void> {
   await emptyMessageCheck(devtools)
   await describedByCheck(devtools, describedBefore, describedCounting)
 
+  // Putting the page back for the checks below, not an assertion: every reading this block makes
+  // has been taken and asserted by now, and nothing after this line is read.
   await pressKey(devtools, "Escape")
   await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "false"`), 3_000)
   await pointerToCorner(devtools)
@@ -3073,13 +3075,24 @@ async function describedByCheck(
   // Tab leaves the input for the clear button, which the component treats as a leave: the list
   // closes and the query stays, so this is the abandoned-query state a person reaches by walking
   // away from a search — and the state a controlled `query` renders on its own.
+  //
+  // The poll's answer is kept and asserted rather than waited on and dropped. The fourth reading
+  // is the same string as the third, so a field that never closed produces a line saying "closed
+  // on the abandoned query" that is indistinguishable from the real thing: deleting this key
+  // press left the check green and the line unchanged until the answer went into the condition.
   await pressKey(devtools, "Tab")
-  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "false"`), 3_000)
+  const listClosed = await poll(
+    () => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "false"`),
+    3_000,
+  )
   const closed = await accessibleDescription(devtools, `#${ANNOUNCE_ID}`)
 
   const clear = `globalThis.__verifyCombobox?.input?.parentElement?.querySelector("button") ?? null`
   const pressed = await clickAt(devtools, await aimAt(devtools, clear), clear)
-  await poll(() => devtools.evaluate<boolean>(`${REGION_STATE}.text === ""`), 3_000)
+  const regionEmptied = await poll(
+    () => devtools.evaluate<boolean>(`${REGION_STATE}.text === ""`),
+    3_000,
+  )
   const emptied = await accessibleDescription(devtools, `#${ANNOUNCE_ID}`)
 
   const readings = [untouched, counting, message, closed, emptied]
@@ -3090,12 +3103,17 @@ async function describedByCheck(
   check(
     "a Combobox's input is described by its live region for the empty message alone",
     !readings.includes(null) && untouched === "" && counting === "" &&
-      message === "No coin left" && closed === "No coin left" && emptied === "" &&
-      pressed?.onTarget === true,
+      message === "No coin left" && listClosed && closed === "No coin left" &&
+      pressed?.onTarget === true && regionEmptied && emptied === "",
     readings.includes(null)
       ? `the accessibility tree could not be read for #${ANNOUNCE_ID}, so this proves nothing`
+      : !listClosed
+      ? `the Tab never closed the list, so the fourth reading "${closed}" is not the closed ` +
+        `state and this says nothing about a description surviving the field closing`
       : pressed?.onTarget !== true
       ? `the press never landed on the clear button, so the field was never emptied`
+      : !regionEmptied
+      ? `the region never went empty after the clear, so the last reading is not the cleared state`
       : untouched !== "" || counting !== ""
       ? `the field carries a description before anybody has asked it anything (untouched ` +
         `"${untouched}", with a count in the region "${counting}"): a count is about the last ` +
@@ -3125,24 +3143,42 @@ async function describedByCheck(
 async function countArrivesCheck(devtools: Devtools, pristine: RegionReading): Promise<void> {
   const target = `globalThis.__verifyCombobox?.input ?? null`
   const landing = await clickAt(devtools, await aimAt(devtools, target), target)
-  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "true"`), 3_000)
+  // Every poll's answer is kept and asserted below. One waited on and dropped would let the
+  // reading after it stand for a state the page never reached.
+  const fieldOpened = await poll(
+    () => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "true"`),
+    3_000,
+  )
   const opened = await devtools.evaluate<RegionReading>(REGION_STATE)
 
   await typeInto(devtools, "u")
-  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.inputValue === "u"`), 3_000)
-  await poll(() => devtools.evaluate<boolean>(`${REGION_STATE}.text !== ""`), 3_000)
+  const queryArrived = await poll(
+    () => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.inputValue === "u"`),
+    3_000,
+  )
+  const regionSpoke = await poll(
+    () => devtools.evaluate<boolean>(`${REGION_STATE}.text !== ""`),
+    3_000,
+  )
   const narrowed = await devtools.evaluate<RegionReading>(REGION_STATE)
   const list = await devtools.evaluate<ComboboxReading>(COMBOBOX_STATE)
 
   check(
     "a Combobox's match count arrives as a change to the live region that was already there",
-    pristine.ok && landing?.onTarget === true && narrowed.parkedOk && opened.text === "" &&
-      opened.mutations === 0 &&
+    pristine.ok && landing?.onTarget === true && fieldOpened && narrowed.parkedOk &&
+      opened.text === "" && opened.mutations === 0 && queryArrived && regionSpoke &&
       list.options > 0 && narrowed.same && narrowed.connected &&
       narrowed.text === `${list.options} coins left` && narrowed.mutations >= 1 &&
       narrowed.added >= 1,
     landing?.onTarget !== true
       ? `the press never landed on the field, so nothing was typed into it — this proves nothing`
+      : !fieldOpened
+      ? `the field never opened on that press, so the reading taken next is not the open, empty ` +
+        `state the count is measured against`
+      : !queryArrived
+      ? `the text never reached the field, so nothing narrowed the list`
+      : !regionSpoke
+      ? `the region was still empty ${3_000}ms after the query arrived, so typing announced nothing`
       : !narrowed.parkedOk
       ? `there was no region to park while the field was empty, so nothing was ever watched. The ` +
         `page now holds one reading "${narrowed.text}", which a check looking only for a status ` +
@@ -3185,46 +3221,70 @@ async function countArrivesCheck(devtools: Devtools, pristine: RegionReading): P
  * @param devtools The connected session, with the field open and a count in its region.
  */
 async function emptyMessageCheck(devtools: Devtools): Promise<void> {
+  // As above, every poll's answer is kept: the reading taken after one that timed out would stand
+  // for a state the page never reached, and the message it printed would not say so.
   await typeInto(devtools, "zz")
-  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.options === 0`), 3_000)
-  await poll(() => devtools.evaluate<boolean>(`${REGION_STATE}.text === "No coin left"`), 3_000)
+  const listEmptied = await poll(
+    () => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.options === 0`),
+    3_000,
+  )
+  const messageArrived = await poll(
+    () => devtools.evaluate<boolean>(`${REGION_STATE}.text === "No coin left"`),
+    3_000,
+  )
   const nothing = await devtools.evaluate<RegionReading>(REGION_STATE)
 
   // The component's own clear button, pressed for real: the way a person empties the field.
   const clear = `globalThis.__verifyCombobox?.input?.parentElement?.querySelector("button") ?? null`
   const pressed = await clickAt(devtools, await aimAt(devtools, clear), clear)
-  await poll(() => devtools.evaluate<boolean>(`${REGION_STATE}.text === ""`), 3_000)
+  const regionEmptied = await poll(
+    () => devtools.evaluate<boolean>(`${REGION_STATE}.text === ""`),
+    3_000,
+  )
   const cleared = await devtools.evaluate<RegionReading>(REGION_STATE)
 
   const target = `globalThis.__verifyCombobox?.input ?? null`
-  await clickAt(devtools, await aimAt(devtools, target), target)
-  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "true"`), 3_000)
+  const reopening = await clickAt(devtools, await aimAt(devtools, target), target)
+  const reopened = await poll(
+    () => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "true"`),
+    3_000,
+  )
   await typeInto(devtools, "zz")
-  await poll(() => devtools.evaluate<boolean>(`${REGION_STATE}.text === "No coin left"`), 3_000)
+  const messageBack = await poll(
+    () => devtools.evaluate<boolean>(`${REGION_STATE}.text === "No coin left"`),
+    3_000,
+  )
   const again = await devtools.evaluate<RegionReading>(REGION_STATE)
 
   check(
     "a Combobox's empty message replaces the count in that region, leaves it, and comes back",
-    nothing.parkedOk && nothing.same && nothing.text === "No coin left" &&
-      pressed?.onTarget === true &&
+    nothing.parkedOk && listEmptied && messageArrived && nothing.same &&
+      nothing.text === "No coin left" && pressed?.onTarget === true && regionEmptied &&
       cleared.same && cleared.text === "" && cleared.children === 0 &&
-      cleared.mutations > nothing.mutations && again.same && again.connected &&
+      cleared.mutations > nothing.mutations && reopening?.onTarget === true && reopened &&
+      messageBack && again.same && again.connected &&
       again.text === "No coin left" && again.mutations > cleared.mutations,
     !nothing.parkedOk
       ? `there was no region to park while the field was empty, so nothing was ever watched; the ` +
         `page now holds one reading "${nothing.text}"`
-      : nothing.text !== "No coin left"
+      : !listEmptied
+      ? `the query still leaves options in the list, so this is not the nothing-matches state ` +
+        `the empty message belongs to`
+      : !messageArrived || nothing.text !== "No coin left"
       ? `a query matching nothing left the region reading "${nothing.text}" rather than the ` +
         `empty message the card passes`
       : pressed?.onTarget !== true
       ? `the press never landed on the clear button, so the field was never emptied`
-      : cleared.text !== "" || cleared.children !== 0
+      : !regionEmptied || cleared.text !== "" || cleared.children !== 0
       ? `clearing the field left "${cleared.text}" in the region (${cleared.children} element ` +
         `children), so it never went quiet`
       : cleared.mutations <= nothing.mutations
       ? `the observer recorded no change to the parked region when the message left it ` +
         `(${nothing.mutations} → ${cleared.mutations})`
-      : !again.same || !again.connected
+      : reopening?.onTarget !== true || !reopened
+      ? `the field never reopened on a real press, so the message did not arrive a second time ` +
+        `into a field anybody had touched`
+      : !messageBack || !again.same || !again.connected
       ? `typing again put the message in a different element (same: ${again.same}, the parked ` +
         `one still in the document: ${again.connected})`
       : again.text !== "No coin left" || again.mutations <= cleared.mutations
