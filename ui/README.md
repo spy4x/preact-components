@@ -105,6 +105,15 @@ _within_ the stack, from a link in a toast's body to its dismiss control, does n
 Raising a toast's `duration` while it is on screen is the one thing that refills the budget rather
 than continuing it, which is how a caller extends a toast it has already shown.
 
+**The pause needs the caller to own the timing.** `Toastr` can only pause the timer it runs itself,
+the one driven by `ToastItem.duration`. `createToastStore` from `@preact-components/signals`, which
+the wiring above reads from, schedules a removal of its own for every toast it holds, so a toast
+pushed through that store is taken away on the store's schedule whatever the pointer is doing — and
+its `timeout` field never reaches the component's `duration` either, so the per-toast delay is lost
+as well and every toast lives the default 5000ms. Until that store hands its timing over, a caller
+who wants the pause keeps the stack itself and passes `duration`, the way the catalogue card does.
+The defect is filed against the store, not against this component.
+
 Every string the stack shows is a prop with an English default: `label` names the region
 (`"Notifications"`), `dismissLabel` names every dismiss control (`"Dismiss"`), and one toast can
 name its own with `ToastItem.dismissLabel`, which is worth doing when several are on screen and
