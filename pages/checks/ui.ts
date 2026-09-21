@@ -1481,11 +1481,16 @@ async function modalChecks(devtools: Devtools): Promise<void> {
   )
 
   // Move the parent on before the key press, so the port the dialog opened with and the port it
-  // holds now disagree about one number. Without this step both would report the same value and the
-  // assertion below could not tell a fresh closure from a captured one — it would pass either way.
+  // holds now disagree about one number. That difference is the whole assertion below: without it
+  // the captured closure and the current one would report the same value and the check would pass
+  // either way.
   //
-  // The step control sits inside the dialog on purpose: while a modal dialog is open everything
-  // outside it is inert, and a check that pressed an inert control would be proving nothing.
+  // The step control sits inside the dialog because that is where a person would meet it, and for
+  // no stronger reason. It was once claimed here that a control outside an open modal could not be
+  // pressed at all, the rest of the page being inert; that is true of a person and false of this
+  // check, and measured so — moved outside, the check still passes, because a scripted `.click()`
+  // is not a real press and inertness does not stop it. So the placement is a choice about what the
+  // demo shows, and what makes this check honest is the step having moved, which it asserts.
   const stepped = await devtools.evaluate<Stepped>(`(async () => {
     const card = document.querySelector("#demo-Modal")
     const readout = card?.querySelector('[data-e2e="modal-close-step"]') ?? null
@@ -1593,5 +1598,99 @@ async function modalChecks(devtools: Devtools): Promise<void> {
     opened.focusInside
       ? `trigger "${trigger.label}" — document.activeElement is ${active}`
       : "focus never moved into the dialog, so a restore proves nothing",
+  )
+
+  await uncontrolledModalChecks(devtools)
+}
+
+/** What the uncontrolled dialog left behind once Escape had been pressed. */
+interface Settled {
+  /** Whether the element is still in the page. */
+  present: boolean
+  /** Whether that element, if it is there, is still an open dialog. */
+  open: boolean
+  /** What the page's scroll lock reads: `released`, or the value still written on the body. */
+  lock: string
+}
+
+/**
+ * The branch where `Modal` settles its own open state, which nothing else here reaches.
+ *
+ * Every other dialog in the catalogue is handed an `open` prop, so the component never decides
+ * anything about its own flag: the parent unmounts it and the element goes with the parent. An
+ * uncontrolled dialog — no `open`, seeded by `defaultOpen` — is the opposite, and it is the only
+ * shape in which the component's `settleOpen` is load-bearing. Stubbing that branch out leaves
+ * every unit test green, because a string render never runs it, and leaves every other browser
+ * check green too, because they all drive controlled dialogs.
+ *
+ * The reading that separates the two worlds is **whether the element is still in the page**, not
+ * whether the dialog is closed. Both a settled and an unsettled dialog read `open === false` after
+ * Escape, because `close()` ran either way. Only a settled one stops rendering: the component
+ * returns `null`, the `<dialog>` leaves the DOM, and the scroll lock the effect was holding is
+ * released with it. An unsettled one leaves a closed element behind that can never be opened again,
+ * with the page still locked behind it.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function uncontrolledModalChecks(devtools: Devtools): Promise<void> {
+  const pressed = await devtools.evaluate<{ ok: boolean; reason: string }>(`(() => {
+    const trigger = document.querySelector('#demo-Modal [data-e2e="modal-uncontrolled-open"]')
+    if (trigger === null) {
+      return {
+        ok: false,
+        reason: 'the Modal card is missing its uncontrolled trigger (data-e2e="modal-uncontrolled-open")',
+      }
+    }
+    trigger.click()
+    return { ok: true, reason: "" }
+  })()`)
+
+  const becameModal = await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `document.querySelector('[data-e2e="guide-modal-uncontrolled"]')?.matches(":modal") === true`,
+      ),
+    3_000,
+  )
+
+  await pressKey(devtools, "Escape")
+  // Two polls rather than one read, and the second is not redundant. The element leaves the DOM in
+  // the commit, and the effect cleanup that releases the page's scroll lock runs after it, a frame
+  // later: reading the lock the instant the element disappeared landed inside that gap on one run
+  // and reported a locked page that was released milliseconds afterwards.
+  await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `document.querySelector('[data-e2e="guide-modal-uncontrolled"]') === null`,
+      ),
+    3_000,
+  )
+  await poll(() => devtools.evaluate<boolean>(`document.body.style.overflow === ""`), 3_000)
+  const settled = await devtools.evaluate<Settled>(`(() => {
+    const dialog = document.querySelector('[data-e2e="guide-modal-uncontrolled"]')
+    return {
+      present: dialog !== null,
+      open: dialog?.open === true,
+      lock: document.body.style.overflow === "" ? "released" : document.body.style.overflow,
+    }
+  })()`)
+
+  check(
+    "an uncontrolled Modal settles its own open flag, so Escape takes it off the page",
+    pressed.ok && becameModal && !settled.present && settled.lock === "released",
+    !pressed.ok
+      ? pressed.reason
+      : !becameModal
+      ? "the uncontrolled dialog never became modal, so nothing here proves anything about closing it"
+      : settled.present && settled.open
+      ? "the dialog was still open 3s after the key press"
+      : settled.present
+      ? `the dialog closed but stayed in the page, so the component never settled its own open ` +
+        `flag: it can no longer be opened, and the page's scroll lock reads "${settled.lock}"`
+      : settled.lock !== "released"
+      ? `the element left the page, but 3s later the page's scroll lock still reads ` +
+        `"${settled.lock}", so the page underneath it is stuck`
+      : `defaultOpen → :modal, then a real Escape press → the element left the page and the ` +
+        `page's scroll lock is released`,
   )
 }
