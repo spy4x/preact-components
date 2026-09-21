@@ -41,6 +41,7 @@ Preact + Tailwind primitives extracted from `gb`, `financy` and `offer-lens`.
 | `Tabs`            | `tabs`              | `tabs`, `active`, `onChange`, `orientation`, `lazy`                                                           |
 | `Toastr`          | `toastr`            | `toasts`, `onDismiss`, `label`, `dismissLabel`, `dataE2E`                                                     |
 | `ToggleSwitch`    | `toggle-switch`     | `value`, `onToggle`, `disabled`, `label`                                                                      |
+| `Tooltip`         | `tooltip`           | `content`, `label`, `placement`, `focusable`                                                                  |
 
 ## Usage
 
@@ -137,6 +138,72 @@ asked for one.
   dismissLabel="Ausblenden"
 />
 ```
+
+## Tooltip
+
+A supplementary hint on a trigger, revealed by hover and by keyboard focus, anchored with CSS only.
+Two rules go together and the component holds both: **a hint can be dismissed**, and **a hint can be
+pointed at**. Escape hides it and drops `aria-describedby` without moving focus, and it comes back on
+the next hover or focus; the surface takes pointer events and the gap between trigger and hint is the
+surface's own padding, so a pointer can travel onto the hint and rest there while it is read. A hint
+that cannot be dismissed covers what somebody was reading, and one that cannot be hovered cannot be
+read at all by anyone magnifying the screen.
+
+`label` is the trigger's own accessible name and the hint is only ever its description. By default
+the trigger is a `<button>`, because `aria-label` on an element with no role is not guaranteed to
+reach the accessibility tree at all. `focusable={false}` is for a trigger whose children are already
+interactive: the wrapper becomes a `role="group"` around that control, which keeps one tab stop for
+one control and still gives the name and the description an element the tree keeps.
+
+```tsx
+<Tooltip content="Supplements the trigger" label="Total revenue" placement="right">
+  <span>Revenue</span>
+</Tooltip>
+```
+
+While a hint is on screen its box — the bridge to the trigger included — sits over whatever is behind
+it and takes the clicks that would have gone there. It is inert again the moment the hint is hidden.
+The reveal itself is Tailwind's `group-hover` and `group-focus-within`, and Tailwind compiles every
+hover style inside `@media (hover: hover)`: on a device that reports no hover-capable pointer the
+hint is reached by focus only, which is the right behaviour on a touch screen and is also why the
+browser checks prove the hover half through hit testing rather than through the paint.
+
+## Combobox
+
+Every string it shows is a prop with an English default: `placeholder` (`"Select…"`), `emptyMessage`
+(`"No matches"`) and `clearLabel` (`"Clear selection"`).
+
+**The empty message waits to be asked.** It is rendered, and announced, only once the list is open or
+the field carries a query. A field nobody has touched — one whose options are still arriving over the
+network, for instance — says nothing at all rather than claiming there is nothing to match. When
+those options land while the popup is open, the message goes and the first usable row takes the
+highlight, so `Enter` picks something without an arrow key first: a list that arrives with nothing
+highlighted tells a screen reader that nothing arrived.
+
+**A known limit of that.** The element carrying the message is itself the live region, so it enters
+the page already holding its text instead of sitting there empty and then changing — which is the
+case screen readers announce least reliably. `Toastr` in this package does the opposite, and says
+why. The browser check proves the region appears and that the input describes it; it does not prove
+a reader spoke it.
+
+**What that costs when it fails**: somebody opens a field whose options have not arrived and is told
+nothing at all. From where they sit that is the defect this component just fixed — the only
+difference is that the words now on the screen are true. The fix is an empty `role="status"` kept in
+every combobox from the start, which is a live region on every field on the page; that trade belongs
+to the three components in this library with the same shape rather than to this one alone, and is
+tracked in [#186](https://github.com/spy4x/preact-components/issues/186).
+
+The highlight belongs to the keyboard: the arrow keys move it, the popup scrolls to keep it on screen
+— `block: "nearest"`, so a row already in view does not move the list at all — and no pointer handler
+writes `aria-activedescendant`, so a screen reader's reading position does not follow a mouse
+somebody else is holding. The row under the pointer is still painted, in CSS.
+
+**The highlight never outlives its row.** A list can shrink under an open popup — options withdrawn
+by a caller that re-fetches them, twenty-seven rows replaced by three — and a highlight left where it
+was would point `aria-activedescendant` at an element the page no longer holds. It is clamped to the
+list on screen, so it is dropped for as long as the list is too short to hold it: shrink the list and
+the highlight goes, grow it back and it returns to the row it was on. Only the value every reader
+takes is clamped; the position itself is kept, because a list that comes back is the same list.
 
 ## Skeletons
 

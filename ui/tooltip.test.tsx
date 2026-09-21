@@ -1,7 +1,17 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
-import { Tooltip } from "./tooltip.tsx"
+import { Tooltip, type TooltipPlacement } from "./tooltip.tsx"
+
+/**
+ * What a rendered string can and cannot say about this component.
+ *
+ * These tests render to markup, so they reach the wiring — which element is described, which one
+ * may carry a name, where the surface is anchored, and where its bridge to the trigger is. They
+ * reach none of the behaviour: the Escape press that dismisses a hint, the pointer that keeps one
+ * up, and the listener registered only while the trigger is engaged all need a browser, and are
+ * proven in `pages/checks/ui.ts` instead.
+ */
 
 /** The `id` of the element carrying `role="tooltip"`, read back from rendered markup. */
 function tooltipId(html: string): string {
@@ -36,6 +46,18 @@ describe("Tooltip", () => {
     expect(html.split(`aria-describedby="${id}"`)).toHaveLength(2)
   })
 
+  it("hangs the name and the description on a button, an element that may carry both", () => {
+    const html = render(<Tooltip label="Copy API key" content="Copies it">key</Tooltip>)
+
+    // The defect this pins: the name and the description used to sit on a `<span tabindex="0">`
+    // with no role, and `aria-label` on a role-less element is not guaranteed to reach the
+    // accessibility tree at all — so the trigger could announce as nothing, described by nothing.
+    expect(html.startsWith('<button type="button"')).toBe(true)
+    expect(html).toContain('aria-label="Copy API key"')
+    expect(html).toContain("aria-describedby=")
+    expect(html).not.toContain("tabindex")
+  })
+
   it("keeps its own accessible name, so the tooltip stays supplementary", () => {
     const html = render(<Tooltip label="Copy API key" content="Copies it">key</Tooltip>)
 
@@ -62,19 +84,61 @@ describe("Tooltip", () => {
 
     expect(html).toContain("group-focus-within:opacity-100")
     expect(html).toContain("group-hover:opacity-100")
-    expect(html).toContain('tabindex="0"')
+    // A `<button>` is a tab stop of its own, so the wrapper needs no `tabindex` to be reachable.
+    expect(html).toContain('<button type="button"')
   })
 
-  it("starts with the surface hidden and free of pointer events", () => {
+  it("starts with the surface hidden, and marks no hint as dismissed", () => {
     const html = render(<Tooltip label="Retry" content="Retries">x</Tooltip>)
     const surface = tooltipSurface(html)
 
-    expect(surface).toContain("pointer-events-none")
     expect(surface).toContain("opacity-0")
     // Not the `hidden` utility: a display:none surface leaves the accessibility tree, so
-    // aria-describedby would resolve to nothing.
+    // aria-describedby would resolve to nothing. The `hidden` *attribute* is what Escape adds, and
+    // a freshly rendered hint has not been dismissed, so it carries neither.
     expect(surface).toContain("invisible")
     expect(surface.match(/class="([^"]*)"/)?.[1].split(" ")).not.toContain("hidden")
+    expect(surface.startsWith('role="tooltip" hidden')).toBe(false)
+  })
+
+  it("lets the pointer rest on the surface, so the hint can be read", () => {
+    const html = render(<Tooltip label="Retry" content="Retries">x</Tooltip>)
+
+    // `pointer-events-none` made the hint vanish the moment the pointer reached it, and reading a
+    // hint by pointing at it is how anyone magnifying the screen reads one at all.
+    expect(html).not.toContain("pointer-events-none")
+  })
+
+  it("bridges the gap to the trigger with padding rather than a margin", () => {
+    // A margin is dead space: crossing it leaves the trigger's wrapper, so the hint is gone before
+    // the pointer arrives. The padding belongs to the surface, so the two boxes touch.
+    const bridges: Record<TooltipPlacement, string> = {
+      top: "pb-2",
+      right: "pl-2",
+      bottom: "pt-2",
+      left: "pr-2",
+    }
+    for (const [placement, bridge] of Object.entries(bridges)) {
+      const html = render(
+        <Tooltip label="a" content="c" placement={placement as TooltipPlacement}>x</Tooltip>,
+      )
+      const surface = tooltipSurface(html)
+
+      expect(surface, `${placement} bridges the gap with ${bridge}`).toContain(bridge)
+      expect(surface.match(/class="([^"]*)"/)?.[1]).not.toMatch(/\bm[btlr]-\d/)
+    }
+  })
+
+  it("paints the hint on a bubble inside the surface, not on the surface itself", () => {
+    const html = render(<Tooltip label="Retry" content="Retries">x</Tooltip>)
+    const surface = tooltipSurface(html)
+    const surfaceClasses = surface.match(/class="([^"]*)"/)?.[1] ?? ""
+
+    // The surface is the hoverable box; the bubble is what a reader sees. Keeping the background
+    // off the surface is what stops the bridge painting a slab of background across the gap.
+    expect(surfaceClasses).not.toContain("bg-gray-900")
+    expect(surface).toContain('<span class="block rounded-md bg-gray-900')
+    expect(surface).toContain(">Retries</span>")
   })
 
   it("never traps focus: the surface is not focusable", () => {
@@ -84,14 +148,19 @@ describe("Tooltip", () => {
     expect(surface).not.toContain("tabindex")
   })
 
-  it("drops the tab stop when the trigger content is interactive", () => {
+  it("groups an interactive trigger instead of nesting a button inside a button", () => {
     const html = render(
       <Tooltip label="Retry" content="Retries" focusable={false}>
         <button type="button">Retry</button>
       </Tooltip>,
     )
 
-    expect(html).not.toContain('tabindex="0"')
+    // One tab stop for one control, and `role="group"` so the name and the description still land
+    // on an element the accessibility tree keeps.
+    expect(html.startsWith('<span role="group"')).toBe(true)
+    expect(html).not.toContain("tabindex")
+    expect(html.match(/<button/g)).toHaveLength(1)
+    expect(html).toContain('aria-label="Retry"')
     expect(html).toContain("aria-describedby=")
   })
 
@@ -104,11 +173,11 @@ describe("Tooltip", () => {
 
   it("anchors to each requested side", () => {
     expect(render(<Tooltip label="a" content="c" placement="right">x</Tooltip>))
-      .toContain("top-1/2 left-full ml-2 -translate-y-1/2")
+      .toContain("top-1/2 left-full -translate-y-1/2 pl-2")
     expect(render(<Tooltip label="a" content="c" placement="bottom">x</Tooltip>))
-      .toContain("top-full left-1/2 mt-2 -translate-x-1/2")
+      .toContain("top-full left-1/2 -translate-x-1/2 pt-2")
     expect(render(<Tooltip label="a" content="c" placement="left">x</Tooltip>))
-      .toContain("top-1/2 right-full mr-2 -translate-y-1/2")
+      .toContain("top-1/2 right-full -translate-y-1/2 pr-2")
   })
 
   it("positions the wrapper so the surface has an anchor", () => {

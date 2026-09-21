@@ -221,6 +221,27 @@ const cities: readonly City[] = [
 
 const coins = ["BTC", "ETH", "USD", "EUR", "SOL"] as const
 
+/**
+ * Every whole-hour UTC offset, `UTC-12:00` through `UTC+14:00`.
+ *
+ * Twenty-seven rows against a popup that shows about six, which is the whole point of it: this is
+ * the card's one list long enough for the keyboard highlight to walk off the bottom edge.
+ */
+const utcOffsets: readonly string[] = Array.from({ length: 27 }, (_, index) => {
+  const hours = index - 12
+
+  return `UTC${hours < 0 ? "-" : "+"}${String(Math.abs(hours)).padStart(2, "0")}:00`
+})
+
+/** The list a page holds while its options are still on their way: none yet. */
+const noItemsYet: readonly string[] = []
+
+/** The options that turn up a moment later, standing in for a list a slow network delivers. */
+const lateCurrencies: readonly string[] = ["EUR", "GBP", "USD"]
+
+/** How long those options take to arrive. Written on the card's button, and read back by checks. */
+const arrivalDelay = 1200
+
 const cityLabel = (city: City) => `${city.name} — ${city.country}`
 
 /**
@@ -428,7 +449,92 @@ function ServerSearchCombobox() {
   )
 }
 
-/** All three comboboxes: the string list, the object list, and the controlled query. */
+/**
+ * A list far longer than the popup, which is where the keyboard highlight can get lost.
+ *
+ * The popup is a `max-h-60` scroller — about six rows — and this list is 27 of them, so arrowing
+ * down walks the highlight past the bottom edge. The component scrolls the list to follow it;
+ * `pages/checks/ui.ts` drives that with real arrow presses, because no rendered string can show a
+ * scroll position.
+ */
+function UtcOffsetCombobox() {
+  const offset = useSignal<string | null>(null)
+
+  return (
+    <div class="space-y-2">
+      <Combobox
+        items={utcOffsets}
+        value={offset.value}
+        onChange={(next) => offset.value = next}
+        id="guide-combobox-offset"
+        ariaLabel="UTC offset"
+        placeholder="Select an offset…"
+      />
+      <p class="text-xs text-gray-500 dark:text-gray-400">
+        {comboboxStatusLabel(offset.value, "")}
+      </p>
+    </div>
+  )
+}
+
+/**
+ * An empty list, and the moment its options turn up.
+ *
+ * Untouched, this field says nothing at all — no message on screen, and nothing in a live region
+ * for a screen reader to read out. "No matches" is an answer, and nobody has asked it anything
+ * yet. Open it, or type in it, and the message appears as the answer it is.
+ *
+ * The button is the other half of the same story, and the reason it waits rather than loading on
+ * the spot: a press that filled the list immediately could only be made with the popup closed,
+ * because pressing anything outside a combobox closes it. Arming a delay lets the options land
+ * while the popup is open and empty, which is exactly what a slow network does, and it is what
+ * `pages/checks/ui.ts` drives. `data-delay` carries the wait so the check waits the same amount
+ * rather than keeping its own copy of the number.
+ */
+function LoadingCombobox() {
+  const currency = useSignal<string | null>(null)
+  const options = useSignal<readonly string[]>(noItemsYet)
+
+  const load = () => {
+    options.value = noItemsYet
+    setTimeout(() => options.value = lateCurrencies, arrivalDelay)
+  }
+
+  return (
+    <div class="space-y-2">
+      <Combobox
+        items={options.value}
+        value={currency.value}
+        onChange={(next) => currency.value = next}
+        id="guide-combobox-empty"
+        ariaLabel="Currency, options still loading"
+        placeholder="Select a currency…"
+      />
+      <button
+        type="button"
+        class="rounded-md border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700"
+        data-e2e="combobox-load"
+        data-delay={arrivalDelay}
+        onClick={load}
+      >
+        Let the options arrive in {arrivalDelay}ms
+      </button>
+      <p class="text-xs text-gray-500 dark:text-gray-400">
+        {options.value.length === 0
+          ? "no options yet"
+          : `${options.value.length} options · ${comboboxStatusLabel(currency.value, "")}`}
+      </p>
+      <p class="text-xs text-gray-500 dark:text-gray-400">
+        An empty `items` list. Closed and untouched it renders no message and no live region; open
+        it and the empty message answers the question that opening it asked. Arm the button, open
+        the field, and watch the options land underneath it: the message goes, and the first row is
+        highlighted, so `Enter` picks something without an arrow key first.
+      </p>
+    </div>
+  )
+}
+
+/** Every combobox on the card: strings, objects, a controlled query, a long list and an empty one. */
 function ComboboxDemo() {
   return (
     <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
@@ -443,6 +549,16 @@ function ComboboxDemo() {
       <div class="space-y-2 sm:col-span-2">
         <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">Controlled query</h4>
         <ServerSearchCombobox />
+      </div>
+      <div class="space-y-2">
+        <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">
+          Longer than the popup
+        </h4>
+        <UtcOffsetCombobox />
+      </div>
+      <div class="space-y-2">
+        <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">Nothing to offer yet</h4>
+        <LoadingCombobox />
       </div>
       <p class="text-xs text-gray-500 dark:text-gray-400 sm:col-span-2">
         The popup is in the markup at all times and marked `hidden` while closed, so what is
@@ -688,7 +804,7 @@ export const inputDemos = {
   },
   Combobox: {
     summary:
-      'Searchable single-select: the ARIA combobox pattern by hand, with `role="listbox"` options and focus never leaving the input — the highlight is announced through `aria-activedescendant`. Items may be any `T` once `getLabel` says what to render and match; `filter` replaces the built-in substring match, and a controlled `query` with `onQueryChange` is the server-side shape.',
+      'Searchable single-select: the ARIA combobox pattern by hand, with `role="listbox"` options and focus never leaving the input — the highlight is announced through `aria-activedescendant`, moved by the keyboard alone and followed by the list, which scrolls to keep it on screen. Items may be any `T` once `getLabel` says what to render and match; `filter` replaces the built-in substring match, and a controlled `query` with `onQueryChange` is the server-side shape. Every string it shows defaults to English and takes an override: `placeholder`, `emptyMessage` and `clearLabel`. The empty message waits until the field is open or has a query in it, so a field nobody has touched — one whose options are still loading, say — never claims there are no matches.',
     snippet: `<Combobox
   items={cities}
   value={city.value}

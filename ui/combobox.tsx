@@ -460,9 +460,15 @@ export interface ComboboxProps<T> extends ComboboxNamingProps {
   renderOption?: (item: T, state: ComboboxOptionState) => ComponentChildren
   /** Marks an item unselectable: rendered `aria-disabled`, and a click on it does nothing. */
   isItemDisabled?: (item: T) => boolean
-  /** Shown in the input while nothing is selected. Defaults to `"Select…"`. */
+  /** Shown in the input while nothing is selected. English default, `"Select…"`; override at will. */
   placeholder?: string
-  /** Shown instead of the list when the query matches nothing. A string, or a function of the query. */
+  /**
+   * Shown instead of the list when the query matches nothing. A string, or a function of the query.
+   *
+   * English default, `"No matches"`, and one of the two strings this component ships; pass your own
+   * to translate it or to say something more useful. It is shown only once the list is open or the
+   * field has a query in it — a combobox nobody has touched answers a question nobody asked.
+   */
   emptyMessage?: string | ((query: string) => ComponentChildren)
   /**
    * `id` of the search input, and the base of every id derived from it: the listbox and each option.
@@ -472,7 +478,7 @@ export interface ComboboxProps<T> extends ComboboxNamingProps {
   id?: string
   /** Render the clear button. Defaults to `true`; it only appears when there is something to clear. */
   showClearButton?: boolean
-  /** Accessible name of the clear button. Defaults to `"Clear selection"`. */
+  /** Accessible name of the clear button. English default, `"Clear selection"`; override at will. */
   clearLabel?: string
   /** Query owned by the caller. Pass with `onQueryChange` for a controlled search box. */
   query?: string
@@ -573,6 +579,17 @@ function Cross() {
  * The popup is in the markup at all times, marked `hidden` when closed, so even the closed-state
  * output carries `aria-controls` and the whole option list. The open and highlighted half of the
  * markup only reaches a browser through a real key press or click.
+ *
+ * The highlight belongs to the keyboard. Arrow keys move it, the list scrolls to follow it, and no
+ * pointer handler writes it — a `mouseenter` that moved `aria-activedescendant` would drag a screen
+ * reader's reading position around with a pointer its user is not holding. The row under the
+ * pointer is still painted, in CSS, which announces nothing. The one thing that highlights a row
+ * without a key press is options arriving under an open, empty popup: a list that lands with
+ * nothing highlighted would leave `Enter` doing nothing until an arrow key was pressed.
+ *
+ * Every string it shows is a prop with an English default: `placeholder` (`"Select…"`),
+ * `emptyMessage` (`"No matches"`) and `clearLabel` (`"Clear selection"`). Pass your own to
+ * translate them or to say something the default cannot.
  */
 export function Combobox<T>({
   items,
@@ -598,6 +615,9 @@ export function Combobox<T>({
   const generatedId = useId()
   const id = callerId ?? generatedId
   const rootRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLUListElement>(null)
+  /** Whether the last render had nothing to show, so the next one can tell arrival from a change. */
+  const wasEmpty = useRef(true)
   const draftQuery = useSignal("")
   const isOpen = useSignal(false)
   const activeIndex = useSignal(-1)
@@ -623,6 +643,33 @@ export function Combobox<T>({
   const hasSelection = selectedIndex >= 0
   const hasText = draft.length > 0
   const content = listboxContent(visible, draft, emptyMessage)
+  // "No matches" is an answer, and an answer needs a question. A combobox nobody has opened and
+  // nobody has typed in has asked nothing, so it says nothing — which is the whole of the defect
+  // this guards: with an empty `items` list, a page whose options are still arriving over the
+  // network used to render and announce "No matches" on a control nobody had touched. Open, or
+  // with a query in it, the message is the honest answer to a real question and is shown.
+  const answersEmpty = content.emptyMessage !== undefined && (isOpen.value || hasText)
+  /**
+   * The highlight, clamped to the list that is actually on screen.
+   *
+   * A highlight cannot outlive the row it names. The list can shrink under an open popup at any
+   * time — options taken away by a caller that re-fetches them, a list of twenty-seven replaced by
+   * one of three — and `aria-activedescendant` would then point at an element that is no longer in
+   * the document: not a degraded announcement but an invalid one, a reading position inside a list
+   * with no such row, on a field that may be saying there is nothing to match at the same moment.
+   *
+   * Clamped here rather than written back into the signal, because every reader takes this value:
+   * the pointer the input carries, the row that paints itself active, and the key handler's idea of
+   * where the highlight is. Writing it back would cost a second render to settle a number nothing
+   * reads.
+   *
+   * So a highlight is suspended rather than thrown away: shrink the list under it and the highlight
+   * goes, grow the list back and it returns to the row it was on, because the position was kept
+   * while only the value anything reads was clamped. That is the better of the two behaviours for a
+   * list that is being re-fetched, and it is the one to keep in mind when reading the effects
+   * below — none of them fires on the way down, because there is nothing for them to do.
+   */
+  const active = activeIndex.value >= visible.length ? -1 : activeIndex.value
   // Which channel names this combobox, so each of the two labelled elements picks a consistent one.
   const named = naming({ ariaLabel, "aria-labelledby": ariaLabelledBy })
 
@@ -636,6 +683,48 @@ export function Combobox<T>({
     document.addEventListener("mousedown", handleClickOutside)
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
+
+  /**
+   * Highlight the first usable row when options arrive under an open, empty popup.
+   *
+   * This is the case the silence rule above exists for, seen from the other side: a field opened
+   * while its options are still on their way has nothing to highlight, and when the list lands
+   * nothing would highlight it. The popup would then show rows with no `aria-activedescendant`,
+   * so a screen reader would be told nothing arrived and `Enter` would do nothing until the user
+   * pressed an arrow key.
+   *
+   * It fires only on the list going from empty to filled, which is what keeps it from fighting the
+   * user. A highlight that is already somewhere is left alone, `Alt`+`ArrowDown` — the key that
+   * deliberately clears the highlight — changes no length so this never runs after it, and a
+   * caller swapping one non-empty list for another does not move a highlight either.
+   *
+   * The way back needs nothing here: a list that empties again leaves the highlight past the end
+   * of what is on screen, and `active` above is clamped for exactly that.
+   */
+  useEffect(() => {
+    const empty = visible.length === 0
+    const arrived = wasEmpty.current && !empty
+    wasEmpty.current = empty
+    if (!isOpen.value || !arrived || active >= 0) return
+    activeIndex.value = openingState(items, selectedIndex, visible, isDisabled).activeIndex
+  }, [isOpen.value, visible.length])
+
+  /**
+   * Keep the highlighted option on screen.
+   *
+   * The popup is a fixed-height scroller, so a few `ArrowDown`s walk the highlight off the bottom
+   * of it and the arrow keys go on moving something nobody can see — which makes them useless on
+   * any list longer than the box. The row is read out of the list's own children by the index it
+   * was rendered from, so no second lookup can disagree with the highlight.
+   *
+   * `block: "nearest"` is what keeps this quiet: a row already in view is not scrolled to, so
+   * opening a list whose selection is visible does not jerk it, and the list scrolls by exactly
+   * the row that went past the edge.
+   */
+  useEffect(() => {
+    if (!isOpen.value || active < 0) return
+    listRef.current?.children[active]?.scrollIntoView({ block: "nearest" })
+  }, [isOpen.value, active])
 
   const setQuery = (next: string) => {
     draftQuery.value = next
@@ -660,10 +749,17 @@ export function Combobox<T>({
    * selection and then empty itself for typing: the caller's `value` is the closed-state text, the
    * draft is the open-state text, and they never fight over the input. A controlled query belongs to
    * the caller, so it is left where it is.
+   *
+   * The highlight is placed against the list the popup is **about to** render, not the one the
+   * render before it left behind. Dropping the query widens the list, and highlighting against the
+   * narrow one put the highlight on whichever row happened to sit at that index in the wide one:
+   * abandon a search, come back, and the list opened with a row highlighted that the query it no
+   * longer has had chosen.
    */
   const openList = () => {
-    if (controlledQuery === undefined && !isOpen.value) setQuery("")
-    apply(openingState(items, selectedIndex, visible, isDisabled))
+    const clears = controlledQuery === undefined && !isOpen.value
+    if (clears) setQuery("")
+    apply(openingState(items, selectedIndex, clears ? visibleItems("") : visible, isDisabled))
   }
 
   const select = (item: T) => {
@@ -676,7 +772,7 @@ export function Combobox<T>({
     const key = comboboxKey(event)
     if (key === undefined) return
     const action = comboboxKeyAction(key, {
-      activeIndex: activeIndex.value,
+      activeIndex: active,
       isOpen: isOpen.value,
     }, visible.length)
     if (action.preventDefault) event.preventDefault()
@@ -707,11 +803,11 @@ export function Combobox<T>({
           placeholder={placeholder}
           aria-label={ariaLabel}
           aria-labelledby={ariaLabelledBy}
-          aria-describedby={content.emptyMessage === undefined ? undefined : statusId}
+          aria-describedby={answersEmpty ? statusId : undefined}
           aria-expanded={isOpen.value}
           aria-controls={listboxId}
           aria-activedescendant={activeDescendant(id, {
-            activeIndex: activeIndex.value,
+            activeIndex: active,
             isOpen: isOpen.value,
           })}
           aria-autocomplete="list"
@@ -763,6 +859,7 @@ export function Combobox<T>({
       </div>
       <ul
         id={listboxId}
+        ref={listRef}
         role="listbox"
         aria-label={named === "aria-label" ? ariaLabel : undefined}
         aria-labelledby={named === "aria-labelledby" ? ariaLabelledBy : undefined}
@@ -777,7 +874,7 @@ export function Combobox<T>({
         {content.options.map((item, index) => {
           // A lookup, not a scan: reading `items` per row is what made this loop quadratic.
           const selected = positions.get(item) === selectedIndex
-          const active = index === activeIndex.value
+          const isActive = index === active
           const disabled = isDisabled(item)
           return (
             <li
@@ -786,22 +883,23 @@ export function Combobox<T>({
               role="option"
               aria-selected={selected}
               aria-disabled={disabled || undefined}
-              data-active={active || undefined}
+              data-active={isActive || undefined}
               class={cn(
                 optionClasses,
-                active && activeOptionClasses,
+                isActive && activeOptionClasses,
                 selected && selectedOptionClasses,
                 disabled && disabledOptionClasses,
               )}
               onMouseDown={(event) => event.preventDefault()}
-              onMouseEnter={() => {
-                if (!disabled) activeIndex.value = index
-              }}
+              // No pointer handler moves the highlight. `aria-activedescendant` is where a screen
+              // reader is reading, and writing it from a `mouseenter` drags that reading around
+              // with a pointer its user is not holding. The row under the pointer still lights up
+              // — `hover:bg-gray-50` in the base classes does that, in CSS, announcing nothing.
               onClick={() => {
                 if (!disabled) select(item)
               }}
             >
-              {renderOption ? renderOption(item, { selected, active }) : getText(item)}
+              {renderOption ? renderOption(item, { selected, active: isActive }) : getText(item)}
             </li>
           )
         })}
@@ -816,7 +914,7 @@ export function Combobox<T>({
         up reading the message twice.
       */
       }
-      {content.emptyMessage !== undefined && (
+      {answersEmpty && (
         <p
           id={statusId}
           role="status"

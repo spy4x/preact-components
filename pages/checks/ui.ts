@@ -42,7 +42,7 @@ const DROPDOWN_STATE = `(() => {
 
 /**
  * `ui/`'s browser checks: Dropdown's pointer and keyboard contract, ToggleSwitch, OnOffButtons,
- * `Field`, Toastr, and — last — Modal's keyboard and focus contract.
+ * `Field`, Tooltip, Combobox, Toastr, and — last — Modal's keyboard and focus contract.
  *
  * This file runs last of every package's, and Modal's checks run last inside it, for the same
  * reason: Modal opens a real modal dialog, and a dialog that refused to close would sit in the top
@@ -143,6 +143,8 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
       `invalid=${fields.afterInvalid} "${fields.afterDescribedBy}"`,
   )
 
+  await tooltipChecks(devtools)
+  await comboboxChecks(devtools)
   await toastrChecks(devtools)
 
   // Last on purpose: a Modal that refuses to close would sit in the top layer over everything, so a
@@ -1693,4 +1695,1417 @@ async function uncontrolledModalChecks(devtools: Devtools): Promise<void> {
       : `defaultOpen → :modal, then a real Escape press → the element left the page and the ` +
         `page's scroll lock is released`,
   )
+}
+
+/** Where a dispatched pointer move landed, as the page saw the browser deliver it. */
+interface Landing {
+  /** `true` when the browser delivered the move to the element aimed at, or to something inside it. */
+  onTarget: boolean
+  tag: string
+  x: number
+  y: number
+}
+
+/** A point derived from an element's own box, with the reading that says what is at it. */
+interface Aim {
+  x: number
+  y: number
+  /** `true` when the point is inside the viewport, which viewport coordinates have to be. */
+  inViewport: boolean
+  /** `true` when `elementFromPoint` reads the element aimed at, or something inside it. */
+  onTarget: boolean
+  /** What is actually at the point, for the failure message. */
+  tag: string
+  /** The box, rounded: an element with no box reports itself rather than passing quietly. */
+  width: number
+  height: number
+}
+
+/** One read of the live tooltip: the hint's own state, plus where focus is. */
+interface TooltipState {
+  /** `false` when the card is missing the row these checks drive; every other field is then noise. */
+  ok: boolean
+  /** Computed `visibility` of the surface. `"visible"` only while the hint is revealed. */
+  visibility: string
+  /** Computed `opacity`, so a reading taken mid-transition is visible as one. */
+  opacity: string
+  /** `true` while the surface has a box at all — Escape takes the box away with `hidden`. */
+  boxed: boolean
+  /** `true` when the browser has the trigger in its `:hover` state, which is what reveals a hint. */
+  hover: boolean
+  /** `true` when the browser has the surface itself in `:hover`. */
+  surfaceHover: boolean
+  /** The trigger's `aria-describedby`, or `null` once the hint is dismissed. */
+  described: string | null
+  /** `true` when the parked trigger is the focused element. */
+  focused: boolean
+  /** What the hint says, cut short for the failure message. */
+  text: string
+}
+
+/** The strip of surface between the bubble and the trigger, and what hit-tests inside it. */
+interface Bridge {
+  x: number
+  y: number
+  /** The bridge's own thickness in pixels, from the surface's edge to the bubble's. */
+  strip: number
+  /** Pixels between the trigger's box and the surface's. Dead space is anything above zero. */
+  gap: number
+  /** `true` when a point in the middle of the bridge hit-tests to the hint. */
+  onTarget: boolean
+  tag: string
+}
+
+/** What Chromium makes of the trigger: the three things a hint on a nameless element loses. */
+interface Named {
+  role: string
+  name: string
+  description: string
+}
+
+/**
+ * Park the tooltip card's live row, its trigger and its surface on `globalThis`.
+ *
+ * Parked rather than re-queried for a reason this component makes sharper than most: dismissing a
+ * hint takes `aria-describedby` off the trigger, so a selector written around that attribute stops
+ * matching exactly when the check needs to read what it matched before.
+ *
+ * The row is the one hint on the card that reveals itself. Every other hint there is pinned open
+ * with `contentClass="visible opacity-100"`, and a hint that is always up cannot tell a reveal
+ * that works from one that is broken.
+ */
+const TOOLTIP_SETUP = `(() => {
+  const row = document.querySelector('#demo-Tooltip [data-e2e="tooltip-live"]')
+  // The trigger is found by the name it carries, not by its tag. Which element the component puts
+  // the name on is the thing under test in one of the checks below, and a selector written around
+  // a "button" would answer that question by not matching at all.
+  const trigger = row?.querySelector("[aria-label]") ?? null
+  globalThis.__verifyTooltip = {
+    row,
+    trigger,
+    surface: trigger?.querySelector('[role="tooltip"]') ?? null,
+  }
+  return null
+})()`
+
+/** The hint's state and the trigger's, read in one round trip. */
+const TOOLTIP_STATE = `(() => {
+  const { trigger, surface } = globalThis.__verifyTooltip ?? {}
+  if (!trigger || !surface) {
+    return {
+      ok: false, visibility: "", opacity: "", boxed: false, hover: false, surfaceHover: false,
+      described: null, focused: false, text: "",
+    }
+  }
+  const style = getComputedStyle(surface)
+  return {
+    ok: true,
+    visibility: style.visibility,
+    opacity: style.opacity,
+    boxed: surface.getClientRects().length > 0,
+    hover: trigger.matches(":hover"),
+    surfaceHover: surface.matches(":hover"),
+    described: trigger.getAttribute("aria-describedby"),
+    focused: document.activeElement === trigger,
+    text: (surface.textContent ?? "").trim().slice(0, 40),
+  }
+})()`
+
+/** Whether the hint is on screen right now: visible, fully faded in, and with a box. */
+const TOOLTIP_SHOWN = `(() => {
+  const surface = globalThis.__verifyTooltip?.surface ?? null
+  if (surface === null) return false
+  const style = getComputedStyle(surface)
+  return style.visibility === "visible" && style.opacity === "1" &&
+    surface.getClientRects().length > 0
+})()`
+
+/**
+ * Whether the browser has the trigger in `:hover` — the state the reveal rule keys on.
+ *
+ * `:hover` propagates up the DOM, so a pointer resting on the hint keeps the trigger in it: the
+ * hint is a descendant of the trigger wrapper however far outside it the hint is painted.
+ */
+const TOOLTIP_HOVERED = `(globalThis.__verifyTooltip?.trigger?.matches(":hover") ?? false)`
+
+/** Whether the surface has stopped taking up a box, which is what a dismissed hint does. */
+const TOOLTIP_DISMISSED =
+  `(globalThis.__verifyTooltip?.surface?.getClientRects().length ?? 1) === 0`
+
+/**
+ * Tooltip's two halves of one rule: a hint can be dismissed, and a hint can be pointed at.
+ *
+ * Neither half is reachable from a test that renders to a string. The dismissal is a real Escape
+ * press against a `keydown` listener the component registers only while the trigger is engaged,
+ * and the hoverable half is the browser's own hit testing — the thing `pointer-events-none` used
+ * to fail, and which nothing in rendered markup can answer.
+ *
+ * **What this browser cannot show, measured rather than assumed.** Tailwind v4 compiles every
+ * hover style — `hover:`, `group-hover:` — inside `@media (hover: hover)`, and this headless
+ * Chromium answers `(hover: none)` and `(pointer: none)`, so no hover style of any kind applies in
+ * it. `Emulation.setEmulatedMedia` does not cover those two features — tried, with and without a
+ * `media` string, and `matchMedia("(hover: hover)")` still answered false — and neither does a
+ * device metrics override. The lever is a Chromium launch flag, and the launcher is not this
+ * file's to change. So the reveal-on-hover itself, the `visibility` flip, is not observable here
+ * and no check below claims it: the reveal is proven through focus instead, which this browser
+ * does run, and what the pointer checks assert is the property the fix actually changed — that the
+ * pointer reaches the hint at all, and that the trigger stays `:hover` while it rests there,
+ * because the hint is a descendant of the trigger and that is the state the reveal rule keys on.
+ *
+ * Three habits the checks above set, and why each one is needed here.
+ *
+ * The trigger and the surface are parked on `globalThis` instead of re-queried. Dismissing a hint
+ * takes `aria-describedby` off the trigger, so a selector written around that attribute would stop
+ * matching precisely when the check needs the element it matched a moment ago.
+ *
+ * Every assertion is a transition, and the first of them matters more than it looks: a hint that
+ * always takes the pointer would pass "the hint is under the pointer" without proving anything at
+ * all. So the pointer check reads the trigger unhovered at rest, moves onto it, moves onto the
+ * hint, and then watches both leave `:hover` when the pointer does.
+ *
+ * No coordinate is guessed. Each point is the centre of the element's own box, read back with
+ * `elementFromPoint` before it is used, and the page records where the browser actually delivered
+ * the move. That second reading is what tells "the component is broken" from "the move went
+ * somewhere else", and it is also how the hoverable half is proven at all: with
+ * `pointer-events-none` the centre of the hint reads whatever is *behind* the hint, so the
+ * derivation fails and the check says so in those words.
+ *
+ * Nothing here throws. A missing row is a failed check naming what is missing, because an
+ * exception would end the browser phase and silently drop every package whose file runs after
+ * this one.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function tooltipChecks(devtools: Devtools): Promise<void> {
+  await devtools.evaluate<null>(TOOLTIP_SETUP)
+  await devtools.evaluate<null>(
+    `(globalThis.__verifyTooltip?.row?.scrollIntoView({ block: "center" }), null)`,
+  )
+  await settledScroll(devtools)
+  // The Dropdown checks above leave the pointer at viewport coordinates, and viewport coordinates
+  // do not scroll with the page: without parking it first, the pointer can be resting on this very
+  // trigger while the check reads the trigger "at rest".
+  await pointerToCorner(devtools)
+  const atRest = await devtools.evaluate<TooltipState>(TOOLTIP_STATE)
+
+  // The hint is revealed by focus, because focus is the reveal this browser runs — see the note on
+  // hover styles above. A hidden element is not hit-testable at all, so without a hint on screen
+  // there would be nothing for a pointer to reach and the two readings below would be about
+  // nothing.
+  await devtools.evaluate<null>(`(globalThis.__verifyTooltip?.trigger?.focus(), null)`)
+  const revealed = await poll(() => devtools.evaluate<boolean>(TOOLTIP_SHOWN), 3_000)
+
+  const bridge = await devtools.evaluate<Bridge>(`(() => {
+    const { trigger, surface } = globalThis.__verifyTooltip ?? {}
+    const bubble = surface?.firstElementChild ?? null
+    if (!trigger || !surface || bubble === null) {
+      return { x: -1, y: -1, strip: 0, gap: -1, onTarget: false, tag: "nothing" }
+    }
+    const surfaceBox = surface.getBoundingClientRect()
+    const bubbleBox = bubble.getBoundingClientRect()
+    const triggerBox = trigger.getBoundingClientRect()
+    // This hint sits below its trigger, so its bridge is the strip between the surface's own top
+    // edge and the bubble's. Measured from the two boxes rather than from the utility that makes
+    // it, so it is the real gap whatever the class happens to be.
+    const strip = bubbleBox.top - surfaceBox.top
+    const x = Math.round(surfaceBox.left + surfaceBox.width / 2)
+    const y = Math.round(surfaceBox.top + strip / 2)
+    const at = document.elementFromPoint(x, y)
+    return {
+      x,
+      y,
+      strip: Math.round(strip),
+      gap: Math.round(surfaceBox.top - triggerBox.bottom),
+      onTarget: at !== null && (at === surface || surface.contains(at)),
+      tag: at === null ? "nothing" : at.tagName,
+    }
+  })()`)
+
+  const onTrigger = await hoverTrigger(devtools)
+  const surfaceAim = await aimAt(devtools, `globalThis.__verifyTooltip?.surface ?? null`)
+  const ontoSurface = await movePointer(
+    devtools,
+    surfaceAim,
+    `globalThis.__verifyTooltip?.surface ?? null`,
+  )
+  const onHint = await devtools.evaluate<TooltipState>(TOOLTIP_STATE)
+  const held = await holdsFor(() => devtools.evaluate<boolean>(TOOLTIP_HOVERED), 600)
+  await pointerToCorner(devtools)
+  const left = await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `!${TOOLTIP_HOVERED} && !(globalThis.__verifyTooltip?.surface?.matches(":hover") ?? false)`,
+      ),
+    3_000,
+  )
+  await devtools.evaluate<null>(`(globalThis.__verifyTooltip?.trigger?.blur(), null)`)
+  // Teardown, and nothing may be built on it: this waits for a CSS state, which stops matching the
+  // instant focus leaves, with no render in between. It says the hint is off the screen; it does
+  // not say the component has re-rendered or that its effect cleanups have run.
+  await poll(() => devtools.evaluate<boolean>(`!${TOOLTIP_SHOWN}`), 3_000)
+
+  check(
+    "a Tooltip's hint takes the pointer, bridge and all, and keeps its trigger hovered",
+    atRest.ok && !atRest.hover && !atRest.surfaceHover && revealed && bridge.strip >= 2 &&
+      bridge.gap <= 1 && bridge.onTarget && onTrigger.hovering &&
+      onTrigger.landing?.onTarget === true && surfaceAim.onTarget &&
+      ontoSurface?.onTarget === true && onHint.surfaceHover && onHint.hover && held.held && left,
+    !atRest.ok
+      ? "the Tooltip card has no live row — nothing matched '[data-e2e=\"tooltip-live\"]' with a " +
+        "button and a role=tooltip inside it"
+      : atRest.hover || atRest.surfaceHover
+      ? "the pointer was already resting on the trigger with the page scrolled here, so the " +
+        "readings below have nothing to move from"
+      : !revealed
+      ? `the hint never reached the screen on focus (visibility ${atRest.visibility}, opacity ` +
+        `${atRest.opacity}), and a hidden hint cannot be pointed at by anyone`
+      : bridge.strip < 2
+      ? `the hint has no bridge: a ${bridge.strip}px strip between the surface's edge and the ` +
+        `bubble's, so whatever separates the two is not part of the hint. This measures the strip ` +
+        `above the bubble, which is where the bridge is for the card's bottom-anchored row — a ` +
+        `row given another placement in ui-guide/sections/display.tsx reads 0 here too`
+      : bridge.gap > 1
+      ? `${bridge.gap}px of dead space between the trigger and the hint's own box: a pointer ` +
+        `crossing it leaves the trigger, and the hint goes before the pointer arrives`
+      : !bridge.onTarget
+      ? `the middle of the ${bridge.strip}px bridge at (${bridge.x}, ${bridge.y}) reads ` +
+        `${bridge.tag} rather than the hint, so the way to the hint is not the hint`
+      : !onTrigger.aim.onTarget
+      ? `nothing of the trigger to point at: (${onTrigger.aim.x}, ${onTrigger.aim.y}) reads ` +
+        `${onTrigger.aim.tag} over a ${onTrigger.aim.width}×${onTrigger.aim.height} box — this ` +
+        `proves nothing`
+      : onTrigger.landing === null || !onTrigger.landing.onTarget
+      ? `the pointer never landed on the trigger: ${
+        onTrigger.landing === null
+          ? "the move never reached the page"
+          : `it went to ${onTrigger.landing.tag} at (${onTrigger.landing.x}, ${onTrigger.landing.y})`
+      } — a missed move, which proves nothing`
+      : !onTrigger.hovering
+      ? "the browser never put the trigger into :hover with the pointer delivered onto it, so " +
+        "nothing here is about hovering"
+      : !surfaceAim.onTarget
+      ? `the hint cannot be pointed at: its own centre (${surfaceAim.x}, ${surfaceAim.y}) reads ` +
+        `${surfaceAim.tag}, which is what sits behind it — the surface takes no pointer events, ` +
+        `so a pointer moving towards the hint lands on the page instead`
+      : ontoSurface === null || !ontoSurface.onTarget
+      ? `the pointer never landed on the hint: ${
+        ontoSurface === null
+          ? "the move never reached the page"
+          : `it went to ${ontoSurface.tag} at (${ontoSurface.x}, ${ontoSurface.y})`
+      } — a missed move, which proves nothing`
+      : !onHint.surfaceHover
+      ? "the pointer was delivered onto the hint and the browser did not take the hint into " +
+        ":hover, so the hint is not something a pointer can rest on"
+      : !onHint.hover
+      ? "the pointer rests on the hint and the trigger has left :hover, so the rule that reveals " +
+        "the hint has stopped matching and the hint would vanish under the pointer"
+      : !held.held
+      ? `the trigger left :hover ${held.elapsedMs}ms after the pointer moved onto the hint, so ` +
+        `the hint cannot be read by resting on it`
+      : !left
+      ? "the trigger stayed in :hover with the pointer back in the corner, so it never leaves it " +
+        "and the readings above prove nothing"
+      : `the hint's box touches its trigger (${bridge.gap}px apart) across a ${bridge.strip}px ` +
+        `bridge that hit-tests to the hint at (${bridge.x}, ${bridge.y}); the hint's own centre ` +
+        `reads the hint, the pointer was delivered onto it at (${ontoSurface.x}, ` +
+        `${ontoSurface.y}), and hint and trigger held :hover together for ${held.elapsedMs}ms → ` +
+        `both left :hover when the pointer went back to the corner`,
+  )
+
+  await escapeOverPointerCheck(devtools)
+  await escapeOnFocusCheck(devtools)
+  await tooltipNameCheck(devtools)
+}
+
+/**
+ * Escape dismisses the hint the pointer is on, takes its description with it, and moves no focus.
+ *
+ * The dismissal has to work while the pointer is on the trigger and focus is somewhere else
+ * entirely, which is why the component listens on `document` rather than on the trigger: a hint
+ * revealed by a pointer has no focus of its own to catch the key.
+ *
+ * Two transitions, and neither of them is the paint — a dismissed hint loses its box and its id,
+ * so this check reads what the `hidden` attribute and `aria-describedby` do, which this browser
+ * runs whatever it thinks of hover.
+ *
+ * The last step hovers again, and it is not a formality: "the hint is gone" is also true of a
+ * component that broke itself on the key press, and only a hint that comes back has been dismissed
+ * rather than destroyed.
+ *
+ * An earlier version of this check began with a control — pointer in the corner, press Escape,
+ * assert nothing happened — to pin the listener being registered only while the trigger is
+ * engaged. It is gone for two reasons. Nobody can observe that property: engaging the trigger
+ * clears the dismissed state anyway, so a component holding one permanent listener would behave
+ * identically for every user on every device, and the property is a cost argument, not a
+ * behaviour. And it raced: the check before this one blurs the trigger and waits for the hint to
+ * stop being shown, but that wait watches a CSS state which stops matching the instant focus
+ * leaves, with no render involved, so it could return before the effect cleanup had removed the
+ * listener. Two runs in eight then failed on the control press landing on a listener that was
+ * still attached. The property is written down in `ui/tooltip.tsx` instead.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function escapeOverPointerCheck(devtools: Devtools): Promise<void> {
+  await pointerToCorner(devtools)
+  const hovering = await hoverTrigger(devtools)
+  await devtools.evaluate<null>(`(globalThis.__verifyFocusBefore = document.activeElement, null)`)
+  const before = await devtools.evaluate<TooltipState>(TOOLTIP_STATE)
+
+  // Pressed inside the poll rather than before it. Nothing here can say the component's effect has
+  // attached its listener — the wait that got the pointer this far is on `:hover`, which the
+  // browser flips without a render — so a single press could land before the listener does and
+  // leave this waiting three seconds for a dismissal nobody heard. Escape is idempotent here: once
+  // the hint is dismissed, pressing it again sets the same flag.
+  const gone = await poll(async () => {
+    await pressKey(devtools, "Escape")
+    return await devtools.evaluate<boolean>(TOOLTIP_DISMISSED)
+  }, 3_000)
+  const after = await devtools.evaluate<TooltipState>(TOOLTIP_STATE)
+  const focusHeld = await devtools.evaluate<boolean>(
+    `document.activeElement === globalThis.__verifyFocusBefore`,
+  )
+  const focusName = await devtools.evaluate<string>(
+    `document.activeElement === document.body ? "the page" : document.activeElement.tagName`,
+  )
+
+  await pointerToCorner(devtools)
+  await poll(() => devtools.evaluate<boolean>(`!${TOOLTIP_HOVERED}`), 3_000)
+  const again = await hoverTrigger(devtools)
+  const back = await devtools.evaluate<TooltipState>(TOOLTIP_STATE)
+
+  check(
+    "a real Escape press dismisses the Tooltip under the pointer, without moving focus",
+    before.ok && hovering.hovering && before.boxed && before.described !== null && gone &&
+      !after.boxed && after.described === null && focusHeld && again.hovering && back.boxed &&
+      back.described !== null,
+    !before.ok
+      ? "the Tooltip card has no live row to dismiss"
+      : !before.boxed
+      ? "the hint had already been dismissed before this check pressed anything, so there was " +
+        "nothing here to dismiss"
+      : !hovering.hovering
+      ? "the pointer never took the trigger into :hover, so a dismissal here proves nothing"
+      : before.described === null
+      ? "the trigger described nothing before the key press, so losing the description proves " +
+        "nothing"
+      : !gone
+      ? `the hint still had a box 3s after a real Escape press, so nothing dismissed it`
+      : after.described !== null
+      ? `the hint is off the page but the trigger still points at it with ` +
+        `aria-describedby="${after.described}", so a screen reader still reads a dismissed hint`
+      : !focusHeld
+      ? `Escape moved focus to ${focusName}; dismissing a hint must leave focus where it was`
+      : !again.hovering
+      ? "the pointer never took the trigger into :hover again, so the hint coming back cannot be " +
+        "read from this"
+      : !back.boxed || back.described === null
+      ? "the hint never came back on the next hover, so Escape did not dismiss it — it destroyed " +
+        "it"
+      : `pointer onto the trigger, then Input.dispatchKeyEvent Escape: the hint lost its box and ` +
+        `the trigger dropped aria-describedby="${before.described}", with focus still on ` +
+        `${focusName} → pointer away and back: the hint has its box and its description again`,
+  )
+}
+
+/**
+ * The same dismissal from the keyboard: a focused hint goes on Escape, and focus stays put.
+ *
+ * Focus is placed with `.focus()` rather than by tabbing to it. The tab order between the last
+ * check and this trigger belongs to the catalogue page, not to the component, so walking it would
+ * assert the page's layout; the dismissal itself is a real `Input.dispatchKeyEvent` press, which
+ * is the path under test.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function escapeOnFocusCheck(devtools: Devtools): Promise<void> {
+  await pointerToCorner(devtools)
+  await poll(() => devtools.evaluate<boolean>(`!${TOOLTIP_SHOWN}`), 3_000)
+  await devtools.evaluate<null>(`(globalThis.__verifyTooltip?.trigger?.focus(), null)`)
+  const revealed = await poll(() => devtools.evaluate<boolean>(TOOLTIP_SHOWN), 3_000)
+  const focused = await devtools.evaluate<TooltipState>(TOOLTIP_STATE)
+
+  // Inside the poll, for the reason the check above gives: the reveal this waited on is a CSS
+  // state, so nothing has said the listener is attached yet, and a repeated Escape costs nothing.
+  const gone = await poll(async () => {
+    await pressKey(devtools, "Escape")
+    return await devtools.evaluate<boolean>(TOOLTIP_DISMISSED)
+  }, 3_000)
+  const after = await devtools.evaluate<TooltipState>(TOOLTIP_STATE)
+
+  check(
+    "keyboard focus reveals a Tooltip, and Escape dismisses it with focus still on the trigger",
+    revealed && focused.focused && gone && after.focused && after.described === null,
+    !focused.focused
+      ? "focus never reached the trigger, so nothing here is about the keyboard"
+      : !revealed
+      ? "the hint never appeared on focus, so this component cannot be used without a pointer"
+      : !gone
+      ? `the hint was still on screen 3s after a real Escape press (visibility ` +
+        `${after.visibility}, opacity ${after.opacity})`
+      : !after.focused
+      ? "Escape took focus off the trigger; a dismissal must leave focus where it was, or the " +
+        "next Tab starts from somewhere the person never went"
+      : after.described !== null
+      ? `the hint is off screen but the trigger still points at it with ` +
+        `aria-describedby="${after.described}"`
+      : "focus → the hint appeared; a real Escape press → it lost its box, dropped the " +
+        "description, and focus never left the trigger",
+  )
+
+  await devtools.evaluate<null>(`(globalThis.__verifyTooltip?.trigger?.blur(), null)`)
+  await pointerToCorner(devtools)
+}
+
+/**
+ * Chromium names the trigger and reads the hint as its description.
+ *
+ * This is the one thing the browser can settle that markup cannot: `aria-label` on an element with
+ * no role is not guaranteed to reach the accessibility tree, so the old `<span tabindex="0">`
+ * could carry a name and a description that nothing ever read. Asking Chromium for the node's own
+ * computed role, name and description is asking the tree itself.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function tooltipNameCheck(devtools: Devtools): Promise<void> {
+  await devtools.send("DOM.enable")
+  await devtools.send("Accessibility.enable")
+  const { root } = await devtools.send<{ root: { nodeId: number } }>("DOM.getDocument", {
+    depth: 1,
+  })
+  const { nodeId } = await devtools.send<{ nodeId: number }>("DOM.querySelector", {
+    nodeId: root.nodeId,
+    selector: `#demo-Tooltip [data-e2e="tooltip-live"] [aria-label]`,
+  })
+
+  const atRest = await computedNode(devtools, nodeId)
+  // That first reading is evidence, not an assertion. The check before this one left the hint
+  // dismissed, so it is `display: none` and Chromium reads no description off it at all — which is
+  // the dismissal doing its job rather than anything about naming. The reading that answers "is
+  // the hint this trigger's description" is the one taken with the hint on screen, which is why
+  // the trigger is focused for it.
+  await devtools.evaluate<null>(`(globalThis.__verifyTooltip?.trigger?.focus(), null)`)
+  await poll(() => devtools.evaluate<boolean>(TOOLTIP_SHOWN), 3_000)
+  const computed = await computedNode(devtools, nodeId)
+  await devtools.evaluate<null>(`(globalThis.__verifyTooltip?.trigger?.blur(), null)`)
+
+  check(
+    "Chromium names the Tooltip's trigger and reads its hint as the description",
+    nodeId !== 0 && computed.role === "button" && computed.name.length > 0 &&
+      computed.description.length > 0 && computed.name !== computed.description,
+    nodeId === 0
+      ? "the Tooltip card has no live row for Chromium to read"
+      : computed.role !== "button"
+      ? `Chromium reads the trigger as "${computed.role}" — a name and a description on an ` +
+        `element with no role of its own may never reach the accessibility tree at all ` +
+        `(name "${computed.name}", description "${computed.description}")`
+      : computed.name.length === 0
+      ? "Chromium computes no name for the trigger, so it announces as an unnamed button"
+      : computed.description.length === 0
+      ? `Chromium computes no description for the trigger named "${computed.name}", so the hint ` +
+        `is never read out`
+      : computed.name === computed.description
+      ? `the hint is the trigger's name as well as its description ("${computed.name}"), so it ` +
+        `is not supplementary to anything`
+      : `Chromium reads a ${computed.role} named "${computed.name}", described by ` +
+        `"${computed.description}" while the hint is on screen; with the hint dismissed by the ` +
+        `check before this one it reads a ${atRest.role} named "${atRest.name}" described by ` +
+        `"${atRest.description}", so a dismissed hint is not announced either`,
+  )
+
+  await groupTriggerNameCheck(devtools)
+}
+
+/**
+ * The other trigger shape, asked of the same tree: `focusable={false}`.
+ *
+ * The `role="group"` wrapper is the documented limit of this component's design — the caller's own
+ * control owns the name a reader announces on focus, and the group carries the hint — so it is the
+ * variant most likely to surprise somebody, and until now the only one proven by a rendered string
+ * alone. "An element that may carry a name" is exactly the question the other path came to the
+ * browser to answer, so this path is asked it too.
+ *
+ * The catalogue already renders it: the card's `Archive` hint wraps a real `<button>` and pins its
+ * surface open with `contentClass`, so there is nothing to reveal first.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function groupTriggerNameCheck(devtools: Devtools): Promise<void> {
+  const { root } = await devtools.send<{ root: { nodeId: number } }>("DOM.getDocument", {
+    depth: 1,
+  })
+  const { nodeId } = await devtools.send<{ nodeId: number }>("DOM.querySelector", {
+    nodeId: root.nodeId,
+    // Not `[role="group"]`: which role the wrapper carries is the question, and a selector that
+    // asked for the answer would report a missing card instead of a wrong role.
+    selector: `#demo-Tooltip [aria-label]:has(button)`,
+  })
+  const computed = await computedNode(devtools, nodeId)
+  const inner = await devtools.evaluate<{ buttons: number; tabStops: number; label: string }>(
+    `(() => {
+      const group = document.querySelector('#demo-Tooltip [aria-label]:has(button)')
+      const buttons = [...(group?.querySelectorAll("button") ?? [])]
+      return {
+        buttons: buttons.length,
+        tabStops: buttons.length + (group?.hasAttribute("tabindex") ? 1 : 0),
+        label: (buttons[0]?.textContent ?? "").trim().slice(0, 30),
+      }
+    })()`,
+  )
+
+  check(
+    "Chromium reads a name and the hint off a Tooltip that wraps an interactive trigger",
+    nodeId !== 0 && computed.role === "group" && computed.name.length > 0 &&
+      computed.description.length > 0 && computed.name !== computed.description &&
+      inner.buttons === 1 && inner.tabStops === 1,
+    nodeId === 0
+      ? `the Tooltip card renders no focusable={false} hint for Chromium to read`
+      : computed.role !== "group"
+      ? `Chromium reads the wrapper as "${computed.role}" rather than a group, so the name ` +
+        `"${computed.name}" and the description "${computed.description}" are on an element the ` +
+        `tree may drop`
+      : computed.name.length === 0 || computed.description.length === 0
+      ? `Chromium reads a ${computed.role} named "${computed.name}" described by ` +
+        `"${computed.description}" — a hint that reaches nobody`
+      : computed.name === computed.description
+      ? `the hint is the group's name as well as its description ("${computed.name}")`
+      : inner.tabStops !== 1
+      ? `${inner.tabStops} tab stops for one control: the wrapper kept a tab stop of its own ` +
+        `beside the ${inner.buttons} it wraps`
+      : `Chromium reads a ${computed.role} named "${computed.name}", described by ` +
+        `"${computed.description}", around one control ("${inner.label}") that keeps the single ` +
+        `tab stop`,
+  )
+}
+
+/**
+ * Ask Chromium for one node's own computed role, name and description.
+ *
+ * @param devtools The connected session.
+ * @param nodeId The DOM node, or `0` when the selector matched nothing.
+ */
+async function computedNode(devtools: Devtools, nodeId: number): Promise<Named> {
+  if (nodeId === 0) return { role: "", name: "", description: "" }
+  const { nodes } = await devtools.send<{
+    nodes: Array<{
+      role?: { value?: string }
+      name?: { value?: string }
+      description?: { value?: string }
+    }>
+  }>("Accessibility.getPartialAXTree", { nodeId, fetchRelatives: false })
+
+  return {
+    role: (nodes[0]?.role?.value ?? "").trim(),
+    name: (nodes[0]?.name?.value ?? "").trim(),
+    description: (nodes[0]?.description?.value ?? "").trim(),
+  }
+}
+
+/** A hover of the tooltip trigger, with everything a failure message needs to explain itself. */
+interface Hovered {
+  aim: Aim
+  landing: Landing | null
+  /** `true` when the browser put the trigger into `:hover` within the budget. */
+  hovering: boolean
+  /** What the hint looked like once the pointer had arrived. */
+  state: TooltipState
+}
+
+/**
+ * Point at the tooltip's trigger and wait for the hint.
+ *
+ * @param devtools The connected session.
+ * @returns The derivation, where the move landed, and whether the browser took the trigger into
+ * `:hover` — so a caller can tell a component that did nothing from a pointer that never arrived.
+ */
+async function hoverTrigger(devtools: Devtools): Promise<Hovered> {
+  const aim = await aimAt(devtools, `globalThis.__verifyTooltip?.trigger ?? null`)
+  const landing = await movePointer(devtools, aim, `globalThis.__verifyTooltip?.trigger ?? null`)
+  const hovering = await poll(() => devtools.evaluate<boolean>(TOOLTIP_HOVERED), 3_000)
+  const state = await devtools.evaluate<TooltipState>(TOOLTIP_STATE)
+
+  return { aim, landing, hovering, state }
+}
+
+/**
+ * Derive the centre of an element, and read back what sits at that point.
+ *
+ * The reading is the half that makes the point worth using: a coordinate on its own is a guess,
+ * and `elementFromPoint` is the browser's own answer to what a press there would hit.
+ *
+ * @param devtools The connected session.
+ * @param element A page expression for the element to aim at, or `null`.
+ */
+async function aimAt(devtools: Devtools, element: string): Promise<Aim> {
+  return await devtools.evaluate<Aim>(`(() => {
+    const element = ${element}
+    if (element === null || element === undefined) {
+      return { x: -1, y: -1, inViewport: false, onTarget: false, tag: "nothing", width: 0, height: 0 }
+    }
+    const box = element.getBoundingClientRect()
+    const x = Math.round(box.left + box.width / 2)
+    const y = Math.round(box.top + box.height / 2)
+    const at = document.elementFromPoint(x, y)
+    const inViewport = x >= 0 && y >= 0 && x < globalThis.innerWidth && y < globalThis.innerHeight
+    return {
+      x,
+      y,
+      inViewport,
+      onTarget: inViewport && at !== null && (at === element || element.contains(at)),
+      tag: at === null ? "nothing" : at.tagName,
+      width: Math.round(box.width),
+      height: Math.round(box.height),
+    }
+  })()`)
+}
+
+/**
+ * Move the pointer to a derived point, and report where the browser actually delivered it.
+ *
+ * The recorder is installed before the move and fires once, in the capture phase: once a hint is
+ * hidden again, no re-reading of the point can say what was under the pointer when it arrived.
+ *
+ * @param devtools The connected session.
+ * @param aim The point, from {@link aimAt}.
+ * @param target A page expression for the element the move was aimed at.
+ * @returns What the page saw, or `null` when the move never reached it.
+ */
+async function movePointer(devtools: Devtools, aim: Aim, target: string): Promise<Landing | null> {
+  await devtools.evaluate<null>(`(() => {
+    const target = ${target}
+    globalThis.__verifyPointer = null
+    document.addEventListener("mouseover", (event) => {
+      globalThis.__verifyPointer = {
+        onTarget: target !== null && target !== undefined &&
+          (target === event.target || target.contains(event.target)),
+        tag: event.target === null ? "nothing" : event.target.tagName,
+        x: event.clientX,
+        y: event.clientY,
+      }
+    }, { capture: true, once: true })
+    return null
+  })()`)
+  await devtools.send("Input.dispatchMouseEvent", {
+    type: "mouseMoved",
+    x: aim.x,
+    y: aim.y,
+    button: "none",
+    buttons: 0,
+  })
+
+  return await devtools.evaluate<Landing | null>(`globalThis.__verifyPointer ?? null`)
+}
+
+/**
+ * Park the pointer in the viewport's top-left corner, clear of any card.
+ *
+ * Viewport coordinates do not scroll with the page, so a pointer left over one card ends up
+ * resting on another as soon as the next check scrolls to it.
+ *
+ * @param devtools The connected session.
+ */
+async function pointerToCorner(devtools: Devtools): Promise<void> {
+  await devtools.send("Input.dispatchMouseEvent", {
+    type: "mouseMoved",
+    x: 2,
+    y: 2,
+    button: "none",
+    buttons: 0,
+  })
+}
+
+/** Which row the browser has under the pointer, and what the two rows are painted. */
+interface Painted {
+  /** `true` when the row aimed at is the one in `:hover`. */
+  hovered: boolean
+  /** `true` when a row nobody pointed at is in `:hover`, which would make the reading meaningless. */
+  plain: boolean
+  hoveredBackground: string
+  plainBackground: string
+}
+
+/** What one read of a combobox says about its list, its highlight and its status message. */
+interface ComboboxReading {
+  /** `false` when the card has no combobox under the parked id; every other field is then noise. */
+  ok: boolean
+  expanded: string | null
+  /** `true` while the popup carries the `hidden` attribute. */
+  listHidden: boolean
+  options: number
+  /** `aria-activedescendant` of the input, or `null` when nothing is highlighted. */
+  active: string | null
+  /** The highlighted row's text, cut short, or `""` when nothing is highlighted. */
+  activeText: string
+  /** `true` when `aria-activedescendant` names an element the page no longer holds. */
+  activeDangles: boolean
+  describedBy: string | null
+  /** The status element's role, or `null` when the component renders no status at all. */
+  statusRole: string | null
+  statusLive: string | null
+  statusText: string
+  inputValue: string
+  /** The popup's scroll position and box, which is where a highlight goes to get lost. */
+  scrollTop: number
+  clientHeight: number
+  scrollHeight: number
+  /** `true` when the highlighted row's own box lies inside the popup's visible band. */
+  activeInView: boolean
+  /** The page's own scroll position: `scrollIntoView` moves every scrollable ancestor it has. */
+  pageScrollY: number
+}
+
+/**
+ * Park one combobox's input and popup on `globalThis`.
+ *
+ * @param id The `id` the catalogue gave the input, which is also the base of every derived id.
+ */
+function comboboxSetup(id: string): string {
+  return `(() => {
+    const id = ${JSON.stringify(id)}
+    globalThis.__verifyCombobox = {
+      id,
+      input: document.getElementById(id),
+      list: document.getElementById(id + "-listbox"),
+    }
+    return null
+  })()`
+}
+
+/**
+ * The parked combobox's list, highlight, status element and popup geometry, in one round trip.
+ *
+ * The status element is looked up by the id the component derives rather than by `role="status"`:
+ * the whole point of the first check below is that on an untouched field there is no such element
+ * to find, and a reading has to be able to say "there is none" without a selector coming back
+ * empty for some unrelated reason.
+ */
+const COMBOBOX_STATE = `(() => {
+  const { id, input, list } = globalThis.__verifyCombobox ?? {}
+  if (!input || !list) {
+    return {
+      ok: false, expanded: null, listHidden: false, options: -1, active: null, activeText: "",
+      activeDangles: false,
+      describedBy: null, statusRole: null, statusLive: null, statusText: "", inputValue: "",
+      scrollTop: -1, clientHeight: -1, scrollHeight: -1, activeInView: false, pageScrollY: -1,
+    }
+  }
+  const status = document.getElementById(id + "-status")
+  const active = input.getAttribute("aria-activedescendant")
+  const row = active === null ? null : document.getElementById(active)
+  return {
+    ok: true,
+    expanded: input.getAttribute("aria-expanded"),
+    listHidden: list.hidden,
+    options: list.querySelectorAll('[role="option"]').length,
+    active,
+    activeText: (row?.textContent ?? "").trim().slice(0, 40),
+    activeDangles: active !== null && row === null,
+    describedBy: input.getAttribute("aria-describedby"),
+    statusRole: status?.getAttribute("role") ?? null,
+    statusLive: status?.getAttribute("aria-live") ?? null,
+    statusText: (status?.textContent ?? "").trim().slice(0, 40),
+    inputValue: input.value,
+    scrollTop: Math.round(list.scrollTop),
+    clientHeight: Math.round(list.clientHeight),
+    scrollHeight: Math.round(list.scrollHeight),
+    activeInView: row !== null && row.offsetTop >= list.scrollTop - 1 &&
+      row.offsetTop + row.offsetHeight <= list.scrollTop + list.clientHeight + 1,
+    pageScrollY: Math.round(globalThis.scrollY),
+  }
+})()`
+
+/**
+ * Combobox's three browser-only rules, each driven on the card built for it.
+ *
+ * What a rendered string cannot reach: whether a field nobody has touched stays silent *and* still
+ * answers once it is opened, where a popup is scrolled to, and which element a pointer move leaves
+ * `aria-activedescendant` pointing at. The card carries a list of 27 offsets and a list of none
+ * precisely so these three have the shapes they need — a long list for a highlight to fall off, and
+ * an empty one for a field to say nothing about.
+ *
+ * Every point is derived from an element's own box and read back with `elementFromPoint` before it
+ * is used, and every press records where the browser delivered it, so a missed press reports itself
+ * as a missed press rather than as a broken component. Nothing here throws: a card that lost a
+ * combobox is a failed check naming the id it could not find.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function comboboxChecks(devtools: Devtools): Promise<void> {
+  await untouchedComboboxCheck(devtools)
+  await arrivingOptionsCheck(devtools)
+  await highlightChecks(devtools)
+  await reopenCheck(devtools)
+}
+
+/**
+ * A list that changes under an open popup, both ways: options arriving, and options taken away.
+ *
+ * A field opened before its options have arrived shows the empty message, because opening it asked
+ * a question. When the list lands underneath it three things have to happen at once: the message
+ * goes, the input stops describing itself by it, and a row is highlighted — a list that arrives
+ * with nothing highlighted leaves `Enter` doing nothing and tells a screen reader nothing came.
+ *
+ * The return leg is the half that was missing, and the defect it caught is worse than the one the
+ * arrival fixed: with the highlight taken and the options then withdrawn,
+ * `aria-activedescendant` went on naming a row the page no longer held. That is not a degraded
+ * announcement but an invalid one — a reading position inside a list with no such row, on a field
+ * that is saying at that same moment that there is nothing to match. So the reading below carries
+ * `activeDangles`, which asks the page whether the pointer resolves to anything at all, rather
+ * than only whether an attribute is present.
+ *
+ * The card's button arms the arrival rather than performing it, and that shape is forced: pressing
+ * anything outside a combobox closes it, so the only way to have options land under an open popup
+ * is to ask for them first and open the field while they are on their way. The check reads the
+ * delay off the button rather than keeping its own copy, and asserts it really did get the field
+ * open first — if the options beat it, the run proves nothing and says so.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function arrivingOptionsCheck(devtools: Devtools): Promise<void> {
+  await devtools.evaluate<null>(comboboxSetup("guide-combobox-empty"))
+  await scrollToParked(devtools)
+
+  // A scripted press of the card's own control, the way the Toastr checks press theirs: nothing
+  // here is a claim about that button. What is under test starts at the field below it.
+  const armed = await devtools.evaluate<{ ok: boolean; delay: number }>(`(() => {
+    const button = document.querySelector('#demo-Combobox [data-e2e="combobox-load"]')
+    if (button === null) return { ok: false, delay: 0 }
+    button.click()
+    return { ok: true, delay: Number(button.dataset.delay) }
+  })()`)
+
+  const field = `globalThis.__verifyCombobox?.input ?? null`
+  const landing = await clickAt(devtools, await aimAt(devtools, field), field)
+  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "true"`), 3_000)
+  const waiting = await devtools.evaluate<ComboboxReading>(COMBOBOX_STATE)
+
+  const landed = await poll(
+    () => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.options > 0`),
+    armed.delay * 4,
+  )
+  const arrived = await devtools.evaluate<ComboboxReading>(COMBOBOX_STATE)
+
+  // The same control again. It empties the list on the press and refills it after the delay, so
+  // this is the caller taking its options away with the popup open — the return leg of the same
+  // walk. The press is scripted on purpose: a real press outside the popup would close it, and
+  // what has to be driven here is a list changing under an open popup, which in an application is
+  // a response landing rather than a click.
+  await devtools.evaluate<null>(
+    `(document.querySelector('#demo-Combobox [data-e2e="combobox-load"]')?.click(), null)`,
+  )
+  const emptied = await poll(
+    () => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.options === 0`),
+    3_000,
+  )
+  const departed = await devtools.evaluate<ComboboxReading>(COMBOBOX_STATE)
+
+  check(
+    "a Combobox follows its list under an open popup, in both directions",
+    armed.ok && landing?.onTarget === true && waiting.expanded === "true" &&
+      waiting.options === 0 && waiting.statusRole === "status" && waiting.active === null &&
+      landed && arrived.expanded === "true" && arrived.options > 0 &&
+      arrived.statusRole === null && arrived.describedBy === null &&
+      arrived.active === "guide-combobox-empty-option-0" && arrived.activeText.length > 0 &&
+      !arrived.activeDangles && emptied && departed.expanded === "true" &&
+      departed.active === null && !departed.activeDangles,
+    !armed.ok
+      ? `the Combobox card has no [data-e2e="combobox-load"] control to arm`
+      : landing?.onTarget !== true
+      ? "the press never landed on the field, so it was never open when the options arrived"
+      : waiting.options !== 0
+      ? `the options were already there ${waiting.options} rows deep when the field opened, so ` +
+        `they never arrived underneath it — this proves nothing`
+      : waiting.statusRole !== "status"
+      ? `the open, empty field renders no status to clear (role ${waiting.statusRole})`
+      : waiting.active !== null
+      ? `the open, empty field already points at ${waiting.active}, with no options to point at`
+      : !landed
+      ? `no options arrived within ${armed.delay * 4}ms of arming a ${armed.delay}ms wait`
+      : arrived.expanded !== "true"
+      ? "the popup closed while the options were arriving, so nothing landed underneath it"
+      : arrived.statusRole !== null || arrived.describedBy !== null
+      ? `${arrived.options} options arrived and the field still shows a ${arrived.statusRole} ` +
+        `reading "${arrived.statusText}"${
+          arrived.describedBy === null ? "" : `, with the input still describing itself by it`
+        }`
+      : arrived.active !== "guide-combobox-empty-option-0"
+      ? `${arrived.options} options arrived under the open popup and the highlight is ` +
+        `${arrived.active ?? "nowhere"}: a screen reader is told nothing came, and Enter does ` +
+        `nothing until an arrow key is pressed`
+      : arrived.activeDangles
+      ? `the highlight points at ${arrived.active}, which is not an element the page holds`
+      : !emptied
+      ? `the options never went away again, so the return leg proves nothing`
+      : departed.expanded !== "true"
+      ? "the popup closed when the options went away, so nothing was left open to check"
+      : departed.active !== null
+      ? `the options went away and the field still points at ${departed.active}` +
+        `${
+          departed.activeDangles
+            ? ", which is not an element the page holds: a screen reader is left reading a row " +
+              "that does not exist, on a field that says there are no matches"
+            : ""
+        }`
+      : `open and empty: a polite status reading "${waiting.statusText}" and no ` +
+        `aria-activedescendant → ${arrived.options} options landed ${armed.delay}ms later: the ` +
+        `status is gone, the input describes nothing, and the highlight is on ` +
+        `"${arrived.activeText}" → the caller took them away again: no rows, no ` +
+        `aria-activedescendant, and the popup still open`,
+  )
+
+  await pressKey(devtools, "Escape")
+  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "false"`), 3_000)
+  await pointerToCorner(devtools)
+}
+
+/**
+ * A combobox with no options says nothing until it is asked, and then answers.
+ *
+ * The defect: a page whose options arrive over the network renders this field with an empty list,
+ * and the closed field showed "No matches" and announced it through a live region — to everybody,
+ * about a control nobody had touched.
+ *
+ * Three readings rather than two, because each end of the rule can fail on its own. A component
+ * that always shows the message fails the first; one that never shows it fails the second; and one
+ * that shows it from the first touch onwards, forever, fails the third.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function untouchedComboboxCheck(devtools: Devtools): Promise<void> {
+  await devtools.evaluate<null>(comboboxSetup("guide-combobox-empty"))
+  await scrollToParked(devtools)
+  const untouched = await devtools.evaluate<ComboboxReading>(COMBOBOX_STATE)
+
+  const aim = await aimAt(devtools, `globalThis.__verifyCombobox?.input ?? null`)
+  const landing = await clickAt(devtools, aim, `globalThis.__verifyCombobox?.input ?? null`)
+  await poll(
+    () => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "true"`),
+    3_000,
+  )
+  const opened = await devtools.evaluate<ComboboxReading>(COMBOBOX_STATE)
+
+  await pressKey(devtools, "Escape")
+  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "false"`), 3_000)
+  const closed = await devtools.evaluate<ComboboxReading>(COMBOBOX_STATE)
+
+  const silent = (reading: ComboboxReading) =>
+    reading.statusRole === null && reading.describedBy === null
+  check(
+    "a Combobox with no options says nothing until it is opened, and answers only then",
+    untouched.ok && untouched.expanded === "false" && untouched.options === 0 &&
+      silent(untouched) && aim.onTarget && landing?.onTarget === true &&
+      opened.expanded === "true" && opened.statusRole === "status" &&
+      opened.statusLive === "polite" && opened.statusText.length > 0 &&
+      opened.describedBy === "guide-combobox-empty-status" && silent(closed),
+    !untouched.ok
+      ? "the Combobox card has no field with id guide-combobox-empty"
+      : untouched.options !== 0
+      ? `the field under test renders ${untouched.options} options, so it is not the empty one ` +
+        `this check is about`
+      : !silent(untouched)
+      ? `an untouched, closed field renders a ${untouched.statusRole} reading ` +
+        `"${untouched.statusText}"${
+          untouched.describedBy === null ? "" : `, and the input describes itself by it`
+        } — nobody has asked it anything`
+      : !aim.onTarget || landing?.onTarget !== true
+      ? `the press never landed on the field: ${
+        landing === null
+          ? `(${aim.x}, ${aim.y}) reads ${aim.tag} and the press never reached the page`
+          : `it went to ${landing.tag} at (${landing.x}, ${landing.y})`
+      } — a missed press, which proves nothing`
+      : opened.expanded !== "true"
+      ? "the field never opened on a real click, so the rest proves nothing"
+      : opened.statusRole !== "status" || opened.statusLive !== "polite"
+      ? `opened, the field renders no polite status region to answer with (role ` +
+        `${opened.statusRole}, aria-live ${opened.statusLive})`
+      : opened.describedBy !== "guide-combobox-empty-status"
+      ? `opened, the input describes itself by ${opened.describedBy} rather than by its own ` +
+        `status element`
+      : !silent(closed)
+      ? `closing the field left the ${closed.statusRole} on screen reading ` +
+        `"${closed.statusText}", so once touched it never goes quiet again`
+      : `untouched: no status, no aria-describedby → opened by a real click at (${landing.x}, ` +
+        `${landing.y}): a polite status reading "${opened.statusText}", pointed at by ` +
+        `aria-describedby → closed with Escape: quiet again`,
+  )
+}
+
+/**
+ * The keyboard highlight stays on screen, and the pointer does not move it.
+ *
+ * Both rules need the same long list, so they share one opening of it: the popup shows about six
+ * of its 27 rows, which is what lets a highlight fall off the bottom in the first place.
+ *
+ * The scroll half is measured, not eyeballed: the number of `ArrowDown` presses is derived from
+ * the popup's own height and its row height, so the highlight is taken exactly one row past the
+ * fold whatever the card's styling does, and the row's box is then compared with the popup's
+ * visible band. A popup that does not follow its highlight stays at `scrollTop` 0 with the row
+ * below the band.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function highlightChecks(devtools: Devtools): Promise<void> {
+  await devtools.evaluate<null>(comboboxSetup("guide-combobox-offset"))
+  await scrollToParked(devtools)
+
+  const aim = await aimAt(devtools, `globalThis.__verifyCombobox?.input ?? null`)
+  const landing = await clickAt(devtools, aim, `globalThis.__verifyCombobox?.input ?? null`)
+  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "true"`), 3_000)
+  const opened = await devtools.evaluate<ComboboxReading>(COMBOBOX_STATE)
+  const rowHeight = await devtools.evaluate<number>(
+    `Math.round(globalThis.__verifyCombobox?.list?.firstElementChild?.offsetHeight ?? 0)`,
+  )
+
+  // One row past the last one the popup can show, derived rather than picked: whatever the card's
+  // row height and popup height are, this is the first press whose highlight the popup has to
+  // scroll to keep.
+  const fits = rowHeight > 0 ? Math.floor(opened.clientHeight / rowHeight) : 0
+  const steps = fits + 1
+  const overflows = opened.scrollHeight > opened.clientHeight && steps < opened.options
+
+  // The quiet case first, and it has to be the **last** row the popup already shows: an earlier row
+  // cannot be centred in a list that is at the top, so a popup that centred every highlight would
+  // hold still there and prove nothing. `block: "nearest"` leaves this one where it is; `"center"`
+  // pulls it to the middle of the box.
+  //
+  // Only the popup's own scroll is asserted. `scrollIntoView` moves every scrollable ancestor it
+  // has, so the page may legitimately shift a few pixels when the row sits below the fold of the
+  // window, and it does here — that is the row being brought into sight, which is the point. The
+  // page's position is reported rather than pinned.
+  const quietSteps = fits - 1
+  for (let press = 0; press < quietSteps; press++) await pressKey(devtools, "ArrowDown")
+  await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `${COMBOBOX_STATE}.active === "guide-combobox-offset-option-${quietSteps}"`,
+      ),
+    3_000,
+  )
+  const quiet = await devtools.evaluate<ComboboxReading>(COMBOBOX_STATE)
+  check(
+    "a Combobox highlight that is already on screen leaves the popup where it is",
+    opened.ok && overflows && fits >= 3 && opened.scrollTop === 0 &&
+      quiet.active === `guide-combobox-offset-option-${quietSteps}` && quiet.scrollTop === 0 &&
+      quiet.activeInView,
+    !opened.ok || landing?.onTarget !== true
+      ? "the field was never opened, so this proves nothing"
+      : !overflows
+      ? `the popup shows all ${opened.options} of its rows, so it has nowhere to scroll and ` +
+        `holding still proves nothing`
+      : fits < 3
+      ? `only ${fits} row(s) fit the popup, so there is no already-visible row far enough down ` +
+        `to be worth scrolling to — this proves nothing`
+      : quiet.active !== `guide-combobox-offset-option-${quietSteps}`
+      ? `${quietSteps} real ArrowDown presses left the highlight on ${quiet.active} rather than ` +
+        `on option ${quietSteps}`
+      : quiet.scrollTop !== 0
+      ? `the popup scrolled to ${quiet.scrollTop}px to reach row ${quietSteps}, which was already ` +
+        `on screen, so the list jerks under a reader who is only moving down it`
+      : `${quietSteps} real ArrowDown presses onto the last of the ${fits} rows already showing: ` +
+        `the popup stayed at scrollTop 0 (the window moved ` +
+        `${quiet.pageScrollY - opened.pageScrollY}px, bringing that row into sight)`,
+  )
+
+  for (let press = quietSteps; press < steps; press++) await pressKey(devtools, "ArrowDown")
+  await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `${COMBOBOX_STATE}.active === "guide-combobox-offset-option-${steps}"`,
+      ),
+    3_000,
+  )
+  const walked = await devtools.evaluate<ComboboxReading>(COMBOBOX_STATE)
+
+  check(
+    "arrowing past the fold scrolls the Combobox's popup to keep the highlight on screen",
+    opened.ok && overflows && landing?.onTarget === true && opened.scrollTop === 0 &&
+      opened.active === "guide-combobox-offset-option-0" &&
+      walked.active === `guide-combobox-offset-option-${steps}` && walked.scrollTop > 0 &&
+      walked.activeInView,
+    !opened.ok
+      ? "the Combobox card has no field with id guide-combobox-offset"
+      : landing?.onTarget !== true
+      ? `the press never landed on the field, so it was never opened — this proves nothing`
+      : !overflows
+      ? `the popup shows all ${opened.options} of its rows (${opened.scrollHeight}px of list in ` +
+        `${opened.clientHeight}px of box), so no highlight can fall off it and this proves nothing`
+      : opened.active !== "guide-combobox-offset-option-0" || opened.scrollTop !== 0
+      ? `the popup opened at scrollTop ${opened.scrollTop} with ${opened.active} highlighted, ` +
+        `not at the top on the first row, so the walk below starts from nowhere known`
+      : walked.active !== `guide-combobox-offset-option-${steps}`
+      ? `${steps} real ArrowDown presses left the highlight on ${walked.active}, not on option ` +
+        `${steps}`
+      : !walked.activeInView
+      ? `the highlight walked to option ${steps} and off the screen: the row sits outside the ` +
+        `popup's ${opened.clientHeight}px band at scrollTop ${walked.scrollTop}`
+      : `${steps} real ArrowDown presses (${fits} rows of ${rowHeight}px fit the ` +
+        `${opened.clientHeight}px popup): the highlight went to option ${steps} and the popup ` +
+        `scrolled 0 → ${walked.scrollTop}px to keep it in view`,
+  )
+
+  await pointerHighlightCheck(devtools, steps)
+}
+
+/**
+ * A pointer over a row paints it, and leaves the announced highlight where the keyboard put it.
+ *
+ * `aria-activedescendant` is where a screen reader is reading. Writing it from a `mouseenter`
+ * drags that reading around with a pointer whose user may not be holding it at all — the two input
+ * methods are not the same person's.
+ *
+ * "Unchanged" is a weak thing to assert, so this pins both ends. The highlight is put on a known
+ * row with a real `Home` press first, the pointer is landed on a *different* row, the page records
+ * that it landed there, and the browser is asked which row it now has in `:hover` — so a check
+ * whose pointer never arrived fails rather than reporting a highlight that did not move.
+ *
+ * What the row under the pointer *looks* like cannot be read here. Tailwind gates `hover:` styles
+ * behind `@media (hover: hover)` and this browser reports a pointer that cannot hover, so the
+ * row's `hover:bg-gray-50` never applies in it; the `:hover` state the rule keys on is what the
+ * check asserts, and both backgrounds go into the message so the gap is visible rather than
+ * implied.
+ *
+ * @param devtools The connected session, with the offsets popup open.
+ * @param walkedTo The row the previous check left the highlight on, for the failure message.
+ */
+async function pointerHighlightCheck(devtools: Devtools, walkedTo: number): Promise<void> {
+  await pressKey(devtools, "Home")
+  await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `${COMBOBOX_STATE}.active === "guide-combobox-offset-option-0" && ` +
+          `${COMBOBOX_STATE}.scrollTop === 0`,
+      ),
+    3_000,
+  )
+  const before = await devtools.evaluate<ComboboxReading>(COMBOBOX_STATE)
+
+  const row = `document.getElementById("guide-combobox-offset-option-2")`
+  const aim = await aimAt(devtools, row)
+  const landing = await movePointer(devtools, aim, row)
+  const after = await devtools.evaluate<ComboboxReading>(COMBOBOX_STATE)
+  const painted = await devtools.evaluate<Painted>(`(() => {
+    const read = (index) => document.getElementById("guide-combobox-offset-option-" + index)
+    const hovered = read(2)
+    const plain = read(3)
+    return {
+      hovered: hovered !== null && hovered.matches(":hover"),
+      plain: plain !== null && plain.matches(":hover"),
+      hoveredBackground: hovered === null ? "no row" : getComputedStyle(hovered).backgroundColor,
+      plainBackground: plain === null ? "no row" : getComputedStyle(plain).backgroundColor,
+    }
+  })()`)
+
+  check(
+    "the pointer paints a Combobox row without moving the highlight a screen reader follows",
+    before.active === "guide-combobox-offset-option-0" && aim.onTarget &&
+      landing?.onTarget === true && after.active === before.active && painted.hovered &&
+      !painted.plain,
+    before.active !== "guide-combobox-offset-option-0"
+      ? `Home left the highlight on ${before.active} rather than the first row (the walk before ` +
+        `this one had it on option ${walkedTo}), so there is no known place for the pointer not ` +
+        `to move it from`
+      : !aim.onTarget || landing?.onTarget !== true
+      ? `the pointer never landed on the third row: ${
+        landing === null
+          ? `(${aim.x}, ${aim.y}) reads ${aim.tag} and the move never reached the page`
+          : `it went to ${landing.tag} at (${landing.x}, ${landing.y})`
+      } — a missed move, which proves nothing`
+      : after.active !== before.active
+      ? `pointing at the third row moved the announced highlight from ${before.active} to ` +
+        `${after.active}, which is a screen reader's reading position following a mouse`
+      : !painted.hovered || painted.plain
+      ? `the browser did not take the row under the pointer into :hover (third row ` +
+        `${painted.hovered}, fourth row ${painted.plain}), so there is nothing here about a ` +
+        `pointer at all`
+      : `the pointer landed on ${landing.tag} at (${landing.x}, ${landing.y}) and the browser put ` +
+        `that row, and only that row, into :hover, while aria-activedescendant stayed on ` +
+        `${after.active}. The paint itself is Tailwind's \`hover:bg-gray-50\`, which this ` +
+        `browser leaves unapplied — it reports a pointer that cannot hover, so every hover style ` +
+        `is gated out (row backgrounds read ${painted.hoveredBackground} and ` +
+        `${painted.plainBackground})`,
+  )
+
+  await pressKey(devtools, "Escape")
+  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "false"`), 3_000)
+  await pointerToCorner(devtools)
+}
+
+/**
+ * Reopening a Combobox highlights its selection, not a row the abandoned query chose.
+ *
+ * Opening drops the draft query, which widens the list back to every item — and the highlight used
+ * to be placed against the *narrow* list the query had left. The row at that index in the wide list
+ * is a different row, so abandoning a search and coming back highlighted whatever now happened to
+ * sit where the search's first match used to be.
+ *
+ * The walk is deliberately the one a person takes: pick something far down the list, search for
+ * something else, leave without choosing, and come back. Each step is asserted before the next is
+ * read — a selection that never happened or a query that never arrived would otherwise make the
+ * final reading meaningless.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function reopenCheck(devtools: Devtools): Promise<void> {
+  await devtools.evaluate<null>(comboboxSetup("guide-combobox-coin"))
+  await scrollToParked(devtools)
+
+  const field = `globalThis.__verifyCombobox?.input ?? null`
+  const opened = await clickAt(devtools, await aimAt(devtools, field), field)
+  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "true"`), 3_000)
+
+  // The last row of the list, found by its text rather than by an index written down here: what
+  // makes the check work is that the selection is far from the first row, not which row it is.
+  const lastRow =
+    `[...(globalThis.__verifyCombobox?.list?.querySelectorAll('[role="option"]') ?? [])]
+    .at(-1) ?? null`
+  const rowAim = await aimAt(devtools, lastRow)
+  const picked = await clickAt(devtools, rowAim, lastRow)
+  const chosen = await devtools.evaluate<string>(
+    `(globalThis.__verifyCombobox?.list?.querySelectorAll('[role="option"]').length ?? 0) > 0
+      ? [...globalThis.__verifyCombobox.list.querySelectorAll('[role="option"]')].at(-1).textContent.trim()
+      : ""`,
+  )
+  await poll(
+    () => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.inputValue === ${JSON.stringify(chosen)}`),
+    3_000,
+  )
+  const selected = await devtools.evaluate<ComboboxReading>(COMBOBOX_STATE)
+
+  // Reopen before typing: opening empties the input of its selection, so the query is the one
+  // character and not the selection with a character stuck to it.
+  await clickAt(devtools, await aimAt(devtools, field), field)
+  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "true"`), 3_000)
+  await typeInto(devtools, "E")
+  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.inputValue === "E"`), 3_000)
+  const narrowed = await devtools.evaluate<ComboboxReading>(COMBOBOX_STATE)
+
+  // Tab leaves the input for the clear button, which is a leave: the list closes and keeps the
+  // query, which is the state the defect needs — a closed field with an abandoned search in it.
+  await pressKey(devtools, "Tab")
+  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "false"`), 3_000)
+  const abandoned = await devtools.evaluate<ComboboxReading>(COMBOBOX_STATE)
+
+  // Focus rather than a click, and the difference is the whole defect. A click fires `focus` and
+  // then `click`, and the component opens the list on both: the first call is the one that drops
+  // the query and highlights against the stale list, and the second, running one render later,
+  // quietly puts the highlight right again. Coming back to the field with the keyboard fires focus
+  // alone, and nothing corrects it. `.focus()` is how that arrives here because tabbing backwards
+  // needs Shift+Tab, which the shared key helper does not describe — what the page receives is the
+  // single `focus` event a Tab into the field would deliver.
+  await devtools.evaluate<null>(`(globalThis.__verifyCombobox?.input?.focus(), null)`)
+  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "true"`), 3_000)
+  const reopened = await devtools.evaluate<ComboboxReading>(COMBOBOX_STATE)
+
+  check(
+    "reopening a Combobox highlights its selection, not a row the abandoned query chose",
+    opened?.onTarget === true && picked?.onTarget === true && chosen.length > 0 &&
+      selected.inputValue === chosen && narrowed.options > 0 &&
+      narrowed.options < selected.options &&
+      narrowed.active === "guide-combobox-coin-option-0" &&
+      reopened.options === selected.options && reopened.activeText === chosen,
+    opened?.onTarget !== true || picked?.onTarget !== true
+      ? `the press never landed on the field or on its last row, so nothing was selected — this ` +
+        `proves nothing`
+      : selected.inputValue !== chosen
+      ? `clicking the last row left the field reading "${selected.inputValue}" rather than ` +
+        `"${chosen}", so nothing was selected`
+      : narrowed.inputValue !== "E"
+      ? `the query never arrived: the field reads "${narrowed.inputValue}", so the list was ` +
+        `never narrowed and this proves nothing`
+      : narrowed.options >= selected.options
+      ? `the query left all ${narrowed.options} rows in the list, so there is no narrow list for ` +
+        `the reopening to be measured against`
+      : narrowed.active !== "guide-combobox-coin-option-0"
+      ? `the query "${narrowed.inputValue}" filtered the selection "${chosen}" out of the list and ` +
+        `left the highlight on ${narrowed.active ?? "nothing"} rather than on the first row that ` +
+        `survived it, so Enter right after typing would pick nothing`
+      : abandoned.expanded !== "false"
+      ? "Tab never closed the list, so the query was never abandoned"
+      : reopened.options !== selected.options
+      ? `reopening left ${reopened.options} rows rather than the full ${selected.options}, so the ` +
+        `query was not dropped and the highlight has nothing to be wrong about`
+      : reopened.activeText !== chosen
+      ? `reopening highlighted "${reopened.activeText}" (${reopened.active}) rather than the ` +
+        `selected "${chosen}": the highlight was placed against the ${narrowed.options} rows the ` +
+        `abandoned query "${narrowed.inputValue}" had left, and that index is a different row in ` +
+        `the full list of ${reopened.options}`
+      : `selected "${chosen}" → the query "${narrowed.inputValue}" narrowed the list to ` +
+        `${narrowed.options} of ${selected.options} rows, dropping the selection, and the ` +
+        `highlight moved to the first row that survived → Tab abandoned it → focusing the field ` +
+        `again restored all ${reopened.options} rows and highlighted "${reopened.activeText}" ` +
+        `(${reopened.active}), the selection`,
+  )
+
+  await pressKey(devtools, "Escape")
+  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "false"`), 3_000)
+  await pointerToCorner(devtools)
+}
+
+/**
+ * Bring the parked combobox into view and wait for the page to stop moving.
+ *
+ * Coordinates are derived one round trip and used the next, in viewport pixels, so the page has to
+ * have settled in between — the same reason `strayClickCheck` waits above.
+ *
+ * @param devtools The connected session.
+ */
+async function scrollToParked(devtools: Devtools): Promise<void> {
+  await devtools.evaluate<null>(
+    `(globalThis.__verifyCombobox?.input?.scrollIntoView({ block: "center" }), null)`,
+  )
+  await settledScroll(devtools)
+  await pointerToCorner(devtools)
+}
+
+/**
+ * Press and release the left button at a derived point, and report where the press landed.
+ *
+ * @param devtools The connected session.
+ * @param aim The point, from {@link aimAt}.
+ * @param target A page expression for the element the press was aimed at.
+ * @returns What the page saw, or `null` when the press never reached it.
+ */
+async function clickAt(devtools: Devtools, aim: Aim, target: string): Promise<Landing | null> {
+  await devtools.evaluate<null>(`(() => {
+    const target = ${target}
+    globalThis.__verifyClick = null
+    document.addEventListener("mousedown", (event) => {
+      globalThis.__verifyClick = {
+        onTarget: target !== null && target !== undefined &&
+          (target === event.target || target.contains(event.target)),
+        tag: event.target === null ? "nothing" : event.target.tagName,
+        x: event.clientX,
+        y: event.clientY,
+      }
+    }, { capture: true, once: true })
+    return null
+  })()`)
+  for (const type of ["mousePressed", "mouseReleased"]) {
+    await devtools.send("Input.dispatchMouseEvent", {
+      type,
+      x: aim.x,
+      y: aim.y,
+      button: "left",
+      buttons: type === "mousePressed" ? 1 : 0,
+      clickCount: 1,
+    })
+  }
+
+  return await devtools.evaluate<Landing | null>(`globalThis.__verifyClick ?? null`)
+}
+
+/**
+ * Type text into whatever the page has focused, through the browser's own input pipeline.
+ *
+ * `Input.insertText` rather than a key press, and the difference is worth stating plainly. The
+ * shared key table in `harness.ts` describes no character keys and this file may not add one; what
+ * the component reads its query from is the `input` event and never a `keydown`; and an insertion
+ * the browser delivers is a trusted event, unlike one synthesised inside the page. So this drives
+ * the same path a typed character drives. Every caller reads the query back afterwards and reports
+ * a query that never arrived as exactly that.
+ *
+ * @param devtools The connected session.
+ * @param text The text to insert at the caret.
+ */
+async function typeInto(devtools: Devtools, text: string): Promise<void> {
+  await devtools.send("Input.insertText", { text })
 }

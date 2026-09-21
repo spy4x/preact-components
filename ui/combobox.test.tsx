@@ -703,6 +703,84 @@ describe("Combobox markup", () => {
     expect(html).not.toContain("aria-describedby")
   })
 
+  it("says nothing about matches on an untouched field whose list is empty", () => {
+    // The defect: a page whose options arrive over the network renders this combobox with `items`
+    // still empty, and the closed field showed "No matches" and announced it through a live
+    // region — to everyone, about a control nobody had touched.
+    const html = render(<Combobox items={[]} onChange={() => {}} ariaLabel="Currency" />)
+
+    expect(html).not.toContain("No matches")
+    expect(html).not.toContain('role="status"')
+    expect(html).not.toContain("aria-live")
+    expect(html).not.toContain("aria-describedby")
+    // Still a working, collapsed combobox — it is silent, not broken.
+    expect(html).toContain('aria-expanded="false"')
+    expect(html).toContain('role="listbox"')
+  })
+
+  it("stays silent on an untouched empty field whatever the caller's message says", () => {
+    const text = render(
+      <Combobox items={[]} onChange={() => {}} emptyMessage="Still loading the list" />,
+    )
+    const fromQuery = render(
+      <Combobox items={[]} onChange={() => {}} emptyMessage={(query) => `Nothing for ${query}`} />,
+    )
+
+    expect(text).not.toContain("Still loading the list")
+    expect(fromQuery).not.toContain("Nothing for")
+    expect(fromQuery).not.toContain('role="status"')
+  })
+
+  it("answers with the empty message once the field carries a query", () => {
+    // The pair that makes the silence above a rule rather than an accident: the same empty list and
+    // the same message, and the only difference is that somebody has typed.
+    const untouched = render(<Combobox items={[]} onChange={() => {}} />)
+    const typed = render(<Combobox items={[]} onChange={() => {}} query="btc" />)
+
+    expect(untouched).not.toContain("No matches")
+    expect(typed).toContain("No matches")
+    expect(typed).toContain('role="status"')
+    expect(typed).toContain(`aria-describedby="${describedStatusId(typed)}"`)
+  })
+
+  it("treats a caller's empty query like no query at all", () => {
+    // A controlled query belongs to the caller, and an empty one has asked as little as an
+    // untouched draft: a server-search field rendered with `query=""` is a field nobody has used.
+    const silent = render(<Combobox items={[]} onChange={() => {}} query="" />)
+    const asked = render(<Combobox items={[]} onChange={() => {}} query="btc" />)
+
+    expect(silent).not.toContain("No matches")
+    expect(silent).not.toContain('role="status"')
+    expect(silent).not.toContain("aria-describedby")
+    expect(asked).toContain("No matches")
+  })
+
+  it("says nothing on an untouched field holding one option, or several", () => {
+    for (const list of [["BTC"], items]) {
+      const html = render(<Combobox items={list} onChange={() => {}} />)
+
+      expect(html, `a closed field over ${list.length} option(s)`).not.toContain('role="status"')
+      expect(html).not.toContain("No matches")
+    }
+  })
+
+  it("takes an overridden placeholder, and defaults it to English otherwise", () => {
+    expect(render(<Combobox items={items} onChange={() => {}} />))
+      .toContain('placeholder="Select…"')
+    expect(render(<Combobox items={items} onChange={() => {}} placeholder="Währung wählen" />))
+      .toContain('placeholder="Währung wählen"')
+  })
+
+  it("takes an overridden clear label, and defaults it to English otherwise", () => {
+    expect(render(<Combobox items={items} value="ETH" onChange={() => {}} />))
+      .toContain('aria-label="Clear selection"')
+    expect(
+      render(
+        <Combobox items={items} value="ETH" onChange={() => {}} clearLabel="Auswahl löschen" />,
+      ),
+    ).toContain('aria-label="Auswahl löschen"')
+  })
+
   it("takes the empty message from the caller, as text or as a function of the query", () => {
     expect(render(<Combobox items={items} onChange={() => {}} query="zzz" emptyMessage="Nada" />))
       .toContain("Nada")
