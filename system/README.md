@@ -179,6 +179,18 @@ and when the month it asked for is drawn the press is finished as if it had been
 that the late month would replace the cell the focus had just been restored to and the focus would
 fall to the document body, which no key can recover from.
 
+A burst has the same property. Two Page Downs a slow owner has yet to answer ask for two months,
+because each counts from the cursor rather than from what is on screen, and the owner then draws
+those two months one at a time; the first to arrive is a month the reader passes through, so the
+request survives it and the focus follows each month as it appears.
+
+**What holds each row.** The first three are held by browser checks in `pages/checks/system.ts`,
+against two catalogue cards — one whose owner refuses every month change, one whose owner answers
+300 ms late — and removing the handling turns them red. The fourth is a safety net rather than a
+shape a caller writes, and it was measured by hand with a disposable owner that answers late with
+September whatever it is asked for: the focus lands on 1 September, the month's own Tab stop. No
+check holds it.
+
 One thing the calendar will not do is take the focus back from somewhere the reader put it. It moves
 the focus only out of the three places it puts it itself — the grid container while a month is
 outstanding, the day it restored on a refusal, and nowhere at all. A reader who has moved the focus
