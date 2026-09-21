@@ -1939,6 +1939,9 @@ async function tooltipChecks(devtools: Devtools): Promise<void> {
     3_000,
   )
   await devtools.evaluate<null>(`(globalThis.__verifyTooltip?.trigger?.blur(), null)`)
+  // Teardown, and nothing may be built on it: this waits for a CSS state, which stops matching the
+  // instant focus leaves, with no render in between. It says the hint is off the screen; it does
+  // not say the component has re-rendered or that its effect cleanups have run.
   await poll(() => devtools.evaluate<boolean>(`!${TOOLTIP_SHOWN}`), 3_000)
 
   check(
@@ -2019,24 +2022,29 @@ async function tooltipChecks(devtools: Devtools): Promise<void> {
  * entirely, which is why the component listens on `document` rather than on the trigger: a hint
  * revealed by a pointer has no focus of its own to catch the key.
  *
- * Three transitions, and none of them is the paint — a dismissed hint loses its box and its id, so
- * this check reads what the `hidden` attribute and `aria-describedby` do, which this browser runs
- * whatever it thinks of hover.
+ * Two transitions, and neither of them is the paint — a dismissed hint loses its box and its id,
+ * so this check reads what the `hidden` attribute and `aria-describedby` do, which this browser
+ * runs whatever it thinks of hover.
  *
- * The first press is a control: with the pointer in the corner nothing is engaged, the component
- * has no listener registered at all, and that press must change nothing. The last step hovers
- * again, and it is not a formality either — "the hint is gone" is also true of a component that
- * broke itself on the key press, and only a hint that comes back has been dismissed rather than
- * destroyed.
+ * The last step hovers again, and it is not a formality: "the hint is gone" is also true of a
+ * component that broke itself on the key press, and only a hint that comes back has been dismissed
+ * rather than destroyed.
+ *
+ * An earlier version of this check began with a control — pointer in the corner, press Escape,
+ * assert nothing happened — to pin the listener being registered only while the trigger is
+ * engaged. It is gone for two reasons. Nobody can observe that property: engaging the trigger
+ * clears the dismissed state anyway, so a component holding one permanent listener would behave
+ * identically for every user on every device, and the property is a cost argument, not a
+ * behaviour. And it raced: the check before this one blurs the trigger and waits for the hint to
+ * stop being shown, but that wait watches a CSS state which stops matching the instant focus
+ * leaves, with no render involved, so it could return before the effect cleanup had removed the
+ * listener. Two runs in eight then failed on the control press landing on a listener that was
+ * still attached. The property is written down in `ui/tooltip.tsx` instead.
  *
  * @param devtools The connected session, on a hydrated page.
  */
 async function escapeOverPointerCheck(devtools: Devtools): Promise<void> {
   await pointerToCorner(devtools)
-  const beforeIdle = await devtools.evaluate<TooltipState>(TOOLTIP_STATE)
-  await pressKey(devtools, "Escape")
-  const idle = await devtools.evaluate<TooltipState>(TOOLTIP_STATE)
-
   const hovering = await hoverTrigger(devtools)
   await devtools.evaluate<null>(`(globalThis.__verifyFocusBefore = document.activeElement, null)`)
   const before = await devtools.evaluate<TooltipState>(TOOLTIP_STATE)
@@ -2058,18 +2066,14 @@ async function escapeOverPointerCheck(devtools: Devtools): Promise<void> {
 
   check(
     "a real Escape press dismisses the Tooltip under the pointer, without moving focus",
-    beforeIdle.ok && beforeIdle.boxed && idle.boxed && idle.described !== null &&
-      hovering.hovering && before.boxed && before.described !== null && gone && !after.boxed &&
-      after.described === null && focusHeld && again.hovering && back.boxed &&
+    before.ok && hovering.hovering && before.boxed && before.described !== null && gone &&
+      !after.boxed && after.described === null && focusHeld && again.hovering && back.boxed &&
       back.described !== null,
-    !beforeIdle.ok
+    !before.ok
       ? "the Tooltip card has no live row to dismiss"
-      : !beforeIdle.boxed
-      ? "the hint had already been dismissed before this check started, so there was nothing to " +
-        "dismiss"
-      : !idle.boxed || idle.described === null
-      ? "an Escape press with the pointer nowhere near the trigger dismissed the hint anyway, so " +
-        "the component listens for the key whether or not anybody is looking at the hint"
+      : !before.boxed
+      ? "the hint had already been dismissed before this check pressed anything, so there was " +
+        "nothing here to dismiss"
       : !hovering.hovering
       ? "the pointer never took the trigger into :hover, so a dismissal here proves nothing"
       : before.described === null
@@ -2088,10 +2092,9 @@ async function escapeOverPointerCheck(devtools: Devtools): Promise<void> {
       : !back.boxed || back.described === null
       ? "the hint never came back on the next hover, so Escape did not dismiss it — it destroyed " +
         "it"
-      : `Escape with the pointer in the corner: nothing changed → pointer onto the trigger, ` +
-        `Input.dispatchKeyEvent Escape: the hint lost its box and the trigger dropped ` +
-        `aria-describedby="${before.described}", with focus still on ${focusName} → pointer away ` +
-        `and back: the hint has its box and its description again`,
+      : `pointer onto the trigger, then Input.dispatchKeyEvent Escape: the hint lost its box and ` +
+        `the trigger dropped aria-describedby="${before.described}", with focus still on ` +
+        `${focusName} → pointer away and back: the hint has its box and its description again`,
   )
 }
 
@@ -2194,6 +2197,68 @@ async function tooltipNameCheck(devtools: Devtools): Promise<void> {
         `"${computed.description}" while the hint is on screen; with the hint dismissed by the ` +
         `check before this one it reads a ${atRest.role} named "${atRest.name}" described by ` +
         `"${atRest.description}", so a dismissed hint is not announced either`,
+  )
+
+  await groupTriggerNameCheck(devtools)
+}
+
+/**
+ * The other trigger shape, asked of the same tree: `focusable={false}`.
+ *
+ * The `role="group"` wrapper is the documented limit of this component's design — the caller's own
+ * control owns the name a reader announces on focus, and the group carries the hint — so it is the
+ * variant most likely to surprise somebody, and until now the only one proven by a rendered string
+ * alone. "An element that may carry a name" is exactly the question the other path came to the
+ * browser to answer, so this path is asked it too.
+ *
+ * The catalogue already renders it: the card's `Archive` hint wraps a real `<button>` and pins its
+ * surface open with `contentClass`, so there is nothing to reveal first.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function groupTriggerNameCheck(devtools: Devtools): Promise<void> {
+  const { root } = await devtools.send<{ root: { nodeId: number } }>("DOM.getDocument", {
+    depth: 1,
+  })
+  const { nodeId } = await devtools.send<{ nodeId: number }>("DOM.querySelector", {
+    nodeId: root.nodeId,
+    selector: `#demo-Tooltip [role="group"][aria-label]`,
+  })
+  const computed = await computedNode(devtools, nodeId)
+  const inner = await devtools.evaluate<{ buttons: number; tabStops: number; label: string }>(
+    `(() => {
+      const group = document.querySelector('#demo-Tooltip [role="group"][aria-label]')
+      const buttons = [...(group?.querySelectorAll("button") ?? [])]
+      return {
+        buttons: buttons.length,
+        tabStops: buttons.length + (group?.hasAttribute("tabindex") ? 1 : 0),
+        label: (buttons[0]?.textContent ?? "").trim().slice(0, 30),
+      }
+    })()`,
+  )
+
+  check(
+    "Chromium reads a name and the hint off a Tooltip that wraps an interactive trigger",
+    nodeId !== 0 && computed.role === "group" && computed.name.length > 0 &&
+      computed.description.length > 0 && computed.name !== computed.description &&
+      inner.buttons === 1 && inner.tabStops === 1,
+    nodeId === 0
+      ? `the Tooltip card renders no focusable={false} hint for Chromium to read`
+      : computed.role !== "group"
+      ? `Chromium reads the wrapper as "${computed.role}" rather than a group, so the name ` +
+        `"${computed.name}" and the description "${computed.description}" are on an element the ` +
+        `tree may drop`
+      : computed.name.length === 0 || computed.description.length === 0
+      ? `Chromium reads a ${computed.role} named "${computed.name}" described by ` +
+        `"${computed.description}" — a hint that reaches nobody`
+      : computed.name === computed.description
+      ? `the hint is the group's name as well as its description ("${computed.name}")`
+      : inner.tabStops !== 1
+      ? `${inner.tabStops} tab stops for one control: the wrapper kept a tab stop of its own ` +
+        `beside the ${inner.buttons} it wraps`
+      : `Chromium reads a ${computed.role} named "${computed.name}", described by ` +
+        `"${computed.description}", around one control ("${inner.label}") that keeps the single ` +
+        `tab stop`,
   )
 }
 
@@ -2444,8 +2509,89 @@ const COMBOBOX_STATE = `(() => {
  */
 async function comboboxChecks(devtools: Devtools): Promise<void> {
   await untouchedComboboxCheck(devtools)
+  await arrivingOptionsCheck(devtools)
   await highlightChecks(devtools)
   await reopenCheck(devtools)
+}
+
+/**
+ * Options that turn up while the popup is already open, which is the case the silence is for.
+ *
+ * A field opened before its options have arrived shows the empty message, because opening it asked
+ * a question. When the list lands underneath it three things have to happen at once: the message
+ * goes, the input stops describing itself by it, and a row is highlighted — a list that arrives
+ * with nothing highlighted leaves `Enter` doing nothing and tells a screen reader nothing came.
+ *
+ * The card's button arms the arrival rather than performing it, and that shape is forced: pressing
+ * anything outside a combobox closes it, so the only way to have options land under an open popup
+ * is to ask for them first and open the field while they are on their way. The check reads the
+ * delay off the button rather than keeping its own copy, and asserts it really did get the field
+ * open first — if the options beat it, the run proves nothing and says so.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function arrivingOptionsCheck(devtools: Devtools): Promise<void> {
+  await devtools.evaluate<null>(comboboxSetup("guide-combobox-empty"))
+  await scrollToParked(devtools)
+
+  const armed = await devtools.evaluate<{ ok: boolean; delay: number }>(`(() => {
+    const button = document.querySelector('#demo-Combobox [data-e2e="combobox-load"]')
+    if (button === null) return { ok: false, delay: 0 }
+    button.click()
+    return { ok: true, delay: Number(button.dataset.delay) }
+  })()`)
+
+  const field = `globalThis.__verifyCombobox?.input ?? null`
+  const landing = await clickAt(devtools, await aimAt(devtools, field), field)
+  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "true"`), 3_000)
+  const waiting = await devtools.evaluate<ComboboxReading>(COMBOBOX_STATE)
+
+  const landed = await poll(
+    () => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.options > 0`),
+    armed.delay * 4,
+  )
+  const arrived = await devtools.evaluate<ComboboxReading>(COMBOBOX_STATE)
+
+  check(
+    "options arriving under an open Combobox clear its message and take the highlight",
+    armed.ok && landing?.onTarget === true && waiting.expanded === "true" &&
+      waiting.options === 0 && waiting.statusRole === "status" && waiting.active === null &&
+      landed && arrived.expanded === "true" && arrived.options > 0 &&
+      arrived.statusRole === null && arrived.describedBy === null &&
+      arrived.active === "guide-combobox-empty-option-0" && arrived.activeText.length > 0,
+    !armed.ok
+      ? `the Combobox card has no [data-e2e="combobox-load"] control to arm`
+      : landing?.onTarget !== true
+      ? "the press never landed on the field, so it was never open when the options arrived"
+      : waiting.options !== 0
+      ? `the options were already there ${waiting.options} rows deep when the field opened, so ` +
+        `they never arrived underneath it — this proves nothing`
+      : waiting.statusRole !== "status"
+      ? `the open, empty field renders no status to clear (role ${waiting.statusRole})`
+      : waiting.active !== null
+      ? `the open, empty field already points at ${waiting.active}, with no options to point at`
+      : !landed
+      ? `no options arrived within ${armed.delay * 4}ms of arming a ${armed.delay}ms wait`
+      : arrived.expanded !== "true"
+      ? "the popup closed while the options were arriving, so nothing landed underneath it"
+      : arrived.statusRole !== null || arrived.describedBy !== null
+      ? `${arrived.options} options arrived and the field still shows a ${arrived.statusRole} ` +
+        `reading "${arrived.statusText}"${
+          arrived.describedBy === null ? "" : `, with the input still describing itself by it`
+        }`
+      : arrived.active !== "guide-combobox-empty-option-0"
+      ? `${arrived.options} options arrived under the open popup and the highlight is ` +
+        `${arrived.active ?? "nowhere"}: a screen reader is told nothing came, and Enter does ` +
+        `nothing until an arrow key is pressed`
+      : `open and empty: a polite status reading "${waiting.statusText}" and no ` +
+        `aria-activedescendant → ${arrived.options} options landed ${armed.delay}ms later: the ` +
+        `status is gone, the input describes nothing, and the highlight is on ` +
+        `"${arrived.activeText}"`,
+  )
+
+  await pressKey(devtools, "Escape")
+  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "false"`), 3_000)
+  await pointerToCorner(devtools)
 }
 
 /**
@@ -2552,7 +2698,42 @@ async function highlightChecks(devtools: Devtools): Promise<void> {
   const fits = rowHeight > 0 ? Math.floor(opened.clientHeight / rowHeight) : 0
   const steps = fits + 1
   const overflows = opened.scrollHeight > opened.clientHeight && steps < opened.options
-  for (let press = 0; press < steps; press++) await pressKey(devtools, "ArrowDown")
+
+  // The first press on its own, because a highlight that is already on screen must not move the
+  // popup at all: `block: "nearest"` is what makes that true, and `"center"` would pull the second
+  // row to the middle of the box. Asserted before the walk, while the popup is still at the top.
+  await pressKey(devtools, "ArrowDown")
+  await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `${COMBOBOX_STATE}.active === "guide-combobox-offset-option-1"`,
+      ),
+    3_000,
+  )
+  const quiet = await devtools.evaluate<ComboboxReading>(COMBOBOX_STATE)
+  check(
+    "a Combobox highlight that is already on screen leaves the popup where it is",
+    opened.ok && overflows && fits >= 2 && opened.scrollTop === 0 &&
+      quiet.active === "guide-combobox-offset-option-1" && quiet.scrollTop === 0 &&
+      quiet.activeInView,
+    !opened.ok || landing?.onTarget !== true
+      ? "the field was never opened, so this proves nothing"
+      : !overflows
+      ? `the popup shows all ${opened.options} of its rows, so it has nowhere to scroll and ` +
+        `holding still proves nothing`
+      : fits < 2
+      ? `only ${fits} row(s) fit the popup, so the second row is not already on screen and this ` +
+        `proves nothing`
+      : quiet.active !== "guide-combobox-offset-option-1"
+      ? `one real ArrowDown left the highlight on ${quiet.active} rather than the second row`
+      : quiet.scrollTop !== 0
+      ? `the popup scrolled to ${quiet.scrollTop}px to reach a row that was already on screen, ` +
+        `so a list opened on a visible selection jerks under the reader`
+      : `one real ArrowDown onto the second row of ${fits} already showing: the popup stayed at ` +
+        `scrollTop 0`,
+  )
+
+  for (let press = 1; press < steps; press++) await pressKey(devtools, "ArrowDown")
   await poll(
     () =>
       devtools.evaluate<boolean>(

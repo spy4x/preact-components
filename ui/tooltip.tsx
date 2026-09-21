@@ -98,10 +98,15 @@ const placementClasses: Record<TooltipPlacement, string> = {
  * - **Dismissible.** While the trigger is hovered or focused, one `keydown` listener sits on
  *   `document`, and Escape hides the surface and drops `aria-describedby` without moving focus.
  *   The listener belongs on `document` because the hint can be up while focus is elsewhere
- *   entirely — that is what hovering means — and it is registered only while the trigger is
- *   engaged, so a page full of tooltips holds no listeners at rest. The key is neither consumed
- *   nor stopped, so whatever else Escape does on that page still happens. The hint returns on the
- *   next fresh hover or focus, not during the one it was dismissed in.
+ *   entirely — that is what hovering means. The key is neither consumed nor stopped, so whatever
+ *   else Escape does on that page still happens. The hint returns on the next fresh hover or
+ *   focus, not during the one it was dismissed in.
+ *
+ *   Registering the listener only while the trigger is engaged is a **cost** decision rather than
+ *   a behavioural one, and nothing tests it, on purpose: a component that kept one listener for
+ *   its whole life would behave identically for every user on every device, since engaging the
+ *   trigger clears the dismissed state anyway. What it buys is a page of fifty hints holding no
+ *   listeners while nobody is on any of them.
  * - **Hoverable.** The surface takes pointer events and the gap to it is padding rather than a
  *   margin, so the pointer can travel onto the hint and rest there while it is read. The accepted
  *   cost: while a hint is up, its box — bridge included — sits over whatever is behind it and

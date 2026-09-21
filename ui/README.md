@@ -175,10 +175,22 @@ Every string it shows is a prop with an English default: `placeholder` (`"Select
 
 **The empty message waits to be asked.** It is rendered, and announced, only once the list is open or
 the field carries a query. A field nobody has touched — one whose options are still arriving over the
-network, for instance — says nothing at all rather than claiming there is nothing to match. The
-highlight belongs to the keyboard: the arrow keys move it, the popup scrolls to keep it on screen,
-and no pointer handler writes `aria-activedescendant`, so a screen reader's reading position does not
-follow a mouse somebody else is holding. The row under the pointer is still painted, in CSS.
+network, for instance — says nothing at all rather than claiming there is nothing to match. When
+those options land while the popup is open, the message goes and the first usable row takes the
+highlight, so `Enter` picks something without an arrow key first: a list that arrives with nothing
+highlighted tells a screen reader that nothing arrived.
+
+**A known limit of that.** The element carrying the message is itself the live region, so it enters
+the page already holding its text instead of sitting there empty and then changing — which is the
+case screen readers announce least reliably. `Toastr` in this package does the opposite, and says
+why. The browser check proves the region appears and that the input describes it; it does not prove
+a reader spoke it. The alternative is an empty `role="status"` inside every combobox on the page, and
+that trade is not made here.
+
+The highlight belongs to the keyboard: the arrow keys move it, the popup scrolls to keep it on screen
+— `block: "nearest"`, so a row already in view does not move the list at all — and no pointer handler
+writes `aria-activedescendant`, so a screen reader's reading position does not follow a mouse
+somebody else is holding. The row under the pointer is still painted, in CSS.
 
 ## Skeletons
 
