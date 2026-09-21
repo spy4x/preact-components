@@ -156,8 +156,12 @@ export interface BuildModelStoreConfig<
     undelete?: (id: number) => string
   }
   /**
-   * Freshness check for `"updated"` remote events; a stale event is ignored.
-   * Defaults to comparing `createdAt`.
+   * Freshness check for `"updated"` remote events; an event judged older than the stored row is
+   * ignored.
+   *
+   * The default compares `updatedAt`, falls back to `createdAt` for a model that has neither side
+   * stamped with an `updatedAt`, and accepts the incoming row whenever the two cannot be ordered —
+   * including when the model carries no timestamp column at all. See {@link defaultIsNewer}.
    */
   isNewer?: (incoming: SchemaOutput<F>, existing: SchemaOutput<F>) => boolean
   /**
@@ -600,21 +604,50 @@ function idle<T, E>(): OperationState<T, E> {
   return { inProgress: false, error: null, result: null }
 }
 
-/** Default freshness check: a remote row is newer when its `createdAt` is later. */
+/**
+ * Columns the default freshness check reads, in the order it prefers them.
+ *
+ * `updatedAt` first, because that is the column an edit moves. `createdAt` is the fallback for a
+ * model that has no `updatedAt` at all: it never moves after the row is written, so comparing it
+ * answers "not newer" for every genuine edit and drops the event.
+ */
+const FRESHNESS_COLUMNS = ["updatedAt", "createdAt"] as const
+
+/**
+ * Default freshness check for an `"updated"` remote event.
+ *
+ * It compares the first of `updatedAt`, `createdAt` that either row carries a usable value for, and
+ * accepts the incoming row when that value is at least as late as the stored one. Every other case
+ * accepts the incoming row: a pair where neither side carries a usable timestamp at all, and a pair
+ * where only one side carries the column being compared. A remote update event is the server's
+ * statement that the row changed, so where the two rows cannot be ordered the event wins — dropping
+ * it because the row has no clock loses the write, which is what this check exists to prevent.
+ *
+ * Equal timestamps accept the incoming row too. Two rows stamped the same instant should be the
+ * same row, and where they are not, the one the server has just sent is the authority.
+ */
 function defaultIsNewer<M extends Model>(incoming: M, existing: M): boolean {
-  return timestamp(incoming.createdAt) > timestamp(existing.createdAt)
+  for (const column of FRESHNESS_COLUMNS) {
+    const incomingAt = timestamp(incoming[column])
+    const existingAt = timestamp(existing[column])
+    if (incomingAt === null && existingAt === null) continue
+    if (incomingAt === null || existingAt === null) return true
+    return incomingAt >= existingAt
+  }
+  return true
 }
 
-/** Best-effort timestamp for an `unknown` row column. Unusable values compare as `0`. */
-function timestamp(value: unknown): number {
-  if (value === null || value === undefined) return 0
-  if (value instanceof Date) return value.getTime()
-  if (typeof value === "number") return value
-  if (typeof value === "string") {
-    const parsed = new Date(value).getTime()
-    return Number.isNaN(parsed) ? 0 : parsed
-  }
-  return 0
+/** Best-effort timestamp for an `unknown` row column. `null` when it cannot be read as one. */
+function timestamp(value: unknown): number | null {
+  if (value instanceof Date) return finite(value.getTime())
+  if (typeof value === "number") return finite(value)
+  if (typeof value === "string") return finite(new Date(value).getTime())
+  return null
+}
+
+/** The millisecond count, or `null` when it is `NaN` or infinite. */
+function finite(milliseconds: number): number | null {
+  return Number.isFinite(milliseconds) ? milliseconds : null
 }
 
 function errorMessage(error: unknown): string {

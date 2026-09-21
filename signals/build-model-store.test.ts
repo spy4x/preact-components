@@ -22,6 +22,33 @@ function row(id: number, name: string, deletedAt: Date | null = null): Row {
   return { id, name, createdAt: new Date("2024-01-01T00:00:00.000Z"), deletedAt }
 }
 
+/**
+ * A row carrying both timestamps, for the freshness tests.
+ *
+ * `rowSchema` above has no `updatedAt`, which is what keeps the `createdAt` fallback covered. This
+ * one exists so a test can move the two columns in opposite directions and see which one the
+ * freshness check reads: a fixture whose timestamps move together proves nothing.
+ */
+const timedRowSchema = type({
+  id: "number",
+  name: "string",
+  createdAt: dateSchema,
+  updatedAt: dateSchema,
+  deletedAt: dateSchema.or("null"),
+})
+
+type TimedRow = typeof timedRowSchema.infer
+
+function timedRow(id: number, name: string, createdAt: string, updatedAt: string): TimedRow {
+  return {
+    id,
+    name,
+    createdAt: new Date(createdAt),
+    updatedAt: new Date(updatedAt),
+    deletedAt: null,
+  }
+}
+
 interface RecordedCall {
   url: string
   init: RequestInit
@@ -69,6 +96,16 @@ function buildStore(options: {
     sort: options.sort,
     session: options.session,
     onReset: options.onReset,
+  })
+}
+
+/** The same store over {@link timedRowSchema}, so remote rows carry both timestamps. */
+function buildTimedStore(fetchImpl: typeof fetch) {
+  return buildModelStore({
+    model: "zone",
+    endpoint: "/api/zones",
+    schemas: { full: timedRowSchema, create: createSchema, update: updateSchema },
+    fetch: fetchImpl,
   })
 }
 
@@ -332,45 +369,6 @@ describe("buildModelStore remote events", () => {
     expect(store.state.value.list.map((r) => r.id)).toEqual([1, 2])
   })
 
-  it("ignores an update older than the row it holds", async () => {
-    const { impl } = queueFetch()
-    const store = buildStore({ fetch: impl })
-    const stored: Row = { ...row(1, "North"), createdAt: new Date("2024-05-01T00:00:00.000Z") }
-    await store.onWs([stored], RemoteEvent.LIST)
-
-    await store.onWs(
-      [{ ...row(1, "Stale"), createdAt: new Date("2024-01-01T00:00:00.000Z") }],
-      RemoteEvent.UPDATED,
-    )
-    expect(store.state.value.list[0].name).toBe("North")
-
-    await store.onWs(
-      [{ ...row(1, "Fresh"), createdAt: new Date("2024-06-01T00:00:00.000Z") }],
-      RemoteEvent.UPDATED,
-    )
-    expect(store.state.value.list[0].name).toBe("Fresh")
-  })
-
-  it("honours a custom freshness check", async () => {
-    const { impl } = queueFetch()
-    const store = buildModelStore({
-      model: "zone",
-      endpoint: "/api/zones",
-      schemas: { full: rowSchema, create: createSchema, update: updateSchema },
-      fetch: impl,
-      isNewer: () => true,
-    })
-    await store.onWs(
-      [{ ...row(1, "North"), createdAt: new Date("2024-05-01T00:00:00.000Z") }],
-      RemoteEvent.LIST,
-    )
-    await store.onWs([{
-      ...row(1, "Older but trusted"),
-      createdAt: new Date("2024-01-01T00:00:00.000Z"),
-    }], RemoteEvent.UPDATED)
-    expect(store.state.value.list[0].name).toBe("Older but trusted")
-  })
-
   it("applies a deleted event as a row replacement", async () => {
     const { impl } = queueFetch()
     const store = buildStore({ fetch: impl })
@@ -398,6 +396,131 @@ describe("buildModelStore remote events", () => {
     await store.onWs([row(1, "North")], RemoteEvent.LIST)
     expect(store.op.list.value.inProgress).toBe(false)
     expect(store.op.list.value.result?.map((r) => r.id)).toEqual([1])
+  })
+})
+
+describe("buildModelStore remote update freshness", () => {
+  it("accepts an update whose updatedAt moved while createdAt stood still", async () => {
+    const { impl } = queueFetch()
+    const store = buildTimedStore(impl)
+    await store.onWs(
+      [timedRow(1, "North", "2024-01-01T00:00:00.000Z", "2024-01-01T00:00:00.000Z")],
+      RemoteEvent.LIST,
+    )
+
+    // An edit moves `updatedAt` and leaves `createdAt` exactly where it was, which is why a check
+    // that reads `createdAt` answers "not newer" for every real update.
+    await store.onWs(
+      [timedRow(1, "Edited", "2024-01-01T00:00:00.000Z", "2024-06-01T00:00:00.000Z")],
+      RemoteEvent.UPDATED,
+    )
+
+    expect(store.state.value.list[0].name).toBe("Edited")
+  })
+
+  it("accepts an update stamped the same instant as the row it holds", async () => {
+    const { impl } = queueFetch()
+    const store = buildTimedStore(impl)
+    const at = "2024-06-01T00:00:00.000Z"
+    await store.onWs([timedRow(1, "North", "2024-01-01T00:00:00.000Z", at)], RemoteEvent.LIST)
+
+    await store.onWs([timedRow(1, "Edited", "2024-01-01T00:00:00.000Z", at)], RemoteEvent.UPDATED)
+
+    expect(store.state.value.list[0].name).toBe("Edited")
+  })
+
+  it("ignores an update whose updatedAt is older, however late its createdAt is", async () => {
+    const { impl } = queueFetch()
+    const store = buildTimedStore(impl)
+    await store.onWs(
+      [timedRow(1, "North", "2024-01-01T00:00:00.000Z", "2024-06-01T00:00:00.000Z")],
+      RemoteEvent.LIST,
+    )
+
+    // The two columns point in opposite directions: `createdAt` says the incoming row is newer,
+    // `updatedAt` says it is older. Only the second one is an answer about the edit.
+    await store.onWs(
+      [timedRow(1, "Stale", "2024-09-01T00:00:00.000Z", "2024-02-01T00:00:00.000Z")],
+      RemoteEvent.UPDATED,
+    )
+
+    expect(store.state.value.list[0].name).toBe("North")
+  })
+
+  it("falls back to createdAt when neither row carries an updatedAt", async () => {
+    const { impl } = queueFetch()
+    const store = buildStore({ fetch: impl })
+    const stored: Row = { ...row(1, "North"), createdAt: new Date("2024-05-01T00:00:00.000Z") }
+    await store.onWs([stored], RemoteEvent.LIST)
+
+    await store.onWs(
+      [{ ...row(1, "Stale"), createdAt: new Date("2024-01-01T00:00:00.000Z") }],
+      RemoteEvent.UPDATED,
+    )
+    expect(store.state.value.list[0].name).toBe("North")
+
+    await store.onWs(
+      [{ ...row(1, "Fresh"), createdAt: new Date("2024-06-01T00:00:00.000Z") }],
+      RemoteEvent.UPDATED,
+    )
+    expect(store.state.value.list[0].name).toBe("Fresh")
+  })
+
+  it("accepts an update when only the incoming row carries a timestamp", async () => {
+    const { impl } = queueFetch()
+    const looseSchema = type({ id: "number", name: "string", "updatedAt?": dateSchema })
+    const store = buildModelStore({
+      model: "zone",
+      endpoint: "/api/zones",
+      schemas: { full: looseSchema, create: looseSchema, update: looseSchema },
+      fetch: impl,
+    })
+    await store.onWs([{ id: 1, name: "North" }], RemoteEvent.LIST)
+
+    await store.onWs(
+      [{ id: 1, name: "Edited", updatedAt: new Date("2024-06-01T00:00:00.000Z") }],
+      RemoteEvent.UPDATED,
+    )
+
+    expect(store.state.value.list[0].name).toBe("Edited")
+  })
+
+  it("accepts an update for a model with no timestamp column at all", async () => {
+    const { impl } = queueFetch()
+    const bare = type({ id: "number", name: "string" })
+    const store = buildModelStore({
+      model: "tag",
+      endpoint: "/api/tags",
+      schemas: { full: bare, create: bare, update: bare },
+      fetch: impl,
+    })
+    await store.onWs([{ id: 1, name: "North" }], RemoteEvent.LIST)
+
+    await store.onWs([{ id: 1, name: "Edited" }], RemoteEvent.UPDATED)
+
+    expect(store.state.value.list[0].name).toBe("Edited")
+  })
+
+  it("honours a custom freshness check", async () => {
+    const { impl } = queueFetch()
+    const store = buildModelStore({
+      model: "zone",
+      endpoint: "/api/zones",
+      schemas: { full: timedRowSchema, create: createSchema, update: updateSchema },
+      fetch: impl,
+      isNewer: () => true,
+    })
+    await store.onWs(
+      [timedRow(1, "North", "2024-01-01T00:00:00.000Z", "2024-06-01T00:00:00.000Z")],
+      RemoteEvent.LIST,
+    )
+
+    await store.onWs(
+      [timedRow(1, "Older but trusted", "2024-01-01T00:00:00.000Z", "2024-01-01T00:00:00.000Z")],
+      RemoteEvent.UPDATED,
+    )
+
+    expect(store.state.value.list[0].name).toBe("Older but trusted")
   })
 })
 

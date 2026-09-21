@@ -98,8 +98,9 @@ export type ResponseError = ConnectionError | ServerError
  * The minimum a row must have for the store to manage it.
  *
  * Only `id` is load-bearing: it is how rows are matched, replaced, and keyed in the
- * per-row operation maps. Soft-delete (`deletedAt`) and freshness (`createdAt`) columns
- * are read structurally and deliberately left `unknown`, and the open index signature is
+ * per-row operation maps. The soft-delete column (`deletedAt`) and the freshness columns
+ * (`updatedAt`, and `createdAt` behind it) are read structurally and deliberately left
+ * `unknown` — a row may carry either, both or neither — and the open index signature is
  * what lets a schema carrying a morph (`"string.date.iso.parse"`) satisfy
  * `F extends Type<Model>` — arktype's `Type` exposes the morph function in its own
  * structure, so a narrowly typed field would reject every parsing schema.
