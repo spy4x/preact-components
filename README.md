@@ -16,13 +16,12 @@ reusable Preact + signals package. See [`CREDITS.md`](./CREDITS.md).
 
 ```
 theme/       design-system CSS + tailwind preset
-ui/          Badge, Table, Dropdown, ToggleSwitch, OnOffButtons, PageTitle, Toast, Button,
-             DeletionValidation, CopyButton, Export, DateTimeFilter, LoadingScreen, Skeleton
-system/      Shell, Nav, Auth, StateInit, SEOHead, Breadcrumb, Menu, SWUpdater
+ui/          Badge, Button, Table, Dropdown, Combobox, Modal, Tooltip, Toastr — and the rest
+system/      Calendar, ImageLightbox, SEOHead + head store, SWUpdater
 charts/      server-rendered SVG kit (scales) + d3 wrappers
 icons/       merged icon set (+ brand glyphs)
 cn/          cn() — class-name join + Tailwind conflict resolution
-signals/     For/Show/map, buildModelStore, useListState, useUrlFilters, table-state
+signals/     buildModelStore, useUrlFilters, table-state, theme, toast — and the rest; no components
 crud/        CrudList, CrudEditor, AssociationEditor
 ui-guide/    live component catalogue route
 pages/       demo app (GitHub Pages site and the browser checks under pages/checks/), not published

@@ -65,10 +65,13 @@ glyph of ours is annotated `from template` and all six are stock Heroicons v1 pa
 shared upstream, not a port. See [`icons/README.md`](../icons/README.md) and "Deferred decisions"
 below for what the icon set's provenance actually is.
 
-> **Depends on PR #98 not landing first.** This paragraph asserts that `roley` is not an icon source.
-> PR #98 (`docs/issues-28-15-78`, open) adds a `roley` row to `icons/README.md`'s source table. If it
-> merges first, the sentence above is false and must be reconciled — see the staleness note in
-> "Deferred decisions" that restates it.
+> **The paragraph above is out of date.** The pull request this note used to wait on, #98, has
+> landed and did add that project to the source table in [`icons/README.md`](../icons/README.md), so
+> the claim that it is not an icon source is false rather than conditional. The shared-upstream
+> explanation of the six glyphs may still hold and is not the same claim; it needs re-reading rather
+> than deleting. Reconciling this paragraph is part of #127, which owns the wider sweep of this
+> document — including the project names in it, which is why the correction removes them together
+> rather than one at a time. The note under "Deferred decisions" says the same.
 
 ## Behaviour is implemented, not imported
 
@@ -107,19 +110,19 @@ The full dependency surface of the repository, each clause justified. Root impor
 `deno.jsonc` unless stated. This list is descriptive of the tree today — adding to it is a decision,
 not a maintenance chore.
 
-| Specifier                                           | Why it is allowed                                                                                                                                                                                                                                                                                                                                                                                                      |
-| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `preact`, `preact/`                                 | The renderer. Not a component library — it provides no components, no styling and no behaviour. Owned by the library by construction.                                                                                                                                                                                                                                                                                  |
-| `@preact/signals`, `@preact/signals-core`           | Reactive state primitives. A general-purpose primitive, shared with `spy4x/template` so an app resolves one copy.                                                                                                                                                                                                                                                                                                      |
-| `wouter-preact`                                     | URL routing. A small, well-solved problem that is not ours to reimplement, and it is a router rather than a component library.                                                                                                                                                                                                                                                                                         |
-| `arktype`                                           | Validation. `AGENTS.md` → _Validation_ names it the only permitted validator; it supplies runtime checks and the inferred type, nothing visual.                                                                                                                                                                                                                                                                        |
-| `tailwind-merge`                                    | Class-string composition. One function, no components and no styling opinion of its own — it serves `theme/preset.css` rather than competing with it. Wrapped by `cn/`, which does the falsy-input filtering `clsx` used to do before it was removed.                                                                                                                                                                  |
-| `tailwindcss`, `tailwindcss/`, `@tailwindcss/forms` | The styling system itself, and the one deliberate styling opinion in the tree. `theme/preset.css` is built on it, so it is the substrate rather than a rival to it.                                                                                                                                                                                                                                                    |
-| `@std/assert`, `@std/expect`, `@std/testing`        | Test-only. Never reachable from a published entry point.                                                                                                                                                                                                                                                                                                                                                               |
-| `preact-render-to-string`                           | Declared per package that needs a renderer, and deliberately absent from the root map so a consumer never inherits one. Used by tests that assert on real rendered markup (`charts/`, `crud/`, `signals/`, `system/`, `ui/`, `ui-guide/`) **and by non-test build code** — `pages/src/prerender.tsx` prerenders the demo to markup at build time. It is not a component library: it renders components, it ships none. |
-| `d3`                                                | Optional peer of the interactive chart path only, declared in `charts/deno.json` and `ui-guide/deno.json` rather than the root map, so an SVG-only consumer never has it in their graph. See `charts/probe/no-d3-dependency.ts`, which proves that.                                                                                                                                                                    |
-| `@tailwindcss/oxide`                                | Build-only, declared in `pages/deno.json`. Tailwind 4's class scanner, at the version the `tailwindcss` pin already resolves to; drives the demo build instead of shelling out to a CLI that needs a `node_modules` tree.                                                                                                                                                                                              |
-| `node:path`, `node:url`, `node:fs`                  | Deno's built-in Node-compatibility modules, used by build and test helper scripts. Platform, not third-party.                                                                                                                                                                                                                                                                                                          |
+| Specifier                                           | Why it is allowed                                                                                                                                                                                                                                                                                                                                                                                          |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `preact`, `preact/`                                 | The renderer. Not a component library — it provides no components, no styling and no behaviour. Owned by the library by construction.                                                                                                                                                                                                                                                                      |
+| `@preact/signals`, `@preact/signals-core`           | Reactive state primitives. A general-purpose primitive, shared with `spy4x/template` so an app resolves one copy.                                                                                                                                                                                                                                                                                          |
+| `wouter-preact`                                     | URL routing. A small, well-solved problem that is not ours to reimplement, and it is a router rather than a component library.                                                                                                                                                                                                                                                                             |
+| `arktype`                                           | Validation. `AGENTS.md` → _Validation_ names it the only permitted validator; it supplies runtime checks and the inferred type, nothing visual.                                                                                                                                                                                                                                                            |
+| `tailwind-merge`                                    | Class-string composition. One function, no components and no styling opinion of its own — it serves `theme/preset.css` rather than competing with it. Wrapped by `cn/`, which does the falsy-input filtering `clsx` used to do before it was removed.                                                                                                                                                      |
+| `tailwindcss`, `tailwindcss/`, `@tailwindcss/forms` | The styling system itself, and the one deliberate styling opinion in the tree. `theme/preset.css` is built on it, so it is the substrate rather than a rival to it.                                                                                                                                                                                                                                        |
+| `@std/assert`, `@std/expect`, `@std/testing`        | Test-only. Never reachable from a published entry point.                                                                                                                                                                                                                                                                                                                                                   |
+| `preact-render-to-string`                           | Declared per package that needs a renderer, and deliberately absent from the root map so a consumer never inherits one. Used by tests that assert on real rendered markup (`charts/`, `crud/`, `system/`, `ui/`, `ui-guide/`) **and by non-test build code** — `pages/src/prerender.tsx` prerenders the demo to markup at build time. It is not a component library: it renders components, it ships none. |
+| `d3`                                                | Optional peer of the interactive chart path only, declared in `charts/deno.json` and `ui-guide/deno.json` rather than the root map, so an SVG-only consumer never has it in their graph. See `charts/probe/no-d3-dependency.ts`, which proves that.                                                                                                                                                        |
+| `@tailwindcss/oxide`                                | Build-only, declared in `pages/deno.json`. Tailwind 4's class scanner, at the version the `tailwindcss` pin already resolves to; drives the demo build instead of shelling out to a CLI that needs a `node_modules` tree.                                                                                                                                                                                  |
+| `node:path`, `node:url`, `node:fs`                  | Deno's built-in Node-compatibility modules, used by build and test helper scripts. Platform, not third-party.                                                                                                                                                                                                                                                                                              |
 
 Nothing else is permitted. A new dependency needs a written justification in the PR body
 (`AGENTS.md` → _Code style_ → "Minimise dependencies"), and the burden is on the addition, not on the
@@ -309,22 +312,29 @@ this:
   independent of any icon licence: brand marks are not freely relicensable even when the drawing is
   your own. This is the part most likely to need its own decision, and it is why any replacement is
   expected to split the brand subset from the general set.
-- All 101 glyphs are inline source in `icons/+index.tsx`, `{ class?: string }` prop surface, no
+- All 119 glyphs are inline source in `icons/+index.tsx`, `{ class?: string }` prop surface, no
   codegen, no build step, no runtime dependency beyond Preact.
 
-> **Staleness note.** These counts and the five-source list are read from `icons/README.md` as it
-> stands at the time of writing. PR #98 (`docs/issues-28-15-78`, open) rewrites that file to a
-> six-source merge, adds a `roley` row, and moves the count to 119. **The statements above depend on
-> #98 not having landed.** If #98 merges first, whichever lands second must reconcile this section
-> against it — the icon list is deliberately not restated from memory here, and `icons/README.md`
-> remains the authority either way.
+> **Partly reconciled.** The pull request this note used to wait on, #98, has landed, so the count
+> above is read from the tree rather than from a pending change. `icons/+index.tsx` exports 119
+> glyphs and `icons/README.md` says 119, but those are not two independent readings:
+> `icons/check-readme.ts` parses the number out of the README and fails when it disagrees with the
+> export count, so they are one fact with a guard on it. The independent pin is
+> `icons/+index.test.ts`, which asserts the number as a literal on purpose — a guard derived from
+> the module would shrink with the thing it polices. The browser suite is not a third: its icon
+> check is named for 119 and asserts only that more than ninety glyphs are shown, so it would pass
+> at ninety-one. The source list above has **not** been reconciled and is one source short; it is
+> deliberately not restated from memory here, `icons/README.md` remains the authority, and
+> correcting it is part of #127, which owns the wider sweep of this document.
 >
-> **The same applies to the `roley` paragraph earlier in this document** — "`roley` and `evisa` are
-> design-intent sources, never code sources" — which states that `roley` is _not_ among the icon
-> sources and explains its six geometry-identical glyphs as shared Heroicons v1 upstream. If #98 merges
-> first and adds `roley` as a source, that sentence becomes false, and the explanation of the six
-> glyphs needs re-reading rather than deleting: the shared-upstream reasoning may still hold, but it
-> would no longer be the whole story. Reconcile that paragraph too, not only the counts above.
+> **The same applies to the paragraph earlier in this document** naming two projects as
+> design-intent sources rather than code sources, which says one of them is not among the icon
+> sources and explains its six geometry-identical glyphs as a shared upstream. That pull request
+> has landed and did add it as a source, so the sentence is false now rather than conditionally.
+> The explanation of the six glyphs needs re-reading rather than deleting — the shared-upstream
+> reasoning may still hold, but it is no longer the whole story. That paragraph is part of the same
+> #127 sweep as the source list above, and for the same reason: it names projects this repository
+> should not be naming, so correcting it and removing them is one job rather than two.
 
 **This document does not resolve that question and must not be read as doing so.** No licence is
 asserted for the icon set, none is inferred, and no glyph has been changed, replaced or re-drawn.

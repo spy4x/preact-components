@@ -12,11 +12,11 @@ its own PR, each owning exactly one top-level directory.
 | ----------- | ---------------------------------------------------------------------------------------- |
 | `theme/`    | design-system CSS + tailwind preset                                                      |
 | `icons/`    | merged icon set, `+index.tsx`                                                            |
-| `ui/`       | Badge, Table, Dropdown, ToggleSwitch, OnOffButtons, PageTitle, Toast, Button             |
-| `system/`   | Shell, Nav, Auth, StateInit, SEOHead, Breadcrumb, Menu, SWUpdater                        |
+| `ui/`       | Badge, Button, Table, Dropdown, Combobox, Modal, Tooltip, Toastr — and the rest          |
+| `system/`   | Calendar, ImageLightbox, SEOHead + head store, SWUpdater                                 |
 | `charts/`   | server-rendered SVG kit (scales) + d3 wrappers                                           |
 | `cn/`       | `cn()` — class-name join + Tailwind conflict resolution                                  |
-| `signals/`  | For/Show/map, buildModelStore, useListState, useUrlFilters                               |
+| `signals/`  | buildModelStore, useUrlFilters, table-state, theme, toast — and the rest; no components  |
 | `crud/`     | CrudList, CrudEditor, AssociationEditor                                                  |
 | `ui-guide/` | live component catalogue route                                                           |
 | `pages/`    | demo app (GitHub Pages site and the browser checks under `pages/checks/`), not published |
@@ -171,12 +171,23 @@ from there rather than redefined. Every workspace package whose components the c
 has a file under `pages/checks/`, including the ones with no check yet — that emptiness is
 deliberate, so a later pull request adding the first check to one of them touches nobody else's file.
 `cn/` is the one workspace member with none: it is a single class-name function, and there is nothing
-in it a browser could drive. `Modal` is so far the only component whose keyboard and focus behaviour
-any browser check covers: it opens as a real modal dialog with focus inside, a real Escape press
-closes it, and focus returns to the trigger. Every other component's keyboard and focus behaviour is
-still untested. `verify` fails when it finds no browser; `--static` is the one explicit way to leave
-the browser phase out. The GitHub workflow runs `check`, the build and `verify` on every pull request
-into `main`, and the Pages deploy waits for them.
+in it a browser could drive.
+
+Which components are covered is not written here, because every version of that sentence has gone
+stale. `pages/checks/` **is** the list: open the file for the package you care about and read the
+names passed to `check(...)` — each one says in a sentence what it proves. Treat a component
+whose check you cannot find as unproven rather than as working.
+
+Two facts about that browser, both measured rather than assumed, and both worth knowing before you
+write a check: a real Enter press does **not** activate a focused button there, so a trigger is
+activated with a click and the check says so; a real Space press **does**. And the browser reports
+that it cannot hover. Tailwind compiles every `hover:` and `group-hover:` utility behind that
+capability whatever the browser says, so in this one none of them matches. A hand-written `&:hover`
+in `theme/preset.css` is emitted ungated and does still apply, so the gap is the utilities rather
+than hovering as such. Issue #185 tracks it; read that before you write a check that leans on a
+hover style. `verify` fails when it finds no browser; `--static` is the one explicit way to leave
+the browser phase out. The GitHub workflow runs `check`, the build and `verify` on every pull
+request into `main`, and the Pages deploy waits for them.
 
 If a task fails because a specifier cannot be resolved, run the task that needs the new dependency once
 with network access and commit the updated `deno.lock`. **This is a convenience, not a gate:** a stale
@@ -230,6 +241,18 @@ library knowing which app it is running in.
 
 This is the standard for every app built from `spy4x/template`. See `crud/README.md` for the exact
 store interfaces.
+
+## Labels
+
+**Every user-visible string has an English default and a prop that overrides it.** Decided on
+2026-09-21, and it replaces the three policies `ui/` used to hold at once — one component threw
+when a label was missing, another demanded a whole labels object, and the rest hard-coded
+English. A caller who says nothing gets English; a caller who needs another language passes one
+prop. Nothing in the library throws for want of a label.
+
+The one exception is a name that cannot be defaulted because only the caller knows it — the
+accessible name of an icon-only trigger, for instance. Those stay required, and required means a
+type error rather than a warning at runtime.
 
 ## Validation
 

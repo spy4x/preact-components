@@ -72,8 +72,10 @@ check or a red `verify` blocks the publish.
    answered by `ui-guide/coverage.ts` at `deno task test`, which CI runs before this build.
 2. **Tailwind** compiles `styles.css` with its own `compile()` API, over every class name its Rust
    scanner finds in the sources the stylesheet's `@source` rules name (every package the catalogue
-   draws components from — `ui/`, `charts/`, `system/`, `crud/`, `signals/` — plus `ui-guide/`,
-   `icons/` and this directory; `src/tailwind-sources.test.ts` fails when one is missing). `tokens.css` and `preset.css` are inlined, and the candidate list is scanned
+   draws components from — `ui/`, `charts/`, `system/`, `crud/` — plus `signals/`, whose styles reach
+   the demo page rather than a card, `ui-guide/`,
+   `icons/` and this directory; `src/tailwind-sources.test.ts` fails when one is missing).
+   `tokens.css` and `preset.css` are inlined, and the candidate list is scanned
    rather than listed, so a class inside a template string is emitted exactly as it would be for an
    app.
 3. **`deno bundle --platform browser`** produces the island — one Preact copy, at the version the
@@ -232,8 +234,12 @@ here, which would go stale the next time a check is added. In short:
 - **Keyboard and focus** (the same browser phase, driven with real key events through
   `Input.dispatchKeyEvent` rather than a synthesised `KeyboardEvent`, which the browser treats as
   untrusted and does not act on): Modal's trigger opens a `:modal` dialog and moves focus into it,
-  an Escape press closes it, and focus lands back on the same trigger element. Dropdown, Tabs,
-  Combobox, Tooltip, DateRangePicker and Calendar are still to come.
+  an Escape press closes it, and focus lands back on the same trigger element. Dropdown is a real
+  menu with arrow keys and Escape; Toastr announces and pauses; Combobox stays quiet until it is
+  used and keeps its highlight on screen; Tooltip dismisses on Escape and survives a pointer;
+  Calendar is one tab stop with arrows, Home, End and the page keys; ImageLightbox opens with
+  Enter and Space; SWUpdater registers and shows its bar; and the filter hook follows the address
+  bar. Tabs, DateRangePicker and Pagination are still to come.
 
 ## Not here
 
@@ -241,9 +247,12 @@ here, which would go stale the next time a check is added. In short:
 `docs/not-building.md`, because it needs Leaflet — a dependency decision. `theme/` is CSS, so its
 classes get cards of their own in the catalogue's
 `forms` and `surfaces` sections rather than component cards; `icons/` is the gallery rather than demo
-cards; and the four sections that were placeholders when this page was first deployed — `charts/`,
-`system/`, `crud/`, `signals/` — now have a card per component, with any card still to be written up
-declared in `ui-guide/coverage.ts`'s `EXPORTS_WITHOUT_DEMO` with its reason.
+cards; and the sections that were placeholders when this page was first deployed — `charts/`,
+`system/`, `crud/` — now have a card per component, with any card still to be written up declared
+in `ui-guide/coverage.ts`'s `EXPORTS_WITHOUT_DEMO` with its reason. `signals/` has no section at
+all any more: it exports no component, so it is an excluded package with its reason recorded
+beside the others, and the one piece of it this page shows — the filter hook — is demonstrated by
+the host page rather than by a card.
 
 Adding a card to a `ui-guide` section is still all a new component needs to appear here: the
 coverage rule and the stylesheet's `@source` list are the only two things to touch, and both fail
