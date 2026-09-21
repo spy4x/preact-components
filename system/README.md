@@ -12,7 +12,10 @@ Extracted from `antonshubin.com`, `mig` and `financy`.
   reload and the error ports. The only state a component owns is the state the browser handed it.
 - **Server-renderable.** `document`, `navigator`, `location` and the clock are touched inside an
   effect, an event handler, or a pure function whose result the caller passes back in.
-  `SWUpdater` renders `""` on the server, and `Calendar` takes `today` so a render is deterministic.
+  `SWUpdater` renders its empty live region and nothing else on the server, and `Calendar` takes
+  `today` so a render is deterministic.
+- **A live region is always present and empty.** See below; it is a library-wide rule, not a
+  `SWUpdater` one.
 - **No `theme/` dependency.** Utilities are inlined, like `ui/`. `icons/` supplies the three glyphs
   these components draw (`IconChevronLeft`, `IconChevronRight`, `IconXMark`) rather than
   duplicating SVG.
@@ -198,10 +201,43 @@ The defaults name no particular kind of page: the container is `[data-lightbox]`
 host puts where it wants the zoom layer, and an image with no `alt` is described as `Image`. What
 the component puts on the host's images it takes off again when it unmounts.
 
+## A live region is always present and empty
+
+**Every component in this library that announces something renders its live region from the first
+render, empty, and puts the message into it later.** This is a library-wide decision rather than a
+detail of one component, and the reason is the same everywhere: assistive technology announces a
+_change_ to a region it is already watching, and commonly says nothing at all about a region that
+arrives with its message already inside it. Marking an element that only exists once it has
+something to say therefore buys nothing.
+
+Three components follow it. `SWUpdater` is below. `Toastr` in `ui/` keeps its stack in the page
+with zero toasts in it, and `Combobox` in `ui/` keeps the region that reports "No matches" there
+before anybody has typed.
+
+An always-present region costs a host page nothing in layout as long as it carries no padding, no
+border and no minimum height of its own, which is why `SWUpdater`'s region carries no class at all:
+empty, it is a zero-height element that paints nothing. What it does cost is one more node in the
+accessibility tree, which is the trade being made.
+
+**No screen reader has been run against this repository.** What is demonstrated is markup and the
+order in which the DOM changes — the region is in the page first, and the message arrives as a
+mutation of that same element — which is the footing this decision rests on. It is not a
+demonstration that any particular screen reader speaks. `pages/checks/system.ts` parks a reference
+to the region and a `MutationObserver` on it before an update is made ready, so a check cannot pass
+by finding a region that arrived carrying text.
+
 ## The service-worker contract
 
 `SWUpdater` registers the worker and shows one bar: "New version available", with Reload and
-Dismiss. Three things about it are the host's business rather than this package's.
+Dismiss. Four things about it are the host's business rather than this package's.
+
+**The live region is always there; the bar is not.** The component renders one unstyled
+`role="status"` element with `aria-live="polite"` and `aria-atomic="true"` on every render, on the
+server included, and that is its entire output until a worker is waiting. The bar, its Reload
+button and its Dismiss control appear inside that element when there is an update and leave it
+again when there is not, so the message is a change to a region rather than a region carrying a
+message. `aria-atomic` is set although `role="status"` already implies it, so a reader announces
+the whole sentence and its two controls rather than the one text node that changed.
 
 **The container comes from `navigator`.** `globalThis.navigator.serviceWorker` is where a browser
 keeps it; there is no `globalThis.serviceWorker` in a page. A host that already owns its
@@ -225,6 +261,11 @@ dead: nothing takes over, so nothing reloads.
 over, so the listener that reloads is armed by the Reload button and not by the registration.
 Without that, one visitor pressing Reload reloads every open tab, including the one with a
 half-filled form, and a first install reloads the page mid-visit.
+
+**A dismissal covers one update, not the component.** Pressing Dismiss empties the live region and
+takes the bar off the page; the next update to be reported puts it back, so the message leaves the
+region and later arrives in it again as a fresh change. A permanent dismissal would mean a visitor
+who put one version away was never told about any version after it.
 
 ## Decisions worth knowing
 
