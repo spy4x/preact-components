@@ -30,7 +30,7 @@ describe("resolveImage", () => {
   })
 
   it("falls back to the placeholder alt when the image has none", () => {
-    expect(resolveImage(element({ alt: "" }))?.alt).toBe("Blog image")
+    expect(resolveImage(element({ alt: "" }))?.alt).toBe("Image")
   })
 
   it("takes a custom placeholder alt", () => {
@@ -61,8 +61,10 @@ describe("resolveImage", () => {
     expect(resolveImage(element({ src: "", getAttribute: () => null }))).toBeNull()
   })
 
-  it("keeps a wrapping link click from opening the lightbox", () => {
-    // The click lands on the anchor, which is not an image: navigation must win.
+  it("ignores an event whose target is the link around an image", () => {
+    // Only the image answers. What keeps such a link from being followed is the component
+    // cancelling the event it opens on, which is a browser's business and `pages/checks/system.ts`'s
+    // to prove — this function never sees it.
     expect(resolveImage(element({ matches: (selector) => selector === "a" }))).toBeNull()
   })
 })
