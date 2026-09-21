@@ -231,9 +231,22 @@ some other way.
   a textual cell. That last one predates this rule and is not defended against here: a table cell
   holds something a table can show, and swallowing the throw would hide the real problem one layer
   further from where it was created.
+- **`useUrlFilters` re-reads the address every time it changes.** A link, a router push, back or
+  forward: each one re-reads every parameter into its signal, and a parameter that has left the
+  address takes its field back to `initialValue`. It did not always. The URL-to-signals effect was a
+  `useSignalEffect` whose body reads no signal, and in the pinned `@preact/signals` 2.5.1 that is an
+  effect with an empty dependency list, so the address was read once at mount and never again: a
+  pushed route left the filters showing the previous route's values while the address bar showed the
+  new one. The effect is keyed on the router's search string now, and the `popstate` listener that
+  used to sit beside it is gone — the router re-renders on `popstate`, `pushState`, `replaceState`
+  and `hashchange` by itself, so the listener was a duplicate, and one that read
+  `globalThis.location.search` by hand rather than the half of the address its router was
+  configured to use.
 - **`useUrlFilters` needs a DOM and a wouter router**, so only its value coercion
-  (`resolveFilterValue`, `shouldPersistFilter`) is unit-tested here; the hook itself is wired the
-  same way as every other hook in this repo — assert it in the app that renders it.
+  (`resolveFilterValue`, `shouldPersistFilter`) is unit-tested here. The binding itself is an effect,
+  and no test in this repository runs one: it is proven in a real browser by
+  `pages/checks/signals.ts`, which drives a demo on the Pages host and asserts the filters change
+  from one value to another as the address changes.
 - **`createThemeStore` reads nothing until `attach()`.** Creating the store touches neither
   `localStorage` nor `matchMedia`, so a module-level `createThemeStore()` is inert on a server —
   which matters on Deno, where `localStorage` is a real file shared by every request the process
@@ -282,7 +295,9 @@ The model store is exercised against a fake `fetch`; toasts against a fake clock
 timers left running. The ordering rules above are tested with a second fake `fetch` that holds every
 request open until the test answers it, so two writes to one row can be put in flight and answered
 in the other order. `useUrlFilters` is the one exception: it needs a DOM and a router, so only its
-pure coercion helpers are covered here.
+pure coercion helpers are covered here and its binding to the address bar is covered in a real
+browser, by `pages/checks/signals.ts` — run with `deno task --cwd pages build` and
+`deno task --cwd pages verify`.
 
 The model store has a second file, `build-model-store.generated.test.ts`. The named tests fix one
 arrangement each and hold everything else still — three small row ids, two requests, a handful of

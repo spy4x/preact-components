@@ -1,4 +1,5 @@
 import { type Signal, useSignal, useSignalEffect } from "@preact/signals"
+import { useEffect } from "preact/hooks"
 import { useSearchParams } from "wouter-preact"
 
 /**
@@ -8,8 +9,15 @@ import { useSearchParams } from "wouter-preact"
  * Ported from `template/libs/client/preact/use-url-filters.ts`. The template version registered its
  * `popstate` listener inside the wrong effect — the handler was never attached, and the returned
  * cleanup belonged to a listener that did not exist — so browser back/forward left the filters
- * stale. The listener is registered here by the effect that owns it, and the value coercion is
- * pulled out into {@link resolveFilterValue} so it can be tested without a DOM.
+ * stale. That listener is gone here rather than repaired: the router already re-renders this hook on
+ * `popstate`, `pushState`, `replaceState` and `hashchange`, and the URL-to-signals effect below is
+ * keyed on the search string it hands over, so every one of those arrives by the same path. A
+ * hand-written listener reading `globalThis.location.search` would also read the wrong half of the
+ * address under a router whose search comes from the fragment.
+ *
+ * The value coercion is pulled out into {@link resolveFilterValue} so it can be tested without a
+ * DOM. Everything else here is an effect, and `pages/checks/signals.ts` is where those are proven —
+ * no test in this repository executes one.
  */
 
 /** One filter, bound to one URL parameter. */
@@ -72,34 +80,36 @@ export function shouldPersistFilter<T>(field: FilterField<T>, value: T): boolean
  *   page: { signal: page, urlParam: "page", initialValue: 1 },
  * })
  * ```
+ *
+ * The binding runs both ways for as long as the component is mounted. Any change to the address the
+ * router reports — a link, a push, back, forward — re-reads every parameter into its signal, and a
+ * parameter that has left the address takes its field back to `initialValue`. A change to a signal
+ * writes the whole set back through the router.
  */
 export function useUrlFilters<T extends Record<string, FilterField>>(fields: T): UrlFilters<T> {
   const [searchParams, setSearchParams] = useSearchParams()
   const isInitializing = useSignal(true)
 
-  // URL → signals. Re-runs whenever the router's search params change.
-  useSignalEffect(() => {
+  // URL → signals, re-read whenever the router's search string changes.
+  //
+  // A plain effect keyed on that string, and not `useSignalEffect`: in the pinned
+  // `@preact/signals` 2.5.1 `useSignalEffect` is `useEffect(…, [])` whose body re-runs only when a
+  // signal it *read* changes, and this body reads none. So the filters used to be read out of the
+  // address once, at mount, and a route pushed afterwards left them showing the previous route's
+  // values while the address bar showed the new one.
+  //
+  // `searchParams` is the router's own `useMemo(() => new URLSearchParams(search), [search])`, so
+  // its `toString()` moves exactly when the router's search string does. Two spellings of the same
+  // parameters — `?q=a%20b` and `?q=a+b` — normalise to one string and do not re-run the effect,
+  // which is correct: they resolve to the same filter values.
+  const search = searchParams.toString()
+  useEffect(() => {
     isInitializing.value = true
     for (const field of Object.values(fields)) {
       field.signal.value = resolveFilterValue(field, searchParams.get(field.urlParam))
     }
     isInitializing.value = false
-  })
-
-  // Back and forward change the address without going through the router, so read it directly.
-  // The listener belongs to this effect's lifetime and is removed with it.
-  useSignalEffect(() => {
-    const syncFromLocation = () => {
-      isInitializing.value = true
-      const params = new URLSearchParams(globalThis.location.search)
-      for (const field of Object.values(fields)) {
-        field.signal.value = resolveFilterValue(field, params.get(field.urlParam))
-      }
-      isInitializing.value = false
-    }
-    globalThis.addEventListener("popstate", syncFromLocation)
-    return () => globalThis.removeEventListener("popstate", syncFromLocation)
-  })
+  }, [search])
 
   // signals → URL. Values are read first so this effect stays subscribed to every filter even on
   // the runs it skips.
