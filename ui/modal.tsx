@@ -36,6 +36,10 @@ export interface ModalProps {
    * `ConfirmDialog`) the cancel action. Return `false` to refuse: the dialog stays open. Refusal is
    * what makes the close cancellable; every other return value, `undefined` included, accepts it.
    *
+   * Whichever path a close arrives down, the port called is the one from the **most recent** render,
+   * not the one this dialog opened with. That is what makes an inline `onClose={() => setStep(step -
+   * 1)}` safe: it reads the step the parent has now.
+   *
    * Escape is the one path with an exception, and only on a platform that ignores `closedby` (no
    * shipping WebKit): there the platform closes the dialog itself, so the port is notified and its
    * refusal cannot be honoured — see the support contract on {@link Modal}.
@@ -166,6 +170,21 @@ export function Modal(
 ) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const restoresFocus = useRef<FocusableElement | null>(null)
+  // What the *latest* render passed, kept where the Escape listener can reach it.
+  //
+  // The lifecycle effect below runs once per open, so everything it closes over is frozen at the
+  // moment the dialog opened — and the close port is the one thing in there a parent routinely
+  // changes between renders. An inline `onClose={() => setStep(step - 1)}` is a new function reading
+  // a new value on every render, and Escape used to call the one from the opening render: a wizard
+  // closed to the step it was on when the dialog appeared, every time, and only when the user
+  // pressed Escape rather than clicking.
+  //
+  // Written during render rather than from an effect, so a close that lands between a render and its
+  // effects still routes through the port that render passed. Adding `onClose` to the effect's
+  // dependency list is the obvious alternative and is wrong: an inline port has a new identity every
+  // render, so the effect would tear the dialog down and re-open it under the user.
+  const latest = useRef({ onClose, controlled: open !== undefined })
+  latest.current = { onClose, controlled: open !== undefined }
   // Ids are allocated in state, so a re-render never renumbers a live dialog's title. A caller that
   // needs to know the id (a dismiss button outside the dialog, a `ConfirmDialog` heading) passes one.
   const [generatedHeadingId] = useState(() => dialogTitleId(++dialogSequence))
@@ -175,8 +194,11 @@ export function Modal(
   const [internalOpen, setInternalOpen] = useState(defaultOpen)
   const isOpen = open ?? internalOpen
 
+  // Both of these are rebuilt every render and both read only the ref and a setter, so the copy the
+  // effect captured at open time behaves exactly like the one this render made. That is the point:
+  // stale *identity* is harmless once nothing stale is closed over.
   const settleOpen = (next: boolean) => {
-    if (open === undefined) setInternalOpen(next)
+    if (!latest.current.controlled) setInternalOpen(next)
   }
 
   /**
@@ -186,7 +208,7 @@ export function Modal(
    * @returns Whether the close was accepted.
    */
   const requestClose = (dialog: HTMLDialogElement): boolean => {
-    if (onClose?.() === false) return false
+    if (latest.current.onClose?.() === false) return false
     dialog.close()
     settleOpen(false)
     return true
@@ -271,7 +293,7 @@ export function Modal(
     // scroll lock released, focus restored.
     const onCancel = platformCloseHandler({
       refusalHolds: escapeStrategy.refusalHolds,
-      onClose,
+      onClose: () => latest.current.onClose?.(),
       settleOpen,
     })
 
