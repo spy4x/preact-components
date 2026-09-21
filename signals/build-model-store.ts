@@ -393,6 +393,8 @@ export function buildModelStore<
     const outcome = await request(endpoint, jsonRequest("POST", payload), schemas.full)
     const answer = answerRights(createRequests, seq)
     if (outcome.error) {
+      // Only the shared slot is contended here, so only `settles` is read: a create's own failure
+      // is its own news, and is reported whichever of the creates in flight it belongs to.
       if (answer.settles) {
         patch({ createOp: { inProgress: false, error: outcome.error, result: null } })
       }
