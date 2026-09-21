@@ -102,6 +102,15 @@ describe("sortRows", () => {
       ])
         .map((item) => item.name),
     ).toEqual(["item 1", "Item 2", "item 10"])
+
+    // Case has to be the only difference for the two readings to diverge: the fixture above is
+    // ordered by its numbers whether case counts or not. Ignoring case makes these two equal, so
+    // they keep the order they arrived in; counting it would put `alpha` ahead of `Alpha`.
+    const cased = [{ name: "Alpha" }, { name: "alpha" }]
+    const rule = [{ key: "name", direction: "asc" } as SortRule<"name">]
+    expect(sortRows(cased, rule).map((item) => item.name)).toEqual(["Alpha", "alpha"])
+    expect(sortRows([...cased].reverse(), rule).map((item) => item.name))
+      .toEqual(["alpha", "Alpha"])
   })
 
   it("is stable for rows that tie", () => {

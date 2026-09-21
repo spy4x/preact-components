@@ -166,6 +166,14 @@ than a mistyped row in the UI.
   numeric they look: coerce the column where you load it — `Number(cell)` — rather than expecting
   the sort to guess.
 
+  **Why a `NaN` from the comparator did nothing rather than something loud:** `Array.prototype.sort`
+  is specified to read a `NaN` result as `+0`, which is the answer for "these two are equal". The
+  original bug follows from that one sentence. `Number(undefined)` is `NaN`, every subtraction
+  against the blank cell was `NaN`, every pair reported equal, and a stable sort asked to order a
+  column of equals hands back the order it was given. Nothing threw, nothing warned, and the column
+  simply did not move — so a comparator that can return `NaN` does not fail, it goes quiet, which is
+  the part worth remembering when writing the next one.
+
   Deciding by kind first is what makes the order a real one. The first version of this fix chose its
   method per pair — two strings as text, anything else numerically — and that is not transitive: `5`
   beats `"1e3"` numerically, `"1e3"` beats `"2"` as text, and `"2"` beats `5` numerically, so those
