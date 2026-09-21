@@ -579,7 +579,13 @@ function CopyableTextDemo() {
  *
  * The two accessibility rules the component enforces are both visible here: `label` is on the
  * wrapper and is the trigger's name, while the tooltip text is only ever the description — and
- * `focusable={false}` drops the wrapper's tab stop for interactive children.
+ * `focusable={false}` swaps the `<button>` wrapper for a `role="group"` one, so an interactive
+ * trigger keeps its own single tab stop.
+ *
+ * The last row is the exception, and the reason it exists: one hint left to reveal itself, so a
+ * reader can hover it, keep the pointer on it and press Escape over it. `pages/checks/ui.ts`
+ * drives that row, which is why it is wrapped in `data-e2e="tooltip-live"` — a forced-visible hint
+ * could not tell a working reveal from a broken one.
  */
 function TooltipDemo() {
   return (
@@ -616,6 +622,21 @@ function TooltipDemo() {
         <p class="text-xs text-gray-500 dark:text-gray-400">
           `focusable={false}` — with a {`<button>`}{" "}
           inside, a second tab stop for one control is a keyboard trap rather than a convenience.
+        </p>
+      </div>
+      <div class="col-span-2 space-y-2 sm:col-span-4" data-e2e="tooltip-live">
+        <Tooltip
+          content="Escape hides this hint, and the pointer may rest on it while it is read"
+          label="Delivery estimate"
+          placement="bottom"
+          class="bg-gray-100 px-2 py-1 dark:bg-gray-700"
+        >
+          <span class="text-sm">Hover me, or tab to me</span>
+        </Tooltip>
+        <p class="text-xs text-gray-500 dark:text-gray-400">
+          The one hint here that reveals itself. Point at it and it stays up while the pointer is on
+          it, because the gap to it is the surface's own padding rather than dead space; press
+          Escape and it goes without your focus moving, and comes back on the next hover or focus.
         </p>
       </div>
     </div>
@@ -765,7 +786,7 @@ export const displayDemos = {
   },
   Tooltip: {
     summary:
-      "Supplementary hint revealed by hover and by keyboard focus, anchored with CSS only — no measurement, no listener, no `document`. `label` is the trigger's own accessible name and the tooltip text is only ever its description; `focusable={false}` drops the wrapper's tab stop when the trigger content is already interactive.",
+      "Supplementary hint revealed by hover and by keyboard focus, anchored with CSS only — no measurement, no scroll or resize listener. Escape dismisses a hint without moving focus, and the pointer can travel onto the hint and rest there, so it can be read under magnification. `label` is the trigger's own accessible name, carried by a `<button>` wrapper that may actually hold one, and the tooltip text is only ever its description; `focusable={false}` makes the wrapper a `role=\"group\"` instead, leaving the single tab stop to the caller's own control.",
     snippet: `<Tooltip content="Supplements the trigger" label="Total revenue" placement="right">
   <span>Revenue</span>
 </Tooltip>
