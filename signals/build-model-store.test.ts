@@ -290,6 +290,21 @@ describe("buildModelStore update", () => {
     expect(store.state.value.updateOps).not.toBe(beforeOps)
   })
 
+  it("leaves the other slot's map alone when there is nothing to release", async () => {
+    const { impl } = queueFetch(Response.json(row(1, "Nörth")))
+    const store = buildStore({ fetch: impl })
+    await store.onWs([row(1, "North")], RemoteEvent.LIST)
+    const before = store.state.value.deleteOps
+
+    await store.update(1, { name: "Nörth" })
+
+    // No delete was ever started for this row, so settling the update has nothing to lower and the
+    // delete map keeps its identity. Signals compare by reference, so a consumer watching that map
+    // sees no change rather than a change that means nothing.
+    expect(store.state.value.deleteOps).toBe(before)
+    expect(store.op.update(1).value?.inProgress).toBe(false)
+  })
+
   it("keeps a per-row op slot that settles on the row", async () => {
     const { impl } = queueFetch(Response.json(row(1, "Nörth")))
     const store = buildStore({ fetch: impl })

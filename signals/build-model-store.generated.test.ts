@@ -11,10 +11,11 @@
  * Two to six `update`, `delete` and `undelete` requests in any mix, answered with a row that may
  * carry a deletion whichever operation asked for it, with one of nine reported statuses, a 500, a
  * connection failure, or a body the schema rejects. Making and answering are interleaved, so a row
- * is often written to again after an earlier write has settled — 238 of the 300 cases make a
- * request after an answer has already arrived. After every step it checks each row's name, whether
- * it is soft-deleted, both operation flags, whether each slot carries an error, and the
- * notifications so far.
+ * is written to again after an earlier write has settled in 398 of the 600 cases, while two
+ * requests are outstanding on one row at once in 320 of them and an answer is actually dropped as
+ * stale in 239 — see {@link MAKE_BIAS}. After every step it checks each row's name, whether it is
+ * soft-deleted, both operation flags, whether each slot carries an error, and the notifications so
+ * far.
  *
  * **What it does not cover.** The freshness rule, whose axes are bounded and enumerated beside the
  * fixtures instead; creates, which have no row identity to vary; `extraOps`; the session watch;
@@ -40,7 +41,20 @@ import { buildModelStore } from "./build-model-store.ts"
 import { RemoteEvent, type ToastMessage } from "./types.ts"
 
 const SEED = 20240921
-const CASES = 300
+
+/**
+ * How often a step makes a new request rather than answering an outstanding one.
+ *
+ * It is the dial between the two shapes this file exists to draw. Biased towards answering, cases
+ * are mostly one request at a time and the sequencing rule is never exercised; biased towards
+ * making, every request is outstanding at once and a row is never written to twice in sequence.
+ * At 0.7 over 600 cases: two requests overlap on one row in 320 cases, an answer is actually
+ * dropped as stale in 239, and 398 make a request after an answer has already landed. Lowering
+ * either number is how this file stops testing what it is for; the counts are cheap to re-measure
+ * and worth re-measuring after any change to the draw.
+ */
+const MAKE_BIAS = 0.7
+const CASES = 600
 
 const dateSchema = type("Date | string.date.iso.parse")
 const rowSchema = type({ id: "number", name: "string", deletedAt: dateSchema.or("null") })
@@ -141,7 +155,7 @@ function planCase(seed: number): Plan {
   while (steps.length < requests.length * 2) {
     const mustMake = outstanding.length === 0
     const mustAnswer = made === requests.length
-    if (!mustAnswer && (mustMake || next() < 0.55)) {
+    if (!mustAnswer && (mustMake || next() < MAKE_BIAS)) {
       outstanding.push(made)
       steps.push({ make: made++ })
       continue
