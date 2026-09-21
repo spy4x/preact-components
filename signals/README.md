@@ -231,9 +231,46 @@ some other way.
   a textual cell. That last one predates this rule and is not defended against here: a table cell
   holds something a table can show, and swallowing the throw would hide the real problem one layer
   further from where it was created.
-- **`useUrlFilters` needs a DOM and a wouter router**, so only its value coercion
-  (`resolveFilterValue`, `shouldPersistFilter`) is unit-tested here; the hook itself is wired the
-  same way as every other hook in this repo — assert it in the app that renders it.
+- **`useUrlFilters` re-reads the address every time it changes.** A link, a router push, back or
+  forward: each one re-reads every parameter into its signal, and a parameter that has left the
+  address takes its field back to `initialValue`. It did not always. The URL-to-signals effect was a
+  `useSignalEffect` whose body reads no signal, and in the pinned `@preact/signals` 2.5.1 that is an
+  effect with an empty dependency list, so the address was read once at mount and never again: a
+  pushed route left the filters showing the previous route's values while the address bar showed the
+  new one. The effect is keyed on the router's search string now, and the `popstate` listener that
+  used to sit beside it is gone — the router re-renders on `popstate`, `pushState`, `replaceState`
+  and `hashchange` by itself, so the listener was a duplicate, and one that read
+  `globalThis.location.search` by hand rather than the half of the address its router was
+  configured to use.
+- **Reading the address never writes to it; a filter changing in the page is the only thing that
+  does.** Reading flips `isInitializing`, which re-runs the signals-to-address effect, so the write
+  has to be able to tell "the filters moved" from "I have just read them". It compares what the
+  filters now imply against what they implied at the last read (`agreed` in the source), not against
+  the address. Comparing against the address is nearly right and wrong in one case that matters: an
+  address the hook would spell differently — a filter written out at its default (`?page=1`), a
+  value a `parser` rejects (`?size=huge`), an empty value (`?status=`) — is not a filter change, and
+  treating it as one rewrote the address on arrival. That cost a history entry nobody asked for, so
+  Back landed on the address that had just been rewritten and was rewritten again, and on a
+  fragment-routed page the rewrite took the route with it. Such an address is now left exactly as it
+  arrived; the first real filter change rewrites the query string canonically.
+- **A write replaces the whole address.** The router pushes `pathname?search`, which carries no
+  fragment, so a fragment-routed page loses its route when a filter changes. Arriving, reading and
+  remounting do not.
+- **One address change costs one history entry**, in either direction, so one press of Back moves
+  the reader once. `clearFilters` batches its writes through `clearFilterFields`, so clearing is one
+  change rather than one per field. Preact's signals adapter batches writes inside an event handler
+  anyway, so a clear driven by a button looks the same either way; the batch is what covers an
+  application clearing from a timer or after a request.
+- **`useUrlFilters` needs a DOM and a wouter router**, so what can be tested here is what it does to
+  a query string: `resolveFilterValue`, `shouldPersistFilter`, `filterWrite`, `filterSearch` and
+  `clearFilterFields` — which between them hold the rules for dropping a default, carrying a
+  parameter the filters do not own, answering with the same string when nothing changed, and
+  clearing as one change. The binding itself is an effect, and no
+  test in this repository runs one: it is proven in a real browser by `pages/checks/signals.ts`,
+  which drives a demo on the Pages host and asserts the filters change from one value to another as
+  the address changes — including the history entry each change costs, an address the hook would
+  spell differently, a parameter belonging to something else on the page, and a field with a custom
+  `parser`.
 - **`createThemeStore` reads nothing until `attach()`.** Creating the store touches neither
   `localStorage` nor `matchMedia`, so a module-level `createThemeStore()` is inert on a server —
   which matters on Deno, where `localStorage` is a real file shared by every request the process
@@ -282,7 +319,9 @@ The model store is exercised against a fake `fetch`; toasts against a fake clock
 timers left running. The ordering rules above are tested with a second fake `fetch` that holds every
 request open until the test answers it, so two writes to one row can be put in flight and answered
 in the other order. `useUrlFilters` is the one exception: it needs a DOM and a router, so only its
-pure coercion helpers are covered here.
+pure coercion helpers are covered here and its binding to the address bar is covered in a real
+browser, by `pages/checks/signals.ts` — run with `deno task --cwd pages build` and
+`deno task --cwd pages verify`.
 
 The model store has a second file, `build-model-store.generated.test.ts`. The named tests fix one
 arrangement each and hold everything else still — three small row ids, two requests, a handful of

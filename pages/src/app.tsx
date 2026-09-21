@@ -11,6 +11,9 @@
  * rail each derive the route from {@link parseRoute} themselves — the resolver is pure and cheap, and
  * neither then has to be handed state by the other — and the rail, which is also what writes the
  * URLs, is the one that owns the effect that marks, scrolls and titles.
+ *
+ * Below the catalogue sits {@link UrlFilterDemo}, the one demo that is not a card: `useUrlFilters`
+ * is a hook bound to the address bar, and a page is what it needs to be shown in.
  */
 
 import { IconGitHub } from "@preact-components/icons"
@@ -35,6 +38,7 @@ import { cn } from "@preact-components/cn"
 import { useEffect, useState } from "preact/hooks"
 import { demoElementId } from "./deep-link.ts"
 import { PAGE_TITLE, REPOSITORY } from "./site.ts"
+import { UrlFilterDemo } from "./url-filters.tsx"
 
 /** Storage key shared with the bootstrap script in `<head>` (`document.ts`). */
 const THEME_KEY = "pc-theme"
@@ -77,6 +81,9 @@ export function App() {
         <div class="guide-columns grid grid-cols-1 items-start gap-6 pt-6 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-x-8 lg:gap-y-0">
           <GuideRail />
           <UIGuide copy={copyText} />
+        </div>
+        <div class="pt-10">
+          <UrlFilterDemo />
         </div>
       </main>
       <SiteFooter />

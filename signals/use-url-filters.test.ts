@@ -1,7 +1,14 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
-import { type FilterField, resolveFilterValue, shouldPersistFilter } from "./use-url-filters.ts"
-import { signal } from "@preact/signals"
+import {
+  clearFilterFields,
+  type FilterField,
+  filterSearch,
+  filterWrite,
+  resolveFilterValue,
+  shouldPersistFilter,
+} from "./use-url-filters.ts"
+import { effect, signal } from "@preact/signals"
 
 function stringField(urlParam: string, initialValue: string): FilterField<string> {
   return { signal: signal(initialValue), urlParam, initialValue }
@@ -84,5 +91,119 @@ describe("shouldPersistFilter", () => {
 
   it("keeps a falsy value that is not the default", () => {
     expect(shouldPersistFilter(numberField("page", 1), 0)).toBe(true)
+  })
+})
+
+describe("filterWrite", () => {
+  it("writes a value that is not the default", () => {
+    expect(filterWrite(stringField("status", "all"), "active")).toEqual({
+      urlParam: "status",
+      value: "active",
+    })
+  })
+
+  it("removes a filter holding its default, so an unfiltered address stays clean", () => {
+    expect(filterWrite(numberField("page", 1), 1)).toEqual({ urlParam: "page", value: undefined })
+  })
+
+  it("prints a number rather than handing the query string a number", () => {
+    expect(filterWrite(numberField("page", 1), 7)).toEqual({ urlParam: "page", value: "7" })
+  })
+})
+
+describe("filterSearch", () => {
+  it("sets the parameters it is given", () => {
+    expect(filterSearch("", [{ urlParam: "status", value: "open" }])).toBe("status=open")
+  })
+
+  it("removes a parameter whose filter holds its default", () => {
+    expect(filterSearch("page=1&status=open", [{ urlParam: "page" }])).toBe("status=open")
+  })
+
+  it("carries a parameter the filters do not own", () => {
+    expect(filterSearch("tab=inbox", [{ urlParam: "status", value: "open" }]))
+      .toBe("tab=inbox&status=open")
+  })
+
+  it("carries a repeated key it does not own, both values", () => {
+    expect(filterSearch("tag=a&tag=b", [{ urlParam: "status", value: "open" }]))
+      .toBe("tag=a&tag=b&status=open")
+  })
+
+  it("replaces every copy of a repeated key it does own", () => {
+    expect(filterSearch("status=open&status=closed", [{ urlParam: "status", value: "open" }]))
+      .toBe("status=open")
+  })
+
+  it("leaves a clear holding nothing but the parameters somebody else put there", () => {
+    const cleared = filterSearch("tab=inbox&status=open&page=2", [
+      { urlParam: "status" },
+      { urlParam: "page" },
+    ])
+    expect(cleared).toBe("tab=inbox")
+  })
+
+  it("answers with the string it was given when no filter changes it", () => {
+    // The premise of the hook's write: an address the filters already agree with produces the same
+    // string back, and a string that has not changed is a write that does not happen.
+    expect(filterSearch("status=open", [{ urlParam: "status", value: "open" }])).toBe("status=open")
+    expect(filterSearch("", [{ urlParam: "status" }])).toBe("")
+  })
+
+  it("re-spells a carried parameter, because it rebuilds through URLSearchParams", () => {
+    // Cosmetic and deliberate: both spellings decode to `x y`, and a read alone never rewrites the
+    // address, so this only shows up after a filter has changed.
+    expect(filterSearch("q=x%20y", [{ urlParam: "status", value: "open" }])).toBe(
+      "q=x+y&status=open",
+    )
+  })
+
+  it("takes a query string with or without its leading question mark", () => {
+    // `URLSearchParams` strips it, so a caller handing over `location.search` untouched gets the
+    // same answer as one handing over the router's own `?`-less string.
+    expect(filterSearch("?status=open", [{ urlParam: "page", value: "2" }]))
+      .toBe("status=open&page=2")
+  })
+})
+
+describe("clearFilterFields", () => {
+  it("takes every field back to its default", () => {
+    const fields = {
+      status: stringField("status", "all"),
+      page: numberField("page", 1),
+    }
+    fields.status.signal.value = "active"
+    fields.page.signal.value = 7
+
+    clearFilterFields(fields)
+
+    expect(fields.status.signal.value).toBe("all")
+    expect(fields.page.signal.value).toBe(1)
+  })
+
+  it("clears every field as one change, not one change per field", () => {
+    // What the hook does with this: one change is one write to the address, so one press of Back
+    // undoes a clear. Preact's signals adapter batches writes made inside an event handler, so a
+    // clear driven by a button looks the same either way — this is the path an application takes
+    // when it clears from a timer or after a request, where nothing else is batching.
+    const fields = {
+      status: stringField("status", "all"),
+      page: numberField("page", 1),
+    }
+    fields.status.signal.value = "active"
+    fields.page.signal.value = 7
+
+    let runs = 0
+    const stop = effect(() => {
+      fields.status.signal.value
+      fields.page.signal.value
+      runs++
+    })
+    const before = runs
+
+    clearFilterFields(fields)
+    stop()
+
+    expect(runs - before).toBe(1)
   })
 })
