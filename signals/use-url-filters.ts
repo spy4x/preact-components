@@ -85,6 +85,12 @@ export function shouldPersistFilter<T>(field: FilterField<T>, value: T): boolean
  * router reports — a link, a push, back, forward — re-reads every parameter into its signal, and a
  * parameter that has left the address takes its field back to `initialValue`. A change to a signal
  * writes the whole set back through the router.
+ *
+ * **A write replaces the whole address.** The router's `navigate` pushes `pathname?search`, which
+ * carries no fragment, and the first write happens as soon as the filters have been read — not when
+ * the reader first changes one. A page that keeps anything in the fragment loses it then: on the
+ * Pages demo, `/preact-components/?status=open&page=3#/inputs/toggle-switch` became
+ * `/preact-components/?status=open&page=3` the moment the card mounted.
  */
 export function useUrlFilters<T extends Record<string, FilterField>>(fields: T): UrlFilters<T> {
   const [searchParams, setSearchParams] = useSearchParams()
