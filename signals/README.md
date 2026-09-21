@@ -146,11 +146,16 @@ requests were made in, and, for a remote event, a freshness check.
 draws a number from one counter that the row's `update`, `undelete` and `delete` share. An answer
 belonging to a request older than one already applied is dropped, so two quick edits leave the
 second one's value in the store however the network reorders them, and a delete that answers before
-an older update is not undone by it. The same counter says when an operation slot may stop reporting
-`inProgress`: only a request with nothing newer behind it settles the slot, so the interface never
-says the work is finished while a write is still on the wire. A dropped answer is still returned to
-its own caller — `await store.update(…)` tells you what the server said about _your_ request, and
-the store tells you what it holds.
+an older update is not undone by it. A dropped answer is still returned to its own caller —
+`await store.update(…)` tells you what the server said about _your_ request, and the store tells you
+what it holds.
+
+**`inProgress` drops when the newest request for the row has answered**, and not before, so no
+operation slot reports the work finished while the write that will change the row is still on the
+wire. An older request does not hold the flag up: once the newest one has settled, every answer
+still outstanding is one the store has already decided to discard, and both of the row's slots are
+released. So a slot can read "finished" while a superseded request is, strictly, still unanswered —
+there is nothing left that could change the row.
 
 A create has no id until the server answers, so "the same row" cannot mean a row there. Two creates
 in flight make two different rows and both are appended; the only thing they contend for is the

@@ -405,8 +405,10 @@ describe("buildModelStore requests answered out of order", () => {
 
     pending[0].settle(Response.json(row(1, "First")))
     await first
-    // The second write is still outstanding: saying it is finished is what put a form back in
-    // front of the user while their edit was still on the wire.
+    // Nothing newer has answered, so this value is the best the store has and it shows at once…
+    expect(store.state.value.list[0].name).toBe("First")
+    // …while the second write is still outstanding: saying it is finished is what put a form back
+    // in front of the user while their edit was still on the wire.
     expect(store.op.update(1).value?.inProgress).toBe(true)
 
     pending[1].settle(Response.json(row(1, "Second")))
@@ -414,6 +416,29 @@ describe("buildModelStore requests answered out of order", () => {
 
     expect(store.op.update(1).value?.inProgress).toBe(false)
     expect(store.state.value.list[0].name).toBe("Second")
+  })
+
+  it("drops an older update that succeeds after the newest one has failed", async () => {
+    const { impl, pending } = deferredFetch()
+    const toast = toastRecorder()
+    const store = buildStore({ fetch: impl, toast: toast.port })
+    await store.onWs([row(1, "North")], RemoteEvent.LIST)
+
+    const first = store.update(1, { name: "First" })
+    const second = store.update(1, { name: "Second" })
+
+    pending[1].settle(Response.json({ error: "name taken" }, { status: 409 }))
+    await second
+    pending[0].settle(Response.json(row(1, "First")))
+    await first
+
+    // A failure is an answer and advances the sequence like any other, so the older success behind
+    // it is stale. The cost of that one rule is visible here: the server holds "First" and the
+    // store shows "North" until the next remote event or reload says otherwise.
+    expect(store.state.value.list[0].name).toBe("North")
+    expect(store.op.update(1).value?.error?.type).toBe(ErrType.SERVER)
+    expect(store.op.update(1).value?.inProgress).toBe(false)
+    expect(toast.messages).toEqual([{ title: "Failed to update zone", body: "name taken" }])
   })
 
   it("ignores a failure that answers after a newer update has succeeded", async () => {
@@ -659,6 +684,31 @@ describe("buildModelStore requests answered out of order", () => {
     expect(store.state.value.list.map((r) => r.id)).toEqual([1, 2])
   })
 
+  it("reports a create that fails after a newer create has succeeded", async () => {
+    const { impl, pending } = deferredFetch()
+    const toast = toastRecorder()
+    const store = buildStore({ fetch: impl, toast: toast.port })
+
+    const first = store.create({ name: "First" })
+    const second = store.create({ name: "Second" })
+
+    pending[1].settle(Response.json(row(2, "Second"), { status: 201 }))
+    await second
+    pending[0].settle(Response.json({ error: "name taken" }, { status: 409 }))
+    await first
+
+    // Two creates are two different rows, so neither supersedes the other: this failure is news
+    // about the row that did not arrive, not a stale answer about the row that did.
+    expect(toast.messages).toEqual([
+      { body: "zone was created" },
+      { title: "Failed to create zone", body: "name taken" },
+    ])
+    // The slot belongs to the newest create, which succeeded.
+    expect(store.op.create.value.error).toBeNull()
+    expect(store.op.create.value.result?.id).toBe(2)
+    expect(store.state.value.list.map((r) => r.id)).toEqual([2])
+  })
+
   it("keeps the create slot in progress when an older create fails", async () => {
     const { impl, pending } = deferredFetch()
     const toast = toastRecorder()
@@ -684,9 +734,10 @@ describe("buildModelStore requests answered out of order", () => {
     expect(store.state.value.list.map((r) => r.id)).toEqual([2])
   })
 
-  it("appends both rows when two creates answer out of order", async () => {
+  it("appends and announces both rows when two creates answer out of order", async () => {
     const { impl, pending } = deferredFetch()
-    const store = buildStore({ fetch: impl })
+    const toast = toastRecorder()
+    const store = buildStore({ fetch: impl, toast: toast.port })
 
     const first = store.create({ name: "First" })
     const second = store.create({ name: "Second" })
@@ -700,6 +751,8 @@ describe("buildModelStore requests answered out of order", () => {
 
     // A create has no id to contend over, so both rows are real and both belong in the list.
     expect(store.state.value.list.map((r) => r.id)).toEqual([2, 1])
+    // Both rows arrived, so both are announced: neither create supersedes the other.
+    expect(toast.messages).toEqual([{ body: "zone was created" }, { body: "zone was created" }])
     // Only the create slot is contended, and the older create does not take it back.
     expect(store.op.create.value.result?.id).toBe(2)
     expect(store.op.create.value.inProgress).toBe(false)
