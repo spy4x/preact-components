@@ -1,22 +1,20 @@
-import { check, type Devtools } from "./harness.ts"
+import { check, type Devtools, poll } from "./harness.ts"
 
 /**
  * `signals/`'s browser checks: `useUrlFilters`, bound to the host page's own address bar.
  *
  * The hook is two effects and nothing else, so no test in this repository can reach it — every unit
  * test renders to an HTML string and runs no effect. What this file drives is the section
- * `pages/src/url-filters.tsx` puts below the catalogue: two filters, `status` and `page`, bound to
- * the query string in both directions.
+ * `pages/src/url-filters.tsx` puts below the catalogue: three filters — `status`, `page` and a
+ * `size` with a custom parser — bound to the query string in both directions, with a link or a
+ * button for every one of them.
  *
- * Every assertion below is a **transition** — the filters read one way, the address changes, they
- * read another — rather than a single end state, because a hook that read the address only at mount
- * satisfies an end-state assertion on a freshly loaded page perfectly well. That hook is exactly the
- * bug these checks exist for: the URL-to-signals effect was a `useSignalEffect` whose body reads no
- * signal, so it ran once and the filters then ignored every route pushed afterwards.
- *
- * The one exception is {@link mountChecks}, which has no "before" to compare against and is a guard
- * rather than a detection: it fails if the fix broke the mount path, and it passes with the bug in
- * place. It is labelled that way where it is raised.
+ * Most assertions below are **transitions**: the filters read one way, the address changes, they
+ * read another. A single end state would be satisfied by a hook that read the address only at
+ * mount, which is the bug this file exists for. Three are not transitions and say so where they are
+ * raised: the card that arrives on a filtered address is a guard on the mount path, and the two
+ * history-entry assertions are counts — one address change has to cost exactly one entry, or the
+ * reader's first press of Back does nothing.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -26,35 +24,45 @@ export async function signalsChecks(devtools: Devtools): Promise<void> {
     "every URL-filter reading came back without a page exception",
     pageErrors.length === 0,
     pageErrors.length === 0
-      ? "each expression this file evaluated returned a value"
+      ? "each expression this file evaluated returned a value, and every action settled"
       : pageErrors.join(" | "),
   )
 }
 
-/** How long the page is given to answer an address change before it is read. */
-const SETTLE_MS = 300
-
-/** How many times {@link goBack} may step back before it gives up looking for a different address. */
-const BACK_LIMIT = 6
+/** How long one action is given to stop changing the page before its reading is taken anyway. */
+const SETTLE_BUDGET_MS = 5_000
 
 /**
- * What a reading of the demo is: the two filters as the page prints them, and the address they are
- * supposed to have come from.
+ * What a reading of the demo is: the three filters as the page prints them, and the address they
+ * are supposed to have come from.
  */
 interface FilterState {
   /** The `status` filter, or `(any)` when it holds its default. */
   status: string
   /** The `page` filter. */
   page: string
+  /** The `size` filter, as that field's own parser produced it. */
+  size: string
   /** `location.search` at the same instant, so a failure names the address the values disagree with. */
   search: string
+  /** `location.hash` — the host page's own route, which only a filter write is allowed to disturb. */
+  hash: string
+  /** `history.length`: what an address change costs the reader in Back presses. */
+  entries: number
 }
 
 /** A reading that never happened, shaped so every check over it reads as a failure. */
-const UNREAD: FilterState = { status: "(unread)", page: "(unread)", search: "(unread)" }
+const UNREAD: FilterState = {
+  status: "(unread)",
+  page: "(unread)",
+  size: "(unread)",
+  search: "(unread)",
+  hash: "(unread)",
+  entries: -1,
+}
 
 /**
- * Both filters and the address, read in one round trip.
+ * Every filter, the whole address and the history depth, read in one round trip.
  *
  * `(missing)` rather than a thrown `TypeError` when the demo is not on the page: a check must never
  * throw, and a missing element is a failure this file should report by name rather than one that
@@ -68,12 +76,16 @@ const STATE = `(() => {
   return {
     status: text("url-filters-status"),
     page: text("url-filters-page"),
+    size: text("url-filters-size"),
     search: location.search,
+    hash: location.hash,
+    entries: history.length,
   }
 })()`
 
 /**
- * Page exceptions this file swallowed, raised as a check of its own by {@link signalsChecks}.
+ * Page exceptions this file swallowed, and actions that never settled, raised as a check of its own
+ * by {@link signalsChecks}.
  *
  * A throw out of `Runtime.evaluate` raises no protocol event, so `verify.ts`'s console-error check
  * would never see one: a swallowed exception with no check of its own is a silent pass.
@@ -97,207 +109,379 @@ async function read<T>(devtools: Devtools, expression: string, fallback: T): Pro
 }
 
 /**
- * Do one thing to the address, let the page answer, and read the filters back.
+ * Read the demo once it has stopped moving: two identical readings in a row.
+ *
+ * `poll` rather than a fixed sleep, because a sleep long enough for a loaded machine is wasted on
+ * every run that did not need it, and one short enough to be cheap goes red under load for no
+ * reason. Waiting for the page to repeat itself also says something a sleep cannot: an address
+ * change that made the hook write again would keep the reading moving, so a run that settles is one
+ * where the address, the filters and the history depth have all come to rest.
  *
  * @param devtools The connected session.
- * @param action A statement run in the page: a push, or a click on one of the demo's own controls.
- * @returns What the demo shows once it has settled.
+ * @param what The action being waited on, for the failure message.
+ * @returns The settled reading, or the last one taken when the budget ran out.
  */
-async function drive(devtools: Devtools, action: string): Promise<FilterState> {
-  return await read<FilterState>(
-    devtools,
-    `(async () => {
-      ${action}
-      await new Promise((done) => setTimeout(done, ${SETTLE_MS}))
-      return ${STATE}
-    })()`,
-    UNREAD,
-  )
+async function settled(devtools: Devtools, what: string): Promise<FilterState> {
+  let previous = UNREAD
+  let steady = UNREAD
+
+  const stopped = await poll(async () => {
+    const now = await read(devtools, STATE, UNREAD)
+    const same = now.status !== "(unread)" && now.status === previous.status &&
+      now.page === previous.page && now.size === previous.size &&
+      now.search === previous.search && now.hash === previous.hash &&
+      now.entries === previous.entries
+    previous = now
+    if (same) steady = now
+    return same
+  }, SETTLE_BUDGET_MS)
+
+  if (!stopped) {
+    pageErrors.push(`the page never stopped changing after ${what}`)
+    return previous
+  }
+
+  return steady
 }
 
 /**
- * Step back until the address differs from the one the page is on, or until the budget runs out.
- *
- * A loop rather than one `history.back()`, because the hook writes the filters back through the
- * router after every read it does: each address this file pushes is followed by a second entry
- * carrying the same query string, so a single step back lands on an address that reads identically
- * and would prove nothing. The step that does change the address is the one worth asserting on.
+ * Do one thing to the address, and read the filters back once the page has stopped moving.
  *
  * @param devtools The connected session.
- * @returns What the demo shows at the first different address, and how many steps it took.
+ * @param action A statement run in the page: a push, or a click on one of the demo's own controls.
+ * @param what What that action is, for the failure message.
+ * @returns What the demo shows once it has settled.
  */
-async function goBack(devtools: Devtools): Promise<FilterState & { steps: number }> {
-  return await read(
-    devtools,
-    `(async () => {
-      const settle = () => new Promise((done) => setTimeout(done, ${SETTLE_MS + 50}))
-      const start = location.search
-      let steps = 0
-      while (steps < ${BACK_LIMIT} && location.search === start) {
-        history.back()
-        steps++
-        await settle()
-      }
-      const state = ${STATE}
-      return { ...state, steps }
-    })()`,
-    { ...UNREAD, steps: 0 },
-  )
+async function act(devtools: Devtools, action: string, what: string): Promise<FilterState> {
+  await read(devtools, `(() => { ${action}; return true })()`, false)
+  return await settled(devtools, what)
+}
+
+/**
+ * Push an address, keeping whatever fragment the page is carrying.
+ *
+ * `history.pushState` is what the router's own `navigate` calls, and the router dispatches its
+ * `pushState` event from that same patched method, so a push made here reaches the hook exactly as
+ * a router push does. The fragment is carried across so that a fragment this run loses is one the
+ * hook lost, never one this file dropped.
+ *
+ * @param search The query string to push, `?` included.
+ */
+function push(search: string): string {
+  return `history.pushState(null, "", ${JSON.stringify(search)} + location.hash)`
+}
+
+/**
+ * Click one of the demo's controls, by the name it carries in `data-e2e`.
+ *
+ * A click and not a key press: the hook has no keyboard contract of its own, every control is a
+ * plain `<button>` or wouter's `<Link>`, and in headless Chromium a real Enter press does not
+ * activate a focused button.
+ *
+ * @param name The control's `data-e2e` value.
+ */
+function click(name: string): string {
+  return `const node = document.querySelector('[data-e2e="${name}"]')
+    if (!node) throw new Error('no element with data-e2e="${name}"')
+    node.click()`
 }
 
 /**
  * The whole run, in the order the addresses happen.
  *
- * The page's own fragment route is put back at the end. The demo writes its filters through the
- * router, and the router's `navigate` pushes `pathname?search` — an address with no fragment — so
- * starting the demo drops whatever `#/…` route `pages/checks/pages.ts` left behind. Restoring it
- * leaves the page as this file found it for the checks that run after.
+ * Back is driven after every push, because a push made while the reader is one entry back from the
+ * end replaces that entry instead of adding one — which would make the two history-entry checks
+ * count something other than what they name.
+ *
+ * The address is put back at the end, query string and fragment both, with a push rather than by
+ * assigning `location.hash`: assigning it would fire a `hashchange` the host page answers by
+ * re-marking and re-scrolling, and nothing in this run has given it reason to. What is *not* put
+ * back is the demo itself, which stays mounted and live for every package that runs after this one.
+ * That costs nothing today — the card writes only when the query string would change, and no later
+ * check touches the query string — but a check added after this one that does touch it would meet a
+ * live card reading it.
  *
  * @param devtools The connected session.
  */
 async function urlFilterChecks(devtools: Devtools): Promise<void> {
-  const route = await read(devtools, "location.hash", "")
+  const opening = await settled(devtools, "reading the page this file found")
 
-  await mountChecks(devtools)
-  await pushChecks(devtools)
-  await linkChecks(devtools)
-  await backChecks(devtools)
-  await writeBackChecks(devtools)
+  const arrived = await arrivalChecks(devtools, opening)
+  const pushed = await pushChecks(devtools, arrived)
+  const parsed = await parserChecks(devtools, pushed)
+  const linked = await linkChecks(devtools, parsed)
+  const written = await writeChecks(devtools, linked)
+  await backChecks(devtools, written)
 
-  await read(devtools, `(location.hash = ${JSON.stringify(route)}, true)`, false)
+  await read(
+    devtools,
+    `history.pushState(null, "", location.pathname + ${JSON.stringify(opening.search)} + ` +
+      `${JSON.stringify(opening.hash)})`,
+    false,
+  )
 }
 
 /**
- * Arriving at a filtered address: the demo is started on `?status=open&page=3` and has to open on
+ * Arriving at a filtered address: the card is remounted on `?status=open&page=3` and has to open on
  * those values rather than on its defaults.
  *
- * This is a guard, not a detection — a hook that reads the address once, at mount, passes it too.
- * It is here because the fix rewires exactly this path: the first read is now the first run of an
- * effect keyed on the search string, and a mistake in that key would show up here as a card opening
- * on `(any)` and `1`.
+ * The first check is a guard, not a detection — a hook that reads the address once, at mount,
+ * passes it too. It is here because the fix rewires exactly that path, and because a card arriving
+ * on a filtered address is what a deep link into a filtered list is.
  *
- * The control is activated with a click rather than a key press: in headless Chromium a real Enter
- * press does not activate a focused button.
+ * The second is a detection, of the defect this round is about: reading an address the filters
+ * already agree with has to write nothing at all. A hook that writes anyway leaves a duplicate
+ * history entry, and because the router's `navigate` pushes `pathname?search` it also replaces the
+ * address with one carrying no fragment — so the host page's own `#/…` route disappears at mount.
+ * Both halves are asserted: the query string and the fragment come through the read and the
+ * remount unchanged.
  *
  * @param devtools The connected session.
+ * @param opening What the page showed before this file touched it.
+ * @returns The reading after the remount.
  */
-async function mountChecks(devtools: Devtools): Promise<void> {
-  const mounted = await drive(
-    devtools,
-    `history.pushState(null, "", "?status=open&page=3" + location.hash)
-     document.querySelector('[data-e2e="url-filters-run"]').click()`,
+async function arrivalChecks(devtools: Devtools, opening: FilterState): Promise<FilterState> {
+  const filtered = await act(devtools, push("?status=open&page=3"), "a push to ?status=open&page=3")
+  const remounted = await act(devtools, click("url-filters-remount"), "a click on remount")
+
+  check(
+    "a filter card that arrives on a filtered address starts from that address",
+    remounted.status === "open" && remounted.page === "3" && remounted.size === "md",
+    `remounted on ${remounted.search} → status ${remounted.status}, page ${remounted.page}, ` +
+      `size ${remounted.size} (its defaults are (any), 1 and md)`,
   )
   check(
-    "a filter card started on a filtered address opens on that address, not on its defaults",
-    mounted.status === "open" && mounted.page === "3",
-    `${mounted.search} → status ${mounted.status}, page ${mounted.page} ` +
-      `(its defaults are (any) and 1)`,
+    "arriving on an address the filters agree with leaves that address alone, fragment and all",
+    opening.hash !== "" && filtered.search === "?status=open&page=3" &&
+      remounted.search === "?status=open&page=3" && filtered.hash === opening.hash &&
+      remounted.hash === opening.hash,
+    `pushed ?status=open&page=3${opening.hash} → read as ${filtered.search}${filtered.hash} → ` +
+      `remounted as ${remounted.search}${remounted.hash}`,
   )
+
+  return remounted
 }
 
 /**
- * The bug itself, three times over, each push varying a different thing: the parameter that changes,
- * the parameter that does not, and a parameter leaving the address altogether.
- *
- * `history.pushState` is what the router's own `navigate` calls, and the router dispatches its
- * `pushState` event from that same patched method, so a push made here arrives at the hook exactly
- * as a router push does.
+ * The bug the issue was opened about, three pushes over, each varying a different thing: the
+ * parameter that changes, the parameter that does not, and a parameter leaving the address
+ * altogether. The first push is also where the cost of an address change is counted.
  *
  * @param devtools The connected session.
+ * @param before The reading this group starts from.
+ * @returns The reading it ends on.
  */
-async function pushChecks(devtools: Devtools): Promise<void> {
-  const before = await drive(devtools, `void 0`)
-
-  const changed = await drive(devtools, `history.pushState(null, "", "?status=closed&page=3")`)
+async function pushChecks(devtools: Devtools, before: FilterState): Promise<FilterState> {
+  const changed = await act(
+    devtools,
+    push("?status=closed&page=3"),
+    "a push to ?status=closed&page=3",
+  )
   check(
     "a route pushed after mount re-reads the parameter that changed",
     before.status === "open" && changed.status === "closed" && changed.page === "3",
     `?status=open&page=3 → ?status=closed&page=3: status ${before.status} → ${changed.status}, ` +
       `page ${before.page} → ${changed.page}`,
   )
+  check(
+    "one address change costs the reader one history entry",
+    changed.entries - before.entries === 1,
+    `history.length ${before.entries} → ${changed.entries} across one push — a second entry here ` +
+      `is a press of Back that appears to do nothing`,
+  )
 
-  const paged = await drive(devtools, `history.pushState(null, "", "?status=closed&page=7")`)
+  const paged = await act(
+    devtools,
+    push("?status=closed&page=7"),
+    "a push to ?status=closed&page=7",
+  )
   check(
     "a push that moves one parameter leaves the other where it was",
     changed.page === "3" && paged.page === "7" && paged.status === "closed",
     `page ${changed.page} → ${paged.page} while status stayed ${paged.status}`,
   )
 
-  const dropped = await drive(devtools, `history.pushState(null, "", "?page=7")`)
+  const dropped = await act(devtools, push("?page=7"), "a push to ?page=7")
   check(
     "a parameter dropped from the address takes its filter back to the default",
     paged.status === "closed" && dropped.status === "(any)" && dropped.page === "7",
     `?status=closed&page=7 → ?page=7: status ${paged.status} → ${dropped.status}, ` +
       `page held at ${dropped.page}`,
   )
+
+  return dropped
 }
 
 /**
- * The same thing through the demo's own affordance: a link whose href is a query string, clicked.
+ * The field with a custom `parser`: `size`, an allow-list of `sm`, `md` and `lg`.
  *
- * A link is how the issue describes meeting the bug in an application — follow one that changes the
- * query string and the filters stay as they were — so one check drives a real click on one rather
- * than a push written here.
+ * `?size=huge` is an address a reader can type, and the parser's job is to answer with the default
+ * rather than hand the page a size it cannot render. The binding then does something worth
+ * watching: the filters disagree with the address, so the hook writes the address they do agree
+ * with, and `size=huge` leaves it.
  *
  * @param devtools The connected session.
+ * @param before The reading this group starts from.
+ * @returns The reading it ends on.
  */
-async function linkChecks(devtools: Devtools): Promise<void> {
-  const before = await drive(devtools, `void 0`)
-  const linked = await drive(
+async function parserChecks(devtools: Devtools, before: FilterState): Promise<FilterState> {
+  const rejected = await act(devtools, push("?size=huge&page=7"), "a push to ?size=huge&page=7")
+  check(
+    "a value the field's parser rejects falls back to the default and leaves the address",
+    before.size === "md" && rejected.size === "md" && !rejected.search.includes("huge") &&
+      rejected.search.includes("page=7"),
+    `pushed ?size=huge&page=7 → size ${rejected.size}, and the address settled at ` +
+      `${rejected.search}`,
+  )
+
+  return rejected
+}
+
+/**
+ * The same thing through the demo's own affordances: links whose href is a query string, clicked.
+ *
+ * A link is how the issue describes meeting the bug in an application — follow one that changes the
+ * query string and the filters stay as they were. The three clicked here also carry the axis no
+ * push in this file varies: `? (no filters)` takes the address to an empty query string, and the
+ * link after it starts from that empty address rather than from another filtered one.
+ *
+ * @param devtools The connected session.
+ * @param before The reading this group starts from.
+ * @returns The reading it ends on.
+ */
+async function linkChecks(devtools: Devtools, before: FilterState): Promise<FilterState> {
+  const linked = await act(
     devtools,
-    `document.querySelector('[data-e2e="url-filters-link-open"]').click()`,
+    click("url-filters-link-page"),
+    "a click on the ?status=open&page=2 link",
   )
   check(
     "following a link that changes the query string moves the filters with it",
     before.status === "(any)" && linked.status === "open" && before.page === "7" &&
-      linked.page === "1",
-    `clicked ?status=open: status ${before.status} → ${linked.status}, ` +
-      `page ${before.page} → ${linked.page} (the link names no page, so that filter falls back)`,
+      linked.page === "2",
+    `clicked ?status=open&page=2: status ${before.status} → ${linked.status}, ` +
+      `page ${before.page} → ${linked.page}`,
   )
-}
 
-/**
- * Arriving backwards: the browser's own back button, which reaches the hook as a `popstate` rather
- * than as a push.
- *
- * This is the case the hook used to answer with a `popstate` listener of its own. That listener is
- * gone — the router already re-renders on `popstate` — so this check is what says the behaviour
- * survived its removal.
- *
- * @param devtools The connected session.
- */
-async function backChecks(devtools: Devtools): Promise<void> {
-  const before = await drive(devtools, `void 0`)
-  const backed = await goBack(devtools)
-  check(
-    "going back re-reads the filters out of the address the browser returns to",
-    backed.steps > 0 && backed.steps < BACK_LIMIT && backed.search !== before.search &&
-      before.status === "open" && backed.status === "(any)" && backed.page === "7",
-    `${before.search} → ${backed.search} in ${backed.steps} step(s): status ${before.status} → ` +
-      `${backed.status}, page ${before.page} → ${backed.page}`,
-  )
-}
-
-/**
- * The other direction, and the regression the fix could have caused: a filter changed in the page
- * writes to the address, and the re-read that now follows every address change must not undo it.
- *
- * Before the fix the URL-to-signals effect never ran twice, so nothing could overwrite a value the
- * page had just set. It runs on every address change now, including the one the hook itself makes.
- *
- * @param devtools The connected session.
- */
-async function writeBackChecks(devtools: Devtools): Promise<void> {
-  const before = await drive(devtools, `void 0`)
-  const written = await drive(
+  const emptied = await act(
     devtools,
-    `document.querySelector('[data-e2e="url-filters-set-closed"]').click()`,
+    click("url-filters-link-none"),
+    "a click on the ? (no filters) link",
+  )
+  check(
+    "a link back to an empty query string returns every filter to its default",
+    emptied.search === "" && emptied.status === "(any)" && emptied.page === "1" &&
+      emptied.size === "md",
+    `clicked ? (no filters): ${linked.search} → "${emptied.search}", status ${linked.status} → ` +
+      `${emptied.status}, page ${linked.page} → ${emptied.page}`,
+  )
+
+  const refilled = await act(
+    devtools,
+    click("url-filters-link-size"),
+    "a click on the ?size=lg link",
+  )
+  check(
+    "a link followed from an empty address fills the filters again",
+    emptied.size === "md" && refilled.size === "lg" && refilled.search === "?size=lg",
+    `clicked ?size=lg from "${emptied.search}": size ${emptied.size} → ${refilled.size}, ` +
+      `address "${emptied.search}" → ${refilled.search}`,
+  )
+
+  return refilled
+}
+
+/**
+ * The other direction: a filter changed in the page, and what that costs the address.
+ *
+ * Four things are at stake here and each has its own check. The value has to reach the address and
+ * survive the re-read that now follows every address change — before the fix the URL-to-signals
+ * effect never ran twice, so nothing could overwrite a value the page had just set, and it runs on
+ * every change now, including the ones the hook itself makes. The change has to cost exactly one
+ * history entry, so Back still undoes a filter. And a parameter belonging to anything else on the
+ * page has to come through untouched, both when a filter is written next to it and when every
+ * filter is cleared: an application's address holds more than this hook's three parameters, and the
+ * write rebuilds the whole query string.
+ *
+ * @param devtools The connected session.
+ * @param before The reading this group starts from.
+ * @returns The reading it ends on.
+ */
+async function writeChecks(devtools: Devtools, before: FilterState): Promise<FilterState> {
+  const written = await act(
+    devtools,
+    click("url-filters-set-closed"),
+    "a click on the status = closed button",
   )
   check(
     "a filter changed in the page reaches the address and survives the re-read that follows",
-    before.status === "(any)" && written.status === "closed" &&
-      written.search.includes("status=closed") && written.page === before.page,
-    `clicked status = closed: status ${before.status} → ${written.status}, ` +
-      `address ${before.search} → ${written.search}, page held at ${written.page}`,
+    before.status !== "closed" && written.status === "closed" &&
+      written.search.includes("status=closed"),
+    `clicked status = closed: status ${before.status} → ${written.status}, address ` +
+      `${before.search} → ${written.search}`,
+  )
+  check(
+    "a filter changed in the page costs one history entry, so Back can undo it",
+    written.entries - before.entries === 1,
+    `history.length ${before.entries} → ${written.entries} across one filter change — none would ` +
+      `mean Back cannot undo a filter, two that it takes two presses`,
+  )
+
+  // A parameter this hook knows nothing about, put into the address by hand. The write below
+  // rebuilds the whole query string, and an application's address holds more than three filters.
+  const foreign = await act(
+    devtools,
+    push("?sort=name&status=closed"),
+    "a push to ?sort=name&status=closed",
+  )
+  const kept = await act(
+    devtools,
+    click("url-filters-next-page"),
+    "a click on the next page button",
+  )
+  check(
+    "a parameter the hook does not own survives a filter written next to it",
+    foreign.search.includes("sort=name") && kept.search.includes("sort=name") &&
+      foreign.page === "1" && kept.page === "2" && kept.search.includes("page=2"),
+    `clicked next page on ${foreign.search}: page ${foreign.page} → ${kept.page}, address ` +
+      `${kept.search}`,
+  )
+
+  const cleared = await act(devtools, click("url-filters-clear"), "a click on the clear button")
+  check(
+    "clearing the filters empties the query string of what the hook owns, and nothing else",
+    cleared.status === "(any)" && cleared.page === "1" && cleared.size === "md" &&
+      cleared.search === "?sort=name",
+    `clicked clear on ${kept.search}: status ${kept.status} → ${cleared.status}, page ` +
+      `${kept.page} → ${cleared.page}, address ${cleared.search}`,
+  )
+
+  return cleared
+}
+
+/**
+ * Arriving backwards: the browser's own Back button, which reaches the hook as a `popstate` rather
+ * than as a push.
+ *
+ * One press, not a loop. A loop is what this file used to do, because every address change left two
+ * entries and the first press landed on an address that read identically — which is the defect this
+ * round fixed, and a loop tolerant of it could never have seen it. One press has to move the
+ * reader.
+ *
+ * This is also the case the hook used to answer with a `popstate` listener of its own. That
+ * listener is gone — the router already re-renders on `popstate` — so this check is what says the
+ * behaviour survived its removal.
+ *
+ * @param devtools The connected session.
+ * @param before The reading this group starts from.
+ */
+async function backChecks(devtools: Devtools, before: FilterState): Promise<void> {
+  const backed = await act(devtools, "history.back()", "one press of Back")
+  check(
+    "one press of Back moves the address, and the filters move with it",
+    backed.search !== before.search && before.status === "(any)" && before.page === "1" &&
+      backed.status === "closed" && backed.page === "2",
+    `${before.search} → ${backed.search} in one press: status ${before.status} → ` +
+      `${backed.status}, page ${before.page} → ${backed.page}`,
   )
 }
