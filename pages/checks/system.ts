@@ -1759,8 +1759,8 @@ async function lateMonthChecks(devtools: Devtools): Promise<void> {
       ? `from ${before.date} in ${before.heading}: the card was asked for ${after.asked}, its ` +
         `count of answers drawn went ${before.count} → ${after.count} and it is showing ` +
         `${after.extra || "nothing"}; the heading went ${before.heading} → ` +
-        `${after.heading || "unreadable"} and the focus is on ${after.date || after.focused}, ` +
-        `wanted ${wanted}`
+        `${after.heading || "unreadable"}, the focus is on ${after.date || after.focused} and ` +
+        `the grid's Tab stop is ${after.tabStop || "nowhere"}, both wanted ${wanted}`
       : `the focus was never staged on ${LATE_DAY} of the late-answering card`,
   )
 
