@@ -1,6 +1,6 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
-import { signal } from "@preact/signals"
+import { effect, signal } from "@preact/signals"
 import { type } from "arktype"
 import { buildModelStore } from "./build-model-store.ts"
 import { ErrType, RemoteEvent, type ToastMessage } from "./types.ts"
@@ -1630,6 +1630,76 @@ describe("buildModelStore across a reset", () => {
     expect(toast.messages).toEqual([])
     expect(answer.error).toBeNull()
     expect(answer.result?.id).toBe(1)
+  })
+
+  it("disowns the old session even when a subscriber throws while the store is cleared", async () => {
+    const { impl, pending } = deferredFetch()
+    const toast = toastRecorder()
+    const store = buildStore({ fetch: impl, toast: toast.port })
+    await store.onWs([row(1, "First tenant zone")], RemoteEvent.LIST)
+
+    const updating = store.update(1, { name: "Renamed" })
+
+    // Application code that watches the store and fails when the list goes empty. A cleanup that
+    // throws at sign-out is ordinary, and it is what makes the order inside `reset()` load-bearing:
+    // the generation is raised on the first line, so it is already raised when this throw escapes.
+    // Raise it after the slices are cleared, or after `onReset`, and this throw carries the old
+    // session into the new one — which is the failure this whole change exists to prevent.
+    let threw = 0
+    const stop = effect(() => {
+      if (store.state.value.list.length === 0 && threw === 0) {
+        threw += 1
+        throw new Error("subscriber failed during reset")
+      }
+    })
+
+    expect(() => store.reset()).toThrow("subscriber failed during reset")
+    expect(threw).toBe(1)
+    // The slices were cleared before the throw escaped, so there is a real next session here. This
+    // is what stops the test passing for the other reason — a reset abandoned before it did
+    // anything would leave the first tenant's row in place and protect nothing.
+    expect(store.state.value.list).toEqual([])
+
+    await store.onWs([row(1, "Second tenant zone")], RemoteEvent.LIST)
+    pending[0].settle(Response.json(row(1, "Renamed")))
+    const answer = await updating
+
+    expect(store.state.value.list.map((r) => r.name)).toEqual(["Second tenant zone"])
+    expect(store.op.update(1).value).toBeUndefined()
+    expect(toast.messages).toEqual([])
+    expect(answer.error).toBeNull()
+    expect(answer.result?.name).toBe("Renamed")
+    stop()
+  })
+
+  it("disowns the old session even when onReset throws", async () => {
+    const { impl, pending } = deferredFetch()
+    const toast = toastRecorder()
+    const store = buildStore({
+      fetch: impl,
+      toast: toast.port,
+      onReset: () => {
+        throw new Error("app cleanup failed")
+      },
+    })
+    await store.onWs([row(1, "First tenant zone")], RemoteEvent.LIST)
+
+    const updating = store.update(1, { name: "Renamed" })
+
+    // The same point said more plainly: `onReset` is the application's own cleanup, it runs last,
+    // and the generation must already be raised by the time it can fail.
+    expect(() => store.reset()).toThrow("app cleanup failed")
+    expect(store.state.value.list).toEqual([])
+
+    await store.onWs([row(1, "Second tenant zone")], RemoteEvent.LIST)
+    pending[0].settle(Response.json(row(1, "Renamed")))
+    const answer = await updating
+
+    expect(store.state.value.list.map((r) => r.name)).toEqual(["Second tenant zone"])
+    expect(store.op.update(1).value).toBeUndefined()
+    expect(toast.messages).toEqual([])
+    expect(answer.error).toBeNull()
+    expect(answer.result?.name).toBe("Renamed")
   })
 
   it("two creates either side of a reset, old answered first, leave the new one in flight", async () => {
