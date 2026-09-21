@@ -764,8 +764,8 @@ describe("shouldRetargetFocus", () => {
 
   it("does nothing when no trigger was captured", () => {
     // The whole rule: there is no second condition to satisfy. A guard that also required focus to
-    // still be inside the dialog never fired in a real browser, because by cleanup time Chromium has
-    // already moved focus out of the unmounted content.
+    // still be inside the dialog never fired in a real browser, because the restore runs while the
+    // dialog is closing and its content unmounting.
     expect(shouldRetargetFocus(null)).toBe(false)
   })
 })
@@ -782,7 +782,8 @@ describe("dialogHeldFocus", () => {
   })
 
   it("reports focus outside for an active element of null", () => {
-    // The reading measured at cleanup time: a dialog whose content has unmounted sees `body`.
+    // `document.activeElement` is nullable, and a reading that arrives as `null` says only that
+    // nothing was focused — never that focus was inside.
     expect(dialogHeldFocus(inside, null)).toBe(false)
   })
 

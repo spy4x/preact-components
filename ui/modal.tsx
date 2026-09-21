@@ -124,13 +124,21 @@ export interface ModalProps {
  * dialog, that focus returns to the trigger, and that a refused Escape really keeps the dialog open
  * where the platform honours `closedby` (see the support contract below).
  *
- * Three of those are now committed checks, run in CI: `deno task --cwd pages verify` drives the
- * guide's `Modal` demo in headless Chromium and asserts that the trigger opens a `:modal` dialog,
- * that focus moves into it, that a **real** Escape key press (`Input.dispatchKeyEvent`, not a
- * synthesised `KeyboardEvent`, which the browser treats as untrusted) closes it, and that focus
- * lands back on the same trigger element. The last of those asserts the behaviour rather than this
- * component's part in it: measured, deleting the `target.focus()` call below leaves the check green,
- * because Chromium restores focus to the pre-`showModal()` element by itself.
+ * Four of those are now committed checks, run in CI: `pages/checks/ui.ts`, run by
+ * `deno task --cwd pages verify`, drives the guide's `Modal` demo in headless Chromium and asserts
+ * that the trigger opens a `:modal` dialog, that focus moves into it, that a **real** Escape key
+ * press (`Input.dispatchKeyEvent`, not a synthesised `KeyboardEvent`, which the browser treats as
+ * untrusted) closes it, that the port that press runs is the one the parent passed most recently
+ * rather than the one this dialog opened with, and that focus lands back on the same trigger
+ * element.
+ *
+ * **The focus restore, and why it stays.** Decided 2026-09-21, in #148. The `target.focus()` in the
+ * effect's cleanup is there for an engine that does not hand focus back when a dialog closes. The
+ * browser these checks drive does hand it back, so **no check here covers the call**: deleting it
+ * leaves the focus check green, because Chromium restores focus to the pre-`showModal()` element
+ * itself. That check therefore asserts what a person experiences and cannot tell this component's
+ * restore from the platform's. The call stays anyway — it costs a focus on an element that already
+ * has it — and this is revisited when the browser checks can drive a second engine.
  *
  * **Still covered by no committed test:** focus trapping, the backdrop click, the scroll-lock
  * compensation, and the refused-Escape path. Those were verified with a throwaway CDP probe that was
@@ -346,14 +354,14 @@ export function Modal(
       unbindEscape()
       lock.release()
 
-      // Decide before closing, because `close()` moves focus itself: measured, `dialog.close()` leaves
-      // `document.activeElement` as `body` and discards a focus restored a moment earlier.
+      // Read the captured trigger before the close and restore after it: closing is what releases
+      // the dialog's hold on focus, so a restore written before it has nothing to hold on to.
+      // Nothing here asks whether the dialog still holds focus — see `shouldRetargetFocus` for why
+      // that question cannot decide anything. What the restore is for, and what covers it (nothing
+      // in this repository), is the `#148` paragraph on `Modal`.
       const target = restoresFocus.current
 
       if (dialog.open || dialog.matches(":modal")) dialog.close()
-      // After `close()`, which moves focus itself and would discard a restore done before it. Nothing
-      // here asks whether the dialog still held focus: measured, it never does by this point, and
-      // gating on it is the bug documented on `shouldRetargetFocus`.
       if (shouldRetargetFocus(target)) restoreFocus(target)
     }
   }, [isOpen])
@@ -824,18 +832,19 @@ export function platformCloseHandler(deps: PlatformCloseDeps): () => void {
 /**
  * Decide whether focus should go back to the element that opened the dialog.
  *
- * `true` exactly when a trigger was captured — that is the whole rule, and the history behind it is
- * why it carries no second condition. This was first written as "restore only if focus is still
- * inside the dialog", which sounds like the same rule and is not: measured in headless Chromium, by
- * the time the component's cleanup runs the dialog's content has already unmounted and the platform
- * has moved focus to `body`, so focus is *never* still inside, the restore the guard was written to
- * permit never happened, and the trigger never got its focus back in a real browser while every unit
- * test of the helper stayed green.
+ * `true` exactly when a trigger was captured — that is the whole rule, and it carries no second
+ * condition on purpose. The tempting one, "restore only if focus is still inside the dialog", was
+ * written first and cannot decide anything: the restore runs while the dialog is closing and its
+ * content is unmounting, so where focus sits at that moment is the platform's business, and the
+ * reading cannot tell a caller who moved focus somewhere deliberate from a teardown that moved it
+ * for them. With that guard in place the restore never ran in a real browser while every unit test
+ * of the helper stayed green.
  *
- * The caller-read `dialogHeldFocus` reading is therefore reported, not used as a gate. Refusing the
- * restore when focus is elsewhere would also be wrong on its own terms: a caller that moves focus
- * somewhere deliberate has to close the dialog first, and focus is at `body` by then either way, so
- * the condition cannot tell the two cases apart.
+ * The {@link dialogHeldFocus} reading is therefore something a caller can report, never a gate.
+ *
+ * What the restore exists for, and what covers it, is the `#148` paragraph on {@link Modal}: no
+ * check in this repository proves this call does anything, because the browser they run in hands
+ * focus back without it.
  *
  * @param target Element captured before `showModal()`, or `null` if there was none.
  * @returns `true` when focus should be moved back to `target`.

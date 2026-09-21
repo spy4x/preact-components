@@ -666,7 +666,7 @@ export const feedbackDemos = {
   },
   Modal: {
     summary:
-      "Dialog on the platform's `<dialog>`, opened by mounting it through `showModal()` — the `open` attribute is deliberately never rendered, because `<dialog open>` is the non-modal state and `showModal()` throws on it. `open` is either caller-owned or seeded by `defaultOpen`, every close leaves through `onClose` (return `false` to refuse), and `title` supplies the accessible name unless `ariaLabel` does.",
+      'Dialog on the platform\'s `<dialog>`, opened by mounting it through `showModal()` — the `open` attribute is deliberately never rendered, because `<dialog open>` is the non-modal state and `showModal()` throws on it. `open` is either caller-owned or seeded by `defaultOpen`, every close leaves through `onClose` — always the one from the latest render, so an inline handler reads the state the parent has now — and `title` supplies the accessible name unless `ariaLabel` does. `ariaDescribedBy` points at the element holding the body, and `role="alertdialog"` is for a panel that has to be answered.',
     snippet: `<Modal
   open={open.value}
   onClose={() => open.value = false}
@@ -681,7 +681,7 @@ export const feedbackDemos = {
   },
   ConfirmDialog: {
     summary:
-      "Confirmation panel: a title, one question as `message` or richer `children`, and two labelled actions. `title`, `confirmLabel` and `cancelLabel` are required — the library ships no product copy, and a blank label throws rather than rendering an unlabelled action. Nothing closes itself: `onConfirm` and `onCancel` are ports, and only the caller moves its own flag.",
+      "Confirmation panel: a title, one question as `message` or richer `children`, and two labelled actions. It announces itself as an `alertdialog` and points `aria-describedby` at its question, so a screen reader reads what is about to happen and not just two verbs. `confirmLabel` and `cancelLabel` default to English and a caller's own verbs override them. Nothing closes itself: `onConfirm` and `onCancel` are ports, and only the caller moves its own flag.",
     snippet: `<ConfirmDialog
   title="Delete invoice INV-0007?"
   message="This cannot be undone."
