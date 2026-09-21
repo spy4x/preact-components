@@ -32,6 +32,7 @@ import {
   type ToastVariant,
 } from "@preact-components/ui"
 import { useSignal } from "@preact/signals"
+import { useState } from "preact/hooks"
 import { IconFolder, IconPlus, IconTrashBin } from "@preact-components/icons"
 import { entries } from "../record.ts"
 import type { DemoFragment } from "../registry.ts"
@@ -395,7 +396,7 @@ function SkeletonStatusDemo() {
 }
 
 /**
- * The two dialog tones, each behind its own trigger.
+ * The two dialog tones, each behind its own trigger, plus the step a close port closes over.
  *
  * Mounting is opening: the component renders `null` while closed, and the press mounts it, which is
  * what makes the effect call `showModal()`. The dialog's actual behaviour is the browser's, and this
@@ -403,14 +404,23 @@ function SkeletonStatusDemo() {
  * decisions it makes (`isBackdropClick`, `escapeCloseStrategy`, `shouldRetargetFocus`).
  *
  * **This card is what the browser checks drive.** `deno task --cwd pages verify` presses the first
- * trigger below, asserts the dialog is `:modal` with focus inside it, sends a real Escape key press
- * and asserts the dialog closed and focus returned to that trigger. That `:modal` reading is what
- * says the dialog reached the top layer at all. Still covered by no committed test: what two
- * dialogs open at once do to each other's stacking order, focus containment, the backdrop
+ * trigger below, asserts the dialog is `:modal` with focus inside it, presses the step control
+ * inside the dialog, sends a real Escape key press, and asserts the dialog closed, that the close
+ * port saw the step the parent has *now*, and that focus returned to that trigger. That `:modal`
+ * reading is what says the dialog reached the top layer at all. Still covered by no committed test:
+ * what two dialogs open at once do to each other's stacking order, focus containment, the backdrop
  * hit-test, scroll-lock compensation and the refused-Escape path.
+ *
+ * **Why the step is `useState` and not a signal.** A signal read from any render's closure returns
+ * the current value, which is exactly what hides a handler that captured an old one. The step is
+ * plain state and `onClose` closes over it by value, so "which render's port ran" becomes a number
+ * on screen — the difference between a dialog that acts on the step the user is on and one that
+ * acts on the step they opened it from.
  */
 function ModalDemo() {
   const open = useSignal<DialogTone | null>(null)
+  const [step, setStep] = useState(1)
+  const [closedAtStep, setClosedAtStep] = useState<number | null>(null)
 
   return (
     <div class="space-y-3">
@@ -430,10 +440,21 @@ function ModalDemo() {
         </span>
       </div>
 
+      <p
+        class="text-xs text-gray-500 dark:text-gray-400"
+        data-e2e="modal-close-step"
+        data-step={step}
+        data-closed-at={closedAtStep ?? ""}
+      >
+        step {step}; the close port last read{" "}
+        {closedAtStep === null ? "nothing yet" : `step ${closedAtStep}`}
+      </p>
+
       {open.value !== null && (
         <Modal
           open
           onClose={() => {
+            setClosedAtStep(step)
             open.value = null
           }}
           title={`Modal — ${open.value}`}
@@ -452,6 +473,20 @@ function ModalDemo() {
             a backdrop click all route through `onClose`; returning `false` from that port refuses
             the close and keeps the dialog open.
           </p>
+          <p class="mt-3 text-sm text-gray-600 dark:text-gray-300">
+            This dialog's `onClose` closes over the step below. Advance it, then press Escape: the
+            line above the dialog has to report the step you advanced to, not the one this dialog
+            opened on.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            class="mt-3"
+            data-e2e="modal-next-step"
+            onClick={() => setStep(step + 1)}
+          >
+            advance to step {step + 1}
+          </Button>
         </Modal>
       )}
     </div>
