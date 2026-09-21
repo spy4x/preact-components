@@ -1731,6 +1731,8 @@ interface TooltipState {
   opacity: string
   /** `true` while the surface has a box at all — Escape takes the box away with `hidden`. */
   boxed: boolean
+  /** How many client rects the surface has. `boxed` is this above zero; the count is evidence. */
+  rects: number
   /** `true` when the browser has the trigger in its `:hover` state, which is what reveals a hint. */
   hover: boolean
   /** `true` when the browser has the surface itself in `:hover`. */
@@ -1793,8 +1795,8 @@ const TOOLTIP_STATE = `(() => {
   const { trigger, surface } = globalThis.__verifyTooltip ?? {}
   if (!trigger || !surface) {
     return {
-      ok: false, visibility: "", opacity: "", boxed: false, hover: false, surfaceHover: false,
-      described: null, focused: false, text: "",
+      ok: false, visibility: "", opacity: "", boxed: false, rects: 0, hover: false,
+      surfaceHover: false, described: null, focused: false, text: "",
     }
   }
   const style = getComputedStyle(surface)
@@ -1803,6 +1805,7 @@ const TOOLTIP_STATE = `(() => {
     visibility: style.visibility,
     opacity: style.opacity,
     boxed: surface.getClientRects().length > 0,
+    rects: surface.getClientRects().length,
     hover: trigger.matches(":hover"),
     surfaceHover: surface.matches(":hover"),
     described: trigger.getAttribute("aria-describedby"),
@@ -1840,17 +1843,20 @@ const TOOLTIP_DISMISSED =
  * and the hoverable half is the browser's own hit testing — the thing `pointer-events-none` used
  * to fail, and which nothing in rendered markup can answer.
  *
- * **What this browser cannot show, measured rather than assumed.** Tailwind v4 compiles every
- * hover style — `hover:`, `group-hover:` — inside `@media (hover: hover)`, and this headless
- * Chromium answers `(hover: none)` and `(pointer: none)`, so no hover style of any kind applies in
- * it. `Emulation.setEmulatedMedia` does not cover those two features — tried, with and without a
- * `media` string, and `matchMedia("(hover: hover)")` still answered false — and neither does a
- * device metrics override. The lever is a Chromium launch flag, and the launcher is not this
- * file's to change. So the reveal-on-hover itself, the `visibility` flip, is not observable here
- * and no check below claims it: the reveal is proven through focus instead, which this browser
- * does run, and what the pointer checks assert is the property the fix actually changed — that the
- * pointer reaches the hint at all, and that the trigger stays `:hover` while it rests there,
- * because the hint is a descendant of the trigger and that is the state the reveal rule keys on.
+ * **What the browser can show, and what it took to get there.** Tailwind v4 compiles every hover
+ * style — `hover:`, `group-hover:` — inside `@media (hover: hover)`, and headless Chromium answers
+ * `(hover: none)` and `(pointer: none)` unless it is told otherwise, so for a while no hover style
+ * of any kind applied here and the reveal-on-hover was not observable at all. Neither emulation
+ * route covers those two features: `Emulation.setEmulatedMedia` was tried with and without a
+ * `media` string, and a device metrics override too, and `matchMedia("(hover: hover)")` still
+ * answered false. The lever is a Chromium launch flag, and `pages/verify.ts` now passes it — see
+ * `hoverCapability` there, which asserts the browser still answers `(hover: hover)` before any of
+ * these checks run. So {@link hoverRevealCheck} below drives the reveal itself, with a real
+ * pointer and with focus ruled out; the focus reveal is still checked beside it, because it is a
+ * second path rather than the same one; and the pointer checks go on asserting what the hit
+ * testing does — that the pointer reaches the hint at all, and that the trigger stays `:hover`
+ * while it rests there, because the hint is a descendant of the trigger and that is the state the
+ * reveal rule keys on.
  *
  * Three habits the checks above set, and why each one is needed here.
  *
@@ -1886,12 +1892,16 @@ async function tooltipChecks(devtools: Devtools): Promise<void> {
   // do not scroll with the page: without parking it first, the pointer can be resting on this very
   // trigger while the check reads the trigger "at rest".
   await pointerToCorner(devtools)
+
+  await hoverRevealCheck(devtools)
+
   const atRest = await devtools.evaluate<TooltipState>(TOOLTIP_STATE)
 
-  // The hint is revealed by focus, because focus is the reveal this browser runs — see the note on
-  // hover styles above. A hidden element is not hit-testable at all, so without a hint on screen
-  // there would be nothing for a pointer to reach and the two readings below would be about
-  // nothing.
+  // Revealed with focus here rather than with the pointer, on purpose: this check is about what the
+  // hint does once it is on screen, and focus puts it there without the pointer already being where
+  // the readings below are about to move it. A hidden element is not hit-testable at all, so
+  // without a hint on screen there would be nothing for a pointer to reach and the two readings
+  // below would be about nothing.
   await devtools.evaluate<null>(`(globalThis.__verifyTooltip?.trigger?.focus(), null)`)
   const revealed = await poll(() => devtools.evaluate<boolean>(TOOLTIP_SHOWN), 3_000)
 
@@ -2015,6 +2025,127 @@ async function tooltipChecks(devtools: Devtools): Promise<void> {
   await escapeOverPointerCheck(devtools)
   await escapeOnFocusCheck(devtools)
   await tooltipNameCheck(devtools)
+}
+
+/** What the browser says is under the parked pointer, relative to the tooltip's trigger. */
+interface Corner {
+  /** What `elementFromPoint` reads at the parking spot. */
+  tag: string
+  /** `true` when the parking spot is the trigger, or something inside it — a failed parking. */
+  onTrigger: boolean
+}
+
+/**
+ * Hovering the trigger reveals the hint, and taking the pointer away hides it again.
+ *
+ * This is the component's headline behaviour and the one nothing could check until the browser was
+ * told it has a mouse: Tailwind compiles `group-hover:visible` and `group-hover:opacity-100` inside
+ * `@media (hover: hover)`, so in a browser that answers `(hover: none)` the reveal rule is present
+ * in the stylesheet and never matches. The flag that fixes that is in `pages/verify.ts`, and
+ * `hoverCapability` there fails loudly if it ever stops working — so a failure here is the
+ * component rather than the environment.
+ *
+ * **Focus is ruled out as the revealer**, which is what keeps this from being satisfiable a second
+ * way: the component reveals the hint on `group-focus-within` too, so the trigger is blurred first
+ * and `document.activeElement` is read at rest *and* with the hint on screen. A reveal that
+ * happened while focus sat on the trigger would prove the focus path over again and say nothing
+ * about hovering.
+ *
+ * Both ends are asserted, because half of this is not worth having. A hint that were simply always
+ * visible would pass "the hint is visible with the pointer on the trigger" without a reveal ever
+ * happening, so the run is: hidden at rest → pointer on → visible → pointer away → hidden again.
+ *
+ * The pointer's resting place is asserted rather than assumed, at both ends. The point it moves to
+ * is the centre of the trigger's own box, read back with `elementFromPoint` before the move and
+ * recorded by the page as the browser delivers it, so a move that went somewhere else is reported
+ * as a missed move and never as a broken tooltip. The corner it parks in is read the same way: a
+ * pointer left resting on the trigger would make "hidden at rest" impossible and the reason would
+ * not be the component.
+ *
+ * Nothing here throws. A missing row is a failed check naming what is missing.
+ *
+ * @param devtools The connected session, with the tooltip card parked and scrolled to.
+ */
+async function hoverRevealCheck(devtools: Devtools): Promise<void> {
+  await devtools.evaluate<null>(`(globalThis.__verifyTooltip?.trigger?.blur(), null)`)
+  await pointerToCorner(devtools)
+  const corner = await devtools.evaluate<Corner>(`(() => {
+    const trigger = globalThis.__verifyTooltip?.trigger ?? null
+    const at = document.elementFromPoint(2, 2)
+    return {
+      tag: at === null ? "nothing" : at.tagName,
+      onTrigger: trigger !== null && at !== null && (at === trigger || trigger.contains(at)),
+    }
+  })()`)
+  await poll(() => devtools.evaluate<boolean>(`!${TOOLTIP_SHOWN}`), 3_000)
+  const atRest = await devtools.evaluate<TooltipState>(TOOLTIP_STATE)
+
+  const onTrigger = await hoverTrigger(devtools)
+  const revealed = await poll(() => devtools.evaluate<boolean>(TOOLTIP_SHOWN), 3_000)
+  const shown = await devtools.evaluate<TooltipState>(TOOLTIP_STATE)
+
+  await pointerToCorner(devtools)
+  const hidAgain = await poll(() => devtools.evaluate<boolean>(`!${TOOLTIP_SHOWN}`), 3_000)
+  const after = await devtools.evaluate<TooltipState>(TOOLTIP_STATE)
+
+  check(
+    "the pointer alone reveals a Tooltip's hint, and taking it away hides the hint again",
+    atRest.ok && !corner.onTrigger && !atRest.focused && !atRest.hover &&
+      atRest.visibility === "hidden" && onTrigger.aim.onTarget &&
+      onTrigger.landing?.onTarget === true && onTrigger.hovering && revealed && !shown.focused &&
+      shown.rects > 0 && hidAgain && after.visibility === "hidden",
+    !atRest.ok
+      ? "the Tooltip card has no live row — nothing matched '[data-e2e=\"tooltip-live\"]' with a " +
+        "button and a role=tooltip inside it"
+      : corner.onTrigger
+      ? `the pointer parked at (2, 2) is still on the trigger (elementFromPoint reads ` +
+        `${corner.tag}), so there is no unhovered state to start from`
+      : atRest.focused
+      ? "the trigger still had focus at rest, and a hint revealed by focus would prove the focus " +
+        "path over again rather than the pointer one"
+      : atRest.hover
+      ? "the browser still had the trigger in :hover with the pointer in the corner, so nothing " +
+        "below moves from anywhere"
+      : atRest.visibility !== "hidden"
+      ? `the hint is already ${atRest.visibility} at opacity ${atRest.opacity} with nothing ` +
+        `hovering or focusing the trigger, so it is not revealed by anything — it is simply up`
+      : !onTrigger.aim.onTarget
+      ? `nothing of the trigger to point at: (${onTrigger.aim.x}, ${onTrigger.aim.y}) reads ` +
+        `${onTrigger.aim.tag} over a ${onTrigger.aim.width}×${onTrigger.aim.height} box — this ` +
+        `proves nothing`
+      : onTrigger.landing === null || !onTrigger.landing.onTarget
+      ? `the pointer never landed on the trigger: ${
+        onTrigger.landing === null
+          ? "the move never reached the page"
+          : `it went to ${onTrigger.landing.tag} at (${onTrigger.landing.x}, ` +
+            `${onTrigger.landing.y})`
+      } — a missed move, which proves nothing`
+      : !onTrigger.hovering
+      ? "the browser never put the trigger into :hover with the pointer delivered onto it, so " +
+        "nothing here is about hovering"
+      : shown.focused
+      ? "the pointer's arrival moved focus onto the trigger, so the reveal below cannot be told " +
+        "from the focus one"
+      : !revealed
+      ? `the hint never reached the screen with the pointer resting on the trigger: visibility ` +
+        `${shown.visibility}, opacity ${shown.opacity}, ${shown.rects} client rect(s). The rule ` +
+        `that reveals it is \`group-hover:visible group-hover:opacity-100\`, which a browser ` +
+        `answering (hover: none) compiles and never matches — check that one first`
+      : !hidAgain
+      ? `the hint stayed ${after.visibility} at opacity ${after.opacity} with the pointer back in ` +
+        `the corner, so it never goes away and being up while hovered means nothing`
+      : `at rest the hint reads visibility ${atRest.visibility} at opacity ${atRest.opacity}, ` +
+        `with focus off the trigger and the pointer parked over ${corner.tag} at (2, 2) → the ` +
+        `pointer was delivered onto ${onTrigger.landing.tag} at (${onTrigger.landing.x}, ` +
+        `${onTrigger.landing.y}) and the hint read visibility ${shown.visibility} at opacity ` +
+        `${shown.opacity} over ${shown.rects} client rect(s), with focus still off the trigger → ` +
+        `the pointer went back to the corner and it reads visibility ${after.visibility} again. ` +
+        `The visibility flip is the reveal, and it is what takes the hint in and out of hit ` +
+        `testing; the fade beside it is sampled at ${after.opacity} here because a headless page ` +
+        `only advances a transition when it paints a frame`,
+  )
+
+  await devtools.evaluate<null>(`(globalThis.__verifyTooltip?.trigger?.blur(), null)`)
 }
 
 /**
@@ -2857,11 +2988,12 @@ async function highlightChecks(devtools: Devtools): Promise<void> {
  * that it landed there, and the browser is asked which row it now has in `:hover` — so a check
  * whose pointer never arrived fails rather than reporting a highlight that did not move.
  *
- * What the row under the pointer *looks* like cannot be read here. Tailwind gates `hover:` styles
- * behind `@media (hover: hover)` and this browser reports a pointer that cannot hover, so the
- * row's `hover:bg-gray-50` never applies in it; the `:hover` state the rule keys on is what the
- * check asserts, and both backgrounds go into the message so the gap is visible rather than
- * implied.
+ * The paint is asserted as well as the state, which it could not be until the browser was told it
+ * has a mouse: Tailwind gates `hover:` styles behind `@media (hover: hover)`, so the row's
+ * `hover:bg-gray-50` used to be compiled and never matched, and both rows read the same
+ * transparent background. Now the row under the pointer has to be painted differently from the row
+ * beside it, and both backgrounds still go into the message so the difference is visible rather
+ * than implied.
  *
  * @param devtools The connected session, with the offsets popup open.
  * @param walkedTo The row the previous check left the highlight on, for the failure message.
@@ -2898,7 +3030,7 @@ async function pointerHighlightCheck(devtools: Devtools, walkedTo: number): Prom
     "the pointer paints a Combobox row without moving the highlight a screen reader follows",
     before.active === "guide-combobox-offset-option-0" && aim.onTarget &&
       landing?.onTarget === true && after.active === before.active && painted.hovered &&
-      !painted.plain,
+      !painted.plain && painted.hoveredBackground !== painted.plainBackground,
     before.active !== "guide-combobox-offset-option-0"
       ? `Home left the highlight on ${before.active} rather than the first row (the walk before ` +
         `this one had it on option ${walkedTo}), so there is no known place for the pointer not ` +
@@ -2916,12 +3048,15 @@ async function pointerHighlightCheck(devtools: Devtools, walkedTo: number): Prom
       ? `the browser did not take the row under the pointer into :hover (third row ` +
         `${painted.hovered}, fourth row ${painted.plain}), so there is nothing here about a ` +
         `pointer at all`
+      : painted.hoveredBackground === painted.plainBackground
+      ? `the row under the pointer is painted exactly like the row beside it ` +
+        `(${painted.hoveredBackground}), so \`hover:bg-gray-50\` reached nothing — a browser ` +
+        `answering (hover: none) gates every hover utility out, which is the first thing to check`
       : `the pointer landed on ${landing.tag} at (${landing.x}, ${landing.y}) and the browser put ` +
         `that row, and only that row, into :hover, while aria-activedescendant stayed on ` +
-        `${after.active}. The paint itself is Tailwind's \`hover:bg-gray-50\`, which this ` +
-        `browser leaves unapplied — it reports a pointer that cannot hover, so every hover style ` +
-        `is gated out (row backgrounds read ${painted.hoveredBackground} and ` +
-        `${painted.plainBackground})`,
+        `${after.active}. The paint is Tailwind's \`hover:bg-gray-50\`: the row under the pointer ` +
+        `reads ${painted.hoveredBackground} against ${painted.plainBackground} on the row beside ` +
+        `it`,
   )
 
   await pressKey(devtools, "Escape")
