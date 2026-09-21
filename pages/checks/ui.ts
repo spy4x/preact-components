@@ -2435,6 +2435,8 @@ interface ComboboxReading {
   active: string | null
   /** The highlighted row's text, cut short, or `""` when nothing is highlighted. */
   activeText: string
+  /** `true` when `aria-activedescendant` names an element the page no longer holds. */
+  activeDangles: boolean
   describedBy: string | null
   /** The status element's role, or `null` when the component renders no status at all. */
   statusRole: string | null
@@ -2481,6 +2483,7 @@ const COMBOBOX_STATE = `(() => {
   if (!input || !list) {
     return {
       ok: false, expanded: null, listHidden: false, options: -1, active: null, activeText: "",
+      activeDangles: false,
       describedBy: null, statusRole: null, statusLive: null, statusText: "", inputValue: "",
       scrollTop: -1, clientHeight: -1, scrollHeight: -1, activeInView: false, pageScrollY: -1,
     }
@@ -2495,6 +2498,7 @@ const COMBOBOX_STATE = `(() => {
     options: list.querySelectorAll('[role="option"]').length,
     active,
     activeText: (row?.textContent ?? "").trim().slice(0, 40),
+    activeDangles: active !== null && row === null,
     describedBy: input.getAttribute("aria-describedby"),
     statusRole: status?.getAttribute("role") ?? null,
     statusLive: status?.getAttribute("aria-live") ?? null,
@@ -2533,12 +2537,20 @@ async function comboboxChecks(devtools: Devtools): Promise<void> {
 }
 
 /**
- * Options that turn up while the popup is already open, which is the case the silence is for.
+ * A list that changes under an open popup, both ways: options arriving, and options taken away.
  *
  * A field opened before its options have arrived shows the empty message, because opening it asked
  * a question. When the list lands underneath it three things have to happen at once: the message
  * goes, the input stops describing itself by it, and a row is highlighted — a list that arrives
  * with nothing highlighted leaves `Enter` doing nothing and tells a screen reader nothing came.
+ *
+ * The return leg is the half that was missing, and the defect it caught is worse than the one the
+ * arrival fixed: with the highlight taken and the options then withdrawn,
+ * `aria-activedescendant` went on naming a row the page no longer held. That is not a degraded
+ * announcement but an invalid one — a reading position inside a list with no such row, on a field
+ * that is saying at that same moment that there is nothing to match. So the reading below carries
+ * `activeDangles`, which asks the page whether the pointer resolves to anything at all, rather
+ * than only whether an attribute is present.
  *
  * The card's button arms the arrival rather than performing it, and that shape is forced: pressing
  * anything outside a combobox closes it, so the only way to have options land under an open popup
@@ -2572,13 +2584,29 @@ async function arrivingOptionsCheck(devtools: Devtools): Promise<void> {
   )
   const arrived = await devtools.evaluate<ComboboxReading>(COMBOBOX_STATE)
 
+  // The same control again. It empties the list on the press and refills it after the delay, so
+  // this is the caller taking its options away with the popup open — the return leg of the same
+  // walk. The press is scripted on purpose: a real press outside the popup would close it, and
+  // what has to be driven here is a list changing under an open popup, which in an application is
+  // a response landing rather than a click.
+  await devtools.evaluate<null>(
+    `(document.querySelector('#demo-Combobox [data-e2e="combobox-load"]')?.click(), null)`,
+  )
+  const emptied = await poll(
+    () => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.options === 0`),
+    3_000,
+  )
+  const departed = await devtools.evaluate<ComboboxReading>(COMBOBOX_STATE)
+
   check(
-    "options arriving under an open Combobox clear its message and take the highlight",
+    "a Combobox follows its list under an open popup, in both directions",
     armed.ok && landing?.onTarget === true && waiting.expanded === "true" &&
       waiting.options === 0 && waiting.statusRole === "status" && waiting.active === null &&
       landed && arrived.expanded === "true" && arrived.options > 0 &&
       arrived.statusRole === null && arrived.describedBy === null &&
-      arrived.active === "guide-combobox-empty-option-0" && arrived.activeText.length > 0,
+      arrived.active === "guide-combobox-empty-option-0" && arrived.activeText.length > 0 &&
+      !arrived.activeDangles && emptied && departed.expanded === "true" &&
+      departed.active === null && !departed.activeDangles,
     !armed.ok
       ? `the Combobox card has no [data-e2e="combobox-load"] control to arm`
       : landing?.onTarget !== true
@@ -2603,10 +2631,25 @@ async function arrivingOptionsCheck(devtools: Devtools): Promise<void> {
       ? `${arrived.options} options arrived under the open popup and the highlight is ` +
         `${arrived.active ?? "nowhere"}: a screen reader is told nothing came, and Enter does ` +
         `nothing until an arrow key is pressed`
+      : arrived.activeDangles
+      ? `the highlight points at ${arrived.active}, which is not an element the page holds`
+      : !emptied
+      ? `the options never went away again, so the return leg proves nothing`
+      : departed.expanded !== "true"
+      ? "the popup closed when the options went away, so nothing was left open to check"
+      : departed.active !== null
+      ? `the options went away and the field still points at ${departed.active}` +
+        `${
+          departed.activeDangles
+            ? ", which is not an element the page holds: a screen reader is left reading a row " +
+              "that does not exist, on a field that says there are no matches"
+            : ""
+        }`
       : `open and empty: a polite status reading "${waiting.statusText}" and no ` +
         `aria-activedescendant → ${arrived.options} options landed ${armed.delay}ms later: the ` +
         `status is gone, the input describes nothing, and the highlight is on ` +
-        `"${arrived.activeText}"`,
+        `"${arrived.activeText}" → the caller took them away again: no rows, no ` +
+        `aria-activedescendant, and the popup still open`,
   )
 
   await pressKey(devtools, "Escape")
