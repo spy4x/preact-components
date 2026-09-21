@@ -2539,6 +2539,8 @@ async function arrivingOptionsCheck(devtools: Devtools): Promise<void> {
   await devtools.evaluate<null>(comboboxSetup("guide-combobox-empty"))
   await scrollToParked(devtools)
 
+  // A scripted press of the card's own control, the way the Toastr checks press theirs: nothing
+  // here is a claim about that button. What is under test starts at the field below it.
   const armed = await devtools.evaluate<{ ok: boolean; delay: number }>(`(() => {
     const button = document.querySelector('#demo-Combobox [data-e2e="combobox-load"]')
     if (button === null) return { ok: false, delay: 0 }
@@ -2941,8 +2943,9 @@ async function reopenCheck(devtools: Devtools): Promise<void> {
     "reopening a Combobox highlights its selection, not a row the abandoned query chose",
     opened?.onTarget === true && picked?.onTarget === true && chosen.length > 0 &&
       selected.inputValue === chosen && narrowed.options > 0 &&
-      narrowed.options < selected.options && reopened.options === selected.options &&
-      reopened.activeText === chosen,
+      narrowed.options < selected.options &&
+      narrowed.active === "guide-combobox-coin-option-0" &&
+      reopened.options === selected.options && reopened.activeText === chosen,
     opened?.onTarget !== true || picked?.onTarget !== true
       ? `the press never landed on the field or on its last row, so nothing was selected — this ` +
         `proves nothing`
@@ -2955,6 +2958,10 @@ async function reopenCheck(devtools: Devtools): Promise<void> {
       : narrowed.options >= selected.options
       ? `the query left all ${narrowed.options} rows in the list, so there is no narrow list for ` +
         `the reopening to be measured against`
+      : narrowed.active !== "guide-combobox-coin-option-0"
+      ? `the query "${narrowed.inputValue}" filtered the selection "${chosen}" out of the list and ` +
+        `left the highlight on ${narrowed.active ?? "nothing"} rather than on the first row that ` +
+        `survived it, so Enter right after typing would pick nothing`
       : abandoned.expanded !== "false"
       ? "Tab never closed the list, so the query was never abandoned"
       : reopened.options !== selected.options
@@ -2965,9 +2972,10 @@ async function reopenCheck(devtools: Devtools): Promise<void> {
         `selected "${chosen}": the highlight was placed against the ${narrowed.options} rows the ` +
         `abandoned query "${narrowed.inputValue}" had left, and that index is a different row in ` +
         `the full list of ${reopened.options}`
-      : `selected "${chosen}" → narrowed to ${narrowed.options} of ${selected.options} rows with ` +
-        `the query "${narrowed.inputValue}" → Tab abandoned it → focusing the field again ` +
-        `restored all ${reopened.options} rows and highlighted "${reopened.activeText}" ` +
+      : `selected "${chosen}" → the query "${narrowed.inputValue}" narrowed the list to ` +
+        `${narrowed.options} of ${selected.options} rows, dropping the selection, and the ` +
+        `highlight moved to the first row that survived → Tab abandoned it → focusing the field ` +
+        `again restored all ${reopened.options} rows and highlighted "${reopened.activeText}" ` +
         `(${reopened.active}), the selection`,
   )
 
