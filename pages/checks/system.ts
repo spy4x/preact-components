@@ -557,7 +557,8 @@ async function calendarChecks(devtools: Devtools): Promise<void> {
     start.staged && entered.inGrid && !left.inGrid && start.cells > 27,
     start.staged
       ? `Tab from the month arrow landed on ${entered.date || "nothing"}, and the next Tab left ` +
-        `the grid for ${left.focused} — ${start.cells} days behind one Tab stop, not ${start.cells}`
+        `the grid for ${left.focused} — ${start.cells} days behind one Tab stop rather than ` +
+        `${start.cells} of them`
       : `nothing to Tab into: ${start.detail}`,
   )
 
