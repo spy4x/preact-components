@@ -34,9 +34,18 @@
  *
  * The rest are honest full demos. `Calendar` reads state, so it lives in its own component with its
  * own local state, and every date is injected: it takes `today` and `timeZone` as props precisely so
- * a render can be pinned, and it is pinned to `2026-03-10`/`UTC` here. It has three cards rather
- * than one, because three things about it can only be shown by driving it: the dual-mode swap, the
- * keyboard inside the grid, and what changes when the locale does.
+ * a render can be pinned, and it is pinned to `2026-03-10`/`UTC` here. It has four cards rather
+ * than one, because four things about it can only be shown by driving it: the dual-mode swap, the
+ * keyboard inside the grid, what changes when the locale does, and what a month change the owner
+ * refuses does to the reader's place in the grid.
+ *
+ * That fourth card is the one whose shape is not obvious. `onSelectMonth` is a request, and a
+ * controlled calendar is free to leave the month where it is — an owner clamping to an allowed
+ * range does it routinely — so the card supplies the callback, counts what it was asked for, and
+ * then does nothing about it. The refusal has to be visible rather than implied, which is what the
+ * running count is for: "the month did not change" is equally true of a key press that never
+ * reached the calendar at all, and the count is what tells the two apart, on screen and in
+ * `pages/checks/system.ts`.
  *
  * `ImageLightbox` renders its dialog closed, with nothing else to pin, and the images beside it are
  * the demo's own — one plain and one wrapped in a link, because "opens the lightbox instead of
@@ -626,6 +635,68 @@ function CalendarInteractiveDemo() {
   )
 }
 
+/**
+ * A controlled calendar whose owner is asked for a month and declines to draw it.
+ *
+ * `monthAnchor` is a constant here, and that constant *is* the refusal: the callback is supplied, so
+ * Page Up, Page Down and both month arrows really do ask, and March is what the owner keeps showing
+ * whatever they ask for. It is the shape a caller ends up with whenever the month is clamped to a
+ * range the reader may not leave, and the reason it has a card is that the calendar's answer to it
+ * is a focus move nothing else on this page demonstrates: the press changes neither the month nor
+ * where the reader is standing.
+ *
+ * Both counters are on screen because a refusal is otherwise indistinguishable from a key press that
+ * never arrived. The reset control is an ordinary button outside the calendar, which is also what a
+ * reader — or a check — needs in order to move the focus out of the grid while a request is
+ * outstanding and watch the calendar leave it alone.
+ */
+function CalendarRefusingDemo() {
+  const asked = useSignal("nothing yet")
+  const refused = useSignal(0)
+  const picked = useSignal<string | null>(null)
+
+  return (
+    <div class="space-y-3" data-e2e="calendar-refused">
+      <Calendar
+        monthAnchor="2026-03-01"
+        minDate="2026-01-01"
+        maxDate="2026-12-31"
+        today="2026-03-10"
+        timeZone="UTC"
+        slotsByDate={{ "2026-03-11": 6, "2026-03-19": 4, "2026-03-25": 2 }}
+        selectedDate={picked.value}
+        onSelectDate={(date) => picked.value = date}
+        onSelectMonth={(anchor) => {
+          // The whole demo: the request is recorded and then not acted on. `monthAnchor` above is a
+          // constant, so nothing here could change the month even if it wanted to.
+          asked.value = anchor
+          refused.value = refused.value + 1
+        }}
+      />
+      <p class="text-xs text-gray-500 dark:text-gray-400">
+        This owner refuses every month change. Last month asked for:{" "}
+        <span data-e2e="calendar-refused-asked">{asked.value}</span>; requests refused:{" "}
+        <span data-e2e="calendar-refused-count">{refused.value}</span>.
+      </p>
+      <p class="text-xs text-gray-500 dark:text-gray-400">
+        Focus a day, then press Page Down: the count rises, the grid stays on March, and the focus
+        stays on the day you were on.
+      </p>
+      <Button
+        variant="outline"
+        size="sm"
+        data-e2e="calendar-refused-reset"
+        onClick={() => {
+          asked.value = "nothing yet"
+          refused.value = 0
+        }}
+      >
+        Reset the count
+      </Button>
+    </div>
+  )
+}
+
 /** The locales this card offers, as a reader picks them. */
 const CALENDAR_LOCALES = [
   { tag: "en-GB", label: "English (UK)" },
@@ -678,7 +749,7 @@ function CalendarLocaleDemo() {
 export const systemDemos = {
   Calendar: {
     summary:
-      "Six-week month grid. **Dual-mode**: with no `onSelectDate` every cell is an `<a href>` and a month arrow with nothing to show is a `<span>` rather than a dead link; supplying the callback turns the cells into `<button>`. `today` and `timeZone` are props, so a render can be pinned — this card passes `2026-03-10` and `UTC` and reads no clock, and a zone the platform cannot resolve falls back to UTC instead of throwing. A date missing from `slotsByDate` has no availability, a `0` has no slots left, and the two are visually alike but carry different accessible labels. Cells also show today, past dates, dates outside the window, and a scarcity dot at or below `lowSlotsThreshold`. **The whole grid is one Tab stop** once hydrated: the arrow keys step a day and a week, Home and End go to the ends of the week, Page Up and Page Down ask `onSelectMonth` for the neighbouring month, and why a day cannot be picked is the cell's own accessible name plus the hint under the grid rather than a `title` nobody can hover. **The week is the locale's**: both the column order and the header text come from `Intl`, so the third card below moves the columns under the same dates as it changes language.",
+      "Six-week month grid. **Dual-mode**: with no `onSelectDate` every cell is an `<a href>` and a month arrow with nothing to show is a `<span>` rather than a dead link; supplying the callback turns the cells into `<button>`. `today` and `timeZone` are props, so a render can be pinned — this card passes `2026-03-10` and `UTC` and reads no clock, and a zone the platform cannot resolve falls back to UTC instead of throwing. A date missing from `slotsByDate` has no availability, a `0` has no slots left, and the two are visually alike but carry different accessible labels. Cells also show today, past dates, dates outside the window, and a scarcity dot at or below `lowSlotsThreshold`. **The whole grid is one Tab stop** once hydrated: the arrow keys step a day and a week, Home and End go to the ends of the week, Page Up and Page Down ask `onSelectMonth` for the neighbouring month, and why a day cannot be picked is the cell's own accessible name plus the hint under the grid rather than a `title` nobody can hover. **A month is asked for, never taken**: an owner that leaves `monthAnchor` where it was — clamping to an allowed range, say — keeps the month on screen, and the press that asked for it puts the reader back on the day they were standing on rather than leaving them on the grid container. The fourth card below refuses every month change and counts what it refused, because \"the month did not change\" is otherwise indistinguishable from a key press that never arrived. **The week is the locale's**: both the column order and the header text come from `Intl`, so the third card below moves the columns under the same dates as it changes language.",
     snippet: `<Calendar
   monthAnchor="2026-03-01"
   minDate="2026-03-01"
@@ -694,6 +765,7 @@ export const systemDemos = {
         <CalendarDemo />
         <CalendarInteractiveDemo />
         <CalendarLocaleDemo />
+        <CalendarRefusingDemo />
       </div>
     ),
   },
