@@ -167,6 +167,41 @@ describe("pageRange", () => {
     expect(asText(pageRange(25, 50, 40))).toBe("1 … 23 24 25 26 27 … 50")
   })
 
+  it("renders at most nine items once a range collapses, and reaches nine", () => {
+    // The ceiling the JSDoc names, measured rather than asserted about one fixture. `size` says
+    // when a range starts collapsing, not how wide the collapsed form is, so the bound has to hold
+    // across every `size` — the first version of that sentence said `size + 2` and was false for
+    // the two smallest, which a single-`size` loop could never have found.
+    //
+    // Nine is asserted as the *maximum*, not only as a limit, so a change that quietly narrows the
+    // window turns this red as well: the documented number would then be loose, and a bound nobody
+    // reaches is a bound nobody has checked.
+    const over: string[] = []
+    let widest = 0
+
+    for (const size of [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 15, 40]) {
+      const budget = Math.max(5, size)
+      for (let pageCount = 1; pageCount <= 60; pageCount++) {
+        if (pageCount <= budget) continue
+        for (let page = 1; page <= pageCount; page++) {
+          const items = pageRange(page, pageCount, size).length
+          widest = Math.max(widest, items)
+          if (items > 9) over.push(`pageRange(${page}, ${pageCount}, ${size}) → ${items} items`)
+        }
+      }
+    }
+
+    expect(over).toEqual([])
+    expect(widest).toBe(9)
+  })
+
+  it("lists a range in full below the size, however many pages that is", () => {
+    // The other half of the same bound: nine applies to a *collapsed* range. A caller who raises
+    // `size` to 40 is asking for up to forty numbers, and gets them.
+    expect(pageRange(20, 40, 40)).toHaveLength(40)
+    expect(pageRange(20, 40, 40).some((item) => !("page" in item))).toBe(false)
+  })
+
   it("returns every item as a page or a gap", () => {
     for (const item of pageRange(25, 50)) {
       expect("page" in item || "gap" in item).toBe(true)

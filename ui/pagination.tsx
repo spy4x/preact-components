@@ -48,9 +48,16 @@ const sideWidth = 2
  *   itself and an end, that page is written out instead of marked: a `…` takes the same room as the
  *   number and says less.
  *
- * That last rule is why a collapsed range can show more page numbers than `size`: it swallows a
- * page by dropping the `…` that would have hidden it, so the number of **items** rendered does not
- * change and stays at `size + 2` at the very most. `page` is clamped into `1…pageCount` first.
+ * That last rule is why a collapsed range can show more page numbers than `size` — it swallows a
+ * page by dropping the `…` that would have hidden it — and it is why `size` does not bound how much
+ * the control renders. {@link sideWidth} does. A collapsed range renders at most
+ * `4 * sideWidth + 1` items, **nine** as this module is configured: the window is
+ * `2 * sideWidth + 1` pages, and each end adds either the first or last page and a `…`, or the up
+ * to `sideWidth` pages the window swallowed in place of that `…`. The unit suite walks every page
+ * of every total up to 60 across a dozen values of `size` and asserts both that nothing exceeds
+ * nine and that nine is reached, so the number in this sentence is a measured one.
+ *
+ * `page` is clamped into `1…pageCount` first.
  *
  * The `page` of a {@link PageRangeItem} is always a real page number; `"gap"` is a sentinel only
  * ever used by the `gap` branch of the union.
