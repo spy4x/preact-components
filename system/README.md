@@ -12,7 +12,10 @@ Extracted from `antonshubin.com`, `mig` and `financy`.
   reload and the error ports. The only state a component owns is the state the browser handed it.
 - **Server-renderable.** `document`, `navigator`, `location` and the clock are touched inside an
   effect, an event handler, or a pure function whose result the caller passes back in.
-  `SWUpdater` renders `""` on the server, and `Calendar` takes `today` so a render is deterministic.
+  `SWUpdater` renders its empty live region and nothing else on the server, and `Calendar` takes
+  `today` so a render is deterministic.
+- **A live region is always present and empty.** See below; it is a library-wide rule, not a
+  `SWUpdater` one.
 - **No `theme/` dependency.** Utilities are inlined, like `ui/`. `icons/` supplies the three glyphs
   these components draw (`IconChevronLeft`, `IconChevronRight`, `IconXMark`) rather than
   duplicating SVG.
@@ -198,10 +201,74 @@ The defaults name no particular kind of page: the container is `[data-lightbox]`
 host puts where it wants the zoom layer, and an image with no `alt` is described as `Image`. What
 the component puts on the host's images it takes off again when it unmounts.
 
+## A live region is always present and empty
+
+**Every component in this library that announces something renders its live region from the first
+render, empty, and puts the message into it later.** This is a library-wide decision rather than a
+detail of one component, and the reason is the same everywhere: assistive technology announces a
+_change_ to a region it is already watching, and commonly says nothing at all about a region that
+arrives with its message already inside it. Marking an element that only exists once it has
+something to say therefore buys nothing.
+
+Two components follow it today. `SWUpdater` is below, and `Toastr` in `ui/` keeps its stack in the
+page with zero toasts in it. `Combobox` in `ui/` is the third place the rule applies and **does not
+follow it yet**: the paragraph that reports "No matches" is rendered only when there are no answers,
+so that region is created carrying its message, which is the shape this section exists to remove.
+`ui/README.md` records it as a known limit and issue #186 is open to fix it — this section is not
+saying the combobox is already done.
+
+**Where to mount it.** `SWUpdater`'s region carries no class, so it is an ordinary in-flow element
+with no padding, no border and no minimum height: empty, it is zero pixels tall and paints nothing.
+That is not the same as costing nothing everywhere, because a parent can space a child that has no
+height. Measured in Chromium, against a column of two 24px paragraphs that is 64px tall on its own:
+
+| Parent                         | Empty region in it | Cost |
+| ------------------------------ | ------------------ | ---- |
+| block flow, no spacing         | 64px               | 0px  |
+| block flow with `space-y-4`    | 64px               | 0px  |
+| `flex` column with `gap-4`     | 80px               | 16px |
+| `flex` column with `space-y-4` | 80px               | 16px |
+| `grid` with `gap-4`            | 80px               | 16px |
+| `grid` with `space-y-4`        | 80px               | 16px |
+
+**It is the parent's layout mode that decides, not which spacing utility it uses.** A `gap` is
+allocated for every child, height or no height. `space-y-*` spaces by margins instead, and a margin
+collapses through a zero-height element in block flow — which is why the second row costs nothing —
+but margins never collapse between flex or grid items, so the same utility costs a full 16px in the
+fourth and sixth rows. Spacing a flex or grid container by margins rather than by `gap` therefore
+buys a host nothing here.
+
+**So mount `<SWUpdater />` where its parent is neither a `flex` nor a `grid` container** — as a
+direct child of `<body>`, or of a plain block-flow container, spaced or not. Anywhere else it costs
+one gap or one margin: a visible hole in the layout, for an element nobody can see.
+
+The zero cost depends on the region having no border, no padding and no height, and a host cannot
+take that away: the region carries no class of its own and the `class` prop goes to the bar inside
+it, so there is no way to style the region from outside the package. `Toastr`'s stack never faces
+this question at all, because it is laid out `fixed` and is out of flow wherever it is mounted.
+
+What an always-present region costs everywhere is one more node in the accessibility tree, which is
+the trade being made.
+
+**No screen reader has been run against this repository.** What is demonstrated is markup and the
+order in which the DOM changes — the region is in the page first, and the message arrives as a
+mutation of that same element — which is the footing this decision rests on. It is not a
+demonstration that any particular screen reader speaks. `pages/checks/system.ts` parks a reference
+to the region and a `MutationObserver` on it before an update is made ready, so a check cannot pass
+by finding a region that arrived carrying text.
+
 ## The service-worker contract
 
 `SWUpdater` registers the worker and shows one bar: "New version available", with Reload and
-Dismiss. Three things about it are the host's business rather than this package's.
+Dismiss. Four things about it are the host's business rather than this package's.
+
+**The live region is always there; the bar is not.** The component renders one unstyled
+`role="status"` element with `aria-live="polite"` and `aria-atomic="true"` on every render, on the
+server included, and that is its entire output until a worker is waiting. The bar, its Reload
+button and its Dismiss control appear inside that element when there is an update and leave it
+again when there is not, so the message is a change to a region rather than a region carrying a
+message. `aria-atomic` is set although `role="status"` already implies it, so a reader announces
+the whole sentence and its two controls rather than the one text node that changed.
 
 **The container comes from `navigator`.** `globalThis.navigator.serviceWorker` is where a browser
 keeps it; there is no `globalThis.serviceWorker` in a page. A host that already owns its
@@ -225,6 +292,11 @@ dead: nothing takes over, so nothing reloads.
 over, so the listener that reloads is armed by the Reload button and not by the registration.
 Without that, one visitor pressing Reload reloads every open tab, including the one with a
 half-filled form, and a first install reloads the page mid-visit.
+
+**A dismissal covers one update, not the component.** Pressing Dismiss empties the live region and
+takes the bar off the page; the next update to be reported puts it back, so the message leaves the
+region and later arrives in it again as a fresh change. A permanent dismissal would mean a visitor
+who put one version away was never told about any version after it.
 
 ## Decisions worth knowing
 

@@ -14,10 +14,15 @@
  *   function the component maps over: the tag set is real, complete, and asserted by the card's own
  *   content. What is *not* claimed is that the tags reach a document head — this package has no head
  *   pipeline, and the guide has none to offer.
- * - **`SWUpdater` renders `null` until a waiting service worker is detected**, so its server render is
- *   nothing at all. The card has two halves. The first drives the pure function the component is
- *   built on — `watchForUpdate`, on a fake registration, in every branch, with the outcome printed.
- *   The second is the component itself against a real service worker, and it is deliberately
+ * - **`SWUpdater` renders an empty live region and nothing else until a waiting service worker is
+ *   detected**, so its server render is that region alone. The card has three parts. The first is
+ *   the contract itself: the component mounted against a container that exists only in this page,
+ *   so the always-present empty region can be seen with nothing waiting anywhere, and a button that
+ *   makes an update ready inside that same element. Nothing is registered with the browser by it,
+ *   which is what makes mounting it on page load acceptable here. The second drives the pure
+ *   function the component is built on — `watchForUpdate`, on a fake registration, in every branch,
+ *   with the outcome printed.
+ *   The third is the component itself against a real service worker, and it is deliberately
  *   visitor-triggered: this catalogue is published, so **nothing registers a worker on page load**.
  *   Pressing the card's button installs `sw-demo/sw.js`, a worker with no `fetch` handler, no cache
  *   and no `clients.claim()`, scoped to `sw-demo/` — one directory below this page, which therefore
@@ -43,6 +48,7 @@ import type { PageHead } from "@preact-components/system/head"
 import { ImageLightbox } from "@preact-components/system/image-lightbox"
 import { seoHeadTags } from "@preact-components/system/seo-head"
 import {
+  type ContainerLike,
   type RegistrationLike,
   SWUpdater,
   watchForUpdate,
@@ -128,6 +134,135 @@ function fakeRegistration(init: {
     },
   }
   return registration
+}
+
+/**
+ * A worker double that really dispatches `statechange` to whoever listened for it.
+ *
+ * {@link fakeWorker} ignores its listeners, which is enough for a scenario that only reads
+ * `state`. The card below needs the other half: `watchForUpdate` subscribes to the installing
+ * worker and reports the update from that event, so a double that swallows the subscription can
+ * never produce an update at all.
+ */
+function scriptedWorker(state: string): WorkerLike & { emit(type: string): void } {
+  const handlers = new Map<string, Array<() => void>>()
+  return {
+    state,
+    postMessage: () => {},
+    addEventListener: (type: string, listener: () => void) => {
+      handlers.set(type, [...(handlers.get(type) ?? []), listener])
+    },
+    removeEventListener: (type: string, listener: () => void) => {
+      handlers.set(type, (handlers.get(type) ?? []).filter((entry) => entry !== listener))
+    },
+    emit: (type: string) => {
+      for (const listener of handlers.get(type) ?? []) listener()
+    },
+  }
+}
+
+/** A container the card owns, plus the button that makes an update ready inside it. */
+interface QuietRig {
+  /** Handed to `SWUpdater` as its `container` prop, so `navigator` is never consulted. */
+  container: ContainerLike
+  /** Run one complete install → installed cycle, which is what reports an update. */
+  announce(): void
+}
+
+/**
+ * A service-worker container that exists only in this page.
+ *
+ * Nothing here reaches the browser's own registry: `register` answers with a registration object
+ * the card built, so mounting `SWUpdater` against it installs no worker and leaves no state behind
+ * when the visitor navigates away. That is what makes it safe to mount this one on page load,
+ * which the live demo further down deliberately is not — and being mounted on page load is the
+ * only way to show the thing this card is about, a live region that is already in the page before
+ * there is anything to announce.
+ *
+ * `controller` is set, because a registration with nothing controlling the page is a *first*
+ * install and `watchForUpdate` stays silent through those on purpose.
+ */
+function quietRig(): QuietRig {
+  const registration = fakeRegistration()
+  return {
+    container: {
+      controller: {},
+      register: () => Promise.resolve(registration),
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    },
+    announce: () => {
+      const worker = scriptedWorker("installing")
+      registration.installing = worker
+      registration.fire("updatefound")
+      worker.state = "installed"
+      worker.emit("statechange")
+    },
+  }
+}
+
+/** The message this card announces. Not the component's English default, on purpose. */
+const QUIET_MESSAGE = "A newer catalogue build is ready"
+
+/**
+ * The live region before, during and after there is something to say.
+ *
+ * This is the card for the component's contract rather than for its plumbing. `SWUpdater` is
+ * mounted here from page load, against a container that exists only in this page, so the empty
+ * live region it always renders can be seen — and measured — with nothing waiting anywhere. The
+ * button then runs a whole install cycle through `watchForUpdate`, which is what puts the message
+ * *into* the region that was already there, rather than putting a region carrying a message into
+ * the page. That difference is the whole reason the component is shaped this way, and it is not
+ * visible: the region is an empty, unstyled element, and what proves the message arrived as a
+ * change to it is `pages/checks/system.ts`, which parks a reference to the element and a
+ * `MutationObserver` on it before pressing the button.
+ *
+ * The bar is laid out `static` here so it sits inside the card. Shipped, it is `fixed` across the
+ * top of the window, which the live demo below shows; inside the card it can be compared against
+ * an empty region that reserves no height at all.
+ *
+ * Dismissing it and pressing the button again is the other half of the contract: the message has
+ * to leave the region and arrive again, because a visitor who put one version away still has to
+ * be told about the next one.
+ */
+function SwUpdaterQuietDemo() {
+  const announcements = useSignal(0)
+  const reloads = useSignal(0)
+  const rig = useRef<QuietRig | null>(null)
+  rig.current ??= quietRig()
+
+  return (
+    <div class="space-y-3" data-e2e="sw-quiet">
+      <p class="text-xs text-gray-500 dark:text-gray-400">
+        Mounted right now, with nothing waiting: the only thing it renders is an empty live region,
+        zero pixels tall and painting nothing. Press the button to make an update ready inside that
+        same element.
+      </p>
+      <div class="flex flex-wrap items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="sw-quiet-announce"
+          onClick={() => {
+            rig.current?.announce()
+            announcements.value++
+          }}
+        >
+          Make an update ready
+        </Button>
+        <span class="text-xs text-gray-500 dark:text-gray-400">
+          announced <span data-e2e="sw-quiet-count">{announcements.value}</span>{" "}
+          times, reload port called <span data-e2e="sw-quiet-reloads">{reloads.value}</span> times
+        </span>
+      </div>
+      <SWUpdater
+        container={rig.current.container}
+        message={QUIET_MESSAGE}
+        reload={() => reloads.value++}
+        class="static shadow-none"
+      />
+    </div>
+  )
 }
 
 /**
@@ -585,7 +720,7 @@ const tags = seoHeadTags(head)`,
   },
   SWUpdater: {
     summary:
-      'Registers the service worker and offers a reload once a new version is *waiting*. **It renders `null` until then**, which is what makes it safe to mount in a layout for every visitor. The container comes from `navigator.serviceWorker`, read inside the effect so a server render touches nothing. Nothing reloads until the visitor presses Reload: `controllerchange` fires in every open tab, so the listener that reloads is armed by the button and not by the registration — otherwise a first install reloads the page mid-visit and one tab\'s Reload reloads the tab with the half-filled form. Pressing Reload posts `{ action: "skipWaiting" }` to the waiting worker, which is a **contract**: a worker that expects a different message ignores it and the button does nothing, so the message is the `updateMessage` prop. The bar can be dismissed, and every string it shows has an English default and a prop. The first half of this card drives the pure function underneath, `watchForUpdate`, against a fake registration in all three branches. The second half is the component itself against a real worker — press the button, because this site is published and nothing registers a worker on its own.',
+      'Registers the service worker and offers a reload once a new version is *waiting*. **Its live region is in the page from the first render, empty**, and the bar appears inside it: a region that arrives carrying its first message is commonly not announced at all, because assistive technology announces a *change* to a region it is already watching. Nothing else is always rendered — the region carries no class, no padding and no border, so an empty one paints nothing and is zero pixels tall. It is an ordinary in-flow element rather than a `fixed` one, so a `flex` or `grid` parent charges a full 16px for it whether it spaces its children with `gap-4` or with a `space-y-4` margin — neither collapses between flex or grid items — while block flow costs nothing either way; mount it outside a flex or grid container, and see `system/README.md` for the measurements. The `class` prop goes to the bar rather than the region, so no caller can give the region a box. A dismissal covers one update rather than the component, so a later version puts the message back. The container comes from `navigator.serviceWorker`, read inside the effect so a server render touches nothing but still emits the empty region. Nothing reloads until the visitor presses Reload: `controllerchange` fires in every open tab, so the listener that reloads is armed by the button and not by the registration — otherwise a first install reloads the page mid-visit and one tab\'s Reload reloads the tab with the half-filled form. Pressing Reload posts `{ action: "skipWaiting" }` to the waiting worker, which is a **contract**: a worker that expects a different message ignores it and the button does nothing, so the message is the `updateMessage` prop. The bar can be dismissed, and every string it shows has an English default and a prop. **This card has three parts.** The first is the contract above: the component mounted with nothing waiting, and a button that puts a message into the region already there. The second drives the pure function underneath, `watchForUpdate`, against a fake registration in all three branches. The third is the component itself against a real worker — press the button, because this site is published and nothing registers a worker on its own.',
     snippet: `<SWUpdater
   scriptUrl="/sw.js"
   reload={() => globalThis.location.reload()}
@@ -597,6 +732,7 @@ const tags = seoHeadTags(head)`,
 <SWUpdater scriptUrl="/sw.js" updateMessage={{ type: "SKIP_WAITING" }} />`,
     render: () => (
       <div class="space-y-4">
+        <SwUpdaterQuietDemo />
         <SwUpdaterDemo />
         <SwUpdaterLiveDemo />
       </div>

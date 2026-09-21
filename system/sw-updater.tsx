@@ -12,6 +12,10 @@
  * the page yet — never tells the visitor to reload. Nothing reloads until the visitor presses
  * Reload, and then only in the tab where they pressed it.
  *
+ * The live region around that bar is a different matter: it is in the page from the first render,
+ * empty, so the message arrives as a *change* to a region rather than as a region that arrives
+ * carrying a message. See {@link SWUpdater} for why that distinction is the whole component.
+ *
  * Every string the bar shows has an English default and a prop that overrides it.
  */
 
@@ -279,15 +283,34 @@ const dismissButtonClass =
 /**
  * Register the service worker and offer a reload when a new version is waiting.
  *
- * Renders nothing until an update exists, which makes it safe to mount in a layout for every
- * visitor: no service worker (a server render, a browser without support, a test) simply means an
- * empty component.
+ * **The live region is in the document at all times, including before anything has happened**,
+ * which is a change from the version that returned `null` until an update existed. That empty
+ * region is what makes the message announceable: assistive technology announces a *change* to a
+ * region it is already watching, and commonly says nothing at all about a region that arrives with
+ * its text already inside it. A `role="status"` added to a bar that only appears with its own
+ * message would therefore have announced nothing, which is precisely the defect this replaces.
+ *
+ * What is always there is only the region: no class, no padding, no border, no minimum height, so
+ * an empty one paints nothing and is zero pixels tall. It is an ordinary in-flow element, which is
+ * not quite the same as free — a `flex` or `grid` parent charges a full 16px for a child with no
+ * height, whether it spaces its children with `gap-4` or with a `space-y-4` margin, because neither
+ * a gap nor a margin between flex or grid items collapses. Block flow costs nothing either way.
+ * `system/README.md` has the measurements and says where a host should mount it. The `class` prop
+ * goes to the bar rather than to the region, so no caller can give the region a box. The visible
+ * bar, the
+ * Reload button and the Dismiss control appear inside it when — and only when — a worker is
+ * waiting. `aria-atomic` is set explicitly although `role="status"` already implies it, so a reader
+ * announces the whole sentence and its two controls rather than the one text node that changed.
  *
  * Two things happen only on the visitor's word. The reload listener is armed by the Reload button
  * rather than by the effect, because `controllerchange` fires in every tab the new worker takes
  * over and arming it at registration time reloads tabs nobody touched. And the bar can be
  * dismissed, because it covers the top of the page and a visitor who is not ready to reload has to
  * be able to put it away.
+ *
+ * A dismissal puts *that* update away rather than the component: the next update to be reported
+ * clears it, so the message leaves the region and later arrives in it again as a fresh change.
+ * Without that, a visitor who dismissed one version was never told about any version after it.
  */
 export function SWUpdater(
   {
@@ -324,6 +347,9 @@ export function SWUpdater(
       onRegistered: setRegistration,
       onUpdate: () => {
         setAvailable(true)
+        // A dismissal is about one update, not about the component: clearing it here is what lets a
+        // later version put the message back into the region the visitor emptied.
+        setDismissed(false)
         onUpdate?.()
       },
       onError,
@@ -350,24 +376,30 @@ export function SWUpdater(
     if (!skipWaiting(registration, updateMessage)) reloadPage()
   }
 
-  if (!available || dismissed) return null
-
+  // The region is unconditional and carries no styling of its own. Everything the visitor can see
+  // or press is the conditional part, inside it.
   return (
-    <div role="status" aria-live="polite" class={cn(barClass, className)}>
-      <span class="text-sm">{message}</span>
-      <button type="button" onClick={requestReload} class={reloadButtonClass}>
-        {reloadLabel}
-      </button>
-      <button
-        type="button"
-        onClick={() => {
-          setDismissed(true)
-          onDismiss?.()
-        }}
-        class={dismissButtonClass}
-      >
-        {dismissLabel}
-      </button>
+    <div role="status" aria-live="polite" aria-atomic="true">
+      {available && !dismissed
+        ? (
+          <div class={cn(barClass, className)}>
+            <span class="text-sm">{message}</span>
+            <button type="button" onClick={requestReload} class={reloadButtonClass}>
+              {reloadLabel}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setDismissed(true)
+                onDismiss?.()
+              }}
+              class={dismissButtonClass}
+            >
+              {dismissLabel}
+            </button>
+          </div>
+        )
+        : null}
     </div>
   )
 }
