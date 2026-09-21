@@ -135,6 +135,17 @@ function buildTimedStore(fetchImpl: typeof fetch) {
   })
 }
 
+/** A store whose rows may or may not carry `updatedAt`, for the one-side-only freshness cases. */
+function buildLooseStore(fetchImpl: typeof fetch) {
+  const looseSchema = type({ id: "number", name: "string", "updatedAt?": dateSchema })
+  return buildModelStore({
+    model: "zone",
+    endpoint: "/api/zones",
+    schemas: { full: looseSchema, create: looseSchema, update: looseSchema },
+    fetch: fetchImpl,
+  })
+}
+
 describe("buildModelStore list selectors", () => {
   it("orders list.all without reordering the stored list", () => {
     const { impl } = queueFetch()
@@ -362,7 +373,8 @@ describe("buildModelStore delete and undelete", () => {
 describe("buildModelStore requests answered out of order", () => {
   it("keeps the newer value when two updates to one row answer oldest last", async () => {
     const { impl, pending } = deferredFetch()
-    const store = buildStore({ fetch: impl })
+    const toast = toastRecorder()
+    const store = buildStore({ fetch: impl, toast: toast.port })
     await store.onWs([row(1, "North")], RemoteEvent.LIST)
 
     const first = store.update(1, { name: "First" })
@@ -378,6 +390,9 @@ describe("buildModelStore requests answered out of order", () => {
 
     expect(store.state.value.list[0].name).toBe("Second")
     expect(store.op.update(1).value?.result?.name).toBe("Second")
+    // The older answer succeeded at the server and was discarded here all the same, so announcing
+    // it would tell the user about a value the store does not hold.
+    expect(toast.messages).toEqual([{ body: "zone was updated" }])
   })
 
   it("keeps saving until the newest update to a row has answered", async () => {
@@ -446,7 +461,8 @@ describe("buildModelStore requests answered out of order", () => {
 
   it("does not delete a row when the delete answers after a newer update", async () => {
     const { impl, pending } = deferredFetch()
-    const store = buildStore({ fetch: impl })
+    const toast = toastRecorder()
+    const store = buildStore({ fetch: impl, toast: toast.port })
     await store.onWs([row(1, "North")], RemoteEvent.LIST)
 
     const deleting = store.delete(1)
@@ -461,11 +477,86 @@ describe("buildModelStore requests answered out of order", () => {
     expect(store.state.value.list[0].name).toBe("Renamed")
     // The delete's answer was dropped, so nothing in its own slot would have lowered this flag.
     expect(store.op.delete(1).value?.inProgress).toBe(false)
+    // The row is not deleted, so the user must not be told that it is.
+    expect(toast.messages).toEqual([{ body: "zone was updated" }])
+  })
+
+  it("applies an older delete but keeps saving while a newer update is outstanding", async () => {
+    const { impl, pending } = deferredFetch()
+    const store = buildStore({ fetch: impl })
+    await store.onWs([row(1, "North")], RemoteEvent.LIST)
+
+    const deleting = store.delete(1)
+    const updating = store.update(1, { name: "Renamed" })
+
+    pending[0].settle(Response.json(row(1, "North", new Date("2024-03-01T00:00:00.000Z"))))
+    await deleting
+    // The delete is the newest answer so far and is applied, but the update behind it is still on
+    // the wire and neither slot may say the work is done.
+    expect(store.list.deleted.value.map((r) => r.id)).toEqual([1])
+    expect(store.op.delete(1).value?.inProgress).toBe(true)
+    expect(store.op.update(1).value?.inProgress).toBe(true)
+
+    pending[1].settle(Response.json(row(1, "Renamed")))
+    await updating
+
+    expect(store.state.value.list[0].name).toBe("Renamed")
+    expect(store.op.delete(1).value?.inProgress).toBe(false)
+    expect(store.op.update(1).value?.inProgress).toBe(false)
+  })
+
+  it("keeps saving when an older delete fails while a newer update is outstanding", async () => {
+    const { impl, pending } = deferredFetch()
+    const toast = toastRecorder()
+    const store = buildStore({ fetch: impl, toast: toast.port })
+    await store.onWs([row(1, "North")], RemoteEvent.LIST)
+
+    const deleting = store.delete(1)
+    const updating = store.update(1, { name: "Renamed" })
+
+    pending[0].settle(Response.json({ error: "not yours" }, { status: 403 }))
+    await deleting
+
+    // Nothing newer has answered, so the failure is real news and is reported…
+    expect(toast.messages).toEqual([{ title: "Failed to delete zone", body: "not yours" }])
+    // …but the update behind it is still outstanding, so neither slot may settle on it.
+    expect(store.op.delete(1).value?.inProgress).toBe(true)
+    expect(store.op.delete(1).value?.error).toBeNull()
+    expect(store.op.update(1).value?.inProgress).toBe(true)
+
+    pending[1].settle(Response.json(row(1, "Renamed")))
+    await updating
+
+    expect(store.state.value.list[0].name).toBe("Renamed")
+    expect(store.op.delete(1).value?.inProgress).toBe(false)
+    expect(store.op.update(1).value?.inProgress).toBe(false)
+  })
+
+  it("ignores a delete that fails after a newer update has succeeded", async () => {
+    const { impl, pending } = deferredFetch()
+    const toast = toastRecorder()
+    const store = buildStore({ fetch: impl, toast: toast.port })
+    await store.onWs([row(1, "North")], RemoteEvent.LIST)
+
+    const deleting = store.delete(1)
+    const updating = store.update(1, { name: "Renamed" })
+
+    pending[1].settle(Response.json(row(1, "Renamed")))
+    await updating
+    pending[0].settle(Response.json({ error: "not yours" }, { status: 403 }))
+    await deleting
+
+    // The request that failed had already been superseded, so its failure is not the row's news.
+    expect(store.op.delete(1).value?.error).toBeNull()
+    expect(store.op.delete(1).value?.inProgress).toBe(false)
+    expect(toast.messages).toEqual([{ body: "zone was updated" }])
+    expect(store.state.value.list[0].name).toBe("Renamed")
   })
 
   it("does not restore a row when an undelete answers after a newer delete", async () => {
     const { impl, pending } = deferredFetch()
-    const store = buildStore({ fetch: impl })
+    const toast = toastRecorder()
+    const store = buildStore({ fetch: impl, toast: toast.port })
     await store.onWs([row(1, "North", new Date("2024-03-01T00:00:00.000Z"))], RemoteEvent.LIST)
 
     const restoring = store.undelete(1)
@@ -478,6 +569,74 @@ describe("buildModelStore requests answered out of order", () => {
 
     expect(store.list.deleted.value.map((r) => r.id)).toEqual([1])
     expect(store.op.update(1).value?.inProgress).toBe(false)
+    // The row was not restored, so the user must not be told that it was.
+    expect(toast.messages).toEqual([{ body: "zone was deleted" }])
+  })
+
+  it("restores the row but keeps saving while a newer delete is outstanding", async () => {
+    const { impl, pending } = deferredFetch()
+    const store = buildStore({ fetch: impl })
+    await store.onWs([row(1, "North", new Date("2024-03-01T00:00:00.000Z"))], RemoteEvent.LIST)
+
+    const restoring = store.undelete(1)
+    const deleting = store.delete(1)
+
+    pending[0].settle(Response.json(row(1, "North")))
+    await restoring
+    expect(store.list.deleted.value).toEqual([])
+    // An undelete settles the row's update slot, and the delete behind it is still outstanding.
+    expect(store.op.update(1).value?.inProgress).toBe(true)
+    expect(store.op.delete(1).value?.inProgress).toBe(true)
+
+    pending[1].settle(Response.json(row(1, "North", new Date("2024-05-01T00:00:00.000Z"))))
+    await deleting
+
+    expect(store.list.deleted.value.map((r) => r.id)).toEqual([1])
+    expect(store.op.update(1).value?.inProgress).toBe(false)
+    expect(store.op.delete(1).value?.inProgress).toBe(false)
+  })
+
+  it("keeps saving when an older undelete fails while a newer delete is outstanding", async () => {
+    const { impl, pending } = deferredFetch()
+    const toast = toastRecorder()
+    const store = buildStore({ fetch: impl, toast: toast.port })
+    await store.onWs([row(1, "North", new Date("2024-03-01T00:00:00.000Z"))], RemoteEvent.LIST)
+
+    const restoring = store.undelete(1)
+    const deleting = store.delete(1)
+
+    pending[0].settle(Response.json({ error: "gone for good" }, { status: 404 }))
+    await restoring
+
+    expect(toast.messages).toEqual([{ title: "Failed to restore zone", body: "gone for good" }])
+    expect(store.op.update(1).value?.inProgress).toBe(true)
+    expect(store.op.update(1).value?.error).toBeNull()
+    expect(store.op.delete(1).value?.inProgress).toBe(true)
+
+    pending[1].settle(Response.json(row(1, "North", new Date("2024-05-01T00:00:00.000Z"))))
+    await deleting
+
+    expect(store.op.update(1).value?.inProgress).toBe(false)
+    expect(store.op.delete(1).value?.inProgress).toBe(false)
+  })
+
+  it("ignores an undelete that fails after a newer delete has succeeded", async () => {
+    const { impl, pending } = deferredFetch()
+    const toast = toastRecorder()
+    const store = buildStore({ fetch: impl, toast: toast.port })
+    await store.onWs([row(1, "North", new Date("2024-03-01T00:00:00.000Z"))], RemoteEvent.LIST)
+
+    const restoring = store.undelete(1)
+    const deleting = store.delete(1)
+
+    pending[1].settle(Response.json(row(1, "North", new Date("2024-05-01T00:00:00.000Z"))))
+    await deleting
+    pending[0].settle(Response.json({ error: "gone for good" }, { status: 404 }))
+    await restoring
+
+    expect(store.op.update(1).value?.error).toBeNull()
+    expect(store.op.update(1).value?.inProgress).toBe(false)
+    expect(toast.messages).toEqual([{ body: "zone was deleted" }])
   })
 
   it("keeps the create slot in progress until the newest create has answered", async () => {
@@ -498,6 +657,31 @@ describe("buildModelStore requests answered out of order", () => {
     expect(store.op.create.value.inProgress).toBe(false)
     expect(store.op.create.value.result?.id).toBe(2)
     expect(store.state.value.list.map((r) => r.id)).toEqual([1, 2])
+  })
+
+  it("keeps the create slot in progress when an older create fails", async () => {
+    const { impl, pending } = deferredFetch()
+    const toast = toastRecorder()
+    const store = buildStore({ fetch: impl, toast: toast.port })
+
+    const first = store.create({ name: "First" })
+    const second = store.create({ name: "Second" })
+
+    pending[0].settle(Response.json({ error: "name taken" }, { status: 409 }))
+    await first
+
+    // A create's failure is its own news, whichever of the two in flight it belongs to…
+    expect(toast.messages).toEqual([{ title: "Failed to create zone", body: "name taken" }])
+    // …but the second create is still outstanding, so the shared slot may not settle on it.
+    expect(store.op.create.value.inProgress).toBe(true)
+    expect(store.op.create.value.error).toBeNull()
+
+    pending[1].settle(Response.json(row(2, "Second"), { status: 201 }))
+    await second
+
+    expect(store.op.create.value.inProgress).toBe(false)
+    expect(store.op.create.value.result?.id).toBe(2)
+    expect(store.state.value.list.map((r) => r.id)).toEqual([2])
   })
 
   it("appends both rows when two creates answer out of order", async () => {
@@ -657,19 +841,28 @@ describe("buildModelStore remote update freshness", () => {
 
   it("accepts an update when only the incoming row carries a timestamp", async () => {
     const { impl } = queueFetch()
-    const looseSchema = type({ id: "number", name: "string", "updatedAt?": dateSchema })
-    const store = buildModelStore({
-      model: "zone",
-      endpoint: "/api/zones",
-      schemas: { full: looseSchema, create: looseSchema, update: looseSchema },
-      fetch: impl,
-    })
+    const store = buildLooseStore(impl)
     await store.onWs([{ id: 1, name: "North" }], RemoteEvent.LIST)
 
     await store.onWs(
       [{ id: 1, name: "Edited", updatedAt: new Date("2024-06-01T00:00:00.000Z") }],
       RemoteEvent.UPDATED,
     )
+
+    expect(store.state.value.list[0].name).toBe("Edited")
+  })
+
+  it("accepts an update when only the stored row carries a timestamp", async () => {
+    const { impl } = queueFetch()
+    const store = buildLooseStore(impl)
+    await store.onWs(
+      [{ id: 1, name: "North", updatedAt: new Date("2024-06-01T00:00:00.000Z") }],
+      RemoteEvent.LIST,
+    )
+
+    // The mirror of the test above: the side that carries the column is the one already held, and
+    // the two still cannot be ordered, so the event is applied.
+    await store.onWs([{ id: 1, name: "Edited" }], RemoteEvent.UPDATED)
 
     expect(store.state.value.list[0].name).toBe("Edited")
   })
