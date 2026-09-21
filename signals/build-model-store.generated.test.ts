@@ -18,7 +18,7 @@
  * It also resets the store mid-case, which is what an application does when somebody signs out: 625
  * cases reset at least once, and in all 625 an answer arrives for a request that was issued before
  * a reset. In 188 of those the answer has two resets behind it rather than one; in 269 the row it
- * names is one the next session did not load at all; and in 313 the answer would have been written
+ * names is one the next session did not load at all; and in 305 the answer would have been written
  * into the next session's list under the rule this store had before it counted its resets — see
  * {@link RESET_CHANCE}. The list the next session loads carries the same ids under different names,
  * so an answer that lands where it should not is visible rather than merely redundant.
@@ -27,19 +27,26 @@
  * whether each slot carries an error, and the notifications so far.
  *
  * **What it does not cover.** The freshness rule, whose axes are bounded and enumerated beside the
- * fixtures instead; creates, which have no row identity to vary; `extraOps`; the session watch,
- * which reaches `reset()` by the same path this draws directly; `remove`; remote events, including
- * what one does when it arrives after a reset; the body text of a failure notification, only its
- * title; calls made re-entrantly from an effect; and anything about timing beyond the order in
- * which things happen. The cap of five rows is a cap, not a proof: a store that forgot a row's
- * counter only once six rows had been written to would pass every case here, exactly as one that
- * forgot at four passed while the cap was four. The same goes for the cap of two resets per case.
- * It reads only what the store shows — the list and the operation slots — never the value an
- * operation returns to its caller or the `result` a slot carries, so the promise that an answer
- * from a finished session still reaches whoever asked for it is pinned by the named tests and not
- * here. It is also not a description of the store: it says the rules hold across these axes, never
- * what they are, and a reader who wants to know what the store promises should read the named
- * tests.
+ * fixtures instead; creates; `extraOps`; the session watch; `remove`; remote events, including what
+ * one does when it arrives after a reset; the body text of a failure notification, only its title;
+ * calls made re-entrantly from an effect; and anything about timing beyond the order in which
+ * things happen.
+ *
+ * Three of those are covered by named tests instead, and deliberately. **Creates** have no row
+ * identity for a model to key on, and the one thing two creates contend for — the single `createOp`
+ * slot — has an enumerable set of orders rather than an open one, so `two creates either side of a
+ * reset` in `build-model-store.test.ts` writes both of them out by hand. **The session watch**
+ * reaches `reset()` by the same path this file drives directly, and that it does so is pinned by
+ * `disowns a request left in flight when the session watch signs the user out`. **What an operation
+ * returns to its caller** is read by the named tests for every operation and both outcomes; this
+ * file reads only the list and the operation slots, never a returned value and never the `result` a
+ * slot carries.
+ *
+ * The cap of five rows is a cap, not a proof: a store that forgot a row's counter only once six
+ * rows had been written to would pass every case here, exactly as one that forgot at four passed
+ * while the cap was four. The same goes for the cap of two resets per case. And this file is not a
+ * description of the store: it says the rules hold across these axes, never what they are, and a
+ * reader who wants to know what the store promises should read the named tests.
  *
  * **Reproducing a failure.** Every case comes from `SEED + index` and nothing else, so it is the
  * same on every machine and every run, and a failed assertion prints that number with the plan it
@@ -81,11 +88,17 @@ const CASES = 1200
  * draw around it is an answer arriving after it — so a reset is only ever drawn while at least one
  * request is outstanding. At 0.1, with at most {@link MAX_RESETS} per case, 625 of the 1,200 cases
  * reset at least once, and every one of those 625 has an answer arriving for a request issued
- * before a reset. In 313 of them at least one such answer would have reached the next session's
+ * before a reset. In 305 of them at least one such answer would have reached the next session's
  * list under the rule this store had before it counted its resets — that number is the one to
  * watch, because it counts the cases that can tell the two rules apart, and if it falls this file
  * has stopped testing what it was extended for. Raising the chance raises it and costs coverage of
  * the per-row counters, which is the trade {@link MAKE_BIAS} describes.
+ *
+ * Measure that number by replaying these plans against the **old** store, not by reasoning about
+ * the current one. Under the old rule every answer was numbered, including one from an earlier
+ * session, so it advanced its row's counter and could make a later answer stale. Counting a
+ * crossing answer as fresh without that advance — which is how the current store numbers — gives
+ * 313 rather than 305, and 313 is the answer to a question nobody asked.
  */
 const RESET_CHANCE = 0.1
 /** At most this many resets per case, so a case still spends most of its steps on requests. */
