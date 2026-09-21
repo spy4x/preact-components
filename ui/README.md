@@ -102,6 +102,8 @@ the whole toast rather than the one text node that changed.
 The timer pauses while the pointer is over the stack or focus is inside it, and resumes with the
 time it had left when they leave — a toast is reachable by keyboard instead of a race. Moving focus
 _within_ the stack, from a link in a toast's body to its dismiss control, does not resume it.
+Raising a toast's `duration` while it is on screen is the one thing that refills the budget rather
+than continuing it, which is how a caller extends a toast it has already shown.
 
 Every string the stack shows is a prop with an English default: `label` names the region
 (`"Notifications"`), `dismissLabel` names every dismiss control (`"Dismiss"`), and one toast can

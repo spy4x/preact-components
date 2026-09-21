@@ -132,9 +132,18 @@ const autoDismissMs = 1200
 const autoDismissBody = "auto — dismissed by its own timer"
 
 /**
+ * What the extend control raises every toast on screen to, in milliseconds.
+ *
+ * Longer than {@link autoDismissMs} by enough that the two possible outcomes cannot be confused: a
+ * toast given the new budget in full outlives one that carried on with whatever the old budget had
+ * left by about two seconds, and that gap is what the browser check measures.
+ */
+const extendMs = 2500
+
+/**
  * `Toastr` is also positioned for the page corner. The stack is owned here, not by the component:
- * `onDismiss` is the port, `duration: 0` keeps a toast until the demo dismisses it, and the last
- * button pushes one that dismisses itself.
+ * `onDismiss` is the port, `duration: 0` keeps a toast until the demo dismisses it, one button
+ * pushes a toast that dismisses itself, and one raises the duration of everything on screen.
  *
  * The dashed box is what shows the new empty-stack contract: the live area is inside it before
  * anything is pushed, and it is zero pixels tall, so the box looks exactly as it did when the
@@ -175,6 +184,16 @@ function ToastrDemo() {
         <button
           type="button"
           class={toastButton}
+          data-e2e="toast-extend"
+          data-duration={extendMs}
+          onClick={() =>
+            stack.value = stack.value.map((toast) => ({ ...toast, duration: extendMs }))}
+        >
+          extend to {extendMs}ms
+        </button>
+        <button
+          type="button"
+          class={toastButton}
           data-e2e="toast-clear"
           onClick={() => stack.value = []}
         >
@@ -199,8 +218,10 @@ function ToastrDemo() {
       </div>
       <p class="text-xs text-gray-500 dark:text-gray-400">
         Put the pointer over the stack, or tab into it, and every timer stops; each one picks up the
-        time it had left when you leave. The error toast is a `role="alert"`, so it interrupts a
-        screen reader; the rest are `role="status"` inside a polite region.
+        time it had left when you leave, rather than starting over. Raising a toast's `duration` is
+        the one thing that refills its budget, which is what the extend control does. The error
+        toast is a `role="alert"`, so it interrupts a screen reader; the rest are `role="status"`
+        inside a polite region.
       </p>
     </div>
   )
@@ -639,7 +660,7 @@ export const feedbackDemos = {
   },
   Toastr: {
     summary:
-      'Stack of transient notifications. The caller owns the stack: it arrives as `toasts` and removal is the `onDismiss` port, which the per-toast auto-dismiss timer also calls. The stack is in the document at all times, empty included — a named region marked `aria-live="polite"`, because an area created together with its first message is commonly not announced at all; empty it has no children and no height, so it costs a landmark rather than layout. An error toast carries `role="alert"` and interrupts, every other variant `role="status"`. The timer pauses while the pointer is over the stack or focus is inside it and resumes with the time it had left, so the dismiss control is reachable rather than a race. Every string is a prop with an English default — `label`, `dismissLabel`, and `ToastItem.dismissLabel` for one toast — and `data-e2e` is rendered only when `dataE2E` is passed.',
+      'Stack of transient notifications. The caller owns the stack: it arrives as `toasts` and removal is the `onDismiss` port, which the per-toast auto-dismiss timer also calls. The stack is in the document at all times, empty included — a named region marked `aria-live="polite"`, because an area created together with its first message is commonly not announced at all; empty it has no children and no height, so it costs a landmark rather than layout. An error toast carries `role="alert"` and interrupts, every other variant `role="status"`. The timer pauses while the pointer is over the stack or focus is inside it and resumes with the time it had left, so the dismiss control is reachable rather than a race; raising a toast\'s `duration` while it is on screen refills the budget instead, which is how a caller extends one. Every string is a prop with an English default — `label`, `dismissLabel`, and `ToastItem.dismissLabel` for one toast — and `data-e2e` is rendered only when `dataE2E` is passed.',
     snippet: `<Toastr
   toasts={app.toast.list.value}
   onDismiss={(id) => app.toast.remove(id)}

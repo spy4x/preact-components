@@ -10,7 +10,13 @@ export interface ToastItem {
   body: ComponentChildren
   /** Defaults to `"info"`. */
   type?: ToastVariant
-  /** Auto-dismiss delay in milliseconds. `0` keeps the toast until it is dismissed. Defaults to 5000. */
+  /**
+   * Auto-dismiss delay in milliseconds. `0` keeps the toast until it is dismissed. Defaults to 5000.
+   *
+   * Changing it for a toast that is already on screen restarts that toast's budget at the new
+   * value, which is how a caller extends one: a toast pushed for 1200ms and given 2500ms half a
+   * second later leaves 2500ms after the change, not 700ms.
+   */
   duration?: number
   /**
    * Accessible name of this toast's own dismiss control, overriding
@@ -100,9 +106,14 @@ export function Toastr(
       onMouseLeave={() => setPaused(false)}
       onFocusIn={() => setPaused(true)}
       onFocusOut={(event) => {
-        // `focusout` fires for a move *inside* the stack too — from a link in a toast's body to its
-        // dismiss control, say — and resuming there would restart the timer under the reader's
-        // hands. A `relatedTarget` of `null` means focus left the document, which counts as leaving.
+        // Defensive, and unreachable under Preact's deferred rendering: a focus move inside the
+        // stack fires `focusout` and then `focusin` in the same task, and the re-render is deferred
+        // past both, so the pair collapses into a single update that is already `true` and this
+        // guard never gets to decide the outcome. Kept because the two lines say what the handler
+        // means — resume when focus has left the stack, not when it moved within it — and removing
+        // them changes nothing measurable, which is stated in the pull request rather than dressed
+        // up as coverage. A `relatedTarget` of `null` means focus left the document: that is
+        // leaving.
         const next = event.relatedTarget
         if (next instanceof Node && event.currentTarget.contains(next)) return
         setPaused(false)
@@ -140,6 +151,8 @@ interface ToastProps {
  * pause clears the pending timeout and subtracts what ran, and every resume starts a fresh timeout
  * for what is left. Hovering a five-second toast three times therefore dismisses it five seconds
  * after it was last left alone, instead of restarting the clock or losing the time already spent.
+ * Raising the toast's `duration` is the one thing that does refill the budget, which is what lets a
+ * caller extend a toast already on screen.
  *
  * `onDismiss` is read through a ref rather than named as a dependency of the timer effect. Callers
  * pass an inline arrow — the port is `(id) => stack.value = stack.value.filter(…)` in every example
@@ -155,8 +168,10 @@ function Toast({ toast, paused, onDismiss, dismissLabel }: ToastProps) {
     dismiss.current = onDismiss
   })
 
-  // Runs before the timer effect below, and only when this toast's own budget changes, so a caller
-  // that lengthens a toast already on screen gets the new budget in full while a pause does not.
+  // How a caller extends a toast that is already on screen. It runs before the timer effect below
+  // and only when this toast's own budget changes, so a new duration arrives in full rather than as
+  // whatever the old one had left; a pause never comes through here, so a pause keeps its budget.
+  // Both halves are driven from the catalogue card by `pages/checks/ui.ts`.
   useEffect(() => {
     remaining.current = duration
   }, [toast.id, duration])
