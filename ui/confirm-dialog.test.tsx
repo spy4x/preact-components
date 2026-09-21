@@ -10,7 +10,7 @@ import {
   labelOr,
 } from "./confirm-dialog.tsx"
 
-/** The props every case has to supply: the library ships no product copy. */
+/** A panel with both ports wired and both verbs named, which is how a caller should write one. */
 function dialog(overrides: Partial<Parameters<typeof ConfirmDialog>[0]> = {}) {
   return (
     <ConfirmDialog

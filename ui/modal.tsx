@@ -93,7 +93,13 @@ export interface ModalProps {
   children?: ComponentChildren
   /** Footer content, right-aligned below the body. */
   footer?: ComponentChildren
-  /** Dismiss control in the header. Rendered only when given — the library ships no copy. */
+  /**
+   * Accessible name of the header dismiss control, and the control's own switch.
+   *
+   * No default, and deliberately not one: this label decides whether the header carries a dismiss
+   * control at all, so defaulting it would put a close button on every dialog that never asked for
+   * one. `ConfirmDialog` passes its own cancel label down, which is where the English default lives.
+   */
   cancelLabel?: string
   /** Colour register of the dialog. Defaults to `"default"`. */
   tone?: DialogTone
