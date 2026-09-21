@@ -66,6 +66,32 @@ function queueFetch(...queue: Array<Response | Error>) {
   return { impl, calls }
 }
 
+interface PendingCall extends RecordedCall {
+  /** Answer this request: a `Response` resolves it, an `Error` rejects it. */
+  settle: (answer: Response | Error) => void
+}
+
+/**
+ * A `fetch` stand-in that holds every request open until the test answers it.
+ *
+ * `queueFetch` settles each request the moment it is made, in the order the responses were queued,
+ * which cannot express what these tests are about: two requests in flight at once, answered in the
+ * other order.
+ */
+function deferredFetch(): { impl: typeof fetch; pending: PendingCall[] } {
+  const pending: PendingCall[] = []
+  const impl =
+    ((input: string | URL | Request, init?: RequestInit) =>
+      new Promise<Response>((resolve, reject) => {
+        pending.push({
+          url: input instanceof Request ? input.url : String(input),
+          init: init ?? {},
+          settle: (answer) => answer instanceof Error ? reject(answer) : resolve(answer),
+        })
+      })) as typeof fetch
+  return { impl, pending }
+}
+
 function toastRecorder(): {
   port: { success: (t: ToastMessage) => void; error: (t: ToastMessage) => void }
   messages: ToastMessage[]
@@ -330,6 +356,150 @@ describe("buildModelStore delete and undelete", () => {
 
     expect(calls).toEqual([])
     expect(store.state.value.list.map((r) => r.id)).toEqual([2])
+  })
+})
+
+describe("buildModelStore requests answered out of order", () => {
+  it("keeps the newer value when two updates to one row answer oldest last", async () => {
+    const { impl, pending } = deferredFetch()
+    const store = buildStore({ fetch: impl })
+    await store.onWs([row(1, "North")], RemoteEvent.LIST)
+
+    const first = store.update(1, { name: "First" })
+    const second = store.update(1, { name: "Second" })
+    expect(pending.length).toBe(2)
+
+    pending[1].settle(Response.json(row(1, "Second")))
+    await second
+    expect(store.state.value.list[0].name).toBe("Second")
+
+    pending[0].settle(Response.json(row(1, "First")))
+    await first
+
+    expect(store.state.value.list[0].name).toBe("Second")
+    expect(store.op.update(1).value?.result?.name).toBe("Second")
+  })
+
+  it("keeps saving until the newest update to a row has answered", async () => {
+    const { impl, pending } = deferredFetch()
+    const store = buildStore({ fetch: impl })
+    await store.onWs([row(1, "North")], RemoteEvent.LIST)
+
+    const first = store.update(1, { name: "First" })
+    const second = store.update(1, { name: "Second" })
+
+    pending[0].settle(Response.json(row(1, "First")))
+    await first
+    // The second write is still outstanding: saying it is finished is what put a form back in
+    // front of the user while their edit was still on the wire.
+    expect(store.op.update(1).value?.inProgress).toBe(true)
+
+    pending[1].settle(Response.json(row(1, "Second")))
+    await second
+
+    expect(store.op.update(1).value?.inProgress).toBe(false)
+    expect(store.state.value.list[0].name).toBe("Second")
+  })
+
+  it("ignores a failure that answers after a newer update has succeeded", async () => {
+    const { impl, pending } = deferredFetch()
+    const toast = toastRecorder()
+    const store = buildStore({ fetch: impl, toast: toast.port })
+    await store.onWs([row(1, "North")], RemoteEvent.LIST)
+
+    const failing = store.update(1, { name: "First" })
+    const winning = store.update(1, { name: "Second" })
+
+    pending[1].settle(Response.json(row(1, "Second")))
+    await winning
+    pending[0].settle(Response.json({ error: "name taken" }, { status: 409 }))
+    await failing
+
+    expect(store.op.update(1).value?.error).toBeNull()
+    expect(store.op.update(1).value?.result?.name).toBe("Second")
+    expect(store.state.value.list[0].name).toBe("Second")
+    expect(toast.messages.map((message) => message.body)).toEqual(["zone was updated"])
+  })
+
+  it("does not resurrect a row when a delete answers before an older update", async () => {
+    const { impl, pending } = deferredFetch()
+    const store = buildStore({ fetch: impl })
+    await store.onWs([row(1, "North")], RemoteEvent.LIST)
+
+    const updating = store.update(1, { name: "Renamed" })
+    const deleting = store.delete(1)
+
+    pending[1].settle(Response.json(row(1, "North", new Date("2024-03-01T00:00:00.000Z"))))
+    await deleting
+    expect(store.list.deleted.value.map((r) => r.id)).toEqual([1])
+
+    // The update's answer carries `deletedAt: null`, so applying it would undo the delete.
+    pending[0].settle(Response.json(row(1, "Renamed")))
+    await updating
+
+    expect(store.list.deleted.value.map((r) => r.id)).toEqual([1])
+    expect(store.state.value.list[0].name).toBe("North")
+    expect(store.op.delete(1).value?.inProgress).toBe(false)
+    // The update's answer was dropped, so nothing in its own slot would have lowered this flag.
+    expect(store.op.update(1).value?.inProgress).toBe(false)
+  })
+
+  it("does not restore a row when an undelete answers after a newer delete", async () => {
+    const { impl, pending } = deferredFetch()
+    const store = buildStore({ fetch: impl })
+    await store.onWs([row(1, "North", new Date("2024-03-01T00:00:00.000Z"))], RemoteEvent.LIST)
+
+    const restoring = store.undelete(1)
+    const deleting = store.delete(1)
+
+    pending[1].settle(Response.json(row(1, "North", new Date("2024-05-01T00:00:00.000Z"))))
+    await deleting
+    pending[0].settle(Response.json(row(1, "North")))
+    await restoring
+
+    expect(store.list.deleted.value.map((r) => r.id)).toEqual([1])
+    expect(store.op.update(1).value?.inProgress).toBe(false)
+  })
+
+  it("keeps the create slot in progress until the newest create has answered", async () => {
+    const { impl, pending } = deferredFetch()
+    const store = buildStore({ fetch: impl })
+
+    const first = store.create({ name: "First" })
+    const second = store.create({ name: "Second" })
+
+    pending[0].settle(Response.json(row(1, "First"), { status: 201 }))
+    await first
+    expect(store.op.create.value.inProgress).toBe(true)
+    expect(store.state.value.list.map((r) => r.id)).toEqual([1])
+
+    pending[1].settle(Response.json(row(2, "Second"), { status: 201 }))
+    await second
+
+    expect(store.op.create.value.inProgress).toBe(false)
+    expect(store.op.create.value.result?.id).toBe(2)
+    expect(store.state.value.list.map((r) => r.id)).toEqual([1, 2])
+  })
+
+  it("appends both rows when two creates answer out of order", async () => {
+    const { impl, pending } = deferredFetch()
+    const store = buildStore({ fetch: impl })
+
+    const first = store.create({ name: "First" })
+    const second = store.create({ name: "Second" })
+
+    pending[1].settle(Response.json(row(2, "Second"), { status: 201 }))
+    await second
+    expect(store.op.create.value.result?.id).toBe(2)
+
+    pending[0].settle(Response.json(row(1, "First"), { status: 201 }))
+    await first
+
+    // A create has no id to contend over, so both rows are real and both belong in the list.
+    expect(store.state.value.list.map((r) => r.id)).toEqual([2, 1])
+    // Only the create slot is contended, and the older create does not take it back.
+    expect(store.op.create.value.result?.id).toBe(2)
+    expect(store.op.create.value.inProgress).toBe(false)
   })
 })
 
