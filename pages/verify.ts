@@ -401,13 +401,19 @@ async function hoverCapability(devtools: Devtools): Promise<void> {
  * not recovered from here; the blocks after it fail loudly, which is the honest outcome, and a
  * reload would cost a fresh hydration and could fail on its own.
  *
+ * The scroll reset asks for `behavior: "instant"` on purpose. `pages/styles.css` sets
+ * `scroll-behavior: smooth` on the document, so a plain `scrollTo(0, 0)` starts an animation that is
+ * still running when the next block takes its first reading — measured: with that form, making
+ * `signals` throw broke the calendar's "no key the grid answers scrolls the page" check in the
+ * `system` block, which is a recovery inventing a failure rather than containing one.
+ *
  * @param devtools The connected session.
  */
 async function resetAfterThrow(devtools: Devtools): Promise<void> {
   await devtools.evaluate(`(() => {
     for (const dialog of document.querySelectorAll("dialog[open]")) dialog.close()
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
-    window.scrollTo(0, 0)
+    window.scrollTo({ top: 0, behavior: "instant" })
   })()`)
 
   // Takes the pointer off whatever card it was left on; the corner is as neutral a resting place as
