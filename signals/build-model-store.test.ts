@@ -444,6 +444,25 @@ describe("buildModelStore requests answered out of order", () => {
     expect(store.op.update(1).value?.inProgress).toBe(false)
   })
 
+  it("does not delete a row when the delete answers after a newer update", async () => {
+    const { impl, pending } = deferredFetch()
+    const store = buildStore({ fetch: impl })
+    await store.onWs([row(1, "North")], RemoteEvent.LIST)
+
+    const deleting = store.delete(1)
+    const updating = store.update(1, { name: "Renamed" })
+
+    pending[1].settle(Response.json(row(1, "Renamed")))
+    await updating
+    pending[0].settle(Response.json(row(1, "North", new Date("2024-03-01T00:00:00.000Z"))))
+    await deleting
+
+    expect(store.list.deleted.value).toEqual([])
+    expect(store.state.value.list[0].name).toBe("Renamed")
+    // The delete's answer was dropped, so nothing in its own slot would have lowered this flag.
+    expect(store.op.delete(1).value?.inProgress).toBe(false)
+  })
+
   it("does not restore a row when an undelete answers after a newer delete", async () => {
     const { impl, pending } = deferredFetch()
     const store = buildStore({ fetch: impl })
