@@ -2222,12 +2222,14 @@ async function groupTriggerNameCheck(devtools: Devtools): Promise<void> {
   })
   const { nodeId } = await devtools.send<{ nodeId: number }>("DOM.querySelector", {
     nodeId: root.nodeId,
-    selector: `#demo-Tooltip [role="group"][aria-label]`,
+    // Not `[role="group"]`: which role the wrapper carries is the question, and a selector that
+    // asked for the answer would report a missing card instead of a wrong role.
+    selector: `#demo-Tooltip [aria-label]:has(button)`,
   })
   const computed = await computedNode(devtools, nodeId)
   const inner = await devtools.evaluate<{ buttons: number; tabStops: number; label: string }>(
     `(() => {
-      const group = document.querySelector('#demo-Tooltip [role="group"][aria-label]')
+      const group = document.querySelector('#demo-Tooltip [aria-label]:has(button)')
       const buttons = [...(group?.querySelectorAll("button") ?? [])]
       return {
         buttons: buttons.length,
@@ -2432,6 +2434,8 @@ interface ComboboxReading {
   scrollHeight: number
   /** `true` when the highlighted row's own box lies inside the popup's visible band. */
   activeInView: boolean
+  /** The page's own scroll position: `scrollIntoView` moves every scrollable ancestor it has. */
+  pageScrollY: number
 }
 
 /**
@@ -2465,7 +2469,7 @@ const COMBOBOX_STATE = `(() => {
     return {
       ok: false, expanded: null, listHidden: false, options: -1, active: null, activeText: "",
       describedBy: null, statusRole: null, statusLive: null, statusText: "", inputValue: "",
-      scrollTop: -1, clientHeight: -1, scrollHeight: -1, activeInView: false,
+      scrollTop: -1, clientHeight: -1, scrollHeight: -1, activeInView: false, pageScrollY: -1,
     }
   }
   const status = document.getElementById(id + "-status")
@@ -2488,6 +2492,7 @@ const COMBOBOX_STATE = `(() => {
     scrollHeight: Math.round(list.scrollHeight),
     activeInView: row !== null && row.offsetTop >= list.scrollTop - 1 &&
       row.offsetTop + row.offsetHeight <= list.scrollTop + list.clientHeight + 1,
+    pageScrollY: Math.round(globalThis.scrollY),
   }
 })()`
 
@@ -2699,41 +2704,50 @@ async function highlightChecks(devtools: Devtools): Promise<void> {
   const steps = fits + 1
   const overflows = opened.scrollHeight > opened.clientHeight && steps < opened.options
 
-  // The first press on its own, because a highlight that is already on screen must not move the
-  // popup at all: `block: "nearest"` is what makes that true, and `"center"` would pull the second
-  // row to the middle of the box. Asserted before the walk, while the popup is still at the top.
-  await pressKey(devtools, "ArrowDown")
+  // The quiet case first, and it has to be the **last** row the popup already shows: an earlier row
+  // cannot be centred in a list that is at the top, so a popup that centred every highlight would
+  // hold still there and prove nothing. `block: "nearest"` leaves this one where it is; `"center"`
+  // pulls it to the middle of the box.
+  //
+  // Only the popup's own scroll is asserted. `scrollIntoView` moves every scrollable ancestor it
+  // has, so the page may legitimately shift a few pixels when the row sits below the fold of the
+  // window, and it does here — that is the row being brought into sight, which is the point. The
+  // page's position is reported rather than pinned.
+  const quietSteps = fits - 1
+  for (let press = 0; press < quietSteps; press++) await pressKey(devtools, "ArrowDown")
   await poll(
     () =>
       devtools.evaluate<boolean>(
-        `${COMBOBOX_STATE}.active === "guide-combobox-offset-option-1"`,
+        `${COMBOBOX_STATE}.active === "guide-combobox-offset-option-${quietSteps}"`,
       ),
     3_000,
   )
   const quiet = await devtools.evaluate<ComboboxReading>(COMBOBOX_STATE)
   check(
     "a Combobox highlight that is already on screen leaves the popup where it is",
-    opened.ok && overflows && fits >= 2 && opened.scrollTop === 0 &&
-      quiet.active === "guide-combobox-offset-option-1" && quiet.scrollTop === 0 &&
+    opened.ok && overflows && fits >= 3 && opened.scrollTop === 0 &&
+      quiet.active === `guide-combobox-offset-option-${quietSteps}` && quiet.scrollTop === 0 &&
       quiet.activeInView,
     !opened.ok || landing?.onTarget !== true
       ? "the field was never opened, so this proves nothing"
       : !overflows
       ? `the popup shows all ${opened.options} of its rows, so it has nowhere to scroll and ` +
         `holding still proves nothing`
-      : fits < 2
-      ? `only ${fits} row(s) fit the popup, so the second row is not already on screen and this ` +
-        `proves nothing`
-      : quiet.active !== "guide-combobox-offset-option-1"
-      ? `one real ArrowDown left the highlight on ${quiet.active} rather than the second row`
+      : fits < 3
+      ? `only ${fits} row(s) fit the popup, so there is no already-visible row far enough down ` +
+        `to be worth scrolling to — this proves nothing`
+      : quiet.active !== `guide-combobox-offset-option-${quietSteps}`
+      ? `${quietSteps} real ArrowDown presses left the highlight on ${quiet.active} rather than ` +
+        `on option ${quietSteps}`
       : quiet.scrollTop !== 0
-      ? `the popup scrolled to ${quiet.scrollTop}px to reach a row that was already on screen, ` +
-        `so a list opened on a visible selection jerks under the reader`
-      : `one real ArrowDown onto the second row of ${fits} already showing: the popup stayed at ` +
-        `scrollTop 0`,
+      ? `the popup scrolled to ${quiet.scrollTop}px to reach row ${quietSteps}, which was already ` +
+        `on screen, so the list jerks under a reader who is only moving down it`
+      : `${quietSteps} real ArrowDown presses onto the last of the ${fits} rows already showing: ` +
+        `the popup stayed at scrollTop 0 (the window moved ` +
+        `${quiet.pageScrollY - opened.pageScrollY}px, bringing that row into sight)`,
   )
 
-  for (let press = 1; press < steps; press++) await pressKey(devtools, "ArrowDown")
+  for (let press = quietSteps; press < steps; press++) await pressKey(devtools, "ArrowDown")
   await poll(
     () =>
       devtools.evaluate<boolean>(
