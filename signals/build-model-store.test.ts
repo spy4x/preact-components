@@ -418,6 +418,62 @@ describe("buildModelStore requests answered out of order", () => {
     expect(store.state.value.list[0].name).toBe("Second")
   })
 
+  it("keeps saving when an older update fails while a newer update is outstanding", async () => {
+    const { impl, pending } = deferredFetch()
+    const toast = toastRecorder()
+    const store = buildStore({ fetch: impl, toast: toast.port })
+    await store.onWs([row(1, "North")], RemoteEvent.LIST)
+
+    const first = store.update(1, { name: "First" })
+    const second = store.update(1, { name: "Second" })
+
+    pending[0].settle(Response.json({ error: "name taken" }, { status: 409 }))
+    await first
+
+    // Nothing newer has answered, so this failure is real news and is reported…
+    expect(toast.messages).toEqual([{ title: "Failed to update zone", body: "name taken" }])
+    // …while the second write is still outstanding, so the slot may not settle on it. This is the
+    // arrangement that tells the two decisions apart: the answer is the newest the store has
+    // heard, and it is not the newest it was asked for.
+    expect(store.op.update(1).value?.inProgress).toBe(true)
+    expect(store.op.update(1).value?.error).toBeNull()
+
+    pending[1].settle(Response.json(row(1, "Second")))
+    await second
+
+    expect(store.op.update(1).value?.inProgress).toBe(false)
+    expect(store.op.update(1).value?.error).toBeNull()
+    expect(store.state.value.list[0].name).toBe("Second")
+    expect(toast.messages.map((message) => message.body)).toEqual([
+      "name taken",
+      "zone was updated",
+    ])
+  })
+
+  it("lowers the delete flag when a newer update fails for the same row", async () => {
+    const { impl, pending } = deferredFetch()
+    const store = buildStore({ fetch: impl })
+    await store.onWs([row(1, "North")], RemoteEvent.LIST)
+
+    const deleting = store.delete(1)
+    const updating = store.update(1, { name: "Renamed" })
+
+    pending[1].settle(Response.json({ error: "name taken" }, { status: 409 }))
+    await updating
+
+    // The newest request has answered, so nothing the store will act on is outstanding — the
+    // delete's answer is already destined for the bin, and its flag must not outlive it.
+    expect(store.op.update(1).value?.error?.type).toBe(ErrType.SERVER)
+    expect(store.op.update(1).value?.inProgress).toBe(false)
+    expect(store.op.delete(1).value?.inProgress).toBe(false)
+
+    pending[0].settle(Response.json(row(1, "North", new Date("2024-03-01T00:00:00.000Z"))))
+    await deleting
+
+    expect(store.list.deleted.value).toEqual([])
+    expect(store.op.delete(1).value?.inProgress).toBe(false)
+  })
+
   it("drops an older update that succeeds after the newest one has failed", async () => {
     const { impl, pending } = deferredFetch()
     const toast = toastRecorder()
@@ -557,6 +613,30 @@ describe("buildModelStore requests answered out of order", () => {
     expect(store.op.update(1).value?.inProgress).toBe(false)
   })
 
+  it("lowers the update flag when a newer delete fails for the same row", async () => {
+    const { impl, pending } = deferredFetch()
+    const store = buildStore({ fetch: impl })
+    await store.onWs([row(1, "North")], RemoteEvent.LIST)
+
+    const updating = store.update(1, { name: "Renamed" })
+    const deleting = store.delete(1)
+
+    pending[1].settle(Response.json({ error: "not yours" }, { status: 403 }))
+    await deleting
+
+    // The mirror of the update case: the failed delete is the newest request, and the update
+    // behind it will be discarded, so its slot may not keep saying "saving".
+    expect(store.op.delete(1).value?.error?.type).toBe(ErrType.SERVER)
+    expect(store.op.delete(1).value?.inProgress).toBe(false)
+    expect(store.op.update(1).value?.inProgress).toBe(false)
+
+    pending[0].settle(Response.json(row(1, "Renamed")))
+    await updating
+
+    expect(store.state.value.list[0].name).toBe("North")
+    expect(store.op.update(1).value?.inProgress).toBe(false)
+  })
+
   it("ignores a delete that fails after a newer update has succeeded", async () => {
     const { impl, pending } = deferredFetch()
     const toast = toastRecorder()
@@ -642,6 +722,52 @@ describe("buildModelStore requests answered out of order", () => {
     await deleting
 
     expect(store.op.update(1).value?.inProgress).toBe(false)
+    expect(store.op.delete(1).value?.inProgress).toBe(false)
+  })
+
+  it("lowers the delete flag when a newer undelete succeeds for the same row", async () => {
+    const { impl, pending } = deferredFetch()
+    const store = buildStore({ fetch: impl })
+    await store.onWs([row(1, "North", new Date("2024-03-01T00:00:00.000Z"))], RemoteEvent.LIST)
+
+    const deleting = store.delete(1)
+    const restoring = store.undelete(1)
+
+    pending[1].settle(Response.json(row(1, "North")))
+    await restoring
+
+    // An undelete settles the update slot, and the delete it superseded holds the other one.
+    expect(store.list.deleted.value).toEqual([])
+    expect(store.op.update(1).value?.inProgress).toBe(false)
+    expect(store.op.delete(1).value?.inProgress).toBe(false)
+
+    pending[0].settle(Response.json(row(1, "North", new Date("2024-05-01T00:00:00.000Z"))))
+    await deleting
+
+    expect(store.list.deleted.value).toEqual([])
+    expect(store.op.delete(1).value?.inProgress).toBe(false)
+  })
+
+  it("lowers the delete flag when a newer undelete fails for the same row", async () => {
+    const { impl, pending } = deferredFetch()
+    const store = buildStore({ fetch: impl })
+    await store.onWs([row(1, "North", new Date("2024-03-01T00:00:00.000Z"))], RemoteEvent.LIST)
+
+    const deleting = store.delete(1)
+    const restoring = store.undelete(1)
+
+    pending[1].settle(Response.json({ error: "gone for good" }, { status: 404 }))
+    await restoring
+
+    // A failed undelete settles its slot too, and releases the delete's for the same reason.
+    expect(store.op.update(1).value?.error?.type).toBe(ErrType.SERVER)
+    expect(store.op.update(1).value?.inProgress).toBe(false)
+    expect(store.op.delete(1).value?.inProgress).toBe(false)
+
+    pending[0].settle(Response.json(row(1, "North", new Date("2024-05-01T00:00:00.000Z"))))
+    await deleting
+
+    expect(store.list.deleted.value.map((r) => r.id)).toEqual([1])
     expect(store.op.delete(1).value?.inProgress).toBe(false)
   })
 
