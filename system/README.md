@@ -159,58 +159,55 @@ place in the grid whatever the owner answers. Page Up and Page Down are the only
 happen to: the arrows refuse to leave the month they are in and Home and End are clipped to it, so
 neither ever asks for a month.
 
-| The owner                             | Where the key press leaves the focus        |
-| ------------------------------------- | ------------------------------------------- |
-| draws the month in the same render    | the same day number in the new month        |
-| leaves `monthAnchor` where it was     | the day the press started from              |
-| draws the month a render or more late | the same day number, once the month arrives |
-| draws a _different_ month, late       | that month's own Tab stop                   |
+Two rules cover every answer there is:
 
-The middle row is the one to design a caller around, because a calendar clamping the month to a
+| What the owner does to `monthAnchor`       | Where the reader ends up                       |
+| ------------------------------------------ | ---------------------------------------------- |
+| draws a new month, in that render or later | the same day number in the month now on screen |
+| leaves it where it was                     | the day the press started from                 |
+
+The second rule is the one to design a caller around, because a calendar clamping the month to a
 range the reader may not leave does it on purpose. A press refused that way costs the reader
 nothing: the month on screen does not change, and the focus goes back to the day it started from
 instead of staying on the grid container, so their next arrow press moves a day rather than being
 spent walking back to where they already were.
 
-The last two rows are what an owner that checks or fetches before it answers gets, and it needs no
-cooperation from the caller. A refusal can only be judged by the render that follows the call, so a
-late answer is read as a refusal first and the reader is put back on their day; the request is kept,
-and when the month it asked for is drawn the press is finished as if it had been prompt. Without
-that the late month would replace the cell the focus had just been restored to and the focus would
-fall to the document body, which no key can recover from.
+The first rule needs no cooperation from the caller and does not care why the month changed. An
+owner that checks or fetches before it answers gets it, and so does an owner that changes the month
+for reasons of its own while the reader happens to be standing in the grid. A refusal can only be
+judged by the render that follows the call, so a late answer is read as a refusal first and the
+reader is put back on their day; when a month is drawn afterwards, whichever month it is, the focus
+goes to the same day number in it. Without that the new cells would replace the one the focus was on
+and the focus would fall to the document body, which no key can recover from.
 
-A burst has the same property. Two Page Downs a slow owner has yet to answer ask for two months,
-because each counts from the cursor rather than from what is on screen, and the owner then draws
-those two months one at a time; the first to arrive is a month the reader passes through, so the
-request survives it and the focus follows each month as it appears.
+**It never takes the focus from somewhere the reader chose.** A month arriving moves the focus only
+when nothing in the document holds it and this grid is where it was; a reader who has blurred,
+tabbed away or moved to another control keeps their place, and the month changes under a calendar
+they are no longer in. That move is also the one focus change the calendar makes on its own
+initiative rather than in answer to a key pressed inside the grid, so it passes `preventScroll`:
+scrolling the page to a calendar nobody is looking at is not something to do unasked.
 
-**What holds each row.** The first three are held by browser checks in `pages/checks/system.ts`,
-against two catalogue cards — one whose owner refuses every month change, one whose owner answers
-300 ms late — and removing the handling turns them red. The fourth is a safety net rather than a
-shape a caller writes, and it was measured by hand with a disposable owner that answers late with
-September whatever it is asked for: the focus lands on 1 September, the month's own Tab stop. No
-check holds it.
+**Two presses in a row move as many months as the owner has answered.** Each press counts from
+where the last one left the reader, so what a burst does depends on how quickly the owner answers,
+and both of the outcomes are reachable from the catalogue's own card:
 
-One thing the calendar will not do is take the focus back from somewhere the reader put it. It moves
-the focus only out of the three places it puts it itself — the grid container while a month is
-outstanding, the day it restored on a refusal, and nowhere at all. A reader who has moved the focus
-onto the month arrow or onto any other control on the page keeps it.
+- an owner that answers before the next key is delivered — in the same render, or on a microtask —
+  has moved the reader by the time they press again, so two presses move two months;
+- an owner slower than the reader's fingers has not, so the second press is made against the month
+  still on screen and asks for the same month again: two presses, both answered, one month.
 
-**The roving tabindex is applied by an effect, not rendered.** Taking Tab away from twenty-eight
-cells is only safe once a key handler is there to give the movement back, so a page that has not
-hydrated — no JavaScript, or an embedded render — keeps the natural tab order it always had.
+Neither loses a press. A press superseded by another before its answer arrives — Page Down and then
+Page Up — leaves the reader on a day, on the day number they were on, but **which** month they end
+on is the owner's arithmetic rather than the calendar's: the owner has been asked for two months and
+draws both, in its own order.
 
-A day that cannot be picked is still focusable and its accessible name is the reason it cannot be:
-`19 August 2026 — no times available`. The same sentence is shown under the grid while it has
-focus, for the reader who has no screen reader to read the cell out and no mouse to hover a
-`title` with. The grid itself is a `grid` of `row`s and `gridcell`s named after the month it shows.
-
-**What that evidence is, and is not.** Every accessibility claim in this file is a claim about
-markup and focus order, read back from the DOM in headless Chromium by `pages/checks/system.ts`.
-No screen reader has been run against any of it. The one place where the markup and what a reader
-would actually hear can plausibly come apart is the decision below to keep the peek days out of the
-accessibility tree: a row then exposes fewer cells than `aria-colcount` promises, and `aria-colindex`
-is there to keep the columns numbered, unverified by ear.
+**What holds all of this.** Every rule above is held by browser checks in `pages/checks/system.ts`,
+driven against two catalogue cards — one whose owner refuses every month change, one whose owner
+answers late, either on a timer or on a microtask as a reader picks. Removing any part of the
+handling turns at least one of them red. One case is measured rather than checked, and is written
+here for that reason: an owner that answers late with a month _nobody asked for_ — measured with a
+disposable owner that replies September to every request — lands the reader on 19 September when
+they pressed from the 19th, which is the first rule doing its job.
 
 ## The locale decides the week
 

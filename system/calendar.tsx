@@ -14,11 +14,10 @@
  * Page Down ask the caller for the neighbouring month through `onSelectMonth`. Every key the grid
  * answers is also cancelled, so paging a month does not scroll the page under the reader. A month
  * is asked for rather than taken, and the reader keeps their place whatever the answer is: a caller
- * who draws the month lands them on the same day number in it, a caller who leaves the month where
- * it was leaves them on the day they pressed from, and a caller who draws it a render or more later
- * still lands them on that same day number when it arrives. Before hydration — a no-JS page, or an
- * embedded render — the cells keep the natural tab order they are rendered with, which is the only
- * way through them when nothing is listening for a key.
+ * that draws the month — in that render or a later one — lands them on the same day number in it,
+ * and a caller that leaves the month where it was leaves them on the day they pressed from. Before
+ * hydration — a no-JS page, or an embedded render — the cells keep the natural tab order they are
+ * rendered with, which is the only way through them when nothing is listening for a key.
  *
  * **The week is the locale's.** Both the column order and the header text come from `Intl` (see
  * `date.ts`), so the grid starts on Monday in London, on Sunday in New York and on Saturday in
@@ -131,23 +130,28 @@ export interface CalendarProps {
    * Called when a month arrow is picked, and when Page Up or Page Down is pressed inside the grid.
    * Same interactive/link contract as `onSelectDate`.
    *
-   * It is a request rather than an instruction, and every answer to it keeps the reader's place.
-   * Three answers are supported, and a key press is where the difference shows:
+   * It is a request rather than an instruction, and the reader keeps their place in the grid
+   * whatever the answer is. Two rules cover every answer there is:
    *
-   * - **Drawn in the render the call triggers.** The focus lands on the same day number in the new
-   *   month, which is what Page Up and Page Down promise.
-   * - **Not drawn at all.** A controlled calendar whose owner leaves `monthAnchor` where it was —
-   *   because the month asked for is outside a range the reader may leave, say — keeps the month on
-   *   screen, and the press leaves the focus on the day it started from rather than on the grid.
-   * - **Drawn a render or more later.** An owner that checks or fetches before it answers is read
-   *   as the previous case first, because a refusal can only be judged by the render that follows
-   *   the call. When the month it asked for is drawn after all, the calendar finishes the press:
-   *   the focus goes to that same day number. An owner that answers late with a *different* month
-   *   has answered a request of its own, and the reader lands on that month's Tab stop instead.
+   * - **`monthAnchor` changes, in this render or a later one.** The focus goes to the same day
+   *   number in the month now on screen, which is what Page Up and Page Down promise. It does not
+   *   matter why the month changed: an owner that checks or fetches before it answers gets this,
+   *   and so does an owner that changes the month for its own reasons while the reader is standing
+   *   in the grid.
+   * - **`monthAnchor` stays where it was.** A controlled calendar whose owner leaves it alone —
+   *   because the month asked for is outside a range the reader may leave, say — keeps the month
+   *   on screen, and the press leaves the focus on the day it started from rather than on the
+   *   grid.
    *
-   * The focus is only ever moved from somewhere the calendar itself put it — the grid container, or
-   * the day it restored on a refusal, or nowhere at all. A reader who moved the focus elsewhere
-   * while the answer was outstanding keeps it.
+   * The focus is moved only when nothing in the document holds it and this grid is where it was.
+   * A reader who blurred, tabbed away or moved to another control while the answer was outstanding
+   * keeps their place, and that move passes `preventScroll` because it is the one the calendar
+   * makes on its own initiative.
+   *
+   * Two presses in a row move as many months as the owner has answered by the time each is made:
+   * an owner answering before the next key is delivered moves the reader twice, and one slower
+   * than their fingers is asked for the same month twice and moves them once. Neither loses a
+   * press. `system/README.md` has the whole table.
    */
   onSelectMonth?: (monthAnchor: string) => void
   /** Day href in link mode. Defaults to `?date=YYYY-MM-DD`, preserving the current path. */

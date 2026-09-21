@@ -1580,9 +1580,9 @@ async function refusedMonthChecks(devtools: Devtools): Promise<void> {
     "the focus waits on the grid itself while a month change is outstanding",
     probeDown.ran && probeDown.from === REFUSED_DAY && probeDown.parked,
     probeDown.ran
-      ? `a focusin listener on the grid, called from inside the component's own focus() call, saw ` +
-        `the container take the focus from ${probeDown.from || "nowhere"} — the wait is shorter ` +
-        `than the key dispatch, so only a listener on the focus move itself can see it`
+      ? `a focusin listener on the grid, called from inside the component's own focus() call, ` +
+        `saw the container take the focus from ${probeDown.from || "nowhere"} — the wait is ` +
+        `shorter than the key dispatch, so only a listener on the focus move itself can see it`
       : "the refusing card's grid never took the focus, so no month was being waited for",
   )
 
