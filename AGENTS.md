@@ -16,7 +16,7 @@ its own PR, each owning exactly one top-level directory.
 | `system/`   | Calendar, ImageLightbox, SEOHead + head store, SWUpdater                                 |
 | `charts/`   | server-rendered SVG kit (scales) + d3 wrappers                                           |
 | `cn/`       | `cn()` — class-name join + Tailwind conflict resolution                                  |
-| `signals/`  | buildModelStore, useUrlFilters, table-state, theme, toast, clipboard — no components     |
+| `signals/`  | buildModelStore, useUrlFilters, table-state, theme, toast — and the rest; no components  |
 | `crud/`     | CrudList, CrudEditor, AssociationEditor                                                  |
 | `ui-guide/` | live component catalogue route                                                           |
 | `pages/`    | demo app (GitHub Pages site and the browser checks under `pages/checks/`), not published |
@@ -173,11 +173,10 @@ deliberate, so a later pull request adding the first check to one of them touche
 `cn/` is the one workspace member with none: it is a single class-name function, and there is nothing
 in it a browser could drive.
 
-Which components are covered is not written here. It changes as this work continues, and three
-readings of the same tree put the figure at six, eleven and twelve, each of them wrong in a
-different way. `pages/checks/` **is** the list: open the file for the package you care about and
-read it. Treat a component whose check you cannot find as unproven rather than as working —
-that is the point of the list, not the count.
+Which components are covered is not written here, because every version of that sentence has gone
+stale. `pages/checks/` **is** the list: open the file for the package you care about and read the
+names passed to `check(...)` — each one says in a sentence what it proves. Treat a component
+whose check you cannot find as unproven rather than as working.
 
 Two facts about that browser, both measured rather than assumed, and both worth knowing before
 you write a check: a real Enter press does **not** activate a focused button there, so a trigger

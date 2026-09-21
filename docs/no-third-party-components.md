@@ -65,10 +65,13 @@ glyph of ours is annotated `from template` and all six are stock Heroicons v1 pa
 shared upstream, not a port. See [`icons/README.md`](../icons/README.md) and "Deferred decisions"
 below for what the icon set's provenance actually is.
 
-> **Depends on PR #98 not landing first.** This paragraph asserts that `roley` is not an icon source.
-> PR #98 (`docs/issues-28-15-78`, open) adds a `roley` row to `icons/README.md`'s source table. If it
-> merges first, the sentence above is false and must be reconciled — see the staleness note in
-> "Deferred decisions" that restates it.
+> **The paragraph above is out of date.** The pull request this note used to wait on has landed
+> and did add that project to the source table in [`icons/README.md`](../icons/README.md), so the
+> claim that it is not an icon source is false rather than conditional. The shared-upstream
+> explanation of the six glyphs may still hold and is not the same claim; it needs re-reading
+> rather than deleting. Reconciling this paragraph is part of #127, which owns the wider sweep of
+> this document — including the project names in it, which is why the correction removes them
+> together rather than one at a time. The note under "Deferred decisions" says the same.
 
 ## Behaviour is implemented, not imported
 
@@ -313,10 +316,14 @@ this:
   codegen, no build step, no runtime dependency beyond Preact.
 
 > **Partly reconciled.** The pull request this note used to wait on has landed, so the count above
-> is read from the tree rather than from a pending change: `icons/+index.tsx` exports 119 glyphs
-> and `icons/README.md` says 119. Those are the two agreements, and they are independent of each
-> other. The browser suite is not a third — its icon check is named for 119 and asserts only that
-> more than ninety glyphs are shown, so it would pass at ninety-one. The source list above has
+> is read from the tree rather than from a pending change. `icons/+index.tsx` exports 119 glyphs
+> and `icons/README.md` says 119, but those are not two independent readings: `check-readme.ts`
+> parses the number out of the README and fails when it disagrees with the export count, so they
+> are one fact with a guard on it. The independent pin is `icons/+index.test.ts`, which asserts
+> the number as a literal on purpose — a guard derived from the module would shrink with the
+> thing it polices. The browser suite is not a third: its icon check is named for 119 and asserts
+> only that more than ninety glyphs are shown, so it would pass at ninety-one. The source list
+> above has
 > **not** been reconciled and is one source short; it is deliberately not restated from memory
 > here, `icons/README.md` remains the authority, and correcting it is part of #127, which owns the
 > wider sweep of this document.
