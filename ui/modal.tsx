@@ -1,10 +1,22 @@
 import { cn } from "@preact-components/cn"
 import type { ComponentChildren } from "preact"
-import { useEffect, useRef, useState } from "preact/hooks"
+import { useEffect, useId, useRef, useState } from "preact/hooks"
 import { Button } from "./button.tsx"
 
 /** Visual register of a {@link Modal}: a plain surface or a destructive one. */
 export type DialogTone = "default" | "danger"
+
+/**
+ * How a {@link Modal} announces itself to assistive technology.
+ *
+ * `"dialog"` is the ordinary panel. `"alertdialog"` is the one that stops everything until it is
+ * answered — a destructive confirmation is the case the role exists for — and a screen reader
+ * treats it the way it treats an alert: it interrupts, and it reads the dialog's description out
+ * with its name rather than waiting to be asked for the body. The role does not supply that
+ * description; the dialog still has to point at the element holding the question through
+ * {@link ModalProps.ariaDescribedBy}.
+ */
+export type DialogRole = "dialog" | "alertdialog"
 
 /**
  * Whether a click on the backdrop dismisses a {@link Modal} that says nothing about the policy.
@@ -15,9 +27,6 @@ export type DialogTone = "default" | "danger"
  * PascalCase value export as a component unless an exception is declared, and this is a value.
  */
 export const backdropDismissesByDefault = true
-
-/** Monotonic suffix for generated title ids; module-level so two dialogs on one page never collide. */
-let dialogSequence = 0
 
 export interface ModalProps {
   /**
@@ -36,6 +45,10 @@ export interface ModalProps {
    * `ConfirmDialog`) the cancel action. Return `false` to refuse: the dialog stays open. Refusal is
    * what makes the close cancellable; every other return value, `undefined` included, accepts it.
    *
+   * Whichever path a close arrives down, the port called is the one from the **most recent** render,
+   * not the one this dialog opened with. That is what makes an inline `onClose={() => setStep(step -
+   * 1)}` safe: it reads the step the parent has now.
+   *
    * Escape is the one path with an exception, and only on a platform that ignores `closedby` (no
    * shipping WebKit): there the platform closes the dialog itself, so the port is notified and its
    * refusal cannot be honoured — see the support contract on {@link Modal}.
@@ -53,13 +66,40 @@ export interface ModalProps {
   title?: ComponentChildren
   /** Accessible name used when there is no title. Ignored when a title is given; the title wins. */
   ariaLabel?: string
+  /**
+   * Id of the element that describes the dialog — the question it asks, the sentence it opens with.
+   *
+   * Written as `aria-describedby`, which is what makes a screen reader read the body out after the
+   * name instead of announcing a title and two buttons. This component does not generate it: the
+   * description lives in the caller's own children, so only the caller can say which element it is.
+   * `ConfirmDialog` is the worked example.
+   *
+   * Left out, nothing is referenced. A description pointing at a missing or empty element is worse
+   * than none, because a screen reader then reads a name and silence where the caller believes it
+   * reads the question.
+   */
+  ariaDescribedBy?: string
   /** Id for the title element. Generated when absent. */
   titleId?: string
+  /**
+   * How the dialog announces itself. Defaults to `"dialog"`; see {@link DialogRole}.
+   *
+   * This is about the announcement, not the tone: {@link ModalProps.tone} paints a destructive panel
+   * red, and a red panel that a screen reader reads as an ordinary dialog is exactly the mismatch
+   * this prop exists to close.
+   */
+  role?: DialogRole
   /** Body content. */
   children?: ComponentChildren
   /** Footer content, right-aligned below the body. */
   footer?: ComponentChildren
-  /** Dismiss control in the header. Rendered only when given — the library ships no copy. */
+  /**
+   * Accessible name of the header dismiss control, and the control's own switch.
+   *
+   * No default, and deliberately not one: this label decides whether the header carries a dismiss
+   * control at all, so defaulting it would put a close button on every dialog that never asked for
+   * one. `ConfirmDialog` passes its own cancel label down, which is where the English default lives.
+   */
   cancelLabel?: string
   /** Colour register of the dialog. Defaults to `"default"`. */
   tone?: DialogTone
@@ -90,13 +130,21 @@ export interface ModalProps {
  * dialog, that focus returns to the trigger, and that a refused Escape really keeps the dialog open
  * where the platform honours `closedby` (see the support contract below).
  *
- * Three of those are now committed checks, run in CI: `deno task --cwd pages verify` drives the
- * guide's `Modal` demo in headless Chromium and asserts that the trigger opens a `:modal` dialog,
- * that focus moves into it, that a **real** Escape key press (`Input.dispatchKeyEvent`, not a
- * synthesised `KeyboardEvent`, which the browser treats as untrusted) closes it, and that focus
- * lands back on the same trigger element. The last of those asserts the behaviour rather than this
- * component's part in it: measured, deleting the `target.focus()` call below leaves the check green,
- * because Chromium restores focus to the pre-`showModal()` element by itself.
+ * Four of those are now committed checks, run in CI: `pages/checks/ui.ts`, run by
+ * `deno task --cwd pages verify`, drives the guide's `Modal` demo in headless Chromium and asserts
+ * that the trigger opens a `:modal` dialog, that focus moves into it, that a **real** Escape key
+ * press (`Input.dispatchKeyEvent`, not a synthesised `KeyboardEvent`, which the browser treats as
+ * untrusted) closes it, that the port that press runs is the one the parent passed most recently
+ * rather than the one this dialog opened with, and that focus lands back on the same trigger
+ * element.
+ *
+ * **The focus restore, and why it stays.** Decided 2026-09-21, in #148. The `target.focus()` in the
+ * effect's cleanup is there for an engine that does not hand focus back when a dialog closes. The
+ * browser these checks drive does hand it back, so **no check here covers the call**: deleting it
+ * leaves the focus check green, because Chromium restores focus to the pre-`showModal()` element
+ * itself. That check therefore asserts what a person experiences and cannot tell this component's
+ * restore from the platform's. The call stays anyway — it costs a focus on an element that already
+ * has it — and this is revisited when the browser checks can drive a second engine.
  *
  * **Still covered by no committed test:** focus trapping, the backdrop click, the scroll-lock
  * compensation, and the refused-Escape path. Those were verified with a throwaway CDP probe that was
@@ -154,10 +202,12 @@ export function Modal(
     onClose,
     title,
     ariaLabel,
+    ariaDescribedBy,
     titleId,
     children,
     footer,
     cancelLabel,
+    role = "dialog",
     tone = "default",
     closeOnBackdrop = backdropDismissesByDefault,
     dataE2E,
@@ -166,17 +216,55 @@ export function Modal(
 ) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const restoresFocus = useRef<FocusableElement | null>(null)
-  // Ids are allocated in state, so a re-render never renumbers a live dialog's title. A caller that
-  // needs to know the id (a dismiss button outside the dialog, a `ConfirmDialog` heading) passes one.
-  const [generatedHeadingId] = useState(() => dialogTitleId(++dialogSequence))
+  // What the *latest* render passed, kept where the Escape listener can reach it.
+  //
+  // The lifecycle effect below runs once per open, so everything it closes over is frozen at the
+  // moment the dialog opened — and the close port is the one thing in there a parent routinely
+  // changes between renders. An inline `onClose={() => setStep(step - 1)}` is a new function reading
+  // a new value on every render, and Escape used to call the one from the opening render: a wizard
+  // closed to the step it was on when the dialog appeared, every time, and only when the user
+  // pressed Escape rather than clicking.
+  //
+  // Adding `onClose` to the effect's dependency list is the obvious alternative and is wrong: an
+  // inline port has a new identity every render, so the effect would tear the dialog down and
+  // re-open it under the user.
+  //
+  // **What makes the write below safe, and what would stop it.** It happens during the render, not
+  // from an effect, and that is a deliberate choice against this renderer's timing: Preact renders
+  // synchronously and defers effects behind a frame, so between a commit and its effects there is a
+  // real window in which a key press can land — and an effect-synced ref would still be holding the
+  // previous render's port for the whole of it. The write is safe here because a render in this
+  // renderer is never speculative: it is not started for a state the user may never see, never
+  // abandoned, and never replayed, so the value written is always the one the user is looking at.
+  // A renderer that rendered concurrently would break that and take this with it, because a
+  // discarded render would have written its port into the ref on the way out. Nothing in this
+  // repository can tell the two implementations apart — swap this for a `useEffect` that syncs the
+  // same ref and the whole suite and every browser check stay green — so the reason is written here
+  // rather than left to be rediscovered.
+  const latest = useRef({ onClose, controlled: open !== undefined })
+  latest.current = { onClose, controlled: open !== undefined }
+  // The id comes from the framework's own hook, as everywhere else in this package. It is derived
+  // from where this component sits in the tree, so it is stable across a dialog's re-renders, unique
+  // among the dialogs of one page, and — the part a module counter got wrong — the same string in
+  // the server's render and the browser's: a counter that lives for the life of the process numbers
+  // the second request's dialog differently from the first's, and hydration then finds a title id
+  // the server never wrote. A caller that needs to know the id (a dismiss button outside the dialog,
+  // a `ConfirmDialog` heading) passes one instead.
+  //
+  // Called unconditionally, never inside the `??` below: a hook skipped on the renders where a
+  // caller supplies an id would shift every later hook's slot the moment that prop changed.
+  const generatedHeadingId = dialogTitleId(useId())
   const headingId = titleId ?? generatedHeadingId
   // Open flag and scroll-lock padding are local visual state; which dialog is open, and what
   // confirming it does, arrive as props and ports.
   const [internalOpen, setInternalOpen] = useState(defaultOpen)
   const isOpen = open ?? internalOpen
 
+  // Both of these are rebuilt every render and both read only the ref and a setter, so the copy the
+  // effect captured at open time behaves exactly like the one this render made. That is the point:
+  // stale *identity* is harmless once nothing stale is closed over.
   const settleOpen = (next: boolean) => {
-    if (open === undefined) setInternalOpen(next)
+    if (!latest.current.controlled) setInternalOpen(next)
   }
 
   /**
@@ -186,7 +274,7 @@ export function Modal(
    * @returns Whether the close was accepted.
    */
   const requestClose = (dialog: HTMLDialogElement): boolean => {
-    if (onClose?.() === false) return false
+    if (latest.current.onClose?.() === false) return false
     dialog.close()
     settleOpen(false)
     return true
@@ -271,7 +359,7 @@ export function Modal(
     // scroll lock released, focus restored.
     const onCancel = platformCloseHandler({
       refusalHolds: escapeStrategy.refusalHolds,
-      onClose,
+      onClose: () => latest.current.onClose?.(),
       settleOpen,
     })
 
@@ -284,14 +372,14 @@ export function Modal(
       unbindEscape()
       lock.release()
 
-      // Decide before closing, because `close()` moves focus itself: measured, `dialog.close()` leaves
-      // `document.activeElement` as `body` and discards a focus restored a moment earlier.
+      // Read the captured trigger before the close and restore after it: closing is what releases
+      // the dialog's hold on focus, so a restore written before it has nothing to hold on to.
+      // Nothing here asks whether the dialog still holds focus — see `shouldRetargetFocus` for why
+      // that question cannot decide anything. What the restore is for, and what covers it (nothing
+      // in this repository), is the `#148` paragraph on `Modal`.
       const target = restoresFocus.current
 
       if (dialog.open || dialog.matches(":modal")) dialog.close()
-      // After `close()`, which moves focus itself and would discard a restore done before it. Nothing
-      // here asks whether the dialog still held focus: measured, it never does by this point, and
-      // gating on it is the bug documented on `shouldRetargetFocus`.
       if (shouldRetargetFocus(target)) restoreFocus(target)
     }
   }, [isOpen])
@@ -324,8 +412,9 @@ export function Modal(
       ref={dialogRef}
       closedby="none"
       data-e2e={dataE2E}
-      role="dialog"
+      role={role}
       aria-modal="true"
+      aria-describedby={ariaDescribedBy}
       {...labelAttributes}
       class={cn(
         "m-auto w-full max-w-md rounded-lg border border-gray-200 bg-white p-0 text-gray-900 shadow-xl backdrop:bg-black/50 backdrop:backdrop-blur-xs open:flex open:flex-col dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100",
@@ -761,18 +850,19 @@ export function platformCloseHandler(deps: PlatformCloseDeps): () => void {
 /**
  * Decide whether focus should go back to the element that opened the dialog.
  *
- * `true` exactly when a trigger was captured — that is the whole rule, and the history behind it is
- * why it carries no second condition. This was first written as "restore only if focus is still
- * inside the dialog", which sounds like the same rule and is not: measured in headless Chromium, by
- * the time the component's cleanup runs the dialog's content has already unmounted and the platform
- * has moved focus to `body`, so focus is *never* still inside, the restore the guard was written to
- * permit never happened, and the trigger never got its focus back in a real browser while every unit
- * test of the helper stayed green.
+ * `true` exactly when a trigger was captured — that is the whole rule, and it carries no second
+ * condition on purpose. The tempting one, "restore only if focus is still inside the dialog", was
+ * written first and cannot decide anything: the restore runs while the dialog is closing and its
+ * content is unmounting, so where focus sits at that moment is the platform's business, and the
+ * reading cannot tell a caller who moved focus somewhere deliberate from a teardown that moved it
+ * for them. With that guard in place the restore never ran in a real browser while every unit test
+ * of the helper stayed green.
  *
- * The caller-read `dialogHeldFocus` reading is therefore reported, not used as a gate. Refusing the
- * restore when focus is elsewhere would also be wrong on its own terms: a caller that moves focus
- * somewhere deliberate has to close the dialog first, and focus is at `body` by then either way, so
- * the condition cannot tell the two cases apart.
+ * The {@link dialogHeldFocus} reading is therefore something a caller can report, never a gate.
+ *
+ * What the restore exists for, and what covers it, is the `#148` paragraph on {@link Modal}: no
+ * check in this repository proves this call does anything, because the browser they run in hands
+ * focus back without it.
  *
  * @param target Element captured before `showModal()`, or `null` if there was none.
  * @returns `true` when focus should be moved back to `target`.
@@ -797,11 +887,15 @@ export function restoreFocus(target: FocusableElement | null): boolean {
  * Build the id of a dialog's title element.
  *
  * Exported rather than inlined so the `aria-labelledby` ↔ `id` correspondence is assertable without
- * rendering, and so the id is a named unit rather than a template literal buried in JSX.
+ * rendering, and so the id is a named unit rather than a template literal buried in JSX. The prefix
+ * earns its place in a devtools inspector: `modal-title-P0-1` says what the element is, where the
+ * bare framework id says only that something generated it.
  *
- * @param sequence Value of the module counter; unique per dialog within one document.
+ * @param base A per-component id from `useId()`. It is derived from the component's place in the
+ *   render tree, which is what makes it unique on a page and identical between the server's render
+ *   and the browser's — the two properties a module-level counter cannot have at once.
  * @returns The title element's id.
  */
-export function dialogTitleId(sequence: number): string {
-  return `modal-title-${sequence}`
+export function dialogTitleId(base: string): string {
+  return `modal-title-${base}`
 }

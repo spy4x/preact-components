@@ -1405,13 +1405,27 @@ async function goneWithin(devtools: Devtools, timeoutMs: number): Promise<Hold> 
   return { held, elapsedMs: Date.now() - startedAt }
 }
 
+/** What the card's step control did, and what the close port made of it afterwards. */
+interface Stepped {
+  /** `false` when the card was missing a control, which makes every reading below meaningless. */
+  ok: boolean
+  /** Which control was missing, for the failure message. */
+  reason: string
+  /** The step the parent held when the dialog opened. */
+  before: number
+  /** The step the parent holds after the control was pressed. */
+  after: number
+}
+
 /**
  * Modal's keyboard and focus contract, driven in the browser that owns it.
  *
- * Three facts that no string-rendering test can reach: the element really enters the top layer, a
- * real Escape press closes it, and focus goes back to the button that opened it. All three live
- * behind an effect, a ref and a listener, which is exactly the shape this repository's unit tests
- * cannot execute.
+ * Four facts that no string-rendering test can reach: the element really enters the top layer, a
+ * real Escape press closes it, that press runs the close port the parent passed most recently
+ * rather than the one captured when the dialog opened, and focus goes back to the button that
+ * opened it. All four live behind an effect, a ref and a listener, which is exactly the shape this
+ * repository's unit tests cannot execute — the stale-port one most of all, since which closure an
+ * effect captured leaves no trace in a rendered string.
  *
  * The trigger is parked on `globalThis` instead of being re-queried, so the focus assertion compares
  * element identity: a selector would also match a freshly rendered button that never had focus.
@@ -1466,6 +1480,37 @@ async function modalChecks(devtools: Devtools): Promise<void> {
       `:modal=${opened.modal}, focus now on ${opened.activeLabel}`,
   )
 
+  // Move the parent on before the key press, so the port the dialog opened with and the port it
+  // holds now disagree about one number. That difference is the whole assertion below: without it
+  // the captured closure and the current one would report the same value and the check would pass
+  // either way.
+  //
+  // The step control sits inside the dialog because that is where a person would meet it, and for
+  // no stronger reason. It was once claimed here that a control outside an open modal could not be
+  // pressed at all, the rest of the page being inert; that is true of a person and false of this
+  // check, and measured so — moved outside, the check still passes, because a scripted `.click()`
+  // is not a real press and inertness does not stop it. So the placement is a choice about what the
+  // demo shows, and what makes this check honest is the step having moved, which it asserts.
+  const stepped = await devtools.evaluate<Stepped>(`(async () => {
+    const card = document.querySelector("#demo-Modal")
+    const readout = card?.querySelector('[data-e2e="modal-close-step"]') ?? null
+    const next = card?.querySelector('[data-e2e="modal-next-step"]') ?? null
+    if (readout === null || next === null) {
+      return {
+        ok: false,
+        reason: "the Modal card is missing its " +
+          (readout === null ? 'step readout (data-e2e="modal-close-step")' : 'step control (data-e2e="modal-next-step")'),
+        before: -1,
+        after: -1,
+      }
+    }
+    const before = Number(readout.dataset.step)
+    next.click()
+    await new Promise((done) => setTimeout(done, 50))
+    const fresh = document.querySelector('#demo-Modal [data-e2e="modal-close-step"]')
+    return { ok: true, reason: "", before, after: Number(fresh?.dataset.step ?? NaN) }
+  })()`)
+
   await pressKey(devtools, "Escape")
   const closed = await poll(
     () =>
@@ -1487,6 +1532,47 @@ async function modalChecks(devtools: Devtools): Promise<void> {
       : "the dialog was never open, so this proves nothing about Escape",
   )
 
+  // The port writes its reading into the card's readout, a tick after the close, so this waits for
+  // a reading rather than assuming one is there.
+  await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `(document.querySelector('#demo-Modal [data-e2e="modal-close-step"]')?.dataset.closedAt ?? "") !== ""`,
+      ),
+    3_000,
+  )
+  const saw = await devtools.evaluate<{ closedAt: number; reported: string }>(`(() => {
+    const readout = document.querySelector('#demo-Modal [data-e2e="modal-close-step"]')
+    const raw = readout?.dataset.closedAt ?? ""
+    return { closedAt: raw === "" ? -1 : Number(raw), reported: raw === "" ? "nothing" : "step " + raw }
+  })()`)
+  // The axis this reads is *which render's closure ran*, and the step is what varies along it: the
+  // parent held one value when the dialog opened and another when Escape arrived, so the reading
+  // can name the render that produced it. Every other assertion here would hold with the bug in
+  // place.
+  check(
+    "Escape runs the close port the parent passed most recently",
+    stepped.ok && opened.open && closed && stepped.after !== stepped.before &&
+      saw.closedAt === stepped.after,
+    !stepped.ok
+      ? stepped.reason
+      : !opened.open
+      ? "the dialog was never open, so this proves nothing about Escape"
+      : stepped.after === stepped.before
+      ? `the parent's step never moved (${stepped.before} → ${stepped.after}), so both renders ` +
+        `passed a port reading the same value and this proves nothing`
+      : !closed
+      ? "the dialog never closed, so no close port ran"
+      : saw.closedAt === stepped.before
+      ? `the port that ran was the one captured when the dialog opened: it read step ` +
+        `${stepped.before} after the parent had moved to step ${stepped.after}`
+      : saw.closedAt === stepped.after
+      ? `the parent stepped ${stepped.before} → ${stepped.after} while the dialog was open, and ` +
+        `Escape's port read step ${stepped.after}`
+      : `Escape's port read ${saw.reported}, which is neither the opening step ` +
+        `(${stepped.before}) nor the current one (${stepped.after})`,
+  )
+
   const restored = await poll(
     () => devtools.evaluate<boolean>(`document.activeElement === globalThis.__verifyModalTrigger`),
     3_000,
@@ -1503,12 +1589,108 @@ async function modalChecks(devtools: Devtools): Promise<void> {
   // `restoreFocus`. Deleting the `target.focus()` call from `ui/modal.tsx`, rebuilding and
   // re-running left this green, because Chromium itself returns focus to the element that was
   // focused before `showModal()` when a dialog closes. So this asserts the behaviour a person
-  // experiences; it cannot tell the component's restore from the platform's.
+  // experiences; it cannot tell the component's restore from the platform's. The call stays all
+  // the same, for an engine that does not do that — the decision is #148, and `Modal`'s own JSDoc
+  // carries it. Nothing here will cover it until these checks can drive a second engine.
   check(
     "closing the Modal returns focus to the button that opened it",
     opened.focusInside && restored,
     opened.focusInside
       ? `trigger "${trigger.label}" — document.activeElement is ${active}`
       : "focus never moved into the dialog, so a restore proves nothing",
+  )
+
+  await uncontrolledModalChecks(devtools)
+}
+
+/** What the uncontrolled dialog left behind once Escape had been pressed. */
+interface Settled {
+  /** Whether the element is still in the page. */
+  present: boolean
+  /** Whether that element, if it is there, is still an open dialog. */
+  open: boolean
+  /** What the page's scroll lock reads: `released`, or the value still written on the body. */
+  lock: string
+}
+
+/**
+ * The branch where `Modal` settles its own open state, which nothing else here reaches.
+ *
+ * Every other dialog in the catalogue is handed an `open` prop, so the component never decides
+ * anything about its own flag: the parent unmounts it and the element goes with the parent. An
+ * uncontrolled dialog — no `open`, seeded by `defaultOpen` — is the opposite, and it is the only
+ * shape in which the component's `settleOpen` is load-bearing. Stubbing that branch out leaves
+ * every unit test green, because a string render never runs it, and leaves every other browser
+ * check green too, because they all drive controlled dialogs.
+ *
+ * The reading that separates the two worlds is **whether the element is still in the page**, not
+ * whether the dialog is closed. Both a settled and an unsettled dialog read `open === false` after
+ * Escape, because `close()` ran either way. Only a settled one stops rendering: the component
+ * returns `null`, the `<dialog>` leaves the DOM, and the scroll lock the effect was holding is
+ * released with it. An unsettled one leaves a closed element behind that can never be opened again,
+ * with the page still locked behind it.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function uncontrolledModalChecks(devtools: Devtools): Promise<void> {
+  const pressed = await devtools.evaluate<{ ok: boolean; reason: string }>(`(() => {
+    const trigger = document.querySelector('#demo-Modal [data-e2e="modal-uncontrolled-open"]')
+    if (trigger === null) {
+      return {
+        ok: false,
+        reason: 'the Modal card is missing its uncontrolled trigger (data-e2e="modal-uncontrolled-open")',
+      }
+    }
+    trigger.click()
+    return { ok: true, reason: "" }
+  })()`)
+
+  const becameModal = await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `document.querySelector('[data-e2e="guide-modal-uncontrolled"]')?.matches(":modal") === true`,
+      ),
+    3_000,
+  )
+
+  await pressKey(devtools, "Escape")
+  // Two polls rather than one read, and the second is not redundant. The element leaves the DOM in
+  // the commit, and the effect cleanup that releases the page's scroll lock runs after it, a frame
+  // later: reading the lock the instant the element disappeared landed inside that gap on one run
+  // and reported a locked page that was released milliseconds afterwards.
+  await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `document.querySelector('[data-e2e="guide-modal-uncontrolled"]') === null`,
+      ),
+    3_000,
+  )
+  await poll(() => devtools.evaluate<boolean>(`document.body.style.overflow === ""`), 3_000)
+  const settled = await devtools.evaluate<Settled>(`(() => {
+    const dialog = document.querySelector('[data-e2e="guide-modal-uncontrolled"]')
+    return {
+      present: dialog !== null,
+      open: dialog?.open === true,
+      lock: document.body.style.overflow === "" ? "released" : document.body.style.overflow,
+    }
+  })()`)
+
+  check(
+    "an uncontrolled Modal settles its own open flag, so Escape takes it off the page",
+    pressed.ok && becameModal && !settled.present && settled.lock === "released",
+    !pressed.ok
+      ? pressed.reason
+      : !becameModal
+      ? "the uncontrolled dialog never became modal, so nothing here proves anything about closing it"
+      : settled.present && settled.open
+      ? "the dialog was still open 3s after the key press"
+      : settled.present
+      ? `the dialog closed but stayed in the page, so the component never settled its own open ` +
+        `flag: it can no longer be opened, and the page's scroll lock reads "${settled.lock}"`
+      : settled.lock !== "released"
+      ? `the element left the page, but 3s later the page's scroll lock still reads ` +
+        `"${settled.lock}", so the page underneath it is stuck`
+      : `defaultOpen → :modal, then a real Escape press → the element left the page and the ` +
+        `page's scroll lock is released`,
   )
 }

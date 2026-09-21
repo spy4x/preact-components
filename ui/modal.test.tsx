@@ -78,6 +78,28 @@ describe("Modal", () => {
     expect(html).toContain('aria-modal="true"')
   })
 
+  it("stays a plain dialog unless the caller asks for an alert", () => {
+    expect(render(<Modal open title="Delete">body</Modal>)).toContain('role="dialog"')
+    expect(render(<Modal open role="alertdialog" title="Delete">body</Modal>))
+      .toContain('role="alertdialog"')
+  })
+
+  it("describes itself by the element the caller names", () => {
+    // The caller owns the description, because the element holding it is the caller's own child.
+    const html = render(
+      <Modal open title="Delete" ariaDescribedBy="wipe-warning">
+        <p id="wipe-warning">Three rows go for good.</p>
+      </Modal>,
+    )
+
+    expect(html).toContain('aria-describedby="wipe-warning"')
+    expect(html).toContain('<p id="wipe-warning">Three rows go for good.</p>')
+  })
+
+  it("writes no description attribute when the caller names no element", () => {
+    expect(render(<Modal open title="Delete">body</Modal>)).not.toContain("aria-describedby")
+  })
+
   it("takes its accessible name from the title element", () => {
     const html = render(<Modal open title="Delete invoice?">body</Modal>)
     const referenced = html.match(/aria-labelledby="([^"]+)"/)?.[1] as string
@@ -95,16 +117,33 @@ describe("Modal", () => {
     expect(html.match(/<h2/g)?.length).toBe(1)
   })
 
-  it("numbers generated title ids apart", () => {
-    // Compared against each other, not against the counter's absolute value: the sequence is
-    // module-level, so a sibling test rendering a dialog first must not renumber this one.
-    const first = render(<Modal open title="First">a</Modal>)
-    const second = render(<Modal open title="Second">b</Modal>)
-    const firstId = first.match(/aria-labelledby="([^"]+)"/)?.[1]
-    const secondId = second.match(/aria-labelledby="([^"]+)"/)?.[1]
+  it("gives two dialogs on one page different title ids", () => {
+    const html = render(
+      <div>
+        <Modal open title="First">a</Modal>
+        <Modal open title="Second">b</Modal>
+      </div>,
+    )
+    const ids = [...html.matchAll(/aria-labelledby="([^"]+)"/g)].map((match) => match[1])
 
-    expect(firstId).toBeTruthy()
-    expect(secondId).not.toBe(firstId)
+    expect(ids.length).toBe(2)
+    expect(ids[0]).toBeTruthy()
+    expect(ids[1]).not.toBe(ids[0])
+  })
+
+  it("gives the same dialog the same title id on every render, so a hydrating page agrees", () => {
+    // Two separate renders of the same markup, which is what a server process does for two requests
+    // and what the browser then does again over the server's HTML. The ids have to match. A
+    // module-level counter is what this fails on: it survives the render it was bumped in, so the
+    // second render numbers the same dialog differently and the browser hydrates a title the
+    // server's `aria-labelledby` does not point at.
+    const first = render(<Modal open title="Delete invoice?">body</Modal>)
+    const second = render(<Modal open title="Delete invoice?">body</Modal>)
+
+    expect(first.match(/aria-labelledby="([^"]+)"/)?.[1]).toBe(
+      second.match(/aria-labelledby="([^"]+)"/)?.[1],
+    )
+    expect(first).toBe(second)
   })
 
   it("uses a caller-supplied title id instead of a generated one", () => {
@@ -112,7 +151,7 @@ describe("Modal", () => {
 
     expect(html).toContain('aria-labelledby="confirm-heading"')
     expect(html).toContain('<h2 id="confirm-heading"')
-    expect(html.match(/id="modal-title-\d+"/g)).toBe(null)
+    expect(html).not.toContain("modal-title-")
   })
 
   it("falls back to aria-label when there is no title element to reference", () => {
@@ -725,8 +764,8 @@ describe("shouldRetargetFocus", () => {
 
   it("does nothing when no trigger was captured", () => {
     // The whole rule: there is no second condition to satisfy. A guard that also required focus to
-    // still be inside the dialog never fired in a real browser, because by cleanup time Chromium has
-    // already moved focus out of the unmounted content.
+    // still be inside the dialog never fired in a real browser, because the restore runs while the
+    // dialog is closing and its content unmounting.
     expect(shouldRetargetFocus(null)).toBe(false)
   })
 })
@@ -743,7 +782,8 @@ describe("dialogHeldFocus", () => {
   })
 
   it("reports focus outside for an active element of null", () => {
-    // The reading measured at cleanup time: a dialog whose content has unmounted sees `body`.
+    // `document.activeElement` is nullable, and a reading that arrives as `null` says only that
+    // nothing was focused — never that focus was inside.
     expect(dialogHeldFocus(inside, null)).toBe(false)
   })
 
@@ -777,11 +817,11 @@ describe("restoreFocus", () => {
 })
 
 describe("dialogTitleId", () => {
-  it("is unique per sequence value", () => {
-    expect(dialogTitleId(1)).not.toBe(dialogTitleId(2))
+  it("keeps two framework ids apart", () => {
+    expect(dialogTitleId("P0-0")).not.toBe(dialogTitleId("P0-1"))
   })
 
-  it("is a valid id, usable as the value of both attributes", () => {
-    expect(dialogTitleId(7)).toBe("modal-title-7")
+  it("names the element it belongs to, and stays a valid id", () => {
+    expect(dialogTitleId("P0-7")).toBe("modal-title-P0-7")
   })
 })

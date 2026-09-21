@@ -32,6 +32,7 @@ import {
   type ToastVariant,
 } from "@preact-components/ui"
 import { useSignal } from "@preact/signals"
+import { useState } from "preact/hooks"
 import { IconFolder, IconPlus, IconTrashBin } from "@preact-components/icons"
 import { entries } from "../record.ts"
 import type { DemoFragment } from "../registry.ts"
@@ -395,7 +396,7 @@ function SkeletonStatusDemo() {
 }
 
 /**
- * The two dialog tones, each behind its own trigger.
+ * The two dialog tones, each behind its own trigger, plus the step a close port closes over.
  *
  * Mounting is opening: the component renders `null` while closed, and the press mounts it, which is
  * what makes the effect call `showModal()`. The dialog's actual behaviour is the browser's, and this
@@ -403,14 +404,30 @@ function SkeletonStatusDemo() {
  * decisions it makes (`isBackdropClick`, `escapeCloseStrategy`, `shouldRetargetFocus`).
  *
  * **This card is what the browser checks drive.** `deno task --cwd pages verify` presses the first
- * trigger below, asserts the dialog is `:modal` with focus inside it, sends a real Escape key press
- * and asserts the dialog closed and focus returned to that trigger. That `:modal` reading is what
- * says the dialog reached the top layer at all. Still covered by no committed test: what two
- * dialogs open at once do to each other's stacking order, focus containment, the backdrop
- * hit-test, scroll-lock compensation and the refused-Escape path.
+ * trigger below, asserts the dialog is `:modal` with focus inside it, presses the step control
+ * inside the dialog, sends a real Escape key press, and asserts the dialog closed, that the close
+ * port saw the step the parent has *now*, and that focus returned to that trigger. That `:modal`
+ * reading is what says the dialog reached the top layer at all. The last trigger is the
+ * uncontrolled dialog, and its check is the only thing that exercises the branch where the
+ * component settles its own open flag: everything else on this page hands `Modal` an `open` prop.
+ * Still covered by no committed test: what two dialogs open at once do to each other's stacking
+ * order, focus containment, the backdrop hit-test, scroll-lock compensation and the refused-Escape
+ * path.
+ *
+ * **Why the step is `useState` and not a signal.** A signal read from any render's closure returns
+ * the current value, which is exactly what hides a handler that captured an old one. The step is
+ * plain state and `onClose` closes over it by value, so "which render's port ran" becomes a number
+ * on screen — the difference between a dialog that acts on the step the user is on and one that
+ * acts on the step they opened it from.
  */
 function ModalDemo() {
   const open = useSignal<DialogTone | null>(null)
+  const [step, setStep] = useState(1)
+  const [closedAtStep, setClosedAtStep] = useState<number | null>(null)
+  // How many times the uncontrolled dialog has been asked for, used as its key. An uncontrolled
+  // dialog cannot be re-opened from outside — it seeds its flag from `defaultOpen` and settles that
+  // flag itself — so asking for another one means mounting another one.
+  const [uncontrolled, setUncontrolled] = useState(0)
 
   return (
     <div class="space-y-3">
@@ -425,15 +442,34 @@ function ModalDemo() {
             {label}
           </Button>
         ))}
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="modal-uncontrolled-open"
+          onClick={() => setUncontrolled(uncontrolled + 1)}
+        >
+          uncontrolled — it owns its own open flag
+        </Button>
         <span class="text-xs text-gray-500 dark:text-gray-400">
           nothing is mounted until a trigger is pressed: {open.value === null ? "closed" : "open"}
         </span>
       </div>
 
+      <p
+        class="text-xs text-gray-500 dark:text-gray-400"
+        data-e2e="modal-close-step"
+        data-step={step}
+        data-closed-at={closedAtStep ?? ""}
+      >
+        step {step}; the close port last read{" "}
+        {closedAtStep === null ? "nothing yet" : `step ${closedAtStep}`}
+      </p>
+
       {open.value !== null && (
         <Modal
           open
           onClose={() => {
+            setClosedAtStep(step)
             open.value = null
           }}
           title={`Modal — ${open.value}`}
@@ -451,6 +487,41 @@ function ModalDemo() {
             Opened through `showModal()`, in the browser's top layer. Escape, the header control and
             a backdrop click all route through `onClose`; returning `false` from that port refuses
             the close and keeps the dialog open.
+          </p>
+          <p class="mt-3 text-sm text-gray-600 dark:text-gray-300">
+            This dialog's `onClose` closes over the step below. Advance it, then press Escape: the
+            line above the dialog has to report the step you advanced to, not the one this dialog
+            opened on.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            class="mt-3"
+            data-e2e="modal-next-step"
+            onClick={() => setStep(step + 1)}
+          >
+            advance to step {step + 1}
+          </Button>
+        </Modal>
+      )}
+
+      {uncontrolled > 0 && (
+        <Modal
+          key={uncontrolled}
+          defaultOpen
+          title="Uncontrolled dialog"
+          cancelLabel="Close"
+          dataE2E="guide-modal-uncontrolled"
+        >
+          <p class="text-sm text-gray-600 dark:text-gray-300">
+            No `open` prop and no `onClose`: this dialog seeds its flag from `defaultOpen` and
+            settles it itself, so Escape and the header control take it off the page with nobody to
+            tell. That is the shape for a panel whose host has no flag of its own to keep in step.
+          </p>
+          <p class="mt-3 text-sm text-gray-600 dark:text-gray-300">
+            Closing it unmounts the element rather than leaving a closed one behind, which is how
+            you can see from outside that the dialog's own flag really moved. Press the trigger
+            again for a fresh one — an uncontrolled dialog cannot be re-opened, only replaced.
           </p>
         </Modal>
       )}
@@ -631,7 +702,7 @@ export const feedbackDemos = {
   },
   Modal: {
     summary:
-      "Dialog on the platform's `<dialog>`, opened by mounting it through `showModal()` — the `open` attribute is deliberately never rendered, because `<dialog open>` is the non-modal state and `showModal()` throws on it. `open` is either caller-owned or seeded by `defaultOpen`, every close leaves through `onClose` (return `false` to refuse), and `title` supplies the accessible name unless `ariaLabel` does.",
+      'Dialog on the platform\'s `<dialog>`, opened by mounting it through `showModal()` — the `open` attribute is deliberately never rendered, because `<dialog open>` is the non-modal state and `showModal()` throws on it. `open` is either caller-owned or seeded by `defaultOpen`, every close leaves through `onClose` — always the one from the latest render, so an inline handler reads the state the parent has now — and `title` supplies the accessible name unless `ariaLabel` does. `ariaDescribedBy` points at the element holding the body, and `role="alertdialog"` is for a panel that has to be answered.',
     snippet: `<Modal
   open={open.value}
   onClose={() => open.value = false}
@@ -646,7 +717,7 @@ export const feedbackDemos = {
   },
   ConfirmDialog: {
     summary:
-      "Confirmation panel: a title, one question as `message` or richer `children`, and two labelled actions. `title`, `confirmLabel` and `cancelLabel` are required — the library ships no product copy, and a blank label throws rather than rendering an unlabelled action. Nothing closes itself: `onConfirm` and `onCancel` are ports, and only the caller moves its own flag.",
+      "Confirmation panel: a title, one question as `message` or richer `children`, and two labelled actions. It announces itself as an `alertdialog` and points `aria-describedby` at its question, so a screen reader reads what is about to happen and not just two verbs. `confirmLabel` and `cancelLabel` default to English and a caller's own verbs override them. Nothing closes itself: `onConfirm` and `onCancel` are ports, and only the caller moves its own flag.",
     snippet: `<ConfirmDialog
   title="Delete invoice INV-0007?"
   message="This cannot be undone."
