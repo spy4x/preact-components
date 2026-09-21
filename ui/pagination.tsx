@@ -51,11 +51,18 @@ const sideWidth = 2
  * That last rule is why a collapsed range can show more page numbers than `size` — it swallows a
  * page by dropping the `…` that would have hidden it — and it is why `size` does not bound how much
  * the control renders. {@link sideWidth} does. A collapsed range renders at most
- * `4 * sideWidth + 1` items, **nine** as this module is configured: the window is
- * `2 * sideWidth + 1` pages, and each end adds either the first or last page and a `…`, or the up
- * to `sideWidth` pages the window swallowed in place of that `…`. The unit suite walks every page
- * of every total up to 60 across a dozen values of `size` and asserts both that nothing exceeds
- * nine and that nine is reached, so the number in this sentence is a measured one.
+ * `2 * sideWidth + 5` items, **nine** as this module is configured: the window is
+ * `2 * sideWidth + 1` pages, and each end adds at most two more items — the first or last page and
+ * a `…`, or the two pages the window swallowed in place of that `…`.
+ *
+ * Two at each end rather than `sideWidth`, and the difference matters as soon as anyone changes the
+ * constant. The swallow is bounded by {@link windowAround}'s own literals, which ask whether fewer
+ * than two pages would be left behind a mark, so it takes two pages however wide the window is.
+ *
+ * `sideWidth` is a constant of this module and not a parameter, so what the unit suite can pin is
+ * the number the library ships rather than the formula: it walks every page of every total up to 60
+ * across a dozen values of `size` and asserts both that nothing exceeds nine and that nine is
+ * reached, which is what turns a change that widens the swallow, or narrows the window, red.
  *
  * `page` is clamped into `1…pageCount` first.
  *

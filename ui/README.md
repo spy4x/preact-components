@@ -254,8 +254,8 @@ Focus merely _leaving_ the panel is not a close at all here. A Tab out leaves it
 one dismissal path this component does not have — and is also what makes the Escape-from-outside
 case above reachable.
 
-All seven of those paths are driven in a real browser in `pages/checks/ui.ts`: opening, the five
-that return focus, and the two that must not.
+All seven of those close paths are driven in a real browser in `pages/checks/ui.ts` — the five that
+return focus and the two that must not — and so is the move that opens the panel.
 
 `Custom…` is marked pressed while the custom fields are the live choice — the button was activated,
 either field was typed into, or the caller's `selectedPreset` is `"custom"` — and stops being
@@ -291,10 +291,10 @@ written out instead, because the mark takes the same room and says less. `pageRa
 size)` is that rule on its own, exported and unit-tested; `size` says how long a range may be before
 it collapses at all, and the collapsed window's width does not depend on it. What bounds the
 collapsed form is the two-page rule instead: at most nine items, being the five-page window plus, at
-each end, either that end's page and a `…` or the up to two pages the window swallowed in place of
-that `…`. The unit suite walks every page of every total up to sixty across a dozen values of
-`size`, so nine is a measured ceiling rather than an estimate — and it checks that nine is reached,
-because a bound nobody reaches is a bound nobody has tested.
+each end, either that end's page and a `…` or the two pages the window swallowed in place of that
+`…`. The unit suite walks every page of every total up to sixty across a dozen values of `size`, so
+nine is a measured ceiling rather than an estimate — and it checks that nine is reached, because a
+bound nobody reaches is a bound nobody has tested.
 
 ```
 pageRange(5, 10)   1 2 3 4 5 6 7 … 10
