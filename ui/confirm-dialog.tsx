@@ -190,8 +190,16 @@ export function labelOr(label: string | undefined, fallback: string): string {
  * and a fragment can wrap exactly the same nothing. Both are checked through, recursively, because
  * a list of blanks and a fragment around an empty list are the same nothing one layer down.
  *
+ * **Where it is wrong, and why it stays wrong.** A caller's own component that renders nothing —
+ * `<EmptyNote />` returning `null` — counts as a question here, and so does a fragment around one.
+ * Deciding otherwise would mean rendering the component to find out, which this function cannot do
+ * and a props-time check should not: it would run a caller's component twice for an accessibility
+ * attribute. So a caller whose body is a component that may render nothing passes the question it
+ * actually has, or none. The shapes a caller writes inline — lists, fragments, blanks and skipped
+ * branches — are the ones this gets right, and they are the shapes that produced the bug.
+ *
  * @param body The panel's children, or its message when there are none.
- * @returns `true` when the body has content to announce.
+ * @returns `true` when the body has content to announce. A component is taken at its word.
  */
 export function hasQuestion(body: ComponentChildren): boolean {
   if (body === undefined || body === null || typeof body === "boolean") return false
