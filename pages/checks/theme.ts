@@ -92,6 +92,7 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
     canvas: string
     surface: string
     link: string
+    linkHovered: boolean
     list: string
   }>(`(async () => {
     const style = (selector) => getComputedStyle(document.querySelector(selector))
@@ -112,6 +113,13 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
       canvas: style("#demo-class-colour-atoms .bg-canvas").backgroundColor,
       surface: style("#demo-class-colour-atoms .bg-surface").backgroundColor,
       link: style("#demo-class-typography .link").textDecorationLine,
+      // The .link class applies hover:no-underline, and an applied hover variant is gated by
+      // "@media (hover: hover)" exactly like a utility written in the markup — checked against
+      // the built stylesheet, not assumed. The browser is now hover-capable, so a pointer
+      // resting on this link would take the underline away and this check would read the hovered
+      // state as the resting one. Nothing moves a pointer before this file runs today; asserted
+      // so that a later check which does fails here by name.
+      linkHovered: document.querySelector("#demo-class-typography .link").matches(":hover"),
       list: style("#demo-class-typography .list-ul").listStyleType,
     }
   })()`)
@@ -125,8 +133,13 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
   )
   check(
     "`.num` right-aligns and `.list-ul`/`.link` style their text",
-    surfaces.numAlign === "right" && surfaces.list === "disc" && surfaces.link === "underline",
-    `num ${surfaces.numAlign}, list ${surfaces.list}, link ${surfaces.link}`,
+    surfaces.numAlign === "right" && surfaces.list === "disc" && surfaces.link === "underline" &&
+      !surfaces.linkHovered,
+    surfaces.linkHovered
+      ? `a pointer was resting on the link when its decoration was read, so ${surfaces.link} is ` +
+        `the hovered state and says nothing about the resting one`
+      : `num ${surfaces.numAlign}, list ${surfaces.list}, link ${surfaces.link}, read with ` +
+        `nothing hovering it`,
   )
   check(
     "`.scrollbar` is a real horizontal scroller",
