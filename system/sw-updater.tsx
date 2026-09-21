@@ -292,9 +292,12 @@ const dismissButtonClass =
  *
  * What is always there is only the region: no class, no padding, no border, no minimum height, so
  * an empty one paints nothing and is zero pixels tall. It is an ordinary in-flow element, which is
- * not quite the same as free — a `flex` or `grid` parent with a `gap` allocates one gap for a child
- * with no height, measured at 16px for `gap-4`, while plain block flow and a Tailwind `space-y-*`
- * stack cost nothing. `system/README.md` says where a host should mount it. The visible bar, the
+ * not quite the same as free — a `flex` or `grid` parent charges a full 16px for a child with no
+ * height, whether it spaces its children with `gap-4` or with a `space-y-4` margin, because neither
+ * a gap nor a margin between flex or grid items collapses. Block flow costs nothing either way.
+ * `system/README.md` has the measurements and says where a host should mount it. The `class` prop
+ * goes to the bar rather than to the region, so no caller can give the region a box. The visible
+ * bar, the
  * Reload button and the Dismiss control appear inside it when — and only when — a worker is
  * waiting. `aria-atomic` is set explicitly although `role="status"` already implies it, so a reader
  * announces the whole sentence and its two controls rather than the one text node that changed.

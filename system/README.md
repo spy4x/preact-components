@@ -222,19 +222,30 @@ with no padding, no border and no minimum height: empty, it is zero pixels tall 
 That is not the same as costing nothing everywhere, because a parent can space a child that has no
 height. Measured in Chromium, against a column of two 24px paragraphs that is 64px tall on its own:
 
-| Parent                     | Empty region in it | Cost |
-| -------------------------- | ------------------ | ---- |
-| plain block flow           | 64px               | 0px  |
-| Tailwind `space-y-4`       | 64px               | 0px  |
-| `flex` column with `gap-4` | 80px               | 16px |
-| `grid` with `gap-4`        | 80px               | 16px |
+| Parent                         | Empty region in it | Cost |
+| ------------------------------ | ------------------ | ---- |
+| block flow, no spacing         | 64px               | 0px  |
+| block flow with `space-y-4`    | 64px               | 0px  |
+| `flex` column with `gap-4`     | 80px               | 16px |
+| `flex` column with `space-y-4` | 80px               | 16px |
+| `grid` with `gap-4`            | 80px               | 16px |
+| `grid` with `space-y-4`        | 80px               | 16px |
 
-A `gap` is allocated for every child, height or no height, so a gapped flex or grid parent pays one
-whole gap for an element nobody can see. `space-y-*` costs nothing because it works by margins, and
-the margin it puts on the region collapses with the one on the element above it. **So mount
-`<SWUpdater />` where its parent does not use `gap`** — as a direct child of `<body>`, or of a plain
-layout container. `Toastr`'s stack never faces this question, because it is laid out `fixed` and is
-out of flow wherever it is mounted.
+**It is the parent's layout mode that decides, not which spacing utility it uses.** A `gap` is
+allocated for every child, height or no height. `space-y-*` spaces by margins instead, and a margin
+collapses through a zero-height element in block flow — which is why the second row costs nothing —
+but margins never collapse between flex or grid items, so the same utility costs a full 16px in the
+fourth and sixth rows. Spacing a flex or grid container by margins rather than by `gap` therefore
+buys a host nothing here.
+
+**So mount `<SWUpdater />` where its parent is neither a `flex` nor a `grid` container** — as a
+direct child of `<body>`, or of a plain block-flow container, spaced or not. Anywhere else it costs
+one gap or one margin: a visible hole in the layout, for an element nobody can see.
+
+The zero cost depends on the region having no border, no padding and no height, and a host cannot
+take that away: the region carries no class of its own and the `class` prop goes to the bar inside
+it, so there is no way to style the region from outside the package. `Toastr`'s stack never faces
+this question at all, because it is laid out `fixed` and is out of flow wherever it is mounted.
 
 What an always-present region costs everywhere is one more node in the accessibility tree, which is
 the trade being made.
