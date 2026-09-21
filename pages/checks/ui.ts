@@ -775,6 +775,12 @@ const TOASTR_STATE = `(() => {
     toasts: region.children.length,
     height: Math.round(box.height),
     width: Math.round(box.width),
+    // Cut short for the failure message, and coupled to the card whether or not anybody meant it
+    // to be: the first check asserts that this text carries the label of the button that pushed
+    // the toast, so a card whose toast body grows past these 40 characters before that label
+    // appears turns the check red for a reason that has nothing to do with the component. The
+    // card's body is "success — pushed by the demo stack", 34 characters with the label first.
+    // Lengthen this cut along with that body.
     text: (region.textContent ?? "").trim().slice(0, 40),
   }
 })()`
