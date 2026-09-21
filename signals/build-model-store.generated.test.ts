@@ -7,23 +7,29 @@
  * reading the wrong column and a request counter shared by every row both survived a green suite.
  * This file varies those axes instead, and checks the store against a model of the rule.
  *
- * **What it covers.** Concurrency: one to four rows with ids up to 100,000, two to six `update`,
- * `delete` and `undelete` requests in any mix, each answered with a row, one of nine reported
- * statuses, a 500, a connection failure, or a body the schema rejects, in a shuffled answer order.
- * After every answer it checks each row's name, whether it is soft-deleted, both operation flags,
- * whether each slot carries an error, and the notifications so far.
+ * **What it covers.** One to four rows, each with at least one request, with ids up to 100,000.
+ * Two to six `update`, `delete` and `undelete` requests in any mix, answered with a row that may
+ * carry a deletion whichever operation asked for it, with one of nine reported statuses, a 500, a
+ * connection failure, or a body the schema rejects. Making and answering are interleaved, so a row
+ * is often written to again after an earlier write has settled — 238 of the 300 cases make a
+ * request after an answer has already arrived. After every step it checks each row's name, whether
+ * it is soft-deleted, both operation flags, whether each slot carries an error, and the
+ * notifications so far.
  *
- * **What it does not cover.** The freshness rule, whose axes are bounded and enumerated beside
- * the fixtures instead; creates, which have no row identity to vary; `extraOps`; the session
- * watch; `remove` and `reset`; the body text of a failure notification, only its title; calls made
- * re-entrantly from an effect; and anything about timing beyond the order answers arrive in. It is
- * also not a description of the store: it says the rule holds across these axes, never what the
- * rule is, and a reader who wants to know what the store promises should read the named tests.
+ * **What it does not cover.** The freshness rule, whose axes are bounded and enumerated beside the
+ * fixtures instead; creates, which have no row identity to vary; `extraOps`; the session watch;
+ * `remove` and `reset`; remote events; the body text of a failure notification, only its title;
+ * calls made re-entrantly from an effect; and anything about timing beyond the order in which
+ * things happen. It reads only what the store shows — the list and the operation slots — never the
+ * value an operation returns to its caller or the `result` a slot carries; the named tests cover
+ * those. It is also not a description of the store: it says the rule holds across these axes,
+ * never what the rule is, and a reader who wants to know what the store promises should read the
+ * named tests.
  *
  * **Reproducing a failure.** Every case comes from `SEED + index` and nothing else, so it is the
  * same on every machine and every run, and a failed assertion prints that number with the plan it
- * produced: the rows, the requests in the order they were made, their answers, and the answer
- * order.
+ * produced: the rows, every request with the answer waiting for it, and the interleaving of making
+ * and answering that the case runs.
  */
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
@@ -52,13 +58,17 @@ const WORDS = {
 
 type Answer = { status: number } | "offline" | "malformed" | "row"
 
-/** One request: `seq` is its position in its own row's sequence, `name` what a success returns. */
+/**
+ * One request. `seq` is its position in its own row's sequence; `name` and `deletedAt` are the row
+ * a successful answer carries back, which is what the store replaces the held row with.
+ */
 interface Planned {
   row: number
   kind: Kind
   seq: number
   answer: Answer
   name: string
+  deletedAt: Date | null
 }
 
 /** Deterministic 32-bit generator (mulberry32), so a case never depends on the host. */
@@ -73,11 +83,13 @@ function rng(seed: number): () => number {
   }
 }
 
-/** `order` holds positions in `requests`, in the order their answers arrive. */
+/** A request is made, or one already made is answered. `at` indexes `requests`. */
+type Step = { make: number } | { answer: number }
+
 interface Plan {
   ids: number[]
   requests: Planned[]
-  order: number[]
+  steps: Step[]
 }
 
 function planCase(seed: number): Plan {
@@ -94,8 +106,11 @@ function planCase(seed: number): Plan {
 
   const issued = new Map<number, number>()
   const requests: Planned[] = []
-  for (let index = 2 + Math.floor(next() * 5); index > 0; index--) {
-    const row = pick(ids)
+  const total = Math.max(ids.length, 2 + Math.floor(next() * 5))
+  for (let index = 0; index < total; index++) {
+    // Every drawn row gets a request of its own before any row gets a second: picking at random
+    // throughout left four rows drawn and one row written to in most cases.
+    const row = index < ids.length ? ids[index] : pick(ids)
     const seq = (issued.get(row) ?? 0) + 1
     issued.set(row, seq)
     const roll = next()
@@ -108,22 +123,40 @@ function planCase(seed: number): Plan {
       : roll < 0.93
       ? "offline"
       : "malformed"
-    requests.push({ row, kind: pick(KINDS), seq, answer, name: `answer-${requests.length}` })
+    const kind = pick(KINDS)
+    // Any answer may carry a deletion: the store's promise is that a response body replaces the
+    // row, not that only a delete archives it. The scaffold's archive checkbox is an update.
+    const deletedAt = next() < (kind === "delete" ? 0.9 : 0.25) ? DELETED_AT : null
+    requests.push({ row, kind, seq, answer, name: `answer-${index}`, deletedAt })
   }
 
-  const order = requests.map((_, index) => index)
-  for (let i = order.length - 1; i > 0; i--) {
-    const j = Math.floor(next() * (i + 1))
-    ;[order[i], order[j]] = [order[j], order[i]]
+  // Requests are made and answered in one interleaved order, so a row can be written to again
+  // after its first write has settled — which is the ordinary thing a user does, and something a
+  // plan that made every request up front could never produce.
+  const steps: Step[] = []
+  const outstanding: number[] = []
+  let made = 0
+  while (steps.length < requests.length * 2) {
+    const mustMake = outstanding.length === 0
+    const mustAnswer = made === requests.length
+    if (!mustAnswer && (mustMake || next() < 0.55)) {
+      outstanding.push(made)
+      steps.push({ make: made++ })
+      continue
+    }
+    steps.push({ answer: outstanding.splice(Math.floor(next() * outstanding.length), 1)[0] })
   }
-  return { ids, requests, order }
+  return { ids, requests, steps }
 }
 
-function describePlan(seed: number, { ids, requests, order }: Plan): string {
+function describePlan(seed: number, { ids, requests, steps }: Plan): string {
   const made = requests.map((r, i) =>
-    `${i}:${r.kind}(row ${r.row}, seq ${r.seq})→${JSON.stringify(r.answer)}`
+    `${i}:${r.kind}(row ${r.row}, seq ${r.seq})→${JSON.stringify(r.answer)}${
+      r.deletedAt ? "+deleted" : ""
+    }`
   )
-  return `seed ${seed}; rows ${ids.join("/")}; made ${made.join(", ")}; answered ${order.join(",")}`
+  const order = steps.map((step) => "make" in step ? `make ${step.make}` : `answer ${step.answer}`)
+  return `seed ${seed}; rows ${ids.join("/")}; ${made.join(", ")}; ${order.join(" → ")}`
 }
 
 /** Slot a kind writes: 0 is the update slot, which an undelete shares; 1 is the delete slot. */
@@ -153,20 +186,20 @@ function modelCase(plan: Plan) {
     }]),
   )
   const issued = new Map<number, number>()
-  for (const request of plan.requests) {
-    issued.set(request.row, request.seq)
-    const row = rows.get(request.row)!
-    row.busy[slotOf(request.kind)] = true
-    row.failed[slotOf(request.kind)] = false
-  }
-
   const applied = new Map<number, number>()
   const said: string[] = []
   return {
     rows,
     said,
+    /** Fold in one request being made. */
+    make({ row: id, kind, seq }: Planned) {
+      issued.set(id, seq)
+      const row = rows.get(id)!
+      row.busy[slotOf(kind)] = true
+      row.failed[slotOf(kind)] = false
+    },
     /** Fold in one answer, in the order the answers arrive. */
-    answer({ row: id, kind, seq, answer, name }: Planned) {
+    answer({ row: id, kind, seq, answer, name, deletedAt }: Planned) {
       const row = rows.get(id)!
       const slot = slotOf(kind)
       const fresh = seq > (applied.get(id) ?? 0)
@@ -183,8 +216,10 @@ function modelCase(plan: Plan) {
       }
       if (!fresh) return
       if (settles) row.failed[slot] = false
+      // Read from the row the server sent, not from the kind of request: the store's promise is
+      // that a response body replaces the held row, whichever operation asked for it.
       row.name = name
-      row.deleted = kind === "delete"
+      row.deleted = deletedAt !== null
       said.push(WORDS[kind][0])
     },
   }
@@ -192,11 +227,11 @@ function modelCase(plan: Plan) {
 
 const DELETED_AT = new Date("2024-03-01T00:00:00.000Z")
 
-function responseFor({ kind, row, name, answer }: Planned): Response | Error {
+function responseFor({ row, name, answer, deletedAt }: Planned): Response | Error {
   if (answer === "offline") return new Error("network down")
   if (answer === "malformed") return Response.json({ id: "not a number" })
   if (answer !== "row") return Response.json({ error: "rejected" }, { status: answer.status })
-  return Response.json({ id: row, name, deletedAt: kind === "delete" ? DELETED_AT : null })
+  return Response.json({ id: row, name, deletedAt })
 }
 
 /** What the store shows for one row, in the shape the model describes. */
@@ -242,24 +277,35 @@ describe("buildModelStore over generated cases", () => {
       )
 
       const model = modelCase(plan)
-      const running = plan.requests.map((request) =>
-        request.kind === "update"
-          ? store.update(request.row, { name: request.name })
-          : request.kind === "delete"
-          ? store.delete(request.row)
-          : store.undelete(request.row)
-      )
+      const running = new Map<number, Promise<unknown>>()
+      const settlerOf = new Map<number, number>()
 
-      for (const position of plan.order) {
-        settlers[position](responseFor(plan.requests[position]))
-        await running[position]
-        model.answer(plan.requests[position])
+      for (const step of plan.steps) {
+        if ("make" in step) {
+          const request = plan.requests[step.make]
+          settlerOf.set(step.make, settlers.length)
+          running.set(
+            step.make,
+            request.kind === "update"
+              ? store.update(request.row, { name: request.name })
+              : request.kind === "delete"
+              ? store.delete(request.row)
+              : store.undelete(request.row),
+          )
+          model.make(request)
+        } else {
+          settlers[settlerOf.get(step.answer)!](responseFor(plan.requests[step.answer]))
+          await running.get(step.answer)
+          model.answer(plan.requests[step.answer])
+        }
 
         for (const id of plan.ids) {
-          expect(observe(store, id), `row ${id} after answer ${position} — ${where}`)
+          expect(observe(store, id), `row ${id} after step ${JSON.stringify(step)} — ${where}`)
             .toEqual(model.rows.get(id))
         }
-        expect(said, `notifications after answer ${position} — ${where}`).toEqual(model.said)
+        expect(said, `notifications after step ${JSON.stringify(step)} — ${where}`).toEqual(
+          model.said,
+        )
       }
     }
   })
