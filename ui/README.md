@@ -41,6 +41,7 @@ Preact + Tailwind primitives extracted from `gb`, `financy` and `offer-lens`.
 | `Tabs`            | `tabs`              | `tabs`, `active`, `onChange`, `orientation`, `lazy`                                                           |
 | `Toastr`          | `toastr`            | `toasts`, `onDismiss`, `label`, `dismissLabel`, `dataE2E`                                                     |
 | `ToggleSwitch`    | `toggle-switch`     | `value`, `onToggle`, `disabled`, `label`                                                                      |
+| `Tooltip`         | `tooltip`           | `content`, `label`, `placement`, `focusable`                                                                  |
 
 ## Usage
 
@@ -137,6 +138,47 @@ asked for one.
   dismissLabel="Ausblenden"
 />
 ```
+
+## Tooltip
+
+A supplementary hint on a trigger, revealed by hover and by keyboard focus, anchored with CSS only.
+Two rules go together and the component holds both: **a hint can be dismissed**, and **a hint can be
+pointed at**. Escape hides it and drops `aria-describedby` without moving focus, and it comes back on
+the next hover or focus; the surface takes pointer events and the gap between trigger and hint is the
+surface's own padding, so a pointer can travel onto the hint and rest there while it is read. A hint
+that cannot be dismissed covers what somebody was reading, and one that cannot be hovered cannot be
+read at all by anyone magnifying the screen.
+
+`label` is the trigger's own accessible name and the hint is only ever its description. By default
+the trigger is a `<button>`, because `aria-label` on an element with no role is not guaranteed to
+reach the accessibility tree at all. `focusable={false}` is for a trigger whose children are already
+interactive: the wrapper becomes a `role="group"` around that control, which keeps one tab stop for
+one control and still gives the name and the description an element the tree keeps.
+
+```tsx
+<Tooltip content="Supplements the trigger" label="Total revenue" placement="right">
+  <span>Revenue</span>
+</Tooltip>
+```
+
+While a hint is on screen its box — the bridge to the trigger included — sits over whatever is behind
+it and takes the clicks that would have gone there. It is inert again the moment the hint is hidden.
+The reveal itself is Tailwind's `group-hover` and `group-focus-within`, and Tailwind compiles every
+hover style inside `@media (hover: hover)`: on a device that reports no hover-capable pointer the
+hint is reached by focus only, which is the right behaviour on a touch screen and is also why the
+browser checks prove the hover half through hit testing rather than through the paint.
+
+## Combobox
+
+Every string it shows is a prop with an English default: `placeholder` (`"Select…"`), `emptyMessage`
+(`"No matches"`) and `clearLabel` (`"Clear selection"`).
+
+**The empty message waits to be asked.** It is rendered, and announced, only once the list is open or
+the field carries a query. A field nobody has touched — one whose options are still arriving over the
+network, for instance — says nothing at all rather than claiming there is nothing to match. The
+highlight belongs to the keyboard: the arrow keys move it, the popup scrolls to keep it on screen,
+and no pointer handler writes `aria-activedescendant`, so a screen reader's reading position does not
+follow a mouse somebody else is holding. The row under the pointer is still painted, in CSS.
 
 ## Skeletons
 
