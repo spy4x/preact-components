@@ -66,11 +66,16 @@ function scriptName(url: string): string {
 /**
  * Click one element, or nothing at all when it is not on the page.
  *
- * A missing element has to be a failed check and never a thrown exception. This file runs before
- * three other packages', and `verify.ts` records a throw as one failed check and stops the browser
- * phase there — so a bar that did not appear would take `crud`, `charts` and `ui`'s checks down
- * with it and report far less than it knows. Measured, not feared: breaking the container lookup on
- * purpose ended a run at 43 of 46 checks instead of 55 of 60.
+ * A missing element has to be a failed check and never a thrown exception. What a throw costs is
+ * the rest of this package's own block: `verify.ts` records it as one failed check naming `system`,
+ * and every check after it in this file is replaced by that one line, so a bar that did not appear
+ * would report far less than it knows.
+ *
+ * It used to cost more, and the measurement is worth keeping as history rather than as a
+ * description of the runner. Until `verify.ts` began running each package isolated from the others,
+ * a throw here stopped the whole browser phase, so a missing bar took `crud`, `charts` and `ui`'s
+ * checks down with it too: measured, not feared — breaking the container lookup on purpose ended a
+ * run at 43 of 46 checks instead of 55 of 60.
  *
  * @param devtools The connected session.
  * @param selector What to click.
@@ -380,9 +385,10 @@ const LINKED_IMAGE = `${LIGHTBOX} [data-e2e="lightbox-linked-image"]`
 /**
  * Page exceptions the readings below swallowed.
  *
- * A check must never throw: `verify.ts` records a throw as one failed check and stops the browser
- * phase there, which would take `crud`, `charts` and `ui`'s checks down with it. So every reading
- * goes through {@link read}, a reading that failed leaves its message here, and `systemChecks`
+ * A check must never throw: `verify.ts` records a throw as one failed check naming `system` and
+ * drops the rest of this file's checks — and, before each package was run isolated from the others,
+ * it stopped the whole browser phase and took `crud`, `charts` and `ui`'s checks with it. So every
+ * reading goes through {@link read}, a reading that failed leaves its message here, and `systemChecks`
  * turns the collection into a check of its own — otherwise a swallowed exception would be a silent
  * pass, because an expression that throws inside `Runtime.evaluate` raises no protocol event for
  * `verify.ts`'s console-error check to find.
