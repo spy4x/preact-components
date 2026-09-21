@@ -335,24 +335,34 @@ anything.
   Back landed on the address that had just been rewritten and was rewritten again, and on a
   fragment-routed page the rewrite took the route with it. Such an address is now left exactly as it
   arrived; the first real filter change rewrites the query string canonically.
-- **A write replaces the whole address.** The router pushes `pathname?search`, which carries no
-  fragment, so a fragment-routed page loses its route when a filter changes. Arriving, reading and
-  remounting do not.
+- **A write changes the query string and nothing else.** The path, a parameter belonging to
+  something else on the page and the fragment all survive a filter change. The fragment takes one
+  extra step to survive, because the router's `navigate` is handed `pathname?search` and a target
+  with no `#` resolves to an address with no fragment: the write reads `location.hash` at the moment
+  it writes — not at mount, so a page that moves its own route while the card is mounted keeps the
+  route it has now — and puts it back with `history.replaceState`, which the router patches in the
+  same breath as `pushState`. So the cost stays one history entry per filter change, every listener
+  subscribed through the router is told, no `hashchange` is fired, and the page is not scrolled back
+  to the anchor. `restoredAddress` is that step, and it answers "nothing to do" when the address
+  kept a fragment of its own — which is what a router keeping its location in the fragment
+  (wouter's `useHashLocation`) does, and handing the fragment to `navigate` instead would have
+  landed it percent-encoded inside that router's query string.
 - **One address change costs one history entry**, in either direction, so one press of Back moves
   the reader once. `clearFilters` batches its writes through `clearFilterFields`, so clearing is one
   change rather than one per field. Preact's signals adapter batches writes inside an event handler
   anyway, so a clear driven by a button looks the same either way; the batch is what covers an
   application clearing from a timer or after a request.
 - **`useUrlFilters` needs a DOM and a wouter router**, so what can be tested here is what it does to
-  a query string: `resolveFilterValue`, `shouldPersistFilter`, `filterWrite`, `filterSearch` and
-  `clearFilterFields` — which between them hold the rules for dropping a default, carrying a
-  parameter the filters do not own, answering with the same string when nothing changed, and
-  clearing as one change. The binding itself is an effect, and no
+  a query string: `resolveFilterValue`, `shouldPersistFilter`, `filterWrite`, `filterSearch`,
+  `restoredAddress` and `clearFilterFields` — which between them hold the rules for dropping a
+  default, carrying a parameter the filters do not own, answering with the same string when nothing
+  changed, putting a fragment back on the address a write left behind, and clearing as one change.
+  The binding itself is an effect, and no
   test in this repository runs one: it is proven in a real browser by `pages/checks/signals.ts`,
   which drives a demo on the Pages host and asserts the filters change from one value to another as
   the address changes — including the history entry each change costs, an address the hook would
-  spell differently, a parameter belonging to something else on the page, and a field with a custom
-  `parser`.
+  spell differently, a parameter belonging to something else on the page, a field with a custom
+  `parser`, and the fragment surviving both a filter set and a clear with no `hashchange` fired.
 - **`createThemeStore` reads nothing until `attach()`.** Creating the store touches neither
   `localStorage` nor `matchMedia`, so a module-level `createThemeStore()` is inert on a server —
   which matters on Deno, where `localStorage` is a real file shared by every request the process

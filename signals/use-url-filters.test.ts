@@ -6,6 +6,7 @@ import {
   filterSearch,
   filterWrite,
   resolveFilterValue,
+  restoredAddress,
   shouldPersistFilter,
 } from "./use-url-filters.ts"
 import { effect, signal } from "@preact/signals"
@@ -163,6 +164,57 @@ describe("filterSearch", () => {
     // same answer as one handing over the router's own `?`-less string.
     expect(filterSearch("?status=open", [{ urlParam: "page", value: "2" }]))
       .toBe("status=open&page=2")
+  })
+})
+
+describe("restoredAddress", () => {
+  it("puts a fragment back on the address the router's write left behind", () => {
+    expect(restoredAddress("#section", { pathname: "/list", search: "?page=2", hash: "" }))
+      .toBe("/list?page=2#section")
+  })
+
+  it("leaves an address that never had a fragment without one, and without a bare hash", () => {
+    // `location.hash` reads as the empty string both for an address with no fragment and for one
+    // ending in a bare `#`, so both arrive here the same way and neither gains a `#`.
+    expect(restoredAddress("", { pathname: "/list", search: "?page=2", hash: "" })).toBeUndefined()
+  })
+
+  it("does nothing when the write kept a fragment of its own", () => {
+    // What a router keeping its location in the fragment does: `useHashLocation` sets the fragment
+    // as part of navigating, so there is nothing lost and nothing to put back. Answering with an
+    // address here would overwrite that router's route with the one it had just left.
+    expect(restoredAddress("#/list", { pathname: "/", search: "?page=2", hash: "#/list-2" }))
+      .toBeUndefined()
+  })
+
+  it("carries a hash route whose own text contains a question mark", () => {
+    // The case naive string handling mangles: everything after the `#` belongs to the fragment,
+    // including a `?`, an `&` and an `=`, and none of it is the query string.
+    expect(
+      restoredAddress("#/list?tab=2&sort=name", { pathname: "/", search: "?page=2", hash: "" }),
+    )
+      .toBe("/?page=2#/list?tab=2&sort=name")
+  })
+
+  it("carries a percent-encoded fragment exactly as it was", () => {
+    // Neither decoded nor re-encoded: the fragment came out of `location.hash` and goes back in
+    // the spelling the address had, so a round trip through a filter change changes nothing.
+    expect(restoredAddress("#a%20b", { pathname: "/list", search: "?page=2", hash: "" }))
+      .toBe("/list?page=2#a%20b")
+  })
+
+  it("keeps a base path, because it rebuilds from the path the address already has", () => {
+    // Whether the prefix comes from the site being served under one or from a router `base`, it is
+    // in `location.pathname` by the time this runs, so nothing here has to know about it.
+    expect(restoredAddress("#section", { pathname: "/app/list", search: "?page=2", hash: "" }))
+      .toBe("/app/list?page=2#section")
+  })
+
+  it("keeps a cleared address free of the question mark the query string left behind", () => {
+    // The write that removes the last parameter: `location.search` is empty, and the fragment goes
+    // straight after the path.
+    expect(restoredAddress("#section", { pathname: "/list", search: "", hash: "" }))
+      .toBe("/list#section")
   })
 })
 
