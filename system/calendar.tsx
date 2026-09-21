@@ -233,13 +233,37 @@ export function Calendar(
   const [enhanced, setEnhanced] = useState(false)
   useEffect(() => setEnhanced(true), [])
 
+  // Where the next key press counts from. A render writes the resolved day here, and a key press
+  // writes its own target before the render that answers it, so two presses arriving inside one
+  // frame still step twice: the second would otherwise count from the day the first has left.
+  const cursorDate = useRef(activeDate)
+  cursorDate.current = activeDate
+
+  // The day a key press is waiting to be given the focus on, or `null` when none is.
+  //
+  // A day rather than a flag, because Preact runs an effect a frame after the render that queued
+  // it: two presses inside one frame leave two effects to run, and a flag lets the first of them —
+  // which carries the day the reader has already left — consume the request the second made. Each
+  // effect below therefore acts only on the day it is itself showing.
   const gridRef = useRef<HTMLDivElement>(null)
-  const keyboardMove = useRef(false)
+  const keyboardTarget = useRef<string | null>(null)
   useEffect(() => {
-    if (!keyboardMove.current) return
-    keyboardMove.current = false
-    gridRef.current?.querySelector<HTMLElement>(`[data-calendar-date="${activeDate}"]`)?.focus()
-  }, [activeDate])
+    const target = keyboardTarget.current
+    if (target === null) return
+
+    if (target !== activeDate) {
+      // A later press asked for somewhere else, and that press's own effect will move the focus —
+      // unless this grid cannot show the day at all, which is what an ignored `onSelectMonth`
+      // leaves behind, and then the request is dropped rather than held for ever.
+      if (!days.some((day) => day.inMonth && day.date === target)) keyboardTarget.current = null
+      return
+    }
+
+    gridRef.current?.querySelector<HTMLElement>(`[data-calendar-date="${target}"]`)?.focus()
+    // Cleared after the focus call and not before it, so the `focus` handler below can tell the
+    // focus this moved from the focus a reader moved.
+    keyboardTarget.current = null
+  }, [activeDate, requestedDate])
 
   const previousMonth = shiftMonth(firstOfMonth, -1)
   const nextMonth = shiftMonth(firstOfMonth, 1)
@@ -255,7 +279,8 @@ export function Calendar(
   /** Move the roving focus to `date`, when the grid has that day of this month. */
   const moveTo = (date: string) => {
     if (!days.some((day) => day.inMonth && day.date === date)) return
-    keyboardMove.current = true
+    keyboardTarget.current = date
+    cursorDate.current = date
     setRequestedDate(date)
   }
 
@@ -269,33 +294,36 @@ export function Calendar(
    * @returns Whether the grid answered the key.
    */
   const requestMonth = (months: -1 | 1, enabled: boolean): boolean => {
-    if (!onSelectMonth || !enabled || !activeDate) return false
+    const from = cursorDate.current
+    if (!onSelectMonth || !enabled || !from) return false
     const target = shiftMonth(firstOfMonth, months)
-    keyboardMove.current = true
-    setRequestedDate(dayInMonth(target, Number(activeDate.slice(8, 10))))
+    cursorDate.current = dayInMonth(target, Number(from.slice(8, 10)))
+    keyboardTarget.current = cursorDate.current
+    setRequestedDate(cursorDate.current)
     onSelectMonth(target)
     return true
   }
 
   const onKeyDown = (event: KeyboardEvent) => {
-    if (!activeDate || event.altKey || event.ctrlKey || event.metaKey) return
+    const from = cursorDate.current
+    if (!from || event.altKey || event.ctrlKey || event.metaKey) return
 
-    const index = days.findIndex((day) => day.date === activeDate)
+    const index = days.findIndex((day) => day.date === from)
     const rowStart = Math.floor(index / WEEK) * WEEK
     const week = days.slice(rowStart, rowStart + WEEK).filter((day) => day.inMonth)
 
     switch (event.key) {
       case "ArrowLeft":
-        moveTo(addDaysIso(activeDate, -1))
+        moveTo(addDaysIso(from, -1))
         break
       case "ArrowRight":
-        moveTo(addDaysIso(activeDate, 1))
+        moveTo(addDaysIso(from, 1))
         break
       case "ArrowUp":
-        moveTo(addDaysIso(activeDate, -WEEK))
+        moveTo(addDaysIso(from, -WEEK))
         break
       case "ArrowDown":
-        moveTo(addDaysIso(activeDate, WEEK))
+        moveTo(addDaysIso(from, WEEK))
         break
       case "Home":
         if (week.length > 0) moveTo(week[0].date)
@@ -359,7 +387,12 @@ export function Calendar(
       "data-calendar-date": day.date,
       "aria-label": copy.day(day),
       tabIndex: enhanced ? (day.date === activeDate ? 0 : -1) : undefined,
-      onFocus: () => setRequestedDate(day.date),
+      // A reader who clicks or Tabs into a cell moves the grid's Tab stop with them. A focus this
+      // component moved itself is skipped: it would otherwise overwrite the day a key press just
+      // asked for, and the press would be lost.
+      onFocus: () => {
+        if (keyboardTarget.current === null) setRequestedDate(day.date)
+      },
     }
 
     // A day that cannot be picked is still focusable, and its label is still the reason it cannot:
