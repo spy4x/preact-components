@@ -363,6 +363,12 @@ export function Calendar(
   }
 
   const onKeyDown = (event: KeyboardEvent) => {
+    // Every key below counts from here and never from the render. Two of the three things that
+    // depend on it are held by a check; this one is not, and a reader editing this handler should
+    // know which is which. A burst of key presses cannot tell the cursor from the rendered day,
+    // because each press arrives as its own protocol message and the page renders in between, so
+    // the two agree by the time any press reads them. The month arrows are the exception — two
+    // activations really can land before a render, and `pages/checks/system.ts` sends them.
     const from = cursorDate.current
     if (!from || event.altKey || event.ctrlKey || event.metaKey) return
 
