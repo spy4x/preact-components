@@ -1070,6 +1070,65 @@ describe("buildModelStore remote events", () => {
   })
 })
 
+/**
+ * Every combination of the two timestamp columns, on both rows.
+ *
+ * The named tests above each fix one arrangement; this enumerates all 625 of them, because the
+ * axis is small enough to enumerate. It is what catches a rule that treats a `null` column as an
+ * old timestamp rather than as no timestamp, which every fixture here happens to agree with.
+ */
+const STAMPS = ["absent", "null", "early", "middle", "late"] as const
+type Stamp = typeof STAMPS[number]
+type Stamps = readonly [Stamp, Stamp]
+
+const AT: Record<string, string> = {
+  early: "2023-01-01T00:00:00.000Z",
+  middle: "2024-01-01T00:00:00.000Z",
+  late: "2025-01-01T00:00:00.000Z",
+}
+
+const PAIRS: Stamps[] = STAMPS.flatMap((createdAt) =>
+  STAMPS.map((updatedAt) => [createdAt, updatedAt] as const)
+)
+
+const stampedSchema = type({
+  id: "number",
+  name: "string",
+  "createdAt?": dateSchema.or("null"),
+  "updatedAt?": dateSchema.or("null"),
+})
+
+function stamped(name: string, [createdAt, updatedAt]: Stamps): Record<string, unknown> {
+  return {
+    id: 1,
+    name,
+    ...(createdAt === "absent" ? {} : { createdAt: value(createdAt) }),
+    ...(updatedAt === "absent" ? {} : { updatedAt: value(updatedAt) }),
+  }
+}
+
+const value = (stamp: Stamp): Date | null => stamp === "null" ? null : new Date(AT[stamp])
+
+/** Milliseconds a stamp compares as, or `null` when it carries no usable time. */
+const millis = (stamp: Stamp): number | null =>
+  stamp === "absent" || stamp === "null" ? null : Date.parse(AT[stamp])
+
+/**
+ * The documented rule, restated: prefer `updatedAt`, fall back to `createdAt`, and accept the
+ * incoming row wherever the two cannot be ordered. Written out rather than imported, so that a
+ * change to the implementation cannot quietly change what is expected of it.
+ */
+function shouldAccept(incoming: Stamps, held: Stamps): boolean {
+  for (const column of [1, 0] as const) {
+    const incomingAt = millis(incoming[column])
+    const heldAt = millis(held[column])
+    if (incomingAt === null && heldAt === null) continue
+    if (incomingAt === null || heldAt === null) return true
+    return incomingAt >= heldAt
+  }
+  return true
+}
+
 describe("buildModelStore remote update freshness", () => {
   it("accepts an update whose updatedAt moved while createdAt stood still", async () => {
     const { impl } = queueFetch()
@@ -1294,5 +1353,28 @@ describe("buildModelStore extensions", () => {
     // The generic store knows nothing about greenhouses: no `turn`, no `dimming`.
     expect("turn" in store).toBe(false)
     expect("setPassword" in store).toBe(false)
+  })
+})
+
+describe("buildModelStore freshness over every timestamp combination", () => {
+  it("decides by updatedAt, then createdAt, and accepts whatever it cannot order", async () => {
+    for (const held of PAIRS) {
+      for (const incoming of PAIRS) {
+        const store = buildModelStore({
+          model: "zone",
+          endpoint: "/api/zones",
+          schemas: { full: stampedSchema, create: updateSchema, update: updateSchema },
+          fetch: (() => Promise.reject(new Error("no request expected"))) as typeof fetch,
+        })
+        await store.onWs([stamped("held", held)], RemoteEvent.LIST)
+        await store.onWs([stamped("incoming", incoming)], RemoteEvent.UPDATED)
+
+        expect(
+          store.state.value.list[0].name,
+          `held [createdAt ${held[0]}, updatedAt ${held[1]}], ` +
+            `incoming [createdAt ${incoming[0]}, updatedAt ${incoming[1]}]`,
+        ).toBe(shouldAccept(incoming, held) ? "incoming" : "held")
+      }
+    }
   })
 })
