@@ -49,6 +49,24 @@ function timedRow(id: number, name: string, createdAt: string, updatedAt: string
   }
 }
 
+/** When every row in the overlap tests was created. Only `updatedAt` moves there. */
+const CREATED_AT = "2024-01-01T00:00:00.000Z"
+/** The instant the list starts from, so a later change and an earlier one are both expressible. */
+const LOADED_AT = "2024-04-01T00:00:00.000Z"
+/** Two instants after {@link LOADED_AT}, for the two sides of a comparison. */
+const EARLIER = "2024-06-01T00:00:00.000Z"
+const LATER = "2024-09-01T00:00:00.000Z"
+
+/** A timed row stamped `updatedAt`, which is the column both freshness comparisons read. */
+function stampedRow(id: number, name: string, updatedAt: string): TimedRow {
+  return timedRow(id, name, CREATED_AT, updatedAt)
+}
+
+/** The same row, soft-deleted at `at` — what the server sends back for a delete. */
+function archivedAt(source: TimedRow, at: string): TimedRow {
+  return { ...source, deletedAt: new Date(at) }
+}
+
 interface RecordedCall {
   url: string
   init: RequestInit
@@ -137,12 +155,17 @@ function buildStore(options: {
 }
 
 /** The same store over {@link timedRowSchema}, so remote rows carry both timestamps. */
-function buildTimedStore(fetchImpl: typeof fetch) {
+function buildTimedStore(fetchImpl: typeof fetch, options: {
+  toast?: { success: (t: ToastMessage) => void; error: (t: ToastMessage) => void }
+  isNewer?: (incoming: TimedRow, existing: TimedRow) => boolean
+} = {}) {
   return buildModelStore({
     model: "zone",
     endpoint: "/api/zones",
     schemas: { full: timedRowSchema, create: createSchema, update: updateSchema },
     fetch: fetchImpl,
+    toast: options.toast,
+    isNewer: options.isNewer,
   })
 }
 
@@ -490,26 +513,6 @@ describe("buildModelStore requests answered out of order", () => {
     expect(Boolean(dropped.result?.deletedAt)).toBe(true)
     // The store kept the newer update, so the row is not archived.
     expect(store.list.deleted.value).toEqual([])
-  })
-
-  it("applies a remote update that arrives while our own write is in flight", async () => {
-    const { impl, pending } = deferredFetch()
-    const store = buildStore({ fetch: impl })
-    await store.onWs([row(1, "North")], RemoteEvent.LIST)
-
-    const updating = store.update(1, { name: "Mine" })
-    await store.onWs(
-      [{ ...row(1, "Theirs"), createdAt: new Date("2025-01-01T00:00:00.000Z") }],
-      RemoteEvent.UPDATED,
-    )
-
-    // Remote events are not sequenced against local requests: the event is applied as soon as the
-    // freshness check accepts it, and our own answer replaces it when it lands.
-    expect(store.state.value.list[0].name).toBe("Theirs")
-
-    pending[0].settle(Response.json(row(1, "Mine")))
-    await updating
-    expect(store.state.value.list[0].name).toBe("Mine")
   })
 
   it("does not let an answer from before a reset settle a request made after it", async () => {
@@ -1227,6 +1230,326 @@ describe("buildModelStore remote events", () => {
     await store.onWs([row(1, "North")], RemoteEvent.LIST)
     expect(store.op.list.value.inProgress).toBe(false)
     expect(store.op.list.value.result?.map((r) => r.id)).toEqual([1])
+  })
+})
+
+/**
+ * A remote change and one of this client's own writes, overlapping.
+ *
+ * Every test here does the same three things in the same order: put a request in flight, deliver a
+ * remote event for that row while it is outstanding, then answer the request. Two people are
+ * editing one list and one of them is mid-save, which is the case a multi-user application hits
+ * routinely; what the store shows afterwards is the later of the two changes, whichever side it
+ * came from.
+ *
+ * They run over {@link timedRowSchema}, because `updatedAt` is the column the freshness check reads
+ * and `rowSchema` has none: a fixture there could only move `createdAt`, which a write does not
+ * move, so every comparison would come out a tie and prove nothing. What a model with no usable
+ * clock does is its own test below.
+ */
+describe("buildModelStore remote change against a request in flight", () => {
+  it("leaves the row deleted when our update answers after a remote delete", async () => {
+    const { impl, pending } = deferredFetch()
+    const toast = toastRecorder()
+    const store = buildTimedStore(impl, { toast: toast.port })
+    await store.onWs([stampedRow(1, "North", LOADED_AT)], RemoteEvent.LIST)
+
+    const updating = store.update(1, { name: "Mine" })
+    // Somebody else deleted the row while our `PATCH` was on the wire. The delete is the later of
+    // the two changes, so it is the one the list should still be showing at the end.
+    await store.onWs([archivedAt(stampedRow(1, "North", LATER), LATER)], RemoteEvent.DELETED)
+    expect(store.list.deleted.value.map((r) => r.id)).toEqual([1])
+
+    pending[0].settle(Response.json(stampedRow(1, "Mine", EARLIER)))
+    const answer = await updating
+
+    // Before this rule the answer put the row back: a row somebody had deleted reappeared on
+    // screen, under a name from before the delete, with nothing said about it.
+    expect(store.list.deleted.value.map((r) => r.id)).toEqual([1])
+    expect(store.state.value.list[0].name).toBe("North")
+    // The write did finish, so its slot settles, its flag drops and the caller is told what the
+    // server said. Only the list stays out of it.
+    expect(store.op.update(1).value?.inProgress).toBe(false)
+    expect(store.op.update(1).value?.result?.name).toBe("Mine")
+    expect(answer.error).toBeNull()
+    expect(answer.result?.name).toBe("Mine")
+    expect(toast.messages).toEqual([{ body: "zone was updated" }])
+  })
+
+  it("keeps a later remote update when our own older answer lands", async () => {
+    const { impl, pending } = deferredFetch()
+    const store = buildTimedStore(impl)
+    await store.onWs([stampedRow(1, "North", LOADED_AT)], RemoteEvent.LIST)
+
+    const updating = store.update(1, { name: "Mine" })
+    await store.onWs([stampedRow(1, "Theirs", LATER)], RemoteEvent.UPDATED)
+    expect(store.state.value.list[0].name).toBe("Theirs")
+
+    pending[0].settle(Response.json(stampedRow(1, "Mine", EARLIER)))
+    await updating
+
+    expect(store.state.value.list[0].name).toBe("Theirs")
+  })
+
+  it("replaces an earlier remote update with our own newer answer", async () => {
+    const { impl, pending } = deferredFetch()
+    const store = buildTimedStore(impl)
+    await store.onWs([stampedRow(1, "North", LOADED_AT)], RemoteEvent.LIST)
+
+    const updating = store.update(1, { name: "Mine" })
+    // The mirror of the test above, and the one that stops the fix overshooting into "a remote
+    // event always wins": the event is older than our answer, so our answer is the one to keep.
+    await store.onWs([stampedRow(1, "Theirs", EARLIER)], RemoteEvent.UPDATED)
+    expect(store.state.value.list[0].name).toBe("Theirs")
+
+    pending[0].settle(Response.json(stampedRow(1, "Mine", LATER)))
+    await updating
+
+    expect(store.state.value.list[0].name).toBe("Mine")
+  })
+
+  it("keeps our own answer when it is stamped the same instant as the remote change", async () => {
+    const { impl, pending } = deferredFetch()
+    const store = buildTimedStore(impl)
+    await store.onWs([stampedRow(1, "North", LOADED_AT)], RemoteEvent.LIST)
+
+    const updating = store.update(1, { name: "Mine" })
+    await store.onWs([stampedRow(1, "Theirs", LATER)], RemoteEvent.UPDATED)
+
+    // Two changes stamped the same instant cannot be ordered, and the rule for that is the one the
+    // freshness check already had: the incoming row wins. Our own answer is the incoming one here.
+    pending[0].settle(Response.json(stampedRow(1, "Mine", LATER)))
+    await updating
+
+    expect(store.state.value.list[0].name).toBe("Mine")
+  })
+
+  it("keeps our own answer for a model that carries no timestamp at all", async () => {
+    const { impl, pending } = deferredFetch()
+    const bare = type({ id: "number", name: "string" })
+    const store = buildModelStore({
+      model: "tag",
+      endpoint: "/api/tags",
+      schemas: { full: bare, create: bare, update: bare },
+      fetch: impl,
+    })
+    await store.onWs([{ id: 1, name: "North" }], RemoteEvent.LIST)
+
+    const updating = store.update(1, { id: 1, name: "Mine" })
+    await store.onWs([{ id: 1, name: "Theirs" }], RemoteEvent.UPDATED)
+
+    pending[0].settle(Response.json({ id: 1, name: "Mine" }))
+    await updating
+
+    // Nothing here can be ordered, so this store behaves exactly as it did before the rule existed.
+    // That is the price of the rule, and it is the reason a model that wants its writes ordered
+    // against other people's has to carry `updatedAt`.
+    expect(store.state.value.list[0].name).toBe("Mine")
+  })
+
+  it("asks the application's own freshness check whether our answer may land", async () => {
+    const { impl, pending } = deferredFetch()
+    const seen: Array<[string, string]> = []
+    const store = buildTimedStore(impl, {
+      // A model versioned some other way than by a clock: this one trusts nothing this client
+      // produced. The store must ask it rather than compare timestamps itself.
+      isNewer: (incoming, existing) => {
+        seen.push([incoming.name, existing.name])
+        return incoming.name !== "Mine"
+      },
+    })
+    await store.onWs([stampedRow(1, "North", LOADED_AT)], RemoteEvent.LIST)
+
+    const updating = store.update(1, { name: "Mine" })
+    await store.onWs([stampedRow(1, "Theirs", EARLIER)], RemoteEvent.UPDATED)
+
+    // Our answer is far the later of the two by the clock, and it still loses, because the
+    // application said so.
+    pending[0].settle(Response.json(stampedRow(1, "Mine", LATER)))
+    await updating
+
+    expect(store.state.value.list[0].name).toBe("Theirs")
+    // Both comparisons went through the port, and our own answer is the incoming side of it.
+    expect(seen).toEqual([["Theirs", "North"], ["Mine", "Theirs"]])
+  })
+
+  it("files the error and tells the caller when our write fails against a remote change", async () => {
+    const { impl, pending } = deferredFetch()
+    const toast = toastRecorder()
+    const store = buildTimedStore(impl, { toast: toast.port })
+    await store.onWs([stampedRow(1, "North", LOADED_AT)], RemoteEvent.LIST)
+
+    const updating = store.update(1, { name: "Mine" })
+    await store.onWs([stampedRow(1, "Theirs", LATER)], RemoteEvent.UPDATED)
+
+    pending[0].settle(Response.json({ error: "conflict" }, { status: 409 }))
+    const answer = await updating
+
+    // A failure writes nothing into the list whatever the clock says, so the remote change stands;
+    // the promise that the caller learns its own outcome holds for a failure exactly as it does
+    // for a success.
+    expect(store.state.value.list[0].name).toBe("Theirs")
+    expect(answer.error?.type).toBe(ErrType.SERVER)
+    expect(store.op.update(1).value?.inProgress).toBe(false)
+    expect(store.op.update(1).value?.error?.type).toBe(ErrType.SERVER)
+    expect(toast.messages).toEqual([{ title: "Failed to update zone", body: "conflict" }])
+  })
+
+  it("lets the later of the two win for every operation against every remote event", async () => {
+    // The four places an answer is written into the list are `create`, `update`, `delete` and
+    // `undelete`; create has its own pair of tests below, because a created row has no id to race
+    // over until the server answers. The other three are here against both events, each way round,
+    // so no operation can be the one that forgot the comparison. Two of the twelve are the cases
+    // the issue asks about by name: an undelete answering after a remote delete, and a delete
+    // answering after a remote event that carries no `deletedAt`.
+    for (const kind of ["update", "delete", "undelete"] as const) {
+      for (const event of [RemoteEvent.UPDATED, RemoteEvent.DELETED] as const) {
+        for (const oursIsLater of [false, true]) {
+          const where = `${kind} against a remote ${event}, ours ${oursIsLater ? "later" : "older"}`
+          const ourStamp = oursIsLater ? LATER : EARLIER
+          const theirStamp = oursIsLater ? EARLIER : LATER
+
+          const { impl, pending } = deferredFetch()
+          const store = buildTimedStore(impl)
+          await store.onWs([stampedRow(1, "start", LOADED_AT)], RemoteEvent.LIST)
+
+          const running = kind === "update"
+            ? store.update(1, { name: "ours" })
+            : kind === "delete"
+            ? store.delete(1)
+            : store.undelete(1)
+
+          const theirs = event === RemoteEvent.DELETED
+            ? archivedAt(stampedRow(1, "theirs", theirStamp), theirStamp)
+            : stampedRow(1, "theirs", theirStamp)
+          await store.onWs([theirs], event)
+          expect(store.state.value.list[0].name, `${where}: the event itself`).toBe("theirs")
+
+          const ours = kind === "delete"
+            ? archivedAt(stampedRow(1, "ours", ourStamp), ourStamp)
+            : stampedRow(1, "ours", ourStamp)
+          pending[0].settle(Response.json(ours))
+          const outcome = await running
+
+          const kept = oursIsLater ? ours : theirs
+          const held = store.state.value.list[0]
+          expect(held.name, where).toBe(kept.name)
+          expect(Boolean(held.deletedAt), `${where}: deleted`).toBe(kept.deletedAt !== null)
+          // Whichever way the comparison went, the slot settles and its flag drops: a spinner left
+          // up here would outlive every write that lost one of these races.
+          const slot = kind === "delete" ? store.op.delete(1).value : store.op.update(1).value
+          expect(slot?.inProgress, `${where}: in flight`).toBe(false)
+          expect(slot?.result?.name, `${where}: the slot's result`).toBe("ours")
+          expect(outcome.result?.name, `${where}: the caller's answer`).toBe("ours")
+        }
+      }
+    }
+  })
+
+  it("compares our answer against the later of two remote events", async () => {
+    const { impl, pending } = deferredFetch()
+    const store = buildTimedStore(impl)
+    await store.onWs([stampedRow(1, "North", LOADED_AT)], RemoteEvent.LIST)
+
+    const updating = store.update(1, { name: "Mine" })
+    // Two people saved while our write was outstanding. Only the later of them is still in the
+    // list by the time our answer lands, so that is the one our answer is measured against — a
+    // store that remembered the first event instead would let our answer through.
+    await store.onWs([stampedRow(1, "Theirs", LATER)], RemoteEvent.UPDATED)
+    await store.onWs([stampedRow(1, "Also theirs", EARLIER)], RemoteEvent.UPDATED)
+    expect(store.state.value.list[0].name).toBe("Theirs")
+
+    pending[0].settle(Response.json(stampedRow(1, "Mine", EARLIER)))
+    await updating
+
+    expect(store.state.value.list[0].name).toBe("Theirs")
+  })
+
+  it("holds both rules at once when a remote change lands between two of our writes", async () => {
+    const { impl, pending } = deferredFetch()
+    const toast = toastRecorder()
+    const store = buildTimedStore(impl, { toast: toast.port })
+    await store.onWs([stampedRow(1, "North", LOADED_AT)], RemoteEvent.LIST)
+
+    const first = store.update(1, { name: "First" })
+    await store.onWs([stampedRow(1, "Theirs", LATER)], RemoteEvent.UPDATED)
+    const second = store.update(1, { name: "Second" })
+
+    // The newer of our two writes answers first and loses to the remote change on the clock; the
+    // older one answers last and is already stale by its row's counter, so it never reaches the
+    // comparison at all. Neither rule can stand in for the other: dropping the clock would leave
+    // "Second" in the list, and dropping the counter would leave "First".
+    pending[1].settle(Response.json(stampedRow(1, "Second", EARLIER)))
+    await second
+    pending[0].settle(Response.json(stampedRow(1, "First", EARLIER)))
+    await first
+
+    expect(store.state.value.list[0].name).toBe("Theirs")
+    expect(store.op.update(1).value?.inProgress).toBe(false)
+    expect(store.op.update(1).value?.result?.name).toBe("Second")
+    // One announcement, for the write that settled the slot: the stale one says nothing, as it did
+    // before, and the one that lost to the remote change still succeeded at the server.
+    expect(toast.messages).toEqual([{ body: "zone was updated" }])
+  })
+
+  it("orders a remote change whose timestamps arrive as ISO strings", async () => {
+    const { impl, pending } = deferredFetch()
+    const store = buildTimedStore(impl)
+    // The row schema accepts a `Date` or an ISO string, and a feed that hands `onWs` the parsed
+    // JSON of a websocket frame hands it strings. Every other test here passes `Date`s, so this is
+    // the one that would catch a comparison reading the raw column rather than the parsed row.
+    await store.onWs(
+      [{ id: 1, name: "North", createdAt: CREATED_AT, updatedAt: LOADED_AT, deletedAt: null }],
+      RemoteEvent.LIST,
+    )
+
+    const updating = store.update(1, { name: "Mine" })
+    await store.onWs(
+      [{ id: 1, name: "Theirs", createdAt: CREATED_AT, updatedAt: LATER, deletedAt: null }],
+      RemoteEvent.UPDATED,
+    )
+
+    pending[0].settle(Response.json(stampedRow(1, "Mine", EARLIER)))
+    await updating
+
+    expect(store.state.value.list[0].name).toBe("Theirs")
+  })
+
+  it("does not show a row twice when its remote create beats our own answer back", async () => {
+    const { impl, pending } = deferredFetch()
+    const store = buildTimedStore(impl)
+    await store.onWs([stampedRow(1, "North", LOADED_AT)], RemoteEvent.LIST)
+
+    const creating = store.create({ name: "Mine" })
+    // The server broadcast the row it had just made before answering the client that asked for it.
+    // Appending our answer blindly would leave the same id in the list twice.
+    await store.onWs([stampedRow(2, "Mine", EARLIER)], RemoteEvent.CREATED)
+
+    pending[0].settle(Response.json(stampedRow(2, "Mine, as the server answered", LATER)))
+    const answer = await creating
+
+    expect(store.state.value.list.map((r) => r.id)).toEqual([1, 2])
+    expect(store.state.value.list[1].name).toBe("Mine, as the server answered")
+    expect(answer.result?.id).toBe(2)
+  })
+
+  it("keeps a later remote create when our own create answers with an older row", async () => {
+    const { impl, pending } = deferredFetch()
+    const store = buildTimedStore(impl)
+    await store.onWs([stampedRow(1, "North", LOADED_AT)], RemoteEvent.LIST)
+
+    const creating = store.create({ name: "Mine" })
+    // Somebody edited the new row between the server writing it and our answer getting back, so
+    // the event carries a later version of the same row than the answer does.
+    await store.onWs([stampedRow(2, "Mine, since edited", LATER)], RemoteEvent.CREATED)
+
+    pending[0].settle(Response.json(stampedRow(2, "Mine", EARLIER)))
+    await creating
+
+    expect(store.state.value.list.map((r) => r.id)).toEqual([1, 2])
+    expect(store.state.value.list[1].name).toBe("Mine, since edited")
+    expect(store.op.create.value.inProgress).toBe(false)
+    expect(store.op.create.value.result?.name).toBe("Mine")
   })
 })
 

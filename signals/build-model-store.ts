@@ -43,6 +43,10 @@ import {
  * - **Scoped to a session.** The store counts its resets, and an answer to a request issued before
  *   a reset writes nothing after it. Without that, a save still on the wire when the user signed
  *   out landed in the next session's list under the same row id.
+ * - **One clock over the list.** The row the list holds is replaced only by something later than
+ *   it, judged by the same freshness check whether that something is a remote event or the answer
+ *   to this client's own request. Without it our own answer always won, so a row another user
+ *   deleted while our write was on the wire came back on screen when the write answered.
  */
 
 /** Payload and row schemas for a model. */
@@ -180,10 +184,11 @@ export interface BuildModelStoreConfig<
     undelete?: (id: number) => string
   }
   /**
-   * Freshness check for `"updated"` remote events; an event judged older than the stored row is
-   * ignored.
+   * Freshness check between a row arriving and the row the list holds; the older one is ignored.
    *
-   * The default compares `updatedAt`, falls back to `createdAt` for a model that has neither side
+   * It decides both of the ways a held row can be replaced, so one clock orders them against each
+   * other: an `"updated"` remote event, and the answer to one of this client's own requests. The
+   * default compares `updatedAt`, falls back to `createdAt` for a model that has neither side
    * stamped with an `updatedAt`, and accepts the incoming row whenever the two cannot be ordered —
    * including when the model carries no timestamp column at all. See {@link defaultIsNewer}.
    */
@@ -437,6 +442,30 @@ export function buildModelStore<
   const replaceRow = (row: Row): Row[] =>
     state.value.list.map((existing) => existing.id === row.id ? row : existing)
 
+  /**
+   * True when `answer` — the row our own request came back with — may be written over the row the
+   * list holds under its id.
+   *
+   * It is the same `isNewer` a remote `"updated"` event is judged by, and an application that
+   * supplied its own is obeyed here too, so one clock decides between everything that can change a
+   * row: what this client asked for, and what somebody else did while it was asking. Without it the
+   * answer to a request that was already outstanding overwrote a remote change that arrived first,
+   * however much later that change was, and a row somebody else had deleted came back on screen.
+   *
+   * Our own answer is the incoming row, so where the two cannot be ordered — stamps at the same
+   * instant, a model carrying no timestamp column at all — it wins. That is the choice that keeps a
+   * model with no usable clock behaving exactly as it did before this rule existed, rather than
+   * quietly refusing every write; it also matches what the same check does for a remote event.
+   *
+   * A row the list does not hold is outranked by nothing, because there is nothing to compare
+   * against. What the caller does with such an answer still differs: `create` appends it, and the
+   * other operations write nothing, since a replacement needs a row to replace.
+   */
+  const outranksHeldRow = (answer: Row): boolean => {
+    const held = state.value.list.find((existing) => existing.id === answer.id)
+    return held === undefined || isNewer(answer, held)
+  }
+
   async function create(data: SchemaInput<C>): Promise<OperationResult<Row, InputError>> {
     const { error, data: payload } = validate(schemas.create, data)
     if (error) {
@@ -464,8 +493,12 @@ export function buildModelStore<
     }
 
     // The row is appended whichever create this is: two creates in flight are two different rows,
-    // and only the shared `createOp` slot has to pick one of them.
-    const list = [...state.value.list, outcome.result]
+    // and only the shared `createOp` slot has to pick one of them. The one way the list already
+    // holds this id is a remote `"created"` event for this very row arriving first; appending then
+    // would show the row twice, so the clock picks between the two copies instead.
+    const list = state.value.list.some((existing) => existing.id === outcome.result.id)
+      ? outranksHeldRow(outcome.result) ? replaceRow(outcome.result) : state.value.list
+      : [...state.value.list, outcome.result]
     patch(
       answer.settles
         ? { createOp: { inProgress: false, error: null, result: outcome.result }, list }
@@ -509,7 +542,11 @@ export function buildModelStore<
     if (answer.settles) {
       settleUpdateOp(id, { inProgress: false, error: null, result: outcome.result })
     }
-    patch({ list: replaceRow(outcome.result) })
+    // The list keeps whichever of the two is later. A remote event that landed while this was on
+    // the wire may already carry a newer version of the row, and writing over it would put back a
+    // value somebody else has since changed. The slot above settles either way, because the write
+    // did finish, and the notification fires either way, because it did succeed at the server.
+    if (outranksHeldRow(outcome.result)) patch({ list: replaceRow(outcome.result) })
     toast.success({ body: `${model} was updated` })
     return { error: null, result: outcome.result }
   }
@@ -536,8 +573,10 @@ export function buildModelStore<
     if (answer.settles) {
       settleDeleteOp(id, { inProgress: false, error: null, result: outcome.result })
     }
-    // Replaced, not spliced: a delete is a soft delete and the row keeps its place in the list.
-    patch({ list: replaceRow(outcome.result) })
+    // Replaced, not spliced: a delete is a soft delete and the row keeps its place in the list —
+    // and replaced only while this answer is the later of it and whatever arrived from elsewhere
+    // meanwhile. See the same comparison in `update`.
+    if (outranksHeldRow(outcome.result)) patch({ list: replaceRow(outcome.result) })
     toast.success({ body: `${model} was deleted` })
     return { error: null, result: outcome.result }
   }
@@ -564,7 +603,9 @@ export function buildModelStore<
     if (answer.settles) {
       settleUpdateOp(id, { inProgress: false, error: null, result: outcome.result })
     }
-    patch({ list: replaceRow(outcome.result) })
+    // A remote change that arrived while this was on the wire and is later than this answer keeps
+    // the row: an undelete does not outrank a deletion somebody made after it. See `update`.
+    if (outranksHeldRow(outcome.result)) patch({ list: replaceRow(outcome.result) })
     toast.success({ body: `${model} was restored` })
     return { error: null, result: outcome.result }
   }
@@ -573,7 +614,15 @@ export function buildModelStore<
     await applyRemote(items, event)
   }
 
-  /** Parse a remote batch and fold it into the list. A batch that fails to parse is dropped. */
+  /**
+   * Parse a remote batch and fold it into the list. A batch that fails to parse is dropped.
+   *
+   * An `"updated"` event is judged against the held row by `isNewer`; a `"deleted"` one replaces
+   * the held row outright, because the server saying a row is archived is not a claim about the
+   * rest of its columns and is not weighed against them. What the event leaves in the list is then
+   * what the answer to any request still on the wire is compared with, so a remote change that
+   * arrives first is no longer overwritten by an older answer.
+   */
   function applyRemote(items: unknown[], event: RemoteEvent): void {
     const rows: Row[] = []
     for (const item of items) {
@@ -802,6 +851,11 @@ interface RequestSequence {
  * ever issued, which is the one condition under which an operation slot may stop saying "in
  * progress" — a slot cleared while a newer write is outstanding tells the user the work is
  * finished when it is not.
+ *
+ * Both are about this client's own requests and neither is the last word on the list. An answer
+ * both fresh and settling is still compared against the row the list holds, because something that
+ * did not come from this client may have changed it meanwhile; see `outranksHeldRow`. The order is
+ * fixed: the session first, then this, then the clock, and each of the three can only refuse.
  */
 interface AnswerRights {
   fresh: boolean
@@ -850,13 +904,18 @@ function released<T, E>(
  * Columns the default freshness check reads, in the order it prefers them.
  *
  * `updatedAt` first, because that is the column an edit moves. `createdAt` is the fallback for a
- * model that has no `updatedAt` at all: it never moves after the row is written, so comparing it
- * answers "not newer" for every genuine edit and drops the event.
+ * model that has no `updatedAt` at all, and it is a weak one: it never moves after the row is
+ * written, so it can only order two rows that were created at different moments. An edit leaves it
+ * standing still, the two values compare equal, and the tie rule below lets the incoming row
+ * through — which is why a model that wants its edits ordered has to carry `updatedAt`.
  */
 const FRESHNESS_COLUMNS = ["updatedAt", "createdAt"] as const
 
 /**
- * Default freshness check for an `"updated"` remote event.
+ * Default freshness check between an incoming row and the one the list holds.
+ *
+ * The incoming row is an `"updated"` remote event, or the answer to one of this client's own
+ * requests; the check does not know which, and that is the point of it being one check.
  *
  * It compares the first of `updatedAt`, `createdAt` that either row carries a usable value for, and
  * accepts the incoming row when that value is at least as late as the stored one. Every other case
