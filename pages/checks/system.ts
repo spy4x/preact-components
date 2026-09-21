@@ -5,8 +5,25 @@ const CARD = "#demo-SWUpdater"
 const INSTALL = CARD + ' [data-e2e="sw-install"]'
 const RESET = CARD + ' [data-e2e="sw-reset"]'
 const RELOADS = CARD + ' [data-e2e="sw-reloads"]'
-const BAR = CARD + ' [data-e2e="sw-mount"] [role="status"]'
+/**
+ * The live region of the mounted component, and the bar inside it.
+ *
+ * These used to be one selector, because the bar *was* the region: it carried `role="status"` and
+ * it only existed once there was an update. They are two elements now, and the distinction matters
+ * to every check below — the region is in the page before anything happens, so a check that looked
+ * for `[role="status"]` and found one would prove nothing at all about the bar having appeared.
+ */
+const REGION = CARD + ' [data-e2e="sw-mount"] [role="status"]'
+const BAR = REGION + " > div"
 const LOG = CARD + ' [data-e2e="sw-log"] li'
+
+/** The card that mounts the component with nothing waiting, and the pieces of it. */
+const QUIET = CARD + ' [data-e2e="sw-quiet"]'
+const QUIET_REGION = QUIET + ' [role="status"]'
+const QUIET_BAR = QUIET_REGION + " > div"
+const QUIET_ANNOUNCE = QUIET + ' [data-e2e="sw-quiet-announce"]'
+/** The message that card passes as a prop. Not the component's English default, on purpose. */
+const QUIET_MESSAGE = "A newer catalogue build is ready"
 
 /** What the page reports about the demo registration, the bar, and the reload port. */
 interface SWState {
@@ -98,11 +115,12 @@ function click(devtools: Devtools, selector: string): Promise<boolean> {
  *
  * @param devtools The connected session.
  * @param label The button's visible text.
+ * @param bar Which bar to press it in; defaults to the live demo's.
  * @returns Whether there was such a button.
  */
-function clickBarButton(devtools: Devtools, label: string): Promise<boolean> {
+function clickBarButton(devtools: Devtools, label: string, bar = BAR): Promise<boolean> {
   return devtools.evaluate<boolean>(`(() => {
-    const button = [...document.querySelectorAll('${BAR} button')]
+    const button = [...document.querySelectorAll('${bar} button')]
       .find((candidate) => candidate.textContent.trim() === ${JSON.stringify(label)})
     if (button) button.click()
     return Boolean(button)
@@ -125,15 +143,265 @@ function clickBarButton(devtools: Devtools, label: string): Promise<boolean> {
  * @param devtools The connected session, on a hydrated page.
  */
 export async function systemChecks(devtools: Devtools): Promise<void> {
+  await liveRegionChecks(devtools)
   await calendarChecks(devtools)
   await imageLightboxChecks(devtools)
   await serviceWorkerChecks(devtools)
   check(
-    "every calendar and lightbox reading came back without a page exception",
+    "every reading this file took came back without a page exception",
     pageErrors.length === 0,
     pageErrors.length === 0
       ? "each expression this file evaluated returned a value"
       : pageErrors.join(" | "),
+  )
+}
+
+/** What one reading of the always-present live region and the observer watching it reports. */
+interface RegionState {
+  /** Whether the region is in the page at all. */
+  found: boolean
+  /** Whether it is the very element that was parked before any update. */
+  same: boolean
+  /** Whether that element is still attached to the document. */
+  connected: boolean
+  /** Everything the region reads, trimmed. */
+  text: string
+  /** How many element children it holds; `-1` when there is no region. */
+  children: number
+  /** The visible bar's text, or `""` when no bar is rendered. */
+  bar: string
+  /** The region's own height in CSS pixels; `-1` when there is no region. */
+  height: number
+  /** Mutation records the observer collected whose target is the region itself. */
+  mutationsOnRegion: number
+  /** Nodes added to the region, across every record so far. */
+  added: number
+  /** Nodes removed from it, across every record so far. */
+  removed: number
+}
+
+/**
+ * Read the live region, its box and everything the observer has recorded, in one round trip.
+ *
+ * The identity comparison is the load-bearing part. A reading that only asked "is there a region
+ * with the message in it?" would be just as true of the code this change replaces, where the region
+ * was created *carrying* its message — which is the defect. So the element is parked on
+ * `globalThis` before anything happens and every later reading is compared against that reference.
+ */
+const READ_REGION = `(() => {
+  const region = document.querySelector('${QUIET_REGION}')
+  const bar = document.querySelector('${QUIET_BAR}')
+  const box = region ? region.getBoundingClientRect() : null
+  const records = globalThis.__swRegionMutations || []
+  return {
+    found: Boolean(region),
+    same: Boolean(region) && region === globalThis.__swRegionElement,
+    connected: Boolean(region) && region.isConnected,
+    text: region ? region.textContent.trim() : "",
+    children: region ? region.childElementCount : -1,
+    bar: bar ? bar.textContent.trim() : "",
+    height: box ? Math.round(box.height) : -1,
+    mutationsOnRegion: records.filter((record) => record.onRegion).length,
+    added: records.reduce((total, record) => total + record.added, 0),
+    removed: records.reduce((total, record) => total + record.removed, 0),
+  }
+})()`
+
+/** The region as it is before anything has happened: its marking, its emptiness and its box. */
+interface IdleRegion {
+  role: string | null
+  live: string | null
+  atomic: string | null
+  /** Everything it reads. It has to be `""`. */
+  text: string
+  children: number
+  /** Whether a visible bar was already rendered. It must not be. */
+  bar: boolean
+  height: number
+  /** Border, padding, margin and minimum height, in one string, so a box shows up in the detail. */
+  box: string
+}
+
+/** A reading that reads as a failure everywhere, for when the expression itself threw. */
+const NO_REGION: RegionState = {
+  found: false,
+  same: false,
+  connected: false,
+  text: "",
+  children: -1,
+  bar: "",
+  height: -1,
+  mutationsOnRegion: 0,
+  added: 0,
+  removed: 0,
+}
+
+/**
+ * `SWUpdater`'s live region, before, during and after there is something to announce.
+ *
+ * This is the proof for issue #169, and what it can and cannot show is worth stating plainly. **No
+ * screen reader is run here, or anywhere in this repository.** What these checks demonstrate is the
+ * markup and the order in which the DOM changes: a region that is in the page, empty, before
+ * anything has happened, and a message that later arrives as a mutation of that same element rather
+ * than as a new element carrying text. That is the footing the decision was taken on — assistive
+ * technology announces a change to a region it is already watching, and commonly says nothing about
+ * a region that arrives with its message in place — and it is not a demonstration that any
+ * particular screen reader speaks.
+ *
+ * Two of these checks exist specifically to rule out the second cause. Finding "a region with the
+ * message in it" after the update would pass just as well against the old code, where the region
+ * and its message were mounted together. So a reference to the element is parked before the update
+ * and compared by identity afterwards, and a `MutationObserver` is attached to that same element
+ * beforehand, which is as close to the way assistive technology watches a region as a check here
+ * can get: it records nothing at all unless the node it was given is still the node that changed.
+ *
+ * The card this drives mounts the component against a container that exists only in the page, so
+ * nothing is registered with the browser and the whole sequence is synchronous — no timers, no
+ * waiting on a worker state machine, and nothing left behind for the service-worker block further
+ * down to trip over.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function liveRegionChecks(devtools: Devtools): Promise<void> {
+  const idle = await read(
+    devtools,
+    `(() => {
+      const region = document.querySelector('${QUIET_REGION}')
+      if (!region) return null
+      globalThis.__swRegionElement = region
+      globalThis.__swRegionMutations = []
+      const observer = new MutationObserver((records) => {
+        for (const record of records) {
+          globalThis.__swRegionMutations.push({
+            onRegion: record.target === globalThis.__swRegionElement,
+            added: record.addedNodes.length,
+            removed: record.removedNodes.length,
+          })
+        }
+      })
+      observer.observe(region, { childList: true, subtree: true, characterData: true })
+      globalThis.__swRegionObserver = observer
+      const style = getComputedStyle(region)
+      return {
+        role: region.getAttribute("role"),
+        live: region.getAttribute("aria-live"),
+        atomic: region.getAttribute("aria-atomic"),
+        text: region.textContent.trim(),
+        children: region.childElementCount,
+        bar: Boolean(document.querySelector('${QUIET_BAR}')),
+        height: Math.round(region.getBoundingClientRect().height),
+        box: [
+          style.borderTopWidth, style.borderBottomWidth,
+          style.paddingTop, style.paddingBottom,
+          style.marginTop, style.marginBottom,
+          style.minHeight,
+        ].join(" "),
+      }
+    })()`,
+    null as IdleRegion | null,
+  )
+
+  await click(devtools, QUIET_ANNOUNCE)
+  const barUp = await poll(
+    () => read(devtools, `Boolean(document.querySelector('${QUIET_BAR}'))`, false),
+    5_000,
+  )
+  const announced = await read(devtools, READ_REGION, NO_REGION)
+
+  await clickBarButton(devtools, "Dismiss", QUIET_BAR)
+  const barGone = await poll(
+    () => read(devtools, `document.querySelector('${QUIET_BAR}') === null`, false),
+    5_000,
+  )
+  const dismissed = await read(devtools, READ_REGION, NO_REGION)
+
+  await click(devtools, QUIET_ANNOUNCE)
+  const barBack = await poll(
+    () => read(devtools, `Boolean(document.querySelector('${QUIET_BAR}'))`, false),
+    5_000,
+  )
+  const again = await read(devtools, READ_REGION, NO_REGION)
+
+  check(
+    "SWUpdater's live region is in the page before there is anything to announce",
+    Boolean(idle) && idle?.role === "status" && idle?.live === "polite" &&
+      idle?.atomic === "true" && idle?.text === "" && idle?.children === 0 && idle?.bar === false,
+    idle
+      ? `role="${idle.role}" aria-live="${idle.live}" aria-atomic="${idle.atomic}", ` +
+        `${idle.children} element children, text ${JSON.stringify(idle.text)}, ` +
+        `and ${idle.bar ? "a bar was already there" : "no bar"}`
+      : "the component was not mounted, so there was no region to read",
+  )
+  check(
+    "an empty SWUpdater live region reserves no height, and gives it back when the bar goes",
+    idle?.height === 0 && idle?.box === "0px 0px 0px 0px 0px 0px 0px" &&
+      announced.height > 0 && dismissed.height === 0,
+    idle
+      ? `${idle.height}px tall empty, ${announced.height}px with the bar, ` +
+        `${dismissed.height}px again once it was dismissed — and empty it carries ` +
+        `border/padding/margin/min-height of ${idle.box}`
+      : "the component was not mounted, so there was no box to measure",
+  )
+  check(
+    "the update message arrives inside the live region that was already in the page",
+    idle?.text === "" && barUp && announced.same && announced.connected &&
+      announced.bar.includes(QUIET_MESSAGE) && announced.text.includes(QUIET_MESSAGE),
+    idle?.text === ""
+      ? barUp
+        ? `the element parked while the region was empty is ${
+          announced.same ? "the same element" : "NOT the element"
+        } that now reads ${JSON.stringify(announced.text)}, and it is ${
+          announced.connected ? "still in the document" : "detached"
+        } — a message the card passes as a prop, so no English default could have produced it`
+        : "no bar appeared within 5s of the card reporting an update"
+      : "the region already had text before the update, so nothing here proves an arrival",
+  )
+  check(
+    "a MutationObserver watching that region records the message arriving as a change to it",
+    idle?.children === 0 && announced.mutationsOnRegion >= 1 && announced.added >= 1,
+    idle?.children === 0
+      ? `an observer attached to the empty region recorded ${announced.mutationsOnRegion} ` +
+        `change(s) to that node and ${announced.added} node(s) added to it — a region created ` +
+        `together with its message would have recorded none, because the observer would have ` +
+        `been watching an element the page had thrown away`
+      : "the region was not empty when the observer was attached",
+  )
+  check(
+    "dismissing the bar empties the live region instead of replacing it",
+    barGone && dismissed.same && dismissed.connected && dismissed.text === "" &&
+      dismissed.children === 0 && dismissed.removed >= 1,
+    barGone
+      ? `the region is ${dismissed.same ? "the same element" : "a different element"}, now ` +
+        `holding ${dismissed.children} children and reading ${
+          JSON.stringify(dismissed.text)
+        }, with ${dismissed.removed} node(s) recorded leaving it`
+      : "the bar was still there 5s after Dismiss",
+  )
+  check(
+    "an update after a dismissal arrives again, as a fresh change to the same region",
+    barBack && again.same && again.text.includes(QUIET_MESSAGE) && again.added > announced.added,
+    barBack
+      ? `after a dismissal the same region went back to reading ${
+        JSON.stringify(again.text)
+      }, with the observer's count of nodes added rising from ${announced.added} to ${again.added}`
+      : "the bar never came back after a dismissal, so a dismissed visitor is never told again",
+  )
+
+  // Put the card back the way it was found and stop the observer: the checks below this one read
+  // the other SWUpdater card, and a live observer on a page is a cost every later check would pay.
+  await read(
+    devtools,
+    `(() => {
+      if (globalThis.__swRegionObserver) globalThis.__swRegionObserver.disconnect()
+      delete globalThis.__swRegionObserver
+      delete globalThis.__swRegionElement
+      delete globalThis.__swRegionMutations
+      const dismiss = [...document.querySelectorAll('${QUIET_BAR} button')]
+        .find((button) => button.textContent.trim() === "Dismiss")
+      if (dismiss) dismiss.click()
+      return true
+    })()`,
+    false,
   )
 }
 
