@@ -155,9 +155,11 @@ network lowers it earlier, so no operation slot reports the work finished while 
 change the row is still on the wire. An older request does not hold the flag up: once the newest one
 has settled, every answer still outstanding is one the store has already decided to discard, and
 both of the row's slots are released. So a slot can read "finished" while a superseded request is,
-strictly, still unanswered — there is nothing left that could change the row. The one thing that
-lowers the flag with no answer at all is input the update schema rejects, which never reaches the
-network; there is a sharp edge about it below.
+strictly, still unanswered — there is nothing left that could change the row. Inside an operation,
+the only thing that lowers a flag with no answer at all is input a schema rejects, because it never
+reaches the network: the update schema for a row's slot, the create schema for the create slot.
+There is a sharp edge about it below. `remove(id)` and `reset()` are the other way a flag stops
+reading as in progress — they clear the slots outright rather than settling them.
 
 A create has no id until the server answers, so "the same row" cannot mean a row there. Two creates
 in flight make two different rows and both are appended; the only thing they contend for is the
@@ -252,11 +254,12 @@ some other way.
   ```
 - **A reused toast id replaces that toast** and cancels the timer the old entry was carrying; it does
   not append a second entry a `remove(id)` could not tell apart.
-- **Input the schema rejects settles the row's slot even while a write is outstanding.** An
-  `update(id, …)` whose payload does not validate never reaches the network, so it takes no place in
-  the row's request sequence: it files the validation error in that row's slot and lowers
-  `inProgress` there, which is how the message reaches the form. A write for the same row that is
-  still on the wire settles the slot again when its own answer lands.
+- **Input a schema rejects settles the slot even while a write is outstanding.** An `update(id, …)`
+  whose payload does not validate never reaches the network, so it takes no place in the row's
+  request sequence: it files the validation error in that row's slot and lowers `inProgress` there,
+  which is how the message reaches the form. A write for the same row that is still on the wire
+  settles the slot again when its own answer lands. `create` does the same to the create slot, which
+  another create may still be holding.
 
 ## Tests
 

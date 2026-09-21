@@ -330,7 +330,8 @@ describe("buildModelStore delete and undelete", () => {
 
   it("posts to the undelete path and restores the row", async () => {
     const { impl, calls } = queueFetch(Response.json(row(1, "North")))
-    const store = buildStore({ fetch: impl })
+    const toast = toastRecorder()
+    const store = buildStore({ fetch: impl, toast: toast.port })
     await store.onWs([row(1, "North", new Date("2024-03-01T00:00:00.000Z"))], RemoteEvent.LIST)
 
     const result = await store.undelete(1)
@@ -340,6 +341,7 @@ describe("buildModelStore delete and undelete", () => {
     expect(result.error).toBeNull()
     expect(store.list.nonDeleted.value.map((r) => r.id)).toEqual([1])
     expect(store.list.deleted.value).toEqual([])
+    expect(toast.messages).toEqual([{ body: "zone was restored" }])
   })
 
   it("honours endpoint overrides", async () => {
@@ -393,6 +395,53 @@ describe("buildModelStore requests answered out of order", () => {
     // The older answer succeeded at the server and was discarded here all the same, so announcing
     // it would tell the user about a value the store does not hold.
     expect(toast.messages).toEqual([{ body: "zone was updated" }])
+  })
+
+  it("does not let a write to one row supersede a write in flight to another", async () => {
+    const { impl, pending } = deferredFetch()
+    const store = buildStore({ fetch: impl })
+    await store.onWs([row(1, "North"), row(2, "South")], RemoteEvent.LIST)
+
+    const updatingNorth = store.update(1, { name: "Nörth" })
+    const updatingSouth = store.update(2, { name: "Süd" })
+
+    pending[1].settle(Response.json(row(2, "Süd")))
+    await updatingSouth
+    expect(store.op.update(2).value?.inProgress).toBe(false)
+    // Row 2 answering says nothing about row 1: a request is numbered against its own row.
+    expect(store.op.update(1).value?.inProgress).toBe(true)
+
+    pending[0].settle(Response.json(row(1, "Nörth")))
+    await updatingNorth
+
+    // Were the numbers drawn from one counter for the whole collection, row 1's request would be
+    // older than row 2's, its answer would be dropped as stale, and the edit would vanish with the
+    // flag never coming down.
+    expect(store.state.value.list.map((r) => r.name)).toEqual(["Nörth", "Süd"])
+    expect(store.op.update(1).value?.inProgress).toBe(false)
+  })
+
+  it("does not release another row's flag when one row settles", async () => {
+    const { impl, pending } = deferredFetch()
+    const store = buildStore({ fetch: impl })
+    await store.onWs([row(1, "North"), row(2, "South")], RemoteEvent.LIST)
+
+    const deletingNorth = store.delete(1)
+    const updatingSouth = store.update(2, { name: "Süd" })
+
+    pending[1].settle(Response.json(row(2, "Süd")))
+    await updatingSouth
+
+    expect(store.op.update(2).value?.inProgress).toBe(false)
+    // Settling row 2 releases row 2's other slot. Row 1's delete is a different row's request and
+    // is still on the wire.
+    expect(store.op.delete(1).value?.inProgress).toBe(true)
+
+    pending[0].settle(Response.json(row(1, "North", new Date("2024-03-01T00:00:00.000Z"))))
+    await deletingNorth
+
+    expect(store.op.delete(1).value?.inProgress).toBe(false)
+    expect(store.list.deleted.value.map((r) => r.id)).toEqual([1])
   })
 
   it("keeps saving until the newest update to a row has answered", async () => {
