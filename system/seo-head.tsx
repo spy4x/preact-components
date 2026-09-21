@@ -6,11 +6,12 @@
  * {@link SEOHead} renders that same set as JSX. Nothing is read from a global store: the props
  * *are* the page head, which is what makes this package usable from a layout, a route or a test.
  *
- * The `@graph` always links a `BreadcrumbList` derived from the canonical URL, so structured
- * data and the visible trail can never disagree.
+ * The canonical address is normalised before anything is emitted, and a `BreadcrumbList` is
+ * emitted only for a trail the caller stated — nothing here reads a path and names a crumb after
+ * a segment of it.
  */
 
-import { breadcrumbListJsonLd, canonicalUrl, type PageHead } from "./head.ts"
+import { breadcrumbListJsonLd, normalizeCanonical, type PageHead } from "./head.ts"
 
 /** Which `<head>` element a {@link HeadTag} describes. */
 export type HeadTagName = "title" | "meta" | "link" | "script"
@@ -39,21 +40,17 @@ export function jsonLdText(value: unknown): string {
 /**
  * Build the JSON-LD `@graph` for a page: the caller's entities, then the breadcrumb.
  *
- * The breadcrumb is derived from the canonical URL — `/blog/24/post` yields Home → Blog → the
- * page title — and is skipped when the trail would only be the root entry, since a one-item
- * breadcrumb is noise in a rich result. Returns `[]` when nothing is left to emit.
+ * The breadcrumb is the `crumbs` the caller stated, and it is emitted only when there are at
+ * least two of them: a trail consisting of the current page alone is noise in a rich result, and
+ * a page that states none wants none. Returns `[]` when nothing is left to emit.
  *
  * @param head The page head the graph describes.
  */
 export function seoHeadJsonLd(head: PageHead): unknown[] {
   const graph: unknown[] = [...(head.jsonLd ?? [])]
+  const crumbs = head.crumbs ?? []
 
-  if (head.breadcrumbs !== false) {
-    const breadcrumb = breadcrumbListJsonLd(head.canonical, head.title, {
-      homeLabel: head.homeLabel,
-    })
-    if (breadcrumb.itemListElement.length > 1) graph.push(breadcrumb)
-  }
+  if (crumbs.length > 1) graph.push(breadcrumbListJsonLd(head.canonical, crumbs))
 
   return graph
 }
@@ -64,17 +61,20 @@ export function seoHeadJsonLd(head: PageHead): unknown[] {
  * Primary meta, then the Twitter card, then Open Graph, then JSON-LD. Optional tags are omitted
  * rather than emitted empty — no `og:image=""`, no `og:site_name` a caller did not supply.
  *
+ * `<link rel="canonical">` and `og:url` carry the *normalised* address rather than the string the
+ * caller handed in, and the whole set is refused before a tag exists when that address is not an
+ * `http`/`https` one: a tag set built on a wrong canonical address is wrong everywhere it is read.
+ *
  * @param head Page head; only `title`, `description` and `canonical` are required.
  * @returns Tag descriptors, ready to render or to hand to a non-JSX head pipeline.
  */
 export function seoHeadTags(head: PageHead): HeadTag[] {
-  // Fail loudly on a relative canonical rather than emit a tag set that is wrong everywhere.
-  canonicalUrl(head.canonical)
+  const canonical = normalizeCanonical(head.canonical)
 
   const tags: HeadTag[] = [
     { tag: "title", attrs: {}, text: head.title },
     { tag: "meta", attrs: { name: "description", content: head.description } },
-    { tag: "link", attrs: { rel: "canonical", href: head.canonical } },
+    { tag: "link", attrs: { rel: "canonical", href: canonical } },
     {
       tag: "meta",
       attrs: {
@@ -101,7 +101,7 @@ export function seoHeadTags(head: PageHead): HeadTag[] {
     { tag: "meta", attrs: { property: "og:type", content: head.ogType ?? "website" } },
     { tag: "meta", attrs: { property: "og:title", content: head.title } },
     { tag: "meta", attrs: { property: "og:description", content: head.description } },
-    { tag: "meta", attrs: { property: "og:url", content: head.canonical } },
+    { tag: "meta", attrs: { property: "og:url", content: canonical } },
   )
   if (head.ogImage) {
     tags.push({ tag: "meta", attrs: { property: "og:image", content: head.ogImage } })

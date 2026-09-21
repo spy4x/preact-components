@@ -1,10 +1,14 @@
 /**
- * Page-head model, breadcrumb derivation, and an optional head store.
+ * Page-head model, the canonical-address normaliser, and an optional per-request head store.
  *
- * Everything here is pure and app-agnostic: the canonical URL a page passes in is the single
- * input the breadcrumb trail and its JSON-LD twin are derived from, so a route never has to
- * state its ancestors twice. Nothing is hardcoded to a brand, domain or root path — the origin
- * comes from the canonical URL and the labels come from the caller.
+ * Everything here is pure and app-agnostic. Two rules shape it:
+ *
+ * - **A canonical address is normalised before it is published.** Search engines and social
+ *   networks read what this package emits, so an address is parsed, required to be `http` or
+ *   `https`, and stripped of the parts that must never reach a page — a user name, a password and
+ *   a fragment. Anything that is not a web address is refused rather than printed.
+ * - **A breadcrumb trail is the caller's, never a guess.** Nothing here reads a path and invents a
+ *   name for a segment of it. A route that wants a `BreadcrumbList` states its own crumbs.
  */
 
 import { type Signal, signal } from "@preact/signals"
@@ -12,13 +16,31 @@ import { type Signal, signal } from "@preact/signals"
 /** Open Graph object type a page declares. */
 export type OgType = "profile" | "article" | "website" | "service"
 
+/** One entry in the breadcrumb trail a page declares. */
+export interface Crumb {
+  /** Visible name of the entry, exactly as it should appear. Never derived from the address. */
+  name: string
+  /**
+   * Where the entry points. Absolute, or relative to the page's canonical address.
+   *
+   * The last entry normally omits it: a trail ends on the current page, whose address is the
+   * canonical one.
+   */
+  href?: string
+}
+
 /** Every field {@link SEOHead} renders, plus the JSON-LD inputs. */
 export interface PageHead {
   /** `<title>`, `og:title` and `twitter:title`. */
   title: string
   /** `<meta name="description">` and both social equivalents. */
   description: string
-  /** Absolute URL of this page. Drives `<link rel="canonical">`, `og:url` and the breadcrumb. */
+  /**
+   * Absolute `http`/`https` address of this page. Drives `<link rel="canonical">` and `og:url`.
+   *
+   * It is normalised before it is emitted — see {@link normalizeCanonical} — so the address that
+   * reaches the page is not necessarily the string handed in.
+   */
   canonical: string
   /** Absolute social preview image. The `og:image` / `twitter:image` pair is omitted without it. */
   ogImage?: string
@@ -34,16 +56,13 @@ export interface PageHead {
   locale?: string
   /** Extra JSON-LD entities appended to the `@graph`, ahead of the breadcrumb node. */
   jsonLd?: readonly unknown[]
-  /** Label of the root breadcrumb entry. Defaults to `"Home"`. */
-  homeLabel?: string
-  /** `false` leaves the `BreadcrumbList` node out of the graph. Defaults to `true`. */
-  breadcrumbs?: boolean
-}
-
-/** One visible breadcrumb entry. The last entry carries no `href`. */
-export interface Crumb {
-  name: string
-  href?: string
+  /**
+   * The page's breadcrumb trail, root first, current page last.
+   *
+   * Supplied by the route, because only the route knows what its ancestors are called. Fewer than
+   * two entries emits no `BreadcrumbList` at all: a one-item trail is noise in a rich result.
+   */
+  crumbs?: readonly Crumb[]
 }
 
 /** A schema.org `ListItem` as it appears inside a `BreadcrumbList`. */
@@ -61,133 +80,107 @@ export interface BreadcrumbListJsonLd {
   itemListElement: BreadcrumbListItem[]
 }
 
-/** Knobs shared by both breadcrumb derivations. */
-export interface BreadcrumbOptions {
-  /** Label of the root entry. Defaults to `"Home"`. */
-  homeLabel?: string
-  /** `href` of the root entry in the visible trail. Defaults to `"/"`. */
-  homeHref?: string
-}
-
-/** Decode a URL path segment, tolerating the stray `%` a slug may contain. */
-function decodeSegment(segment: string): string {
-  try {
-    return decodeURIComponent(segment)
-  } catch {
-    return segment
-  }
-}
-
 /**
- * Turn a URL segment into a readable label: `"how-i-work"` becomes `"How I Work"`.
+ * Parse an address that is going to be published, refusing anything that is not a web page.
  *
- * Segments are percent-decoded first, so `"hello%20world"` reads as two words.
+ * Three things are dropped rather than refused, because each is meaningless on a published
+ * address and harmful in one: a user name and a password would print credentials into a page that
+ * search engines and social networks read, and a fragment names a position inside a page rather
+ * than a page. What survives is the origin, the path and the query, the three parts that identify
+ * a page. `URL` normalises the rest for free — the host is lower-cased, a default port is dropped
+ * and an origin with no path gains its `/`.
+ *
+ * @param input The address as the caller wrote it.
+ * @param label What the address is, used in the error message.
+ * @param base Resolves a relative address; omitted when the address must already be absolute.
+ * @throws When the address does not parse, or its scheme is not `http` or `https`.
  */
-export function humanizeSlug(slug: string): string {
-  return decodeSegment(slug)
-    .split(/[-_]+/)
-    .filter(Boolean)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ")
+function webUrl(input: string, label: string, base?: URL): URL {
+  let url: URL
+  try {
+    url = new URL(input, base)
+  } catch {
+    throw new Error(`${label} must be an absolute URL, received: ${input}`)
+  }
+
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new Error(`${label} must be an http or https URL, received: ${input}`)
+  }
+
+  url.username = ""
+  url.password = ""
+  url.hash = ""
+  return url
 }
 
 /**
- * Parse an absolute canonical URL, throwing a readable error when it is relative.
+ * Parse a canonical address into the normalised `URL` that will be published.
  *
- * `URL.pathname` is the reason every helper here is trailing-slash safe: `/blog/` and `/blog`
- * both yield the segment list `["blog"]`, and the query string, hash, protocol and port are
- * stripped for free — no regex, and no assumption about the deploying domain.
+ * Refusing rather than falling back is deliberate, and it is the same split the calendar makes
+ * between an impossible date and an unknown time zone. A canonical address is the caller's own
+ * arithmetic: a route built it out of an origin and a path, and if the result is
+ * `javascript:alert(1)` or `/products/widgets` then the route is wrong, not the environment. The
+ * alternatives are worse in a way nobody would notice: omitting the tag publishes a page with no
+ * canonical address at all, and there is no origin to fall back to that would not be invented.
+ *
+ * @param canonical Absolute `http`/`https` address of the page.
+ * @throws When it is relative, unparsable, or carries any other scheme.
  */
 export function canonicalUrl(canonical: string): URL {
-  try {
-    return new URL(canonical)
-  } catch {
-    throw new Error(`canonical must be an absolute URL, received: ${canonical}`)
-  }
-}
-
-/** Path segments of a canonical URL, decoded, without empties. `"/"` yields `[]`. */
-export function pathSegments(canonical: string): string[] {
-  return canonicalUrl(canonical).pathname.split("/").filter(Boolean).map(decodeSegment)
+  return webUrl(canonical, "canonical")
 }
 
 /**
- * Breadcrumb trail for the visible `<nav>`, derived from a canonical URL.
+ * The canonical address as it should be published: one clean `http`/`https` address.
  *
- * Returns `[{ name: "Home", href: "/" }, …, { name: pageName }]` — the last entry never has an
- * `href`, because the current page is not a link. Intermediate labels are humanized from the
- * path, so `/how-i-work` reads as "How I Work" without the route declaring it.
- *
- * @param canonical Absolute URL of the page being rendered.
- * @param pageName Label for the last crumb, normally the page title.
- * @param options `homeLabel` (default `"Home"`) and `homeHref` (default `"/"`).
+ * `https://user:pw@ACME.Example:443/a/b?x=1#frag` becomes `https://acme.example/a/b?x=1`.
  */
-export function breadcrumbsFromCanonical(
-  canonical: string,
-  pageName: string,
-  options: BreadcrumbOptions = {},
-): Crumb[] {
-  const { homeLabel = "Home", homeHref = "/" } = options
-  const segments = pathSegments(canonical)
-  const items: Crumb[] = [{ name: homeLabel, href: homeHref }]
-
-  let accumulated = ""
-  segments.forEach((segment, index) => {
-    accumulated += `/${encodeURIComponent(segment)}`
-    const isLast = index === segments.length - 1
-    items.push(isLast ? { name: pageName } : { name: humanizeSlug(segment), href: accumulated })
-  })
-
-  return items
+export function normalizeCanonical(canonical: string): string {
+  return canonicalUrl(canonical).href
 }
 
 /**
- * `itemListElement` for a schema.org `BreadcrumbList`, derived from a canonical URL.
+ * `itemListElement` for a schema.org `BreadcrumbList`, built from the crumbs the caller stated.
  *
- * Same walk as {@link breadcrumbsFromCanonical}, but every entry is an absolute `item` URL so
- * the structured data stands alone in a search result. Positions are 1-based; the root is 1.
+ * Positions are 1-based and follow the array. Every `item` is an absolute address, because the
+ * structured data has to stand alone in a search result: a crumb's `href` is resolved against the
+ * canonical address and normalised the same way it is, and a crumb with no `href` — the last one,
+ * the page itself — takes the canonical address.
  *
- * @param canonical Absolute URL of the page, used for the origin and the path.
- * @param pageName Label of the last entry.
+ * @param canonical Absolute address of the page the trail ends on.
+ * @param crumbs The trail, root first, current page last.
  */
-export function breadcrumbFromCanonical(
+export function breadcrumbItems(
   canonical: string,
-  pageName: string,
-  options: BreadcrumbOptions = {},
+  crumbs: readonly Crumb[],
 ): BreadcrumbListItem[] {
-  const { homeLabel = "Home" } = options
-  const { origin } = canonicalUrl(canonical)
-  const segments = pathSegments(canonical)
+  const base = canonicalUrl(canonical)
 
-  const items: BreadcrumbListItem[] = [
-    { "@type": "ListItem", position: 1, name: homeLabel, item: `${origin}/` },
-  ]
-
-  let accumulated = ""
-  segments.forEach((segment, index) => {
-    accumulated += `/${encodeURIComponent(segment)}`
-    const isLast = index === segments.length - 1
-    items.push({
-      "@type": "ListItem",
-      position: index + 2,
-      name: isLast ? pageName : humanizeSlug(segment),
-      item: `${origin}${accumulated}`,
-    })
-  })
-
-  return items
+  return crumbs.map((crumb, index) => ({
+    "@type": "ListItem",
+    position: index + 1,
+    name: crumb.name,
+    item: crumb.href === undefined ? base.href : webUrl(crumb.href, "crumb href", base).href,
+  }))
 }
 
-/** The complete `BreadcrumbList` node, `@id`-anchored to the page it describes. */
+/**
+ * The complete `BreadcrumbList` node, `@id`-anchored to the page it describes.
+ *
+ * The anchor is built from the normalised address, which is why it carries exactly one `#`: a
+ * canonical address handed in with a fragment used to produce `…#frag#breadcrumb`, an identifier
+ * no other node could ever match.
+ */
 export function breadcrumbListJsonLd(
   canonical: string,
-  pageName: string,
-  options: BreadcrumbOptions = {},
+  crumbs: readonly Crumb[],
 ): BreadcrumbListJsonLd {
+  const base = canonicalUrl(canonical)
+
   return {
     "@type": "BreadcrumbList",
-    "@id": `${canonical}#breadcrumb`,
-    itemListElement: breadcrumbFromCanonical(canonical, pageName, options),
+    "@id": `${base.href}#breadcrumb`,
+    itemListElement: breadcrumbItems(base.href, crumbs),
   }
 }
 
@@ -204,9 +197,24 @@ export interface HeadStore {
 /**
  * Build a head store from defaults.
  *
- * A factory rather than a module-level signal: the library never owns app data, so an app calls
- * this once, passes `store.head` into `<SEOHead>` (or sets it from a route) and keeps the writer
- * side. An island that changes the title imports the same store the layout reads.
+ * **Create one per request, not one per module.** A module-level store is a single signal shared
+ * by every request a server handles, so one visitor's title can be rendered onto another
+ * visitor's page — the same bug as a shared theme, and it only shows up under concurrency. Call
+ * this where a request is handled, pass the store down, and let it be collected with the request.
+ * In a browser there is one document and one store, created where the app is created.
+ *
+ * ```ts
+ * // A request handler, server-side: one store, this request only.
+ * function handler(request: Request) {
+ *   const { head, setHead } = createHeadStore(siteDefaults)
+ *   setHead({ title: "Widgets", canonical: new URL(request.url).href })
+ *   return renderPage(head.value)
+ * }
+ * ```
+ *
+ * A factory rather than a module-level signal for a second reason too: the library never owns app
+ * data. The app keeps the writer side and passes `store.head` into `<SEOHead>`, and an island that
+ * changes the title is handed the same store the layout reads.
  *
  * @param defaults Fields used by every page; also the state `resetHead()` returns to.
  */

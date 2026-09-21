@@ -53,17 +53,28 @@ import { useSignal } from "@preact/signals"
 import { useRef } from "preact/hooks"
 import type { DemoFragment } from "../registry.ts"
 
-/** A page head with every optional tag populated, so the card shows the whole set, not a subset. */
+/**
+ * A page head with every optional tag populated, so the card shows the whole set, not a subset.
+ *
+ * The canonical address carries a fragment on purpose: the tag set below is the proof that one is
+ * dropped before it is published, and that the `BreadcrumbList` identifier ends up with a single
+ * `#` rather than two.
+ */
 const pageHead: PageHead = {
   title: "Zone availability — Acme",
   description: "Live slot availability for every zone, refreshed every minute.",
-  canonical: "https://example.com/bookings/zones/12",
+  canonical: "https://example.com/bookings/zones/12#reviews",
   ogImage: "https://example.com/og/zones.png",
   ogType: "article",
   siteName: "Acme",
   twitterSite: "@acme",
   locale: "en_GB",
   jsonLd: [{ "@type": "Organization", name: "Acme" }],
+  crumbs: [
+    { name: "Home", href: "/" },
+    { name: "Zones", href: "/bookings/zones" },
+    { name: "Zone availability" },
+  ],
 }
 
 /**
@@ -553,7 +564,7 @@ export const systemDemos = {
   },
   SEOHead: {
     summary:
-      "The page-head tag set as a fragment, plus the JSON-LD `@graph` that mirrors it: title, description, canonical and robots first, then the Twitter card, then Open Graph, then a `BreadcrumbList` derived from the canonical URL so structured data and the visible trail cannot disagree. Optional tags are omitted rather than emitted empty, and `<` is escaped in the script body so a description containing `</script>` cannot close the element it is embedded in. **This card shows `seoHeadTags`, the exported data the component maps over, not the component itself**: rendering `<SEOHead />` here would splice a second `<title>` into this document's body, and a browser reads the first `<title>` anywhere in a document as `document.title` — which would rename every deep link in the host app. The tag set below is real and complete; where it goes is the host's head pipeline, and this guide has none.",
+      "The page-head tag set as a fragment, plus the JSON-LD `@graph` that mirrors it: title, description, canonical and robots first, then the Twitter card, then Open Graph, then a `BreadcrumbList` built from the crumbs the caller stated. Optional tags are omitted rather than emitted empty, and `<` is escaped in the script body so a description containing `</script>` cannot close the element it is embedded in. **The canonical address is cleaned before it is published**: this card is built from an address ending in `#reviews`, and the tag set below carries that address without it, because a fragment names a position inside a page rather than a page — and because `…#reviews#breadcrumb` is an identifier nothing can match. The usage block above is written the way a route should write it, which is why it carries no fragment to begin with. A user name and password are dropped the same way, and an address that is not an `http`/`https` page — `javascript:alert(1)`, or a relative path — throws rather than being printed, the way an impossible month anchor does: a canonical address is the route's own arithmetic. **Crumbs are a prop, never a guess.** Reading them out of the path assumed every segment is a page, so `/bookings/zones/12` used to publish a crumb named `12`. **This card shows `seoHeadTags`, the exported data the component maps over, not the component itself**: rendering `<SEOHead />` here would splice a second `<title>` into this document's body, and a browser reads the first `<title>` anywhere in a document as `document.title` — which would rename every deep link in the host app. The tag set below is real and complete; where it goes is the host's head pipeline, and this guide has none.",
     snippet: `<SEOHead
   title="Zone availability — Acme"
   description="Live slot availability for every zone."
@@ -561,6 +572,11 @@ export const systemDemos = {
   ogImage="https://example.com/og/zones.png"
   siteName="Acme"
   jsonLd={[{ "@type": "Organization", name: "Acme" }]}
+  crumbs={[
+    { name: "Home", href: "/" },
+    { name: "Zones", href: "/bookings/zones" },
+    { name: "Zone availability" },
+  ]}
 />
 
 // The same tag set as data, for an app whose head is not a component tree:

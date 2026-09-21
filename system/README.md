@@ -19,17 +19,17 @@ Extracted from `antonshubin.com`, `mig` and `financy`.
 
 ## Components
 
-| Component       | Subpath          | Ports / key props                                                               |
-| --------------- | ---------------- | ------------------------------------------------------------------------------- |
-| `SEOHead`       | `seo-head`       | `title`, `description`, `canonical`, `ogImage?`, `jsonLd?`, `noindex?`          |
-| `SWUpdater`     | `sw-updater`     | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`            |
-| `Calendar`      | `calendar`       | `monthAnchor`, `minDate`, `maxDate`, `slotsByDate`, `onSelectDate?`             |
-| `ImageLightbox` | `image-lightbox` | `containerSelector?`, `imageSelector?`, `fallbackAlt?`, `zoomLabel?`, `onOpen?` |
+| Component       | Subpath          | Ports / key props                                                                 |
+| --------------- | ---------------- | --------------------------------------------------------------------------------- |
+| `SEOHead`       | `seo-head`       | `title`, `description`, `canonical`, `crumbs?`, `ogImage?`, `jsonLd?`, `noindex?` |
+| `SWUpdater`     | `sw-updater`     | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`              |
+| `Calendar`      | `calendar`       | `monthAnchor`, `minDate`, `maxDate`, `slotsByDate`, `onSelectDate?`               |
+| `ImageLightbox` | `image-lightbox` | `containerSelector?`, `imageSelector?`, `fallbackAlt?`, `zoomLabel?`, `onOpen?`   |
 
-Helpers, all pure: `head.ts` (breadcrumb derivation from a canonical URL, `createHeadStore`,
-`humanizeSlug`) and `resolveImage` (click target → lightbox image). `date.ts`'s ISO day and month
-arithmetic is private to this package — `Calendar`'s own dependency, kept out of the barrel and out
-of `exports`.
+Helpers, all pure: `head.ts` (`normalizeCanonical`, `canonicalUrl`, `breadcrumbItems`,
+`breadcrumbListJsonLd`, `createHeadStore`) and `resolveImage` (click target → lightbox image).
+`date.ts`'s ISO day and month arithmetic is private to this package — `Calendar`'s own dependency,
+kept out of the barrel and out of `exports`.
 
 ```tsx
 import { SEOHead } from "@preact-components/system"
@@ -40,6 +40,11 @@ import { SEOHead } from "@preact-components/system"
   canonical="https://acme.example/products/widgets"
   siteName="Acme"
   ogImage="https://acme.example/og/widgets.png"
+  crumbs={[
+    { name: "Home", href: "/" },
+    { name: "Products", href: "/products" },
+    { name: "Widgets" },
+  ]}
 />
 ```
 
@@ -48,10 +53,71 @@ import { SEOHead } from "@preact-components/system"
 same set as data for a head pipeline that is not a component tree, and it is what the tests assert
 on.
 
-The JSON-LD `@graph` always ends with a `BreadcrumbList` derived from the canonical URL, so
-structured data agrees with a breadcrumb trail the host renders from the same
-`breadcrumbsFromCanonical` helper (`head.ts`). It is skipped when the trail would be the root entry
-alone, and the whole script tag is skipped when the graph is empty.
+Every string the component prints came in as a prop — the title, the description, the site name,
+each crumb's name. It has no user-visible string of its own and therefore no label to default or
+to override.
+
+## The canonical address is cleaned before it is published
+
+Search engines and social networks read what this component emits, so the address is parsed rather
+than trusted. `normalizeCanonical` keeps the three parts that identify a page — the origin, the
+path and the query — and drops the rest:
+
+| Handed in                           | Published                       |
+| ----------------------------------- | ------------------------------- |
+| `https://acme.example/a#reviews`    | `https://acme.example/a`        |
+| `https://user:pw@acme.example/a`    | `https://acme.example/a`        |
+| `https://ACME.Example:443/a?page=2` | `https://acme.example/a?page=2` |
+| `https://acme.example`              | `https://acme.example/`         |
+
+A fragment names a position inside a page rather than a page, and it used to produce a
+`BreadcrumbList` identifier of `…#frag#breadcrumb`, which nothing could ever match. Credentials in
+an address that a search engine indexes are credentials published.
+
+**An address that is not an `http`/`https` page throws**, and so does a relative one:
+`javascript:alert(1)`, `data:…` and `/products/widgets` are all refused before a single tag
+exists. This is the same split `Calendar` makes between an impossible month anchor and an unknown
+time zone. A canonical address is the route's own arithmetic — it built the address out of an
+origin and a path — so a wrong one is a caller error and is better told than quietly agreed with.
+A time zone the platform cannot resolve is the opposite case, a property of the build, and falls
+back. The two alternatives here are worse in a way nobody would notice: omitting the tag publishes
+a page with no canonical address, and there is no origin to fall back to that would not be
+invented.
+
+## Breadcrumbs are the caller's
+
+The JSON-LD `@graph` ends with a `BreadcrumbList` built from the `crumbs` prop: root first, the
+current page last with no `href`. Every `item` is absolute, so a crumb `href` may be relative to
+the page and is normalised exactly as the canonical address is.
+
+Nothing derives a crumb from the path any more. Deriving one assumed every path segment is a page
+with a readable name, so `/section/24/title` published a crumb named `24` linking to
+`/section/24`, and a route had no way to say otherwise. A page that states fewer than two crumbs
+gets no `BreadcrumbList` at all — a one-item trail is noise in a rich result — and the whole
+script tag is skipped when the graph is empty.
+
+One consequence worth knowing: the page title is no longer part of the structured data. It used to
+arrive there as the name of the last derived crumb, and now it appears only where a caller puts
+it.
+
+## The head store is per request
+
+`createHeadStore(defaults)` is a factory, and on a server it is called **where a request is
+handled** — not at module level. A module-level store is one signal shared by every request the
+process serves, so one visitor's title can be rendered onto another visitor's page. It is the same
+bug as a shared theme store, and it only appears under concurrency, which is to say in production
+and not in a test.
+
+```ts
+function handler(request: Request) {
+  const { head, setHead } = createHeadStore(siteDefaults)
+  setHead({ title: "Widgets", canonical: new URL(request.url).href })
+  return renderPage(head.value)
+}
+```
+
+In a browser there is one document and one store, created where the app is created and handed to
+the layout and to any island that changes the title.
 
 ## The dual-mode contract
 
@@ -162,6 +228,16 @@ half-filled form, and a first install reloads the page mid-visit.
 
 ## Decisions worth knowing
 
+- **A canonical address that is not a web page is refused, not printed and not omitted.** Throwing
+  puts the failure where the mistake is, in the route that built the address, at the moment it
+  renders. Omitting `<link rel="canonical">` would publish a page that looks finished and tells a
+  search engine nothing, and there is no origin this package could fall back to without inventing
+  one. Credentials and a fragment are dropped rather than refused, because both are meaningless on
+  a published address and the page behind them is perfectly real.
+- **The structured-data escaping was left exactly as it was.** `jsonLdText` escapes `<` to
+  `<`, and it was attacked with `</script>` payloads in the page title, in the caller's own
+  JSON-LD entities and in a crumb name. The rendered markup kept exactly one opening and one
+  closing script tag every time. There was nothing to fix, so nothing was changed.
 - **Timezone-free grid arithmetic.** `mig` did its day maths and weekday lookups through a host
   timezone (`lib/tz.ts`). An ISO date carries no zone, so day steps in UTC cannot drift across a
   DST boundary and a weekday computed in UTC is the same weekday everywhere. A `timeZone` prop

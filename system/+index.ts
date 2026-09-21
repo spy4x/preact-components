@@ -16,20 +16,17 @@ export {
   describeCalendarDay,
 } from "./calendar.tsx"
 export {
-  breadcrumbFromCanonical,
+  breadcrumbItems,
   type BreadcrumbListItem,
   type BreadcrumbListJsonLd,
   breadcrumbListJsonLd,
-  type BreadcrumbOptions,
-  breadcrumbsFromCanonical,
   canonicalUrl,
   createHeadStore,
   type Crumb,
   type HeadStore,
-  humanizeSlug,
+  normalizeCanonical,
   type OgType,
   type PageHead,
-  pathSegments,
 } from "./head.ts"
 export {
   type ImageElementLike,
