@@ -1776,7 +1776,10 @@ interface Named {
  */
 const TOOLTIP_SETUP = `(() => {
   const row = document.querySelector('#demo-Tooltip [data-e2e="tooltip-live"]')
-  const trigger = row?.querySelector("button") ?? null
+  // The trigger is found by the name it carries, not by its tag. Which element the component puts
+  // the name on is the thing under test in one of the checks below, and a selector written around
+  // a "button" would answer that question by not matching at all.
+  const trigger = row?.querySelector("[aria-label]") ?? null
   globalThis.__verifyTooltip = {
     row,
     trigger,
@@ -2155,13 +2158,15 @@ async function tooltipNameCheck(devtools: Devtools): Promise<void> {
   })
   const { nodeId } = await devtools.send<{ nodeId: number }>("DOM.querySelector", {
     nodeId: root.nodeId,
-    selector: `#demo-Tooltip [data-e2e="tooltip-live"] button`,
+    selector: `#demo-Tooltip [data-e2e="tooltip-live"] [aria-label]`,
   })
 
   const atRest = await computedNode(devtools, nodeId)
-  // Read with the hint on screen. Chromium computes no description for this trigger while the hint
-  // is hidden — measured, and reported below — so a reading taken at rest would say the hint is
-  // never announced, when what it means is that a hidden hint is not.
+  // That first reading is evidence, not an assertion. The check before this one left the hint
+  // dismissed, so it is `display: none` and Chromium reads no description off it at all — which is
+  // the dismissal doing its job rather than anything about naming. The reading that answers "is
+  // the hint this trigger's description" is the one taken with the hint on screen, which is why
+  // the trigger is focused for it.
   await devtools.evaluate<null>(`(globalThis.__verifyTooltip?.trigger?.focus(), null)`)
   await poll(() => devtools.evaluate<boolean>(TOOLTIP_SHOWN), 3_000)
   const computed = await computedNode(devtools, nodeId)
@@ -2186,8 +2191,9 @@ async function tooltipNameCheck(devtools: Devtools): Promise<void> {
       ? `the hint is the trigger's name as well as its description ("${computed.name}"), so it ` +
         `is not supplementary to anything`
       : `Chromium reads a ${computed.role} named "${computed.name}", described by ` +
-        `"${computed.description}" while the hint is on screen; at rest, with the hint hidden, it ` +
-        `reads a ${atRest.role} named "${atRest.name}" described by "${atRest.description}"`,
+        `"${computed.description}" while the hint is on screen; with the hint dismissed by the ` +
+        `check before this one it reads a ${atRest.role} named "${atRest.name}" described by ` +
+        `"${atRest.description}", so a dismissed hint is not announced either`,
   )
 }
 
@@ -2725,7 +2731,14 @@ async function reopenCheck(devtools: Devtools): Promise<void> {
   await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "false"`), 3_000)
   const abandoned = await devtools.evaluate<ComboboxReading>(COMBOBOX_STATE)
 
-  await clickAt(devtools, await aimAt(devtools, field), field)
+  // Focus rather than a click, and the difference is the whole defect. A click fires `focus` and
+  // then `click`, and the component opens the list on both: the first call is the one that drops
+  // the query and highlights against the stale list, and the second, running one render later,
+  // quietly puts the highlight right again. Coming back to the field with the keyboard fires focus
+  // alone, and nothing corrects it. `.focus()` is how that arrives here because tabbing backwards
+  // needs Shift+Tab, which the shared key helper does not describe — what the page receives is the
+  // single `focus` event a Tab into the field would deliver.
+  await devtools.evaluate<null>(`(globalThis.__verifyCombobox?.input?.focus(), null)`)
   await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "true"`), 3_000)
   const reopened = await devtools.evaluate<ComboboxReading>(COMBOBOX_STATE)
 
@@ -2758,9 +2771,9 @@ async function reopenCheck(devtools: Devtools): Promise<void> {
         `abandoned query "${narrowed.inputValue}" had left, and that index is a different row in ` +
         `the full list of ${reopened.options}`
       : `selected "${chosen}" → narrowed to ${narrowed.options} of ${selected.options} rows with ` +
-        `the query "${narrowed.inputValue}" → Tab abandoned it → reopening restored all ` +
-        `${reopened.options} rows and highlighted "${reopened.activeText}" (${reopened.active}), ` +
-        `the selection`,
+        `the query "${narrowed.inputValue}" → Tab abandoned it → focusing the field again ` +
+        `restored all ${reopened.options} rows and highlighted "${reopened.activeText}" ` +
+        `(${reopened.active}), the selection`,
   )
 
   await pressKey(devtools, "Escape")
