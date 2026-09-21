@@ -801,8 +801,9 @@ const TOASTR_STATE = `(() => {
  * compares element identity: re-querying would also match an area the first toast created, which is
  * exactly the defect under test. Every assertion is a transition — "no toast on screen" is true of
  * a toast that never appeared. Nothing here throws: a missing control is a failed check with a
- * message saying which one, because an exception ends the browser phase and silently drops every
- * package whose file runs after this one.
+ * message saying which one, because an exception costs every check left in this file — including
+ * Modal's, which run after it — and replaces them with one failure that names `ui` rather than the
+ * control.
  *
  * The addition is how the timer is driven. Waiting out the shipped five seconds, five times, is
  * both slow and a guess, so the card carries a button that pushes a **short, explicit** duration and
