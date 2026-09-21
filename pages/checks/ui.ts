@@ -2766,6 +2766,52 @@ const REGION_PARK = `(() => {
   return true
 })()`
 
+/** What {@link REGION_RELEASE} reports about the observer it took down. */
+interface RegionRelease {
+  /** `true` when nothing was ever parked, so there is nothing to report and nothing to clean up. */
+  idle: boolean
+  /** Records a deliberate poke produced **before** the disconnect: positive means it was watching. */
+  watching: number
+  /** Records the same poke produced **after** it: anything but zero means it is watching still. */
+  watchingStill: number
+  /** `true` when the global is off the page. */
+  gone: boolean
+}
+
+/**
+ * Stop watching the region, prove it stopped, and take the global off the page.
+ *
+ * A live observer is a cost every later check pays — `pages/checks/system.ts` disconnects its own
+ * for the same reason — and this file's longest block, Modal's, runs after these.
+ *
+ * The proof is two pokes around the disconnect, each read with `takeRecords()` rather than through
+ * the callback: a `MutationObserver` delivers its callback in a microtask, so a tally read in the
+ * same turn would be unchanged whether it is connected or not, while `takeRecords()` answers
+ * synchronously. A stray comment node is the poke, appended and removed again, so the page is left
+ * exactly as it was found.
+ *
+ * Safe to run when nothing was ever parked: the path out of a failed precondition runs it too.
+ */
+const REGION_RELEASE = `(() => {
+  const parked = globalThis.__verifyRegion ?? null
+  const region = parked?.region ?? null
+  if (parked === null || region === null) {
+    delete globalThis.__verifyRegion
+    return { idle: true, watching: -1, watchingStill: -1, gone: true }
+  }
+  const poke = () => {
+    const comment = document.createComment("release probe")
+    region.appendChild(comment)
+    comment.remove()
+    return parked.observer.takeRecords().length
+  }
+  const watching = poke()
+  parked.observer.disconnect()
+  const watchingStill = poke()
+  delete globalThis.__verifyRegion
+  return { idle: false, watching, watchingStill, gone: globalThis.__verifyRegion === undefined }
+})()`
+
 /** The parked region as it stands now, identity and observer tally included. */
 const REGION_STATE = `(() => {
   const parked = globalThis.__verifyRegion ?? null
@@ -2903,9 +2949,48 @@ async function accessibleDescription(
  * The field is the card's own, driven by nothing else, and both its strings come from props the
  * card passes — so no English default hard-coded anywhere could satisfy what is read back.
  *
+ * The observer and the global it is parked on are taken down on every way out of here, a failed
+ * precondition and a throw included, which is what the `finally` is for: the checks that follow —
+ * Modal's among them, and they are the longest in this file — should not pay for one still
+ * watching the combobox card.
+ *
  * @param devtools The connected session, on a hydrated page, before the card has been touched.
  */
 async function liveRegionChecks(devtools: Devtools): Promise<void> {
+  let release: RegionRelease = { idle: true, watching: -1, watchingStill: -1, gone: false }
+  try {
+    await runLiveRegionChecks(devtools)
+  } finally {
+    release = await devtools.evaluate<RegionRelease>(REGION_RELEASE).catch(() => release)
+  }
+
+  check(
+    "the Combobox live-region checks leave nothing watching the page behind them",
+    !release.idle && release.watching > 0 && release.watchingStill === 0 && release.gone,
+    release.idle
+      ? `no region was ever parked, so the checks above proved nothing and there was nothing to ` +
+        `take down`
+      : release.watching <= 0
+      ? `the observer recorded nothing for a deliberate change to the region it was given, so it ` +
+        `was not watching during the checks above and their evidence is worth nothing`
+      : release.watchingStill !== 0
+      ? `the observer still records changes to the region (${release.watchingStill} for one ` +
+        `deliberate poke) after these checks finished: every package block below this one, ` +
+        `Modal's included, would pay for it`
+      : !release.gone
+      ? `the observer is disconnected but globalThis.__verifyRegion is still on the page`
+      : `one deliberate change to the region produced ${release.watching} record(s) while the ` +
+        `checks ran and ${release.watchingStill} after the disconnect, and the global is off the ` +
+        `page`,
+  )
+}
+
+/**
+ * The checks themselves — see {@link liveRegionChecks}, which owns parking and releasing the page.
+ *
+ * @param devtools The connected session, on a hydrated page, before the card has been touched.
+ */
+async function runLiveRegionChecks(devtools: Devtools): Promise<void> {
   await devtools.evaluate<null>(comboboxSetup(ANNOUNCE_ID))
   await scrollToParked(devtools)
   const parked = await devtools.evaluate<boolean>(REGION_PARK)
