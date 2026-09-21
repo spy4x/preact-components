@@ -649,6 +649,21 @@ export function Combobox<T>({
   // network used to render and announce "No matches" on a control nobody had touched. Open, or
   // with a query in it, the message is the honest answer to a real question and is shown.
   const answersEmpty = content.emptyMessage !== undefined && (isOpen.value || hasText)
+  /**
+   * The highlight, clamped to the list that is actually on screen.
+   *
+   * A highlight cannot outlive the row it names. The list can shrink under an open popup at any
+   * time — options taken away by a caller that re-fetches them, a list of twenty-seven replaced by
+   * one of three — and `aria-activedescendant` would then point at an element that is no longer in
+   * the document: not a degraded announcement but an invalid one, a reading position inside a list
+   * with no such row, on a field that may be saying there is nothing to match at the same moment.
+   *
+   * Clamped here rather than written back into the signal, because every reader takes this value:
+   * the pointer the input carries, the row that paints itself active, and the key handler's idea of
+   * where the highlight is. Writing it back would cost a second render to settle a number nothing
+   * reads.
+   */
+  const active = activeIndex.value >= visible.length ? -1 : activeIndex.value
   // Which channel names this combobox, so each of the two labelled elements picks a consistent one.
   const named = naming({ ariaLabel, "aria-labelledby": ariaLabelledBy })
 
@@ -676,12 +691,15 @@ export function Combobox<T>({
    * user. A highlight that is already somewhere is left alone, `Alt`+`ArrowDown` — the key that
    * deliberately clears the highlight — changes no length so this never runs after it, and a
    * caller swapping one non-empty list for another does not move a highlight either.
+   *
+   * The way back needs nothing here: a list that empties again leaves the highlight past the end
+   * of what is on screen, and `active` above is clamped for exactly that.
    */
   useEffect(() => {
     const empty = visible.length === 0
     const arrived = wasEmpty.current && !empty
     wasEmpty.current = empty
-    if (!isOpen.value || !arrived || activeIndex.value >= 0) return
+    if (!isOpen.value || !arrived || active >= 0) return
     activeIndex.value = openingState(items, selectedIndex, visible, isDisabled).activeIndex
   }, [isOpen.value, visible.length])
 
@@ -698,9 +716,9 @@ export function Combobox<T>({
    * the row that went past the edge.
    */
   useEffect(() => {
-    if (!isOpen.value || activeIndex.value < 0) return
-    listRef.current?.children[activeIndex.value]?.scrollIntoView({ block: "nearest" })
-  }, [isOpen.value, activeIndex.value])
+    if (!isOpen.value || active < 0) return
+    listRef.current?.children[active]?.scrollIntoView({ block: "nearest" })
+  }, [isOpen.value, active])
 
   const setQuery = (next: string) => {
     draftQuery.value = next
@@ -748,7 +766,7 @@ export function Combobox<T>({
     const key = comboboxKey(event)
     if (key === undefined) return
     const action = comboboxKeyAction(key, {
-      activeIndex: activeIndex.value,
+      activeIndex: active,
       isOpen: isOpen.value,
     }, visible.length)
     if (action.preventDefault) event.preventDefault()
@@ -783,7 +801,7 @@ export function Combobox<T>({
           aria-expanded={isOpen.value}
           aria-controls={listboxId}
           aria-activedescendant={activeDescendant(id, {
-            activeIndex: activeIndex.value,
+            activeIndex: active,
             isOpen: isOpen.value,
           })}
           aria-autocomplete="list"
@@ -850,7 +868,7 @@ export function Combobox<T>({
         {content.options.map((item, index) => {
           // A lookup, not a scan: reading `items` per row is what made this loop quadratic.
           const selected = positions.get(item) === selectedIndex
-          const active = index === activeIndex.value
+          const isActive = index === active
           const disabled = isDisabled(item)
           return (
             <li
@@ -859,10 +877,10 @@ export function Combobox<T>({
               role="option"
               aria-selected={selected}
               aria-disabled={disabled || undefined}
-              data-active={active || undefined}
+              data-active={isActive || undefined}
               class={cn(
                 optionClasses,
-                active && activeOptionClasses,
+                isActive && activeOptionClasses,
                 selected && selectedOptionClasses,
                 disabled && disabledOptionClasses,
               )}
@@ -875,7 +893,7 @@ export function Combobox<T>({
                 if (!disabled) select(item)
               }}
             >
-              {renderOption ? renderOption(item, { selected, active }) : getText(item)}
+              {renderOption ? renderOption(item, { selected, active: isActive }) : getText(item)}
             </li>
           )
         })}
