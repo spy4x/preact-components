@@ -1,4 +1,4 @@
-import type { ComponentChildren } from "preact"
+import { type ComponentChildren, Fragment, isValidElement } from "preact"
 import { useId } from "preact/hooks"
 import { Button } from "./button.tsx"
 import { type DialogTone, Modal } from "./modal.tsx"
@@ -180,16 +180,27 @@ export function labelOr(label: string | undefined, fallback: string): string {
  *
  * `aria-describedby` is a promise that the referenced element says something. Pointing it at an
  * empty wrapper is worse than leaving it out: the caller believes the dialog reads its question,
- * and the screen reader reads the name and then silence. So the reference is written only when a
- * message or children arrived, and blank strings count as nothing — that is what an unfilled
- * template renders to.
+ * and the screen reader reads the name and then silence. So the reference is written only when the
+ * body has content that will actually render.
+ *
+ * "Content that will actually render" is the whole difficulty, because the ways of arriving with
+ * none of it do not look alike. `undefined`, `null` and a boolean are what a skipped branch leaves
+ * behind. A blank string is what an unfilled template renders to. And a **list** is the one that
+ * reads as content while holding none: `{rows.map(…)}` over an empty collection arrives as `[]`,
+ * and a fragment can wrap exactly the same nothing. Both are checked through, recursively, because
+ * a list of blanks and a fragment around an empty list are the same nothing one layer down.
  *
  * @param body The panel's children, or its message when there are none.
  * @returns `true` when the body has content to announce.
  */
 export function hasQuestion(body: ComponentChildren): boolean {
   if (body === undefined || body === null || typeof body === "boolean") return false
-  return typeof body === "string" ? body.trim() !== "" : true
+  if (typeof body === "string") return body.trim() !== ""
+  if (Array.isArray(body)) return body.some(hasQuestion)
+  if (isValidElement(body) && body.type === Fragment) {
+    return hasQuestion((body.props as { children?: ComponentChildren }).children)
+  }
+  return true
 }
 
 /**

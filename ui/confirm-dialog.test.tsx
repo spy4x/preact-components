@@ -1,4 +1,5 @@
 import { expect } from "@std/expect"
+import { createElement, Fragment } from "preact"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import {
@@ -280,5 +281,60 @@ describe("hasQuestion", () => {
     expect(hasQuestion(null)).toBe(false)
     // What `{showDetail && <p>…</p>}` renders to when the flag is off.
     expect(hasQuestion(false)).toBe(false)
+  })
+
+  it("counts a list that holds something", () => {
+    expect(hasQuestion([<strong key="a">Two rows</strong>, <em key="b">go for good.</em>]))
+      .toBe(true)
+    expect(hasQuestion(["", "and one line that is not blank"])).toBe(true)
+  })
+
+  it("counts an empty list as nothing", () => {
+    // `{rows.map(…)}` over an empty collection arrives as a list, which reads as content and holds
+    // none. This is the shape that had the panel describe itself by an empty element.
+    expect(hasQuestion([])).toBe(false)
+  })
+
+  it("counts a list of nothings as nothing", () => {
+    expect(hasQuestion([null, false, undefined])).toBe(false)
+    expect(hasQuestion(["", "   "])).toBe(false)
+    expect(hasQuestion([[], [null]])).toBe(false)
+  })
+
+  it("looks through a fragment to what it wraps", () => {
+    // `createElement(Fragment, null)` rather than the literal empty fragment, which the linter
+    // rejects as useless — it is useless in a component and is exactly the input under test here.
+    expect(hasQuestion(createElement(Fragment, null))).toBe(false)
+    expect(hasQuestion(<>{[]}</>)).toBe(false)
+    expect(hasQuestion(<>{null}</>)).toBe(false)
+    expect(hasQuestion(<>Gone for good.</>)).toBe(true)
+  })
+})
+
+describe("ConfirmDialog with a body that renders nothing", () => {
+  // The component half of the same rule: the panel must not claim a question it does not have,
+  // whichever of the empty shapes the caller arrived with.
+  it("describes itself by nothing when the children are an empty list", () => {
+    const html = render(dialog({ children: [] }))
+
+    expect(html).not.toContain("aria-describedby")
+  })
+
+  it("describes itself by nothing when the children are a fragment around an empty list", () => {
+    const html = render(dialog({ children: <>{[]}</> }))
+
+    expect(html).not.toContain("aria-describedby")
+  })
+
+  it("still describes itself by a list that holds a question", () => {
+    const html = render(
+      dialog({ children: [<p key="a">Two rows</p>, <p key="b">go for good.</p>] }),
+    )
+    const described = html.match(/aria-describedby="([^"]+)"/)?.[1] as string
+    const body = html.split(`id="${described}"`)[1] ?? ""
+
+    expect(described).toBeTruthy()
+    expect(body).toContain("<p>Two rows</p>")
+    expect(body).toContain("<p>go for good.</p>")
   })
 })
