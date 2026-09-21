@@ -154,6 +154,23 @@ nothing without `onSelectMonth`, because in link mode the month lives in the URL
 that navigated the page is not something the dual-mode contract promises — the arrows are links
 there, and Tab reaches them.
 
+**A month is asked for, never taken.** `onSelectMonth` is a request, and leaving the month where it
+is — a controlled calendar clamping to a range the reader may not leave, for instance — is a
+supported answer. A refused press then costs the reader nothing: the month on screen does not
+change, and the focus goes back to the day it started from instead of staying on the grid
+container, so their next arrow press moves a day rather than being spent walking back to where they
+already were. Page Up and Page Down are the only two keys this can happen to; the arrows refuse to
+leave the month they are in and Home and End are clipped to it, so neither ever asks for a month.
+
+Whether a request was refused is decided by the render that follows the call, and by no timer, so
+an owner that changes `monthAnchor` a render later has already been read as a refusal. Answer in
+the render the call triggers, or keep showing the month the calendar has.
+
+One thing the calendar will not do on a refusal is take the focus back from somewhere else. If the
+reader has moved it out of the grid while the request was outstanding — onto the month arrow, onto
+any other control on the page — the focus is left where they put it and only the cursor is
+restored.
+
 **The roving tabindex is applied by an effect, not rendered.** Taking Tab away from twenty-eight
 cells is only safe once a key handler is there to give the movement back, so a page that has not
 hydrated — no JavaScript, or an embedded render — keeps the natural tab order it always had.
