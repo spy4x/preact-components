@@ -407,9 +407,12 @@ function SkeletonStatusDemo() {
  * trigger below, asserts the dialog is `:modal` with focus inside it, presses the step control
  * inside the dialog, sends a real Escape key press, and asserts the dialog closed, that the close
  * port saw the step the parent has *now*, and that focus returned to that trigger. That `:modal`
- * reading is what says the dialog reached the top layer at all. Still covered by no committed test:
- * what two dialogs open at once do to each other's stacking order, focus containment, the backdrop
- * hit-test, scroll-lock compensation and the refused-Escape path.
+ * reading is what says the dialog reached the top layer at all. The last trigger is the
+ * uncontrolled dialog, and its check is the only thing that exercises the branch where the
+ * component settles its own open flag: everything else on this page hands `Modal` an `open` prop.
+ * Still covered by no committed test: what two dialogs open at once do to each other's stacking
+ * order, focus containment, the backdrop hit-test, scroll-lock compensation and the refused-Escape
+ * path.
  *
  * **Why the step is `useState` and not a signal.** A signal read from any render's closure returns
  * the current value, which is exactly what hides a handler that captured an old one. The step is
@@ -421,6 +424,10 @@ function ModalDemo() {
   const open = useSignal<DialogTone | null>(null)
   const [step, setStep] = useState(1)
   const [closedAtStep, setClosedAtStep] = useState<number | null>(null)
+  // How many times the uncontrolled dialog has been asked for, used as its key. An uncontrolled
+  // dialog cannot be re-opened from outside — it seeds its flag from `defaultOpen` and settles that
+  // flag itself — so asking for another one means mounting another one.
+  const [uncontrolled, setUncontrolled] = useState(0)
 
   return (
     <div class="space-y-3">
@@ -435,6 +442,14 @@ function ModalDemo() {
             {label}
           </Button>
         ))}
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="modal-uncontrolled-open"
+          onClick={() => setUncontrolled(uncontrolled + 1)}
+        >
+          uncontrolled — it owns its own open flag
+        </Button>
         <span class="text-xs text-gray-500 dark:text-gray-400">
           nothing is mounted until a trigger is pressed: {open.value === null ? "closed" : "open"}
         </span>
@@ -487,6 +502,27 @@ function ModalDemo() {
           >
             advance to step {step + 1}
           </Button>
+        </Modal>
+      )}
+
+      {uncontrolled > 0 && (
+        <Modal
+          key={uncontrolled}
+          defaultOpen
+          title="Uncontrolled dialog"
+          cancelLabel="Close"
+          dataE2E="guide-modal-uncontrolled"
+        >
+          <p class="text-sm text-gray-600 dark:text-gray-300">
+            No `open` prop and no `onClose`: this dialog seeds its flag from `defaultOpen` and
+            settles it itself, so Escape and the header control take it off the page with nobody to
+            tell. That is the shape for a panel whose host has no flag of its own to keep in step.
+          </p>
+          <p class="mt-3 text-sm text-gray-600 dark:text-gray-300">
+            Closing it unmounts the element rather than leaving a closed one behind, which is how
+            you can see from outside that the dialog's own flag really moved. Press the trigger
+            again for a fresh one — an uncontrolled dialog cannot be re-opened, only replaced.
+          </p>
         </Modal>
       )}
     </div>
