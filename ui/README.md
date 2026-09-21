@@ -184,13 +184,24 @@ highlighted tells a screen reader that nothing arrived.
 the page already holding its text instead of sitting there empty and then changing — which is the
 case screen readers announce least reliably. `Toastr` in this package does the opposite, and says
 why. The browser check proves the region appears and that the input describes it; it does not prove
-a reader spoke it. The alternative is an empty `role="status"` inside every combobox on the page, and
-that trade is not made here.
+a reader spoke it.
+
+**What that costs when it fails**: somebody opens a field whose options have not arrived and is told
+nothing at all. From where they sit that is the defect this component just fixed — the only
+difference is that the words now on the screen are true. The fix is an empty `role="status"` kept in
+every combobox from the start, which is a live region on every field on the page; that trade belongs
+to the three components in this library with the same shape rather than to this one alone, and is
+tracked in [#186](https://github.com/spy4x/preact-components/issues/186).
 
 The highlight belongs to the keyboard: the arrow keys move it, the popup scrolls to keep it on screen
 — `block: "nearest"`, so a row already in view does not move the list at all — and no pointer handler
 writes `aria-activedescendant`, so a screen reader's reading position does not follow a mouse
 somebody else is holding. The row under the pointer is still painted, in CSS.
+
+**The highlight never outlives its row.** A list can shrink under an open popup — options withdrawn
+by a caller that re-fetches them, twenty-seven rows replaced by three — and a highlight left where it
+was would point `aria-activedescendant` at an element the page no longer holds. It is clamped to the
+list on screen, so it is simply dropped in that case.
 
 ## Skeletons
 

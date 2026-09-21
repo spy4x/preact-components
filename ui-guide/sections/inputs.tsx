@@ -470,7 +470,7 @@ function UtcOffsetCombobox() {
         ariaLabel="UTC offset"
         placeholder="Select an offset…"
       />
-      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
+      <p class="text-xs text-gray-500 dark:text-gray-400">
         {comboboxStatusLabel(offset.value, "")}
       </p>
     </div>
@@ -519,7 +519,7 @@ function LoadingCombobox() {
       >
         Let the options arrive in {arrivalDelay}ms
       </button>
-      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
+      <p class="text-xs text-gray-500 dark:text-gray-400">
         {options.value.length === 0
           ? "no options yet"
           : `${options.value.length} options · ${comboboxStatusLabel(currency.value, "")}`}
