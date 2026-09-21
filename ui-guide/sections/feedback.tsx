@@ -119,19 +119,34 @@ function LoadingScreenDemo() {
 }
 
 /**
+ * How long the one auto-dismissing toast on this card lives, in milliseconds.
+ *
+ * Short and written down once, because the browser check drives this button: `pages/checks/ui.ts`
+ * reads the number back off the button's `data-duration` instead of carrying a copy of it, so the
+ * check waits multiples of whatever this card actually pushes and the two cannot drift apart. The
+ * shipped default is 5000, which is too long to wait for five times in a verification run.
+ */
+const autoDismissMs = 1200
+
+/** Body of that toast, and the string the browser check watches for. */
+const autoDismissBody = "auto — dismissed by its own timer"
+
+/**
  * `Toastr` is also positioned for the page corner. The stack is owned here, not by the component:
- * `onDismiss` is the port, and `duration: 0` keeps each toast until the demo dismisses it.
+ * `onDismiss` is the port, `duration: 0` keeps a toast until the demo dismisses it, and the last
+ * button pushes one that dismisses itself.
+ *
+ * The dashed box is what shows the new empty-stack contract: the live area is inside it before
+ * anything is pushed, and it is zero pixels tall, so the box looks exactly as it did when the
+ * component rendered `null` for an empty stack.
  */
 function ToastrDemo() {
   const stack = useSignal<ToastItem[]>([])
   const nextId = useSignal(0)
 
-  const push = (type: ToastVariant) => {
+  const push = (type: ToastVariant, duration: number, body: string) => {
     nextId.value += 1
-    stack.value = [
-      { id: nextId.value, type, duration: 0, body: `${type} — pushed by the demo stack` },
-      ...stack.value,
-    ]
+    stack.value = [{ id: nextId.value, type, duration, body }, ...stack.value]
   }
 
   return (
@@ -142,7 +157,8 @@ function ToastrDemo() {
             key={variant}
             type="button"
             class={toastButton}
-            onClick={() => push(variant)}
+            data-e2e={`toast-${variant}`}
+            onClick={() => push(variant, 0, `${variant} — pushed by the demo stack`)}
           >
             {label}
           </button>
@@ -150,6 +166,16 @@ function ToastrDemo() {
         <button
           type="button"
           class={toastButton}
+          data-e2e="toast-auto"
+          data-duration={autoDismissMs}
+          onClick={() => push("info", autoDismissMs, autoDismissBody)}
+        >
+          auto-dismiss ({autoDismissMs}ms)
+        </button>
+        <button
+          type="button"
+          class={toastButton}
+          data-e2e="toast-clear"
           onClick={() => stack.value = []}
         >
           clear {stack.value.length ? `(${stack.value.length})` : ""}
@@ -159,16 +185,23 @@ function ToastrDemo() {
         {stack.value.length === 0
           ? (
             <p class="text-sm text-gray-500 dark:text-gray-400">
-              Nothing pushed yet — `Toastr` renders nothing for an empty stack.
+              Nothing pushed yet. The live area is already in the box below, empty and zero pixels
+              tall — that is what lets a screen reader announce a toast that arrives later.
             </p>
           )
           : null}
         <Toastr
           toasts={stack.value}
           onDismiss={(id) => stack.value = stack.value.filter((toast) => toast.id !== id)}
+          dataE2E="guide-toastr"
           class="static max-w-sm"
         />
       </div>
+      <p class="text-xs text-gray-500 dark:text-gray-400">
+        Put the pointer over the stack, or tab into it, and every timer stops; each one picks up the
+        time it had left when you leave. The error toast is a `role="alert"`, so it interrupts a
+        screen reader; the rest are `role="status"` inside a polite region.
+      </p>
     </div>
   )
 }
@@ -606,8 +639,16 @@ export const feedbackDemos = {
   },
   Toastr: {
     summary:
-      "Stack of transient notifications. The caller owns the stack: it arrives as `toasts` and removal is the `onDismiss` port, which the per-toast auto-dismiss timer also calls.",
-    snippet: `<Toastr toasts={app.toast.list.value} onDismiss={(id) => app.toast.remove(id)} />`,
+      'Stack of transient notifications. The caller owns the stack: it arrives as `toasts` and removal is the `onDismiss` port, which the per-toast auto-dismiss timer also calls. The stack is in the document at all times, empty included — a named region marked `aria-live="polite"`, because an area created together with its first message is commonly not announced at all; empty it has no children and no height, so it costs a landmark rather than layout. An error toast carries `role="alert"` and interrupts, every other variant `role="status"`. The timer pauses while the pointer is over the stack or focus is inside it and resumes with the time it had left, so the dismiss control is reachable rather than a race. Every string is a prop with an English default — `label`, `dismissLabel`, and `ToastItem.dismissLabel` for one toast — and `data-e2e` is rendered only when `dataE2E` is passed.',
+    snippet: `<Toastr
+  toasts={app.toast.list.value}
+  onDismiss={(id) => app.toast.remove(id)}
+  label="Benachrichtigungen"
+  dismissLabel="Ausblenden"
+/>
+
+// One toast naming its own control, which is worth doing when several are on screen at once:
+{ id: "upload", type: "error", body: "Upload failed", dismissLabel: "Dismiss the upload error" }`,
     render: () => <ToastrDemo />,
   },
 } satisfies DemoFragment
