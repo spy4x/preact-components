@@ -66,6 +66,17 @@ function queueFetch(...queue: Array<Response | Error>) {
   return { impl, calls }
 }
 
+/**
+ * Row pairs the two-row tests run over.
+ *
+ * One pair would only catch a keying mistake that happens to merge that pair: `id % 2` leaves rows
+ * 1 and 2 apart and merges 1 and 3, `Math.floor(id / 2)` merges 2 and 3. Every merge of the first
+ * three ids shows in one of these three, which is what a mis-keyed lookup looks like in practice.
+ * A fixture cannot do better than that: a lookup that merges only rows 7 and 8 survives any finite
+ * set of ids.
+ */
+const ROW_PAIRS: ReadonlyArray<readonly [number, number]> = [[1, 2], [2, 3], [1, 3]]
+
 interface PendingCall extends RecordedCall {
   /** Answer this request: a `Response` resolves it, an `Error` rejects it. */
   settle: (answer: Response | Error) => void
@@ -398,50 +409,58 @@ describe("buildModelStore requests answered out of order", () => {
   })
 
   it("does not let a write to one row supersede a write in flight to another", async () => {
-    const { impl, pending } = deferredFetch()
-    const store = buildStore({ fetch: impl })
-    await store.onWs([row(1, "North"), row(2, "South")], RemoteEvent.LIST)
+    for (const [held, answered] of ROW_PAIRS) {
+      const { impl, pending } = deferredFetch()
+      const store = buildStore({ fetch: impl })
+      const pair = `rows ${held} and ${answered}`
+      await store.onWs([row(held, "North"), row(answered, "South")], RemoteEvent.LIST)
 
-    const updatingNorth = store.update(1, { name: "Nörth" })
-    const updatingSouth = store.update(2, { name: "Süd" })
+      const updatingHeld = store.update(held, { name: "Nörth" })
+      const updatingAnswered = store.update(answered, { name: "Süd" })
 
-    pending[1].settle(Response.json(row(2, "Süd")))
-    await updatingSouth
-    expect(store.op.update(2).value?.inProgress).toBe(false)
-    // Row 2 answering says nothing about row 1: a request is numbered against its own row.
-    expect(store.op.update(1).value?.inProgress).toBe(true)
+      pending[1].settle(Response.json(row(answered, "Süd")))
+      await updatingAnswered
+      expect(store.op.update(answered).value?.inProgress, pair).toBe(false)
+      // One row answering says nothing about the other: a request is numbered against its own row.
+      expect(store.op.update(held).value?.inProgress, pair).toBe(true)
 
-    pending[0].settle(Response.json(row(1, "Nörth")))
-    await updatingNorth
+      pending[0].settle(Response.json(row(held, "Nörth")))
+      await updatingHeld
 
-    // Were the numbers drawn from one counter for the whole collection, row 1's request would be
-    // older than row 2's, its answer would be dropped as stale, and the edit would vanish with the
-    // flag never coming down.
-    expect(store.state.value.list.map((r) => r.name)).toEqual(["Nörth", "Süd"])
-    expect(store.op.update(1).value?.inProgress).toBe(false)
+      // Were the numbers drawn from one counter for the whole collection, the first row's request
+      // would be the older one, its answer would be dropped as stale, and the edit would vanish
+      // with the flag never coming down.
+      expect(store.state.value.list.map((r) => r.name), pair).toEqual(["Nörth", "Süd"])
+      expect(store.op.update(held).value?.inProgress, pair).toBe(false)
+    }
   })
 
   it("does not release another row's flag when one row settles", async () => {
-    const { impl, pending } = deferredFetch()
-    const store = buildStore({ fetch: impl })
-    await store.onWs([row(1, "North"), row(2, "South")], RemoteEvent.LIST)
+    for (const [held, answered] of ROW_PAIRS) {
+      const { impl, pending } = deferredFetch()
+      const store = buildStore({ fetch: impl })
+      const pair = `rows ${held} and ${answered}`
+      await store.onWs([row(held, "North"), row(answered, "South")], RemoteEvent.LIST)
 
-    const deletingNorth = store.delete(1)
-    const updatingSouth = store.update(2, { name: "Süd" })
+      const deletingHeld = store.delete(held)
+      const updatingAnswered = store.update(answered, { name: "Süd" })
 
-    pending[1].settle(Response.json(row(2, "Süd")))
-    await updatingSouth
+      pending[1].settle(Response.json(row(answered, "Süd")))
+      await updatingAnswered
 
-    expect(store.op.update(2).value?.inProgress).toBe(false)
-    // Settling row 2 releases row 2's other slot. Row 1's delete is a different row's request and
-    // is still on the wire.
-    expect(store.op.delete(1).value?.inProgress).toBe(true)
+      expect(store.op.update(answered).value?.inProgress, pair).toBe(false)
+      // Settling one row releases that row's other slot. The delete belongs to a different row and
+      // is still on the wire.
+      expect(store.op.delete(held).value?.inProgress, pair).toBe(true)
 
-    pending[0].settle(Response.json(row(1, "North", new Date("2024-03-01T00:00:00.000Z"))))
-    await deletingNorth
+      pending[0].settle(
+        Response.json(row(held, "North", new Date("2024-03-01T00:00:00.000Z"))),
+      )
+      await deletingHeld
 
-    expect(store.op.delete(1).value?.inProgress).toBe(false)
-    expect(store.list.deleted.value.map((r) => r.id)).toEqual([1])
+      expect(store.op.delete(held).value?.inProgress, pair).toBe(false)
+      expect(store.list.deleted.value.map((r) => r.id), pair).toEqual([held])
+    }
   })
 
   it("keeps saving until the newest update to a row has answered", async () => {
