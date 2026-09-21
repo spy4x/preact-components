@@ -583,7 +583,9 @@ function Cross() {
  * The highlight belongs to the keyboard. Arrow keys move it, the list scrolls to follow it, and no
  * pointer handler writes it — a `mouseenter` that moved `aria-activedescendant` would drag a screen
  * reader's reading position around with a pointer its user is not holding. The row under the
- * pointer is still painted, in CSS, which announces nothing.
+ * pointer is still painted, in CSS, which announces nothing. The one thing that highlights a row
+ * without a key press is options arriving under an open, empty popup: a list that lands with
+ * nothing highlighted would leave `Enter` doing nothing until an arrow key was pressed.
  *
  * Every string it shows is a prop with an English default: `placeholder` (`"Select…"`),
  * `emptyMessage` (`"No matches"`) and `clearLabel` (`"Clear selection"`). Pass your own to
@@ -614,6 +616,8 @@ export function Combobox<T>({
   const id = callerId ?? generatedId
   const rootRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLUListElement>(null)
+  /** Whether the last render had nothing to show, so the next one can tell arrival from a change. */
+  const wasEmpty = useRef(true)
   const draftQuery = useSignal("")
   const isOpen = useSignal(false)
   const activeIndex = useSignal(-1)
@@ -658,6 +662,28 @@ export function Combobox<T>({
     document.addEventListener("mousedown", handleClickOutside)
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
+
+  /**
+   * Highlight the first usable row when options arrive under an open, empty popup.
+   *
+   * This is the case the silence rule above exists for, seen from the other side: a field opened
+   * while its options are still on their way has nothing to highlight, and when the list lands
+   * nothing would highlight it. The popup would then show rows with no `aria-activedescendant`,
+   * so a screen reader would be told nothing arrived and `Enter` would do nothing until the user
+   * pressed an arrow key.
+   *
+   * It fires only on the list going from empty to filled, which is what keeps it from fighting the
+   * user. A highlight that is already somewhere is left alone, `Alt`+`ArrowDown` — the key that
+   * deliberately clears the highlight — changes no length so this never runs after it, and a
+   * caller swapping one non-empty list for another does not move a highlight either.
+   */
+  useEffect(() => {
+    const empty = visible.length === 0
+    const arrived = wasEmpty.current && !empty
+    wasEmpty.current = empty
+    if (!isOpen.value || !arrived || activeIndex.value >= 0) return
+    activeIndex.value = openingState(items, selectedIndex, visible, isDisabled).activeIndex
+  }, [isOpen.value, visible.length])
 
   /**
    * Keep the highlighted option on screen.

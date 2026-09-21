@@ -743,6 +743,18 @@ describe("Combobox markup", () => {
     expect(typed).toContain(`aria-describedby="${describedStatusId(typed)}"`)
   })
 
+  it("treats a caller's empty query like no query at all", () => {
+    // A controlled query belongs to the caller, and an empty one has asked as little as an
+    // untouched draft: a server-search field rendered with `query=""` is a field nobody has used.
+    const silent = render(<Combobox items={[]} onChange={() => {}} query="" />)
+    const asked = render(<Combobox items={[]} onChange={() => {}} query="btc" />)
+
+    expect(silent).not.toContain("No matches")
+    expect(silent).not.toContain('role="status"')
+    expect(silent).not.toContain("aria-describedby")
+    expect(asked).toContain("No matches")
+  })
+
   it("says nothing on an untouched field holding one option, or several", () => {
     for (const list of [["BTC"], items]) {
       const html = render(<Combobox items={list} onChange={() => {}} />)

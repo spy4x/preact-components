@@ -236,6 +236,12 @@ const utcOffsets: readonly string[] = Array.from({ length: 27 }, (_, index) => {
 /** The list a page holds while its options are still on their way: none yet. */
 const noItemsYet: readonly string[] = []
 
+/** The options that turn up a moment later, standing in for a list a slow network delivers. */
+const lateCurrencies: readonly string[] = ["EUR", "GBP", "USD"]
+
+/** How long those options take to arrive. Written on the card's button, and read back by checks. */
+const arrivalDelay = 1200
+
 const cityLabel = (city: City) => `${city.name} — ${city.country}`
 
 /**
@@ -472,28 +478,57 @@ function UtcOffsetCombobox() {
 }
 
 /**
- * An empty list: what a page renders while its options are still on their way.
+ * An empty list, and the moment its options turn up.
  *
  * Untouched, this field says nothing at all — no message on screen, and nothing in a live region
  * for a screen reader to read out. "No matches" is an answer, and nobody has asked it anything
  * yet. Open it, or type in it, and the message appears as the answer it is.
+ *
+ * The button is the other half of the same story, and the reason it waits rather than loading on
+ * the spot: a press that filled the list immediately could only be made with the popup closed,
+ * because pressing anything outside a combobox closes it. Arming a delay lets the options land
+ * while the popup is open and empty, which is exactly what a slow network does, and it is what
+ * `pages/checks/ui.ts` drives. `data-delay` carries the wait so the check waits the same amount
+ * rather than keeping its own copy of the number.
  */
 function LoadingCombobox() {
   const currency = useSignal<string | null>(null)
+  const options = useSignal<readonly string[]>(noItemsYet)
+
+  const load = () => {
+    options.value = noItemsYet
+    setTimeout(() => options.value = lateCurrencies, arrivalDelay)
+  }
 
   return (
     <div class="space-y-2">
       <Combobox
-        items={noItemsYet}
+        items={options.value}
         value={currency.value}
         onChange={(next) => currency.value = next}
         id="guide-combobox-empty"
         ariaLabel="Currency, options still loading"
         placeholder="Select a currency…"
       />
+      <button
+        type="button"
+        class="rounded-md border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700"
+        data-e2e="combobox-load"
+        data-delay={arrivalDelay}
+        onClick={load}
+      >
+        Let the options arrive in {arrivalDelay}ms
+      </button>
+      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
+        {options.value.length === 0
+          ? "no options yet"
+          : `${options.value.length} options · ${comboboxStatusLabel(currency.value, "")}`}
+      </p>
       <p class="text-xs text-gray-500 dark:text-gray-400">
         An empty `items` list. Closed and untouched it renders no message and no live region; open
-        it and the empty message answers the question that opening it asked.
+        it and the empty message answers the question that opening it asked. Arm the button, open
+        the field, and watch the options land underneath it: the message goes, and the first row is
+        highlighted, so `Enter` picks something without an arrow key first.
       </p>
     </div>
   )
