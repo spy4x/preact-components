@@ -50,6 +50,7 @@ import {
   debuggingPort,
   type Devtools,
   poll,
+  pressKey,
   report,
   runBlocks,
 } from "./checks/harness.ts"
@@ -386,6 +387,46 @@ async function hoverCapability(devtools: Devtools): Promise<void> {
   )
 }
 
+/** Whether any dialog is currently open in the page. */
+function anyDialogOpen(devtools: Devtools): Promise<boolean> {
+  return devtools.evaluate<boolean>(`document.querySelector("dialog[open]") !== null`)
+}
+
+/**
+ * Close whatever dialog a throwing block left open, the way a person closes one.
+ *
+ * A dialog left in the top layer covers every check that runs after it, so something has to close
+ * it — but `dialog.close()` closes it behind the owning component's back. A controlled Modal keeps
+ * its open state in a signal the parent passed in; calling `close()` takes the element off the
+ * screen and leaves that signal reading `true`, so the component believes it is still open and its
+ * trigger stops working. Measured: a throw that left `ui`'s Modal open turned one contained failure
+ * into five red checks in the `ui` block that pass on a clean run, with details that read like a
+ * Modal defect.
+ *
+ * So Escape goes first. `pages/checks/ui.ts` proves that a real Escape press drives Modal's close
+ * port, which is the path that puts the component's own state and the DOM back in agreement.
+ * `dialog.close()` stays only as the fallback for a dialog that ignored Escape, and what the
+ * fallback cannot do is exactly what the paragraph above describes: it clears the top layer and
+ * nothing else, so a component whose open state lives outside the DOM is left believing it is open,
+ * and checks after it may fail for a reason that has nothing to do with them.
+ *
+ * The Escape press is sent **only** when a dialog is actually open. Tooltip, Dropdown and Combobox
+ * all listen for Escape, so an unconditional press would be the same class of mistake this function
+ * exists to avoid — a recovery quietly changing state a later block reads.
+ *
+ * @param devtools The connected session.
+ */
+async function closeOpenDialog(devtools: Devtools): Promise<void> {
+  if (!await anyDialogOpen(devtools)) return
+
+  await pressKey(devtools, "Escape")
+  if (await poll(async () => !await anyDialogOpen(devtools), 2_000)) return
+
+  await devtools.evaluate(`(() => {
+    for (const dialog of document.querySelectorAll("dialog[open]")) dialog.close()
+  })()`)
+}
+
 /**
  * Put the page back into a neutral state after a package's checks threw part-way.
  *
@@ -393,25 +434,27 @@ async function hoverCapability(devtools: Devtools): Promise<void> {
  * finished — because an unconditional reset would hide the very failures this phase exists to
  * catch: a dialog that refuses to close should break the next block loudly rather than be tidied
  * away. What it undoes is the shared state a half-finished block plausibly leaves behind for the
- * next one: an open dialog sitting in the top layer above everything, the pointer resting on a card
- * (the browser can hover now, so a stray pointer changes styles and pauses toast timers), focus
- * somewhere unexpected, and a scrolled page.
+ * next one: an open dialog sitting in the top layer above everything (through
+ * {@link closeOpenDialog}, which explains why that step is not a bare `dialog.close()`), the
+ * pointer resting on a card (the browser can hover now, so a stray pointer changes styles and
+ * pauses toast timers), focus somewhere unexpected, and a scrolled page.
  *
  * It deliberately does **not** reload the page or reset the route. A block that navigated away is
  * not recovered from here; the blocks after it fail loudly, which is the honest outcome, and a
  * reload would cost a fresh hydration and could fail on its own.
  *
  * The scroll reset asks for `behavior: "instant"` on purpose. `pages/styles.css` sets
- * `scroll-behavior: smooth` on the document, so a plain `scrollTo(0, 0)` starts an animation that is
- * still running when the next block takes its first reading — measured: with that form, making
- * `signals` throw broke the calendar's "no key the grid answers scrolls the page" check in the
- * `system` block, which is a recovery inventing a failure rather than containing one.
+ * `scroll-behavior: smooth` on the document, so a plain `scrollTo(0, 0)` starts an animation still
+ * running when the next block takes its first reading — measured: with that form, making `signals`
+ * throw broke the calendar's "no key the grid answers scrolls the page" check in the `system`
+ * block, which is a recovery inventing a failure rather than containing one.
  *
  * @param devtools The connected session.
  */
 async function resetAfterThrow(devtools: Devtools): Promise<void> {
+  await closeOpenDialog(devtools)
+
   await devtools.evaluate(`(() => {
-    for (const dialog of document.querySelectorAll("dialog[open]")) dialog.close()
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
     window.scrollTo({ top: 0, behavior: "instant" })
   })()`)
