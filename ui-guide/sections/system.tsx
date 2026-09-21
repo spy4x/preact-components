@@ -29,13 +29,13 @@
  *
  * The rest are honest full demos. `Calendar` reads state, so it lives in its own component with its
  * own local state, and every date is injected: it takes `today` and `timeZone` as props precisely so
- * a render can be pinned, and it is pinned to `2026-03-10`/`UTC` here. `BlogImageEnhancer` renders
+ * a render can be pinned, and it is pinned to `2026-03-10`/`UTC` here. `ImageLightbox` renders
  * its dialog closed, with nothing else to pin.
  */
 
-import { BlogImageEnhancer } from "@preact-components/system/blog-image-enhancer"
 import { Calendar } from "@preact-components/system/calendar"
 import type { PageHead } from "@preact-components/system/head"
+import { ImageLightbox } from "@preact-components/system/image-lightbox"
 import { seoHeadTags } from "@preact-components/system/seo-head"
 import {
   type RegistrationLike,
@@ -373,12 +373,12 @@ function SwUpdaterLiveDemo() {
  * `showModal()`. Opening it needs a click on an image inside the container the component watches,
  * which needs a document; that is stated on the card rather than staged.
  */
-function BlogImageEnhancerDemo() {
+function ImageLightboxDemo() {
   return (
     <div class="space-y-3">
       <div class="blog-content flex flex-wrap gap-3">
         <p class="w-full text-xs text-gray-500 dark:text-gray-400">
-          &lt;BlogImageEnhancer /&gt; renders the dialog below, then listens on{" "}
+          &lt;ImageLightbox /&gt; renders the dialog below, then listens on{" "}
           <code>.blog-content</code> for clicks. In a browser, clicking this image would open it:
         </p>
         <img
@@ -387,7 +387,7 @@ function BlogImageEnhancerDemo() {
           class="rounded border border-gray-200 dark:border-gray-700"
         />
       </div>
-      <BlogImageEnhancer />
+      <ImageLightbox />
     </div>
   )
 }
@@ -495,14 +495,14 @@ const tags = seoHeadTags(head)`,
       </div>
     ),
   },
-  BlogImageEnhancer: {
+  ImageLightbox: {
     summary:
       "Makes images in rendered prose zoomable through a native `<dialog>` lightbox. Progressive enhancement in the strict sense: the server renders the article and this only adds a click layer after hydration, so a reader without JavaScript loses a zoom they never had. The click is delegated to the container — one listener rather than one per image, and images arriving later still work — and `resolveImage` returns `null` for a click on a link wrapping an image, which is what stops the enhancer stealing navigation from prose. **The `<dialog>` below is the component's real output and it is really closed**: opening it needs a click inside the watched container, which needs a document. Escape and the backdrop both close it, the first being native `<dialog>` behaviour.",
-    snippet: `<BlogImageEnhancer
+    snippet: `<ImageLightbox
   containerSelector=".blog-content"
   fallbackAlt="Article figure"
   onOpen={(image) => analytics.track("lightbox", image.src)}
 />`,
-    render: () => <BlogImageEnhancerDemo />,
+    render: () => <ImageLightboxDemo />,
   },
 } satisfies DemoFragment

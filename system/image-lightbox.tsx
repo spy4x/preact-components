@@ -1,5 +1,5 @@
 /**
- * `BlogImageEnhancer` — makes images in rendered prose zoomable, with a `<dialog>` lightbox.
+ * `ImageLightbox` — makes images in rendered prose zoomable, with a `<dialog>` lightbox.
  *
  * Progressive enhancement in the strict sense: the server renders the article, this adds a
  * click-to-zoom layer after hydration, and nothing is added to the markup that a reader without
@@ -71,7 +71,7 @@ function markZoomable(container: Element, imageSelector: string): void {
   }
 }
 
-export interface BlogImageEnhancerProps {
+export interface ImageLightboxProps {
   /** Container whose images become zoomable. Defaults to `".blog-content"`. */
   containerSelector?: string
   /** Selector an image must match. Defaults to `"img"`. */
@@ -103,7 +103,7 @@ const closeClass =
  * global key listener is needed — the source version kept one alive alongside the native close,
  * so state and dialog could disagree.
  */
-export function BlogImageEnhancer(
+export function ImageLightbox(
   {
     containerSelector = ".blog-content",
     imageSelector = "img",
@@ -113,7 +113,7 @@ export function BlogImageEnhancer(
     closeLabel = "Close",
     onOpen,
     class: className,
-  }: BlogImageEnhancerProps,
+  }: ImageLightboxProps,
 ) {
   const [image, setImage] = useState<LightboxImage | null>(null)
   const dialogRef = useRef<HTMLDialogElement>(null)

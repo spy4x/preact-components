@@ -7,7 +7,7 @@
     "./seo-head": "./seo-head.tsx",
     "./sw-updater": "./sw-updater.tsx",
     "./calendar": "./calendar.tsx",
-    "./blog-image-enhancer": "./blog-image-enhancer.tsx"
+    "./image-lightbox": "./image-lightbox.tsx"
   },
   "imports": {
     // The root import map carries no renderer; the colocated tests assert on real rendered markup.
