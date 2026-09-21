@@ -219,13 +219,29 @@ output and therefore lands directly in the host's container, where a `flex` or `
 16px for it. What an always-present region costs everywhere is one more node in the accessibility
 tree, and here that is one per field rather than one per page — the trade [#186] weighed and took.
 
-**The input is not described by it.** `aria-describedby` used to point at the message while the
-message existed. It does not any more: what the region holds is a status rather than a description of
-the field, and a description is re-read every time the input is announced, so a count would be spoken
-as part of the field's identity long after the number was true. In the one moment it is new it would
-also be both described and announced. The browser reports the input's accessible description as empty
-before and after, which `pages/checks/ui.ts` reads out of the accessibility tree rather than off the
-markup.
+**The input is described by the region while the empty message is in it, and never while the count
+is.** The two sentences the region can hold are different kinds of thing. "No matches" is a standing
+fact about the field, true for as long as it is on screen, and a live region announces a _change_ and
+says nothing at all when focus arrives — so without a description, somebody tabbing into a
+server-filtered field that was rendered with a query matching nothing would be told about the field
+and nothing about the message on its face. `aria-describedby` therefore points at the region exactly
+while `answersEmpty` holds. A count is not a fact about the field but about the last keystroke, and a
+description is re-read every time the input is announced, so "12 matches" would be spoken as part of
+the field's identity long after the number was true, and in the one moment it is new it would be both
+described and announced. A query that matches nothing never carries a count, so while the input is
+described the region's text is the empty message and nothing else.
+
+Measured in Chromium through the DevTools protocol, which is the tree a reader reads rather than the
+markup: the input's accessible description is `""` on an untouched field, `""` while the region holds
+a count, the empty message once the query matches nothing, still the empty message on the closed
+field that query was abandoned on, and `""` again once the field is cleared.
+
+**A known limit of that.** A combobox closed by a click outside it, or by focus moving away, keeps
+its draft query — only `Escape` and choosing an option drop it — so a field that has a selection can
+close showing that selection while its region still holds the answer to the query that was abandoned.
+Nothing is spoken, because nothing changed, but a reader browsing the page meets a count, or a "no
+matches", that does not describe what the field is showing. This is not new: the same shape applied to
+the empty message before the region was made permanent.
 
 **No screen reader has been run against this repository.** What is demonstrated is markup and the
 order in which the DOM changes — the region is in the page first, and the message arrives as a

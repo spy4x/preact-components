@@ -619,6 +619,10 @@ function Cross() {
  * box, and it sits inside this component's own root, so a host's `flex` or `grid` container never
  * spaces a child it cannot see.
  *
+ * `aria-describedby` points the input at that region while the empty message is what it holds, and
+ * never while the count is: the message is a standing fact a reader should be told on focus, and a
+ * count is about the last keystroke rather than about the field.
+ *
  * Every string it shows is a prop with an English default: `placeholder` (`"Select…"`),
  * `emptyMessage` (`"No matches"`), `countMessage` (`"12 matches"`) and `clearLabel`
  * (`"Clear selection"`). Pass your own to translate them or to say something the default cannot.
@@ -842,10 +846,18 @@ export function Combobox<T>({
           placeholder={placeholder}
           aria-label={ariaLabel}
           aria-labelledby={ariaLabelledBy}
-          // No `aria-describedby`: what the region holds is a status rather than a description of
-          // the field. A description is re-read whenever the input is announced, so "12 matches"
-          // would be spoken as part of the field's identity long after the number was true, and
-          // the same sentence would be both described and announced in the one moment it is new.
+          // Described by the region while the empty message is what it holds, and never while the
+          // count is. The two are different kinds of sentence. "No matches" is a standing fact
+          // about the field and stays true for as long as it is on screen, so a reader coming to
+          // the field — tabbing into a server-filtered one that was rendered with a query matching
+          // nothing, say — should be told it: a live region announces a change and says nothing on
+          // focus, so without this the field would be silent about a message sitting in plain
+          // sight. A count is not a fact about the field but about the last keystroke, and a
+          // description is re-read every time the input is announced, so "12 matches" would be
+          // spoken as part of the field's identity long after the number was true. Zero matches
+          // never carries a count, so while `answersEmpty` holds the region's text is exactly the
+          // empty message and nothing else.
+          aria-describedby={answersEmpty ? statusId : undefined}
           aria-expanded={isOpen.value}
           aria-controls={listboxId}
           aria-activedescendant={activeDescendant(id, {

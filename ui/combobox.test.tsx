@@ -683,14 +683,33 @@ describe("Combobox markup", () => {
     expect(new Set(regions).size).toBe(2)
   })
 
-  it("never describes the input by its live region", () => {
-    // The region holds a status, not a description. A description is re-read every time the input
-    // is announced, so a count would be spoken as part of the field's identity long after it was
-    // true — and in the moment it is new it would be both described and announced.
-    for (const query of ["", "t", "zzz"]) {
-      expect(render(<Combobox items={items} onChange={() => {}} query={query} />))
-        .not.toContain("aria-describedby")
-    }
+  it("describes the input by the region while the empty message is in it, and never otherwise", () => {
+    const untouched = render(<Combobox items={items} onChange={() => {}} />)
+    const counting = render(<Combobox items={items} onChange={() => {}} query="t" />)
+    const nothing = render(<Combobox items={items} onChange={() => {}} query="zzz" />)
+
+    // The two sentences the region can hold are different kinds of thing. "No matches" is a
+    // standing fact about the field: a live region announces a change and says nothing on focus,
+    // so a reader arriving at a server-filtered field that was rendered with a query matching
+    // nothing would otherwise be told nothing about a message sitting in plain sight. A count is
+    // about the last keystroke rather than about the field, and a description is re-read every
+    // time the input is announced, so it would be spoken as part of the field's identity long
+    // after the number was true.
+    expect(untouched).not.toContain("aria-describedby")
+    expect(counting).not.toContain("aria-describedby")
+    expect(nothing).toContain(`aria-describedby="${statusRegionId(nothing)}"`)
+    expect(countId(nothing, statusRegionId(nothing))).toBe(1)
+  })
+
+  it("describes a closed field that a controlled query left with nothing to show", () => {
+    // The state a server-filtered field is rendered in before anybody touches it: the caller's
+    // `query` in a prop, no option matching it, the list closed. This is the case that made the
+    // description worth keeping — measured on the change before this one, the browser computed
+    // the input's description here as "No matches", and dropping the attribute made it empty.
+    const html = render(<Combobox items={items} onChange={() => {}} query="zzz" />)
+
+    expect(html).toContain('aria-expanded="false"')
+    expect(html).toContain(`aria-describedby="${statusRegionId(html)}"`)
   })
 
   it("puts the empty message inside the region that was already there, once", () => {
@@ -839,11 +858,14 @@ describe("Combobox markup", () => {
   })
 
   it("announces the empty message rather than a count of nothing", () => {
-    // Both in one region would say the same thing twice, and "0 matches" says it worse.
+    // Both in one region would say the same thing twice, and "0 matches" says it worse. It is
+    // also what makes the description above safe: while the input is described by the region,
+    // the region's text is the empty message and nothing else.
     const html = render(<Combobox items={items} onChange={() => {}} query="zzz" />)
 
     expect(statusRegion(html)).toContain("No matches")
     expect(statusRegion(html)).not.toContain("sr-only")
+    expect(html).toContain(`aria-describedby="${statusRegionId(html)}"`)
   })
 
   it("takes an overridden placeholder, and defaults it to English otherwise", () => {
