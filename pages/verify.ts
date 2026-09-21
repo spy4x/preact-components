@@ -28,9 +28,12 @@
  * check, not a skip — `--static` is the one explicit way to leave the browser phase out.
  *
  * The checks that need a hydrated page are not written here: each workspace package that has one
- * owns a file under `pages/checks/`, and `interactionChecks` below is the one place their run order
- * is fixed. `pages/checks/harness.ts` holds what more than one of those files needs in common — the
- * `Devtools` protocol client, the results ledger, `poll` and `pressKey`.
+ * owns a file under `pages/checks/`, and `PACKAGE_BLOCKS` below is the one place their run order is
+ * fixed. Each block is run isolated from the others, so a throw inside one package is one failed
+ * check naming that package and every later package still runs; the last line of the report then
+ * says which blocks, if any, are missing from the totals. `pages/checks/harness.ts` holds what more
+ * than one of those files needs in common — the `Devtools` protocol client, the results ledger,
+ * `poll` and `pressKey`.
  */
 
 import { dirname, join } from "node:path"
@@ -39,7 +42,17 @@ import { catalogueNames, catalogueSections } from "@preact-components/ui-guide/r
 import { routeTableDrift } from "@preact-components/ui-guide/routes"
 import { chartsChecks } from "./checks/charts.ts"
 import { crudChecks } from "./checks/crud.ts"
-import { check, connect, debuggingPort, type Devtools, poll, report } from "./checks/harness.ts"
+import {
+  check,
+  type CheckBlock,
+  commitBlocks,
+  connect,
+  debuggingPort,
+  type Devtools,
+  poll,
+  report,
+  runBlocks,
+} from "./checks/harness.ts"
 import { iconsChecks } from "./checks/icons.ts"
 import { pagesChecks } from "./checks/pages.ts"
 import { signalsChecks } from "./checks/signals.ts"
@@ -255,6 +268,11 @@ async function findChromium(): Promise<ChromiumLookup> {
 
 /** Drive the page in headless Chromium and assert the interactions. */
 async function browserPhase(): Promise<void> {
+  // Commit to the package blocks before anything can go wrong, so that a phase which dies during
+  // startup still reports which blocks it meant to run. `--static` never reaches this line, which
+  // is what keeps a deliberate skip from being reported as nine lost blocks.
+  commitBlocks(PACKAGE_BLOCKS.map((block) => block.name))
+
   // A missing browser is a failure, not a skip. This phase carries every assertion about behaviour
   // the markup cannot show, so a run that quietly dropped it and still exited 0 reported a green
   // check for code nothing had executed. `--static` is the one explicit way to leave it out.
@@ -316,7 +334,7 @@ async function browserPhase(): Promise<void> {
     await hoverCapability(devtools)
 
     if (hydrated) {
-      await interactionChecks(devtools)
+      await runBlocks(PACKAGE_BLOCKS, devtools, resetAfterThrow)
     }
 
     const errors = devtools.problems()
@@ -369,7 +387,36 @@ async function hoverCapability(devtools: Devtools): Promise<void> {
 }
 
 /**
- * Run every workspace package's browser checks, in the one fixed order this file owns.
+ * Put the page back into a neutral state after a package's checks threw part-way.
+ *
+ * This runs only on the throwing path — {@link runBlocks} never calls it between two blocks that
+ * finished — because an unconditional reset would hide the very failures this phase exists to
+ * catch: a dialog that refuses to close should break the next block loudly rather than be tidied
+ * away. What it undoes is the shared state a half-finished block plausibly leaves behind for the
+ * next one: an open dialog sitting in the top layer above everything, the pointer resting on a card
+ * (the browser can hover now, so a stray pointer changes styles and pauses toast timers), focus
+ * somewhere unexpected, and a scrolled page.
+ *
+ * It deliberately does **not** reload the page or reset the route. A block that navigated away is
+ * not recovered from here; the blocks after it fail loudly, which is the honest outcome, and a
+ * reload would cost a fresh hydration and could fail on its own.
+ *
+ * @param devtools The connected session.
+ */
+async function resetAfterThrow(devtools: Devtools): Promise<void> {
+  await devtools.evaluate(`(() => {
+    for (const dialog of document.querySelectorAll("dialog[open]")) dialog.close()
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+    window.scrollTo(0, 0)
+  })()`)
+
+  // Takes the pointer off whatever card it was left on; the corner is as neutral a resting place as
+  // the protocol offers, since it refuses coordinates outside the viewport.
+  await devtools.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: 0, y: 0, buttons: 0 })
+}
+
+/**
+ * Every workspace package's browser checks, in the one fixed order this file owns.
  *
  * Every package with something a browser can drive is named here, including the two that own no
  * check yet — `crud` and `charts` — so that a later PR adding a package's first check edits only
@@ -381,20 +428,24 @@ async function hoverCapability(devtools: Devtools): Promise<void> {
  * `ui` runs last on purpose: its Modal checks (kept last within `ui.ts` for the same reason) open a
  * real modal dialog, and a dialog that refused to close would sit in the top layer above every check
  * that ran after it — a failure there would then take down checks that have nothing to do with it.
+ * Isolating the blocks from each other does not make that ordering redundant: it keeps a throw from
+ * dropping the later packages, while the order keeps a *passing* block from leaving the page in a
+ * state the next one cannot work in.
  *
- * @param devtools The connected session, on a hydrated page.
+ * One list, not nine calls, so the names the run commits to and the functions it calls cannot drift
+ * apart — {@link browserPhase} commits these names before it has a browser to run them with.
  */
-async function interactionChecks(devtools: Devtools): Promise<void> {
-  await themeChecks(devtools)
-  await iconsChecks(devtools)
-  await uiGuideChecks(devtools)
-  await pagesChecks(devtools)
-  await signalsChecks(devtools)
-  await systemChecks(devtools)
-  await crudChecks(devtools)
-  await chartsChecks(devtools)
-  await uiChecks(devtools)
-}
+const PACKAGE_BLOCKS: readonly CheckBlock<Devtools>[] = [
+  { name: "theme", run: themeChecks },
+  { name: "icons", run: iconsChecks },
+  { name: "ui-guide", run: uiGuideChecks },
+  { name: "pages", run: pagesChecks },
+  { name: "signals", run: signalsChecks },
+  { name: "system", run: systemChecks },
+  { name: "crud", run: crudChecks },
+  { name: "charts", run: chartsChecks },
+  { name: "ui", run: uiChecks },
+]
 
 await staticPhase()
 if (Deno.args.includes("--static")) {
