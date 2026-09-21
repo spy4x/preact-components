@@ -920,12 +920,13 @@ const FRESHNESS_COLUMNS = ["updatedAt", "createdAt"] as const
  * It compares the first of `updatedAt`, `createdAt` that either row carries a usable value for, and
  * accepts the incoming row when that value is at least as late as the stored one. Every other case
  * accepts the incoming row: a pair where neither side carries a usable timestamp at all, and a pair
- * where only one side carries the column being compared. A remote update event is the server's
- * statement that the row changed, so where the two rows cannot be ordered the event wins — dropping
- * it because the row has no clock loses the write, which is what this check exists to prevent.
+ * where only one side carries the column being compared. Either kind of incoming row is the server
+ * saying this is what the row now is, so where the two cannot be ordered the incoming one wins —
+ * dropping it because the model has no clock loses the write, which is what this check exists to
+ * prevent, and for a model with no timestamp column that is the whole of the rule.
  *
  * Equal timestamps accept the incoming row too. Two rows stamped the same instant should be the
- * same row, and where they are not, the one the server has just sent is the authority.
+ * same row, and where they are not, the one that has just arrived is the authority.
  */
 function defaultIsNewer<M extends Model>(incoming: M, existing: M): boolean {
   for (const column of FRESHNESS_COLUMNS) {
