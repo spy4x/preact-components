@@ -196,7 +196,14 @@ export interface BuildModelStoreConfig<
    * `gb/apps/web/state` into one watched flag, and — unlike them — the effect has a disposer.
    */
   session?: ReadonlySignal<unknown> | (() => unknown)
-  /** Runs after `reset()` has cleared the store-owned slices; clear app-owned state here. */
+  /**
+   * Runs after `reset()` has cleared the store-owned slices; clear app-owned state here.
+   *
+   * A request issued from here — or by an effect reacting to the list being cleared — belongs to
+   * the **new** session and its answer is applied normally. The generation has already risen by the
+   * time either runs, so such a request captures the new number rather than the one being left
+   * behind; disowning it would strand its in-progress flag with nothing left to lower it.
+   */
   onReset?: () => void
   /** Domain operations, merged onto the returned store. */
   extraOps?: (context: ModelStoreContext<F>) => Extra
@@ -623,6 +630,12 @@ export function buildModelStore<
   function reset(): void {
     // The one place the generation moves, and the session watch below clears the store by calling
     // this rather than by clearing the slices itself, so there is one way to start a new session.
+    //
+    // This line stays first. Clearing the slices notifies every subscriber, and `onReset` is the
+    // application's own cleanup; either can throw, and a throw from either would leave the number
+    // unraised if it were moved below them — so the old session's save would land in the new
+    // session's list, which is the failure this counter exists to prevent. Two tests in
+    // `buildModelStore across a reset` hold the order.
     generation += 1
     patch({
       list: [],

@@ -329,6 +329,18 @@ some other way.
   the test file is the set of tests that pins the rule, and the generated cases reset the store
   mid-run and check the whole store against a model of it.
 
+  The rule is about the request's own session, so a request issued _during_ a reset — from inside
+  `onReset`, or by an effect reacting to the list being cleared — belongs to the **new** session and
+  its answer is applied normally. The generation rises on the first line of `reset()`, before the
+  slices are cleared and before `onReset` runs, which is also why a cleanup that throws partway
+  through a reset still leaves the old session's requests disowned.
+
+  **It covers requests, not remote events.** An event delivered through `onWs` after a reset is
+  applied to whichever session the store has when the call is made, even when the server sent it for
+  the session that ended: `applyRemote` runs synchronously inside the call, so the store has no
+  in-flight window of its own to judge and no way to tell which session an event belongs to — only
+  the application can. Ordering remote events is tracked in #173.
+
   A domain operation added through `extraOps` does not inherit the rule — the store cannot see
   inside it — and the extension points above say how one holds it.
 
