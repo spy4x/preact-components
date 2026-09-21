@@ -193,6 +193,45 @@ describe("DateRangePicker", () => {
     expect(html).not.toContain("Pick a range")
   })
 
+  it("falls back to English for every label when the caller passes none", () => {
+    // The labels rule this library holds: a caller who says nothing gets English, and nothing
+    // throws for want of copy. `labels` is left out of the props entirely here, which is also what
+    // proves the prop is optional — the file would not type-check if it were not.
+    const html = render(
+      <DateRangePicker
+        range={null}
+        onChange={() => {}}
+        timeZone="Europe/Paris"
+        presets={presets}
+      />,
+    )
+
+    expect(html).toContain("Any dates")
+    expect(html).toContain('aria-label="Date range"')
+    expect(html).toContain(">From</label>")
+    expect(html).toContain(">To</label>")
+    expect(html).toContain(">Apply</button>")
+    expect(html).toContain(">Cancel</button>")
+  })
+
+  it("takes one overridden label without demanding the other five", () => {
+    const html = renderPicker({ labels: { placeholder: "All time" } })
+
+    expect(html).toContain("All time")
+    expect(html).not.toContain("Any dates")
+    expect(html).toContain(">From</label>")
+    expect(html).toContain(">Apply</button>")
+  })
+
+  it("keeps the English default for a label passed as undefined", () => {
+    // A caller building the object from optional values hands over an explicit `undefined`, which a
+    // spread would take as the value. Read key by key, it is the same as saying nothing.
+    const html = renderPicker({ labels: { placeholder: undefined, apply: "Commit" } })
+
+    expect(html).toContain("Any dates")
+    expect(html).toContain(">Commit</button>")
+  })
+
   it("lists the presets in the order it was given", () => {
     const html = renderPicker()
     const order = ["Today", "Last 7 days", "Custom"].map((label) => html.indexOf(label))
@@ -211,6 +250,24 @@ describe("DateRangePicker", () => {
     expect(html.match(/aria-pressed="true"/g)?.length).toBe(1)
     expect(html.match(/aria-pressed="false"/g)?.length).toBe(2)
     expect(html).toContain("bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100")
+  })
+
+  it("marks Custom as pressed when the caller says the custom range is the chosen one", () => {
+    // The markup half of the `aria-pressed` fix. The other half — the button going from unpressed
+    // to pressed as the fields come into use — is a signal write no string render executes, and is
+    // proven in `pages/checks/ui.ts`.
+    const html = renderPicker({ selectedPreset: "custom" })
+
+    expect(html).toMatch(/<button[^>]*aria-pressed="true"[^>]*>Custom<\/button>/)
+    expect(html.match(/aria-pressed="true"/g)?.length).toBe(1)
+  })
+
+  it("gives the panel a focus target of its own, for a preset list with nothing in it", () => {
+    // The last resort of the focus-on-open rule: with no preset to land on, focus goes to the
+    // group, and a group is only focusable if something made it so.
+    const html = renderPicker({ presets: [] })
+
+    expect(html).toMatch(/<div id="[^"]*-panel" tabindex="-1"/)
   })
 
   it("renders two date fields when the preset list carries custom", () => {

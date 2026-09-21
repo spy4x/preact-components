@@ -274,7 +274,13 @@ const fixedNow = new Date("2026-02-15T12:00:00Z")
 const fixedZone = "Europe/Paris"
 const fixedToday: DateRange = { from: "2026-02-09", to: "2026-02-15" }
 
-/** Every string the panel renders. The library ships no copy, so the caller writes all six. */
+/**
+ * The panel's copy for these two cards.
+ *
+ * Every key here is what the component would have defaulted to anyway. It is written out rather
+ * than left off because the card is also the documentation of what the object holds, and the second
+ * card below overrides one key of it to show that the rest keep their defaults.
+ */
 const dateLabels: DateRangePickerLabels = {
   menuLabel: "Date range",
   placeholder: "Any dates",
@@ -818,7 +824,7 @@ export const inputDemos = {
   },
   DateRangePicker: {
     summary:
-      "Preset menu plus a custom from/to panel over `rangeForPreset`. The value is controlled, every string is a prop, and `timeZone` is required because the server's zone is not the visitor's. The clock is either injected through `now` or read inside a click handler, never during render, so the first render is deterministic. The panel is a `role=\"group\"` rather than a menu, because it contains form controls.",
+      "Preset menu plus a custom from/to panel over `rangeForPreset`. The value is controlled, every string in the panel defaults to English and can be overridden one key at a time, and `timeZone` is required because the server's zone is not the visitor's. The clock is either injected through `now` or read inside a click handler, never during render, so the first render is deterministic. The panel is a `role=\"group\"` rather than a menu, because it contains form controls. Focus follows the panel: opening moves it to the pressed preset, and Escape, a preset, Apply and Cancel all hand it back to the trigger.",
     snippet: `<DateRangePicker
   range={range.value}
   onChange={(next) => range.value = next}
@@ -827,16 +833,11 @@ export const inputDemos = {
     { preset: "last-7-days", label: "Last 7 days" },
     { preset: "custom", label: "Custom…" },
   ]}
-  labels={{
-    menuLabel: "Date range",
-    placeholder: "Any dates",
-    from: "From",
-    to: "To",
-    apply: "Apply",
-    cancel: "Cancel",
-  }}
   selectedPreset="last-7-days"
-/>`,
+/>
+
+// Every label is English by default; override only the ones you need to.
+<DateRangePicker {...props} labels={{ placeholder: "All time" }} />`,
     render: () => (
       <div class="space-y-6">
         <DateRangePickerDemo />
