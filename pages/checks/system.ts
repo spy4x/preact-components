@@ -385,7 +385,9 @@ async function liveRegionChecks(devtools: Devtools): Promise<void> {
     "an update after a dismissal arrives again, as a fresh change to the same region",
     barBack && again.same && again.text.includes(QUIET_MESSAGE) && again.added > announced.added,
     barBack
-      ? `after a dismissal the same region went back to reading ${
+      ? `after a dismissal ${
+        again.same ? "the same region" : "a region that is NOT the parked element"
+      } went back to reading ${
         JSON.stringify(again.text)
       }, with the observer's count of nodes added rising from ${announced.added} to ${again.added}`
       : "the bar never came back after a dismissal, so a dismissed visitor is never told again",
