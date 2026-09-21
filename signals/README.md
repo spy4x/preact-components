@@ -274,3 +274,14 @@ timers left running. The ordering rules above are tested with a second fake `fet
 request open until the test answers it, so two writes to one row can be put in flight and answered
 in the other order. `useUrlFilters` is the one exception: it needs a DOM and a router, so only its
 pure coercion helpers are covered here.
+
+The model store has a second file, `build-model-store.generated.test.ts`. The named tests fix one
+arrangement each and hold everything else still — three small row ids, two requests, a handful of
+statuses, a list of one or two rows — and a rule that reads an axis none of them varies cannot fail
+when it breaks. That is not hypothetical: a freshness check comparing the wrong column and a request
+counter shared by every row both survived a green suite here. The generated file varies those axes
+instead, from a fixed seed, and checks the store against a model of the rule after every answer. It
+covers what no finite set of fixtures can — row identity, how many rows are in flight, how long the
+list is, which status came back — and its own header says what it does not cover and how to
+reproduce a failure from the number it prints. It is not a description of the store: read the named
+tests for that.
