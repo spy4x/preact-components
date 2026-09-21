@@ -138,11 +138,13 @@ const ariaDisabledClasses = "aria-disabled:pointer-events-none aria-disabled:opa
  *
  * Controlled: `page` is rendered as given (clamped) and every request leaves through `onChange`,
  * so a caller can drive it from a URL param or a signal. Nothing is kept internally. `pageCount` of
- * `0` renders nothing; `1` renders the single page marked `aria-current="page"`, with both controls
- * present and disabled.
+ * `0` renders nothing; `1` renders the single page marked `aria-current="page"` and no controls at
+ * all, because a list with one page has nowhere to go and two dead tab stops on it would cost every
+ * reader who tabs past them something and gain nobody anything.
  *
- * **Previous and Next are always rendered**, and carry `aria-disabled="true"` where they cannot
- * act. The two obvious alternatives both lose the keyboard user's place at the moment they reach
+ * **From two pages up, Previous and Next are always rendered**, and carry `aria-disabled="true"`
+ * where they cannot act. The two obvious alternatives both lose the keyboard user's place at the
+ * moment they reach
  * the end, which is exactly when they are pressing the control: unmounting it destroys the element
  * under their focus, and setting the native `disabled` attribute on a focused button takes focus
  * off it — measured in the headless Chromium this repository drives, where `document.activeElement`
@@ -151,6 +153,11 @@ const ariaDisabledClasses = "aria-disabled:pointer-events-none aria-disabled:opa
  * spelling, so nothing is given up by choosing it. What it does not do is stop the press: a real
  * Space press still fires a click on an `aria-disabled` button, measured the same way, so each
  * handler checks the end it guards before calling `onChange`.
+ *
+ * The one-page case does mean the two controls mount and unmount as `pageCount` crosses between `1`
+ * and `2`. That is the caller's data changing under the control rather than a step the reader took
+ * inside it, so nobody's focus is on a control at that moment — which is the whole difference from
+ * paging to an end.
  */
 export function Pagination(
   {
@@ -169,20 +176,23 @@ export function Pagination(
   const current = Math.max(1, Math.min(pageCount, Math.round(page)))
   const atStart = current === 1
   const atEnd = current === pageCount
+  const showsControls = pageCount > 1
 
   return (
     <nav aria-label={label} class={cn("flex items-center justify-center gap-1", className)}>
-      <Button
-        variant="outline"
-        size="sm"
-        class={ariaDisabledClasses}
-        aria-disabled={atStart ? "true" : undefined}
-        onClick={() => {
-          if (!atStart) onChange(current - 1)
-        }}
-      >
-        {previousLabel}
-      </Button>
+      {showsControls && (
+        <Button
+          variant="outline"
+          size="sm"
+          class={ariaDisabledClasses}
+          aria-disabled={atStart ? "true" : undefined}
+          onClick={() => {
+            if (!atStart) onChange(current - 1)
+          }}
+        >
+          {previousLabel}
+        </Button>
+      )}
       <ul class="flex items-center gap-1">
         {pageRange(current, pageCount).map((item, index) =>
           !("page" in item)
@@ -206,17 +216,19 @@ export function Pagination(
             )
         )}
       </ul>
-      <Button
-        variant="outline"
-        size="sm"
-        class={ariaDisabledClasses}
-        aria-disabled={atEnd ? "true" : undefined}
-        onClick={() => {
-          if (!atEnd) onChange(current + 1)
-        }}
-      >
-        {nextLabel}
-      </Button>
+      {showsControls && (
+        <Button
+          variant="outline"
+          size="sm"
+          class={ariaDisabledClasses}
+          aria-disabled={atEnd ? "true" : undefined}
+          onClick={() => {
+            if (!atEnd) onChange(current + 1)
+          }}
+        >
+          {nextLabel}
+        </Button>
+      )}
     </nav>
   )
 }

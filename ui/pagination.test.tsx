@@ -217,14 +217,27 @@ describe("Pagination", () => {
     expect(render(<Pagination page={1} pageCount={0} onChange={() => {}} />)).toBe("")
   })
 
-  it("renders one page number for one page, with both controls present and disabled", () => {
-    const html = render(<Pagination page={1} pageCount={1} onChange={() => {}} />)
+  it("crosses the one-page boundary: nothing, then a bare page, then two controls", () => {
+    // The three totals either side of where the end controls start existing, in one place. A list
+    // with one page has nowhere to go, so it gets no controls at all and no dead tab stops; from
+    // two pages up they are always there, and the one that cannot act is marked rather than removed.
+    const none = render(<Pagination page={1} pageCount={0} onChange={() => {}} />)
+    const single = render(<Pagination page={1} pageCount={1} onChange={() => {}} />)
+    const pair = render(<Pagination page={1} pageCount={2} onChange={() => {}} />)
 
-    expect(html).toContain('aria-current="page"')
-    expect(html).toContain(">1</button>")
-    expect(html).toContain("Previous")
-    expect(html).toContain("Next")
-    expect(countOccurrences(html, 'aria-disabled="true"')).toBe(2)
+    expect(none).toBe("")
+
+    expect(single).toContain('aria-current="page"')
+    expect(single).toContain(">1</button>")
+    expect(single).not.toContain("Previous")
+    expect(single).not.toContain("Next")
+    expect(countOccurrences(single, "<button")).toBe(1)
+
+    expect(pair).toContain("Previous")
+    expect(pair).toContain("Next")
+    expect(countOccurrences(pair, "<button")).toBe(4)
+    expect(countOccurrences(pair, 'aria-disabled="true"')).toBe(1)
+    expect(pair).toMatch(/<button[^>]*aria-disabled="true"[^>]*>Previous<\/button>/)
   })
 
   it("labels the nav landmark", () => {
@@ -280,7 +293,7 @@ describe("Pagination", () => {
     // setting `disabled` on the focused button moved `document.activeElement` to `<body>` on the
     // same line, which is the bug this component was reported for. `pages/checks/ui.ts` proves the
     // other half — that the control keeps focus when it becomes disabled for real.
-    for (const [page, pageCount] of [[1, 5], [5, 5], [1, 1]] as const) {
+    for (const [page, pageCount] of [[1, 5], [5, 5], [1, 2]] as const) {
       const html = render(<Pagination page={page} pageCount={pageCount} onChange={() => {}} />)
 
       expect(html).not.toContain(' disabled=""')
