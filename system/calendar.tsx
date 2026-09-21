@@ -233,11 +233,19 @@ export function Calendar(
   const [enhanced, setEnhanced] = useState(false)
   useEffect(() => setEnhanced(true), [])
 
-  // Where the next key press counts from. A render writes the resolved day here, and a key press
-  // writes its own target before the render that answers it, so two presses arriving inside one
-  // frame still step twice: the second would otherwise count from the day the first has left.
+  // Where the next key press counts from, and the one value the keyboard is allowed to read.
+  //
+  // A press can arrive before the render its predecessor asked for, so anything a press works out
+  // from what the *render* is showing is a step lost: the second of two presses would count from
+  // the day the first has left, and — because a press can also change the month — from the month
+  // the first has left. Everything below therefore counts from this cursor and from the props the
+  // component never changes itself (`minDate`, `maxDate`, `slotsByDate`, `locale`), never from
+  // `firstOfMonth`, `days` or `activeDate`, which are all answers to the last render.
+  //
+  // The render reconciles it, unless a press is still waiting to be answered: a caller that
+  // ignores `onSelectMonth` leaves the cursor in a month nothing will ever draw, and the effect
+  // below puts it back.
   const cursorDate = useRef(activeDate)
-  cursorDate.current = activeDate
 
   // The day a key press is waiting to be given the focus on, or `null` when none is.
   //
@@ -247,15 +255,27 @@ export function Calendar(
   // effect below therefore acts only on the day it is itself showing.
   const gridRef = useRef<HTMLDivElement>(null)
   const keyboardTarget = useRef<string | null>(null)
+  if (keyboardTarget.current === null) cursorDate.current = activeDate
   useEffect(() => {
     const target = keyboardTarget.current
     if (target === null) return
 
     if (target !== activeDate) {
-      // A later press asked for somewhere else, and that press's own effect will move the focus —
-      // unless this grid cannot show the day at all, which is what an ignored `onSelectMonth`
-      // leaves behind, and then the request is dropped rather than held for ever.
-      if (!days.some((day) => day.inMonth && day.date === target)) keyboardTarget.current = null
+      // A later press asked for somewhere else, and that press's own effect will move the focus.
+      //
+      // Only the render that carries the request may conclude that nothing will ever satisfy it,
+      // which is what `target === requestedDate` asks. Without that, an effect left over from the
+      // month a burst passed through would look at a day two months away, find it nowhere on its
+      // own grid, and throw away a request the very next render was about to answer — the focus
+      // then stayed on the grid itself and never reached a day at all.
+      //
+      // When it is this render's own request and the grid still cannot show it, the caller has
+      // ignored `onSelectMonth`: the request is dropped rather than held for ever, and the cursor
+      // goes back to the day on screen so the next press counts from somewhere real.
+      if (target === requestedDate && !days.some((day) => day.inMonth && day.date === target)) {
+        keyboardTarget.current = null
+        cursorDate.current = activeDate
+      }
       return
     }
 
@@ -265,41 +285,70 @@ export function Calendar(
     keyboardTarget.current = null
   }, [activeDate, requestedDate])
 
+  /**
+   * Whether a month is one this calendar will show at all.
+   *
+   * Pure over props, so a key press can ask about a month no render has drawn yet — which is
+   * exactly what the press that has just asked for that month needs to know.
+   */
+  const monthShown = (monthKey: string) =>
+    (monthKey >= minDate.slice(0, 7) && monthKey <= maxDate.slice(0, 7)) ||
+    Object.keys(slotsByDate).some((date) => date.slice(0, 7) === monthKey)
+
   const previousMonth = shiftMonth(firstOfMonth, -1)
   const nextMonth = shiftMonth(firstOfMonth, 1)
-  const hasSlotsInMonth = (key: string) =>
-    Object.keys(slotsByDate).some((date) => date.slice(0, 7) === key)
-  const inHorizon = (key: string) => key >= minDate.slice(0, 7) && key <= maxDate.slice(0, 7)
   // An arrow with nothing to show is not rendered as a dead link: in link mode it becomes a
   // span, because a disabled `<a>` is still focusable and still navigable with Enter.
-  const previousEnabled = inHorizon(previousMonth.slice(0, 7)) ||
-    hasSlotsInMonth(previousMonth.slice(0, 7))
-  const nextEnabled = inHorizon(nextMonth.slice(0, 7)) || hasSlotsInMonth(nextMonth.slice(0, 7))
+  const previousEnabled = monthShown(previousMonth.slice(0, 7))
+  const nextEnabled = monthShown(nextMonth.slice(0, 7))
 
-  /** Move the roving focus to `date`, when the grid has that day of this month. */
+  /** Move the roving focus to `date`, when it is a day of the month the cursor is in. */
   const moveTo = (date: string) => {
-    if (!days.some((day) => day.inMonth && day.date === date)) return
+    const from = cursorDate.current
+    if (!from || date.slice(0, 7) !== from.slice(0, 7)) return
     keyboardTarget.current = date
     cursorDate.current = date
     setRequestedDate(date)
   }
 
   /**
-   * Ask for the neighbouring month, keeping the cursor on the same day number.
+   * Ask for the month `months` away from the one the cursor is in, on the same day number.
+   *
+   * Counted from the cursor and not from the month on screen, so a second press that arrives
+   * before the caller has re-rendered asks for the month after the one the first press asked for,
+   * rather than for the same one again.
    *
    * Nothing happens without `onSelectMonth`: in link mode the month lives in the URL, and a key
    * press that navigated the page would be a surprise the dual-mode contract does not promise.
    * The arrows are links there, and Tab reaches them.
    *
-   * @returns Whether the grid answered the key.
+   * @param months `-1` or `1`.
+   * @param takeFocus Whether the grid should take the focus onto the day it lands on. A key press
+   *   inside the grid does; a month arrow does not, because the reader is standing on the arrow.
+   * @returns Whether the month was asked for.
    */
-  const requestMonth = (months: -1 | 1, enabled: boolean): boolean => {
+  const requestMonth = (months: -1 | 1, takeFocus: boolean): boolean => {
     const from = cursorDate.current
-    if (!onSelectMonth || !enabled || !from) return false
-    const target = shiftMonth(firstOfMonth, months)
-    cursorDate.current = dayInMonth(target, Number(from.slice(8, 10)))
-    keyboardTarget.current = cursorDate.current
-    setRequestedDate(cursorDate.current)
+    if (!onSelectMonth || !from) return false
+
+    const target = shiftMonth(from, months)
+    if (!monthShown(target.slice(0, 7))) return false
+
+    const landing = dayInMonth(target, Number(from.slice(8, 10)))
+    cursorDate.current = landing
+    if (takeFocus) {
+      keyboardTarget.current = landing
+      // Park the focus on the grid itself, now, before the month is asked for.
+      //
+      // A month change replaces every cell, so the element the focus is standing on is about to
+      // stop existing, and the focus would fall back to `<body>` until the effect puts it on a day
+      // a frame later. A key pressed in that gap never reaches this handler at all — which is why
+      // holding Page Down moved one month and then appeared to stop, and why an arrow straight
+      // after a Page Down did nothing. The grid element itself survives every render, so the focus
+      // waits there and the next press is still the grid's to answer.
+      gridRef.current?.focus({ preventScroll: true })
+    }
+    setRequestedDate(landing)
     onSelectMonth(target)
     return true
   }
@@ -307,10 +356,6 @@ export function Calendar(
   const onKeyDown = (event: KeyboardEvent) => {
     const from = cursorDate.current
     if (!from || event.altKey || event.ctrlKey || event.metaKey) return
-
-    const index = days.findIndex((day) => day.date === from)
-    const rowStart = Math.floor(index / WEEK) * WEEK
-    const week = days.slice(rowStart, rowStart + WEEK).filter((day) => day.inMonth)
 
     switch (event.key) {
       case "ArrowLeft":
@@ -326,16 +371,16 @@ export function Calendar(
         moveTo(addDaysIso(from, WEEK))
         break
       case "Home":
-        if (week.length > 0) moveTo(week[0].date)
+        moveTo(weekEnds(from, firstWeekday).first)
         break
       case "End":
-        if (week.length > 0) moveTo(week[week.length - 1].date)
+        moveTo(weekEnds(from, firstWeekday).last)
         break
       case "PageUp":
-        if (!requestMonth(-1, previousEnabled)) return
+        if (!requestMonth(-1, true)) return
         break
       case "PageDown":
-        if (!requestMonth(1, nextEnabled)) return
+        if (!requestMonth(1, true)) return
         break
       default:
         return
@@ -366,7 +411,9 @@ export function Calendar(
         <button
           type="button"
           aria-label={accessibleLabel}
-          onClick={() => onSelectMonth(target)}
+          // Through the same cursor the keys use, so two activations inside one frame ask for two
+          // months. The focus stays on the arrow, which is where the reader is standing.
+          onClick={() => requestMonth(direction === "previous" ? -1 : 1, false)}
           class={classes}
         >
           {glyph}
@@ -460,6 +507,9 @@ export function Calendar(
       <div
         ref={gridRef}
         role="grid"
+        // Focusable only from code, never from Tab: it is where the focus stands for the one frame
+        // between a month being asked for and the day cells of that month existing.
+        tabIndex={-1}
         aria-labelledby={headingId}
         aria-colcount={WEEK}
         onKeyDown={onKeyDown}
@@ -524,6 +574,26 @@ const selectedClass = "bg-purple-900 font-semibold text-white hover:bg-purple-80
 const todayClass =
   "bg-purple-50 font-semibold text-purple-800 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-200 dark:hover:bg-purple-900/50"
 const selectableClass = "text-gray-900 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-700"
+
+/**
+ * The first and last day of the week `date` sits in, clipped to `date`'s own month.
+ *
+ * Worked out from the date and the locale's first weekday rather than from the rendered grid, so a
+ * Home or End arriving before the render that a Page Down asked for is still answered about the
+ * week the reader is actually on.
+ *
+ * @param date A day of the month in question.
+ * @param firstWeekday The week's first day, `1` = Monday … `7` = Sunday.
+ */
+function weekEnds(date: string, firstWeekday: number): { first: string; last: string } {
+  const leading = monthFirstWeekday(date, firstWeekday)
+  const dayNumber = Number(date.slice(8, 10))
+  const column = (leading + dayNumber - 1) % WEEK
+  return {
+    first: dayInMonth(date, dayNumber - column),
+    last: dayInMonth(date, dayNumber + (WEEK - 1 - column)),
+  }
+}
 
 /**
  * The first candidate that is a day of the month on screen, or that month's first day.

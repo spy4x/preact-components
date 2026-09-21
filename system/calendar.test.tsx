@@ -353,7 +353,12 @@ describe("Calendar, given input it cannot use", () => {
 describe("Calendar, before it is hydrated", () => {
   it("leaves every day in the natural tab order", () => {
     // The roving tabindex is applied by an effect, because taking Tab away from the cells is only
-    // safe once a key handler is there to give the movement back.
-    expect(render(<Calendar {...base} />)).not.toContain("tabindex")
+    // safe once a key handler is there to give the movement back. The grid element carries one of
+    // its own, which is never a tab stop: `-1` is how the focus waits there during a month change.
+    const html = render(<Calendar {...base} />)
+
+    expect(html).not.toMatch(/data-calendar-date="[^"]*"[^>]*tabindex/)
+    expect(html).not.toMatch(/tabindex[^>]*data-calendar-date/)
+    expect(html).toContain('role="grid" tabindex="-1"')
   })
 })
