@@ -784,6 +784,42 @@ async function calendarChecks(devtools: Devtools): Promise<void> {
  */
 async function burstChecks(devtools: Devtools): Promise<void> {
   const anchor = await read(devtools, `${CALENDAR_STATE}.month`, "")
+
+  // Two activations of the month arrow inside one expression, which is the one place a component
+  // can be caught acting on a render that has not happened: a key press cannot do this, because
+  // each one arrives as its own protocol message and the page always renders in between, but two
+  // `.click()` calls in one statement run before anything is rendered at all. A month worked out
+  // from what the render is showing therefore answers both clicks with the same month.
+  //
+  // The arrow is an ordinary button and a click is how a person activates it, so this is the one
+  // check here that uses `.click()` on the thing under test rather than a real press.
+  const beforeClicks = await read(devtools, CALENDAR_STATE, NO_CALENDAR)
+  const twoAhead = monthAfter(beforeClicks.month, 2)
+  const clicked = await read(
+    devtools,
+    `(() => {
+      const arrow = document.querySelector('${CALENDAR} button[aria-label^="Next month"]')
+      if (!arrow) return false
+      arrow.click()
+      arrow.click()
+      return true
+    })()`,
+    false,
+  )
+  await poll(
+    () => read(devtools, `${CALENDAR_STATE}.month === ${JSON.stringify(twoAhead)}`, false),
+    3_000,
+  )
+  const afterClicks = await read(devtools, CALENDAR_STATE, NO_CALENDAR)
+  check(
+    "two activations of the month arrow in one frame ask for two months, not one",
+    clicked && beforeClicks.month !== "" && afterClicks.month === twoAhead,
+    clicked
+      ? `${beforeClicks.heading} → next next, with no render in between → ` +
+        `${afterClicks.heading} (${afterClicks.month || "nothing"}), wanted ${twoAhead}`
+      : "the card has no next-month button to activate",
+  )
+
   await focusGrid(devtools)
   const beforeDays = await read(devtools, CALENDAR_STATE, NO_CALENDAR)
   const twoDaysOn = dayAfter(beforeDays.date, 2)
