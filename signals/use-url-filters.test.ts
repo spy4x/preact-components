@@ -6,6 +6,7 @@ import {
   filterSearch,
   filterWrite,
   resolveFilterValue,
+  restoredAddress,
   shouldPersistFilter,
 } from "./use-url-filters.ts"
 import { effect, signal } from "@preact/signals"
@@ -163,6 +164,87 @@ describe("filterSearch", () => {
     // same answer as one handing over the router's own `?`-less string.
     expect(filterSearch("?status=open", [{ urlParam: "page", value: "2" }]))
       .toBe("status=open&page=2")
+  })
+})
+
+describe("restoredAddress", () => {
+  /**
+   * An address the way `location` reports it, with `href` derived rather than passed.
+   *
+   * Only `href` distinguishes `/list?` from `/list` — `search` reads as the empty string for both
+   * — so a fixture that let the two drift apart could assert something no browser produces.
+   *
+   * @param pathname The path.
+   * @param search The query string, `?` included, or empty.
+   * @param hash The fragment, `#` included, or empty.
+   * @param trailingQuestionMark Whether the address ends in a bare `?`, which is what the router
+   *                             leaves behind when a write empties the query string.
+   */
+  function address(pathname: string, search: string, hash: string, trailingQuestionMark = false) {
+    const query = search || (trailingQuestionMark ? "?" : "")
+    return { pathname, search, hash, href: `https://example.com${pathname}${query}${hash}` }
+  }
+
+  it("puts a fragment back on the address the router's write left behind", () => {
+    expect(restoredAddress("#section", address("/list", "?page=2", ""))).toBe(
+      "/list?page=2#section",
+    )
+  })
+
+  it("leaves an address that never had a fragment without one, and without a bare hash", () => {
+    // `location.hash` reads as the empty string both for an address with no fragment and for one
+    // ending in a bare `#`, so both arrive here the same way and neither gains a `#`.
+    expect(restoredAddress("", address("/list", "?page=2", ""))).toBeUndefined()
+  })
+
+  it("does nothing when the write set a different fragment of its own", () => {
+    // What a router keeping its location in the fragment does: `useHashLocation` sets the fragment
+    // as part of navigating, so there is nothing lost and nothing to put back. Answering with an
+    // address here would overwrite that router's new route with the one it had just left.
+    expect(restoredAddress("#/list", address("/", "?page=2", "#/list-2"))).toBeUndefined()
+  })
+
+  it("does nothing when the write left the fragment it started with", () => {
+    // The same guard from the other side: a router that navigated to the route it was already on.
+    // Replacing here would be a history entry's worth of work for an address already correct.
+    expect(restoredAddress("#/list", address("/", "?page=2", "#/list"))).toBeUndefined()
+  })
+
+  it("carries a hash route whose own text contains a question mark", () => {
+    // The case naive string handling mangles: everything after the `#` belongs to the fragment,
+    // including a `?`, an `&` and an `=`, and none of it is the query string.
+    expect(restoredAddress("#/list?tab=2&sort=name", address("/", "?page=2", "")))
+      .toBe("/?page=2#/list?tab=2&sort=name")
+  })
+
+  it("carries a percent-encoded fragment exactly as it was", () => {
+    // Neither decoded nor re-encoded: the fragment came out of `location.hash` and goes back in
+    // the spelling the address had, so a round trip through a filter change changes nothing.
+    expect(restoredAddress("#a%20b", address("/list", "?page=2", ""))).toBe("/list?page=2#a%20b")
+  })
+
+  it("keeps a base path, because it rebuilds from the path the address already has", () => {
+    // Whether the prefix comes from the site being served under one or from a router `base`, it is
+    // in `location.pathname` by the time this runs, so nothing here has to know about it.
+    expect(restoredAddress("#section", address("/app/list", "?page=2", "")))
+      .toBe("/app/list?page=2#section")
+  })
+
+  it("puts the fragment straight after the path when a clear empties the query string", () => {
+    expect(restoredAddress("#section", address("/list", "", "", true))).toBe("/list#section")
+  })
+
+  it("takes off the bare question mark a clear leaves on an address with no fragment", () => {
+    // The same clear on an address carrying no fragment. The router navigated to `pathname + "?"`,
+    // and without this the two addresses would end a clear differently — `/list#section` against
+    // `/list?` — for no reason a reader could see.
+    expect(restoredAddress("", address("/list", "", "", true))).toBe("/list")
+  })
+
+  it("leaves an address alone when the query string is genuinely absent", () => {
+    // No trailing `?` to take off and no fragment to put back, so there is nothing to replace: a
+    // write that answered here would cost a history operation for an identical address.
+    expect(restoredAddress("", address("/list", "", ""))).toBeUndefined()
   })
 })
 

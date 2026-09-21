@@ -9,14 +9,16 @@
  *
  * It mounts with the page. Reading the address never writes to it — not even an address the hook
  * would spell differently, such as the `?size=huge` link below — so a reader who touches no control
- * keeps the address they arrived on, fragment route included. Touching one is a different matter,
- * and the section says so where a reader can read it: the router's `navigate` pushes
- * `pathname?search`, which carries no fragment, so a filter change takes this page's own `#/…`
- * route out of the address bar.
+ * keeps the address they arrived on, fragment route included. Touching one writes, and the write
+ * changes the query string and nothing else: this page keeps its own route in `#/…`, and that route
+ * is still there afterwards. That holds for the plain `<Router>` below, which is the one this demo
+ * mounts; the hook's own documentation states the case it does not hold for, a router configured to
+ * defer its navigation.
  *
- * An earlier version of this file hid the card behind a "start the demo" button for exactly that
- * reason. The button is gone because the reason is: the write that ate the fragment was one the
- * hook made without any filter having changed, and it no longer happens.
+ * An earlier version of this file hid the card behind a "start the demo" button, because the hook
+ * used to replace the whole address and take this page's route with it. The button is gone, and so
+ * is the reason for it — first because a read stopped writing at all, and now because the write a
+ * filter change does make puts the fragment back.
  */
 
 import { useSignal } from "@preact/signals"
@@ -85,8 +87,9 @@ export function UrlFilterDemo() {
         Arriving, reading and remounting leave the address exactly as it was — including{" "}
         <code>?size=huge</code>, which the <code>size</code>{" "}
         field's parser refuses and the address keeps anyway. Changing a filter is what writes, and
-        that write goes through the router, which replaces the whole address and carries no
-        fragment: it takes this page's own <code>#/…</code> route with it.
+        that write changes the query string and nothing else: the path, a parameter belonging to
+        something else on the page, and this page's own <code>#/…</code>{" "}
+        route all stay where they were.
       </p>
 
       <Router ssrPath="/" ssrSearch="">

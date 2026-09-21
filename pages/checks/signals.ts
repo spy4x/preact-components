@@ -11,11 +11,17 @@ import { check, type Devtools, poll } from "./harness.ts"
  *
  * Most assertions below are **transitions**: the filters read one way, the address changes, they
  * read another. A single end state would be satisfied by a hook that read the address only at
- * mount, which is the bug this file exists for. Six are something else and say so where they are
+ * mount, which is the bug this file exists for. Nine are something else and say so where they are
  * raised — the card that arrives on a filtered address is a guard on the mount path; two assert
- * that an address does *not* move, which is the whole of what "reading never writes" means; three
- * are counts, because "one change, one history entry" is a number rather than a transition; and the
- * last collects what the page threw.
+ * that an address does *not* move, which is the whole of what "reading never writes" means; four
+ * are counts, because "one change, one history entry" and "no `hashchange` fired" are numbers
+ * rather than transitions; one asserts that a fragment stays absent; and the last collects what the
+ * page threw.
+ *
+ * The group about the fragment pairs every one of its assertions with a transition on the query
+ * string, for the reason the shared rules give: "the fragment did not change" is also true of a
+ * write that never happened, so each of those checks reads the query string moving in the same
+ * breath.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -46,8 +52,14 @@ interface FilterState {
   size: string
   /** `location.search` at the same instant, so a failure names the address the values disagree with. */
   search: string
-  /** `location.hash` — the host page's own route, which only a filter write is allowed to disturb. */
+  /** `location.hash` — the host page's own route, which no filter write is allowed to disturb. */
   hash: string
+  /**
+   * `location.href`. Only the whole address distinguishes "no fragment" from a bare `#`:
+   * `location.hash` reads as the empty string for both, so a write that appended a stray `#` would
+   * be invisible to {@link FilterState.hash} alone.
+   */
+  href: string
   /** `history.length`: what an address change costs the reader in Back presses. */
   entries: number
 }
@@ -59,6 +71,7 @@ const UNREAD: FilterState = {
   size: "(unread)",
   search: "(unread)",
   hash: "(unread)",
+  href: "(unread)",
   entries: -1,
 }
 
@@ -80,6 +93,7 @@ const STATE = `(() => {
     size: text("url-filters-size"),
     search: location.search,
     hash: location.hash,
+    href: location.href,
     entries: history.length,
   }
 })()`
@@ -131,7 +145,7 @@ async function settled(devtools: Devtools, what: string): Promise<FilterState> {
     const same = now.status !== "(unread)" && now.status === previous.status &&
       now.page === previous.page && now.size === previous.size &&
       now.search === previous.search && now.hash === previous.hash &&
-      now.entries === previous.entries
+      now.href === previous.href && now.entries === previous.entries
     previous = now
     if (same) steady = now
     return same
@@ -162,6 +176,61 @@ async function act(devtools: Devtools, action: string, what: string): Promise<Fi
 const OWN_FRAGMENT = "#url-filters-check"
 
 /**
+ * A fragment shaped like the route a statically hosted site keeps there, `?` and all.
+ *
+ * `#/…?tab=2` is what hash routing looks like, and it is the spelling a write is most likely to
+ * mangle: everything after the `#` belongs to the fragment, including a `?` that reads like the
+ * start of a query string to anything joining the address back together by hand.
+ */
+const ROUTE_FRAGMENT = "#/url-filters-check?tab=2"
+
+/** Where the page moves its own route to, while the card stays mounted. */
+const MOVED_FRAGMENT = "#/url-filters-check/moved"
+
+/** How many of each address event one action fired. */
+interface AddressEvents {
+  /** `hashchange` — none may be fired by a write that leaves the fragment where it was. */
+  hashchange: number
+  /** `pushState` — wouter's own, dispatched from the method it patches. */
+  pushState: number
+  /** `replaceState` — the same, from the other patched method. */
+  replaceState: number
+}
+
+/** A count that never happened, shaped so every check over it reads as a failure. */
+const UNCOUNTED: AddressEvents = { hashchange: -1, pushState: -1, replaceState: -1 }
+
+/**
+ * Start counting the address events the page fires, from now until {@link STOP_WATCHING}.
+ *
+ * All three are counted rather than only `hashchange`, and that is the point: "no `hashchange`
+ * fired" is also what a run with no listener attached reports, so the `pushState` count — which a
+ * filter write must raise — is what says the same `addEventListener` call took effect for the same
+ * action. Without it this check would pass on a page where the listener had never been installed.
+ */
+const START_WATCHING = `(() => {
+  const counts = { hashchange: 0, pushState: 0, replaceState: 0 }
+  const handlers = {}
+  for (const type of Object.keys(counts)) {
+    handlers[type] = () => { counts[type]++ }
+    addEventListener(type, handlers[type])
+  }
+  globalThis.__urlFilterWatch = { counts, handlers }
+  return true
+})()`
+
+/** Stop counting and hand the counts over, leaving no listener behind on any path. */
+const STOP_WATCHING = `(() => {
+  const watch = globalThis.__urlFilterWatch
+  if (!watch) return { hashchange: -1, pushState: -1, replaceState: -1 }
+  for (const type of Object.keys(watch.handlers)) {
+    removeEventListener(type, watch.handlers[type])
+  }
+  delete globalThis.__urlFilterWatch
+  return watch.counts
+})()`
+
+/**
  * Push an address.
  *
  * `history.pushState` is what the router's own `navigate` calls, and the router dispatches its
@@ -176,6 +245,29 @@ const OWN_FRAGMENT = "#url-filters-check"
 function push(search: string, hash?: string): string {
   const fragment = hash === undefined ? "location.hash" : JSON.stringify(hash)
   return `history.pushState(null, "", ${JSON.stringify(search)} + ${fragment})`
+}
+
+/**
+ * Do one thing to the address while counting the address events it fires.
+ *
+ * The listeners are removed on every path: {@link read} turns a page exception into a value rather
+ * than a throw, so the statement that removes them always runs, and it removes them by the handler
+ * references it installed rather than by rebuilding them.
+ *
+ * @param devtools The connected session.
+ * @param action A statement run in the page.
+ * @param what What that action is, for the failure message.
+ * @returns The settled reading, and what the page fired while it was happening.
+ */
+async function actWatched(
+  devtools: Devtools,
+  action: string,
+  what: string,
+): Promise<{ state: FilterState; events: AddressEvents }> {
+  await read(devtools, START_WATCHING, false)
+  const state = await act(devtools, action, what)
+  const events = await read<AddressEvents>(devtools, STOP_WATCHING, UNCOUNTED)
+  return { state, events }
 }
 
 /**
@@ -218,7 +310,8 @@ async function urlFilterChecks(devtools: Devtools): Promise<void> {
   const pushed = await pushChecks(devtools, arrived)
   const linked = await linkChecks(devtools, pushed)
   const written = await writeChecks(devtools, linked)
-  await backChecks(devtools, written)
+  const backed = await backChecks(devtools, written)
+  await fragmentChecks(devtools, backed)
 
   await read(
     devtools,
@@ -532,8 +625,9 @@ async function writeChecks(devtools: Devtools, before: FilterState): Promise<Fil
  *
  * @param devtools The connected session.
  * @param before The reading this group starts from.
+ * @returns The reading it ends on.
  */
-async function backChecks(devtools: Devtools, before: FilterState): Promise<void> {
+async function backChecks(devtools: Devtools, before: FilterState): Promise<FilterState> {
   const backed = await act(devtools, "history.back()", "one press of Back")
   check(
     "one press of Back moves the address, and the filters move with it",
@@ -541,5 +635,168 @@ async function backChecks(devtools: Devtools, before: FilterState): Promise<void
       backed.status === "closed" && backed.page === "2",
     `${before.search} → ${backed.search} in one press: status ${before.status} → ` +
       `${backed.status}, page ${before.page} → ${backed.page}`,
+  )
+
+  return backed
+}
+
+/**
+ * The other part of the address a filter change is not allowed to touch: the fragment.
+ *
+ * The Pages demo is the case the defect is about — a statically hosted site whose route lives in
+ * `location.hash` — so a filter change that replaced the whole address took the reader's route out
+ * of the address bar. Reading, arriving and remounting already left both halves alone; these are
+ * about the one thing that writes.
+ *
+ * Every assertion here reads the query string moving in the same breath as the fragment holding
+ * still. "The fragment is unchanged" is true of a write that never happened at all, so on its own
+ * it would be satisfied by a hook with the signals-to-address effect deleted.
+ *
+ * The three things beyond the fragment surviving are each a way the obvious repair goes wrong. A
+ * write that put the fragment back by assigning `location.hash` would fire a `hashchange`, which
+ * this page answers by re-deriving its route, re-marking a card and scrolling to it — so the events
+ * are counted. A write that put it back with a second `navigate` would cost two history entries,
+ * and Back would appear to do nothing the first time it was pressed — so the entries are counted
+ * and Back is pressed. A write that appended the fragment unconditionally would leave a bare `#` on
+ * an address that never had one — so the last three read the whole address rather than
+ * `location.hash`, which is empty for both.
+ *
+ * The last of them is about the other thing the same step tidies. The router navigates to
+ * `pathname + "?" + ""` when a write empties the query string, so a clear used to end at `/list?`
+ * on an address with no fragment and at `/list#section` on one with a fragment, and only `href`
+ * can tell those two apart: `location.search` is empty for both.
+ *
+ * The group opens with a push, and every count is taken across an action that follows one: this
+ * group starts where {@link backChecks} left the reader, one entry back from the end, and a push
+ * made there replaces that entry instead of appending one.
+ *
+ * @param devtools The connected session.
+ * @param before The reading this group starts from.
+ */
+async function fragmentChecks(devtools: Devtools, before: FilterState): Promise<void> {
+  const anchored = await act(
+    devtools,
+    push("?status=open", ROUTE_FRAGMENT),
+    `a push to ?status=open${ROUTE_FRAGMENT}`,
+  )
+  const { state: paged, events } = await actWatched(
+    devtools,
+    click("url-filters-next-page"),
+    "a click on next page with a hash route on the address",
+  )
+
+  check(
+    "a filter changed in the page writes the query string and leaves the fragment alone",
+    before.hash !== ROUTE_FRAGMENT && anchored.hash === ROUTE_FRAGMENT &&
+      paged.hash === ROUTE_FRAGMENT && anchored.search === "?status=open" &&
+      paged.search === "?status=open&page=2",
+    `clicked next page on ${anchored.search}${anchored.hash}: the query string moved ` +
+      `${anchored.search} → ${paged.search} and the fragment stayed ${paged.hash}`,
+  )
+  check(
+    "that write fires no hashchange, so a page routing through the fragment hears nothing",
+    events.hashchange === 0 && events.pushState >= 1,
+    `the same action fired ${events.pushState} pushState and ${events.replaceState} replaceState ` +
+      `events, which is what says the listeners were attached, and ${events.hashchange} ` +
+      `hashchange events`,
+  )
+  check(
+    "a filter change on an address carrying a fragment still costs one history entry",
+    paged.entries - anchored.entries === 1,
+    `history.length ${anchored.entries} → ${paged.entries} across one filter change — two would ` +
+      `mean the fragment was put back with a second navigation`,
+  )
+
+  // A second filter change, so the entry Back lands on is one the *hook* wrote rather than one
+  // this file pushed. Backing onto a pushed entry would prove nothing: that entry carries the
+  // fragment because the push put it there, whatever the hook did on the way past.
+  const twice = await act(
+    devtools,
+    click("url-filters-set-closed"),
+    "a second filter change, so Back lands on an entry the hook wrote",
+  )
+  const back = await act(devtools, "history.back()", "one press of Back out of that filter change")
+  check(
+    "one press of Back restores the query string the hook wrote, fragment included",
+    // The two query strings are different literals, so asserting both is the transition; a third
+    // clause comparing them is a comparison TypeScript can already answer, and it refuses it.
+    twice.search === "?status=closed&page=2" && back.search === "?status=open&page=2" &&
+      back.hash === ROUTE_FRAGMENT,
+    `${twice.search}${twice.hash} → ${back.search}${back.hash} in one press — the entry Back ` +
+      `landed on is the one the first filter change wrote`,
+  )
+
+  // The card mounts here, while the address carries one fragment, and the page moves to another
+  // before the next filter change. A hook that read the fragment once, at mount, would put the
+  // first one back.
+  const remounted = await act(
+    devtools,
+    click("url-filters-remount"),
+    "a click on remount with the hash route on the address",
+  )
+  const moved = await act(
+    devtools,
+    push("?status=open", MOVED_FRAGMENT),
+    "the page moving its own route while the card stays mounted",
+  )
+  const rewritten = await act(
+    devtools,
+    click("url-filters-set-closed"),
+    "a click on status = closed after the page moved its route",
+  )
+  check(
+    "the fragment a write keeps is the one the address has then, not the one it had at mount",
+    remounted.hash === ROUTE_FRAGMENT && moved.hash === MOVED_FRAGMENT &&
+      rewritten.hash === MOVED_FRAGMENT && moved.search === "?status=open" &&
+      rewritten.search === "?status=closed",
+    `the card mounted on ${remounted.hash}, the page moved to ${moved.hash}, and the write that ` +
+      `took the query string ${moved.search} → ${rewritten.search} left ${rewritten.hash}`,
+  )
+
+  const cleared = await act(
+    devtools,
+    click("url-filters-clear"),
+    "a click on clear with a fragment on the address",
+  )
+  check(
+    "clearing the filters empties the query string and leaves the fragment alone too",
+    rewritten.search === "?status=closed" && cleared.search === "" &&
+      cleared.hash === MOVED_FRAGMENT,
+    `clicked clear on ${rewritten.search}${rewritten.hash}: the query string went ` +
+      `"${cleared.search}" and the fragment stayed ${cleared.hash}`,
+  )
+
+  const plain = await act(
+    devtools,
+    push("?status=open", ""),
+    "a push to ?status=open with no fragment",
+  )
+  const written = await act(
+    devtools,
+    click("url-filters-next-page"),
+    "a click on next page with no fragment on the address",
+  )
+  check(
+    "a filter change on an address with no fragment adds none, not even a bare hash",
+    !plain.href.includes("#") && !written.href.includes("#") && plain.search === "?status=open" &&
+      written.search === "?status=open&page=2",
+    `clicked next page on ${plain.href}: the query string moved ${plain.search} → ` +
+      `${written.search} and the address settled at ${written.href}`,
+  )
+
+  // The same clear as above, on an address carrying no fragment. The router navigates to
+  // `pathname + "?" + ""`, so without the tidying step the two would end a clear differently:
+  // `…/#/url-filters-check/moved` with a fragment and `…/?` without one.
+  const emptied = await act(
+    devtools,
+    click("url-filters-clear"),
+    "a click on clear with no fragment on the address",
+  )
+  check(
+    "clearing on an address with no fragment leaves no bare question mark behind",
+    written.search === "?status=open&page=2" && emptied.search === "" &&
+      !emptied.href.endsWith("?") && !emptied.href.includes("#"),
+    `clicked clear on ${written.href}: the query string went "${emptied.search}" and the address ` +
+      `settled at ${emptied.href}`,
   )
 }
