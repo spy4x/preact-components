@@ -39,7 +39,7 @@ Preact + Tailwind primitives extracted from `gb`, `financy` and `offer-lens`.
 | `SkeletonText`    | `skeletons`         | `lines`, `widths`                                                                                             |
 | `Table`           | `table`             | `headerSlot`, `bodySlots`, `footerSlot`, `rowDataE2E`                                                         |
 | `Tabs`            | `tabs`              | `tabs`, `active`, `onChange`, `orientation`, `lazy`                                                           |
-| `Toastr`          | `toastr`            | `toasts`, `onDismiss`                                                                                         |
+| `Toastr`          | `toastr`            | `toasts`, `onDismiss`, `label`, `dismissLabel`, `dataE2E`                                                     |
 | `ToggleSwitch`    | `toggle-switch`     | `value`, `onToggle`, `disabled`, `label`                                                                      |
 
 ## Usage
@@ -85,6 +85,58 @@ from the tabs whose panel it omitted. Ids are derived from each `TabItem.id` (`$
 
 `Toastr` auto-dismisses each toast after `toast.duration` milliseconds (default 5000, `0` keeps it
 until dismissed) and reports it through `onDismiss` — the caller owns the stack.
+
+**The stack is always in the document, an empty one included.** It renders as a named region marked
+`aria-live="polite"` whether or not it holds a toast, which is what lets a screen reader announce a
+toast that arrives later: an area created together with its first message is commonly not announced
+at all, because the reader sees a new subtree rather than a change to one it is watching. An empty
+stack has no children, no padding and no minimum height, so it paints nothing and costs no layout —
+positioned `fixed` it is out of flow, and a caller that overrides that to `static` gets a
+zero-height box. What it does cost is one named landmark on every page that mounts it, so mount one
+stack per page rather than one per view.
+
+Inside that polite area an error toast additionally carries `role="alert"`, which interrupts;
+every other variant carries `role="status"`. Both roles imply `aria-atomic`, so a reader announces
+the whole toast rather than the one text node that changed.
+
+The timer pauses while the pointer is over the stack or focus is inside it, and resumes with the
+time it had left when they leave — a toast is reachable by keyboard instead of a race. Moving focus
+_within_ the stack, from a link in a toast's body to its dismiss control, does not resume it.
+Raising a toast's `duration` while it is on screen is the one thing that refills the budget rather
+than continuing it, which is how a caller extends a toast it has already shown.
+
+**The pause needs the caller to own the timing.** `Toastr` can only pause the timer it runs itself,
+the one driven by `ToastItem.duration`. `createToastStore` from `@preact-components/signals`, which
+the wiring above reads from, does its own timing instead, and that costs a caller both halves of
+what this section promises. The store schedules a removal for every toast it holds, so a toast
+pushed through it is taken away on the store's schedule whatever the pointer is doing and the pause
+never reaches it —
+[#175](https://github.com/spy4x/preact-components/issues/175). And the store's `timeout` field
+never reaches the component's `duration`, so the component runs its own 5000ms default alongside
+the store's timer and a toast lives whichever of the two is **shorter**: a `timeout` longer than
+five seconds is quietly cut down to five, and `timeout: 0` — which that store documents as keeping
+the toast until somebody dismisses it by hand — schedules nothing of its own and so leaves the
+component's default to take the toast away after five seconds. The documented way to make a toast
+persist is the case this breaks worst —
+[#174](https://github.com/spy4x/preact-components/issues/174). Until the store hands its timing
+over, a caller who wants either of them keeps the stack itself and passes `duration`, the way the
+catalogue card does. Both defects are filed against the store; neither is this component's.
+
+Every string the stack shows is a prop with an English default: `label` names the region
+(`"Notifications"`), `dismissLabel` names every dismiss control (`"Dismiss"`), and one toast can
+name its own with `ToastItem.dismissLabel`, which is worth doing when several are on screen and
+"Dismiss" three times over says nothing about which is which. The `data-e2e` attribute is rendered
+only when `dataE2E` is passed, so a consumer's markup carries a test hook only when that consumer
+asked for one.
+
+```tsx
+<Toastr
+  toasts={app.toast.list.value}
+  onDismiss={(id) => app.toast.remove(id)}
+  label="Benachrichtigungen"
+  dismissLabel="Ausblenden"
+/>
+```
 
 ## Skeletons
 
