@@ -591,7 +591,7 @@ const tags = seoHeadTags(head)`,
       "Makes the images inside a container zoomable through a native `<dialog>` lightbox. Progressive enhancement in the strict sense: the server renders the page and this only adds a zoom layer after hydration, so a reader without JavaScript loses a zoom they never had. The layer is delegated to the container — one listener rather than one per image, and images arriving later still work. **A zoomable image behaves like a button**: it takes a Tab stop, carries a button's role and a name saying what it does, and opens with Enter or Space, with Space cancelled so the page does not scroll away underneath. A click or an Enter press is cancelled too, so the second image below opens the lightbox instead of following the link it sits in. **The `<dialog>` is the component's real output and it is really closed** until an image is opened. Escape closes it natively and a click on the backdrop closes it, which is only true because the image is positioned inside the dialog rather than filling it — a child that covers the dialog is a backdrop no click can reach. Every string it shows is a prop with an English default.",
     snippet: `<ImageLightbox
   containerSelector="[data-lightbox]"
-  fallbackAlt="Article figure"
+  fallbackAlt="Figure"
   zoomLabel="Zoom"
   onOpen={(image) => analytics.track("lightbox", image.src)}
 />`,
