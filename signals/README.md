@@ -240,10 +240,10 @@ own restore would be refused and simply not appear, with no error and no notific
 it — somebody else's change reappearing is a lesser failure than your own change vanishing. Both
 consequences are pinned by
 `is undone by our own later answer when a remote delete did not move updatedAt` and
-`lands our undelete on a deleted row stamped the same instant as our answer`, so anyone who changes
-the tie rule sees the pair of them go red together. A soft delete in this library's data contract is
-an update, and a server that writes it as one moves `updatedAt` with it; one that does not should
-pass its own `isNewer`.
+`lands our undelete on a deleted row stamped the same instant as our answer`, so the change that
+would fix the first — refusing any answer that would restore a deleted held row — turns both of
+them red at once. A soft delete in this library's data contract is an update, and a server that
+writes it as one moves `updatedAt` with it; one that does not should pass its own `isNewer`.
 
 Where any of that is true, pass your own `isNewer` and compare a version column instead. It is
 asked for the two comparisons the rule is made of — a remote `"updated"` event against the held

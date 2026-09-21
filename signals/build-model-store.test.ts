@@ -1548,9 +1548,13 @@ describe("buildModelStore remote change against a request in flight", () => {
     const restoring = store.undelete(1)
     // The mirror of the test above, and the reason the tie rule stays as it is. A server that does
     // not move `updatedAt` when it restores a row answers with the same instant the held row
-    // carries. Giving a deleted held row the tie — the obvious fix for the test above — would
-    // refuse this answer, and the user's own restore would simply not appear, with no error and no
-    // notification to explain it. Change the tie rule and both of these go red together.
+    // carries. Giving a deleted held row the tie would refuse this answer, and the user's own
+    // restore would simply not appear, with no error and no notification to explain it.
+    //
+    // Measured, because the two tests are not red under the same changes. Giving a deleted held
+    // row the tie turns this one red and leaves the one above green — our answer there is strictly
+    // later, so a tie rule never reaches it. Refusing any answer that would restore a deleted held
+    // row, which is the change that would actually fix the one above, turns both red at once.
     pending[0].settle(Response.json(stampedRow(1, "North", LOADED_AT)))
     await restoring
 
