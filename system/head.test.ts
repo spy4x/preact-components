@@ -61,6 +61,10 @@ describe("normalizeCanonical", () => {
     expect(normalizeCanonical("https://user:pw@acme.example/a")).toBe("https://acme.example/a")
   })
 
+  it("drops a user name that arrives without a password", () => {
+    expect(normalizeCanonical("https://user@acme.example/a")).toBe("https://acme.example/a")
+  })
+
   it("drops a fragment", () => {
     expect(normalizeCanonical("https://acme.example/a#reviews")).toBe("https://acme.example/a")
   })
@@ -155,13 +159,31 @@ describe("breadcrumbItems", () => {
     expect(items[0].item).toBe("https://docs.example/start")
   })
 
-  it("gives the last crumb the page's own cleaned address", () => {
+  it("gives the last crumb the page's own cleaned address when it states none", () => {
     const items = breadcrumbItems("https://user:pw@acme.example/a?x=1#frag", [
       { name: "Home", href: "/" },
       { name: "A" },
     ])
 
     expect(items.at(-1)?.item).toBe("https://acme.example/a?x=1")
+  })
+
+  it("keeps a last crumb's own address instead of the page's when it states one", () => {
+    const items = breadcrumbItems("https://acme.example/a/b", [
+      { name: "A", href: "/a" },
+      { name: "B", href: "/a/b/exact" },
+    ])
+
+    expect(items.at(-1)?.item).toBe("https://acme.example/a/b/exact")
+  })
+
+  it("drops a fragment from a crumb href, exactly as it does from the canonical", () => {
+    const items = breadcrumbItems("https://acme.example/a/b", [
+      { name: "A", href: "/a#section" },
+      { name: "B" },
+    ])
+
+    expect(items[0].item).toBe("https://acme.example/a")
   })
 
   it("refuses a javascript: crumb href", () => {
