@@ -968,20 +968,50 @@ async function imageLightboxChecks(devtools: Devtools): Promise<void> {
 
   // Space is the half of the button contract a check can really press: a real Space press *does*
   // reach a listener in headless Chromium, and an uncancelled one scrolls the page by a screen.
+  //
+  // Both halves are measured, and the second needs the listener below rather than the scroll
+  // position alone. Measured, not assumed: with the component's `preventDefault` deleted the page
+  // still did not move, because the modal dialog the same press opens stops the document
+  // scrolling before the browser gets to act on the key. `defaultPrevented`, read on `document`
+  // after the component's own listener, is the fact that decides whether a page would scroll.
   const focusedAgain = await focusImage(devtools, PLAIN_IMAGE)
   await settleScroll(devtools)
+  await read(
+    devtools,
+    `(() => {
+      globalThis.__lightboxSpace = { presses: 0, prevented: null }
+      globalThis.__lightboxSpaceListener = (event) => {
+        if (event.key !== " ") return
+        globalThis.__lightboxSpace.presses++
+        globalThis.__lightboxSpace.prevented = event.defaultPrevented
+      }
+      document.addEventListener("keydown", globalThis.__lightboxSpaceListener)
+      return true
+    })()`,
+    false,
+  )
   const beforeSpace = await read(devtools, LIGHTBOX_STATE, NO_LIGHTBOX)
   await pressKey(devtools, "Space")
   await poll(() => read(devtools, `${LIGHTBOX_STATE}.open`, false), 3_000)
   const afterSpace = await read(devtools, LIGHTBOX_STATE, NO_LIGHTBOX)
+  const space = await read(
+    devtools,
+    `(() => {
+      document.removeEventListener("keydown", globalThis.__lightboxSpaceListener)
+      return globalThis.__lightboxSpace || { presses: 0, prevented: null }
+    })()`,
+    { presses: 0, prevented: null as boolean | null },
+  )
 
   check(
-    "a real Space press opens the lightbox without scrolling the page",
-    focusedAgain && !beforeSpace.open && afterSpace.open && beforeSpace.scrollY >= 0 &&
+    "a real Space press opens the lightbox, cancelled so the page cannot scroll",
+    focusedAgain && !beforeSpace.open && afterSpace.open && space.presses === 1 &&
+      space.prevented === true && beforeSpace.scrollY >= 0 &&
       afterSpace.scrollY === beforeSpace.scrollY,
     focusedAgain
-      ? `closed → Space → ${afterSpace.open ? "open" : "still closed"}, scrollY ` +
-        `${beforeSpace.scrollY} → ${afterSpace.scrollY}`
+      ? `closed → Space → ${afterSpace.open ? "open" : "still closed"}; the press reached ` +
+        `document ${space.presses} time(s) with defaultPrevented=${space.prevented}, and scrollY ` +
+        `went ${beforeSpace.scrollY} → ${afterSpace.scrollY}`
       : "the image never took focus, so a key press proves nothing about it",
   )
 
@@ -1060,6 +1090,17 @@ async function imageLightboxChecks(devtools: Devtools): Promise<void> {
  * @param devtools The connected session, on a hydrated page.
  */
 async function linkedImageCheck(devtools: Devtools): Promise<void> {
+  // Closed first, whatever the check before left behind: a dialog still in the top layer would
+  // cover the image this one aims at, and the miss would be reported against the wrong fix.
+  await read(
+    devtools,
+    `(() => {
+      const open = document.querySelector('${DIALOG}')
+      if (open && open.open) open.close()
+      return true
+    })()`,
+    false,
+  )
   await read(
     devtools,
     `(() => {
