@@ -43,10 +43,11 @@ import {
  * - **Scoped to a session.** The store counts its resets, and an answer to a request issued before
  *   a reset writes nothing after it. Without that, a save still on the wire when the user signed
  *   out landed in the next session's list under the same row id.
- * - **One clock over the list.** The row the list holds is replaced only by something later than
- *   it, judged by the same freshness check whether that something is a remote event or the answer
- *   to this client's own request. Without it our own answer always won, so a row another user
- *   deleted while our write was on the wire came back on screen when the write answered.
+ * - **One clock over the list.** An `"updated"` remote event and the answer to this client's own
+ *   request are both weighed against the row the list holds, by the same freshness check, and the
+ *   later of the two wins. Without it our own answer always won, so a row another user deleted
+ *   while our write was on the wire came back on screen when the write answered. A `"deleted"` or
+ *   a `"list"` event is weighed against nothing and replaces what it names outright, as before.
  */
 
 /** Payload and row schemas for a model. */
@@ -186,9 +187,11 @@ export interface BuildModelStoreConfig<
   /**
    * Freshness check between a row arriving and the row the list holds; the older one is ignored.
    *
-   * It decides both of the ways a held row can be replaced, so one clock orders them against each
-   * other: an `"updated"` remote event, and the answer to one of this client's own requests. The
-   * default compares `updatedAt`, falls back to `createdAt` for a model that has neither side
+   * It is asked about the two incoming rows that are weighed at all, so one clock orders them
+   * against each other: an `"updated"` remote event, and the answer to one of this client's own
+   * requests. It is not asked about a `"deleted"` or a `"list"` event, each of which replaces what
+   * it names outright. The default compares `updatedAt`, falls back to `createdAt` for a model that
+   * has neither side
    * stamped with an `updatedAt`, and accepts the incoming row whenever the two cannot be ordered —
    * including when the model carries no timestamp column at all. See {@link defaultIsNewer}.
    */
@@ -459,7 +462,10 @@ export function buildModelStore<
    *
    * A row the list does not hold is outranked by nothing, because there is nothing to compare
    * against. What the caller does with such an answer still differs: `create` appends it, and the
-   * other operations write nothing, since a replacement needs a row to replace.
+   * other operations write nothing, since a replacement needs a row to replace. No test can tell
+   * that branch from its opposite, and it is written this way for the reader rather than for the
+   * behaviour: `create` only asks once it has found the row, and for the other three a
+   * `replaceRow` over a list with no such id is a copy of the same list either way.
    */
   const outranksHeldRow = (answer: Row): boolean => {
     const held = state.value.list.find((existing) => existing.id === answer.id)
@@ -617,11 +623,15 @@ export function buildModelStore<
   /**
    * Parse a remote batch and fold it into the list. A batch that fails to parse is dropped.
    *
-   * An `"updated"` event is judged against the held row by `isNewer`; a `"deleted"` one replaces
-   * the held row outright, because the server saying a row is archived is not a claim about the
-   * rest of its columns and is not weighed against them. What the event leaves in the list is then
-   * what the answer to any request still on the wire is compared with, so a remote change that
-   * arrives first is no longer overwritten by an older answer.
+   * An `"updated"` event is judged against the held row by `isNewer`. A `"deleted"` one is not
+   * judged at all: it replaces the held row wholesale, including its `updatedAt`, so a delete
+   * carrying an older copy of the row overwrites a newer one and winds that row's clock backwards —
+   * which then makes `outranksHeldRow` judge this client's next write against the wrong instant.
+   * That is pre-existing behaviour, deliberately left alone here and tracked in #201.
+   *
+   * What the event leaves in the list is what the answer to any request still on the wire is
+   * compared with, so a remote change that arrives first is no longer overwritten by an older
+   * answer.
    */
   function applyRemote(items: unknown[], event: RemoteEvent): void {
     const rows: Row[] = []

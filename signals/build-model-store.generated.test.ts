@@ -24,11 +24,13 @@
  * so an answer that lands where it should not is visible rather than merely redundant.
  *
  * And somebody else changes a row through the feed while this client is working on it: 1,066 cases
- * carry at least one remote event, and in 863 of them an event lands on a row that has a request
- * outstanding. Every row is stamped `updatedAt`, drawn from five instants, so the clock rule is
- * decided both ways: this client's own answer is refused by it in 475 cases — in 235 of those the
- * row it lost to was one a remote event had written — and accepted over a remotely written row in
- * 237. See {@link REMOTE_CHANCE} and {@link STAMPS}.
+ * carry at least one remote event. An event is delivered for a row that has a request outstanding
+ * in 971 cases, and in 863 of those it actually changes the row — the rest are `"updated"` events
+ * the freshness check refuses, which leave the list exactly as it was. Every row is stamped
+ * `updatedAt`, drawn from five instants, so the clock rule is decided both ways: this client's own
+ * answer is refused by it in 475 cases — in 235 of those the row it lost to was one a remote event
+ * had written — and accepted over a remotely written row in 237. See {@link REMOTE_CHANCE} and
+ * {@link STAMPS}.
  *
  * After every step it checks each row's name, its `updatedAt`, whether it is soft-deleted, both
  * operation flags, whether each slot carries an error, and the notifications so far.
@@ -110,11 +112,17 @@ const CASES = 1200
  * has stopped testing what it was extended for. Raising the chance raises it and costs coverage of
  * the per-row counters, which is the trade {@link MAKE_BIAS} describes.
  *
- * Measure that number by replaying these plans against the **old** store, not by reasoning about
- * the current one. Under the old rule every answer was numbered, including one from an earlier
- * session, so it advanced its row's counter and could make a later answer stale; the old store had
- * no clock either, so the replay must not apply one. Counting a crossing answer as fresh without
- * that advance — which is how the current store numbers — gives a different number, and it is the
+ * **What 344 counts, exactly**, because the number depends on the definition. A crossing answer
+ * counts when it succeeded, when it was fresh by the old numbering, **and when the next session's
+ * list held its row** — so the write it would have made was a real one rather than a `replaceRow`
+ * over a list with no such id. Dropping that third condition counts 416 instead, and 416 is the
+ * number of answers that would have been *numbered*, not the number that would have been *seen*.
+ *
+ * Measure it by replaying these plans against the **old** store, not by reasoning about the current
+ * one. Under the old rule every answer was numbered, including one from an earlier session, so it
+ * advanced its row's counter and could make a later answer stale; the old store had no clock
+ * either, so the replay must not apply one. Counting a crossing answer as fresh without that
+ * advance — which is how the current store numbers — gives a different number again, and it is the
  * answer to a question nobody asked.
  */
 const RESET_CHANCE = 0.1
@@ -130,7 +138,8 @@ const SESSION_KEEP = 0.75
  * the event is aimed at a row with a request outstanding {@link REMOTE_ON_BUSY_ROW} of the time
  * and at any of the case's rows otherwise; a plain event with nothing in flight still happens, and
  * still has to be applied correctly. At 0.25 over 1,200 cases, 1,066 cases carry at least one
- * event and 863 have one land on a row that is mid-write.
+ * event, 971 deliver one for a row that is mid-write, and in 863 of those the event changes the
+ * row rather than being refused by the freshness check.
  *
  * The two counts to watch are the ones that can tell this rule from the one it replaced: this
  * client's own answer is refused by the clock in 475 cases, 235 of them losing to a row a remote
