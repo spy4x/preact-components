@@ -4,6 +4,7 @@
  */
 
 import { expect } from "@std/expect"
+import { parse } from "@std/jsonc"
 import { describe, it } from "@std/testing/bdd"
 import * as charts from "@preact-components/charts"
 import * as crud from "@preact-components/crud"
@@ -21,6 +22,9 @@ import {
   valueExportsOf,
 } from "./coverage.ts"
 import { type PackageId, packageIds } from "./registry.ts"
+
+/** The repository root: the parent of every package directory, same as `coverage.ts`'s own. */
+const ROOT = new URL("../", import.meta.url)
 
 /** Every catalogued package's value exports, read once for the whole file. */
 const EXPORTS = await packageExports()
@@ -70,6 +74,30 @@ async function subpathOnlyNames(): Promise<Record<PackageId, Record<string, stri
 
 /** {@link subpathOnlyNames}, read once for the whole file. */
 const SUBPATH_ONLY_NAMES = await subpathOnlyNames()
+
+/**
+ * One package's subpath keys, read straight from its `deno.json` `exports` map — independent of
+ * {@link subpathModulesOf}, so a bug in that helper cannot also corrupt what checks it.
+ *
+ * Applies the same two filters `subpathModulesOf` applies (drop the barrel entry `"."`, drop a
+ * target that is not `.ts`/`.tsx`) to the map itself, and stops there: this reads the declaration,
+ * it does not resolve a target into an import URL or import anything, so it stays a second reading
+ * of the config rather than a second implementation of the helper it checks.
+ *
+ * @param id Package to read.
+ * @returns Every subpath key the config declares for a TypeScript target, besides the barrel.
+ */
+async function declaredSubpaths(id: PackageId): Promise<string[]> {
+  const config = parse(await Deno.readTextFile(new URL(`./${id}/deno.json`, ROOT)))
+  const declared = (config as { exports?: Record<string, unknown> } | null)?.exports ?? {}
+
+  return Object.entries(declared)
+    .filter(([subpath, target]) =>
+      subpath !== "." && typeof target === "string" &&
+      /\.tsx?$/.test(target)
+    )
+    .map(([subpath]) => subpath)
+}
 
 /**
  * The problems one deliberately broken input adds, and nothing else.
@@ -142,12 +170,35 @@ describe("the coverage rule", () => {
     // reachable through the subpath and was invisible to a barrel-only check. One `it` per module
     // named in SUBPATH_ONLY_NAMES, so a read that skips exactly one module fails with that module's
     // name rather than passing because some other module covered for it.
+
+    it("lists exactly the TypeScript subpaths each package's deno.json publishes", async () => {
+      // subpathModulesOf is what SUBPATH_ONLY_NAMES (and the per-module steps below) are derived
+      // from, so a bug that drops a module from that helper's own output would drop it from the
+      // fixture too, and no `it` would ever be registered to notice. This checks the helper against
+      // an independent reading of the same deno.json, so that kind of drop fails here directly
+      // instead of failing to fail anywhere.
+      for (const id of packageIds) {
+        const declared = (await declaredSubpaths(id)).sort()
+        const fromHelper = (await subpathModulesOf(id)).map((m) => m.subpath).sort()
+
+        expect(fromHelper, `${id}: subpathModulesOf vs deno.json exports`).toEqual(declared)
+      }
+    })
+
     let moduleCount = 0
 
     for (const id of packageIds) {
       for (const [subpath, names] of Object.entries(SUBPATH_ONLY_NAMES[id])) {
         moduleCount++
         it(`${id}${subpath} reaches valueExportsOf beyond the barrel`, async () => {
+          // The names under test have to be genuinely barrel-absent, checked against the barrel
+          // module imported directly rather than through valueExportsOf — otherwise a filter that
+          // picked the wrong names (inverted, or broken some other way) would still pass, since every
+          // assertion below would then be true by construction.
+          const barrelNames = new Set(Object.keys(BARRELS[id]))
+          const notBarrelAbsent = names.filter((name) => barrelNames.has(name))
+          expect(notBarrelAbsent, `${id}${subpath}: names the barrel already carries`).toEqual([])
+
           const exported = await valueExportsOf(id)
           for (const name of names) {
             expect(exported, `${id}${subpath} exports ${name}`).toContain(name)
