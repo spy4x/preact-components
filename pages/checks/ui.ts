@@ -2697,8 +2697,16 @@ async function comboboxChecks(devtools: Devtools): Promise<void> {
 
 /** One reading of the parked live region: what it is, what it holds, and what it has recorded. */
 interface RegionReading {
-  /** `false` when the card has no such region, or nothing was parked; every other field is noise. */
+  /** `false` when the page holds no such region at all; every other field is then noise. */
   ok: boolean
+  /**
+   * `false` when there was no region to park while the field was empty.
+   *
+   * That is the defect itself rather than a broken check, so it is reported apart from `ok`: the
+   * page can hold a perfectly good region carrying the right words and still have built it around
+   * the message a moment ago.
+   */
+  parkedOk: boolean
   role: string | null
   live: string | null
   atomic: string | null
@@ -2760,27 +2768,29 @@ const REGION_PARK = `(() => {
 
 /** The parked region as it stands now, identity and observer tally included. */
 const REGION_STATE = `(() => {
-  const parked = globalThis.__verifyRegion
+  const parked = globalThis.__verifyRegion ?? null
   const region = document.getElementById(${JSON.stringify(`${ANNOUNCE_ID}-status`)})
-  if (!parked || region === null) {
+  if (region === null) {
     return {
-      ok: false, role: null, live: null, atomic: null, text: "", children: -1, same: false,
-      connected: false, mutations: -1, added: -1, removed: -1, height: -1, box: "",
+      ok: false, parkedOk: parked !== null, role: null, live: null, atomic: null, text: "",
+      children: -1, same: false, connected: false, mutations: -1, added: -1, removed: -1,
+      height: -1, box: "",
     }
   }
   const style = getComputedStyle(region)
   return {
     ok: true,
+    parkedOk: parked !== null,
     role: region.getAttribute("role"),
     live: region.getAttribute("aria-live"),
     atomic: region.getAttribute("aria-atomic"),
     text: (region.textContent ?? "").trim().slice(0, 60),
     children: region.childElementCount,
-    same: region === parked.region,
-    connected: parked.region.isConnected,
-    mutations: parked.mutations,
-    added: parked.added,
-    removed: parked.removed,
+    same: parked !== null && region === parked.region,
+    connected: parked !== null && parked.region.isConnected,
+    mutations: parked?.mutations ?? -1,
+    added: parked?.added ?? -1,
+    removed: parked?.removed ?? -1,
     height: Math.round(region.getBoundingClientRect().height),
     box: [
       style.borderTopWidth, style.borderBottomWidth, style.paddingTop, style.paddingBottom,
@@ -2982,12 +2992,18 @@ async function countArrivesCheck(devtools: Devtools, pristine: RegionReading): P
 
   check(
     "a Combobox's match count arrives as a change to the live region that was already there",
-    pristine.ok && landing?.onTarget === true && opened.text === "" && opened.mutations === 0 &&
+    pristine.ok && landing?.onTarget === true && narrowed.parkedOk && opened.text === "" &&
+      opened.mutations === 0 &&
       list.options > 0 && narrowed.same && narrowed.connected &&
       narrowed.text === `${list.options} coins left` && narrowed.mutations >= 1 &&
       narrowed.added >= 1,
     landing?.onTarget !== true
       ? `the press never landed on the field, so nothing was typed into it — this proves nothing`
+      : !narrowed.parkedOk
+      ? `there was no region to park while the field was empty, so nothing was ever watched. The ` +
+        `page now holds one reading "${narrowed.text}", which a check looking only for a status ` +
+        `region with the right text in it would have accepted — that region was built around the ` +
+        `message, which is the shape a screen reader does not announce`
       : opened.text !== "" || opened.mutations !== 0
       ? `opening the field alone put "${opened.text}" into the region (${opened.mutations} ` +
         `change(s)), so the count below is not what typing produced`
@@ -3045,11 +3061,15 @@ async function emptyMessageCheck(devtools: Devtools): Promise<void> {
 
   check(
     "a Combobox's empty message replaces the count in that region, leaves it, and comes back",
-    nothing.same && nothing.text === "No coin left" && pressed?.onTarget === true &&
+    nothing.parkedOk && nothing.same && nothing.text === "No coin left" &&
+      pressed?.onTarget === true &&
       cleared.same && cleared.text === "" && cleared.children === 0 &&
       cleared.mutations > nothing.mutations && again.same && again.connected &&
       again.text === "No coin left" && again.mutations > cleared.mutations,
-    nothing.text !== "No coin left"
+    !nothing.parkedOk
+      ? `there was no region to park while the field was empty, so nothing was ever watched; the ` +
+        `page now holds one reading "${nothing.text}"`
+      : nothing.text !== "No coin left"
       ? `a query matching nothing left the region reading "${nothing.text}" rather than the ` +
         `empty message the card passes`
       : pressed?.onTarget !== true
