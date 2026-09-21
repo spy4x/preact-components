@@ -29,8 +29,13 @@
  *
  * The rest are honest full demos. `Calendar` reads state, so it lives in its own component with its
  * own local state, and every date is injected: it takes `today` and `timeZone` as props precisely so
- * a render can be pinned, and it is pinned to `2026-03-10`/`UTC` here. `ImageLightbox` renders
- * its dialog closed, with nothing else to pin.
+ * a render can be pinned, and it is pinned to `2026-03-10`/`UTC` here. It has three cards rather
+ * than one, because three things about it can only be shown by driving it: the dual-mode swap, the
+ * keyboard inside the grid, and what changes when the locale does.
+ *
+ * `ImageLightbox` renders its dialog closed, with nothing else to pin, and the images beside it are
+ * the demo's own — one plain and one wrapped in a link, because "opens the lightbox instead of
+ * following the link" is a claim that needs a link to be a claim at all.
  */
 
 import { Calendar } from "@preact-components/system/calendar"
@@ -366,26 +371,45 @@ function SwUpdaterLiveDemo() {
   )
 }
 
+/** A flat placeholder rectangle, as a data URI, so the card needs no image asset. */
+function placeholder(fill: string): string {
+  return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='80'%3E%3Crect width='120' height='80' fill='%23${fill}'/%3E%3C/svg%3E`
+}
+
 /**
- * The enhancer as it exists before anything is clicked.
+ * The lightbox as it exists before anything is opened, with two images to open it from.
  *
  * The element it renders is a real `<dialog>`, and it is really closed — no `open` attribute, no
- * `showModal()`. Opening it needs a click on an image inside the container the component watches,
- * which needs a document; that is stated on the card rather than staged.
+ * `showModal()`. Both images are inside the container the component watches, and the second is
+ * wrapped in a link on purpose: the component cancels the event it opens on, so the lightbox opens
+ * and the link is not followed. Without JavaScript that link is simply a link, which is the whole
+ * progressive-enhancement claim in one element.
  */
 function ImageLightboxDemo() {
   return (
     <div class="space-y-3">
-      <div class="blog-content flex flex-wrap gap-3">
+      <div data-lightbox class="flex flex-wrap items-start gap-3">
         <p class="w-full text-xs text-gray-500 dark:text-gray-400">
-          &lt;ImageLightbox /&gt; renders the dialog below, then listens on{" "}
-          <code>.blog-content</code> for clicks. In a browser, clicking this image would open it:
+          &lt;ImageLightbox /&gt; renders the dialog below, then watches{" "}
+          <code>[data-lightbox]</code>{" "}
+          for clicks and key presses. Both images below are Tab stops that open it with Enter or
+          Space; the second is wrapped in a link to{" "}
+          <code>example.com</code>, which opening the lightbox does not follow.
         </p>
         <img
-          src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='80'%3E%3Crect width='120' height='80' fill='%23c4b5fd'/%3E%3C/svg%3E"
-          alt="A placeholder article image"
+          data-e2e="lightbox-image"
+          src={placeholder("c4b5fd")}
+          alt="A placeholder image"
           class="rounded border border-gray-200 dark:border-gray-700"
         />
+        <a href="https://example.com/" data-e2e="lightbox-link" class="inline-block">
+          <img
+            data-e2e="lightbox-linked-image"
+            src={placeholder("a5b4fc")}
+            alt="A placeholder image inside a link"
+            class="rounded border border-gray-200 dark:border-gray-700"
+          />
+        </a>
       </div>
       <ImageLightbox />
     </div>
@@ -419,22 +443,88 @@ function CalendarDemo() {
   )
 }
 
-/** The same grid with `onSelectDate`, which is what turns every cell from an `<a>` into a `<button>`. */
+/**
+ * The same grid with both ports supplied, which is the shape its keyboard needs.
+ *
+ * `onSelectDate` is what turns every cell from an `<a>` into a `<button>`; `onSelectMonth` is what
+ * Page Up and Page Down call, so the month this card shows is state it owns rather than a constant.
+ * The horizon is a whole year for the same reason: a month arrow with nothing to show is inert, and
+ * paging is only demonstrable where there is a month to page to.
+ */
 function CalendarInteractiveDemo() {
   const picked = useSignal("nothing picked")
+  const month = useSignal("2026-03-01")
+
   return (
-    <div class="space-y-3">
+    <div class="space-y-3" data-e2e="calendar-interactive">
       <Calendar
+        monthAnchor={month.value}
+        minDate="2026-01-01"
+        maxDate="2026-12-31"
+        today="2026-03-10"
+        timeZone="UTC"
+        slotsByDate={{ "2026-03-11": 6, "2026-03-12": 3, "2026-03-18": 2, "2026-04-14": 5 }}
+        selectedDate={picked.value}
+        onSelectDate={(date) => picked.value = date}
+        onSelectMonth={(anchor) => month.value = anchor}
+      />
+      <p class="text-xs text-gray-500 dark:text-gray-400">
+        onSelectDate: <span data-e2e="calendar-picked">{picked.value}</span> · onSelectMonth:{" "}
+        <span data-e2e="calendar-month">{month.value}</span>
+      </p>
+      <p class="text-xs text-gray-500 dark:text-gray-400">
+        Tab once to reach the grid, then the arrow keys, Home, End, Page Up and Page Down move
+        inside it.
+      </p>
+    </div>
+  )
+}
+
+/** The locales this card offers, as a reader picks them. */
+const CALENDAR_LOCALES = [
+  { tag: "en-GB", label: "English (UK)" },
+  { tag: "en-US", label: "English (US)" },
+  { tag: "ar-EG", label: "Arabic (Egypt)" },
+]
+
+/**
+ * The same month in three locales, because two things about a calendar are the locale's to decide.
+ *
+ * The week starts on Monday in the United Kingdom, on Sunday in the United States and on Saturday
+ * in Egypt, so the columns move under the same dates; and the headers are whatever `Intl`
+ * abbreviates a weekday to, which is why they are not cut to a fixed number of characters — every
+ * Arabic weekday opens with the same two.
+ */
+function CalendarLocaleDemo() {
+  const locale = useSignal("en-GB")
+
+  return (
+    <div class="space-y-3" data-e2e="calendar-locale">
+      <div class="flex flex-wrap gap-2">
+        {CALENDAR_LOCALES.map(({ tag, label }) => (
+          <Button
+            key={tag}
+            variant="outline"
+            size="sm"
+            data-e2e={`calendar-locale-${tag}`}
+            onClick={() => locale.value = tag}
+          >
+            {label}
+          </Button>
+        ))}
+      </div>
+      <Calendar
+        locale={locale.value}
         monthAnchor="2026-03-01"
         minDate="2026-03-01"
         maxDate="2026-04-30"
         today="2026-03-10"
         timeZone="UTC"
         slotsByDate={{ "2026-03-11": 6, "2026-03-12": 3, "2026-03-18": 2 }}
-        selectedDate={picked.value}
-        onSelectDate={(date) => picked.value = date}
       />
-      <p class="text-xs text-gray-500 dark:text-gray-400">onSelectDate: {picked.value}</p>
+      <p class="text-xs text-gray-500 dark:text-gray-400">
+        locale: <span data-e2e="calendar-locale-tag">{locale.value}</span>
+      </p>
     </div>
   )
 }
@@ -442,7 +532,7 @@ function CalendarInteractiveDemo() {
 export const systemDemos = {
   Calendar: {
     summary:
-      "Six-week month grid. **Dual-mode**: with no `onSelectDate` every cell is an `<a href>` and a month arrow with nothing to show is a `<span>` rather than a dead link; supplying the callback turns the cells into `<button>`. `today` and `timeZone` are props, so a render can be pinned — this card passes `2026-03-10` and `UTC` and reads no clock. A date missing from `slotsByDate` has no availability, a `0` has no slots left, and the two are visually alike but carry different accessible labels. Cells also show today, past dates, dates outside the window, and a scarcity dot at or below `lowSlotsThreshold`.",
+      "Six-week month grid. **Dual-mode**: with no `onSelectDate` every cell is an `<a href>` and a month arrow with nothing to show is a `<span>` rather than a dead link; supplying the callback turns the cells into `<button>`. `today` and `timeZone` are props, so a render can be pinned — this card passes `2026-03-10` and `UTC` and reads no clock, and a zone the platform cannot resolve falls back to UTC instead of throwing. A date missing from `slotsByDate` has no availability, a `0` has no slots left, and the two are visually alike but carry different accessible labels. Cells also show today, past dates, dates outside the window, and a scarcity dot at or below `lowSlotsThreshold`. **The whole grid is one Tab stop** once hydrated: the arrow keys step a day and a week, Home and End go to the ends of the week, Page Up and Page Down ask `onSelectMonth` for the neighbouring month, and why a day cannot be picked is the cell's own accessible name plus the hint under the grid rather than a `title` nobody can hover. **The week is the locale's**: both the column order and the header text come from `Intl`, so the third card below moves the columns under the same dates as it changes language.",
     snippet: `<Calendar
   monthAnchor="2026-03-01"
   minDate="2026-03-01"
@@ -457,6 +547,7 @@ export const systemDemos = {
       <div class="space-y-4">
         <CalendarDemo />
         <CalendarInteractiveDemo />
+        <CalendarLocaleDemo />
       </div>
     ),
   },
@@ -497,10 +588,11 @@ const tags = seoHeadTags(head)`,
   },
   ImageLightbox: {
     summary:
-      "Makes images in rendered prose zoomable through a native `<dialog>` lightbox. Progressive enhancement in the strict sense: the server renders the article and this only adds a click layer after hydration, so a reader without JavaScript loses a zoom they never had. The click is delegated to the container — one listener rather than one per image, and images arriving later still work — and `resolveImage` returns `null` for a click on a link wrapping an image, which is what stops the enhancer stealing navigation from prose. **The `<dialog>` below is the component's real output and it is really closed**: opening it needs a click inside the watched container, which needs a document. Escape and the backdrop both close it, the first being native `<dialog>` behaviour.",
+      "Makes the images inside a container zoomable through a native `<dialog>` lightbox. Progressive enhancement in the strict sense: the server renders the page and this only adds a zoom layer after hydration, so a reader without JavaScript loses a zoom they never had. The layer is delegated to the container — one listener rather than one per image, and images arriving later still work. **A zoomable image behaves like a button**: it takes a Tab stop, carries a button's role and a name saying what it does, and opens with Enter or Space, with Space cancelled so the page does not scroll away underneath. A click or an Enter press is cancelled too, so the second image below opens the lightbox instead of following the link it sits in. **The `<dialog>` is the component's real output and it is really closed** until an image is opened. Escape closes it natively and a click on the backdrop closes it, which is only true because the image is positioned inside the dialog rather than filling it — a child that covers the dialog is a backdrop no click can reach. Every string it shows is a prop with an English default.",
     snippet: `<ImageLightbox
-  containerSelector=".blog-content"
+  containerSelector="[data-lightbox]"
   fallbackAlt="Article figure"
+  zoomLabel="Zoom"
   onOpen={(image) => analytics.track("lightbox", image.src)}
 />`,
     render: () => <ImageLightboxDemo />,
