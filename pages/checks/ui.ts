@@ -3300,6 +3300,9 @@ const PICKER_SETUP = `(() => {
   globalThis.__verifyPicker = {
     trigger,
     panel: panelId === "" ? null : document.getElementById(panelId),
+    // The second picker's trigger: a focusable control on the same card and outside this one, for
+    // the check that presses Escape from somewhere the person has walked to.
+    away: card?.querySelector('[data-e2e="guide-date-range-empty"]') ?? null,
   }
   return {
     card: card !== null,
@@ -3466,9 +3469,285 @@ async function dateRangeChecks(devtools: Devtools): Promise<void> {
         `trigger`,
   )
 
+  await returnPathChecks(devtools)
+  await escapeFromOutsideCheck(devtools)
+  await outsideClickCheck(devtools)
+
   // The trigger answers Space, and the block after this one presses Space four times, so hand the
   // focus back rather than leaving it on a control that would open this panel again.
   await blurActive(devtools)
+}
+
+/**
+ * One way of closing the panel from inside it, and how a check drives it.
+ *
+ * A table rather than four near-identical functions, because the four differ only in the control
+ * they press and every other line of the check is the same transition. Each entry still gets its
+ * **own** `check(...)` naming it, so a failure says which path broke rather than that one of four
+ * did; a single assertion over all four would hide three of them behind the first.
+ */
+interface ReturnPath {
+  /** Completes the sentence "closing the DateRangePicker by …". */
+  name: string
+  /**
+   * A page expression that performs the close. It answers with `""` when it acted, and otherwise
+   * with the reason it could not — a control that is missing or disabled is a check this run cannot
+   * make, which is a different thing from a component that lost the focus.
+   */
+  act: string
+}
+
+const RETURN_PATHS: readonly ReturnPath[] = [
+  {
+    name: "choosing a preset",
+    act: `(() => {
+      const button = globalThis.__verifyPicker?.panel
+        ?.querySelector('[data-e2e="date-range-preset-this-month"]') ?? null
+      if (button === null) return "the panel renders no this-month preset to choose"
+      button.click()
+      return ""
+    })()`,
+  },
+  {
+    name: "applying the custom range",
+    act: `(() => {
+      const button = globalThis.__verifyPicker?.panel
+        ?.querySelector('[data-e2e="date-range-apply"]') ?? null
+      if (button === null) return "the panel renders no apply control"
+      if (button.disabled) return "the apply control is disabled, so the draft never committed"
+      button.click()
+      return ""
+    })()`,
+  },
+  {
+    name: "cancelling the custom draft",
+    // Found as the control before apply rather than by its words: the cancel button's text is the
+    // caller's copy and may be in any language, while its position beside apply is the component's.
+    act: `(() => {
+      const apply = globalThis.__verifyPicker?.panel
+        ?.querySelector('[data-e2e="date-range-apply"]') ?? null
+      const button = apply?.previousElementSibling ?? null
+      if (button === null || button.tagName !== "BUTTON") {
+        return "the panel renders no cancel control beside apply"
+      }
+      button.click()
+      return ""
+    })()`,
+  },
+  {
+    name: "pressing the trigger a second time",
+    act: `(() => {
+      const trigger = globalThis.__verifyPicker?.trigger ?? null
+      if (trigger === null) return "the card has no trigger to press"
+      trigger.click()
+      return ""
+    })()`,
+  },
+]
+
+/**
+ * The four ways of closing the panel from inside it that Escape is not.
+ *
+ * `ui/README.md` states all five as fact, and by this repository's rule a behaviour behind a
+ * handler is proven under `pages/checks/` or it is not proven. Escape had a check; these four had
+ * the component's word for it.
+ *
+ * Each is a transition, and the "before" reading is what makes it one: the panel open **with focus
+ * inside it and not on the trigger**, so "focus is on the trigger afterwards" cannot also be true
+ * of a press that did nothing. The panel is reopened for each path, because each one closes it.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function returnPathChecks(devtools: Devtools): Promise<void> {
+  for (const path of RETURN_PATHS) {
+    const opened = await openPickerPanel(devtools)
+    const refused = await devtools.evaluate<string>(path.act)
+    const closed = await poll(
+      () => devtools.evaluate<boolean>(`${PICKER_STATE}.open === false`),
+      3_000,
+    )
+    const after = await devtools.evaluate<PickerState>(PICKER_STATE)
+
+    check(
+      `closing the DateRangePicker by ${path.name} returns focus to its trigger`,
+      opened.open && opened.inPanel && !opened.onTrigger && refused === "" && closed &&
+        after.onTrigger,
+      !opened.open
+        ? "the panel would not open, so there is nothing to close"
+        : !opened.inPanel || opened.onTrigger
+        ? `focus was on ${opened.label} rather than inside the panel, so a return to the trigger ` +
+          `would prove nothing`
+        : refused !== ""
+        ? refused
+        : !closed
+        ? `${path.name} left the panel open 3s later`
+        : !after.onTrigger
+        ? `${path.name} closed the panel and focus fell to ${after.label}, so the next Tab starts ` +
+          `from somewhere the person never went`
+        : `focus "${opened.label}" → the trigger, with the panel hidden again (aria-expanded ` +
+          `${opened.expanded} → ${after.expanded})`,
+    )
+  }
+}
+
+/**
+ * An Escape press from outside an open panel closes it and leaves focus where it is.
+ *
+ * The case exists because a Tab out does not close this panel: it stays open behind the person,
+ * who can then be several controls away when they reach for Escape. Returning focus there would
+ * drag them back across the page — the very thing this component was changed to stop — so the
+ * Escape branch returns focus only when the component still contains `document.activeElement`.
+ *
+ * Focus is put on the outside control with `.focus()` rather than by tabbing to it. The tab order
+ * between the panel and anything else belongs to the catalogue page, not to this component, so
+ * walking it would assert the page's layout; the outside control is the second picker's trigger,
+ * which is focusable, is outside this picker's root, and does not open anything of its own until it
+ * is clicked. The Escape itself is a real key press, which is the path under test.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function escapeFromOutsideCheck(devtools: Devtools): Promise<void> {
+  const opened = await openPickerPanel(devtools)
+  const moved = await devtools.evaluate<{ ok: boolean; took: boolean; outside: boolean }>(`(() => {
+    const away = globalThis.__verifyPicker?.away ?? null
+    const trigger = globalThis.__verifyPicker?.trigger ?? null
+    if (away === null || trigger === null) return { ok: false, took: false, outside: false }
+    away.focus()
+    return {
+      ok: true,
+      took: document.activeElement === away,
+      // Asserted rather than assumed: a control that turned out to be inside this component would
+      // make the whole check a restatement of the one above it.
+      outside: !(trigger.closest("div")?.contains(away) ?? true),
+    }
+  })()`)
+
+  await pressKey(devtools, "Escape")
+  const closed = await poll(
+    () => devtools.evaluate<boolean>(`${PICKER_STATE}.open === false`),
+    3_000,
+  )
+  const after = await devtools.evaluate<PickerState & { stillAway: boolean }>(`(() => ({
+    ...${PICKER_STATE},
+    stillAway: document.activeElement === (globalThis.__verifyPicker?.away ?? null),
+  }))()`)
+
+  check(
+    "a real Escape press from outside an open DateRangePicker leaves focus where it is",
+    opened.open && moved.ok && moved.took && moved.outside && closed && after.stillAway &&
+      !after.onTrigger,
+    !opened.open
+      ? "the panel would not open, so there is nothing to press Escape at"
+      : !moved.ok
+      ? "the card has no second control to move focus to, so there is no outside to press from"
+      : !moved.took
+      ? "focus would not leave the panel, so the press did not come from outside it"
+      : !moved.outside
+      ? "the control focus was moved to is inside this picker, so this repeats the check above"
+      : !closed
+      ? "the panel was still open 3s after a real Escape press from outside it"
+      : after.onTrigger
+      ? "Escape from outside dragged focus back onto the trigger, several controls from where the " +
+        "person had got to — which is the defect this component was changed to stop, arriving by " +
+        "the fix for it"
+      : !after.stillAway
+      ? `Escape from outside closed the panel and moved focus to ${after.label} rather than ` +
+        `leaving it alone`
+      : "focus outside the component → a real Escape press → the panel is hidden and focus has " +
+        "not moved at all",
+  )
+}
+
+/**
+ * A real click outside an open panel closes it and leaves focus on what was clicked.
+ *
+ * The one close path driven by a genuine `Input.dispatchMouseEvent` rather than a scripted
+ * `.click()`, and it has to be: the behaviour under test belongs to a `mousedown` listener on the
+ * document, and a scripted click dispatches no `mousedown` at all.
+ *
+ * What is clicked is the card's own `Usage` summary, which is outside the picker, is focusable, and
+ * moves focus nowhere itself — unlike the other picker on the card, which would open its own panel
+ * and take focus into it, so that "focus is not on the first trigger" would hold for a component
+ * that had tried to pull it back and merely lost the race. The point is derived from the summary's
+ * own box and checked with `elementFromPoint` before the press, and the page records where the
+ * browser actually delivered it, so a press that landed elsewhere is reported as a missed press
+ * rather than as a broken component.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function outsideClickCheck(devtools: Devtools): Promise<void> {
+  await devtools.evaluate<null>(
+    `(document.querySelector('#demo-DateRangePicker [data-e2e="usage"] summary')
+      ?.scrollIntoView({ block: "center" }), null)`,
+  )
+  await settledScroll(devtools)
+  await pointerToCorner(devtools)
+
+  const opened = await openPickerPanel(devtools)
+  const target = `document.querySelector('#demo-DateRangePicker [data-e2e="usage"] summary')`
+  const aim = await aimAt(devtools, target)
+  const landing = await clickAt(devtools, aim, target)
+  const closed = await poll(
+    () => devtools.evaluate<boolean>(`${PICKER_STATE}.open === false`),
+    3_000,
+  )
+  const after = await devtools.evaluate<PickerState & { onClicked: boolean }>(`(() => ({
+    ...${PICKER_STATE},
+    onClicked: document.activeElement ===
+      document.querySelector('#demo-DateRangePicker [data-e2e="usage"] summary'),
+  }))()`)
+
+  check(
+    "a real click outside an open DateRangePicker closes it without taking focus back",
+    opened.open && opened.inPanel && aim.onTarget && landing !== null && landing.onTarget &&
+      closed && !after.onTrigger && after.onClicked,
+    !opened.open || !opened.inPanel
+      ? "the panel would not open with focus inside, so there is nothing to click away from"
+      : !aim.onTarget
+      ? `there is nothing to click at (${aim.x}, ${aim.y}) — the point reads ${aim.tag}` +
+        (aim.inViewport ? "" : ", outside the viewport")
+      : landing === null
+      ? "the press never reached the page, so this proves nothing about the panel"
+      : !landing.onTarget
+      ? `the press landed on ${landing.tag} at (${landing.x}, ${landing.y}) rather than the ` +
+        `summary aimed at (${aim.x}, ${aim.y}) — a missed press, which proves nothing`
+      : !closed
+      ? "the panel was still open 3s after a real click outside it"
+      : after.onTrigger
+      ? "the outside click pulled focus back onto the trigger, taking it off the control the " +
+        "person had just clicked"
+      : !after.onClicked
+      ? `the panel closed and focus went to ${after.label} rather than staying on what was clicked`
+      : `pressed ${landing.tag} at (${landing.x}, ${landing.y}): the panel is hidden and focus is ` +
+        `on the control that was clicked, not back on the trigger`,
+  )
+
+  // Leave the usage block as it was found; the press toggled it open.
+  await devtools.evaluate<null>(
+    `(() => {
+      const details = document.querySelector('#demo-DateRangePicker [data-e2e="usage"] details')
+      if (details !== null) details.open = false
+      return null
+    })()`,
+  )
+}
+
+/**
+ * Open the parked picker's panel and wait until focus has landed inside it.
+ *
+ * Every check that closes the panel needs the same starting point, and it has to be waited for
+ * rather than assumed: focus moves from an effect, one render after the click.
+ *
+ * @param devtools The connected session.
+ * @returns The state at the moment the panel was open with focus inside — the "before" half of the
+ * transition the caller is about to assert. A panel that failed to open returns that failure, and
+ * the caller's check says so rather than passing quietly.
+ */
+async function openPickerPanel(devtools: Devtools): Promise<PickerState> {
+  await devtools.evaluate<null>(`(globalThis.__verifyPicker?.trigger?.click(), null)`)
+  await poll(() => devtools.evaluate<boolean>(`${PICKER_STATE}.inPanel === true`), 3_000)
+
+  return await devtools.evaluate<PickerState>(PICKER_STATE)
 }
 
 /** One read of the pager being driven: which page it is on, and what its two end controls are. */
