@@ -260,6 +260,15 @@ some other way.
   which is how the message reaches the form. A write for the same row that is still on the wire
   settles the slot again when its own answer lands. `create` does the same to the create slot, which
   another create may still be holding.
+- **An answer from before a `reset()` still reaches the list.** The request counters deliberately
+  survive a reset, so an answer to a request made before it cannot settle the slot of a request made
+  after it — that is what the counters are for, and counters that started again at zero would let
+  exactly that happen. The list is not protected the same way: the older answer is still the newest
+  the store has heard for that row, so it replaces that row in the freshly loaded list until a newer
+  answer arrives. After a logout and a login, a save from the previous session can land in the new
+  session's list under the same id. This is what the store does today, written down rather than left
+  to be inferred; `does not let an answer from before a reset settle a request made after it` is the
+  test that pins both halves of it.
 
 ## Tests
 

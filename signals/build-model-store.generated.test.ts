@@ -7,7 +7,7 @@
  * reading the wrong column and a request counter shared by every row both survived a green suite.
  * This file varies those axes instead, and checks the store against a model of the rule.
  *
- * **What it covers.** One to four rows, each with at least one request, with ids up to 100,000.
+ * **What it covers.** One to five rows, each with at least one request, with ids up to 100,000.
  * Two to six `update`, `delete` and `undelete` requests in any mix, answered with a row that may
  * carry a deletion whichever operation asked for it, with one of nine reported statuses, a 500, a
  * connection failure, or a body the schema rejects. Making and answering are interleaved, so a row
@@ -20,7 +20,9 @@
  * fixtures instead; creates, which have no row identity to vary; `extraOps`; the session watch;
  * `remove` and `reset`; remote events; the body text of a failure notification, only its title;
  * calls made re-entrantly from an effect; and anything about timing beyond the order in which
- * things happen. It reads only what the store shows — the list and the operation slots — never the
+ * things happen. The cap of five rows is a cap, not a proof: a store that forgot a row's counter
+ * only once six rows had been written to would pass every case here, exactly as one that forgot at
+ * four passed while the cap was four. It reads only what the store shows — the list and the operation slots — never the
  * value an operation returns to its caller or the `result` a slot carries; the named tests cover
  * those. It is also not a description of the store: it says the rule holds across these axes,
  * never what the rule is, and a reader who wants to know what the store promises should read the
@@ -97,7 +99,7 @@ function planCase(seed: number): Plan {
   const pick = <T>(items: readonly T[]): T => items[Math.floor(next() * items.length)]
   // Drawn once. Redrawing the bound on every pass would stop the loop as soon as it came up short,
   // which makes four-row cases rare and hides anything that only shows with four rows in flight.
-  const rowCount = 1 + Math.floor(next() * 4)
+  const rowCount = 1 + Math.floor(next() * 5)
   const ids: number[] = []
   while (ids.length < rowCount) {
     const id = 1 + Math.floor(next() * 100_000)
