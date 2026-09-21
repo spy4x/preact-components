@@ -66,12 +66,12 @@ shared upstream, not a port. See [`icons/README.md`](../icons/README.md) and "De
 below for what the icon set's provenance actually is.
 
 > **The paragraph above is out of date.** The pull request this note used to wait on, #98, has
-> landed and did add that project to the source table in [`icons/README.md`](../icons/README.md), so the
-> claim that it is not an icon source is false rather than conditional. The shared-upstream
-> explanation of the six glyphs may still hold and is not the same claim; it needs re-reading
-> rather than deleting. Reconciling this paragraph is part of #127, which owns the wider sweep of
-> this document — including the project names in it, which is why the correction removes them
-> together rather than one at a time. The note under "Deferred decisions" says the same.
+> landed and did add that project to the source table in [`icons/README.md`](../icons/README.md), so
+> the claim that it is not an icon source is false rather than conditional. The shared-upstream
+> explanation of the six glyphs may still hold and is not the same claim; it needs re-reading rather
+> than deleting. Reconciling this paragraph is part of #127, which owns the wider sweep of this
+> document — including the project names in it, which is why the correction removes them together
+> rather than one at a time. The note under "Deferred decisions" says the same.
 
 ## Behaviour is implemented, not imported
 
