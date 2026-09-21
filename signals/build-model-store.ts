@@ -24,7 +24,7 @@ import {
 /**
  * `@preact-components/signals/build-model-store` — a signals CRUD store for one REST collection.
  *
- * Ported from `gb/libs/shared/helpers.ts:289-530`, with four changes that are not cosmetic:
+ * Ported from `gb/libs/shared/helpers.ts:289-530`, with these changes, none of them cosmetic:
  *
  * - **arktype in, not zod.** Schemas are arktype `Type`s, a payload is parsed once rather than
  *   twice, and the row type is derived from the full schema instead of declared beside it.
@@ -40,6 +40,9 @@ import {
  *   belongs to a request older than one already answered is dropped rather than applied. Without
  *   it, two quick edits leave whichever answer came back last in the store, and an operation's
  *   "in progress" flag drops while a later write is still outstanding.
+ * - **Scoped to a session.** The store counts its resets, and an answer to a request issued before
+ *   a reset writes nothing after it. Without that, a save still on the wire when the user signed
+ *   out landed in the next session's list under the same row id.
  */
 
 /** Payload and row schemas for a model. */
@@ -122,6 +125,23 @@ export interface ModelStoreContext<F extends Type<Model>> {
   setDeleteOp: (id: number, state: OperationState<SchemaOutput<F>, RequestError>) => void
   /** Fetch, parse and normalise; returns an error object instead of throwing. */
   request: ModelStoreRequest
+  /**
+   * The store's generation: how many times `reset()` has run.
+   *
+   * A domain operation that awaits a request reads this before it starts and passes what it read to
+   * {@link ModelStoreContext.isCurrentGeneration} when the answer arrives. An operation that skips
+   * that comparison writes an answer belonging to a session the application has already left — a
+   * save still on the wire when the user signed out — into the session it has now, which is exactly
+   * what the built-in operations no longer do.
+   */
+  generation: () => number
+  /**
+   * True while the generation handed in is still the store's own: no `reset()` since it was read.
+   *
+   * False means the answer in hand belongs to a session that is over. Return it to whoever asked
+   * for the operation and write nothing — not the list, not an operation slot, not a notification.
+   */
+  isCurrentGeneration: (captured: number) => boolean
   /** The notification port the store reports through. */
   toast: ToastPort
   /** Entity name used in copy, for example `"zone"`. */
@@ -227,7 +247,13 @@ export interface ModelStoreBase<F extends Type<Model>, C extends Type, U extends
   remove: (id: number) => void
   /** Apply a remote feed event. A batch that fails to parse is rejected whole. */
   onWs: (items: unknown[], event: RemoteEvent) => Promise<void>
-  /** Clear the store-owned slices, then run `onReset`. */
+  /**
+   * Start a new session: clear the store-owned slices, then run `onReset`.
+   *
+   * Every request already on the wire is disowned by the same call. Its answer is returned to
+   * whoever asked for the operation and changes nothing here, so a save made before a sign-out
+   * cannot land in the list the next sign-in loads.
+   */
   reset: () => void
   /** Start the session watch. Returns its disposer; safe to call twice. */
   init: () => () => void
@@ -324,12 +350,36 @@ export function buildModelStore<
    * kinds of request: a delete that answers before an older update is the newer request, and the
    * update's answer is dropped instead of resurrecting the row.
    *
-   * Entries are never dropped, neither by `remove` nor by `reset`. A counter that went back to zero
-   * would let the answer to a request issued before the reset settle the slot of one issued after
-   * it, which is the confusion the counter exists to prevent. The cost is one small object per row
-   * the store has ever written to.
+   * Entries are never dropped, neither by `remove` nor by `reset`. That used to be the only thing
+   * standing between an answer issued before a reset and the slot of a request issued after it;
+   * since the store took a generation number such an answer is turned away before it is numbered at
+   * all, so surviving a reset is now the second line rather than the first. It is kept because it
+   * costs one small object per row the store has ever written to and it still holds if a request
+   * path is ever written that forgets to compare generations. See {@link generation}.
    */
   const rowRequests = new Map<number, RequestSequence>()
+
+  /**
+   * How many times this store has been reset.
+   *
+   * Every operation reads it when it issues its request and compares it when the answer arrives.
+   * An answer whose reading no longer matches belongs to a session the application has left — the
+   * ordinary case is a save still on the wire when the user signed out — so the store writes
+   * nothing for it: not the list, not an operation slot, not a notification. The caller that
+   * started the operation is still told what the server said, because the promise it is waiting on
+   * is about its own request and not about what the store now holds.
+   *
+   * The counters above order two requests against each other within one session; this orders a
+   * request against the session it was made in. Only the second one protects the list, because an
+   * answer from the previous session is still the newest thing the store has heard about that row.
+   */
+  let generation = 0
+
+  /** The store's generation, read when a request is issued. See {@link generation}. */
+  const generationNow = (): number => generation
+
+  /** True while `captured` is still the store's generation — no `reset()` has run since. */
+  const isCurrentGeneration = (captured: number): boolean => captured === generation
 
   /**
    * The sequence every create draws from.
@@ -389,8 +439,12 @@ export function buildModelStore<
     }
 
     const seq = beginRequest(createRequests)
+    const issuedIn = generationNow()
     patch({ createOp: { inProgress: true, error: null, result: null } })
     const outcome = await request(endpoint, jsonRequest("POST", payload), schemas.full)
+    // Reset while this was on the wire. The row the server made belongs to the session that ended,
+    // so appending it would put one session's row in the next session's list.
+    if (!isCurrentGeneration(issuedIn)) return outcome
     const answer = answerRights(createRequests, seq)
     if (outcome.error) {
       // Only the shared slot is contended here, so only `settles` is read: a create's own failure
@@ -427,8 +481,12 @@ export function buildModelStore<
 
     const sequence = sequenceOf(id)
     const seq = beginRequest(sequence)
+    const issuedIn = generationNow()
     setUpdateOp(id, { inProgress: true, error: null, result: null })
     const outcome = await request(pathFor(id), jsonRequest("PATCH", payload), schemas.full)
+    // Reset while this was on the wire. `id` may name a different row in the session the store has
+    // now, so this answer is returned to its caller and nothing here is written. See `generation`.
+    if (!isCurrentGeneration(issuedIn)) return outcome
     const answer = answerRights(sequence, seq)
     if (outcome.error) {
       if (answer.settles) {
@@ -452,8 +510,12 @@ export function buildModelStore<
   async function removeRow(id: number): Promise<OperationResult<Row, RequestError>> {
     const sequence = sequenceOf(id)
     const seq = beginRequest(sequence)
+    const issuedIn = generationNow()
     setDeleteOp(id, { inProgress: true, error: null, result: null })
     const outcome = await request(pathFor(id), { method: "DELETE" }, schemas.full)
+    // Reset while this was on the wire; archiving whatever now sits under `id` would archive a row
+    // of the new session on the strength of a request belonging to the old one. See `generation`.
+    if (!isCurrentGeneration(issuedIn)) return outcome
     const answer = answerRights(sequence, seq)
     if (outcome.error) {
       if (answer.settles) {
@@ -476,8 +538,12 @@ export function buildModelStore<
   async function undelete(id: number): Promise<OperationResult<Row, InputError>> {
     const sequence = sequenceOf(id)
     const seq = beginRequest(sequence)
+    const issuedIn = generationNow()
     setUpdateOp(id, { inProgress: true, error: null, result: null })
     const outcome = await request(undeletePathFor(id), { method: "POST" }, schemas.full)
+    // Reset while this was on the wire; restoring whatever now sits under `id` would revive a row
+    // of the new session on the strength of a request belonging to the old one. See `generation`.
+    if (!isCurrentGeneration(issuedIn)) return outcome
     const answer = answerRights(sequence, seq)
     if (outcome.error) {
       if (answer.settles) {
@@ -555,6 +621,9 @@ export function buildModelStore<
   }
 
   function reset(): void {
+    // The one place the generation moves, and the session watch below clears the store by calling
+    // this rather than by clearing the slices itself, so there is one way to start a new session.
+    generation += 1
     patch({
       list: [],
       listOp: idle(),
@@ -605,6 +674,8 @@ export function buildModelStore<
     setUpdateOp,
     setDeleteOp,
     request,
+    generation: generationNow,
+    isCurrentGeneration,
     toast,
     model,
     endpoint,
@@ -733,9 +804,14 @@ function beginRequest(sequence: RequestSequence): number {
 /**
  * Decide what the answer to request `seq` may do, and record it.
  *
- * Call it exactly once per answer: a fresh answer advances the sequence, so a second ask about the
- * same answer reports it as stale. `settles` implies `fresh`, because the newest request issued is
- * answered at most once and nothing later can have been applied before it.
+ * Call it exactly once per answer the store is willing to act on: a fresh answer advances the
+ * sequence, so a second ask about the same answer reports it as stale. An answer turned away for
+ * belonging to an earlier generation never gets here, and nothing depends on it having been
+ * recorded — every request issued after a reset draws a higher number than every request issued
+ * before it, because the sequences are never wound back.
+ *
+ * `settles` implies `fresh`, because the newest request issued is answered at most once and nothing
+ * later can have been applied before it.
  */
 function answerRights(sequence: RequestSequence, seq: number): AnswerRights {
   const fresh = seq > sequence.applied

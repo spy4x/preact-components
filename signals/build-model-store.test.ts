@@ -514,7 +514,8 @@ describe("buildModelStore requests answered out of order", () => {
 
   it("does not let an answer from before a reset settle a request made after it", async () => {
     const { impl, pending } = deferredFetch()
-    const store = buildStore({ fetch: impl })
+    const toast = toastRecorder()
+    const store = buildStore({ fetch: impl, toast: toast.port })
     await store.onWs([row(1, "North")], RemoteEvent.LIST)
 
     const before = store.update(1, { name: "Before" })
@@ -523,19 +524,24 @@ describe("buildModelStore requests answered out of order", () => {
     const after = store.update(1, { name: "After" })
 
     pending[0].settle(Response.json(row(1, "Before")))
-    await before
+    const answer = await before
 
-    // A counter that started again at the reset would let this older answer settle the newer
-    // request's slot. It does not — though it does reach the list, which is the sharp edge the
-    // README describes.
+    // Both halves of the rule at once. The older answer settles nothing — a counter that started
+    // again at the reset would let it — and it no longer reaches the list either, which is what
+    // this issue changed: until now the list was written and the README carried it as a sharp edge.
     expect(store.op.update(1).value?.inProgress).toBe(true)
-    expect(store.state.value.list[0].name).toBe("Before")
+    expect(store.state.value.list[0].name).toBe("North")
+    expect(toast.messages).toEqual([])
+    // The caller of the disowned request is still told what the server said about it.
+    expect(answer.error).toBeNull()
+    expect(answer.result?.name).toBe("Before")
 
     pending[1].settle(Response.json(row(1, "After")))
     await after
 
     expect(store.op.update(1).value?.inProgress).toBe(false)
     expect(store.state.value.list[0].name).toBe("After")
+    expect(toast.messages).toEqual([{ body: "zone was updated" }])
   })
 
   it("keeps the newer value when two updates to one row answer oldest last", async () => {
@@ -1465,6 +1471,244 @@ describe("buildModelStore session lifecycle", () => {
     const store = buildStore({ fetch: impl })
     expect(() => store.init()()).not.toThrow()
     store.dispose()
+  })
+})
+
+/**
+ * What a request still on the wire may do once the store has been reset.
+ *
+ * `reset()` is what an application calls when somebody signs out, so every one of these is the same
+ * story: a save was in flight, the user signed out, somebody else signed in, and the answer came
+ * back. The case worth being exact about is a row id that names a different row in the two
+ * sessions, which is what happens where ids restart per tenant. There the older answer does not
+ * merely show a stale name — it writes one tenant's values over another tenant's row, the editor
+ * pre-fills from it, and the next save makes the mix-up permanent. So these give the new session a
+ * row under the same id with different values and assert that row is untouched, rather than
+ * asserting only that the list is not the old value.
+ *
+ * Each test also checks the other half of the promise: the caller that started the operation still
+ * learns what the server said about its own request.
+ */
+describe("buildModelStore across a reset", () => {
+  const ARCHIVED_AT = new Date("2024-03-01T00:00:00.000Z")
+
+  it("leaves the row now under that id alone when a delete from before the reset answers", async () => {
+    const { impl, pending } = deferredFetch()
+    const toast = toastRecorder()
+    const store = buildStore({ fetch: impl, toast: toast.port })
+    await store.onWs([row(1, "First tenant zone")], RemoteEvent.LIST)
+
+    const deleting = store.delete(1)
+    store.reset()
+    await store.onWs([row(1, "Second tenant zone")], RemoteEvent.LIST)
+
+    pending[0].settle(Response.json(row(1, "First tenant zone", ARCHIVED_AT)))
+    const answer = await deleting
+
+    expect(store.state.value.list.map((r) => r.name)).toEqual(["Second tenant zone"])
+    expect(store.list.deleted.value).toEqual([])
+    expect(store.op.delete(1).value).toBeUndefined()
+    expect(toast.messages).toEqual([])
+    expect(answer.error).toBeNull()
+    expect(answer.result?.name).toBe("First tenant zone")
+    expect(Boolean(answer.result?.deletedAt)).toBe(true)
+  })
+
+  it("leaves the row now under that id alone when an undelete from before the reset answers", async () => {
+    const { impl, pending } = deferredFetch()
+    const toast = toastRecorder()
+    const store = buildStore({ fetch: impl, toast: toast.port })
+    await store.onWs([row(1, "First tenant zone", ARCHIVED_AT)], RemoteEvent.LIST)
+
+    const restoring = store.undelete(1)
+    store.reset()
+    // The new session's row under that id is archived too, so an answer that landed would revive a
+    // row the second tenant archived on purpose.
+    await store.onWs([row(1, "Second tenant zone", ARCHIVED_AT)], RemoteEvent.LIST)
+
+    pending[0].settle(Response.json(row(1, "First tenant zone")))
+    const answer = await restoring
+
+    expect(store.state.value.list.map((r) => r.name)).toEqual(["Second tenant zone"])
+    expect(store.list.deleted.value.map((r) => r.id)).toEqual([1])
+    expect(store.op.update(1).value).toBeUndefined()
+    expect(toast.messages).toEqual([])
+    expect(answer.error).toBeNull()
+    expect(answer.result?.deletedAt).toBeNull()
+  })
+
+  it("does not write an update into the list when two resets have happened since it was made", async () => {
+    const { impl, pending } = deferredFetch()
+    const toast = toastRecorder()
+    const store = buildStore({ fetch: impl, toast: toast.port })
+    await store.onWs([row(1, "First tenant zone")], RemoteEvent.LIST)
+
+    const updating = store.update(1, { name: "Renamed" })
+    store.reset()
+    await store.onWs([row(1, "Second tenant zone")], RemoteEvent.LIST)
+    store.reset()
+    await store.onWs([row(1, "Third tenant zone")], RemoteEvent.LIST)
+
+    pending[0].settle(Response.json(row(1, "Renamed")))
+    const answer = await updating
+
+    // One reset behind and two behind are the same thing: the generation is compared, not counted
+    // down, so an answer does not become current again by being overtaken twice.
+    expect(store.state.value.list.map((r) => r.name)).toEqual(["Third tenant zone"])
+    expect(store.op.update(1).value).toBeUndefined()
+    expect(toast.messages).toEqual([])
+    expect(answer.error).toBeNull()
+    expect(answer.result?.name).toBe("Renamed")
+  })
+
+  it("says nothing about an update whose row the new session does not hold", async () => {
+    const { impl, pending } = deferredFetch()
+    const toast = toastRecorder()
+    const store = buildStore({ fetch: impl, toast: toast.port })
+    await store.onWs([row(7, "First tenant zone")], RemoteEvent.LIST)
+
+    const updating = store.update(7, { name: "Renamed" })
+    store.reset()
+    await store.onWs([row(8, "Second tenant zone")], RemoteEvent.LIST)
+
+    pending[0].settle(Response.json(row(7, "Renamed")))
+    const answer = await updating
+
+    // Nothing in the list could have moved, because row 7 is not in it — so here the list says
+    // nothing either way, and the notification and the operation slot are what show whether the
+    // answer was acted on.
+    expect(store.state.value.list.map((r) => r.id)).toEqual([8])
+    expect(toast.messages).toEqual([])
+    expect(store.op.update(7).value).toBeUndefined()
+    expect(answer.error).toBeNull()
+    expect(answer.result?.name).toBe("Renamed")
+  })
+
+  it("does not add a row created before the reset to the next session's list", async () => {
+    const { impl, pending } = deferredFetch()
+    const toast = toastRecorder()
+    const store = buildStore({ fetch: impl, toast: toast.port })
+
+    const creating = store.create({ name: "First tenant zone" })
+    store.reset()
+    await store.onWs([row(2, "Second tenant zone")], RemoteEvent.LIST)
+
+    pending[0].settle(Response.json(row(1, "First tenant zone")))
+    const answer = await creating
+
+    // A create appends whether or not it settles the shared slot, so the list is the whole of what
+    // the generation has to stop here.
+    expect(store.state.value.list.map((r) => r.id)).toEqual([2])
+    expect(store.op.create.value).toEqual({ inProgress: false, error: null, result: null })
+    expect(toast.messages).toEqual([])
+    expect(answer.error).toBeNull()
+    expect(answer.result?.id).toBe(1)
+  })
+
+  it("files no error and says nothing when an update from before the reset fails", async () => {
+    const { impl, pending } = deferredFetch()
+    const toast = toastRecorder()
+    const store = buildStore({ fetch: impl, toast: toast.port })
+    await store.onWs([row(1, "First tenant zone")], RemoteEvent.LIST)
+
+    const updating = store.update(1, { name: "Renamed" })
+    store.reset()
+    await store.onWs([row(1, "Second tenant zone")], RemoteEvent.LIST)
+
+    pending[0].settle(Response.json({ error: "Conflict" }, { status: 409 }))
+    const answer = await updating
+
+    expect(store.op.update(1).value).toBeUndefined()
+    expect(toast.messages).toEqual([])
+    expect(answer.error?.type).toBe(ErrType.SERVER)
+    expect(answer.result).toBeNull()
+  })
+
+  it("files no error and says nothing when a create from before the reset fails", async () => {
+    const { impl, pending } = deferredFetch()
+    const toast = toastRecorder()
+    const store = buildStore({ fetch: impl, toast: toast.port })
+
+    const creating = store.create({ name: "First tenant zone" })
+    store.reset()
+    await store.onWs([row(2, "Second tenant zone")], RemoteEvent.LIST)
+
+    pending[0].settle(Response.json({ error: "Conflict" }, { status: 409 }))
+    const answer = await creating
+
+    // A create's failure is announced whichever create in flight it belongs to, so it is the
+    // loudest of the four operations and the one where a missing generation check shows first.
+    expect(store.op.create.value).toEqual({ inProgress: false, error: null, result: null })
+    expect(toast.messages).toEqual([])
+    expect(answer.error?.type).toBe(ErrType.SERVER)
+    expect(answer.result).toBeNull()
+  })
+
+  it("keeps the value of a request made after the reset when the older one answers last", async () => {
+    const { impl, pending } = deferredFetch()
+    const toast = toastRecorder()
+    const store = buildStore({ fetch: impl, toast: toast.port })
+    await store.onWs([row(1, "First tenant zone")], RemoteEvent.LIST)
+
+    const before = store.update(1, { name: "Before" })
+    store.reset()
+    await store.onWs([row(1, "Second tenant zone")], RemoteEvent.LIST)
+    const after = store.update(1, { name: "After" })
+
+    pending[1].settle(Response.json(row(1, "After")))
+    await after
+    expect(store.state.value.list.map((r) => r.name)).toEqual(["After"])
+
+    pending[0].settle(Response.json(row(1, "Before")))
+    const answer = await before
+
+    // This arrival order is already covered by the request counter — the older answer is stale for
+    // its row whether or not a reset happened — so it stays green with the generation check
+    // removed. It is here so both orders are written down; the order that needs the generation is
+    // the other one, in `does not let an answer from before a reset settle a request made after
+    // it` above, where the older answer arrives first and nothing newer has been applied yet.
+    expect(store.state.value.list.map((r) => r.name)).toEqual(["After"])
+    expect(store.op.update(1).value?.result?.name).toBe("After")
+    expect(toast.messages).toEqual([{ body: "zone was updated" }])
+    expect(answer.error).toBeNull()
+    expect(answer.result?.name).toBe("Before")
+  })
+
+  it("lets an app-owned list load turn away its own answer from before the reset", async () => {
+    const { impl, pending } = deferredFetch()
+    const store = buildModelStore({
+      model: "zone",
+      endpoint: "/api/zones",
+      schemas: { full: rowSchema, create: createSchema, update: updateSchema },
+      fetch: impl,
+      extraOps: (context) => ({
+        // The store has no built-in collection fetch: `listOp` is resolved by a remote event or by
+        // a loader the application owns, so this is what such a loader looks like when it holds
+        // the same rule. The context ports are the store's side of it.
+        load: async () => {
+          const issuedIn = context.generation()
+          context.patch({ listOp: { inProgress: true, error: null, result: null } })
+          const outcome = await context.request("/api/zones", { method: "GET" }, rowSchema.array())
+          if (!context.isCurrentGeneration(issuedIn)) return outcome
+          context.patch({
+            list: outcome.result ?? [],
+            listOp: { inProgress: false, error: outcome.error, result: outcome.result },
+          })
+          return outcome
+        },
+      }),
+    })
+
+    const loading = store.load()
+    store.reset()
+    await store.onWs([row(2, "Second tenant zone")], RemoteEvent.LIST)
+
+    pending[0].settle(Response.json([row(1, "First tenant zone")]))
+    const answer = await loading
+
+    expect(store.state.value.list.map((r) => r.id)).toEqual([2])
+    expect(answer.error).toBeNull()
+    expect(answer.result?.map((r) => r.name)).toEqual(["First tenant zone"])
   })
 })
 
