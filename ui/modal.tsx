@@ -1,6 +1,6 @@
 import { cn } from "@preact-components/cn"
 import type { ComponentChildren } from "preact"
-import { useEffect, useRef, useState } from "preact/hooks"
+import { useEffect, useId, useRef, useState } from "preact/hooks"
 import { Button } from "./button.tsx"
 
 /** Visual register of a {@link Modal}: a plain surface or a destructive one. */
@@ -15,9 +15,6 @@ export type DialogTone = "default" | "danger"
  * PascalCase value export as a component unless an exception is declared, and this is a value.
  */
 export const backdropDismissesByDefault = true
-
-/** Monotonic suffix for generated title ids; module-level so two dialogs on one page never collide. */
-let dialogSequence = 0
 
 export interface ModalProps {
   /**
@@ -185,9 +182,17 @@ export function Modal(
   // render, so the effect would tear the dialog down and re-open it under the user.
   const latest = useRef({ onClose, controlled: open !== undefined })
   latest.current = { onClose, controlled: open !== undefined }
-  // Ids are allocated in state, so a re-render never renumbers a live dialog's title. A caller that
-  // needs to know the id (a dismiss button outside the dialog, a `ConfirmDialog` heading) passes one.
-  const [generatedHeadingId] = useState(() => dialogTitleId(++dialogSequence))
+  // The id comes from the framework's own hook, as everywhere else in this package. It is derived
+  // from where this component sits in the tree, so it is stable across a dialog's re-renders, unique
+  // among the dialogs of one page, and — the part a module counter got wrong — the same string in
+  // the server's render and the browser's: a counter that lives for the life of the process numbers
+  // the second request's dialog differently from the first's, and hydration then finds a title id
+  // the server never wrote. A caller that needs to know the id (a dismiss button outside the dialog,
+  // a `ConfirmDialog` heading) passes one instead.
+  //
+  // Called unconditionally, never inside the `??` below: a hook skipped on the renders where a
+  // caller supplies an id would shift every later hook's slot the moment that prop changed.
+  const generatedHeadingId = dialogTitleId(useId())
   const headingId = titleId ?? generatedHeadingId
   // Open flag and scroll-lock padding are local visual state; which dialog is open, and what
   // confirming it does, arrive as props and ports.
@@ -819,11 +824,15 @@ export function restoreFocus(target: FocusableElement | null): boolean {
  * Build the id of a dialog's title element.
  *
  * Exported rather than inlined so the `aria-labelledby` ↔ `id` correspondence is assertable without
- * rendering, and so the id is a named unit rather than a template literal buried in JSX.
+ * rendering, and so the id is a named unit rather than a template literal buried in JSX. The prefix
+ * earns its place in a devtools inspector: `modal-title-P0-1` says what the element is, where the
+ * bare framework id says only that something generated it.
  *
- * @param sequence Value of the module counter; unique per dialog within one document.
+ * @param base A per-component id from `useId()`. It is derived from the component's place in the
+ *   render tree, which is what makes it unique on a page and identical between the server's render
+ *   and the browser's — the two properties a module-level counter cannot have at once.
  * @returns The title element's id.
  */
-export function dialogTitleId(sequence: number): string {
-  return `modal-title-${sequence}`
+export function dialogTitleId(base: string): string {
+  return `modal-title-${base}`
 }
