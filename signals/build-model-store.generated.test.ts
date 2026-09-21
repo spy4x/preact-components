@@ -11,26 +11,36 @@
  * Two to six `update`, `delete` and `undelete` requests in any mix, answered with a row that may
  * carry a deletion whichever operation asked for it, with one of nine reported statuses, a 500, a
  * connection failure, or a body the schema rejects. Making and answering are interleaved, so a
- * request is made after an answer has already landed in 818 of the 1,200 cases, while two requests
- * are outstanding on one row at once in 599 of them and an answer is actually dropped as stale in
- * 273 — see {@link MAKE_BIAS}.
+ * request is made after an answer has already landed in 805 of the 1,200 cases, while two requests
+ * are outstanding on one row at once in 614 of them and an answer is actually dropped as stale in
+ * 242 — see {@link MAKE_BIAS}.
  *
- * It also resets the store mid-case, which is what an application does when somebody signs out: 625
- * cases reset at least once, and in all 625 an answer arrives for a request that was issued before
- * a reset. In 188 of those the answer has two resets behind it rather than one; in 269 the row it
- * names is one the next session did not load at all; and in 305 the answer would have been written
+ * It also resets the store mid-case, which is what an application does when somebody signs out: 714
+ * cases reset at least once, and in all 714 an answer arrives for a request that was issued before
+ * a reset. In 278 of those the answer has two resets behind it rather than one; in 272 the row it
+ * names is one the next session did not load at all; and in 344 the answer would have been written
  * into the next session's list under the rule this store had before it counted its resets — see
  * {@link RESET_CHANCE}. The list the next session loads carries the same ids under different names,
  * so an answer that lands where it should not is visible rather than merely redundant.
  *
- * After every step it checks each row's name, whether it is soft-deleted, both operation flags,
- * whether each slot carries an error, and the notifications so far.
+ * And somebody else changes a row through the feed while this client is working on it: 1,066 cases
+ * carry at least one remote event, and in 863 of them an event lands on a row that has a request
+ * outstanding. Every row is stamped `updatedAt`, drawn from five instants, so the clock rule is
+ * decided both ways: this client's own answer is refused by it in 475 cases — in 235 of those the
+ * row it lost to was one a remote event had written — and accepted over a remotely written row in
+ * 237. See {@link REMOTE_CHANCE} and {@link STAMPS}.
  *
- * **What it does not cover.** The freshness rule, whose axes are bounded and enumerated beside the
- * fixtures instead; creates; `extraOps`; the session watch; `remove`; remote events, including what
- * one does when it arrives after a reset; the body text of a failure notification, only its title;
- * calls made re-entrantly from an effect; and anything about timing beyond the order in which
- * things happen.
+ * After every step it checks each row's name, its `updatedAt`, whether it is soft-deleted, both
+ * operation flags, whether each slot carries an error, and the notifications so far.
+ *
+ * **What it does not cover.** The freshness rule's own axes — which timestamp columns each side
+ * carries, and a model that carries none — are bounded and enumerated beside the fixtures instead;
+ * every row here carries `updatedAt` and nothing else, so what this file varies is the instants
+ * rather than the columns. Nor does it cover: creates, including a remote `"created"` event for a
+ * row a create is outstanding for; `extraOps`; the session watch; `remove`; a batch carrying more
+ * than one row; a remote event arriving after a reset; an application-supplied `isNewer`; the body
+ * text of a failure notification, only its title; calls made re-entrantly from an effect; and
+ * anything about timing beyond the order in which things happen.
  *
  * Three of those are covered by named tests instead, and deliberately. **Creates** have no row
  * identity for a model to key on, and the one thing two creates contend for — the single `createOp`
@@ -50,8 +60,9 @@
  *
  * **Reproducing a failure.** Every case comes from `SEED + index` and nothing else, so it is the
  * same on every machine and every run, and a failed assertion prints that number with the plan it
- * produced: the rows, every request with the answer waiting for it, and the interleaving of making,
- * answering and resetting that the case runs.
+ * produced: the rows, every request with the answer waiting for it and the instant that answer is
+ * stamped, and the interleaving of making, answering, resetting and remote events that the case
+ * runs.
  */
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
@@ -67,8 +78,8 @@ const SEED = 20240921
  * It is the dial between the two shapes this file exists to draw. Biased towards answering, cases
  * are mostly one request at a time and the sequencing rule is never exercised; biased towards
  * making, every request is outstanding at once and a row is never written to twice in sequence.
- * At 0.7 over 1,200 cases: two requests overlap on one row in 599 cases, an answer is actually
- * dropped as stale for its row in 273, and 818 make a request after an answer has already landed.
+ * At 0.7 over 1,200 cases: two requests overlap on one row in 614 cases, an answer is actually
+ * dropped as stale for its row in 242, and 805 make a request after an answer has already landed.
  * Lowering any of these is how this file stops testing what it is for; the counts are cheap to
  * re-measure and worth re-measuring after any change to the draw.
  *
@@ -77,6 +88,11 @@ const SEED = 20240921
  * than by its row's counter, so at 600 cases the three counts above fell to 300, 140 and 411. The
  * counts above are what they are because there are twice as many cases, and a smaller share of each
  * case is now about the counter; the suite still runs in well under a second.
+ *
+ * Remote events, drawn at {@link REMOTE_CHANCE}, are a third kind of step that is neither, and they
+ * moved these three counts again — they stood at 599, 273 and 818 before the draw included them.
+ * Every number in this file's header was re-measured when that happened rather than carried over,
+ * which is the only way any of them stays true.
  */
 const MAKE_BIAS = 0.7
 const CASES = 1200
@@ -86,9 +102,9 @@ const CASES = 1200
  *
  * A reset is what an application does when somebody signs out, and the case this file exists to
  * draw around it is an answer arriving after it — so a reset is only ever drawn while at least one
- * request is outstanding. At 0.1, with at most {@link MAX_RESETS} per case, 625 of the 1,200 cases
- * reset at least once, and every one of those 625 has an answer arriving for a request issued
- * before a reset. In 305 of them at least one such answer would have reached the next session's
+ * request is outstanding. At 0.1, with at most {@link MAX_RESETS} per case, 714 of the 1,200 cases
+ * reset at least once, and every one of those 714 has an answer arriving for a request issued
+ * before a reset. In 344 of them at least one such answer would have reached the next session's
  * list under the rule this store had before it counted its resets — that number is the one to
  * watch, because it counts the cases that can tell the two rules apart, and if it falls this file
  * has stopped testing what it was extended for. Raising the chance raises it and costs coverage of
@@ -96,9 +112,10 @@ const CASES = 1200
  *
  * Measure that number by replaying these plans against the **old** store, not by reasoning about
  * the current one. Under the old rule every answer was numbered, including one from an earlier
- * session, so it advanced its row's counter and could make a later answer stale. Counting a
- * crossing answer as fresh without that advance — which is how the current store numbers — gives
- * 313 rather than 305, and 313 is the answer to a question nobody asked.
+ * session, so it advanced its row's counter and could make a later answer stale; the old store had
+ * no clock either, so the replay must not apply one. Counting a crossing answer as fresh without
+ * that advance — which is how the current store numbers — gives a different number, and it is the
+ * answer to a question nobody asked.
  */
 const RESET_CHANCE = 0.1
 /** At most this many resets per case, so a case still spends most of its steps on requests. */
@@ -106,9 +123,51 @@ const MAX_RESETS = 2
 /** Chance that a row the store knew about is loaded again by the session after a reset. */
 const SESSION_KEEP = 0.75
 
+/**
+ * How often a step delivers a remote event — somebody else changing a row through the feed.
+ *
+ * The shape this file was extended for is an event overlapping one of this client's own writes, so
+ * the event is aimed at a row with a request outstanding {@link REMOTE_ON_BUSY_ROW} of the time
+ * and at any of the case's rows otherwise; a plain event with nothing in flight still happens, and
+ * still has to be applied correctly. At 0.25 over 1,200 cases, 1,066 cases carry at least one
+ * event and 863 have one land on a row that is mid-write.
+ *
+ * The two counts to watch are the ones that can tell this rule from the one it replaced: this
+ * client's own answer is refused by the clock in 475 cases, 235 of them losing to a row a remote
+ * event had written, and accepted over a remotely written row in 237. A store that kept the old
+ * "our own answer always wins" would disagree with the model in the first group; one that made a
+ * remote event always win would disagree in the second. If either falls, this file has stopped
+ * testing what it was extended for.
+ */
+const REMOTE_CHANCE = 0.25
+/** How often a drawn event names a row with a request outstanding rather than any row. */
+const REMOTE_ON_BUSY_ROW = 0.8
+
 const dateSchema = type("Date | string.date.iso.parse")
-const rowSchema = type({ id: "number", name: "string", deletedAt: dateSchema.or("null") })
+const rowSchema = type({
+  id: "number",
+  name: "string",
+  updatedAt: dateSchema,
+  deletedAt: dateSchema.or("null"),
+})
 const namePayload = type({ name: "string" })
+
+/**
+ * Instants a row can be stamped `updatedAt` with.
+ *
+ * The clock decides which of two changes to a row the list keeps, so a file that stamped every row
+ * the same instant would exercise only the tie. A list loads at {@link LOADED_STAMP}, in the middle
+ * of the range, and every answer and every event draws uniformly from all five — so each is earlier
+ * than a freshly loaded row two times in five, later two times in five, and a tie the rest.
+ */
+const STAMPS = [0, 1, 2, 3, 4].map((day) => Date.UTC(2024, 4, 1 + day))
+/** The stamp every row carries when a session's list loads. */
+const LOADED_STAMP = 2
+
+/** The `updatedAt` a drawn stamp index becomes on the wire. */
+function stampedAt(index: number): Date {
+  return new Date(STAMPS[index])
+}
 
 const KINDS = ["update", "delete", "undelete"] as const
 type Kind = typeof KINDS[number]
@@ -125,8 +184,8 @@ const WORDS = {
 type Answer = { status: number } | "offline" | "malformed" | "row"
 
 /**
- * One request. `seq` is its position in its own row's sequence; `name` and `deletedAt` are the row
- * a successful answer carries back, which is what the store replaces the held row with.
+ * One request. `seq` is its position in its own row's sequence; `name`, `deletedAt` and `stamp` are
+ * the row a successful answer carries back, which is what the store weighs against the held row.
  */
 interface Planned {
   row: number
@@ -135,6 +194,21 @@ interface Planned {
   answer: Answer
   name: string
   deletedAt: Date | null
+  stamp: number
+}
+
+/**
+ * One remote event: what somebody else did to a row, arriving through the feed.
+ *
+ * It carries a single row, because a batch adds nothing the model would not already say — every
+ * row in a batch is folded in independently — and costs every case a wider plan to print.
+ */
+interface RemoteChange {
+  event: RemoteEvent.UPDATED | RemoteEvent.DELETED
+  id: number
+  name: string
+  stamp: number
+  deleted: boolean
 }
 
 /** Deterministic 32-bit generator (mulberry32), so a case never depends on the host. */
@@ -156,13 +230,19 @@ interface SessionRow {
 }
 
 /**
- * A request is made, one already made is answered, or the store is reset and a new session loads.
+ * A request is made, one already made is answered, a remote event arrives, or the store is reset
+ * and a new session loads.
  *
  * `make` and `answer` index `requests`. `reset` carries the rows the next session's list holds,
  * which is a subset of the case's ids — so an answer can arrive for a row the new session has under
- * a different name, and for a row it does not have at all.
+ * a different name, and for a row it does not have at all. `remote` is somebody else's change,
+ * usually to a row this client has a request outstanding on.
  */
-type Step = { make: number } | { answer: number } | { reset: SessionRow[] }
+type Step =
+  | { make: number }
+  | { answer: number }
+  | { reset: SessionRow[] }
+  | { remote: RemoteChange }
 
 interface Plan {
   ids: number[]
@@ -205,7 +285,8 @@ function planCase(seed: number): Plan {
     // Any answer may carry a deletion: the store's promise is that a response body replaces the
     // row, not that only a delete archives it. The scaffold's archive checkbox is an update.
     const deletedAt = next() < (kind === "delete" ? 0.9 : 0.25) ? DELETED_AT : null
-    requests.push({ row, kind, seq, answer, name: `answer-${index}`, deletedAt })
+    const stamp = Math.floor(next() * STAMPS.length)
+    requests.push({ row, kind, seq, answer, name: `answer-${index}`, deletedAt, stamp })
   }
 
   // Requests are made and answered in one interleaved order, so a row can be written to again
@@ -215,6 +296,7 @@ function planCase(seed: number): Plan {
   const outstanding: number[] = []
   let made = 0
   let resets = 0
+  let events = 0
   // The loop used to be bounded by `requests.length * 2`, which counts one make and one answer per
   // request. A reset is a step that is neither, so the bound is now the condition it stood for.
   while (made < requests.length || outstanding.length > 0) {
@@ -227,6 +309,26 @@ function planCase(seed: number): Plan {
         reset: ids
           .filter(() => next() < SESSION_KEEP)
           .map((id) => ({ id, name: `session${session}-row-${id}` })),
+      })
+      continue
+    }
+    // Somebody else changes a row, usually one this client is mid-write on. A remote event is
+    // neither a make nor an answer, so it cannot stop the loop making progress; the bound is the
+    // condition above.
+    if (next() < REMOTE_CHANCE) {
+      const busy = outstanding.map((index) => requests[index].row)
+      const id = busy.length > 0 && next() < REMOTE_ON_BUSY_ROW ? pick(busy) : pick(ids)
+      const event = next() < 0.5 ? RemoteEvent.UPDATED : RemoteEvent.DELETED
+      steps.push({
+        remote: {
+          event,
+          id,
+          name: `remote-${events++}`,
+          stamp: Math.floor(next() * STAMPS.length),
+          // An `"updated"` event may archive a row or restore one — the scaffold's archive checkbox
+          // is an update — so the deletion is drawn rather than implied by the kind of event.
+          deleted: event === RemoteEvent.DELETED || next() < 0.25,
+        },
       })
       continue
     }
@@ -244,7 +346,7 @@ function planCase(seed: number): Plan {
 
 function describePlan(seed: number, { ids, requests, steps }: Plan): string {
   const made = requests.map((r, i) =>
-    `${i}:${r.kind}(row ${r.row}, seq ${r.seq})→${JSON.stringify(r.answer)}${
+    `${i}:${r.kind}(row ${r.row}, seq ${r.seq})→${JSON.stringify(r.answer)}@${r.stamp}${
       r.deletedAt ? "+deleted" : ""
     }`
   )
@@ -253,6 +355,10 @@ function describePlan(seed: number, { ids, requests, steps }: Plan): string {
       ? `make ${step.make}`
       : "answer" in step
       ? `answer ${step.answer}`
+      : "remote" in step
+      ? `remote ${step.remote.event}(row ${step.remote.id})@${step.remote.stamp}${
+        step.remote.deleted ? "+deleted" : ""
+      }`
       : `reset→session of [${step.reset.map((entry) => entry.id).join("/")}]`
   )
   return `seed ${seed}; rows ${ids.join("/")}; ${made.join(", ")}; ${order.join(" → ")}`
@@ -263,10 +369,18 @@ function slotOf(kind: Kind): 0 | 1 {
   return kind === "delete" ? 1 : 0
 }
 
-/** One row as the model and the store should both describe it. `busy` and `failed` are by slot. */
+/**
+ * One row as the model and the store should both describe it. `busy` and `failed` are by slot.
+ *
+ * `stamp` is the held row's `updatedAt` in milliseconds, `null` when the list does not hold the row
+ * at all. It is compared as well as the name because the clock rule turns on it: a store that kept
+ * the right name while leaving the stamp behind would judge the next change against the wrong
+ * instant, and a comparison of names alone would not notice until that next change.
+ */
 interface RowState {
   name: string
   deleted: boolean
+  stamp: number | null
   busy: [boolean, boolean]
   failed: [boolean, boolean]
 }
@@ -274,11 +388,19 @@ interface RowState {
 /**
  * The rules, restated as a model.
  *
- * Two of them. **Within a session**: an answer older than one already applied is dropped, and only
- * a request with nothing newer behind it settles a slot, which releases the row's other slot too.
- * **Across sessions**: an answer to a request issued before a `reset()` does nothing at all — it
- * touches neither slot, nor the list, nor the notifications — because the session it belongs to is
- * over and the id it names may belong to a different row in the session the store has now.
+ * Three of them. **Within a session**: an answer older than one already applied is dropped, and
+ * only a request with nothing newer behind it settles a slot, which releases the row's other slot
+ * too. **Across sessions**: an answer to a request issued before a `reset()` does nothing at all —
+ * it touches neither slot, nor the list, nor the notifications — because the session it belongs to
+ * is over and the id it names may belong to a different row in the session the store has now.
+ * **Against the clock**: the held row is replaced only by something at least as late as it, whether
+ * that something is a remote event or this client's own answer, and where the two are the same
+ * instant the incoming one wins.
+ *
+ * The three apply in that order and each can only refuse, which is why the model can apply them in
+ * that order too: a disowned answer never reaches the counter, an answer stale by the counter never
+ * reaches the clock, and an answer the clock refuses still settles its slot and still announces
+ * itself, because the write did happen at the server.
  *
  * The sequence numbers are deliberately *not* wound back by a reset, because the store does not
  * wind them back either: a model that cleared them would agree with a store that cleared them, and
@@ -289,6 +411,7 @@ function modelCase(plan: Plan) {
     plan.ids.map((id) => [id, {
       name: `row-${id}`,
       deleted: false,
+      stamp: STAMPS[LOADED_STAMP],
       busy: [false, false],
       failed: [false, false],
     }]),
@@ -325,12 +448,30 @@ function modelCase(plan: Plan) {
         row.deleted = false
         const name = byId.get(id)
         row.name = name ?? "missing"
+        row.stamp = name === undefined ? null : STAMPS[LOADED_STAMP]
         if (name !== undefined) present.add(id)
       }
     },
+    /**
+     * Fold in one remote event: somebody else's change, arriving through the feed.
+     *
+     * It touches neither an operation slot nor the notifications — the store writes only the list
+     * for an event — and a row the current session's list does not hold has nothing to change.
+     */
+    remote({ event, id, name, stamp, deleted }: RemoteChange) {
+      if (!present.has(id)) return
+      const row = rows.get(id)!
+      // An `"updated"` event is weighed against the held row. A `"deleted"` one is not: the server
+      // saying a row is archived is not a claim about the rest of its columns, and it replaces the
+      // held row whatever the clock says.
+      if (event === RemoteEvent.UPDATED && STAMPS[stamp] < row.stamp!) return
+      row.name = name
+      row.deleted = deleted
+      row.stamp = STAMPS[stamp]
+    },
     /** Fold in one answer, in the order the answers arrive. */
     answer(request: Planned) {
-      const { row: id, kind, seq, answer, name, deletedAt } = request
+      const { row: id, kind, seq, answer, name, deletedAt, stamp } = request
       // The answer belongs to a session the store has left. It is returned to its caller, which
       // this file never reads, and changes nothing the store shows.
       if (madeIn.get(request) !== generation) return
@@ -355,9 +496,14 @@ function modelCase(plan: Plan) {
       // that a response body replaces the held row, whichever operation asked for it. A row the
       // current session never loaded is not in the list, so there is nothing to replace — the
       // store still announces the write, because the request itself succeeded.
-      if (present.has(id)) {
+      //
+      // The clock is the last of the three rules and it governs the list alone: an answer older
+      // than the row the list now holds — a remote event landed while this was on the wire —
+      // changes nothing there, and still settles its slot above and still announces itself below.
+      if (present.has(id) && STAMPS[stamp] >= row.stamp!) {
         row.name = name
         row.deleted = deletedAt !== null
+        row.stamp = STAMPS[stamp]
       }
       said.push(WORDS[kind][0])
     },
@@ -366,11 +512,11 @@ function modelCase(plan: Plan) {
 
 const DELETED_AT = new Date("2024-03-01T00:00:00.000Z")
 
-function responseFor({ row, name, answer, deletedAt }: Planned): Response | Error {
+function responseFor({ row, name, answer, deletedAt, stamp }: Planned): Response | Error {
   if (answer === "offline") return new Error("network down")
   if (answer === "malformed") return Response.json({ id: "not a number" })
   if (answer !== "row") return Response.json({ error: "rejected" }, { status: answer.status })
-  return Response.json({ id: row, name, deletedAt })
+  return Response.json({ id: row, name, deletedAt, updatedAt: stampedAt(stamp) })
 }
 
 /** What the store shows for one row, in the shape the model describes. */
@@ -381,6 +527,7 @@ function observe(store: ReturnType<typeof storeFor>, id: number): RowState {
   return {
     name: held?.name ?? "missing",
     deleted: Boolean(held?.deletedAt),
+    stamp: held ? held.updatedAt.getTime() : null,
     busy: [Boolean(update?.inProgress), Boolean(remove?.inProgress)],
     failed: [Boolean(update?.error), Boolean(remove?.error)],
   }
@@ -411,7 +558,12 @@ describe("buildModelStore over generated cases", () => {
       const said: string[] = []
       const store = storeFor(impl, said)
       await store.onWs(
-        plan.ids.map((id) => ({ id, name: `row-${id}`, deletedAt: null })),
+        plan.ids.map((id) => ({
+          id,
+          name: `row-${id}`,
+          deletedAt: null,
+          updatedAt: stampedAt(LOADED_STAMP),
+        })),
         RemoteEvent.LIST,
       )
 
@@ -436,12 +588,26 @@ describe("buildModelStore over generated cases", () => {
           settlers[settlerOf.get(step.answer)!](responseFor(plan.requests[step.answer]))
           await running.get(step.answer)
           model.answer(plan.requests[step.answer])
+        } else if ("remote" in step) {
+          // Somebody else saved or deleted the row, and the feed says so while this client may
+          // still be waiting for an answer of its own about it.
+          const { event, id, name, stamp, deleted } = step.remote
+          await store.onWs(
+            [{ id, name, deletedAt: deleted ? DELETED_AT : null, updatedAt: stampedAt(stamp) }],
+            event,
+          )
+          model.remote(step.remote)
         } else {
           // Somebody signed out and somebody else signed in: the store is cleared and the next
           // session's list arrives, carrying its own rows under the same ids.
           store.reset()
           await store.onWs(
-            step.reset.map(({ id, name }) => ({ id, name, deletedAt: null })),
+            step.reset.map(({ id, name }) => ({
+              id,
+              name,
+              deletedAt: null,
+              updatedAt: stampedAt(LOADED_STAMP),
+            })),
             RemoteEvent.LIST,
           )
           model.reset(step.reset)
