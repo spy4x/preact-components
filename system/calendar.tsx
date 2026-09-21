@@ -302,7 +302,16 @@ export function Calendar(
   const previousEnabled = monthShown(previousMonth.slice(0, 7))
   const nextEnabled = monthShown(nextMonth.slice(0, 7))
 
-  /** Move the roving focus to `date`, when it is a day of the month the cursor is in. */
+  /**
+   * Move the roving focus to `date`, when it is a day of the month the cursor is in.
+   *
+   * The cursor's month rather than the rendered one, so an arrow that follows a month change is
+   * measured against the month it has just landed on. **No check holds this**, and saying so is
+   * the point: two real key presses always have a render between them, because each arrives as its
+   * own protocol message, so the rendered month is never stale by the time a press reads it. The
+   * case this guards needs a press that outruns a render, which no browser check here can produce —
+   * it is correct by construction and unproven by measurement.
+   */
   const moveTo = (date: string) => {
     const from = cursorDate.current
     if (!from || date.slice(0, 7) !== from.slice(0, 7)) return

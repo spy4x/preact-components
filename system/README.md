@@ -94,6 +94,13 @@ A day that cannot be picked is still focusable and its accessible name is the re
 focus, for the reader who has no screen reader to read the cell out and no mouse to hover a
 `title` with. The grid itself is a `grid` of `row`s and `gridcell`s named after the month it shows.
 
+**What that evidence is, and is not.** Every accessibility claim in this file is a claim about
+markup and focus order, read back from the DOM in headless Chromium by `pages/checks/system.ts`.
+No screen reader has been run against any of it. The one place where the markup and what a reader
+would actually hear can plausibly come apart is the decision below to keep the peek days out of the
+accessibility tree: a row then exposes fewer cells than `aria-colcount` promises, and `aria-colindex`
+is there to keep the columns numbered, unverified by ear.
+
 ## The locale decides the week
 
 Two things about a month grid are not the component's to decide, and both come from `Intl`:
