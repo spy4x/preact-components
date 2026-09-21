@@ -760,7 +760,7 @@ export const displayDemos = {
   },
   Pagination: {
     summary:
-      "Page numbers with the long runs collapsed, plus previous/next. Controlled: `page` is rendered (clamped) and every request leaves through `onChange`. A control that cannot act stays where it is and carries `aria-disabled` — unmounting it, or disabling it natively, would take focus off the button a keyboard user is pressing. `pageCount={0}` renders nothing, and every page number's name comes from `pageLabel`, which defaults to `Page N`.",
+      "Page numbers with the long runs collapsed, plus previous/next. Controlled: `page` is rendered (clamped) and every request leaves through `onChange`. From two pages up, a control that cannot act stays where it is and carries `aria-disabled` — unmounting it, or disabling it natively, would take focus off the button a keyboard user is pressing. `pageCount={0}` renders nothing and `pageCount={1}` renders the one page with no controls, since neither can lose anybody their place. Every page number's name comes from `pageLabel`, which defaults to `Page N`.",
     snippet: `<Pagination page={page.value} pageCount={24} onChange={(page) => page.value = page} />
 
 // An empty result set needs no special case at the call site.

@@ -239,12 +239,23 @@ presets at all. The move happens in an effect rather than in the click handler, 
 rendered with the `hidden` attribute and Chromium refuses to focus anything inside a `display: none`
 subtree: a `focus()` call in the same tick as the state change fires no focus event at all.
 
-Every close the user drove from inside the panel hands focus back to the trigger: Escape, choosing a
-preset, Apply and Cancel, and pressing the trigger a second time. The one close that does not is a
-click outside the component, because the person has just put focus somewhere deliberately and
-pulling it back would take it off what they clicked. Focus merely _leaving_ the panel is not a close
-here — a Tab out leaves the panel open behind you, which is the one dismissal path this component
-does not have.
+A close the person drove **from inside** the panel hands focus back to the trigger: choosing a
+preset, Apply, Cancel, pressing the trigger a second time, and Escape. In each of those the next
+render hides the element their focus is on, so something has to move it, and the trigger is where
+they came from.
+
+A close driven from **outside** it does not, and there are two. A click outside leaves focus on
+whatever was clicked, because the person has just put it there deliberately. And Escape is a return
+only when focus was still inside the component as the key was pressed: a Tab out leaves the panel
+open behind you, so Escape can arrive from somewhere the person has since walked to, and pulling
+them back there would be one more way to lose their place rather than a way to keep it.
+
+Focus merely _leaving_ the panel is not a close at all here. A Tab out leaves it open, which is the
+one dismissal path this component does not have — and is also what makes the Escape-from-outside
+case above reachable.
+
+All seven of those paths are driven in a real browser in `pages/checks/ui.ts`: opening, the five
+that return focus, and the two that must not.
 
 `Custom…` is marked pressed while the custom fields are the live choice — the button was activated,
 either field was typed into, or the caller's `selectedPreset` is `"custom"` — and stops being
@@ -255,24 +266,35 @@ signal the fields write, so what a screen reader announces and what the panel sh
 
 Page numbers with the long runs collapsed, plus previous and next. Controlled: `page` is rendered as
 given (clamped into `1…pageCount`) and every request leaves through `onChange`. `pageCount={0}`
-renders nothing at all, so a list that found no rows needs no special case at the call site.
+renders nothing at all, so a list that found no rows needs no special case at the call site, and
+`pageCount={1}` renders the one page and no controls: a list with a single page has nowhere to go,
+and two dead tab stops on it would cost every reader who tabs past them something and gain nobody
+anything.
 
-**Previous and Next are always rendered, and carry `aria-disabled="true"` where they cannot act.**
-Both obvious alternatives lose the keyboard user's place at the exact moment they reach the end,
+**From two pages up, Previous and Next are always rendered, and carry `aria-disabled="true"` where
+they cannot act.** Both obvious alternatives lose the keyboard user's place at the exact moment they
+reach the end,
 which is while they are pressing the control: unmounting it destroys the element under their focus,
 and setting the native `disabled` attribute on a focused button takes focus off it — measured in the
 headless Chromium this repository drives, where `document.activeElement` went from the button to
 `<body>` on the line that set the attribute. Chromium's accessibility tree reports the control as
 disabled for either spelling, so nothing is given up. What `aria-disabled` does not do is stop the
 press — a real Space press still fires a click on such a button — so each handler checks the end it
-guards before calling `onChange`.
+guards before calling `onChange`. The controls do mount and unmount as `pageCount` crosses between
+one and two, which is the caller's data changing rather than a step the reader took inside the
+control, so nobody's focus is on one at that moment.
 
 **The window keeps two pages on each side of the current one.** The first and last page are always
 shown, the window slides back inside the range rather than shrinking when it reaches an end, and a
 `…` always stands for at least two pages: where a mark would have hidden a single page, that page is
 written out instead, because the mark takes the same room and says less. `pageRange(page, pageCount,
 size)` is that rule on its own, exported and unit-tested; `size` says how long a range may be before
-it collapses at all, and the collapsed window's width does not depend on it.
+it collapses at all, and the collapsed window's width does not depend on it. What bounds the
+collapsed form is the two-page rule instead: at most nine items, being the five-page window plus, at
+each end, either that end's page and a `…` or the up to two pages the window swallowed in place of
+that `…`. The unit suite walks every page of every total up to sixty across a dozen values of
+`size`, so nine is a measured ceiling rather than an estimate — and it checks that nine is reached,
+because a bound nobody reaches is a bound nobody has tested.
 
 ```
 pageRange(5, 10)   1 2 3 4 5 6 7 … 10
