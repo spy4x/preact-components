@@ -6,11 +6,14 @@
  * usage block, and a stylesheet that actually carries the theme. That alone would not prove the page
  * *works* — a prerendered catalogue is not an interactive one — so the second phase serves `dist/`
  * at the same base GitHub Pages uses, drives headless Chromium over the DevTools Protocol, and
- * exercises what the issues ask for: the dropdown, the switches, the icon filter, click-to-copy in
- * the gallery and on every usage block, the form controls of the class chapter, the surface classes
- * as computed styles, the scroll container, the toasts, the deep links, the colour scheme, and
- * Modal's keyboard and focus contract — then reports any console error, page exception or failed
- * request the run produced.
+ * exercises what the issues ask for: the switches, the icon filter, click-to-copy in the gallery
+ * and on every usage block, the form controls of the class chapter, the surface classes as
+ * computed styles, the scroll container, the deep links, the colour scheme, and the keyboard,
+ * focus and effect behaviour of the components that have been covered so far — the dropdown as a
+ * real menu, the toasts announcing and pausing, the combobox and the tooltip, the calendar's grid
+ * and the image lightbox, the service-worker prompt registering and offering its reload, and the
+ * filter hook following the address bar — then reports any console error, page exception or
+ * failed request the run produced.
  *
  * ```bash
  * deno task build && deno task verify          # both phases
@@ -329,9 +332,10 @@ async function browserPhase(): Promise<void> {
 /**
  * Run every workspace package's browser checks, in the one fixed order this file owns.
  *
- * Every package that has a demo in the catalogue is named here, including the four that own no
- * check yet — `signals`, `system`, `crud`, `charts` — so that a later PR adding a package's first
- * check edits only that package's file under `pages/checks/`, never this list.
+ * Every package is named here, including the two that own no check yet — `crud` and `charts` — so
+ * that a later PR adding a package's first check edits only that package's file under
+ * `pages/checks/`, never this list. `signals` has no catalogue section any more and still has a
+ * file: its checks drive the demo the host page renders.
  *
  * `ui` runs last on purpose: its Modal checks (kept last within `ui.ts` for the same reason) open a
  * real modal dialog, and a dialog that refused to close would sit in the top layer above every check
