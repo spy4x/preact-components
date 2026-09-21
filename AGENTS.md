@@ -180,12 +180,11 @@ whose check you cannot find as unproven rather than as working.
 
 Two facts about that browser, both measured rather than assumed, and both worth knowing before
 you write a check: a real Enter press does **not** activate a focused button there, so a trigger
-is activated with a click and the check says so; a real Space press **does**. And the browser
-reports that it cannot
-hover. Tailwind compiles every `hover:` and `group-hover:` utility behind that capability
+is activated with a click and the check says so; a real Space press **does**. And the browser reports that it
+cannot hover. Tailwind compiles every `hover:` and `group-hover:` utility behind that capability
 whatever the browser says, so in this one none of them matches. A hand-written `&:hover` in
-`theme/preset.css` is emitted ungated and does still apply, so the gap is the utilities rather
-than hovering as such. See the issue tracking it before you write a check that leans on a hover
+`theme/preset.css` is emitted ungated and does still apply, so the gap is the utilities rather than
+hovering as such. Issue #185 tracks it; read that before you write a check that leans on a hover
 style. `verify` fails when it finds no browser; `--static` is the one explicit way to leave
 the browser phase out. The GitHub workflow runs `check`, the build and `verify` on every pull request
 into `main`, and the Pages deploy waits for them.
