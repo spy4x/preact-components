@@ -60,7 +60,7 @@ const SECTIONS_IN_GROUPS: Record<string, string[]> = {
   "group-surfaces": ["display", "feedback", "forms", "surfaces"],
   "group-inputs": ["inputs", "fields"],
   "group-data": ["charts", "crud"],
-  "group-application": ["system", "signals"],
+  "group-application": ["system"],
 }
 
 /** One entry removed from the shipped registry, to reach the banner a partial one produces. */
@@ -110,7 +110,6 @@ describe("UIGuide", () => {
         "Charts",
         "System",
         "CRUD",
-        "Signals",
       ]
     ) {
       expect(html, heading).toContain(heading)
@@ -124,7 +123,6 @@ describe("UIGuide", () => {
         "charts",
         "system",
         "crud",
-        "signals",
       ]
     ) {
       expect(html, heading).toContain(`id="${heading}"`)

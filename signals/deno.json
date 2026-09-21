@@ -5,19 +5,12 @@
     ".": "./+index.ts",
     "./build-model-store": "./build-model-store.ts",
     "./clipboard": "./clipboard.ts",
-    "./list-state": "./list-state.ts",
     "./map-entry": "./map-entry.ts",
-    "./signals": "./+signals.tsx",
     "./table-state": "./table-state.ts",
     "./theme": "./theme.ts",
     "./toast": "./toast.ts",
     "./types": "./types.ts",
     "./use-url-filters": "./use-url-filters.ts",
     "./validate": "./validate.ts"
-  },
-  "imports": {
-    // The colocated tests for `<For>`/`<Show>` assert on real rendered markup, which needs a
-    // renderer the root import map does not carry. Pinned to the same version `ui/` uses.
-    "preact-render-to-string": "npm:preact-render-to-string@6.7.0"
   }
 }

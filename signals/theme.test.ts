@@ -2,21 +2,64 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { createThemeStore, type ThemeMediaQuery, type ThemeStorage, ThemeValue } from "./theme.ts"
 
-/** An in-memory stand-in for `localStorage`. */
+/** An in-memory stand-in for `localStorage` that records what it was asked for. */
 function fakeStorage(
   initial: Record<string, string> = {},
-): ThemeStorage & { entries: Map<string, string> } {
+): ThemeStorage & { entries: Map<string, string>; reads: string[]; writes: string[] } {
   const entries = new Map(Object.entries(initial))
+  const reads: string[] = []
+  const writes: string[] = []
   return {
     entries,
-    getItem: (key: string) => entries.get(key) ?? null,
-    setItem: (key: string, value: string) => void entries.set(key, value),
+    reads,
+    writes,
+    getItem: (key: string) => {
+      reads.push(key)
+      return entries.get(key) ?? null
+    },
+    setItem: (key: string, value: string) => {
+      writes.push(key)
+      entries.set(key, value)
+    },
   }
 }
 
-/** A controllable stand-in for the OS media query. */
+/** A storage that refuses both operations, as a browser in private mode does. */
+function refusingStorage(): ThemeStorage {
+  return {
+    getItem: () => {
+      throw new DOMException("The operation is insecure.", "SecurityError")
+    },
+    setItem: () => {
+      throw new DOMException("The quota has been exceeded.", "QuotaExceededError")
+    },
+  }
+}
+
+/**
+ * A storage that hands back one stored value and refuses every write.
+ *
+ * The private-mode shape that matters most: the preference a previous session wrote is still
+ * readable, and nothing written now survives.
+ */
+function readOnlyStorage(stored: string): ThemeStorage & { reads: string[] } {
+  const reads: string[] = []
+  return {
+    reads,
+    getItem: (key: string) => {
+      reads.push(key)
+      return stored
+    },
+    setItem: () => {
+      throw new DOMException("The quota has been exceeded.", "QuotaExceededError")
+    },
+  }
+}
+
+/** A controllable stand-in for the OS media query, recording every query it is asked for. */
 function fakeMedia(matches: boolean) {
   const listeners: Array<(event: { matches: boolean }) => void> = []
+  const queries: string[] = []
   const query: ThemeMediaQuery = {
     matches,
     addEventListener: (_type, listener) => void listeners.push(listener),
@@ -26,13 +69,52 @@ function fakeMedia(matches: boolean) {
     },
   }
   return {
-    source: () => query,
+    source: (asked: string) => {
+      queries.push(asked)
+      return query
+    },
+    queries,
     listeners,
     listenerCount: () => listeners.length,
     emit(next: boolean) {
       ;(query as { matches: boolean }).matches = next
       for (const listener of [...listeners]) listener({ matches: next })
     },
+  }
+}
+
+/**
+ * Run `body` with `globalThis.localStorage` replaced by a recorder, then put the real one back.
+ *
+ * The default storage port is the one worth watching — on Deno `localStorage` is a real file shared
+ * by every request the process serves — and a test double passed in as a port cannot prove anything
+ * about it. Throws rather than skipping when the property cannot be replaced: a runtime this cannot
+ * be run on is a result, not a reason to report success.
+ *
+ * @param body Receives the keys the stand-in was asked for, in order.
+ * @returns Whatever `body` returned.
+ */
+function withRecordedGlobalStorage<T>(body: (reads: string[]) => T): T {
+  const original = Object.getOwnPropertyDescriptor(globalThis, "localStorage")
+  if (!original) throw new Error("this runtime has no globalThis.localStorage to stand in for")
+  if (!original.configurable) throw new Error("globalThis.localStorage cannot be replaced here")
+
+  const reads: string[] = []
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      getItem: (key: string) => {
+        reads.push(key)
+        return null
+      },
+      setItem: () => {},
+    },
+  })
+
+  try {
+    return body(reads)
+  } finally {
+    Object.defineProperty(globalThis, "localStorage", original)
   }
 }
 
@@ -43,15 +125,30 @@ describe("createThemeStore preference", () => {
     expect(store.actual.value).toBe(ThemeValue.LIGHT)
   })
 
-  it("reads a stored preference", () => {
-    const store = createThemeStore({ storage: fakeStorage({ theme: "dark" }), media: null })
+  it("reads a stored preference when it attaches, not before", () => {
+    const store = createThemeStore({
+      storage: fakeStorage({ theme: "dark" }),
+      media: null,
+      apply: () => {},
+    })
+    expect(store.preference.value, "before attach").toBe(ThemeValue.SYSTEM)
+
+    store.attach()
+
     expect(store.preference.value).toBe(ThemeValue.DARK)
     expect(store.actual.value).toBe(ThemeValue.DARK)
+    store.dispose()
   })
 
   it("ignores a stored value it does not understand", () => {
-    const store = createThemeStore({ storage: fakeStorage({ theme: "solarized" }), media: null })
+    const store = createThemeStore({
+      storage: fakeStorage({ theme: "solarized" }),
+      media: null,
+      apply: () => {},
+    })
+    store.attach()
     expect(store.preference.value).toBe(ThemeValue.SYSTEM)
+    store.dispose()
   })
 
   it("persists a preference when it is set", () => {
@@ -66,24 +163,148 @@ describe("createThemeStore preference", () => {
 
   it("honours a custom storage key", () => {
     const storage = fakeStorage({ "ui-theme": "dark" })
-    const store = createThemeStore({ storage, storageKey: "ui-theme", media: null })
+    const store = createThemeStore({
+      storage,
+      storageKey: "ui-theme",
+      media: null,
+      apply: () => {},
+    })
+    store.attach()
     expect(store.preference.value).toBe(ThemeValue.DARK)
+    expect(storage.reads).toEqual(["ui-theme"])
+
     store.set(ThemeValue.LIGHT)
+
     expect(storage.entries.get("ui-theme")).toBe("light")
+    store.dispose()
   })
 
   it("works with no ports at all", () => {
     const store = createThemeStore()
-    expect([ThemeValue.LIGHT, ThemeValue.DARK, ThemeValue.SYSTEM]).toContain(store.preference.value)
+    expect(store.preference.value).toBe(ThemeValue.SYSTEM)
+  })
+})
+
+describe("createThemeStore ports", () => {
+  it("reads neither the storage nor the OS while it is being created", () => {
+    const storage = fakeStorage({ theme: "dark" })
+    const media = fakeMedia(true)
+
+    createThemeStore({ storage, media: media.source, apply: () => {} })
+
+    expect(storage.reads, "storage reads").toEqual([])
+    expect(storage.writes, "storage writes").toEqual([])
+    expect(media.queries, "media queries").toEqual([])
+  })
+
+  it("reads both when it attaches, and asks for the dark scheme by default", () => {
+    const storage = fakeStorage({ theme: "dark" })
+    const media = fakeMedia(true)
+    const store = createThemeStore({ storage, media: media.source, apply: () => {} })
+
+    store.attach()
+
+    expect(storage.reads).toEqual(["theme"])
+    expect(media.queries).toEqual(["(prefers-color-scheme: dark)"])
+    store.dispose()
+  })
+
+  it("does not touch the runtime's own localStorage until it attaches", () => {
+    withRecordedGlobalStorage((reads) => {
+      const store = createThemeStore({ media: null, apply: () => {} })
+      expect(reads, "read while being created").toEqual([])
+
+      store.attach()
+
+      expect(reads, "read on attach").toEqual(["theme"])
+      store.dispose()
+    })
+  })
+
+  it("asks the media source once, however often it is attached", () => {
+    const media = fakeMedia(false)
+    const store = createThemeStore({ storage: null, media: media.source, apply: () => {} })
+
+    store.attach()
+    store.dispose()
+    store.attach()
+
+    expect(media.queries.length).toBe(1)
+    store.dispose()
+  })
+
+  it("re-reads the OS preference on every attach", () => {
+    const media = fakeMedia(false)
+    const store = createThemeStore({ storage: null, media: media.source, apply: () => {} })
+
+    store.attach()
+    store.dispose()
+    // The OS changed while nothing was listening, which is exactly what a detached store misses.
+    media.emit(true)
+    store.attach()
+
+    expect(store.system.value).toBe(ThemeValue.DARK)
+    store.dispose()
+  })
+
+  it("keeps a preference set before attach when the storage never took it", () => {
+    const store = createThemeStore({ storage: refusingStorage(), media: null, apply: () => {} })
+
+    store.set(ThemeValue.DARK)
+    store.attach()
+
+    expect(store.preference.value).toBe(ThemeValue.DARK)
+    store.dispose()
+  })
+
+  it("does not reload the stored preference when it attaches again", () => {
+    // The scenario the one-time load protects. The storage still holds what a previous session
+    // wrote and refuses everything written now, so the light the user just chose exists only in the
+    // signal: an `attach()` that read storage again would put the page back to dark behind them.
+    const storage = readOnlyStorage(ThemeValue.DARK)
+    const store = createThemeStore({ storage, media: null, apply: () => {} })
+
+    store.attach()
+    expect(store.preference.value, "the stored preference, on the first attach").toBe(
+      ThemeValue.DARK,
+    )
+
+    store.set(ThemeValue.LIGHT)
+    store.dispose()
+    store.attach()
+
+    expect(store.preference.value).toBe(ThemeValue.LIGHT)
+    expect(storage.reads, "storage read once, on the first attach").toEqual(["theme"])
+    store.dispose()
+  })
+
+  it("does not let a storage that refuses a write reach the caller", () => {
+    const store = createThemeStore({ storage: refusingStorage(), media: null, apply: () => {} })
+
+    expect(() => store.set(ThemeValue.DARK)).not.toThrow()
+    expect(store.preference.value).toBe(ThemeValue.DARK)
+  })
+
+  it("does not let a storage that refuses a read reach the caller", () => {
+    const store = createThemeStore({ storage: refusingStorage(), media: null, apply: () => {} })
+
+    expect(() => store.attach()).not.toThrow()
+    expect(store.preference.value).toBe(ThemeValue.SYSTEM)
+    store.dispose()
   })
 })
 
 describe("createThemeStore resolution", () => {
-  it("reads the OS once at creation", () => {
+  it("holds light until it attaches, whatever the OS asks for", () => {
     const media = fakeMedia(true)
-    const store = createThemeStore({ storage: fakeStorage(), media: media.source })
+    const store = createThemeStore({ storage: fakeStorage(), media: media.source, apply: () => {} })
+    expect(store.system.value, "before attach").toBe(ThemeValue.LIGHT)
+
+    store.attach()
+
     expect(store.system.value).toBe(ThemeValue.DARK)
     expect(store.actual.value).toBe(ThemeValue.DARK)
+    store.dispose()
   })
 
   it("follows the OS while the preference is system, once attached", () => {
@@ -116,16 +337,22 @@ describe("createThemeStore resolution", () => {
     expect(store.actual.value).toBe(ThemeValue.DARK)
   })
 
-  it("asks for the dark scheme by default", () => {
+  it("watches the query it was given instead of the default one", () => {
     const queries: string[] = []
-    createThemeStore({
+    const store = createThemeStore({
       storage: null,
+      systemQuery: "(prefers-contrast: more)",
       media: (query) => {
         queries.push(query)
         return { matches: false }
       },
+      apply: () => {},
     })
-    expect(queries).toEqual(["(prefers-color-scheme: dark)"])
+
+    store.attach()
+
+    expect(queries).toEqual(["(prefers-contrast: more)"])
+    store.dispose()
   })
 })
 
@@ -140,13 +367,25 @@ describe("createThemeStore toggle", () => {
   })
 
   it("leaves system by choosing the opposite of the OS", () => {
-    const darkHost = createThemeStore({ storage: fakeStorage(), media: fakeMedia(true).source })
+    const darkHost = createThemeStore({
+      storage: fakeStorage(),
+      media: fakeMedia(true).source,
+      apply: () => {},
+    })
+    darkHost.attach()
     darkHost.toggle()
     expect(darkHost.preference.value).toBe(ThemeValue.LIGHT)
+    darkHost.dispose()
 
-    const lightHost = createThemeStore({ storage: fakeStorage(), media: fakeMedia(false).source })
+    const lightHost = createThemeStore({
+      storage: fakeStorage(),
+      media: fakeMedia(false).source,
+      apply: () => {},
+    })
+    lightHost.attach()
     lightHost.toggle()
     expect(lightHost.preference.value).toBe(ThemeValue.DARK)
+    lightHost.dispose()
   })
 })
 

@@ -7,7 +7,6 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import * as charts from "@preact-components/charts"
 import * as crud from "@preact-components/crud"
-import * as signals from "@preact-components/signals"
 import * as system from "@preact-components/system"
 import * as ui from "@preact-components/ui"
 import {
@@ -31,7 +30,7 @@ const EXPORTS = await packageExports()
  * these imports run the same way a caller's own `import * as ui from "@preact-components/ui"`
  * would, so a bug in the read cannot also corrupt what it is compared to.
  */
-const BARRELS: Record<PackageId, object> = { ui, charts, system, crud, signals }
+const BARRELS: Record<PackageId, object> = { ui, charts, system, crud }
 
 /** A component name no package exports and no section demonstrates. */
 const GHOST = "GhostWidget"

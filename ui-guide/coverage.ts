@@ -15,14 +15,13 @@
 
 import * as charts from "@preact-components/charts"
 import * as crud from "@preact-components/crud"
-import * as signals from "@preact-components/signals"
 import * as system from "@preact-components/system"
 import * as ui from "@preact-components/ui"
 import { parse } from "@std/jsonc"
 import { catalogueSections, type PackageId, packageIds } from "./registry.ts"
 
 /** Barrel namespace of every catalogued package, keyed the way the catalogue keys it. */
-const BARRELS: Record<PackageId, object> = { ui, charts, system, crud, signals }
+const BARRELS: Record<PackageId, object> = { ui, charts, system, crud }
 
 /** The repository root: the parent of every package directory. */
 const ROOT = new URL("../", import.meta.url)
@@ -53,11 +52,6 @@ export const EXPORTS_WITHOUT_DEMO: Record<PackageId, readonly AllowedExport[]> =
   crud: [
     { name: "ValidationType", reason: "An enum of validation states, not a component." },
   ],
-  signals: [
-    { name: "ErrType", reason: "An enum of error kinds, not a component." },
-    { name: "RemoteEvent", reason: "An enum of remote-event kinds, not a component." },
-    { name: "ThemeValue", reason: "An enum of colour-scheme values, not a component." },
-  ],
 }
 
 /**
@@ -86,6 +80,10 @@ export const EXCLUDED_PACKAGES = {
   pages: {
     reason:
       "The GitHub Pages demo, this guide's host app. A workspace member for its build-only pins, not a package: it publishes nothing.",
+  },
+  signals: {
+    reason:
+      "State factories and pure functions — a store, a sort comparator, a validator — with nothing to render. It exported `For` and `Show` until `@preact/signals/utils` was found to ship both; what is left is `signals/README.md`'s to explain, not a card's.",
   },
 } as const satisfies Record<string, { reason: string }>
 

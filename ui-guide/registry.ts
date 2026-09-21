@@ -37,7 +37,6 @@ import { feedbackDemos } from "./sections/feedback.tsx"
 import { fieldDemos } from "./sections/fields.tsx"
 import { formDemos } from "./sections/forms.tsx"
 import { inputDemos } from "./sections/inputs.tsx"
-import { signalsDemos } from "./sections/signals.tsx"
 import { surfaceDemos } from "./sections/surfaces.tsx"
 import { systemDemos } from "./sections/system.tsx"
 
@@ -48,7 +47,7 @@ import { systemDemos } from "./sections/system.tsx"
  * `coverage.ts` reads this list and fails when a package directory is neither catalogued nor
  * excluded with a reason.
  */
-export const packageIds = ["ui", "charts", "system", "crud", "signals"] as const
+export const packageIds = ["ui", "charts", "system", "crud"] as const
 
 /** Identifier of a catalogued package: its directory, and the last segment of its specifier. */
 export type PackageId = (typeof packageIds)[number]
@@ -131,9 +130,10 @@ export type SectionKind = "component" | "class"
  * feedback it shows when there is nothing to show, and the two sections that document
  * `preset.css`'s own class families. `inputs` is one story in two halves, `ui/`'s controlled
  * primitives and the native controls the same classes style. `data` is the two packages that only
- * matter once there is a resource. `application` is the app shell an adopter wires first, and
- * `signals` sits with it because it is the layer that shell is assembled through rather than a
- * sibling of the component packages.
+ * matter once there is a resource. `application` is the app shell an adopter wires first, and it is
+ * a group of one: `signals/` was read beside it until that package stopped exporting components,
+ * and the group is kept because the shell is a reader's own reason for looking rather than a
+ * leftover of the package it once shared a heading with.
  */
 export const catalogueGroupIds = [
   "foundations",
@@ -195,7 +195,7 @@ const groupHeadings: Record<GroupId, { title: string; blurb: string }> = {
   application: {
     title: "App shell",
     blurb:
-      "The chrome an adopter wires first — navigation, heads, the service-worker prompt — and the signals package it is assembled through, which is a layer rather than a sibling of the component packages.",
+      "The chrome an adopter wires first: the heads a page needs, the service-worker prompt, the dual-mode calendar and the blog image enhancer. The state layer these are assembled through is `signals/`, which has nothing to render and so has no section here — read its own README instead.",
   },
 }
 
@@ -254,7 +254,6 @@ export type SectionId =
   | "charts"
   | "system"
   | "crud"
-  | "signals"
 
 const catalogue = {
   badges: {
@@ -333,7 +332,7 @@ const catalogue = {
     package: "system",
     title: "System",
     blurb:
-      "Application chrome and platform integration: navigation, heads, the service-worker prompt, the dual-mode calendar. Everything is live; the two platform-integration cards say on the card what they demonstrate and what they leave to a browser.",
+      "Application chrome and platform integration: heads, the service-worker prompt, the dual-mode calendar. Everything is live; the two platform-integration cards say on the card what they demonstrate and what they leave to a browser.",
     demos: systemDemos,
   },
   crud: {
@@ -343,14 +342,6 @@ const catalogue = {
     blurb:
       "The list and editor scaffolding a resource page is rebuilt from — props and slots, no entity and no store assumed. Every card drives a small in-memory store built from the structural interfaces the package declares.",
     demos: crudDemos,
-  },
-  signals: {
-    group: "application",
-    package: "signals",
-    title: "Signals",
-    blurb:
-      "The state layer. `For` and `Show` are the package's only components; everything else is a factory an app calls itself (`buildModelStore`, `createListState`, `createToastStore`, `useUrlFilters`), so the section is short by design.",
-    demos: signalsDemos,
   },
 } as const satisfies Record<SectionId, SectionSpec>
 
@@ -465,7 +456,6 @@ export const demoRegistry: DemoRegistry = {
   ...chartsDemos,
   ...systemDemos,
   ...crudDemos,
-  ...signalsDemos,
 }
 
 /**

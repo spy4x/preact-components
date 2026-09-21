@@ -515,11 +515,6 @@
           "npm:preact-render-to-string@6.7.0"
         ]
       },
-      "signals": {
-        "dependencies": [
-          "npm:preact-render-to-string@6.7.0"
-        ]
-      },
       "system": {
         "dependencies": [
           "npm:preact-render-to-string@6.7.0"
