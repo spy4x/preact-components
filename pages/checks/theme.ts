@@ -167,6 +167,7 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
   const styled = await devtools.evaluate<{
     buttonRadius: string
     buttonBackground: string
+    buttonHovered: boolean
     light: string
     dark: string
   }>(`(async () => {
@@ -196,14 +197,26 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
     return {
       buttonRadius: getComputedStyle(button).borderRadius,
       buttonBackground: getComputedStyle(button).backgroundColor,
+      // The browser is launched with a hover-capable pointer (see \`pages/verify.ts\`), so
+      // \`.btn-primary\`'s \`hover:bg-purple-800\` now applies whenever a pointer happens to be
+      // resting on this button — and a fill read in that state is the hover fill rather than the
+      // one this check is about. Nothing moves a pointer before \`theme.ts\` today, which is the
+      // only reason the reading is safe; asserted rather than relied on, so a later check that
+      // moves one first fails here by name instead of quietly reading the wrong colour.
+      buttonHovered: button.matches(":hover"),
       light,
       dark,
     }
   })()`)
   check(
     "Tailwind utilities style the components in the browser",
-    styled.buttonRadius === "6px" && styled.buttonBackground !== "rgba(0, 0, 0, 0)",
-    `Button radius ${styled.buttonRadius} (rounded-md), primary fill ${styled.buttonBackground}`,
+    styled.buttonRadius === "6px" && styled.buttonBackground !== "rgba(0, 0, 0, 0)" &&
+      !styled.buttonHovered,
+    styled.buttonHovered
+      ? `a pointer was resting on the Button card when its fill was read, so ` +
+        `${styled.buttonBackground} is the hover fill and says nothing about the resting one`
+      : `Button radius ${styled.buttonRadius} (rounded-md), primary fill ` +
+        `${styled.buttonBackground}, read with nothing hovering it`,
   )
   check(
     "tokens.css switches the palette on the .dark class",
