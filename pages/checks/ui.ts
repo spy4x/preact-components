@@ -748,11 +748,44 @@ const TOASTR_SETUP = `(() => {
     card,
     region: card?.querySelector('[data-e2e="guide-toastr"]') ?? null,
     auto: card?.querySelector('[data-e2e="toast-auto"]') ?? null,
+    long: card?.querySelector('[data-e2e="toast-long"]') ?? null,
     extend: card?.querySelector('[data-e2e="toast-extend"]') ?? null,
     clear: card?.querySelector('[data-e2e="toast-clear"]') ?? null,
     success: card?.querySelector('[data-e2e="toast-success"]') ?? null,
+    count: card?.querySelector('[data-e2e="toast-store-count"]') ?? null,
+    fallback: card?.querySelector('[data-e2e="toast-default-duration"]') ?? null,
   }
   return null
+})()`
+
+/**
+ * What the store says it is holding and what the live area shows, read together.
+ *
+ * The two numbers are the point. The card prints the store's own `list.length`, so a component
+ * that took a toast off the screen without telling the store, or a store that dropped one the
+ * screen still shows, reads as a disagreement here rather than as two checks that each pass.
+ */
+const TOASTR_STORE_AND_DOM = `(() => {
+  const parked = globalThis.__verifyToastr ?? {}
+  const region = parked.region ?? null
+  const count = parked.count ?? null
+  if (region === null || count === null) {
+    return {
+      ok: false,
+      reason: "the Toastr card is missing " +
+        (region === null ? "its live area" : 'its store readout (data-e2e="toast-store-count")'),
+      store: -1,
+      dom: -1,
+      text: "",
+    }
+  }
+  return {
+    ok: true,
+    reason: "",
+    store: Number((count.textContent ?? "").trim()),
+    dom: region.children.length,
+    text: (region.textContent ?? "").trim().slice(0, 120),
+  }
 })()`
 
 /**
@@ -827,6 +860,13 @@ const TOASTR_STATE = `(() => {
  * coordinates over the Dropdown card, and viewport coordinates do not scroll with the page, so
  * without this the pointer can end up resting on the Toastr card and pausing the timer the check is
  * about to measure.
+ *
+ * **Every toast here comes out of a real `createToastStore`.** The card used to keep its own array,
+ * so these checks proved the component on its own and said nothing about the pair — which is how
+ * #174 and #175 survived a green browser run. The card now reads the store, the component owns
+ * every timer, and {@link storeDelayChecks} at the end covers the two things that only the pair
+ * can be wrong about: the delay crossing the boundary, and the two sides agreeing about what is
+ * on screen.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -913,9 +953,169 @@ async function toastrChecks(devtools: Devtools): Promise<void> {
   await pointerPauseCheck(devtools)
   await budgetCheck(devtools)
   await extendCheck(devtools)
+  await storeDelayChecks(devtools)
 
   // Leave the card as it was found, for whatever reads the page next.
   await devtools.evaluate<null>(`(globalThis.__verifyToastr?.clear?.click(), null)`)
+}
+
+/** One reading of the card's store readout next to its live area. */
+interface StoreAndDom {
+  /** `false` when the card was missing a part, which makes every number below meaningless. */
+  ok: boolean
+  /** Which part was missing, for the failure message. */
+  reason: string
+  /** Toasts the store says it is holding, as the card prints the number. */
+  store: number
+  /** Toasts in the live area. */
+  dom: number
+  /** The stack's text, cut short, for the failure message. */
+  text: string
+}
+
+/** A push of the card's two long-lived toasts, with the numbers the checks reason about. */
+interface LongPush extends StoreAndDom {
+  /** The long toast's delay, read off the card's own button. */
+  long: number
+  /** The delay a toast with no `duration` gets, read off the card rather than copied here. */
+  fallback: number
+}
+
+/**
+ * The delay a store toast asked for is the delay that runs, `0` included.
+ *
+ * This is #174 and #175 in the browser, and it needs the card's stack to come out of a real
+ * `createToastStore` — it does, which is the other half of this change. Two toasts go up at once:
+ * one asking for twenty seconds and one asking for `0`, which the store documents as "keep this
+ * until somebody dismisses it". Before the fix both were gone in five, because the store wrote its
+ * delay under a name the component did not read and the component fell back to its own default.
+ *
+ * One wait covers both, and it is the expensive part of this file, so it is sized rather than
+ * padded: the window is the component's own default plus a fifth, read off the card so a changed
+ * default moves the check with it. Five seconds is the number that has to be beaten; waiting the
+ * full twenty would prove nothing more and cost fifteen seconds on every verification run.
+ *
+ * Then the two removal directions, which are why the card prints the store's own count: the
+ * component takes the `0` toast off on a real press of its dismiss control, and the store's list
+ * has to lose it too; the store takes the rest off on `clear`, and the live area has to empty.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function storeDelayChecks(devtools: Devtools): Promise<void> {
+  const parked = await pointerAway(devtools)
+  const pushed = await devtools.evaluate<LongPush>(`(async () => {
+    const parked = globalThis.__verifyToastr ?? {}
+    const { clear, long, success, fallback } = parked
+    const blank = { long: 0, fallback: 0, store: -1, dom: -1, text: "" }
+    if (!clear || !long || !success || !fallback) {
+      const missing = !clear
+        ? 'its clear button (data-e2e="toast-clear")'
+        : !long
+        ? 'its long-delay button (data-e2e="toast-long")'
+        : !success
+        ? 'its success button (data-e2e="toast-success")'
+        : 'its default-duration readout (data-e2e="toast-default-duration")'
+      return { ...blank, ok: false, reason: "the Toastr card is missing " + missing }
+    }
+    clear.click()
+    await new Promise((done) => setTimeout(done, 50))
+    long.click()
+    success.click()
+    await new Promise((done) => setTimeout(done, 80))
+    return {
+      ...(${TOASTR_STORE_AND_DOM}),
+      long: Number(long.dataset.duration ?? 0),
+      fallback: Number((fallback.textContent ?? "").trim()),
+    }
+  })()`)
+
+  // Derived, not typed in: the window only has to outlast the default the component would have
+  // applied, and the long toast only has to outlast the window.
+  const waitMs = Math.round(pushed.fallback * 1.2)
+  const held = await holdsFor(
+    () => devtools.evaluate<boolean>(`${TOASTR_STORE_AND_DOM}.dom === 2`),
+    waitMs,
+  )
+  const after = await devtools.evaluate<StoreAndDom>(TOASTR_STORE_AND_DOM)
+
+  check(
+    "a toast pushed through the store runs the delay the store was asked for, and duration: 0 " +
+      "keeps it until somebody dismisses it",
+    pushed.ok && pushed.dom === 2 && pushed.store === 2 && parked.insideRegion === false &&
+      pushed.fallback > 0 && pushed.long > waitMs && held.held && after.dom === 2,
+    !pushed.ok
+      ? pushed.reason
+      : pushed.fallback <= 0
+      ? `the card's default-duration readout says "${pushed.fallback}", so there is no number to ` +
+        `beat and this proves nothing`
+      : pushed.dom !== 2 || pushed.store !== 2
+      ? `the two toasts did not both go up: the store holds ${pushed.store} and the live area ` +
+        `shows ${pushed.dom}, reading "${pushed.text}"`
+      : pushed.long <= waitMs
+      ? `the card's long toast asks for ${pushed.long}ms, which does not outlast the ${waitMs}ms ` +
+        `window, so the two outcomes cannot be told apart`
+      : parked.insideRegion
+      ? `the pointer was resting on the stack (${parked.tag}), which pauses the timers, so ` +
+        `surviving the window proves nothing`
+      : held.unreadable
+      ? `the page stopped answering ${held.elapsedMs}ms in, so this proves nothing`
+      : !held.held
+      ? `one of the two was gone ${held.elapsedMs}ms in — about the ${pushed.fallback}ms default ` +
+        `the component applies to a toast whose delay never reached it; the stack reads ` +
+        `"${after.text}"`
+      : `a ${pushed.long}ms toast and a duration: 0 toast, both pushed through the store, were ` +
+        `still on screen ${held.elapsedMs}ms later, past the ${pushed.fallback}ms the component ` +
+        `would have given a toast whose delay it could not read`,
+  )
+
+  const dismissed = await devtools.evaluate<StoreAndDom & { pressed: boolean }>(`(async () => {
+    const region = globalThis.__verifyToastr?.region ?? null
+    const sticky = [...(region?.children ?? [])]
+      .find((toast) => (toast.textContent ?? "").includes("success"))
+    const control = sticky?.querySelector("button") ?? null
+    if (control === null) return { ...(${TOASTR_STORE_AND_DOM}), pressed: false }
+    control.click()
+    await new Promise((done) => setTimeout(done, 80))
+    return { ...(${TOASTR_STORE_AND_DOM}), pressed: true }
+  })()`)
+
+  check(
+    "dismissing a toast in the stack takes it off the store's list as well as off the screen",
+    dismissed.ok && dismissed.pressed && after.dom === 2 && after.store === 2 &&
+      dismissed.dom === 1 && dismissed.store === 1,
+    !dismissed.ok
+      ? dismissed.reason
+      : !dismissed.pressed
+      ? "the duration: 0 toast carried no dismiss control to press, so this proves nothing"
+      : after.dom !== 2 || after.store !== 2
+      ? `there were not two toasts to take one away from: the store held ${after.store} and the ` +
+        `live area showed ${after.dom}`
+      : dismissed.dom === 1 && dismissed.store === 1
+      ? `pressing one toast's dismiss control took the store from ${after.store} to ` +
+        `${dismissed.store} and the live area from ${after.dom} to ${dismissed.dom}, leaving ` +
+        `"${dismissed.text}"`
+      : `the store and the screen disagree after the press: the store holds ${dismissed.store} ` +
+        `and the live area shows ${dismissed.dom}`,
+  )
+
+  const emptied = await devtools.evaluate<StoreAndDom>(`(async () => {
+    globalThis.__verifyToastr?.clear?.click()
+    await new Promise((done) => setTimeout(done, 80))
+    return ${TOASTR_STORE_AND_DOM}
+  })()`)
+
+  check(
+    "a toast the store removes leaves the screen with it",
+    emptied.ok && dismissed.dom === 1 && emptied.dom === 0 && emptied.store === 0,
+    !emptied.ok
+      ? emptied.reason
+      : dismissed.dom !== 1
+      ? `there was no toast left on screen to clear — the live area showed ${dismissed.dom}`
+      : emptied.dom === 0 && emptied.store === 0
+      ? `clearing the store took the live area from ${dismissed.dom} toast to ${emptied.dom}`
+      : `the store was cleared to ${emptied.store} but the live area still shows ${emptied.dom}, ` +
+        `reading "${emptied.text}"`,
+  )
 }
 
 /**
@@ -1046,6 +1246,11 @@ async function extendCheck(devtools: Devtools): Promise<void> {
 /**
  * Focus inside the stack holds the timer, and the timer resumes once focus leaves.
  *
+ * The toast comes out of `createToastStore`, because the whole card does now. That is what #175
+ * was about: the pause was real and proven, and it reached nothing when the stack was wired the
+ * way the documentation showed, because the store was running a second timer the component could
+ * not touch.
+ *
  * The control focused is a toast's own dismiss button — the one a keyboard user is reaching for
  * when the five-second race is lost — and focus leaves to the card's clear button, which is outside
  * the stack but still on the page. That is the stricter of the two paths the component has to get
@@ -1083,7 +1288,8 @@ async function focusPauseCheck(devtools: Devtools): Promise<void> {
   const resumed = await goneWithin(devtools, pushed.duration * 4)
 
   check(
-    "focus inside the Toastr stack holds its timer, and leaving resumes it",
+    "focus inside the Toastr stack holds the timer of a toast that came out of the store, and " +
+      "leaving resumes it",
     pushed.ok && pushed.toasts === 1 && parked.insideRegion === false && focused.ok &&
       focused.inside && held.held && out.ok && out.outside && resumed.held,
     !pushed.ok
@@ -1111,6 +1317,10 @@ async function focusPauseCheck(devtools: Devtools): Promise<void> {
 
 /**
  * The pointer over the stack holds the timer, and the timer resumes once the pointer leaves.
+ *
+ * Like the focus pause above, this runs against a toast the card pushed through the store, so it
+ * measures the hold on the wiring the documentation shows rather than on a stack the card kept to
+ * itself.
  *
  * The move is a real `Input.dispatchMouseEvent`, so the browser hit-tests it and produces the
  * `mouseenter` the component listens for; a synthesised event in the page would prove only that a
@@ -1183,7 +1393,8 @@ async function pointerPauseCheck(devtools: Devtools): Promise<void> {
   const resumed = await goneWithin(devtools, pushed.duration * 4)
 
   check(
-    "the pointer over the Toastr stack holds its timer, and leaving resumes it",
+    "the pointer over the Toastr stack holds the timer of a toast that came out of the store, " +
+      "and leaving resumes it",
     pushed.ok && pushed.toasts === 1 && spot.inViewport && spot.insideRegion && hover !== null &&
       hover.insideRegion && held.held && away.insideRegion === false && resumed.held,
     !pushed.ok

@@ -12,6 +12,7 @@
 import {
   Button,
   ConfirmDialog,
+  defaultToastDuration,
   type DialogTone,
   EmptyState,
   ErrorState,
@@ -233,8 +234,10 @@ function ToastrDemo() {
       </div>
       <p class="text-xs text-gray-500 dark:text-gray-400">
         The store is holding <span data-e2e="toast-store-count">{toasts.length}</span>{" "}
-        toast(s). It is the same number the live area below shows, because the component removes
-        through the store rather than beside it.
+        toast(s) — the same number the live area below shows, because the component removes through
+        the store rather than beside it. A toast that names no delay of its own stays{" "}
+        <span data-e2e="toast-default-duration">{defaultToastDuration}</span>{" "}
+        ms, which is the component's default and the only auto-dismiss default in the library.
       </p>
       <div class="min-h-24 rounded-lg border border-dashed border-gray-300 p-4 dark:border-gray-600">
         {toasts.length === 0
