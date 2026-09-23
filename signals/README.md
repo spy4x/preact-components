@@ -189,11 +189,13 @@ some other way.
 wherever it points.** Judged the later of the two, the event replaces the held row wholesale —
 name, every column, `updatedAt` — exactly like an `"updated"` event: its columns are the newest
 known state of the row, not an old copy, so nothing protects them from landing. Judged the older of
-the two, it is narrower: a claim about archiving the row and nothing else, so only `deletedAt` is
-taken from it and every other column, `updatedAt` included, keeps the value the list already held.
-An older event with nothing to archive — `deletedAt` false, or the model carries no such column at
-all — is not a claim about anything and changes nothing, not even the columns it usually protects,
-because there is nothing to protect.
+the two, it is narrower: a claim that may only turn an unarchived row into an archived one, and
+nothing else. Every other column, `updatedAt` included, keeps the value the list already held, and
+`deletedAt` moves only from a falsy value to the event's — an older event with nothing to archive
+(`deletedAt` false, or the model carries no such column at all) is not a claim about anything, and a
+row the list already holds as archived keeps its own instant, because the event's is then an old
+copy of that column too, not a fresh claim about it. Neither case adds a phantom `deletedAt` to a
+model that has none.
 
 Before this rule a delete replaced the held row wholesale whatever the clock said, two ways. A
 delete carrying an older copy of the row overwrote a newer one and wound its clock back, leaving the
@@ -202,11 +204,11 @@ application with its own clock over a version column could not defend a delete a
 answer of its own, because nothing that clock read was ever moved by an archive-only delete; the
 review of the pull request that closed #201 found this one.
 
-One consequence of the older half worth stating plainly: because an older delete with a `deletedAt`
-always archives, a late delete can re-archive a row that a later `undelete` had already restored —
-ordering is judged by the clock alone, and an archive/restore pair does not reliably move it in
-every server's data contract. That is accepted, not fixed: refusing it would need the store to
-remember more about a row than its current state.
+One consequence worth stating plainly: a delete that arrives late can still re-archive a row that a
+later `undelete` had already restored — ordering is judged by the clock alone, and an
+archive-then-restore pair does not reliably move it in every server's data contract. That is
+accepted, not fixed: refusing it would need the store to remember more about a row than its
+current state.
 
 **The later of a remote change and your own answer wins.** When the answer to one of your own
 requests comes back, it is compared against the row the list is holding — by the same `isNewer`,
