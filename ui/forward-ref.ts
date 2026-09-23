@@ -12,7 +12,10 @@ const FORWARDS_REF = Symbol("forwardRef")
 /** A component {@link forwardRef} produced, carrying the marker the `options` hook looks for. */
 interface ForwardedType {
   [FORWARDS_REF]: true
-  /** Set from {@link forwardRef}'s `name` argument — see its doc comment for why not `render.name`. */
+  /**
+   * Set from {@link forwardRef}'s `name` argument, not `render.name` — see the comment above
+   * `marked.displayName = name` inside {@link forwardRef} for why `render.name` cannot be trusted.
+   */
   displayName: string
 }
 
@@ -121,16 +124,19 @@ export function forwardRef<Instance, Props>(
   // `name` is its own parameter rather than `render.name` on purpose, and the difference is not
   // cosmetic: each of the four callers writes `forwardRef(fn)` where `fn` is a function expression
   // with the *same* name as the `const` it initializes (`const Button = forwardRef(function
-  // Button(...) {...})`), which reads fine as source but is exactly the shape `deno bundle`'s
-  // bundler (esbuild) renames on sight, to keep the outer binding and the inner expression's own
-  // name from colliding once both land in one flattened module scope. Bundling this package's own
-  // demo confirmed it: `function Button(...)` came out of `deno bundle --platform browser` as
-  // `function Button2(...)`, so `render.name` there is `"Button2"`, not `"Button"` — a
-  // `preact/debug` warning in the shipped bundle would have named the wrong thing even with this
-  // fix, had it read `render.name` instead of taking `name` as a literal string a bundler cannot
-  // rename. Set to the plain name, not `preact/compat`'s `ForwardRef(${name})`: the printed name
-  // then matches exactly what it was before this file existed — "in Button", not "in
-  // ForwardRef(Button)" — and every other component in this package already prints its plain name.
+  // Button(...) {...})`), which reads fine as source but is exactly the shape a bundler cannot
+  // leave alone. `deno bundle --platform browser` of a page that imports `Button` renamed
+  // `function Button(...)` to `function Button2(...)`, to keep the outer binding and the inner
+  // expression's own name from colliding once both land in one flattened module scope; the same
+  // bundle with `--minify` — what `pages/build.ts` actually ships — went further and dropped the
+  // name entirely, emitting `function({variant, ...}) {...}` with nothing after `function` at all.
+  // Either way `render.name` in the shipped bundle is not `"Button"`, so a `preact/debug` warning
+  // there would have named the wrong thing (or nothing) even with this fix, had it read
+  // `render.name` instead of taking `name` as a literal string no bundler can touch. Set to the
+  // plain name, not `preact/compat`'s `ForwardRef(${name})`: the printed name then matches exactly
+  // what it was before this file existed — "in Button", not "in ForwardRef(Button)" — which is
+  // what every *unbundled* render of this package still prints for every other component, since
+  // nothing else in it is wrapped or renamed.
   marked.displayName = name
   return marked
 }
