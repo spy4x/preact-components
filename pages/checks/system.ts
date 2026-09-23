@@ -3563,7 +3563,7 @@ async function ensureSiteHeaderClosed(devtools: Devtools): Promise<void> {
  *
  * A real click and a real Escape, sent as two separate DevTools Protocol commands, do not reliably
  * land inside the gap: an earlier version of this check, built that way, caught the old `isOpen`-
- * gated listener's absence in only 3 of 12 `verify` runs on one machine and 2 of 15 on another,
+ * gated listener's absence in only 2 of 15 `verify` runs,
  * because the round trip each command makes to the browser is itself enough time, on most attempts,
  * for the `toggle` event — a queued task — to have been delivered and the old listener to have
  * (re)attached before the key arrives. Doing both inside one `Runtime.evaluate` closes that gap
