@@ -51,9 +51,14 @@ complete exact/near/none breakdown, and run `deno task --cwd icons provenance` f
 list. The table is a partition of all 119 glyphs: every row above is disjoint from every other,
 `roley`'s 18 included.
 
-The `roley` row is a source, not a single weight: 15 `stroke-2` v1 outlines and 3 filled glyphs
-drawn without a stroke (`IconExternalLink`, `IconLockClosedFilled`, `IconPlaySolid`). No `roley`
-glyph is `stroke-1.5`.
+The `roley` row is a source, not a single weight, and the split below is by rendering, not by match
+outcome — a different partition of the same 18 from the table's own "17 match exactly, 1 matches
+none", not a second count to add against it: 15 `stroke-2` v1 outlines, all 15 exact matches to
+Heroicons v1's own outline pack, and 3 filled glyphs drawn without a stroke (`IconExternalLink`,
+`IconLockClosedFilled`, `IconPlaySolid`). Of those 3, `IconExternalLink` is the table's one "matches
+none"; `IconLockClosedFilled` and `IconPlaySolid` are 2 of its 17 exact matches — to Heroicons v1
+solid and v2 outline respectively, not to a v1 outline glyph, which is why they sit outside the 15
+here. No `roley` glyph is `stroke-1.5`.
 
 Rendered stroke width is what matters visually, and the table above does not show it: a
 `stroke-1.5` glyph next to a `stroke-2` glyph reads as a mistake regardless of which pack either one
