@@ -56,9 +56,9 @@ describe("seoHeadTags", () => {
   })
 
   it("emits the twitter card set", () => {
+    // twitter:card itself is covered below, by the "derives …" and "lets a caller force …" tests.
     const tags = tagMap(PAGE)
 
-    expect(tags.get("twitter:card")).toBe("summary_large_image")
     expect(tags.get("twitter:site")).toBe("@acme")
     expect(tags.get("twitter:title")).toBe("Widgets — Acme")
     expect(tags.get("twitter:description")).toBe("Widgets for teams.")
@@ -85,6 +85,19 @@ describe("seoHeadTags", () => {
     const tags = tagMap({ ...PAGE, ogImage: undefined, twitterCard: "summary_large_image" })
 
     expect(tags.get("twitter:card")).toBe("summary_large_image")
+  })
+
+  it("never emits twitter:card twice, across every image/override combination", () => {
+    const cardTagCount = (head: PageHead) =>
+      seoHeadTags(head).filter((tag) => tag.tag === "meta" && tag.attrs.name === "twitter:card")
+        .length
+
+    expect(cardTagCount(PAGE)).toBe(1)
+    expect(cardTagCount({ ...PAGE, ogImage: undefined })).toBe(1)
+    expect(cardTagCount({ ...PAGE, twitterCard: "summary" })).toBe(1)
+    expect(cardTagCount({ ...PAGE, ogImage: undefined, twitterCard: "summary_large_image" })).toBe(
+      1,
+    )
   })
 
   it("emits the open graph set", () => {
