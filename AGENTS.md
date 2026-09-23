@@ -293,10 +293,10 @@ arktype                          2.2.3
 @std/assert                     1.0.19
 @std/expect                     1.0.20
 @std/testing                    1.0.20
+preact-render-to-string          6.7.0
 tailwind-merge                   3.7.0
 d3                               7.9.0
 tailwindcss                     4.1.12
-@tailwindcss/forms              0.5.10
 ```
 
 **What is mechanically checked, and what is not.** Assume nothing here is. Exact pinning is a
