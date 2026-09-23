@@ -5020,20 +5020,26 @@ const DATA_TABLE_STATE = `(() => {
 })()`
 
 /**
- * `DataTable`'s sort-by-header and paging contract: a real `<button>` per sortable header,
- * `aria-sort` on exactly the sorted column, a click or a Space press both sorting and reversing,
- * and a page turn that does not cost the reader their place.
+ * `DataTable`'s sort-by-header, paging and URL contract: a real `<button>` per sortable header,
+ * `aria-sort` on exactly the sorted column, a real mouse click or a Space press both sorting and
+ * reversing, a page turn that does not cost the reader their place, and — on the separate,
+ * URL-bound instance `pages/src/data-table-sort.tsx` mounts — a header press that round-trips
+ * through `?sort=`.
  *
  * The click half and the Space half each drive the same column, Merchant, through the same two
  * transitions — sorted, then reversed — because that is the pair the issue's "Done when" asks for
- * on each input method rather than once for the component. A real Enter press is not sent: this
- * repository's browser measured, elsewhere in this file, that Enter does not activate a focused
- * button here, so every trigger in this catalogue is driven by a click or by Space, never by
- * Enter, and this file does not repeat that measurement per component.
+ * on each input method rather than once for the component. The click half uses a real
+ * `Input.dispatchMouseEvent` at the button's own rectangle (`clickMerchantHeader`), and asserts
+ * the press landed on the button before trusting anything that followed it — a scripted `.click()`
+ * fires with no hit-testing, so it would "click" a button a stray `pointer-events-none` had made
+ * unreachable to an actual pointer. A real Enter press is not sent: this repository's browser
+ * measured, elsewhere in this file, that Enter does not activate a focused button here, so every
+ * trigger in this catalogue is driven by a click or by Space, never by Enter, and this file does
+ * not repeat that measurement per component.
  *
  * Three presses on Merchant — ascending, descending, off — return the table to the unsorted
  * baseline before the Space half starts, so the two proofs begin from the same state instead of
- * one inheriting whatever the other left behind; the round trip back to `rowKeys0` is itself
+ * one inheriting whatever the other left behind; the round trip back to the baseline is itself
  * checked, which is what confirms `toggleSort`'s third step (a rule cycles off, not just between
  * the two directions) actually reaches the header, not only the sort state.
  *
@@ -5057,7 +5063,9 @@ async function dataTableChecks(devtools: Devtools): Promise<void> {
       ? 'no [data-e2e="data-table-sort"] readout was found'
       : !found.nextFound
       ? "the pager's Next control was not found"
-      : "the state reader could not read the card it just found",
+      : !baseline.ok
+      ? "the state reader could not read the card it just found"
+      : "card, Merchant header, readout and pager all found",
   )
   check(
     "unsorted, the table shows its rows in input order and no header carries aria-sort",
@@ -5070,35 +5078,54 @@ async function dataTableChecks(devtools: Devtools): Promise<void> {
 
   // Click half: the same column, twice, sorted then reversed — then a third click to confirm the
   // rule cycles off (asc → desc → off) rather than only ever toggling between the two directions.
+  // Each click is a real `Input.dispatchMouseEvent` at the button's own rectangle, not a scripted
+  // `.click()`, and each check asserts the press actually landed on the button before trusting
+  // anything that followed it.
   const clickedOnce = await clickMerchantHeader(devtools)
   check(
-    "clicking a sortable header sorts by it, ascending, and changes the row order",
-    baseline.rowKeys.join(",") !== clickedOnce.rowKeys.join(",") &&
-      clickedOnce.merchantAriaSort === "ascending" && clickedOnce.ariaSortCount === 1,
-    `rows ${baseline.rowKeys.join(",")} → ${clickedOnce.rowKeys.join(",")}, aria-sort ` +
-      `${String(baseline.merchantAriaSort)} → ${String(clickedOnce.merchantAriaSort)}`,
+    "a real mouse click on a sortable header lands on the button, sorts by it, and changes the row order",
+    clickedOnce.onTarget && baseline.rowKeys.join(",") !== clickedOnce.state.rowKeys.join(",") &&
+      clickedOnce.state.merchantAriaSort === "ascending" && clickedOnce.state.ariaSortCount === 1,
+    !clickedOnce.onTarget
+      ? `the press landed on ${clickedOnce.landingTag}, not the Merchant header button`
+      : `rows ${baseline.rowKeys.join(",")} → ${clickedOnce.state.rowKeys.join(",")}, aria-sort ` +
+        `${String(baseline.merchantAriaSort)} → ${String(clickedOnce.state.merchantAriaSort)}`,
   )
 
   const clickedTwice = await clickMerchantHeader(devtools)
   check(
     "clicking that header again reverses the sort, and the row order changes again",
-    clickedOnce.rowKeys.join(",") !== clickedTwice.rowKeys.join(",") &&
-      clickedTwice.merchantAriaSort === "descending" && clickedTwice.ariaSortCount === 1,
-    `rows ${clickedOnce.rowKeys.join(",")} → ${clickedTwice.rowKeys.join(",")}, aria-sort ` +
-      `ascending → ${String(clickedTwice.merchantAriaSort)}`,
+    clickedTwice.onTarget &&
+      clickedOnce.state.rowKeys.join(",") !== clickedTwice.state.rowKeys.join(",") &&
+      clickedTwice.state.merchantAriaSort === "descending" &&
+      clickedTwice.state.ariaSortCount === 1,
+    !clickedTwice.onTarget
+      ? `the press landed on ${clickedTwice.landingTag}, not the Merchant header button`
+      : `rows ${clickedOnce.state.rowKeys.join(",")} → ${clickedTwice.state.rowKeys.join(",")}, ` +
+        `aria-sort ${String(clickedOnce.state.merchantAriaSort)} → ` +
+        `${String(clickedTwice.state.merchantAriaSort)}`,
   )
 
   const clickedThrice = await clickMerchantHeader(devtools)
   check(
     "a third click on the same header clears its sort, back to the unsorted baseline",
-    clickedThrice.rowKeys.join(",") === baseline.rowKeys.join(",") &&
-      clickedThrice.merchantAriaSort === null && clickedThrice.ariaSortCount === 0,
-    `rows ${clickedTwice.rowKeys.join(",")} → ${clickedThrice.rowKeys.join(",")}, aria-sort ` +
-      `descending → ${String(clickedThrice.merchantAriaSort)}`,
+    clickedThrice.onTarget &&
+      clickedThrice.state.rowKeys.join(",") === baseline.rowKeys.join(",") &&
+      clickedThrice.state.merchantAriaSort === null && clickedThrice.state.ariaSortCount === 0,
+    !clickedThrice.onTarget
+      ? `the press landed on ${clickedThrice.landingTag}, not the Merchant header button`
+      : `rows ${clickedTwice.state.rowKeys.join(",")} → ${
+        clickedThrice.state.rowKeys.join(",")
+      }, ` +
+        `aria-sort ${String(clickedTwice.state.merchantAriaSort)} → ` +
+        `${String(clickedThrice.state.merchantAriaSort)}`,
   )
 
   // Space half: the same two transitions, driven by a real key press on the focused header
   // button rather than a click, starting from the baseline the click half just returned to.
+  // Parked first: the click half left the pointer resting on the Merchant button, and a hover
+  // style is not part of what this half is proving.
+  await pointerToCorner(devtools)
   await devtools.evaluate<null>(`(globalThis.__verifyDataTable?.merchant?.focus(), null)`)
   const pressedOnce = await pressMerchantHeader(devtools)
   check(
@@ -5119,7 +5146,7 @@ async function dataTableChecks(devtools: Devtools): Promise<void> {
     !pressedTwice.onMerchant
       ? "the second press moved focus off the Merchant header"
       : `rows ${pressedOnce.rowKeys.join(",")} → ${pressedTwice.rowKeys.join(",")}, aria-sort ` +
-        `ascending → ${String(pressedTwice.merchantAriaSort)}`,
+        `${String(pressedOnce.merchantAriaSort)} → ${String(pressedTwice.merchantAriaSort)}`,
   )
 
   // A third press to leave the table unsorted again before the paging check, which asserts its
@@ -5128,12 +5155,40 @@ async function dataTableChecks(devtools: Devtools): Promise<void> {
   await blurActive(devtools)
 
   await dataTablePagingCheck(devtools)
+  await dataTableUrlSortCheck(devtools)
 }
 
-/** Click the Merchant header button and read the state once it has settled. */
-async function clickMerchantHeader(devtools: Devtools): Promise<DataTableState> {
+/** A real mouse click on the Merchant header button, and where it landed. */
+interface MerchantClick {
+  /** The state once the click has settled. */
+  state: DataTableState
+  /** `true` when the press landed on the Merchant header button, or something inside it. */
+  onTarget: boolean
+  /** What the press actually landed on, for the failure message. */
+  landingTag: string
+}
+
+/** Expression `aimAt`/`clickAt` read the Merchant header button through. */
+const MERCHANT_TARGET = "globalThis.__verifyDataTable?.merchant ?? null"
+
+/**
+ * Click the Merchant header button with a real `Input.dispatchMouseEvent` at its own rectangle —
+ * not a scripted `.click()`, which fires with no hit-testing and would still "click" a button
+ * `pointer-events-none` had made unreachable by an actual pointer.
+ *
+ * Scrolled into view first: the coordinate `aimAt` derives is a viewport point, and the DataTable
+ * card sits well down the page, below every check that ran before this file's own — a real click
+ * dispatched at a point nothing has scrolled to lands on whatever is visible there instead, not on
+ * a button that is currently off-screen.
+ */
+async function clickMerchantHeader(devtools: Devtools): Promise<MerchantClick> {
   const before = await devtools.evaluate<DataTableState>(DATA_TABLE_STATE)
-  await devtools.evaluate<null>(`(globalThis.__verifyDataTable?.merchant?.click(), null)`)
+  await devtools.evaluate<null>(
+    `(globalThis.__verifyDataTable?.merchant?.scrollIntoView({ block: "center" }), null)`,
+  )
+  await settledScroll(devtools)
+  const aim = await aimAt(devtools, MERCHANT_TARGET)
+  const landing = await clickAt(devtools, aim, MERCHANT_TARGET)
   await poll(
     () =>
       devtools.evaluate<boolean>(
@@ -5141,7 +5196,8 @@ async function clickMerchantHeader(devtools: Devtools): Promise<DataTableState> 
       ),
     2_000,
   )
-  return await devtools.evaluate<DataTableState>(DATA_TABLE_STATE)
+  const state = await devtools.evaluate<DataTableState>(DATA_TABLE_STATE)
+  return { state, onTarget: landing?.onTarget === true, landingTag: landing?.tag ?? "nothing" }
 }
 
 /** Press Space on whatever holds focus (the Merchant header, throughout this file's Space half). */
@@ -5209,4 +5265,141 @@ async function dataTablePagingCheck(devtools: Devtools): Promise<void> {
     nextDisabled === "true",
     `Next's aria-disabled is ${String(nextDisabled)} on a 2-page pager's last page`,
   )
+}
+
+/** One read of `pages/src/data-table-sort.tsx`'s own card: its rows and its Customer column. */
+interface DataTableUrlState {
+  /** `false` when the section this file drives is missing. */
+  ok: boolean
+  /** `data-row-key` of every row on screen, in document order. */
+  rowKeys: string[]
+  /** `aria-sort` of the Customer column's `<th>`, or `null` when it carries none. */
+  ariaSort: string | null
+  /** `location.search`, `?` included. */
+  search: string
+  /** `history.length`, so one press costs exactly one entry. */
+  entries: number
+}
+
+/** Park references to the URL-bound demo's section and its Customer header button. */
+const DATA_TABLE_URL_SETUP = `(() => {
+  const section = document.querySelector('[data-e2e="data-table-sort-url"]')
+  const button = section
+    ? ([...section.querySelectorAll("th button")].find((b) => b.textContent.includes("Customer")) ?? null)
+    : null
+  globalThis.__verifyDataTableUrl = { section, button }
+  return { found: section !== null, buttonFound: button !== null }
+})()`
+
+/** Rows, the Customer column's `aria-sort`, and the address, read in one round trip. */
+const DATA_TABLE_URL_STATE = `(() => {
+  const store = globalThis.__verifyDataTableUrl
+  if (!store || !store.section) {
+    return { ok: false, rowKeys: [], ariaSort: null, search: "", entries: -1 }
+  }
+  const rowKeys = [...store.section.querySelectorAll("[data-row-key]")]
+    .map((el) => el.getAttribute("data-row-key"))
+  return {
+    ok: true,
+    rowKeys,
+    ariaSort: store.button ? store.button.closest("th").getAttribute("aria-sort") : null,
+    search: location.search,
+    entries: history.length,
+  }
+})()`
+
+/**
+ * Read the URL-bound demo once it has stopped moving: two identical readings in a row.
+ *
+ * `useUrlFilters` writes the address from a `useSignalEffect`, a render cycle behind the signal
+ * write that also drives `DataTable`'s own re-render — polling on one field alone caught that gap
+ * both ways: `search` moved once while `aria-sort` still read the pre-press value, and `aria-sort`
+ * moved once while `search` still read the pre-press address. Waiting for the whole reading to
+ * repeat itself is what `pages/checks/signals.ts`'s own `settled` does for the same reason, over
+ * the same two effects.
+ */
+async function settledDataTableUrlState(devtools: Devtools): Promise<DataTableUrlState> {
+  let previous: DataTableUrlState | null = null
+  let steady: DataTableUrlState | null = null
+  await poll(async () => {
+    const current = await devtools.evaluate<DataTableUrlState>(DATA_TABLE_URL_STATE)
+    const same = previous !== null && previous.ok === current.ok &&
+      previous.search === current.search && previous.entries === current.entries &&
+      previous.ariaSort === current.ariaSort &&
+      previous.rowKeys.join(",") === current.rowKeys.join(",")
+    previous = current
+    if (same) steady = current
+    return same
+  }, 2_000)
+  return steady ?? previous ?? await devtools.evaluate<DataTableUrlState>(DATA_TABLE_URL_STATE)
+}
+
+/**
+ * The URL half of `DataTable`'s sort contract: `pages/src/data-table-sort.tsx` binds `sort` to
+ * `?sort=` through `useUrlFilters`, and this is what proves the binding rather than only the
+ * conversion `parseSort`/`serializeSort` do — see that file's own doc comment for why the binding
+ * lives there and not on a catalogue card.
+ *
+ * Run after `dataTableChecks`' own block, on an entirely separate `DataTable` instance mounted
+ * lower on the same page; nothing above this function touches `location`, so a stray write here
+ * would be this check's own doing. Every assertion is a transition off the address this function
+ * itself just read, never an assumption about what the address held before it ran — `signals/`'s
+ * own checks, in the package block that runs before this one, restore the address they started
+ * from, but this function does not depend on knowing what that was.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function dataTableUrlSortCheck(devtools: Devtools): Promise<void> {
+  const found = await devtools.evaluate<{ found: boolean; buttonFound: boolean }>(
+    DATA_TABLE_URL_SETUP,
+  )
+  const before = await settledDataTableUrlState(devtools)
+  check(
+    "the URL-bound DataTable demo renders its section and a Customer header button",
+    found.found && found.buttonFound && before.ok,
+    !found.found
+      ? 'there is no [data-e2e="data-table-sort-url"] section to drive'
+      : !found.buttonFound
+      ? 'no header button whose text includes "Customer" was found'
+      : !before.ok
+      ? "the state reader could not read the section it just found"
+      : "section and Customer header button both found",
+  )
+
+  await devtools.evaluate<null>(`(globalThis.__verifyDataTableUrl?.button?.click(), null)`)
+  const pressed = await settledDataTableUrlState(devtools)
+
+  check(
+    "pressing a header on the URL-bound demo writes its sort to the address as ?sort=",
+    pressed.search !== before.search &&
+      (pressed.search.includes("sort=customer%3Aasc") ||
+        pressed.search.includes("sort=customer:asc")),
+    `search ${before.search || "(empty)"} → ${pressed.search}`,
+  )
+  check(
+    "that write costs exactly one history entry",
+    pressed.entries - before.entries === 1,
+    `history.length ${before.entries} → ${pressed.entries}`,
+  )
+  check(
+    "the same press sorts the demo's own rows and marks the column aria-sort=ascending",
+    before.rowKeys.join(",") !== pressed.rowKeys.join(",") && pressed.ariaSort === "ascending",
+    `rows ${before.rowKeys.join(",")} → ${pressed.rowKeys.join(",")}, aria-sort ` +
+      `${String(before.ariaSort)} → ${String(pressed.ariaSort)}`,
+  )
+
+  await devtools.evaluate<null>(`(history.back(), null)`)
+  const backed = await settledDataTableUrlState(devtools)
+
+  check(
+    "one press of Back restores the address, the row order, and drops aria-sort",
+    backed.search === before.search && backed.rowKeys.join(",") === before.rowKeys.join(",") &&
+      backed.ariaSort === null,
+    `search ${pressed.search} → ${backed.search}, rows ${pressed.rowKeys.join(",")} → ` +
+      `${backed.rowKeys.join(",")}, aria-sort ${String(pressed.ariaSort)} → ${
+        String(backed.ariaSort)
+      }`,
+  )
+
+  await blurActive(devtools)
 }
