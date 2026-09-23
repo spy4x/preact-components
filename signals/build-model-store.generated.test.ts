@@ -32,8 +32,8 @@
  * "remotely written" when the last step that changed it was a remote event rather than this
  * client's own answer. An event is delivered for a busy row in 971 cases, and in 846 of those it
  * actually changes the row — the rest are refused: an `"updated"` event the freshness check judges
- * no later than what is held, or an older `"deleted"` event that lands on a row already archived,
- * or that carries nothing to archive at all. This client's own answer is refused by the clock in
+ * no later than what is held, or an older `"deleted"` event that lands on a row already archived.
+ * This client's own answer is refused by the clock in
  * 505 cases — in 276 of those the row it lost to was one a remote event had written — and accepted
  * over a remotely written row in 191. See {@link REMOTE_CHANCE} and {@link STAMPS}.
  *
@@ -509,12 +509,13 @@ function modelCase(plan: Plan) {
         row.stamp = STAMPS[stamp]
         return
       }
-      // Judged older, it is a claim about archiving only: `deleted` is taken from it, and the name
-      // and the stamp are left exactly as held — an old copy of the row must not ride in on a
-      // delayed delete. An older event with nothing to archive (`deleted: false`) makes no claim at
-      // all and changes nothing; the generator always draws `deleted: true` for this event, so that
-      // branch is pinned by name only, in `build-model-store.test.ts`. See #201.
-      if (deleted) row.deleted = true
+      // Judged older, it may only turn an unarchived row into an archived one — the name and the
+      // stamp are left exactly as held either way, an old copy of the row must not ride in on a
+      // delayed delete, and a row already archived keeps its own `deletedAt` rather than the
+      // event's older one. An older event with nothing to archive (`deleted: false`) makes no claim
+      // at all and changes nothing; the generator always draws `deleted: true` for this event, so
+      // that branch is pinned by name only, in `build-model-store.test.ts`. See #201.
+      if (!row.deleted && deleted) row.deleted = true
     },
     /** Fold in one answer, in the order the answers arrive. */
     answer(request: Planned) {
