@@ -33,8 +33,11 @@ describe("ContactForm", () => {
   it("adds the off-screen honeypot field when asked for one", () => {
     const html = render(<ContactForm action="/api/lead" honeypot />)
 
-    expect(html).toContain(`name="${HONEYPOT_FIELD_NAME}"`)
-    expect(html).toContain('aria-hidden="true"')
+    // Scoped to the honeypot's own wrapper: every required field's `*` also renders
+    // `aria-hidden="true"` (`Field`'s own marker), so a bare `toContain` here would pass whether
+    // or not the honeypot itself carried the attribute at all.
+    const honeypotBlock = html.match(/<div[^>]*aria-hidden="true"[^>]*>[\s\S]*?<\/div>/)?.[0] ?? ""
+    expect(honeypotBlock).toContain(`name="${HONEYPOT_FIELD_NAME}"`)
   })
 
   it("gives each field a distinct id, so the labels do not collide", () => {

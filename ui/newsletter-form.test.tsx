@@ -31,8 +31,11 @@ describe("NewsletterForm", () => {
   it("adds the off-screen honeypot field when asked for one", () => {
     const html = render(<NewsletterForm action="/api/subscribe" honeypot />)
 
-    expect(html).toContain(`name="${HONEYPOT_FIELD_NAME}"`)
-    expect(html).toContain('aria-hidden="true"')
+    // Scoped to the honeypot's own wrapper: the required email field's `*` also renders
+    // `aria-hidden="true"` (`Field`'s own marker), so a bare `toContain` here would pass whether
+    // or not the honeypot itself carried the attribute at all.
+    const honeypotBlock = html.match(/<div[^>]*aria-hidden="true"[^>]*>[\s\S]*?<\/div>/)?.[0] ?? ""
+    expect(honeypotBlock).toContain(`name="${HONEYPOT_FIELD_NAME}"`)
   })
 
   it("overrides its copy through labels, keeping the rest of the defaults", () => {

@@ -13,14 +13,34 @@ describe("honeypotField", () => {
     expect(html).toContain("Leave this field blank")
   })
 
-  it("is a real, submittable text input rather than type=hidden or display:none", () => {
-    // A bot that already skips those two is the one thing this trap does not catch — see the
-    // component's own doc. `type="text"` and no `display: none` are the point.
+  it("is a real, submittable text input rather than type=hidden", () => {
+    // A bot that already skips a hidden input is the one thing this trap does not catch — see the
+    // component's own doc.
     const html = render(honeypotField(HONEYPOT_FIELD_NAME, "Leave this field blank"))
 
     expect(html).toContain('type="text"')
-    expect(html).not.toContain("display:none")
-    expect(html).not.toContain("display: none")
+  })
+
+  it(
+    "marks the source markup as not using display:none — a real browser check in " +
+      "pages/checks/ui.ts proves the computed style, which this cannot",
+    () => {
+      // A literal string absent from the markup is weak evidence on its own — a `class` naming a
+      // Tailwind utility that happens to compute to `display: none` some other way would still pass
+      // this — so `enhancedFormsHoneypotChecks` reads `getComputedStyle` in a real browser instead.
+      // This only guards the one thing a render-to-string test legitimately can: nobody wrote the
+      // literal declaration by hand.
+      const html = render(honeypotField(HONEYPOT_FIELD_NAME, "Leave this field blank"))
+
+      expect(html).not.toContain("display:none")
+      expect(html).not.toContain("display: none")
+    },
+  )
+
+  it("turns autofill off, so a browser's own suggestions cannot fill a field it should never fill", () => {
+    const html = render(honeypotField(HONEYPOT_FIELD_NAME, "Leave this field blank"))
+
+    expect(html).toContain('autocomplete="off"')
   })
 })
 
