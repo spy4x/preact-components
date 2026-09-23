@@ -11,7 +11,7 @@ import * as icons from "@preact-components/icons"
 import { copyToClipboard } from "@preact-components/ui/copy-button"
 import { useSignal } from "@preact/signals"
 import { cn } from "@preact-components/cn"
-import type { ComponentType } from "preact"
+import type { ComponentType, JSX } from "preact"
 
 /** One glyph, with the prop surface every icon in the package shares. */
 type IconComponent = ComponentType<{ class?: string }>
@@ -62,7 +62,7 @@ export interface IconGalleryProps {
  * The search term and the last copied name are local visual state, so they stay inside the
  * component; the clipboard is a port.
  */
-export function IconGallery({ copy, class: className }: IconGalleryProps) {
+export function IconGallery({ copy, class: className }: IconGalleryProps): JSX.Element {
   const query = useSignal("")
   const copied = useSignal("")
   const matches = filterIconNames(iconNames, query.value)
