@@ -41,46 +41,9 @@
     "./tooltip": "./tooltip.tsx"
   },
   "publish": {
-    // Every `*.test.*` here renders to `preact-render-to-string` and asserts on the string; none of
-    // it is reachable from `exports`, and none of it is anything a consumer runs.
-    "exclude": [
-      "avatar.test.tsx",
-      "badge.test.tsx",
-      "button.test.tsx",
-      "card.test.tsx",
-      "checkbox.test.tsx",
-      "combobox.test.tsx",
-      "confidence-meter.test.tsx",
-      "confirm-dialog.test.tsx",
-      "copyable-text.test.tsx",
-      "copy-button.test.tsx",
-      "data-table.test.tsx",
-      "date-range-picker.test.tsx",
-      "date-range.test.ts",
-      "dropdown.test.tsx",
-      "empty-state.test.tsx",
-      "error-state.test.tsx",
-      "field.test.tsx",
-      "forward-ref.test.ts",
-      "geo-button.test.tsx",
-      "input-button.test.tsx",
-      "input.test.tsx",
-      "loading-screen.test.tsx",
-      "loading-skeleton.test.tsx",
-      "loading-spinner.test.tsx",
-      "modal.test.tsx",
-      "on-off-buttons.test.tsx",
-      "page-title.test.tsx",
-      "pagination.test.tsx",
-      "progress.test.tsx",
-      "radio.test.tsx",
-      "skeletons.test.tsx",
-      "table.test.tsx",
-      "tabs.test.tsx",
-      "toastr.test.tsx",
-      "toggle-field.test.tsx",
-      "toggle-switch.test.tsx",
-      "tooltip.test.tsx"
-    ]
+    // This package's own `*.test.*` suites, none reachable from `exports`. A glob rather than a
+    // per-file list: a hand-kept list has to be remembered on every new test file, and nothing
+    // here would catch a forgotten entry — a new `*.test.tsx` would ship to JSR with the package.
+    "exclude": ["*.test.ts", "*.test.tsx"]
   }
 }
