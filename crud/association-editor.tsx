@@ -1,7 +1,7 @@
 import { IconLoading } from "@preact-components/icons"
 import type { ReadonlySignal, Signal } from "@preact/signals"
 import type { Type } from "arktype"
-import type { ComponentChildren } from "preact"
+import type { ComponentChildren, JSX } from "preact"
 import { CrudEditor, type CrudEditorMode, type CrudEditorSlot } from "./crud-editor.tsx"
 import type { CrudEditorStore } from "./store.ts"
 import { timeAgo } from "./time-ago.ts"
@@ -175,7 +175,9 @@ export type AssociationEditorProps<M extends CrudRow> =
  * Everything the validated editors have is still here — load once, validate, submit, chrome — and
  * the three differences above are wired into it.
  */
-export function AssociationEditor<M extends CrudRow>(props: AssociationEditorProps<M>) {
+export function AssociationEditor<M extends CrudRow>(
+  props: AssociationEditorProps<M>,
+): JSX.Element {
   const {
     store,
     blank,
