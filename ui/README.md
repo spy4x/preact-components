@@ -110,6 +110,11 @@ _within_ the stack, from a link in a toast's body to its dismiss control, does n
 Raising a toast's `duration` while it is on screen is the one thing that refills the budget rather
 than continuing it, which is how a caller extends a toast it has already shown.
 
+`duration` is not validated, and `resolveDuration` documents what each odd value does. The short
+version: pass `0`, a positive number of milliseconds, or nothing. A negative number and `Infinity`
+both dismiss the toast at once, because the browser runs either as a zero delay; `NaN` starts no
+timer and so keeps the toast like `0` does.
+
 **This component owns the dismiss timer, and the store it is wired to owns none.** The pause can
 only hold a timer this component runs, so `createToastStore` from `@preact-components/signals`
 schedules nothing: it holds the list, and `onDismiss` calls its `remove`. The side that can see a

@@ -91,6 +91,21 @@ export const defaultToastDuration = 5000
  *
  * `??` rather than `||`: `0` is a value, and it means keep this toast until somebody dismisses it.
  *
+ * The value is passed through as given, not validated. What the component then does with it,
+ * measured in Chromium:
+ *
+ * | `duration`             | What happens                                                     |
+ * | ---------------------- | ---------------------------------------------------------------- |
+ * | absent (`undefined`)   | {@link defaultToastDuration}                                     |
+ * | `0`                    | no timer; the toast stays until somebody dismisses it            |
+ * | a positive number      | that many milliseconds, paused while the stack is being read     |
+ * | negative               | dismissed at once — the browser runs a negative delay as `0`     |
+ * | `Infinity`             | dismissed at once — the browser converts it to a `0` delay       |
+ * | `NaN`                  | no timer, like `0`, because `NaN` is falsy                       |
+ *
+ * So a caller must not pass a negative number, `Infinity` or `NaN`. "Keep it until dismissed" is
+ * spelled `0`; `Infinity` reads like it means the same and does the opposite.
+ *
  * @param toast Any toast-shaped value — only its `duration` is read.
  * @returns The delay in milliseconds; `0` for a toast that never dismisses itself.
  */
