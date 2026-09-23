@@ -4,7 +4,8 @@ import type { ToastMessage, ToastVariant } from "./types.ts"
 /**
  * `@preact-components/signals/toast` — the store behind `Toastr`.
  *
- * Ported from financy's module-level singleton. It is a factory here so a test can inject its id
+ * Ported from a source application's module-level singleton. It is a factory here so a test can
+ * inject its id
  * source, and so the store is exactly one thing: the list of toasts that are on screen, plus the
  * `remove` that takes one off it.
  *

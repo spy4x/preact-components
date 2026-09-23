@@ -1,7 +1,7 @@
 /**
  * Immutable writes for the `Map`s a store keeps its per-row operation state in.
  *
- * The original `gb` code did `store.value.updateOps.set(id, …)` before handing the
+ * The original source application's code did `store.value.updateOps.set(id, …)` before handing the
  * result to a signals setter. `Map.set` returns the *same* Map instance, so the
  * signal's old and new values were reference-equal after a spread — consumers that
  * compared identity saw no change, and `systemSetting.ts` mutated outright with no
