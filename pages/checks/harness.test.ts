@@ -190,6 +190,55 @@ describe("Run.runBlocks", () => {
       ["ui", BlockOutcome.NeverRan],
     ])
   })
+
+  it("exposes which block is currently running, and nothing between or after them", async () => {
+    const run = new Run()
+    const seen: Array<string | undefined> = []
+    const watching = (name: string): CheckBlock<Run> => ({
+      name,
+      run: (ctx) => {
+        seen.push(ctx.currentBlock)
+        return Promise.resolve()
+      },
+    })
+
+    expect(run.currentBlock).toBeUndefined()
+    await run.runBlocks([watching("theme"), watching("ui")], run)
+
+    expect(seen).toEqual(["theme", "ui"])
+    expect(run.currentBlock).toBeUndefined()
+  })
+
+  it("still names the block that threw while its recovery runs", async () => {
+    const run = new Run()
+    let duringRecovery: string | undefined
+    await run.runBlocks(
+      [throwing("theme", new Error("deliberate")), passing("ui")],
+      run,
+      (ctx) => {
+        duringRecovery = ctx.currentBlock
+        return Promise.resolve()
+      },
+    )
+
+    expect(duringRecovery).toBe("theme")
+    expect(run.currentBlock).toBeUndefined()
+  })
+})
+
+describe("Run.lastCheck", () => {
+  it("is undefined before the first check", () => {
+    const run = new Run()
+    expect(run.lastCheck).toBeUndefined()
+  })
+
+  it("is the most recently recorded check", () => {
+    const run = new Run()
+    run.record("a", true)
+    run.record("b", false, "why")
+
+    expect(run.lastCheck).toEqual({ name: "b", ok: false, detail: "why" })
+  })
 })
 
 describe("Run.runBlocks recovery", () => {

@@ -77,15 +77,33 @@ function describeError(error: unknown): string {
 export class Run {
   #checks: CheckRecord[] = []
   #blocks = new Map<string, BlockOutcome>()
+  #current?: string
 
   /** Every check recorded so far, in the order they were recorded. */
   get checks(): readonly CheckRecord[] {
     return this.#checks
   }
 
+  /** The last check recorded, or `undefined` before the first one. */
+  get lastCheck(): CheckRecord | undefined {
+    return this.#checks.at(-1)
+  }
+
   /** Every committed block, in commit order, with how it ended. */
   get blocks(): ReadonlyMap<string, BlockOutcome> {
     return this.#blocks
+  }
+
+  /**
+   * The package block currently inside {@link runBlocks}, or `undefined` between blocks and
+   * outside a run entirely.
+   *
+   * This is what lets a run that hangs *inside* one block's checks — rather than dying outright —
+   * name that block in a report: {@link Run.lastCheck} alone would only say what finished just
+   * before it, not what never got the chance to.
+   */
+  get currentBlock(): string | undefined {
+    return this.#current
   }
 
   /**
@@ -138,6 +156,7 @@ export class Run {
     this.commit(blocks.map((block) => block.name))
 
     for (const block of blocks) {
+      this.#current = block.name
       try {
         await block.run(context)
         this.#blocks.set(block.name, BlockOutcome.Completed)
@@ -145,6 +164,8 @@ export class Run {
         this.#blocks.set(block.name, BlockOutcome.StoppedPartWay)
         this.record(`the ${block.name} checks ran to completion`, false, describeError(error))
         if (recover) await recover(context).catch(() => {})
+      } finally {
+        this.#current = undefined
       }
     }
   }
@@ -220,6 +241,16 @@ export function check(name: string, ok: boolean, detail = ""): void {
  */
 export function commitBlocks(names: readonly string[]): void {
   currentRun.commit(names)
+}
+
+/** The name of the last check recorded so far, or `undefined` before the first one. */
+export function lastCheckName(): string | undefined {
+  return currentRun.lastCheck?.name
+}
+
+/** The package block currently running, or `undefined` between blocks — see {@link Run.currentBlock}. */
+export function currentBlockName(): string | undefined {
+  return currentRun.currentBlock
 }
 
 /**
@@ -327,6 +358,28 @@ export async function poll(predicate: () => Promise<boolean>, timeoutMs: number)
   return false
 }
 
+/**
+ * Wait until the page has stopped scrolling.
+ *
+ * Anything that reads a position or aims a click has to be measured after the page has settled:
+ * `focus()` scrolls an element into view when it has to, and a route change can trigger a smooth
+ * scroll that is still running when the very next line reads a coordinate or dispatches a press.
+ * Moved here from `checks/ui.ts` (`#225`, `#238`) once `checks/pages.ts` needed the same wait for a
+ * route's scroll rather than a fixed delay — one helper, not two copies drifting apart.
+ *
+ * @param devtools The connected session.
+ * @param timeoutMs How long to wait for two consecutive reads to agree before giving up.
+ */
+export async function settledScroll(devtools: Devtools, timeoutMs = 3_000): Promise<void> {
+  let previous = Number.NaN
+  await poll(async () => {
+    const current = await devtools.evaluate<number>("Math.round(globalThis.scrollY)")
+    const settled = current === previous
+    previous = current
+    return settled
+  }, timeoutMs)
+}
+
 /** Wait for Chromium's port file, which appears once the debugging server is up. */
 export async function debuggingPort(profile: string, timeoutMs = 20_000): Promise<number> {
   const portFile = join(profile, "DevToolsActivePort")
@@ -349,18 +402,22 @@ export async function debuggingPort(profile: string, timeoutMs = 20_000): Promis
  * Open a DevTools session against a fresh tab.
  *
  * @param port Debugging port Chromium bound.
+ * @param timeoutMs How long to wait for a DevTools target before giving up.
  * @returns A client for that tab.
  */
-export async function connect(port: number): Promise<Devtools> {
+export async function connect(port: number, timeoutMs = 10_000): Promise<Devtools> {
   const endpoint = `http://127.0.0.1:${port}`
-  const deadline = Date.now() + 10_000
+  const deadline = Date.now() + timeoutMs
 
   while (Date.now() < deadline) {
     try {
       const response = await fetch(`${endpoint}/json/new?about:blank`, { method: "PUT" })
       const target = await response.json() as { webSocketDebuggerUrl?: string }
       if (target.webSocketDebuggerUrl) {
-        return await Devtools.connect(target.webSocketDebuggerUrl)
+        return await Devtools.connect(
+          target.webSocketDebuggerUrl,
+          Math.max(deadline - Date.now(), 1),
+        )
       }
     } catch {
       // The browser is still starting.
@@ -384,6 +441,15 @@ interface ProtocolEvent {
  * send four commands and collect three kinds of event.
  */
 export class Devtools {
+  /**
+   * How long a single `send` waits for its reply before rejecting, unless the caller asks for a
+   * different budget. `verify.ts`'s browser phase carries its own overall deadline (`#239`), but
+   * that deadline can only fire *between* awaits — a single request the browser never answers (the
+   * process died mid-call, or wedged) would otherwise hang the one `await` forever and the phase
+   * deadline would never get a turn to run.
+   */
+  static readonly DEFAULT_CALL_TIMEOUT_MS = 15_000
+
   #socket: WebSocket
   #nextId = 0
   #pending = new Map<
@@ -391,22 +457,53 @@ export class Devtools {
     { resolve: (value: unknown) => void; reject: (error: Error) => void }
   >()
   #events: ProtocolEvent[] = []
-  #waiters: Array<{ method: string; resolve: () => void }> = []
+  #waiters: Array<{ method: string; resolve: () => void; reject: (error: Error) => void }> = []
+  /** Set once the socket has gone away; every pending and future `send` rejects with this. */
+  #closed?: Error
 
   private constructor(socket: WebSocket) {
     this.#socket = socket
     socket.onmessage = (message) => this.#handle(JSON.parse(message.data as string))
+    // A browser that dies mid-run (killed, crashed) closes this socket without answering whatever
+    // was in flight. Left to each call's own timeout, a run with many blocks still to go would pay
+    // that timeout over and over — once per call, in every remaining block — before the phase
+    // deadline ever got a turn. Failing every pending and future call the moment the socket goes away
+    // turns that into one immediate rejection each, so a dead browser is reported in roughly the time
+    // one call's round trip would have taken, not the sum of everything still queued behind it.
+    socket.onclose = () => this.#fail(new Error("the DevTools socket closed"))
+    socket.onerror = () => this.#fail(new Error("the DevTools socket reported an error"))
+  }
+
+  /** Fail every pending request and mark the client closed, once. */
+  #fail(error: Error): void {
+    if (this.#closed) return
+    this.#closed = error
+    for (const pending of this.#pending.values()) pending.reject(error)
+    this.#pending.clear()
+    for (const waiter of this.#waiters) waiter.reject(error)
+    this.#waiters = []
   }
 
   /**
    * @param url WebSocket URL of the page target.
+   * @param timeoutMs How long to wait for the socket to open before giving up.
    * @returns A connected client.
    */
-  static async connect(url: string): Promise<Devtools> {
+  static async connect(url: string, timeoutMs = 10_000): Promise<Devtools> {
     const socket = new WebSocket(url)
     await new Promise<void>((resolve, reject) => {
-      socket.onopen = () => resolve()
-      socket.onerror = () => reject(new Error(`cannot open the DevTools socket at ${url}`))
+      const timer = setTimeout(
+        () => reject(new Error(`the DevTools socket at ${url} did not open within ${timeoutMs}ms`)),
+        timeoutMs,
+      )
+      socket.onopen = () => {
+        clearTimeout(timer)
+        resolve()
+      }
+      socket.onerror = () => {
+        clearTimeout(timer)
+        reject(new Error(`cannot open the DevTools socket at ${url}`))
+      }
     })
 
     return new Devtools(socket)
@@ -417,12 +514,33 @@ export class Devtools {
    *
    * @param method Protocol method, e.g. `Page.navigate`.
    * @param params Method parameters.
+   * @param timeoutMs How long to wait for a reply before rejecting — see
+   * {@link Devtools.DEFAULT_CALL_TIMEOUT_MS}.
    * @returns The method's result.
    */
-  send<T>(method: string, params: Record<string, unknown> = {}): Promise<T> {
+  send<T>(
+    method: string,
+    params: Record<string, unknown> = {},
+    timeoutMs = Devtools.DEFAULT_CALL_TIMEOUT_MS,
+  ): Promise<T> {
+    if (this.#closed) return Promise.reject(this.#closed)
+
     const id = ++this.#nextId
     return new Promise<T>((resolve, reject) => {
-      this.#pending.set(id, { resolve: resolve as (value: unknown) => void, reject })
+      const timer = setTimeout(() => {
+        this.#pending.delete(id)
+        reject(new Error(`${method} did not answer within ${timeoutMs}ms`))
+      }, timeoutMs)
+      this.#pending.set(id, {
+        resolve: (value) => {
+          clearTimeout(timer)
+          resolve(value as T)
+        },
+        reject: (error) => {
+          clearTimeout(timer)
+          reject(error)
+        },
+      })
       this.#socket.send(JSON.stringify({ id, method, params }))
     })
   }
@@ -431,13 +549,15 @@ export class Devtools {
    * Evaluate an expression in the page and return its value.
    *
    * @param expression JavaScript to run; a promise is awaited.
+   * @param timeoutMs How long to wait for a reply before rejecting — see
+   * {@link Devtools.DEFAULT_CALL_TIMEOUT_MS}.
    * @returns The JSON value the expression produced.
    */
-  async evaluate<T>(expression: string): Promise<T> {
+  async evaluate<T>(expression: string, timeoutMs = Devtools.DEFAULT_CALL_TIMEOUT_MS): Promise<T> {
     const response = await this.send<{
       result: { value?: T }
       exceptionDetails?: { text: string }
-    }>("Runtime.evaluate", { expression, returnByValue: true, awaitPromise: true })
+    }>("Runtime.evaluate", { expression, returnByValue: true, awaitPromise: true }, timeoutMs)
 
     if (response.exceptionDetails) {
       throw new Error(`page exception: ${response.exceptionDetails.text}`)
@@ -453,6 +573,8 @@ export class Devtools {
    * @param timeoutMs How long to wait before giving up.
    */
   async next(method: string, timeoutMs = 15_000): Promise<void> {
+    if (this.#closed) throw this.#closed
+
     await new Promise<void>((resolve, reject) => {
       const timer = setTimeout(
         () => reject(new Error(`timed out waiting for ${method}`)),
@@ -463,6 +585,10 @@ export class Devtools {
         resolve: () => {
           clearTimeout(timer)
           resolve()
+        },
+        reject: (error) => {
+          clearTimeout(timer)
+          reject(error)
         },
       })
     })
