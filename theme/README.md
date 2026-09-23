@@ -60,10 +60,11 @@ const compiler = await compile(entry, {
 ```
 
 This is the whole recipe — no `node_modules`, no network access and no read permission beyond
-what resolving `tailwindcss` itself already needs, and it is proven against a package actually
-served from a registry rather than assumed: see this pull request's evidence for the reproducible
-simulation. `compiler.build([...candidates])` (Tailwind's own scanner output, as `pages/build.ts`
-drives it) is the compiled stylesheet with the design system in it.
+what resolving `tailwindcss` itself already needs. It has been run, verbatim, against this package
+served from a real registry and imported as `jsr:@preact-components/theme`: the compiled output
+contained both `.btn` and `--color-primary`, so it is proven to work, not merely expected to.
+`compiler.build([...candidates])` (Tailwind's own scanner output, as `pages/build.ts` drives it) is
+the compiled stylesheet with the design system in it.
 
 An app that keeps its own vendored copy of `tokens.css`/`preset.css` — not installed, checked into
 its own tree — can still `@import` those files by a relative path instead; that is plain
@@ -167,8 +168,8 @@ properties. No CSS fork, no `!important`:
 
 ```css
 @import "tailwindcss";
-@import "<tokens.css, resolved as under Install>";
-@import "<preset.css, resolved as under Install>";
+@import "@preact-components/theme/tokens.css";
+@import "@preact-components/theme/preset.css";
 
 /* After tokens.css, so this wins the cascade. */
 :root {
@@ -176,6 +177,10 @@ properties. No CSS fork, no `!important`:
   --radius-primary: 0.25rem;
 }
 ```
+
+(The two `@preact-components/theme` ids are not real specifiers — see "Install" above for what
+actually resolves them: the entry string a build script hands to `compile()`, matched by
+`loadStylesheet` and answered from `TOKENS_CSS`/`PRESET_CSS`.)
 
 `--color-primary` is purple (`purple-900`) because that is what the components
 were designed against in `gb` and `financy`; dark mode swaps it for near-black
