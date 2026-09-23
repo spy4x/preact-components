@@ -3571,9 +3571,12 @@ async function ensureSiteHeaderClosed(devtools: Devtools): Promise<void> {
  * the click's own default action, and dispatching the `keydown` immediately after, in the same
  * call, reaches this hook's `document` listener before the browser ever gets back to its task queue
  * to deliver `toggle` at all. With the old listener, that listener cannot exist yet at that point,
- * because there has been no task boundary for the effect that attaches it to run across —
- * confirmed by reverting to it and running `verify` five times: 5 of 5 failed this check, and with
- * the fix restored, 5 of 5 passed. `bubbles: true` is what lets the synthetic event reach the
+ * because there has been no task boundary for the effect that attaches it to run across. One more
+ * gap had to be closed first: after the preceding close, `aria-expanded` reads `"false"` one render
+ * before the old listener's effect cleanup removes it, so a click fired in that window found the
+ * previous listener still attached and passed — the old listener with the `contains` guard went red
+ * in only 3 of 5 review runs. Two animation frames inside the same evaluate, before the click, let
+ * that cleanup finish. `bubbles: true` is what lets the synthetic event reach the
  * `document` listener at all, and dispatching it *from the button* — not from `document` — is what
  * lets it also pass the `contains` guard `siteHeaderEscapeScopingCheck` exists for.
  *
@@ -3595,7 +3598,13 @@ async function siteHeaderEscapeRaceCheck(devtools: Devtools): Promise<void> {
 
   const stillOpen = await read(
     devtools,
-    `(() => {
+    `(async () => {
+      // Let the close that ensureSiteHeaderClosed caused finish its cleanup first. \`aria-expanded\`
+      // reads "false" one render before an effect-attached listener is removed, so without this
+      // wait a gated listener left over from the previous open could close the panel and pass.
+      for (let k = 0; k < 2; k++) {
+        await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)))
+      }
       const button = document.querySelector('${SITE_HEADER_BUTTON}')
       if (!button) return null
       button.click()
