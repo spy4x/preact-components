@@ -11,10 +11,13 @@ export interface TableProps {
   /**
    * Optional `<caption>` content, the table's accessible name.
    *
-   * Omitted, no `<caption>` is rendered at all — a caller naming the table through
-   * `aria-label`/`aria-labelledby` on a wrapper is unaffected. `captionClass` is how a caller hides
-   * it visually (`"sr-only"`) while keeping it for assistive tech; this primitive applies no
-   * caption styling of its own beyond the browser default.
+   * Omitted, `null` or `false` — the three ways a conditional expression such as
+   * `caption={title && title}` says "nothing" — no `<caption>` is rendered at all, the same as
+   * Preact renders none of those three as content anywhere else. A caller naming the table through
+   * `aria-label`/`aria-labelledby` on a wrapper is unaffected. Anything else passed renders, `0`
+   * and `""` included, so a caller whose caption happens to be falsy-but-real still gets one.
+   * `captionClass` is how a caller hides it visually (`"sr-only"`) while keeping it for assistive
+   * tech; this primitive applies no caption styling of its own beyond the browser default.
    */
   caption?: ComponentChildren
   /** Extra utilities for the `<caption>`. Ignored when `caption` is omitted. */
@@ -26,6 +29,15 @@ export interface TableProps {
 
 const wrapper =
   "-mx-4 md:mx-0 bg-white dark:bg-gray-800 ring-1 ring-gray-200 dark:ring-gray-600 sm:rounded-lg pb-px overflow-x-auto min-h-[300px]"
+
+/**
+ * Whether `caption` means "render one", as opposed to one of the three values a conditional
+ * expression produces for "nothing": `undefined`, `null` and `false`. Anything else — including
+ * `0` and `""` — renders, so a caller whose real caption happens to be falsy still gets one.
+ */
+function hasCaption(caption: ComponentChildren): boolean {
+  return caption !== undefined && caption !== null && caption !== false
+}
 
 /**
  * Table shell with header, body and optional footer slots.
@@ -41,7 +53,7 @@ export function Table(
   return (
     <div class={cn(wrapper, className)}>
       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
-        {caption !== undefined && <caption class={captionClass}>{caption}</caption>}
+        {hasCaption(caption) && <caption class={captionClass}>{caption}</caption>}
         <thead class="bg-gray-50 dark:bg-gray-700">
           <tr class="*:whitespace-nowrap *:px-6 *:py-3 text-sm font-medium text-gray-900 dark:text-gray-200">
             {headerSlot}

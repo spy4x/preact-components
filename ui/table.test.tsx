@@ -111,6 +111,15 @@ describe("Table", () => {
     // a bare "0" text node right before <thead> — instead of a <caption> element around it.
     expect(html).not.toContain(">0<thead")
   })
+
+  it("renders no caption for null or false, the other two ways a condition says nothing", () => {
+    // A caller writing `caption={title && title}` gets false, not "", when title is empty; one
+    // writing `caption={title ?? null}` gets null. Neither should leave an empty <caption> behind.
+    for (const caption of [null, false] as const) {
+      const html = render(<Table headerSlot={header} bodySlots={[]} caption={caption} />)
+      expect(html).not.toContain("<caption")
+    }
+  })
 })
 
 function countOccurrences(haystack: string, needle: string): number {
