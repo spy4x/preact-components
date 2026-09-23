@@ -1,4 +1,5 @@
 import { cn } from "@preact-components/cn"
+import type { JSX } from "preact"
 
 /** Coarse banding of a confidence score. */
 export type ConfidenceTier = "low" | "medium" | "high"
@@ -71,7 +72,9 @@ export function clampConfidence(
  * NOT set one for an unknown value), no fill element, so no `width:…%` declaration, and no
  * percentage — `NaN%` is visible nonsense rather than a missing reading.
  */
-export function ConfidenceMeter({ value, label, class: className }: ConfidenceMeterProps) {
+export function ConfidenceMeter(
+  { value, label, class: className }: ConfidenceMeterProps,
+): JSX.Element {
   const { value: clamped, tier } = clampConfidence(value)
   // The two arrive together or not at all: an unmeasurable reading has no band either.
   const known = clamped !== null && tier !== null

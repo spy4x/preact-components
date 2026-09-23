@@ -1,5 +1,5 @@
 import { cn } from "@preact-components/cn"
-import type { ComponentChildren, JSX } from "preact"
+import type { ComponentChildren, JSX, Ref, VNode } from "preact"
 import { forwardRef } from "./forward-ref.ts"
 
 /** One choice of a {@link RadioGroup}. */
@@ -59,7 +59,9 @@ export interface RadioGroupProps
  * `Ref<HTMLInputElement>` — no cast needed at the call site. `RadioGroup` renders its options through
  * this same component and passes no `ref` of its own, so it is unaffected.
  */
-export const Radio = forwardRef<HTMLInputElement, RadioProps>("Radio", function Radio(
+export const Radio: (
+  props: RadioProps & { ref?: Ref<HTMLInputElement> },
+) => VNode | null = forwardRef<HTMLInputElement, RadioProps>("Radio", function Radio(
   { class: className, labelClass, children, ...rest },
   ref,
 ) {
@@ -94,7 +96,7 @@ export function RadioGroup(
     class: className,
     ...rest
   }: RadioGroupProps,
-) {
+): JSX.Element {
   const current = value === null || value === undefined ? undefined : String(value)
   const id = rest.id === undefined ? undefined : String(rest.id)
 

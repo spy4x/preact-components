@@ -1,6 +1,6 @@
 import { cn } from "@preact-components/cn"
 import { type Signal, useSignal } from "@preact/signals"
-import type { ComponentChildren } from "preact"
+import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId } from "preact/hooks"
 
 /** Side of the trigger the tooltip is anchored to. */
@@ -133,7 +133,7 @@ export function Tooltip(
     class: className,
     contentClass,
   }: TooltipProps,
-) {
+): JSX.Element {
   const tooltipId = useId()
   const hovered = useSignal(false)
   const focused = useSignal(false)

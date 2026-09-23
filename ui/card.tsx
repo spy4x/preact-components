@@ -50,7 +50,7 @@ export type CardHeaderProps =
  * Emits the shipped `card` utility and nothing else, so it carries no opinion about padding,
  * colour or width beyond the preset. Header, body and footer are all optional children.
  */
-export function Card({ children, class: className, ...rest }: CardProps) {
+export function Card({ children, class: className, ...rest }: CardProps): JSX.Element {
   return <div {...rest} class={cn("card", className)}>{children}</div>
 }
 
@@ -63,7 +63,7 @@ export function Card({ children, class: className, ...rest }: CardProps) {
  */
 export function CardHeader(
   { class: className, children, title, action, ...attrs }: CardHeaderProps,
-) {
+): JSX.Element {
   if (children !== undefined && children !== null && children !== false) {
     return <div {...attrs} class={cn("card-header", className)}>{children}</div>
   }
@@ -77,11 +77,13 @@ export function CardHeader(
 }
 
 /** Card body: the content region of a {@link Card}. */
-export function CardBody({ children, class: className, ...rest }: CardBodyProps) {
+export function CardBody({ children, class: className, ...rest }: CardBodyProps): JSX.Element {
   return <div {...rest} class={cn("card-body", className)}>{children}</div>
 }
 
 /** Card footer: a divider-separated action row at the bottom of a {@link Card}. */
-export function CardFooter({ children, class: className, ...rest }: CardFooterProps) {
+export function CardFooter(
+  { children, class: className, ...rest }: CardFooterProps,
+): JSX.Element {
   return <div {...rest} class={cn("card-footer", className)}>{children}</div>
 }

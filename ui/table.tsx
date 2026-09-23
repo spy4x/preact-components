@@ -1,5 +1,5 @@
 import { cn } from "@preact-components/cn"
-import type { ComponentChildren } from "preact"
+import type { ComponentChildren, JSX } from "preact"
 
 export interface TableProps {
   /** Cells of the single header row, normally `<th>` elements. */
@@ -49,7 +49,7 @@ function hasCaption(caption: ComponentChildren): boolean {
 export function Table(
   { headerSlot, bodySlots, footerSlot, caption, captionClass, rowDataE2E, class: className }:
     TableProps,
-) {
+): JSX.Element {
   return (
     <div class={cn(wrapper, className)}>
       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">

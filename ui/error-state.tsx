@@ -1,4 +1,5 @@
 import { cn } from "@preact-components/cn"
+import type { JSX } from "preact"
 
 export interface ErrorStateProps {
   /** Message to show. Empty, `null` or `undefined` renders nothing. */
@@ -13,7 +14,7 @@ export interface ErrorStateProps {
  * the component still renders nothing for a falsy message so callers can pass a possibly-empty
  * value straight through.
  */
-export function ErrorState({ message, class: className }: ErrorStateProps) {
+export function ErrorState({ message, class: className }: ErrorStateProps): JSX.Element | null {
   if (!message) return null
 
   return (

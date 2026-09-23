@@ -1,5 +1,5 @@
 import { cn } from "@preact-components/cn"
-import type { ComponentChildren } from "preact"
+import type { ComponentChildren, JSX } from "preact"
 import { ToggleSwitch } from "./toggle-switch.tsx"
 
 /**
@@ -93,7 +93,7 @@ export function ToggleField({
   required,
   disabled,
   class: className,
-}: ToggleFieldProps) {
+}: ToggleFieldProps): JSX.Element {
   const message = typeof error === "string" && error.length > 0 ? error : undefined
   const errorId = message === undefined ? undefined : `${id}-error`
   // A description wires its paragraph only when it has something to say. `""` is what a computed

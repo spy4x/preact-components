@@ -1,5 +1,5 @@
 import { Button } from "./button.tsx"
-import type { ComponentChildren } from "preact"
+import type { ComponentChildren, JSX } from "preact"
 
 export interface GeoCoordinates {
   latitude: number
@@ -60,7 +60,7 @@ export function requestGeolocation(
  */
 export function GeoButton(
   { onLocation, onError, children, title = "Use my geolocation", class: className }: GeoButtonProps,
-) {
+): JSX.Element {
   const handleClick = () => requestGeolocation(onLocation, onError)
 
   return (

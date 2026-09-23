@@ -1,4 +1,5 @@
 import { cn } from "@preact-components/cn"
+import type { JSX } from "preact"
 
 export interface LoadingSkeletonProps {
   /** Number of placeholder cards below the header card. Defaults to 3. */
@@ -15,7 +16,7 @@ const bar = "animate-pulse rounded bg-gray-200 dark:bg-gray-700"
  * `aria-hidden` on the whole tree: a screen reader should hear the caller's single polite
  * status message, not a stack of empty boxes.
  */
-export function LoadingSkeleton({ rows = 3, class: className }: LoadingSkeletonProps) {
+export function LoadingSkeleton({ rows = 3, class: className }: LoadingSkeletonProps): JSX.Element {
   return (
     <div class={cn("mt-8 space-y-3", className)} aria-hidden="true">
       <div class={cn(card, "flex items-center gap-4")}>

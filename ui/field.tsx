@@ -195,7 +195,7 @@ export function Field(
     labelFor,
     class: className,
   }: FieldProps,
-) {
+): JSX.Element {
   const message = typeof error === "string" && error.length > 0 ? error : undefined
   const errorId = message === undefined ? undefined : `${id}-error`
   const hintId = hint === undefined || hint === null || hint === false ? undefined : `${id}-hint`

@@ -1,4 +1,5 @@
 import { cn } from "@preact-components/cn"
+import type { JSX } from "preact"
 import { LoadingSpinner } from "./loading-spinner.tsx"
 
 export interface LoadingScreenProps {
@@ -17,7 +18,7 @@ export interface LoadingScreenProps {
  */
 export function LoadingScreen(
   { message = "Loading…", description = "Please wait…", class: className }: LoadingScreenProps,
-) {
+): JSX.Element {
   return (
     <div
       class={cn(

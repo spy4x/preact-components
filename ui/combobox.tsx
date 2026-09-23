@@ -1,6 +1,6 @@
 import { cn } from "@preact-components/cn"
 import { useSignal } from "@preact/signals"
-import type { ComponentChildren } from "preact"
+import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useRef } from "preact/hooks"
 
 /**
@@ -648,7 +648,7 @@ export function Combobox<T>({
   class: className,
   inputClass,
   listboxClass,
-}: ComboboxProps<T>) {
+}: ComboboxProps<T>): JSX.Element {
   const generatedId = useId()
   const id = callerId ?? generatedId
   const rootRef = useRef<HTMLDivElement>(null)

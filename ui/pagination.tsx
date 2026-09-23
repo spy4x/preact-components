@@ -1,4 +1,5 @@
 import { cn } from "@preact-components/cn"
+import type { JSX } from "preact"
 import { Button } from "./button.tsx"
 
 /** One item of the range a pagination control renders: a real page, or a collapsed run of pages. */
@@ -184,7 +185,7 @@ export function Pagination(
     pageLabel = (pageNumber) => `Page ${pageNumber}`,
     class: className,
   }: PaginationProps,
-) {
+): JSX.Element | null {
   if (pageCount < 1) return null
 
   const current = Math.max(1, Math.min(pageCount, Math.round(page)))

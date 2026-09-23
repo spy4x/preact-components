@@ -278,7 +278,9 @@ export interface AvatarProps {
  * {@link failedAfterSrcChange} are the testable halves of the two decisions; the `error` event and
  * the reset that follows a `src` change are not verified here, only disclosed.
  */
-export function Avatar({ name, src, alt, size = "md", class: className }: AvatarProps) {
+export function Avatar(
+  { name, src, alt, size = "md", class: className }: AvatarProps,
+): JSX.Element {
   const [failed, setFailed] = useState(false)
   const [watching, setWatching] = useState(src)
 
@@ -360,7 +362,7 @@ export interface AvatarGroupProps {
  */
 export function AvatarGroup(
   { items, max = 4, label, size = "md", class: className }: AvatarGroupProps,
-) {
+): JSX.Element {
   const { visible, overflow } = groupSplit(items.length, max)
 
   return (

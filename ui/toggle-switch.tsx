@@ -1,4 +1,5 @@
 import { cn } from "@preact-components/cn"
+import type { JSX } from "preact"
 
 export interface ToggleSwitchProps {
   value: boolean
@@ -56,7 +57,7 @@ export function ToggleSwitch(
     "aria-describedby": ariaDescribedBy,
     class: className,
   }: ToggleSwitchProps,
-) {
+): JSX.Element {
   return (
     <button
       type="button"

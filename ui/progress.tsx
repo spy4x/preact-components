@@ -1,4 +1,5 @@
 import { cn } from "@preact-components/cn"
+import type { JSX } from "preact"
 
 /** Semantic colour of the filled portion, mapped onto the `theme/` colour atoms. */
 export type ProgressTone = "primary" | "success" | "warning" | "danger"
@@ -134,7 +135,7 @@ export function Progress({
   tone = "primary",
   id,
   class: className,
-}: ProgressProps) {
+}: ProgressProps): JSX.Element {
   const { value: clamped, fraction } = clampProgress(value, max)
   // The union above makes these two arrive together or not at all, so the bar is never captioned
   // without a name to point at.

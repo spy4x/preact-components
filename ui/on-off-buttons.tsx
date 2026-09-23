@@ -1,4 +1,5 @@
 import { cn } from "@preact-components/cn"
+import type { JSX } from "preact"
 import { Button } from "./button.tsx"
 
 export interface OnOffButtonsProps {
@@ -25,7 +26,7 @@ const group = "isolate inline-flex"
 export function OnOffButtons(
   { value, amount, onSwitch, onLabel = "ON", offLabel = "OFF", class: className }:
     OnOffButtonsProps,
-) {
+): JSX.Element {
   return (
     <div class={cn(group, className)}>
       <Button

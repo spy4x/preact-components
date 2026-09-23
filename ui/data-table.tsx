@@ -5,7 +5,7 @@ import {
   type SortRule,
   toggleSort,
 } from "@preact-components/signals/table-state"
-import type { ComponentChildren } from "preact"
+import type { ComponentChildren, JSX } from "preact"
 import { EmptyState } from "./empty-state.tsx"
 import { Pagination } from "./pagination.tsx"
 import { Table } from "./table.tsx"
@@ -349,7 +349,7 @@ export function DataTable<T, K extends Extract<keyof T, string>>(
     rowDataE2E,
     class: className,
   }: DataTableProps<T, K>,
-) {
+): JSX.Element {
   const sorted = sortRows([...rows], [...sort])
 
   let visible = sorted

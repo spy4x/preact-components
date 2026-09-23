@@ -1,5 +1,5 @@
 import { cn } from "@preact-components/cn"
-import type { ComponentChildren } from "preact"
+import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useRef, useState } from "preact/hooks"
 import { Button } from "./button.tsx"
 
@@ -213,7 +213,7 @@ export function Modal(
     dataE2E,
     class: className,
   }: ModalProps,
-) {
+): JSX.Element | null {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const restoresFocus = useRef<FocusableElement | null>(null)
   // What the *latest* render passed, kept where the Escape listener can reach it.
