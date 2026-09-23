@@ -97,8 +97,8 @@ function EnhancedFormDemo() {
 }
 
 /**
- * Two instances, because a successful submit replaces the field with a thank-you message and
- * neither browser check that drives one can leave it resubmittable afterward for the other.
+ * Four instances, because a successful submit replaces the field with a thank-you message and no
+ * browser check that drives one to success can leave it resubmittable afterward for another.
  *
  * The first is the one this card's own snippet shows: one email field, `honeypot` on, a submit that
  * takes 300ms — long enough for a fast double click to land twice — and `subscribes`, which only
@@ -109,10 +109,25 @@ function EnhancedFormDemo() {
  * `enhancedFormsHoneypotChecks` in that same file: proving that a filled honeypot resolves as a
  * success without ever calling `onSubmit` needs a submit of its own, one the double-click proof
  * above cannot spare once it has run.
+ *
+ * The third, marked `data-e2e="newsletter-form-request-submit"`, exists only for
+ * `newsletterFormRequestSubmitGuardCheck`: two `form.requestSubmit()` calls made in the same script
+ * turn, with no real click and so no focus ever placed on the form, are what that check uses to
+ * prove `EnhancedForm`'s synchronous busy guard (a real double click, dispatched with the delay a
+ * network round trip costs, cannot rule out the disabled `<fieldset>` alone already being enough)
+ * and, in the same run, that a submit nobody focused never steals focus back once it resolves.
+ *
+ * The fourth, marked `data-e2e="newsletter-form-focus-elsewhere"`, exists only for
+ * `newsletterFormFocusElsewhereCheck`: a real click on this instance's own submit button does put
+ * focus inside the form, unlike the third instance's `requestSubmit()` calls, so it is the one card
+ * that can prove the other half of the same fix — a visitor who submitted normally and then moved
+ * focus elsewhere on purpose, before the result lands, keeps it there too.
  */
 function NewsletterFormDemo() {
   const subscribes = useSignal(0)
   const honeypotSubscribes = useSignal(0)
+  const requestSubmitCalls = useSignal(0)
+  const focusElsewhereCalls = useSignal(0)
 
   return (
     <div class="max-w-sm space-y-3">
@@ -146,19 +161,63 @@ function NewsletterFormDemo() {
           subscribes: {honeypotSubscribes.value}
         </p>
       </div>
+      <div
+        class="border-t border-gray-200 pt-3 dark:border-gray-700"
+        data-e2e="newsletter-form-request-submit"
+      >
+        <NewsletterForm
+          action={FORM_DEMO_ACTION}
+          onSubmit={async () => {
+            requestSubmitCalls.value++
+            await delay(150)
+          }}
+        />
+        <p
+          class="text-sm text-gray-500 dark:text-gray-400"
+          data-e2e="newsletter-form-request-submit-subscribes"
+        >
+          subscribes: {requestSubmitCalls.value}
+        </p>
+      </div>
+      <div
+        class="border-t border-gray-200 pt-3 dark:border-gray-700"
+        data-e2e="newsletter-form-focus-elsewhere"
+      >
+        <NewsletterForm
+          action={FORM_DEMO_ACTION}
+          onSubmit={async () => {
+            focusElsewhereCalls.value++
+            await delay(150)
+          }}
+        />
+        <p
+          class="text-sm text-gray-500 dark:text-gray-400"
+          data-e2e="newsletter-form-focus-elsewhere-subscribes"
+        >
+          subscribes: {focusElsewhereCalls.value}
+        </p>
+      </div>
     </div>
   )
 }
 
 /**
- * Name, email and message, plus two toggles: one simulates a rejected submit, the other a submit
- * that never resolves at all — the shape a promise takes when the visitor's tab is frozen in the
- * back/forward cache before it ever settles.
+ * Two instances, for the same reason `NewsletterFormDemo` has more than one: a successful submit
+ * replaces the fields for good.
+ *
+ * The first carries the two toggles this card's own snippet shows: one simulates a rejected submit,
+ * the other a submit that never resolves at all — the shape a promise takes when the visitor's tab
+ * is frozen in the back/forward cache before it ever settles.
+ *
+ * The second, marked `data-e2e="contact-form-honeypot"`, exists only for
+ * `contactFormHoneypotCheck` in `pages/checks/ui.ts` — the same proof `enhancedFormsHoneypotChecks`
+ * runs against `NewsletterForm`, on the three-field form instead.
  */
 function ContactFormDemo() {
   const leads = useSignal(0)
   const shouldFail = useSignal(false)
   const hang = useSignal(false)
+  const honeypotLeads = useSignal(0)
 
   return (
     <div class="max-w-md space-y-3">
@@ -200,6 +259,25 @@ function ContactFormDemo() {
       <p class="text-sm text-gray-500 dark:text-gray-400" data-e2e="contact-form-leads">
         leads: {leads.value}
       </p>
+      <div
+        class="border-t border-gray-200 pt-3 dark:border-gray-700"
+        data-e2e="contact-form-honeypot"
+      >
+        <ContactForm
+          action={FORM_DEMO_ACTION}
+          honeypot
+          onSubmit={async () => {
+            honeypotLeads.value++
+            await delay(50)
+          }}
+        />
+        <p
+          class="text-sm text-gray-500 dark:text-gray-400"
+          data-e2e="contact-form-honeypot-leads"
+        >
+          leads: {honeypotLeads.value}
+        </p>
+      </div>
     </div>
   )
 }
