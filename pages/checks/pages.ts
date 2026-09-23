@@ -67,6 +67,15 @@ export async function pagesChecks(devtools: Devtools): Promise<void> {
   // top inside the expected range — rather than a proxy for it (the scroll having stopped, for
   // whatever reason) is what a delayed scroll cannot fool the same way: it keeps reading until the
   // real thing happens or the deadline runs out, and it reports the raw value either way.
+  //
+  // Scrolling to the very top before setting the hash is a second, separate fix a later review
+  // asked for: the legacy-fragment step just above already scrolled toward `#demo-ToggleSwitch`,
+  // which sits only fractionally below where the Inputs section starts — so a section route whose
+  // own scroll effect never fired at all would *still* read a top within a pixel or two of the
+  // accepted range, not obviously wrong. Starting from the top of the page instead means a section
+  // route that does nothing reads a top hundreds of pixels out of range, and one that works reads
+  // the same settled position either way.
+  await devtools.evaluate<null>(`(window.scrollTo({ top: 0, behavior: "instant" }), null)`)
   await devtools.evaluate<null>(`(location.hash = "#/inputs", null)`)
   const SECTION_SCROLL_DEADLINE_MS = 3_000
   let section = { sectionTopRaw: NaN, sectionTop: NaN, sectionMarked: -1, sectionTitle: "" }
