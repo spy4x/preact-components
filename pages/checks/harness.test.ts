@@ -14,6 +14,7 @@ import { describe, it } from "@std/testing/bdd"
 import {
   BlockOutcome,
   type CheckBlock,
+  connect,
   Devtools,
   DevtoolsClosedError,
   poll,
@@ -426,6 +427,44 @@ describe("Run.runBlocks — failure detail", () => {
       { name: "the theme checks ran to completion", ok: false, detail: "no Chromium" },
     ])
   })
+
+  it("does not name a previous block's own failure marker as a completed check", async () => {
+    // `lastCheck` (the most recent entry, pass or fail) used to feed this detail directly — found in
+    // review: when two blocks throw in a row, the second one's detail named the first block's own
+    // "the theme checks ran to completion" — itself recorded with ok: false — as though it were a
+    // check that had passed.
+    const run = new Run()
+    await run.runBlocks(
+      [
+        throwing("theme", new Error("first failure")),
+        throwing("icons", new Error("second failure")),
+      ],
+      run,
+    )
+
+    expect(run.checks).toEqual([
+      { name: "the theme checks ran to completion", ok: false, detail: "first failure" },
+      { name: "the icons checks ran to completion", ok: false, detail: "second failure" },
+    ])
+  })
+
+  it("skips a failed block's own marker to find the last check that actually passed", async () => {
+    const run = new Run()
+    await run.runBlocks(
+      [
+        passing("theme", ["a"]),
+        throwing("icons", new Error("icons died")),
+        throwing("ui-guide", new Error("ui-guide died")),
+      ],
+      run,
+    )
+
+    expect(run.checks.at(-1)).toEqual({
+      name: "the ui-guide checks ran to completion",
+      ok: false,
+      detail: "ui-guide died (last completed check: a)",
+    })
+  })
 })
 
 describe("Devtools", () => {
@@ -492,5 +531,48 @@ describe("Devtools", () => {
 
     expect(outcome).toBeInstanceOf(Error)
     expect(socket.closed).toBe(true)
+  })
+})
+
+describe("connect", () => {
+  /**
+   * Stands in for a debugging endpoint that accepts a request and never answers it — the shape
+   * review used to catch `connect()` hanging past its own stated timeout: this never resolves or
+   * rejects on its own, only when the `signal` it was given fires an abort. A `fetch` call made
+   * without a `signal` at all — the pre-fix shape — never settles here, the same as it never would
+   * against a real unresponsive server.
+   */
+  function neverAnswers(): typeof fetch {
+    return ((_input: RequestInfo | URL, init?: RequestInit) => {
+      return new Promise((_resolve, reject) => {
+        const signal = init?.signal
+        if (!signal) return
+        if (signal.aborted) {
+          reject(signal.reason ?? new Error("aborted"))
+          return
+        }
+        signal.addEventListener("abort", () => reject(signal.reason ?? new Error("aborted")))
+      })
+    }) as typeof fetch
+  }
+
+  it("aborts its request to the debugging endpoint instead of waiting on one that never answers", async () => {
+    const realFetch = globalThis.fetch
+    globalThis.fetch = neverAnswers()
+    try {
+      // A generous guard, well past connect()'s own 300ms budget: if the request were not aborted,
+      // it would hang here indefinitely (`neverAnswers` above never settles without one), and this
+      // is what turns that into a failed assertion instead of a hung test suite.
+      const outcome = await Promise.race([
+        connect(1, 300).then(() => "resolved" as const).catch(() => "rejected" as const),
+        new Promise<"timed-out-waiting">((resolve) =>
+          setTimeout(() => resolve("timed-out-waiting"), 2_000)
+        ),
+      ])
+
+      expect(outcome).toBe("rejected")
+    } finally {
+      globalThis.fetch = realFetch
+    }
   })
 })

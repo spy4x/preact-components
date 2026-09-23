@@ -92,6 +92,20 @@ export class Run {
     return this.#checks.at(-1)
   }
 
+  /**
+   * The last check that genuinely passed, or `undefined` if none has.
+   *
+   * Different from {@link lastCheck}: the entry `runBlocks` itself records for a block that threw —
+   * `"the ${block.name} checks ran to completion"`, `ok: false` — is a check *record* like any
+   * other, so `lastCheck` can return it. Naming that as "the last completed check" in a later
+   * block's own failure detail would be naming a previous block's failure marker as if it were a
+   * check that had passed — found in review. This getter skips every failed entry, including
+   * another block's own marker, to find the last one that actually held.
+   */
+  get lastPassedCheck(): CheckRecord | undefined {
+    return this.#checks.findLast((entry) => entry.ok)
+  }
+
   /** Every committed block, in commit order, with how it ended. */
   get blocks(): ReadonlyMap<string, BlockOutcome> {
     return this.#blocks
@@ -169,8 +183,11 @@ export class Run {
         // after X" apart from "X itself is broken" — a `DevtoolsClosedError` propagating out of a
         // check function reads the same as any other throw without this, and a review of this PR
         // found exactly that: a dead browser reported as a failure of whichever component happened
-        // to be mid-check when it died.
-        const last = this.lastCheck?.name
+        // to be mid-check when it died. `lastPassedCheck`, not `lastCheck`: an earlier version named
+        // `lastCheck` here, which a second review caught naming a *previous* block's own failure
+        // marker ("the theme checks ran to completion", itself recorded with `ok: false`) as though
+        // it were a check that had passed.
+        const last = this.lastPassedCheck?.name
         const reason = describeError(error)
         this.record(
           `the ${block.name} checks ran to completion`,
@@ -257,9 +274,13 @@ export function commitBlocks(names: readonly string[]): void {
   currentRun.commit(names)
 }
 
-/** The name of the last check recorded so far, or `undefined` before the first one. */
+/**
+ * The name of the last check recorded so far that genuinely passed, or `undefined` if none has —
+ * see {@link Run.lastPassedCheck}. Never a block's own failure marker, even when that marker is the
+ * most recently recorded entry.
+ */
 export function lastCheckName(): string | undefined {
-  return currentRun.lastCheck?.name
+  return currentRun.lastPassedCheck?.name
 }
 
 /** The package block currently running, or `undefined` between blocks — see {@link Run.currentBlock}. */
