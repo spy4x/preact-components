@@ -1844,8 +1844,9 @@ async function lateMonthChecks(devtools: Devtools): Promise<void> {
     beforeBurst.date === arrowTarget
       ? `from ${beforeBurst.date} with ${beforeBurst.extra} on screen, Page Down Page Down with ` +
         `no render in between: the card drew ${afterBurst.count - beforeBurst.count} more ` +
-        `answer(s) — one per press — and is showing ${afterBurst.extra || "nothing"}, one month ` +
-        `on, with the focus on ${afterBurst.date || afterBurst.focused} and the Tab stop on ` +
+        `answer(s) — one per press — and is showing ${afterBurst.extra || "nothing"}, wanted ` +
+        `${burstMonth}, with the focus on ${afterBurst.date || afterBurst.focused} and the ` +
+        `Tab stop on ` +
         `${afterBurst.tabStop || "nowhere"}, both wanted ${burstWanted}`
       : `the focus was not on ${arrowTarget} before the burst, so it measures nothing`,
   )
@@ -1869,7 +1870,7 @@ async function lateMonthChecks(devtools: Devtools): Promise<void> {
         devtools,
         `(() => { const state = ${LATE_STATE}; return state.count === ${
           beforePair.count + 2
-        } && state.extra === ${JSON.stringify(beforePair.extra)} })()`,
+        } && state.extra === ${JSON.stringify(monthAfter(beforePair.extra, -1))} })()`,
         false,
       ),
     5_000,
