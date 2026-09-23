@@ -43,6 +43,8 @@ import type { CrudEditorStore } from "@preact-components/crud/store"
 import type { OperationState } from "@preact-components/crud"
 import { Button } from "@preact-components/ui"
 import { computed, type ReadonlySignal, signal, useSignal } from "@preact/signals"
+import { type } from "arktype"
+import { useMemo } from "preact/hooks"
 import type { DemoFragment } from "../registry.ts"
 
 /** The row every editor in this section edits. */
@@ -210,6 +212,28 @@ const zoneOptions = [
   { value: 2, label: "Zone B" },
 ]
 
+/**
+ * The rule `CrudEditorDemo`'s schema adds: Name and Notes must differ.
+ *
+ * Deliberately artificial, because the point is the *shape* of the failure, not a real business
+ * rule: a `.narrow` across the whole model has no field of its own to report against, which is what
+ * issue #119 was about. `regionSchema` in `examples/regions.tsx` shows the ordinary, per-field kind;
+ * this one is the other kind, and `CrudEditor` files it under `FORM_FIELD` and shows it above Save.
+ *
+ * `ctx.reject({ message })` rather than `ctx.mustBe(...)`: arktype's default wording for a
+ * whole-model `.narrow` failure appends the entire rejected value as JSON — every field the row
+ * carries, not just the two this rule is about — and a polite, atomic live region re-reads that
+ * whole sentence to a screen reader on every keystroke that still fails the rule, not only the ones
+ * that touch Name or Notes. `ctx.reject` gives the message in full instead, which is what the label
+ * policy already asks a caller to do for any string this library shows.
+ */
+const regionCrossFieldSchema = type({
+  name: "string",
+  notes: "string",
+}).narrow((row, ctx) =>
+  row.name !== row.notes || ctx.reject({ message: "Name must differ from Notes" })
+)
+
 /** One editor's own model and validation signals. Local to a demo, never module-level. */
 function useRegionForm(initial: Region = blankRegion()) {
   const vm = useSignal<Region>(initial)
@@ -318,7 +342,14 @@ function FieldIssueDemo() {
 
 /** One editor in `mode="add"`, with its slot functions, and the write it performed printed below. */
 function CrudEditorDemo() {
-  const { store, writes, rows } = makeRegionStore()
+  // `useMemo` rather than a bare call: a successful save writes the `created` signal below, which
+  // this component reads in its own JSX, so a save re-renders the card — and a fresh
+  // `makeRegionStore()` on every render would reset `writes`/`rows` to their seed state right after,
+  // so a save the reader just watched happen would read as if it never had. Committing a field does
+  // not itself re-render this component (`CrudEditor` revalidates in its own effect, not here); the
+  // guard is about the save, not the field. `created` needs no such guard: a `useSignal` is already
+  // stable across re-renders by construction.
+  const { store, writes, rows } = useMemo(() => makeRegionStore(), [])
   const created = useSignal("nothing created yet")
 
   return (
@@ -327,6 +358,7 @@ function CrudEditorDemo() {
         store={store}
         mode="add"
         blank={blankRegion()}
+        schema={regionCrossFieldSchema}
         entity="Region"
         title="Add a region"
         cancelHref="#crud"
@@ -346,6 +378,13 @@ function CrudEditorDemo() {
         {({ vm, vl }) => (
           <>
             <TextField vm={vm} vl={vl} name="name" label="Name" />
+            <TextField
+              vm={vm}
+              vl={vl}
+              name="notes"
+              label="Notes"
+              hint="The schema's own rule: must differ from Name"
+            />
             <NumberField vm={vm} vl={vl} name="zones" label="Zones" />
           </>
         )}
@@ -358,8 +397,10 @@ function CrudEditorDemo() {
         </p>
         <p>rows in the store: {rows.value.length} (was 4 before the first save)</p>
         <p class="text-gray-400 dark:text-gray-500">
-          Save is disabled until the form has initialised and the validation model is clean; with no
-          <code>schema</code> there is nothing to invalidate it.
+          Save is disabled until the form has initialised, the validation model is clean and nothing
+          blocks the archive. The blank row starts with Name and Notes equal (both empty), so the
+          schema's cross-field rule fails from the start — that rule has no field of its own to
+          report against, so it shows as the live region above Save instead.
         </p>
       </div>
     </div>
@@ -596,7 +637,7 @@ export const crudDemos = {
   },
   CrudEditor: {
     summary:
-      "The add/edit form harness: it loads the row out of the store once, validates the model on every change, owns the archive toggle and the blocked-archive cascade, and renders chrome around a body the caller supplies. `children`, `notice` and `footerSlot` are functions rather than children so the caller's rows receive the model and validation signals directly — the same contract every field row in `field.tsx` takes. Save is enabled only once the form has initialised, the validation model is clean and nothing blocks the archive. `schema` is an arktype schema run through `validateSchema`; `validate` is the domain-check port that runs after it, reading signals so a check against a not-yet-loaded collection fixes itself.",
+      "The add/edit form harness: it loads the row out of the store once, validates the model on every change, owns the archive toggle and the blocked-archive cascade, and renders chrome around a body the caller supplies. `children`, `notice` and `footerSlot` are functions rather than children so the caller's rows receive the model and validation signals directly — the same contract every field row in `field.tsx` takes. Save is enabled only once the form has initialised, the validation model is clean and nothing blocks the archive. `schema` is an arktype schema run through `validateSchema`; `validate` is the domain-check port that runs after it, reading signals so a check against a not-yet-loaded collection fixes itself. A rule with no field of its own — this card's schema adds one, Name must differ from Notes — is filed under the reserved `FORM_FIELD` key and shown as a live region above Save, named at all times by Save's `aria-describedby`.",
     snippet: `<CrudEditor
   store={regionStore}
   blank={blankRegion}
