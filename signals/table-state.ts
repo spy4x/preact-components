@@ -1,7 +1,7 @@
 /**
  * `@preact-components/signals/table-state` — framework-free multi-column sort state.
  *
- * Ported from a source application's `libs/client/preact/table-state.ts`. Nothing here touches
+ * Ported from a source application's own table-state module. Nothing here touches
  * signals,
  * Preact or the DOM: the rules are plain data, so the same code backs a URL parameter, a signal or
  * a server-rendered table.

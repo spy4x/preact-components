@@ -24,7 +24,7 @@ import {
 /**
  * `@preact-components/signals/build-model-store` — a signals CRUD store for one REST collection.
  *
- * Ported from a source application's `libs/shared/helpers.ts`, with these changes, none of them
+ * Ported from a source application's shared helpers module, with these changes, none of them
  * cosmetic:
  *
  * - **arktype in, not zod.** Schemas are arktype `Type`s, a payload is parsed once rather than
