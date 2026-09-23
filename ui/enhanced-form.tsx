@@ -144,23 +144,33 @@ export interface EnhancedFormProps {
  * for the region's `<p>` at all; giving the region a `key` of its own was tried too and made no
  * difference once the wrapper was in place, so it was not kept as a second mechanism doing nothing.
  *
- * **The region hides itself from sighted users when the current slot already shows the same
- * result in view.** Repeating "Sent." once as the visible replacement for the fields and a second
- * time immediately under it reads as a mistake, not a confirmation, and `NewsletterForm` and
- * `ContactForm` both hand `EnhancedForm` a `done` slot whose copy is the region's own default. The
- * always-present element is what makes the announcement reliable, so it never stops rendering —
- * only `sr-only` while a slot is on screen for the same status, which keeps the announcement and
- * removes the duplicate line. A status with no slot of its own (the default disabled-`<fieldset>`
- * behaviour, or `ContactForm`'s un-slotted `"failed"`) still needs the region to carry the message
- * visibly, since nothing else on screen does.
+ * **The region hides itself from sighted users whenever the current status has a slot of its own on
+ * screen at all — not only when that slot's own copy happens to match the region's.** Repeating
+ * "Sent." once as the visible replacement for the fields and a second time immediately under it
+ * reads as a mistake, not a confirmation, and `NewsletterForm` and `ContactForm` both hand
+ * `EnhancedForm` a `done` slot whose copy is the region's own default; a caller whose slot says
+ * something entirely different still gets the plainer, cheaper rule, rather than this component
+ * comparing rendered text to decide. The always-present element is what makes the announcement
+ * reliable, so it never stops rendering — only `sr-only` while a slot is on screen for the same
+ * status, which keeps the announcement and removes the duplicate line where one would otherwise
+ * appear. A status with no slot of its own (the default disabled-`<fieldset>` behaviour, or
+ * `ContactForm`'s un-slotted `"failed"`) still needs the region to carry the message visibly, since
+ * nothing else on screen does.
  *
- * **Focus moves to the region once the control a visitor pressed is gone.** Disabling the
- * `<fieldset>` — or swapping it for a `done`/`failed` slot — can take the focused submit button out
- * of the page's focus order entirely, which a browser resolves by dropping focus to `<body>`: a
- * keyboard user who was on the button a moment ago is now nowhere, effectively back at the top of
- * the page. The region is given `tabIndex={-1}` so it can hold focus without joining the tab order,
- * and an effect moves focus there whenever a status change leaves `document.activeElement` on
- * `<body>` — never when focus already landed somewhere sensible on its own.
+ * **Focus moves to the region only when it was inside this form the moment the visitor submitted,
+ * and the control they used is gone.** The first condition is read off `event.currentTarget.
+ * contains(document.activeElement)` inside the submit handler, before anything async happens: a
+ * real click or keypress on the submit button leaves focus there, but `form.requestSubmit()` called
+ * from outside the form — or a submit that started while focus was already elsewhere — does not,
+ * and there is no visitor to give focus back to in either case. Only once that first condition holds
+ * does the second matter: disabling the `<fieldset>` — or swapping it for a `done`/`failed` slot —
+ * can take the focused submit button out of the page's focus order entirely, which a browser
+ * resolves by dropping focus to `<body>`, and that is the one situation this component recovers
+ * from. The region is given `tabIndex={-1}` so it can hold focus without joining the tab order.
+ * Without the first condition, a submit nobody focused — or one whose visitor has since moved on to
+ * reading elsewhere, or into the browser's own UI, where `document.activeElement` also reads as
+ * `<body>` — would otherwise get its focus, and the scroll a `.focus()` call performs, pulled back
+ * to this form the moment an unrelated background submit happened to settle.
  */
 export function EnhancedForm(
   {
@@ -188,6 +198,12 @@ export function EnhancedForm(
   // started — or after a `pageshow` reset gave up on it — can tell it is stale and do nothing. See
   // this component's own doc for why a `.then`/`.catch` needs this at all.
   const submitIdRef = useRef(0)
+  // Whether focus was inside *this* form the moment the current submit started — a real click or
+  // keypress on the submit button leaves focus there, but `form.requestSubmit()` called from
+  // outside it, or a submit that started while the visitor's focus was already elsewhere, does not.
+  // Read by the focus-restoring effect below, which must never move focus for a visitor who was
+  // never engaging with this form's own controls in the first place.
+  const focusInFormAtSubmitRef = useRef(false)
 
   useEffect(() => {
     mountedRef.current = true
@@ -214,8 +230,13 @@ export function EnhancedForm(
 
   useEffect(() => {
     if (status === "idle") return
-    // Only when focus fell to <body> — a visitor who tabbed away, or whose focus landed somewhere
-    // else on purpose, is left alone.
+    // Two conditions, both required. Focus must have been inside this form when the visitor
+    // submitted — otherwise there is no visitor here to give focus back to, and moving it anyway is
+    // theft from whatever they were actually doing (reading another part of the page, working in
+    // the browser's own UI) when this unrelated submit happened to settle. And focus must still be
+    // on <body> right now — a visitor who tabbed to a specific control on purpose, inside or outside
+    // this form, is left exactly there.
+    if (!focusInFormAtSubmitRef.current) return
     if (globalThis.document?.activeElement === globalThis.document?.body) {
       regionRef.current?.focus()
     }
@@ -228,6 +249,10 @@ export function EnhancedForm(
     }
     if (!onSubmit) return // No callback: let the native post to `action` proceed.
     event.preventDefault()
+
+    focusInFormAtSubmitRef.current = event.currentTarget.contains(
+      globalThis.document?.activeElement ?? null,
+    )
 
     const data = new FormData(event.currentTarget)
     busyRef.current = true

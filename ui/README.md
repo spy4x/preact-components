@@ -592,17 +592,21 @@ stale `.then`/`.catch` finds its id no longer current and does nothing rather th
 newer submit already in progress.
 
 The result is announced through one `role="status"` region, present and empty from the first
-render — the same rule `Toastr` and `AuthForm` follow. It carries its own `key`, and the slot sits
-in a wrapper of its own: without both, Preact's unkeyed child diffing can match the region's `<p>`
-against a text-carrying `done`/`failed` slot's own `<p>` by type alone, patching the
-already-being-watched region into the slot's content and creating a _new_ region node that reaches
-the document already holding its message — exactly what an always-present region exists to avoid.
-The region hides itself (`sr-only`) from sighted users whenever the active slot is already showing
-the same result in view, so a caller whose `done` copy matches the region's own default is not
-shown the same sentence twice; a status with no slot of its own still shows the region, since
-nothing else on screen carries the message. Focus moves to the region once the control a visitor
-pressed is disabled or removed and the browser has dropped focus to `<body>` — never when focus
-already landed somewhere on its own.
+render — the same rule `Toastr` and `AuthForm` follow. The slot sits in a wrapper of its own:
+without it, Preact's unkeyed child diffing can match the region's `<p>` against a text-carrying
+`done`/`failed` slot's own `<p>` by type alone, patching the already-being-watched region into the
+slot's content and creating a _new_ region node that reaches the document already holding its
+message — exactly what an always-present region exists to avoid. The region hides itself
+(`sr-only`) from sighted users whenever the current status has a slot of its own on screen at all,
+whatever that slot's own copy says, so a caller whose `done` copy repeats the region's own default
+is not shown the same sentence twice; a status with no slot of its own — the default disabled
+`<fieldset>`, or `ContactForm`'s un-slotted `"failed"` — still shows the region, since nothing else
+on screen carries the message then. Focus moves to the region only when both hold: focus was inside
+this form the moment the visitor submitted — a real click or keypress on the submit button leaves it
+there, a `form.requestSubmit()` called from outside the form, or a submit that started while focus
+was already elsewhere, does not — and the browser has since dropped focus to `<body>`, which is what
+disabling or removing the control the visitor pressed does. A submit nobody focused, or a visitor
+who has since moved focus somewhere specific of their own accord, is never pulled back.
 
 `NewsletterForm` (one email field) and `ContactForm` (name, email, message) are built on this, each
 with an optional `honeypot` prop: an off-screen field simple bots fill in, `hp-field` by name and
