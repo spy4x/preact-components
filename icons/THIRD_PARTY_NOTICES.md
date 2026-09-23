@@ -109,8 +109,8 @@ SOFTWARE.
 From `lucide-static@1.47.0`'s own `LICENSE`. Several glyphs in this set compare exact or near to
 this pack. Lucide's own licence file already documents that a named subset of its icons are
 themselves derived from Feather under Feather's MIT licence, and that text is kept below exactly
-as Lucide ships it, list and all, rather than trimmed — three of this package's Lucide matches are
-on that list too (`link`, `minus`, `server`).
+as Lucide ships it, list and all, rather than trimmed — five of this package's Lucide matches are
+on that list too (`chevron-left`, `chevron-right`, `link`, `minus`, `server`).
 
 ```
 ISC License
