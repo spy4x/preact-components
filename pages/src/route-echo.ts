@@ -13,7 +13,7 @@
  * `SectionId` union: an id no section has must be reported, not rejected at parse time as if the
  * document were unreadable.
  *
- * Nothing here reaches the browser bundle: `document.ts` and `build.ts` are the only importers, and
+ * Nothing here reaches the browser bundle: `document.tsx` and `build.ts` are the only importers, and
  * neither is an island entry point.
  */
 
@@ -50,7 +50,7 @@ export const routeTableSchema = type({
  * browser parses as data and never executes.
  *
  * @param table Route table to echo, normally `routeTable()`.
- * @returns The element as markup, for `document.ts` to place in the document.
+ * @returns The element as markup, for `document.tsx` to place in the document.
  */
 export function renderRouteTable(table: RouteTable): string {
   const json = JSON.stringify(table).replaceAll("<", "\\u003c")

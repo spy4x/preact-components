@@ -40,7 +40,7 @@ import { demoElementId } from "./deep-link.ts"
 import { PAGE_TITLE, REPOSITORY } from "./site.ts"
 import { UrlFilterDemo } from "./url-filters.tsx"
 
-/** Storage key shared with the bootstrap script in `<head>` (`document.ts`). */
+/** Storage key shared with the bootstrap script in `<head>` (`document.tsx`). */
 const THEME_KEY = "pc-theme"
 
 /** How long a chip reports "copied" before it goes back to "copy". */
