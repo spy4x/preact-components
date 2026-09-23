@@ -13,7 +13,6 @@ An app writes this at the top of its stylesheet, in this order:
 @import "tailwindcss";
 @import "@preact-components/theme/tokens.css";
 @import "@preact-components/theme/preset.css";
-@plugin "@tailwindcss/forms";
 ```
 
 Then tell Tailwind where the library's components live, so the classes they use
@@ -23,17 +22,19 @@ are emitted:
 @source "../node_modules/@preact-components";
 ```
 
-`@tailwindcss/forms` is the one peer this preset assumes: the form controls are
-tuned to sit on top of it. It is a JavaScript plugin — `main: src/index.js`, no
-style entry — so an app loads it with `@plugin`, not `@import`, and it goes
-**last**, after `preset.css`. Both end up in the same `@layer base`, so there is
-one cascade layer and **source order decides inside it**: forms' own selectors —
+`@tailwindcss/forms` is optional: the preset's own form rules render without it,
+so nothing in this package loads it, imports it or pins it. An app that wants
+its glyphs adds the plugin itself (`npm:@tailwindcss/forms`, pinned to whatever
+version that app chooses) and loads it with `@plugin`, not `@import` — it is a
+JavaScript plugin, `main: src/index.js`, no style entry — **last**, after
+`preset.css`. Both then end up in the same `@layer base`, so there is one
+cascade layer and **source order decides inside it**: forms' own selectors —
 `[type="text"]`, `select`, `textarea`, at (0,1,0) — are imported later and
 therefore beat any of the preset's form rules that are wrapped in `:where()`,
 whose gate contributes no specificity at all. Do not move forms above the preset.
 That reasoning comes from the layer layout of the compiled sheet rather than from
 a measured build: forms is not loaded by this repo's demo, so nothing here
-exercises it end to end. The repo pins forms in the root `deno.jsonc`.
+exercises it end to end.
 
 For dark mode, put `dark` on `<html>`. The preset defines the `dark` variant as
 `&:where(.dark, .dark *)`, so no `@custom-variant` is needed in the app.

@@ -14,7 +14,6 @@
     "jsr:@std/testing@1.0.20": "1.0.20",
     "npm:@preact/signals-core@1.12.1": "1.12.1",
     "npm:@preact/signals@2.5.1": "2.5.1_preact@10.28.2",
-    "npm:@tailwindcss/forms@0.5.10": "0.5.10_tailwindcss@4.1.12",
     "npm:@tailwindcss/oxide@4.1.12": "4.1.12",
     "npm:arktype@2.2.3": "2.2.3",
     "npm:d3@7.9.0": "7.9.0",
@@ -97,13 +96,6 @@
       "dependencies": [
         "@preact/signals-core",
         "preact"
-      ]
-    },
-    "@tailwindcss/forms@0.5.10_tailwindcss@4.1.12": {
-      "integrity": "sha512-utI1ONF6uf/pPNO68kmN1b8rEwNXv3czukalo8VtJH8ksIkZXr3Q3VYudZLkCsDd4Wku120uF02hYK25XGPorw==",
-      "dependencies": [
-        "mini-svg-data-uri",
-        "tailwindcss"
       ]
     },
     "@tailwindcss/oxide-android-arm64@4.1.12": {
@@ -428,10 +420,6 @@
     "internmap@2.0.3": {
       "integrity": "sha512-5Hh7Y1wQbvY5ooGgPbDaL5iYLAPzMTUrjMulskHLH6wnv/A+1q5rgEaiuqEjB+oxGXIVZs1FF+R/KPN3ZSQYYg=="
     },
-    "mini-svg-data-uri@1.4.4": {
-      "integrity": "sha512-r9deDe9p5FJUPZAk3A59wGH7Ii9YrjjWw0jmw/liSbHl2CHiyXj6FcDXDu2K3TjVAXqiJdaw3xxwlZZr9E6nHg==",
-      "bin": true
-    },
     "minipass@7.1.2": {
       "integrity": "sha512-qOOzS1cBTWYF4BH8fVePDBOO9iptMnGUEZwNc/cMWnTV2nVLZ7VoNWEPHkYczZA0pdoA7dl6e7FL659nX9S2aw=="
     },
@@ -479,7 +467,8 @@
         "minipass",
         "minizlib",
         "yallist"
-      ]
+      ],
+      "deprecated": true
     },
     "wouter-preact@3.9.0_preact@10.28.2": {
       "integrity": "sha512-rldHdAwygx1yTn8zdopPy7v1uJyYTOF9WFuRg2GYT3zJGUSQZ2d97HfpQQezlxhWxpSEpWFl1YM9EwzekCXIUw==",
@@ -500,8 +489,8 @@
       "jsr:@std/testing@1.0.20",
       "npm:@preact/signals-core@1.12.1",
       "npm:@preact/signals@2.5.1",
-      "npm:@tailwindcss/forms@0.5.10",
       "npm:arktype@2.2.3",
+      "npm:preact-render-to-string@6.7.0",
       "npm:preact@10.28.2",
       "npm:tailwind-merge@3.7.0",
       "npm:tailwindcss@4.1.12",
@@ -510,35 +499,17 @@
     "members": {
       "charts": {
         "dependencies": [
-          "npm:d3@7.9.0",
-          "npm:preact-render-to-string@6.7.0"
-        ]
-      },
-      "crud": {
-        "dependencies": [
-          "npm:preact-render-to-string@6.7.0"
+          "npm:d3@7.9.0"
         ]
       },
       "pages": {
         "dependencies": [
-          "npm:@tailwindcss/oxide@4.1.12",
-          "npm:preact-render-to-string@6.7.0"
-        ]
-      },
-      "system": {
-        "dependencies": [
-          "npm:preact-render-to-string@6.7.0"
-        ]
-      },
-      "ui": {
-        "dependencies": [
-          "npm:preact-render-to-string@6.7.0"
+          "npm:@tailwindcss/oxide@4.1.12"
         ]
       },
       "ui-guide": {
         "dependencies": [
-          "jsr:@std/jsonc@1.0.2",
-          "npm:preact-render-to-string@6.7.0"
+          "jsr:@std/jsonc@1.0.2"
         ]
       }
     }

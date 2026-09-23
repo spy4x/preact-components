@@ -65,6 +65,13 @@
     // Validation — arktype only, never zod
     "arktype": "npm:arktype@2.2.3",
 
+    // Test-only HTML renderer every package's suite imports. One pin here (#133) replaces six
+    // identical per-package copies that all resolved the same version. Unlike `d3` below, this is
+    // safe to centralise: every import of it is in a `*.test.tsx` file or the unpublished `pages/`
+    // demo, never in a package's `exports`, so no published package's consumer ever resolves this
+    // specifier — moving it here adds nothing to what a consumer's own dependency graph pulls in.
+    "preact-render-to-string": "npm:preact-render-to-string@6.7.0",
+
     // Class name helper — see `cn/` for the small function built on it
     "tailwind-merge": "npm:tailwind-merge@3.7.0",
 
@@ -77,8 +84,7 @@
 
     // Tailwind, pinned to the version spy4x/template builds with
     "tailwindcss": "npm:tailwindcss@4.1.12",
-    "tailwindcss/": "npm:/tailwindcss@4.1.12/",
-    "@tailwindcss/forms": "npm:@tailwindcss/forms@0.5.10"
+    "tailwindcss/": "npm:/tailwindcss@4.1.12/"
   },
   "compilerOptions": {
     // An explicit "lib" replaces Deno's default lib set, so "deno.ns" has to be
