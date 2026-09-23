@@ -10,13 +10,15 @@
  * https://github.com/spy4x/preact-components/issues/10 (FOSS replacement / provenance)
  */
 
+import type { JSX } from "preact"
+
 /** Common prop surface: every icon takes an optional Tailwind class string. */
 export interface IconProps {
   class?: string
 }
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconAlertTriangle(props: IconProps) {
+export function IconAlertTriangle(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -36,7 +38,7 @@ export function IconAlertTriangle(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from antonshubin. */
-export function IconArchive(props: IconProps) {
+export function IconArchive(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -56,7 +58,7 @@ export function IconArchive(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from template. */
-export function IconArrowDown(props: IconProps) {
+export function IconArrowDown(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -72,7 +74,7 @@ export function IconArrowDown(props: IconProps) {
 }
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconArrowDownTray(props: IconProps) {
+export function IconArrowDownTray(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -92,7 +94,7 @@ export function IconArrowDownTray(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from template. */
-export function IconArrowLeft(props: IconProps) {
+export function IconArrowLeft(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -112,7 +114,7 @@ export function IconArrowLeft(props: IconProps) {
 }
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconArrowPath(props: IconProps) {
+export function IconArrowPath(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -132,7 +134,7 @@ export function IconArrowPath(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from template. */
-export function IconArrowRight(props: IconProps) {
+export function IconArrowRight(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -148,7 +150,7 @@ export function IconArrowRight(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from template. */
-export function IconArrowUp(props: IconProps) {
+export function IconArrowUp(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -164,7 +166,7 @@ export function IconArrowUp(props: IconProps) {
 }
 
 /** Custom outline (stroke 1.75) · from offer-lens. */
-export function IconArrowUpRight(props: IconProps) {
+export function IconArrowUpRight(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -183,7 +185,7 @@ export function IconArrowUpRight(props: IconProps) {
 }
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconArrowUturnLeft(props: IconProps) {
+export function IconArrowUturnLeft(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -203,7 +205,7 @@ export function IconArrowUturnLeft(props: IconProps) {
 }
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconArrowUturnRight(props: IconProps) {
+export function IconArrowUturnRight(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -223,7 +225,7 @@ export function IconArrowUturnRight(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from antonshubin. */
-export function IconAtSign(props: IconProps) {
+export function IconAtSign(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -242,7 +244,7 @@ export function IconAtSign(props: IconProps) {
 }
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconBars3(props: IconProps) {
+export function IconBars3(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -262,7 +264,7 @@ export function IconBars3(props: IconProps) {
 }
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconBell(props: IconProps) {
+export function IconBell(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -282,7 +284,7 @@ export function IconBell(props: IconProps) {
 }
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconBookOpen(props: IconProps) {
+export function IconBookOpen(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -302,7 +304,7 @@ export function IconBookOpen(props: IconProps) {
 }
 
 /** Custom outline (stroke 1.2) · from antonshubin. */
-export function IconBookmark(props: IconProps) {
+export function IconBookmark(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -322,7 +324,7 @@ export function IconBookmark(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from antonshubin. */
-export function IconBriefcase(props: IconProps) {
+export function IconBriefcase(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -342,7 +344,7 @@ export function IconBriefcase(props: IconProps) {
 }
 
 /** Custom outline (stroke 1.75) · from offer-lens. */
-export function IconBuilding(props: IconProps) {
+export function IconBuilding(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -367,7 +369,7 @@ export function IconBuilding(props: IconProps) {
 }
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconBuildingOffice2(props: IconProps) {
+export function IconBuildingOffice2(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -387,7 +389,7 @@ export function IconBuildingOffice2(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from antonshubin. */
-export function IconCalendar(props: IconProps) {
+export function IconCalendar(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -408,7 +410,7 @@ export function IconCalendar(props: IconProps) {
 }
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconCalendarDays(props: IconProps) {
+export function IconCalendarDays(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -428,7 +430,7 @@ export function IconCalendarDays(props: IconProps) {
 }
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconChartPie(props: IconProps) {
+export function IconChartPie(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -453,7 +455,7 @@ export function IconChartPie(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from antonshubin. */
-export function IconChatBubble(props: IconProps) {
+export function IconChatBubble(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -472,7 +474,7 @@ export function IconChatBubble(props: IconProps) {
 }
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconCheck(props: IconProps) {
+export function IconCheck(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -492,7 +494,7 @@ export function IconCheck(props: IconProps) {
 }
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconCheckCircle(props: IconProps) {
+export function IconCheckCircle(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -512,7 +514,7 @@ export function IconCheckCircle(props: IconProps) {
 }
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconChevronDown(props: IconProps) {
+export function IconChevronDown(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -532,7 +534,7 @@ export function IconChevronDown(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from mig. */
-export function IconChevronLeft(props: IconProps) {
+export function IconChevronLeft(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -550,7 +552,7 @@ export function IconChevronLeft(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from mig. */
-export function IconChevronRight(props: IconProps) {
+export function IconChevronRight(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -568,7 +570,7 @@ export function IconChevronRight(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from antonshubin. */
-export function IconChip(props: IconProps) {
+export function IconChip(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -594,7 +596,7 @@ export function IconChip(props: IconProps) {
 }
 
 /** Custom outline (stroke 1.75) · from offer-lens. */
-export function IconCircleDot(props: IconProps) {
+export function IconCircleDot(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -613,7 +615,7 @@ export function IconCircleDot(props: IconProps) {
 }
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconClipboard(props: IconProps) {
+export function IconClipboard(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -633,7 +635,7 @@ export function IconClipboard(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from template. */
-export function IconClipboardCopy(props: IconProps) {
+export function IconClipboardCopy(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -653,7 +655,7 @@ export function IconClipboardCopy(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from antonshubin. */
-export function IconClock(props: IconProps) {
+export function IconClock(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -671,7 +673,7 @@ export function IconClock(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from antonshubin. */
-export function IconCode(props: IconProps) {
+export function IconCode(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -690,7 +692,7 @@ export function IconCode(props: IconProps) {
 }
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconCog6Tooth(props: IconProps) {
+export function IconCog6Tooth(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -715,7 +717,7 @@ export function IconCog6Tooth(props: IconProps) {
 }
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconCpuChip(props: IconProps) {
+export function IconCpuChip(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -735,7 +737,7 @@ export function IconCpuChip(props: IconProps) {
 }
 
 /** Custom outline (stroke 1.75) · from offer-lens. */
-export function IconCreditCard(props: IconProps) {
+export function IconCreditCard(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -754,7 +756,7 @@ export function IconCreditCard(props: IconProps) {
 }
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconCursorArrowRays(props: IconProps) {
+export function IconCursorArrowRays(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -774,7 +776,7 @@ export function IconCursorArrowRays(props: IconProps) {
 }
 
 /** Custom outline (stroke 1.75) · from offer-lens. */
-export function IconDocument(props: IconProps) {
+export function IconDocument(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -795,7 +797,7 @@ export function IconDocument(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from antonshubin. */
-export function IconDollar(props: IconProps) {
+export function IconDollar(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -813,7 +815,7 @@ export function IconDollar(props: IconProps) {
 }
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconEllipsisVertical(props: IconProps) {
+export function IconEllipsisVertical(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -833,7 +835,7 @@ export function IconEllipsisVertical(props: IconProps) {
 }
 
 /** Custom outline (stroke 1.75) · from offer-lens. */
-export function IconExternal(props: IconProps) {
+export function IconExternal(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -853,7 +855,7 @@ export function IconExternal(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from template. */
-export function IconEye(props: IconProps) {
+export function IconEye(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -878,7 +880,7 @@ export function IconEye(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from template. */
-export function IconEyeOff(props: IconProps) {
+export function IconEyeOff(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -898,7 +900,7 @@ export function IconEyeOff(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from antonshubin. */
-export function IconFire(props: IconProps) {
+export function IconFire(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -917,7 +919,7 @@ export function IconFire(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from antonshubin. */
-export function IconFlag(props: IconProps) {
+export function IconFlag(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -936,7 +938,7 @@ export function IconFlag(props: IconProps) {
 }
 
 /** Custom outline (stroke 1.75) · from offer-lens. */
-export function IconFlask(props: IconProps) {
+export function IconFlask(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -956,7 +958,7 @@ export function IconFlask(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from template. */
-export function IconFolder(props: IconProps) {
+export function IconFolder(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -976,7 +978,7 @@ export function IconFolder(props: IconProps) {
 }
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconFunnel(props: IconProps) {
+export function IconFunnel(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -996,7 +998,7 @@ export function IconFunnel(props: IconProps) {
 }
 
 /** Custom outline (stroke n/a) · from template. */
-export function IconGateway(props: IconProps) {
+export function IconGateway(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1011,7 +1013,7 @@ export function IconGateway(props: IconProps) {
 }
 
 /** Filled / brand glyph · from antonshubin. */
-export function IconGitHub(props: IconProps) {
+export function IconGitHub(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1025,7 +1027,7 @@ export function IconGitHub(props: IconProps) {
 }
 
 /** Custom outline (stroke 1.75) · from offer-lens. */
-export function IconGlobe(props: IconProps) {
+export function IconGlobe(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1045,7 +1047,7 @@ export function IconGlobe(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from antonshubin. */
-export function IconGrid(props: IconProps) {
+export function IconGrid(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1065,7 +1067,7 @@ export function IconGrid(props: IconProps) {
 }
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconHandThumbUp(props: IconProps) {
+export function IconHandThumbUp(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1085,7 +1087,7 @@ export function IconHandThumbUp(props: IconProps) {
 }
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconHome(props: IconProps) {
+export function IconHome(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1105,7 +1107,7 @@ export function IconHome(props: IconProps) {
 }
 
 /** Custom outline (stroke 1.75) · from offer-lens. */
-export function IconImage(props: IconProps) {
+export function IconImage(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1125,7 +1127,7 @@ export function IconImage(props: IconProps) {
 }
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconInformationCircle(props: IconProps) {
+export function IconInformationCircle(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1145,7 +1147,7 @@ export function IconInformationCircle(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from antonshubin. */
-export function IconKey(props: IconProps) {
+export function IconKey(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1163,7 +1165,7 @@ export function IconKey(props: IconProps) {
 }
 
 /** Custom outline (stroke 1.75) · from offer-lens. */
-export function IconLens(props: IconProps) {
+export function IconLens(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1184,7 +1186,7 @@ export function IconLens(props: IconProps) {
 }
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconLightBulb(props: IconProps) {
+export function IconLightBulb(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1204,7 +1206,7 @@ export function IconLightBulb(props: IconProps) {
 }
 
 /** Custom outline (stroke 1.75) · from offer-lens. */
-export function IconLink(props: IconProps) {
+export function IconLink(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1223,7 +1225,7 @@ export function IconLink(props: IconProps) {
 }
 
 /** Filled / brand glyph · from antonshubin. */
-export function IconLinkedIn(props: IconProps) {
+export function IconLinkedIn(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1237,7 +1239,7 @@ export function IconLinkedIn(props: IconProps) {
 }
 
 /** Custom outline (stroke 1.75) · from offer-lens. */
-export function IconList(props: IconProps) {
+export function IconList(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1260,7 +1262,7 @@ export function IconList(props: IconProps) {
 }
 
 /** Custom outline (stroke 4) · from template. */
-export function IconLoading(props: IconProps) {
+export function IconLoading(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1288,7 +1290,7 @@ export function IconLoading(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from template. */
-export function IconLocationMarker(props: IconProps) {
+export function IconLocationMarker(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1313,7 +1315,7 @@ export function IconLocationMarker(props: IconProps) {
 }
 
 /** Custom outline (stroke 1.75) · from offer-lens. */
-export function IconLogout(props: IconProps) {
+export function IconLogout(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1333,7 +1335,7 @@ export function IconLogout(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from antonshubin. */
-export function IconMail(props: IconProps) {
+export function IconMail(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1353,7 +1355,7 @@ export function IconMail(props: IconProps) {
 }
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconMap(props: IconProps) {
+export function IconMap(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1373,7 +1375,7 @@ export function IconMap(props: IconProps) {
 }
 
 /** Custom outline (stroke 1.8) · from mig. */
-export function IconMinus(props: IconProps) {
+export function IconMinus(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1391,7 +1393,7 @@ export function IconMinus(props: IconProps) {
 }
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconMoon(props: IconProps) {
+export function IconMoon(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1411,7 +1413,7 @@ export function IconMoon(props: IconProps) {
 }
 
 /** Custom outline (stroke 1.75) · from offer-lens. */
-export function IconPackage(props: IconProps) {
+export function IconPackage(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1432,7 +1434,7 @@ export function IconPackage(props: IconProps) {
 }
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconPencilSquare(props: IconProps) {
+export function IconPencilSquare(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1452,7 +1454,7 @@ export function IconPencilSquare(props: IconProps) {
 }
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconPlus(props: IconProps) {
+export function IconPlus(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1472,7 +1474,7 @@ export function IconPlus(props: IconProps) {
 }
 
 /** Filled / brand glyph · from antonshubin. */
-export function IconQuote(props: IconProps) {
+export function IconQuote(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1486,7 +1488,7 @@ export function IconQuote(props: IconProps) {
 }
 
 /** Custom outline (stroke 1.75) · from offer-lens. */
-export function IconRocket(props: IconProps) {
+export function IconRocket(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1507,7 +1509,7 @@ export function IconRocket(props: IconProps) {
 }
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconSearch(props: IconProps) {
+export function IconSearch(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1527,7 +1529,7 @@ export function IconSearch(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from template. */
-export function IconSensor(props: IconProps) {
+export function IconSensor(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1547,7 +1549,7 @@ export function IconSensor(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from antonshubin. */
-export function IconServer(props: IconProps) {
+export function IconServer(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1568,7 +1570,7 @@ export function IconServer(props: IconProps) {
 }
 
 /** Custom outline (stroke 1.75) · from offer-lens. */
-export function IconShare(props: IconProps) {
+export function IconShare(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1588,7 +1590,7 @@ export function IconShare(props: IconProps) {
 }
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconShieldCheck(props: IconProps) {
+export function IconShieldCheck(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1608,7 +1610,7 @@ export function IconShieldCheck(props: IconProps) {
 }
 
 /** Custom outline (stroke 1.75) · from offer-lens. */
-export function IconSparkle(props: IconProps) {
+export function IconSparkle(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1627,7 +1629,7 @@ export function IconSparkle(props: IconProps) {
 }
 
 /** Custom outline (stroke 2.5) · from mig. */
-export function IconSpinner(props: IconProps) {
+export function IconSpinner(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1644,7 +1646,7 @@ export function IconSpinner(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from antonshubin. */
-export function IconStar(props: IconProps) {
+export function IconStar(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1662,7 +1664,7 @@ export function IconStar(props: IconProps) {
 }
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconSun(props: IconProps) {
+export function IconSun(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1682,7 +1684,7 @@ export function IconSun(props: IconProps) {
 }
 
 /** Custom outline (stroke 1.75) · from offer-lens. */
-export function IconTag(props: IconProps) {
+export function IconTag(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1701,7 +1703,7 @@ export function IconTag(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from antonshubin. */
-export function IconTarget(props: IconProps) {
+export function IconTarget(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1721,7 +1723,7 @@ export function IconTarget(props: IconProps) {
 }
 
 /** Filled / brand glyph · from antonshubin. */
-export function IconTelegram(props: IconProps) {
+export function IconTelegram(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1739,7 +1741,7 @@ export function IconTelegram(props: IconProps) {
 }
 
 /** Custom outline (stroke 1.8) · from mig. */
-export function IconThemeAuto(props: IconProps) {
+export function IconThemeAuto(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1759,7 +1761,7 @@ export function IconThemeAuto(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from template. */
-export function IconTrashBin(props: IconProps) {
+export function IconTrashBin(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1779,7 +1781,7 @@ export function IconTrashBin(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from template. */
-export function IconTrendingDown(props: IconProps) {
+export function IconTrendingDown(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1799,7 +1801,7 @@ export function IconTrendingDown(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from template. */
-export function IconTrendingUp(props: IconProps) {
+export function IconTrendingUp(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1819,7 +1821,7 @@ export function IconTrendingUp(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from antonshubin. */
-export function IconTwitter(props: IconProps) {
+export function IconTwitter(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1837,7 +1839,7 @@ export function IconTwitter(props: IconProps) {
 }
 
 /** Filled / brand glyph · from antonshubin. */
-export function IconUpwork(props: IconProps) {
+export function IconUpwork(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1869,7 +1871,7 @@ export function IconUpwork(props: IconProps) {
 }
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconUser(props: IconProps) {
+export function IconUser(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1889,7 +1891,7 @@ export function IconUser(props: IconProps) {
 }
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconUsers(props: IconProps) {
+export function IconUsers(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1909,7 +1911,7 @@ export function IconUsers(props: IconProps) {
 }
 
 /** Custom outline (stroke 1.75) · from offer-lens. */
-export function IconVideo(props: IconProps) {
+export function IconVideo(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1928,7 +1930,7 @@ export function IconVideo(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from antonshubin. */
-export function IconWallet(props: IconProps) {
+export function IconWallet(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1947,7 +1949,7 @@ export function IconWallet(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from antonshubin. */
-export function IconWrench(props: IconProps) {
+export function IconWrench(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1965,7 +1967,7 @@ export function IconWrench(props: IconProps) {
 }
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconXMark(props: IconProps) {
+export function IconXMark(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1985,7 +1987,7 @@ export function IconXMark(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from antonshubin. */
-export function IconYouTube(props: IconProps) {
+export function IconYouTube(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -2004,7 +2006,7 @@ export function IconYouTube(props: IconProps) {
 }
 
 /** Custom outline (stroke 1.75) · from offer-lens. */
-export function IconZap(props: IconProps) {
+export function IconZap(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -2022,7 +2024,7 @@ export function IconZap(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from roley. */
-export function IconArrowsPointingOut(props: IconProps) {
+export function IconArrowsPointingOut(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -2042,7 +2044,7 @@ export function IconArrowsPointingOut(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from roley. */
-export function IconCloudArrowUp(props: IconProps) {
+export function IconCloudArrowUp(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -2062,7 +2064,7 @@ export function IconCloudArrowUp(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from roley. The source's default was `h-6 w-6`. */
-export function IconSuccess(props: IconProps) {
+export function IconSuccess(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -2082,7 +2084,7 @@ export function IconSuccess(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from roley. */
-export function IconDocumentDuplicate(props: IconProps) {
+export function IconDocumentDuplicate(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -2102,7 +2104,7 @@ export function IconDocumentDuplicate(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from roley. */
-export function IconDocumentText(props: IconProps) {
+export function IconDocumentText(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -2122,7 +2124,7 @@ export function IconDocumentText(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from roley. */
-export function IconDownload(props: IconProps) {
+export function IconDownload(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -2146,7 +2148,7 @@ export function IconDownload(props: IconProps) {
  *  the source's byte for byte; `fill="none"` on the root and the source's `width`/`height` were
  *  dropped, and the one path's `fill` moved onto the root as `currentColor` — the same substitution
  *  as `IconPlaySolid`'s hard-coded red. */
-export function IconExternalLink(props: IconProps) {
+export function IconExternalLink(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -2164,7 +2166,7 @@ export function IconExternalLink(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from roley. */
-export function IconFilm(props: IconProps) {
+export function IconFilm(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -2184,7 +2186,7 @@ export function IconFilm(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from roley. */
-export function IconLockClosed(props: IconProps) {
+export function IconLockClosed(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -2204,7 +2206,7 @@ export function IconLockClosed(props: IconProps) {
 }
 
 /** Heroicons v2 solid · from roley. */
-export function IconLockClosedFilled(props: IconProps) {
+export function IconLockClosedFilled(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -2222,7 +2224,7 @@ export function IconLockClosedFilled(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from roley. */
-export function IconLockOpen(props: IconProps) {
+export function IconLockOpen(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -2242,7 +2244,7 @@ export function IconLockOpen(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from roley. */
-export function IconMicrophone(props: IconProps) {
+export function IconMicrophone(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -2262,7 +2264,7 @@ export function IconMicrophone(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from roley. */
-export function IconPlayCircle(props: IconProps) {
+export function IconPlayCircle(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -2284,7 +2286,7 @@ export function IconPlayCircle(props: IconProps) {
 
 /** Heroicons v2 solid · from roley. The source hard-coded red; `currentColor` is kept so the
  *  caller picks the colour, as every other glyph in this set does. */
-export function IconPlaySolid(props: IconProps) {
+export function IconPlaySolid(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -2298,7 +2300,7 @@ export function IconPlaySolid(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from roley. */
-export function IconRefresh(props: IconProps) {
+export function IconRefresh(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -2318,7 +2320,7 @@ export function IconRefresh(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from roley. */
-export function IconSmile(props: IconProps) {
+export function IconSmile(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -2338,7 +2340,7 @@ export function IconSmile(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from roley. */
-export function IconStopCircle(props: IconProps) {
+export function IconStopCircle(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -2359,7 +2361,7 @@ export function IconStopCircle(props: IconProps) {
 }
 
 /** Heroicons v1 outline (stroke-2) · from roley. */
-export function IconVideoCamera(props: IconProps) {
+export function IconVideoCamera(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
