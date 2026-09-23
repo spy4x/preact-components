@@ -14,6 +14,8 @@ import {
   glyphKeys,
   normalizeElement,
   normalizePathData,
+  parsePathData,
+  PathParseError,
   repoGlyphs,
   roundNumber,
   skeletonSimilarity,
@@ -53,11 +55,45 @@ describe("normalizePathData", () => {
   })
 
   it("separates a flag digit from a following signed number", () => {
-    // The exact shape this package's own Heroicons v2 arcs use: `…0 0 1-2.247…` is flag, flag,
-    // sweep-flag, then a negative x — the minus sign is what breaks the run, per the module's
-    // "Known limits" note.
+    // This package's own Heroicons v2 arcs write it this way: `…0 0 1-2.247…` is flag, flag,
+    // sweep-flag, then a negative x — the minus sign is what breaks the run even under a plain
+    // number regex. The case a regex cannot handle — two flags running into a positive number, with
+    // no sign to break on — is the next test.
     const { canonical } = normalizePathData("a2.25 2.25 0 0 1-2.247 2.118")
     expect(canonical).toBe("a 2.25 2.25 0 0 1 -2.247 2.118")
+  })
+
+  it("reads run-together arc flags as two single digits, not one multi-digit number", () => {
+    // The reviewer's example (verdict on #232): a plain letters-and-numbers regex reads "11-18" as
+    // the numbers 11 and -18 — two arguments instead of the large-arc-flag, sweep-flag and dx the
+    // grammar says it is. Also Heroicons v1's actual shape for `trending-up`/`trending-down` and
+    // several Heroicons v2 24/outline files written in the older compact form (`briefcase`, `clock`,
+    // `currency-dollar`, `squares-2x2`, `key`, `sun`), which is why the earlier version of this
+    // check reported real Heroicons matches as "no match".
+    const { canonical } = normalizePathData("a9 9 0 11-18 0")
+    expect(canonical).toBe("a 9 9 0 1 1 -18 0")
+  })
+
+  it("reads a bare coordinate pair after M as an implicit L, and repeats other commands too", () => {
+    // "m0-8-8 8-4-4-6 6" (Heroicons v1's actual `trending-up`) has one `m` and three bare coordinate
+    // pairs after it; the grammar says each of those is an implicit `l`. Compare against the same
+    // shape written with the `l`s explicit — they must produce the same skeleton and canonical form,
+    // or the two would wrongly compare as different shapes.
+    const implicit = normalizePathData("m0-8-8 8-4-4-6 6")
+    const explicit = normalizePathData("m0-8l-8 8l-4-4l-6 6")
+    expect(implicit.skeleton).toBe("mlll")
+    expect(implicit.canonical).toBe(explicit.canonical)
+    expect(implicit.skeleton).toBe(explicit.skeleton)
+  })
+
+  it("treats z and Z as the same command", () => {
+    // Closepath has no absolute/relative distinction, unlike every other letter pair this module
+    // treats as meaningfully different (the "keeps command case" test above).
+    const lower = normalizePathData("M1 1L2 2z")
+    const upper = normalizePathData("M1 1L2 2Z")
+    expect(lower.skeleton).toBe("MLZ")
+    expect(lower.skeleton).toBe(upper.skeleton)
+    expect(lower.canonical).toBe(upper.canonical)
   })
 
   it("only reports a skeleton difference when the command letters differ", () => {
@@ -65,6 +101,38 @@ describe("normalizePathData", () => {
     const b = normalizePathData("M9.5 -3L100 42.125Z")
     expect(a.skeleton).toBe(b.skeleton)
     expect(a.canonical).not.toBe(b.canonical)
+  })
+
+  it("degrades one unparseable path to a skeleton that cannot match anything, instead of throwing", () => {
+    const { canonical, skeleton } = normalizePathData("Q not a number")
+    expect(() => normalizePathData("Q not a number")).not.toThrow()
+    expect(skeleton.startsWith("unparsed:")).toBe(true)
+    expect(canonical.startsWith("unparsed:")).toBe(true)
+  })
+})
+
+describe("parsePathData", () => {
+  it("parses each command's exact argument count, per the SVG grammar", () => {
+    expect(parsePathData("M1 2")).toEqual([{ cmd: "M", args: [1, 2] }])
+    expect(parsePathData("H5")).toEqual([{ cmd: "H", args: [5] }])
+    expect(parsePathData("V5")).toEqual([{ cmd: "V", args: [5] }])
+    expect(parsePathData("C1 2 3 4 5 6")).toEqual([{ cmd: "C", args: [1, 2, 3, 4, 5, 6] }])
+    expect(parsePathData("S1 2 3 4")).toEqual([{ cmd: "S", args: [1, 2, 3, 4] }])
+    expect(parsePathData("Q1 2 3 4")).toEqual([{ cmd: "Q", args: [1, 2, 3, 4] }])
+    expect(parsePathData("T1 2")).toEqual([{ cmd: "T", args: [1, 2] }])
+    expect(parsePathData("Z")).toEqual([{ cmd: "Z", args: [] }])
+  })
+
+  it("rejects data that does not start with a command letter", () => {
+    expect(() => parsePathData("1 2 3")).toThrow(PathParseError)
+  })
+
+  it("rejects an unknown command letter", () => {
+    expect(() => parsePathData("B1 2")).toThrow(PathParseError)
+  })
+
+  it("rejects a flag argument that is not 0 or 1", () => {
+    expect(() => parsePathData("a1 1 0 2 0 1 1")).toThrow(PathParseError)
   })
 })
 
@@ -167,8 +235,15 @@ describe("skeletonSimilarity", () => {
       normalizeElement("line", { x1: "2", y1: "2", x2: "3", y2: "3" }),
     ]
     const oneLine = [normalizeElement("line", { x1: "9", y1: "9", x2: "8", y2: "8" })]
-    // One of `twoLines`' two elements has a matching skeleton in `oneLine`; the other does not.
+    // One of `twoLines`' two elements has a matching skeleton in `oneLine`; the other does not — in
+    // both directions. A version that counts "present at all" rather than per-occurrence (a plain
+    // set instead of a multiset) gives the right answer, 0.5, in the `(twoLines, oneLine)` direction
+    // by coincidence — `oneLine` has only one element to find, so "present" and "how many" agree —
+    // but wrongly returns 1 in the `(oneLine, twoLines)` direction, because `oneLine`'s one skeleton
+    // is "present" in `twoLines` even though `twoLines` has a second element that does not match it.
+    // Both directions are asserted so that bug cannot hide in the one direction that looks right.
     expect(skeletonSimilarity(twoLines, oneLine)).toBe(0.5)
+    expect(skeletonSimilarity(oneLine, twoLines)).toBe(0.5)
   })
 })
 

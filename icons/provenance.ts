@@ -19,16 +19,24 @@
  *
  * ## Normalisation
  *
- * A `<path d="…">`'s data is tokenised into command letters (`M`, `L`, `H`, `V`, `C`, `S`, `Q`, `T`,
- * `A`, `Z`, either case) and numbers, ignoring whatever mix of spaces, commas or no separator at all
- * the source used. Each number is rounded to 4 decimal places and re-rendered through
- * `Number.prototype.toString()`, which drops trailing zeros and a leading `0` the same way
- * regardless of how the source wrote it (`"2.0"`, `"2.00"` and `"2"` all become `"2"`). The
- * canonical form is the command letters and rounded numbers joined by single spaces, in document
- * order. `rect`/`circle`/`ellipse`/`line` are normalised the same way over their fixed numeric
- * attributes (`x`/`y`/`width`/`height`/`rx`/`ry`, `cx`/`cy`/`r`, …), composed in one fixed attribute
- * order regardless of the order the source wrote them in. `polyline`/`polygon` normalise every
- * number in `points` the same way `path` normalises `d`.
+ * A `<path d="…">`'s data is parsed per the SVG path grammar, not by a letters-and-numbers regex: a
+ * cursor walks the string, reads one command letter, then reads exactly as many arguments as that
+ * command takes (`M`/`L`/`T`: 2, `H`/`V`: 1, `C`: 6, `S`/`Q`: 4, `A`: 7, `Z`: 0), then repeats for
+ * as many argument groups as follow before the next letter — the SVG spec's implicit-repetition
+ * rule, under which a bare coordinate pair after `M`/`m` is an implicit `L`/`l` and every other
+ * command repeats itself. `A`'s two flag arguments (`large-arc-flag`, `sweep-flag`) are read as a
+ * single `0` or `1` character each, exactly as the spec allows them to run together with the next
+ * number (`"a9 9 0 11-18 0"` is `rx=9 ry=9 rotation=0 large-arc=1 sweep=1 dx=-18 dy=0`, not three
+ * numbers `0`, `11`, `-18`). `Z` and `z` parse to the same command — closepath has no
+ * absolute/relative distinction, so the two spellings are not different shapes. Every number is
+ * rounded to 4 decimal places and re-rendered through `Number.prototype.toString()`, which drops
+ * trailing zeros and a leading `0` the same way regardless of how the source wrote it (`"2.0"`,
+ * `"2.00"` and `"2"` all become `"2"`). The canonical form is the command letters and rounded
+ * numbers joined by single spaces, in document order. `rect`/`circle`/`ellipse`/`line` are
+ * normalised the same way over their fixed numeric attributes (`x`/`y`/`width`/`height`/`rx`/`ry`,
+ * `cx`/`cy`/`r`, …), composed in one fixed attribute order regardless of the order the source wrote
+ * them in. `polyline`/`polygon` normalise every number in `points` the same way, without the
+ * command-grammar step `path` needs (`points` has no commands or flags to parse).
  *
  * A glyph is one `<svg>`'s set of normalised elements. Because element order inside an `<svg>` is
  * not claimed to matter for identity here (a redrawn glyph could reorder its own elements without
@@ -44,17 +52,18 @@
  *
  * ## Known limits
  *
- * - Arc flags (`A`'s `large-arc-flag`/`sweep-flag`) are not parsed as single digits the way the SVG
- *   spec allows when they run together with no separator (`"1-2.247"` tokenises correctly because
- *   the sign breaks it, but `"11-2.247"` — two flags then a negative number — would not). None of
- *   this set's or these packs' paths were found to hit that case; it is called out because a general
- *   tokeniser would need real arc-flag parsing to rule it out for certain.
  * - A glyph redrawn with equivalent-but-different commands (an arc rewritten as cubic curves, an
  *   absolute path rewritten as relative) does not match, exact or near. That is a geometry-string
  *   comparison, not a rendering comparison.
  * - This is a shape comparison, not a licence proof. An exact match to a permissively licensed pack
  *   is strong evidence of where a glyph came from; it is not a substitute for the pack's own licence
  *   terms, which the notices file quotes directly.
+ * - A `path` whose `d` does not parse per the grammar above (should not occur in this package's own
+ *   glyphs or these four packs' output, but a future pack's might) is caught per element: its
+ *   skeleton becomes `path:unparsed:<error message, which names the offending d>`, so it never
+ *   matches anything by accident, and the parse failure is visible in the output rather than
+ *   crashing the run. `deno task --cwd icons provenance` reports none across this package's 119
+ *   glyphs and all four packs' files at the versions pinned below.
  *
  * Excluded from `deno task check` (network access, and it is a one-off audit, not a regression
  * gate) and from publish. Run by hand:
@@ -118,22 +127,152 @@ export function roundNumber(raw: string): string {
   return Number(value.toFixed(4)).toString()
 }
 
-const PATH_TOKEN_PATTERN = /[MLHVCSQTAZmlhvcsqtaz]|-?\d*\.?\d+(?:[eE][-+]?\d+)?/g
-const PATH_COMMAND_LETTER = /^[MLHVCSQTAZmlhvcsqtaz]$/
 const NUMBER_PATTERN = /-?\d*\.?\d+(?:[eE][-+]?\d+)?/g
 
-/** Tokenise a `d` attribute into command letters and rounded numbers. See the module JSDoc. */
+/** One parsed path command: its letter (case preserved, `Z`/`z` normalised to `Z`) and its arguments. */
+export interface PathCommand {
+  cmd: string
+  args: number[]
+}
+
+/** How many numeric arguments each command takes, keyed by its uppercase letter. `Z` takes none. */
+const PATH_ARG_COUNTS: Record<string, number> = {
+  M: 2,
+  L: 2,
+  H: 1,
+  V: 1,
+  C: 6,
+  S: 4,
+  Q: 4,
+  T: 2,
+  A: 7,
+  Z: 0,
+}
+
+/** 0-based indices, within `A`'s 7 arguments, of the two flags that parse as a single `0`/`1` digit. */
+const ARC_FLAG_ARG_INDICES = new Set([3, 4])
+
+/** Thrown by {@linkcode parsePathData} on a `d` that does not parse per the SVG path grammar. */
+export class PathParseError extends Error {}
+
+/**
+ * Parse a `d` attribute into a sequence of commands, per the SVG path grammar — not a
+ * letters-and-numbers regex. See the module JSDoc's "Normalisation" section for what this buys:
+ * correct handling of run-together arc flags, implicit command repetition, and `Z`/`z` as one
+ * command.
+ *
+ * @throws {PathParseError} If `d` does not start with a command letter, uses a command letter this
+ *   function does not know, or runs out of characters mid-argument-list.
+ */
+export function parsePathData(d: string): PathCommand[] {
+  const commands: PathCommand[] = []
+  const n = d.length
+  let i = 0
+  let typedCmd: string | null = null // the letter as last written, e.g. "M" or "m" — for implicit repeats
+
+  const skipSeparators = () => {
+    while (i < n && /[\s,]/.test(d[i])) i++
+  }
+
+  const readNumber = (): number => {
+    skipSeparators()
+    const start = i
+    if (d[i] === "+" || d[i] === "-") i++
+    while (i < n && /[0-9]/.test(d[i])) i++
+    if (d[i] === ".") {
+      i++
+      while (i < n && /[0-9]/.test(d[i])) i++
+    }
+    if (d[i] === "e" || d[i] === "E") {
+      const markerStart = i
+      i++
+      if (d[i] === "+" || d[i] === "-") i++
+      const digitsStart = i
+      while (i < n && /[0-9]/.test(d[i])) i++
+      if (i === digitsStart) i = markerStart // "e"/"E" with no digits after it is not an exponent
+    }
+    const text = d.slice(start, i)
+    const value = Number(text)
+    if (text === "" || text === "+" || text === "-" || text === "." || Number.isNaN(value)) {
+      throw new PathParseError(`expected a number at index ${i} in ${JSON.stringify(d)}`)
+    }
+    return value
+  }
+
+  // A flag argument is exactly one `0` or `1` character — the SVG grammar's own concession that lets
+  // two flags and the number after them run together with no separator (`"11-18 0"` is flag, flag,
+  // then two ordinary numbers), which is exactly the case a plain number regex cannot tell apart from
+  // one three-digit number.
+  const readFlag = (): number => {
+    skipSeparators()
+    const ch = d[i]
+    if (ch !== "0" && ch !== "1") {
+      throw new PathParseError(`expected a flag (0 or 1) at index ${i} in ${JSON.stringify(d)}`)
+    }
+    i++
+    return Number(ch)
+  }
+
+  while (true) {
+    skipSeparators()
+    if (i >= n) break
+    const ch = d[i]
+    if (/[MLHVCSQTAZmlhvcsqtaz]/.test(ch)) {
+      typedCmd = ch
+      i++
+    } else if (typedCmd === null) {
+      throw new PathParseError(
+        `path data does not start with a command letter: ${JSON.stringify(d)}`,
+      )
+    } else if (typedCmd.toUpperCase() === "Z") {
+      // `Z` takes no arguments, so nothing can implicitly follow it per the grammar; reaching here
+      // means the data has trailing content after a close that is not a fresh command letter.
+      throw new PathParseError(`unexpected data after Z at index ${i} in ${JSON.stringify(d)}`)
+    } else {
+      // Implicit repetition: a bare argument group after M/m is an implicit L/l; every other command
+      // repeats itself.
+      typedCmd = typedCmd === "M" ? "L" : typedCmd === "m" ? "l" : typedCmd
+    }
+
+    const upper = typedCmd.toUpperCase()
+    const argCount = PATH_ARG_COUNTS[upper]
+    if (argCount === undefined) {
+      throw new PathParseError(
+        `unknown path command ${JSON.stringify(typedCmd)} in ${JSON.stringify(d)}`,
+      )
+    }
+
+    const args: number[] = []
+    for (let k = 0; k < argCount; k++) {
+      args.push(upper === "A" && ARC_FLAG_ARG_INDICES.has(k) ? readFlag() : readNumber())
+    }
+
+    // `Z`/`z` are the same command — closepath has no absolute/relative distinction — so both
+    // normalise to the same letter rather than surviving as two different skeletons.
+    commands.push({ cmd: upper === "Z" ? "Z" : typedCmd, args })
+    if (upper === "Z") typedCmd = null
+  }
+
+  return commands
+}
+
+/** Parse and normalise a `d` attribute. See the module JSDoc's "Normalisation" section. */
 export function normalizePathData(d: string): { canonical: string; skeleton: string } {
-  const tokens = d.match(PATH_TOKEN_PATTERN) ?? []
+  let commands: PathCommand[]
+  try {
+    commands = parsePathData(d)
+  } catch (cause) {
+    // One unparseable path degrades to a skeleton that matches nothing, rather than crashing the
+    // whole comparison — see the module JSDoc's "Known limits". The cause is still visible: callers
+    // that want to know why can inspect the skeleton string itself.
+    const reason = cause instanceof Error ? cause.message : String(cause)
+    return { canonical: `unparsed:${d}`, skeleton: `unparsed:${reason}` }
+  }
   const canonicalParts: string[] = []
   const skeletonParts: string[] = []
-  for (const token of tokens) {
-    if (PATH_COMMAND_LETTER.test(token)) {
-      canonicalParts.push(token)
-      skeletonParts.push(token)
-    } else {
-      canonicalParts.push(roundNumber(token))
-    }
+  for (const { cmd, args } of commands) {
+    canonicalParts.push(cmd, ...args.map((value) => roundNumber(String(value))))
+    skeletonParts.push(cmd)
   }
   return { canonical: canonicalParts.join(" "), skeleton: skeletonParts.join("") }
 }
