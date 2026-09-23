@@ -64,9 +64,10 @@ Rules for a package config:
 
 - `name` is `@preact-components/<directory>` — that is how sibling packages import you.
 - `exports` lists exactly the entry points that exist today. Adding a file does not add an export.
-- Do not add an `imports` block unless you need a specifier the root does not provide. Shared deps
-  (preact, signals, arktype, d3, tailwind, `@std/*`, tailwind-merge, wouter-preact) live in
-  the root import map so every package resolves one copy.
+- Do not add an `imports` block unless you need a specifier the root does not provide — `d3` is
+  the one exception already in the tree, pinned only in `charts/deno.json` because a single module
+  uses it. Shared deps (preact, signals, arktype, tailwind, `@std/*`, tailwind-merge, wouter-preact)
+  live in the root import map so every package resolves one copy.
 - Sibling imports use the member name: `import { cn } from "@preact-components/cn"`.
 
 Type-checking, formatting, linting and tests are discovered by walking the tree, so a new package is
@@ -301,9 +302,11 @@ arktype                          2.2.3
 @std/testing                    1.0.20
 preact-render-to-string          6.7.0
 tailwind-merge                   3.7.0
-d3                               7.9.0
 tailwindcss                     4.1.12
 ```
+
+`d3@7.9.0` is not in this list: it is pinned once, in `charts/deno.json`, not at the root — see
+"Adding a package" above. Everything else here resolves through the root import map.
 
 **What is mechanically checked, and what is not.** Assume nothing here is. Exact pinning is a
 convention held by review: `deno.lock` is committed and Deno keeps it in sync automatically, but it is
