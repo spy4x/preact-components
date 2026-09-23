@@ -5,10 +5,11 @@
  * declared here, coloured from the tokens in `./tokens.css`, so an app restyles
  * the whole library by overriding custom properties.
  *
- *   @import "tailwindcss";
- *   @import "@preact-components/theme/tokens.css";
- *   @import "@preact-components/theme/preset.css";
- *   @plugin "@tailwindcss/forms";
+ * This file is not an importable specifier once the package is installed — JSR does not export a
+ * CSS file as a module, so `@import "@preact-components/theme/preset.css"` resolves nowhere for a
+ * consumer. `@preact-components/theme`'s `README.md` → "Install" has the recipe that actually
+ * compiles: it splices this file's text, exported as `PRESET_CSS`, into a Tailwind build, after
+ * `tokens.css`'s and before an optional `@plugin "@tailwindcss/forms";`.
  *
  * Every token is read through `var(--token, default)`. The fallback is what
  * makes the order forgiving: drop `tokens.css` and the preset still renders in

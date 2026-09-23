@@ -8,5 +8,17 @@
     "./sw-updater": "./sw-updater.tsx",
     "./calendar": "./calendar.tsx",
     "./image-lightbox": "./image-lightbox.tsx"
+  },
+  "publish": {
+    // Every `*.test.*` here renders to `preact-render-to-string` or drives Deno's fake timers; none
+    // of it is reachable from `exports`, and none of it is anything a consumer runs.
+    "exclude": [
+      "calendar.test.tsx",
+      "date.test.ts",
+      "head.test.ts",
+      "image-lightbox.test.tsx",
+      "seo-head.test.tsx",
+      "sw-updater.test.tsx"
+    ]
   }
 }

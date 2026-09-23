@@ -115,7 +115,7 @@ export const ROLEY_DIR = new URL(
 /** This package's directory, for `+index.tsx` and `README.md`. */
 const HERE = new URL("./", import.meta.url).pathname
 
-/** One `export function IconX(props: IconProps) { … }` block, with its preceding JSDoc. */
+/** One `export function IconX(props: IconProps): JSX.Element { … }` block, with its preceding JSDoc. */
 export interface IconBlock {
   name: string
   doc: string
@@ -136,7 +136,7 @@ export interface ReadmeClaims {
 export function parseIconBlocks(source: string): IconBlock[] {
   const blocks: IconBlock[] = []
   const pattern =
-    /\/\*\*((?:[^*]|\*(?!\/))*)\*\/\s*export function (Icon\w+)\(props: IconProps\) \{([\s\S]*?)\n\}\n/g
+    /\/\*\*((?:[^*]|\*(?!\/))*)\*\/\s*export function (Icon\w+)\(props: IconProps\): JSX\.Element \{([\s\S]*?)\n\}\n/g
   for (const match of source.matchAll(pattern)) {
     blocks.push({ doc: match[1], name: match[2], body: match[3] })
   }

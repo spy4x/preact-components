@@ -20,6 +20,7 @@
  */
 
 import { cn } from "@preact-components/cn"
+import type { JSX } from "preact"
 import { useEffect, useRef, useState } from "preact/hooks"
 
 /** The slice of `ServiceWorker` this package uses. */
@@ -327,7 +328,7 @@ export function SWUpdater(
     onError,
     class: className,
   }: SWUpdaterProps,
-) {
+): JSX.Element {
   const [available, setAvailable] = useState(false)
   const [dismissed, setDismissed] = useState(false)
   const [registration, setRegistration] = useState<RegistrationLike | null>(null)

@@ -12,7 +12,7 @@
  */
 
 import { CopyButton, PageTitle } from "@preact-components/ui"
-import type { ComponentChildren } from "preact"
+import type { ComponentChildren, JSX } from "preact"
 import { cn } from "@preact-components/cn"
 import { IconGallery } from "./icons.tsx"
 import { CatalogInstructions } from "./instructions.tsx"
@@ -70,7 +70,7 @@ export interface DemoCardProps {
  */
 export function DemoCard(
   { name, label, summary, snippet, classes, copy, children }: DemoCardProps,
-) {
+): JSX.Element {
   return (
     <article
       id={`demo-${name}`}
@@ -162,7 +162,9 @@ function MissingDemoBanner({ names }: { names: string[] }) {
  *
  * @param props See {@link UIGuideProps}.
  */
-export function UIGuide({ registry = demoRegistry, copy, class: className }: UIGuideProps) {
+export function UIGuide(
+  { registry = demoRegistry, copy, class: className }: UIGuideProps,
+): JSX.Element {
   const missing = missingDemos(registry)
 
   return (

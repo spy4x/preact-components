@@ -3,5 +3,16 @@
   "version": "0.1.0",
   "exports": {
     ".": "./+index.tsx"
+  },
+  "publish": {
+    // Nothing here is part of the public API. The two tests exercise the module and never leave
+    // this repo; `check-readme.ts`/`check-readme.test.ts` audit README.md's bookkeeping against a
+    // read-only sibling checkout outside this repository, which a published consumer has no
+    // access to and no use for.
+    "exclude": [
+      "+index.test.ts",
+      "check-readme.ts",
+      "check-readme.test.ts"
+    ]
   }
 }

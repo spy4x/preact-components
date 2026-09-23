@@ -29,5 +29,25 @@
     // The proof for the issue's headline claim. Kept out of the root `check` task because it spawns
     // `deno check` and `deno test` subprocesses; `deno task check` covers the modules themselves.
     "probe:no-d3": "deno run --allow-run --allow-read --allow-write --allow-env probe/no-d3-dependency.ts"
+  },
+  "publish": {
+    // `probe/` runs `probe:no-d3` against this repository's own tree and is meaningless outside it;
+    // `ticks.worker.ts` exists only so `scales.test.ts` can call `ticks` off the main thread with a
+    // deadline (see its own JSDoc) and is loaded by no published module; the rest are this package's
+    // own `*.test.*` suites. None of it is reachable from `exports`.
+    "exclude": [
+      "bars.test.tsx",
+      "compare-chart.test.tsx",
+      "d3-line-chart.test.tsx",
+      "donut-chart.test.tsx",
+      "kpi.test.tsx",
+      "line-chart.test.tsx",
+      "metric-panel.test.tsx",
+      "payload.test.ts",
+      "probe/",
+      "scales.test.ts",
+      "ticks.worker.ts",
+      "use-in-view.test.tsx"
+    ]
   }
 }
