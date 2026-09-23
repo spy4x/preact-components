@@ -128,8 +128,8 @@
 }
 
 /*
- * `.h6` is deliberately absent: 0 usages in `gb`, the source it came from — the
- * `ui-guide` that documented it was its only caller. Use `text-base font-medium`.
+ * `.h6` is deliberately absent: 0 usages in the source application it came from
+ * — the `ui-guide` that documented it was its only caller. Use `text-base font-medium`.
  */
 
 @utility link {
@@ -164,9 +164,9 @@
 }
 
 /*
- * `.btn-sm` is deliberately absent: 0 usages in `gb`, the source it came from —
- * the `ui-guide` that documented it was its only caller. Use `h-9 px-4` on the
- * button instead.
+ * `.btn-sm` is deliberately absent: 0 usages in the source application it came
+ * from — the `ui-guide` that documented it was its only caller. Use `h-9 px-4`
+ * on the button instead.
  */
 
 @utility btn-disabled {
