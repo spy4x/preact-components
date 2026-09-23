@@ -43,7 +43,8 @@ export interface MetricPanelProps {
 /**
  * Load one metric series through a stats port and unit-scale it.
  *
- * The single implementation behind what `gb`'s chart route duplicated for power and energy: the two
+ * The single implementation behind what a source application's chart route duplicated for power and
+ * energy: the two
  * panels differed only in their label and a `/1000` conversion, so the conversion is the `scale`
  * option here. A failing loader and an invalid payload both come back as a {@link MetricError}.
  */
@@ -118,7 +119,7 @@ export function useMetricSeries(
 /**
  * One metric panel: title, unit, export actions, error box and chart slot.
  *
- * `gb`'s chart route rendered this block twice — once for power, once for energy — with only the
+ * A source application's chart route rendered this block twice — once for power, once for energy — with only the
  * heading and the unit conversion differing, and the two copies drifted. Both call sites now render
  * this component; the conversion belongs in {@link loadMetricSeries}.
  */

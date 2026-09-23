@@ -1,6 +1,6 @@
 # `@preact-components/charts`
 
-Chart components extracted from `warthunder-stats`, `gb` and `metric-rollup-prep`.
+Chart components extracted from earlier source applications.
 
 Two approaches live side by side, and the split is deliberate:
 
@@ -102,7 +102,7 @@ function LazyChart() {
 }
 ```
 
-One metric panel, which is what `gb`'s chart route duplicated for power and energy — the two panels
+One metric panel, which is what a source application's chart route duplicated for power and energy — the two panels
 differed only in their heading and a `/1000` conversion, so the conversion is the `scale` option:
 
 ```tsx
@@ -247,5 +247,5 @@ probe that gives it its meaning.
 
 `MetricsList` (domain-coupled to metric catalogs and device ids — the layout idea lives on in
 `Bars`), `DateTimeFilter` (a range picker belongs with the app or `ui/`; `CompareChart` takes a
-`rangePicker` slot instead), `Export` (drags in `xlsx`), and `chooseChartRoute` from
-`metric-rollup-prep`, which is a proposal rather than implemented code.
+`rangePicker` slot instead), `Export` (drags in `xlsx`), and `chooseChartRoute`, which is a
+proposal rather than implemented code.

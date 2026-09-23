@@ -3,7 +3,7 @@
  *
  * Nothing here touches Preact, the DOM or `d3`: every function is a total, deterministic mapping
  * from numbers to numbers, which is why the axis behaviour is testable without a renderer. The
- * `niceStep`/`ticks` pair comes from `warthunder-stats`; the degenerate, reversed and
+ * `niceStep`/`ticks` pair comes from an earlier source application; the degenerate, reversed and
  * extreme-magnitude cases are hardened here.
  */
 

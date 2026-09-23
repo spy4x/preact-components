@@ -13,7 +13,7 @@ export interface CompareChartProps extends Omit<D3LineChartProps, "data" | "isLo
   range: DateRange
   data: readonly TimeSeriesPoint[]
   timeFrame: TimeFrame
-  /** Stats port for the previous window; replaces `gb`'s `state.chart.getStats`. */
+  /** Stats port for the previous window; replaces a source application's `state.chart.getStats`. */
   loadStats: (range: DateRange) => Promise<unknown>
   /** Whether the primary chart itself is still loading. */
   isLoading?: boolean
@@ -39,8 +39,9 @@ const IDLE: ComparisonState = { loading: false, data: [], timeFrame: null, error
  * A time-series chart with a toggle that loads the window before it.
  *
  * The panel is application-agnostic: the caller passes the current range, the data it already has and
- * a `loadStats` port for the previous window. Ported from `gb`, where the comparison window was
- * fetched straight out of the app's chart store and the toggle was the app's `ToggleSwitch`.
+ * a `loadStats` port for the previous window. Ported from a source application, where the
+ * comparison window was fetched straight out of the app's chart store and the toggle was the
+ * app's `ToggleSwitch`.
  */
 export function CompareChart({
   range,

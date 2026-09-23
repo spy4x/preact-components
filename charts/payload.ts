@@ -5,8 +5,8 @@ import { TIME_FRAMES, type TimeFrame, type TimeSeriesPoint } from "./time-series
  * Data layer for the chart components: the shape a stats endpoint is expected to return, the loader
  * that validates it, and the date-range maths a comparison panel needs.
  *
- * No Preact and no I/O — a loader is always a port the caller supplies, which is what replaced `gb`'s
- * `state.chart.getStats` call and its zod schema.
+ * No Preact and no I/O — a loader is always a port the caller supplies, which is what replaced a
+ * source application's `state.chart.getStats` call and its zod schema.
  */
 
 export interface DateRange {
