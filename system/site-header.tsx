@@ -29,10 +29,15 @@ export interface SiteHeaderLink {
 
 /** Every user-visible or accessible string this component prints that is not `links`/`brand`. */
 export interface SiteHeaderLabels {
-  /** Menu button's accessible name while the panel is closed. Defaults to `"Open menu"`. */
-  openMenu?: string
-  /** Menu button's accessible name while the panel is open. Defaults to `"Close menu"`. */
-  closeMenu?: string
+  /**
+   * The menu button's accessible name. Defaults to `"Menu"`.
+   *
+   * One fixed name rather than a pair that swaps with the panel's state — see the "one accessible
+   * name" decision in `system/README.md`'s `SiteHeader` section for why: a name that encodes state
+   * either announces that state twice once `aria-expanded` also carries it, or, for as long as no
+   * script has run, keeps announcing "closed" for a menu a visitor's own click already opened.
+   */
+  menu?: string
   /** `aria-label` on both `<nav>` elements — the desktop row and the mobile panel's copy of it. */
   nav?: string
 }
@@ -73,7 +78,12 @@ const linkClasses =
 const activeLinkClasses = "text-gray-900 dark:text-white"
 
 function SiteHeaderNavLink(
-  { link, currentPath }: { link: SiteHeaderLink; currentPath: string | undefined },
+  { link, currentPath, onClick }: {
+    link: SiteHeaderLink
+    currentPath: string | undefined
+    /** Fired when this instance is inside the mobile panel, so a navigation closes it first. */
+    onClick?: () => void
+  },
 ): JSX.Element {
   const { label, href, Icon } = link
   const current = isCurrentLink(href, currentPath)
@@ -83,6 +93,7 @@ function SiteHeaderNavLink(
       href={href}
       aria-current={current ? "page" : undefined}
       class={cn(linkClasses, current && activeLinkClasses)}
+      onClick={onClick}
     >
       {Icon && <Icon class="size-5" />}
       {label}
@@ -99,8 +110,15 @@ function SiteHeaderNavLink(
  * click with no script running at all, so every link is reachable before hydration and with scripts
  * off — `pages/checks/system.ts` proves it by disabling script execution and pressing the button.
  * What JavaScript adds, through `useMobilePanel`, is Escape closing the panel and returning focus to
- * the button, and an `aria-expanded` that tracks the disclosure's own state; neither is needed to
- * open the panel or reach a link inside it.
+ * the button, the panel closing itself when a link inside it navigates, and an `aria-expanded` kept
+ * in step with the disclosure's own state; none of that is needed to open the panel or reach a link
+ * inside it, and Chromium already exposes the disclosure's open/closed state natively regardless.
+ *
+ * **The panel overlays the page instead of pushing it down.** Its content is positioned
+ * `absolute` against the `<header>` (`position: relative`), spanning the header's full width, so
+ * opening it never changes the height of the bar above it or moves `brand` or `actions` — measured
+ * in `pages/checks/system.ts` by asserting the header's own height and the brand's position are the
+ * same whether the panel is open or closed.
  *
  * **`links` is redrawn from data rather than duplicated as markup.** The desktop row and the panel
  * each call the same internal link renderer over `links`, which is what lets both exist at once
@@ -118,17 +136,16 @@ function SiteHeaderNavLink(
  */
 export function SiteHeader(props: SiteHeaderProps): JSX.Element {
   const { links, currentPath, brand, actions, labels, class: className } = props
-  const openMenuLabel = labels?.openMenu ?? "Open menu"
-  const closeMenuLabel = labels?.closeMenu ?? "Close menu"
+  const menuLabel = labels?.menu ?? "Menu"
   const navLabel = labels?.nav ?? "Main navigation"
   const panelId = useId()
 
-  const { open, detailsRef, triggerRef, handleToggle } = useMobilePanel()
+  const { open, detailsRef, triggerRef, handleToggle, close } = useMobilePanel()
 
   return (
     <header
       class={cn(
-        "border-b border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900",
+        "relative border-b border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900",
         className,
       )}
     >
@@ -136,8 +153,12 @@ export function SiteHeader(props: SiteHeaderProps): JSX.Element {
         <div class="flex items-center gap-2">{brand}</div>
 
         <nav aria-label={navLabel} class="hidden lg:flex lg:items-center lg:gap-6">
-          {links.map((link) => (
-            <SiteHeaderNavLink key={link.href} link={link} currentPath={currentPath} />
+          {links.map((link, index) => (
+            <SiteHeaderNavLink
+              key={`${index}-${link.href}`}
+              link={link}
+              currentPath={currentPath}
+            />
           ))}
         </nav>
 
@@ -149,7 +170,7 @@ export function SiteHeader(props: SiteHeaderProps): JSX.Element {
               ref={triggerRef}
               aria-expanded={open}
               aria-controls={panelId}
-              aria-label={open ? closeMenuLabel : openMenuLabel}
+              aria-label={menuLabel}
               class="flex size-10 cursor-pointer list-none items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 [&::-webkit-details-marker]:hidden"
               data-e2e="site-header-menu-button"
             >
@@ -157,10 +178,19 @@ export function SiteHeader(props: SiteHeaderProps): JSX.Element {
               <IconXMark class="hidden size-6 group-open:block" aria-hidden="true" />
             </summary>
 
-            <div id={panelId} class="space-y-1 pb-4 pt-2" data-e2e="site-header-panel">
+            <div
+              id={panelId}
+              class="absolute inset-x-0 top-full z-10 border-b border-gray-200 bg-white px-4 py-4 shadow-lg dark:border-gray-700 dark:bg-gray-900 sm:px-6"
+              data-e2e="site-header-panel"
+            >
               <nav aria-label={navLabel} class="flex flex-col gap-3">
-                {links.map((link) => (
-                  <SiteHeaderNavLink key={link.href} link={link} currentPath={currentPath} />
+                {links.map((link, index) => (
+                  <SiteHeaderNavLink
+                    key={`${index}-${link.href}`}
+                    link={link}
+                    currentPath={currentPath}
+                    onClick={() => close(false)}
+                  />
                 ))}
               </nav>
             </div>

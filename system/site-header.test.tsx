@@ -93,12 +93,16 @@ describe("SiteHeader", () => {
     expect(html).not.toContain('data-e2e="cta"')
   })
 
-  it("starts with the menu button closed", () => {
-    const html = render(<SiteHeader links={links} brand="Acme" />)
-    const summary = summaryTag(html)
-    expect(attr(summary, "aria-expanded")).toBe("false")
-    expect(attr(summary, "aria-label")).toBe("Open menu")
-  })
+  it(
+    "omits aria-expanded on the server, rather than a hard-coded value that could go stale " +
+      "before hydration reads the disclosure's real state, and names the button either way",
+    () => {
+      const html = render(<SiteHeader links={links} brand="Acme" />)
+      const summary = summaryTag(html)
+      expect(attr(summary, "aria-expanded")).toBeUndefined()
+      expect(attr(summary, "aria-label")).toBe("Menu")
+    },
+  )
 
   it("points the menu button's aria-controls at the panel it opens", () => {
     const html = render(<SiteHeader links={links} brand="Acme" />)
@@ -119,12 +123,54 @@ describe("SiteHeader", () => {
       <SiteHeader
         links={links}
         brand="Acme"
-        labels={{ openMenu: "Ouvrir le menu", nav: "Navigation principale" }}
+        labels={{ menu: "Ouvrir le menu", nav: "Navigation principale" }}
       />,
     )
     expect(attr(summaryTag(html), "aria-label")).toBe("Ouvrir le menu")
     expect(html).toContain('aria-label="Navigation principale"')
-    expect(html).not.toContain("Open menu")
+    expect(html).not.toContain('Menu"')
+    expect(html).not.toContain("Main navigation")
+  })
+
+  it("positions the panel to overlay the header instead of sitting in its own flow", () => {
+    const html = render(<SiteHeader links={links} brand="Acme" />)
+    const headerTag = html.match(/<header class="[^"]*">/)?.[0] ?? ""
+    const panelTag = html.match(/<div id="[^"]*" class="[^"]*" data-e2e="site-header-panel">/)
+      ?.[0] ?? ""
+    expect(headerTag).toContain("relative")
+    expect(panelTag).toContain("absolute")
+    expect(panelTag).toContain("inset-x-0")
+  })
+
+  it("prints no visible text beyond the caller's own brand, link labels and actions", () => {
+    const html = render(
+      <SiteHeader
+        links={[{ label: "Zzyzx", href: "/zzyzx" }]}
+        brand={<span data-e2e="brand">Qwerty Corp</span>}
+        actions={<button type="button">Frobnicate</button>}
+      />,
+    )
+    // Every tag is stripped with its attributes, so an aria-label never shows up here — the menu
+    // button's own name has no visible text at all, only the two SVG icons this component draws.
+    const words = new Set(
+      html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().split(" ").filter(Boolean),
+    )
+    expect(words).toEqual(new Set(["Qwerty", "Corp", "Zzyzx", "Frobnicate"]))
+  })
+
+  it("reports the accessible names the caller asked for, not a hard-coded pair", () => {
+    const html = render(
+      <SiteHeader
+        links={links}
+        brand="Acme"
+        labels={{ menu: "Site menu", nav: "Header links" }}
+      />,
+    )
+    expect([...html.matchAll(/aria-label="([^"]*)"/g)].map((m) => m[1])).toEqual([
+      "Header links",
+      "Site menu",
+      "Header links",
+    ])
   })
 
   it("merges a caller's class onto the header without losing its own", () => {
