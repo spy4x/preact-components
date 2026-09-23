@@ -1248,7 +1248,7 @@ describe("buildModelStore remote events", () => {
  * whether the rule itself holds. See "Which answer the store keeps" in `signals/README.md`.
  */
 describe("buildModelStore remote deletes", () => {
-  it("keeps the held row's other columns and does not wind its stamp back when a delete is older", async () => {
+  it("archives an unarchived row when a delete is older, keeping its other columns", async () => {
     const { impl } = queueFetch()
     const store = buildTimedStore(impl)
     await store.onWs([stampedRow(1, "North", LATER)], RemoteEvent.LIST)
@@ -1262,12 +1262,33 @@ describe("buildModelStore remote deletes", () => {
     )
 
     const held = store.state.value.list[0]
-    // The delete always takes effect, however old it is.
+    // The row was not archived yet, so the delete takes effect: it carries a deletedAt, and there
+    // is no held instant of the row's own for it to compete with.
     expect(held.deletedAt).toEqual(new Date(EARLIER))
     // Every other column keeps what the list already held: an old copy of the row does not ride
     // in on the delete.
     expect(held.name).toBe("North")
     // The row's freshness stamp never moves backwards because of a remote event.
+    expect(held.updatedAt).toEqual(new Date(LATER))
+  })
+
+  it("keeps its own deletedAt when an older delete lands on a row that is already archived", async () => {
+    const { impl } = queueFetch()
+    const store = buildTimedStore(impl)
+    await store.onWs([archivedAt(stampedRow(1, "North", LATER), LATER)], RemoteEvent.LIST)
+
+    // Older than the held row, and the row is already archived: the event's own deletedAt is then
+    // an old copy of a column the row already has an answer for, not a fresh claim about it.
+    await store.onWs(
+      [archivedAt(stampedRow(1, "Old name", EARLIER), EARLIER)],
+      RemoteEvent.DELETED,
+    )
+
+    const held = store.state.value.list[0]
+    expect(held.name).toBe("North")
+    // The row's own instant, not the event's: an older delete may only turn an unarchived row
+    // into an archived one, never revise the instant of one that already is.
+    expect(held.deletedAt).toEqual(new Date(LATER))
     expect(held.updatedAt).toEqual(new Date(LATER))
   })
 
@@ -1435,6 +1456,33 @@ describe("buildModelStore remote change against a request in flight", () => {
     expect(answer.error).toBeNull()
     expect(answer.result?.name).toBe("Mine")
     expect(toast.messages).toEqual([{ body: "zone was updated" }])
+  })
+
+  it("undeletes the row when our later answer beats an older delete that archived it mid-write", async () => {
+    const { impl, pending } = deferredFetch()
+    const store = buildTimedStore(impl)
+    await store.onWs([stampedRow(1, "start", LOADED_AT)], RemoteEvent.LIST)
+
+    const updating = store.update(1, { name: "ours" })
+    // Older than the row we loaded, so it only archives: the name and the stamp are left as held.
+    await store.onWs(
+      [archivedAt(stampedRow(1, "theirs", CREATED_AT), CREATED_AT)],
+      RemoteEvent.DELETED,
+    )
+    expect(store.state.value.list[0].name).toBe("start")
+    expect(store.list.deleted.value.map((r) => r.id)).toEqual([1])
+
+    // Our own answer is later than the row's own stamp, which the archive-only delete left
+    // untouched, so it wins the clock and replaces the row wholesale — as our own answer always
+    // does when it wins — undeleting it. This is the clock rule doing what it says, not a special
+    // case for deletes: the same thing happens for a later answer of ours against an older
+    // "updated" event.
+    pending[0].settle(Response.json(stampedRow(1, "ours", LATER)))
+    await updating
+
+    const held = store.state.value.list[0]
+    expect(held.name).toBe("ours")
+    expect(held.deletedAt).toBeNull()
   })
 
   it("keeps a later remote update when our own older answer lands", async () => {
@@ -1610,9 +1658,9 @@ describe("buildModelStore remote change against a request in flight", () => {
     // archive-only half of the rule protects only an older delete's columns from riding in over a
     // newer row; a newer delete's columns are not an old copy of anything. `theirStamp` here is
     // always later than `LOADED_AT`, so every delete in this test is judged newer; the archive-only
-    // half has its own tests above, and the case where it interacts with an operation in flight is
-    // "asks a custom isNewer about a delete, and adopts its row wholesale when it wins" above,
-    // which is also the issue's named case: an undelete racing a delete that turns out newer.
+    // half has its own tests above, and the case where an older delete interacts with an operation
+    // in flight is "undeletes the row when our later answer beats an older delete that archived it
+    // mid-write" above.
     for (const kind of ["update", "delete", "undelete"] as const) {
       for (const oursIsLater of [false, true]) {
         const where = `${kind} against a remote delete, ours ${oursIsLater ? "later" : "older"}`
