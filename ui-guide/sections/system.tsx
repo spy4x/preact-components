@@ -73,10 +73,13 @@
  * `SiteHeader`'s one card is honest about what it can and cannot show at the guide's own width: the
  * mobile `<details>` panel only replaces the inline links below `lg` (1024px) — `actions` and the
  * menu button are always in view — so the card renders the desktop row here and says, in its own
- * summary, to resize the window to see the disclosure. What that leaves for a reader to take on
- * faith — the panel opening, Escape closing it and returning focus to the button, and every link
- * staying reachable with script execution disabled — is exactly what `pages/checks/system.ts` drives
- * in a real browser at phone width instead.
+ * summary, to resize the browser window itself to see the disclosure (the breakpoint reads the
+ * viewport, not the card). What that leaves for a reader to take on faith — the panel opening
+ * without moving the bar around it, Escape closing it and returning focus to the button, a
+ * client-side navigation closing it without returning focus, its state reaching the accessibility
+ * tree natively, catching up correctly for a menu opened before the bundle finishes loading, and
+ * every link staying reachable with script execution disabled — is exactly what
+ * `pages/checks/system.ts` drives in a real browser at phone width instead.
  */
 
 import { IconBookOpen } from "@preact-components/icons"
@@ -1006,18 +1009,25 @@ function AuthFormInteractiveDemo() {
  * `SiteHeader`, at the guide's own width.
  *
  * The links below `lg` (1024px) collapse into the `<details>` menu the component builds them
- * into — resize the window, or see `pages/checks/system.ts`, to open it. The "Book a call" button
- * stays exactly where it is at every width. `Docs` carries an icon and `Pricing` is marked as
- * `currentPath`, so both of the optional pieces `SiteHeader` renders are on screen at once.
+ * into — resize the browser window itself (the breakpoint reads the viewport, not this card's own
+ * width) to open it, or see `pages/checks/system.ts` for the same thing driven at phone width. The
+ * panel overlays the page instead of pushing the bar down, so the card below has no `overflow-hidden`
+ * of its own to clip it. The "Book a call" button stays exactly where it is at every width. `Docs`
+ * carries an icon and `Pricing` is marked as `currentPath`, so both of the optional pieces
+ * `SiteHeader` renders are on screen at once.
  */
 function SiteHeaderDemo() {
   return (
-    <div
-      class="overflow-hidden rounded-md border border-gray-200 dark:border-gray-700"
-      data-e2e="site-header-demo"
-    >
+    <div class="rounded-md border border-gray-200 dark:border-gray-700" data-e2e="site-header-demo">
       <SiteHeader
-        brand={<span class="text-lg font-semibold text-gray-900 dark:text-white">Acme</span>}
+        brand={
+          <span
+            data-e2e="site-header-brand"
+            class="text-lg font-semibold text-gray-900 dark:text-white"
+          >
+            Acme
+          </span>
+        }
         currentPath="/pricing"
         links={[
           { label: "Product", href: "/product" },
@@ -1102,7 +1112,7 @@ const tags = seoHeadTags(head)`,
   },
   SiteHeader: {
     summary:
-      "A public-site top bar: `brand` on the left; `links` on the right from `lg` up, and in a `<details>` disclosure this card's menu button opens below it; an optional `actions` slot and the menu button always in view, beside whichever form `links` is currently taking. **Every link, and every word of `brand`, is a prop** — this component writes no `href`, no label and no brand text of its own, which the card below proves: the only two addresses on the page are `links`' own. **`aria-current=\"page\"` marks the one link whose `href` equals `currentPath`** — exact string equality, so a caller whose routes want prefix matching normalises the comparison itself before handing either one in. **`links` is reachable with no JavaScript at all**: a click on `<summary>` opens and closes the native `<details>` disclosure with nothing running, so every link is there before hydration and with scripts off — proved in `pages/checks/system.ts` by disabling script execution and pressing the button. **`links` is redrawn from data, not duplicated as markup — `actions` is rendered once, because a caller's own element can only ever be mounted in one place.** What JavaScript adds, through the `useMobilePanel` hook `system/README.md` names, is Escape closing the panel and returning focus to the button, and `aria-expanded` tracking the disclosure's own state; the icon swap between the two glyphs in the button costs no script at all, because `group-open:` is a Tailwind variant compiled from the `<details>` element's own `[open]` attribute. **The desktop row and the mobile panel never coexist in the accessibility tree** — one is always `display:none` — so Tab never reaches a link twice at one viewport width. Every string beyond `links` and `brand` — the menu button's two names, the shared `<nav>` label — has an English default and a `labels` override. This hook is shared with the app shell's side navigation (#135), which opens and closes the same way.",
+      "A public-site top bar: `brand` on the left; `links` on the right from `lg` up, and in a `<details>` disclosure this card's menu button opens below it; an optional `actions` slot and the menu button always in view, beside whichever form `links` is currently taking. **Every link, and every word of `brand`, is a prop** — this component writes no `href`, no label and no brand text of its own, which the card below proves: the only two addresses on the page are `links`' own. **`aria-current=\"page\"` marks the one link whose `href` equals `currentPath`** — exact string equality, so a caller whose routes want prefix matching normalises the comparison itself before handing either one in. **`links` is reachable with no JavaScript at all**: a click on `<summary>` opens and closes the native `<details>` disclosure with nothing running, so every link is there before hydration and with scripts off — proved in `pages/checks/system.ts` by disabling script execution and pressing the button, and by holding the island bundle back so a menu opened before it loads still catches up correctly once it does. **`links` is redrawn from data, not duplicated as markup — `actions` is rendered once, because a caller's own element can only ever be mounted in one place.** **The panel overlays the page instead of pushing the bar down**, positioned against the `<header>` rather than sitting in the row beside the button, so opening it moves nothing else. What JavaScript adds, through the `useMobilePanel` hook `system/README.md` names, is Escape closing the panel and returning focus to the button, a client-side navigation on a panel link closing the panel *without* returning focus (it is moving to the new page, not back to the button), and `aria-expanded` tracking the disclosure's own state — which Chromium already exposes on the accessibility tree natively, `aria-expanded` or not. The menu button keeps one fixed accessible name rather than a pair that swaps with the state, so the state is never announced twice and never goes stale for as long as no script has run. The icon swap between the two glyphs in the button costs no script at all, because `group-open:` is a Tailwind variant compiled from the `<details>` element's own `[open]` attribute. **The desktop row and the mobile panel never coexist in the accessibility tree** — one is always `display:none` — so Tab never reaches a link twice at one viewport width. Every string beyond `links` and `brand` — the menu button's name, the shared `<nav>` label — has an English default and a `labels` override. This hook is shared with the app shell's side navigation (#135), which opens and closes the same way.",
     snippet: `<SiteHeader
   brand={<Logo />}
   currentPath={url.pathname}
@@ -1111,7 +1121,7 @@ const tags = seoHeadTags(head)`,
     { label: "Pricing", href: "/pricing" },
     { label: "Docs", href: "/docs", Icon: IconBookOpen },
   ]}
-  actions={<Button size="sm" href="/book-a-call">Book a call</Button>}
+  actions={<Button size="sm" onClick={() => navigate("/book-a-call")}>Book a call</Button>}
 />`,
     render: () => <SiteHeaderDemo />,
   },
