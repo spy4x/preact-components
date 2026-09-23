@@ -143,14 +143,20 @@ deno task check
 Runs `fmt:check`, `lint`, `ts:check` and `test`. All four must pass with zero errors. Use
 `deno task fix` to apply formatting and lint fixes, then re-run `deno task check`.
 
-| Task                 | Does                                             |
-| -------------------- | ------------------------------------------------ |
-| `deno task check`    | all checks; run by both CIs                      |
-| `deno task fmt`      | format (`fmt:check` in CI)                       |
-| `deno task lint`     | lint (`lint:fix` to apply suggestions)           |
-| `deno task ts:check` | `deno check` over every `.ts`/`.tsx` in the tree |
-| `deno task test`     | run all tests                                    |
-| `deno task fix`      | `lint --fix` then format                         |
+| Task                    | Does                                                      |
+| ----------------------- | --------------------------------------------------------- |
+| `deno task check`       | all checks; run by both CIs                               |
+| `deno task fmt`         | format (`fmt:check` in CI)                                |
+| `deno task lint`        | lint (`lint:fix` to apply suggestions)                    |
+| `deno task ts:check`    | `deno check` over every `.ts`/`.tsx` in the tree          |
+| `deno task test`        | run all tests                                             |
+| `deno task fix`         | `lint --fix` then format                                  |
+| `deno task publish:dry` | `deno publish --dry-run` for every named workspace member |
+
+`publish:dry` is not part of `check`: `deno publish --dry-run` refuses a dirty tree, so folding it
+into `check` would fail every local run against uncommitted work. Each CI system runs it as its own
+step, after `check`, against its own clean checkout — `.github/workflows/pages.yml` and
+`.woodpecker.yml` both do this.
 
 Behaviour needs a second pair, in this order:
 
@@ -193,7 +199,7 @@ pointer left resting on an element by an earlier check changes its computed colo
 timer; a check either parks the pointer away and reads back where it landed, or asserts the element
 is not `:hover` before reading a style off it. `verify` fails
 when it finds no browser; `--static` is the one explicit way to leave the browser phase out. The
-GitHub workflow runs `check`, the build and `verify` on every pull
+GitHub workflow runs `check`, `publish:dry`, the build and `verify` on every pull
 request into `main`, and the Pages deploy waits for them.
 
 If a task fails because a specifier cannot be resolved, run the task that needs the new dependency once

@@ -59,9 +59,9 @@ did not run rather than falling back to some other browser on the machine.
 `deno task --cwd pages verify --static` is the one explicit way to leave the browser phase out.
 
 This is also the repository's browser test path, and CI runs it. `.github/workflows/pages.yml` runs
-`deno task check`, the build and `verify` on every pull request into `main` and on every push to
-`main`, on a runner image that ships Google Chrome. The deploy job waits for that job, so a red
-check or a red `verify` blocks the publish.
+`deno task check`, `deno task publish:dry`, the build and `verify` on every pull request into
+`main` and on every push to `main`, on a runner image that ships Google Chrome. The deploy job
+waits for that job, so a red check, a red publish dry-run or a red `verify` blocks the publish.
 
 ## How a build works
 
@@ -174,9 +174,9 @@ browser phase of `verify`. Woodpecker still runs `deno task check` on the same e
 The workflow triggers on pull requests into `main`, on pushes to `main`, and on manual dispatch.
 
 A `verify` job runs on all three: checkout → Deno 2.9.7 → print the browser version →
-`deno task check` → `deno task --cwd pages build` → `deno task --cwd pages verify`, with
-`CHROME_PATH` naming the runner's Google Chrome so the browser reported in the log is the browser
-that is driven. That job holds `contents: read` and nothing else.
+`deno task check` → `deno task publish:dry` → `deno task --cwd pages build` → `deno task --cwd
+pages verify`, with `CHROME_PATH` naming the runner's Google Chrome so the browser reported in the
+log is the browser that is driven. That job holds `contents: read` and nothing else.
 
 Only on `main`, never on a pull request, the same job then runs `actions/upload-pages-artifact` over
 `pages/dist`, and a separate `deploy` job runs `actions/configure-pages` and `actions/deploy-pages`.
