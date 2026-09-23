@@ -54,6 +54,13 @@ export {
   seoHeadTags,
 } from "./seo-head.tsx"
 export {
+  isCurrentLink,
+  SiteHeader,
+  type SiteHeaderLabels,
+  type SiteHeaderLink,
+  type SiteHeaderProps,
+} from "./site-header.tsx"
+export {
   type ContainerLike,
   DEFAULT_UPDATE_MESSAGE,
   type RegistrationLike,
