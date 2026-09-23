@@ -46,8 +46,16 @@ import {
  * - **One clock over the list.** An `"updated"` remote event and the answer to this client's own
  *   request are both weighed against the row the list holds, by the same freshness check, and the
  *   later of the two wins. Without it our own answer always won, so a row another user deleted
- *   while our write was on the wire came back on screen when the write answered. A `"deleted"` or
- *   a `"list"` event is weighed against nothing and replaces what it names outright, as before.
+ *   while our write was on the wire came back on screen when the write answered. A `"list"` event
+ *   is weighed against nothing and replaces what it names outright.
+ * - **A remote delete judged newer replaces the row wholesale, exactly like a remote update.** One
+ *   judged older is narrower: it may only turn an unarchived row into an archived one, keeping
+ *   every other column the list already held — an old copy of the row, and an old copy of
+ *   `deletedAt` itself once the row is already archived, must not ride in on a delayed delete. An
+ *   older delete carrying nothing to archive (`deletedAt` null, or no such column) makes no claim
+ *   at all and changes nothing. Without the wholesale half, an application with its own freshness
+ *   check over a version column could not defend a delete against an older answer of its own, which
+ *   is exactly the bug this rule exists to close. See {@link applyRemoteDelete}.
  */
 
 /** Payload and row schemas for a model. */
@@ -187,13 +195,15 @@ export interface BuildModelStoreConfig<
   /**
    * Freshness check between a row arriving and the row the list holds; the older one is ignored.
    *
-   * It is asked about the two incoming rows that are weighed at all, so one clock orders them
-   * against each other: an `"updated"` remote event, and the answer to one of this client's own
-   * requests. It is not asked about a `"deleted"` or a `"list"` event, each of which replaces what
-   * it names outright. The default compares `updatedAt`, falls back to `createdAt` for a model
-   * that has neither side stamped with an `updatedAt`, and accepts the incoming row whenever the
-   * two cannot be ordered — including when the model carries no timestamp column at all. See
-   * {@link defaultIsNewer}.
+   * An `"updated"` remote event, a `"deleted"` one, and the answer to one of this client's own
+   * requests are each weighed by it wholesale: the older row is ignored and the newer one replaces
+   * everything the list held. A `"deleted"` event judged older is the one exception — it may then
+   * only turn an unarchived row into an archived one, taking `deletedAt` from it and leaving every
+   * other column, `deletedAt` on an already-archived row included, at the value the list already
+   * held. It is not asked about a `"list"` event, which replaces what it names outright. The
+   * default compares `updatedAt`, falls back to `createdAt` for a model that has neither side
+   * stamped with an `updatedAt`, and accepts the incoming row whenever the two cannot be ordered —
+   * including when the model carries no timestamp column at all. See {@link defaultIsNewer}.
    */
   isNewer?: (incoming: SchemaOutput<F>, existing: SchemaOutput<F>) => boolean
   /**
@@ -472,6 +482,37 @@ export function buildModelStore<
     return held === undefined || isNewer(answer, held)
   }
 
+  /**
+   * Fold a remote `"deleted"` event into the row it names.
+   *
+   * Judged newer by `isNewer`, the event replaces the held row wholesale, exactly like an
+   * `"updated"` one: its columns are the newest known state of the row, not an old copy, so there
+   * is nothing to protect them from. This is what lets an application with its own freshness check
+   * over a version column — the one {@link BuildModelStoreConfig.isNewer}'s JSDoc and the README
+   * recommend for a server that does not move `updatedAt` — defend a delete against an older answer
+   * of this client's own; advancing only a stamp the check never reads could not.
+   *
+   * Judged older, the event is narrower: a claim that may only turn an unarchived row into an
+   * archived one, and nothing else. The copy of the row it carries may be older than what the list
+   * already holds — delayed in transit, or made by a client whose own clock is behind — and taking
+   * it wholesale would revert an edit nobody undid. So every other column, including the freshness
+   * columns {@link outranksHeldRow} judges the next write against, keeps the value the list already
+   * held, and `deletedAt` moves only from a falsy value to the event's: an older event with nothing
+   * to archive — `deletedAt` falsy, because the event says `null` or the model carries no such
+   * column at all — is not a claim about anything, and a row the list already holds as archived
+   * keeps its own instant, because the event's is then an old copy of that column too, not a fresh
+   * claim about it. Neither case adds a phantom `deletedAt` to a model that has none.
+   *
+   * One consequence worth stating: a delete that arrives late can still re-archive a row a later
+   * `undelete` had already restored, because ordering is judged by the freshness columns alone and
+   * an archive/restore pair does not reliably move them in this library's data contract. See #201.
+   */
+  const applyRemoteDelete = (incoming: Row, held: Row): Row => {
+    if (isNewer(incoming, held)) return incoming
+    if (held.deletedAt || !incoming.deletedAt) return held
+    return { ...held, deletedAt: incoming.deletedAt }
+  }
+
   async function create(data: SchemaInput<C>): Promise<OperationResult<Row, InputError>> {
     const { error, data: payload } = validate(schemas.create, data)
     if (error) {
@@ -623,11 +664,11 @@ export function buildModelStore<
   /**
    * Parse a remote batch and fold it into the list. A batch that fails to parse is dropped.
    *
-   * An `"updated"` event is judged against the held row by `isNewer`. A `"deleted"` one is not
-   * judged at all: it replaces the held row wholesale, including its `updatedAt`, so a delete
-   * carrying an older copy of the row overwrites a newer one and winds that row's clock backwards —
-   * which then makes `outranksHeldRow` judge this client's next write against the wrong instant.
-   * That is pre-existing behaviour, deliberately left alone here and tracked in #201.
+   * An `"updated"` event replaces the held row wholesale, judged against it first by `isNewer`: the
+   * older of the two is ignored. A `"deleted"` event does the same when `isNewer` judges it the
+   * later of the two; judged older, it is narrower — see {@link applyRemoteDelete} — a claim about
+   * archiving the row rather than about the row, so it never carries its other columns over the
+   * held ones.
    *
    * What the event leaves in the list is what the answer to any request still on the wire is
    * compared with, so a remote change that arrives first is no longer overwritten by an older
@@ -671,9 +712,10 @@ export function buildModelStore<
         return
       case RemoteEvent.DELETED:
         patch({
-          list: state.value.list.map((existing) =>
-            rows.find((row) => row.id === existing.id) ?? existing
-          ),
+          list: state.value.list.map((existing) => {
+            const incoming = rows.find((row) => row.id === existing.id)
+            return incoming ? applyRemoteDelete(incoming, existing) : existing
+          }),
         })
     }
   }
@@ -924,8 +966,9 @@ const FRESHNESS_COLUMNS = ["updatedAt", "createdAt"] as const
 /**
  * Default freshness check between an incoming row and the one the list holds.
  *
- * The incoming row is an `"updated"` remote event, or the answer to one of this client's own
- * requests; the check does not know which, and that is the point of it being one check.
+ * The incoming row is an `"updated"` remote event, a `"deleted"` one, or the answer to one of this
+ * client's own requests; the check does not know which, and that is the point of it being one
+ * check.
  *
  * It compares the first of `updatedAt`, `createdAt` that either row carries a usable value for, and
  * accepts the incoming row when that value is at least as late as the stored one. Every other case

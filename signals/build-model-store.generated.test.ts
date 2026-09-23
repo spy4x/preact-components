@@ -24,13 +24,28 @@
  * so an answer that lands where it should not is visible rather than merely redundant.
  *
  * And somebody else changes a row through the feed while this client is working on it: 1,066 cases
- * carry at least one remote event. An event is delivered for a row that has a request outstanding
- * in 971 cases, and in 863 of those it actually changes the row — the rest are `"updated"` events
- * the freshness check refuses, which leave the list exactly as it was. Every row is stamped
- * `updatedAt`, drawn from five instants, so the clock rule is decided both ways: this client's own
- * answer is refused by it in 475 cases — in 235 of those the row it lost to was one a remote event
- * had written — and accepted over a remotely written row in 237. See {@link REMOTE_CHANCE} and
- * {@link STAMPS}.
+ * carry at least one remote event. Every count below is per case — a case counts once no matter how
+ * many qualifying events or answers it carries — using three readings taken straight off the
+ * replay: a row is "changed" when its observed name, `updatedAt` or `deleted` flag differs after
+ * the step; a row is "busy" when it has a request outstanding (made, not yet answered — by a plain
+ * count, not by which answer would settle a slot) the moment the event is delivered; and a row is
+ * "remotely written" when the last step that changed it was a remote event rather than this
+ * client's own answer. An event is delivered for a busy row in 971 cases, and in 846 of those it
+ * actually changes the row — the rest are refused: an `"updated"` event the freshness check judges
+ * no later than what is held, or an older `"deleted"` event that lands on a row already archived.
+ * This client's own answer is refused by the clock in
+ * 505 cases — in 276 of those the row it lost to was one a remote event had written — and accepted
+ * over a remotely written row in 191. See {@link REMOTE_CHANCE} and {@link STAMPS}.
+ *
+ * A `"deleted"` event lands on a row the current session still holds 1,554 times, and 694 of those
+ * carry a stamp older than the one the store already has for that row — delayed in transit, or
+ * from a client whose own clock is behind. Judged newer, the event replaces the row wholesale, name
+ * included, exactly like an `"updated"` one; judged older, it archives the row and leaves every
+ * other column, `updatedAt` included, exactly where it was. #201 is the bug the older half
+ * replaced, where an older delete overwrote a newer row wholesale and wound its clock back with it;
+ * the newer half is what lets an application's own freshness check over a version column defend a
+ * delete against an older answer of its own, which advancing only a stamp the check never reads
+ * could not.
  *
  * After every step it checks each row's name, its `updatedAt`, whether it is soft-deleted, both
  * operation flags, whether each slot carries an error, and the notifications so far.
@@ -137,13 +152,15 @@ const SESSION_KEEP = 0.75
  * The shape this file was extended for is an event overlapping one of this client's own writes, so
  * the event is aimed at a row with a request outstanding {@link REMOTE_ON_BUSY_ROW} of the time
  * and at any of the case's rows otherwise; a plain event with nothing in flight still happens, and
- * still has to be applied correctly. At 0.25 over 1,200 cases, 1,066 cases carry at least one
- * event, 971 deliver one for a row that is mid-write, and in 863 of those the event changes the
- * row rather than being refused by the freshness check.
+ * still has to be applied correctly. At 0.25 over 1,200 cases — counted per case, a row "changed"
+ * by its observed name/`updatedAt`/`deleted` differing and "busy" by a plain outstanding-request
+ * count, both read at the moment an event is delivered; see the module header for the full method —
+ * 1,066 cases carry at least one event, 971 deliver one for a busy row, and in 846 of those the
+ * event changes the row.
  *
  * The two counts to watch are the ones that can tell this rule from the one it replaced: this
- * client's own answer is refused by the clock in 475 cases, 235 of them losing to a row a remote
- * event had written, and accepted over a remotely written row in 237. A store that kept the old
+ * client's own answer is refused by the clock in 505 cases, 276 of them losing to a row a remote
+ * event had written, and accepted over a remotely written row in 191. A store that kept the old
  * "our own answer always wins" would disagree with the model in the first group; one that made a
  * remote event always win would disagree in the second. If either falls, this file has stopped
  * testing what it was extended for.
@@ -397,14 +414,19 @@ interface RowState {
 /**
  * The rules, restated as a model.
  *
- * Three of them. **Within a session**: an answer older than one already applied is dropped, and
- * only a request with nothing newer behind it settles a slot, which releases the row's other slot
- * too. **Across sessions**: an answer to a request issued before a `reset()` does nothing at all —
- * it touches neither slot, nor the list, nor the notifications — because the session it belongs to
- * is over and the id it names may belong to a different row in the session the store has now.
- * **Against the clock**: the held row is replaced only by something at least as late as it, whether
- * that something is a remote event or this client's own answer, and where the two are the same
- * instant the incoming one wins.
+ * Three of them govern this client's own answer. **Within a session**: an answer older than one
+ * already applied is dropped, and only a request with nothing newer behind it settles a slot, which
+ * releases the row's other slot too. **Across sessions**: an answer to a request issued before a
+ * `reset()` does nothing at all — it touches neither slot, nor the list, nor the notifications —
+ * because the session it belongs to is over and the id it names may belong to a different row in
+ * the session the store has now. **Against the clock**: the held row is replaced wholesale only by
+ * something at least as late as it, whether that something is a remote `"updated"` event or this
+ * client's own answer, and where the two are the same instant the incoming one wins.
+ *
+ * A `"deleted"` event is judged by the same clock, but not held to the same replacement: judged
+ * later, it too replaces the held row wholesale; judged older, it is narrower — a claim about
+ * archiving only, so it moves `deleted` and leaves the name and the stamp exactly as held. See
+ * #201.
  *
  * The three apply in that order and each can only refuse, which is why the model can apply them in
  * that order too: a disowned answer never reaches the counter, an answer stale by the counter never
@@ -470,14 +492,32 @@ function modelCase(plan: Plan) {
     remote({ event, id, name, stamp, deleted }: RemoteChange) {
       if (!present.has(id)) return
       const row = rows.get(id)!
-      // An `"updated"` event is weighed against the held row. A `"deleted"` one is not weighed at
-      // all: it replaces the held row wholesale, including its `updatedAt`, so it can carry an
-      // older copy over a newer one and wind that row's clock backwards. The model follows the
-      // store rather than approving of it — #201 tracks the behaviour.
-      if (event === RemoteEvent.UPDATED && STAMPS[stamp] < row.stamp!) return
-      row.name = name
-      row.deleted = deleted
-      row.stamp = STAMPS[stamp]
+      // An `"updated"` event is weighed against the held row wholesale: an older one changes
+      // nothing, a later one replaces the name and the stamp together.
+      if (event === RemoteEvent.UPDATED) {
+        if (STAMPS[stamp] < row.stamp!) return
+        row.name = name
+        row.deleted = deleted
+        row.stamp = STAMPS[stamp]
+        return
+      }
+      // A `"deleted"` event judged later than the held row is adopted wholesale, exactly like an
+      // `"updated"` one — its columns are the newest known state of the row, not an old copy.
+      if (STAMPS[stamp] >= row.stamp!) {
+        row.name = name
+        row.deleted = deleted
+        row.stamp = STAMPS[stamp]
+        return
+      }
+      // Judged older, it may only turn an unarchived row into an archived one — the name and the
+      // stamp are left exactly as held either way, and an old copy of the row must not ride in on
+      // a delayed delete. The guard mirrors the store's: an already-archived row keeps its own
+      // `deletedAt` rather than the event's. Neither that guard nor an older event with nothing to
+      // archive (`deleted: false`, which the generator never draws) can move this model's
+      // `deleted`, a boolean with no instant of its own to compare — every synthetic `deletedAt`
+      // in this file is the one constant `DELETED_AT` — so both are pinned by name only, in
+      // `build-model-store.test.ts`. See #201.
+      if (!row.deleted && deleted) row.deleted = true
     },
     /** Fold in one answer, in the order the answers arrive. */
     answer(request: Planned) {
