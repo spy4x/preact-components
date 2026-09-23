@@ -21,24 +21,29 @@ describe("matchLines", () => {
     expect(matchLines("640 megabytes", ["gb"])).toEqual([])
   })
 
-  it("is case-sensitive, so an unrelated all-caps token does not match", () => {
-    // The real false positive this avoids: a short lowercase name like "gb" would also match
-    // inside an all-caps locale code such as "en-GB" if the search ignored case. Every private
-    // name in this repository was written lowercase, so matching case-sensitively finds the same
-    // real occurrences while skipping that class of false positive.
+  it("is case-insensitive, so a capitalised mention is still caught", () => {
+    // The leak this check exists to stop: an application named mid-sentence, capitalised because
+    // it starts a sentence or is written as a title, would slip past a case-sensitive search.
+    expect(matchLines("Acmecorp shipped this component.", ["acmecorp"])).toEqual([1])
+    expect(matchLines("built on ACMECORP's platform", ["acmecorp"])).toEqual([1])
+  })
+
+  it("does not match a short name inside an unrelated hyphenated token", () => {
+    // The real false positive this avoids: a short name like "gb" must not match inside the
+    // locale tag "en-GB" — a hyphen counts as part of a word here, not as a separator, so there is
+    // no boundary between "-" and "GB".
     expect(matchLines("toLocaleDateString('en-GB')", ["gb"])).toEqual([])
-    expect(matchLines("the gb helpers", ["gb"])).toEqual([1])
   })
 
   it("matches a hyphenated name as one whole word", () => {
     expect(matchLines("extracted from widget-tracker", ["widget-tracker"])).toEqual([1])
   })
 
-  it("does not match a name glued to more letters on either side", () => {
-    // A hyphen is itself a word boundary, so "widget-tracker" still matches inside
-    // "widget-tracker-labs" — the boundary sits at the second hyphen. What it must not do is match
-    // inside a longer run of letters with no boundary at all, such as a plural with no separator.
-    expect(matchLines("extracted from widget-trackers", ["widget-tracker"])).toEqual([])
+  it("does not match a name glued to more hyphenated text on either side", () => {
+    // Because a hyphen counts as a word character, "widget-tracker" does not match inside
+    // "widget-tracker-labs" — the same rule that excludes "en-GB" also excludes this.
+    expect(matchLines("extracted from widget-tracker-labs", ["widget-tracker"])).toEqual([])
+    expect(matchLines("extracted from acme-widget-tracker", ["widget-tracker"])).toEqual([])
   })
 
   it("matches any name out of several", () => {
@@ -69,9 +74,20 @@ describe("wordBoundaryPattern", () => {
     expect(pattern.test("the gb helpers")).toBe(true)
   })
 
-  it("is case-sensitive", () => {
-    const pattern = wordBoundaryPattern(["Acme"])
+  it("is case-insensitive", () => {
+    const pattern = wordBoundaryPattern(["acme"])
     expect(pattern.test("Acme corp")).toBe(true)
-    expect(pattern.test("acme corp")).toBe(false)
+    expect(pattern.test("acme corp")).toBe(true)
+    expect(pattern.test("ACME corp")).toBe(true)
+  })
+
+  it("treats a hyphen as part of a word, not as a separator", () => {
+    const pattern = wordBoundaryPattern(["gb"])
+    // "-" sits right against "GB" on the left, so the boundary check must not treat it as a break.
+    expect(pattern.test("en-GB")).toBe(false)
+
+    const hyphenated = wordBoundaryPattern(["widget-tracker"])
+    expect(hyphenated.test("used widget-tracker here")).toBe(true)
+    expect(hyphenated.test("used widget-tracker-labs here")).toBe(false)
   })
 })

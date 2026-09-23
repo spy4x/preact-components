@@ -12,9 +12,10 @@ a one-time cleanup that could silently regress.
 
 1. runs `deno publish --dry-run --allow-dirty` from that package's directory and reads the file
    list it prints — exactly the files that command would upload to JSR;
-2. reads each of those files and checks every line against every name in the list, at a whole word
-   boundary and case-sensitively, so a short name does not match inside an unrelated word (a
-   locale code or a unit of size, for instance);
+2. reads each of those files and checks every line against every name in the list, case-insensitively
+   and at a whole word boundary — a hyphen counts as part of a word here, not as a separator, so a
+   short name does not match inside an unrelated hyphenated token such as a locale code, but a
+   capitalised mention (an application named at the start of a sentence, say) is still caught;
 3. prints every hit as `path/to/file:line` and exits non-zero if it found any, zero if it found
    none.
 
@@ -24,9 +25,8 @@ deno task private-names /path/to/names.txt
 
 The script never embeds a name anywhere in this repository. The names file itself is not tracked
 here either — keep it in a file you keep outside the repository, one name per line, and point the
-task at it. A short name can still match a false positive (a unit, a locale code, an unrelated
-word that happens to share it) — the script narrows candidates, it does not replace reading each
-match.
+task at it. A short name can still match an unrelated word that happens to share it — the script
+narrows candidates, it does not replace reading each match.
 
 ## When to run it
 

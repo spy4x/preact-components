@@ -1,5 +1,5 @@
 /**
- * Whole-word, case-sensitive search for private application names across every file each
+ * Whole-word, case-insensitive search for private application names across every file each
  * published package's `deno publish --dry-run` would upload to JSR.
  *
  * Takes the path to a names file as its only argument — one name per line, blank lines and
@@ -14,13 +14,13 @@
  *    boundary so a short name cannot match inside a longer word;
  * 3. prints every hit as `path/to/file:line`.
  *
- * Case-sensitive, not case-insensitive: every private name in this repository's history was
- * written lowercase (it names an application, not a title), and a short name matched
- * case-insensitively catches unrelated all-caps text with the same letters — `gb` inside the
- * locale code `en-GB`, for instance. Case-sensitive matching finds the same real occurrences
- * (confirmed by running both ways against this repository's history before it was cleaned up) and
- * skips that class of false positive, so a clean run means what it says: zero matches, not zero
- * after a human discards the noise.
+ * Case-insensitive: a capitalised mention (an application named mid-sentence, or at the start of
+ * one) is exactly the kind of leak this check exists to catch, so ignoring case would miss it.
+ * The boundary treats a hyphen as part of a word, alongside letters, digits and underscore, rather
+ * than as a separator — the same rule `deno fmt`'s own kebab-case file names imply. That is what
+ * keeps a short name from matching inside an unrelated hyphenated token such as the locale code
+ * `en-GB`, while a hyphenated name (`warthunder-stats`) still matches as one whole word: the
+ * boundary sits outside it, not at the hyphen in the middle.
  *
  * Exits non-zero if any package has a match, zero otherwise. Run it before every `deno publish`:
  *
@@ -82,10 +82,17 @@ export async function readNames(path: string): Promise<string[]> {
     .filter((line) => line.length > 0 && !line.startsWith("#"))
 }
 
-/** A single alternation, case-sensitive, matching any of `names` at a word boundary. */
+/**
+ * A single alternation, case-insensitive, matching any of `names` at a word boundary that treats a
+ * hyphen as a word character — so the boundary sits outside a hyphenated name, not inside it.
+ */
 export function wordBoundaryPattern(names: readonly string[]): RegExp {
   const escaped = names.map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
-  return new RegExp(`\\b(?:${escaped.join("|")})\\b`)
+  const wordOrHyphen = "[A-Za-z0-9_-]"
+  return new RegExp(
+    `(?<!${wordOrHyphen})(?:${escaped.join("|")})(?!${wordOrHyphen})`,
+    "i",
+  )
 }
 
 /** 1-based line numbers in `text` that contain one of `names` at a word boundary. */
