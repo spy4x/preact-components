@@ -2,8 +2,22 @@
   "name": "@preact-components/theme",
   "version": "0.1.0",
   "exports": {
-    "./tokens.css": "./tokens.css",
-    "./preset.css": "./preset.css"
+    // JSR refuses a CSS file as an export ("Expected a JavaScript or TypeScript module, but
+    // identified a Css module"). `tokens.css` and `preset.css` still ship inside the published
+    // package — see `publish.exclude` below, which does not touch them — but the one thing this
+    // map can point at is `+index.ts`, which resolves their location for a consumer's build step.
+    // `README.md` → "Install" says how.
+    ".": "./+index.ts"
+  },
+  "publish": {
+    // Dev-only: `smoke.test.ts` and `load-stylesheet.test.ts` compile the shipped CSS with the
+    // real Tailwind compiler to prove it emits the right classes, and `load-stylesheet.ts` is the
+    // reader that lets them do that without a Vite or PostCSS toolchain (its own JSDoc already
+    // says it "is a test helper, not part of the package's public surface"). None of it is
+    // reachable from `exports`, and a published consumer never runs it.
+    "exclude": [
+      "integration/"
+    ]
   },
   "tasks": {
     // This package alone. The workspace `test` task covers these suites too —

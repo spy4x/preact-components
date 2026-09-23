@@ -7,12 +7,54 @@ Tailwind 4, CSS-first — no `tailwind.config.ts` is shipped or required.
 
 ## Install
 
-An app writes this at the top of its stylesheet, in this order:
+`tokens.css` and `preset.css` ship inside the published package as plain files, not as
+`deno.json` `exports` entries — JSR refuses a CSS file as an export ("Expected a JavaScript or
+TypeScript module, but identified a Css module"), so `@preact-components/theme/tokens.css` is not
+an importable specifier, from JSR or from the npm package JSR publishes alongside it. Getting the
+two files in front of Tailwind is therefore the app's build step's job, not a plain `@import` line,
+and there are two ways to do it depending on what that build step already has.
+
+**A build script that runs in Deno or Node** resolves the files through this package's one export,
+`+index.ts`, which hands back their real location — in the JSR cache, in `node_modules`, wherever
+the installer put them — as `file:` URLs:
+
+```ts
+// build.ts — same shape as this repository's own pages/build.ts
+import { PRESET_CSS_URL, TOKENS_CSS_URL } from "@preact-components/theme"
+import { fileURLToPath } from "node:url"
+import { compile } from "tailwindcss"
+
+const entry = `
+  @import "tailwindcss";
+  @import "${TOKENS_CSS_URL}";
+  @import "${PRESET_CSS_URL}";
+`
+
+const compiler = await compile(entry, {
+  // Tailwind hands every `@import` id to this loader; an absolute URL (the two above) is read
+  // as-is, a relative one resolves against `base` the way a browser would.
+  async loadStylesheet(id, base) {
+    const url = /^[a-z]+:/.test(id) ? new URL(id) : new URL(id, base)
+    return {
+      path: fileURLToPath(url),
+      base: fileURLToPath(url),
+      content: await Deno.readTextFile(url),
+    }
+  },
+})
+```
+
+**A bundler that already materialises `node_modules`** (Vite, esbuild, the Tailwind CLI, an npm
+install of the JSR-published package) can `@import` the files by a relative path instead, because
+that is plain filesystem resolution and does not go through `exports` at all — see "If the app's
+bundler cannot resolve a package `@import`" below for the exact line.
+
+Whichever way the two files reach the compiler, feed them to Tailwind in this order:
 
 ```css
 @import "tailwindcss";
-@import "@preact-components/theme/tokens.css";
-@import "@preact-components/theme/preset.css";
+@import "<tokens.css, resolved one of the two ways above>";
+@import "<preset.css, resolved one of the two ways above>";
 ```
 
 Then tell Tailwind where the library's components live, so the classes they use
@@ -56,8 +98,16 @@ needs `.dark` on an **ancestor** — the outer element, `<html>` — and
 element, or put them the other way round, and the descendant part of the selector
 has nothing to match.
 
-If the app's bundler cannot resolve a package `@import`, import by relative path
-— these are plain CSS files:
+When the package is installed into a real `node_modules` tree (an npm/pnpm/yarn install of the
+JSR-published package, or `deno install --node-modules-dir`), a bundler can also reach the files by
+relative path directly — this is plain filesystem resolution, so it works with no `exports` entry:
+
+```css
+@import "../node_modules/@preact-components/theme/tokens.css";
+@import "../node_modules/@preact-components/theme/preset.css";
+```
+
+or, vendored into the app's own tree rather than installed:
 
 ```css
 @import "../libs/preact-components/theme/tokens.css";
@@ -106,8 +156,8 @@ properties. No CSS fork, no `!important`:
 
 ```css
 @import "tailwindcss";
-@import "@preact-components/theme/tokens.css";
-@import "@preact-components/theme/preset.css";
+@import "<tokens.css, resolved as under Install>";
+@import "<preset.css, resolved as under Install>";
 
 /* After tokens.css, so this wins the cascade. */
 :root {

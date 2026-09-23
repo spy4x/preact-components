@@ -6,8 +6,8 @@
  * `smoke.test.ts` can compile the shipped CSS without a Vite or PostCSS
  * toolchain and without a local `node_modules` directory.
  *
- * It is a test helper, not part of the package's public surface: `deno.json`
- * exports the stylesheets and nothing else.
+ * It is a test helper, not part of the package's public surface: `deno.json` exports only
+ * `+index.ts`, which resolves the two stylesheets' location rather than loading them itself.
  */
 
 import { basename, dirname, join } from "node:path"
