@@ -15,9 +15,6 @@ import { check, type Devtools, poll } from "./harness.ts"
  *
  * @param devtools The connected session, on a hydrated page.
  */
-/** The exact text `regionCrossFieldSchema`'s `ctx.reject` gives its one rule, in `ui-guide/sections/crud.tsx`. */
-const CROSS_FIELD_MESSAGE = "Name must differ from Notes"
-
 export async function crudChecks(devtools: Devtools): Promise<void> {
   const initial = await readState(devtools)
   check("the CrudEditor demo card is on the page", initial.ok, initial.ok ? "found" : "not found")
@@ -114,14 +111,17 @@ export async function crudChecks(devtools: Devtools): Promise<void> {
 
   const ignoredClick = await clickSave(devtools)
   const clickLeaked = await poll(
-    async () => (await readState(devtools)).writesText !== equalAgain.writesText,
+    async () => (await readState(devtools)).writesText !== afterScriptSubmit.writesText,
     500,
   )
   const afterBlockedClick = await readState(devtools)
   check(
     "a disabled Save ignores a click — no write reaches the store while the rule fails",
-    ignoredClick && !clickLeaked && afterBlockedClick.writesText === equalAgain.writesText,
-    `writes before "${equalAgain.writesText}" after "${afterBlockedClick.writesText}"`,
+    // Compared against `afterScriptSubmit`, not `equalAgain`: this check has to stand on its own.
+    // Baselined on `equalAgain` — the reading from before the `requestSubmit()` check above — a leak
+    // from that check alone would turn this one red too, and its own detail would blame the click.
+    ignoredClick && !clickLeaked && afterBlockedClick.writesText === afterScriptSubmit.writesText,
+    `writes before "${afterScriptSubmit.writesText}" after "${afterBlockedClick.writesText}"`,
   )
 
   await commitField(devtools, "Notes", "Beta")
@@ -135,6 +135,9 @@ export async function crudChecks(devtools: Devtools): Promise<void> {
 
 /** The card these checks drive: the `CrudEditor` demo, whose schema adds one cross-field rule. */
 const CARD = "#demo-CrudEditor"
+
+/** The exact text `regionCrossFieldSchema`'s `ctx.reject` gives its one rule, in `ui-guide/sections/crud.tsx`. */
+const CROSS_FIELD_MESSAGE = "Name must differ from Notes"
 
 /** One reading of the demo: what Save and the live region answer, and what the store port logged. */
 interface CrudEditorReading {
