@@ -8,18 +8,18 @@ its own PR, each owning exactly one top-level directory.
 
 ## Package layout
 
-| Directory   | Contents                                                                                 |
-| ----------- | ---------------------------------------------------------------------------------------- |
-| `theme/`    | design-system CSS + tailwind preset                                                      |
-| `icons/`    | merged icon set, `+index.tsx`                                                            |
-| `ui/`       | Badge, Button, Table, Dropdown, Combobox, Modal, Tooltip, Toastr — and the rest          |
-| `system/`   | Calendar, ImageLightbox, SEOHead + head store, SWUpdater                                 |
-| `charts/`   | server-rendered SVG kit (scales) + d3 wrappers                                           |
-| `cn/`       | `cn()` — class-name join + Tailwind conflict resolution                                  |
-| `signals/`  | buildModelStore, useUrlFilters, table-state, theme, toast — and the rest; no components  |
-| `crud/`     | CrudList, CrudEditor, AssociationEditor                                                  |
-| `ui-guide/` | live component catalogue route                                                           |
-| `pages/`    | demo app (GitHub Pages site and the browser checks under `pages/checks/`), not published |
+| Directory   | Contents                                                                                             |
+| ----------- | ---------------------------------------------------------------------------------------------------- |
+| `theme/`    | design-system CSS + tailwind preset                                                                  |
+| `icons/`    | merged icon set, `+index.tsx`                                                                        |
+| `ui/`       | Badge, Button, Table, DataTable, Dropdown, Combobox, Modal, Tooltip, Toastr — and the rest           |
+| `system/`   | AuthForm, Calendar, ImageLightbox, SEOHead + head store, SWUpdater                                   |
+| `charts/`   | server-rendered SVG kit (scales) + d3 wrappers                                                       |
+| `cn/`       | `cn()` — class-name join + Tailwind conflict resolution                                              |
+| `signals/`  | buildModelStore, useUrlFilters, table-state, theme, toast, patchSignal — and the rest; no components |
+| `crud/`     | CrudList, CrudEditor, AssociationEditor                                                              |
+| `ui-guide/` | live component catalogue route                                                                       |
+| `pages/`    | demo app (GitHub Pages site and the browser checks under `pages/checks/`), not published             |
 
 ## What belongs in this library
 
@@ -64,9 +64,10 @@ Rules for a package config:
 
 - `name` is `@preact-components/<directory>` — that is how sibling packages import you.
 - `exports` lists exactly the entry points that exist today. Adding a file does not add an export.
-- Do not add an `imports` block unless you need a specifier the root does not provide. Shared deps
-  (preact, signals, arktype, d3, tailwind, `@std/*`, tailwind-merge, wouter-preact) live in
-  the root import map so every package resolves one copy.
+- Do not add an `imports` block unless you need a specifier the root does not provide — `d3` is
+  the one exception already in the tree, pinned only in `charts/deno.json` because a single module
+  uses it. Shared deps (preact, signals, arktype, tailwind, `@std/*`, tailwind-merge, wouter-preact)
+  live in the root import map so every package resolves one copy.
 - Sibling imports use the member name: `import { cn } from "@preact-components/cn"`.
 
 Type-checking, formatting, linting and tests are discovered by walking the tree, so a new package is
@@ -143,14 +144,20 @@ deno task check
 Runs `fmt:check`, `lint`, `ts:check` and `test`. All four must pass with zero errors. Use
 `deno task fix` to apply formatting and lint fixes, then re-run `deno task check`.
 
-| Task                 | Does                                             |
-| -------------------- | ------------------------------------------------ |
-| `deno task check`    | all checks; run by both CIs                      |
-| `deno task fmt`      | format (`fmt:check` in CI)                       |
-| `deno task lint`     | lint (`lint:fix` to apply suggestions)           |
-| `deno task ts:check` | `deno check` over every `.ts`/`.tsx` in the tree |
-| `deno task test`     | run all tests                                    |
-| `deno task fix`      | `lint --fix` then format                         |
+| Task                    | Does                                                      |
+| ----------------------- | --------------------------------------------------------- |
+| `deno task check`       | all checks; run by both CIs                               |
+| `deno task fmt`         | format (`fmt:check` in CI)                                |
+| `deno task lint`        | lint (`lint:fix` to apply suggestions)                    |
+| `deno task ts:check`    | `deno check` over every `.ts`/`.tsx` in the tree          |
+| `deno task test`        | run all tests                                             |
+| `deno task fix`         | `lint --fix` then format                                  |
+| `deno task publish:dry` | `deno publish --dry-run` for every named workspace member |
+
+`publish:dry` is not part of `check`: `deno publish --dry-run` refuses a dirty tree, so folding it
+into `check` would fail every local run against uncommitted work. Each CI system runs it as its own
+step, after `check`, against its own clean checkout — `.github/workflows/pages.yml` and
+`.woodpecker.yml` both do this.
 
 Behaviour needs a second pair, in this order:
 
@@ -193,7 +200,7 @@ pointer left resting on an element by an earlier check changes its computed colo
 timer; a check either parks the pointer away and reads back where it landed, or asserts the element
 is not `:hover` before reading a style off it. `verify` fails
 when it finds no browser; `--static` is the one explicit way to leave the browser phase out. The
-GitHub workflow runs `check`, the build and `verify` on every pull
+GitHub workflow runs `check`, `publish:dry`, the build and `verify` on every pull
 request into `main`, and the Pages deploy waits for them.
 
 If a task fails because a specifier cannot be resolved, run the task that needs the new dependency once
@@ -293,11 +300,13 @@ arktype                          2.2.3
 @std/assert                     1.0.19
 @std/expect                     1.0.20
 @std/testing                    1.0.20
+preact-render-to-string          6.7.0
 tailwind-merge                   3.7.0
-d3                               7.9.0
 tailwindcss                     4.1.12
-@tailwindcss/forms              0.5.10
 ```
+
+`d3@7.9.0` is not in this list: it is pinned once, in `charts/deno.json`, not at the root — see
+"Adding a package" above. Everything else here resolves through the root import map.
 
 **What is mechanically checked, and what is not.** Assume nothing here is. Exact pinning is a
 convention held by review: `deno.lock` is committed and Deno keeps it in sync automatically, but it is

@@ -365,7 +365,8 @@ is demonstrated, or excluded with a reason) and `copy.test.tsx` (every card's co
 its own snippet and to the injected port). Tests render real markup with `preact-render-to-string`
 and assert on it; no DOM, no browser.
 
-`preact-render-to-string` is pinned in this package's `deno.json` for the same reason as in `ui/`:
-the root import map has no renderer. `@std/jsonc` is pinned there too, because `coverage.ts` reads
+`preact-render-to-string` is pinned once, in the root import map, not in this package's own
+`deno.json` — #219 replaced the six identical per-package copies this and `ui/` used to carry with
+that one shared pin. `@std/jsonc` is still pinned in this package's own `deno.json`, because `coverage.ts` reads
 each package's `exports` out of a `deno.json` and Deno writes those configs with comments; it is not
 reachable from any published entry point.
