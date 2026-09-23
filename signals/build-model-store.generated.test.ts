@@ -25,12 +25,19 @@
  *
  * And somebody else changes a row through the feed while this client is working on it: 1,066 cases
  * carry at least one remote event. An event is delivered for a row that has a request outstanding
- * in 971 cases, and in 863 of those it actually changes the row — the rest are `"updated"` events
- * the freshness check refuses, which leave the list exactly as it was. Every row is stamped
- * `updatedAt`, drawn from five instants, so the clock rule is decided both ways: this client's own
- * answer is refused by it in 475 cases — in 235 of those the row it lost to was one a remote event
- * had written — and accepted over a remotely written row in 237. See {@link REMOTE_CHANCE} and
- * {@link STAMPS}.
+ * in 971 cases, and in 863 of those it actually changes the row — the rest are refused: an
+ * `"updated"` event the freshness check judges no later than what is held, or a `"deleted"` event
+ * that lands on a row already archived with nothing later of its own to record. Either way the
+ * list is left exactly as it was. Every row is stamped `updatedAt`, drawn from five instants, so
+ * the clock rule is decided both ways: this client's own answer is refused by it in 475 cases — in
+ * 235 of those the row it lost to was one a remote event had written — and accepted over a
+ * remotely written row in 237. See {@link REMOTE_CHANCE} and {@link STAMPS}.
+ *
+ * A `"deleted"` event lands on a row the current session still holds 1,554 times, and 694 of those
+ * carry a stamp older than the one the store already has for that row — delayed in transit, or
+ * from a client whose own clock is behind. The store archives the row anyway and leaves every
+ * other column, `updatedAt` included, exactly where it was; #201 is the bug this replaced, where
+ * an older delete overwrote a newer row wholesale and wound its clock back with it.
  *
  * After every step it checks each row's name, its `updatedAt`, whether it is soft-deleted, both
  * operation flags, whether each slot carries an error, and the notifications so far.
@@ -139,7 +146,8 @@ const SESSION_KEEP = 0.75
  * and at any of the case's rows otherwise; a plain event with nothing in flight still happens, and
  * still has to be applied correctly. At 0.25 over 1,200 cases, 1,066 cases carry at least one
  * event, 971 deliver one for a row that is mid-write, and in 863 of those the event changes the
- * row rather than being refused by the freshness check.
+ * row — see the module header for what refuses the rest, which is no longer only the freshness
+ * check on an `"updated"` event now that a `"deleted"` one can also land on nothing new to record.
  *
  * The two counts to watch are the ones that can tell this rule from the one it replaced: this
  * client's own answer is refused by the clock in 475 cases, 235 of them losing to a row a remote
@@ -470,14 +478,22 @@ function modelCase(plan: Plan) {
     remote({ event, id, name, stamp, deleted }: RemoteChange) {
       if (!present.has(id)) return
       const row = rows.get(id)!
-      // An `"updated"` event is weighed against the held row. A `"deleted"` one is not weighed at
-      // all: it replaces the held row wholesale, including its `updatedAt`, so it can carry an
-      // older copy over a newer one and wind that row's clock backwards. The model follows the
-      // store rather than approving of it — #201 tracks the behaviour.
-      if (event === RemoteEvent.UPDATED && STAMPS[stamp] < row.stamp!) return
-      row.name = name
+      // An `"updated"` event is weighed against the held row wholesale: an older one changes
+      // nothing, a later one replaces the name and the stamp together.
+      if (event === RemoteEvent.UPDATED) {
+        if (STAMPS[stamp] < row.stamp!) return
+        row.name = name
+        row.deleted = deleted
+        row.stamp = STAMPS[stamp]
+        return
+      }
+      // A `"deleted"` event is a claim about archiving only: `deleted` is taken from it
+      // unconditionally, however old the event is, and the name is never touched by it — an old
+      // copy of the row riding in on a delayed delete must not revert an edit nobody undid. The
+      // stamp is the one column that can still move, and only forward, by the same clock rule an
+      // `"updated"` event is judged by, so it never winds a row's clock backwards. See #201.
       row.deleted = deleted
-      row.stamp = STAMPS[stamp]
+      if (STAMPS[stamp] >= row.stamp!) row.stamp = STAMPS[stamp]
     },
     /** Fold in one answer, in the order the answers arrive. */
     answer(request: Planned) {
