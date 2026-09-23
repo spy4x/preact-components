@@ -1,10 +1,10 @@
 /**
  * The System section.
  *
- * All four of the package's components are here. Two render from props with no platform access at
- * all; two are platform integration and are handled with an explicit, stated reduction rather than a
- * demo that claims behaviour it cannot show. Those two are the interesting part of this file, so
- * here is the reasoning in full:
+ * All five of the package's components are here. Three render from props with no platform access
+ * at all; two are platform integration and are handled with an explicit, stated reduction rather
+ * than a demo that claims behaviour it cannot show. Those two are the interesting part of this
+ * file, so here is the reasoning in full:
  *
  * - **`SEOHead` returns `<title>`, `<meta>` and `<link>` tags.** Rendering it inside a catalogue card
  *   would splice a second `<title>` into the document *body*, and the browser reads the first
@@ -55,8 +55,28 @@
  * `ImageLightbox` renders its dialog closed, with nothing else to pin, and the images beside it are
  * the demo's own — one plain and one wrapped in a link, because "opens the lightbox instead of
  * following the link" is a claim that needs a link to be a claim at all.
+ *
+ * `AuthForm` gets two cards. The first mounts two instances side by side, sign-in and sign-up,
+ * which is the card a password manager or `pages/checks/system.ts` reads: real `<form>`s, real
+ * `<label for>`s, the right `autocomplete`/`name`/`type` on every field, and — because there are
+ * two instances on the one page — proof that their ids do not collide. The second is one
+ * instrumented instance with buttons standing in for what an app's own server round trip would
+ * otherwise drive: setting a form-level or a field-level error, moving to the one-time-code step,
+ * toggling `busy`, and calling `form.requestSubmit()` directly so a check can prove a busy submit
+ * calls nothing even when it bypasses the (disabled) submit button. Every submit callback counts
+ * its own calls, because "nothing happened" is otherwise indistinguishable from "the submit never
+ * reached the handler". **This second card has callbacks and no `action`, on purpose**: it is the
+ * ordinary shape of a hydrated app, and it is also the card `pages/checks/system.ts` disables
+ * script execution against and presses Submit on, to prove a visitor who submits before the bundle
+ * has run never sends the password into the URL.
  */
 
+import {
+  AuthForm,
+  type AuthFormError,
+  type AuthMode,
+  type AuthStep,
+} from "@preact-components/system/auth-form"
 import { Calendar } from "@preact-components/system/calendar"
 import type { PageHead } from "@preact-components/system/head"
 import { ImageLightbox } from "@preact-components/system/image-lightbox"
@@ -838,7 +858,162 @@ function CalendarLocaleDemo() {
   )
 }
 
+/**
+ * Two real, simultaneously mounted instances — the card a password manager, or
+ * `pages/checks/system.ts`, reads. Each one gets its own real `<form>`, its own `<label for>`
+ * pairing and, because `AuthForm` derives every id from `useId()`, its own ids: two instances on
+ * one page is the one thing a single-instance card could never prove either way.
+ */
+function AuthFormAutofillDemo() {
+  return (
+    <div class="grid gap-4 sm:grid-cols-2" data-e2e="auth-form-autofill">
+      <AuthForm mode="sign-in" step="credentials" action="/auth/sign-in" onSignIn={() => {}} />
+      <AuthForm mode="sign-up" step="credentials" action="/auth/sign-up" onSignUp={() => {}} />
+    </div>
+  )
+}
+
+/** The two errors this card's buttons can set, kept next to each other for that reason. */
+const FORM_ERROR = "Wrong login or password"
+const FIELD_ERROR: AuthFormError = { message: "No account with that login", field: "login" }
+
+/**
+ * Fill every empty field of `form` and submit it through `requestSubmit()`.
+ *
+ * A `requestSubmit()` runs the browser's own constraint validation exactly as a click on the
+ * submit button would, so a form with an empty `required` field never reaches `AuthForm`'s submit
+ * handler at all — that would prove "nothing was required" rather than "busy stopped it". Filling
+ * every field first, the same way a person or a password manager would, is what isolates the one
+ * thing this card's `requestSubmit()` button is for.
+ */
+function fillAndRequestSubmit(container: HTMLElement | null) {
+  const form = container?.querySelector("form")
+  if (!form) return
+  for (const input of form.querySelectorAll("input")) {
+    if (input.value === "") input.value = input.name === "code" ? "123456" : "demo value"
+  }
+  form.requestSubmit()
+}
+
+/**
+ * One instrumented instance, standing in for the round trip an app's own server would otherwise
+ * drive: buttons set the error, move the step, toggle `busy`, and submit — including through
+ * `form.requestSubmit()`, so a check can prove a busy submit calls nothing even when it bypasses
+ * the (disabled) submit button. Every callback counts its own calls, because with nothing on
+ * screen to show a submit happened, "the count did not rise" is the only way to tell a busy submit
+ * that was stopped from one that was never attempted.
+ */
+function AuthFormInteractiveDemo() {
+  const mode = useSignal<AuthMode>("sign-in")
+  const step = useSignal<AuthStep>("credentials")
+  const busy = useSignal(false)
+  const error = useSignal<string | AuthFormError | null>(null)
+  const signIns = useSignal(0)
+  const signUps = useSignal(0)
+  const codes = useSignal(0)
+  const container = useRef<HTMLDivElement>(null)
+
+  return (
+    <div class="space-y-3" data-e2e="auth-form-interactive" ref={container}>
+      <div class="flex flex-wrap gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="auth-form-set-form-error"
+          onClick={() => error.value = FORM_ERROR}
+        >
+          Set a form-level error
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="auth-form-set-field-error"
+          onClick={() => error.value = FIELD_ERROR}
+        >
+          Set a field-level error
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="auth-form-clear-error"
+          onClick={() => error.value = null}
+        >
+          Clear the error
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="auth-form-step-code"
+          onClick={() => step.value = "one-time-code"}
+        >
+          Go to the code step
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="auth-form-step-credentials"
+          onClick={() => step.value = "credentials"}
+        >
+          Back to credentials
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="auth-form-toggle-busy"
+          onClick={() => busy.value = !busy.value}
+        >
+          Toggle busy ({busy.value ? "on" : "off"})
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="auth-form-request-submit"
+          onClick={() => fillAndRequestSubmit(container.current)}
+        >
+          Fill fields and form.requestSubmit()
+        </Button>
+      </div>
+      <p class="text-xs text-gray-500 dark:text-gray-400">
+        sign-ins: <span data-e2e="auth-form-signins">{signIns.value}</span>, sign-ups:{" "}
+        <span data-e2e="auth-form-signups">{signUps.value}</span>, codes:{" "}
+        <span data-e2e="auth-form-codes">{codes.value}</span>
+      </p>
+      <AuthForm
+        mode={mode.value}
+        onModeChange={(next) => mode.value = next}
+        step={step.value}
+        busy={busy.value}
+        error={error.value}
+        onSignIn={() => signIns.value++}
+        onSignUp={() => signUps.value++}
+        onOneTimeCode={() => codes.value++}
+      />
+    </div>
+  )
+}
+
 export const systemDemos = {
+  AuthForm: {
+    summary:
+      'Sign-in, sign-up and a one-time-code step, drawn from `mode`, `step`, `busy` and `error` and reported through `onSignIn`/`onSignUp`/`onOneTimeCode`/`onModeChange` — it makes no network call and stores no credential outside the input it came from. **Submitted values are read from `FormData` inside the submit handler, never from controlled state**, so a password sits nowhere but its own input\'s `value` until the one moment it is needed, and it reaches the callback exactly as typed, untrimmed. **`action` is the no-JavaScript path**: before hydration, or whenever the matching callback is left out, the form posts natively. **`method` is always `"post"`, unconditionally — there is no `method` prop** — because a card with callbacks and no `action`, the ordinary shape of a hydrated app, would otherwise have no `method` attribute at all, and a browser reads that as GET: a submit in the gap before hydration, or with scripts off, would put the password in the address bar. **A busy submit calls no callback**, including one started with `form.requestSubmit()`, which bypasses the disabled submit button the way a person cannot. **The one-time-code step moves the focus to its field**, and no other render does. **`error` is a string or `{ message, field? }`**: every error reaches the always-present `role="alert"` region — present before anything goes wrong, exactly like `SWUpdater`\'s — and a named field also gets the message and `aria-invalid` through its own `Field` (read twice by some screen readers; accepted, see `system/README.md`). The show/hide password control is a real `type="button"` with `aria-pressed`, and every visible string has an English default and a `labels` override.',
+    snippet: `<AuthForm
+  mode={mode}
+  step={step}
+  onModeChange={setMode}
+  onSignIn={({ login, password }) => auth.signIn(login, password)}
+  onSignUp={({ login, password }) => auth.signUp(login, password)}
+  onOneTimeCode={(code) => auth.verify(code)}
+  busy={pending}
+  error={error} // string, or { message, field: "login" | "password" | "code" }
+  action="/auth/sign-in"
+/>`,
+    render: () => (
+      <div class="space-y-4">
+        <AuthFormAutofillDemo />
+        <AuthFormInteractiveDemo />
+      </div>
+    ),
+  },
   Calendar: {
     summary:
       "Six-week month grid. **Dual-mode**: with no `onSelectDate` every cell is an `<a href>` and a month arrow with nothing to show is a `<span>` rather than a dead link; supplying the callback turns the cells into `<button>`. `today` and `timeZone` are props, so a render can be pinned — this card passes `2026-03-10` and `UTC` and reads no clock, and a zone the platform cannot resolve falls back to UTC instead of throwing. A date missing from `slotsByDate` has no availability, a `0` has no slots left, and the two are visually alike but carry different accessible labels. Cells also show today, past dates, dates outside the window, and a scarcity dot at or below `lowSlotsThreshold`. **The whole grid is one Tab stop** once hydrated: the arrow keys step a day and a week, Home and End go to the ends of the week, Page Up and Page Down ask `onSelectMonth` for the neighbouring month, and why a day cannot be picked is the cell's own accessible name plus the hint under the grid rather than a `title` nobody can hover. **A month is asked for, never taken**, and the reader keeps their place whatever the owner answers: an owner that draws the month lands them on the same day number in it, an owner that leaves `monthAnchor` where it was — clamping to an allowed range, say — leaves them on the day they pressed from rather than on the grid container, and an owner that draws the month a render or more later, as anything that fetches first does, still lands them on that same day number once it arrives. The fourth card below refuses every month change and the fifth answers 300 ms late; both count what they were asked, because \"the month did not change\" is otherwise indistinguishable from a key press that never arrived. **The week is the locale's**: both the column order and the header text come from `Intl`, so the third card below moves the columns under the same dates as it changes language.",
