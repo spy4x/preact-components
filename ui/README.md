@@ -111,9 +111,11 @@ Raising a toast's `duration` while it is on screen is the one thing that refills
 than continuing it, which is how a caller extends a toast it has already shown.
 
 `duration` is not validated, and `resolveDuration` documents what each odd value does. The short
-version: pass `0`, a positive number of milliseconds, or nothing. A negative number and `Infinity`
-both dismiss the toast at once, because the browser runs either as a zero delay; `NaN` starts no
-timer and so keeps the toast like `0` does.
+version: pass `0`, a positive number of milliseconds up to 2,147,483,647, or nothing. A negative
+number and `Infinity` both dismiss the toast at once, because the browser runs either as a zero
+delay, and so does anything above 2,147,483,647 ms (about 24.8 days), because browsers hold a
+timer's delay as a 32-bit signed integer. `NaN` starts no timer and so keeps the toast like `0`
+does.
 
 **This component owns the dismiss timer, and the store it is wired to owns none.** The pause can
 only hold a timer this component runs, so `createToastStore` from `@preact-components/signals`

@@ -299,10 +299,12 @@ toast.info({ body: "Read this one", duration: 20_000 })
 - **Omitting `duration` leaves the delay to the renderer.** The store has no default of its own to
   put there — one default, on the side that runs the timer, which is `Toastr`'s exported
   `defaultToastDuration` (5000).
-- **Only `0`, a positive number or nothing.** The value goes to the component unvalidated, and
-  there a negative number or `Infinity` dismisses the toast at once (the browser runs both as a
-  zero delay), while `NaN` starts no timer and so behaves like `0`. `Infinity` reads like "keep
-  it" and does the opposite; spell that `0`.
+- **Only `0`, a positive number up to 2,147,483,647, or nothing.** The value goes to the
+  component unvalidated, and there a negative number or `Infinity` dismisses the toast at once
+  (the browser runs both as a zero delay), and so does anything above 2,147,483,647 ms (about
+  24.8 days), because browsers hold a timer's delay as a 32-bit signed integer. `NaN` starts no
+  timer and so behaves like `0`. `Infinity` and a huge number read like "keep it" and do the
+  opposite; spell that `0`.
 - **Re-pushing under the same id does not restart the countdown.** This changed with the store
   giving up its timer: it used to cancel and reschedule on every re-push, so the toast got its
   whole delay again. Now `Toastr` keeps the replaced toast's remaining time unless the re-push

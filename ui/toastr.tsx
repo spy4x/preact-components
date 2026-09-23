@@ -101,13 +101,18 @@ export const defaultToastDuration = 5000
  * | ---------------------- | ---------------------------------------------------------------- |
  * | absent (`undefined`)   | {@link defaultToastDuration}                                     |
  * | `0`                    | no timer; the toast stays until somebody dismisses it            |
- * | a positive number      | that many milliseconds, paused while the stack is being read     |
+ * | 1 to 2,147,483,647     | that many milliseconds, paused while the stack is being read     |
+ * | above 2,147,483,647    | dismissed at once — past the timer's 32-bit signed limit         |
  * | negative               | dismissed at once — the browser runs a negative delay as `0`     |
  * | `Infinity`             | dismissed at once — the browser converts it to a `0` delay       |
  * | `NaN`                  | no timer, like `0`, because `NaN` is falsy                       |
  *
- * So a caller must not pass a negative number, `Infinity` or `NaN`. "Keep it until dismissed" is
- * spelled `0`; `Infinity` reads like it means the same and does the opposite.
+ * The large-delay row is the same trap as `Infinity`: browsers hold a timer's delay as a 32-bit
+ * signed integer, and Chromium fires anything above 2,147,483,647 ms (about 24.8 days) at once.
+ *
+ * So a caller must not pass a negative number, `Infinity`, `NaN` or anything above 2,147,483,647.
+ * "Keep it until dismissed" is spelled `0`; `Infinity` and a huge number read like they mean the
+ * same and do the opposite.
  *
  * @param toast Any toast-shaped value — only its `duration` is read.
  * @returns The delay in milliseconds; `0` for a toast that never dismisses itself.
