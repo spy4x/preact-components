@@ -532,6 +532,36 @@ describe("Devtools", () => {
     expect(outcome).toBeInstanceOf(Error)
     expect(socket.closed).toBe(true)
   })
+
+  it("once resolves with the event's own params, not just the fact it arrived", async () => {
+    const socket = new FakeSocket()
+    await withFakeSocket(socket, async () => {
+      const connecting = Devtools.connect("ws://fake")
+      socket.onopen?.()
+      const devtools = await connecting
+
+      const waiting = devtools.once<{ requestId: string }>("Fetch.requestPaused")
+      socket.onmessage?.({
+        data: JSON.stringify({ method: "Fetch.requestPaused", params: { requestId: "abc" } }),
+      })
+
+      expect(await waiting).toEqual({ requestId: "abc" })
+    })
+  })
+
+  it("next resolves on the same event once, dropping its params", async () => {
+    const socket = new FakeSocket()
+    await withFakeSocket(socket, async () => {
+      const connecting = Devtools.connect("ws://fake")
+      socket.onopen?.()
+      const devtools = await connecting
+
+      const waiting = devtools.next("Page.loadEventFired")
+      socket.onmessage?.({ data: JSON.stringify({ method: "Page.loadEventFired", params: {} }) })
+
+      expect(await waiting).toBeUndefined()
+    })
+  })
 })
 
 describe("connect", () => {
