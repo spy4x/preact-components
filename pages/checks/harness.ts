@@ -60,8 +60,11 @@ export interface CheckBlock<Context> {
   run: (context: Context) => Promise<void>
 }
 
-/** Render a thrown value for the detail column; a non-`Error` throw is as readable as any other. */
-function describeError(error: unknown): string {
+/**
+ * Render a thrown value for the detail column; a non-`Error` throw is as readable as any other.
+ * Exported so `pages/launch.ts` and `pages/verify.ts` share this instead of each defining a copy.
+ */
+export function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
@@ -162,7 +165,18 @@ export class Run {
         this.#blocks.set(block.name, BlockOutcome.Completed)
       } catch (error) {
         this.#blocks.set(block.name, BlockOutcome.StoppedPartWay)
-        this.record(`the ${block.name} checks ran to completion`, false, describeError(error))
+        // Naming the last check that did complete is what tells a reader "the browser died right
+        // after X" apart from "X itself is broken" — a `DevtoolsClosedError` propagating out of a
+        // check function reads the same as any other throw without this, and a review of this PR
+        // found exactly that: a dead browser reported as a failure of whichever component happened
+        // to be mid-check when it died.
+        const last = this.lastCheck?.name
+        const reason = describeError(error)
+        this.record(
+          `the ${block.name} checks ran to completion`,
+          false,
+          last ? `${reason} (last completed check: ${last})` : reason,
+        )
         if (recover) await recover(context).catch(() => {})
       } finally {
         this.#current = undefined
@@ -343,14 +357,34 @@ export async function pressKey(devtools: Devtools, name: KeyName): Promise<void>
   }
 }
 
-/** Poll `predicate` until it is true or the budget runs out. */
+/**
+ * Thrown by every pending and future `Devtools` call once its socket has gone away — see
+ * {@link Devtools}'s `onclose`/`onerror` handling. A distinct class rather than a plain `Error` is
+ * what lets {@link poll} tell "the browser is dead" apart from an ordinary transient failure (an
+ * element not there yet, a page exception from code still initialising) without matching on message
+ * text.
+ */
+export class DevtoolsClosedError extends Error {}
+
+/**
+ * Poll `predicate` until it is true or the budget runs out.
+ *
+ * A predicate that throws is normally treated as "not ready yet" and retried — most callers use
+ * `evaluate` on an element that may not exist for the first few hundred milliseconds. A
+ * {@link DevtoolsClosedError} is not that: the browser is gone, so retrying only burns the rest of
+ * the timeout before returning `false`, which a caller then reports as its own condition never
+ * having become true — a dead browser blamed on whatever component the caller was checking (found
+ * in review: a kill mid-run once printed `FAIL Toastr's own timer dismisses a toast`, not a word
+ * about the browser). Rethrowing immediately instead lets that failure surface as what it is.
+ */
 export async function poll(predicate: () => Promise<boolean>, timeoutMs: number): Promise<boolean> {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     try {
       if (await predicate()) return true
-    } catch {
-      // The page may not be answering yet; keep polling until the deadline.
+    } catch (error) {
+      if (error instanceof DevtoolsClosedError) throw error
+      // Some other, plausibly transient error; keep polling until the deadline.
     }
     await new Promise((resolve) => setTimeout(resolve, 100))
   }
@@ -411,7 +445,15 @@ export async function connect(port: number, timeoutMs = 10_000): Promise<Devtool
 
   while (Date.now() < deadline) {
     try {
-      const response = await fetch(`${endpoint}/json/new?about:blank`, { method: "PUT" })
+      // A debugging endpoint that accepts the TCP connection but never answers the HTTP request
+      // hung this call forever before `AbortSignal.timeout` was added here — found in review, with a
+      // fake browser that writes the port file and never answers. The `while` loop's own deadline
+      // check above never got a turn: it only runs *between* iterations, and this was the one `await`
+      // that never returned. Bounding this specific request is what lets the loop keep its promise.
+      const response = await fetch(`${endpoint}/json/new?about:blank`, {
+        method: "PUT",
+        signal: AbortSignal.timeout(Math.max(deadline - Date.now(), 1)),
+      })
       const target = await response.json() as { webSocketDebuggerUrl?: string }
       if (target.webSocketDebuggerUrl) {
         return await Devtools.connect(
@@ -420,7 +462,8 @@ export async function connect(port: number, timeoutMs = 10_000): Promise<Devtool
         )
       }
     } catch {
-      // The browser is still starting.
+      // The browser is still starting, or this attempt's request timed out — either way, retry
+      // until the deadline above.
     }
     await new Promise((resolve) => setTimeout(resolve, 100))
   }
@@ -459,7 +502,7 @@ export class Devtools {
   #events: ProtocolEvent[] = []
   #waiters: Array<{ method: string; resolve: () => void; reject: (error: Error) => void }> = []
   /** Set once the socket has gone away; every pending and future `send` rejects with this. */
-  #closed?: Error
+  #closed?: DevtoolsClosedError
 
   private constructor(socket: WebSocket) {
     this.#socket = socket
@@ -470,12 +513,13 @@ export class Devtools {
     // deadline ever got a turn. Failing every pending and future call the moment the socket goes away
     // turns that into one immediate rejection each, so a dead browser is reported in roughly the time
     // one call's round trip would have taken, not the sum of everything still queued behind it.
-    socket.onclose = () => this.#fail(new Error("the DevTools socket closed"))
-    socket.onerror = () => this.#fail(new Error("the DevTools socket reported an error"))
+    socket.onclose = () => this.#fail(new DevtoolsClosedError("the DevTools socket closed"))
+    socket.onerror = () =>
+      this.#fail(new DevtoolsClosedError("the DevTools socket reported an error"))
   }
 
   /** Fail every pending request and mark the client closed, once. */
-  #fail(error: Error): void {
+  #fail(error: DevtoolsClosedError): void {
     if (this.#closed) return
     this.#closed = error
     for (const pending of this.#pending.values()) pending.reject(error)
@@ -492,10 +536,12 @@ export class Devtools {
   static async connect(url: string, timeoutMs = 10_000): Promise<Devtools> {
     const socket = new WebSocket(url)
     await new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(
-        () => reject(new Error(`the DevTools socket at ${url} did not open within ${timeoutMs}ms`)),
-        timeoutMs,
-      )
+      const timer = setTimeout(() => {
+        // Left open, this was a leaked connecting socket every time a launch attempt's DevTools
+        // target never opened — found in review.
+        socket.close()
+        reject(new Error(`the DevTools socket at ${url} did not open within ${timeoutMs}ms`))
+      }, timeoutMs)
       socket.onopen = () => {
         clearTimeout(timer)
         resolve()

@@ -11,7 +11,14 @@
 
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
-import { BlockOutcome, type CheckBlock, Run } from "./harness.ts"
+import {
+  BlockOutcome,
+  type CheckBlock,
+  Devtools,
+  DevtoolsClosedError,
+  poll,
+  Run,
+} from "./harness.ts"
 
 /** A block that records one passing check per name it is given and returns. */
 function passing(name: string, checkNames: readonly string[] = [name]): CheckBlock<Run> {
@@ -101,7 +108,11 @@ describe("Run.runBlocks", () => {
 
     const failed = run.checks.filter((entry) => !entry.ok)
     expect(failed).toEqual([
-      { name: "the signals checks ran to completion", ok: false, detail: "deliberate" },
+      {
+        name: "the signals checks ran to completion",
+        ok: false,
+        detail: "deliberate (last completed check: theme)",
+      },
     ])
   })
 
@@ -340,10 +351,146 @@ describe("Run.reportLines", () => {
 
     expect(run.reportLines()).toEqual([
       "  ok   theme",
-      "  FAIL the ui checks ran to completion — deliberate",
+      "  FAIL the ui checks ran to completion — deliberate (last completed check: theme)",
       "",
       "INCOMPLETE — 1/2 checks passed, but ui stopped part-way; " +
       "the totals count only the checks that ran",
     ])
+  })
+})
+
+describe("poll", () => {
+  it("stops immediately and rethrows once the predicate reports the connection is closed", async () => {
+    // Left to the previous, unconditional `catch { /* retry */ }`, this would instead keep polling
+    // for the rest of `timeoutMs` and resolve `false` — a dead browser reported as its own condition
+    // never having become true, found in review as a kill mid-run once printing
+    // `FAIL Toastr's own timer dismisses a toast`, not a word about the browser that had died.
+    const error = new DevtoolsClosedError("the DevTools socket closed")
+    let calls = 0
+
+    const result = await poll(() => {
+      calls++
+      return Promise.reject(error)
+    }, 5_000).catch((caught: unknown) => caught)
+
+    expect(result).toBe(error)
+    expect(calls).toBe(1)
+  })
+
+  it("keeps retrying past an ordinary transient error, until the predicate succeeds", async () => {
+    let calls = 0
+
+    const result = await poll(() => {
+      calls++
+      if (calls === 1) return Promise.reject(new Error("element not there yet"))
+      return Promise.resolve(true)
+    }, 5_000)
+
+    expect(result).toBe(true)
+    expect(calls).toBe(2)
+  })
+
+  it("keeps retrying past an ordinary transient error until the deadline, and returns false", async () => {
+    let calls = 0
+
+    const result = await poll(() => {
+      calls++
+      return Promise.reject(new Error("never ready"))
+    }, 250)
+
+    expect(result).toBe(false)
+    expect(calls).toBeGreaterThan(1)
+  })
+})
+
+describe("Run.runBlocks — failure detail", () => {
+  it("names the last completed check next to the reason, when there was one", async () => {
+    const run = new Run()
+    await run.runBlocks(
+      [passing("theme", ["a", "b"]), throwing("ui", new DevtoolsClosedError("socket closed"))],
+      run,
+    )
+
+    expect(run.checks.at(-1)).toEqual({
+      name: "the ui checks ran to completion",
+      ok: false,
+      detail: "socket closed (last completed check: b)",
+    })
+  })
+
+  it("names only the reason when nothing had completed yet", async () => {
+    const run = new Run()
+    await run.runBlocks([throwing("theme", new Error("no Chromium"))], run)
+
+    expect(run.checks).toEqual([
+      { name: "the theme checks ran to completion", ok: false, detail: "no Chromium" },
+    ])
+  })
+})
+
+describe("Devtools", () => {
+  /** The subset of `WebSocket` `Devtools` actually uses, driven by hand instead of a real socket. */
+  class FakeSocket {
+    onopen: (() => void) | null = null
+    onmessage: ((event: { data: string }) => void) | null = null
+    onclose: (() => void) | null = null
+    onerror: (() => void) | null = null
+    closed = false
+    sent: string[] = []
+    send(data: string): void {
+      this.sent.push(data)
+    }
+    close(): void {
+      this.closed = true
+    }
+  }
+
+  /** Swaps the global `WebSocket` constructor for one that always hands back `socket`. */
+  async function withFakeSocket<T>(socket: FakeSocket, run: () => Promise<T>): Promise<T> {
+    const real = globalThis.WebSocket
+    Object.defineProperty(globalThis, "WebSocket", {
+      configurable: true,
+      value: function FakeWebSocketConstructor() {
+        return socket
+      },
+    })
+    try {
+      return await run()
+    } finally {
+      Object.defineProperty(globalThis, "WebSocket", { configurable: true, value: real })
+    }
+  }
+
+  it("fails every pending and future call the moment the socket closes", async () => {
+    const socket = new FakeSocket()
+    await withFakeSocket(socket, async () => {
+      const connecting = Devtools.connect("ws://fake")
+      socket.onopen?.()
+      const devtools = await connecting
+
+      const pending = devtools.send("Runtime.enable", {})
+      socket.onclose?.()
+
+      const pendingOutcome = await pending.catch((error: unknown) => error)
+      expect(pendingOutcome).toBeInstanceOf(DevtoolsClosedError)
+
+      // A call made *after* the socket has already closed must fail exactly the same way, not hang
+      // waiting for a reply that can never arrive.
+      const futureOutcome = await devtools.send("Runtime.enable", {}).catch((error: unknown) =>
+        error
+      )
+      expect(futureOutcome).toBeInstanceOf(DevtoolsClosedError)
+    })
+  })
+
+  it("closes the socket when the open times out", async () => {
+    const socket = new FakeSocket()
+    const outcome = await withFakeSocket(
+      socket,
+      () => Devtools.connect("ws://fake", 10).catch((error: unknown) => error),
+    )
+
+    expect(outcome).toBeInstanceOf(Error)
+    expect(socket.closed).toBe(true)
   })
 })
