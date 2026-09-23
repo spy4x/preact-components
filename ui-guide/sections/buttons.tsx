@@ -98,7 +98,7 @@ function CopyButtonDemo() {
         <CopyButton textToCopy={JOKE} />
         <CopyButton textToCopy={JOKE} title="Copy the joke" />
         <CopyButton
-          textToCopy="devices/00000000-0000-0000-0000-000000000000"
+          textToCopy="resource/00000000-0000-0000-0000-000000000000"
           title="Copy through the injected port"
           copy={(text) => {
             lastCopy.value = text
