@@ -6,6 +6,7 @@ import {
   GeoButton,
 } from "@preact-components/ui"
 import { useSignal } from "@preact/signals"
+import { useRef } from "preact/hooks"
 import { IconPlus } from "@preact-components/icons"
 import { entries } from "../record.ts"
 import type { DemoFragment } from "../registry.ts"
@@ -54,14 +55,29 @@ function ButtonMatrix() {
 /**
  * Proves the button is a real control rather than a styled div: the counter only moves if
  * `onClick` reaches the native element, which is where every other button attribute goes too.
+ *
+ * "Focus via ref" proves `Button` forwards its own `ref` to that native `<button>` as well:
+ * Preact strips `ref` off a function component's props and applies it to the component instance
+ * instead, so a plain function here would make the ref resolve to something `.focus()` throws on.
+ * `pages/checks/ui.ts` drives this trigger and reads `document.activeElement`.
  */
 function ButtonClickDemo() {
   const clicks = useSignal(0)
+  const clickMeRef = useRef<HTMLButtonElement>(null)
   return (
     <div class="flex flex-wrap items-center gap-3">
-      <Button onClick={() => clicks.value += 1}>Click me</Button>
+      <Button ref={clickMeRef} onClick={() => clicks.value += 1} data-e2e="ref-target">
+        Click me
+      </Button>
       <Button variant="outline" onClick={() => clicks.value = 0} disabled={clicks.value === 0}>
         Reset
+      </Button>
+      <Button
+        variant="outline"
+        data-e2e="ref-focus"
+        onClick={() => clickMeRef.current?.focus()}
+      >
+        Focus via ref
       </Button>
       <span class="text-sm text-gray-600 dark:text-gray-300">
         clicked {clicks.value} {clicks.value === 1 ? "time" : "times"}

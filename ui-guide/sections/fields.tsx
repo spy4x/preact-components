@@ -13,6 +13,7 @@
  */
 
 import {
+  Button,
   Checkbox,
   Field,
   Input,
@@ -23,6 +24,7 @@ import {
   Textarea,
 } from "@preact-components/ui"
 import { useSignal } from "@preact/signals"
+import { useRef } from "preact/hooks"
 import { IconSearch } from "@preact-components/icons"
 import type { DemoFragment } from "../registry.ts"
 
@@ -169,22 +171,43 @@ function RadioGroupDemo() {
   )
 }
 
-/** One controlled field per control, so every demo shows the `value` in / event out contract. */
+/**
+ * One controlled field per control, so every demo shows the `value` in / event out contract.
+ *
+ * The "Focus via ref" button proves `Input` forwards its `ref` to the native `<input>`: the ref
+ * would otherwise resolve to the component instance, and `.focus()` on that throws rather than
+ * moving focus — `pages/checks/ui.ts` drives this button and reads `document.activeElement`. A
+ * button, rather than the check reading `emailRef.current` directly, because the check runs
+ * against the page over the DevTools protocol, with no access to this closure's own `emailRef`
+ * variable — the only thing it can do is drive something the page itself wired the ref through,
+ * the same way a real caller would.
+ */
 function InputDemo() {
   const email = useSignal("")
+  const emailRef = useRef<HTMLInputElement>(null)
   return (
     <div class="max-w-xs space-y-2">
       <Input
+        ref={emailRef}
         type="email"
         name="guide-input"
         placeholder="you@example.com"
         aria-label="Email"
         value={email.value}
         onInput={(event) => email.value = event.currentTarget.value}
+        data-e2e="ref-target"
       />
       <p class="text-sm text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
         {email.value || "(empty)"}
       </p>
+      <Button
+        variant="outline"
+        size="sm"
+        data-e2e="ref-focus"
+        onClick={() => emailRef.current?.focus()}
+      >
+        Focus via ref
+      </Button>
     </div>
   )
 }
@@ -232,49 +255,85 @@ function SelectDemo() {
   )
 }
 
-/** The box and its text are one hit area, because the label wraps the input. */
+/**
+ * The box and its text are one hit area, because the label wraps the input.
+ *
+ * The "Focus via ref" button proves `Checkbox` forwards its `ref` to the native `<input>`, the same
+ * way {@link InputDemo}'s does; see there for why the check drives a button rather than reading the
+ * ref directly.
+ */
 function CheckboxDemo() {
   const archived = useSignal(false)
+  const archivedRef = useRef<HTMLInputElement>(null)
   return (
     <div class="space-y-2">
       <Checkbox
+        ref={archivedRef}
         name="guide-checkbox"
         checked={archived.value}
         onChange={(event) => archived.value = event.currentTarget.checked}
+        data-e2e="ref-target"
       >
         Show archived rows
       </Checkbox>
       <p class="text-sm text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
         archived: {archived.value ? "on" : "off"}
       </p>
+      <Button
+        variant="outline"
+        size="sm"
+        data-e2e="ref-focus"
+        onClick={() => archivedRef.current?.focus()}
+      >
+        Focus via ref
+      </Button>
     </div>
   )
 }
 
-/** A bare radio is one choice; the group is what names a set of them. */
+/**
+ * A bare radio is one choice; the group is what names a set of them.
+ *
+ * The "Focus via ref" button proves `Radio` forwards its `ref` to the native `<input>`, the same
+ * way {@link InputDemo}'s does; see there for why the check drives a button rather than reading the
+ * ref directly.
+ */
 function RadioDemo() {
   const choice = useSignal("a")
+  const selectedRef = useRef<HTMLInputElement>(null)
   return (
-    <div class="flex flex-wrap gap-6">
-      <Radio
-        name="guide-radio"
-        value="a"
-        checked={choice.value === "a"}
-        onChange={() => choice.value = "a"}
+    <div class="space-y-2">
+      <div class="flex flex-wrap gap-6">
+        <Radio
+          ref={selectedRef}
+          name="guide-radio"
+          value="a"
+          checked={choice.value === "a"}
+          onChange={() => choice.value = "a"}
+          data-e2e="ref-target"
+        >
+          Selected
+        </Radio>
+        <Radio
+          name="guide-radio"
+          value="b"
+          checked={choice.value === "b"}
+          onChange={() => choice.value = "b"}
+        >
+          Unselected
+        </Radio>
+        <Radio name="guide-radio" value="c" disabled>
+          Disabled
+        </Radio>
+      </div>
+      <Button
+        variant="outline"
+        size="sm"
+        data-e2e="ref-focus"
+        onClick={() => selectedRef.current?.focus()}
       >
-        Selected
-      </Radio>
-      <Radio
-        name="guide-radio"
-        value="b"
-        checked={choice.value === "b"}
-        onChange={() => choice.value = "b"}
-      >
-        Unselected
-      </Radio>
-      <Radio name="guide-radio" value="c" disabled>
-        Disabled
-      </Radio>
+        Focus via ref
+      </Button>
     </div>
   )
 }

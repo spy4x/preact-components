@@ -1,5 +1,6 @@
 import { cn } from "@preact-components/cn"
 import type { ComponentChildren, JSX } from "preact"
+import { forwardRef } from "./forward-ref.ts"
 
 /** One choice of a {@link RadioGroup}. */
 export interface RadioOption {
@@ -47,15 +48,28 @@ export interface RadioGroupProps
   class?: string
 }
 
-/** One radio choice. The `name` is the caller's — the platform groups on it, this component does not. */
-export function Radio({ class: className, labelClass, children, ...rest }: RadioProps) {
+/**
+ * One radio choice. The `name` is the caller's — the platform groups on it, this component does not.
+ *
+ * Wrapped in `forwardRef` from `./forward-ref.ts` — this package's own, not `preact/compat`'s; see
+ * that file for why. Preact strips `ref` off a function component's props and applies it to the
+ * component instance rather than a DOM node, so a plain function here would make
+ * `<Radio ref={box} />` type-check and never reach the native `<input>`. `ref`'s type comes from
+ * `RadioProps` (via `JSX.InputHTMLAttributes<HTMLInputElement>`), so it is already
+ * `Ref<HTMLInputElement>` — no cast needed at the call site. `RadioGroup` renders its options through
+ * this same component and passes no `ref` of its own, so it is unaffected.
+ */
+export const Radio = forwardRef<HTMLInputElement, RadioProps>("Radio", function Radio(
+  { class: className, labelClass, children, ...rest },
+  ref,
+) {
   return (
     <label class={cn("label", "gap-2 items-center", labelClass)}>
-      <input {...rest} type="radio" class={cn("radio", className)} />
+      <input {...rest} ref={ref} type="radio" class={cn("radio", className)} />
       {children}
     </label>
   )
-}
+})
 
 /**
  * Radio set with an accessible group name.

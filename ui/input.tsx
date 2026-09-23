@@ -1,5 +1,6 @@
 import { cn } from "@preact-components/cn"
 import type { JSX } from "preact"
+import { forwardRef } from "./forward-ref.ts"
 
 /**
  * The single-line text control of the library.
@@ -38,10 +39,20 @@ export interface SelectProps extends Omit<JSX.SelectHTMLAttributes<HTMLSelectEle
  * Has no internal value state: it renders the `value` prop and reports every keystroke through
  * `onInput` (or `onChange`, whichever the caller passes — both get the native event). Keeping a
  * draft inside the component would make the rendered value and the caller's state disagree.
+ *
+ * Wrapped in `forwardRef` from `./forward-ref.ts` — this package's own, not `preact/compat`'s; see
+ * that file for why. Preact strips `ref` off a function component's props and applies it to the
+ * component instance rather than a DOM node, so a plain function here would make
+ * `<Input ref={box} />` type-check and never reach the native `<input>`. `ref`'s type comes from
+ * `InputProps` (via `JSX.InputHTMLAttributes<HTMLInputElement>`), so it is already
+ * `Ref<HTMLInputElement>` — no cast needed at the call site.
  */
-export function Input({ class: className, ...rest }: InputProps) {
-  return <input {...rest} class={cn("input", className)} />
-}
+export const Input = forwardRef<HTMLInputElement, InputProps>("Input", function Input(
+  { class: className, ...rest },
+  ref,
+) {
+  return <input {...rest} ref={ref} class={cn("input", className)} />
+})
 
 /** Controlled multi-line input. See {@link Input} for the state contract. */
 export function Textarea({ class: className, ...rest }: TextareaProps) {
