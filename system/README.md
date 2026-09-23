@@ -209,6 +209,22 @@ here for that reason: an owner that answers late with a month _nobody asked for_
 disposable owner that replies September to every request — lands the reader on 19 September when
 they pressed from the 19th, which is the first rule doing its job.
 
+**The roving tabindex is applied by an effect, not rendered.** Taking Tab away from twenty-eight
+cells is only safe once a key handler is there to give the movement back, so a page that has not
+hydrated — no JavaScript, or an embedded render — keeps the natural tab order it always had.
+
+A day that cannot be picked is still focusable and its accessible name is the reason it cannot be:
+`19 August 2026 — no times available`. The same sentence is shown under the grid while it has
+focus, for the reader who has no screen reader to read the cell out and no mouse to hover a
+`title` with. The grid itself is a `grid` of `row`s and `gridcell`s named after the month it shows.
+
+**What that evidence is, and is not.** Every accessibility claim in this file is a claim about
+markup and focus order, read back from the DOM in headless Chromium by `pages/checks/system.ts`.
+No screen reader has been run against any of it. The one place where the markup and what a reader
+would actually hear can plausibly come apart is the decision below to keep the peek days out of the
+accessibility tree: a row then exposes fewer cells than `aria-colcount` promises, and `aria-colindex`
+is there to keep the columns numbered, unverified by ear.
+
 ## The locale decides the week
 
 Two things about a month grid are not the component's to decide, and both come from `Intl`:
