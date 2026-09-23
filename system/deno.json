@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "exports": {
     ".": "./+index.ts",
+    "./auth-form": "./auth-form.tsx",
     "./head": "./head.ts",
     "./seo-head": "./seo-head.tsx",
     "./sw-updater": "./sw-updater.tsx",
@@ -13,6 +14,7 @@
     // Every `*.test.*` here renders to `preact-render-to-string` or drives Deno's fake timers; none
     // of it is reachable from `exports`, and none of it is anything a consumer runs.
     "exclude": [
+      "auth-form.test.tsx",
       "calendar.test.tsx",
       "date.test.ts",
       "head.test.ts",

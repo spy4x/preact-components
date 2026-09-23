@@ -22,12 +22,13 @@ Extracted from `antonshubin.com`, `mig` and `financy`.
 
 ## Components
 
-| Component       | Subpath          | Ports / key props                                                                                 |
-| --------------- | ---------------- | ------------------------------------------------------------------------------------------------- |
-| `SEOHead`       | `seo-head`       | `title`, `description`, `canonical`, `crumbs?`, `ogImage?`, `jsonLd?`, `noindex?`, `twitterCard?` |
-| `SWUpdater`     | `sw-updater`     | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                              |
-| `Calendar`      | `calendar`       | `monthAnchor`, `minDate`, `maxDate`, `slotsByDate`, `onSelectDate?`                               |
-| `ImageLightbox` | `image-lightbox` | `containerSelector?`, `imageSelector?`, `fallbackAlt?`, `zoomLabel?`, `onOpen?`                   |
+| Component       | Subpath          | Ports / key props                                                                                                    |
+| --------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `AuthForm`      | `auth-form`      | `mode`, `step`, `onModeChange?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `action?` |
+| `SEOHead`       | `seo-head`       | `title`, `description`, `canonical`, `crumbs?`, `ogImage?`, `jsonLd?`, `noindex?`, `twitterCard?`                    |
+| `SWUpdater`     | `sw-updater`     | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                 |
+| `Calendar`      | `calendar`       | `monthAnchor`, `minDate`, `maxDate`, `slotsByDate`, `onSelectDate?`                                                  |
+| `ImageLightbox` | `image-lightbox` | `containerSelector?`, `imageSelector?`, `fallbackAlt?`, `zoomLabel?`, `onOpen?`                                      |
 
 Helpers, all pure: `head.ts` (`normalizeCanonical`, `canonicalUrl`, `breadcrumbItems`,
 `breadcrumbListJsonLd`) and `resolveImage` (click target → lightbox image). `head.ts` also exports
@@ -301,15 +302,16 @@ _change_ to a region it is already watching, and commonly says nothing at all ab
 arrives with its message already inside it. Marking an element that only exists once it has
 something to say therefore buys nothing.
 
-All three components follow it today. `SWUpdater` is below, `Toastr` in `ui/` keeps its stack in
-the page with zero toasts in it, and `Combobox` in `ui/` renders one empty `role="status"` region
+Four components follow it today. `SWUpdater` is below, `Toastr` in `ui/` keeps its stack in
+the page with zero toasts in it, `Combobox` in `ui/` renders one empty `role="status"` region
 with every field and puts its answers — the count of matching options, or the empty message —
-inside it. Where the three differ is what the region costs a host, and that turns on where it
-sits: `SWUpdater`'s region is its whole output and lands in the host's own container, so the table
-below applies to it; `Toastr`'s stack is laid out `fixed` and is out of flow wherever it is
-mounted; `Combobox`'s is a child of the component's own root, so a host lays out one
-combobox-shaped box whether the region is there or not. See `ui/README.md` for the combobox's
-measurements.
+inside it, and `AuthForm` below renders one empty `role="alert"` region with the form and puts an
+error message into it. Where they differ is what the region costs a host, and that turns on where
+it sits: `SWUpdater`'s region is its whole output and lands in the host's own container, so the
+table below applies to it; `Toastr`'s stack is laid out `fixed` and is out of flow wherever it is
+mounted; `Combobox`'s and `AuthForm`'s are each a child of the component's own root, so a host
+lays out one combobox- or form-shaped box whether the region is there or not. See `ui/README.md`
+for the combobox's measurements.
 
 **Where to mount it.** `SWUpdater`'s region carries no class, so it is an ordinary in-flow element
 with no padding, no border and no minimum height: empty, it is zero pixels tall and paints nothing.
@@ -392,6 +394,85 @@ takes the bar off the page; the next update to be reported puts it back, so the 
 region and later arrives in it again as a fresh change. A permanent dismissal would mean a visitor
 who put one version away was never told about any version after it.
 
+## The `AuthForm` contract
+
+`AuthForm` draws the sign-in, sign-up and one-time-code screens and knows nothing about how
+signing in works: `mode`, `step`, `busy` and `error` are read from props, and a credentials submit,
+a code submit or a mode switch leaves through `onSignIn`, `onSignUp`, `onOneTimeCode` or
+`onModeChange` rather than through a fetch this package makes for you.
+
+**The submitted values are read from `FormData`, not from controlled state.** A controlled
+`Input` needs the password sitting in a signal or a `useState` on every keystroke; reading
+`new FormData(form)` inside the submit handler takes it from the input's own `value` at the one
+moment it is needed and puts it nowhere else. It also means the hydrated path and the no-JavaScript
+path read the same fields the same way — a browser building its own `FormData` for a real POST
+sees what the handler would have read.
+
+**`action` is the no-JavaScript path.** Before hydration nothing here has run, so a tap on Submit is
+a native form submission to `action`, the same progressive-enhancement contract `ImageLightbox` and
+`Calendar`'s link mode already use. Once hydrated, the submit handler calls `event.preventDefault()`
+and the callback matching the current `mode`/`step` — but only when the caller supplied one, so a
+caller that wants the native post to keep happening even after hydration can simply leave that
+callback out. **`method` is always `"post"`, and there is no `method` prop.** A GET submission puts
+the password in the address bar, in browser history and in every access log the request passes
+through, and the risk is not only a caller spelling `method="get"` on purpose: a card with
+callbacks and no `action` — the ordinary shape of a hydrated app, and the catalogue's own
+interactive card below — has no `method` attribute at all without an unconditional default, and a
+browser reads a form with no `method` as GET. A visitor who submits in the gap between the page
+painting and hydration finishing, or with JavaScript off, sent the password into the URL under an
+earlier version of this component; `pages/checks/system.ts` disables script execution, loads the
+page fresh and presses Submit on exactly that card to prove it no longer does.
+
+**A busy submit calls no callback, including one started with `form.requestSubmit()`.** The submit
+handler checks `busy` before it picks a callback or reads a single field, and `requestSubmit()`
+dispatches the same `submit` event a click does, so it is caught by the same check. The submit
+button is also `disabled` while busy, and a visually hidden, always-present `role="status"` region
+announces it — the same always-present pattern as the error region below, applied to a fact that
+is not an error.
+
+**The one-time-code step moves the focus to its field, and nowhere else does this component take
+focus on its own initiative** — the same rule `Calendar` follows for the one focus move it makes
+without a key press behind it. The effect fires on `step` becoming `"one-time-code"` and on no
+other render, whether that transition comes from a real round trip through an app's server or from
+a caller flipping the prop in a demo.
+
+**`error` accepts a plain string or `{ message, field? }`.** Most auth errors — a wrong password, a
+network the app could not reach — are not more about one field than the other, so a string is the
+ordinary case. Naming a `field` is for the error that really is about one, an unregistered login
+say: that field's own `Field` gets the message and `aria-invalid`, on top of the message reaching
+the always-present region every error reaches regardless of whether it names a field. The two are
+different jobs — the region is what makes the message announced at all, `Field`'s own wiring is
+what links it to a control — so a field-named error does both rather than one instead of the other.
+
+**A field-named error is announced twice, and that is accepted rather than fixed.** Once from the
+assertive `role="alert"` region, and again from `Field`'s own `aria-live="polite"` paragraph under
+the control — some assistive technology reads both. `Field` has no way to keep the
+`aria-describedby`/`aria-invalid` wiring without its own live paragraph, so avoiding the second
+announcement means dropping the always-present region's promptness or the field-level link, and a
+message heard twice costs less than a message a reader who tabs to the field later never hears.
+
+**`login` and `password` are passed to the callback exactly as typed** — not trimmed, not cased,
+not otherwise normalised. `FormData` hands back the input's raw string and this component passes it
+straight through; an app's own auth code, with the rules of its account store behind it, is better
+placed to decide whether a login is trimmed than a component that has never seen that store.
+
+**`Field`'s `required` does not yet put `required` on the control it wraps (#116)**, so every field
+here passes `required` to both: to `Field`, for the visible `*`, and to the `Input` directly, for
+the native constraint validation a password manager and a browser's own "please fill this in" both
+rely on.
+
+**The show/hide password control is a real, named button.** `type="button"` keeps it from
+submitting the form, `aria-pressed` reports whether the password is showing, and it moves the focus
+to itself on activation rather than leaving a click's default focus behaviour to decide — that
+behaviour is not the same in every engine.
+
+**`mode` and `step` are string unions**, the same shape every other prop union in this library uses
+(`ButtonVariant`, `CalendarDayReason`) rather than a TypeScript `enum`. An `enum` earns its place in
+this codebase for a value that is internal bookkeeping and never crosses a serialisation boundary —
+`ValidationType` in `crud/`, say. `mode` and `step` are the opposite: an app's server hands one back
+after a real round trip, so the value has to survive JSON without a second lookup table translating
+an integer back into a string.
+
 ## Decisions worth knowing
 
 - **A canonical address that is not a web page is refused, not printed and not omitted.** Throwing
@@ -430,14 +511,14 @@ who put one version away was never told about any version after it.
 
 ## Not in this package
 
-| Left out                            | Why                                                                                                                                                                                                               |
-| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Shell`, `Nav`, `Auth`              | Read app state (`state.auth`, `state.ws`), hardcode brand strings, and `gb`'s `Nav` runs an `effect()` at import time. Props-and-ports conversion is a redesign, not a port.                                      |
-| `Menu`, `Header`, `ProfileDropdown` | Two source implementations of the same responsive header, both shaped around one app's markup and brand. The pieces worth keeping are the dual-mode contract and the a11y fixes, which landed in `Calendar`.      |
-| `ImageGallery`                      | Snap-scroll strip plus an arrow-key lightbox. The lightbox half landed as `ImageLightbox`; the strip is a horizontal scroller whose drag and snap behaviour needs a DOM test harness this repo does not have yet. |
-| `StateInit`                         | An app's SSR→client hydration bridge, with that app's env keys hardcoded.                                                                                                                                         |
-| `LeadForm`, `NewsletterForm`        | Form chrome whose anti-bot fields (honeypot, page-load timestamp) and success states the host must render itself.                                                                                                 |
-| `themeBootstrapScript()`            | The FOUC-free inline `<head>` script belongs with `ts-libs`, next to the other head-platform helpers.                                                                                                             |
+| Left out                            | Why                                                                                                                                                                                                                               |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Shell`, `Nav`                      | Read app state (`state.ws`), hardcode brand strings, and `gb`'s `Nav` runs an `effect()` at import time. Props-and-ports conversion is a redesign, not a port. `Auth` needed the same redesign and got it — see `AuthForm` above. |
+| `Menu`, `Header`, `ProfileDropdown` | Two source implementations of the same responsive header, both shaped around one app's markup and brand. The pieces worth keeping are the dual-mode contract and the a11y fixes, which landed in `Calendar`.                      |
+| `ImageGallery`                      | Snap-scroll strip plus an arrow-key lightbox. The lightbox half landed as `ImageLightbox`; the strip is a horizontal scroller whose drag and snap behaviour needs a DOM test harness this repo does not have yet.                 |
+| `StateInit`                         | An app's SSR→client hydration bridge, with that app's env keys hardcoded.                                                                                                                                                         |
+| `LeadForm`, `NewsletterForm`        | Form chrome whose anti-bot fields (honeypot, page-load timestamp) and success states the host must render itself.                                                                                                                 |
+| `themeBootstrapScript()`            | The FOUC-free inline `<head>` script belongs with `ts-libs`, next to the other head-platform helpers.                                                                                                                             |
 
 ## Tests
 
@@ -460,3 +541,12 @@ click landing somewhere: no test here can reach any of them, because every one o
 component to an HTML string. What a string render _can_ show — which element carries which role,
 which column header holds which text, that a month anchor is refused — is asserted in
 `calendar.test.tsx` and `date.test.ts`; everything else is in the browser file or is unproven.
+
+`auth-form.test.tsx` is the same split again: markup, `autocomplete`, `name`, `required`, `method`
+being `"post"` with and without `action`, and the error shape are all a string render can show, and
+are asserted there. The focus move to the code field, the mode switch pressed with a real pointer,
+the show/hide toggle's real click and Space press, the error arriving as a change to the
+already-present live region, a busy `requestSubmit()` calling no callback, and a submit surviving
+disabled script execution with no query string added to the URL are effects, key presses, a focus
+change and a real navigation — none reachable from a string render — and are proven in
+`pages/checks/system.ts` instead.
