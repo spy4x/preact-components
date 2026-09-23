@@ -1,4 +1,4 @@
-import { check, type Devtools, settledScroll } from "./harness.ts"
+import { check, type Devtools, poll } from "./harness.ts"
 import { PAGE_TITLE } from "../src/site.ts"
 
 /**
@@ -58,33 +58,32 @@ export async function pagesChecks(devtools: Devtools): Promise<void> {
   )
 
   // The section route's scroll used to be settled with the same fixed 400ms wait as every other step
-  // here, and it once read the section's top edge at a fractional pixel in CI — `#225`. Twenty
-  // `verify` runs here measuring the raw, unrounded value (recorded in the pull request) read the
-  // same 111.5px every time — this environment could not reproduce the CI-specific flake, which the
-  // issue itself suspected depends on the runner's own fonts and layout. Absent a reproduced failure
-  // to diagnose, the fix is the one `#238` already established for this file's checks rather than a
-  // guess at a tolerance: wait for the scroll position itself to stop changing (`settledScroll`, a
-  // real poll on `scrollY`) instead of a fixed delay. It costs nothing when the scroll was already
-  // settled — the poll returns as soon as two reads agree — and it is the honest fix if the failure
-  // is what it looks like: a smooth scroll still finishing when a fixed wait ran out.
+  // here, and it once read the section's top edge at a fractional pixel in CI — `#225`. Waiting for
+  // `scrollY` to stop changing (`settledScroll`) looked like the fix and, on its own measurements,
+  // wasn't: a review of this file delayed the actual scroll by 600ms and caught `settledScroll`
+  // returning after 428ms anyway, because *something else* — not the route's own scroll — had
+  // stopped moving the page in that window, so the poll agreed with itself too early and this read
+  // the pre-scroll position. Polling for the condition this check actually asserts — the section's
+  // top inside the expected range — rather than a proxy for it (the scroll having stopped, for
+  // whatever reason) is what a delayed scroll cannot fool the same way: it keeps reading until the
+  // real thing happens or the deadline runs out, and it reports the raw value either way.
   await devtools.evaluate<null>(`(location.hash = "#/inputs", null)`)
-  await settledScroll(devtools)
-  const section = await devtools.evaluate<{
-    sectionTopRaw: number
-    sectionTop: number
-    sectionMarked: number
-    sectionTitle: string
-  }>(
-    `(() => {
-      const top = document.getElementById("inputs").getBoundingClientRect().top
-      return {
-        sectionTopRaw: top,
-        sectionTop: Math.round(top),
-        sectionMarked: document.querySelectorAll("[data-deep-link]").length,
-        sectionTitle: document.title,
-      }
-    })()`,
-  )
+  const SECTION_SCROLL_DEADLINE_MS = 3_000
+  let section = { sectionTopRaw: NaN, sectionTop: NaN, sectionMarked: -1, sectionTitle: "" }
+  const sectionInRange = await poll(async () => {
+    section = await devtools.evaluate<typeof section>(
+      `(() => {
+        const top = document.getElementById("inputs").getBoundingClientRect().top
+        return {
+          sectionTopRaw: top,
+          sectionTop: Math.round(top),
+          sectionMarked: document.querySelectorAll("[data-deep-link]").length,
+          sectionTitle: document.title,
+        }
+      })()`,
+    )
+    return section.sectionTop >= 0 && section.sectionTop < 200
+  }, SECTION_SCROLL_DEADLINE_MS)
 
   // Mark a card again before the unknown route, so the assertion below is a *transition* — the mark
   // has to be there first and gone after — and not something a host with no listener at all would
@@ -125,10 +124,12 @@ export async function pagesChecks(devtools: Devtools): Promise<void> {
   )
   check(
     "the section route scrolls to its section and clears the card's mark",
-    routes.sectionMarked === 0 && routes.sectionTitle.startsWith("Inputs") &&
-      routes.sectionTop >= 0 && routes.sectionTop < 200,
+    sectionInRange && routes.sectionMarked === 0 && routes.sectionTitle.startsWith("Inputs"),
     `#/inputs → ${routes.sectionTitle}, section top ${routes.sectionTop}px ` +
-      `(raw ${routes.sectionTopRaw.toFixed(3)}px), ${routes.sectionMarked} cards marked`,
+      `(raw ${routes.sectionTopRaw.toFixed(3)}px), ${routes.sectionMarked} cards marked` +
+      (sectionInRange
+        ? ""
+        : ` — never reached the expected range within ${SECTION_SCROLL_DEADLINE_MS}ms`),
   )
   check(
     "an unknown route falls back to the landing page and clears the mark",
