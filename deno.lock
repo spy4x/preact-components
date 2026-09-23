@@ -502,6 +502,7 @@
       "npm:@preact/signals@2.5.1",
       "npm:@tailwindcss/forms@0.5.10",
       "npm:arktype@2.2.3",
+      "npm:preact-render-to-string@6.7.0",
       "npm:preact@10.28.2",
       "npm:tailwind-merge@3.7.0",
       "npm:tailwindcss@4.1.12",
@@ -510,35 +511,17 @@
     "members": {
       "charts": {
         "dependencies": [
-          "npm:d3@7.9.0",
-          "npm:preact-render-to-string@6.7.0"
-        ]
-      },
-      "crud": {
-        "dependencies": [
-          "npm:preact-render-to-string@6.7.0"
+          "npm:d3@7.9.0"
         ]
       },
       "pages": {
         "dependencies": [
-          "npm:@tailwindcss/oxide@4.1.12",
-          "npm:preact-render-to-string@6.7.0"
-        ]
-      },
-      "system": {
-        "dependencies": [
-          "npm:preact-render-to-string@6.7.0"
-        ]
-      },
-      "ui": {
-        "dependencies": [
-          "npm:preact-render-to-string@6.7.0"
+          "npm:@tailwindcss/oxide@4.1.12"
         ]
       },
       "ui-guide": {
         "dependencies": [
-          "jsr:@std/jsonc@1.0.2",
-          "npm:preact-render-to-string@6.7.0"
+          "jsr:@std/jsonc@1.0.2"
         ]
       }
     }

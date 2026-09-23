@@ -38,9 +38,5 @@
     "./toggle-field": "./toggle-field.tsx",
     "./toggle-switch": "./toggle-switch.tsx",
     "./tooltip": "./tooltip.tsx"
-  },
-  "imports": {
-    // The root import map carries no renderer; the colocated tests assert on real rendered markup.
-    "preact-render-to-string": "npm:preact-render-to-string@6.7.0"
   }
 }

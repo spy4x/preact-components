@@ -3,8 +3,6 @@
   // packages and pin what only it needs, without a single demo dependency entering the root import
   // map. It is not a package: no `name`, no `exports`, nothing here is published.
   "imports": {
-    // The root import map carries no renderer; same pin as `ui/` and `ui-guide/`.
-    "preact-render-to-string": "npm:preact-render-to-string@6.7.0",
     // Tailwind's Rust class scanner, at the version the root `tailwindcss` pin resolves to. `build.ts`
     // drives it directly instead of shelling out to `@tailwindcss/cli`, which needs a `node_modules`
     // tree to resolve `@plugin` and `@import "tailwindcss"`.

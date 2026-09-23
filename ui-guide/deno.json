@@ -7,9 +7,6 @@
     "./routes": "./routes.ts"
   },
   "imports": {
-    // The root import map carries no renderer, and every test here asserts on real
-    // server-rendered markup rather than on vnode shape. Same pinned version as `ui/`.
-    "preact-render-to-string": "npm:preact-render-to-string@6.7.0",
     // `coverage.ts` reads each package's `exports` out of its `deno.json`, and Deno writes those
     // configs with comments. Declared here rather than in the root map because nothing else in the
     // workspace parses a config, and `coverage.ts` is not one of this package's published exports.

@@ -18,8 +18,6 @@
     "./use-in-view": "./use-in-view.ts"
   },
   "imports": {
-    // The root import map carries no renderer; the colocated tests assert on real rendered markup.
-    "preact-render-to-string": "npm:preact-render-to-string@6.7.0",
     // d3 is an optional peer of the d3 path only, so it is declared here and nowhere else: the root
     // import map used to carry it, which made it resolvable for every consumer of every package,
     // `Bars` included. Deno has no `peerDependenciesMeta`, so this entry is the whole mechanism —
