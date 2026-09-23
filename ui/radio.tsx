@@ -59,7 +59,7 @@ export interface RadioGroupProps
  * `Ref<HTMLInputElement>` — no cast needed at the call site. `RadioGroup` renders its options through
  * this same component and passes no `ref` of its own, so it is unaffected.
  */
-export const Radio = forwardRef<HTMLInputElement, RadioProps>(function Radio(
+export const Radio = forwardRef<HTMLInputElement, RadioProps>("Radio", function Radio(
   { class: className, labelClass, children, ...rest },
   ref,
 ) {

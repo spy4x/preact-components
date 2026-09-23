@@ -47,7 +47,7 @@ export interface SelectProps extends Omit<JSX.SelectHTMLAttributes<HTMLSelectEle
  * `InputProps` (via `JSX.InputHTMLAttributes<HTMLInputElement>`), so it is already
  * `Ref<HTMLInputElement>` — no cast needed at the call site.
  */
-export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
+export const Input = forwardRef<HTMLInputElement, InputProps>("Input", function Input(
   { class: className, ...rest },
   ref,
 ) {

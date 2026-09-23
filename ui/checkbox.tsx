@@ -36,7 +36,7 @@ export interface CheckboxProps
  * `CheckboxProps` (via `JSX.InputHTMLAttributes<HTMLInputElement>`), so it is already
  * `Ref<HTMLInputElement>` — no cast needed at the call site.
  */
-export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(function Checkbox(
+export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>("Checkbox", function Checkbox(
   { class: className, labelClass, children, ...rest },
   ref,
 ) {

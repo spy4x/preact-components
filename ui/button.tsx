@@ -83,7 +83,7 @@ export function buttonClasses(
  * `ButtonProps` (via `JSX.ButtonHTMLAttributes<HTMLButtonElement>`), so it is already
  * `Ref<HTMLButtonElement>` — no cast needed at the call site.
  */
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>("Button", function Button(
   { variant = "primary", size = "md", class: className, type = "button", children, ...rest },
   ref,
 ) {
