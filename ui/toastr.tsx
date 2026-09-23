@@ -124,7 +124,8 @@ export function resolveDuration(toast: Pick<ToastItem, "duration">): number {
 /**
  * Stack of transient notifications in the top-right corner.
  *
- * The source component read `state.toast.list` and called `state.toast.remove`. Here the stack
+ * The source component read straight off a global toast store and called its own remove method.
+ * Here the stack
  * arrives as the `toasts` prop and removal is the `onDismiss` port, so the host app keeps
  * ownership of its store. Auto-dismiss is per toast: the timer calls `onDismiss` with that id.
  *

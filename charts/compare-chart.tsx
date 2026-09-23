@@ -13,7 +13,7 @@ export interface CompareChartProps extends Omit<D3LineChartProps, "data" | "isLo
   range: DateRange
   data: readonly TimeSeriesPoint[]
   timeFrame: TimeFrame
-  /** Stats port for the previous window; replaces a source application's `state.chart.getStats`. */
+  /** Stats port for the previous window; replaces a source application's direct store call. */
   loadStats: (range: DateRange) => Promise<unknown>
   /** Whether the primary chart itself is still loading. */
   isLoading?: boolean

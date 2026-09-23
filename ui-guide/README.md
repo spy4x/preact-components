@@ -5,9 +5,9 @@ free. It renders one demo per component of every package it covers — `ui`, `ch
 `crud` — one card per group of `theme/preset.css` classes, the icon gallery, and the design-system
 rules components are meant to be assembled in.
 
-Ported from one source application's modular `routes/ui-guide/*` (the better structure of the two
-source guides) and another's `islands/system/UIGuide.tsx`, whose icon gallery is kept verbatim in
-spirit.
+Ported from one source application's own modular route-per-section guide (the better structure of
+the two source guides) and another's single-file guide component, whose icon gallery is kept
+verbatim in spirit.
 
 ## Usage
 
@@ -345,8 +345,9 @@ block in a real browser and compares each clipboard write to the text of the blo
   is demonstrated through `variant`/`size`, not through `btn btn-primary`, because one control with
   two documented APIs is a worse guide than one with a documented API and one documented class
   family.
-- **Routing, navigation and toasts wiring.** That same source's guide called `navigate()` and
-  `state.clipboard.copy()`. Those are ports here, and the route is a descriptor the app registers.
+- **Routing, navigation and toasts wiring.** That same source's guide called `navigate()` and a
+  clipboard method straight off its own global store. Those are ports here, and the route is a
+  descriptor the app registers.
 
 ## Tests
 

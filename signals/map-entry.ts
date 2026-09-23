@@ -4,7 +4,7 @@
  * The original source application's code did `store.value.updateOps.set(id, …)` before handing the
  * result to a signals setter. `Map.set` returns the *same* Map instance, so the
  * signal's old and new values were reference-equal after a spread — consumers that
- * compared identity saw no change, and `systemSetting.ts` mutated outright with no
+ * compared identity saw no change, and one other module mutated outright with no
  * setter at all. Copying first costs one allocation per operation and makes every
  * write observable.
  */

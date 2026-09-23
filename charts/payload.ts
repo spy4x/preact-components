@@ -6,7 +6,7 @@ import { TIME_FRAMES, type TimeFrame, type TimeSeriesPoint } from "./time-series
  * that validates it, and the date-range maths a comparison panel needs.
  *
  * No Preact and no I/O — a loader is always a port the caller supplies, which is what replaced a
- * source application's `state.chart.getStats` call and its zod schema.
+ * source application's direct store call and its zod schema.
  */
 
 export interface DateRange {
