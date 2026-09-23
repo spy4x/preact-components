@@ -6,6 +6,58 @@ Extracted from real products so the same button, table, chart and CRUD scaffold 
 
 Demo: https://spy4x.github.io/preact-components
 
+## Status
+
+Pre-1.0, not yet published to JSR. `deno task publish:dry` runs `deno publish --dry-run` for
+every package that ships; it currently fails on `ui/` and `crud/`, the two rows the publishability
+sweep in #223 has not finished. "Published" will mean each package below resolves as
+`jsr:@preact-components/<name>` and installs with `deno add`. Until then there is nothing on JSR
+for `deno add` to find.
+
+## Install
+
+Once published, each package below installs on its own:
+
+```bash
+deno add jsr:@preact-components/cn        # class-name join + Tailwind conflict resolution
+deno add jsr:@preact-components/icons     # merged icon set
+deno add jsr:@preact-components/signals   # buildModelStore, useUrlFilters, table-state, theme, toast
+deno add jsr:@preact-components/theme     # design tokens + Tailwind preset
+deno add jsr:@preact-components/charts    # server-rendered SVG kit + d3 wrappers
+deno add jsr:@preact-components/system    # Calendar, ImageLightbox, SEOHead, SWUpdater
+deno add jsr:@preact-components/ui        # Badge, Button, Table, Dropdown, Combobox, Modal, Tooltip, Toastr — and the rest
+deno add jsr:@preact-components/crud      # CrudList, CrudEditor, AssociationEditor
+deno add jsr:@preact-components/ui-guide  # the live component catalogue, as a component your app renders
+```
+
+Reading each package's own `deno.json`: `system` and `ui` both import `cn` and `icons`; `ui` also
+imports `signals` (its toast port); `crud` imports `ui`, `cn`, `icons` and `signals`; `ui-guide`
+imports all of those plus `charts`. `cn`, `icons`, `signals`, `theme` and `charts` import no
+sibling package. JSR resolves a package's own dependencies the way npm does, so installing `ui`
+also resolves `cn` and `icons` — neither needs adding by hand.
+
+For the compiled Tailwind stylesheet — the tokens and design-system classes every component here
+renders against — see [`theme/README.md`](./theme/README.md): JSR cannot export a CSS file
+directly, so getting it is a short build-script recipe, not a plain `@import`.
+
+## Usage
+
+```tsx
+import { Badge } from "@preact-components/ui/badge"
+
+<Badge text="Active" color="green" />
+```
+
+Every component's own README under the directories below lists its full prop surface.
+
+## Accessibility
+
+Roles, labels, keyboard handling and focus are written by hand — this repository uses no
+third-party component library — and proven in a real browser for the behaviours `pages/checks/`
+covers; a package's own README says which behaviours that is. No screen reader has been run
+against this repository (#210): what is demonstrated is markup and the order in which the DOM
+changes, not what any assistive technology actually speaks.
+
 ## Credits
 
 The design system, the component styling and the original markup in this repository come from
