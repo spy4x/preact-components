@@ -216,10 +216,13 @@ export interface HeadStore {
  * data. The app keeps the writer side and passes `store.head` into `<SEOHead>`, and an island that
  * changes the title is handed the same store the layout reads.
  *
- * @param defaults Fields used by every page; also the state `resetHead()` returns to.
+ * @param defaults Fields used by every page; also the state `resetHead()` returns to. They are
+ *   copied here, so a caller who changes the object afterwards does not change what a reset
+ *   restores. The copy is shallow: a crumb or JSON-LD object inside it is still the caller's.
  */
 export function createHeadStore(defaults: PageHead): HeadStore {
-  const head = signal<PageHead>({ ...defaults })
+  const initial: PageHead = { ...defaults }
+  const head = signal<PageHead>({ ...initial })
 
   return {
     head,
@@ -228,7 +231,9 @@ export function createHeadStore(defaults: PageHead): HeadStore {
       return head.value
     },
     resetHead() {
-      head.value = { ...defaults }
+      // A fresh copy every time: a signal holding `initial` itself would let one mutation of the
+      // returned head leak into every later reset.
+      head.value = { ...initial }
       return head.value
     },
   }

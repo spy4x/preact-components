@@ -334,6 +334,16 @@ describe("createHeadStore", () => {
     })
   })
 
+  it("restores the defaults as they were handed in, even if the caller changes them later", () => {
+    const defaults: PageHead = { ...DEFAULTS }
+    const store = createHeadStore(defaults)
+    defaults.title = "Changed after the store was made"
+
+    store.resetHead()
+
+    expect(store.head.value.title).toBe(DEFAULTS.title)
+  })
+
   it("hands out a fresh copy on every reset, so a change to one cannot leak into the next", () => {
     const store = createHeadStore(DEFAULTS)
     const first = store.resetHead()
