@@ -163,7 +163,10 @@ The harness is the six parts, once:
    A row that has not arrived yet re-runs the effect when it does.
 2. **Validate on every change** with arktype, plus the caller's own checks through `validate`, which
    runs after the schema and may read signals — that is how a check against a not-yet-loaded
-   collection fixes itself.
+   collection fixes itself. A rule that compares two fields, or a value arktype rejects before it
+   becomes an object, has no field row of its own to report against; `validateSchema` files that
+   under `FORM_FIELD` (from `crud/validation.ts`) instead of dropping it, and the editor shows
+   it as a form-level message — see part 6.
 3. **Archive** by toggling `deletedAt` on the model — when the caller passed `archive`. The update
    that carries the stamp is the update the form already submits; the scaffold never issues a
    `DELETE`, and a row with no life of its own (a junction row) gets no toggle at all.
@@ -172,7 +175,13 @@ The harness is the six parts, once:
 5. **Submit**: an add calls `create` and hands the new row to `onCreated` (navigate from there); an
    edit calls `update` and reloads the row from the store.
 6. **Chrome**: page title, error line, card, footer with the archive toggle, Cancel and Save, and the
-   dependency block. Save is live only when the form is initialised, valid, idle and unblocked.
+   dependency block. Save is live only when the form is initialised, valid, idle and unblocked. Any
+   `FORM_FIELD` message from part 2 renders as a live region above Save — present on every
+   render, empty until such an issue arrives, and named by Save's `aria-describedby` at all times, so
+   a screen-reader user who reaches the (possibly disabled) button is told why. arktype's default
+   wording for a whole-model `.narrow` failure appends the entire rejected value as JSON, which a
+   caller almost never wants read aloud on every field change that still fails the rule; write the
+   message yourself with `ctx.reject({ message })` instead of `ctx.mustBe(...)`.
 
 | Prop         | Default             | Notes                                                           |
 | ------------ | ------------------- | --------------------------------------------------------------- |

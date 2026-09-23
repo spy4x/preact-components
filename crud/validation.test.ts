@@ -2,6 +2,7 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { type } from "arktype"
 import {
+  FORM_FIELD,
   isValid,
   sameValidation,
   schemaIssues,
@@ -85,6 +86,22 @@ describe("schemaIssues", () => {
     const issues = schemaIssues(personSchema, { name: "", age: 36, address: { city: "L" } })
     expect(issues.name?.[ValidationType.SCHEMA]?.message).toContain("name must be non-empty")
   })
+
+  it("files a two-field rule under FORM_FIELD instead of dropping it", () => {
+    // #119's own reproduction: a `.narrow` across the whole model has no field of its own.
+    const pair = type({ a: "string", b: "string" })
+      .narrow((value, ctx) => value.a === value.b || ctx.mustBe("a equal to b"))
+
+    const issues = schemaIssues(pair, { a: "x", b: "y" })
+
+    expect(issues[FORM_FIELD]?.[ValidationType.SCHEMA]?.message).toContain("a equal to b")
+  })
+
+  it("files a non-object value under FORM_FIELD instead of dropping it", () => {
+    const issues = schemaIssues(personSchema, "not an object")
+
+    expect(issues[FORM_FIELD]?.[ValidationType.SCHEMA]).toBeDefined()
+  })
 })
 
 describe("validateSchema", () => {
@@ -114,6 +131,29 @@ describe("validateSchema", () => {
 
     expect(validated.name?.NON_UNIQUE?.message).toBe("already in use")
     expect(validated.name?.[ValidationType.SCHEMA]).toBeUndefined()
+  })
+
+  it("makes the model invalid when a two-field rule fails, rather than dropping the issue", () => {
+    interface Pair {
+      a: string
+      b: string
+    }
+    const pairSchema = type({ a: "string", b: "string" })
+      .narrow((value, ctx) => value.a === value.b || ctx.mustBe("a equal to b"))
+
+    const vl = validateSchema<typeof pairSchema, Pair>(pairSchema, { a: "x", b: "y" }, {})
+
+    expect(isValid(vl)).toBe(false)
+  })
+
+  it("makes the model invalid when the value is not an object, rather than dropping the issue", () => {
+    const vl = validateSchema(
+      personSchema,
+      "not an object" as unknown as typeof personSchema.infer,
+      {},
+    )
+
+    expect(isValid(vl)).toBe(false)
   })
 })
 

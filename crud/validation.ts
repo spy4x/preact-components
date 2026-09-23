@@ -20,6 +20,27 @@ export enum ValidationType {
   SCHEMA = "SCHEMA",
 }
 
+/**
+ * The field key an issue with no field of its own is filed under.
+ *
+ * arktype reports an issue with an empty `path` for two kinds of failure: a `.narrow` across the
+ * whole model (`end date must be after start date`) and a value that is rejected before any field is
+ * read (not an object at all). Neither belongs to one control, so `schemaIssues` files it here rather
+ * than dropping it — dropping it is the defect `FORM_FIELD` replaces: the issue vanished, the
+ * model read as valid, and `CrudEditor` submitted a value arktype had just rejected.
+ *
+ * `_` is not a character any field name in this package's models uses, so this key does not collide
+ * with a real field the way an earlier choice, `""`, could have once a model added a field named the
+ * empty string. `ValidationModel`'s index signature is what lets this key sit beside the mapped
+ * per-field ones with no cast.
+ *
+ * Name and value match `spy4x/ts-libs`'s `validation/model.ts`, which fixed the same defect first and
+ * already publishes `FORM_FIELD = "_form"` in its 1.0 contract — #49 is what eventually merges the two
+ * files into one, and a caller reading or writing this key as a plain string (through a `validate`
+ * port, say) would silently stop matching if this copy picked a different one.
+ */
+export const FORM_FIELD = "_form"
+
 /** One issue on one field. */
 export interface FieldIssue {
   /** Text shown next to the field. */
@@ -79,7 +100,13 @@ export function setFieldIssue<M extends object>(
  * The issues arktype reported for a value, keyed by the model field they belong to.
  *
  * A nested failure (`address.city`) is reported against its top-level field (`address`), because
- * that is the one a field row can render. Several issues on one field are joined into one message.
+ * that is the one a field row can render — including when the failing rule is really a cross-field
+ * check inside that nested object rather than one field of it: arktype's path still names only
+ * `address`, so it reads the same as any other failure on that field, and this function does not try
+ * to tell the two apart. An issue with no field at all — a `.narrow` across the whole model, or a
+ * value that never became an object — is filed under {@link FORM_FIELD} instead, so it survives
+ * rather than being silently dropped. Several issues on one field (or on the form-level key) are
+ * joined into one message.
  */
 export function schemaIssues<S extends Type>(
   schema: S,
@@ -90,8 +117,7 @@ export function schemaIssues<S extends Type>(
 
   const issues: Record<string, FieldValidation> = {}
   for (const issue of outcome.issues) {
-    const field = issue.path.length > 0 ? String(issue.path[0]) : ""
-    if (field === "") continue
+    const field = issue.path.length > 0 ? String(issue.path[0]) : FORM_FIELD
     const previous = issues[field]?.SCHEMA?.message
     issues[field] = {
       [ValidationType.SCHEMA]: {

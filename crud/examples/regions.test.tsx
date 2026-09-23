@@ -101,6 +101,21 @@ describe("RegionEditor", () => {
     expect(render(<RegionEditor mode="edit" editId={1} />)).not.toContain("please first archive")
   })
 
+  it("always renders the form-level live region, named by Save's aria-describedby", () => {
+    // A rule with no field of its own — a cross-field `.narrow`, a value arktype never turned into
+    // an object — has nowhere else to show its message. Effects do not run under a server render, so
+    // this cannot drive one onto the page (that transition is proven in the browser, in
+    // `pages/checks/crud.ts`); what a server render can prove is that the region and the wiring exist
+    // from the very first render, not only once an issue arrives.
+    const html = render(<RegionEditor mode="add" />)
+
+    const liveRegion = html.match(
+      /id="([^"]+)" role="status" aria-live="polite" aria-atomic="true"/,
+    )
+    expect(liveRegion).not.toBeNull()
+    expect(html).toContain(`aria-describedby="${liveRegion?.[1]}"`)
+  })
+
   it("renders a read-only form for a user who may not change regions", () => {
     canChange.value = false
     const html = render(<RegionEditor mode="edit" editId={1} />)

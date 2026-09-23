@@ -80,6 +80,7 @@ export type {
 export {
   type FieldIssue,
   type FieldValidation,
+  FORM_FIELD,
   isValid,
   sameValidation,
   schemaIssues,
