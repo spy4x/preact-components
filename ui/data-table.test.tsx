@@ -1,6 +1,6 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
-import type { SortRule } from "@preact-components/signals/table-state"
+import { parseSort, serializeSort, type SortRule } from "@preact-components/signals/table-state"
 import type { ComponentChild, VNode } from "preact"
 import { render } from "preact-render-to-string"
 import { DataTable, type DataTableColumn, rowKeyAttribute } from "./data-table.tsx"
@@ -444,6 +444,40 @@ describe("DataTable", () => {
     // ceil(5 / 2) = 3 pages, so page 3 exists and page 4 does not.
     expect(html).toContain('aria-label="Page 3"')
     expect(html).not.toContain('aria-label="Page 4"')
+  })
+})
+
+/**
+ * `sort` round-trips through a URL parameter, at the level `table-state` itself works at — a
+ * pure string in, the same rules back out.
+ *
+ * This is the fallback the catalogue card's own doc comment promises: the demo does not bind
+ * `sort` to its address bar, because a second, independent writer to `history` on the same page
+ * as the `signals/` URL-filter demo (which already asserts exact `history.length` deltas there)
+ * risks changing those counts for reasons that have nothing to do with either card, and the
+ * router wiring to avoid that lives in `pages/src`, outside this change's scope. What is proven
+ * here is the half `DataTable` actually depends on: that a value `serializeSort` writes is the
+ * same value `parseSort` reads back, for every shape `DataTable`'s own `sort` prop takes.
+ */
+describe("sort round-trips through a URL parameter", () => {
+  const allowed = ["date", "merchant", "amount"] as const
+
+  it("round-trips no rules", () => {
+    const rules: SortRule<typeof allowed[number]>[] = []
+    expect(parseSort(serializeSort(rules), allowed, [])).toEqual(rules)
+  })
+
+  it("round-trips one rule", () => {
+    const rules: SortRule<typeof allowed[number]>[] = [{ key: "merchant", direction: "asc" }]
+    expect(parseSort(serializeSort(rules), allowed, [])).toEqual(rules)
+  })
+
+  it("round-trips a multi-column sort in priority order", () => {
+    const rules: SortRule<typeof allowed[number]>[] = [
+      { key: "merchant", direction: "desc" },
+      { key: "amount", direction: "asc" },
+    ]
+    expect(parseSort(serializeSort(rules), allowed, [])).toEqual(rules)
   })
 })
 
