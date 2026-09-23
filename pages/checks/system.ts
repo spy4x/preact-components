@@ -3559,6 +3559,183 @@ async function ensureSiteHeaderClosed(devtools: Devtools): Promise<void> {
 }
 
 /**
+ * The race a listener gated on `isOpen` can lose, forced every run rather than left to chance.
+ *
+ * `siteHeaderChecks`' own Escape check polls for `aria-expanded === "true"` before it presses
+ * Escape, and that poll is what gives Preact's effect scheduling time to catch up between the
+ * click and the key — which is exactly why, with the previous, `isOpen`-gated listener, that check
+ * only failed intermittently (measured: 3 of 12 `verify` runs) rather than every time. This check
+ * presses Escape the instant the click's own round trip returns, with no poll and no wait at all in
+ * between, which is what makes it land inside the gap deterministically: `pages/checks/harness.ts`
+ * still has to make its own round trip to the browser for the key press, but nothing here waits an
+ * extra beat for `aria-expanded`, a `toggle` event or an effect to have caught up first.
+ *
+ * @param devtools The connected session, on a hydrated page, viewport already narrowed by the
+ * caller. Forces the panel closed itself first, rather than assuming it already is.
+ */
+async function siteHeaderEscapeRaceCheck(devtools: Devtools): Promise<void> {
+  await ensureSiteHeaderClosed(devtools)
+
+  await focusAndClick(devtools, SITE_HEADER_BUTTON)
+  await pressKey(devtools, "Escape")
+
+  const closed = await poll(async () => !(await readSiteHeader(devtools)).detailsOpen, 3_000)
+  const focusedButton = await read(
+    devtools,
+    `document.activeElement === document.querySelector('${SITE_HEADER_BUTTON}')`,
+    false,
+  )
+  check(
+    "a real Escape pressed the instant the menu opens, with no wait in between, still closes it",
+    closed && focusedButton,
+    !closed
+      ? "the panel was still open 3s after an Escape pressed with no wait after the click"
+      : `document.activeElement is the menu button: ${focusedButton}`,
+  )
+}
+
+/**
+ * An Escape meant for a layer above the panel must not also close the panel.
+ *
+ * The listener lives on `document` so it can hear a press from anywhere inside the panel, and
+ * before this check existed nothing scoped it any further: with the menu open and the `Modal`
+ * demo's dialog opened on top of it, one Escape press closed the dialog *and* the menu, and pulled
+ * focus back to the menu button instead of leaving it on the dialog's own trigger — the browser's
+ * native handling of the topmost `<dialog>` and this hook's own listener both see the same bubbled
+ * keydown. `detailsRef.current.contains(event.target)` is what `mobile-panel.ts` now checks before
+ * acting, and this proves it: the dialog closes, the menu stays open, and focus ends up on the
+ * dialog's own trigger, not the menu's.
+ *
+ * The dialog is `ui/`'s `Modal`, on the catalogue's own `#demo-Modal` card — the same card and
+ * trigger `ui.ts`'s own Modal checks drive, found the same way: the first button whose text starts
+ * with `"default"`. `system` runs before `ui` in `verify.ts`'s fixed package order, so this check
+ * closes the dialog itself and confirms no dialog is left in the top layer before it returns,
+ * rather than leaving that for `ui.ts`'s own checks to trip over.
+ *
+ * @param devtools The connected session, on a hydrated page, viewport already narrowed by the
+ * caller. Forces the panel closed itself first, rather than assuming it already is.
+ */
+async function siteHeaderEscapeScopingCheck(devtools: Devtools): Promise<void> {
+  await ensureSiteHeaderClosed(devtools)
+
+  await focusAndClick(devtools, SITE_HEADER_BUTTON)
+  const opened = await poll(async () => {
+    const state = await readSiteHeader(devtools)
+    return state.detailsOpen && state.expanded === "true"
+  }, 3_000)
+
+  const armed = await read(
+    devtools,
+    `(() => {
+      const card = document.querySelector("#demo-Modal")
+      const trigger = card
+        ? [...card.querySelectorAll("button")]
+          .find((candidate) => candidate.textContent.trim().startsWith("default"))
+        : null
+      if (!trigger) return false
+      globalThis.__siteHeaderScopeTrigger = trigger
+      // Focused before it is clicked — not because the click needs it, but because Modal's own
+      // dialog restores focus to whatever held it at the moment showModal() ran, natively, once
+      // the dialog closes. A scripted .click() with no focus() first leaves that "whatever" as the
+      // menu button — still focused from opening the panel above — which would make the dialog's
+      // own native restore behaviour look exactly like this check's own bug and was, measured,
+      // indistinguishable from one at first.
+      trigger.focus()
+      trigger.click()
+      return true
+    })()`,
+    false,
+  )
+  const modalOpened = await poll(
+    () =>
+      read(
+        devtools,
+        `document.querySelector("#demo-Modal dialog")?.matches(":modal") === true`,
+        false,
+      ),
+    3_000,
+  )
+  await pressKey(devtools, "Escape")
+
+  const modalClosed = await poll(
+    () =>
+      read(
+        devtools,
+        `document.querySelector("#demo-Modal dialog")?.matches(":modal") !== true`,
+        false,
+      ),
+    3_000,
+  )
+  const after = await read(
+    devtools,
+    `(() => ({
+      panelStillOpen: document.querySelector('${SITE_HEADER_DETAILS}')?.open === true,
+      focusOnModalTrigger: document.activeElement === globalThis.__siteHeaderScopeTrigger,
+      focusOnMenuButton: document.activeElement === document.querySelector('${SITE_HEADER_BUTTON}'),
+    }))()`,
+    { panelStillOpen: false, focusOnModalTrigger: false, focusOnMenuButton: false },
+  )
+
+  check(
+    "an Escape meant for a modal on top does not also close the menu behind it",
+    opened && armed && modalOpened && modalClosed && after.panelStillOpen &&
+      after.focusOnModalTrigger && !after.focusOnMenuButton,
+    !opened
+      ? "the menu was never open"
+      : !armed
+      ? "the Modal demo's own trigger could not be found"
+      : !modalOpened
+      ? "the Modal demo's dialog never opened"
+      : !modalClosed
+      ? "the dialog was still :modal after the Escape press"
+      : !after.panelStillOpen
+      ? "the menu closed too, though the Escape press was never inside it"
+      : !after.focusOnModalTrigger
+      ? `focus landed elsewhere instead of the dialog's own trigger (menu button: ` +
+        `${after.focusOnMenuButton})`
+      : "the dialog closed, the menu stayed open, and focus stayed on the dialog's own trigger",
+  )
+
+  // Force the dialog closed and confirm the top layer is empty, whatever the checks above found —
+  // `ui.ts`'s own Modal checks, and everything else `verify.ts` runs after this package block,
+  // assume no dialog is left open from an earlier one.
+  await read(
+    devtools,
+    `(() => {
+      const dialog = document.querySelector("#demo-Modal dialog")
+      if (dialog?.open) dialog.close()
+      return true
+    })()`,
+    false,
+  )
+  const topLayerEmpty = await poll(
+    () => read(devtools, `document.querySelectorAll("dialog:modal").length === 0`, false),
+    3_000,
+  )
+  check(
+    "no dialog is left in the top layer after the Escape-scoping check",
+    topLayerEmpty,
+    topLayerEmpty ? "0 modal dialogs remain" : "a dialog is still in the top layer",
+  )
+
+  await ensureSiteHeaderClosed(devtools)
+  // The `#demo-Modal` card lives somewhere else on this long catalogue page, and focusing its
+  // trigger scrolled there to bring it into view — settling for *that* scroll is not enough, since
+  // `siteHeaderLayoutChecks` right after this reads a viewport-relative position off a header that
+  // is no longer anywhere near the viewport. Scrolled back to this card, not merely settled.
+  await read(
+    devtools,
+    `(() => {
+      document.querySelector('${SITE_HEADER_HEADER}')
+        ?.scrollIntoView({ block: "center", behavior: "instant" })
+      return true
+    })()`,
+    false,
+  )
+  await waitForScrollSettle(devtools)
+}
+
+/**
  * `SiteHeader`'s mobile panel: closed by default, opened by a click on the menu button, walked in
  * order by Tab, closed by a real Escape press with focus returned to the button, closed a different
  * way by a client-side navigation, exposed as expanded natively regardless of `aria-expanded`, laid
@@ -3690,6 +3867,8 @@ async function siteHeaderChecks(devtools: Devtools): Promise<void> {
         : `document.activeElement is the menu button: ${focusedButton}`,
     )
 
+    await siteHeaderEscapeRaceCheck(devtools)
+    await siteHeaderEscapeScopingCheck(devtools)
     await siteHeaderLayoutChecks(devtools)
     await siteHeaderNativeExpandedStateCheck(devtools)
     await siteHeaderClientNavigationChecks(devtools)
@@ -3753,7 +3932,8 @@ function readSiteHeaderLayout(devtools: Devtools): Promise<SiteHeaderLayout> {
  * second catches.
  *
  * @param devtools The connected session, on a hydrated page, viewport already narrowed by the
- * caller, with the panel already open.
+ * caller. Forces the panel closed itself before reading the closed layout, rather than assuming
+ * whatever ran before it left it that way.
  */
 async function siteHeaderLayoutChecks(devtools: Devtools): Promise<void> {
   await ensureSiteHeaderClosed(devtools)

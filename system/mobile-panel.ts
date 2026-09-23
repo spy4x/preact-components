@@ -11,7 +11,11 @@
  * is close on Escape and hand focus back to the button that opened it, or close itself when a link
  * inside it is activated for a client-side navigation — this hook adds those, plus an `aria-expanded`
  * kept in step with the element's own state as a redundant, explicit signal for tooling that reads
- * ARIA rather than the accessibility tree Chromium builds from the native element.
+ * ARIA rather than the accessibility tree Chromium builds from the native element. The Escape
+ * listener lives on `document`, so it can hear a press from anywhere inside the panel, but it acts
+ * only on a press that started inside this disclosure — a dialog open on top of it, or the panel
+ * itself hidden by a wider viewport while a stray click had left it "open", must not be closed by
+ * an Escape meant for something else.
  *
  * There is no pure logic here to unit test: every behaviour is a `document` listener or a focus
  * move, neither of which a string render executes (see `AGENTS.md` → Behaviour needs a second
@@ -95,7 +99,17 @@ export function useMobilePanel(): MobilePanelController {
   // runs.
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape" || !detailsRef.current?.open) return
+      if (event.key !== "Escape") return
+      // Listening on `document` is what lets Escape close this panel from anywhere inside it — a
+      // link deep in the panel, not only the button — but the same listener sees every Escape on
+      // the page, including one meant for a layer above this one entirely. A modal dialog on top
+      // does not stop this keydown from bubbling to `document`, and `detailsRef.current.open`
+      // cannot tell the two cases apart on its own: the panel stays open while a dialog sits over
+      // it, so a press aimed at the dialog would still read `open === true` here. Requiring the
+      // press to have started inside this disclosure — on the button, or on a link once the panel
+      // is open — is what a document-level listener needs to behave like a component-scoped one.
+      if (!detailsRef.current?.contains(event.target as Node)) return
+      if (!detailsRef.current.open) return
       event.preventDefault()
       close(true)
     }
