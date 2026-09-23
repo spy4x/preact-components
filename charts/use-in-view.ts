@@ -44,7 +44,7 @@ export function createInViewObserver(
 /**
  * Report whether the element behind `ref` has scrolled into view.
  *
- * The pagination and chart-deferral hook from `gb`: the default `rootMargin` of 200px starts the
+ * The pagination and chart-deferral hook from a source application: the default `rootMargin` of 200px starts the
  * work before the element is actually visible, and with `once` (the default) the observer stops
  * after the first hit so a lazy fetch happens exactly once. Server-safe — with no
  * `IntersectionObserver` the effect is a no-op and `inView` stays `false` until hydration.

@@ -183,9 +183,9 @@ actually resolves them: the entry string a build script hands to `compile()`, ma
 `loadStylesheet` and answered from `TOKENS_CSS`/`PRESET_CSS`.)
 
 `--color-primary` is purple (`purple-900`) because that is what the components
-were designed against in `gb` and `financy`; dark mode swaps it for near-black
-chrome. The full list is in `tokens.css`, each with the Tailwind palette value it
-came from.
+were designed against in the source applications they were extracted from; dark
+mode swaps it for near-black chrome. The full list is in `tokens.css`, each with
+the Tailwind palette value it came from.
 
 Two consequences of the design worth knowing:
 
@@ -202,14 +202,15 @@ Two consequences of the design worth knowing:
 
 ## Not carried over from the sources
 
-Both classes had zero usages in `gb`, the product they were extracted from —
-only its `ui-guide` referenced them, which is how they survived:
+Both classes had zero usages in the product they were extracted from — only its
+`ui-guide` referenced them, which is how they survived:
 
 - `.h6` — use `text-base font-medium`.
 - `.btn-sm` — use `h-9 px-4` on the button.
 
-`card-header` and `btn-disabled` were added back from `financy`, where both are
-in use (`btn-disabled` replaces that repo's `fieldset[disabled] .btn`).
+`card-header` and `btn-disabled` were added back from another source
+application, where both are in use (`btn-disabled` replaces that app's
+`fieldset[disabled] .btn`).
 
 ## Tests
 

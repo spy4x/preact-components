@@ -1,6 +1,6 @@
 # `@preact-components/ui`
 
-Preact + Tailwind primitives extracted from `gb`, `financy` and `offer-lens`.
+Preact + Tailwind primitives extracted from earlier source applications.
 
 ## Rules this package follows
 

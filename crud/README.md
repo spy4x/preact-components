@@ -1,6 +1,6 @@
 # `@preact-components/crud`
 
-The list and editor scaffolding every resource page in `gb` was rebuilt from: one table with search,
+The list and editor scaffolding every resource page in a source application was rebuilt from: one table with search,
 a status filter, a count and row actions, and one add/edit form with validation, a soft delete and a
 dependency block. The package knows no entity — the store arrives as a prop and the cells and fields
 arrive as slots.
@@ -18,26 +18,26 @@ import {
 
 ## Why it exists
 
-`gb` carries sixteen `List.tsx` (2,948 lines) and eleven `Editor.tsx` (3,785 lines). Nine of the
+That source application carries sixteen `List.tsx` (2,948 lines) and eleven `Editor.tsx` (3,785 lines). Nine of the
 eleven editors are the same six-part harness — load the row once, validate on every change, offer
 the archive toggle, submit, reload, render a title, a card, a footer and a dependency list — with a
 different field list in the middle. Roughly 55% of that is copy-paste.
 
 The copies have already drifted, and every drift is a bug the type system did not catch because
-each copy was written out by hand:
+each copy was written out by hand. A sample found in one pass over the source application's editors
+and lists:
 
-| Source file                           | What drifted                                                                                                                |
-| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `admin/users/List.tsx:90`             | reads `state.gateway.op.list.error` — the wrong store's error                                                               |
-| `admin/system/List.tsx:71`            | reads `state.userSession.listOp` — a store the page never loads                                                             |
-| `lamp-profiles/List.tsx:41`           | the count badge counts `state.lampBox`                                                                                      |
-| `lamps/List.tsx:79`                   | the search input lost `value={query.value}`, so a re-render wipes the box                                                   |
-| `zones/Editor.tsx:284`                | a second field reuses `for="zone-name"`…                                                                                    |
-| `lamp-profiles/Editor.tsx`            | …four times over, so every label points at the first field                                                                  |
-| `gateways/Editor.tsx:209`             | a field named `sensor-device-id` on the gateway form                                                                        |
-| `sensors/Editor.tsx:251`              | the "navigate to it" link builds a `/devices/lamp-boxes/…` URL from a sensor                                                |
-| `alerts/View.tsx:76`                  | an Acknowledge button with no `onClick`                                                                                     |
-| `lamp-boxes/[id]/zones/Editor.tsx:28` | branches on the `deletedAt` of a row found in `list.nonDeleted`, so its "you can restore the old one" branch is unreachable |
+- A list read a different resource's error state than the one it rendered.
+- A list read a store the page never loaded at all.
+- A count badge counted the wrong resource.
+- A search input lost its value binding, so a re-render wiped the box.
+- A second field on one form reused another field's `for` attribute — four times over, so every
+  label pointed at the first field.
+- A field name collided with a different resource's id convention.
+- A "navigate to it" link built the wrong resource's URL.
+- An acknowledge button had no `onClick` at all.
+- An editor branched on a row's `deletedAt` after the list had already been filtered to
+  non-deleted rows only, so its "you can restore the old one" branch could never run.
 
 The scaffold closes that class of bug by construction: the status slice, the error source, the
 count, the control ids and the save rule are written once. `field.tsx` generates every control id
@@ -46,8 +46,8 @@ with `useId`, `crud-list.tsx` reads the error from the store it was handed, and 
 
 ## Slots, not a schema
 
-`fields={[…]}` was the tempting API and it is the wrong one. The four largest editors
-(`schedules` 461, `sensors` 456, `lamp-boxes` 440, `admin/users` 342) and both association editors
+`fields={[…]}` was the tempting API and it is the wrong one. The four largest editors (461, 456,
+440 and 342 lines) and both association editors
 put tables, grids, toggles and conditional sections between their fields; expressing them through a
 field array needs a `render:` hatch per field, which is the same code plus indirection and a type
 parameter nobody can read. So the field list is a function slot and the table's cells are a slot,
@@ -109,7 +109,7 @@ The interfaces here describe the slice actually consumed, and nothing else.
   store={regionStore}                       // or `rows={…}` for a nested or read-only list
   title="Regions"
   match={(region, word) => search(region.name, word)}
-  addHref="/devices/regions/add"
+  addHref="/regions/add"
   canAdd={() => canChange.value}
   header={<th class="text-left" scope="col">Name</th>}
   row={(region) => <td>{region.name}</td>}
@@ -133,7 +133,7 @@ The interfaces here describe the slice actually consumed, and nothing else.
 | `searchDelay`                   | `300`             | debounce of the search box                                        |
 
 `rows` is how the two variants the store cannot express are built. A nested list scoped to a parent
-passes a selector (`state.zoneLampBox.zonesOfLampBox(lampBoxId)`); a read-only collection with no
+passes a selector (`state.child.childrenOfParent(parentId)`); a read-only collection with no
 soft-delete column passes its own signal and its own error. Either way the status filter is off,
 because there is nothing to switch between.
 
@@ -147,8 +147,8 @@ because there is nothing to switch between.
   blank={blankRegion}
   schema={regionBaseSchema}
   entity="Region"
-  cancelHref="/devices/regions"
-  onCreated={(region) => navigate(`/devices/regions/${region.id}/edit`)}
+  cancelHref="/regions"
+  onCreated={(region) => navigate(`/regions/${region.id}/edit`)}
   validate={(value, vl) => …}               // optional domain checks
   archive={{ dependencies: (region) => regionDependents(region) }}   // the archive toggle
 >
@@ -211,7 +211,7 @@ The harness is the six parts, once:
   options={zones.value.map((zone) => ({ value: zone.id, label: zone.name }))}
   renderIssue={(issue) => (
     <p class="text-sm text-red-700 mt-2">
-      {issue.message} <a class="btn-link" href={`/devices/zones/${issue.payload}/edit`}>Go to it</a>
+      {issue.message} <a class="btn-link" href={`/zones/${issue.payload}/edit`}>Go to it</a>
     </p>
   )}
 />
@@ -238,9 +238,9 @@ lives here rather than in `ui/` because only the CRUD scaffold produces a `Delet
 `RowActions`/`RowAction` are the per-row menu: a link when given an `href`, a button when given an
 `onClick`, red when `danger`. `timeAgo` and `formatTimestamp` format the archive line.
 
-## Worked example: `gb`'s regions, end to end
+## Worked example: a source application's regions, end to end
 
-`crud/examples/regions.tsx` ports `devices/regions` — `List.tsx` (116 lines) and `Editor.tsx` (204
+`crud/examples/regions.tsx` ports a real resource — `List.tsx` (116 lines) and `Editor.tsx` (204
 lines) — against the real `buildModelStore`. The whole resource is a schema, a store and two
 components; `crud/examples/regions.test.tsx` renders both.
 
@@ -268,17 +268,17 @@ export function RegionList() {
       store={regionStore}
       title="Regions"
       match={(region, word) => search(region.name, word)}
-      addHref="/devices/regions/add"
+      addHref="/regions/add"
       canAdd={() => canChange.value}
       header={<th class="text-left" scope="col">Name</th>}
       row={(region) => (
         <td>
-          <a href={`/devices/regions/${region.id}/edit`} class="hover:underline">{region.name}</a>
+          <a href={`/regions/${region.id}/edit`} class="hover:underline">{region.name}</a>
         </td>
       )}
       actions={(region) => (
         <RowActions>
-          <RowAction href={`/devices/regions/${region.id}/edit`}>
+          <RowAction href={`/regions/${region.id}/edit`}>
             {canChange.value ? "Edit" : "View"}
           </RowAction>
         </RowActions>
@@ -295,9 +295,9 @@ export function RegionEditor(props: RegionEditorProps) {
       blank={blankRegion}
       schema={regionBaseSchema}
       entity="Region"
-      cancelHref="/devices/regions"
+      cancelHref="/regions"
       canChange={() => canChange.value}
-      onCreated={(region) => navigate(`/devices/regions/${region.id}/edit`)}
+      onCreated={(region) => navigate(`/regions/${region.id}/edit`)}
     >
       {({ vm, vl }) => <TextField vm={vm} vl={vl} name="name" label="Name" />}
     </CrudEditor>
@@ -323,9 +323,9 @@ route cannot omit one.
 
 ## Association rows
 
-A junction row — a lamp box _is in_ a zone — is the second editor shape in `gb`
-(`lamp-boxes/[id]/zones` 215 lines, `schedules/[id]/zones` 223, `lamp-boxes/[id]/lamps` 295, all
-near-identical). It differs from a validated form in three ways, and each one is a slot or a port on
+A junction row — one row exists only to connect two other rows — is the second editor shape in
+that source application (three near-identical junction editors, 215, 223 and 295 lines). It
+differs from a validated form in three ways, and each one is a slot or a port on
 `CrudEditor` rather than a second harness to drift from:
 
 - **No validation model.** A junction row has no rules of its own, so there is no schema; its one
@@ -342,26 +342,26 @@ near-identical). It differs from a validated form in three ways, and each one is
 ```tsx
 <AssociationEditor
   mode="edit"
-  editId={zoneLampBoxId}
-  store={zoneLampBoxStore}
-  blank={blankZoneLampBox(lampBoxId)}
-  entity="zone association"
-  cancelHref={`/devices/lamp-boxes/${lampBoxId}/zones`}
-  conflictField="zoneId"
+  editId={membershipId}
+  store={membershipStore}
+  blank={blankMembership(groupId)}
+  entity="group membership"
+  cancelHref={`/groups/${groupId}/members`}
+  conflictField="memberId"
   conflict={(value, rows) =>
     rows.find((other) =>
-      other.id !== value.id && other.lampBoxId === value.lampBoxId && other.zoneId === value.zoneId
+      other.id !== value.id && other.groupId === value.groupId && other.memberId === value.memberId
     )}
-  onCreated={(created) => navigate(`/devices/lamp-boxes/${lampBoxId}/zones/${created.id}/edit`)}
+  onCreated={(created) => navigate(`/groups/${groupId}/members/${created.id}/edit`)}
 >
   {({ vm, vl }) => (
     <SelectField
       vm={vm}
       vl={vl}
-      name="zoneId"
-      label="Zone"
-      placeholder="Select zone"
-      options={zones.value.map((zone) => ({ value: zone.id, label: zone.name }))}
+      name="memberId"
+      label="Member"
+      placeholder="Select member"
+      options={members.value.map((member) => ({ value: member.id, label: member.name }))}
     />
   )}
 </AssociationEditor>

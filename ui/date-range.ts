@@ -7,7 +7,8 @@
  * question only: which calendar date the injected `now` falls on, answered by
  * {@link calendarDateInZone}, this module's single `Intl` call.
  *
- * Tradeoff: a date-only model cannot express gb's sub-day frames (`Last1Hour` … `Last24Hours`),
+ * Tradeoff: a date-only model cannot express one source application's sub-day frames
+ * (`Last1Hour` … `Last24Hours`),
  * so they are not presets here; a caller that needs instants converts `from` to the start of that
  * day and `to` to the end of it in its own zone. Nothing in this file is locale-aware: it computes
  * dates and holds no copy at all, so nothing here needs a default or an override.

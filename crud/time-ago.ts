@@ -1,7 +1,7 @@
 /**
  * Timestamp formatting for the scaffold's chrome.
  *
- * Ported from `gb/libs/shared/helpers.ts:12-84`. The editor shows the archive time as a `title`
+ * Ported from a source application's shared helpers module. The editor shows the archive time as a `title`
  * (absolute) plus a relative label, and neither is worth a date dependency, so both live here.
  * `timeAgo` takes the current instant as a parameter rather than reading the clock, so it is
  * deterministic under test.

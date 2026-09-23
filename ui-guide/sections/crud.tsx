@@ -149,12 +149,12 @@ function makeRegionStore() {
  */
 function makeAssociationStore() {
   const rows = signal<Region[]>([
-    { ...blankRegion(), id: 101, name: "South gateway" },
-    { ...blankRegion(), id: 102, name: "Midlands gateway" },
+    { ...blankRegion(), id: 101, name: "South supplier" },
+    { ...blankRegion(), id: 102, name: "Midlands supplier" },
     {
       ...blankRegion(),
       id: 103,
-      name: "North gateway",
+      name: "North supplier",
       deletedAt: new Date("2026-02-01T00:00:00.000Z"),
     },
   ])
@@ -417,21 +417,21 @@ function AssociationEditorDemo() {
         store={store}
         mode="add"
         blank={blankRegion()}
-        entity="Gateway association"
-        title="Add a gateway association"
+        entity="Supplier association"
+        title="Add a supplier association"
         cancelHref="#crud"
         conflictField="name"
         conflict={(row, all) => all.find((entry) => entry.name === row.name)}
-        conflictMessage="A gateway with that name already exists."
-        conflictRemovedMessage="That gateway existed before and was removed — restore it instead."
+        conflictMessage="A supplier with that name already exists."
+        conflictRemovedMessage="That supplier existed before and was removed — restore it instead."
       >
-        {({ vm, vl }) => <TextField vm={vm} vl={vl} name="name" label="Gateway name" />}
+        {({ vm, vl }) => <TextField vm={vm} vl={vl} name="name" label="Supplier name" />}
       </AssociationEditor>
       <p class="text-xs text-gray-500 dark:text-gray-400">
         rows the conflict port scans: {rows.value.length}, of which{" "}
         {rows.value.filter((row) => row.deletedAt).length} were removed — so typing{" "}
-        <code>North gateway</code> reaches the "restore it instead" branch, and{" "}
-        <code>South gateway</code> the live-conflict branch.
+        <code>North supplier</code> reaches the "restore it instead" branch, and{" "}
+        <code>South supplier</code> the live-conflict branch.
       </p>
     </div>
   )
@@ -643,9 +643,9 @@ export const crudDemos = {
   blank={blankRegion}
   schema={regionBaseSchema}
   entity="Region"
-  cancelHref="/devices/regions"
+  cancelHref="/regions"
   archive={{}}
-  onCreated={(row) => navigate(\`/devices/regions/\${row.id}/edit\`)}
+  onCreated={(row) => navigate(\`/regions/\${row.id}/edit\`)}
 >
   {({ vm, vl }) => <TextField vm={vm} vl={vl} name="name" label="Name" />}
 </CrudEditor>`,
@@ -658,14 +658,14 @@ export const crudDemos = {
   store={associationStore}
   mode="add"
   blank={blankAssociation}
-  entity="Gateway association"
-  cancelHref="/gateways"
-  conflictField="gatewayId"
-  conflict={(row, all) => all.find((entry) => entry.gatewayId === row.gatewayId)}
-  conflictMessage="That gateway is already attached."
+  entity="Supplier association"
+  cancelHref="/suppliers"
+  conflictField="supplierId"
+  conflict={(row, all) => all.find((entry) => entry.supplierId === row.supplierId)}
+  conflictMessage="That supplier is already attached."
   conflictRemovedMessage="It was attached before and removed — restore it instead."
 >
-  {({ vm, vl }) => <SelectField vm={vm} vl={vl} name="gatewayId" label="Gateway" options={…} />}
+  {({ vm, vl }) => <SelectField vm={vm} vl={vl} name="supplierId" label="Supplier" options={…} />}
 </AssociationEditor>`,
     render: () => <AssociationEditorDemo />,
   },

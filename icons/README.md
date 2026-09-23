@@ -44,21 +44,21 @@ family per surface; mixing them is visible at small sizes.
 | Feather and/or Lucide outlines | 19    | 18 match exactly, 1 nearly (`IconTarget`) — which pack is on each glyph's own JSDoc line                                                                                                                                                               |
 | Custom outlines                | 22    | 19 have no exact or near match in the four checked packs; 3 (`IconCircleDot`, `IconCreditCard`, `IconDocument`) near-match Feather or Lucide but keep this generic label — a near match alone was not treated as confident enough to rename the family |
 | Brand marks (trademarked)      | 6     | GitHub, LinkedIn, Telegram, Upwork, Twitter, YouTube; 2 (Twitter, YouTube) match Feather exactly, the other 4 match none of the four packs                                                                                                             |
-| roley                          | 18    | 17 match exactly, 1 (`IconExternalLink`) matches none — bucketed here by source app regardless of match, so the rows above exclude these 18                                                                                                            |
+| Ported                         | 18    | 17 match exactly, 1 (`IconExternalLink`) matches none — bucketed here by source regardless of match, so the rows above exclude these 18                                                                                                                |
 
 Counts above are `provenance.ts`'s own — see "Provenance" below for the full method and the
 complete exact/near/none breakdown, and run `deno task --cwd icons provenance` for the per-glyph
 list. The table is a partition of all 119 glyphs: every row above is disjoint from every other,
-`roley`'s 18 included.
+the Ported row's 18 included.
 
-The `roley` row is a source, not a single weight, and the split below is by rendering, not by match
+The Ported row is a family, not a single weight, and the split below is by rendering, not by match
 outcome — a different partition of the same 18 from the table's own "17 match exactly, 1 matches
 none", not a second count to add against it: 15 `stroke-2` v1 outlines, all 15 exact matches to
 Heroicons v1's own outline pack, and 3 filled glyphs drawn without a stroke (`IconExternalLink`,
 `IconLockClosedFilled`, `IconPlaySolid`). Of those 3, `IconExternalLink` is the table's one "matches
 none"; `IconLockClosedFilled` and `IconPlaySolid` are 2 of its 17 exact matches — to Heroicons v1
 solid and v2 outline respectively, not to a v1 outline glyph, which is why they sit outside the 15
-here. No `roley` glyph is `stroke-1.5`.
+here. No Ported glyph is `stroke-1.5`.
 
 Rendered stroke width is what matters visually, and the table above does not show it: a
 `stroke-1.5` glyph next to a `stroke-2` glyph reads as a mistake regardless of which pack either one
@@ -73,8 +73,8 @@ Two known warts, kept rather than redrawn:
 
 - `IconGateway` carries `fill="white"` from `template`, so it is the only glyph that does not
   follow the surrounding text colour.
-- `IconLoading` (thick two-tone spinner) and `IconSpinner` (`mig`'s thin arc) are both spinners.
-  They are different drawings, so both survived the body dedupe.
+- `IconLoading` (thick two-tone spinner) and `IconSpinner` (a thin arc from a source application)
+  are both spinners. They are different drawings, so both survived the body dedupe.
 
 ## Provenance
 
@@ -123,28 +123,34 @@ with a single licensed pack; issue #233 is the narrower, immediate version of th
 
 Sources (read-only snapshots at merge time):
 
-| Source                  | Exports | Kept |
-| ----------------------- | ------- | ---- |
-| `spy4x/template`        | 51      | 49   |
-| `spy4x/gb`              | 46      | 0    |
-| `spy4x/antonshubin.com` | 36      | 27   |
-| `spy4x/offer-lens`      | 52      | 20   |
-| `spy4x/mig`             | 14      | 5    |
-| `spy4x/roley`           | 52      | 18   |
+| Source                     | Exports | Kept |
+| -------------------------- | ------- | ---- |
+| `spy4x/template`           | 51      | 49   |
+| a source application       | 46      | 0    |
+| a source application       | 36      | 27   |
+| a source application       | 52      | 20   |
+| a source application       | 14      | 5    |
+| the ported set (see below) | 52      | 18   |
 
-`roley` was missed by the #2 brief and merged separately in
+`spy4x/template` and `spy4x/ts-libs` are the library's own public repositories and are named here;
+the other four rows are earlier, private applications this set was extracted from, kept unnamed —
+see the repository's public-repository rule in `AGENTS.md`. The last row, the ported set, is called
+out separately below because it carries its own audit tooling (`check-readme.ts`) that compares its
+18 glyphs' geometry against the source byte for byte.
+
+The ported set was missed by the #2 brief and merged separately in
 [issue #15](https://github.com/spy4x/preact-components/issues/15). Every one of its 52 files lands on
 exactly one side of the ledger below and the two tables carry them all: a file either becomes an
 export, folds onto an export that already exists, or is excluded by rule 4.
 
-The barrel is `roley/index.ts`. It re-exports **49** of the 52 files; `facebook.svelte`,
+The barrel is the ported set's own `index.ts`. It re-exports **49** of the 52 files; `facebook.svelte`,
 `paper.svelte` and `plus copy.svelte` are the three absent from it. `dot.svelte` _is_ exported, even
 though it carries no SVG — it is a styled `<span>`, so there is no geometry to port. `upload.svelte`
 is exported too; its name was dropped here for a concept collision, not because the file was unused.
 
 Source file → export name, in the order the exports appear in `+index.tsx`:
 
-| Export                  | `roley` source      | Naming                                                   |
+| Export                  | Ported source file  | Naming                                                   |
 | ----------------------- | ------------------- | -------------------------------------------------------- |
 | `IconArrowsPointingOut` | `fullscreen-expand` | renamed onto the Heroicons name for the drawing          |
 | `IconCloudArrowUp`      | `cloudUpload`       | renamed onto the Heroicons name, noun order flipped      |
@@ -178,40 +184,42 @@ not new names.
 Rules, in order:
 
 1. **Dedupe by SVG body, not by name.** Identical geometry collapses to one export. This removed
-   `gb` entirely (a fork of `template`, 45 byte-identical bodies), `template`'s internal
-   `IconLightBulb`/`IconBulb` and `IconExclamationTriangle`/`IconAlertTriangle` pairs, and
-   `gb`'s `IconMagnifyingGlass` (byte-identical to `IconSearch`, so it was renamed, not aliased).
+   one source application entirely (a fork of `template`, 45 byte-identical bodies), `template`'s
+   internal `IconLightBulb`/`IconBulb` and `IconExclamationTriangle`/`IconAlertTriangle` pairs, and
+   that same source application's `IconMagnifyingGlass` (byte-identical to `IconSearch`, so it was
+   renamed, not aliased).
 2. **One canonical name per concept.** Names are `Icon<PascalCase>`; a rename table folds each
    source's wording onto the incumbent `template` name — `Person`→`User`, `Pen`/`Edit`→
    `PencilSquare`, `Close`→`XMark`, `Menu`→`Bars3`, `Info`/`InfoCircle`→`InformationCircle`,
    `Alert`→`AlertTriangle`, `Cog`→`Cog6Tooth`, `Trash`→`TrashBin`, `Lightbulb`→`LightBulb`,
    `Copy`→`ClipboardCopy`, `Shield`→`ShieldCheck`, `Trending`→`TrendingUp`, `Filter`→`Funnel`,
    `Message`→`ChatBubble`, `Bullseye`→`Target`, `Lightning`→`Zap`. Where no `template` glyph
-   exists, the clearest name won. Same-name-different-body conflicts resolve by source precedence
-   (`template` > `gb` > `antonshubin.com` > `mig` > `offer-lens` > `roley`).
+   exists, the clearest name won. Same-name-different-body conflicts resolve by source precedence,
+   `template` first and the ported set last, with the other four source applications ranked in
+   between by how much of their icon set survived the merge (see the Sources table above).
 3. **Props normalised** to `{ class?: string }` everywhere. `width`/`height`, `role`,
-   `aria-hidden` and per-source `className` props were dropped; `mig`'s `strokeWidth` prop and
-   `antonshubin.com`'s `filled` prop were resolved to their declared defaults; `roley`'s
-   `$$props.size` interpolation became the same `shrink-0 ${props.class || "…"}` idiom as every
-   other glyph, and `IconPlaySolid`'s hard-coded `red` became `currentColor`.
+   `aria-hidden` and per-source `className` props were dropped; one source application's
+   `strokeWidth` prop and another's `filled` prop were resolved to their declared defaults; the
+   ported set's `$$props.size` interpolation became the same `shrink-0 ${props.class || "…"}` idiom
+   as every other glyph, and `IconPlaySolid`'s hard-coded `red` became `currentColor`.
 4. **Excluded** — every deliberate omission, so a missing glyph is a decision rather than a gap:
 
-   | Excluded                                                                                                                                                                                                                                                                                                                | Source            | Why                                                                               |
-   | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | --------------------------------------------------------------------------------- |
-   | `LogoMark`                                                                                                                                                                                                                                                                                                              | `mig`             | that app's own wordmark                                                           |
-   | `UpworkBadgeIcon`                                                                                                                                                                                                                                                                                                       | `antonshubin.com` | fixed brand colours, cannot inherit `currentColor`; `IconUpwork` covers the brand |
-   | Feather `GitHubIcon`                                                                                                                                                                                                                                                                                                    | `antonshubin.com` | name collision with `IconGitHub`, which won on source precedence                  |
-   | `EmailIcon`                                                                                                                                                                                                                                                                                                             | `antonshubin.com` | folded to `IconAtSign` — one name per concept, and it is the same drawing         |
-   | `facebook`, `google`, `instagram`                                                                                                                                                                                                                                                                                       | `roley`           | trademark-constrained brand marks, see below                                      |
-   | `dot`                                                                                                                                                                                                                                                                                                                   | `roley`           | no `<svg>` at all — a styled `<span>`, so there is no geometry to port            |
-   | `check`, `checkCircle`, `chevron`, `circleCross`, `cross`, `dots-horizontal`, `email`, `error`, `info`, `next`, `out`, `pencil`, `pencil-roley`, `plus`, `plus copy`, `share`, `star`, `user`, `warning`, `back`, `burger`, `dash`, `down`, `flashLight`, `forward`, `trash`, `up`, `upload`, `arrowLeft`, `arrowRight` | `roley`           | the concept already has an export — target per fold is listed below               |
+   | Excluded                                                                                                                                                                                                                                                                                                              | Source               | Why                                                                               |
+   | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | --------------------------------------------------------------------------------- |
+   | `LogoMark`                                                                                                                                                                                                                                                                                                            | a source application | that app's own wordmark                                                           |
+   | `UpworkBadgeIcon`                                                                                                                                                                                                                                                                                                     | a source application | fixed brand colours, cannot inherit `currentColor`; `IconUpwork` covers the brand |
+   | Feather `GitHubIcon`                                                                                                                                                                                                                                                                                                  | a source application | name collision with `IconGitHub`, which won on source precedence                  |
+   | `EmailIcon`                                                                                                                                                                                                                                                                                                           | a source application | folded to `IconAtSign` — one name per concept, and it is the same drawing         |
+   | `facebook`, `google`, `instagram`                                                                                                                                                                                                                                                                                     | `ported`             | trademark-constrained brand marks, see below                                      |
+   | `dot`                                                                                                                                                                                                                                                                                                                 | `ported`             | no `<svg>` at all — a styled `<span>`, so there is no geometry to port            |
+   | `check`, `checkCircle`, `chevron`, `circleCross`, `cross`, `dots-horizontal`, `email`, `error`, `info`, `next`, `out`, `pencil`, `pencil-alt`, `plus`, `plus copy`, `share`, `star`, `user`, `warning`, `back`, `burger`, `dash`, `down`, `flashLight`, `forward`, `trash`, `up`, `upload`, `arrowLeft`, `arrowRight` | `ported`             | the concept already has an export — target per fold is listed below               |
 
-   Folds applied for the `roley` files, source first. "Body-identical" is used only where the
+   Folds applied for the ported set's files, source first. "Body-identical" is used only where the
    geometry compares equal to the incumbent's once attribute order and the `class` attribute are
    ignored — the same check `+index.test.ts` runs. A file whose drawing differs from the incumbent's
    but whose concept the incumbent already owns is a concept fold.
 
-   | `roley` file      | Folds onto              | Kind           |
+   | Ported file       | Folds onto              | Kind           |
    | ----------------- | ----------------------- | -------------- |
    | `arrowLeft`       | `IconArrowLeft`         | body-identical |
    | `arrowRight`      | `IconArrowRight`        | body-identical |
@@ -233,7 +241,7 @@ Rules, in order:
    | `next`            | `IconArrowRight`        | concept        |
    | `out`             | `IconExternal`          | concept        |
    | `pencil`          | `IconPencilSquare`      | concept        |
-   | `pencil-roley`    | `IconPencilSquare`      | concept        |
+   | `pencil-alt`      | `IconPencilSquare`      | concept        |
    | `plus`            | `IconPlus`              | concept        |
    | `plus copy`       | `IconPlus`              | concept        |
    | `share`           | `IconShare`             | concept        |
@@ -269,7 +277,8 @@ Rules, in order:
    third-party trademarked logos, and this package is MIT-licensed and redistributed to any app
    that consumes it, so shipping them would put a trademark obligation on every consumer without
    them asking for it. Substituting a brand mark is the consumer's call. The five brand-adjacent
-   glyphs already shipped from `antonshubin.com` (GitHub, LinkedIn, Telegram, Upwork, Quote) are a
+   glyphs already shipped from an earlier source application (GitHub, LinkedIn, Telegram, Upwork,
+   Quote) are a
    separate, pre-existing question owned by the repo owner and tracked in
    [issue #10](https://github.com/spy4x/preact-components/issues/10); this merge adds none.
 
@@ -297,8 +306,9 @@ AssertionError: duplicate glyph bodies: [["IconArrowPath","IconRefresh"]]
 
 `check-readme.test.ts` guards the numbers on this page. The merge ledger kept drifting because its
 counts were computed from this file — the file being described. `check-readme.ts` therefore takes
-every expected value from outside: a pinned literal of roley's 52 filenames, roley's own `index.ts`
-for barrel membership and for the path data each port must carry byte for byte, and `+index.tsx` for
+every expected value from outside: a pinned literal of the ported set's 52 filenames, its own
+`index.ts` for barrel membership and for the path data each port must carry byte for byte, and
+`+index.tsx` for
 everything this package ships. It checks that each file in that inventory lands on exactly one side
 of the ledger, that the port and fold tables agree with the module, and that the counts on this page
 match — naming the file or the count in every failure:
@@ -309,8 +319,9 @@ FAIL README.md contract prose: claims 79 size-5 + 38 size-6, module has 80 + 38
 FAIL checkCircle: README.md lists checkCircle as fold, but it is not in the recorded inventory
 ```
 
-The barrel and geometry comparisons need the read-only `roley` checkout beside this one, which CI
-does not have; there they report as `-- not run` rather than failing. The pinned inventory carries
+The barrel and geometry comparisons need a read-only sibling checkout of the ported set's source
+application beside this one, which CI does not have; there they report as `-- not run` rather than
+failing. The pinned inventory carries
 the ledger checks everywhere.
 
 ```bash

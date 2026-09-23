@@ -203,7 +203,7 @@ export const chartsDemos = {
   },
   MetricPanel: {
     summary:
-      "The shell one metric panel is made of: a heading with its unit, an actions slot, an error box and the chart body as children. Presentational only — it loads nothing. The fetching half is the exported `loadMetricSeries` (and the `useMetricSeries` hook), which takes a `loadStats` port and a `scale` multiplier; that pair is what let `gb`'s two near-identical power and energy panels become one component.",
+      "The shell one metric panel is made of: a heading with its unit, an actions slot, an error box and the chart body as children. Presentational only — it loads nothing. The fetching half is the exported `loadMetricSeries` (and the `useMetricSeries` hook), which takes a `loadStats` port and a `scale` multiplier; that pair is what let a source application's two near-identical power and energy panels become one component.",
     snippet: `<MetricPanel
   title="Power"
   unit="kW"
@@ -266,7 +266,7 @@ export const chartsDemos = {
   },
   CompareChart: {
     summary:
-      "A `D3LineChart` plus a toggle that loads the window before the current one through a `loadStats` port — the fetch stays with the caller, which is what replaced `gb`'s direct call into its chart store. A failed load becomes a red box beside the second chart instead of a thrown error, and `rangePicker` is a slot for the caller's own date control. It server-renders with the toggle off, so the second chart does not exist until a browser clicks it.",
+      "A `D3LineChart` plus a toggle that loads the window before the current one through a `loadStats` port — the fetch stays with the caller, which is what replaced a source application's direct call into its chart store. A failed load becomes a red box beside the second chart instead of a thrown error, and `rangePicker` is a slot for the caller's own date control. It server-renders with the toggle off, so the second chart does not exist until a browser clicks it.",
     snippet: `<CompareChart
   range={range}
   data={power.data}

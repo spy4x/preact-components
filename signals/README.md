@@ -13,8 +13,8 @@ import { buildModelStore, createToastStore } from "@preact-components/signals"
 
 `buildModelStore` is one factory that replaced eleven hand-rolled CRUD stores, and
 `build-model-store` here is that factory rewritten for arktype. The other modules each collapse a
-per-app copy of the same idea: financy's `theme`/`toast`/`clipboard` singletons, warthunder's
-sort codec.
+per-app copy of the same idea: one source application's `theme`/`toast`/`clipboard` singletons,
+another's sort codec.
 
 ## What is in the box
 

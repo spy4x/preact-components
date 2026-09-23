@@ -24,7 +24,8 @@ import {
 /**
  * `@preact-components/signals/build-model-store` — a signals CRUD store for one REST collection.
  *
- * Ported from `gb/libs/shared/helpers.ts:289-530`, with these changes, none of them cosmetic:
+ * Ported from a source application's shared helpers module, with these changes, none of them
+ * cosmetic:
  *
  * - **arktype in, not zod.** Schemas are arktype `Type`s, a payload is parsed once rather than
  *   twice, and the row type is derived from the full schema instead of declared beside it.
@@ -211,7 +212,8 @@ export interface BuildModelStoreConfig<
    *
    * While it is truthy the store is considered live. When it goes falsy after having been truthy,
    * `init`'s effect clears the store. This collapses the seventeen byte-identical `init()` bodies in
-   * `gb/apps/web/state` into one watched flag, and — unlike them — the effect has a disposer.
+   * that source application's own state module into one watched flag, and — unlike them — the
+   * effect has a disposer.
    */
   session?: ReadonlySignal<unknown> | (() => unknown)
   /**

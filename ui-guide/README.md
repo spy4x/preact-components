@@ -5,8 +5,9 @@ free. It renders one demo per component of every package it covers — `ui`, `ch
 `crud` — one card per group of `theme/preset.css` classes, the icon gallery, and the design-system
 rules components are meant to be assembled in.
 
-Ported from `financy`'s modular `routes/ui-guide/*` (the better structure of the two source guides)
-and `gb`'s `islands/system/UIGuide.tsx`, whose icon gallery is kept verbatim in spirit.
+Ported from one source application's own modular route-per-section guide (the better structure of
+the two source guides) and another's single-file guide component, whose icon gallery is kept
+verbatim in spirit.
 
 ## Usage
 
@@ -18,8 +19,8 @@ import { UIGuide } from "@preact-components/ui-guide"
 <UIGuide />
 ```
 
-Or registers the route descriptor, which is the fix for `gb`'s guide being an orphan reachable only
-by typing its URL:
+Or registers the route descriptor, which is the fix for one source guide being an orphan reachable
+only by typing its URL:
 
 ```tsx
 import { uiGuideRoute } from "@preact-components/ui-guide"
@@ -77,9 +78,9 @@ and fails when an entry is missing, duplicated, non-canonical, or one the resolv
 ## The coverage rule
 
 This is the part that makes the catalogue stay true, and it is the part the source guides lacked.
-Both of the source guides documented **class names** rather than component APIs, which is how `gb`
-ended up documenting `.btn-sm` and `.h6` — classes with zero usages that only its own ui-guide kept
-alive.
+Both of the source guides documented **class names** rather than component APIs, which is how one
+of them ended up documenting `.btn-sm` and `.h6` — classes with zero usages that only its own
+ui-guide kept alive.
 
 ### One rule: a PascalCase export is a component, and a component has a card
 
@@ -329,22 +330,24 @@ block in a real browser and compares each clipboard write to the text of the blo
 
 ## Not carried over
 
-- **`financy`'s `currency.tsx` (221 LOC) — dropped.** It demonstrates `CurrencyDisplay`,
+- **One source's `currency.tsx` (221 LOC) — dropped.** It demonstrates `CurrencyDisplay`,
   `CurrencySelector` and `ExchangeRateBadge`, which are domain-coupled to that product and
   deliberately not part of `ui/`.
-- **`financy`'s `form.tsx` (`UIGuideEditor`) — dropped.** It was an empty `<form class="card">`
+- **The same source's `form.tsx` (`UIGuideEditor`) — dropped.** It was an empty `<form class="card">`
   scaffold with three buttons and "Inputs go here…"; `Button` and `Table` cover the same ground with
   real assertions.
 - **`.btn-sm` and `.h6` demos — dropped.** The theme dropped both classes; the guide now has a test
   that stops them coming back (see above).
-- **Class-name demos in general — reversed, in part.** `gb`'s failure was documenting classes nothing
-  used, not demonstrating classes at all; the two source guides had no way to tell the two apart.
-  `forms` and `surfaces` demonstrate the classes no component covers, and `classes.test.tsx` is what
-  the source guides lacked. The button family stays excluded: `Button` is demonstrated through
-  `variant`/`size`, not through `btn btn-primary`, because one control with two documented APIs is a
-  worse guide than one with a documented API and one documented class family.
-- **Routing, navigation and toasts wiring.** `gb`'s guide called `navigate()` and
-  `state.clipboard.copy()`. Those are ports here, and the route is a descriptor the app registers.
+- **Class-name demos in general — reversed, in part.** The other source's failure was documenting
+  classes nothing used, not demonstrating classes at all; the two source guides had no way to tell
+  the two apart. `forms` and `surfaces` demonstrate the classes no component covers, and
+  `classes.test.tsx` is what the source guides lacked. The button family stays excluded: `Button`
+  is demonstrated through `variant`/`size`, not through `btn btn-primary`, because one control with
+  two documented APIs is a worse guide than one with a documented API and one documented class
+  family.
+- **Routing, navigation and toasts wiring.** That same source's guide called `navigate()` and a
+  clipboard method straight off its own global store. Those are ports here, and the route is a
+  descriptor the app registers.
 
 ## Tests
 

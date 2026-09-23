@@ -59,7 +59,8 @@ describe("validate", () => {
   })
 
   it("parses once on the failure path", () => {
-    // The bug this guards is gb's `safeParse` twice, and gb only parsed twice when the value was
+    // The bug this guards is a source application's `safeParse` twice, and it only parsed twice
+    // when the value was
     // rejected: the second call sat inside the `else` of the first. A counter on the success path
     // cannot see that, so the schema here rejects one field while a sibling's morph counts — arktype
     // still runs the sibling morph, which makes the count observable on the failure path.

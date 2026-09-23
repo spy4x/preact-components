@@ -3,8 +3,8 @@
  *
  * Every colour, radius and font the preset styles against is a custom property,
  * so an app restyles the whole library by setting variables instead of forking
- * CSS. Defaults come from the products the components were extracted from
- * (`gb`, `financy`): purple is the primary colour.
+ * CSS. Defaults come from the products the components were extracted from:
+ * purple is the primary colour.
  *
  * This file is not an importable specifier once the package is installed — JSR does not export a
  * CSS file as a module, so `@import "@preact-components/theme/tokens.css"` resolves nowhere for a

@@ -30,7 +30,7 @@ export type CrudListSource<M extends CrudModel> =
  * What every CRUD list needs, whatever it is listing.
  *
  * The two slots that matter are `row` and `actions`: the table's cells come from the caller, so a
- * list with a lamp's running hours, a status switch or a reset button in a row is the same
+ * list with a running-hours counter, a status switch or a reset button in a row is the same
  * component as one with a single name column.
  */
 export interface CrudListBaseProps<M extends CrudModel> {

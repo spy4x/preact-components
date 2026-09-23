@@ -94,7 +94,7 @@ export function assertD3Available(candidate: unknown): void {
  * Client-side line chart rendered imperatively with `d3` v7.
  *
  * The interactive counterpart of the zero-JS {@link LineChart}: it re-renders on resize, shows a
- * tooltip and can hide zeroes. Ported from `gb`, with two changes — every colour arrives through
+ * tooltip and can hide zeroes. Ported from a source application, with two changes — every colour arrives through
  * props (defaults come from `theme/` tokens, never a hardcoded hex), and nothing here reads an
  * application store. Data loading stays with the caller: this component only draws what it is
  * given.
