@@ -323,9 +323,9 @@ this:
 > `icons/+index.test.ts` both guard it independently, and the browser suite's own icon check would
 > pass at ninety-one, so neither of those three is what to trust for the exact number — the module
 > export count is. The source-project count above was one short of the tree for a while: it named
-> five projects where six had contributed — `roley`, the same project "`roley` and `evisa` are
-> design-intent sources" above discusses, was missing from the icon-set list specifically. Fixed
-> above by counting it rather than naming every project again in this bullet.
+> five projects where six had contributed — the same project the design-intent paragraph above
+> discusses was missing from the icon-set list specifically. Fixed above by counting it rather than
+> naming any project again in this bullet.
 >
 > **The same applies to the paragraph earlier in this document** naming two projects as
 > design-intent sources rather than code sources, which says one of them is not among the icon
