@@ -3531,6 +3531,34 @@ function readSiteHeader(devtools: Devtools): Promise<SiteHeaderState> {
 }
 
 /**
+ * Force the panel closed before a sub-check opens it, rather than assuming the previous one left
+ * it that way.
+ *
+ * Every sub-check below opens the panel with a click, and a click toggles: one that lands on an
+ * already-open panel closes it instead, which is indistinguishable from "never opened" to a poll
+ * that only checks `detailsOpen` afterward. A sub-check earlier in `siteHeaderChecks` that closes
+ * the panel with Escape as its own teardown, rather than as something it records a `check` against,
+ * can occasionally leave it open on a run where that Escape press was itself slow to land — this is
+ * what a later sub-check's own "the panel was never open" turned out to mean, traced back from a
+ * click that closed a panel already open rather than opening a closed one. Setting `open` directly
+ * fires the same native `toggle` event a click does, so `handleToggle` still runs and `isOpen`
+ * still ends up correct — this is not a way around the component's own wiring, only a way to reach
+ * a known starting state without depending on a previous sub-check's own teardown having landed.
+ */
+async function ensureSiteHeaderClosed(devtools: Devtools): Promise<void> {
+  await read(
+    devtools,
+    `(() => {
+      const details = document.querySelector('${SITE_HEADER_DETAILS}')
+      if (details) details.open = false
+      return true
+    })()`,
+    false,
+  )
+  await poll(async () => !(await readSiteHeader(devtools)).detailsOpen, 3_000)
+}
+
+/**
  * `SiteHeader`'s mobile panel: closed by default, opened by a click on the menu button, walked in
  * order by Tab, closed by a real Escape press with focus returned to the button, closed a different
  * way by a client-side navigation, exposed as expanded natively regardless of `aria-expanded`, laid
@@ -3728,6 +3756,8 @@ function readSiteHeaderLayout(devtools: Devtools): Promise<SiteHeaderLayout> {
  * caller, with the panel already open.
  */
 async function siteHeaderLayoutChecks(devtools: Devtools): Promise<void> {
+  await ensureSiteHeaderClosed(devtools)
+
   // `brandTop` is a viewport-relative reading, so a scroll between the two — the card's own smooth
   // scroll settling from whatever the previous check left it doing — moves it exactly as much as a
   // real layout shift would, and a viewport reading taken mid-scroll cannot tell the two apart.
@@ -3774,6 +3804,7 @@ async function siteHeaderLayoutChecks(devtools: Devtools): Promise<void> {
  * caller, with the panel already closed.
  */
 async function siteHeaderNativeExpandedStateCheck(devtools: Devtools): Promise<void> {
+  await ensureSiteHeaderClosed(devtools)
   await devtools.send("DOM.enable")
   await devtools.send("Accessibility.enable")
 
@@ -3846,6 +3877,7 @@ async function siteHeaderClientNavigationChecks(devtools: Devtools): Promise<voi
   const restoreUrl = await read(devtools, "location.href", "")
 
   try {
+    await ensureSiteHeaderClosed(devtools)
     await focusAndClick(devtools, SITE_HEADER_BUTTON)
     const opened = await poll(async () => {
       const state = await readSiteHeader(devtools)
