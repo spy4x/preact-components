@@ -3589,11 +3589,20 @@ async function siteHeaderChecks(devtools: Devtools): Promise<void> {
     )
 
     await focusAndClick(devtools, SITE_HEADER_BUTTON)
-    const opened = await poll(async () => (await readSiteHeader(devtools)).detailsOpen, 3_000)
+    // `details.open` flips synchronously in the click's own default action, but the browser fires
+    // `toggle` — the event `handleToggle` listens for — as a queued task rather than synchronously
+    // with it. `useMobilePanel`'s `isOpen` signal, and everything downstream of it, only update once
+    // that task runs, so this polls the whole state rather than `detailsOpen` alone: reading
+    // `aria-expanded` right after `detailsOpen` turns true caught the click before the queued task
+    // had run, every time.
+    const opened = await poll(async () => {
+      const state = await readSiteHeader(devtools)
+      return state.detailsOpen && state.expanded === "true"
+    }, 3_000)
     const afterOpen = await readSiteHeader(devtools)
     check(
       "clicking the menu button opens the panel and flips aria-expanded and its name",
-      opened && afterOpen.expanded === "true" && afterOpen.buttonLabel === "Close menu",
+      opened && afterOpen.buttonLabel === "Close menu",
       `details.open=${afterOpen.detailsOpen}, aria-expanded=${afterOpen.expanded}, ` +
         `aria-label=${JSON.stringify(afterOpen.buttonLabel)}`,
     )
@@ -3742,7 +3751,9 @@ async function siteHeaderNoScriptCheck(devtools: Devtools): Promise<void> {
       ? "the menu button was not found on the unhydrated, prerendered page"
       : !opened
       ? "the <details> element never reported open=true after the click"
-      : "the panel opened but its first link has no rendered height",
+      : !linkVisible
+      ? "the panel opened but its first link has no rendered height"
+      : "the <details> opened and its first link now has a rendered height",
   )
 
   const rehydrated = await poll(
