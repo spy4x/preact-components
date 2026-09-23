@@ -193,7 +193,7 @@ export interface HeadStore {
   /**
    * Merge a patch into the current head, write it to {@link HeadStore.head}, and return it.
    *
-   * A field the patch names with the value `undefined` is cleared; an empty patch changes nothing.
+   * A field the patch names with the value `undefined` is cleared; an empty patch changes no field.
    */
   setHead: (patch: Partial<PageHead>) => PageHead
   /**
