@@ -84,21 +84,25 @@ export function useMobilePanel(): MobilePanelController {
     isOpen.value = detailsRef.current?.open ?? false
   }, [])
 
+  // Attached once, unconditionally, rather than only while `isOpen.value` is `true`. `isOpen`
+  // updates a render behind the DOM: `handleToggle` sets it from the `toggle` event, but Preact
+  // runs the effect that (re)attaches this listener *after* that render commits, not synchronously
+  // with it. A press that lands in that gap — measured, not assumed: `aria-expanded` already read
+  // `"true"` while this listener had not attached yet in two runs out of fifteen — would find no
+  // listener here at all if attaching depended on `isOpen.value` having caught up first. Reading
+  // `detailsRef.current.open` straight off the element instead has no such gap: the browser sets it
+  // synchronously as part of the click that opened the panel, before any of Preact's own scheduling
+  // runs.
   useEffect(() => {
-    if (!isOpen.value) return
-
     const handleKeyDown = (event: KeyboardEvent) => {
-      // `isOpen.value` is read again inside the handler, not only in the effect's own guard above,
-      // so a press this listener is still attached for — the effect cleanup from a closing render
-      // has not run yet — is never treated as handled once the panel has actually closed.
-      if (event.key !== "Escape" || !isOpen.value) return
+      if (event.key !== "Escape" || !detailsRef.current?.open) return
       event.preventDefault()
       close(true)
     }
 
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [isOpen.value])
+  }, [])
 
   return {
     open: isOpen.value,
