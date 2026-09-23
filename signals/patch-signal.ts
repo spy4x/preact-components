@@ -10,10 +10,15 @@ import type { Signal } from "@preact/signals-core"
  * several signals in one gesture batches around its own calls to `patchSignal`.
  *
  * Reads the current value with `signal.peek()`, not `signal.value`, both for the guard and for the
- * spread. `peek()` is untracked: a tracked read inside an `effect()` or `useSignalEffect()` that
- * calls `patchSignal` on the same signal it is reacting to would otherwise subscribe that effect to
- * the write it is about to make, re-run itself, read again, write again, and eventually throw
- * `Error: Cycle detected` once Preact's re-run limit is hit.
+ * spread. `peek()` is untracked, which makes it safe to call `patchSignal(s, …)` from inside an
+ * `effect()` or `useSignalEffect()` that reacts to a *different* signal and, on each reaction,
+ * writes `s` — a tracked read of `s` here would otherwise subscribe that effect to the write it is
+ * about to make, re-run itself, read again, write again, and eventually throw `Error: Cycle
+ * detected` once Preact's re-run limit is hit. `peek()` inside `patchSignal` cannot fix the other
+ * direction: an effect that itself reads `s.value` and then calls `patchSignal(s, …)` still re-runs
+ * on its own write and still hits the same cycle, because the tracked read that causes it happens
+ * in the effect's own body, before `patchSignal` is ever called. An effect that reads the signal it
+ * also patches must read it with `.peek()` itself, in its own body, not rely on this function.
  *
  * Refuses with a `TypeError` when the signal's current value is not a plain object — `null`, an
  * array, a `Date`, a `Map`, a primitive such as a string or number, or an instance of any class,
