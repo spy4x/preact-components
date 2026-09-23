@@ -154,6 +154,74 @@ nothing without `onSelectMonth`, because in link mode the month lives in the URL
 that navigated the page is not something the dual-mode contract promises — the arrows are links
 there, and Tab reaches them.
 
+**A month is asked for, never taken.** `onSelectMonth` is a request, and the reader keeps their
+place in the grid whatever the owner answers. Page Up and Page Down are the only two keys this can
+happen to: the arrows refuse to leave the month they are in and Home and End are clipped to it, so
+neither ever asks for a month.
+
+Two rules cover every answer there is:
+
+| What the owner does to `monthAnchor`       | Where the reader ends up                       |
+| ------------------------------------------ | ---------------------------------------------- |
+| draws a new month, in that render or later | the same day number in the month now on screen |
+| leaves it where it was                     | the day the press started from                 |
+
+The second rule is the one to design a caller around, because a calendar clamping the month to a
+range the reader may not leave does it on purpose. A press refused that way costs the reader
+nothing: the month on screen does not change, and the focus goes back to the day it started from
+instead of staying on the grid container, so their next arrow press moves a day rather than being
+spent walking back to where they already were.
+
+The first rule needs no cooperation from the caller and does not care why the month changed. An
+owner that checks or fetches before it answers gets it, and so does an owner that changes the month
+for reasons of its own while the reader happens to be standing in the grid. A refusal can only be
+judged by the render that follows the call, so a late answer is read as a refusal first and the
+reader is put back on their day; when a month is drawn afterwards, whichever month it is, the focus
+goes to the same day number in it. Without that the new cells would replace the one the focus was on
+and the focus would fall to the document body, which no key can recover from.
+
+**It never takes the focus from somewhere the reader chose.** A month arriving moves the focus only
+when nothing in the document holds it and this grid is where it was; a reader who has blurred,
+tabbed away or moved to another control keeps their place, and the month changes under a calendar
+they are no longer in. That move is also the one focus change the calendar makes on its own
+initiative rather than in answer to a key pressed inside the grid, so it passes `preventScroll`:
+scrolling the page to a calendar nobody is looking at is not something to do unasked.
+
+**A burst of presses travels further at a fast owner than at a slow one, and this is a trade.**
+Every press asks for the month after the one the _cursor_ is in, and the cursor is wherever the
+last press left the reader. What a burst does therefore depends on whether the owner has answered
+by the time the next key arrives, and both of the catalogue's late owners are reachable from the
+card:
+
+- **An owner that answers before the next key is delivered** — in the render the call triggers, or on a
+  microtask — has moved the reader before the next key is delivered, so the presses accumulate:
+  two Page Downs move two months, three move three, and Page Down then Page Up brings the reader
+  back to the month they started on.
+- **An owner that answers later than that** has not, so its press has already been read as a
+  refusal and the cursor rewound to the day on screen. The next press is asked from there and asks
+  for the same month again: two Page Downs move **one** month and so do three, and Page Down then
+  Page Up leaves the reader **one month before** the month they started on, because the calendar
+  asked for the month after and then for the month before, in that order, and the owner drew both.
+
+Every press is delivered and every press is answered either way; what changes is how far the burst
+travels, and the focus always lands on the same day number in whatever month ends up on screen.
+
+**Why it is that way.** The rewind is what the refusal handling _is_: the calendar cannot tell a
+slow yes from a no, so it assumes a no and puts the reader back where they were, cursor and focus
+together. Keeping the cursor in the month the press asked for would make a burst travel a month per
+press again, at the cost of a cursor sitting in a month nothing is drawing while the focus is on a
+day of the month that is — the two disagreeing about where the reader is, which is the defect this
+whole section exists to remove. A burst that travels less far is the cheaper mistake, and it is the
+one that was chosen.
+
+**What holds all of this.** Every rule above is held by browser checks in `pages/checks/system.ts`,
+driven against two catalogue cards — one whose owner refuses every month change, one whose owner
+answers late, either on a timer or on a microtask as a reader picks. Removing any part of the
+handling turns at least one of them red. One case is measured rather than checked, and is written
+here for that reason: an owner that answers late with a month _nobody asked for_ — measured with a
+disposable owner that replies September to every request — lands the reader on 19 September when
+they pressed from the 19th, which is the first rule doing its job.
+
 **The roving tabindex is applied by an effect, not rendered.** Taking Tab away from twenty-eight
 cells is only safe once a key handler is there to give the movement back, so a page that has not
 hydrated — no JavaScript, or an embedded render — keeps the natural tab order it always had.

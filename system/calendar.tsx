@@ -12,7 +12,10 @@
  * **The keyboard.** Once hydrated the whole grid is one Tab stop, with the focus roving inside it:
  * the arrow keys step a day and a week, Home and End go to the ends of the week, and Page Up and
  * Page Down ask the caller for the neighbouring month through `onSelectMonth`. Every key the grid
- * answers is also cancelled, so paging a month does not scroll the page under the reader. Before
+ * answers is also cancelled, so paging a month does not scroll the page under the reader. A month
+ * is asked for rather than taken, and the reader keeps their place whatever the answer is: a caller
+ * that draws the month — in that render or a later one — lands them on the same day number in it,
+ * and a caller that leaves the month where it was leaves them on the day they pressed from. Before
  * hydration — a no-JS page, or an embedded render — the cells keep the natural tab order they are
  * rendered with, which is the only way through them when nothing is listening for a key.
  *
@@ -23,7 +26,7 @@
 
 import { cn } from "@preact-components/cn"
 import { IconChevronLeft, IconChevronRight } from "@preact-components/icons"
-import { useEffect, useId, useRef, useState } from "preact/hooks"
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "preact/hooks"
 import {
   addDaysIso,
   dayInMonth,
@@ -126,6 +129,33 @@ export interface CalendarProps {
   /**
    * Called when a month arrow is picked, and when Page Up or Page Down is pressed inside the grid.
    * Same interactive/link contract as `onSelectDate`.
+   *
+   * It is a request rather than an instruction, and the reader keeps their place in the grid
+   * whatever the answer is. Two rules cover every answer there is:
+   *
+   * - **`monthAnchor` changes, in this render or a later one.** The focus goes to the same day
+   *   number in the month now on screen, which is what Page Up and Page Down promise. It does not
+   *   matter why the month changed: an owner that checks or fetches before it answers gets this,
+   *   and so does an owner that changes the month for its own reasons while the reader is standing
+   *   in the grid.
+   * - **`monthAnchor` stays where it was.** A controlled calendar whose owner leaves it alone —
+   *   because the month asked for is outside a range the reader may leave, say — keeps the month
+   *   on screen, and the press leaves the focus on the day it started from rather than on the
+   *   grid.
+   *
+   * The focus is moved only when nothing in the document holds it and this grid is where it was.
+   * A reader who blurred, tabbed away or moved to another control while the answer was outstanding
+   * keeps their place, and that move passes `preventScroll` because it is the one the calendar
+   * makes on its own initiative.
+   *
+   * How far a burst travels depends on whether the owner has answered by the time the next key is
+   * delivered. One that has — in the same render, or on a microtask — leaves the presses to
+   * accumulate: two Page Downs move two months, and a Page Down and a Page Up cancel out. One
+   * that has not has already had its press read as a refusal, so the next press counts from the
+   * day on screen and asks for the same month again: two Page Downs move one month, and a Page
+   * Down and a Page Up leave the reader one month *before* they started, the calendar having
+   * asked for the month after and then the month before. Every press is delivered and answered
+   * either way. `system/README.md` says why that trade was taken.
    */
   onSelectMonth?: (monthAnchor: string) => void
   /** Day href in link mode. Defaults to `?date=YYYY-MM-DD`, preserving the current path. */
@@ -154,6 +184,9 @@ const arrowBase =
 const arrowEnabled =
   "hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-700 dark:hover:text-gray-100"
 const arrowDisabled = "cursor-not-allowed opacity-30"
+
+/** The one date shape `focusHere` can carry besides `"grid"`. */
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/
 
 /** Days in a week, and weeks in the grid: the two numbers the layout is built from. */
 const WEEK = 7
@@ -255,8 +288,87 @@ export function Calendar(
   // effect below therefore acts only on the day it is itself showing.
   const gridRef = useRef<HTMLDivElement>(null)
   const keyboardTarget = useRef<string | null>(null)
+
+  // The day the focus was standing on when a month request parked it on the grid, so a request the
+  // caller refuses can put the reader back on it.
+  //
+  // `activeDate` is not that day and cannot stand in for it. A refused request leaves
+  // `requestedDate` pointing into a month nothing will draw, so the render that carries the refusal
+  // skips it and falls back to the selection, then to today, then to the first of the month — the
+  // day the reader was standing on is exactly the one candidate that render no longer has.
+  const parkedFrom = useRef<string | null>(null)
+
+  // Where inside this grid the focus is, as the component's own bookkeeping rather than as a
+  // question asked of the document: the `YYYY-MM-DD` of the cell holding it, `"grid"` while the
+  // container holds it, and `null` once the focus has left the grid.
+  //
+  // It exists to answer one question the DOM cannot: the focus is on `<body>` — is that because a
+  // cell this component focused has just been replaced, or because the reader clicked some plain
+  // text and left? Both look identical afterwards. The difference is that the reader's departure
+  // raises `focusout`, and a cell being removed does not, so the handler on the grid sees one and
+  // not the other. That asymmetry is measured rather than assumed: it is what the late-answer
+  // checks in `pages/checks/system.ts` rest on, and they go red if a removal ever starts raising
+  // it.
+  const focusHere = useRef<string | null>(null)
+
+  // True from the start of a render until the layout effect that follows its commit, which is the
+  // window in which this component's own DOM changes under the focus.
+  //
+  // It exists because the question "did the reader leave, or was the cell taken out from under
+  // them?" has no answer in the event itself. Chromium raises `focusout` for a removal exactly as
+  // it does for a blur, with a null `relatedTarget` and — measured, not assumed — with the element
+  // still reporting itself as connected. What separates the two is *when*: a removal's `focusout`
+  // is dispatched synchronously inside the commit, and a reader's is dispatched in a task of its
+  // own, with no render anywhere near it.
+  const committing = useRef(false)
+  committing.current = true
+
+  /** Whether nothing in the document holds the focus, which is where a replaced cell leaves it. */
+  const focusLost = () => {
+    const active = document.activeElement
+    return active === null || active === document.body || active === document.documentElement
+  }
+
   if (keyboardTarget.current === null) cursorDate.current = activeDate
-  useEffect(() => {
+
+  // A layout effect, not a passive one, and the difference is a key press.
+  //
+  // Preact runs a passive effect after the browser has painted, which leaves a window between the
+  // month being drawn and the focus being put back — long enough for the browser to dispatch the
+  // next key to a document body that answers nothing. A reader holding Page Down at a caller that
+  // answers on a microtask lost every second press to it. A layout effect runs synchronously with
+  // the commit that removed the cell, before any further input is delivered, so the window is not
+  // narrowed but closed.
+  useLayoutEffect(() => {
+    // Nothing holds the focus, and this grid is where it was: put it back.
+    //
+    // One rule covers every way a month can arrive under a reader — drawn late in answer to their
+    // own press, drawn for the caller's own reasons, or drawn for a press another press has already
+    // superseded — because all three end the same way, with the cells the focus was on replaced.
+    // The day is the day number they were on, in whatever month is now on screen, which is the same
+    // promise Page Up and Page Down make when a caller answers at once.
+    //
+    // It asks `focusHere` and not the document, because `<body>` holding the focus is not on its
+    // own an invitation: a reader who blurred, clicked away or tabbed out has chosen to be
+    // somewhere else, and a month changing afterwards must not haul them back into a calendar they
+    // have left.
+    if (keyboardTarget.current === null && focusHere.current !== null && focusLost()) {
+      const wasOn = focusHere.current
+      const landing = ISO_DAY.test(wasOn)
+        ? dayInMonth(firstOfMonth, Number(wasOn.slice(8, 10)))
+        : activeDate
+      if (landing && landing !== wasOn) {
+        cursorDate.current = landing
+        // `preventScroll`, because this is the one focus move the calendar makes on its own
+        // initiative rather than in answer to a key pressed inside it. Scrolling the page to a
+        // calendar the reader has not touched for two seconds is not something they asked for.
+        gridRef.current
+          ?.querySelector<HTMLElement>(`[data-calendar-date="${landing}"]`)
+          ?.focus({ preventScroll: true })
+        return
+      }
+    }
+
     const target = keyboardTarget.current
     if (target === null) return
 
@@ -269,12 +381,41 @@ export function Calendar(
       // own grid, and throw away a request the very next render was about to answer — the focus
       // then stayed on the grid itself and never reached a day at all.
       //
-      // When it is this render's own request and the grid still cannot show it, the caller has
-      // ignored `onSelectMonth`: the request is dropped rather than held for ever, and the cursor
-      // goes back to the day on screen so the next press counts from somewhere real.
+      // When it is this render's own request and the grid still cannot show it, the caller has not
+      // answered `onSelectMonth` in the render the call triggered. The request is dropped rather
+      // than held for ever, and the reader goes back to the day they were on — the Tab stop through
+      // `setRequestedDate`, and the focus with it when the focus is still where this component
+      // parked it. That is what leaves a refused press costing nothing: without it the next arrow
+      // press is spent walking back to a day the reader never left.
+      //
+      // Nothing is remembered about the dropped request. A caller that draws the month later is
+      // answered by the rule at the top of this effect, which needs only the day the reader is
+      // standing on — and that day is where this branch has just put them.
       if (target === requestedDate && !days.some((day) => day.inMonth && day.date === target)) {
         keyboardTarget.current = null
-        cursorDate.current = activeDate
+        const parked = parkedFrom.current
+        parkedFrom.current = null
+        // The day number is what survives, not the date: a burst that parked from a month the
+        // caller never drew leaves `parked` outside the grid on screen, and the reader is standing
+        // on that day number of the month that *is* on screen.
+        const back = parked && days.some((day) => day.inMonth && day.date === parked)
+          ? parked
+          : parked
+          ? dayInMonth(firstOfMonth, Number(parked.slice(8, 10)))
+          : activeDate
+
+        // The cursor is deliberately not assigned here. The render this asks for reconciles it —
+        // `activeDate` is `back` in that render — and a second assignment would be a line no check
+        // could ever distinguish from its absence.
+        if (back) setRequestedDate(back)
+
+        // The focus moves only from where this component parked it. A reader who moved it
+        // somewhere else while the request was outstanding — another control, another part of the
+        // page — is not pulled back into a calendar they have left. `keyboardTarget` is already
+        // cleared above, so the cell's own `focus` handler agrees rather than fighting this.
+        if (back && document.activeElement === gridRef.current) {
+          gridRef.current?.querySelector<HTMLElement>(`[data-calendar-date="${back}"]`)?.focus()
+        }
       }
       return
     }
@@ -283,7 +424,14 @@ export function Calendar(
     // Cleared after the focus call and not before it, so the `focus` handler below can tell the
     // focus this moved from the focus a reader moved.
     keyboardTarget.current = null
+    parkedFrom.current = null
   }, [activeDate, requestedDate])
+
+  // Declared after the effect above so it runs after it: the window closes once the effect that
+  // answers a lost focus has had its turn. No dependency list, because every commit opens it.
+  useLayoutEffect(() => {
+    committing.current = false
+  })
 
   /**
    * Whether a month is one this calendar will show at all.
@@ -323,9 +471,17 @@ export function Calendar(
   /**
    * Ask for the month `months` away from the one the cursor is in, on the same day number.
    *
-   * Counted from the cursor and not from the month on screen, so a second press that arrives
-   * before the caller has re-rendered asks for the month after the one the first press asked for,
-   * rather than for the same one again.
+   * Counted from the cursor and not from the month on screen. Two month-arrow activations in the
+   * same statement land before any render, and counting from the cursor is what makes them ask
+   * for two months rather than for the same one twice.
+   *
+   * A key press is different, because the render that follows it — and the layout effect that
+   * reads the answer — run before the next key is delivered. A caller that has drawn the month by
+   * then leaves the cursor in it, so presses accumulate. A caller that has not has the press read
+   * as a refusal, which rewinds the cursor to the day on screen, so the next press asks for the
+   * **same** month again: at such a caller a burst travels one month, and Page Down then Page Up
+   * lands a month before where the reader started. That is a trade, taken so that the cursor and
+   * the focus never disagree about where the reader is; `system/README.md` says why.
    *
    * Nothing happens without `onSelectMonth`: in link mode the month lives in the URL, and a key
    * press that navigated the page would be a surprise the dual-mode contract does not promise.
@@ -347,6 +503,7 @@ export function Calendar(
     cursorDate.current = landing
     if (takeFocus) {
       keyboardTarget.current = landing
+      parkedFrom.current = from
       // Park the focus on the grid itself, now, before the month is asked for.
       //
       // A month change replaces every cell, so the element the focus is standing on is about to
@@ -355,6 +512,10 @@ export function Calendar(
       // holding Page Down moved one month and then appeared to stop, and why an arrow straight
       // after a Page Down did nothing. The grid element itself survives every render, so the focus
       // waits there and the next press is still the grid's to answer.
+      //
+      // The parking is a wait and never a destination: the month the caller draws takes the focus
+      // to the day it lands on, and a month the caller refuses to draw takes it back to `from`,
+      // which is why that day is remembered here rather than worked out again afterwards.
       gridRef.current?.focus({ preventScroll: true })
     }
     setRequestedDate(landing)
@@ -363,9 +524,11 @@ export function Calendar(
   }
 
   const onKeyDown = (event: KeyboardEvent) => {
-    // Every key below counts from here and never from the render. Two of the three things that
-    // depend on it are held by a check; this one is not, and a reader editing this handler should
-    // know which is which. A burst of key presses cannot tell the cursor from the rendered day,
+    // Every key below counts from here and never from the render. Which of the reads that depend
+    // on this cursor a check actually holds is worth knowing before editing the handler, and each
+    // one says so where it is written: the month `requestMonth` asks for is held, and so is the day
+    // a refused request goes back to; the month guard inside `moveTo` is not, and neither is this
+    // handler's own count. A burst of key presses cannot tell the cursor from the rendered day,
     // because each press arrives as its own protocol message and the page renders in between, so
     // the two agree by the time any press reads them. The month arrows are the exception — two
     // activations really can land before a render, and `pages/checks/system.ts` sends them.
@@ -528,6 +691,23 @@ export function Calendar(
         aria-labelledby={headingId}
         aria-colcount={WEEK}
         onKeyDown={onKeyDown}
+        // `focusin` and `focusout` rather than the cells' own handlers, because the container sees
+        // every arrival and every departure in one place — including the departures the cells
+        // cannot report, since a cell that is removed while focused raises nothing at all.
+        onFocusIn={(event: FocusEvent) => {
+          const arrived = event.target as Element | null
+          focusHere.current = arrived?.getAttribute?.("data-calendar-date") ?? "grid"
+        }}
+        onFocusOut={() => {
+          // A cell taken out from under the focus by this component's own render is not the
+          // reader leaving; only a departure they chose ends the calendar's claim on the focus.
+          //
+          // A move to another element *inside* this grid needs no guard of its own, which was
+          // measured rather than assumed: `focusin` follows immediately and puts `focusHere`
+          // back, so an early return for it is a line nothing can tell from its absence.
+          if (committing.current) return
+          focusHere.current = null
+        }}
         class="space-y-px px-2 pb-2"
       >
         <div role="row" class="grid grid-cols-7 gap-px">
