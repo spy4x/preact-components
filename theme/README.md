@@ -61,7 +61,7 @@ const compiler = await compile(entry, {
 
 This is the whole recipe — no `node_modules`, no network access and no read permission beyond
 what resolving `tailwindcss` itself already needs. It has been run, verbatim, against this package
-served from a real registry and imported as `jsr:@preact-components/theme`: the compiled output
+served from a local JSR-compatible registry and imported as `jsr:@preact-components/theme`: the compiled output
 contained both `.btn` and `--color-primary`, so it is proven to work, not merely expected to.
 `compiler.build([...candidates])` (Tailwind's own scanner output, as `pages/build.ts` drives it) is
 the compiled stylesheet with the design system in it.
