@@ -20,7 +20,8 @@
     // `css-text.test.ts` only guards that generation step. None of it is reachable from
     // `exports`, and a published consumer never runs any of it.
     "exclude": [
-      "css-text.test.ts",
+      "**/*.test.ts",
+      "**/*.test.tsx",
       "generate.ts",
       "integration/"
     ]

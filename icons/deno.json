@@ -41,11 +41,10 @@
     // shape of thing for the icon packs above: a dev-time audit script and its offline-safe tests,
     // neither reachable from `exports`.
     "exclude": [
-      "+index.test.ts",
+      "**/*.test.ts",
+      "**/*.test.tsx",
       "check-readme.ts",
-      "check-readme.test.ts",
-      "provenance.ts",
-      "provenance.test.ts"
+      "provenance.ts"
     ]
   }
 }

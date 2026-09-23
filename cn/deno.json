@@ -3,5 +3,10 @@
   "version": "0.1.0",
   "exports": {
     ".": "./cn.ts"
+  },
+  "publish": {
+    // This package's own `*.test.*` suites, none reachable from `exports`; see `ui/deno.json` for
+    // why the glob starts with `**/`.
+    "exclude": ["**/*.test.ts", "**/*.test.tsx"]
   }
 }

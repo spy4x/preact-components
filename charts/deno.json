@@ -36,18 +36,10 @@
     // deadline (see its own JSDoc) and is loaded by no published module; the rest are this package's
     // own `*.test.*` suites. None of it is reachable from `exports`.
     "exclude": [
-      "bars.test.tsx",
-      "compare-chart.test.tsx",
-      "d3-line-chart.test.tsx",
-      "donut-chart.test.tsx",
-      "kpi.test.tsx",
-      "line-chart.test.tsx",
-      "metric-panel.test.tsx",
-      "payload.test.ts",
+      "**/*.test.ts",
+      "**/*.test.tsx",
       "probe/",
-      "scales.test.ts",
-      "ticks.worker.ts",
-      "use-in-view.test.tsx"
+      "ticks.worker.ts"
     ]
   }
 }
