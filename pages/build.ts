@@ -58,10 +58,12 @@ const ORIGIN = Deno.env.get("PAGES_ORIGIN") ?? DEFAULT_ORIGIN
 const SW_DEMO_DIRECTORY = "sw-demo"
 /**
  * Directory copied verbatim into the artefact for the `EnhancedForm`, `NewsletterForm` and
- * `ContactForm` cards: one static page, served back for a GET or a POST alike, that stands in for
- * "a server answered" when no script has run. `pages/serve.ts` never looks at `request.method`, so
- * the same file a hydrated visitor never reaches is exactly what an unhydrated one's native submit
- * lands on.
+ * `ContactForm` cards: one static page that stands in for "a server answered" when no script has
+ * run. `pages/serve.ts`, which `deno task verify` runs against, never looks at `request.method`, so
+ * it answers a POST with this same file; the published GitHub Pages copy is served by a static host
+ * that answers a POST with `405 Method Not Allowed` instead — nothing here claims the published site
+ * accepts one, and `pages/checks/ui.ts`'s no-JavaScript check reads the method and the body off the
+ * recorded network request rather than assuming either.
  */
 const FORM_DEMO_DIRECTORY = "form-demo"
 
@@ -199,17 +201,27 @@ function kilobytes(bytes: number): string {
 }
 
 /**
- * Copy `sw-demo/` into the artefact, file by file.
+ * Copy one directory into the artefact verbatim, file by file — `sw-demo/` for the `SWUpdater`
+ * card and `form-demo/` for `EnhancedForm`/`NewsletterForm`/`ContactForm`, both plain static pages
+ * fetched by URL at runtime rather than bundled, which is why neither goes through the island
+ * bundler above.
  *
- * An empty or missing directory throws instead of shipping a catalogue whose `SWUpdater` card
- * registers a script that is not there: the card would show a registration error, and the browser
- * check that drives it would fail with a message about the wrong thing.
+ * An empty or missing directory, or one missing a file the demo needs, throws instead of shipping a
+ * catalogue whose card depends on a file that is not there: the card would show its own broken
+ * state, and the browser check that drives it would fail with a message about the wrong thing.
  *
+ * @param directory Name of the directory, under both `pages/` and the artefact root.
+ * @param requiredFiles File names that must be present, or this throws.
+ * @param usedBy One line naming the card(s) this directory is for, for the throw message.
  * @returns The file names copied, for the build report.
  */
-async function copyServiceWorkerDemo(): Promise<string[]> {
-  const source = join(PAGES_DIRECTORY, SW_DEMO_DIRECTORY)
-  const target = join(DIST_DIRECTORY, SW_DEMO_DIRECTORY)
+async function copyDemoDirectory(
+  directory: string,
+  requiredFiles: readonly string[],
+  usedBy: string,
+): Promise<string[]> {
+  const source = join(PAGES_DIRECTORY, directory)
+  const target = join(DIST_DIRECTORY, directory)
   await Deno.mkdir(target, { recursive: true })
 
   const copied: string[] = []
@@ -219,41 +231,11 @@ async function copyServiceWorkerDemo(): Promise<string[]> {
     copied.push(entry.name)
   }
 
-  if (!copied.includes("sw.js") || !copied.includes("index.html")) {
+  const missing = requiredFiles.filter((name) => !copied.includes(name))
+  if (missing.length > 0) {
     throw new Error(
-      `${source} must hold sw.js and index.html for the SWUpdater card — found ` +
-        `${copied.join(", ") || "nothing"}`,
-    )
-  }
-
-  return copied.sort()
-}
-
-/**
- * Copy `form-demo/` into the artefact, file by file.
- *
- * An empty or missing directory throws instead of shipping a catalogue whose progressive-enhancement
- * cards post to a path with nothing behind it — the no-JavaScript check in `pages/checks/ui.ts`
- * would then fail against a 404 rather than against the component it is actually testing.
- *
- * @returns The file names copied, for the build report.
- */
-async function copyFormDemo(): Promise<string[]> {
-  const source = join(PAGES_DIRECTORY, FORM_DEMO_DIRECTORY)
-  const target = join(DIST_DIRECTORY, FORM_DEMO_DIRECTORY)
-  await Deno.mkdir(target, { recursive: true })
-
-  const copied: string[] = []
-  for await (const entry of Deno.readDir(source)) {
-    if (!entry.isFile) continue
-    await Deno.copyFile(join(source, entry.name), join(target, entry.name))
-    copied.push(entry.name)
-  }
-
-  if (!copied.includes("index.html")) {
-    throw new Error(
-      `${source} must hold index.html for the EnhancedForm/NewsletterForm/ContactForm cards — ` +
-        `found ${copied.join(", ") || "nothing"}`,
+      `${source} must hold ${requiredFiles.join(", ")} for ${usedBy} — found ` +
+        `${copied.join(", ") || "nothing"}, missing ${missing.join(", ")}`,
     )
   }
 
@@ -316,8 +298,16 @@ async function main(): Promise<void> {
   await Deno.writeFile(join(DIST_DIRECTORY, "assets", assetNames.js), island)
 
   await Deno.writeFile(join(DIST_DIRECTORY, "index.html"), new TextEncoder().encode(html))
-  const swDemo = await copyServiceWorkerDemo()
-  const formDemo = await copyFormDemo()
+  const swDemo = await copyDemoDirectory(
+    SW_DEMO_DIRECTORY,
+    ["sw.js", "index.html"],
+    "the SWUpdater card",
+  )
+  const formDemo = await copyDemoDirectory(
+    FORM_DEMO_DIRECTORY,
+    ["index.html"],
+    "the EnhancedForm/NewsletterForm/ContactForm cards",
+  )
 
   console.log(
     `  index.html ${kilobytes(html.length)} · prerendered ${catalogueNames.length} components\n` +
