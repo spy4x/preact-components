@@ -686,12 +686,13 @@ export function Calendar(
           const arrived = event.target as Element | null
           focusHere.current = arrived?.getAttribute?.("data-calendar-date") ?? "grid"
         }}
-        onFocusOut={(event: FocusEvent) => {
-          // A move within this grid is not a departure: the parking moves the focus from a cell to
-          // the container and the restore moves it back, and neither is the reader leaving.
-          const next = event.relatedTarget as Node | null
-          if (next && gridRef.current?.contains(next)) return
-          // Nor is a cell being taken out from under the focus by this component's own render.
+        onFocusOut={() => {
+          // A cell taken out from under the focus by this component's own render is not the
+          // reader leaving; only a departure they chose ends the calendar's claim on the focus.
+          //
+          // A move to another element *inside* this grid needs no guard of its own, which was
+          // measured rather than assumed: `focusin` follows immediately and puts `focusHere`
+          // back, so an early return for it is a line nothing can tell from its absence.
           // Only a departure the reader chose ends the calendar's claim on the focus.
           if (committing.current) return
           focusHere.current = null
