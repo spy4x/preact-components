@@ -152,21 +152,38 @@ describe("Toastr", () => {
 })
 
 /**
- * The compile-time half of the same guard as the tests below.
+ * The compile-time guard on the field both packages share.
  *
- * Both packages have to keep spelling the dismiss delay `duration`, and it has to keep being a
- * number on each side. Renaming either one turns this line into a type error, so `deno task
- * ts:check` says so before anybody has to notice a toast leaving early. The runtime tests below
- * are still the ones that catch a name that survives but stops being read.
+ * Both packages have to keep spelling the dismiss delay `duration`. Renaming either side turns
+ * this line into a type error, and so does retyping one side to something disjoint from `number`
+ * (a `string`), so `deno task ts:check` says so before anybody has to notice a toast leaving early.
+ *
+ * It does not catch a widening. `duration?: number | string` on one side still intersects with
+ * `number` on the other, so the line compiles; a review would have to catch that one.
  */
 type SharedDurationField = NonNullable<ToastEntry["duration"] & ToastItem["duration"]>
 const _durationIsTheSharedName: SharedDurationField = 1
 
+/**
+ * What these tests prove, and what they cannot.
+ *
+ * They build toasts through a real `createToastStore` and ask the component's own
+ * `resolveDuration` what delay each entry resolves to — so a store that writes the delay under
+ * another name, or a resolver that reads another name or turns `0` into the default, goes red here.
+ *
+ * They do **not** prove that `Toastr` uses what `resolveDuration` returns. The string renderer
+ * runs no effects, so no timer is ever started in this file, and a component that ignored the
+ * delay entirely would pass every test below. That half is proven in a real browser, by the check
+ * "a toast pushed through the store runs the delay the store was asked for, and duration: 0 keeps
+ * it until somebody dismisses it" in `pages/checks/ui.ts`: it is the one that goes red when the
+ * component stops reading the delay. Deleting it because these look like they cover the same
+ * ground would leave that half unguarded.
+ */
 describe("Toastr wired to createToastStore", () => {
-  it("runs the dismiss delay the store was asked for, not its own default", () => {
-    // The pair, in one test. Each package's own suite passed throughout both #174 and #175,
-    // because neither ever put the two together: the store wrote its delay under one name and the
-    // component read another, so a toast asked to stay for twenty seconds left after five.
+  it("resolves a store entry to the delay the store was asked for", () => {
+    // Each package's own suite passed throughout both #174 and #175, because neither ever put the
+    // two together: the store wrote its delay under one name and the component read another, so a
+    // toast asked to stay for twenty seconds left after five.
     const store = createToastStore({ nextId: () => "wired" })
     store.add({ body: "read me", duration: 20_000 })
 
@@ -175,7 +192,7 @@ describe("Toastr wired to createToastStore", () => {
     expect(resolveDuration(entry)).not.toBe(defaultToastDuration)
   })
 
-  it("runs no timer at all for a store toast asked to stay until it is dismissed", () => {
+  it("resolves a store entry asked to stay until it is dismissed to zero", () => {
     const store = createToastStore({ nextId: () => "sticky" })
     store.add({ body: "keep me", duration: 0 })
 
@@ -203,7 +220,7 @@ describe("Toastr wired to createToastStore", () => {
     }
   })
 
-  it("falls back to the component's default for a store toast that named no delay", () => {
+  it("resolves a store entry that named no delay to the component's default", () => {
     // The other side of "one default, in one place": the store deliberately puts no number here,
     // so the fallback is the component's and there is nothing for the two to disagree about.
     const store = createToastStore({ nextId: () => "plain" })
