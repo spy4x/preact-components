@@ -223,8 +223,8 @@ const zoneOptions = [
  * `ctx.reject({ message })` rather than `ctx.mustBe(...)`: arktype's default wording for a
  * whole-model `.narrow` failure appends the entire rejected value as JSON — every field the row
  * carries, not just the two this rule is about — and a polite, atomic live region re-reads that
- * whole sentence to a screen reader on every keystroke that still fails the rule, not only the ones
- * that touch Name or Notes. `ctx.reject` gives the message in full instead, which is what the label
+ * whole sentence to a screen reader on every field change that still fails the rule, not only the
+ * ones that touch Name or Notes. `ctx.reject` gives the message in full instead, which is what the label
  * policy already asks a caller to do for any string this library shows.
  */
 const regionCrossFieldSchema = type({

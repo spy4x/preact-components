@@ -347,11 +347,9 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>) {
   /**
    * `editorState`'s five inputs, gathered once through `read` rather than written out twice.
    *
-   * Before this, the render below and `readyToSave` each listed the same five properties by hand —
-   * one with `.value`, one with `.peek()`. Adding a sixth input is still a type error until both
-   * call sites pass it, because `EditorStateInput` requires it either way; the risk this closes is
-   * the other direction, changing how an *existing* input is derived (`inProgress`, say) in one copy
-   * and not the other, which would still compile.
+   * The render reads through `.value` and `readyToSave` through `.peek()`; building both from this
+   * one function means an input's derivation (`inProgress`, say) cannot change in one path and not
+   * the other.
    */
   function editorStateInput(read: <T>(signal: Readable<T>) => T): EditorStateInput<M> {
     return {

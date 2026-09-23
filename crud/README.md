@@ -180,7 +180,7 @@ The harness is the six parts, once:
    render, empty until such an issue arrives, and named by Save's `aria-describedby` at all times, so
    a screen-reader user who reaches the (possibly disabled) button is told why. arktype's default
    wording for a whole-model `.narrow` failure appends the entire rejected value as JSON, which a
-   caller almost never wants read aloud on every keystroke that still fails the rule; write the
+   caller almost never wants read aloud on every field change that still fails the rule; write the
    message yourself with `ctx.reject({ message })` instead of `ctx.mustBe(...)`.
 
 | Prop         | Default             | Notes                                                           |
