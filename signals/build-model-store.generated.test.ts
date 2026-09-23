@@ -510,11 +510,13 @@ function modelCase(plan: Plan) {
         return
       }
       // Judged older, it may only turn an unarchived row into an archived one — the name and the
-      // stamp are left exactly as held either way, an old copy of the row must not ride in on a
-      // delayed delete, and a row already archived keeps its own `deletedAt` rather than the
-      // event's older one. An older event with nothing to archive (`deleted: false`) makes no claim
-      // at all and changes nothing; the generator always draws `deleted: true` for this event, so
-      // that branch is pinned by name only, in `build-model-store.test.ts`. See #201.
+      // stamp are left exactly as held either way, and an old copy of the row must not ride in on
+      // a delayed delete. The guard mirrors the store's: an already-archived row keeps its own
+      // `deletedAt` rather than the event's. Neither that guard nor an older event with nothing to
+      // archive (`deleted: false`, which the generator never draws) can move this model's
+      // `deleted`, a boolean with no instant of its own to compare — every synthetic `deletedAt`
+      // in this file is the one constant `DELETED_AT` — so both are pinned by name only, in
+      // `build-model-store.test.ts`. See #201.
       if (!row.deleted && deleted) row.deleted = true
     },
     /** Fold in one answer, in the order the answers arrive. */
