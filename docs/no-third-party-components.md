@@ -300,46 +300,48 @@ The icon set is **not** covered by the reasoning above, and it carries a separat
 not written here from scratch. Per [`icons/README.md`](../icons/README.md), which is the authority on
 this:
 
-- It is a **merge of five source projects** — `spy4x/template`, `spy4x/gb`, `spy4x/antonshubin.com`,
-  `spy4x/offer-lens`, `spy4x/mig` — deduped by SVG body, not by name. `gb` contributed nothing after
-  dedupe.
-- **The licence provenance of the glyphs is unverified.** `icons/README.md` states this outright
-  under "Provenance — unverified". The families look like Heroicons v1/v2 and Feather — close enough
-  to be confident about the lineage, nowhere near close enough to be confident about the licence of
-  every individual path.
-- **Brand marks are the trademark-constrained subset.** Five filled brand glyphs came from
-  `antonshubin.com` — GitHub, LinkedIn, Telegram, Upwork and Quote. Trademark constraints are
-  independent of any icon licence: brand marks are not freely relicensable even when the drawing is
-  your own. This is the part most likely to need its own decision, and it is why any replacement is
-  expected to split the brand subset from the general set.
+- It is a **merge of six source apps** — deduped by SVG body, not by name. One of the six
+  contributed nothing after dedupe (a fork of another with byte-identical bodies throughout).
+- **Provenance is now checked, not just eyeballed.** `icons/provenance.ts` compares every exported
+  glyph's geometry against the published Heroicons v1, Heroicons v2, Feather and Lucide packs. Of
+  119 glyphs, 89 match a pack's glyph exactly, 6 match one nearly, and 24 match none of the four —
+  see `icons/README.md` → "Provenance" for the full breakdown and the 24 by name.
+  [`icons/THIRD_PARTY_NOTICES.md`](../icons/THIRD_PARTY_NOTICES.md) carries the licence text for
+  every pack a match was found in. The 24 with no match are not thereby proven unlicensed, only
+  unattributed by this check; replacing or dropping them is tracked in
+  [issue #233](https://github.com/spy4x/preact-components/issues/233), not decided here.
+- **Six glyphs are trademarked brand marks** — GitHub, LinkedIn, Telegram, Upwork, Twitter and
+  YouTube. Trademark constraints are independent of any icon licence: a brand mark is not freely
+  relicensable even when the drawing is the pack's own (two of the six matched Feather's drawing of
+  the same mark exactly). This is the part most likely to need its own decision, and it is why any
+  replacement is expected to split the brand subset from the general set.
 - All 119 glyphs are inline source in `icons/+index.tsx`, `{ class?: string }` prop surface, no
   codegen, no build step, no runtime dependency beyond Preact.
 
-> **Partly reconciled.** The pull request this note used to wait on, #98, has landed, so the count
-> above is read from the tree rather than from a pending change. `icons/+index.tsx` exports 119
-> glyphs and `icons/README.md` says 119, but those are not two independent readings:
-> `icons/check-readme.ts` parses the number out of the README and fails when it disagrees with the
-> export count, so they are one fact with a guard on it. The independent pin is
-> `icons/+index.test.ts`, which asserts the number as a literal on purpose — a guard derived from
-> the module would shrink with the thing it polices. The browser suite is not a third: its icon
-> check is named for 119 and asserts only that more than ninety glyphs are shown, so it would pass
-> at ninety-one. The source list above has **not** been reconciled and is one source short; it is
-> deliberately not restated from memory here, `icons/README.md` remains the authority, and
-> correcting it is part of #127, which owns the wider sweep of this document.
+> **Reconciled.** The pull request this note used to wait on, #98, landed some time ago, so the
+> count above is read from the tree rather than from a pending change; `icons/check-readme.ts` and
+> `icons/+index.test.ts` both guard it independently, and the browser suite's own icon check would
+> pass at ninety-one, so neither of those three is what to trust for the exact number — the module
+> export count is. The source-project count above was one short of the tree for a while: it named
+> five projects where six had contributed — the same project the design-intent paragraph above
+> discusses was missing from the icon-set list specifically. Fixed above by counting it rather than
+> naming any project again in this bullet.
 >
 > **The same applies to the paragraph earlier in this document** naming two projects as
 > design-intent sources rather than code sources, which says one of them is not among the icon
-> sources and explains its six geometry-identical glyphs as a shared upstream. That pull request
-> has landed and did add it as a source, so the sentence is false now rather than conditionally.
-> The explanation of the six glyphs needs re-reading rather than deleting — the shared-upstream
-> reasoning may still hold, but it is no longer the whole story. That paragraph is part of the same
-> #127 sweep as the source list above, and for the same reason: it names projects this repository
-> should not be naming, so correcting it and removing them is one job rather than two.
+> sources and explains its six geometry-identical glyphs as a shared upstream. Since #98 landed,
+> that project _is_ an icon source, so the sentence is false rather than conditional. The
+> shared-upstream explanation of the six glyphs may still hold — `icons/provenance.ts` found no
+> reason to doubt it for those six specifically — but re-reading that paragraph against the current
+> tree, rather than deleting it, is part of #127's wider sweep of this document.
 
-**This document does not resolve that question and must not be read as doing so.** No licence is
-asserted for the icon set, none is inferred, and no glyph has been changed, replaced or re-drawn.
-The open choices — which pack, whether attribution alone is sufficient, and how to treat the brand
-subset — belong to the repository owner as a legal decision, not to an implementation PR.
+**This document does not resolve that question and must not be read as doing so.** For the 24
+glyphs `icons/provenance.ts` could not match to a pack, no licence is asserted and none is inferred.
+For the 95 it did match, the matched pack's own licence applies — that is a fact about which pack
+the geometry compares equal to, not a legal opinion rendered here. No glyph has been changed,
+replaced or re-drawn to produce a match. The open choices — whether to keep, swap or drop the 24
+unmatched, and how to treat the brand subset — belong to the repository owner as a legal decision,
+not to an implementation PR.
 
 The repository's own licence is unaffected and is stated in [`LICENSE`](../LICENSE) (MIT, covering
 the code in this repository); [`CREDITS.md`](../CREDITS.md) is attribution for the design system and
@@ -347,17 +349,20 @@ states explicitly that it is not a licence statement.
 
 **Recommendation: keep #10 deferred and open.** It is not blocked, but it is also not urgent, and
 acting on it now would replace working glyphs to settle a question that attribution may already
-settle.
+settle for most of them.
 
 **Revisit trigger — any one of these:**
 
 1. **A release or distribution event** — the set is published to a registry, the demo is promoted, or
-   the package is consumed outside `spy4x`'s own apps. Unverified provenance and public distribution
-   should not coexist.
+   the package is consumed outside `spy4x`'s own apps. This trigger has partly fired already:
+   issue #111 found the set published with no third-party notice at all, and this document's icon
+   section, `icons/README.md` and `icons/THIRD_PARTY_NOTICES.md` are the response for the 95 glyphs
+   a pack match covers. The trigger still stands for the 24 that remain unmatched and for publishing
+   to a registry, which has not happened yet.
 2. **A licence audit** of this repository, or of any app that consumes it.
 3. **A glyph is found to be from a pack whose licence forbids this use**, or whose attribution terms
    are not met by the current tree.
-4. **A brand-mark complaint**, or any of the five brand glyphs being used in a context where the
+4. **A brand-mark complaint**, or any of the six brand glyphs being used in a context where the
    mark's owner's guidelines apply.
 5. **New icon work** — a fresh need that would otherwise add another glyph of unverified lineage to a
    set already carrying that caveat. At that point generate from one licensed source rather than

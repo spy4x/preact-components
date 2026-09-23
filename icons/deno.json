@@ -4,15 +4,48 @@
   "exports": {
     ".": "./+index.tsx"
   },
+  "imports": {
+    // Dev-only, for `provenance.ts` (issues #111, #112): compares every exported glyph's geometry
+    // against the icon packs the owner named as likely sources. Heroicons publishes v1 and v2 as
+    // the same npm package name at different major versions, so each needs its own import key to
+    // resolve both at once — `heroicons@1.0.6` is the last v1 release, `heroicons@2.2.0` is current
+    // v2. Feather and Lucide are compared because the earlier shape-based audit (#111) identified
+    // some glyphs as those by eye. None of these four reach a published consumer — see
+    // `publish.exclude` below and `provenance.ts`'s own JSDoc for how the comparison works.
+    //
+    // Cost, stated truthfully (reviewer finding on #232): pinning these four here, in this
+    // workspace member's own `imports`, means Deno's task runner installs them as this member's npm
+    // dependencies before running *any* task in it — `deno task fmt:check`, `ts:check` and `test`
+    // each download all four tarballs from an empty cache, not only `provenance` below. The
+    // *comparison itself* still runs only inside the `provenance` task; what does not stay contained
+    // is the download. Kept anyway (option A over option B — see #233 for B, moving these pins
+    // somewhere the task runner does not install them eagerly): the tarballs are a few megabytes,
+    // CI already re-downloads its npm cache per run, and the alternative is more code for a
+    // dev-only, run-by-hand check.
+    "heroicons-v1/": "npm:/heroicons@1.0.6/",
+    "heroicons-v2/": "npm:/heroicons@2.2.0/",
+    "feather-icons/": "npm:/feather-icons@4.29.2/",
+    "lucide-static/": "npm:/lucide-static@1.47.0/"
+  },
+  "tasks": {
+    // Compares every glyph against the four packs above; see the `imports` comment for what
+    // downloading them costs and where that cost actually falls. Excluded from `deno task check`
+    // because it is a one-off audit, not a regression gate — `provenance.test.ts` covers the
+    // normalisation logic there instead, without touching the network.
+    "provenance": "deno run --allow-read --allow-net provenance.ts"
+  },
   "publish": {
-    // Nothing here is part of the public API. The two tests exercise the module and never leave
-    // this repo; `check-readme.ts`/`check-readme.test.ts` audit README.md's bookkeeping against a
-    // read-only sibling checkout outside this repository, which a published consumer has no
-    // access to and no use for.
+    // Nothing here is part of the public API. The two `check-readme` files audit README.md's
+    // bookkeeping against a read-only sibling checkout outside this repository, which a published
+    // consumer has no access to and no use for. `provenance.ts`/`provenance.test.ts` are the same
+    // shape of thing for the icon packs above: a dev-time audit script and its offline-safe tests,
+    // neither reachable from `exports`.
     "exclude": [
       "+index.test.ts",
       "check-readme.ts",
-      "check-readme.test.ts"
+      "check-readme.test.ts",
+      "provenance.ts",
+      "provenance.test.ts"
     ]
   }
 }
