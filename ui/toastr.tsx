@@ -84,10 +84,13 @@ export const defaultToastDuration = 5000
  * How long one toast has, in milliseconds: what it asked for, or {@link defaultToastDuration}.
  *
  * Exported because it is the single place the fallback is applied, and because it is what a test
- * can ask about a toast built somewhere else — `resolveDuration(store.list.value[0])` is how the
- * suite proves a delay set through `createToastStore` reaches this component rather than being
- * silently replaced by the default. Both sides spelling the field `duration` is the whole of that
- * contract, and it was spelled two different ways until #174.
+ * can ask about a toast built somewhere else. `resolveDuration(store.list.value[0])` shows that an
+ * entry built by `createToastStore` resolves to the delay it was given rather than to the default;
+ * it does not show that this component runs that delay, because no unit test here starts a timer.
+ * That is proven in a real browser, by the check "a toast pushed through the store runs the delay
+ * the store was asked for, and duration: 0 keeps it until somebody dismisses it" in
+ * `pages/checks/ui.ts`. Both sides spelling the field `duration` is the contract between them, and
+ * it was spelled two different ways until #174.
  *
  * `??` rather than `||`: `0` is a value, and it means keep this toast until somebody dismisses it.
  *
