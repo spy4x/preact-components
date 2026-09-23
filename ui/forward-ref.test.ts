@@ -20,8 +20,8 @@ describe("forwardRef", () => {
     // This does not prove `forward-ref.ts` reads its `name` argument rather than `render.name`
     // for `displayName` — both give the same string here, since nothing in this Deno test process
     // bundles or renames the render functions the way `deno bundle` does. That distinction is
-    // proven separately, by bundling: see `forward-ref.ts`'s own doc comment for what a bundler
-    // does to a same-named `const X = forwardRef(function X(...) {...})`.
+    // recorded separately, from bundling: see `forward-ref.ts`'s own doc comment for what a
+    // bundler does to a same-named `const X = forwardRef(function X(...) {...})`.
     expect((Button as HasDisplayName).displayName).toBe("Button")
     expect((Input as HasDisplayName).displayName).toBe("Input")
     expect((Checkbox as HasDisplayName).displayName).toBe("Checkbox")
