@@ -64,7 +64,7 @@ Wiring side effects through ports, so the package stays app-agnostic:
   onError={(message) => app.toast.error({ body: message })}
 />
 
-<Toastr toasts={app.toast.list.value} onDismiss={(id) => app.toast.remove(id)} />
+<Toastr toasts={app.toast.list.value} onDismiss={(id) => app.toast.remove(String(id))} />
 
 <Tabs
   active={section.value}
@@ -85,8 +85,11 @@ from the tabs whose panel it omitted. Ids are derived from each `TabItem.id` (`$
 — Left/Right horizontal, Up/Down vertical — plus Home/End; the decision table is the exported
 `nextTabIndex`.
 
-`Toastr` auto-dismisses each toast after `toast.duration` milliseconds (default 5000, `0` keeps it
-until dismissed) and reports it through `onDismiss` — the caller owns the stack.
+`Toastr` auto-dismisses each toast after `toast.duration` milliseconds (default
+`defaultToastDuration`, which is 5000; `0` keeps it until dismissed) and reports it through
+`onDismiss` — the caller owns the stack. `createToastStore` in `@preact-components/signals` writes
+that same `duration` field, so the wiring above needs no adapter; `String(id)` is there because
+`ToastItem.id` is `string | number` and that store's ids are strings.
 
 **The stack is always in the document, an empty one included.** It renders as a named region marked
 `aria-live="polite"` whether or not it holds a toast, which is what lets a screen reader announce a
@@ -107,22 +110,34 @@ _within_ the stack, from a link in a toast's body to its dismiss control, does n
 Raising a toast's `duration` while it is on screen is the one thing that refills the budget rather
 than continuing it, which is how a caller extends a toast it has already shown.
 
-**The pause needs the caller to own the timing.** `Toastr` can only pause the timer it runs itself,
-the one driven by `ToastItem.duration`. `createToastStore` from `@preact-components/signals`, which
-the wiring above reads from, does its own timing instead, and that costs a caller both halves of
-what this section promises. The store schedules a removal for every toast it holds, so a toast
-pushed through it is taken away on the store's schedule whatever the pointer is doing and the pause
-never reaches it —
-[#175](https://github.com/spy4x/preact-components/issues/175). And the store's `timeout` field
-never reaches the component's `duration`, so the component runs its own 5000ms default alongside
-the store's timer and a toast lives whichever of the two is **shorter**: a `timeout` longer than
-five seconds is quietly cut down to five, and `timeout: 0` — which that store documents as keeping
-the toast until somebody dismisses it by hand — schedules nothing of its own and so leaves the
-component's default to take the toast away after five seconds. The documented way to make a toast
-persist is the case this breaks worst —
-[#174](https://github.com/spy4x/preact-components/issues/174). Until the store hands its timing
-over, a caller who wants either of them keeps the stack itself and passes `duration`, the way the
-catalogue card does. Both defects are filed against the store; neither is this component's.
+`duration` is not validated, and `resolveDuration` documents what each odd value does. The short
+version: pass `0`, a positive number of milliseconds up to 2,147,483,647, or nothing. A negative
+number and `Infinity` both dismiss the toast at once, because the browser runs either as a zero
+delay, and so does anything above 2,147,483,647 ms (about 24.8 days), because browsers hold a
+timer's delay as a 32-bit signed integer. `NaN` starts no timer and so keeps the toast like `0`
+does.
+
+**This component owns the dismiss timer, and the store it is wired to owns none.** The pause can
+only hold a timer this component runs, so `createToastStore` from `@preact-components/signals`
+schedules nothing: it holds the list, and `onDismiss` calls its `remove`. The side that can see a
+pointer resting on a toast is the side that should be timing it, which is why the timer lives here
+rather than there.
+
+It used to be the other way round in both halves, and both were quiet. The store scheduled a
+removal per toast, so a store-fed toast was taken away on the store's own schedule whatever the
+pointer was doing and the pause reached nothing
+([#175](https://github.com/spy4x/preact-components/issues/175)); and the store wrote the delay
+under a field called `timeout` that this component never read, so both clocks ran and a toast lived
+whichever was **shorter** — a delay longer than five seconds was cut down to five, and a delay of
+`0`, documented as keeping the toast until somebody dismisses it, lost it after five
+([#174](https://github.com/spy4x/preact-components/issues/174)). One field name, `duration`, on
+both sides now; `timeout` is still accepted by the store for one release, and `duration` wins when
+both are given.
+
+An application that renders toasts some other way gets no auto-dismiss from that store and
+schedules its own removals — two lines, in `signals/README.md`. There is deliberately no opt-in
+timer there, because a second clock for this one to disagree with is the defect wearing a different
+coat.
 
 Every string the stack shows is a prop with an English default: `label` names the region
 (`"Notifications"`), `dismissLabel` names every dismiss control (`"Dismiss"`), and one toast can
@@ -134,7 +149,7 @@ asked for one.
 ```tsx
 <Toastr
   toasts={app.toast.list.value}
-  onDismiss={(id) => app.toast.remove(id)}
+  onDismiss={(id) => app.toast.remove(String(id))}
   label="Benachrichtigungen"
   dismissLabel="Ausblenden"
 />

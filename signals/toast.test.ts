@@ -1,24 +1,24 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
+import { FakeTime } from "@std/testing/time"
 import { createToastStore } from "./toast.ts"
 
-/** A timer port that never fires on its own, so a test decides when a delay elapses. */
-function fakeTimers() {
-  const timers: Array<{ run: () => void; delay: number; cancelled: boolean }> = []
-  return {
-    timers,
-    schedule: (run: () => void, delay: number) => {
-      const timer = { run, delay, cancelled: false }
-      timers.push(timer)
-      return () => {
-        timer.cancelled = true
-      }
-    },
-    /** Fire a timer. A cancelled timer never runs, which is what `clearTimeout` guarantees. */
-    fire(index = 0) {
-      const timer = timers[index]
-      if (!timer.cancelled) timer.run()
-    },
+/**
+ * Run a body with every timer in the process under this test's control.
+ *
+ * The store is supposed to schedule nothing at all now that `Toastr` owns the dismiss timers, and
+ * "nothing happens" is only worth asserting against a clock that has really moved. `FakeTime`
+ * replaces `setTimeout` globally, so a `setTimeout` the store took out behind the test's back is
+ * one this clock would fire — there is no injected port left for it to hide behind.
+ *
+ * @param body What to run; it is handed the clock to advance.
+ */
+function withFakeClock(body: (clock: FakeTime) => void): void {
+  const clock = new FakeTime()
+  try {
+    body(clock)
+  } finally {
+    clock.restore()
   }
 }
 
@@ -33,16 +33,34 @@ describe("createToastStore add", () => {
     const id = store.add({ body: "saved" })
     expect(id).toBe("toast-1")
     expect(store.list.value).toEqual([
-      { id: "toast-1", title: "Info", body: "saved", type: "info", timeout: 5000 },
+      { id: "toast-1", title: "Info", body: "saved", type: "info", duration: undefined },
     ])
   })
 
-  it("takes the title and timeout from the message", () => {
+  it("names no dismiss delay of its own when the message names none", () => {
+    // The one default lives in `Toastr`, which is the side that runs the timer. A number invented
+    // here would be a second default for the component to disagree with, which is how a 20 000ms
+    // delay came to be cut down to five seconds.
     const store = createToastStore({ nextId: counterIds() })
-    store.add({ title: "Heads up", body: "saved", type: "warning", timeout: 100 })
+    store.add({ body: "saved" })
+    expect(store.list.value[0].duration).toBeUndefined()
+    expect(Object.hasOwn(store.list.value[0], "duration")).toBe(true)
+  })
+
+  it("takes the title and duration from the message", () => {
+    const store = createToastStore({ nextId: counterIds() })
+    store.add({ title: "Heads up", body: "saved", type: "warning", duration: 100 })
     expect(store.list.value[0].title).toBe("Heads up")
-    expect(store.list.value[0].timeout).toBe(100)
+    expect(store.list.value[0].duration).toBe(100)
     expect(store.list.value[0].type).toBe("warning")
+  })
+
+  it("carries a long delay through unchanged, rather than capping it", () => {
+    // #174 in one line: this number is what `Toastr` has to read back. Under the old spelling the
+    // component found nothing here and ran its own five seconds instead.
+    const store = createToastStore({ nextId: counterIds() })
+    store.add({ body: "read me", duration: 20_000 })
+    expect(store.list.value[0].duration).toBe(20_000)
   })
 
   it("keeps an explicit id", () => {
@@ -60,21 +78,19 @@ describe("createToastStore add", () => {
     expect(store.list.value.map((entry) => entry.body)).toEqual(["two", "between"])
   })
 
-  it("cancels the replaced toast's timer", () => {
-    const timers = fakeTimers()
-    const store = createToastStore({ nextId: counterIds(), schedule: timers.schedule })
-    store.add({ id: "fixed", body: "one", timeout: 100 })
-    store.add({ id: "fixed", body: "two", timeout: 100 })
+  it("leaves no stale timer behind when an id is reused", () => {
+    // Under the old store this needed a cancel: the replaced toast's own timeout would still fire
+    // and its `remove(id)` would take the replacement down with it. There is no timer to cancel
+    // now, and that is what this asserts — the clock runs far past any delay and nothing happens.
+    withFakeClock((clock) => {
+      const store = createToastStore({ nextId: counterIds() })
+      store.add({ id: "fixed", body: "one", duration: 100 })
+      store.add({ id: "fixed", body: "two", duration: 100 })
 
-    // Two timers exist, but only the new one may fire. Without the cancel, the stale timer's
-    // `remove(id)` filters by id and drops the newer toast with it.
-    expect(timers.timers).toHaveLength(2)
-    expect(timers.timers[0].cancelled).toBe(true)
-    timers.fire(0)
-    expect(store.list.value.map((entry) => entry.body)).toEqual(["two"])
+      clock.tick(60_000)
 
-    timers.fire(1)
-    expect(store.list.value).toEqual([])
+      expect(store.list.value.map((entry) => entry.body)).toEqual(["two"])
+    })
   })
 
   it("does not leave the replaced toast addressable", () => {
@@ -95,11 +111,26 @@ describe("createToastStore add", () => {
     expect(before).toEqual([])
     expect(store.list.value.map((entry) => entry.body)).toEqual(["one", "two"])
   })
+})
 
-  it("honours a custom default timeout", () => {
-    const store = createToastStore({ nextId: counterIds(), defaultTimeout: 250 })
-    store.add({ body: "saved" })
-    expect(store.list.value[0].timeout).toBe(250)
+describe("createToastStore and the old timeout field", () => {
+  it("still accepts the name it used to have", () => {
+    const store = createToastStore({ nextId: counterIds() })
+    store.add({ body: "saved", timeout: 100 })
+    expect(store.list.value[0].duration).toBe(100)
+  })
+
+  it("lets duration win when a caller gives both", () => {
+    const store = createToastStore({ nextId: counterIds() })
+    store.add({ body: "saved", duration: 100, timeout: 9000 })
+    expect(store.list.value[0].duration).toBe(100)
+  })
+
+  it("carries a zero through either spelling", () => {
+    const store = createToastStore({ nextId: counterIds() })
+    store.add({ id: "a", body: "sticky", duration: 0 })
+    store.add({ id: "b", body: "also sticky", timeout: 0 })
+    expect(store.list.value.map((entry) => entry.duration)).toEqual([0, 0])
   })
 })
 
@@ -119,56 +150,59 @@ describe("createToastStore variants", () => {
   })
 })
 
-describe("createToastStore timeouts", () => {
-  it("schedules the auto-dismiss", () => {
-    const timers = fakeTimers()
-    const store = createToastStore({ nextId: counterIds(), schedule: timers.schedule })
-    store.add({ body: "saved", timeout: 300 })
+describe("createToastStore schedules nothing", () => {
+  it("keeps a toast that named a delay until somebody removes it", () => {
+    // The store used to take this toast away after 300ms of its own accord, whatever the component
+    // rendering it had paused. Now the delay is data the renderer reads, and only `remove` removes.
+    withFakeClock((clock) => {
+      const store = createToastStore({ nextId: counterIds() })
+      const id = store.add({ body: "saved", duration: 300 })
 
-    expect(timers.timers).toHaveLength(1)
-    expect(timers.timers[0].delay).toBe(300)
+      clock.tick(60_000)
+      expect(store.list.value).toHaveLength(1)
 
-    timers.fire()
-    expect(store.list.value).toEqual([])
+      store.remove(id)
+      expect(store.list.value).toEqual([])
+    })
   })
 
-  it("does not schedule when the timeout is zero", () => {
-    const timers = fakeTimers()
-    const store = createToastStore({ nextId: counterIds(), schedule: timers.schedule })
-    store.add({ body: "sticky", timeout: 0 })
-    expect(timers.timers).toHaveLength(0)
-    expect(store.list.value).toHaveLength(1)
+  it("keeps a toast with no delay well past the five seconds the component would give it", () => {
+    withFakeClock((clock) => {
+      const store = createToastStore({ nextId: counterIds() })
+      store.add({ body: "saved" })
+
+      clock.tick(30_000)
+
+      expect(store.list.value).toHaveLength(1)
+    })
   })
 
-  it("cancels the timer when a toast is dismissed by hand", () => {
-    const timers = fakeTimers()
-    const store = createToastStore({ nextId: counterIds(), schedule: timers.schedule })
-    const id = store.add({ body: "saved" })
+  it("keeps a toast asked to stay until it is dismissed", () => {
+    // The worst case of the two defects, and the reason it is written against `0`: the store
+    // documents `0` as "keep this until somebody dismisses it", and the pair used to lose it after
+    // five seconds — the component's default, running because the store's field never reached it.
+    withFakeClock((clock) => {
+      const store = createToastStore({ nextId: counterIds() })
+      store.add({ body: "sticky", duration: 0 })
 
-    store.remove(id)
+      clock.tick(30_000)
 
-    expect(timers.timers[0].cancelled).toBe(true)
-    expect(store.list.value).toEqual([])
+      expect(store.list.value).toHaveLength(1)
+      expect(store.list.value[0].duration).toBe(0)
+    })
   })
 
-  it("cancels every timer on clear", () => {
-    const timers = fakeTimers()
-    const store = createToastStore({ nextId: counterIds(), schedule: timers.schedule })
-    store.add({ body: "one" })
-    store.add({ body: "two" })
+  it("has nothing left running after the list is emptied", () => {
+    withFakeClock((clock) => {
+      const store = createToastStore({ nextId: counterIds() })
+      store.add({ body: "one", duration: 100 })
+      store.add({ body: "two", duration: 100 })
 
-    store.clear()
+      store.clear()
+      clock.tick(60_000)
 
-    expect(timers.timers.every((timer) => timer.cancelled)).toBe(true)
-    expect(store.list.value).toEqual([])
-  })
-
-  it("cancels every timer on dispose", () => {
-    const timers = fakeTimers()
-    const store = createToastStore({ nextId: counterIds(), schedule: timers.schedule })
-    store.add({ body: "one" })
-    store.dispose()
-    expect(timers.timers[0].cancelled).toBe(true)
+      expect(store.list.value).toEqual([])
+    })
   })
 })
 

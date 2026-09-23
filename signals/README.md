@@ -23,7 +23,7 @@ sort codec.
 | `build-model-store` | `buildModelStore` — CRUD over one REST collection, arktype-validated |
 | `table-state`       | `SortRule`, `toggleSort`, `sortRows`, `parseSort`, `serializeSort`   |
 | `theme`             | `createThemeStore` — light/dark/system, persistence, `matchMedia`    |
-| `toast`             | `createToastStore` — the store behind `Toastr`                       |
+| `toast`             | `createToastStore` — the list behind `Toastr`; runs no timers        |
 | `clipboard`         | `createClipboard` — `navigator.clipboard` plus a feedback port       |
 | `validate`          | `validate(schema, value)` → `{ error, data }`                        |
 | `map-entry`         | `setMapEntry` / `deleteMapEntry` — immutable `Map` writes            |
@@ -272,6 +272,66 @@ anything.
   resets by hand — there is one way to start a new session. Unlike the 17 copies this replaces, the
   effect has a disposer. `dispose()` runs it; `init()` returns it.
 
+## `createToastStore`, and who owns the dismiss timer
+
+**The store holds the list. `Toastr` owns every timer.** The store schedules nothing at all: it
+appends a toast, replaces one whose id is reused, and removes on request. Auto-dismiss belongs to
+whatever renders the toast, because that is the side that can see a pointer resting on one, and a
+timer on this side would take a toast away mid-read whatever the component had paused.
+
+The delay is one field, `duration`, spelled the same in both packages, so a store entry goes
+straight into the component with no adapter:
+
+```tsx
+import { createToastStore } from "@preact-components/signals/toast"
+import { Toastr } from "@preact-components/ui"
+
+const toast = createToastStore()
+
+toast.success({ body: "Saved" }) // no duration named: Toastr's 5000ms default
+toast.error({ body: "Could not save", duration: 0 }) // stays until somebody dismisses it
+toast.info({ body: "Read this one", duration: 20_000 })
+<Toastr toasts={toast.list.value} onDismiss={(id) => toast.remove(String(id))} />
+```
+
+- **`duration: 0` means keep this toast until somebody dismisses it**, on both sides. Neither the
+  store nor the component starts a timer for it.
+- **Omitting `duration` leaves the delay to the renderer.** The store has no default of its own to
+  put there — one default, on the side that runs the timer, which is `Toastr`'s exported
+  `defaultToastDuration` (5000).
+- **Only `0`, a positive number up to 2,147,483,647, or nothing.** The value goes to the
+  component unvalidated, and there a negative number or `Infinity` dismisses the toast at once
+  (the browser runs both as a zero delay), and so does anything above 2,147,483,647 ms (about
+  24.8 days), because browsers hold a timer's delay as a 32-bit signed integer. `NaN` starts no
+  timer and so behaves like `0`. `Infinity` and a huge number read like "keep it" and do the
+  opposite; spell that `0`.
+- **Re-pushing under the same id does not restart the countdown.** This changed with the store
+  giving up its timer: it used to cancel and reschedule on every re-push, so the toast got its
+  whole delay again. Now `Toastr` keeps the replaced toast's remaining time unless the re-push
+  changes `duration`, which refills it in full — to extend a toast, push it again with a new
+  `duration`.
+- **`timeout` is the old name for `duration`** and still works for one release. When both are
+  given, `duration` wins.
+- **`String(id)`** in `onDismiss`, because `ToastItem.id` is `string | number` and this store's
+  ids are strings.
+- **`list` appends the newest toast last**, so the documented wiring renders oldest at the top. A
+  caller who wants the newest first hands `Toastr` a reversed copy.
+
+An application that renders toasts some other way gets no auto-dismiss from this store, and
+schedules its own removals in two lines:
+
+```ts
+const id = toast.info({ body: "Saved", duration: 4000 })
+setTimeout(() => toast.remove(id), 4000)
+```
+
+That is deliberately not an option on the store. A default timer here would be a second clock for
+the component to disagree with, which is the pair of defects this replaced: the store's delay never
+reached the component under its old name, both clocks ran, and a toast lived whichever was shorter
+— so a twenty-second delay was cut to five, and `duration: 0` lost its toast after five. See
+[#174](https://github.com/spy4x/preact-components/issues/174) and
+[#175](https://github.com/spy4x/preact-components/issues/175).
+
 ## Notes and sharp edges
 
 - **Importing this package changes nothing globally.** It renders nothing, augments no prototype
@@ -391,8 +451,9 @@ anything.
   ```bash
   grep -n " as " signals/*.ts | grep -v "\.test\." | grep -v "as const"
   ```
-- **A reused toast id replaces that toast** and cancels the timer the old entry was carrying; it does
-  not append a second entry a `remove(id)` could not tell apart.
+- **A reused toast id replaces that toast** where it stands; it does not append a second entry a
+  `remove(id)` could not tell apart. There is no timer to cancel with it — the store holds no
+  timers at all, which the section above explains.
 - **Input a schema rejects settles the slot even while a write is outstanding.** An `update(id, …)`
   whose payload does not validate never reaches the network, so it takes no place in the row's
   request sequence: it files the validation error in that row's slot and lowers `inProgress` there,
@@ -495,13 +556,15 @@ deno test signals/          # from the repository root
 
 Every module has a colocated test except `types.ts`, which is types and enums only; the barrel's
 own test is about what importing it does to the process rather than about an export of its own.
-The model store is exercised against a fake `fetch`; toasts against a fake clock — no network, no
-timers left running. The ordering rules above are tested with a second fake `fetch` that holds every
-request open until the test answers it, so two writes to one row can be put in flight and answered
-in the other order. `useUrlFilters` is the one exception: it needs a DOM and a router, so only its
-pure coercion helpers are covered here and its binding to the address bar is covered in a real
-browser, by `pages/checks/signals.ts` — run with `deno task --cwd pages build` and
-`deno task --cwd pages verify`.
+The model store is exercised against a fake `fetch`. The toast store is exercised against a fake
+clock that replaces `setTimeout` for the whole process, which is how "this store schedules nothing"
+is asserted against a clock that has really moved rather than against an injected port the store
+could have gone around. No network, no timers left running. The ordering rules above are tested
+with a second fake `fetch` that holds every request open until the test answers it, so two writes
+to one row can be put in flight and answered in the other order. `useUrlFilters` is the one
+exception: it needs a DOM and a router, so only its pure coercion helpers are covered here and its
+binding to the address bar is covered in a real browser, by `pages/checks/signals.ts` — run with
+`deno task --cwd pages build` and `deno task --cwd pages verify`.
 
 The model store has a second file, `build-model-store.generated.test.ts`. The named tests fix one
 arrangement each and hold everything else still — three small row ids, two requests, a handful of

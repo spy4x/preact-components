@@ -214,7 +214,14 @@ export {
   textGeometry,
 } from "./skeletons.tsx"
 export { nextTabIndex, type TabItem, type TabOrientation, Tabs, type TabsProps } from "./tabs.tsx"
-export { type ToastItem, Toastr, type ToastrProps, type ToastVariant } from "./toastr.tsx"
+export {
+  defaultToastDuration,
+  resolveDuration,
+  type ToastItem,
+  Toastr,
+  type ToastrProps,
+  type ToastVariant,
+} from "./toastr.tsx"
 export { ToggleField, type ToggleFieldProps } from "./toggle-field.tsx"
 export { ToggleSwitch, type ToggleSwitchProps } from "./toggle-switch.tsx"
 export { Tooltip, type TooltipPlacement, type TooltipProps } from "./tooltip.tsx"
