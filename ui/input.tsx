@@ -1,5 +1,5 @@
 import { cn } from "@preact-components/cn"
-import type { JSX } from "preact"
+import type { JSX, Ref, VNode } from "preact"
 import { forwardRef } from "./forward-ref.ts"
 
 /**
@@ -47,7 +47,9 @@ export interface SelectProps extends Omit<JSX.SelectHTMLAttributes<HTMLSelectEle
  * `InputProps` (via `JSX.InputHTMLAttributes<HTMLInputElement>`), so it is already
  * `Ref<HTMLInputElement>` — no cast needed at the call site.
  */
-export const Input = forwardRef<HTMLInputElement, InputProps>("Input", function Input(
+export const Input: (
+  props: InputProps & { ref?: Ref<HTMLInputElement> },
+) => VNode | null = forwardRef<HTMLInputElement, InputProps>("Input", function Input(
   { class: className, ...rest },
   ref,
 ) {
@@ -55,7 +57,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>("Input", function 
 })
 
 /** Controlled multi-line input. See {@link Input} for the state contract. */
-export function Textarea({ class: className, ...rest }: TextareaProps) {
+export function Textarea({ class: className, ...rest }: TextareaProps): JSX.Element {
   return <textarea {...rest} class={cn("textarea", className)} />
 }
 
@@ -67,7 +69,9 @@ export function Textarea({ class: className, ...rest }: TextareaProps) {
  * blank state instead of mislabelling its first entry. A `placeholder` renders as the leading empty
  * option; without one, pass `value=""` and supply your own empty option in `options`.
  */
-export function Select({ class: className, options, placeholder, ...rest }: SelectProps) {
+export function Select(
+  { class: className, options, placeholder, ...rest }: SelectProps,
+): JSX.Element {
   return (
     <select {...rest} class={cn("select", className)}>
       {placeholder !== undefined && <option value="">{placeholder}</option>}

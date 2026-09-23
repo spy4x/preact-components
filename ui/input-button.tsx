@@ -53,7 +53,7 @@ export function InputButton(
     title,
     ...rest
   }: InputButtonProps,
-) {
+): JSX.Element {
   return (
     <div class={cn("relative", wrapperClass)}>
       <input

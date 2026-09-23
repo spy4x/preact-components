@@ -1,4 +1,4 @@
-import { type ComponentChildren, Fragment, isValidElement } from "preact"
+import { type ComponentChildren, Fragment, isValidElement, type JSX } from "preact"
 import { useId } from "preact/hooks"
 import { Button } from "./button.tsx"
 import { type DialogTone, Modal } from "./modal.tsx"
@@ -102,7 +102,7 @@ export function ConfirmDialog(
     dataE2E,
     class: className,
   }: ConfirmDialogProps,
-) {
+): JSX.Element {
   // An English default rather than a throw: every user-visible string in this package has one, and
   // a caller that reaches a blank label through a variable gets a usable button instead of a
   // rendered component that raises. The prop still overrides, and a product that wants its own verb

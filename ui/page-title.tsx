@@ -1,5 +1,5 @@
 import { cn } from "@preact-components/cn"
-import type { ComponentChildren } from "preact"
+import type { ComponentChildren, JSX } from "preact"
 
 export interface PageTitleProps {
   children: ComponentChildren
@@ -21,6 +21,6 @@ const defaultClasses =
  * The source component used the app's `h1` component class; the utilities are inlined here
  * so this package does not depend on the design-token layer for its chrome.
  */
-export function PageTitle({ children, class: className }: PageTitleProps) {
+export function PageTitle({ children, class: className }: PageTitleProps): JSX.Element {
   return <h1 class={cn(defaultClasses, className)}>{children}</h1>
 }

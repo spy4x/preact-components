@@ -1,5 +1,5 @@
 import { cn } from "@preact-components/cn"
-import type { ComponentChildren, JSX } from "preact"
+import type { ComponentChildren, JSX, Ref, VNode } from "preact"
 import { forwardRef } from "./forward-ref.ts"
 
 /** Visual role of a {@link Button}. */
@@ -83,7 +83,9 @@ export function buttonClasses(
  * `ButtonProps` (via `JSX.ButtonHTMLAttributes<HTMLButtonElement>`), so it is already
  * `Ref<HTMLButtonElement>` — no cast needed at the call site.
  */
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>("Button", function Button(
+export const Button: (
+  props: ButtonProps & { ref?: Ref<HTMLButtonElement> },
+) => VNode | null = forwardRef<HTMLButtonElement, ButtonProps>("Button", function Button(
   { variant = "primary", size = "md", class: className, type = "button", children, ...rest },
   ref,
 ) {

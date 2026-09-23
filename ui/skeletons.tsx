@@ -1,4 +1,5 @@
 import { cn } from "@preact-components/cn"
+import type { JSX } from "preact"
 
 /**
  * Shape-matching skeletons: variants whose boxes are computed from the same counts and widths the
@@ -440,7 +441,9 @@ const cardSurface =
  *
  * @see textGeometry for the widths this renders, and {@link SkeletonStatus} for the announcement.
  */
-export function SkeletonText({ lines, widths, class: className }: SkeletonTextProps) {
+export function SkeletonText(
+  { lines, widths, class: className }: SkeletonTextProps,
+): JSX.Element {
   return (
     <div class={cn("space-y-2", className)} aria-hidden="true" data-skeleton-text="true">
       {textGeometry(lines, widths).linePercents.map((percent, index) => (
@@ -508,7 +511,7 @@ export function SkeletonText({ lines, widths, class: className }: SkeletonTextPr
  */
 export function SkeletonTable(
   { rows, columns, widths, reserveHeight = true, class: className }: SkeletonTableProps,
-) {
+): JSX.Element {
   const geometry = tableGeometry({ rows, columns, widths })
   const showRows = geometry.cells > 0
   // The grid tracks are the caller's `widths` verbatim, or an equal share each when none were given.
@@ -579,7 +582,7 @@ export function SkeletonTable(
  */
 export function SkeletonCards(
   { columns = 3, rows = 1, lines = 2, class: className }: SkeletonCardsProps,
-) {
+): JSX.Element {
   const columnCount = skeletonCount(columns, 3)
   const total = columnCount * skeletonCount(rows, 1)
 
@@ -620,7 +623,9 @@ export function SkeletonCards(
  * costing a node, and a caller that drops `label` when loading ends gets the region out of the way
  * without a second boolean.
  */
-export function SkeletonStatus({ label, class: className }: SkeletonStatusProps) {
+export function SkeletonStatus(
+  { label, class: className }: SkeletonStatusProps,
+): JSX.Element | null {
   const text = label?.trim()
   if (!text) return null
 

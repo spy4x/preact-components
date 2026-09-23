@@ -16,3 +16,11 @@ steps:
     image: denoland/deno:2.9.7
     commands:
       - deno task check
+
+  # Not part of `deno task check` — see that task's own comment in `deno.jsonc` — so it runs as its
+  # own step. The checkout here is clean, so the bare task is enough; a missing return type or a
+  # CSS-module export fails this step the same way a red `check` fails the one above.
+  publish-dry:
+    image: denoland/deno:2.9.7
+    commands:
+      - deno task publish:dry

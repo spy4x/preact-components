@@ -1,3 +1,4 @@
+import type { JSX } from "preact"
 import { Button } from "./button.tsx"
 import { useEffect, useState } from "preact/hooks"
 
@@ -34,7 +35,7 @@ export function CopyButton(
     copiedForMs = 1500,
     class: className,
   }: CopyButtonProps,
-) {
+): JSX.Element {
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {

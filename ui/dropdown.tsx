@@ -1,6 +1,6 @@
 import { cn } from "@preact-components/cn"
 import { useSignal } from "@preact/signals"
-import type { ComponentChildren } from "preact"
+import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useRef } from "preact/hooks"
 import { buttonClasses } from "./button.tsx"
 
@@ -126,7 +126,7 @@ export interface DropdownItemProps {
  */
 export function DropdownItem(
   { href, onClick, disabled, class: className, dataE2E, children }: DropdownItemProps,
-) {
+): JSX.Element {
   const classes = cn(itemClasses, className)
 
   return href !== undefined
@@ -195,7 +195,7 @@ function menuItems(panel: HTMLElement | null): HTMLElement[] {
  *
  * @param props See {@link DropdownProps}.
  */
-export function Dropdown(props: DropdownProps) {
+export function Dropdown(props: DropdownProps): JSX.Element {
   const {
     trigger,
     triggerClasses,

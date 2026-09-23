@@ -1,4 +1,5 @@
 import { cn } from "@preact-components/cn"
+import type { JSX } from "preact"
 
 /** Palette entries a {@link Badge} can use. */
 export type BadgeColor = "red" | "orange" | "green" | "gray" | "blue" | "purple" | "purpleNav"
@@ -39,7 +40,9 @@ const base =
   "inline-flex items-center border rounded-md px-2.5 py-1 text-xs whitespace-nowrap font-medium capitalize"
 
 /** Small status pill. Static — takes text, renders a `span`. */
-export function Badge({ text, color = "purple", type = "filled", class: className }: BadgeProps) {
+export function Badge(
+  { text, color = "purple", type = "filled", class: className }: BadgeProps,
+): JSX.Element {
   const palette = type === "outline" ? outlineClasses : filledClasses
   return <span class={cn(base, palette[color], className)}>{text}</span>
 }

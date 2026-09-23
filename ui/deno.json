@@ -39,5 +39,11 @@
     "./toggle-field": "./toggle-field.tsx",
     "./toggle-switch": "./toggle-switch.tsx",
     "./tooltip": "./tooltip.tsx"
+  },
+  "publish": {
+    // This package's own `*.test.*` suites, none reachable from `exports`. A glob rather than a
+    // per-file list: a hand-kept list has to be remembered on every new test file, and nothing
+    // here would catch a forgotten entry — a new `*.test.tsx` would ship to JSR with the package.
+    "exclude": ["*.test.ts", "*.test.tsx"]
   }
 }

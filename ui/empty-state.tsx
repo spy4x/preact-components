@@ -1,5 +1,5 @@
 import { cn } from "@preact-components/cn"
-import type { ComponentChildren } from "preact"
+import type { ComponentChildren, JSX } from "preact"
 
 export interface EmptyStateProps {
   /** Decorative glyph. Rendered in a muted box and hidden from assistive tech. */
@@ -42,7 +42,7 @@ const iconBox =
  */
 export function EmptyState(
   { icon, title, description, action, class: className }: EmptyStateProps,
-) {
+): JSX.Element | null {
   const hasContent = Boolean(icon) || Boolean(title) || Boolean(description) || Boolean(action)
   if (!hasContent) return null
 

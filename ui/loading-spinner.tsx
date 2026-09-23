@@ -1,4 +1,5 @@
 import { cn } from "@preact-components/cn"
+import type { JSX } from "preact"
 
 /** Rendered size of a {@link LoadingSpinner}. */
 export type SpinnerSize = "sm" | "md" | "lg"
@@ -32,7 +33,7 @@ const strokeWidths: Record<SpinnerSize, string> = {
  */
 export function LoadingSpinner(
   { label, size = "md", class: className }: LoadingSpinnerProps,
-) {
+): JSX.Element {
   return (
     <div
       class={cn("flex flex-col items-center justify-center gap-3 py-10", className)}

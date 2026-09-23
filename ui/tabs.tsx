@@ -1,5 +1,5 @@
 import { cn } from "@preact-components/cn"
-import type { ComponentChildren } from "preact"
+import type { ComponentChildren, JSX } from "preact"
 import { useRef } from "preact/hooks"
 
 /** Axis a tablist is laid out along, which decides which arrow keys it answers. */
@@ -180,7 +180,7 @@ export function Tabs(
     panelClass,
     tabDataE2E,
   }: TabsProps,
-) {
+): JSX.Element {
   const listRef = useRef<HTMLDivElement>(null)
   const activeIndex = tabs.findIndex((tab) => tab.id === active)
   const flags = tabs.map((tab) => tab.disabled === true)

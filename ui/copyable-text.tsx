@@ -1,4 +1,5 @@
 import { cn } from "@preact-components/cn"
+import type { JSX } from "preact"
 import { CopyButton, copyToClipboard } from "./copy-button.tsx"
 import { useEffect, useState } from "preact/hooks"
 
@@ -78,7 +79,7 @@ export function CopyableTextBody(
     onCopy,
     class: className,
   }: CopyableTextBodyProps,
-) {
+): JSX.Element {
   /*
    * A port is always handed to `CopyButton` — the caller's when there is one, the library's own
    * clipboard write otherwise — because the click would otherwise happen inside `CopyButton` and
@@ -127,7 +128,7 @@ function copiedForMsOf(props: CopyableTextProps): number {
  * reaches neither a screen reader nor an `aria-label`. The region is emptied again after
  * `copiedForMs`, which is what makes a second copy announce a second time.
  */
-export function CopyableText(props: CopyableTextProps) {
+export function CopyableText(props: CopyableTextProps): JSX.Element {
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {

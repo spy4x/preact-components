@@ -1,5 +1,6 @@
 import { cn } from "@preact-components/cn"
 import { useSignal } from "@preact/signals"
+import type { JSX } from "preact"
 import { useEffect, useId, useRef } from "preact/hooks"
 import { Button, buttonClasses } from "./button.tsx"
 import {
@@ -131,7 +132,7 @@ export function DateRangePicker(
     class: className,
     dataE2E,
   }: DateRangePickerProps,
-) {
+): JSX.Element {
   const isOpen = useSignal(false)
   const usingCustom = useSignal(false)
   const draftFrom = useSignal(range?.from ?? "")

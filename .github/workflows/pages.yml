@@ -48,6 +48,13 @@ jobs:
       - name: Check
         run: deno task check
 
+      # Not part of `deno task check` — see the task's own comment in `deno.jsonc` for why — so it
+      # is a step of its own. The checkout is clean here, unlike a workstation mid-change, so this
+      # runs the bare task rather than `--allow-dirty`; a missing return type or a `theme/`-style CSS
+      # export fails this step the same way a red `check` does, before the build or the deploy.
+      - name: Dry-run the JSR publish
+        run: deno task publish:dry
+
       - name: Build the demo
         run: deno task --cwd pages build
 

@@ -1,5 +1,5 @@
 import { cn } from "@preact-components/cn"
-import type { ComponentChildren } from "preact"
+import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useRef, useState } from "preact/hooks"
 
 /** Kind of a toast, selecting its colour and glyph. */
@@ -162,7 +162,7 @@ export function Toastr(
     dataE2E,
     class: className,
   }: ToastrProps,
-) {
+): JSX.Element {
   const [paused, setPaused] = useState(false)
 
   return (

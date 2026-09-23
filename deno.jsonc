@@ -44,9 +44,11 @@
     // Dry-runs the publish for every named workspace member (`pages/` has no `name`, so `deno
     // publish` skips it on its own — nothing here excludes it by hand). Named `publish:dry`
     // rather than `publish`: this only ever simulates, the owner runs the real `deno publish` by
-    // hand, and a bare `publish` task would read as the thing that ships to JSR. Not part of
-    // `check` or CI yet — it fails today on `ui/` and `crud/` (#223) — the pull request that
-    // finishes that sweep adds it to both.
+    // hand, and a bare `publish` task would read as the thing that ships to JSR. Run as its own
+    // step in both CI systems — `.github/workflows/pages.yml` and `.woodpecker.yml` — rather than
+    // folded into `check`: `deno publish --dry-run` refuses a dirty tree, so adding it to `check`
+    // would fail every local run against uncommitted work. Both CI checkouts are clean, so the
+    // step there runs this task bare, with no `--allow-dirty`.
     "publish:dry": "deno publish --dry-run",
     "fix": {
       "command": "echo 'Fixes applied!'",
