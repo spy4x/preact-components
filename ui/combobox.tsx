@@ -72,8 +72,8 @@ export function defaultGetLabel<T>(item: T): string {
 /**
  * Whether one item matches a query.
  *
- * Substring match on the folded text — the rule `financy`'s currency selector used, minus the
- * currency fields. Diacritics fold, so `"sao"` finds `"São Paulo"`.
+ * Substring match on the folded text — the rule a source application's currency selector used,
+ * minus the currency fields. Diacritics fold, so `"sao"` finds `"São Paulo"`.
  *
  * @param item Item to test.
  * @param query Raw query; the caller need not trim or fold it.
@@ -374,7 +374,7 @@ const plainKeys: readonly string[] = ["ArrowDown", "ArrowUp", "Home", "End", "En
 /**
  * Map a DOM keyboard event onto a {@link ComboboxKey}.
  *
- * `Alt` is the modifier `financy` used to open without highlighting, so it is part of the key here
+ * `Alt` is the modifier a source application used to open without highlighting, so it is part of the key here
  * rather than the caller's business. Anything unrecognised returns `undefined`, and the caller must
  * then leave the event alone.
  *
