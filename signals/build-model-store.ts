@@ -49,13 +49,13 @@ import {
  *   while our write was on the wire came back on screen when the write answered. A `"list"` event
  *   is weighed against nothing and replaces what it names outright.
  * - **A remote delete judged newer replaces the row wholesale, exactly like a remote update.** One
- *   judged older is narrower: it is a claim about archiving only, so it sets `deletedAt` and keeps
- *   every other column the list already held — an old copy of the row must not ride in on a
- *   delayed delete. An older delete carrying nothing to archive (`deletedAt` null, or no such
- *   column) makes no claim at all and changes nothing. Without the wholesale half, an application
- *   with its own freshness check over a version column could not defend a delete against an older
- *   answer of its own, which is exactly the bug this rule exists to close. See
- *   {@link applyRemoteDelete}.
+ *   judged older is narrower: it may only turn an unarchived row into an archived one, keeping
+ *   every other column the list already held — an old copy of the row, and an old copy of
+ *   `deletedAt` itself once the row is already archived, must not ride in on a delayed delete. An
+ *   older delete carrying nothing to archive (`deletedAt` null, or no such column) makes no claim
+ *   at all and changes nothing. Without the wholesale half, an application with its own freshness
+ *   check over a version column could not defend a delete against an older answer of its own, which
+ *   is exactly the bug this rule exists to close. See {@link applyRemoteDelete}.
  */
 
 /** Payload and row schemas for a model. */
@@ -197,13 +197,13 @@ export interface BuildModelStoreConfig<
    *
    * An `"updated"` remote event, a `"deleted"` one, and the answer to one of this client's own
    * requests are each weighed by it wholesale: the older row is ignored and the newer one replaces
-   * everything the list held. A `"deleted"` event judged older is the one exception — it is then a
-   * claim about archiving only, so only `deletedAt` is taken from it and every other column keeps
-   * the value the list already held. It is not asked about a `"list"` event, which replaces what it
-   * names outright. The default compares `updatedAt`, falls back to `createdAt` for a model that
-   * has neither side stamped with an `updatedAt`, and accepts the incoming row whenever the two
-   * cannot be ordered — including when the model carries no timestamp column at all. See
-   * {@link defaultIsNewer}.
+   * everything the list held. A `"deleted"` event judged older is the one exception — it may then
+   * only turn an unarchived row into an archived one, taking `deletedAt` from it and leaving every
+   * other column, `deletedAt` on an already-archived row included, at the value the list already
+   * held. It is not asked about a `"list"` event, which replaces what it names outright. The
+   * default compares `updatedAt`, falls back to `createdAt` for a model that has neither side
+   * stamped with an `updatedAt`, and accepts the incoming row whenever the two cannot be ordered —
+   * including when the model carries no timestamp column at all. See {@link defaultIsNewer}.
    */
   isNewer?: (incoming: SchemaOutput<F>, existing: SchemaOutput<F>) => boolean
   /**
@@ -492,24 +492,24 @@ export function buildModelStore<
    * recommend for a server that does not move `updatedAt` — defend a delete against an older answer
    * of this client's own; advancing only a stamp the check never reads could not.
    *
-   * Judged older, the event is narrower: a claim about archiving the row and nothing else. The
-   * copy of the row it carries may be older than what the list already holds — delayed in transit,
-   * or made by a client whose own clock is behind — and taking it wholesale would revert an edit
-   * nobody undid. So only `deletedAt` is taken from it, and every other column, including the
-   * freshness columns {@link outranksHeldRow} judges the next write against, keeps the value the
-   * list already held. An older event with nothing to archive — `deletedAt` falsy, because the
-   * event says `null` or the model carries no such column at all — is not a claim about anything
-   * and changes nothing, which is also what keeps a model with no `deletedAt` column from gaining a
-   * phantom one.
+   * Judged older, the event is narrower: a claim that may only turn an unarchived row into an
+   * archived one, and nothing else. The copy of the row it carries may be older than what the list
+   * already holds — delayed in transit, or made by a client whose own clock is behind — and taking
+   * it wholesale would revert an edit nobody undid. So every other column, including the freshness
+   * columns {@link outranksHeldRow} judges the next write against, keeps the value the list already
+   * held, and `deletedAt` moves only from a falsy value to the event's: an older event with nothing
+   * to archive — `deletedAt` falsy, because the event says `null` or the model carries no such
+   * column at all — is not a claim about anything, and a row the list already holds as archived
+   * keeps its own instant, because the event's is then an old copy of that column too, not a fresh
+   * claim about it. Neither case adds a phantom `deletedAt` to a model that has none.
    *
-   * One consequence of always taking an older event's `deletedAt` when it is truthy: a delete that
-   * arrives late can re-archive a row a later `undelete` had already restored, because ordering is
-   * judged by the freshness columns alone and an archive/restore pair does not reliably move them
-   * in this library's data contract. See #201.
+   * One consequence worth stating: a delete that arrives late can still re-archive a row a later
+   * `undelete` had already restored, because ordering is judged by the freshness columns alone and
+   * an archive/restore pair does not reliably move them in this library's data contract. See #201.
    */
   const applyRemoteDelete = (incoming: Row, held: Row): Row => {
     if (isNewer(incoming, held)) return incoming
-    if (!incoming.deletedAt) return held
+    if (held.deletedAt || !incoming.deletedAt) return held
     return { ...held, deletedAt: incoming.deletedAt }
   }
 
