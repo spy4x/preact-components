@@ -33,6 +33,7 @@ import { buttonDemos } from "./sections/buttons.tsx"
 import { chartsDemos } from "./sections/charts.tsx"
 import { crudDemos } from "./sections/crud.tsx"
 import { displayDemos } from "./sections/display.tsx"
+import { enhancedFormDemos } from "./sections/enhanced-forms.tsx"
 import { feedbackDemos } from "./sections/feedback.tsx"
 import { fieldDemos } from "./sections/fields.tsx"
 import { formDemos } from "./sections/forms.tsx"
@@ -246,6 +247,7 @@ export type SectionId =
   | "badges"
   | "buttons"
   | "display"
+  | "enhanced-forms"
   | "feedback"
   | "inputs"
   | "fields"
@@ -302,6 +304,14 @@ const catalogue = {
     blurb:
       "The controlled form primitives: `Field` owns the label wiring and the messages, and `Input`/`Textarea`/`Select`/`Checkbox`/`Radio` are the native elements with the preset's class on them.",
     demos: fieldDemos,
+  },
+  "enhanced-forms": {
+    group: "inputs",
+    package: "ui",
+    title: "Enhanced forms",
+    blurb:
+      "Whole forms built on the `Fields` primitives above, that post on their own before a script has run and stay on the page once one has: `EnhancedForm` is the building block, `NewsletterForm` and `ContactForm` are the two shapes built on it.",
+    demos: enhancedFormDemos,
   },
   forms: {
     group: "surfaces",
@@ -448,6 +458,7 @@ export const demoRegistry: DemoRegistry = {
   ...badgeDemos,
   ...buttonDemos,
   ...displayDemos,
+  ...enhancedFormDemos,
   ...feedbackDemos,
   ...inputDemos,
   ...fieldDemos,
