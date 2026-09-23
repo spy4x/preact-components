@@ -304,10 +304,10 @@ this:
   contributed nothing after dedupe (a fork of another with byte-identical bodies throughout).
 - **Provenance is now checked, not just eyeballed.** `icons/provenance.ts` compares every exported
   glyph's geometry against the published Heroicons v1, Heroicons v2, Feather and Lucide packs. Of
-  119 glyphs, 79 match a pack's glyph exactly, 7 match one nearly, and 33 match none of the four —
-  see `icons/README.md` → "Provenance" for the full breakdown and the 33 by name.
+  119 glyphs, 89 match a pack's glyph exactly, 6 match one nearly, and 24 match none of the four —
+  see `icons/README.md` → "Provenance" for the full breakdown and the 24 by name.
   [`icons/THIRD_PARTY_NOTICES.md`](../icons/THIRD_PARTY_NOTICES.md) carries the licence text for
-  every pack a match was found in. The 33 with no match are not thereby proven unlicensed, only
+  every pack a match was found in. The 24 with no match are not thereby proven unlicensed, only
   unattributed by this check; replacing or dropping them is tracked in
   [issue #233](https://github.com/spy4x/preact-components/issues/233), not decided here.
 - **Six glyphs are trademarked brand marks** — GitHub, LinkedIn, Telegram, Upwork, Twitter and
@@ -335,11 +335,11 @@ this:
 > reason to doubt it for those six specifically — but re-reading that paragraph against the current
 > tree, rather than deleting it, is part of #127's wider sweep of this document.
 
-**This document does not resolve that question and must not be read as doing so.** For the 33
+**This document does not resolve that question and must not be read as doing so.** For the 24
 glyphs `icons/provenance.ts` could not match to a pack, no licence is asserted and none is inferred.
-For the 86 it did match, the matched pack's own licence applies — that is a fact about which pack
+For the 95 it did match, the matched pack's own licence applies — that is a fact about which pack
 the geometry compares equal to, not a legal opinion rendered here. No glyph has been changed,
-replaced or re-drawn to produce a match. The open choices — whether to keep, swap or drop the 33
+replaced or re-drawn to produce a match. The open choices — whether to keep, swap or drop the 24
 unmatched, and how to treat the brand subset — belong to the repository owner as a legal decision,
 not to an implementation PR.
 
@@ -356,8 +356,8 @@ settle for most of them.
 1. **A release or distribution event** — the set is published to a registry, the demo is promoted, or
    the package is consumed outside `spy4x`'s own apps. This trigger has partly fired already:
    issue #111 found the set published with no third-party notice at all, and this document's icon
-   section, `icons/README.md` and `icons/THIRD_PARTY_NOTICES.md` are the response for the 86 glyphs
-   a pack match covers. The trigger still stands for the 33 that remain unmatched and for publishing
+   section, `icons/README.md` and `icons/THIRD_PARTY_NOTICES.md` are the response for the 95 glyphs
+   a pack match covers. The trigger still stands for the 24 that remain unmatched and for publishing
    to a registry, which has not happened yet.
 2. **A licence audit** of this repository, or of any app that consumes it.
 3. **A glyph is found to be from a pack whose licence forbids this use**, or whose attribution terms
