@@ -31,6 +31,7 @@ export {
   createClipboard,
 } from "./clipboard.ts"
 export { deleteMapEntry, setMapEntry } from "./map-entry.ts"
+export { patchSignal } from "./patch-signal.ts"
 export {
   parseSort,
   removeSortRule,

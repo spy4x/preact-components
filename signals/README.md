@@ -27,6 +27,7 @@ sort codec.
 | `clipboard`         | `createClipboard` — `navigator.clipboard` plus a feedback port       |
 | `validate`          | `validate(schema, value)` → `{ error, data }`                        |
 | `map-entry`         | `setMapEntry` / `deleteMapEntry` — immutable `Map` writes            |
+| `patch-signal`      | `patchSignal` — merge a partial object into a signal's value         |
 | `use-url-filters`   | `useUrlFilters` — two-way binding between URL params and signals     |
 
 `types.ts` holds the shared shapes (`OperationState`, `OperationResult`, `ErrType`, `ValidationError`,

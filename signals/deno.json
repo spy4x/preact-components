@@ -6,6 +6,7 @@
     "./build-model-store": "./build-model-store.ts",
     "./clipboard": "./clipboard.ts",
     "./map-entry": "./map-entry.ts",
+    "./patch-signal": "./patch-signal.ts",
     "./table-state": "./table-state.ts",
     "./theme": "./theme.ts",
     "./toast": "./toast.ts",
