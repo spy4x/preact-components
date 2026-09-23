@@ -93,6 +93,8 @@ export {
   DataTable,
   type DataTableColumn,
   type DataTableColumnAlign,
+  type DataTableDataColumn,
+  type DataTableDisplayColumn,
   type DataTablePaging,
   type DataTableProps,
   rowKeyAttribute,

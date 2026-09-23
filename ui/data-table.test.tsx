@@ -153,7 +153,9 @@ describe("DataTable", () => {
       />,
     )
     expect(countOccurrences(ascending, "aria-sort=")).toBe(1)
-    expect(ascending).toContain('aria-sort="ascending"')
+    expect(headerCell(ascending, "Amount")).toContain('aria-sort="ascending"')
+    expect(headerCell(ascending, "Id")).not.toContain("aria-sort")
+    expect(headerCell(ascending, "Merchant")).not.toContain("aria-sort")
 
     const descending = render(
       <DataTable
@@ -165,7 +167,7 @@ describe("DataTable", () => {
         caption="Invoices"
       />,
     )
-    expect(descending).toContain('aria-sort="descending"')
+    expect(headerCell(descending, "Amount")).toContain('aria-sort="descending"')
   })
 
   it("renders no aria-sort at all when nothing is sorted", () => {
@@ -256,7 +258,7 @@ describe("DataTable", () => {
     expect(countOccurrences(sorted, '<svg aria-hidden="true"')).toBe(2)
   })
 
-  it("never puts aria-sort on a display column, even when a data column shares its sort key's data", () => {
+  it("never puts aria-sort on a display column beside a sorted data column", () => {
     const withActions: DataTableColumn<Invoice, keyof Invoice & string>[] = [
       { key: "id", header: "Id", sortable: true },
       { key: "merchant", header: "Merchant" },
@@ -275,8 +277,40 @@ describe("DataTable", () => {
     )
 
     expect(countOccurrences(html, "aria-sort=")).toBe(1)
-    expect(html).toContain('aria-sort="ascending"')
+    expect(headerCell(html, "Id")).toContain('aria-sort="ascending"')
+    expect(headerCell(html, "Actions")).not.toContain("aria-sort")
     expect(html).toContain("Archive INV-1")
+  })
+
+  it("rejects a display column typed with sortable, or a column carrying both key and id", () => {
+    // Type-level proof, not a runtime assertion: these two literals must fail `ts:check`, so a
+    // regression that loosens DataTableDisplayColumn/DataTableDataColumn's `never` properties is
+    // caught at compile time rather than by a screen reader hearing the wrong column announced.
+    // Break this test's claim by deleting one `never` property in ui/data-table.tsx and re-run
+    // `deno check ui/data-table.test.tsx` — the line below the deleted property's counterpart
+    // stops erroring, and `@ts-expect-error` itself then reports "Unused '@ts-expect-error'
+    // directive", which is what makes the loosened type a red `ts:check` rather than a silent gap.
+
+    // @ts-expect-error — a display column has no field to sort by, so `sortable` cannot appear.
+    const displayColumnWithSortable: DataTableColumn<Invoice, keyof Invoice & string> = {
+      id: "actions",
+      header: "Actions",
+      sortable: true,
+      render: () => null,
+    }
+
+    // @ts-expect-error — key and id are mutually exclusive; a column with both is neither shape.
+    const columnWithBothKeyAndId: DataTableColumn<Invoice, keyof Invoice & string> = {
+      key: "id",
+      id: "actions",
+      header: "Actions",
+      render: () => null,
+    }
+
+    // Referenced so neither is an unused-variable lint error; the columns themselves are never
+    // rendered — DataTable never sees the invalid shapes this test exists to keep uncompilable.
+    expect(typeof displayColumnWithSortable).toBe("object")
+    expect(typeof columnWithBothKeyAndId).toBe("object")
   })
 
   it("presses a sortable header's button through toggleSort", () => {
@@ -592,4 +626,19 @@ function order(html: string): string[] {
   return [...html.matchAll(new RegExp(`${rowKeyAttribute}="([^"]+)"`, "g"))].map((match) =>
     match[1]
   )
+}
+
+/**
+ * The `<th>…</th>` block whose rendered text is exactly `label`, so a test can assert an
+ * attribute on *that* header rather than on the markup as a whole.
+ *
+ * A count of `aria-sort=` occurrences, or a bare `toContain('aria-sort="ascending"')`, cannot
+ * tell "the sorted column carries it" from "some column carries it": moving the attribute onto
+ * the wrong `<th>` changes neither the count nor the substring, only which element it sits on.
+ */
+function headerCell(html: string, label: string): string {
+  const blocks = html.split("</th>").map((block) => `${block}</th>`)
+  const found = blocks.find((block) => block.includes(`>${label}<`))
+  if (!found) throw new Error(`no <th> rendered for "${label}"`)
+  return found
 }
