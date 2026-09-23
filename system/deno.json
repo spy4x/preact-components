@@ -8,7 +8,8 @@
     "./seo-head": "./seo-head.tsx",
     "./sw-updater": "./sw-updater.tsx",
     "./calendar": "./calendar.tsx",
-    "./image-lightbox": "./image-lightbox.tsx"
+    "./image-lightbox": "./image-lightbox.tsx",
+    "./site-header": "./site-header.tsx"
   },
   "publish": {
     // Every `*.test.*` here renders to `preact-render-to-string` or drives Deno's fake timers; none

@@ -521,7 +521,13 @@ export class Devtools {
     { resolve: (value: unknown) => void; reject: (error: Error) => void }
   >()
   #events: ProtocolEvent[] = []
-  #waiters: Array<{ method: string; resolve: () => void; reject: (error: Error) => void }> = []
+  #waiters: Array<
+    {
+      method: string
+      resolve: (params: Record<string, unknown>) => void
+      reject: (error: Error) => void
+    }
+  > = []
   /** Set once the socket has gone away; every pending and future `send` rejects with this. */
   #closed?: DevtoolsClosedError
 
@@ -640,18 +646,32 @@ export class Devtools {
    * @param timeoutMs How long to wait before giving up.
    */
   async next(method: string, timeoutMs = 15_000): Promise<void> {
+    await this.once(method, timeoutMs)
+  }
+
+  /**
+   * Wait for the next protocol event with this method, and return the params it carried.
+   *
+   * {@link next} is this with the params dropped, for a caller that only needs to know an event
+   * happened. A caller that has to act on what it carried — a `Fetch.requestPaused` event's own
+   * `requestId`, say, needed to release the request it names — needs this one instead.
+   *
+   * @param method Event name, e.g. `Fetch.requestPaused`.
+   * @param timeoutMs How long to wait before giving up.
+   */
+  async once<T = Record<string, unknown>>(method: string, timeoutMs = 15_000): Promise<T> {
     if (this.#closed) throw this.#closed
 
-    await new Promise<void>((resolve, reject) => {
+    return await new Promise<T>((resolve, reject) => {
       const timer = setTimeout(
         () => reject(new Error(`timed out waiting for ${method}`)),
         timeoutMs,
       )
       this.#waiters.push({
         method,
-        resolve: () => {
+        resolve: (params) => {
           clearTimeout(timer)
-          resolve()
+          resolve(params as T)
         },
         reject: (error) => {
           clearTimeout(timer)
@@ -715,10 +735,11 @@ export class Devtools {
     }
 
     if (!message.method) return
-    this.#events.push({ method: message.method, params: message.params ?? {} })
+    const params = message.params ?? {}
+    this.#events.push({ method: message.method, params })
 
     const waiting = this.#waiters.filter((waiter) => waiter.method === message.method)
     this.#waiters = this.#waiters.filter((waiter) => waiter.method !== message.method)
-    for (const waiter of waiting) waiter.resolve()
+    for (const waiter of waiting) waiter.resolve(params)
   }
 }

@@ -152,26 +152,30 @@ function clickBarButton(devtools: Devtools, label: string, bar = BAR): Promise<b
 }
 
 /**
- * `system/`'s browser checks: `AuthForm`, the calendar's keyboard, the lightbox's, and `SWUpdater`
- * against a real service worker.
+ * `system/`'s browser checks: `AuthForm`, the calendar's keyboard, the lightbox's, `SiteHeader`'s
+ * mobile panel, and `SWUpdater` against a real service worker.
  *
- * `AuthForm` runs first, and its last step is the reason the other three come after it rather than
- * around it: proving that a submit survives disabled script execution means disabling script
- * execution and forcing a fresh, unhydrated load of the page, and every check in this file after
- * that needs the hydrated page back. `authFormNoScriptChecks` re-enables scripts, reloads the page
- * and waits for the same `data-hydrated` marker `verify.ts` waits for at startup before it
- * returns — nothing in `authFormChecks` after it, and nothing in this function after
- * `authFormChecks`, may run before that restoration is confirmed.
+ * `AuthForm` runs first, and its last step is the reason the calendar and the lightbox come after
+ * it rather than around it: proving that a submit survives disabled script execution means
+ * disabling script execution and forcing a fresh, unhydrated load of the page, and every check in
+ * this file after that needs the hydrated page back. `authFormNoScriptChecks` re-enables scripts,
+ * reloads the page and waits for the same `data-hydrated` marker `verify.ts` waits for at startup
+ * before it returns — nothing in `authFormChecks` after it, and nothing in this function after
+ * `authFormChecks`, may run before that restoration is confirmed. `SiteHeader` is not the only
+ * other block with its own such excursion any more: `siteHeaderNoScriptCheck` disables script
+ * execution the same way `AuthForm` does, and `siteHeaderHydrationSyncChecks` holds the island
+ * bundle back with the Fetch domain instead — both restore the hydrated page in their own
+ * `finally` before `siteHeaderChecks` returns, the same contract `authFormNoScriptChecks` keeps.
  *
- * The other three run in the stated order, and that order is the point. The service-worker block
- * below stages a real registration, a hidden frame inside its scope and a hand-over between two
- * workers; it is the only other part of this file with state outside the page, so nothing that
- * could be affected by it runs after it. The lightbox opens a real modal `<dialog>`, which would
- * sit in the top layer over every check that came after if it ever refused to close — `ui.ts`
- * answers that risk by running Modal last of everything, and this file cannot, because `verify.ts`
- * fixes the order of the packages. So the lightbox block closes its dialog unconditionally at the
- * end and asserts that the top layer is empty, which is the same guarantee bought with a teardown
- * instead of an ordering.
+ * The calendar, the lightbox and the service worker run in the stated order, and that order is the
+ * point. The service-worker block below stages a real registration, a hidden frame inside its scope
+ * and a hand-over between two workers; it is the only other part of this file with state outside
+ * the page, so nothing that could be affected by it runs after it. The lightbox opens a real modal
+ * `<dialog>`, which would sit in the top layer over every check that came after if it ever refused
+ * to close — `ui.ts` answers that risk by running Modal last of everything, and this file cannot,
+ * because `verify.ts` fixes the order of the packages. So the lightbox block closes its dialog
+ * unconditionally at the end and asserts that the top layer is empty, which is the same guarantee
+ * bought with a teardown instead of an ordering.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -180,6 +184,7 @@ export async function systemChecks(devtools: Devtools): Promise<void> {
   await liveRegionChecks(devtools)
   await calendarChecks(devtools)
   await imageLightboxChecks(devtools)
+  await siteHeaderChecks(devtools)
   await serviceWorkerChecks(devtools)
   check(
     "every reading this file took came back without a page exception",
@@ -3473,4 +3478,1007 @@ function monthAfter(anchor: string, months: number): string {
   const total = Number(anchor.slice(0, 4)) * 12 + Number(anchor.slice(5, 7)) - 1 + months
   const month = String((total % 12) + 1).padStart(2, "0")
   return `${Math.floor(total / 12)}-${month}-01`
+}
+
+/** The card `siteHeaderChecks` drives, and the pieces of it it reads. */
+const SITE_HEADER_CARD = "#demo-SiteHeader"
+const SITE_HEADER = SITE_HEADER_CARD + ' [data-e2e="site-header-demo"]'
+const SITE_HEADER_HEADER = SITE_HEADER + " header"
+const SITE_HEADER_BRAND = SITE_HEADER + ' [data-e2e="site-header-brand"]'
+const SITE_HEADER_BUTTON = SITE_HEADER + ' [data-e2e="site-header-menu-button"]'
+const SITE_HEADER_PANEL = SITE_HEADER + ' [data-e2e="site-header-panel"]'
+const SITE_HEADER_DETAILS = SITE_HEADER + " details"
+/** Every link inside the mobile panel, in document order — the order Tab has to follow. */
+const SITE_HEADER_PANEL_LINKS = SITE_HEADER_PANEL + " nav a"
+const SITE_HEADER_CTA = SITE_HEADER + ' [data-e2e="site-header-cta"]'
+
+/** A viewport narrow enough to put `SiteHeader` into its `<details>` layout (`lg` is 1024px). */
+const SITE_HEADER_VIEWPORT = { width: 390, height: 844 }
+
+/** What one reading of the card's `<details>` and menu button reports. */
+interface SiteHeaderState {
+  /** Whether the details element, the button and the panel were all found. */
+  found: boolean
+  detailsOpen: boolean
+  /** `aria-expanded` on the menu button, or `null` when the button was not found. */
+  expanded: string | null
+  /** `aria-label` on the menu button — its accessible name while closed or open. */
+  buttonLabel: string | null
+}
+
+const READ_SITE_HEADER = `(() => {
+  const details = document.querySelector('${SITE_HEADER_DETAILS}')
+  const button = document.querySelector('${SITE_HEADER_BUTTON}')
+  const panel = document.querySelector('${SITE_HEADER_PANEL}')
+  return {
+    found: Boolean(details) && Boolean(button) && Boolean(panel),
+    detailsOpen: details ? details.open : false,
+    expanded: button ? button.getAttribute("aria-expanded") : null,
+    buttonLabel: button ? button.getAttribute("aria-label") : null,
+  }
+})()`
+
+/** A reading that reads as a failure everywhere, for when the expression itself threw. */
+const SITE_HEADER_UNREAD: SiteHeaderState = {
+  found: false,
+  detailsOpen: false,
+  expanded: null,
+  buttonLabel: null,
+}
+
+function readSiteHeader(devtools: Devtools): Promise<SiteHeaderState> {
+  return read(devtools, READ_SITE_HEADER, SITE_HEADER_UNREAD)
+}
+
+/**
+ * Force the panel closed before a sub-check opens it, rather than assuming the previous one left
+ * it that way.
+ *
+ * Every sub-check below opens the panel with a click, and a click toggles: one that lands on an
+ * already-open panel closes it instead, which is indistinguishable from "never opened" to a poll
+ * that only checks `detailsOpen` afterward. A sub-check earlier in `siteHeaderChecks` that closes
+ * the panel with Escape as its own teardown, rather than as something it records a `check` against,
+ * can occasionally leave it open on a run where that Escape press was itself slow to land — this is
+ * what a later sub-check's own "the panel was never open" turned out to mean, traced back from a
+ * click that closed a panel already open rather than opening a closed one. Setting `open` directly
+ * fires the same native `toggle` event a click does, so `handleToggle` still runs and `isOpen`
+ * still ends up correct — this is not a way around the component's own wiring, only a way to reach
+ * a known starting state without depending on a previous sub-check's own teardown having landed.
+ */
+async function ensureSiteHeaderClosed(devtools: Devtools): Promise<void> {
+  await read(
+    devtools,
+    `(() => {
+      const details = document.querySelector('${SITE_HEADER_DETAILS}')
+      if (details) details.open = false
+      return true
+    })()`,
+    false,
+  )
+  await poll(async () => !(await readSiteHeader(devtools)).detailsOpen, 3_000)
+}
+
+/**
+ * The race a listener gated on `isOpen` can lose, forced every run instead of left to chance.
+ *
+ * A real click and a real Escape, sent as two separate DevTools Protocol commands, do not reliably
+ * land inside the gap: an earlier version of this check, built that way, caught the old `isOpen`-
+ * gated listener's absence in only 2 of 15 `verify` runs,
+ * because the round trip each command makes to the browser is itself enough time, on most attempts,
+ * for the `toggle` event — a queued task — to have been delivered and the old listener to have
+ * (re)attached before the key arrives. Doing both inside one `Runtime.evaluate` closes that gap
+ * instead of hoping to land in it: `button.click()` sets `details.open` synchronously, as part of
+ * the click's own default action, and dispatching the `keydown` immediately after, in the same
+ * call, reaches this hook's `document` listener before the browser ever gets back to its task queue
+ * to deliver `toggle` at all. With the old listener, that listener cannot exist yet at that point,
+ * because there has been no task boundary for the effect that attaches it to run across. One more
+ * gap had to be closed first: after the preceding close, `aria-expanded` reads `"false"` one render
+ * before the old listener's effect cleanup removes it, so a click fired in that window found the
+ * previous listener still attached and passed — the old listener with the `contains` guard went red
+ * in only 3 of 5 review runs. Two animation frames inside the same evaluate, before the click, let
+ * that cleanup finish. `bubbles: true` is what lets the synthetic event reach the
+ * `document` listener at all, and dispatching it *from the button* — not from `document` — is what
+ * lets it also pass the `contains` guard `siteHeaderEscapeScopingCheck` exists for.
+ *
+ * This only proves the listener responds once attached; it says nothing about whether a *trusted*
+ * key event reaches it the same way. That half is what `siteHeaderChecks`' own Escape check (a real
+ * click, then a real `Input.dispatchKeyEvent` Escape) and `siteHeaderEscapeScopingCheck` already
+ * prove, each with enough of a pause between the two that the race this check targets does not
+ * apply to them.
+ *
+ * @param devtools The connected session, on a hydrated page, viewport already narrowed by the
+ * caller. Waits for the panel to report closed itself first, rather than assuming it already is.
+ */
+async function siteHeaderEscapeRaceCheck(devtools: Devtools): Promise<void> {
+  await ensureSiteHeaderClosed(devtools)
+  await poll(async () => {
+    const state = await readSiteHeader(devtools)
+    return !state.detailsOpen && state.expanded === "false"
+  }, 3_000)
+
+  const stillOpen = await read(
+    devtools,
+    `(async () => {
+      // Let the close that ensureSiteHeaderClosed caused finish its cleanup first. \`aria-expanded\`
+      // reads "false" one render before an effect-attached listener is removed, so without this
+      // wait a gated listener left over from the previous open could close the panel and pass.
+      for (let k = 0; k < 2; k++) {
+        await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)))
+      }
+      const button = document.querySelector('${SITE_HEADER_BUTTON}')
+      if (!button) return null
+      button.click()
+      button.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }),
+      )
+      const details = button.closest("details")
+      return details ? details.open : null
+    })()`,
+    null as boolean | null,
+  )
+
+  check(
+    "an Escape dispatched in the same task as the click still closes the panel",
+    stillOpen === false,
+    stillOpen === null
+      ? "the menu button was not found"
+      : stillOpen
+      ? "details.open still read true immediately after the click and the same-task Escape"
+      : "details.open read false immediately after the click and the same-task Escape",
+  )
+
+  await ensureSiteHeaderClosed(devtools)
+}
+
+/**
+ * An Escape meant for a layer above the panel must not also close the panel.
+ *
+ * The listener lives on `document` so it can hear a press from anywhere inside the panel, and
+ * before this check existed nothing scoped it any further: with the menu open and the `Modal`
+ * demo's dialog opened on top of it, one Escape press closed the dialog *and* the menu, and pulled
+ * focus back to the menu button instead of leaving it on the dialog's own trigger — the browser's
+ * native handling of the topmost `<dialog>` and this hook's own listener both see the same bubbled
+ * keydown. `detailsRef.current.contains(event.target)` is what `mobile-panel.ts` now checks before
+ * acting, and this proves it: the dialog closes, the menu stays open, and focus ends up on the
+ * dialog's own trigger, not the menu's.
+ *
+ * The dialog is `ui/`'s `Modal`, on the catalogue's own `#demo-Modal` card — the same card and
+ * trigger `ui.ts`'s own Modal checks drive, found the same way: the first button whose text starts
+ * with `"default"`. `system` runs before `ui` in `verify.ts`'s fixed package order, so this check
+ * closes the dialog itself and confirms no dialog is left in the top layer before it returns,
+ * rather than leaving that for `ui.ts`'s own checks to trip over.
+ *
+ * @param devtools The connected session, on a hydrated page, viewport already narrowed by the
+ * caller. Forces the panel closed itself first, rather than assuming it already is.
+ */
+async function siteHeaderEscapeScopingCheck(devtools: Devtools): Promise<void> {
+  await ensureSiteHeaderClosed(devtools)
+
+  await focusAndClick(devtools, SITE_HEADER_BUTTON)
+  const opened = await poll(async () => {
+    const state = await readSiteHeader(devtools)
+    return state.detailsOpen && state.expanded === "true"
+  }, 3_000)
+
+  const armed = await read(
+    devtools,
+    `(() => {
+      const card = document.querySelector("#demo-Modal")
+      const trigger = card
+        ? [...card.querySelectorAll("button")]
+          .find((candidate) => candidate.textContent.trim().startsWith("default"))
+        : null
+      if (!trigger) return false
+      globalThis.__siteHeaderScopeTrigger = trigger
+      // Focused before it is clicked — not because the click needs it, but because Modal's own
+      // dialog restores focus to whatever held it at the moment showModal() ran, natively, once
+      // the dialog closes. A scripted .click() with no focus() first leaves that "whatever" as the
+      // menu button — still focused from opening the panel above — which would make the dialog's
+      // own native restore behaviour look exactly like this check's own bug and was, measured,
+      // indistinguishable from one at first.
+      trigger.focus()
+      trigger.click()
+      return true
+    })()`,
+    false,
+  )
+  const modalOpened = await poll(
+    () =>
+      read(
+        devtools,
+        `document.querySelector("#demo-Modal dialog")?.matches(":modal") === true`,
+        false,
+      ),
+    3_000,
+  )
+  await pressKey(devtools, "Escape")
+
+  const modalClosed = await poll(
+    () =>
+      read(
+        devtools,
+        `document.querySelector("#demo-Modal dialog")?.matches(":modal") !== true`,
+        false,
+      ),
+    3_000,
+  )
+  const after = await read(
+    devtools,
+    `(() => ({
+      panelStillOpen: document.querySelector('${SITE_HEADER_DETAILS}')?.open === true,
+      focusOnModalTrigger: document.activeElement === globalThis.__siteHeaderScopeTrigger,
+      focusOnMenuButton: document.activeElement === document.querySelector('${SITE_HEADER_BUTTON}'),
+    }))()`,
+    { panelStillOpen: false, focusOnModalTrigger: false, focusOnMenuButton: false },
+  )
+
+  check(
+    "an Escape meant for a modal on top does not also close the menu behind it",
+    opened && armed && modalOpened && modalClosed && after.panelStillOpen &&
+      after.focusOnModalTrigger && !after.focusOnMenuButton,
+    !opened
+      ? "the menu was never open"
+      : !armed
+      ? "the Modal demo's own trigger could not be found"
+      : !modalOpened
+      ? "the Modal demo's dialog never opened"
+      : !modalClosed
+      ? "the dialog was still :modal after the Escape press"
+      : !after.panelStillOpen
+      ? "the menu closed too, though the Escape press was never inside it"
+      : !after.focusOnModalTrigger
+      ? `focus landed elsewhere instead of the dialog's own trigger (menu button: ` +
+        `${after.focusOnMenuButton})`
+      : "the dialog closed, the menu stayed open, and focus stayed on the dialog's own trigger",
+  )
+
+  // Force the dialog closed and confirm the top layer is empty, whatever the checks above found —
+  // `ui.ts`'s own Modal checks, and everything else `verify.ts` runs after this package block,
+  // assume no dialog is left open from an earlier one.
+  await read(
+    devtools,
+    `(() => {
+      const dialog = document.querySelector("#demo-Modal dialog")
+      if (dialog?.open) dialog.close()
+      return true
+    })()`,
+    false,
+  )
+  const topLayerEmpty = await poll(
+    () => read(devtools, `document.querySelectorAll("dialog:modal").length === 0`, false),
+    3_000,
+  )
+  check(
+    "no dialog is left in the top layer after the Escape-scoping check",
+    topLayerEmpty,
+    topLayerEmpty ? "0 modal dialogs remain" : "a dialog is still in the top layer",
+  )
+
+  await ensureSiteHeaderClosed(devtools)
+  // The `#demo-Modal` card lives somewhere else on this long catalogue page, and focusing its
+  // trigger scrolled there to bring it into view — settling for *that* scroll is not enough, since
+  // `siteHeaderLayoutChecks` right after this reads a viewport-relative position off a header that
+  // is no longer anywhere near the viewport. Scrolled back to this card, not merely settled.
+  await read(
+    devtools,
+    `(() => {
+      document.querySelector('${SITE_HEADER_HEADER}')
+        ?.scrollIntoView({ block: "center", behavior: "instant" })
+      return true
+    })()`,
+    false,
+  )
+  await waitForScrollSettle(devtools)
+}
+
+/**
+ * `SiteHeader`'s mobile panel: closed by default, opened by a click on the menu button, walked in
+ * order by Tab, closed by a real Escape press with focus returned to the button, closed a different
+ * way by a client-side navigation, exposed as expanded natively regardless of `aria-expanded`, laid
+ * out without moving anything else in the bar, correct once a menu opened before hydration catches
+ * up, and — the one behaviour no other check here can reach — every link inside it still reachable
+ * with script execution disabled.
+ *
+ * **Phone width, for the whole function.** `SiteHeader` only builds the `<details>` disclosure below
+ * `lg` (1024px); above it the panel is `display:none` and the desktop row takes its place instead.
+ * `Emulation.setDeviceMetricsOverride` narrows the viewport before the first check and
+ * `clearDeviceMetricsOverride` restores it in a `finally`, so a package block that runs after this
+ * one is never handed a viewport this file changed and forgot to put back.
+ *
+ * **`aria-current` is read once, before anything is clicked**, because it is static markup rather
+ * than a state this file changes — both the desktop row and the panel render it the same way
+ * whether or not the panel is open.
+ *
+ * **Three of the sub-checks below run their own script-execution or network excursion**, the same
+ * shape `authFormNoScriptChecks` uses: everything they change runs inside a `try`, and putting it
+ * back — including waiting for `data-hydrated` again — runs inside the matching `finally`, so a
+ * throw partway through one cannot leave the page in a state the checks after it did not expect.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function siteHeaderChecks(devtools: Devtools): Promise<void> {
+  await devtools.send("Emulation.setDeviceMetricsOverride", {
+    ...SITE_HEADER_VIEWPORT,
+    deviceScaleFactor: 1,
+    mobile: false,
+  })
+
+  try {
+    const currentLinks = await read(
+      devtools,
+      `[...document.querySelectorAll('${SITE_HEADER} a[aria-current="page"]')]
+        .map((el) => el.textContent.trim())`,
+      [] as string[],
+    )
+    check(
+      "aria-current marks only the Pricing link, in both the desktop row and the panel",
+      currentLinks.length === 2 && currentLinks.every((label) => label === "Pricing"),
+      `aria-current="page" found on: ${JSON.stringify(currentLinks)}`,
+    )
+
+    const idle = await readSiteHeader(devtools)
+    check(
+      "the menu button starts closed, with aria-expanded false and a fixed accessible name",
+      idle.found && !idle.detailsOpen && idle.expanded === "false" && idle.buttonLabel === "Menu",
+      idle.found
+        ? `details.open=${idle.detailsOpen}, aria-expanded=${idle.expanded}, ` +
+          `aria-label=${JSON.stringify(idle.buttonLabel)}`
+        : "the SiteHeader card was not found at phone width",
+    )
+
+    // `actions` sits before the menu button in the DOM and, unlike `links`, is never redrawn
+    // inside the panel — see `site-header.tsx`'s own doc for why. So Tab order is checked in two
+    // parts: this first Tab proves `actions` comes before the button at all, and the loop below
+    // proves the panel's own links follow the button once it is open.
+    await focusAndClick(devtools, SITE_HEADER_CTA)
+    await pressKey(devtools, "Tab")
+    const reachedButtonFromActions = await read(
+      devtools,
+      `document.activeElement === document.querySelector('${SITE_HEADER_BUTTON}')`,
+      false,
+    )
+    check(
+      "Tab from the actions button reaches the menu button next",
+      reachedButtonFromActions,
+      `document.activeElement is the menu button: ${reachedButtonFromActions}`,
+    )
+
+    await focusAndClick(devtools, SITE_HEADER_BUTTON)
+    // `details.open` flips synchronously in the click's own default action, but the browser fires
+    // `toggle` — the event `handleToggle` listens for — as a queued task rather than synchronously
+    // with it. `useMobilePanel`'s `isOpen` signal, and everything downstream of it, only update once
+    // that task runs, so this polls the whole state rather than `detailsOpen` alone: reading
+    // `aria-expanded` right after `detailsOpen` turns true caught the click before the queued task
+    // had run, every time.
+    const opened = await poll(async () => {
+      const state = await readSiteHeader(devtools)
+      return state.detailsOpen && state.expanded === "true"
+    }, 3_000)
+    const afterOpen = await readSiteHeader(devtools)
+    check(
+      "clicking the menu button opens the panel, flips aria-expanded, and keeps the same name",
+      opened && afterOpen.buttonLabel === "Menu",
+      `details.open=${afterOpen.detailsOpen}, aria-expanded=${afterOpen.expanded}, ` +
+        `aria-label=${JSON.stringify(afterOpen.buttonLabel)}`,
+    )
+
+    const expectedOrder = await read(
+      devtools,
+      `[...document.querySelectorAll('${SITE_HEADER_PANEL_LINKS}')]
+        .map((el) => el.textContent.trim())`,
+      [] as string[],
+    )
+    const tabbedThrough: string[] = []
+    for (let index = 0; index < expectedOrder.length; index++) {
+      await pressKey(devtools, "Tab")
+      tabbedThrough.push(
+        await read(
+          devtools,
+          `(document.activeElement ? document.activeElement.textContent.trim() : "")`,
+          "",
+        ),
+      )
+    }
+    check(
+      "Tab walks the open panel's links, in document order, once the button has focus",
+      opened && expectedOrder.length > 0 && tabbedThrough.length === expectedOrder.length &&
+        tabbedThrough.every((label, index) => label === expectedOrder[index]),
+      `expected ${JSON.stringify(expectedOrder)}, tabbed through ${JSON.stringify(tabbedThrough)}`,
+    )
+
+    await pressKey(devtools, "Escape")
+    const closed = await poll(async () => !(await readSiteHeader(devtools)).detailsOpen, 3_000)
+    const focusedButton = await read(
+      devtools,
+      `document.activeElement === document.querySelector('${SITE_HEADER_BUTTON}')`,
+      false,
+    )
+    check(
+      "a real Escape key press closes the panel and returns focus to the menu button",
+      opened && closed && focusedButton,
+      !opened
+        ? "the panel was never open, so this proves nothing about Escape"
+        : !closed
+        ? "the panel was still open 3s after the key press"
+        : `document.activeElement is the menu button: ${focusedButton}`,
+    )
+
+    await siteHeaderEscapeRaceCheck(devtools)
+    await siteHeaderEscapeScopingCheck(devtools)
+    await siteHeaderLayoutChecks(devtools)
+    await siteHeaderNativeExpandedStateCheck(devtools)
+    await siteHeaderClientNavigationChecks(devtools)
+    await siteHeaderNoScriptCheck(devtools)
+    await siteHeaderHydrationSyncChecks(devtools)
+  } finally {
+    await devtools.send("Emulation.clearDeviceMetricsOverride", {}).catch(() => {})
+  }
+}
+
+/** What one reading of the card's layout geometry reports; `-1` for anything not found. */
+interface SiteHeaderLayout {
+  headerHeight: number
+  headerLeft: number
+  headerWidth: number
+  brandTop: number
+  panelLeft: number
+  panelWidth: number
+}
+
+const SITE_HEADER_LAYOUT_UNREAD: SiteHeaderLayout = {
+  headerHeight: -1,
+  headerLeft: -1,
+  headerWidth: -1,
+  brandTop: -1,
+  panelLeft: -1,
+  panelWidth: -1,
+}
+
+const READ_SITE_HEADER_LAYOUT = `(() => {
+  const header = document.querySelector('${SITE_HEADER_HEADER}')
+  const brand = document.querySelector('${SITE_HEADER_BRAND}')
+  const panel = document.querySelector('${SITE_HEADER_PANEL}')
+  const headerRect = header ? header.getBoundingClientRect() : null
+  const brandRect = brand ? brand.getBoundingClientRect() : null
+  const panelRect = panel ? panel.getBoundingClientRect() : null
+  return {
+    headerHeight: headerRect ? Math.round(headerRect.height) : -1,
+    headerLeft: headerRect ? Math.round(headerRect.left) : -1,
+    headerWidth: headerRect ? Math.round(headerRect.width) : -1,
+    brandTop: brandRect ? Math.round(brandRect.top) : -1,
+    panelLeft: panelRect ? Math.round(panelRect.left) : -1,
+    panelWidth: panelRect ? Math.round(panelRect.width) : -1,
+  }
+})()`
+
+function readSiteHeaderLayout(devtools: Devtools): Promise<SiteHeaderLayout> {
+  return read(devtools, READ_SITE_HEADER_LAYOUT, SITE_HEADER_LAYOUT_UNREAD)
+}
+
+/**
+ * Opening the panel must not move anything else in the bar.
+ *
+ * The panel's content is positioned `absolute` against the `<header>` (`position: relative`) rather
+ * than sitting in normal flow beside the menu button, which is what `site-header.tsx`'s own doc
+ * claims and what this proves: the header's own height and the brand's vertical position, read
+ * before the panel opens and again after, have to be the same reading both times, and the panel has
+ * to span exactly the header's own width and left edge. A panel back in normal flow — the bug this
+ * check was written against — grows the header instead of leaving it alone, which the first
+ * assertion below catches, and narrows itself to whatever space is left in its flex row, which the
+ * second catches.
+ *
+ * @param devtools The connected session, on a hydrated page, viewport already narrowed by the
+ * caller. Forces the panel closed itself before reading the closed layout, rather than assuming
+ * whatever ran before it left it that way.
+ */
+async function siteHeaderLayoutChecks(devtools: Devtools): Promise<void> {
+  await ensureSiteHeaderClosed(devtools)
+
+  // `brandTop` is a viewport-relative reading, so a scroll between the two — the card's own smooth
+  // scroll settling from whatever the previous check left it doing — moves it exactly as much as a
+  // real layout shift would, and a viewport reading taken mid-scroll cannot tell the two apart.
+  // Measured: without this, the two readings disagreed by 82px with the header's own height
+  // identical both times, which is scroll, not layout.
+  await waitForScrollSettle(devtools)
+  const closed = await readSiteHeaderLayout(devtools)
+
+  await focusAndClick(devtools, SITE_HEADER_BUTTON)
+  const opened = await poll(async () => {
+    const state = await readSiteHeader(devtools)
+    return state.detailsOpen && state.expanded === "true"
+  }, 3_000)
+  await waitForScrollSettle(devtools)
+  const open = await readSiteHeaderLayout(devtools)
+
+  check(
+    "opening the panel changes neither the header's own height nor the brand's position",
+    opened && closed.headerHeight > 0 && closed.headerHeight === open.headerHeight &&
+      closed.brandTop >= 0 && closed.brandTop === open.brandTop,
+    `header height ${closed.headerHeight}px → ${open.headerHeight}px, ` +
+      `brand top ${closed.brandTop}px → ${open.brandTop}px`,
+  )
+  check(
+    "the open panel spans exactly the header's own width and left edge",
+    opened && open.panelWidth > 0 && open.panelWidth === open.headerWidth &&
+      open.panelLeft === open.headerLeft,
+    `panel ${open.panelWidth}px at x=${open.panelLeft}, header ${open.headerWidth}px at x=${open.headerLeft}`,
+  )
+
+  await pressKey(devtools, "Escape")
+  await poll(async () => !(await readSiteHeader(devtools)).detailsOpen, 3_000)
+}
+
+/**
+ * Chromium exposes a `<details>` disclosure's open/closed state to assistive tech on its own,
+ * through the accessibility tree's `expanded` property — regardless of the `aria-expanded` this
+ * component also writes. Read through `Accessibility.getPartialAXTree` rather than off the DOM
+ * attribute this file already reads elsewhere, the same way `triggerNameCheck` in `ui.ts` asks
+ * Chromium for a trigger's computed name instead of recomputing one: what matters is what the
+ * platform reports, not what markup a check can already see.
+ *
+ * @param devtools The connected session, on a hydrated page, viewport already narrowed by the
+ * caller, with the panel already closed.
+ */
+async function siteHeaderNativeExpandedStateCheck(devtools: Devtools): Promise<void> {
+  await ensureSiteHeaderClosed(devtools)
+  await devtools.send("DOM.enable")
+  await devtools.send("Accessibility.enable")
+
+  const readExpanded = async (): Promise<boolean | null> => {
+    const { root } = await devtools.send<{ root: { nodeId: number } }>("DOM.getDocument", {
+      depth: 1,
+    })
+    const { nodeIds } = await devtools.send<{ nodeIds: number[] }>("DOM.querySelectorAll", {
+      nodeId: root.nodeId,
+      selector: SITE_HEADER_BUTTON,
+    })
+    if (nodeIds.length === 0) return null
+    const { nodes } = await devtools.send<
+      { nodes: Array<{ properties?: Array<{ name: string; value?: { value?: unknown } }> }> }
+    >("Accessibility.getPartialAXTree", { nodeId: nodeIds[0], fetchRelatives: false })
+    const property = nodes[0]?.properties?.find((entry) => entry.name === "expanded")
+    return property ? Boolean(property.value?.value) : null
+  }
+
+  const closed = await readExpanded()
+
+  await focusAndClick(devtools, SITE_HEADER_BUTTON)
+  await poll(async () => {
+    const state = await readSiteHeader(devtools)
+    return state.detailsOpen && state.expanded === "true"
+  }, 3_000)
+  const open = await readExpanded()
+
+  check(
+    "Chromium reports the disclosure's expanded state on the accessibility tree, natively",
+    closed === false && open === true,
+    `accessibility tree "expanded" property: closed=${closed}, open=${open}`,
+  )
+
+  await pressKey(devtools, "Escape")
+  await poll(async () => !(await readSiteHeader(devtools)).detailsOpen, 3_000)
+}
+
+/**
+ * A click on a link inside the open panel has to close the panel itself, under a client-side
+ * router that never lets the click become a real page load — the app shell (#135) needs exactly
+ * this for its own navigation.
+ *
+ * There is no router in this repository to drive, so this stands one up out of the one thing every
+ * router agrees on: it calls `event.preventDefault()` on the click before the browser navigates,
+ * and changes the address itself, through `history.replaceState` rather than `pushState` — measured
+ * to matter: a `pushState` here outlives this check and inflates `history.length` for every later
+ * one in the run, which is exactly what turned `ui.ts`'s "that write costs exactly one history
+ * entry" red the first time this check existed. A capturing listener attached directly to the first
+ * panel link, ahead of `SiteHeader`'s own bubbling one, does exactly that — proving the panel's own
+ * listener still runs and still closes the panel even though the browser never left the page.
+ *
+ * `close(false)` is the other half of the claim, and what it can actually be shown to do is
+ * narrower than "focus stays on the link": closing a `<details>` hides its content natively, and
+ * this harness's Chromium moves focus off an element that just went hidden — to `<body>` —
+ * regardless of `returnFocus`. What `close(false)` controls is whether the panel *additionally*
+ * pulls focus back to the button on top of that, the way Escape's `close(true)` deliberately does;
+ * a navigating link is not the menu button asking to close, so it must not fight wherever a real
+ * router sends focus next. `mobile-panel.ts`'s own doc names this as the reason `close` takes a
+ * `returnFocus` argument at all.
+ *
+ * A `globalThis` mark parked before the click and read back after it is what proves no real
+ * navigation happened — the same technique `serviceWorkerChecks` uses for the same reason: a
+ * reading taken after a reload would find no mark at all, silently, rather than failing loudly.
+ *
+ * @param devtools The connected session, on a hydrated page, viewport already narrowed by the
+ * caller, with the panel already closed.
+ */
+async function siteHeaderClientNavigationChecks(devtools: Devtools): Promise<void> {
+  const restoreUrl = await read(devtools, "location.href", "")
+
+  try {
+    await ensureSiteHeaderClosed(devtools)
+    await focusAndClick(devtools, SITE_HEADER_BUTTON)
+    const opened = await poll(async () => {
+      const state = await readSiteHeader(devtools)
+      return state.detailsOpen && state.expanded === "true"
+    }, 3_000)
+
+    // Armed with a real, trusted click, not `.click()` run through `Runtime.evaluate` — measured
+    // against this exact check: a scripted `.click()` on an `<a>` does not reliably leave focus on
+    // it in this harness's Chromium even after an explicit `.focus()` immediately before it, read
+    // back a tick later as neither the link nor the button. `clickAt`'s dispatched mouse event is
+    // what a real pointer press does, focus included, the same distinction `authFormNoScriptChecks`
+    // and `siteHeaderNoScriptCheck` draw for the same reason.
+    const armed = await read(
+      devtools,
+      `(() => {
+        globalThis.__siteHeaderNavMark = "still here"
+        const link = document.querySelector('${SITE_HEADER_PANEL_LINKS}')
+        if (!link) return null
+        const handler = (event) => {
+          event.preventDefault()
+          history.replaceState({}, "", link.getAttribute("href"))
+          link.removeEventListener("click", handler, true)
+        }
+        link.addEventListener("click", handler, true)
+        link.scrollIntoView({ block: "center", behavior: "instant" })
+        const rect = link.getBoundingClientRect()
+        return {
+          x: Math.round(rect.left + rect.width / 2),
+          y: Math.round(rect.top + rect.height / 2),
+        }
+      })()`,
+      null as { x: number; y: number } | null,
+    )
+    if (armed) await clickAt(devtools, armed)
+
+    const closed = await poll(async () => !(await readSiteHeader(devtools)).detailsOpen, 3_000)
+    const after = await read(
+      devtools,
+      `(() => {
+        const active = document.activeElement
+        return {
+          mark: globalThis.__siteHeaderNavMark || "",
+          href: location.href,
+          focusOnButton: active === document.querySelector('${SITE_HEADER_BUTTON}'),
+          activeTag: active ? active.tagName : "none",
+        }
+      })()`,
+      { mark: "", href: "", focusOnButton: false, activeTag: "" },
+    )
+
+    check(
+      "a client-side navigation on a panel link closes the panel with no real page reload",
+      opened && Boolean(armed) && closed && after.mark === "still here" &&
+        after.href !== restoreUrl,
+      !opened
+        ? "the panel was never open"
+        : !armed
+        ? "the router stand-in could not find the first panel link to click"
+        : !closed
+        ? "the panel was still open after the link was activated"
+        : after.mark !== "still here"
+        ? "the mark left the page — a real navigation happened, which proves nothing about the panel's own close"
+        : after.href === restoreUrl
+        ? "the router stand-in ran, but location never changed, so this proves nothing about a real navigation"
+        : `location moved from ${restoreUrl} to ${after.href} with no reload`,
+    )
+    // Not "focus stays on the link": closing a `<details>` hides its content natively, and a
+    // browser moves focus off an element that just became hidden on its own, to `<body>` in this
+    // harness's Chromium — measured, and true regardless of `returnFocus`. What `close(false)`
+    // actually controls, and all this can honestly check, is that it does not *additionally* pull
+    // focus back to the button — fighting wherever a real router sends it next — the way `close(true)`
+    // deliberately does for Escape.
+    check(
+      "closing the panel for a navigating link does not pull focus back to the menu button",
+      closed && !after.focusOnButton,
+      `document.activeElement is the menu button: ${after.focusOnButton} (tagName: ${after.activeTag})`,
+    )
+  } finally {
+    // `replaceState` left no entry to go `back()` to, and creates none of its own to undo — it
+    // restores the address the same way it changed it, in place, leaving `history.length` and the
+    // DOM exactly as this check found them for every check that runs after it.
+    await read(
+      devtools,
+      `(history.replaceState({}, "", ${JSON.stringify(restoreUrl)}), true)`,
+      false,
+    )
+      .catch(() => {})
+    await waitForScrollSettle(devtools)
+  }
+}
+
+/**
+ * The one behaviour `siteHeaderChecks` cannot prove with a scripted `.click()`: a visitor who taps
+ * the menu button before the bundle has run, or with scripts off entirely, still reaches every link
+ * inside the panel.
+ *
+ * **The button is pressed with a real, trusted click.** A `.click()` run through `Runtime.evaluate`
+ * is script executing on the page's behalf — fine for the checks above, where the point is the
+ * component's own wiring, and exactly what this one check must not rely on, because a pass built on
+ * it would prove nothing about a visitor's own tap. So this step alone uses `clickAt`, a
+ * press-and-release through the browser's input pipeline aimed at the button's measured position —
+ * the same distinction `authFormNoScriptChecks` draws, for the same reason.
+ *
+ * **Everything from disabling script execution onward runs inside a `try`, and re-enabling it,
+ * reloading and waiting for `data-hydrated` run inside the matching `finally`** — the same shape
+ * `authFormNoScriptChecks` uses, so a throw or a stalled navigation here cannot leave the page
+ * unhydrated for whatever runs after this file.
+ *
+ * @param devtools The connected session, on a hydrated page, viewport already narrowed by the
+ * caller.
+ */
+async function siteHeaderNoScriptCheck(devtools: Devtools): Promise<void> {
+  const restoreUrl = await read(devtools, "location.href", "")
+
+  let unhydrated = false
+  let target: { x: number; y: number } | null = null
+  let opened = false
+  let linkCount = 0
+  let visibleLinkCount = 0
+
+  try {
+    await devtools.send("Emulation.setScriptExecutionDisabled", { value: true })
+    // `Page.reload`, not `Page.navigate` to the same address — see `authFormNoScriptChecks` for why
+    // navigating to the URL already loaded did not reliably tear down an already-hydrated document.
+    await devtools.send("Page.reload", { ignoreCache: true })
+    const loaded = await waitForLoad(devtools)
+
+    unhydrated = loaded &&
+      await read(devtools, `document.documentElement.dataset.hydrated !== "true"`, false)
+
+    target = await read(
+      devtools,
+      `(() => {
+        const button = document.querySelector('${SITE_HEADER_BUTTON}')
+        if (!button) return null
+        button.scrollIntoView({ block: "center", behavior: "instant" })
+        const rect = button.getBoundingClientRect()
+        return {
+          x: Math.round(rect.left + rect.width / 2),
+          y: Math.round(rect.top + rect.height / 2),
+        }
+      })()`,
+      null as { x: number; y: number } | null,
+    )
+    if (target) await clickAt(devtools, target)
+
+    opened = await poll(
+      () =>
+        read(devtools, `document.querySelector('${SITE_HEADER_DETAILS}')?.open === true`, false),
+      3_000,
+    )
+    const linkVisibility = await read(
+      devtools,
+      `(() => {
+        const links = [...document.querySelectorAll('${SITE_HEADER_PANEL_LINKS}')]
+        return {
+          count: links.length,
+          visible: links.filter((link) => link.getBoundingClientRect().height > 0).length,
+        }
+      })()`,
+      { count: 0, visible: 0 },
+    )
+    linkCount = linkVisibility.count
+    visibleLinkCount = linkVisibility.visible
+  } finally {
+    await devtools.send("Emulation.setScriptExecutionDisabled", { value: false }).catch(() => {})
+    await devtools.send("Page.reload", { ignoreCache: true }).catch(() => {})
+    await waitForLoad(devtools)
+
+    const strayed = await read(devtools, `location.href !== ${JSON.stringify(restoreUrl)}`, false)
+    if (strayed) {
+      await devtools.send("Page.navigate", { url: restoreUrl }).catch(() => {})
+      await waitForLoad(devtools)
+    }
+
+    const scrollSettled = await waitForScrollSettle(devtools)
+    check(
+      "the page's own route scroll settles after SiteHeader's restoring reload",
+      scrollSettled,
+      scrollSettled
+        ? "scrollY held still for a full second before this check returned"
+        : "scrollY never held still — a later block may have read it while it was still moving",
+    )
+  }
+
+  check(
+    "a real click on the menu button opens the panel, and every link in it becomes reachable, " +
+      "with script execution disabled",
+    unhydrated && Boolean(target) && opened && linkCount > 0 && visibleLinkCount === linkCount,
+    !unhydrated
+      ? "the fresh load still hydrated, so this proves nothing about a visitor without the bundle"
+      : !target
+      ? "the menu button was not found on the unhydrated, prerendered page"
+      : !opened
+      ? "the <details> element never reported open=true after the click"
+      : linkCount === 0
+      ? "the panel opened but no links were found inside it"
+      : visibleLinkCount !== linkCount
+      ? `only ${visibleLinkCount} of ${linkCount} links have a rendered height`
+      : `the <details> opened and all ${linkCount} links now have a rendered height`,
+  )
+
+  const rehydrated = await poll(
+    () => read(devtools, `document.documentElement.dataset.hydrated === "true"`, false),
+    10_000,
+  )
+  check(
+    "the page rehydrates once script execution is re-enabled again",
+    rehydrated,
+    rehydrated
+      ? "data-hydrated set again after the restoring reload"
+      : "the page never rehydrated after script execution was re-enabled",
+  )
+}
+/**
+ * A menu opened before the bundle has finished loading — not merely before it has run, which
+ * {@link siteHeaderNoScriptCheck} already covers with scripts disabled outright — has to end up
+ * correct once hydration catches up: `aria-expanded` true, and Escape able to close it. Without
+ * `useMobilePanel`'s mount-time read of `detailsRef.current.open`, the hook only ever learns the
+ * open state from a `toggle` event *it* is already listening for, so a panel a visitor opened
+ * before that listener existed stays invisible to it — `aria-expanded` stuck at `false` (or absent)
+ * and Escape doing nothing, forever, because nothing ever tells the hook the click happened.
+ *
+ * **The bundle is held with the Fetch domain, not `Emulation.setScriptExecutionDisabled`.** That
+ * flag stops every script from ever running, which is exactly what {@link siteHeaderNoScriptCheck}
+ * needs and exactly what this check must not use: the whole point here is a script that *does* run,
+ * just late. `Fetch.enable`, scoped to the island bundle's own URL, pauses that one request before
+ * it is sent; the deferred `type="module"` script tag it belongs to blocks nothing else, so the
+ * prerendered markup — the button included — paints and is clickable while the request sits paused.
+ * `Fetch.continueRequest` releases it once the pre-hydration click has happened, and only then does
+ * the module load, run and hydrate.
+ *
+ * **The request is intercepted by its own absolute URL**, read off the already-hydrated page before
+ * the reload that will hold it — `document.querySelector('script[type=module]').src` — rather than
+ * a guessed pattern, so this cannot pause the wrong request or, worse, one the page needs to paint
+ * at all.
+ *
+ * @param devtools The connected session, on a hydrated page, viewport already narrowed by the
+ * caller.
+ */
+async function siteHeaderHydrationSyncChecks(devtools: Devtools): Promise<void> {
+  const restoreUrl = await read(devtools, "location.href", "")
+  const islandUrl = await read(
+    devtools,
+    `document.querySelector('script[type="module"]')?.src ?? ""`,
+    "",
+  )
+
+  let requestId: string | undefined
+  let heldRequest = false
+  let unhydrated = false
+  let openedBeforeHydration = false
+  let expandedBeforeHydration: string | null = "(unread)"
+  let rehydrated = false
+  let syncedAfterHydration = false
+  let closedAfterEscape = false
+
+  try {
+    if (islandUrl) {
+      await devtools.send("Fetch.enable", {
+        patterns: [{ urlPattern: islandUrl, requestStage: "Request" }],
+      })
+
+      const paused = devtools.once<{ requestId: string }>("Fetch.requestPaused", 20_000)
+      await devtools.send("Page.reload", { ignoreCache: true })
+      const request = await paused.catch(() => null)
+      requestId = request?.requestId
+      heldRequest = Boolean(requestId)
+    }
+
+    if (heldRequest) {
+      const buttonReady = await poll(
+        () => read(devtools, `Boolean(document.querySelector('${SITE_HEADER_BUTTON}'))`, false),
+        10_000,
+      )
+      unhydrated = buttonReady &&
+        await read(devtools, `document.documentElement.dataset.hydrated !== "true"`, false)
+
+      const target = await read(
+        devtools,
+        `(() => {
+          const button = document.querySelector('${SITE_HEADER_BUTTON}')
+          if (!button) return null
+          button.scrollIntoView({ block: "center", behavior: "instant" })
+          const rect = button.getBoundingClientRect()
+          return {
+            x: Math.round(rect.left + rect.width / 2),
+            y: Math.round(rect.top + rect.height / 2),
+          }
+        })()`,
+        null as { x: number; y: number } | null,
+      )
+      if (target) await clickAt(devtools, target)
+
+      openedBeforeHydration = await poll(
+        () =>
+          read(devtools, `document.querySelector('${SITE_HEADER_DETAILS}')?.open === true`, false),
+        3_000,
+      )
+      expandedBeforeHydration = await read(
+        devtools,
+        `document.querySelector('${SITE_HEADER_BUTTON}')?.getAttribute("aria-expanded") ?? null`,
+        "(unread)",
+      )
+
+      await devtools.send("Fetch.continueRequest", { requestId })
+      requestId = undefined
+      await devtools.send("Fetch.disable")
+
+      rehydrated = await poll(
+        () => read(devtools, `document.documentElement.dataset.hydrated === "true"`, false),
+        10_000,
+      )
+      syncedAfterHydration = await poll(
+        () =>
+          read(
+            devtools,
+            `document.querySelector('${SITE_HEADER_BUTTON}')?.getAttribute("aria-expanded") === "true"`,
+            false,
+          ),
+        3_000,
+      )
+
+      await pressKey(devtools, "Escape")
+      closedAfterEscape = await poll(
+        () =>
+          read(devtools, `document.querySelector('${SITE_HEADER_DETAILS}')?.open === false`, false),
+        3_000,
+      )
+    }
+  } finally {
+    if (requestId) {
+      await devtools.send("Fetch.continueRequest", { requestId }).catch(() => {})
+    }
+    await devtools.send("Fetch.disable").catch(() => {})
+    await devtools.send("Page.reload", { ignoreCache: true }).catch(() => {})
+    await waitForLoad(devtools)
+
+    const strayed = await read(devtools, `location.href !== ${JSON.stringify(restoreUrl)}`, false)
+    if (strayed) {
+      await devtools.send("Page.navigate", { url: restoreUrl }).catch(() => {})
+      await waitForLoad(devtools)
+    }
+
+    const scrollSettled = await waitForScrollSettle(devtools)
+    check(
+      "the page's own route scroll settles after the hydration-sync check's restoring reload",
+      scrollSettled,
+      scrollSettled
+        ? "scrollY held still for a full second before this check returned"
+        : "scrollY never held still — a later block may have read it while it was still moving",
+    )
+  }
+
+  check(
+    "a menu opened before the bundle loads is still open, unannounced as such, once it arrives",
+    Boolean(islandUrl) && heldRequest && unhydrated && openedBeforeHydration &&
+      expandedBeforeHydration !== "true",
+    !islandUrl
+      ? "no <script type=module> was found to hold back"
+      : !heldRequest
+      ? "the bundle's own request was never paused — Fetch.requestPaused never fired for it"
+      : !unhydrated
+      ? "the fresh load hydrated before the click, so this proves nothing about a visitor still " +
+        "waiting on the bundle"
+      : !openedBeforeHydration
+      ? "the native <details> never reported open=true after the click"
+      : expandedBeforeHydration === "true"
+      ? "aria-expanded already read true before hydration, which proves nothing about learning " +
+        "the state late"
+      : `the <details> reported open=true while aria-expanded still read ` +
+        `${JSON.stringify(expandedBeforeHydration)}, unannounced as open`,
+  )
+  check(
+    "aria-expanded and Escape both catch up once the held bundle is released",
+    heldRequest && rehydrated && syncedAfterHydration && closedAfterEscape,
+    !heldRequest
+      ? "the bundle was never held, so this proves nothing about catching up"
+      : !rehydrated
+      ? "the page never rehydrated after the request was released"
+      : !syncedAfterHydration
+      ? "aria-expanded never became true after hydration, for a panel that was already open"
+      : !closedAfterEscape
+      ? "a real Escape press still did not close the panel once hydration had caught up"
+      : "aria-expanded turned true and a real Escape press closed the panel, both once hydration " +
+        "caught up",
+  )
 }

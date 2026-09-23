@@ -16,9 +16,9 @@ Extracted from earlier source applications.
   `today` so a render is deterministic.
 - **A live region is always present and empty.** See below; it is a library-wide rule, not a
   `SWUpdater` one.
-- **No `theme/` dependency.** Utilities are inlined, like `ui/`. `icons/` supplies the three glyphs
-  these components draw (`IconChevronLeft`, `IconChevronRight`, `IconXMark`) rather than
-  duplicating SVG.
+- **No `theme/` dependency.** Utilities are inlined, like `ui/`. `icons/` supplies the four glyphs
+  these components draw (`IconChevronLeft`, `IconChevronRight`, `IconXMark`, `IconBars3`) rather
+  than duplicating SVG.
 
 ## Components
 
@@ -29,6 +29,7 @@ Extracted from earlier source applications.
 | `SWUpdater`     | `sw-updater`     | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                 |
 | `Calendar`      | `calendar`       | `monthAnchor`, `minDate`, `maxDate`, `slotsByDate`, `onSelectDate?`                                                  |
 | `ImageLightbox` | `image-lightbox` | `containerSelector?`, `imageSelector?`, `fallbackAlt?`, `zoomLabel?`, `onOpen?`                                      |
+| `SiteHeader`    | `site-header`    | `links`, `currentPath?`, `brand`, `actions?`, `labels?`                                                              |
 
 Helpers, all pure: `head.ts` (`normalizeCanonical`, `canonicalUrl`, `breadcrumbItems`,
 `breadcrumbListJsonLd`) and `resolveImage` (click target → lightbox image). `head.ts` also exports
@@ -473,6 +474,118 @@ this codebase for a value that is internal bookkeeping and never crosses a seria
 after a real round trip, so the value has to survive JSON without a second lookup table translating
 an integer back into a string.
 
+## The `SiteHeader` contract
+
+`SiteHeader` draws a public-site top bar: `brand` on the left; `links` on the right from `lg` up,
+and in a `<details>` disclosure below it; an optional `actions` slot and the menu button always in
+view, beside whichever form `links` is currently taking. It is the public-site sibling of the app
+shell's side navigation (#135) — that one is a signed-in app's frame, this one is a landing page's
+top bar — and the two share the mobile-panel open/close behaviour rather than each writing their
+own; see `mobile-panel.ts` below.
+
+**Every link, and every word of `brand`, is the caller's.** `links` is `{ label, href, Icon? }`, and
+nothing here writes a `href`, a label or a brand string of its own — `brand` is rendered exactly as
+given, with no anchor of this component's own wrapped around it, because inventing one would mean
+inventing the `href` it points at.
+
+**`actions` is rendered once, `links` is redrawn.** A caller's own element can only ever be mounted
+in one place — Preact tracks it by identity, and a second placement would move it rather than copy
+it — so `actions` stays exactly where it is at every width, next to the menu button. `links` has no
+such limit: both the desktop row and the panel call the same internal renderer over the array, so
+each gets its own markup built from data rather than the same element mounted twice.
+
+**The active link is decided by exact string equality**, `href === currentPath`, and marked with
+`aria-current="page"`. A prefix match would be right for some route trees and wrong for others —
+`/docs` current while `/docs/intro` is on screen — and this component has no way to know which, so a
+caller whose routes want prefix matching normalises `currentPath` or a link's `href` before handing
+it in.
+
+**The mobile panel is a `<details>`, so its links are reachable with no JavaScript at all.** A click
+on `<summary>` opens and closes the native disclosure with nothing running, which is what keeps every
+link in `links` reachable before hydration and with scripts off — `pages/checks/system.ts` proves it
+by disabling script execution and pressing the button. **Chromium exposes that open/closed state to
+assistive tech on its own**, through the accessibility tree's `expanded` property, regardless of
+whatever `aria-expanded` this component also writes — proved by reading that property directly off
+`Accessibility.getPartialAXTree` rather than off the attribute this file controls. `useMobilePanel`
+(`mobile-panel.ts`) layers three things on top of the platform's own behaviour: Escape closes the
+panel and returns focus to the button, a client-side navigation on a link inside the panel closes it
+too, and `aria-expanded` is kept in step with the disclosure's own state as an explicit, redundant
+signal. None of the three is needed to open the panel or reach a link inside it.
+
+**The panel overlays the page instead of pushing it down.** Its content is positioned `absolute`
+against the `<header>` (`position: relative`), spanning the header's own width and left edge, rather
+than sitting in normal flow beside the menu button. A panel back in flow grows the header and shoves
+`brand` and `actions` down when it opens — the bug `pages/checks/system.ts`'s layout checks were
+written against, reading the header's own height and the brand's vertical position before the panel
+opens and asserting neither one moves once it does.
+
+**Closing for a click and closing for Escape return focus differently, on purpose.** Escape is the
+visitor asking the panel to close, so focus returns to the button that opened it. A link inside the
+panel is the visitor asking to go somewhere else — under a client-side router, that click never
+leaves the page, but `close(false)` still runs, and it does not pull focus back to a button the
+visitor has already moved past. `mobile-panel.ts`'s own doc names this as the reason `close` takes a
+`returnFocus` argument instead of always returning it.
+
+**Escape closes the menu only while focus is inside it.** The listener lives on `document` so it
+can hear a press from anywhere in the panel, but it acts only when the key event's own target sits
+inside this disclosure — a dialog opened on top of the menu keeps its Escape to itself, and a stray
+press once a wide viewport has hidden the panel entirely does nothing. On Safari, a mouse click does
+not focus the `<summary>`, so a mouse user there closes the menu with the button itself rather than
+with Escape.
+
+**A menu opened before the bundle has finished loading still ends up correct.** `useMobilePanel`
+reads `detailsRef.current.open` once on mount, which is what catches a visitor's click landing in
+the gap between paint and hydration — without it, the hook only ever learns the open state from a
+`toggle` event it is already listening for, so a panel opened before that listener existed stayed
+invisible to it: `aria-expanded` stuck, Escape doing nothing, both forever. Proved in
+`pages/checks/system.ts` by holding the island bundle's own request with the Fetch domain, clicking
+the button while it is held, then releasing it and pressing Escape once hydration has caught up.
+
+**`aria-expanded` is omitted rather than server-rendered as a hard-coded `"false"`.** The server
+always renders the panel closed, so `"false"` would even be true at that instant — the risk is a
+value baked into the response staying `"false"` forever for a visitor whose only click landed before
+this hook ever read the DOM. Omitting the attribute until the hook has actually read the element's
+state, rather than printing a value that can go stale, is what keeps it from ever contradicting the
+element it describes; once mounted, it is always kept in sync, in both directions, from there on.
+
+**One fixed accessible name, not a pair that swaps with the state.** An earlier version of this
+component named the button `"Open menu"` or `"Close menu"` depending on `open`. Two things followed
+from that, both worse than the fix: `aria-expanded` and the name were announcing the same state
+twice once both were correct, and for as long as no script had run — the SSR response, or a visitor
+with scripts off entirely — the name stayed `"Open menu"` for a panel a visitor had already opened
+with a plain click. A single name, `"Menu"` by default and overridable through `labels.menu`, is
+correct in every one of those states without needing to know which one it is in.
+
+**The icon swap costs no JavaScript either.** The hamburger and the close glyph are both always in
+the markup, and `group-open:` — a Tailwind variant compiled from the `<details>` element's own
+`[open]` attribute — is what shows one and hides the other. The browser flips it the moment it opens
+the disclosure, whether or not the bundle has run.
+
+**The desktop row and the mobile panel never coexist in the accessibility tree.** Both render the
+same `links` through one `aria-label`d `<nav>`, once `hidden` below `lg` and once inside a `<details>`
+that is `lg:hidden`, so exactly one is ever `display`ed at a time — the other is removed from the
+tree entirely rather than merely dimmed behind `aria-hidden`. That is what keeps two landmarks
+sharing one accessible name from ever being announced together, and what keeps Tab from ever
+reaching a link twice at one viewport width.
+
+**Every string this component prints beyond `links` and `brand` has an English default and a
+`labels` override**: the menu button's one name, and the `aria-label` shared by both `<nav>`s.
+
+### The shared mobile-panel hook
+
+`mobile-panel.ts`'s `useMobilePanel` is `SiteHeader`'s half of the piece both #139 and #135 asked to
+be written once: track a `<details>`-based disclosure's open state — synced from the DOM on mount, so
+a click that landed before this hook existed is not invisible to it — close it on Escape or on a
+navigating link inside it, and return focus to the element that opened it when, and only when, the
+visitor asked the panel itself to close. It holds no markup of its own — a caller supplies the
+`<details>`/`<summary>` and wires `detailsRef`, `triggerRef` and `onToggle={handleToggle}` onto them
+— so the app shell's side navigation can reuse the same hook against its own markup without either
+component reaching into the other.
+
+There is no pure logic in it to unit test: every behaviour is a `document` listener, a focus move or
+a mount-time DOM read, none of which a string render executes. `pages/checks/system.ts` drives all of
+it in a real browser instead.
+
 ## Decisions worth knowing
 
 - **A canonical address that is not a web page is refused, not printed and not omitted.** Throwing
@@ -550,3 +663,20 @@ already-present live region, a busy `requestSubmit()` calling no callback, and a
 disabled script execution with no query string added to the URL are effects, key presses, a focus
 change and a real navigation — none reachable from a string render — and are proven in
 `pages/checks/system.ts` instead.
+
+`site-header.test.tsx` is the markup half of `SiteHeader`: every link's `href` present once inline
+and once in the panel, `aria-current` on the one link matching `currentPath` and on no other, `brand`
+rendered with no anchor of the component's own around it, `actions` rendered exactly once, the menu
+button starting with `aria-expanded` omitted rather than a hard-coded `"false"` and a fixed name, its
+`aria-controls` pointing at the panel's own id, the panel positioned to overlay rather than sit in
+flow, and a `labels` override replacing every default — checked against the full set of visible words
+the render produces, so a hard-coded brand, button or link label has nowhere to hide. Opening the
+panel with a real click, Escape closing it and returning focus to the button, a client-side navigation
+closing it without returning focus, `aria-expanded` tracking the open state once mounted, the header's
+own height and the brand's position holding still while the panel opens, the disclosure's expanded
+state reaching the accessibility tree natively, Tab order at phone width, a menu opened before the
+bundle finishes loading still ending up correct once it does, and every link staying reachable with
+script execution disabled are effects, key presses, a focus change, layout and a mount-time DOM
+read — none reachable from a string render — and are proven in `pages/checks/system.ts` instead.
+`mobile-panel.ts` has no test file of its own for the same reason: it holds no logic that is not one
+of those things.
