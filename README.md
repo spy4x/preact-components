@@ -9,8 +9,8 @@ Demo: https://spy4x.github.io/preact-components
 ## Status
 
 Pre-1.0, not yet published to JSR. `deno task publish:dry` runs `deno publish --dry-run` for
-every package that ships; it currently fails on `ui/` and `crud/`, the two rows the publishability
-sweep in #223 has not finished. "Published" will mean each package below resolves as
+every package that ships, and it passes for all nine — the publishability sweep in #223 is done.
+"Published" will mean each package below resolves as
 `jsr:@preact-components/<name>` and installs with `deno add`. Until then there is nothing on JSR
 for `deno add` to find.
 
