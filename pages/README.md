@@ -213,9 +213,13 @@ they address component names, which are the library's public API.
 
 ## Verification
 
-`deno task --cwd pages verify` runs both phases against the built artefact and prints its own
-total — `<passed>/<total> checks passed` on the last line — so read that rather than a number typed
-here, which would go stale the next time a check is added. In short:
+`deno task --cwd pages verify` runs both phases against the built artefact and prints its own total
+on the last line — so read that rather than a number typed here, which would go stale the next time
+a check is added. A run that finished every package block ends `<passed>/<total> checks passed —
+all <n> package blocks ran to completion`; a run that lost one leads with `INCOMPLETE` and names the
+blocks missing from the totals, because a lost block takes its checks out of the denominator as well
+as the numerator; and `--static`, which commits no package blocks at all, instead ends
+`— no package blocks were part of this run`. In short:
 
 - **Static**: base-prefixed `href`/`src` that resolve to files that exist; `body.theme-base`; every
   card prerendered with a `demo-<Name>` id, every one of them carrying a `Usage` block and a
@@ -239,7 +243,9 @@ here, which would go stale the next time a check is added. In short:
   used and keeps its highlight on screen; Tooltip dismisses on Escape and survives a pointer;
   Calendar is one tab stop with arrows, Home, End and the page keys; ImageLightbox opens with
   Enter and Space; SWUpdater registers and shows its bar; and the filter hook follows the address
-  bar. Tabs, DateRangePicker and Pagination are still to come.
+  bar. DateRangePicker moves focus into its panel and hands it back to the trigger on every close
+  driven from inside it, and leaves focus alone on the two driven from outside; Pagination keeps
+  its end controls, and its focus, when you page to either end. Tabs is still to come.
 
 ## Not here
 

@@ -181,8 +181,10 @@ While a hint is on screen its box — the bridge to the trigger included — sit
 it and takes the clicks that would have gone there. It is inert again the moment the hint is hidden.
 The reveal itself is Tailwind's `group-hover` and `group-focus-within`, and Tailwind compiles every
 hover style inside `@media (hover: hover)`: on a device that reports no hover-capable pointer the
-hint is reached by focus only, which is the right behaviour on a touch screen and is also why the
-browser checks prove the hover half through hit testing rather than through the paint.
+hint is reached by focus only, which is the right behaviour on a touch screen. The browser checks
+drive both paths: one moves a real pointer onto the trigger and asserts the hint appears and then
+goes away again, and another asserts the hit testing that lets the pointer travel onto the hint and
+rest there.
 
 ## Combobox
 
