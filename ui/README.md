@@ -26,37 +26,37 @@ Preact + Tailwind primitives extracted from `gb`, `financy` and `offer-lens`.
 
 ## Components
 
-| Component         | Subpath             | Ports / key props                                                                                             |
-| ----------------- | ------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `Avatar`          | `avatar`            | `name`, `src`, `alt`, `size`                                                                                  |
-| `AvatarGroup`     | `avatar`            | `items`, `max`, `label`, `size` (a `role="group"`, not a list)                                                |
-| `Badge`           | `badge`             | `text`, `color`, `type`                                                                                       |
-| `Button`          | `button`            | `variant`, `size`, native button attrs                                                                        |
-| `ConfidenceMeter` | `confidence-meter`  | `value` (optional; clamped 0–100, unknown renders no reading), `label`                                        |
-| `CopyButton`      | `copy-button`       | `textToCopy`, `copy?` (clipboard port)                                                                        |
-| `Combobox`        | `combobox`          | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `ariaLabel?`, `aria-labelledby?`, `id?`                 |
-| `DataTable`       | `data-table`        | `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `empty?`, `paging?`                           |
-| `DateRangePicker` | `date-range-picker` | `range`, `onChange`, `timeZone`, `presets`, `labels?` (every key optional)                                    |
-| `Dropdown`        | `dropdown`          | `trigger`, `triggerLabel` or `triggerNamedByContent` (one is required), `menuLabel`, `vertical`, `horizontal` |
-| `DropdownItem`    | `dropdown`          | `href`, `onClick`, `disabled`, `class` — a `role="menuitem"`, out of the tab order                            |
-| `ErrorState`      | `error-state`       | `message` (renders nothing when empty)                                                                        |
-| `GeoButton`       | `geo-button`        | `onLocation`, `onError?`                                                                                      |
-| `LoadingScreen`   | `loading-screen`    | `message`, `description`                                                                                      |
-| `LoadingSkeleton` | `loading-skeleton`  | `rows`                                                                                                        |
-| `LoadingSpinner`  | `loading-spinner`   | `label`, `size`                                                                                               |
-| `OnOffButtons`    | `on-off-buttons`    | `value`, `amount`, `onSwitch`                                                                                 |
-| `PageTitle`       | `page-title`        | `children`, `class`                                                                                           |
-| `Pagination`      | `pagination`        | `page`, `pageCount`, `onChange`, `label`, `previousLabel`, `nextLabel`, `pageLabel`                           |
-| `Progress`        | `progress`          | `value`, `max`, `label`, `id` (a caption needs an `id`)                                                       |
-| `SkeletonCards`   | `skeletons`         | `columns`, `rows`, `lines`                                                                                    |
-| `SkeletonStatus`  | `skeletons`         | `label` (the loading announcement)                                                                            |
-| `SkeletonTable`   | `skeletons`         | `rows`, `columns`, `widths`, `reserveHeight`                                                                  |
-| `SkeletonText`    | `skeletons`         | `lines`, `widths`                                                                                             |
-| `Table`           | `table`             | `headerSlot`, `bodySlots`, `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`                            |
-| `Tabs`            | `tabs`              | `tabs`, `active`, `onChange`, `orientation`, `lazy`                                                           |
-| `Toastr`          | `toastr`            | `toasts`, `onDismiss`, `label`, `dismissLabel`, `dataE2E`                                                     |
-| `ToggleSwitch`    | `toggle-switch`     | `value`, `onToggle`, `disabled`, `label`                                                                      |
-| `Tooltip`         | `tooltip`           | `content`, `label`, `placement`, `focusable`                                                                  |
+| Component         | Subpath             | Ports / key props                                                                                                              |
+| ----------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `Avatar`          | `avatar`            | `name`, `src`, `alt`, `size`                                                                                                   |
+| `AvatarGroup`     | `avatar`            | `items`, `max`, `label`, `size` (a `role="group"`, not a list)                                                                 |
+| `Badge`           | `badge`             | `text`, `color`, `type`                                                                                                        |
+| `Button`          | `button`            | `variant`, `size`, native button attrs                                                                                         |
+| `ConfidenceMeter` | `confidence-meter`  | `value` (optional; clamped 0–100, unknown renders no reading), `label`                                                         |
+| `CopyButton`      | `copy-button`       | `textToCopy`, `copy?` (clipboard port)                                                                                         |
+| `Combobox`        | `combobox`          | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `ariaLabel?`, `aria-labelledby?`, `id?`                                  |
+| `DataTable`       | `data-table`        | `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `captionHidden?`, `empty?`, `paging?`, `rowDataE2E?`, `class?` |
+| `DateRangePicker` | `date-range-picker` | `range`, `onChange`, `timeZone`, `presets`, `labels?` (every key optional)                                                     |
+| `Dropdown`        | `dropdown`          | `trigger`, `triggerLabel` or `triggerNamedByContent` (one is required), `menuLabel`, `vertical`, `horizontal`                  |
+| `DropdownItem`    | `dropdown`          | `href`, `onClick`, `disabled`, `class` — a `role="menuitem"`, out of the tab order                                             |
+| `ErrorState`      | `error-state`       | `message` (renders nothing when empty)                                                                                         |
+| `GeoButton`       | `geo-button`        | `onLocation`, `onError?`                                                                                                       |
+| `LoadingScreen`   | `loading-screen`    | `message`, `description`                                                                                                       |
+| `LoadingSkeleton` | `loading-skeleton`  | `rows`                                                                                                                         |
+| `LoadingSpinner`  | `loading-spinner`   | `label`, `size`                                                                                                                |
+| `OnOffButtons`    | `on-off-buttons`    | `value`, `amount`, `onSwitch`                                                                                                  |
+| `PageTitle`       | `page-title`        | `children`, `class`                                                                                                            |
+| `Pagination`      | `pagination`        | `page`, `pageCount`, `onChange`, `label`, `previousLabel`, `nextLabel`, `pageLabel`                                            |
+| `Progress`        | `progress`          | `value`, `max`, `label`, `id` (a caption needs an `id`)                                                                        |
+| `SkeletonCards`   | `skeletons`         | `columns`, `rows`, `lines`                                                                                                     |
+| `SkeletonStatus`  | `skeletons`         | `label` (the loading announcement)                                                                                             |
+| `SkeletonTable`   | `skeletons`         | `rows`, `columns`, `widths`, `reserveHeight`                                                                                   |
+| `SkeletonText`    | `skeletons`         | `lines`, `widths`                                                                                                              |
+| `Table`           | `table`             | `headerSlot`, `bodySlots`, `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`                                             |
+| `Tabs`            | `tabs`              | `tabs`, `active`, `onChange`, `orientation`, `lazy`                                                                            |
+| `Toastr`          | `toastr`            | `toasts`, `onDismiss`, `label`, `dismissLabel`, `dataE2E`                                                                      |
+| `ToggleSwitch`    | `toggle-switch`     | `value`, `onToggle`, `disabled`, `label`                                                                                       |
+| `Tooltip`         | `tooltip`           | `content`, `label`, `placement`, `focusable`                                                                                   |
 
 ## Usage
 
@@ -445,7 +445,23 @@ plain slice, and writes the next value back through `onSortChange`/`paging.onCha
 none of its own. This is a deliberate split from `Pagination`, which only renders controls and
 leaves slicing to the caller: `DataTable` already holds the full row set and the rules to apply to
 it, so it is the one place that can do both without asking every caller to duplicate the pairing —
-which is what the two applications this component was extracted from were each doing by hand.
+which is what one source application this component was extracted from was already doing by hand,
+in two places.
+
+`pages/src/data-table-sort.tsx` demonstrates the URL half in a real browser, bound through
+`useUrlFilters` next to that hook's own demo, `pages/src/url-filters.tsx`: pressing a header adds
+`?sort=` to the address, and a press of Back removes it again along with the sort. It lives in
+`pages/src` rather than as a catalogue card because a card writing to `location` would be writing
+to whatever host application embeds the catalogue, the same reason `useUrlFilters` itself is
+demonstrated there.
+
+**`DataTable` sorts and pages client-side only.** `rows` has to be the complete, unsorted set:
+`sortRows` runs its own collation over every row it is given, including rows a server already
+sorted, and there is no way to hand this component a `pageCount` for a page it cannot see the rest
+of — passing one page's worth of rows with `paging.page: 2` renders that page's rows on what looks
+like page 1, because `DataTable` has no way to know there were more before them. A mode that skips
+`sortRows` and takes a caller-supplied `pageCount` instead is tracked in
+[#235](https://github.com/spy4x/preact-components/issues/235) rather than built here.
 
 **Every sortable header is a real `<button>`**, so Tab and Space reach it — a real Enter press
 does not activate a focused button in this repository's browser checks, so `pages/checks/ui.ts`
@@ -473,20 +489,32 @@ sortable column stays clickable even when a filter elsewhere on the page is what
 
 **`rowKey` stamps `data-row-key` on each row's first cell**, exported as `rowKeyAttribute`.
 `Table` keys its own `<tr>`s by array position, not by a caller-supplied identity — extending that
-is `Table`'s own change to make, out of scope here — so a sort or a page turn that reorders rows
-gives Preact nothing to reconcile a row's identity against by itself. Stamping the key on the DOM
-is what lets a page, or a browser check, point at a specific row without depending on its rendered
-text.
+is `Table`'s own change to make, tracked as a follow-up
+([#234](https://github.com/spy4x/preact-components/issues/234)) rather than built here — so a sort
+or a page turn that reorders rows gives Preact nothing to reconcile a row's identity against by
+itself. Stamping the key on the DOM is what lets a page, or a browser check, point at a specific
+row without depending on its rendered text.
 
 **Paging is optional and minimal**: `page`, `pageSize` and `onChange`, mirroring `Pagination`'s own
 prop names because most of them pass straight through to it. `DataTable` computes `pageCount` from
 the full, sorted row count and slices the visible page itself; omit `paging` entirely for every row
-on one page.
+on one page. `page` is clamped into `1…pageCount` the same way `Pagination` clamps its own, before
+it is used for both the slice and the pager — a page a filter has shrunk past, or `0` or a negative
+number, renders the nearest real page instead of an empty body beside a pager that disagrees with
+it.
 
-A column with no field of its own — an actions column, say — still needs a `key` that is one of
-the row type's own string keys, because that is also the identity `sort` and `toggleSort` key by.
-Reuse a convenient existing field (the row's id, typically) and leave `sortable` unset; `render`
-decides what actually shows.
+**A column is one of two shapes.** A data column reads a row field: `key` (one of the row type's
+own string keys), `header`, and optionally `sortable`, `align` and `render`. `key` is also this
+column's identity, so it is what `sort` and `toggleSort` key by, and only a data column can carry
+`sortable` or `aria-sort` at all. A display column has no field of its own — an actions column,
+say — and takes `id`, `header`, `render` (required, since there is no field to fall back to) and
+optionally `align`; it is never sortable and never carries `aria-sort`, because there is no row
+field for a header press to toggle. Keeping the two shapes separate is what stops a display column
+from being told it is sorted: an earlier version let a display column reuse a data column's `key`
+for its own identity, and a header sorted by that field then read as sorted on both columns —
+`aria-sort` came from the key alone, not from whether the column could actually be sorted. `id` and
+every data column's `key` still have to be unique across the whole `columns` array, the ordinary
+"give a list of keyed things distinct keys" rule and nothing more.
 
 ## Skeletons
 
