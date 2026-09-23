@@ -6,7 +6,7 @@ import { ErrorState } from "@preact-components/ui/error-state"
 import { PageTitle } from "@preact-components/ui/page-title"
 import { Table } from "@preact-components/ui/table"
 import { type ReadonlySignal, type Signal, useSignal } from "@preact/signals"
-import type { ComponentChildren } from "preact"
+import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId } from "preact/hooks"
 import { filterRows } from "./search.ts"
 import type { CrudListStore } from "./store.ts"
@@ -113,7 +113,7 @@ export function listRows<M extends CrudModel>(
  * Rows come from a store or from a signal, the cells come from the caller, and the search term and
  * status live in signals the caller may take over. Nothing here knows which entity it is showing.
  */
-export function CrudList<M extends CrudModel>(props: CrudListProps<M>) {
+export function CrudList<M extends CrudModel>(props: CrudListProps<M>): JSX.Element {
   // Both hooks run on every render, whether or not the caller supplied a signal, so the hook order
   // stays stable.
   const ownQuery = useSignal("")
@@ -266,7 +266,9 @@ export interface RowActionProps {
  * the menu around it can reach it. The spacing row it sits in is `role="none"`, which keeps it a
  * direct child of the menu as far as assistive tech is concerned.
  */
-export function RowAction({ href, onClick, danger, disabled, children }: RowActionProps) {
+export function RowAction(
+  { href, onClick, danger, disabled, children }: RowActionProps,
+): JSX.Element {
   return (
     <div class="py-1" role="none">
       <DropdownItem
@@ -282,7 +284,9 @@ export function RowAction({ href, onClick, danger, disabled, children }: RowActi
 }
 
 /** The per-row actions menu: a vertical ellipsis trigger over {@link RowAction} items. */
-export function RowActions({ children, label }: { children: ComponentChildren; label?: string }) {
+export function RowActions(
+  { children, label }: { children: ComponentChildren; label?: string },
+): JSX.Element {
   return (
     <Dropdown
       trigger={<IconEllipsisVertical />}

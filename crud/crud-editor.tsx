@@ -3,7 +3,7 @@ import { cn } from "@preact-components/cn"
 import { PageTitle } from "@preact-components/ui/page-title"
 import { type ReadonlySignal, type Signal, useSignal, useSignalEffect } from "@preact/signals"
 import type { Type } from "arktype"
-import type { ComponentChildren } from "preact"
+import type { ComponentChildren, JSX } from "preact"
 import { useId } from "preact/hooks"
 import { DeletionValidation } from "./deletion-validation.tsx"
 import { setField } from "./field.tsx"
@@ -271,7 +271,7 @@ export type CrudEditorProps<M extends CrudRow> = CrudEditorBaseProps<M> & CrudEd
  * browse mode does not — is told why. An issue here always fails {@link isValid}, the same as any
  * field's.
  */
-export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>) {
+export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.Element {
   const {
     store,
     blank,

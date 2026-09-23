@@ -1,4 +1,5 @@
 import { IconAlertTriangle } from "@preact-components/icons"
+import type { JSX } from "preact"
 import { useEffect, useRef } from "preact/hooks"
 import type { DeletionDependency } from "./types.ts"
 
@@ -16,7 +17,9 @@ export interface DeletionValidationProps {
  * back what still points at it. The block scrolls itself into view, because the checkbox that
  * produced it sits in the form footer and the answer appears under the form.
  */
-export function DeletionValidation({ dependencies, model }: DeletionValidationProps) {
+export function DeletionValidation(
+  { dependencies, model }: DeletionValidationProps,
+): JSX.Element | null {
   const block = useRef<HTMLDivElement>(null)
 
   // No dependency array: the block must also scroll into view when a second archive attempt

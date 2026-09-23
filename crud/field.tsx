@@ -1,6 +1,6 @@
 import { cn } from "@preact-components/cn"
 import type { ReadonlySignal, Signal } from "@preact/signals"
-import type { ComponentChildren } from "preact"
+import type { ComponentChildren, JSX } from "preact"
 import { Fragment } from "preact"
 import { useId } from "preact/hooks"
 import type { FieldIssue, ValidationModel } from "./validation.ts"
@@ -79,7 +79,7 @@ export function FieldIssues<M extends object>(
     name: keyof M & string
     renderIssue?: (issue: FieldIssue, type: string) => ComponentChildren
   },
-) {
+): JSX.Element | null {
   const field = vl.value[name]
   if (field === undefined) return null
 
@@ -118,7 +118,9 @@ function FieldCell(
 }
 
 /** One labelled text input. Commits on blur, trimmed, so a keystroke is not a store write. */
-export function TextField<M extends object, K extends keyof M & string>(props: FieldProps<M, K>) {
+export function TextField<M extends object, K extends keyof M & string>(
+  props: FieldProps<M, K>,
+): JSX.Element {
   const id = useId()
   return (
     <FieldCell
@@ -147,7 +149,9 @@ export function TextField<M extends object, K extends keyof M & string>(props: F
  * states of typing `-`, `1e` or `1.` — so an empty or unparsable box commits `0` rather than
  * `NaN`, which is what the arktype schema would otherwise reject on every keystroke.
  */
-export function NumberField<M extends object, K extends keyof M & string>(props: FieldProps<M, K>) {
+export function NumberField<M extends object, K extends keyof M & string>(
+  props: FieldProps<M, K>,
+): JSX.Element {
   const id = useId()
   return (
     <FieldCell
@@ -178,7 +182,7 @@ export function commitNumber(raw: string): number {
 /** One labelled multi-line text input. Commits on blur, trimmed. */
 export function TextareaField<M extends object, K extends keyof M & string>(
   props: FieldProps<M, K> & { rows?: number },
-) {
+): JSX.Element {
   const id = useId()
   return (
     <FieldCell
@@ -228,7 +232,7 @@ export interface SelectFieldProps<M extends object, K extends keyof M & string>
  */
 export function SelectField<M extends object, K extends keyof M & string>(
   props: SelectFieldProps<M, K>,
-) {
+): JSX.Element {
   const id = useId()
   const current = props.vm.value[props.name]
   const selected = props.options.find((option) => String(option.value) === String(current))
@@ -264,7 +268,7 @@ export function SelectField<M extends object, K extends keyof M & string>(
 /** One labelled checkbox, with its label after the box. */
 export function CheckboxField<M extends object, K extends keyof M & string>(
   props: FieldProps<M, K>,
-) {
+): JSX.Element {
   const id = useId()
   return (
     <div class={props.span ?? defaultSpan}>
