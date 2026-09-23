@@ -116,7 +116,11 @@ export interface EnhancedFormProps {
  * component checks before either branch below runs. **The sending state always ends**: a resolved
  * promise moves to `"done"`, a rejected one — or a synchronous throw — to `"failed"`, and the
  * `pageshow` listener resets a stale `"sending"` to `"idle"` when the browser restores this page
- * from its back/forward cache, where the promise that was supposed to settle it never will.
+ * from its back/forward cache, where the promise that was supposed to settle it never will. That
+ * reset also retires the outstanding submit's own id, so if its promise settles later anyway — a
+ * network response arriving after the visitor has already navigated back and possibly submitted
+ * again — the stale `.then`/`.catch` below finds its id no longer current and does nothing, rather
+ * than overwriting whatever the *next* submit is in the middle of doing.
  *
  * **The result is announced through one region, present and empty from the first render.** The same
  * rule `Toastr` and `AuthForm` follow: assistive technology announces a *change* to a region it is
@@ -124,6 +128,39 @@ export interface EnhancedFormProps {
  * One `role="status"` region rather than `AuthForm`'s assertive/polite pair — a marketing form's
  * failure does not need to interrupt the way a rejected sign-in does, so a single polite region
  * carries all three states here.
+ *
+ * **The slot sits inside its own wrapper, so it can never be the region.** Preact's unkeyed child
+ * diffing does not match old and new children position-by-position when a type changes at that
+ * position — it searches the whole sibling list for the first *old* node of the *new* node's type.
+ * Both the region and a text-carrying `done`/`failed` slot render a `<p>`, so with the slot's `<p>`
+ * a direct sibling of the region's, Preact found the region's own `<p>` as the closest match for
+ * the slot's incoming one on success, patched the region's *existing, already-being-watched*
+ * element into the slot's content, and created a *new* `<p role="status">` for the region at the
+ * position the slot vacated — a node that reaches the document already holding its message, which
+ * is exactly what an always-present region exists to avoid: a live region created together with
+ * its first message is commonly never announced, because assistive technology announces a change
+ * to a region it is already watching, not a new subtree. The wrapper's own type never turns over —
+ * it is always a `<div>`, whatever the slot renders inside it — so it is never a candidate match
+ * for the region's `<p>` at all; giving the region a `key` of its own was tried too and made no
+ * difference once the wrapper was in place, so it was not kept as a second mechanism doing nothing.
+ *
+ * **The region hides itself from sighted users when the current slot already shows the same
+ * result in view.** Repeating "Sent." once as the visible replacement for the fields and a second
+ * time immediately under it reads as a mistake, not a confirmation, and `NewsletterForm` and
+ * `ContactForm` both hand `EnhancedForm` a `done` slot whose copy is the region's own default. The
+ * always-present element is what makes the announcement reliable, so it never stops rendering —
+ * only `sr-only` while a slot is on screen for the same status, which keeps the announcement and
+ * removes the duplicate line. A status with no slot of its own (the default disabled-`<fieldset>`
+ * behaviour, or `ContactForm`'s un-slotted `"failed"`) still needs the region to carry the message
+ * visibly, since nothing else on screen does.
+ *
+ * **Focus moves to the region once the control a visitor pressed is gone.** Disabling the
+ * `<fieldset>` — or swapping it for a `done`/`failed` slot — can take the focused submit button out
+ * of the page's focus order entirely, which a browser resolves by dropping focus to `<body>`: a
+ * keyboard user who was on the button a moment ago is now nowhere, effectively back at the top of
+ * the page. The region is given `tabIndex={-1}` so it can hold focus without joining the tab order,
+ * and an effect moves focus there whenever a status change leaves `document.activeElement` on
+ * `<body>` — never when focus already landed somewhere sensible on its own.
  */
 export function EnhancedForm(
   {
@@ -146,6 +183,11 @@ export function EnhancedForm(
   // applied yet.
   const busyRef = useRef(false)
   const mountedRef = useRef(true)
+  const regionRef = useRef<HTMLParagraphElement>(null)
+  // Identifies one submit's own promise chain, so a settlement that arrives after a newer submit
+  // started — or after a `pageshow` reset gave up on it — can tell it is stale and do nothing. See
+  // this component's own doc for why a `.then`/`.catch` needs this at all.
+  const submitIdRef = useRef(0)
 
   useEffect(() => {
     mountedRef.current = true
@@ -158,15 +200,26 @@ export function EnhancedForm(
     // A page restored from the back/forward cache is the same JS heap this component was already
     // running in — nothing remounts, so a `"sending"` left over from before the visitor navigated
     // away stays `"sending"` forever unless something resets it. The promise that would have settled
-    // it belonged to the page that was frozen, and it is never coming back.
+    // it belonged to the page that was frozen, and it is never coming back — and bumping the id here
+    // is what keeps it from being mistaken for a still-current one if it settles anyway.
     const onPageShow = (event: PageTransitionEvent) => {
       if (!event.persisted) return
+      submitIdRef.current++
       busyRef.current = false
       setStatus("idle")
     }
     globalThis.addEventListener("pageshow", onPageShow)
     return () => globalThis.removeEventListener("pageshow", onPageShow)
   }, [])
+
+  useEffect(() => {
+    if (status === "idle") return
+    // Only when focus fell to <body> — a visitor who tabbed away, or whose focus landed somewhere
+    // else on purpose, is left alone.
+    if (globalThis.document?.activeElement === globalThis.document?.body) {
+      regionRef.current?.focus()
+    }
+  }, [status])
 
   const handleSubmit = (event: JSX.TargetedEvent<HTMLFormElement, SubmitEvent>) => {
     if (busyRef.current) {
@@ -179,16 +232,19 @@ export function EnhancedForm(
     const data = new FormData(event.currentTarget)
     busyRef.current = true
     setStatus("sending")
+    const id = ++submitIdRef.current
 
     // `Promise.resolve().then(...)` folds a synchronous throw from `onSubmit` into the same
     // `"failed"` path a rejected promise takes, rather than letting it escape this handler.
     Promise.resolve()
       .then(() => onSubmit(data))
       .then(() => {
+        if (submitIdRef.current !== id) return // Superseded by a newer submit or a pageshow reset.
         busyRef.current = false
         if (mountedRef.current) setStatus("done")
       })
       .catch(() => {
+        if (submitIdRef.current !== id) return
         busyRef.current = false
         if (mountedRef.current) setStatus("failed")
       })
@@ -196,17 +252,23 @@ export function EnhancedForm(
 
   const message = enhancedFormMessage(status, copy)
 
-  const slot = status === "sending" && sending !== undefined
+  const activeSlot = status === "sending" && sending !== undefined
     ? sending
     : status === "done" && done !== undefined
     ? done
     : status === "failed" && failed !== undefined
     ? failed
-    : (
-      <fieldset disabled={status === "sending"} class="m-0 min-w-0 border-0 p-0">
-        {children}
-      </fieldset>
-    )
+    : undefined
+
+  const slot = activeSlot !== undefined ? activeSlot : (
+    <fieldset disabled={status === "sending"} class="m-0 min-w-0 border-0 p-0">
+      {children}
+    </fieldset>
+  )
+
+  // The region stops repeating a result a visible slot already shows in view — see this
+  // component's own doc — but only while that slot is actually the one on screen.
+  const regionHidden = activeSlot !== undefined
 
   return (
     <form
@@ -215,16 +277,23 @@ export function EnhancedForm(
       onSubmit={handleSubmit}
       class={cn("space-y-4", className)}
     >
-      {slot}
+      <div>{slot}</div>
       {
         /* Always in the page, empty until there is something to say — see this component's own
-           doc, and `system/README.md`'s "A live region is always present and empty". */
+           doc, and `system/README.md`'s "A live region is always present and empty". The slot's
+           own wrapper above is load-bearing: see this component's own doc for why an unwrapped
+           slot can end up reusing this exact node for its own content instead. */
       }
       <p
+        ref={regionRef}
         role="status"
         aria-live="polite"
         aria-atomic="true"
-        class="text-sm text-gray-600 dark:text-gray-400"
+        tabIndex={-1}
+        class={cn(
+          "text-sm text-gray-600 outline-none dark:text-gray-400",
+          regionHidden && "sr-only",
+        )}
       >
         {message}
       </p>
