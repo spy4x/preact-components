@@ -50,6 +50,10 @@
     // would fail every local run against uncommitted work. Both CI checkouts are clean, so the
     // step there runs this task bare, with no `--allow-dirty`.
     "publish:dry": "deno publish --dry-run",
+    // Whole-word search for private application names across every file each published package
+    // would upload to JSR. Not part of `check`: it needs a names file the owner keeps outside
+    // this repository, passed after `--`. See docs/pre-publish-checks.md.
+    "private-names": "deno run --allow-read --allow-run=deno infra/scripts/private-names.ts",
     "fix": {
       "command": "echo 'Fixes applied!'",
       "description": "Run all fixes",
