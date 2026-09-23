@@ -1,9 +1,8 @@
 /**
  * Merged icon set — every glyph the library ships, deduped by SVG body.
  *
- * Merged by hand from six apps (template, gb, antonshubin.com, offer-lens, mig, roley) and kept
- * as plain source afterwards, one function per glyph. Five style families are mixed and the
- * licence provenance of the glyphs is unverified: see README.md for both caveats.
+ * Merged by hand from six apps and kept as plain source afterwards, one function per glyph. Six
+ * style families are mixed; see README.md's "Style families" and "Provenance" for both.
  *
  * https://github.com/spy4x/preact-components/issues/2 (merge)
  * https://github.com/spy4x/preact-components/issues/15 (roley remainder)
@@ -323,7 +322,7 @@ export function IconBookmark(props: IconProps): JSX.Element {
   )
 }
 
-/** Heroicons v1 outline (stroke-2) · from antonshubin. */
+/** Heroicons v2 outline (stroke-2) · from antonshubin; matches Heroicons v2's "briefcase" exactly, not v1. */
 export function IconBriefcase(props: IconProps): JSX.Element {
   return (
     <svg
@@ -454,7 +453,7 @@ export function IconChartPie(props: IconProps): JSX.Element {
   )
 }
 
-/** Heroicons v1 outline (stroke-2) · from antonshubin. */
+/** Custom outline (stroke-2) · from antonshubin; no match in the checked packs. */
 export function IconChatBubble(props: IconProps): JSX.Element {
   return (
     <svg
@@ -654,7 +653,7 @@ export function IconClipboardCopy(props: IconProps): JSX.Element {
   )
 }
 
-/** Heroicons v1 outline (stroke-2) · from antonshubin. */
+/** Heroicons v2 outline (stroke-2) · from antonshubin; matches Heroicons v2's "clock" exactly, not v1. */
 export function IconClock(props: IconProps): JSX.Element {
   return (
     <svg
@@ -796,7 +795,7 @@ export function IconDocument(props: IconProps): JSX.Element {
   )
 }
 
-/** Heroicons v1 outline (stroke-2) · from antonshubin. */
+/** Heroicons v2 outline (stroke-2) · from antonshubin; matches Heroicons v2's "currency-dollar" exactly, not v1. */
 export function IconDollar(props: IconProps): JSX.Element {
   return (
     <svg
@@ -899,7 +898,7 @@ export function IconEyeOff(props: IconProps): JSX.Element {
   )
 }
 
-/** Heroicons v1 outline (stroke-2) · from antonshubin. */
+/** Heroicons v2 outline (stroke-2) · from antonshubin; near-matches Heroicons v2's "fire", not v1. */
 export function IconFire(props: IconProps): JSX.Element {
   return (
     <svg
@@ -918,7 +917,7 @@ export function IconFire(props: IconProps): JSX.Element {
   )
 }
 
-/** Heroicons v1 outline (stroke-2) · from antonshubin. */
+/** Custom outline (stroke-2) · from antonshubin; no match in the checked packs. */
 export function IconFlag(props: IconProps): JSX.Element {
   return (
     <svg
@@ -1046,7 +1045,7 @@ export function IconGlobe(props: IconProps): JSX.Element {
   )
 }
 
-/** Heroicons v1 outline (stroke-2) · from antonshubin. */
+/** Heroicons v2 outline (stroke-2) · from antonshubin; matches Heroicons v2's "squares-2x2" exactly, not v1. */
 export function IconGrid(props: IconProps): JSX.Element {
   return (
     <svg
@@ -1146,7 +1145,7 @@ export function IconInformationCircle(props: IconProps): JSX.Element {
   )
 }
 
-/** Heroicons v1 outline (stroke-2) · from antonshubin. */
+/** Heroicons v2 outline (stroke-2) · from antonshubin; matches Heroicons v2's "key" exactly, not v1. */
 export function IconKey(props: IconProps): JSX.Element {
   return (
     <svg
@@ -1334,7 +1333,7 @@ export function IconLogout(props: IconProps): JSX.Element {
   )
 }
 
-/** Heroicons v1 outline (stroke-2) · from antonshubin. */
+/** Heroicons v2 outline (stroke-2) · from antonshubin; matches Heroicons v2's "envelope" exactly, not v1. */
 export function IconMail(props: IconProps): JSX.Element {
   return (
     <svg
@@ -1374,7 +1373,7 @@ export function IconMap(props: IconProps): JSX.Element {
   )
 }
 
-/** Custom outline (stroke 1.8) · from mig. */
+/** Heroicons v2 outline (stroke 1.8) · from mig; matches Heroicons v2's and Lucide's "minus" exactly. */
 export function IconMinus(props: IconProps): JSX.Element {
   return (
     <svg
@@ -1528,7 +1527,7 @@ export function IconSearch(props: IconProps): JSX.Element {
   )
 }
 
-/** Heroicons v1 outline (stroke-2) · from template. */
+/** Custom outline (stroke-2) · from template; no match in the checked packs. */
 export function IconSensor(props: IconProps): JSX.Element {
   return (
     <svg
@@ -1628,7 +1627,7 @@ export function IconSparkle(props: IconProps): JSX.Element {
   )
 }
 
-/** Custom outline (stroke 2.5) · from mig. */
+/** Lucide outline (stroke 2.5) · from mig; matches Lucide's "loader-circle"/"loader-2" exactly. */
 export function IconSpinner(props: IconProps): JSX.Element {
   return (
     <svg
@@ -1948,7 +1947,7 @@ export function IconWallet(props: IconProps): JSX.Element {
   )
 }
 
-/** Heroicons v1 outline (stroke-2) · from antonshubin. */
+/** Custom outline (stroke-2) · from antonshubin; no match in the checked packs. */
 export function IconWrench(props: IconProps): JSX.Element {
   return (
     <svg
