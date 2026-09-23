@@ -109,6 +109,20 @@ describe("normalizePathData", () => {
     expect(skeleton.startsWith("unparsed:")).toBe(true)
     expect(canonical.startsWith("unparsed:")).toBe(true)
   })
+
+  it("reads an exponent, and does not mistake a bare e for the start of one", () => {
+    // The SVG number grammar allows scientific notation, even though no pack file or glyph in this
+    // set happens to use it (checked: no `d` or `points` anywhere in the four packs or +index.tsx
+    // contains one). Covered anyway, because the parser claims to follow the grammar in full, not
+    // only the part real inputs so far have exercised.
+    expect(normalizePathData("M1e2 3").canonical).toBe("M 100 3")
+    expect(normalizePathData("M1e-2 3").canonical).toBe("M 0.01 3")
+    // "e" with no digits after it is not an exponent marker — SVG allows a bare command letter `e`
+    // nowhere, but a malformed or hand-edited `d` could still end a number right before one; the
+    // parser should read the number and let the next token fail on its own rather than swallowing
+    // the "e" into a broken exponent.
+    expect(() => normalizePathData("M1 2e")).not.toThrow()
+  })
 })
 
 describe("parsePathData", () => {
