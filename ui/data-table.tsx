@@ -14,13 +14,13 @@ import { Table } from "./table.tsx"
 export type DataTableColumnAlign = "left" | "center" | "right"
 
 /**
- * One column of a {@link DataTable}.
+ * A column that reads one field of a row, and may be sorted by it.
  *
- * `key` doubles as the identity `toggleSort`/`sortRows` sort by, so it has to be one of `T`'s own
- * string keys — including a column with no `render`-free reading of its own, such an "actions"
- * column, which picks any convenient key (its row's id, say) and leaves `sortable` unset.
+ * `key` is the identity `toggleSort`/`sortRows` sort by, so it has to be one of `T`'s own string
+ * keys, and it is also this column's Preact key. `sortable` and `aria-sort` both live only on this
+ * shape — see {@link DataTableDisplayColumn} for the column that has neither.
  */
-export interface DataTableColumn<T, K extends Extract<keyof T, string>> {
+export interface DataTableDataColumn<T, K extends Extract<keyof T, string>> {
   /** Row field this column reads, and the sort key it toggles when `sortable`. */
   key: K
   /** Header text, and — for a sortable column — the accessible name of its header button. */
@@ -34,11 +34,49 @@ export interface DataTableColumn<T, K extends Extract<keyof T, string>> {
 }
 
 /**
+ * A column with no field of its own — an actions column, typically — that only ever renders what
+ * `render` returns.
+ *
+ * It is never sortable and never carries `aria-sort`: there is no row field for `sort` to name, so
+ * there is nothing for a header press to toggle. `id` is this column's own Preact key, in a
+ * namespace separate from every data column's `key`, which is what a {@link DataTableDataColumn}
+ * reusing a row field for the same purpose used to collide with — two `<th>` sharing one key, and
+ * one of them wrongly reporting `aria-sort` whenever the field it borrowed was the sorted column.
+ */
+export interface DataTableDisplayColumn<T> {
+  /** This column's own identity — its Preact key. Unique among every column, data or display. */
+  id: string
+  /** Header text. */
+  header: string
+  /** Header and cell alignment. Defaults to `"left"`. */
+  align?: DataTableColumnAlign
+  /** Cell content. Required: a display column has no field to fall back to. */
+  render: (row: T) => ComponentChildren
+}
+
+/** One column of a {@link DataTable}: a field to read and maybe sort by, or a display-only slot. */
+export type DataTableColumn<T, K extends Extract<keyof T, string>> =
+  | DataTableDataColumn<T, K>
+  | DataTableDisplayColumn<T>
+
+/** `true` for a column with a row field of its own — see {@link DataTableDataColumn}. */
+function isDataColumn<T, K extends Extract<keyof T, string>>(
+  column: DataTableColumn<T, K>,
+): column is DataTableDataColumn<T, K> {
+  return "key" in column
+}
+
+/** This column's own Preact key: `key` for a data column, `id` for a display column. */
+function columnId<T, K extends Extract<keyof T, string>>(column: DataTableColumn<T, K>): string {
+  return isDataColumn(column) ? column.key : column.id
+}
+
+/**
  * Paging, all of it caller-owned like `sort` — see {@link DataTableProps.sort}. Omit the whole
  * object for an unpaged table.
  */
 export interface DataTablePaging {
-  /** Current page, `1`-based. */
+  /** Current page, `1`-based. Clamped into `1…pageCount` the same way `Pagination` clamps its own. */
   page: number
   /** Rows per page. */
   pageSize: number
@@ -54,6 +92,21 @@ export interface DataTablePaging {
   pageLabel?: (page: number) => string
 }
 
+/**
+ * Props of {@link DataTable}.
+ *
+ * `columns` and `rows` are what to show; `sort` and `paging` are the two pieces of state the
+ * caller owns and `DataTable` only ever reads and requests changes to, exactly as `Pagination`'s
+ * own `page` prop works. `caption` is the one required string, because it is the table's name and
+ * only the caller knows it; everything else about presentation — `empty`, `captionHidden`,
+ * `rowDataE2E`, `class` — has a default.
+ *
+ * `DataTable` sorts and pages client-side only: `rows` has to be the complete, unsorted set, and
+ * `sortRows`' own collation runs even over rows a server already sorted. A caller whose rows are
+ * paged by a server has no way to hand this component a `pageCount` for a page it cannot see the
+ * rest of — a caller-supplied-`pageCount` mode is tracked as a follow-up
+ * (github.com/spy4x/preact-components/issues/235), not built here.
+ */
 export interface DataTableProps<T, K extends Extract<keyof T, string>> {
   /** Columns, in display order. */
   columns: readonly DataTableColumn<T, K>[]
@@ -77,7 +130,8 @@ export interface DataTableProps<T, K extends Extract<keyof T, string>> {
   onSortChange: (sort: SortRule<K>[]) => void
   /**
    * The table's name, read out as its `<caption>`. Required: it is the one string only the caller
-   * knows, so there is no English default to fall back to.
+   * knows, so there is no English default to fall back to. An empty string still satisfies the
+   * type and leaves the table with an unnamed `<caption>` — pass a real name.
    */
   caption: string
   /** Hides the caption visually (`sr-only`) while keeping it for assistive tech. Defaults to `false`. */
@@ -157,13 +211,87 @@ function defaultCell<T, K extends Extract<keyof T, string>>(row: T, key: K): Com
 }
 
 /**
+ * One column's `<th>`: plain text for a display column, or for a data column — sortable or not —
+ * its header with `aria-sort` set from `sort`.
+ *
+ * A plain function returning JSX, called directly from {@link DataTable}'s own `columns.map`
+ * rather than invoked as `<HeaderCell />`: `DataTable`'s render is a string-rendering unit test's
+ * only way to see this markup, and a test that walks the returned tree without a renderer — this
+ * package's tests do, see `ui/data-table.test.tsx` — only ever sees as far as the last JSX a
+ * function *returns* without another component boundary in between. A `<HeaderCell />` element
+ * would leave the button one uncalled component short of that walk.
+ */
+function headerCell<T, K extends Extract<keyof T, string>>(
+  column: DataTableColumn<T, K>,
+  sort: readonly SortRule<K>[],
+  onSortChange: (next: SortRule<K>[]) => void,
+) {
+  if (!isDataColumn(column)) {
+    return <th key={column.id} scope="col" class={alignClass(column.align)}>{column.header}</th>
+  }
+
+  const rule = sort.find((candidate) => candidate.key === column.key)
+
+  return (
+    <th
+      key={column.key}
+      scope="col"
+      class={alignClass(column.align)}
+      aria-sort={ariaSortValue(rule?.direction)}
+    >
+      {column.sortable
+        ? (
+          <button
+            type="button"
+            class={sortButtonClasses}
+            onClick={() => onSortChange(toggleSort([...sort], column.key))}
+          >
+            <span class={column.align === "right" ? "ml-auto" : undefined}>{column.header}</span>
+            <SortGlyph direction={rule?.direction} />
+          </button>
+        )
+        : column.header}
+    </th>
+  )
+}
+
+/**
+ * One column's `<td>` for one row: `render` when the column has one, `defaultCell` for a data
+ * column without, `render` unconditionally for a display column (required on that shape). A plain
+ * function for the same reason {@link headerCell} is one.
+ *
+ * @param stampRowKey `rowKeyAttribute`'s value for this row, on the row's first cell only —
+ *   `undefined` for every other cell. See {@link rowKeyAttribute}.
+ */
+function bodyCell<T, K extends Extract<keyof T, string>>(
+  column: DataTableColumn<T, K>,
+  row: T,
+  stampRowKey: string | undefined,
+) {
+  const content = isDataColumn(column)
+    ? (column.render ? column.render(row) : defaultCell(row, column.key))
+    : column.render(row)
+
+  return (
+    <td
+      key={columnId(column)}
+      class={alignClass(column.align)}
+      {...(stampRowKey === undefined ? {} : { [rowKeyAttribute]: stampRowKey })}
+    >
+      {content}
+    </td>
+  )
+}
+
+/**
  * Attribute a row's first cell carries so a page — or a browser check — can find that row by the
  * identity {@link DataTableProps.rowKey} gives it, without depending on rendered cell text.
  *
  * `Table` keys its `<tr>`s by array position, not by a caller-supplied identity — extending that
- * is `ui/table.tsx`'s own change to make, and out of scope here — so a sort or a page turn that
- * reorders the rows gives Preact nothing to reconcile a row's identity against. Stamping the key
- * on the DOM is what lets anything downstream tell rows apart by more than their position.
+ * is `ui/table.tsx`'s own change to make, tracked as a follow-up
+ * (github.com/spy4x/preact-components/issues/234) rather than built here — so a sort or a page
+ * turn that reorders the rows gives Preact nothing to reconcile a row's identity against. Stamping
+ * the key on the DOM is what lets anything downstream tell rows apart by more than their position.
  */
 export const rowKeyAttribute = "data-row-key"
 
@@ -178,12 +306,17 @@ export const rowKeyAttribute = "data-row-key"
  * caller-owned is the *state* — `sort` and `paging.page` — so it can live in a signal or a URL
  * parameter the way any other filter does; `DataTable` holds none of its own.
  *
+ * `paging.page` is clamped into `1…pageCount` the same way `Pagination` clamps its own `page`
+ * prop, before it is used for both the slice and the pager it renders — a page past the end, or
+ * `0` or less, renders the nearest real page rather than an empty body beside a pager that
+ * disagrees with it.
+ *
  * Every sortable header is a real `<button>`, so Tab and Space reach it (a real Enter press does
  * not activate a focused button in this repository's browser checks — see `pages/checks/ui.ts`).
- * `aria-sort` goes on the `<th>` of whichever column or columns are in `sort`, `ascending` or
- * `descending`; a column not in `sort` carries no `aria-sort` at all. The chevron beside a
- * sortable header's text is `aria-hidden` — `aria-sort` is what a screen reader is told, the
- * glyph is only ever a sighted hint.
+ * `aria-sort` goes on the `<th>` of whichever data column or columns are in `sort`, `ascending` or
+ * `descending`; a column not in `sort`, and a {@link DataTableDisplayColumn} always, carries no
+ * `aria-sort` at all. The chevron beside a sortable header's text is `aria-hidden` — `aria-sort`
+ * is what a screen reader is told, the glyph is only ever a sighted hint.
  */
 export function DataTable<T, K extends Extract<keyof T, string>>(
   {
@@ -200,56 +333,28 @@ export function DataTable<T, K extends Extract<keyof T, string>>(
     class: className,
   }: DataTableProps<T, K>,
 ) {
-  const sortRuleFor = (key: K) => sort.find((rule) => rule.key === key)
-
   const sorted = sortRows([...rows], [...sort])
-  const pageCount = paging === undefined ? undefined : Math.ceil(sorted.length / paging.pageSize)
-  const visible = paging === undefined
-    ? sorted
-    : sorted.slice((paging.page - 1) * paging.pageSize, paging.page * paging.pageSize)
+
+  let visible = sorted
+  let currentPage: number | undefined
+  let pageCount: number | undefined
+  if (paging) {
+    pageCount = Math.ceil(sorted.length / paging.pageSize)
+    currentPage = Math.max(1, Math.min(Math.max(pageCount, 1), Math.round(paging.page)))
+    visible = sorted.slice((currentPage - 1) * paging.pageSize, currentPage * paging.pageSize)
+  }
 
   const headerSlot = (
     <>
-      {columns.map((column) => {
-        const rule = sortRuleFor(column.key)
-        return (
-          <th
-            key={column.key}
-            scope="col"
-            class={alignClass(column.align)}
-            aria-sort={ariaSortValue(rule?.direction)}
-          >
-            {column.sortable
-              ? (
-                <button
-                  type="button"
-                  class={sortButtonClasses}
-                  onClick={() => onSortChange(toggleSort([...sort], column.key))}
-                >
-                  <span class={column.align === "right" ? "ml-auto" : undefined}>
-                    {column.header}
-                  </span>
-                  <SortGlyph direction={rule?.direction} />
-                </button>
-              )
-              : column.header}
-          </th>
-        )
-      })}
+      {columns.map((column) => headerCell(column, sort, onSortChange))}
     </>
   )
 
   const bodySlots = visible.length > 0
     ? visible.map((row) =>
-      columns.map((column, index) => (
-        <td
-          key={column.key}
-          class={alignClass(column.align)}
-          {...(index === 0 ? { [rowKeyAttribute]: String(rowKey(row)) } : {})}
-        >
-          {column.render ? column.render(row) : defaultCell(row, column.key)}
-        </td>
-      ))
+      columns.map((column, index) =>
+        bodyCell(column, row, index === 0 ? String(rowKey(row)) : undefined)
+      )
     )
     : [
       <td key="empty" colspan={columns.length}>
@@ -269,7 +374,7 @@ export function DataTable<T, K extends Extract<keyof T, string>>(
       {paging && (
         <Pagination
           class="mt-4"
-          page={paging.page}
+          page={currentPage ?? 1}
           pageCount={pageCount ?? 0}
           onChange={paging.onChange}
           label={paging.label}

@@ -1,6 +1,6 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
-import { parseSort, serializeSort, type SortRule } from "@preact-components/signals/table-state"
+import type { SortRule } from "@preact-components/signals/table-state"
 import type { ComponentChild, VNode } from "preact"
 import { render } from "preact-render-to-string"
 import { DataTable, type DataTableColumn, rowKeyAttribute } from "./data-table.tsx"
@@ -22,6 +22,13 @@ const rows: Invoice[] = [
   { id: "INV-2", merchant: "Amazon", amount: 1299 },
   { id: "INV-3", merchant: "Salary", amount: null },
 ]
+
+/** Seven rows, already in ascending-by-merchant order, for the paging tests below. */
+const sevenInvoices: Invoice[] = "ABCDEFG".split("").map((letter) => ({
+  id: `INV-${letter}`,
+  merchant: letter,
+  amount: letter.charCodeAt(0),
+}))
 
 function noop(): void {}
 
@@ -220,6 +227,58 @@ describe("DataTable", () => {
     expect(descending).not.toContain(ascendingArrow)
   })
 
+  it("hides the sort glyph from assistive tech, sorted or not", () => {
+    const unsorted = render(
+      <DataTable
+        columns={columns}
+        rows={rows}
+        rowKey={(row) => row.id}
+        sort={[]}
+        onSortChange={noop}
+        caption="Invoices"
+      />,
+    )
+    const sorted = render(
+      <DataTable
+        columns={columns}
+        rows={rows}
+        rowKey={(row) => row.id}
+        sort={[{ key: "amount", direction: "asc" }]}
+        onSortChange={noop}
+        caption="Invoices"
+      />,
+    )
+
+    // Two sortable columns, so two glyphs each render; every one of them must be aria-hidden.
+    expect(countOccurrences(unsorted, "<svg")).toBe(2)
+    expect(countOccurrences(unsorted, '<svg aria-hidden="true"')).toBe(2)
+    expect(countOccurrences(sorted, "<svg")).toBe(2)
+    expect(countOccurrences(sorted, '<svg aria-hidden="true"')).toBe(2)
+  })
+
+  it("never puts aria-sort on a display column, even when a data column shares its sort key's data", () => {
+    const withActions: DataTableColumn<Invoice, keyof Invoice & string>[] = [
+      { key: "id", header: "Id", sortable: true },
+      { key: "merchant", header: "Merchant" },
+      { id: "actions", header: "Actions", render: (row) => `Archive ${row.id}` },
+    ]
+
+    const html = render(
+      <DataTable
+        columns={withActions}
+        rows={rows}
+        rowKey={(row) => row.id}
+        sort={[{ key: "id", direction: "asc" }]}
+        onSortChange={noop}
+        caption="Invoices"
+      />,
+    )
+
+    expect(countOccurrences(html, "aria-sort=")).toBe(1)
+    expect(html).toContain('aria-sort="ascending"')
+    expect(html).toContain("Archive INV-1")
+  })
+
   it("presses a sortable header's button through toggleSort", () => {
     let next: SortRule<keyof Invoice & string>[] | undefined
     const tree = evaluate(DataTable<Invoice, keyof Invoice & string>, {
@@ -304,7 +363,7 @@ describe("DataTable", () => {
       { id: "has-empty-string", priority: "" },
     ]
 
-    const html = render(
+    const ascending = render(
       <DataTable
         columns={ticketColumns}
         rows={tickets}
@@ -316,10 +375,31 @@ describe("DataTable", () => {
     )
 
     // The two real values sort ascending first; the three blank kinds tie and keep the order
-    // `tickets` gave them, whichever direction the column is sorted.
-    expect(order(html)).toEqual([
+    // `tickets` gave them.
+    expect(order(ascending)).toEqual([
       "has-value-1",
       "has-value-2",
+      "has-null",
+      "has-undefined",
+      "has-empty-string",
+    ])
+
+    const descending = render(
+      <DataTable
+        columns={ticketColumns}
+        rows={tickets}
+        rowKey={(row) => row.id}
+        sort={[{ key: "priority", direction: "desc" }]}
+        onSortChange={noop}
+        caption="Tickets"
+      />,
+    )
+
+    // Descending reverses the two real values, but the blanks still tie and still keep the input
+    // order among themselves — "last" does not mean "last, then reversed like everything else".
+    expect(order(descending)).toEqual([
+      "has-value-2",
+      "has-value-1",
       "has-null",
       "has-undefined",
       "has-empty-string",
@@ -445,39 +525,61 @@ describe("DataTable", () => {
     expect(html).toContain('aria-label="Page 3"')
     expect(html).not.toContain('aria-label="Page 4"')
   })
-})
 
-/**
- * `sort` round-trips through a URL parameter, at the level `table-state` itself works at — a
- * pure string in, the same rules back out.
- *
- * This is the fallback the catalogue card's own doc comment promises: the demo does not bind
- * `sort` to its address bar, because a second, independent writer to `history` on the same page
- * as the `signals/` URL-filter demo (which already asserts exact `history.length` deltas there)
- * risks changing those counts for reasons that have nothing to do with either card, and the
- * router wiring to avoid that lives in `pages/src`, outside this change's scope. What is proven
- * here is the half `DataTable` actually depends on: that a value `serializeSort` writes is the
- * same value `parseSort` reads back, for every shape `DataTable`'s own `sort` prop takes.
- */
-describe("sort round-trips through a URL parameter", () => {
-  const allowed = ["date", "merchant", "amount"] as const
+  it("renders the middle page of a paged, sorted set — not just page 1", () => {
+    // Sorted ascending by merchant, A…G is already that order: page 2 of size 3 is D, E, F.
+    const html = render(
+      <DataTable
+        columns={columns}
+        rows={sevenInvoices}
+        rowKey={(row) => row.id}
+        sort={[{ key: "merchant", direction: "asc" }]}
+        onSortChange={noop}
+        caption="Invoices"
+        paging={{ page: 2, pageSize: 3, onChange: noop }}
+      />,
+    )
 
-  it("round-trips no rules", () => {
-    const rules: SortRule<typeof allowed[number]>[] = []
-    expect(parseSort(serializeSort(rules), allowed, [])).toEqual(rules)
+    expect(order(html)).toEqual(["INV-D", "INV-E", "INV-F"])
+    expect(html).toContain('aria-current="page"')
   })
 
-  it("round-trips one rule", () => {
-    const rules: SortRule<typeof allowed[number]>[] = [{ key: "merchant", direction: "asc" }]
-    expect(parseSort(serializeSort(rules), allowed, [])).toEqual(rules)
+  it("clamps a page past the last one into range, for both the rows and the pager", () => {
+    // 7 rows, pageSize 3 → 3 pages. Page 9 clamps to page 3: G alone, not an empty body.
+    const html = render(
+      <DataTable
+        columns={columns}
+        rows={sevenInvoices}
+        rowKey={(row) => row.id}
+        sort={[{ key: "merchant", direction: "asc" }]}
+        onSortChange={noop}
+        caption="Invoices"
+        paging={{ page: 9, pageSize: 3, onChange: noop }}
+      />,
+    )
+
+    expect(order(html)).toEqual(["INV-G"])
+    expect(html).not.toContain("No rows")
+    expect(html).toContain('aria-current="page"')
+    expect(html).toContain(">3</button>")
   })
 
-  it("round-trips a multi-column sort in priority order", () => {
-    const rules: SortRule<typeof allowed[number]>[] = [
-      { key: "merchant", direction: "desc" },
-      { key: "amount", direction: "asc" },
-    ]
-    expect(parseSort(serializeSort(rules), allowed, [])).toEqual(rules)
+  it("clamps a page of zero or less up to the first page", () => {
+    for (const page of [0, -3]) {
+      const html = render(
+        <DataTable
+          columns={columns}
+          rows={sevenInvoices}
+          rowKey={(row) => row.id}
+          sort={[{ key: "merchant", direction: "asc" }]}
+          onSortChange={noop}
+          caption="Invoices"
+          paging={{ page, pageSize: 3, onChange: noop }}
+        />,
+      )
+
+      expect(order(html)).toEqual(["INV-A", "INV-B", "INV-C"])
+    }
   })
 })
 
