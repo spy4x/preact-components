@@ -41,7 +41,7 @@ export function Table(
   return (
     <div class={cn(wrapper, className)}>
       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
-        {caption && <caption class={captionClass}>{caption}</caption>}
+        {caption !== undefined && <caption class={captionClass}>{caption}</caption>}
         <thead class="bg-gray-50 dark:bg-gray-700">
           <tr class="*:whitespace-nowrap *:px-6 *:py-3 text-sm font-medium text-gray-900 dark:text-gray-200">
             {headerSlot}

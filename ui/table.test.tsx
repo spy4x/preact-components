@@ -100,6 +100,17 @@ describe("Table", () => {
     expect(html).toContain('<caption class="sr-only">Invoices</caption>')
     expect(html.indexOf("<caption")).toBeLessThan(html.indexOf("<thead"))
   })
+
+  it("renders a falsy but present caption, rather than a stray text node", () => {
+    // `caption && <caption>…</caption>` would have rendered a bare "0" here instead of a
+    // <caption> element — caller-supplied content, however falsy, is not "no caption".
+    const html = render(<Table headerSlot={header} bodySlots={[]} caption={0} />)
+
+    expect(html).toContain("<caption>0</caption>")
+    // The bug this guards: `caption && <caption>…</caption>` renders the falsy caption itself —
+    // a bare "0" text node right before <thead> — instead of a <caption> element around it.
+    expect(html).not.toContain(">0<thead")
+  })
 })
 
 function countOccurrences(haystack: string, needle: string): number {
