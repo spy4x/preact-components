@@ -148,10 +148,14 @@ export interface CalendarProps {
    * keeps their place, and that move passes `preventScroll` because it is the one the calendar
    * makes on its own initiative.
    *
-   * Two presses in a row move as many months as the owner has answered by the time each is made:
-   * an owner answering before the next key is delivered moves the reader twice, and one slower
-   * than their fingers is asked for the same month twice and moves them once. Neither loses a
-   * press. `system/README.md` has the whole table.
+   * How far a burst travels depends on whether the owner has answered by the time the next key is
+   * delivered. One that has — in the same render, or on a microtask — leaves the presses to
+   * accumulate: two Page Downs move two months, and a Page Down and a Page Up cancel out. One
+   * that has not has already had its press read as a refusal, so the next press counts from the
+   * day on screen and asks for the same month again: two Page Downs move one month, and a Page
+   * Down and a Page Up leave the reader one month *before* they started, the calendar having
+   * asked for the month after and then the month before. Every press is delivered and answered
+   * either way. `system/README.md` says why that trade was taken.
    */
   onSelectMonth?: (monthAnchor: string) => void
   /** Day href in link mode. Defaults to `?date=YYYY-MM-DD`, preserving the current path. */
@@ -469,7 +473,13 @@ export function Calendar(
    *
    * Counted from the cursor and not from the month on screen, so a second press that arrives
    * before the caller has re-rendered asks for the month after the one the first press asked for,
-   * rather than for the same one again.
+   * rather than for the same one again. That holds for as long as the cursor is still in the month
+   * the press asked for, which is until the render that follows the call — after that the answer
+   * is known. A caller that draws the month by then leaves the cursor there and a burst
+   * accumulates; a caller that does not has the press read as a refusal, which rewinds the cursor
+   * to the day on screen, so the press after it asks for the same month again. That is a trade and
+   * `system/README.md` records it: a rewound cursor is the price of the focus and the cursor never
+   * disagreeing about where the reader is.
    *
    * Nothing happens without `onSelectMonth`: in link mode the month lives in the URL, and a key
    * press that navigated the page would be a surprise the dual-mode contract does not promise.

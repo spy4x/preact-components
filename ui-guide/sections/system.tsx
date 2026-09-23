@@ -726,8 +726,10 @@ const LATE_MODES = [
  * key down. An owner that answers on a microtask has answered before the next key press is
  * delivered, so two presses move two months. An owner slower than the reader's fingers has not,
  * so the second press is made against the month still on screen and asks for the same month again:
- * two presses, both of them answered, one month. Neither loses a press, and the difference is
- * visible here in the two counters.
+ * two presses, both of them answered, one month. The same difference shows up in a Page Down
+ * followed by a Page Up: the quick owner brings the reader back to the month they started on, and
+ * the slow one leaves them a month before it. Neither loses a press, and both counters are here
+ * so a reader can see which of the two they are looking at.
  */
 function CalendarLateDemo() {
   const month = useSignal("2026-03-01")

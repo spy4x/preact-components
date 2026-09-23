@@ -187,19 +187,32 @@ they are no longer in. That move is also the one focus change the calendar makes
 initiative rather than in answer to a key pressed inside the grid, so it passes `preventScroll`:
 scrolling the page to a calendar nobody is looking at is not something to do unasked.
 
-**Two presses in a row move as many months as the owner has answered.** Each press counts from
-where the last one left the reader, so what a burst does depends on how quickly the owner answers,
-and both of the outcomes are reachable from the catalogue's own card:
+**A burst of presses travels further at a fast owner than at a slow one, and this is a trade.**
+Every press asks for the month after the one the _cursor_ is in, and the cursor is wherever the
+last press left the reader. What a burst does therefore depends on whether the owner has answered
+by the time the next key arrives, and both of the catalogue's late owners are reachable from the
+card:
 
-- an owner that answers before the next key is delivered — in the same render, or on a microtask —
-  has moved the reader by the time they press again, so two presses move two months;
-- an owner slower than the reader's fingers has not, so the second press is made against the month
-  still on screen and asks for the same month again: two presses, both answered, one month.
+- **An owner that answers within the same task** — in the render the call triggers, or on a
+  microtask — has moved the reader before the next key is delivered, so the presses accumulate:
+  two Page Downs move two months, three move three, and Page Down then Page Up brings the reader
+  back to the month they started on.
+- **An owner that answers later than that** has not, so its press has already been read as a
+  refusal and the cursor rewound to the day on screen. The next press is asked from there and asks
+  for the same month again: two Page Downs move **one** month and so do three, and Page Down then
+  Page Up leaves the reader **one month before** the month they started on, because the calendar
+  asked for the month after and then for the month before, in that order, and the owner drew both.
 
-Neither loses a press. A press superseded by another before its answer arrives — Page Down and then
-Page Up — leaves the reader on a day, on the day number they were on, but **which** month they end
-on is the owner's arithmetic rather than the calendar's: the owner has been asked for two months and
-draws both, in its own order.
+Every press is delivered and every press is answered either way; what changes is how far the burst
+travels, and the focus always lands on the same day number in whatever month ends up on screen.
+
+**Why it is that way.** The rewind is what the refusal handling _is_: the calendar cannot tell a
+slow yes from a no, so it assumes a no and puts the reader back where they were, cursor and focus
+together. Keeping the cursor in the month the press asked for would make a burst travel a month per
+press again, at the cost of a cursor sitting in a month nothing is drawing while the focus is on a
+day of the month that is — the two disagreeing about where the reader is, which is the defect this
+whole section exists to remove. A burst that travels less far is the cheaper mistake, and it is the
+one that was chosen.
 
 **What holds all of this.** Every rule above is held by browser checks in `pages/checks/system.ts`,
 driven against two catalogue cards — one whose owner refuses every month change, one whose owner
