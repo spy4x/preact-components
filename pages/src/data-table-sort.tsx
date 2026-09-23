@@ -16,6 +16,14 @@
  * runs after the `signals` block that drives {@link UrlFilterDemo}. That ordering is what keeps the
  * two demos' `history` writes apart: `UrlFilterDemo`'s checks finish, and restore the address they
  * started from, before this one presses anything.
+ *
+ * This component owns the real `?sort=` parameter — the same name `pages/checks/signals.ts` pushes
+ * as its own example of a parameter `useUrlFilters` does *not* own, in the checks that prove a
+ * foreign parameter survives a write next to it. The two have been measured not to interfere: a
+ * build and verify run at the commit before this file existed and one at head produce identical
+ * `signals/` block output, `history.length` counts included, and this file's own checks start from
+ * an empty query string. A parameter added to either demo later should keep that measurement
+ * rather than assume it still holds.
  */
 
 import { useSignal } from "@preact/signals"
