@@ -90,6 +90,14 @@ export {
   typingState,
 } from "./combobox.tsx"
 export {
+  DataTable,
+  type DataTableColumn,
+  type DataTableColumnAlign,
+  type DataTablePaging,
+  type DataTableProps,
+  rowKeyAttribute,
+} from "./data-table.tsx"
+export {
   DateRangePicker,
   type DateRangePickerLabels,
   type DateRangePickerProps,

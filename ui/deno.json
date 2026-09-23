@@ -13,6 +13,7 @@
     "./copy-button": "./copy-button.tsx",
     "./copyable-text": "./copyable-text.tsx",
     "./combobox": "./combobox.tsx",
+    "./data-table": "./data-table.tsx",
     "./date-range": "./date-range.ts",
     "./date-range-picker": "./date-range-picker.tsx",
     "./dropdown": "./dropdown.tsx",
