@@ -2,14 +2,14 @@
 
 Some glyphs in this package's icon set were copied out of the following open-source icon packs
 without the original file names or copyright notices being kept alongside them (see
-[issue #111](https://github.com/spy4x/preact-components/issues/111)). `provenance.ts` compares
-every exported glyph's geometry against these same packs, pinned at the versions below, to find
-which glyphs came from which pack; its own output is what put a given licence's notice in this
-file rather than another's. Run it yourself with:
-
-```bash
-deno task --cwd icons provenance
-```
+[issue #111](https://github.com/spy4x/preact-components/issues/111)). A geometry-comparison script
+in this package's own source repository compares every exported glyph against these same packs,
+pinned at the versions below, to find which glyphs came from which pack; its own output is what put
+a given licence's notice in this file rather than another's. That script (`provenance.ts`) is a
+development tool excluded from this published package — it is not among the files you have — so it
+cannot be run from here; the source is at
+<https://github.com/spy4x/preact-components/blob/main/icons/provenance.ts>, in the repository this
+package is built from.
 
 Each licence text below is copied verbatim from that package's own `LICENSE` file — nothing is
 paraphrased or retyped from a project's website — and each package is exactly what
@@ -109,8 +109,8 @@ SOFTWARE.
 From `lucide-static@1.47.0`'s own `LICENSE`. Several glyphs in this set compare exact or near to
 this pack. Lucide's own licence file already documents that a named subset of its icons are
 themselves derived from Feather under Feather's MIT licence, and that text is kept below exactly
-as Lucide ships it, list and all, rather than trimmed — several of this package's Lucide matches
-are on that list (`external-link`, `link`, `minus`, `server`, `code`, among others).
+as Lucide ships it, list and all, rather than trimmed — three of this package's Lucide matches are
+on that list too (`link`, `minus`, `server`).
 
 ```
 ISC License
@@ -160,7 +160,6 @@ SOFTWARE.
 
 ## What this file does not cover
 
-A third of this set's glyphs (33 of 119, at the time this file was written — see the pull request
-that added it for the exact count) matched none of the four packs above, exactly or nearly. Their
-licence is still unknown. They are named in `icons/README.md` under "Provenance", and are not
-covered by any notice in this file, because no matching pack was found to attribute them to.
+24 of this set's 119 glyphs matched none of the four packs above, exactly or nearly. Their licence
+is still unknown. They are named in `icons/README.md` under "Provenance", and are not covered by
+any notice in this file, because no matching pack was found to attribute them to.
