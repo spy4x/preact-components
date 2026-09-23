@@ -5,11 +5,20 @@
  * the wrapper would never be diffed and would sit in the bundle for nothing. `appHtml` is the
  * markup `preact-render-to-string` produced from the same `App` the island hydrates, which is what
  * makes hydration match rather than repair.
+ *
+ * The `<head>` itself comes from `@preact-components/system`'s `SEOHead`, rendered to a string the
+ * same way `appHtml` is: this is the one real consumer of that component in the repository, and
+ * its canonical address is now parsed rather than concatenated — see `renderDocument` below.
  */
 
 import type { RouteTable } from "@preact-components/ui-guide/routes"
+import { renderToString } from "preact-render-to-string"
+import { SEOHead } from "@preact-components/system/seo-head"
 import { renderRouteTable } from "./route-echo.ts"
 import { FAVICON, PAGE_DESCRIPTION, PAGE_TITLE } from "./site.ts"
+
+/** Feeds `og:site_name`. The demo has no other user-visible string of its own to name the site. */
+const SITE_NAME = "preact-components"
 
 export interface DocumentOptions {
   /** Path the site is mounted at, with a leading and trailing slash. */
@@ -59,22 +68,33 @@ const THEME_BOOTSTRAP = `<script>
 export function renderDocument(
   { base, origin, cssHref, islandSrc, appHtml, routeTable }: DocumentOptions,
 ): string {
+  // `SEOHead` parses this before it publishes it — see `normalizeCanonical` in
+  // `@preact-components/system/head` — so a stray query string or fragment on either input is
+  // resolved and cleaned rather than concatenated straight into the tag set.
   const canonical = `${origin}${base}`
+
+  // No `crumbs`: the demo is one HTML document under hash routing, so it has no page hierarchy to
+  // describe, and it shows no breadcrumb trail anywhere in its markup. `SEOHead` emits no
+  // `BreadcrumbList` for fewer than two crumbs, which is the honest state for a page like this one
+  // — a root entry pointing anywhere else (the GitHub repository, say) would tell a search engine
+  // the page sits under a site it does not sit under, and structured data is supposed to describe
+  // content the page actually shows.
+  const seoHead = renderToString(
+    <SEOHead
+      title={PAGE_TITLE}
+      description={PAGE_DESCRIPTION}
+      canonical={canonical}
+      siteName={SITE_NAME}
+    />,
+  )
 
   return `<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>${PAGE_TITLE}</title>
-    <meta name="description" content="${PAGE_DESCRIPTION}">
     <meta name="color-scheme" content="light dark">
-    <link rel="canonical" href="${canonical}">
-    <meta property="og:type" content="website">
-    <meta property="og:title" content="${PAGE_TITLE}">
-    <meta property="og:description" content="${PAGE_DESCRIPTION}">
-    <meta property="og:url" content="${canonical}">
-    <meta name="twitter:card" content="summary">
+    ${seoHead}
     <link rel="icon" href="${FAVICON}">
     <link rel="stylesheet" href="${cssHref}">
     ${THEME_BOOTSTRAP}
