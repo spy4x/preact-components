@@ -105,6 +105,22 @@ async function staticPhase(): Promise<void> {
     "body.theme-base",
   )
 
+  // The demo passes no `ogImage` (its only image is a 32×32 favicon), so `SEOHead` must derive
+  // `summary` rather than the `summary_large_image` a hard-coded card type used to publish — see
+  // #212. Exactly one tag: a workaround that hand-wrote a corrected tag beside the helper's own,
+  // rather than fixing the derivation, would ship two `twitter:card` tags and this would catch it.
+  // Single- or double-quoted: `preact-render-to-string` always emits double quotes today, but a
+  // regex that only matched those would report a single-quoted tag as "0 tag(s)" — missing, not
+  // wrong — which is a worse failure mode than the one extra character costs here.
+  const twitterCards = [...html.matchAll(/<meta[^>]*name=["']twitter:card["'][^>]*>/g)].map((m) =>
+    m[0]
+  )
+  check(
+    "exactly one twitter:card tag, publishing summary for a page with no preview image",
+    twitterCards.length === 1 && /content=["']summary["']/.test(twitterCards[0]),
+    twitterCards.length === 1 ? twitterCards[0] : `${twitterCards.length} tag(s): ${twitterCards}`,
+  )
+
   const stylesheet = await readAsset(cssHref)
   const island = await readAsset(islandSrc)
 

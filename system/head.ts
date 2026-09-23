@@ -18,6 +18,16 @@ import { type Signal, signal } from "@preact/signals"
 /** Open Graph object type a page declares. */
 export type OgType = "profile" | "article" | "website" | "service"
 
+/**
+ * `twitter:card` value a page can publish.
+ *
+ * `app` and `player` are Twitter/X card types too, but each needs data this component has no
+ * field for — an app id per platform, a player iframe URL and its pixel size — so a caller who
+ * wants one renders it beside `SEOHead` rather than through it. `summary` and `summary_large_image`
+ * need nothing beyond what {@link PageHead} already carries.
+ */
+export type TwitterCard = "summary" | "summary_large_image"
+
 /** One entry in the breadcrumb trail a page declares. */
 export interface Crumb {
   /** Visible name of the entry, exactly as it should appear. Never derived from the address. */
@@ -54,6 +64,16 @@ export interface PageHead {
   siteName?: string
   /** Twitter/X handle for `twitter:site`, e.g. `"@acme"`. */
   twitterSite?: string
+  /**
+   * Overrides the derived `twitter:card` value.
+   *
+   * Left unset, `twitter:card` is `"summary_large_image"` when {@link PageHead.ogImage} is given
+   * and `"summary"` when it is not — a page never claims a large preview image it has none of. Set
+   * this when the derivation is wrong for the page: an `ogImage` too small for a large card, or a
+   * caller with no `ogImage` who still wants `"summary_large_image"` for a reason of their own.
+   * Nothing here second-guesses the value, the same way nothing here second-guesses `title`.
+   */
+  twitterCard?: TwitterCard
   /** `og:locale`, e.g. `"en_US"`. */
   locale?: string
   /** Extra JSON-LD entities appended to the `@graph`, ahead of the breadcrumb node. */
