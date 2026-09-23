@@ -3,7 +3,7 @@
 Application chrome and platform integration: SEO, PWA updates, and the progressive-enhancement
 components that have to render without JavaScript.
 
-Extracted from `antonshubin.com`, `mig` and `financy`.
+Extracted from earlier source applications.
 
 ## Rules this package follows
 
@@ -485,8 +485,8 @@ an integer back into a string.
   `<`, and it was attacked with `</script>` payloads in the page title, in the caller's own
   JSON-LD entities and in a crumb name. The rendered markup kept exactly one opening and one
   closing script tag every time. There was nothing to fix, so nothing was changed.
-- **Timezone-free grid arithmetic.** `mig` did its day maths and weekday lookups through a host
-  timezone (`lib/tz.ts`). An ISO date carries no zone, so day steps in UTC cannot drift across a
+- **Timezone-free grid arithmetic.** A source application did its day maths and weekday lookups
+  through a host timezone (`lib/tz.ts`). An ISO date carries no zone, so day steps in UTC cannot drift across a
   DST boundary and a weekday computed in UTC is the same weekday everywhere. A `timeZone` prop
   survives for the one question that genuinely needs it — which date is _today_ — plus an
   injectable `today` for deterministic renders.
@@ -511,14 +511,14 @@ an integer back into a string.
 
 ## Not in this package
 
-| Left out                            | Why                                                                                                                                                                                                                               |
-| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Shell`, `Nav`                      | Read app state (`state.ws`), hardcode brand strings, and `gb`'s `Nav` runs an `effect()` at import time. Props-and-ports conversion is a redesign, not a port. `Auth` needed the same redesign and got it — see `AuthForm` above. |
-| `Menu`, `Header`, `ProfileDropdown` | Two source implementations of the same responsive header, both shaped around one app's markup and brand. The pieces worth keeping are the dual-mode contract and the a11y fixes, which landed in `Calendar`.                      |
-| `ImageGallery`                      | Snap-scroll strip plus an arrow-key lightbox. The lightbox half landed as `ImageLightbox`; the strip is a horizontal scroller whose drag and snap behaviour needs a DOM test harness this repo does not have yet.                 |
-| `StateInit`                         | An app's SSR→client hydration bridge, with that app's env keys hardcoded.                                                                                                                                                         |
-| `LeadForm`, `NewsletterForm`        | Form chrome whose anti-bot fields (honeypot, page-load timestamp) and success states the host must render itself.                                                                                                                 |
-| `themeBootstrapScript()`            | The FOUC-free inline `<head>` script belongs with `ts-libs`, next to the other head-platform helpers.                                                                                                                             |
+| Left out                            | Why                                                                                                                                                                                                                                               |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Shell`, `Nav`                      | Read app state (`state.ws`), hardcode brand strings, and a source application's `Nav` runs an `effect()` at import time. Props-and-ports conversion is a redesign, not a port. `Auth` needed the same redesign and got it — see `AuthForm` above. |
+| `Menu`, `Header`, `ProfileDropdown` | Two source implementations of the same responsive header, both shaped around one app's markup and brand. The pieces worth keeping are the dual-mode contract and the a11y fixes, which landed in `Calendar`.                                      |
+| `ImageGallery`                      | Snap-scroll strip plus an arrow-key lightbox. The lightbox half landed as `ImageLightbox`; the strip is a horizontal scroller whose drag and snap behaviour needs a DOM test harness this repo does not have yet.                                 |
+| `StateInit`                         | An app's SSR→client hydration bridge, with that app's env keys hardcoded.                                                                                                                                                                         |
+| `LeadForm`, `NewsletterForm`        | Form chrome whose anti-bot fields (honeypot, page-load timestamp) and success states the host must render itself.                                                                                                                                 |
+| `themeBootstrapScript()`            | The FOUC-free inline `<head>` script belongs with `ts-libs`, next to the other head-platform helpers.                                                                                                                                             |
 
 ## Tests
 
