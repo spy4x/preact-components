@@ -3559,39 +3559,66 @@ async function ensureSiteHeaderClosed(devtools: Devtools): Promise<void> {
 }
 
 /**
- * The race a listener gated on `isOpen` can lose, forced every run rather than left to chance.
+ * The race a listener gated on `isOpen` can lose, forced every run instead of left to chance.
  *
- * `siteHeaderChecks`' own Escape check polls for `aria-expanded === "true"` before it presses
- * Escape, and that poll is what gives Preact's effect scheduling time to catch up between the
- * click and the key — which is exactly why, with the previous, `isOpen`-gated listener, that check
- * only failed intermittently (measured: 3 of 12 `verify` runs) rather than every time. This check
- * presses Escape the instant the click's own round trip returns, with no poll and no wait at all in
- * between, which is what makes it land inside the gap deterministically: `pages/checks/harness.ts`
- * still has to make its own round trip to the browser for the key press, but nothing here waits an
- * extra beat for `aria-expanded`, a `toggle` event or an effect to have caught up first.
+ * A real click and a real Escape, sent as two separate DevTools Protocol commands, do not reliably
+ * land inside the gap: an earlier version of this check, built that way, caught the old `isOpen`-
+ * gated listener's absence in only 3 of 12 `verify` runs on one machine and 2 of 15 on another,
+ * because the round trip each command makes to the browser is itself enough time, on most attempts,
+ * for the `toggle` event — a queued task — to have been delivered and the old listener to have
+ * (re)attached before the key arrives. Doing both inside one `Runtime.evaluate` closes that gap
+ * instead of hoping to land in it: `button.click()` sets `details.open` synchronously, as part of
+ * the click's own default action, and dispatching the `keydown` immediately after, in the same
+ * call, reaches this hook's `document` listener before the browser ever gets back to its task queue
+ * to deliver `toggle` at all. With the old listener, that listener cannot exist yet at that point,
+ * because there has been no task boundary for the effect that attaches it to run across —
+ * confirmed by reverting to it and running `verify` five times: 5 of 5 failed this check, and with
+ * the fix restored, 5 of 5 passed. `bubbles: true` is what lets the synthetic event reach the
+ * `document` listener at all, and dispatching it *from the button* — not from `document` — is what
+ * lets it also pass the `contains` guard `siteHeaderEscapeScopingCheck` exists for.
+ *
+ * This only proves the listener responds once attached; it says nothing about whether a *trusted*
+ * key event reaches it the same way. That half is what `siteHeaderChecks`' own Escape check (a real
+ * click, then a real `Input.dispatchKeyEvent` Escape) and `siteHeaderEscapeScopingCheck` already
+ * prove, each with enough of a pause between the two that the race this check targets does not
+ * apply to them.
  *
  * @param devtools The connected session, on a hydrated page, viewport already narrowed by the
- * caller. Forces the panel closed itself first, rather than assuming it already is.
+ * caller. Waits for the panel to report closed itself first, rather than assuming it already is.
  */
 async function siteHeaderEscapeRaceCheck(devtools: Devtools): Promise<void> {
   await ensureSiteHeaderClosed(devtools)
+  await poll(async () => {
+    const state = await readSiteHeader(devtools)
+    return !state.detailsOpen && state.expanded === "false"
+  }, 3_000)
 
-  await focusAndClick(devtools, SITE_HEADER_BUTTON)
-  await pressKey(devtools, "Escape")
-
-  const closed = await poll(async () => !(await readSiteHeader(devtools)).detailsOpen, 3_000)
-  const focusedButton = await read(
+  const stillOpen = await read(
     devtools,
-    `document.activeElement === document.querySelector('${SITE_HEADER_BUTTON}')`,
-    false,
+    `(() => {
+      const button = document.querySelector('${SITE_HEADER_BUTTON}')
+      if (!button) return null
+      button.click()
+      button.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }),
+      )
+      const details = button.closest("details")
+      return details ? details.open : null
+    })()`,
+    null as boolean | null,
   )
+
   check(
-    "a real Escape pressed the instant the menu opens, with no wait in between, still closes it",
-    closed && focusedButton,
-    !closed
-      ? "the panel was still open 3s after an Escape pressed with no wait after the click"
-      : `document.activeElement is the menu button: ${focusedButton}`,
+    "an Escape dispatched in the same task as the click still closes the panel",
+    stillOpen === false,
+    stillOpen === null
+      ? "the menu button was not found"
+      : stillOpen
+      ? "details.open still read true immediately after the click and the same-task Escape"
+      : "details.open read false immediately after the click and the same-task Escape",
   )
+
+  await ensureSiteHeaderClosed(devtools)
 }
 
 /**

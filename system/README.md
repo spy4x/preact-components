@@ -526,6 +526,13 @@ leaves the page, but `close(false)` still runs, and it does not pull focus back 
 visitor has already moved past. `mobile-panel.ts`'s own doc names this as the reason `close` takes a
 `returnFocus` argument instead of always returning it.
 
+**Escape closes the menu only while focus is inside it.** The listener lives on `document` so it
+can hear a press from anywhere in the panel, but it acts only when the key event's own target sits
+inside this disclosure — a dialog opened on top of the menu keeps its Escape to itself, and a stray
+press once a wide viewport has hidden the panel entirely does nothing. On Safari, a mouse click does
+not focus the `<summary>`, so a mouse user there closes the menu with the button itself rather than
+with Escape.
+
 **A menu opened before the bundle has finished loading still ends up correct.** `useMobilePanel`
 reads `detailsRef.current.open` once on mount, which is what catches a visitor's click landing in
 the gap between paint and hydration — without it, the hook only ever learns the open state from a
