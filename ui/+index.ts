@@ -137,6 +137,12 @@ export {
   nextMenuIndex,
 } from "./dropdown.tsx"
 export { EmptyState, type EmptyStateProps } from "./empty-state.tsx"
+export {
+  EnhancedForm,
+  type EnhancedFormLabels,
+  type EnhancedFormProps,
+  type EnhancedFormStatus,
+} from "./enhanced-form.tsx"
 export { ErrorState, type ErrorStateProps } from "./error-state.tsx"
 export {
   Field,
@@ -146,6 +152,7 @@ export {
   type FieldWiring,
 } from "./field.tsx"
 export { GeoButton, type GeoButtonProps, type GeoCoordinates } from "./geo-button.tsx"
+export { HONEYPOT_FIELD_NAME, honeypotField, honeypotFilled } from "./honeypot.tsx"
 export {
   Input,
   type InputProps,
