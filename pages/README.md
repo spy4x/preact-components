@@ -35,7 +35,7 @@ usage blocks copy, the toasts fire and the deep links scroll.
 | `src/app.tsx`             | The host page — the app shell this library deliberately does not ship                                     |
 | `src/+main.tsx`           | The island: `hydrate(<App />, #root)`                                                                     |
 | `src/prerender.tsx`       | The server half: `renderToString(<App />)`, same component                                                |
-| `src/document.ts`         | The HTML document template, including the pre-paint colour-scheme script and the route echo               |
+| `src/document.tsx`        | The HTML document template, including the pre-paint colour-scheme script and the route echo               |
 | `src/deep-link.ts`        | Fragment ⇄ component mapping (`#toggle-switch` ⇄ `ToggleSwitch`); the slug rule is `ui-guide/routes.ts`'s |
 | `src/route-echo.ts`       | Emits the route table into the document and reads it back out, validated with `arktype`                   |
 | `src/tailwind-sources.ts` | Rewrites the `@source` entries Tailwind hands back into what its scanner resolves                         |
@@ -83,7 +83,7 @@ check or a red `verify` blocks the publish.
    the charts section renders the d3 islands live, so the bundle carries those packages and d3 with
    them. The build prints the module count and the byte size it produced; read them there rather
    than here.
-4. **Prerender**: `renderToString(<App />)` inside Deno, wrapped by `document.ts`. Before writing
+4. **Prerender**: `renderToString(<App />)` inside Deno, wrapped by `document.tsx`. Before writing
    anything, the build asserts that every name in `catalogueNames` — every card the sections render,
    across all covered packages — has a `demo-<Name>` card in the markup it is about to publish,
    because deep links are the one thing this page adds to the catalogue and a rename in `ui-guide`
@@ -153,7 +153,7 @@ JSX on the clipboard — the same snippets the catalogue shows under "Usage".
 ### The route echo
 
 Under hash routing the one `index.html` **is** every route, so there is no per-route emission to
-check. Instead `src/document.ts` embeds the route table (`routeTable()`, from the route model) as
+check. Instead `src/document.tsx` embeds the route table (`routeTable()`, from the route model) as
 `<script type="application/json" id="ui-guide-routes">`, and `build.ts` reads it back out of the
 rendered document and runs it through `routeTableDrift()`: every entry must resolve back to its own
 section or demo, be canonical, appear once, and account for every section and demo in the catalogue.
