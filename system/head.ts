@@ -70,8 +70,8 @@ export interface PageHead {
    * Left unset, `twitter:card` is `"summary_large_image"` when {@link PageHead.ogImage} is given
    * and `"summary"` when it is not — a page never claims a large preview image it has none of. Set
    * this when the derivation is wrong for the page: an `ogImage` too small for a large card, or a
-   * caller with no `ogImage` who still wants `"summary_large_image"` because the card falls back to
-   * a site-level image X already has on file for the domain.
+   * caller with no `ogImage` who still wants `"summary_large_image"` for a reason of their own.
+   * Nothing here second-guesses the value, the same way nothing here second-guesses `title`.
    */
   twitterCard?: TwitterCard
   /** `og:locale`, e.g. `"en_US"`. */

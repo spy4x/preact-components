@@ -66,9 +66,9 @@ to override.
 A page with no preview image should not claim a large one. `twitter:card` is `summary_large_image`
 when `ogImage` is given and `summary` when it is not; `twitterCard` overrides the derivation for a
 caller who knows better — an `ogImage` too small for a large card, or a page with no `ogImage` that
-still wants `summary_large_image` because X already has a site-level image on file for the domain.
-Both directions are allowed: nothing here checks that an overridden `summary_large_image` has an
-image to go with it, the same way nothing here second-guesses a caller-supplied `title`.
+still wants `summary_large_image` for a reason of its own. Both directions are allowed: nothing
+here checks that an overridden `summary_large_image` has an image to go with it, the same way
+nothing here second-guesses a caller-supplied `title`.
 
 `app` and `player` are Twitter/X card types too, but each needs data `PageHead` has no field for —
 per-platform app ids, or a player iframe URL and its pixel size — so they are left out of
