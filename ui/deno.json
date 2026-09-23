@@ -44,6 +44,8 @@
     // This package's own `*.test.*` suites, none reachable from `exports`. A glob rather than a
     // per-file list: a hand-kept list has to be remembered on every new test file, and nothing
     // here would catch a forgotten entry — a new `*.test.tsx` would ship to JSR with the package.
-    "exclude": ["*.test.ts", "*.test.tsx"]
+    // `**/` because a bare `*.test.ts` matches this directory only: measured in `ui-guide/`, where
+    // it shipped `sections/demo-decisions.test.ts`. Every package that publishes uses this pair.
+    "exclude": ["**/*.test.ts", "**/*.test.tsx"]
   }
 }

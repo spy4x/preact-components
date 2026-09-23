@@ -14,13 +14,8 @@
     // Every `*.test.*` here renders to `preact-render-to-string` or drives Deno's fake timers; none
     // of it is reachable from `exports`, and none of it is anything a consumer runs.
     "exclude": [
-      "auth-form.test.tsx",
-      "calendar.test.tsx",
-      "date.test.ts",
-      "head.test.ts",
-      "image-lightbox.test.tsx",
-      "seo-head.test.tsx",
-      "sw-updater.test.tsx"
+      "**/*.test.ts",
+      "**/*.test.tsx"
     ]
   }
 }

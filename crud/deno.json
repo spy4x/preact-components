@@ -19,15 +19,9 @@
     // links to, but it is not part of `exports` and a consumer imports none of it. The rest are
     // this package's own `*.test.*` suites, none reachable from `exports` either.
     "exclude": [
-      "association-editor.test.tsx",
-      "crud-editor.test.ts",
-      "crud-list.test.tsx",
-      "examples/",
-      "field.test.tsx",
-      "search.test.ts",
-      "store.test.ts",
-      "time-ago.test.ts",
-      "validation.test.ts"
+      "**/*.test.ts",
+      "**/*.test.tsx",
+      "examples/"
     ]
   }
 }
