@@ -97,7 +97,7 @@ function EnhancedFormDemo() {
 }
 
 /**
- * Four instances, because a successful submit replaces the field with a thank-you message and no
+ * Five instances, because a successful submit replaces the field with a thank-you message and no
  * browser check that drives one to success can leave it resubmittable afterward for another.
  *
  * The first is the one this card's own snippet shows: one email field, `honeypot` on, a submit that
@@ -121,13 +121,23 @@ function EnhancedFormDemo() {
  * `newsletterFormFocusElsewhereCheck`: a real click on this instance's own submit button does put
  * focus inside the form, unlike the third instance's `requestSubmit()` calls, so it is the one card
  * that can prove the other half of the same fix — a visitor who submitted normally and then moved
- * focus elsewhere on purpose, before the result lands, keeps it there too.
+ * focus to a specific other control, before the result lands, keeps it there too.
+ *
+ * The fifth, marked `data-e2e="newsletter-form-blur-while-sending"`, exists only for
+ * `newsletterFormBlurWhileSendingCheck`: a real click, then a blur to `<body>` — not to a specific
+ * other control, the fourth instance's own case — while the submit is still outstanding. This is
+ * the case the focus-restoring effect recovers *into* on its own (disabling the fieldset for
+ * `"sending"` already drops focus to `<body>`), so proving a visitor who blurred there themselves,
+ * on purpose, is not pulled back once the same submit later reaches `"done"` needs a submit that
+ * genuinely started with focus inside the form — the fourth instance's own point of difference from
+ * the third.
  */
 function NewsletterFormDemo() {
   const subscribes = useSignal(0)
   const honeypotSubscribes = useSignal(0)
   const requestSubmitCalls = useSignal(0)
   const focusElsewhereCalls = useSignal(0)
+  const blurWhileSendingCalls = useSignal(0)
 
   return (
     <div class="max-w-sm space-y-3">
@@ -195,6 +205,24 @@ function NewsletterFormDemo() {
           data-e2e="newsletter-form-focus-elsewhere-subscribes"
         >
           subscribes: {focusElsewhereCalls.value}
+        </p>
+      </div>
+      <div
+        class="border-t border-gray-200 pt-3 dark:border-gray-700"
+        data-e2e="newsletter-form-blur-while-sending"
+      >
+        <NewsletterForm
+          action={FORM_DEMO_ACTION}
+          onSubmit={async () => {
+            blurWhileSendingCalls.value++
+            await delay(150)
+          }}
+        />
+        <p
+          class="text-sm text-gray-500 dark:text-gray-400"
+          data-e2e="newsletter-form-blur-while-sending-subscribes"
+        >
+          subscribes: {blurWhileSendingCalls.value}
         </p>
       </div>
     </div>
