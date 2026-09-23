@@ -47,8 +47,10 @@ import {
   type CheckBlock,
   commitBlocks,
   connect,
+  currentBlockName,
   debuggingPort,
   type Devtools,
+  lastCheckName,
   poll,
   pressKey,
   report,
@@ -283,31 +285,58 @@ async function findChromium(): Promise<ChromiumLookup> {
   }
 }
 
-/** Drive the page in headless Chromium and assert the interactions. */
-async function browserPhase(): Promise<void> {
-  // Commit to the package blocks before anything can go wrong, so that a phase which dies during
-  // startup still reports which blocks it meant to run. `--static` never reaches this line, which
-  // is what keeps a deliberate skip from being reported as nine lost blocks.
-  commitBlocks(PACKAGE_BLOCKS.map((block) => block.name))
+/** How long one launch attempt waits for Chromium's port file — see {@link launchOnce}. */
+const LAUNCH_PORT_TIMEOUT_MS = 15_000
+/** How long one launch attempt waits for a DevTools target once the port is known. */
+const LAUNCH_CONNECT_TIMEOUT_MS = 10_000
+/**
+ * How long the whole browser phase gets before it is torn down and reported as hung — `#239`.
+ *
+ * Generous against the roughly two minutes a normal run takes today: the two launch attempts
+ * together cost at most `2 × (LAUNCH_PORT_TIMEOUT_MS + LAUNCH_CONNECT_TIMEOUT_MS)` ≈ 50s, leaving
+ * over four minutes for the rest of the run before this is ever in contention with a healthy one.
+ */
+const PHASE_DEADLINE_MS = 5 * 60_000
+/** How long `Browser.close` gets to end the process on its own before the fallback group kill. */
+const GRACEFUL_CLOSE_TIMEOUT_MS = 5_000
+/** How long the fallback process-group kill gets before escalating to SIGKILL. */
+const GROUP_KILL_TIMEOUT_MS = 3_000
 
-  // A missing browser is a failure, not a skip. This phase carries every assertion about behaviour
-  // the markup cannot show, so a run that quietly dropped it and still exited 0 reported a green
-  // check for code nothing had executed. `--static` is the one explicit way to leave it out.
-  const { executable: chromium, detail } = await findChromium()
-  check("a Chromium binary is available for the browser phase", chromium !== undefined, detail)
-  if (!chromium) return
+/** A live Chromium launch: the process, its profile directory, and the DevTools session on it. */
+interface ChromiumSession {
+  process: Deno.ChildProcess
+  profile: string
+  devtools: Devtools
+}
 
-  console.log(`\nbrowser phase — ${chromium}`)
+/** One launch attempt's outcome: a live session, or why it did not become one. */
+interface LaunchAttempt {
+  session?: ChromiumSession
+  reason?: string
+}
 
-  let server: PreviewServer | undefined
-  let profile: string | undefined
-  let browser: Deno.ChildProcess | undefined
+/** Render a thrown value as a message; a non-`Error` throw is as readable as any other. */
+function describeError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
+/**
+ * One Chromium launch attempt: a fresh profile, a spawned process, a bounded wait for its DevTools
+ * port and target.
+ *
+ * Always leaves no trace of its own failure: a launch that does not become a session is torn down
+ * here, through the same {@link shutdownChromium} the rest of the run uses, before this returns —
+ * so the caller never has to know whether it is cleaning up attempt one or attempt two.
+ *
+ * @param chromium Executable to launch.
+ * @returns A live session, or the reason this attempt did not produce one.
+ */
+async function launchOnce(chromium: string): Promise<LaunchAttempt> {
+  const profile = await Deno.makeTempDir({ prefix: "pages-chromium-" })
+  let process: Deno.ChildProcess | undefined
 
   try {
-    server = await serveDist(DIST_DIRECTORY, BASE, 0)
-    profile = await Deno.makeTempDir({ prefix: "pages-chromium-" })
-
-    browser = new Deno.Command(chromium, {
+    process = new Deno.Command(chromium, {
       args: [
         "--headless=new",
         "--no-sandbox",
@@ -329,51 +358,264 @@ async function browserPhase(): Promise<void> {
         `--user-data-dir=${profile}`,
         "about:blank",
       ],
+      // Its own session and process group (measured on Linux: the spawned pid becomes its own pgid),
+      // which is what lets `shutdownChromium` take the whole tree — renderer, GPU, zygote and
+      // crash-reporter children included — down with one signal to `-pid` instead of reaching only
+      // the one process Deno spawned and leaving the rest reparented. See `#221`.
+      detached: true,
       stdout: "null",
       stderr: "null",
     }).spawn()
 
-    const devtools = await connect(await debuggingPort(profile))
-    await devtools.send("Runtime.enable", {})
-    await devtools.send("Log.enable", {})
-    await devtools.send("Network.enable", {})
-    await devtools.send("Page.enable", {})
-
-    await devtools.send("Page.navigate", { url: server.url })
-    await devtools.next("Page.loadEventFired")
-
-    const hydrated = await poll(
-      () => devtools.evaluate<boolean>("document.documentElement.dataset.hydrated === 'true'"),
-      10_000,
-    )
-    check("the island hydrates the prerendered page", hydrated, "data-hydrated set by an effect")
-
-    await hoverCapability(devtools)
-
-    if (hydrated) {
-      await runBlocks(PACKAGE_BLOCKS, devtools, resetAfterThrow)
-    }
-
-    const errors = devtools.problems()
-    check(
-      "no console errors, exceptions or failed requests",
-      errors.length === 0,
-      errors.length === 0 ? `${server.url} loaded clean` : errors.join(" | "),
-    )
+    const port = await debuggingPort(profile, LAUNCH_PORT_TIMEOUT_MS)
+    const devtools = await connect(port, LAUNCH_CONNECT_TIMEOUT_MS)
+    return { session: { process, profile, devtools } }
   } catch (error) {
-    // A throw half-way through used to take `report()` with it: the process exited non-zero with a
-    // stack trace and printed none of the checks that had already passed. Recorded as one more
-    // failed check instead, so the run still reports and the reason sits in the same list.
-    check(
-      "the browser phase ran to completion",
-      false,
-      error instanceof Error ? error.message : String(error),
-    )
-  } finally {
-    browser?.kill("SIGKILL")
-    await browser?.status.catch(() => {})
-    if (profile) await Deno.remove(profile, { recursive: true }).catch(() => {})
+    await shutdownChromium(process, profile)
+    return { reason: describeError(error) }
+  }
+}
+
+/**
+ * Launch Chromium, retrying once on a fresh profile.
+ *
+ * The comments on `#239` show the launch itself sometimes fails outright — Chromium never writes a
+ * port file, independent of anything this phase does afterwards. One retry turns a rare launch
+ * failure into a rare *named* check failure instead of losing the whole phase to it, and the check
+ * this records carries both attempts' reasons when it still fails twice, so a report never says only
+ * "no Chromium" without saying why.
+ *
+ * @param chromium Executable to launch.
+ * @returns The live session, or `undefined` after both attempts failed — the failure is already a
+ * recorded check by the time this returns.
+ */
+async function launchChromium(chromium: string): Promise<ChromiumSession | undefined> {
+  const budgetSeconds = Math.round(
+    (2 * (LAUNCH_PORT_TIMEOUT_MS + LAUNCH_CONNECT_TIMEOUT_MS)) / 1000,
+  )
+  const checkName = `Chromium started within ${budgetSeconds}s (2 attempts)`
+
+  const first = await launchOnce(chromium)
+  if (first.session) {
+    check(checkName, true, "attempt 1 succeeded")
+    return first.session
+  }
+
+  console.log(`launch attempt 1 failed (${first.reason}) — retrying with a fresh profile`)
+  const second = await launchOnce(chromium)
+  if (second.session) {
+    console.log("launch attempt 2 succeeded")
+    check(checkName, true, `attempt 1 failed (${first.reason}); attempt 2 succeeded`)
+    return second.session
+  }
+
+  check(checkName, false, `attempt 1 failed (${first.reason}); attempt 2 failed (${second.reason})`)
+  return undefined
+}
+
+/**
+ * Take Chromium and everything it spawned down, and only then remove its profile — `#221`.
+ *
+ * Every step below runs unconditionally, never gated on whether an earlier one already looked
+ * successful: the browser process itself exiting is not evidence that its helpers did too, and a
+ * crashed or externally killed browser process (measured by killing it out from under a run while
+ * diagnosing this fix) leaves `process.status` resolved *before* any of its helpers have gone
+ * anywhere. Gating the group signal on "did the main process exit yet" — this function's first
+ * shape — skipped it in exactly that case and left the helpers running, which is the leak #221
+ * reported in the first place.
+ *
+ * So: `Browser.close` asks Chromium to shut its own helpers down in the order it chooses, which is
+ * the one path that reliably takes the zygote, GPU and crash-reporter processes with it — a bare
+ * `SIGKILL` gives none of them the chance. Then `Deno.kill(-pid, …)` signals the whole process group
+ * `launchOnce` spawned the browser into (`detached: true`, measured on Linux to make the spawned pid
+ * its own pgid) — sent whether or not the leader is still alive, because a signal to a pgid still
+ * reaches any surviving member even after its leader is gone. Then `killByProfile` sweeps `/proc` for
+ * anything still carrying this profile's path on its command line, as the one mechanism here that
+ * depends on neither process-group semantics nor Chromium's own behaviour.
+ *
+ * Safe to call more than once, and safe to call with a `process` whose attempt never reached a
+ * session — every path that can end a launch attempt or the browser phase itself calls this, so the
+ * profile is never removed while something might still be writing to it.
+ *
+ * @param process The spawned process, if the launch got that far.
+ * @param profile The profile directory `launchOnce` created for it.
+ * @param devtools A connected session, when one exists, for the graceful path.
+ */
+async function shutdownChromium(
+  process: Deno.ChildProcess | undefined,
+  profile: string | undefined,
+  devtools?: Devtools,
+): Promise<void> {
+  if (process) {
+    if (devtools) {
+      await devtools.send("Browser.close", {}, GRACEFUL_CLOSE_TIMEOUT_MS).catch(() => {})
+    }
+    // Give the browser process a moment to exit on its own before reaching for the group signal —
+    // not a substitute for it, only a head start, so a browser that closed cleanly does not also pay
+    // for a SIGTERM it no longer needs.
+    await exitedWithin(process, GRACEFUL_CLOSE_TIMEOUT_MS)
+
+    try {
+      Deno.kill(-process.pid, "SIGTERM")
+    } catch {
+      // No such process group — everything in it is already gone.
+    }
+    await exitedWithin(process, GROUP_KILL_TIMEOUT_MS)
+
+    try {
+      Deno.kill(-process.pid, "SIGKILL")
+    } catch {
+      try {
+        process.kill("SIGKILL")
+      } catch {
+        // Already gone.
+      }
+    }
+    await process.status.catch(() => {})
+
+    if (profile) await killByProfile(profile)
+  }
+
+  if (profile) await Deno.remove(profile, { recursive: true }).catch(() => {})
+}
+
+/** Whether `process` exits on its own within `timeoutMs`. */
+async function exitedWithin(process: Deno.ChildProcess, timeoutMs: number): Promise<boolean> {
+  return await Promise.race([
+    process.status.then(() => true),
+    new Promise<boolean>((resolve) => setTimeout(() => resolve(false), timeoutMs)),
+  ])
+}
+
+/**
+ * Kill anything still alive whose command line names `profile`.
+ *
+ * The fallback of last resort for {@link shutdownChromium}: if Chromium's own sandboxing ever leaves
+ * a helper outside the process group `-pid` reaches — none did in the runs this fix was measured
+ * against, which is why the group kill above is the primary path — a `--user-data-dir` value is
+ * unique to one launch attempt, so matching it in `/proc/<pid>/cmdline` cannot reach a process this
+ * run did not spawn. Best-effort and silent: no `/proc` (a non-Linux host) or a `pid` directory that
+ * disappears mid-scan is not this function's problem to report.
+ *
+ * @param profile Absolute path of the profile directory to search for.
+ */
+async function killByProfile(profile: string): Promise<void> {
+  try {
+    for await (const entry of Deno.readDir("/proc")) {
+      if (!/^\d+$/.test(entry.name)) continue
+      const pid = Number(entry.name)
+      try {
+        const cmdline = await Deno.readTextFile(`/proc/${pid}/cmdline`)
+        if (cmdline.includes(profile)) Deno.kill(pid, "SIGKILL")
+      } catch {
+        // Gone already, or unreadable — nothing left to kill.
+      }
+    }
+  } catch {
+    // No /proc on this platform; the process-group kill above is the only mechanism there.
+  }
+}
+
+/**
+ * Drive the page in headless Chromium and assert the interactions.
+ *
+ * The whole phase races an overall deadline (`#239`): everything below runs inside `work`, and
+ * `Promise.race` against a timer means a hang anywhere inside it — a `DevTools` call with no timeout
+ * of its own would be the classic case, which is why every one now has one — still lets `verify` exit
+ * non-zero instead of waiting forever. The deadline branch cannot know what `work` was doing, so it
+ * reads {@link currentBlockName} and {@link lastCheckName} instead: the block `runBlocks` was inside
+ * when time ran out, and the last check that finished before that.
+ *
+ * `work`'s own `finally` and the deadline branch both call `teardown`, which is idempotent — whichever
+ * one runs first does the actual killing, and losing the race never leaves Chromium's tree running
+ * merely because `work` was still abandoned mid-`await` when the deadline fired.
+ */
+async function browserPhase(): Promise<void> {
+  // Commit to the package blocks before anything can go wrong, so that a phase which dies during
+  // startup still reports which blocks it meant to run. `--static` never reaches this line, which
+  // is what keeps a deliberate skip from being reported as nine lost blocks.
+  commitBlocks(PACKAGE_BLOCKS.map((block) => block.name))
+
+  // A missing browser is a failure, not a skip. This phase carries every assertion about behaviour
+  // the markup cannot show, so a run that quietly dropped it and still exited 0 reported a green
+  // check for code nothing had executed. `--static` is the one explicit way to leave it out.
+  const { executable: chromium, detail } = await findChromium()
+  check("a Chromium binary is available for the browser phase", chromium !== undefined, detail)
+  if (!chromium) return
+
+  console.log(`\nbrowser phase — ${chromium}`)
+
+  let server: PreviewServer | undefined
+  let session: ChromiumSession | undefined
+  let torn = false
+
+  const teardown = async (): Promise<void> => {
+    if (torn) return
+    torn = true
+    if (session) await shutdownChromium(session.process, session.profile, session.devtools)
     await server?.close()
+  }
+
+  const work = (async (): Promise<void> => {
+    try {
+      server = await serveDist(DIST_DIRECTORY, BASE, 0)
+
+      session = await launchChromium(chromium)
+      if (!session) return
+      const { devtools } = session
+
+      await devtools.send("Runtime.enable", {})
+      await devtools.send("Log.enable", {})
+      await devtools.send("Network.enable", {})
+      await devtools.send("Page.enable", {})
+
+      await devtools.send("Page.navigate", { url: server.url })
+      await devtools.next("Page.loadEventFired")
+
+      const hydrated = await poll(
+        () => devtools.evaluate<boolean>("document.documentElement.dataset.hydrated === 'true'"),
+        10_000,
+      )
+      check("the island hydrates the prerendered page", hydrated, "data-hydrated set by an effect")
+
+      await hoverCapability(devtools)
+
+      if (hydrated) {
+        await runBlocks(PACKAGE_BLOCKS, devtools, resetAfterThrow)
+      }
+
+      const errors = devtools.problems()
+      check(
+        "no console errors, exceptions or failed requests",
+        errors.length === 0,
+        errors.length === 0 ? `${server.url} loaded clean` : errors.join(" | "),
+      )
+    } catch (error) {
+      // A throw half-way through used to take `report()` with it: the process exited non-zero with a
+      // stack trace and printed none of the checks that had already passed. Recorded as one more
+      // failed check instead, so the run still reports and the reason sits in the same list.
+      check("the browser phase ran to completion", false, describeError(error))
+    } finally {
+      await teardown()
+    }
+  })()
+
+  const deadline = new Promise<"deadline">((resolve) => {
+    setTimeout(() => resolve("deadline"), PHASE_DEADLINE_MS)
+  })
+
+  const outcome = await Promise.race([work.then(() => "done" as const), deadline])
+
+  if (outcome === "deadline") {
+    const running = currentBlockName()
+    check(
+      "the browser phase finished within its deadline",
+      false,
+      `no result after ${Math.round(PHASE_DEADLINE_MS / 1000)}s` +
+        (running ? `; still running the ${running} checks` : "") +
+        `; last completed check: ${lastCheckName() ?? "none"}`,
+    )
+    await teardown()
   }
 }
 
