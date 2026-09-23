@@ -471,15 +471,17 @@ export function Calendar(
   /**
    * Ask for the month `months` away from the one the cursor is in, on the same day number.
    *
-   * Counted from the cursor and not from the month on screen, so a second press that arrives
-   * before the caller has re-rendered asks for the month after the one the first press asked for,
-   * rather than for the same one again. That holds for as long as the cursor is still in the month
-   * the press asked for, which is until the render that follows the call — after that the answer
-   * is known. A caller that draws the month by then leaves the cursor there and a burst
-   * accumulates; a caller that does not has the press read as a refusal, which rewinds the cursor
-   * to the day on screen, so the press after it asks for the same month again. That is a trade and
-   * `system/README.md` records it: a rewound cursor is the price of the focus and the cursor never
-   * disagreeing about where the reader is.
+   * Counted from the cursor and not from the month on screen. Two month-arrow activations in the
+   * same statement land before any render, and counting from the cursor is what makes them ask
+   * for two months rather than for the same one twice.
+   *
+   * A key press is different, because the render that follows it — and the layout effect that
+   * reads the answer — run before the next key is delivered. A caller that has drawn the month by
+   * then leaves the cursor in it, so presses accumulate. A caller that has not has the press read
+   * as a refusal, which rewinds the cursor to the day on screen, so the next press asks for the
+   * **same** month again: at such a caller a burst travels one month, and Page Down then Page Up
+   * lands a month before where the reader started. That is a trade, taken so that the cursor and
+   * the focus never disagree about where the reader is; `system/README.md` says why.
    *
    * Nothing happens without `onSelectMonth`: in link mode the month lives in the URL, and a key
    * press that navigated the page would be a surprise the dual-mode contract does not promise.
