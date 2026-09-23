@@ -159,6 +159,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await newsletterFormDoubleClickCheck(devtools)
   await newsletterFormRequestSubmitGuardCheck(devtools)
   await newsletterFormFocusElsewhereCheck(devtools)
+  await newsletterFormBlurWhileSendingCheck(devtools)
   await enhancedFormsHoneypotChecks(devtools)
   await contactFormHoneypotCheck(devtools)
   await contactFormStaleSubmitCheck(devtools)
@@ -6013,29 +6014,40 @@ async function newsletterFormFocusElsewhereCheck(devtools: Devtools): Promise<vo
     async () => (await enhancedFormReading(devtools, card)).disabled,
     1_000,
   )
-  const movedAway = await devtools.evaluate<boolean>(`(() => {
-    const dummy = document.createElement("button")
-    dummy.type = "button"
-    dummy.id = ${JSON.stringify(dummyId)}
-    dummy.textContent = "unrelated control"
-    dummy.style.cssText = "position:fixed;top:0;left:0"
-    document.body.appendChild(dummy)
-    dummy.focus()
-    return document.activeElement === dummy
-  })()`).catch(() => false)
 
-  const settled = await poll(
-    async () => (await enhancedFormReading(devtools, card)).region.startsWith("You're subscribed"),
-    2_000,
-  )
-  const stillOnDummy = await devtools.evaluate<boolean>(
-    `document.activeElement === document.getElementById(${JSON.stringify(dummyId)})`,
-  ).catch(() => false)
+  // The dummy control's whole lifetime — creating it, reading it back once settled — sits inside
+  // this `try`, and removing it again sits inside the matching `finally`, so a throw in between
+  // (a stalled poll, a page exception) does not leave a stray element behind on a page every check
+  // after this one in the same run still shares.
+  let movedAway = false
+  let settled = false
+  let stillOnDummy = false
+  try {
+    movedAway = await devtools.evaluate<boolean>(`(() => {
+      const dummy = document.createElement("button")
+      dummy.type = "button"
+      dummy.id = ${JSON.stringify(dummyId)}
+      dummy.textContent = "unrelated control"
+      dummy.style.cssText = "position:fixed;top:0;left:0"
+      document.body.appendChild(dummy)
+      dummy.focus()
+      return document.activeElement === dummy
+    })()`).catch(() => false)
 
-  await devtools.evaluate<null>(`(() => {
-    document.getElementById(${JSON.stringify(dummyId)})?.remove()
-    return null
-  })()`)
+    settled = await poll(
+      async () =>
+        (await enhancedFormReading(devtools, card)).region.startsWith("You're subscribed"),
+      2_000,
+    )
+    stillOnDummy = await devtools.evaluate<boolean>(
+      `document.activeElement === document.getElementById(${JSON.stringify(dummyId)})`,
+    ).catch(() => false)
+  } finally {
+    await devtools.evaluate<null>(`(() => {
+      document.getElementById(${JSON.stringify(dummyId)})?.remove()
+      return null
+    })()`).catch(() => null)
+  }
 
   check(
     "a visitor who moved focus elsewhere mid-submit keeps it there once the result lands",
@@ -6045,6 +6057,98 @@ async function newsletterFormFocusElsewhereCheck(devtools: Devtools): Promise<vo
       : !movedAway
       ? "could not move focus to the dummy control"
       : `settled: ${settled}; focus still on the dummy control once it did: ${stillOnDummy}`,
+  )
+}
+
+/**
+ * `NewsletterForm`'s fifth instance: a real click on the submit button, then a blur to `<body>` —
+ * not to a specific other control, {@link newsletterFormFocusElsewhereCheck}'s own case — while the
+ * submit is still outstanding, together with a scroll back to the top of the page.
+ *
+ * This is the one case the previous round's fix did not cover, because it is not a visitor whose
+ * focus was never in the form ({@link newsletterFormRequestSubmitGuardCheck}'s case): disabling the
+ * fieldset for `"sending"` already drops focus to `<body>` in this browser, so the focus-restoring
+ * effect recovers it there — correctly, the first time — before this same submit ever reaches
+ * `"done"`. Without clearing the flag that let that first recovery happen, the effect's second run,
+ * on the transition to `"done"`, would see the flag still set and `document.activeElement` back on
+ * `<body>` — exactly what a visitor clicking on plain text and reading elsewhere also produces — and
+ * pull focus back a second time for a visitor this component had already, correctly, let go of.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function newsletterFormBlurWhileSendingCheck(devtools: Devtools): Promise<void> {
+  const card = '#demo-NewsletterForm [data-e2e="newsletter-form-blur-while-sending"]'
+
+  const ready = await cardCanSubmit(devtools, card)
+  check(
+    "NewsletterForm's blur-while-sending card is ready to submit before this check begins",
+    ready.ok,
+    ready.reason,
+  )
+  if (!ready.ok) return
+
+  await devtools.evaluate<null>(`(() => {
+    const email = document.querySelector('${card} input[name="email"]')
+    if (email) email.value = "ada@example.com"
+    return null
+  })()`)
+
+  const point = await elementCenter(devtools, `${card} button[type="submit"]`)
+  check(
+    "the click that starts this check lands on its own submit button",
+    point.ok,
+    point.ok ? `(${point.x}, ${point.y})` : point.reason,
+  )
+  if (!point.ok) return
+  await clickAtPoint(devtools, point)
+
+  const sending = await poll(
+    async () => (await enhancedFormReading(devtools, card)).disabled,
+    1_000,
+  )
+
+  // This browser's own recovery (disabling the fieldset drops focus to <body>, and the component
+  // then moves it to the region) may already have happened by the time `sending` above resolved —
+  // that race is exactly why the flag has to be cleared the first time it fires, rather than this
+  // check needing to win it. Blurring explicitly and scrolling to the top afterward is what puts
+  // this run into the state a visitor who reads elsewhere produces, regardless of which side of that
+  // race it started from.
+  //
+  // `scrollTo` here (and any scroll a later refocus triggers) can run as a smooth, animated scroll —
+  // reading `scrollY` in the same script turn that starts it catches the animation mid-flight, not
+  // its destination, which is a false mismatch that has nothing to do with the component. Both reads
+  // wait for `settledScroll` first so they see where the page actually came to rest.
+  await devtools.evaluate<null>(`(() => {
+    document.activeElement?.blur?.()
+    globalThis.scrollTo(0, 0)
+    return null
+  })()`).catch(() => null)
+  await settledScroll(devtools)
+  const scrollTarget = await devtools.evaluate<{ blurred: boolean; scrollY: number }>(`(() => ({
+    blurred: document.activeElement === document.body,
+    scrollY: Math.round(globalThis.scrollY),
+  }))()`).catch(() => ({ blurred: false, scrollY: -1 }))
+
+  const settled = await poll(
+    async () => (await enhancedFormReading(devtools, card)).region.startsWith("You're subscribed"),
+    2_000,
+  )
+  await settledScroll(devtools)
+  const after = await devtools.evaluate<{ onBody: boolean; scrollY: number }>(`(() => ({
+    onBody: document.activeElement === document.body,
+    scrollY: Math.round(globalThis.scrollY),
+  }))()`).catch(() => ({ onBody: false, scrollY: -2 }))
+
+  check(
+    "a visitor who blurs to <body> and scrolls away while sending is not pulled back once it settles",
+    sending && scrollTarget.blurred && settled && after.onBody &&
+      after.scrollY === scrollTarget.scrollY,
+    !sending
+      ? "the fieldset never disabled — the click may not have started a real submit"
+      : !scrollTarget.blurred
+      ? "could not blur back to <body>"
+      : `settled: ${settled}; still on <body> once it did: ${after.onBody}; scrollY ` +
+        `${scrollTarget.scrollY} → ${after.scrollY}`,
   )
 }
 
@@ -6311,6 +6415,7 @@ async function enhancedFormBackForwardCacheCheck(devtools: Devtools): Promise<vo
 
   let restored = false
   let genuineRestore = false
+  let frameNavigatedType = "(never fired)"
   let bfcacheObserverFired = false
   let recovered = false
 
@@ -6357,11 +6462,11 @@ async function enhancedFormBackForwardCacheCheck(devtools: Devtools): Promise<vo
       const frameNavigatedPromise = devtools.waitForEvent<{ type?: string }>(
         "Page.frameNavigated",
         8_000,
-      ).then((event) => event.type ?? "").catch(() => "")
+      ).then((event) => event.type ?? "(no type field)").catch(() => "(the event never arrived)")
 
       await devtools.send("Page.navigateToHistoryEntry", { entryId: previous.id })
-      const navigationType = await frameNavigatedPromise
-      genuineRestore = navigationType === "BackForwardCacheRestore"
+      frameNavigatedType = await frameNavigatedPromise
+      genuineRestore = frameNavigatedType === "BackForwardCacheRestore"
 
       restored = await poll(
         () =>
@@ -6425,9 +6530,7 @@ async function enhancedFormBackForwardCacheCheck(devtools: Devtools): Promise<vo
     "a real back/forward-cache restore ends a sending state whose promise will never settle",
     sending && restored && genuineRestore && recovered,
     `fieldset disabled while the promise was pending: ${sending}; landed back on the catalogue: ` +
-      `${restored}; Page.frameNavigated reported "${
-        genuineRestore ? "BackForwardCacheRestore" : "something else"
-      }"` +
+      `${restored}; Page.frameNavigated reported "${frameNavigatedType}"` +
       `; recovered to idle: ${recovered} — corroborating evidence: navigation-timing entry held ` +
       `(${beforeNav.count} "${beforeNav.type}" → ${afterNav.count} "${afterNav.type}"): ` +
       `${timingHeld}, PerformanceObserver fired: ${bfcacheObserverFired}`,
