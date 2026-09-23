@@ -1,4 +1,4 @@
-import { type } from "arktype"
+import { type Type, type } from "arktype"
 import { TIME_FRAMES, type TimeFrame, type TimeSeriesPoint } from "./time-series.ts"
 
 /**
@@ -15,13 +15,13 @@ export interface DateRange {
 }
 
 /** One bucket of a time series, as it arrives from an API. */
-export const timeSeriesPointSchema = type({
+export const timeSeriesPointSchema: Type<TimeSeriesPoint> = type({
   timeGroup: "string | number | Date",
   value: "number",
 })
 
 /** Payload of a stats loader: the points plus the granularity they were bucketed at. */
-export const chartPayloadSchema = type({
+export const chartPayloadSchema: Type<ChartPayload> = type({
   data: timeSeriesPointSchema.array(),
   timeFrame: type.enumerated(...TIME_FRAMES),
 })
