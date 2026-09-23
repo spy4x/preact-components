@@ -3,7 +3,7 @@ import { Type, type as arkType } from "arktype"
 /**
  * Validation for the CRUD editors.
  *
- * Ported from `gb/libs/client/helpers.ts:12-90`, with two changes: arktype replaces zod (the
+ * Ported from a source application's `libs/client/helpers.ts`, with two changes: arktype replaces zod (the
  * house rule), and the issue map is keyed by field with a per-field record of issue types, so an
  * application's own checks (`NOT_UNIQUE`, `LINKED_ENTITY_IS_DELETED`) sit beside the schema's and
  * neither overwrites the other.

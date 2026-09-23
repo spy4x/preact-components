@@ -1,6 +1,6 @@
 # `@preact-components/crud`
 
-The list and editor scaffolding every resource page in `gb` was rebuilt from: one table with search,
+The list and editor scaffolding every resource page in a source application was rebuilt from: one table with search,
 a status filter, a count and row actions, and one add/edit form with validation, a soft delete and a
 dependency block. The package knows no entity — the store arrives as a prop and the cells and fields
 arrive as slots.
@@ -18,7 +18,7 @@ import {
 
 ## Why it exists
 
-`gb` carries sixteen `List.tsx` (2,948 lines) and eleven `Editor.tsx` (3,785 lines). Nine of the
+That source application carries sixteen `List.tsx` (2,948 lines) and eleven `Editor.tsx` (3,785 lines). Nine of the
 eleven editors are the same six-part harness — load the row once, validate on every change, offer
 the archive toggle, submit, reload, render a title, a card, a footer and a dependency list — with a
 different field list in the middle. Roughly 55% of that is copy-paste.
@@ -238,7 +238,7 @@ lives here rather than in `ui/` because only the CRUD scaffold produces a `Delet
 `RowActions`/`RowAction` are the per-row menu: a link when given an `href`, a button when given an
 `onClick`, red when `danger`. `timeAgo` and `formatTimestamp` format the archive line.
 
-## Worked example: `gb`'s regions, end to end
+## Worked example: a source application's regions, end to end
 
 `crud/examples/regions.tsx` ports `devices/regions` — `List.tsx` (116 lines) and `Editor.tsx` (204
 lines) — against the real `buildModelStore`. The whole resource is a schema, a store and two
@@ -323,7 +323,7 @@ route cannot omit one.
 
 ## Association rows
 
-A junction row — a lamp box _is in_ a zone — is the second editor shape in `gb`
+A junction row — a lamp box _is in_ a zone — is the second editor shape in that source application
 (`lamp-boxes/[id]/zones` 215 lines, `schedules/[id]/zones` 223, `lamp-boxes/[id]/lamps` 295, all
 near-identical). It differs from a validated form in three ways, and each one is a slot or a port on
 `CrudEditor` rather than a second harness to drift from:

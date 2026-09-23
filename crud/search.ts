@@ -1,7 +1,7 @@
 /**
  * Search helpers shared by every list.
  *
- * Ported from `gb/libs/shared/helpers.ts:534-551`. The source `search(value, word, condition)`
+ * Ported from a source application's `libs/shared/helpers.ts`. The source `search(value, word, condition)`
  * took a third argument that folded a caller-side condition into the match; that is the caller's
  * business, so it is gone and a match is written `row.module === Kind.X && search(label, word)`.
  */

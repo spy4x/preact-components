@@ -23,7 +23,7 @@ import { setFieldIssue, type ValidationModel } from "./validation.ts"
  *    and Restore brings it back — written into `footerSlot`, since the harness only knows the soft
  *    delete that every other editor needs.
  *
- * Ported from `gb`'s `lamp-boxes/[id]/zones/(_islands)/Editor.tsx` (215 lines),
+ * Ported from a source application's `lamp-boxes/[id]/zones/(_islands)/Editor.tsx` (215 lines),
  * `schedules/[id]/zones/(_islands)/Editor.tsx` (223) and `lamp-boxes/[id]/lamps/(_islands)/Editor.tsx`
  * (295), which were near-identical to one another.
  */
