@@ -8,18 +8,18 @@ its own PR, each owning exactly one top-level directory.
 
 ## Package layout
 
-| Directory   | Contents                                                                                 |
-| ----------- | ---------------------------------------------------------------------------------------- |
-| `theme/`    | design-system CSS + tailwind preset                                                      |
-| `icons/`    | merged icon set, `+index.tsx`                                                            |
-| `ui/`       | Badge, Button, Table, Dropdown, Combobox, Modal, Tooltip, Toastr — and the rest          |
-| `system/`   | Calendar, ImageLightbox, SEOHead + head store, SWUpdater                                 |
-| `charts/`   | server-rendered SVG kit (scales) + d3 wrappers                                           |
-| `cn/`       | `cn()` — class-name join + Tailwind conflict resolution                                  |
-| `signals/`  | buildModelStore, useUrlFilters, table-state, theme, toast — and the rest; no components  |
-| `crud/`     | CrudList, CrudEditor, AssociationEditor                                                  |
-| `ui-guide/` | live component catalogue route                                                           |
-| `pages/`    | demo app (GitHub Pages site and the browser checks under `pages/checks/`), not published |
+| Directory   | Contents                                                                                             |
+| ----------- | ---------------------------------------------------------------------------------------------------- |
+| `theme/`    | design-system CSS + tailwind preset                                                                  |
+| `icons/`    | merged icon set, `+index.tsx`                                                                        |
+| `ui/`       | Badge, Button, Table, DataTable, Dropdown, Combobox, Modal, Tooltip, Toastr — and the rest           |
+| `system/`   | Calendar, ImageLightbox, SEOHead + head store, SWUpdater                                             |
+| `charts/`   | server-rendered SVG kit (scales) + d3 wrappers                                                       |
+| `cn/`       | `cn()` — class-name join + Tailwind conflict resolution                                              |
+| `signals/`  | buildModelStore, useUrlFilters, table-state, theme, toast, patchSignal — and the rest; no components |
+| `crud/`     | CrudList, CrudEditor, AssociationEditor                                                              |
+| `ui-guide/` | live component catalogue route                                                                       |
+| `pages/`    | demo app (GitHub Pages site and the browser checks under `pages/checks/`), not published             |
 
 ## What belongs in this library
 

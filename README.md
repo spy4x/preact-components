@@ -21,11 +21,11 @@ Once published, each package below installs on its own:
 ```bash
 deno add jsr:@preact-components/cn        # class-name join + Tailwind conflict resolution
 deno add jsr:@preact-components/icons     # merged icon set
-deno add jsr:@preact-components/signals   # buildModelStore, useUrlFilters, table-state, theme, toast
+deno add jsr:@preact-components/signals   # buildModelStore, useUrlFilters, table-state, theme, toast, patchSignal
 deno add jsr:@preact-components/theme     # design tokens + Tailwind preset
 deno add jsr:@preact-components/charts    # server-rendered SVG kit + d3 wrappers
 deno add jsr:@preact-components/system    # Calendar, ImageLightbox, SEOHead, SWUpdater
-deno add jsr:@preact-components/ui        # Badge, Button, Table, Dropdown, Combobox, Modal, Tooltip, Toastr — and the rest
+deno add jsr:@preact-components/ui        # Badge, Button, Table, DataTable, Dropdown, Combobox, Modal, Tooltip, Toastr — and the rest
 deno add jsr:@preact-components/crud      # CrudList, CrudEditor, AssociationEditor
 deno add jsr:@preact-components/ui-guide  # the live component catalogue, as a component your app renders
 ```
@@ -68,12 +68,12 @@ reusable Preact + signals package. See [`CREDITS.md`](./CREDITS.md).
 
 ```
 theme/       design-system CSS + tailwind preset
-ui/          Badge, Button, Table, Dropdown, Combobox, Modal, Tooltip, Toastr — and the rest
+ui/          Badge, Button, Table, DataTable, Dropdown, Combobox, Modal, Tooltip, Toastr — and the rest
 system/      Calendar, ImageLightbox, SEOHead + head store, SWUpdater
 charts/      server-rendered SVG kit (scales) + d3 wrappers
 icons/       merged icon set (+ brand glyphs)
 cn/          cn() — class-name join + Tailwind conflict resolution
-signals/     buildModelStore, useUrlFilters, table-state, theme, toast — and the rest; no components
+signals/     buildModelStore, useUrlFilters, table-state, theme, toast, patchSignal — and the rest; no components
 crud/        CrudList, CrudEditor, AssociationEditor
 ui-guide/    live component catalogue route
 pages/       demo app (GitHub Pages site and the browser checks under pages/checks/), not published
