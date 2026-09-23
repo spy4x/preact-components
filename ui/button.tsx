@@ -1,5 +1,6 @@
 import { cn } from "@preact-components/cn"
 import type { ComponentChildren, JSX } from "preact"
+import { forwardRef } from "./forward-ref.ts"
 
 /** Visual role of a {@link Button}. */
 export type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "icon" | "danger"
@@ -74,14 +75,21 @@ export function buttonClasses(
  * Every other `button` attribute (`onClick`, `disabled`, `title`, `aria-*`, …) passes
  * straight through. `type` defaults to `"button"` so a button inside a form does not
  * submit it by accident; pass `type="submit"` when that is the intent.
+ *
+ * Wrapped in `forwardRef` from `./forward-ref.ts` — this package's own, not `preact/compat`'s; see
+ * that file for why. Preact strips `ref` off a function component's props and applies it to the
+ * component instance instead of a DOM node, so a plain function here would make
+ * `<Button ref={box} />` type-check and never reach the native `<button>`. `ref`'s type comes from
+ * `ButtonProps` (via `JSX.ButtonHTMLAttributes<HTMLButtonElement>`), so it is already
+ * `Ref<HTMLButtonElement>` — no cast needed at the call site.
  */
-export function Button(
-  { variant = "primary", size = "md", class: className, type = "button", children, ...rest }:
-    ButtonProps,
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  { variant = "primary", size = "md", class: className, type = "button", children, ...rest },
+  ref,
 ) {
   return (
-    <button {...rest} type={type} class={buttonClasses(variant, size, className)}>
+    <button {...rest} ref={ref} type={type} class={buttonClasses(variant, size, className)}>
       {children}
     </button>
   )
-}
+})

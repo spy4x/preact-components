@@ -1,5 +1,6 @@
 import { cn } from "@preact-components/cn"
 import type { ComponentChildren, JSX } from "preact"
+import { forwardRef } from "./forward-ref.ts"
 
 /**
  * Checkbox with its own label.
@@ -27,14 +28,22 @@ export interface CheckboxProps
  *
  * The label comes *after* the box in the source guide's markup for a plain checkbox, and wraps it so
  * the accessible name and the hit area both come from the browser.
+ *
+ * Wrapped in `forwardRef` from `./forward-ref.ts` — this package's own, not `preact/compat`'s; see
+ * that file for why. Preact strips `ref` off a function component's props and applies it to the
+ * component instance rather than a DOM node, so a plain function here would make
+ * `<Checkbox ref={box} />` type-check and never reach the native `<input>`. `ref`'s type comes from
+ * `CheckboxProps` (via `JSX.InputHTMLAttributes<HTMLInputElement>`), so it is already
+ * `Ref<HTMLInputElement>` — no cast needed at the call site.
  */
-export function Checkbox(
-  { class: className, labelClass, children, ...rest }: CheckboxProps,
+export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(function Checkbox(
+  { class: className, labelClass, children, ...rest },
+  ref,
 ) {
   return (
     <label class={cn("label", "gap-2 items-center", labelClass)}>
-      <input {...rest} type="checkbox" class={cn("checkbox", className)} />
+      <input {...rest} ref={ref} type="checkbox" class={cn("checkbox", className)} />
       {children}
     </label>
   )
-}
+})
