@@ -21,6 +21,7 @@ import {
   ConfidenceMeter,
   CopyableText,
   CopyableTextBody,
+  DataTable,
   pageRange,
   PageTitle,
   Pagination,
@@ -33,6 +34,7 @@ import {
   Tooltip,
   type TooltipPlacement,
 } from "@preact-components/ui"
+import { serializeSort, type SortRule } from "@preact-components/signals/table-state"
 import { useSignal } from "@preact/signals"
 import { IconTrashBin } from "@preact-components/icons"
 import { entries } from "../record.ts"
@@ -257,6 +259,74 @@ function TableDemo() {
         </tr>
       }
     />
+  )
+}
+
+/** One row `amount` is `null`, so the demo also shows the #120 fix: a blank cell still sorts. */
+const dataTableRows: DataTableInvoice[] = [
+  { id: "inv-1", date: "2026-02-01", merchant: "Coffee & Co", amount: -450 },
+  { id: "inv-2", date: "2026-02-02", merchant: "Salary transfer", amount: 450000 },
+  { id: "inv-3", date: "2026-02-03", merchant: "Amazon purchase", amount: -12999 },
+  { id: "inv-4", date: "2026-02-04", merchant: "Uncategorised transfer", amount: null },
+  { id: "inv-5", date: "2026-02-05", merchant: "Rent", amount: -120000 },
+]
+
+interface DataTableInvoice {
+  id: string
+  date: string
+  merchant: string
+  amount: number | null
+}
+
+type DataTableSortKey = "date" | "merchant" | "amount"
+
+/**
+ * A sortable, paged `DataTable`: `sort` and `page` are the card's own signals, standing in for the
+ * URL parameter or the store field an application would keep them in — `DataTable` holds neither
+ * itself.
+ *
+ * The sort state is *not* round-tripped through this card's address bar; a plain signal stands in
+ * for it here. A catalogue card writing to `location` would be writing to whatever host
+ * application embeds the catalogue, not to a page this library owns, which is the same reason
+ * `useUrlFilters` itself is demonstrated in `pages/src/url-filters.tsx` rather than as a card. The
+ * URL round trip this component actually supports is demonstrated the same way, next to that demo:
+ * `pages/src/data-table-sort.tsx` binds `?sort=` through `useUrlFilters`, and `pages/checks/ui.ts`
+ * drives it in a browser.
+ */
+function DataTableDemo() {
+  const sort = useSignal<SortRule<DataTableSortKey>[]>([])
+  const page = useSignal(1)
+
+  return (
+    <div class="space-y-2">
+      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="data-table-sort">
+        sort: {serializeSort(sort.value)}
+      </p>
+      <DataTable
+        caption="Invoices"
+        columns={[
+          { key: "date", header: "Date", sortable: true },
+          { key: "merchant", header: "Merchant", sortable: true },
+          {
+            key: "amount",
+            header: "Amount",
+            sortable: true,
+            align: "right",
+            render: (row) => row.amount === null ? "—" : String(row.amount),
+          },
+        ]}
+        rows={dataTableRows}
+        rowKey={(row) => row.id}
+        sort={sort.value}
+        onSortChange={(next) => sort.value = next}
+        paging={{
+          page: page.value,
+          pageSize: 3,
+          onChange: (next) => page.value = next,
+          label: "Invoice pages",
+        }}
+      />
+    </div>
   )
 }
 
@@ -693,6 +763,24 @@ export const displayDemos = {
   footerSlot={<tr>…</tr>}
 />`,
     render: () => <TableDemo />,
+  },
+  DataTable: {
+    summary:
+      "`Table`'s markup joined to `table-state`'s sort rules: a sortable, optionally paged table with no sort or page state of its own — the caller owns `sort` and `paging.page`, so either can live in a signal or a URL parameter. Every sortable header is a real button; `aria-sort` carries the state, the chevron beside it is decorative. `caption` is required — it is the table's name, and only the caller knows it.",
+    snippet: `<DataTable
+  caption="Invoices"
+  columns={[
+    { key: "date", header: "Date", sortable: true },
+    { key: "merchant", header: "Merchant", sortable: true },
+    { key: "amount", header: "Amount", sortable: true, align: "right" },
+  ]}
+  rows={invoices}
+  rowKey={(row) => row.id}
+  sort={sort.value}
+  onSortChange={(next) => sort.value = next}
+  paging={{ page: page.value, pageSize: 3, onChange: (next) => page.value = next }}
+/>`,
+    render: () => <DataTableDemo />,
   },
   Card: {
     summary:

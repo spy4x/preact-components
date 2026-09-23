@@ -87,6 +87,39 @@ describe("Table", () => {
     expect(html).toContain("mt-8")
     expect(html).toContain("overflow-x-auto")
   })
+
+  it("renders no caption at all when none is given", () => {
+    expect(render(<Table headerSlot={header} bodySlots={[]} />)).not.toContain("<caption")
+  })
+
+  it("renders the caption before the header, with its own class", () => {
+    const html = render(
+      <Table headerSlot={header} bodySlots={[]} caption="Invoices" captionClass="sr-only" />,
+    )
+
+    expect(html).toContain('<caption class="sr-only">Invoices</caption>')
+    expect(html.indexOf("<caption")).toBeLessThan(html.indexOf("<thead"))
+  })
+
+  it("renders a falsy but present caption, rather than a stray text node", () => {
+    // `caption && <caption>…</caption>` would have rendered a bare "0" here instead of a
+    // <caption> element — caller-supplied content, however falsy, is not "no caption".
+    const html = render(<Table headerSlot={header} bodySlots={[]} caption={0} />)
+
+    expect(html).toContain("<caption>0</caption>")
+    // The bug this guards: `caption && <caption>…</caption>` renders the falsy caption itself —
+    // a bare "0" text node right before <thead> — instead of a <caption> element around it.
+    expect(html).not.toContain(">0<thead")
+  })
+
+  it("renders no caption for null or false, the other two ways a condition says nothing", () => {
+    // A caller writing `caption={title && title}` gets false, not "", when title is empty; one
+    // writing `caption={title ?? null}` gets null. Neither should leave an empty <caption> behind.
+    for (const caption of [null, false] as const) {
+      const html = render(<Table headerSlot={header} bodySlots={[]} caption={caption} />)
+      expect(html).not.toContain("<caption")
+    }
+  })
 })
 
 function countOccurrences(haystack: string, needle: string): number {
