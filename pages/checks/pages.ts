@@ -1,4 +1,4 @@
-import { check, type Devtools } from "./harness.ts"
+import { check, type Devtools, poll } from "./harness.ts"
 import { PAGE_TITLE } from "../src/site.ts"
 
 /**
@@ -40,14 +40,64 @@ export async function pagesChecks(devtools: Devtools): Promise<void> {
   // The rest of the grammar, driven the way a reader drives it: the legacy bare fragment this page
   // shipped before hash routing and still resolves, a section route, and an unknown route falling
   // back to the landing page. The resolver's own unit tests cannot prove the island wired any of it.
-  const routes = await devtools.evaluate<{
+  const legacy = await devtools.evaluate<{
     legacyMarked: boolean
     legacyCurrent: string
     legacyTitle: string
-    sectionTop: number
-    sectionMarked: number
-    sectionCurrent: string
-    sectionTitle: string
+  }>(
+    `(async () => {
+      const settle = () => new Promise((done) => setTimeout(done, 400))
+      location.hash = "#toggle-switch"
+      await settle()
+      return {
+        legacyMarked: document.querySelector("#demo-ToggleSwitch").hasAttribute("data-deep-link"),
+        legacyCurrent: document.querySelector('a[aria-current="true"]')?.textContent ?? "",
+        legacyTitle: document.title,
+      }
+    })()`,
+  )
+
+  // The section route's scroll used to be settled with the same fixed 400ms wait as every other step
+  // here, and it once read the section's top edge at a fractional pixel in CI — `#225`. Waiting for
+  // `scrollY` to stop changing (`settledScroll`) looked like the fix and, on its own measurements,
+  // wasn't: a review of this file delayed the actual scroll by 600ms and caught `settledScroll`
+  // returning after 428ms anyway, because *something else* — not the route's own scroll — had
+  // stopped moving the page in that window, so the poll agreed with itself too early and this read
+  // the pre-scroll position. Polling for the condition this check actually asserts — the section's
+  // top inside the expected range — rather than a proxy for it (the scroll having stopped, for
+  // whatever reason) is what a delayed scroll cannot fool the same way: it keeps reading until the
+  // real thing happens or the deadline runs out, and it reports the raw value either way.
+  //
+  // Scrolling to the very top before setting the hash is a second, separate fix a later review
+  // asked for: the legacy-fragment step just above already scrolled toward `#demo-ToggleSwitch`,
+  // which sits only fractionally below where the Inputs section starts — so a section route whose
+  // own scroll effect never fired at all would *still* read a top within a pixel or two of the
+  // accepted range, not obviously wrong. Starting from the top of the page instead means a section
+  // route that does nothing reads a top hundreds of pixels out of range, and one that works reads
+  // the same settled position either way.
+  await devtools.evaluate<null>(`(window.scrollTo({ top: 0, behavior: "instant" }), null)`)
+  await devtools.evaluate<null>(`(location.hash = "#/inputs", null)`)
+  const SECTION_SCROLL_DEADLINE_MS = 3_000
+  let section = { sectionTopRaw: NaN, sectionTop: NaN, sectionMarked: -1, sectionTitle: "" }
+  const sectionInRange = await poll(async () => {
+    section = await devtools.evaluate<typeof section>(
+      `(() => {
+        const top = document.getElementById("inputs").getBoundingClientRect().top
+        return {
+          sectionTopRaw: top,
+          sectionTop: Math.round(top),
+          sectionMarked: document.querySelectorAll("[data-deep-link]").length,
+          sectionTitle: document.title,
+        }
+      })()`,
+    )
+    return section.sectionTop >= 0 && section.sectionTop < 200
+  }, SECTION_SCROLL_DEADLINE_MS)
+
+  // Mark a card again before the unknown route, so the assertion below is a *transition* — the mark
+  // has to be there first and gone after — and not something a host with no listener at all would
+  // satisfy by never marking anything.
+  const rest = await devtools.evaluate<{
     markedBeforeUnknown: number
     unknownMarked: number
     unknownTitle: string
@@ -58,26 +108,6 @@ export async function pagesChecks(devtools: Devtools): Promise<void> {
       const marked = () => document.querySelectorAll("[data-deep-link]").length
       const current = () => document.querySelector('a[aria-current="true"]')?.textContent ?? ""
 
-      location.hash = "#toggle-switch"
-      await settle()
-      const legacy = {
-        legacyMarked: document.querySelector("#demo-ToggleSwitch").hasAttribute("data-deep-link"),
-        legacyCurrent: current(),
-        legacyTitle: document.title,
-      }
-
-      location.hash = "#/inputs"
-      await settle()
-      const section = {
-        sectionTop: Math.round(document.getElementById("inputs").getBoundingClientRect().top),
-        sectionMarked: marked(),
-        sectionCurrent: current(),
-        sectionTitle: document.title,
-      }
-
-      // Mark a card again before the unknown route, so the assertion below is a *transition* — the
-      // mark has to be there first and gone after — and not something a host with no listener at all
-      // would satisfy by never marking anything.
       location.hash = "#/inputs/toggle-switch"
       await settle()
       const markedBeforeUnknown = marked()
@@ -86,8 +116,6 @@ export async function pagesChecks(devtools: Devtools): Promise<void> {
       await settle()
 
       return {
-        ...legacy,
-        ...section,
         markedBeforeUnknown,
         unknownMarked: marked(),
         unknownTitle: document.title,
@@ -95,6 +123,8 @@ export async function pagesChecks(devtools: Devtools): Promise<void> {
       }
     })()`,
   )
+
+  const routes = { ...legacy, ...section, ...rest }
   check(
     "the legacy fragment still resolves to the same card",
     routes.legacyMarked && routes.legacyCurrent === "ToggleSwitch" &&
@@ -103,10 +133,12 @@ export async function pagesChecks(devtools: Devtools): Promise<void> {
   )
   check(
     "the section route scrolls to its section and clears the card's mark",
-    routes.sectionMarked === 0 && routes.sectionTitle.startsWith("Inputs") &&
-      routes.sectionTop >= 0 && routes.sectionTop < 200,
-    `#/inputs → ${routes.sectionTitle}, section top ${routes.sectionTop}px, ` +
-      `${routes.sectionMarked} cards marked`,
+    sectionInRange && routes.sectionMarked === 0 && routes.sectionTitle.startsWith("Inputs"),
+    `#/inputs → ${routes.sectionTitle}, section top ${routes.sectionTop}px ` +
+      `(raw ${routes.sectionTopRaw.toFixed(3)}px), ${routes.sectionMarked} cards marked` +
+      (sectionInRange
+        ? ""
+        : ` — never reached the expected range within ${SECTION_SCROLL_DEADLINE_MS}ms`),
   )
   check(
     "an unknown route falls back to the landing page and clears the mark",

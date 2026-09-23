@@ -1,4 +1,4 @@
-import { check, type Devtools, poll, pressKey } from "./harness.ts"
+import { check, type Devtools, poll, pressKey, settledScroll } from "./harness.ts"
 
 /** One side of a dropdown's open/closed state. */
 interface State {
@@ -476,26 +476,6 @@ interface Spot {
   insidePanel: boolean
   onItem: boolean
   tag: string
-}
-
-/**
- * Wait until the page has stopped scrolling.
- *
- * The click point is computed in one protocol round trip and dispatched in the next, so anything
- * that moves the page in between turns a correct measurement into a click that lands elsewhere.
- * `focus()` scrolls an element into view when it has to, and this component moves focus from an
- * effect and from a deferred read, so a scroll can arrive later than the call that caused it.
- *
- * @param devtools The connected session.
- */
-async function settledScroll(devtools: Devtools): Promise<void> {
-  let previous = Number.NaN
-  await poll(async () => {
-    const current = await devtools.evaluate<number>(`Math.round(globalThis.scrollY)`)
-    const settled = current === previous
-    previous = current
-    return settled
-  }, 3_000)
 }
 
 /**
@@ -4575,7 +4555,17 @@ async function outsideClickCheck(devtools: Devtools): Promise<void> {
   await pointerToCorner(devtools)
 
   const opened = await openPickerPanel(devtools)
+  // Opening the panel moves focus into it, and the panel is inline rather than an overlay, so
+  // focus-follow scrolling can in principle carry the viewport away from the summary that was
+  // centred before the panel opened. This re-centre is a precaution, not a proven fix: one run
+  // during this check's development did land the aim below the viewport without it, but a later
+  // review of this file removed it and saw three passing runs in a row on the same code, so the
+  // failure was not reproduced on demand either way. Kept because it costs one more settle here and
+  // nothing at all when the panel never moved the page — cheaper than being wrong about which of the
+  // two runs was the fluke.
   const target = `document.querySelector('#demo-DateRangePicker [data-e2e="usage"] summary')`
+  await devtools.evaluate<null>(`(${target}?.scrollIntoView({ block: "center" }), null)`)
+  await settledScroll(devtools)
   const aim = await aimAt(devtools, target)
   const landing = await clickAt(devtools, aim, target)
   const closed = await poll(
