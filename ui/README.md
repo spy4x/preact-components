@@ -35,6 +35,7 @@ Preact + Tailwind primitives extracted from `gb`, `financy` and `offer-lens`.
 | `ConfidenceMeter` | `confidence-meter`  | `value` (optional; clamped 0–100, unknown renders no reading), `label`                                        |
 | `CopyButton`      | `copy-button`       | `textToCopy`, `copy?` (clipboard port)                                                                        |
 | `Combobox`        | `combobox`          | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `ariaLabel?`, `aria-labelledby?`, `id?`                 |
+| `DataTable`       | `data-table`        | `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `empty?`, `paging?`                           |
 | `DateRangePicker` | `date-range-picker` | `range`, `onChange`, `timeZone`, `presets`, `labels?` (every key optional)                                    |
 | `Dropdown`        | `dropdown`          | `trigger`, `triggerLabel` or `triggerNamedByContent` (one is required), `menuLabel`, `vertical`, `horizontal` |
 | `DropdownItem`    | `dropdown`          | `href`, `onClick`, `disabled`, `class` — a `role="menuitem"`, out of the tab order                            |
@@ -51,7 +52,7 @@ Preact + Tailwind primitives extracted from `gb`, `financy` and `offer-lens`.
 | `SkeletonStatus`  | `skeletons`         | `label` (the loading announcement)                                                                            |
 | `SkeletonTable`   | `skeletons`         | `rows`, `columns`, `widths`, `reserveHeight`                                                                  |
 | `SkeletonText`    | `skeletons`         | `lines`, `widths`                                                                                             |
-| `Table`           | `table`             | `headerSlot`, `bodySlots`, `footerSlot`, `rowDataE2E`                                                         |
+| `Table`           | `table`             | `headerSlot`, `bodySlots`, `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`                            |
 | `Tabs`            | `tabs`              | `tabs`, `active`, `onChange`, `orientation`, `lazy`                                                           |
 | `Toastr`          | `toastr`            | `toasts`, `onDismiss`, `label`, `dismissLabel`, `dataE2E`                                                     |
 | `ToggleSwitch`    | `toggle-switch`     | `value`, `onToggle`, `disabled`, `label`                                                                      |
@@ -405,6 +406,87 @@ and where it falls in the sentence is the translator's business.
   pageLabel={(number) => `Seite ${number}`}
 />
 ```
+
+## DataTable
+
+`Table`'s markup joined to `@preact-components/signals/table-state`'s sort rules: a sortable,
+optionally paged table with no sort state of its own.
+
+```tsx
+import { DataTable } from "@preact-components/ui/data-table"
+import type { SortRule } from "@preact-components/signals/table-state"
+
+const sort = useSignal<SortRule<"date" | "merchant" | "amount">[]>([])
+
+<DataTable
+  caption="Invoices"
+  columns={[
+    { key: "date", header: "Date", sortable: true },
+    { key: "merchant", header: "Merchant", sortable: true },
+    {
+      key: "amount",
+      header: "Amount",
+      sortable: true,
+      align: "right",
+      render: (row) => formatMoney(row.amount),
+    },
+  ]}
+  rows={invoices}
+  rowKey={(row) => row.id}
+  sort={sort.value}
+  onSortChange={(next) => sort.value = next}
+/>
+```
+
+**The caller owns `sort` — and `paging.page` when paging is on — the same way an app owns any
+other filter, so either can live in a signal, `useState`, or a URL parameter through
+`parseSort`/`serializeSort`.** `DataTable` reads that state, applies it with `sortRows` and a
+plain slice, and writes the next value back through `onSortChange`/`paging.onChange`; it holds
+none of its own. This is a deliberate split from `Pagination`, which only renders controls and
+leaves slicing to the caller: `DataTable` already holds the full row set and the rules to apply to
+it, so it is the one place that can do both without asking every caller to duplicate the pairing —
+which is what the two applications this component was extracted from were each doing by hand.
+
+**Every sortable header is a real `<button>`**, so Tab and Space reach it — a real Enter press
+does not activate a focused button in this repository's browser checks, so `pages/checks/ui.ts`
+proves the Space path. Pressing it calls `toggleSort`, which cycles that column through
+ascending → descending → off and, if the column was not already part of `sort`, appends it as the
+_least significant_ rule rather than replacing what was there. That is the whole of how a
+multi-column sort is built: there is no modifier key, a keyboard user just Tabs to a second
+sortable header and presses Space, and removes it again by cycling that same header back off.
+
+**`aria-sort` carries the state; the chevron beside a header's text is decorative.** A column's
+`<th>` carries `aria-sort="ascending"` or `"descending"` only while that column is part of `sort`
+— a column not in `sort` carries no `aria-sort` attribute at all, never `"none"`. The chevron is
+`aria-hidden`, so a screen reader is never told anything the attribute did not already say; it
+only points a sighted reader the way `aria-sort` already points a screen reader.
+
+**The table's name is a required `caption`.** It is the one string only the caller knows, so there
+is no English default; `captionHidden` keeps it for assistive tech while hiding it visually
+(`sr-only`) rather than leaving the table unnamed. `Table` gained an optional `caption`/
+`captionClass` pair for this — omitted, it renders nothing, so every existing `Table` caller is
+unaffected.
+
+**`empty` replaces the whole body, not just one cell's worth**, when `rows` is empty: a single row
+spanning every column, defaulting to `<EmptyState title="No rows" />`. The header stays, so a
+sortable column stays clickable even when a filter elsewhere on the page is what emptied the list.
+
+**`rowKey` stamps `data-row-key` on each row's first cell**, exported as `rowKeyAttribute`.
+`Table` keys its own `<tr>`s by array position, not by a caller-supplied identity — extending that
+is `Table`'s own change to make, out of scope here — so a sort or a page turn that reorders rows
+gives Preact nothing to reconcile a row's identity against by itself. Stamping the key on the DOM
+is what lets a page, or a browser check, point at a specific row without depending on its rendered
+text.
+
+**Paging is optional and minimal**: `page`, `pageSize` and `onChange`, mirroring `Pagination`'s own
+prop names because most of them pass straight through to it. `DataTable` computes `pageCount` from
+the full, sorted row count and slices the visible page itself; omit `paging` entirely for every row
+on one page.
+
+A column with no field of its own — an actions column, say — still needs a `key` that is one of
+the row type's own string keys, because that is also the identity `sort` and `toggleSort` key by.
+Reuse a convenient existing field (the row's id, typically) and leave `sortable` unset; `render`
+decides what actually shows.
 
 ## Skeletons
 
