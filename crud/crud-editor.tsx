@@ -334,15 +334,38 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>) {
     if (!sameValidation(next, current)) vl.value = next
   })
 
-  const state = editorState({
-    initialized: initialized.value,
-    validation: vl.value,
-    canChange: canChange?.() ?? true,
-    inProgress: props.mode === "add"
-      ? store.op.create.value.inProgress
-      : store.op.update(props.editId).value?.inProgress === true,
-    blocked: blocked.value.length,
-  })
+  /**
+   * Read one signal through whichever accessor the caller wants — `.value` for the render below,
+   * where subscribing is the point, and `.peek()` for `readyToSave`'s guard, an event handler where
+   * it is not. Anything with both accessors works: `Signal` and `ReadonlySignal` both qualify.
+   */
+  interface Readable<T> {
+    readonly value: T
+    peek(): T
+  }
+
+  /**
+   * `editorState`'s five inputs, gathered once through `read` rather than written out twice.
+   *
+   * Before this, the render below and `readyToSave` each listed the same five properties by hand —
+   * one with `.value`, one with `.peek()`. Adding a sixth input is still a type error until both
+   * call sites pass it, because `EditorStateInput` requires it either way; the risk this closes is
+   * the other direction, changing how an *existing* input is derived (`inProgress`, say) in one copy
+   * and not the other, which would still compile.
+   */
+  function editorStateInput(read: <T>(signal: Readable<T>) => T): EditorStateInput<M> {
+    return {
+      initialized: read(initialized),
+      validation: read(vl),
+      canChange: canChange?.() ?? true,
+      inProgress: props.mode === "add"
+        ? read(store.op.create).inProgress
+        : read(store.op.update(props.editId))?.inProgress === true,
+      blocked: read(blocked).length,
+    }
+  }
+
+  const state = editorState(editorStateInput((signal) => signal.value))
 
   // An issue with no field of its own — a cross-field `.narrow`, or a value that was never an
   // object — is filed under `FORM_FIELD` rather than on one of the rows `children` renders, so
@@ -373,20 +396,14 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>) {
    * this function — nothing inside it checked. A click on that disabled button never fires, and
    * Enter is refused by the browser's own implicit-submission rule while no button is enabled, but a
    * script that calls `form.requestSubmit()` or dispatches a `submit` event bypasses both and still
-   * reached `store.create`/`store.update` with data the validation model had just rejected. `.peek()`
-   * on every signal here, not `.value`: this runs inside an event handler, not a render, and reading
-   * with `.value` would subscribe the handler itself to every signal it touches for no reason.
+   * reached `store.create`/`store.update` with data the validation model had just rejected.
+   *
+   * `.peek()` here, not `.value`: this runs inside an event handler, outside any effect or computed,
+   * so either accessor would track nothing regardless — `.peek()` is chosen only to say so, so a
+   * reader does not have to work out whether the difference matters here.
    */
   function readyToSave(): boolean {
-    return editorState({
-      initialized: initialized.peek(),
-      validation: vl.peek(),
-      canChange: canChange?.() ?? true,
-      inProgress: props.mode === "add"
-        ? store.op.create.peek().inProgress
-        : store.op.update(props.editId).peek()?.inProgress === true,
-      blocked: blocked.peek().length,
-    }).saveEnabled
+    return editorState(editorStateInput((signal) => signal.peek())).saveEnabled
   }
 
   async function submit(event: Event): Promise<void> {
