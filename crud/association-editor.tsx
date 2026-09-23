@@ -23,9 +23,8 @@ import { setFieldIssue, type ValidationModel } from "./validation.ts"
  *    and Restore brings it back — written into `footerSlot`, since the harness only knows the soft
  *    delete that every other editor needs.
  *
- * Ported from a source application's `lamp-boxes/[id]/zones/(_islands)/Editor.tsx` (215 lines),
- * `schedules/[id]/zones/(_islands)/Editor.tsx` (223) and `lamp-boxes/[id]/lamps/(_islands)/Editor.tsx`
- * (295), which were near-identical to one another.
+ * Ported from three of a source application's near-identical junction editors (215, 223 and 295
+ * lines).
  */
 
 /** Issue type a duplicate association is reported under. */
@@ -133,7 +132,7 @@ export interface AssociationEditorBaseProps<M extends CrudRow> {
   store: CrudAssociationStore<NoInfer<M>>
   /** Model `mode="add"` starts from, with the parent's id already filled in. */
   blank: M
-  /** Entity name in the page title, for example `"Lamp box to zone association"`. */
+  /** Entity name in the page title, for example `"Author to book association"`. */
   entity: string
   /** Where Cancel points. */
   cancelHref: string

@@ -214,7 +214,7 @@ export interface CrudEditorBaseProps<M extends CrudRow> {
    *
    * A function rather than children so the rows receive the model and validation signals directly
    * — the same contract every field row in `field.tsx` takes. Whatever cannot be expressed as a
-   * field row (a schedule grid, a sensor table) is written here and gets the same harness around it.
+   * field row (a schedule grid, a nested table) is written here and gets the same harness around it.
    */
   children: (slot: CrudEditorSlot<NoInfer<M>>) => ComponentChildren
   /**

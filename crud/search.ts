@@ -1,7 +1,7 @@
 /**
  * Search helpers shared by every list.
  *
- * Ported from a source application's `libs/shared/helpers.ts`. The source `search(value, word, condition)`
+ * Ported from a source application's shared helpers module. The source `search(value, word, condition)`
  * took a third argument that folded a caller-side condition into the match; that is the caller's
  * business, so it is gone and a match is written `row.module === Kind.X && search(label, word)`.
  */
@@ -22,8 +22,8 @@ export function searchWords(query: string): string[] {
 /**
  * Whether one search word occurs in one value.
  *
- * A number matches by equality, so `search(lamp.index, "12")` is true for lamp 12 and false for
- * lamp 120. Any other type — including `null` and `undefined` — matches nothing, so a field a row
+ * A number matches by equality, so `search(row.index, "12")` is true for index 12 and false for
+ * index 120. Any other type — including `null` and `undefined` — matches nothing, so a field a row
  * happens not to have cannot make every word match.
  */
 export function search(value: unknown, word: string): boolean {
