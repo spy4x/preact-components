@@ -1,6 +1,6 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
-import { signal } from "@preact/signals-core"
+import { effect, signal } from "@preact/signals-core"
 import { patchSignal } from "./patch-signal.ts"
 
 describe("patchSignal", () => {
@@ -76,10 +76,64 @@ describe("patchSignal", () => {
     expect(() => patchSignal(s, { a: 1 })).toThrow(TypeError)
   })
 
+  it("refuses a user-defined class instance", () => {
+    class Point {
+      x = 0
+      y = 0
+    }
+    const s = signal(new Point() as unknown as Record<string, unknown>)
+    expect(() => patchSignal(s, { a: 1 })).toThrow(TypeError)
+  })
+
   it("does not write when it refuses", () => {
     const before = new Date(2020, 0, 1) as unknown as Record<string, unknown>
     const s = signal(before)
     expect(() => patchSignal(s, { a: 1 })).toThrow(TypeError)
     expect(s.value).toBe(before)
+  })
+
+  it("accepts a value created with Object.create(null), merging into an ordinary object", () => {
+    const before = Object.assign(Object.create(null), { a: 1 }) as { a: number }
+    const s = signal(before)
+    patchSignal(s, { a: 2 })
+    expect(s.value).toEqual({ a: 2 })
+    // The null prototype is not carried forward: the spread always builds an ordinary object.
+    expect(Object.getPrototypeOf(s.value)).toBe(Object.prototype)
+  })
+
+  it("refuses a null patch", () => {
+    const s = signal({ a: 1 })
+    expect(() => patchSignal(s, null as unknown as Partial<{ a: number }>)).toThrow(TypeError)
+  })
+
+  it("refuses an array patch", () => {
+    const s = signal({ a: 1 })
+    expect(() => patchSignal(s, [7, 8] as unknown as Partial<{ a: number }>)).toThrow(TypeError)
+  })
+
+  it("does not write when the patch is refused", () => {
+    const before = { a: 1 }
+    const s = signal(before)
+    expect(() => patchSignal(s, [7, 8] as unknown as Partial<{ a: number }>)).toThrow(TypeError)
+    expect(s.value).toBe(before)
+  })
+
+  it("does not throw when called inside an effect reacting to another signal", () => {
+    const trigger = signal(0)
+    const s = signal({ n: 0 })
+    let runs = 0
+    const dispose = effect(() => {
+      runs++
+      // Reads trigger.value (tracked) and writes s through patchSignal, which reads s untracked
+      // (signal.peek()). A tracked read of s here would subscribe this effect to its own write and
+      // throw "Cycle detected" after Preact's re-run limit.
+      patchSignal(s, { n: trigger.value })
+    })
+    runs = 0 // effect() itself runs once on creation; count only the reactions below
+    trigger.value = 1
+    trigger.value = 2
+    dispose()
+    expect(runs).toBe(2)
+    expect(s.value).toEqual({ n: 2 })
   })
 })
