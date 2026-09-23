@@ -16,5 +16,24 @@
     // `charts/deno.json`. `deno task ts:check` and `deno task --cwd pages build` both pass with no
     // d3 declared here, so an entry would be a pin nothing reads.
     "@std/jsonc": "jsr:@std/jsonc@1.0.2"
+  },
+  "publish": {
+    // `coverage.ts` is this repository's own consistency check (see the `imports` comment above: it
+    // is "not one of this package's published exports") and its dynamic `import(href)` — needed to
+    // read a sibling package's subpath modules by a computed URL — is exactly what
+    // `unanalyzable-dynamic-import` warns about; a published consumer never reaches it. The rest are
+    // this package's own `*.test.*` suites, none reachable from `exports`.
+    "exclude": [
+      "catalogue.test.tsx",
+      "classes.test.tsx",
+      "copy.test.tsx",
+      "coverage.test.ts",
+      "coverage.ts",
+      "icons.test.tsx",
+      "instructions.test.ts",
+      "registry.test.ts",
+      "routes.test.ts",
+      "sections/demo-decisions.test.ts"
+    ]
   }
 }

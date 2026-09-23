@@ -117,7 +117,8 @@ export function demoedNamesOf(id: PackageId): string[] {
  * {@link valueExportsOf} walks this same list to decide which modules to read, and
  * `coverage.test.ts` walks it too to build its fixtures, so the read and the test can never drift
  * apart on which modules count as a package's subpath surface. A target that is not a TypeScript
- * source (the theme's stylesheets) is skipped, and one declared as anything but a string is an error
+ * source is skipped — every catalogued package's `exports` map is all `.ts`/`.tsx` today, but
+ * nothing here assumes that stays true — and one declared as anything but a string is an error
  * rather than a silent skip.
  *
  * @param id Package to read.
