@@ -1,7 +1,9 @@
 /**
  * Page-head model, the canonical-address normaliser, and an optional per-request head store.
  *
- * Everything here is pure and app-agnostic. Two rules shape it:
+ * Everything here is app-agnostic, and everything but the store is pure: {@link createHeadStore}
+ * builds a fresh signal on every call and hands back functions that write it. Two rules shape the
+ * rest:
  *
  * - **A canonical address is normalised before it is published.** Search engines and social
  *   networks read what this package emits, so an address is parsed, required to be `http` or
@@ -188,9 +190,21 @@ export function breadcrumbListJsonLd(
 export interface HeadStore {
   /** Current page head. Read `.value` in a component to subscribe. */
   head: Signal<PageHead>
-  /** Merge a patch into the current head and return the result. */
+  /**
+   * Merge a patch into the current head, write it to {@link HeadStore.head}, and return it.
+   *
+   * A field the patch names with the value `undefined` is cleared; an empty patch changes no field.
+   */
   setHead: (patch: Partial<PageHead>) => PageHead
-  /** Restore the defaults handed to {@link createHeadStore}. */
+  /**
+   * Write the defaults handed to {@link createHeadStore} back to {@link HeadStore.head}, and
+   * return them.
+   *
+   * Kept for the long-lived store a browser app holds across client-side navigations, although
+   * nothing in this repository calls it. `setHead` merges, so it clears only a field the patch
+   * names. The next page does not know what the previous page set — its `noindex`, its `crumbs` —
+   * so it cannot name them; a reset before its patch clears them without that list.
+   */
   resetHead: () => PageHead
 }
 
@@ -216,10 +230,16 @@ export interface HeadStore {
  * data. The app keeps the writer side and passes `store.head` into `<SEOHead>`, and an island that
  * changes the title is handed the same store the layout reads.
  *
- * @param defaults Fields used by every page; also the state `resetHead()` returns to.
+ * In a browser the store outlives a page, so a client-side navigation calls `resetHead()` before
+ * the next page's `setHead()`; otherwise the new page inherits every field the old one set.
+ *
+ * @param defaults Fields used by every page; also the state `resetHead()` returns to. They are
+ *   copied here, so a caller who changes the object afterwards does not change what a reset
+ *   restores. The copy is shallow: a crumb or JSON-LD object inside it is still the caller's.
  */
 export function createHeadStore(defaults: PageHead): HeadStore {
-  const head = signal<PageHead>({ ...defaults })
+  const initial: PageHead = { ...defaults }
+  const head = signal<PageHead>({ ...initial })
 
   return {
     head,
@@ -228,7 +248,9 @@ export function createHeadStore(defaults: PageHead): HeadStore {
       return head.value
     },
     resetHead() {
-      head.value = { ...defaults }
+      // A fresh copy every time: a signal holding `initial` itself would let one mutation of the
+      // returned head leak into every later reset.
+      head.value = { ...initial }
       return head.value
     },
   }
