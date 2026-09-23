@@ -59,11 +59,14 @@ export async function pagesChecks(devtools: Devtools): Promise<void> {
 
   // The section route's scroll used to be settled with the same fixed 400ms wait as every other step
   // here, and it once read the section's top edge at a fractional pixel in CI — `#225`. Twenty
-  // `verify` runs measuring the raw, unrounded value (recorded in the pull request) showed it still
-  // moving between reads rather than resting a fraction of a pixel below zero, so the fix is the one
-  // `#238` already established for this file's checks: wait for the scroll position itself to stop
-  // changing (`settledScroll`, a real poll on `scrollY`) instead of widening the tolerance on a guess
-  // about how long a smooth scroll takes.
+  // `verify` runs here measuring the raw, unrounded value (recorded in the pull request) read the
+  // same 111.5px every time — this environment could not reproduce the CI-specific flake, which the
+  // issue itself suspected depends on the runner's own fonts and layout. Absent a reproduced failure
+  // to diagnose, the fix is the one `#238` already established for this file's checks rather than a
+  // guess at a tolerance: wait for the scroll position itself to stop changing (`settledScroll`, a
+  // real poll on `scrollY`) instead of a fixed delay. It costs nothing when the scroll was already
+  // settled — the poll returns as soon as two reads agree — and it is the honest fix if the failure
+  // is what it looks like: a smooth scroll still finishing when a fixed wait ran out.
   await devtools.evaluate<null>(`(location.hash = "#/inputs", null)`)
   await settledScroll(devtools)
   const section = await devtools.evaluate<{
