@@ -503,18 +503,22 @@ it is used for both the slice and the pager — a page a filter has shrunk past,
 number, renders the nearest real page instead of an empty body beside a pager that disagrees with
 it.
 
-**A column is one of two shapes.** A data column reads a row field: `key` (one of the row type's
-own string keys), `header`, and optionally `sortable`, `align` and `render`. `key` is also this
-column's identity, so it is what `sort` and `toggleSort` key by, and only a data column can carry
-`sortable` or `aria-sort` at all. A display column has no field of its own — an actions column,
-say — and takes `id`, `header`, `render` (required, since there is no field to fall back to) and
-optionally `align`; it is never sortable and never carries `aria-sort`, because there is no row
-field for a header press to toggle. Keeping the two shapes separate is what stops a display column
-from being told it is sorted: an earlier version let a display column reuse a data column's `key`
-for its own identity, and a header sorted by that field then read as sorted on both columns —
-`aria-sort` came from the key alone, not from whether the column could actually be sorted. `id` and
-every data column's `key` still have to be unique across the whole `columns` array, the ordinary
-"give a list of keyed things distinct keys" rule and nothing more.
+**A column is one of two shapes, and the types keep them exclusive.** A data column reads a row
+field: `key` (one of the row type's own string keys), `header`, and optionally `sortable`, `align`
+and `render`. `key` is also this column's identity, so it is what `sort` and `toggleSort` key by,
+and only a data column can carry `sortable` or `aria-sort` at all. A display column has no field of
+its own — an actions column, say — and takes `id`, `header`, `render` (required, since there is no
+field to fall back to) and optionally `align`; it is never sortable and never carries `aria-sort`,
+because there is no row field for a header press to toggle. `DataTableDataColumn` declares
+`id?: never` and `DataTableDisplayColumn` declares `sortable?: never`/`key?: never`, so a column
+carrying properties from both shapes — `{ id, sortable: true }` on a display column, or `{ key, id
+}` on one meant to be a data column — fails `deno check` rather than compiling into the bug the
+split exists to prevent: an earlier version let a display column reuse a data column's `key` for
+its own identity, structurally undetected, and a header sorted by that field then read as sorted on
+both columns, `aria-sort` coming from the key alone rather than from which shape the column was.
+What the types do not, and cannot, check is that every column's own `id` or `key` is a distinct
+_value_ from every other column's — that is documented, the ordinary "give a list of keyed things
+distinct keys" rule, and nothing enforces it.
 
 ## Skeletons
 
