@@ -107,9 +107,9 @@ they are covered by the notice even though they are also brand marks); the other
 
 Swapping any of these 33 for a licensed replacement, or dropping them, is the repository owner's
 call — it changes what a consumer sees — and is tracked in
-[issue #133](https://github.com/spy4x/preact-components/issues/133), not done here.
+[issue #233](https://github.com/spy4x/preact-components/issues/233), not done here.
 [Issue #10](https://github.com/spy4x/preact-components/issues/10) tracks replacing the whole set
-with a single licensed pack; issue #133 is the narrower, immediate version of that, scoped to the
+with a single licensed pack; issue #233 is the narrower, immediate version of that, scoped to the
 33 glyphs this check could not attribute.
 
 ## How this set was merged

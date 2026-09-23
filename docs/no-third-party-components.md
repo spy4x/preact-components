@@ -309,7 +309,7 @@ this:
   [`icons/THIRD_PARTY_NOTICES.md`](../icons/THIRD_PARTY_NOTICES.md) carries the licence text for
   every pack a match was found in. The 33 with no match are not thereby proven unlicensed, only
   unattributed by this check; replacing or dropping them is tracked in
-  [issue #133](https://github.com/spy4x/preact-components/issues/133), not decided here.
+  [issue #233](https://github.com/spy4x/preact-components/issues/233), not decided here.
 - **Six glyphs are trademarked brand marks** — GitHub, LinkedIn, Telegram, Upwork, Twitter and
   YouTube. Trademark constraints are independent of any icon licence: a brand mark is not freely
   relicensable even when the drawing is the pack's own (two of the six matched Feather's drawing of
