@@ -123,6 +123,15 @@ function handler(request: Request) {
 In a browser there is one document and one store, created where the app is created and handed to
 the layout and to any island that changes the title.
 
+That browser store outlives a page, and `resetHead()` exists for it. `setHead` merges a patch into
+the current head, so it clears only a field the patch names, with the value `undefined`. The next
+page a client-side navigation shows does not know what the previous page set — its `noindex`, its
+`crumbs` — so it cannot name those fields, and whatever it leaves unnamed it inherits. A reset is
+the one call that clears them without that list: reset first, then patch. A store created per
+request is thrown away with the request and never needs a reset.
+The defaults are copied when the store is created, so changing the object afterwards does not
+change what a reset restores.
+
 ## The dual-mode contract
 
 `Calendar` renders `<button>` when the caller supplies a select handler and `<a href>` when it does
