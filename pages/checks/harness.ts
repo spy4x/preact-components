@@ -681,40 +681,6 @@ export class Devtools {
     })
   }
 
-  /**
-   * Wait for the next protocol event with this method, and return its params.
-   *
-   * `next` exists for a caller that only needs to know an event happened (a load, a navigation);
-   * this is for one that needs what the event actually carried — `Network.requestWillBeSent`'s
-   * `request.method` and `request.postData`, for a check that has to prove a plain HTML submit
-   * really was a POST rather than assume it from the markup alone.
-   *
-   * @param method Event name, e.g. `Network.requestWillBeSent`.
-   * @param timeoutMs How long to wait before giving up.
-   * @returns The event's `params`, cast to `T` — nothing here validates the shape.
-   */
-  async waitForEvent<T>(method: string, timeoutMs = 15_000): Promise<T> {
-    if (this.#closed) throw this.#closed
-
-    return await new Promise<T>((resolve, reject) => {
-      const timer = setTimeout(
-        () => reject(new Error(`timed out waiting for ${method}`)),
-        timeoutMs,
-      )
-      this.#waiters.push({
-        method,
-        resolve: (params) => {
-          clearTimeout(timer)
-          resolve(params as T)
-        },
-        reject: (error) => {
-          clearTimeout(timer)
-          reject(error)
-        },
-      })
-    })
-  }
-
   /** Everything the browser complained about during the session. */
   problems(): string[] {
     const problems: string[] = []

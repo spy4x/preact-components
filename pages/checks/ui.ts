@@ -6459,7 +6459,7 @@ async function enhancedFormBackForwardCacheCheck(devtools: Devtools): Promise<vo
       // Registered before the navigation it is meant to observe — a waiter only sees events that
       // arrive after it starts listening, so this has to be armed before `navigateToHistoryEntry`,
       // not read after the fact the way the navigation-timing comparison below can be.
-      const frameNavigatedPromise = devtools.waitForEvent<{ type?: string }>(
+      const frameNavigatedPromise = devtools.once<{ type?: string }>(
         "Page.frameNavigated",
         8_000,
       ).then((event) => event.type ?? "(no type field)").catch(() => "(the event never arrived)")
@@ -6675,7 +6675,7 @@ async function waitForRequest(
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     try {
-      const event = await devtools.waitForEvent<
+      const event = await devtools.once<
         {
           requestId: string
           request: { url: string; method: string; postData?: string; hasPostData?: boolean }
