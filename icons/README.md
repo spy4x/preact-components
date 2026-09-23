@@ -38,27 +38,27 @@ export interface IconProps {
 The set is a merge of six apps and the families are **not** visually interchangeable. Pick one
 family per surface; mixing them is visible at small sizes.
 
-| Family                             | Count | Notes                                                                                                                                                    |
-| ---------------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Heroicons v2 outline, `stroke-1.5` | 34    | matches Heroicons v2 exactly or nearly (`provenance.ts`, below)                                                                                          |
-| Heroicons v1 outline, `stroke-2`   | 23    | matches Heroicons v1 exactly or nearly                                                                                                                   |
-| Feather / Lucide outlines          | 18    | matches Feather and/or Lucide exactly or nearly, not Heroicons — several of these were filed as "Heroicons v1" or "Custom" until `provenance.ts` checked |
-| Custom outlines, no match found    | 20    | no exact or near match against Heroicons v1/v2, Feather or Lucide; named under "Provenance" below                                                        |
-| Brand marks (trademarked)          | 6     | GitHub, LinkedIn, Telegram, Upwork, Twitter, YouTube — see "Provenance"                                                                                  |
-| roley                              | 18    | 15 Heroicons v1 outlines plus 3 solid / filled glyphs, one source app regardless of which pack a glyph's shape matches                                   |
+| Family                         | Count | Notes                                                                                                                                                                                                                                                  |
+| ------------------------------ | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Heroicons (v1 or v2)           | 54    | 52 match exactly, 2 nearly (`IconFire`, `IconMoon`) — pack and version are on each glyph's own JSDoc line, not summarised here                                                                                                                         |
+| Feather and/or Lucide outlines | 19    | 18 match exactly, 1 nearly (`IconTarget`) — which pack is on each glyph's own JSDoc line                                                                                                                                                               |
+| Custom outlines                | 22    | 19 have no exact or near match in the four checked packs; 3 (`IconCircleDot`, `IconCreditCard`, `IconDocument`) near-match Feather or Lucide but keep this generic label — a near match alone was not treated as confident enough to rename the family |
+| Brand marks (trademarked)      | 6     | GitHub, LinkedIn, Telegram, Upwork, Twitter, YouTube; 2 (Twitter, YouTube) match Feather exactly, the other 4 match none of the four packs                                                                                                             |
+| roley                          | 18    | 17 match exactly, 1 (`IconExternalLink`) matches none — bucketed here by source app regardless of match, so the rows above exclude these 18                                                                                                            |
 
-The table above buckets `roley`'s 18 by which source app they came from rather than by which pack
-their shape matches, so the other rows exclude them and the table stays a clean partition of all 119
-glyphs. `provenance.ts` compares every glyph, `roley`'s included, against the four packs regardless
-of this bucketing; see "Provenance" below for what it found for these 18 specifically.
+Counts above are `provenance.ts`'s own — see "Provenance" below for the full method and the
+complete exact/near/none breakdown, and run `deno task --cwd icons provenance` for the per-glyph
+list. The table is a partition of all 119 glyphs: every row above is disjoint from every other,
+`roley`'s 18 included.
 
 The `roley` row is a source, not a single weight: 15 `stroke-2` v1 outlines and 3 filled glyphs
 drawn without a stroke (`IconExternalLink`, `IconLockClosedFilled`, `IconPlaySolid`). No `roley`
 glyph is `stroke-1.5`.
 
-The v1/v2 split is the one that matters in practice: a `stroke-1.5` glyph next to a `stroke-2`
-glyph reads as a mistake. Each icon's JSDoc line names its family, so the family of any glyph is
-one grep away:
+Rendered stroke width is what matters visually, and the table above does not show it: a
+`stroke-1.5` glyph next to a `stroke-2` glyph reads as a mistake regardless of which pack either one
+matches. Each icon's JSDoc line names both its rendered family and, where `provenance.ts` found one,
+the pack and version it matches — so the exact family of any one glyph is one grep away:
 
 ```bash
 grep -B1 'export function IconSearch' +index.tsx
@@ -78,18 +78,22 @@ had originally come from. Per the repository owner's comment on
 [issue #111](https://github.com/spy4x/preact-components/issues/111) (2026-09-23): most came from
 Heroicons; a few may have come from an image search, with no known licence.
 
-`provenance.ts` compares every exported glyph's geometry against the published Heroicons v1,
-Heroicons v2, Feather and Lucide packs — the ones named above plus the two an earlier shape-based
-audit also flagged by eye — normalising path and shape data so formatting differences (spacing,
-number precision, attribute order) do not hide a real match. Its own JSDoc explains the
-normalisation and its limits in full. Run it yourself:
+`provenance.ts`, in this package's own source repository, compares every exported glyph's geometry
+against the published Heroicons v1, Heroicons v2, Feather and Lucide packs — the ones named above
+plus the two an earlier shape-based audit also flagged by eye — normalising path and shape data so
+formatting differences (spacing, number precision, attribute order) do not hide a real match. Its
+own JSDoc explains the normalisation and its limits in full. It is a development tool excluded from
+this published package (see `icons/deno.json` → `publish.exclude`), so `deno task --cwd icons
+provenance` only works from a checkout of the source repository —
+<https://github.com/spy4x/preact-components> — not from an installed copy of this package:
 
 ```bash
+git clone https://github.com/spy4x/preact-components && cd preact-components
 deno task --cwd icons provenance
 ```
 
-Of the 119 glyphs: **79 match a pack's glyph exactly**, **7 match one nearly** (same shape, different
-numbers — typically a resize or a hand-adjusted curve), and **33 match none of the four packs**.
+Of the 119 glyphs: **89 match a pack's glyph exactly**, **6 match one nearly** (same shape, different
+numbers — typically a resize or a hand-adjusted curve), and **24 match none of the four packs**.
 [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md) carries the licence text for every pack an
 exact or near match was found in — Heroicons v1, Heroicons v2, Feather and Lucide, all four.
 
@@ -97,20 +101,18 @@ A glyph with no match is not necessarily unlicensed — it may be a pack glyph r
 a shape comparison, or from a pack this check does not compare against — but nothing here
 establishes a licence for it, and it is not covered by the notices file. Four are the trademarked
 brand marks (GitHub, LinkedIn, Telegram, Upwork — Twitter and YouTube matched Feather exactly, so
-they are covered by the notice even though they are also brand marks); the other 29, by name:
+they are covered by the notice even though they are also brand marks); the other 20, by name:
 
-`IconBookmark`, `IconBriefcase`, `IconBuilding`, `IconChatBubble`, `IconChip`, `IconClock`,
-`IconDollar`, `IconExternalLink`, `IconFire`, `IconFlag`, `IconFlask`, `IconGateway`, `IconGrid`,
-`IconImage`, `IconKey`, `IconLens`, `IconLoading`, `IconMoon`, `IconPackage`, `IconQuote`,
-`IconRocket`, `IconSensor`, `IconSparkle`, `IconSun`, `IconThemeAuto`, `IconTrendingDown`,
-`IconTrendingUp`, `IconVideo`, `IconWrench`.
+`IconBookmark`, `IconBuilding`, `IconChatBubble`, `IconChip`, `IconExternalLink`, `IconFlag`,
+`IconFlask`, `IconGateway`, `IconGlobe`, `IconImage`, `IconLens`, `IconLoading`, `IconPackage`,
+`IconQuote`, `IconRocket`, `IconSensor`, `IconSparkle`, `IconThemeAuto`, `IconVideo`, `IconWrench`.
 
-Swapping any of these 33 for a licensed replacement, or dropping them, is the repository owner's
+Swapping any of these 24 for a licensed replacement, or dropping them, is the repository owner's
 call — it changes what a consumer sees — and is tracked in
 [issue #233](https://github.com/spy4x/preact-components/issues/233), not done here.
 [Issue #10](https://github.com/spy4x/preact-components/issues/10) tracks replacing the whole set
 with a single licensed pack; issue #233 is the narrower, immediate version of that, scoped to the
-33 glyphs this check could not attribute.
+24 glyphs this check could not attribute.
 
 ## How this set was merged
 
