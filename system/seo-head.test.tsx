@@ -65,6 +65,28 @@ describe("seoHeadTags", () => {
     expect(tags.get("twitter:image")).toBe("https://acme.example/og/widgets.png")
   })
 
+  it("derives summary_large_image when an ogImage is given", () => {
+    expect(tagMap(PAGE).get("twitter:card")).toBe("summary_large_image")
+  })
+
+  it("derives summary when no ogImage is given", () => {
+    const tags = tagMap({ ...PAGE, ogImage: undefined })
+
+    expect(tags.get("twitter:card")).toBe("summary")
+  })
+
+  it("lets a caller force summary despite an ogImage", () => {
+    const tags = tagMap({ ...PAGE, twitterCard: "summary" })
+
+    expect(tags.get("twitter:card")).toBe("summary")
+  })
+
+  it("lets a caller force summary_large_image with no ogImage", () => {
+    const tags = tagMap({ ...PAGE, ogImage: undefined, twitterCard: "summary_large_image" })
+
+    expect(tags.get("twitter:card")).toBe("summary_large_image")
+  })
+
   it("emits the open graph set", () => {
     const tags = tagMap(PAGE)
 
@@ -97,8 +119,6 @@ describe("seoHeadTags", () => {
     for (const key of ["og:image", "og:site_name", "og:locale", "twitter:site", "twitter:image"]) {
       expect(tags.has(key)).toBe(false)
     }
-    // The card type stays: a Twitter card without an image is still a summary.
-    expect(tags.get("twitter:card")).toBe("summary_large_image")
   })
 
   it("does not emit an empty og:image when only the social image is missing", () => {

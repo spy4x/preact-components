@@ -25,9 +25,6 @@ export interface HeadTag {
   text?: string
 }
 
-/** Twitter card shape. Large image because `og:image` is the whole point of the tag set. */
-const TWITTER_CARD = "summary_large_image"
-
 /**
  * Serialise JSON-LD for a `<script>` body.
  *
@@ -71,6 +68,9 @@ export function seoHeadJsonLd(head: PageHead): unknown[] {
  */
 export function seoHeadTags(head: PageHead): HeadTag[] {
   const canonical = normalizeCanonical(head.canonical)
+  // A page never claims a large preview image it has none of: `summary_large_image` only when an
+  // `ogImage` is given, unless the caller overrides it — see `PageHead.twitterCard`.
+  const twitterCard = head.twitterCard ?? (head.ogImage ? "summary_large_image" : "summary")
 
   const tags: HeadTag[] = [
     { tag: "title", attrs: {}, text: head.title },
@@ -84,7 +84,7 @@ export function seoHeadTags(head: PageHead): HeadTag[] {
       },
     },
 
-    { tag: "meta", attrs: { name: "twitter:card", content: TWITTER_CARD } },
+    { tag: "meta", attrs: { name: "twitter:card", content: twitterCard } },
   ]
 
   if (head.twitterSite) {
