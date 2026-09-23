@@ -24,7 +24,7 @@ deno add jsr:@preact-components/icons     # merged icon set
 deno add jsr:@preact-components/signals   # buildModelStore, useUrlFilters, table-state, theme, toast, patchSignal
 deno add jsr:@preact-components/theme     # design tokens + Tailwind preset
 deno add jsr:@preact-components/charts    # server-rendered SVG kit + d3 wrappers
-deno add jsr:@preact-components/system    # Calendar, ImageLightbox, SEOHead, SWUpdater
+deno add jsr:@preact-components/system    # AuthForm, Calendar, ImageLightbox, SEOHead, SWUpdater
 deno add jsr:@preact-components/ui        # Badge, Button, Table, DataTable, Dropdown, Combobox, Modal, Tooltip, Toastr — and the rest
 deno add jsr:@preact-components/crud      # CrudList, CrudEditor, AssociationEditor
 deno add jsr:@preact-components/ui-guide  # the live component catalogue, as a component your app renders
@@ -71,7 +71,7 @@ reusable Preact + signals package. See [`CREDITS.md`](./CREDITS.md).
 ```
 theme/       design-system CSS + tailwind preset
 ui/          Badge, Button, Table, DataTable, Dropdown, Combobox, Modal, Tooltip, Toastr — and the rest
-system/      Calendar, ImageLightbox, SEOHead + head store, SWUpdater
+system/      AuthForm, Calendar, ImageLightbox, SEOHead + head store, SWUpdater
 charts/      server-rendered SVG kit (scales) + d3 wrappers
 icons/       merged icon set (+ brand glyphs)
 cn/          cn() — class-name join + Tailwind conflict resolution
