@@ -180,13 +180,20 @@ whose check you cannot find as unproven rather than as working.
 
 Two facts about that browser, both measured rather than assumed, and both worth knowing before you
 write a check: a real Enter press does **not** activate a focused button there, so a trigger is
-activated with a click and the check says so; a real Space press **does**. And the browser reports
-that it cannot hover. Tailwind compiles every `hover:` and `group-hover:` utility behind that
-capability whatever the browser says, so in this one none of them matches. A hand-written `&:hover`
-in `theme/preset.css` is emitted ungated and does still apply, so the gap is the utilities rather
-than hovering as such. Issue #185 tracks it; read that before you write a check that leans on a
-hover style. `verify` fails when it finds no browser; `--static` is the one explicit way to leave
-the browser phase out. The GitHub workflow runs `check`, the build and `verify` on every pull
+activated with a click and the check says so; a real Space press **does**. The browser is launched
+with a `--blink-settings` flag in `pages/verify.ts` that gives it a hover-capable, fine pointer —
+headless Chromium otherwise answers `(hover: none)` and `(pointer: none)`, and Tailwind compiles
+every `hover:` and `group-hover:` utility inside `@media (hover: hover)`. So hover styles do apply,
+and a check may lean on one. A hover style written by hand as `&:hover` in `theme/preset.css` is
+emitted ungated and applies on any device; the same style written as a `hover:` utility is compiled
+inside `@media (hover: hover)` and applies only where the pointer can hover. Right after the
+hydration check, and before any package's checks run, a check asserts that the browser still
+answers `(hover: hover)` and `(pointer: fine)`. The browser also delivers real mouse events, so a
+pointer left resting on an element by an earlier check changes its computed colour and can pause a
+timer; a check either parks the pointer away and reads back where it landed, or asserts the element
+is not `:hover` before reading a style off it. `verify` fails
+when it finds no browser; `--static` is the one explicit way to leave the browser phase out. The
+GitHub workflow runs `check`, the build and `verify` on every pull
 request into `main`, and the Pages deploy waits for them.
 
 If a task fails because a specifier cannot be resolved, run the task that needs the new dependency once

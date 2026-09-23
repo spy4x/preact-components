@@ -30,9 +30,10 @@ Extracted from `antonshubin.com`, `mig` and `financy`.
 | `ImageLightbox` | `image-lightbox` | `containerSelector?`, `imageSelector?`, `fallbackAlt?`, `zoomLabel?`, `onOpen?`   |
 
 Helpers, all pure: `head.ts` (`normalizeCanonical`, `canonicalUrl`, `breadcrumbItems`,
-`breadcrumbListJsonLd`, `createHeadStore`) and `resolveImage` (click target → lightbox image).
-`date.ts`'s ISO day and month arithmetic is private to this package — `Calendar`'s own dependency,
-kept out of the barrel and out of `exports`.
+`breadcrumbListJsonLd`) and `resolveImage` (click target → lightbox image). `head.ts` also exports
+`createHeadStore`, a factory that builds a fresh signal-backed store on every call, so it is not
+one of the pure ones — see below. `date.ts`'s ISO day and month arithmetic is private to this
+package — `Calendar`'s own dependency, kept out of the barrel and out of `exports`.
 
 ```tsx
 import { SEOHead } from "@preact-components/system"
@@ -278,12 +279,15 @@ _change_ to a region it is already watching, and commonly says nothing at all ab
 arrives with its message already inside it. Marking an element that only exists once it has
 something to say therefore buys nothing.
 
-Two components follow it today. `SWUpdater` is below, and `Toastr` in `ui/` keeps its stack in the
-page with zero toasts in it. `Combobox` in `ui/` is the third place the rule applies and **does not
-follow it yet**: the paragraph that reports "No matches" is rendered only when there are no answers,
-so that region is created carrying its message, which is the shape this section exists to remove.
-`ui/README.md` records it as a known limit and issue #186 is open to fix it — this section is not
-saying the combobox is already done.
+All three components follow it today. `SWUpdater` is below, `Toastr` in `ui/` keeps its stack in
+the page with zero toasts in it, and `Combobox` in `ui/` renders one empty `role="status"` region
+with every field and puts its answers — the count of matching options, or the empty message —
+inside it. Where the three differ is what the region costs a host, and that turns on where it
+sits: `SWUpdater`'s region is its whole output and lands in the host's own container, so the table
+below applies to it; `Toastr`'s stack is laid out `fixed` and is out of flow wherever it is
+mounted; `Combobox`'s is a child of the component's own root, so a host lays out one
+combobox-shaped box whether the region is there or not. See `ui/README.md` for the combobox's
+measurements.
 
 **Where to mount it.** `SWUpdater`'s region carries no class, so it is an ordinary in-flow element
 with no padding, no border and no minimum height: empty, it is zero pixels tall and paints nothing.
