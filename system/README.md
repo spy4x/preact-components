@@ -16,9 +16,9 @@ Extracted from earlier source applications.
   `today` so a render is deterministic.
 - **A live region is always present and empty.** See below; it is a library-wide rule, not a
   `SWUpdater` one.
-- **No `theme/` dependency.** Utilities are inlined, like `ui/`. `icons/` supplies the three glyphs
-  these components draw (`IconChevronLeft`, `IconChevronRight`, `IconXMark`) rather than
-  duplicating SVG.
+- **No `theme/` dependency.** Utilities are inlined, like `ui/`. `icons/` supplies the four glyphs
+  these components draw (`IconChevronLeft`, `IconChevronRight`, `IconXMark`, `IconBars3`) rather
+  than duplicating SVG.
 
 ## Components
 
@@ -29,6 +29,7 @@ Extracted from earlier source applications.
 | `SWUpdater`     | `sw-updater`     | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                 |
 | `Calendar`      | `calendar`       | `monthAnchor`, `minDate`, `maxDate`, `slotsByDate`, `onSelectDate?`                                                  |
 | `ImageLightbox` | `image-lightbox` | `containerSelector?`, `imageSelector?`, `fallbackAlt?`, `zoomLabel?`, `onOpen?`                                      |
+| `SiteHeader`    | `site-header`    | `links`, `currentPath?`, `brand`, `actions?`, `labels?`                                                              |
 
 Helpers, all pure: `head.ts` (`normalizeCanonical`, `canonicalUrl`, `breadcrumbItems`,
 `breadcrumbListJsonLd`) and `resolveImage` (click target → lightbox image). `head.ts` also exports
@@ -473,6 +474,69 @@ this codebase for a value that is internal bookkeeping and never crosses a seria
 after a real round trip, so the value has to survive JSON without a second lookup table translating
 an integer back into a string.
 
+## The `SiteHeader` contract
+
+`SiteHeader` draws a public-site top bar: `brand` on the left; `links` on the right from `lg` up,
+and in a `<details>` disclosure below it; an optional `actions` slot and the menu button always in
+view, beside whichever form `links` is currently taking. It is the public-site sibling of the app
+shell's side navigation (#135) — that one is a signed-in app's frame, this one is a landing page's
+top bar — and the two share the mobile-panel open/close behaviour rather than each writing their
+own; see `mobile-panel.ts` below.
+
+**Every link, and every word of `brand`, is the caller's.** `links` is `{ label, href, Icon? }`, and
+nothing here writes a `href`, a label or a brand string of its own — `brand` is rendered exactly as
+given, with no anchor of this component's own wrapped around it, because inventing one would mean
+inventing the `href` it points at.
+
+**`actions` is rendered once, `links` is redrawn.** A caller's own element can only ever be mounted
+in one place — Preact tracks it by identity, and a second placement would move it rather than copy
+it — so `actions` stays exactly where it is at every width, next to the menu button. `links` has no
+such limit: both the desktop row and the panel call the same internal renderer over the array, so
+each gets its own markup built from data rather than the same element mounted twice.
+
+**The active link is decided by exact string equality**, `href === currentPath`, and marked with
+`aria-current="page"`. A prefix match would be right for some route trees and wrong for others —
+`/docs` current while `/docs/intro` is on screen — and this component has no way to know which, so a
+caller whose routes want prefix matching normalises `currentPath` or a link's `href` before handing
+it in.
+
+**The mobile panel is a `<details>`, so its links are reachable with no JavaScript at all.** A click
+on `<summary>` opens and closes the native disclosure with nothing running, which is what keeps every
+link in `links` reachable before hydration and with scripts off — `pages/checks/system.ts` proves it
+by disabling script execution and pressing the button. `useMobilePanel` (`mobile-panel.ts`) adds the
+two things the platform element does not do on its own: Escape closes the panel and returns focus to
+the button, and `aria-expanded` tracks the disclosure's own open state. Neither is needed to open the
+panel or reach a link inside it — they are the enhancement, not the mechanism.
+
+**The icon swap costs no JavaScript either.** The hamburger and the close glyph are both always in
+the markup, and `group-open:` — a Tailwind variant compiled from the `<details>` element's own
+`[open]` attribute — is what shows one and hides the other. The browser flips it the moment it opens
+the disclosure, whether or not the bundle has run.
+
+**The desktop row and the mobile panel never coexist in the accessibility tree.** Both render the
+same `links` through one `aria-label`d `<nav>`, once `hidden` below `lg` and once inside a `<details>`
+that is `lg:hidden`, so exactly one is ever `display`ed at a time — the other is removed from the
+tree entirely rather than merely dimmed behind `aria-hidden`. That is what keeps two landmarks
+sharing one accessible name from ever being announced together, and what keeps Tab from ever
+reaching a link twice at one viewport width.
+
+**Every string this component prints beyond `links` and `brand` has an English default and a
+`labels` override**: the menu button's name while closed and while open, and the `aria-label` shared
+by both `<nav>`s.
+
+### The shared mobile-panel hook
+
+`mobile-panel.ts`'s `useMobilePanel` is `SiteHeader`'s half of the piece both #139 and #135 asked to
+be written once: track a `<details>`-based disclosure's open state, close it on Escape, and return
+focus to the element that opened it. It holds no markup of its own — a caller supplies the
+`<details>`/`<summary>` and wires `detailsRef`, `triggerRef` and `onToggle={handleToggle}` onto them
+— so the app shell's side navigation can reuse the same hook against its own markup without either
+component reaching into the other.
+
+There is no pure logic in it to unit test: every behaviour is a `document` listener or a focus move,
+neither of which a string render executes. `pages/checks/system.ts` drives all three — the toggle,
+Escape, and the focus return — in a real browser instead.
+
 ## Decisions worth knowing
 
 - **A canonical address that is not a web page is refused, not printed and not omitted.** Throwing
@@ -550,3 +614,13 @@ already-present live region, a busy `requestSubmit()` calling no callback, and a
 disabled script execution with no query string added to the URL are effects, key presses, a focus
 change and a real navigation — none reachable from a string render — and are proven in
 `pages/checks/system.ts` instead.
+
+`site-header.test.tsx` is the markup half of `SiteHeader`: every link's `href` present once inline
+and once in the panel, `aria-current` on the one link matching `currentPath` and on no other, `brand`
+rendered with no anchor of the component's own around it, the menu button starting closed with its
+`aria-controls` pointing at the panel's own id, and the `labels` override replacing the English
+default. Opening the panel with a real click, Escape closing it and returning focus to the button,
+`aria-expanded` tracking the open state, Tab order at phone width, and every link staying reachable
+with script execution disabled are effects, key presses and a focus change — none reachable from a
+string render — and are proven in `pages/checks/system.ts` instead. `mobile-panel.ts` has no test
+file of its own for the same reason: it holds no logic that is not one of those three things.
