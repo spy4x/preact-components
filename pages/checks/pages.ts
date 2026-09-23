@@ -1,4 +1,4 @@
-import { check, type Devtools } from "./harness.ts"
+import { check, type Devtools, settledScroll } from "./harness.ts"
 import { PAGE_TITLE } from "../src/site.ts"
 
 /**
@@ -40,14 +40,53 @@ export async function pagesChecks(devtools: Devtools): Promise<void> {
   // The rest of the grammar, driven the way a reader drives it: the legacy bare fragment this page
   // shipped before hash routing and still resolves, a section route, and an unknown route falling
   // back to the landing page. The resolver's own unit tests cannot prove the island wired any of it.
-  const routes = await devtools.evaluate<{
+  const legacy = await devtools.evaluate<{
     legacyMarked: boolean
     legacyCurrent: string
     legacyTitle: string
+  }>(
+    `(async () => {
+      const settle = () => new Promise((done) => setTimeout(done, 400))
+      location.hash = "#toggle-switch"
+      await settle()
+      return {
+        legacyMarked: document.querySelector("#demo-ToggleSwitch").hasAttribute("data-deep-link"),
+        legacyCurrent: document.querySelector('a[aria-current="true"]')?.textContent ?? "",
+        legacyTitle: document.title,
+      }
+    })()`,
+  )
+
+  // The section route's scroll used to be settled with the same fixed 400ms wait as every other step
+  // here, and it once read the section's top edge at a fractional pixel in CI — `#225`. Twenty
+  // `verify` runs measuring the raw, unrounded value (recorded in the pull request) showed it still
+  // moving between reads rather than resting a fraction of a pixel below zero, so the fix is the one
+  // `#238` already established for this file's checks: wait for the scroll position itself to stop
+  // changing (`settledScroll`, a real poll on `scrollY`) instead of widening the tolerance on a guess
+  // about how long a smooth scroll takes.
+  await devtools.evaluate<null>(`(location.hash = "#/inputs", null)`)
+  await settledScroll(devtools)
+  const section = await devtools.evaluate<{
+    sectionTopRaw: number
     sectionTop: number
     sectionMarked: number
-    sectionCurrent: string
     sectionTitle: string
+  }>(
+    `(() => {
+      const top = document.getElementById("inputs").getBoundingClientRect().top
+      return {
+        sectionTopRaw: top,
+        sectionTop: Math.round(top),
+        sectionMarked: document.querySelectorAll("[data-deep-link]").length,
+        sectionTitle: document.title,
+      }
+    })()`,
+  )
+
+  // Mark a card again before the unknown route, so the assertion below is a *transition* — the mark
+  // has to be there first and gone after — and not something a host with no listener at all would
+  // satisfy by never marking anything.
+  const rest = await devtools.evaluate<{
     markedBeforeUnknown: number
     unknownMarked: number
     unknownTitle: string
@@ -58,26 +97,6 @@ export async function pagesChecks(devtools: Devtools): Promise<void> {
       const marked = () => document.querySelectorAll("[data-deep-link]").length
       const current = () => document.querySelector('a[aria-current="true"]')?.textContent ?? ""
 
-      location.hash = "#toggle-switch"
-      await settle()
-      const legacy = {
-        legacyMarked: document.querySelector("#demo-ToggleSwitch").hasAttribute("data-deep-link"),
-        legacyCurrent: current(),
-        legacyTitle: document.title,
-      }
-
-      location.hash = "#/inputs"
-      await settle()
-      const section = {
-        sectionTop: Math.round(document.getElementById("inputs").getBoundingClientRect().top),
-        sectionMarked: marked(),
-        sectionCurrent: current(),
-        sectionTitle: document.title,
-      }
-
-      // Mark a card again before the unknown route, so the assertion below is a *transition* — the
-      // mark has to be there first and gone after — and not something a host with no listener at all
-      // would satisfy by never marking anything.
       location.hash = "#/inputs/toggle-switch"
       await settle()
       const markedBeforeUnknown = marked()
@@ -86,8 +105,6 @@ export async function pagesChecks(devtools: Devtools): Promise<void> {
       await settle()
 
       return {
-        ...legacy,
-        ...section,
         markedBeforeUnknown,
         unknownMarked: marked(),
         unknownTitle: document.title,
@@ -95,6 +112,8 @@ export async function pagesChecks(devtools: Devtools): Promise<void> {
       }
     })()`,
   )
+
+  const routes = { ...legacy, ...section, ...rest }
   check(
     "the legacy fragment still resolves to the same card",
     routes.legacyMarked && routes.legacyCurrent === "ToggleSwitch" &&
@@ -105,8 +124,8 @@ export async function pagesChecks(devtools: Devtools): Promise<void> {
     "the section route scrolls to its section and clears the card's mark",
     routes.sectionMarked === 0 && routes.sectionTitle.startsWith("Inputs") &&
       routes.sectionTop >= 0 && routes.sectionTop < 200,
-    `#/inputs → ${routes.sectionTitle}, section top ${routes.sectionTop}px, ` +
-      `${routes.sectionMarked} cards marked`,
+    `#/inputs → ${routes.sectionTitle}, section top ${routes.sectionTop}px ` +
+      `(raw ${routes.sectionTopRaw.toFixed(3)}px), ${routes.sectionMarked} cards marked`,
   )
   check(
     "an unknown route falls back to the landing page and clears the mark",
