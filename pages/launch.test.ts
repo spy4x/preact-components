@@ -13,6 +13,7 @@ import {
   ChromiumLifecycle,
   type ChromiumSession,
   type Killable,
+  matchesArgument,
   withOneRetry,
 } from "./launch.ts"
 
@@ -198,5 +199,98 @@ describe("ChromiumLifecycle", () => {
 
     expect(process.killedWith).toEqual(["SIGKILL"])
     await first
+  })
+
+  it("lets a concurrent teardown() share a failed attempt's own cleanup, instead of finding nothing", async () => {
+    // The exact regression review reproduced 2 of 2 with a real launch: `launchOnce`'s failure path
+    // used to call `trackAttempt(undefined)` — clearing the attempt — *before* awaiting its own
+    // `shutdownChromium` call, so a SIGTERM arriving during that call's grace period found nothing
+    // tracked and tore down nothing, while the browser and its profile directory survived. Here,
+    // `endChromium()` plays the part of that failure path's own cleanup, started first and still
+    // pending its grace period when `teardown()` — playing the part of the signal handler — is
+    // called concurrently. Both must end up waiting for the one real kill.
+    const lifecycle = new ChromiumLifecycle()
+    const process = fakeProcess()
+    lifecycle.trackAttempt({ process, profile: "/tmp/launch-test-attempt-race" })
+
+    const attemptCleanup = lifecycle.endChromium(FAST_GRACEFUL_CLOSE_MS)
+    let serverClosed = false
+    const signalTeardown = lifecycle.teardown(() => {
+      serverClosed = true
+      return Promise.resolve()
+    }, FAST_GRACEFUL_CLOSE_MS)
+
+    // Awaiting only `signalTeardown` (not both promises together) is what makes this a real
+    // ordering assertion: if `teardown()` ran its own independent, uncoordinated pass instead of
+    // sharing the attempt's own in-progress cleanup, it would resolve — and close the server —
+    // before the kill the *other* promise is still waiting on had happened.
+    await signalTeardown
+
+    expect(process.killedWith).toEqual(["SIGKILL"])
+    expect(serverClosed).toBe(true)
+    await attemptCleanup
+  })
+
+  it("tears down an attempt that starts after teardown has already begun", async () => {
+    // The losing side of the phase deadline's own Promise.race keeps running after `teardown()` has
+    // already torn down whatever was tracked at the time — an attempt that only spawns *after* that
+    // point would never have `teardown()` called on its behalf again. `trackAttempt` has to notice
+    // and act on its own, immediately, rather than merely recording an attempt nothing will ever
+    // revisit.
+    const lifecycle = new ChromiumLifecycle()
+    const first = fakeProcess()
+    lifecycle.trackAttempt({ process: first, profile: "/tmp/launch-test-late-a" })
+    await lifecycle.teardown(undefined, FAST_GRACEFUL_CLOSE_MS)
+
+    const late = fakeProcess()
+    lifecycle.trackAttempt({ process: late, profile: "/tmp/launch-test-late-b" })
+    // trackAttempt's own cleanup for a late attempt is fire-and-forget; give it a moment to run.
+    await late.status
+
+    expect(late.killedWith).toEqual(["SIGKILL"])
+  })
+})
+
+describe("matchesArgument", () => {
+  const token = "--user-data-dir=/tmp/pages-chromium-abc123"
+
+  it("matches the token as its own argument in a NUL-separated cmdline", () => {
+    const cmdline = `/usr/bin/chromium-browser\0--headless=new\0${token}\0about:blank\0`
+    expect(matchesArgument(cmdline, token)).toBe(true)
+  })
+
+  it("does not match when the token is only a substring of a longer, different argument", () => {
+    // Review's own finding: a plain substring check on the whole line matches
+    // --user-data-dir=/tmp/profile-123 inside the unrelated, longer
+    // --user-data-dir=/tmp/profile-123-decoy. This is the same shape with this file's own token.
+    const decoy = "--user-data-dir=/tmp/pages-chromium-abc123-decoy"
+    const cmdline = `/usr/bin/chromium-browser\0${decoy}\0about:blank\0`
+    expect(matchesArgument(cmdline, token)).toBe(false)
+  })
+
+  it("matches a profile path containing a space, when cmdline is properly NUL-separated", () => {
+    const spacedToken = "--user-data-dir=/tmp/pages chromium abc123"
+    const cmdline = `/usr/bin/chromium-browser\0${spacedToken}\0about:blank\0`
+    expect(matchesArgument(cmdline, spacedToken)).toBe(true)
+  })
+
+  it("does not match a decoy argument even when the profile path contains a space", () => {
+    const spacedToken = "--user-data-dir=/tmp/pages chromium abc123"
+    const decoy = "--user-data-dir=/tmp/pages chromium abc123-decoy"
+    const cmdline = `/usr/bin/chromium-browser\0${decoy}\0about:blank\0`
+    expect(matchesArgument(cmdline, spacedToken)).toBe(false)
+  })
+
+  it("falls back to a substring check when cmdline carries no NUL separator at all", () => {
+    // Measured on this repository's own dev host: a cmdline can come back already space-joined,
+    // with no NUL to split on, losing argument boundaries before this ever reads it.
+    const cmdline = `/usr/bin/chromium-browser --headless=new ${token} about:blank`
+    expect(matchesArgument(cmdline, token)).toBe(true)
+  })
+
+  it("matches a spaced profile path even in the no-NUL fallback shape", () => {
+    const spacedToken = "--user-data-dir=/tmp/pages chromium abc123"
+    const cmdline = `/usr/bin/chromium-browser --headless=new ${spacedToken} about:blank`
+    expect(matchesArgument(cmdline, spacedToken)).toBe(true)
   })
 })

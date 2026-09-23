@@ -321,10 +321,11 @@ const PHASE_DEADLINE_MS = 5 * 60_000
  * `lifecycle.trackAttempt` is called the moment the process exists, before either bounded wait —
  * that ordering is what lets a phase deadline or a signal that fires while this attempt is still
  * running reach the process it already spawned, rather than only ever seeing a finished
- * `ChromiumSession`; see {@link ChromiumLifecycle}'s own doc for the gap this closes. A launch that
- * does not become a session is torn down here, through the same `shutdownChromium` the rest of the
- * run uses, before this returns — so the caller never has to know whether it is cleaning up attempt
- * one or attempt two.
+ * `ChromiumSession`; see {@link ChromiumLifecycle}'s own doc for the gap this closes, and for the
+ * narrower gap review found afterwards: a launch that fails now tears itself down through
+ * `lifecycle.endChromium()` rather than calling `shutdownChromium` directly, which is what keeps the
+ * attempt tracked for the whole duration of its own cleanup instead of only until this function
+ * decided to start tearing it down.
  *
  * @param chromium Executable to launch.
  * @param lifecycle Tracks this attempt so an external teardown can reach it.
@@ -394,8 +395,18 @@ async function launchOnce(
     lifecycle.trackSession(session)
     return { ok: true, value: session }
   } catch (error) {
-    lifecycle.trackAttempt(undefined)
-    await shutdownChromium(process, profile)
+    if (process) {
+      // `trackAttempt` above already made this attempt visible to `lifecycle`; tearing it down
+      // through `endChromium` (rather than calling `shutdownChromium` directly, the previous shape
+      // here) is what keeps it tracked for the whole duration of this cleanup, so a signal that
+      // arrives mid-cleanup shares this exact promise instead of finding nothing to act on —
+      // reproduced in review with a fake browser and a SIGTERM roughly 15s into the first attempt.
+      await lifecycle.endChromium()
+    } else {
+      // The spawn itself never produced a process — nothing is tracked, and nothing is racing a
+      // signal for it, so removing just the profile directory this attempt created is enough.
+      await shutdownChromium(undefined, profile)
+    }
     return { ok: false, reason: describeError(error) }
   }
 }

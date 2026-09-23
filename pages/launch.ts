@@ -35,19 +35,43 @@ export async function exitedWithin(process: Killable, timeoutMs: number): Promis
 }
 
 /**
+ * Whether `cmdline` — a raw `/proc/<pid>/cmdline` read — carries `token` as one whole argument, not
+ * merely somewhere inside a longer one.
+ *
+ * `/proc/<pid>/cmdline` is documented as NUL-separated per argument, and splitting on `'\0'` recovers
+ * that exactly — including a profile path that itself contains a space, since NUL, not a space, is
+ * what actually separates two different arguments there. A plain substring check on the whole line
+ * would instead match `--user-data-dir=/tmp/profile-123` inside the unrelated, longer
+ * `--user-data-dir=/tmp/profile-123-decoy` (a review of this file caught exactly this shape of
+ * over-matching), so the NUL-split form is checked for exact array membership, never `includes`.
+ *
+ * Measured on this repository's own dev host, though, a process's `cmdline` can come back with no
+ * NUL at all — already space-joined by whatever exposes `/proc` there, argument boundaries lost by
+ * the time this reads it. A plain substring check is the most exact match still available in that
+ * shape: `token` (`--user-data-dir=<a Deno.makeTempDir path>`) is specific enough that a substring
+ * match on it cannot land on an unrelated process's own argument. This function tries the exact,
+ * NUL-split match first and only falls back to the substring form when no NUL was present to split
+ * on in the first place, so neither host loses the precision it can actually offer.
+ *
+ * @param cmdline Raw bytes of a `/proc/<pid>/cmdline` read, decoded as text.
+ * @param token The exact argument to look for, e.g. `--user-data-dir=/tmp/pages-chromium-abc123`.
+ */
+export function matchesArgument(cmdline: string, token: string): boolean {
+  const args = cmdline.split("\0").filter((arg) => arg.length > 0)
+  if (args.length > 1) return args.includes(token)
+  return cmdline.includes(token)
+}
+
+/**
  * Kill anything still alive whose command line carries the exact `--user-data-dir=<profile>`
- * argument.
+ * argument (see {@link matchesArgument}).
  *
  * This is the mechanism `shutdownChromium` actually relies on to take Chromium's helpers down: the
  * renderer, GPU, zygote and crash-reporter processes are children of the main browser process, not
  * of this script, so killing that one process (however that happens — `Browser.close`, a direct
  * `kill`, or the OS killing it out from under the run) reparents them; it does not end them. A
- * `--user-data-dir` value comes from `Deno.makeTempDir` and is unique to one launch attempt, so
- * matching it exactly (not as a substring of the whole command line, which a review of this file
- * caught: a coincidental substring match could in principle reach a process this run never spawned)
- * cannot reach anything else on the machine. `/proc/<pid>/cmdline` is documented as NUL-separated
- * per argument; measured on this repository's own dev host it instead reads back space-joined, so
- * splitting on either character is what keeps the match exact on both.
+ * `--user-data-dir` value comes from `Deno.makeTempDir` and is unique to one launch attempt, so an
+ * exact match on it cannot reach anything else on the machine.
  *
  * Best-effort and silent: no `/proc` (a non-Linux host) or a `pid` directory that disappears
  * mid-scan is not this function's problem to report.
@@ -62,7 +86,7 @@ export async function killByProfile(profile: string): Promise<void> {
       const pid = Number(entry.name)
       try {
         const cmdline = await Deno.readTextFile(`/proc/${pid}/cmdline`)
-        if (cmdline.split(/[\0 ]/).includes(token)) Deno.kill(pid, "SIGKILL")
+        if (matchesArgument(cmdline, token)) Deno.kill(pid, "SIGKILL")
       } catch {
         // Gone already, or unreadable — nothing left to kill.
       }
@@ -186,61 +210,108 @@ export interface ChromiumSession extends InFlightAttempt {
 
 /**
  * Tracks what `teardown()` should act on: a launch still in progress, or one that finished — never
- * both, and never neither once a launch has started.
+ * both — and shares one cleanup promise between whoever tears a process down first and anyone who
+ * asks afterwards, so both a launch attempt's own failure path and an external `teardown()` call end
+ * up waiting for the same real completion rather than each doing their own thing.
  *
- * This exists because the browser phase's own deadline can fire *while `launchOnce` is still
- * awaiting its port file or its DevTools target* — the launch attempt that was running has a real
- * Chromium process, but no `ChromiumSession` yet, since that is only built once the attempt
+ * This exists because the browser phase's own deadline (or a signal) can fire *while `launchOnce` is
+ * still awaiting its port file or its DevTools target* — the launch attempt that was running has a
+ * real Chromium process, but no `ChromiumSession` yet, since that is only built once the attempt
  * succeeds. Before this class, the deadline branch's `teardown` only knew about a finished session,
  * so a browser that was still starting when time ran out was invisible to it and never torn down —
  * found in review, with a fake browser whose debugging endpoint accepts a connection and never
  * answers: the phase deadline fired, and the fake process and its profile directory were both still
  * there afterwards. `launchOnce` calls {@link ChromiumLifecycle.trackAttempt} the moment it spawns a
- * process, before any of its own bounded waits, so that window no longer exists.
+ * process, before any of its own bounded waits, so that window no longer exists for the deadline.
+ *
+ * A second, narrower window survived one round of review even so: `launchOnce`'s own failure path
+ * used to stop tracking a failed attempt (`trackAttempt(undefined)`) *before* calling
+ * `shutdownChromium` on it, so a signal arriving during that call's own grace period found `#inFlight`
+ * already cleared and tore down nothing, while the original `shutdownChromium` call kept running in
+ * the background — reproduced 2 of 2 with a fake browser that never writes its port file and a
+ * SIGTERM roughly fifteen seconds into the first attempt. `endChromium` is the fix: it is the one
+ * place either path reaches to tear down whatever is currently tracked, it keeps that thing tracked
+ * for the whole duration of its own cleanup, and `teardown()` calls the very same method — so a
+ * concurrent `teardown()` call shares this exact in-flight cleanup instead of finding nothing.
  */
 export class ChromiumLifecycle {
   #session?: ChromiumSession
   #inFlight?: InFlightAttempt
-  #teardownPromise?: Promise<void>
+  #processCleanup?: Promise<void>
+  #fullTeardown?: Promise<void>
+  #teardownStarted = false
 
-  /** Record (or clear) the process and profile a launch attempt currently in progress owns. */
-  trackAttempt(attempt: InFlightAttempt | undefined): void {
+  /**
+   * Record the process and profile a launch attempt just spawned, before either of its own bounded
+   * waits.
+   *
+   * If `teardown()` has already begun — the losing side of the phase deadline's `Promise.race`
+   * reaching a second launch attempt after the deadline branch already tore down and moved on, say —
+   * this attempt is torn down immediately instead of being tracked as live: nothing will ever call
+   * `teardown()` again on its behalf, so leaving it merely tracked would orphan it for good.
+   */
+  trackAttempt(attempt: InFlightAttempt): void {
+    if (this.#teardownStarted) {
+      shutdownChromium(attempt.process, attempt.profile).catch(() => {})
+      return
+    }
     this.#inFlight = attempt
   }
 
-  /** Record a finished session; clears whatever in-flight attempt produced it. */
+  /**
+   * Record a finished session; clears whatever in-flight attempt produced it.
+   *
+   * Same late-teardown guard as {@link trackAttempt}, for the same reason: a session that only comes
+   * into being after `teardown()` already ran its course would otherwise never be torn down at all.
+   */
   trackSession(session: ChromiumSession): void {
+    if (this.#teardownStarted) {
+      shutdownChromium(session.process, session.profile, session.devtools).catch(() => {})
+      return
+    }
     this.#session = session
     this.#inFlight = undefined
   }
 
   /**
-   * Tear down whichever of a finished session or an in-flight attempt is currently tracked, and
-   * close `server` if given. Idempotent: every caller is handed the same promise, so a second call
-   * — from a signal handler racing the phase deadline, say — awaits the first call's real
-   * completion instead of returning early while teardown is still in progress. A `torn` boolean
-   * flag was the earlier shape here and had exactly that gap, found in review.
+   * Tear down whichever of a finished session or an in-flight attempt is currently tracked. One
+   * shared promise: whichever caller reaches this first — `launchOnce`'s own failure path, or an
+   * external `teardown()` — starts the real cleanup, and every other caller (including `teardown()`
+   * itself) awaits that same completion instead of starting a second, uncoordinated one. The tracked
+   * attempt or session is cleared only once `shutdownChromium` has actually finished with it, which
+   * is what keeps it visible to a `teardown()` call that lands mid-cleanup.
+   *
+   * @param gracefulCloseTimeoutMs Forwarded to `shutdownChromium` — see its own doc. Only the call
+   * that actually starts the cleanup gets to set this; a later, sharing caller's own value is unused.
+   */
+  endChromium(gracefulCloseTimeoutMs?: number): Promise<void> {
+    return this.#processCleanup ??= (async () => {
+      if (this.#session) {
+        const { process, profile, devtools } = this.#session
+        await shutdownChromium(process, profile, devtools, gracefulCloseTimeoutMs)
+      } else if (this.#inFlight) {
+        const { process, profile } = this.#inFlight
+        await shutdownChromium(process, profile, undefined, gracefulCloseTimeoutMs)
+      }
+      this.#session = undefined
+      this.#inFlight = undefined
+    })()
+  }
+
+  /**
+   * Tear down whatever is tracked (via {@link endChromium}) and close `server`, if given. Idempotent:
+   * every caller is handed the same promise, so a second call — from a signal handler racing the
+   * phase deadline, say — awaits the first call's real completion instead of returning early while
+   * teardown is still in progress. A `torn` boolean flag was the earlier shape here and had exactly
+   * that gap, found in review.
    *
    * @param closeServer Closes the preview server, if there is one.
    * @param gracefulCloseTimeoutMs Forwarded to `shutdownChromium` — see its own doc.
    */
   teardown(closeServer?: () => Promise<void>, gracefulCloseTimeoutMs?: number): Promise<void> {
-    return this.#teardownPromise ??= (async () => {
-      if (this.#session) {
-        await shutdownChromium(
-          this.#session.process,
-          this.#session.profile,
-          this.#session.devtools,
-          gracefulCloseTimeoutMs,
-        )
-      } else if (this.#inFlight) {
-        await shutdownChromium(
-          this.#inFlight.process,
-          this.#inFlight.profile,
-          undefined,
-          gracefulCloseTimeoutMs,
-        )
-      }
+    this.#teardownStarted = true
+    return this.#fullTeardown ??= (async () => {
+      await this.endChromium(gracefulCloseTimeoutMs)
       await closeServer?.()
     })()
   }
