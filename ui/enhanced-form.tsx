@@ -158,19 +158,25 @@ export interface EnhancedFormProps {
  * nothing else on screen does.
  *
  * **Focus moves to the region only when it was inside this form the moment the visitor submitted,
- * and the control they used is gone.** The first condition is read off `event.currentTarget.
- * contains(document.activeElement)` inside the submit handler, before anything async happens: a
- * real click or keypress on the submit button leaves focus there, but `form.requestSubmit()` called
- * from outside the form — or a submit that started while focus was already elsewhere — does not,
- * and there is no visitor to give focus back to in either case. Only once that first condition holds
- * does the second matter: disabling the `<fieldset>` — or swapping it for a `done`/`failed` slot —
- * can take the focused submit button out of the page's focus order entirely, which a browser
- * resolves by dropping focus to `<body>`, and that is the one situation this component recovers
- * from. The region is given `tabIndex={-1}` so it can hold focus without joining the tab order.
- * Without the first condition, a submit nobody focused — or one whose visitor has since moved on to
- * reading elsewhere, or into the browser's own UI, where `document.activeElement` also reads as
- * `<body>` — would otherwise get its focus, and the scroll a `.focus()` call performs, pulled back
- * to this form the moment an unrelated background submit happened to settle.
+ * and the control they used is gone — and only the first time that happens for a given submit.**
+ * The first condition is read off `event.currentTarget.contains(document.activeElement)` inside the
+ * submit handler, before anything async happens: a real click or keypress on the submit button
+ * leaves focus there, but `form.requestSubmit()` called from outside the form — or a submit that
+ * started while focus was already elsewhere — does not, and there is no visitor to give focus back
+ * to in either case. A submit nobody focused, or one whose visitor was already reading elsewhere, or
+ * already working in the browser's own UI, where `document.activeElement` also reads as `<body>`,
+ * never has this component reach for its focus at all.
+ *
+ * Once that first condition holds, disabling the `<fieldset>` — which happens as soon as the status
+ * reaches `"sending"`, well before `done` or `failed` — takes the focused submit button out of the
+ * page's focus order entirely, which a browser resolves by dropping focus to `<body>`; that is the
+ * one situation this component recovers from, moving focus to the region (`tabIndex={-1}`, so it can
+ * hold focus without joining the tab order) and, in the same breath, clearing the flag that let it
+ * happen. Clearing it is what keeps a visitor who has since clicked on plain text — which also lands
+ * focus on `<body>` — and moved on to reading something else from being pulled back to this form
+ * a second time, once the same submit later reaches `done` or `failed`: without that, the effect
+ * would see the flag still set on that later run too, "recovering" focus a visitor had already,
+ * deliberately, put somewhere else.
  */
 export function EnhancedForm(
   {
@@ -239,6 +245,14 @@ export function EnhancedForm(
     if (!focusInFormAtSubmitRef.current) return
     if (globalThis.document?.activeElement === globalThis.document?.body) {
       regionRef.current?.focus()
+      // A one-time recovery, not a standing claim on the visitor's focus for the rest of this
+      // submit's lifecycle. This effect re-runs on the *next* status change too — disabling the
+      // fieldset for "sending" already drops focus to <body> in this browser, so the region is
+      // recovered there, before the same submit ever reaches "done" or "failed" — and without
+      // clearing the flag here, that second run would see it still set and pull focus back again
+      // for a visitor who has, in between, deliberately clicked on plain text (landing on <body>
+      // exactly the way disabling a control does) and scrolled away to read something else.
+      focusInFormAtSubmitRef.current = false
     }
   }, [status])
 

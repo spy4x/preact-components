@@ -601,12 +601,15 @@ message — exactly what an always-present region exists to avoid. The region hi
 whatever that slot's own copy says, so a caller whose `done` copy repeats the region's own default
 is not shown the same sentence twice; a status with no slot of its own — the default disabled
 `<fieldset>`, or `ContactForm`'s un-slotted `"failed"` — still shows the region, since nothing else
-on screen carries the message then. Focus moves to the region only when both hold: focus was inside
-this form the moment the visitor submitted — a real click or keypress on the submit button leaves it
-there, a `form.requestSubmit()` called from outside the form, or a submit that started while focus
-was already elsewhere, does not — and the browser has since dropped focus to `<body>`, which is what
-disabling or removing the control the visitor pressed does. A submit nobody focused, or a visitor
-who has since moved focus somewhere specific of their own accord, is never pulled back.
+on screen carries the message then. Focus moves to the region only when both hold, and only once per
+submit: focus was inside this form the moment the visitor submitted — a real click or keypress on
+the submit button leaves it there, a `form.requestSubmit()` called from outside the form, or a
+submit that started while focus was already elsewhere, does not — and the browser has since dropped
+focus to `<body>`, which is what disabling the fieldset for `"sending"` does. The moment that recovery
+happens, the first condition is cleared, so a visitor who then clicks on plain text — landing on
+`<body>` again — and moves on to reading something else is not pulled back a second time once the
+same submit later reaches `done` or `failed`. A submit nobody focused, or a visitor who has moved
+focus somewhere specific of their own accord, is never pulled back at all.
 
 `NewsletterForm` (one email field) and `ContactForm` (name, email, message) are built on this, each
 with an optional `honeypot` prop: an off-screen field simple bots fill in, `hp-field` by name and
