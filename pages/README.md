@@ -162,9 +162,9 @@ A link the resolver would not accept fails the build rather than shipping, and i
 checks the same property on the artefact that is actually served, and `src/route-echo.test.ts`
 exercises the reader against a missing echo, a malformed payload and a tampered href.
 
-Nothing reads the echo at runtime: it is a few kilobytes of JSON in a document that already ships
-the whole catalogue prerendered, and is small next to it — the build's own printed byte size is the
-number to trust, not one typed here.
+Nothing reads the echo at runtime: it is about ten kilobytes of JSON in a document that already
+ships the whole catalogue prerendered, and is small next to it — the build's own printed byte size
+is the number to trust, not one typed here.
 
 ## Deploy
 

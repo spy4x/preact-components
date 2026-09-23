@@ -31,10 +31,12 @@ deno add jsr:@preact-components/ui-guide  # the live component catalogue, as a c
 ```
 
 Reading each package's own `deno.json`: `system` and `ui` both import `cn` and `icons`; `ui` also
-imports `signals` (its toast port); `crud` imports `ui`, `cn`, `icons` and `signals`; `ui-guide`
-imports all of those plus `charts`. `cn`, `icons`, `signals`, `theme` and `charts` import no
-sibling package. JSR resolves a package's own dependencies the way npm does, so installing `ui`
-also resolves `cn` and `icons` — neither needs adding by hand.
+imports `signals`, for its toast port and, since `DataTable` (#231), for `table-state`; `crud`
+imports `ui`, `cn`, `icons` and `signals`; `ui-guide` imports `ui`, `cn`, `icons`, `signals` and
+`charts` the same way, plus `crud` and `system` directly for their catalogue sections — the full
+set a `ui-guide` install resolves. `cn`, `icons`, `signals`, `theme` and `charts` import no sibling
+package. JSR resolves a package's own dependencies the way npm does, so installing `ui` also
+resolves `cn` and `icons` — neither needs adding by hand.
 
 For the compiled Tailwind stylesheet — the tokens and design-system classes every component here
 renders against — see [`theme/README.md`](./theme/README.md): JSR cannot export a CSS file
