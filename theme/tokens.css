@@ -6,11 +6,13 @@
  * CSS. Defaults come from the products the components were extracted from
  * (`gb`, `financy`): purple is the primary colour.
  *
- *   @import "tailwindcss";
- *   @import "@preact-components/theme/tokens.css";
- *   @import "@preact-components/theme/preset.css";
+ * This file is not an importable specifier once the package is installed — JSR does not export a
+ * CSS file as a module, so `@import "@preact-components/theme/tokens.css"` resolves nowhere for a
+ * consumer. `@preact-components/theme`'s `README.md` → "Install" has the recipe that actually
+ * compiles: it splices this file's text, exported as `TOKENS_CSS`, into a Tailwind build. An app
+ * that keeps its own copy of this file (vendored, not installed) can still `@import` it directly,
+ * with an override written after it so it wins the cascade:
  *
- *   /* Override after tokens.css so these win the cascade. *\/
  *   :root {
  *     --color-primary: oklch(0.55 0.18 255);
  *   }

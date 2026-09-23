@@ -3,19 +3,17 @@
  *
  * The design system itself is two plain CSS files, `tokens.css` and `preset.css` (see
  * `README.md`), and JSR refuses a CSS file as a package export: "Expected a JavaScript or
- * TypeScript module, but identified a Css module." The stylesheets therefore ship as ordinary
- * files inside the published package rather than as `deno.json` `exports` entries, and this
- * module is the one export the package has — the two constants below resolve to wherever the
- * package installer actually put those files, in the JSR cache or in `node_modules`, so a
- * consumer's own build step can find them without hard-coding a path into a dependency's
- * internals.
+ * TypeScript module, but identified a Css module." A JSR-installed copy of this package cannot be
+ * read by a `file:` path either — `import.meta.url` inside a module served from the registry is
+ * the registry's own `https:` address, not a location on disk, so there is no path a consumer
+ * could resolve a sibling file against even if `exports` allowed pointing at one.
  *
- * `README.md` → "Install" says exactly how a Tailwind 4 build turns these into the two
- * `@import`s the design system needs.
+ * The two stylesheets are exported as text instead. `TOKENS_CSS` and `PRESET_CSS` are generated
+ * from `tokens.css`/`preset.css` by `generate.ts` (`deno task --cwd theme generate`), so the
+ * shipped constant and the file it came from cannot drift apart by hand — `css-text.test.ts`
+ * fails if they ever do. `README.md` → "Install" has the Tailwind 4 recipe that turns these two
+ * strings into the compiled design system.
  */
 
-/** Resolved location of `tokens.css`, wherever this package is installed. */
-export const TOKENS_CSS_URL: URL = new URL("./tokens.css", import.meta.url)
-
-/** Resolved location of `preset.css`, wherever this package is installed. */
-export const PRESET_CSS_URL: URL = new URL("./preset.css", import.meta.url)
+export { PRESET_CSS } from "./preset-css.ts"
+export { TOKENS_CSS } from "./tokens-css.ts"

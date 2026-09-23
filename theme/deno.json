@@ -3,29 +3,40 @@
   "version": "0.1.0",
   "exports": {
     // JSR refuses a CSS file as an export ("Expected a JavaScript or TypeScript module, but
-    // identified a Css module"). `tokens.css` and `preset.css` still ship inside the published
-    // package — see `publish.exclude` below, which does not touch them — but the one thing this
-    // map can point at is `+index.ts`, which resolves their location for a consumer's build step.
-    // `README.md` → "Install" says how.
+    // identified a Css module"), and a JSR-installed module cannot read a sibling file by a
+    // `file:` path either (its `import.meta.url` is the registry's own `https:` address). So
+    // `tokens.css`/`preset.css` still ship inside the published package — see `publish.exclude`
+    // below, which does not touch them — but the one thing this map can point at is `+index.ts`,
+    // which exports their text as generated string constants. `README.md` → "Install" says how a
+    // consumer turns those into a compiled stylesheet.
     ".": "./+index.ts"
   },
   "publish": {
     // Dev-only: `smoke.test.ts` and `load-stylesheet.test.ts` compile the shipped CSS with the
     // real Tailwind compiler to prove it emits the right classes, and `load-stylesheet.ts` is the
     // reader that lets them do that without a Vite or PostCSS toolchain (its own JSDoc already
-    // says it "is a test helper, not part of the package's public surface"). None of it is
-    // reachable from `exports`, and a published consumer never runs it.
+    // says it "is a test helper, not part of the package's public surface"). `generate.ts` is the
+    // script that writes `tokens-css.ts`/`preset-css.ts`, not something a consumer ever runs, and
+    // `css-text.test.ts` only guards that generation step. None of it is reachable from
+    // `exports`, and a published consumer never runs any of it.
     "exclude": [
+      "css-text.test.ts",
+      "generate.ts",
       "integration/"
     ]
   },
   "tasks": {
-    // This package alone. The workspace `test` task covers these suites too —
+    // This package alone. The workspace `test` task covers this suite too —
     // `deno test` discovers every member — with the same two grants, which are
     // as narrow as the suite allows: the compile suites read their own sources
     // and the Deno npm cache for the pinned Tailwind compiler. Nothing here
     // needs `net`, `run` or `write`, so `-A` was over-broad. `--allow-env`
     // stays only to keep this task the same command CI runs.
-    "test": "deno test --no-prompt --allow-read --allow-env integration"
+    "test": "deno test --no-prompt --allow-read --allow-env .",
+    // Rewrites tokens-css.ts/preset-css.ts from tokens.css/preset.css, then formats the result —
+    // generate.ts writes plain source, and deno fmt is the arbiter of its final shape, the same as
+    // for hand-written code. Run after editing either CSS file; see generate.ts's own JSDoc and
+    // css-text.test.ts.
+    "generate": "deno run --allow-read --allow-write generate.ts && deno fmt tokens-css.ts preset-css.ts"
   }
 }
