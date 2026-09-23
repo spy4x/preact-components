@@ -189,10 +189,15 @@ async function refForwardingChecks(devtools: Devtools): Promise<void> {
     const target = `${card} [data-e2e="ref-target"]`
     const trigger = `${card} [data-e2e="ref-focus"]`
 
-    const before = await devtools.evaluate<boolean>(
-      `document.activeElement === document.querySelector('${target}')`,
-    )
-    await devtools.evaluate<null>(`(document.querySelector('${trigger}').click(), null)`)
+    const before = await devtools.evaluate<{ found: boolean; onTarget: boolean }>(`(() => {
+      return {
+        found: document.querySelector('${trigger}') !== null,
+        onTarget: document.activeElement === document.querySelector('${target}'),
+      }
+    })()`)
+    // `?.click()`, not `.click()`: a renamed or missing trigger has to fail this one named check,
+    // not throw a page exception that would end the rest of this file's checks along with it.
+    await devtools.evaluate<null>(`(document.querySelector('${trigger}')?.click(), null)`)
     const after = await devtools.evaluate<{ onTarget: boolean; label: string }>(`(() => {
       const active = document.activeElement
       return {
@@ -203,8 +208,10 @@ async function refForwardingChecks(devtools: Devtools): Promise<void> {
 
     check(
       `${name} forwards its ref to the native element, so "Focus via ref" can focus it`,
-      !before && after.onTarget,
-      before
+      before.found && !before.onTarget && after.onTarget,
+      !before.found
+        ? `the ${card} card has no [data-e2e="ref-focus"] trigger to click`
+        : before.onTarget
         ? "the target already had focus before the trigger was clicked, so this proves nothing"
         : after.onTarget
         ? "clicking the trigger moved focus onto the native element through the ref"

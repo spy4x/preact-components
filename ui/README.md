@@ -10,6 +10,11 @@ Preact + Tailwind primitives extracted from `gb`, `financy` and `offer-lens`.
   handful of glyphs are inline SVG.
 - **Server-renderable.** `document`, `navigator` and timers are touched inside effects or event
   handlers only.
+- **One Preact option hook, for four components' refs.** Importing `Input`, `Button`, `Checkbox`
+  or `Radio` installs `./forward-ref.ts`'s hook on Preact's shared `options` object, which is what
+  lets each of them forward the `ref` it is given to the native element it renders instead of
+  Preact applying it to the component itself. It acts only on those four; nothing else in this
+  package or a caller's own markup is affected.
 
 ## Components
 

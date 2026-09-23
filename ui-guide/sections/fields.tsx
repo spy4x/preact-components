@@ -176,7 +176,11 @@ function RadioGroupDemo() {
  *
  * The "Focus via ref" button proves `Input` forwards its `ref` to the native `<input>`: the ref
  * would otherwise resolve to the component instance, and `.focus()` on that throws rather than
- * moving focus — `pages/checks/ui.ts` drives this button and reads `document.activeElement`.
+ * moving focus — `pages/checks/ui.ts` drives this button and reads `document.activeElement`. A
+ * button, rather than the check reading `emailRef.current` directly, because the check runs
+ * against the page over the DevTools protocol, with no access to this closure's own `emailRef`
+ * variable — the only thing it can do is drive something the page itself wired the ref through,
+ * the same way a real caller would.
  */
 function InputDemo() {
   const email = useSignal("")
