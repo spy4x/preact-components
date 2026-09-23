@@ -185,7 +185,7 @@ export function demoHref(sectionId: SectionId, name: string): string {
 /**
  * The route table for a set of sections: every section's route, then every demo's.
  *
- * This is what `pages/src/document.ts` embeds in the single `index.html` and what `pages/build.ts`
+ * This is what `pages/src/document.tsx` embeds in the single `index.html` and what `pages/build.ts`
  * re-reads out of the emitted document, so the links the navigation writes are checked against the
  * resolver that has to accept them. Nothing reads it at runtime — the cost of the echo is a few
  * kilobytes of JSON in the document, paid for a build that cannot ship a link the page would not
