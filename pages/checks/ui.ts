@@ -4556,11 +4556,13 @@ async function outsideClickCheck(devtools: Devtools): Promise<void> {
 
   const opened = await openPickerPanel(devtools)
   // Opening the panel moves focus into it, and the panel is inline rather than an overlay, so
-  // focus-follow scrolling can carry the viewport away from the summary that was centred before the
-  // panel opened — measured: without re-centring here, the aim below landed on a point below the
-  // viewport more often than not. Re-scrolling the actual click target after the thing that moved the
-  // page, then waiting for that scroll to finish, is the shape `#238` and `#225` both point at: aim
-  // only once the page has stopped moving, at the element that is actually going to be clicked.
+  // focus-follow scrolling can in principle carry the viewport away from the summary that was
+  // centred before the panel opened. This re-centre is a precaution, not a proven fix: one run
+  // during this check's development did land the aim below the viewport without it, but a later
+  // review of this file removed it and saw three passing runs in a row on the same code, so the
+  // failure was not reproduced on demand either way. Kept because it costs one more settle here and
+  // nothing at all when the panel never moved the page — cheaper than being wrong about which of the
+  // two runs was the fluke.
   const target = `document.querySelector('#demo-DateRangePicker [data-e2e="usage"] summary')`
   await devtools.evaluate<null>(`(${target}?.scrollIntoView({ block: "center" }), null)`)
   await settledScroll(devtools)
