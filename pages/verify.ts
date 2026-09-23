@@ -327,6 +327,17 @@ const PHASE_DEADLINE_MS = 5 * 60_000
  * attempt tracked for the whole duration of its own cleanup instead of only until this function
  * decided to start tearing it down.
  *
+ * The `teardownStarted` check below closes a third gap, found the same way: `withOneRetry`'s retry —
+ * spawning attempt 2 after attempt 1 fails — and a `teardown()` call racing it over the very same
+ * failed attempt's cleanup are two `.then()`s on one shared promise, and the retry was measured to
+ * consistently run *after* `teardown()`'s own continuation had already finished and control had
+ * already reached `Deno.exit(1)`. A process spawned at that point has nothing left holding it, however
+ * promptly `trackAttempt` tries to tear it down — reproduced live: a fake browser that never answers,
+ * a SIGTERM roughly fifteen seconds into attempt 1, and attempt 2's own fake browser process still
+ * running, under a fresh profile, after `verify.ts` itself had already exited. Refusing to spawn
+ * anything once teardown has begun is what actually closes it, rather than trying to win a race that
+ * was already lost by the time this function would have started.
+ *
  * @param chromium Executable to launch.
  * @param lifecycle Tracks this attempt so an external teardown can reach it.
  * @returns A live session, or the reason this attempt did not produce one.
@@ -335,6 +346,10 @@ async function launchOnce(
   chromium: string,
   lifecycle: ChromiumLifecycle,
 ): Promise<AttemptResult<ChromiumSession>> {
+  if (lifecycle.teardownStarted) {
+    return { ok: false, reason: "teardown already started — the browser phase is exiting" }
+  }
+
   const profile = await Deno.makeTempDir({ prefix: "pages-chromium-" })
   let process: Deno.ChildProcess | undefined
 

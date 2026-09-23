@@ -242,13 +242,32 @@ export class ChromiumLifecycle {
   #teardownStarted = false
 
   /**
+   * Whether `teardown()` has already been called. `launchOnce` checks this before starting a new
+   * attempt — a retry that began after a signal has already started tearing everything down would
+   * otherwise spawn a process nothing is left holding: `withOneRetry`'s continuation that spawns
+   * attempt 2 runs from the very same microtask queue as `teardown()`'s own `await this.endChromium()`
+   * (both are `.then()`s on the one shared cleanup promise attempt 1 started), and it was found, by
+   * running the two paths for real, to consistently resolve *after* `teardown()`'s call had already
+   * finished and handed control back to the signal handler bound to `Deno.exit(1)` — so no amount of
+   * awaiting inside `trackAttempt`'s own late-teardown branch (see below) can be relied on to run
+   * before the process exits. Refusing the attempt before it ever spawns anything is what actually
+   * closes that race, rather than racing a cleanup against an exit that has already been decided.
+   */
+  get teardownStarted(): boolean {
+    return this.#teardownStarted
+  }
+
+  /**
    * Record the process and profile a launch attempt just spawned, before either of its own bounded
    * waits.
    *
-   * If `teardown()` has already begun — the losing side of the phase deadline's `Promise.race`
-   * reaching a second launch attempt after the deadline branch already tore down and moved on, say —
-   * this attempt is torn down immediately instead of being tracked as live: nothing will ever call
-   * `teardown()` again on its behalf, so leaving it merely tracked would orphan it for good.
+   * `launchOnce` refuses to start a new attempt once `teardownStarted` is true (see its own doc), so
+   * in practice this branch only guards a window narrower than any signal or scheduler on this host
+   * was ever measured to land in: `teardown()` beginning in the brief gap between `launchOnce`'s own
+   * `teardownStarted` check and this call, inside `Deno.makeTempDir`'s await. A best-effort,
+   * fire-and-forget backstop for that gap — nothing awaits it, so it is not relied on for the
+   * retry-after-full-failure race `launchOnce`'s guard exists to close; see that guard's own doc for
+   * why an awaited version of this branch cannot be made to close that race reliably either.
    */
   trackAttempt(attempt: InFlightAttempt): void {
     if (this.#teardownStarted) {
@@ -261,8 +280,8 @@ export class ChromiumLifecycle {
   /**
    * Record a finished session; clears whatever in-flight attempt produced it.
    *
-   * Same late-teardown guard as {@link trackAttempt}, for the same reason: a session that only comes
-   * into being after `teardown()` already ran its course would otherwise never be torn down at all.
+   * Same late-teardown backstop as {@link trackAttempt}, for the same narrow window and the same
+   * reason.
    */
   trackSession(session: ChromiumSession): void {
     if (this.#teardownStarted) {

@@ -202,6 +202,17 @@ describe("ChromiumLifecycle", () => {
     expect(second.killedWith).toEqual(["SIGKILL"])
   })
 
+  it("reports teardownStarted as false until teardown() is called, then true", () => {
+    const lifecycle = new ChromiumLifecycle()
+    expect(lifecycle.teardownStarted).toBe(false)
+
+    // Synchronous, before the returned promise is even awaited: `launchOnce` reads this to decide
+    // whether to start a new attempt at all, and needs the true answer immediately, not once
+    // teardown's own cleanup happens to finish.
+    void lifecycle.teardown(undefined, FAST_GRACEFUL_CLOSE_MS)
+    expect(lifecycle.teardownStarted).toBe(true)
+  })
+
   it("gives a second caller the first call's own completion, instead of returning early", async () => {
     const lifecycle = new ChromiumLifecycle()
     const process = fakeProcess()
