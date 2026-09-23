@@ -1,4 +1,4 @@
-import { check, type Devtools, poll, pressKey } from "./harness.ts"
+import { check, type Devtools, poll, pressKey, settledScroll } from "./harness.ts"
 
 /** One side of a dropdown's open/closed state. */
 interface State {
@@ -476,26 +476,6 @@ interface Spot {
   insidePanel: boolean
   onItem: boolean
   tag: string
-}
-
-/**
- * Wait until the page has stopped scrolling.
- *
- * The click point is computed in one protocol round trip and dispatched in the next, so anything
- * that moves the page in between turns a correct measurement into a click that lands elsewhere.
- * `focus()` scrolls an element into view when it has to, and this component moves focus from an
- * effect and from a deferred read, so a scroll can arrive later than the call that caused it.
- *
- * @param devtools The connected session.
- */
-async function settledScroll(devtools: Devtools): Promise<void> {
-  let previous = Number.NaN
-  await poll(async () => {
-    const current = await devtools.evaluate<number>(`Math.round(globalThis.scrollY)`)
-    const settled = current === previous
-    previous = current
-    return settled
-  }, 3_000)
 }
 
 /**
@@ -4575,7 +4555,15 @@ async function outsideClickCheck(devtools: Devtools): Promise<void> {
   await pointerToCorner(devtools)
 
   const opened = await openPickerPanel(devtools)
+  // Opening the panel moves focus into it, and the panel is inline rather than an overlay, so
+  // focus-follow scrolling can carry the viewport away from the summary that was centred before the
+  // panel opened — measured: without re-centring here, the aim below landed on a point below the
+  // viewport more often than not. Re-scrolling the actual click target after the thing that moved the
+  // page, then waiting for that scroll to finish, is the shape `#238` and `#225` both point at: aim
+  // only once the page has stopped moving, at the element that is actually going to be clicked.
   const target = `document.querySelector('#demo-DateRangePicker [data-e2e="usage"] summary')`
+  await devtools.evaluate<null>(`(${target}?.scrollIntoView({ block: "center" }), null)`)
+  await settledScroll(devtools)
   const aim = await aimAt(devtools, target)
   const landing = await clickAt(devtools, aim, target)
   const closed = await poll(
