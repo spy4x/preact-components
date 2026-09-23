@@ -10,7 +10,14 @@ import { setField } from "./field.tsx"
 import type { CrudEditorStore } from "./store.ts"
 import { formatTimestamp, timeAgo } from "./time-ago.ts"
 import type { CrudRow, DeletionDependency, StoreErrorLike } from "./types.ts"
-import { isValid, sameValidation, validateSchema, type ValidationModel } from "./validation.ts"
+import {
+  type FieldIssue,
+  FORM_FIELD,
+  isValid,
+  sameValidation,
+  validateSchema,
+  type ValidationModel,
+} from "./validation.ts"
 
 /**
  * The six-part editor harness, once.
@@ -253,6 +260,16 @@ export type CrudEditorProps<M extends CrudRow> = CrudEditorBaseProps<M> & CrudEd
  * the busy flag watches, and what happens after a successful submit. Everything else — the
  * validation loop, the archive toggle, the soft delete that is an update and never a `DELETE`, the
  * blocking-dependency list — is shared.
+ *
+ * One issue type has no field row to appear beside: a `schema` rule that compares two fields, or a
+ * value arktype rejects before it becomes an object. `validateSchema` files that under
+ * {@link FORM_FIELD}, and this is where it is shown — a live region above Save, present on
+ * every render (empty until such an issue arrives, the same "created once, filled later" shape
+ * `Combobox` uses, so assistive technology announces the message rather than staying silent about a
+ * region that arrived with its text already inside it) and always named by Save's
+ * `aria-describedby`, so a screen-reader user who lands on the disabled button — Tab skips it, but
+ * browse mode does not — is told why. An issue here always fails {@link isValid}, the same as any
+ * field's.
  */
 export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>) {
   const {
@@ -276,6 +293,7 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>) {
   const error = useSignal("")
   const blocked = useSignal<DeletionDependency[]>([])
   const archiveId = useId()
+  const formIssueId = useId()
 
   /** Copy the row out of the store into the form. Runs once, and again after a successful update. */
   function loadFromStore(): void {
@@ -326,6 +344,14 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>) {
     blocked: blocked.value.length,
   })
 
+  // An issue with no field of its own — a cross-field `.narrow`, or a value that was never an
+  // object — is filed under `FORM_FIELD` rather than on one of the rows `children` renders, so
+  // there is no field row to show it next to. This is the one place it is shown.
+  const formIssue = vl.value[FORM_FIELD]
+  const formMessages = formIssue === undefined
+    ? []
+    : Object.values(formIssue).filter((issue): issue is FieldIssue => issue !== undefined)
+
   /**
    * Turn the soft-delete column on, or off.
    *
@@ -338,8 +364,34 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>) {
     setField(vm, "deletedAt", next.deletedAt)
   }
 
+  /**
+   * Whether the form may be saved right now, read straight off the signals rather than off `state`
+   * above.
+   *
+   * `state` is a value closed over by the render that created this `submit` function, and the
+   * button's own `disabled` attribute is the only thing that ever kept an invalid form from reaching
+   * this function — nothing inside it checked. A click on that disabled button never fires, and
+   * Enter is refused by the browser's own implicit-submission rule while no button is enabled, but a
+   * script that calls `form.requestSubmit()` or dispatches a `submit` event bypasses both and still
+   * reached `store.create`/`store.update` with data the validation model had just rejected. `.peek()`
+   * on every signal here, not `.value`: this runs inside an event handler, not a render, and reading
+   * with `.value` would subscribe the handler itself to every signal it touches for no reason.
+   */
+  function readyToSave(): boolean {
+    return editorState({
+      initialized: initialized.peek(),
+      validation: vl.peek(),
+      canChange: canChange?.() ?? true,
+      inProgress: props.mode === "add"
+        ? store.op.create.peek().inProgress
+        : store.op.update(props.editId).peek()?.inProgress === true,
+      blocked: blocked.peek().length,
+    }).saveEnabled
+  }
+
   async function submit(event: Event): Promise<void> {
     event.preventDefault()
+    if (!readyToSave()) return
 
     const outcome = props.mode === "add"
       ? await submitEditor({ mode: "add", store, value: vm.value })
@@ -369,6 +421,21 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>) {
               {props.children({ vm, vl })}
             </div>
             {props.notice?.({ vm, vl })}
+            {
+              /*
+              The form-level live region, rendered on every render and empty until an issue with no
+              field of its own arrives — the same shape `Combobox` and `Toastr` use: a region created
+              together with its text announces nothing, because assistive technology announces a
+              *change* to a region it is already watching, so the empty container has to exist first
+              and gain its text on a later render. `aria-describedby` on Save points here always, not
+              only while a message is present, so the association never has to be added and removed.
+            */
+            }
+            <div id={formIssueId} role="status" aria-live="polite" aria-atomic="true">
+              {formMessages.map((issue, index) => (
+                <p key={index} class="text-sm text-red-700 mt-2">{issue.message}</p>
+              ))}
+            </div>
           </div>
           {(canChange?.() ?? true) && (
             <div class="card-footer">
@@ -398,7 +465,12 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>) {
               )}
 
               <a href={cancelHref} class="btn btn-link ml-auto">{cancelLabel ?? "Cancel"}</a>
-              <button type="submit" class="btn btn-primary" disabled={!state.saveEnabled}>
+              <button
+                type="submit"
+                class="btn btn-primary"
+                aria-describedby={formIssueId}
+                disabled={!state.saveEnabled}
+              >
                 {state.busy && <IconLoading />}
                 Save
               </button>
