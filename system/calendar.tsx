@@ -705,7 +705,6 @@ export function Calendar(
           // A move to another element *inside* this grid needs no guard of its own, which was
           // measured rather than assumed: `focusin` follows immediately and puts `focusHere`
           // back, so an early return for it is a line nothing can tell from its absence.
-          // Only a departure the reader chose ends the calendar's claim on the focus.
           if (committing.current) return
           focusHere.current = null
         }}

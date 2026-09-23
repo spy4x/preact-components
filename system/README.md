@@ -193,7 +193,7 @@ last press left the reader. What a burst does therefore depends on whether the o
 by the time the next key arrives, and both of the catalogue's late owners are reachable from the
 card:
 
-- **An owner that answers within the same task** — in the render the call triggers, or on a
+- **An owner that answers before the next key is delivered** — in the render the call triggers, or on a
   microtask — has moved the reader before the next key is delivered, so the presses accumulate:
   two Page Downs move two months, three move three, and Page Down then Page Up brings the reader
   back to the month they started on.
