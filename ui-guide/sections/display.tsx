@@ -285,18 +285,13 @@ type DataTableSortKey = "date" | "merchant" | "amount"
  * URL parameter or the store field an application would keep them in — `DataTable` holds neither
  * itself.
  *
- * The sort state is *not* round-tripped through this page's address bar. The catalogue's own
- * navigation is a hash route (`ui-guide/routes.ts`), which lives in a different part of the URL
- * than `sort` would and would not collide with it — but the URL-filter demo `signals/`'s own
- * browser checks (`pages/checks/signals.ts`) already drives `history` extensively on this same
- * page, asserting exact `history.length` deltas and a fixed number of `pushState`/`replaceState`
- * events per action. A second, independent writer to `history` mounted on the same page — which is
- * what binding this card to the address bar would be — risks changing those counts for reasons
- * that have nothing to do with either card, and fixing that collision would mean touching
- * `pages/src`, outside this change's scope. `parseSort(serializeSort(x)) === x` is proven instead,
- * at the level table-state itself works at, in `ui/data-table.test.tsx`; `data-e2e="data-table-sort"`
- * below is what a browser check reads to prove the component side of the same round trip — the
- * signal changing when a header is pressed — without needing the address bar at all.
+ * The sort state is *not* round-tripped through this card's address bar; a plain signal stands in
+ * for it here. A catalogue card writing to `location` would be writing to whatever host
+ * application embeds the catalogue, not to a page this library owns, which is the same reason
+ * `useUrlFilters` itself is demonstrated in `pages/src/url-filters.tsx` rather than as a card. The
+ * URL round trip this component actually supports is demonstrated the same way, next to that demo:
+ * `pages/src/data-table-sort.tsx` binds `?sort=` through `useUrlFilters`, and `pages/checks/ui.ts`
+ * drives it in a browser.
  */
 function DataTableDemo() {
   const sort = useSignal<SortRule<DataTableSortKey>[]>([])

@@ -12,8 +12,9 @@
  * neither then has to be handed state by the other — and the rail, which is also what writes the
  * URLs, is the one that owns the effect that marks, scrolls and titles.
  *
- * Below the catalogue sits {@link UrlFilterDemo}, the one demo that is not a card: `useUrlFilters`
- * is a hook bound to the address bar, and a page is what it needs to be shown in.
+ * Below the catalogue sit two demos that are not cards, because each needs a page that owns an
+ * address: {@link UrlFilterDemo}, `useUrlFilters` bound directly to filter signals, and
+ * {@link DataTableSortDemo}, the same hook underneath `DataTable`'s own `sort` prop.
  */
 
 import { IconGitHub } from "@preact-components/icons"
@@ -36,6 +37,7 @@ import {
 } from "@preact-components/ui-guide/routes"
 import { cn } from "@preact-components/cn"
 import { useEffect, useState } from "preact/hooks"
+import { DataTableSortDemo } from "./data-table-sort.tsx"
 import { demoElementId } from "./deep-link.ts"
 import { PAGE_TITLE, REPOSITORY } from "./site.ts"
 import { UrlFilterDemo } from "./url-filters.tsx"
@@ -84,6 +86,7 @@ export function App() {
         </div>
         <div class="pt-10">
           <UrlFilterDemo />
+          <DataTableSortDemo />
         </div>
       </main>
       <SiteFooter />
