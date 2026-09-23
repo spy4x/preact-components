@@ -15,17 +15,9 @@ import type { RouteTable } from "@preact-components/ui-guide/routes"
 import { renderToString } from "preact-render-to-string"
 import { SEOHead } from "@preact-components/system/seo-head"
 import { renderRouteTable } from "./route-echo.ts"
-import { FAVICON, PAGE_DESCRIPTION, PAGE_TITLE, REPOSITORY } from "./site.ts"
+import { FAVICON, PAGE_DESCRIPTION, PAGE_TITLE } from "./site.ts"
 
-/**
- * The trail's root entry. The demo is one HTML document, so there is no page hierarchy under it —
- * the second and last crumb is the page itself, supplied by `renderDocument` from the site's own
- * title. Linking the root entry to the GitHub repository rather than to the page's own canonical
- * address is a deliberate choice: the page *is* the site's only page, so a crumb pointing at "the
- * site" and a crumb pointing at "the page" would otherwise resolve to the identical URL, which is
- * not a trail worth publishing. The repository is the one other address that legitimately answers
- * "where does 'preact-components' live".
- */
+/** Feeds `og:site_name`. The demo has no other user-visible string of its own to name the site. */
 const SITE_NAME = "preact-components"
 
 export interface DocumentOptions {
@@ -81,16 +73,18 @@ export function renderDocument(
   // resolved and cleaned rather than concatenated straight into the tag set.
   const canonical = `${origin}${base}`
 
+  // No `crumbs`: the demo is one HTML document under hash routing, so it has no page hierarchy to
+  // describe, and it shows no breadcrumb trail anywhere in its markup. `SEOHead` emits no
+  // `BreadcrumbList` for fewer than two crumbs, which is the honest state for a page like this one
+  // — a root entry pointing anywhere else (the GitHub repository, say) would tell a search engine
+  // the page sits under a site it does not sit under, and structured data is supposed to describe
+  // content the page actually shows.
   const seoHead = renderToString(
     <SEOHead
       title={PAGE_TITLE}
       description={PAGE_DESCRIPTION}
       canonical={canonical}
       siteName={SITE_NAME}
-      crumbs={[
-        { name: SITE_NAME, href: REPOSITORY },
-        { name: PAGE_TITLE },
-      ]}
     />,
   )
 

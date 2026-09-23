@@ -7,7 +7,7 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import type { RouteTable } from "@preact-components/ui-guide/routes"
-import { PAGE_DESCRIPTION, PAGE_TITLE, REPOSITORY } from "./site.ts"
+import { PAGE_DESCRIPTION, PAGE_TITLE } from "./site.ts"
 import { renderDocument } from "./document.tsx"
 
 /** No sections or demos: nothing under test here reads the route table's contents. */
@@ -23,11 +23,12 @@ const OPTIONS = {
 }
 
 describe("renderDocument", () => {
-  it("renders the title and description as plain tags", () => {
+  it("renders the title, description and site name as plain tags", () => {
     const html = renderDocument(OPTIONS)
 
     expect(html).toContain(`<title>${PAGE_TITLE}</title>`)
     expect(html).toContain(`<meta name="description" content="${PAGE_DESCRIPTION}"`)
+    expect(html).toContain(`<meta property="og:site_name" content="preact-components"`)
   })
 
   it("publishes the origin and base joined as the canonical address, and reuses it for og:url", () => {
@@ -67,11 +68,9 @@ describe("renderDocument", () => {
     expect(html).not.toContain("user:pw@")
   })
 
-  it("emits a breadcrumb trail rooted at the repository, ending on the page itself", () => {
+  it("emits no JSON-LD: the demo is one page and shows no breadcrumb trail to describe", () => {
     const html = renderDocument(OPTIONS)
 
-    expect(html).toContain('"@type":"BreadcrumbList"')
-    expect(html).toContain(`"item":"${REPOSITORY}"`)
-    expect(html).toContain(`"item":"https://spy4x.github.io/preact-components/"`)
+    expect(html).not.toContain('<script type="application/ld+json">')
   })
 })
