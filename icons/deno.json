@@ -4,15 +4,37 @@
   "exports": {
     ".": "./+index.tsx"
   },
+  "imports": {
+    // Dev-only, for `provenance.ts` (issues #111, #112): compares every exported glyph's geometry
+    // against the icon packs the owner named as likely sources. Heroicons publishes v1 and v2 as
+    // the same npm package name at different major versions, so each needs its own import key to
+    // resolve both at once — `heroicons@1.0.6` is the last v1 release, `heroicons@2.2.0` is current
+    // v2. Feather and Lucide are compared because the earlier shape-based audit (#111) identified
+    // some glyphs as those by eye. None of these four reach a published consumer — see
+    // `publish.exclude` below and `provenance.ts`'s own JSDoc for how the comparison works.
+    "heroicons-v1/": "npm:/heroicons@1.0.6/",
+    "heroicons-v2/": "npm:/heroicons@2.2.0/",
+    "feather-icons/": "npm:/feather-icons@4.29.2/",
+    "lucide-static/": "npm:/lucide-static@1.47.0/"
+  },
+  "tasks": {
+    // Downloads four npm icon packs and compares every glyph against them, so it is deliberately
+    // outside `deno task check` (network access, and it is a one-off audit rather than a regression
+    // gate — `provenance.test.ts` covers the normalisation logic without touching the network).
+    "provenance": "deno run --allow-read --allow-net provenance.ts"
+  },
   "publish": {
-    // Nothing here is part of the public API. The two tests exercise the module and never leave
-    // this repo; `check-readme.ts`/`check-readme.test.ts` audit README.md's bookkeeping against a
-    // read-only sibling checkout outside this repository, which a published consumer has no
-    // access to and no use for.
+    // Nothing here is part of the public API. The two `check-readme` files audit README.md's
+    // bookkeeping against a read-only sibling checkout outside this repository, which a published
+    // consumer has no access to and no use for. `provenance.ts`/`provenance.test.ts` are the same
+    // shape of thing for the icon packs above: a dev-time audit script and its offline-safe tests,
+    // neither reachable from `exports`.
     "exclude": [
       "+index.test.ts",
       "check-readme.ts",
-      "check-readme.test.ts"
+      "check-readme.test.ts",
+      "provenance.ts",
+      "provenance.test.ts"
     ]
   }
 }
