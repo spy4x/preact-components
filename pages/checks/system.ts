@@ -158,9 +158,9 @@ function clickBarButton(devtools: Devtools, label: string, bar = BAR): Promise<b
  * `AuthForm` runs first, and its last step is the reason the other three come after it rather than
  * around it: proving that a submit survives disabled script execution means disabling script
  * execution and forcing a fresh, unhydrated load of the page, and every check in this file after
- * that needs the hydrated page back. `authFormNoScriptChecks` re-enables scripts, navigates back to
- * where the run was and waits for the same `data-hydrated` marker `verify.ts` waits for at startup
- * before it returns — nothing in `authFormChecks` after it, and nothing in this function after
+ * that needs the hydrated page back. `authFormNoScriptChecks` re-enables scripts, reloads the page
+ * and waits for the same `data-hydrated` marker `verify.ts` waits for at startup before it
+ * returns — nothing in `authFormChecks` after it, and nothing in this function after
  * `authFormChecks`, may run before that restoration is confirmed.
  *
  * The other three run in the stated order, and that order is the point. The service-worker block
@@ -1115,38 +1115,6 @@ async function authFormBusyChecks(devtools: Devtools): Promise<void> {
 }
 
 /**
- * A submit before the bundle has run — the gap between the page painting and hydration finishing,
- * or JavaScript off entirely — must never put the password in the address bar.
- *
- * This is the one behaviour in the package no other check in this file can reach: every one of
- * them runs against Preact's own submit handler on an already-hydrated page, and proving the
- * no-JavaScript path needs a page that never ran the bundle at all. `Emulation.
- * setScriptExecutionDisabled` buys that by disabling script execution before the next navigation.
- * `Runtime.evaluate` keeps working the whole time — DevTools reads and writes the page through its
- * own privileged channel rather than through the page's own script execution, measured here rather
- * than assumed — so this check can still fill fields, find the button and read `location.search`
- * the ordinary way even though nothing the page itself authored can run.
- *
- * The card driven is `AUTH_INTERACTIVE`: it carries callbacks and no `action`, the ordinary shape
- * of a hydrated app and the one `ui-guide/sections/system.tsx`'s own doc names for exactly this
- * reason. Its markup is prerendered — `catalogue.test.tsx` proves every card is — so the card and
- * its `<form method="post">` exist on the page in full before any script runs; only the
- * interactivity hydration would add is missing.
- *
- * The button is pressed with a real pointer for the same reason `authFormModeSwitchChecks` uses
- * one: a `.click()` run through `Runtime.evaluate` is script executing on the page's behalf where
- * genuinely none should be able to, which would make a pass here prove nothing about a visitor's
- * own tap. `location.search` is compared before and after rather than asserted empty, because an
- * earlier block in this same run may have left a query string on the page this check reloads —
- * what matters is that the press added nothing to whatever was already there.
- *
- * **This check leaves script execution disabled and the page unhydrated until its own last step**,
- * which re-enables it, navigates back to the address the run was on, and waits for the same
- * `data-hydrated` marker `verify.ts` waits for at startup. Nothing after this function may assume a
- * hydrated page unless that restoration holds — which is why it runs last of every `AuthForm`
- * check, and last of everything `systemChecks` runs.
- */
-/**
  * Wait for the next `Page.loadEventFired`, without throwing.
  *
  * Every other wait in this file goes through {@link poll}, which never throws either — a real
@@ -1168,6 +1136,48 @@ async function waitForLoad(devtools: Devtools, timeoutMs = 20_000): Promise<bool
   } catch {
     return false
   }
+}
+
+/**
+ * Wait until `scrollY` has held the same value for a full second, bounded.
+ *
+ * Written for `authFormNoScriptChecks`'s restoring reload specifically: `pages/src/app.tsx`'s
+ * route effect re-runs on every load and smoothly scrolls toward whatever card the address
+ * currently deep-links to, which can still be moving hundreds of milliseconds after the load
+ * event fires. `settleScroll` further down this file polls for two *consecutive* readings a tenth
+ * of a second apart, which is enough to catch the tail of a settling animation but not enough to
+ * rule out the coasting middle of a `scroll-behavior: smooth` one — the reading it returns can
+ * still be moving. A full second is a large enough window to run out that possibility instead of
+ * merely reducing it, and this function's caller is the one place in this file that needs that
+ * assurance rather than a numeric position.
+ *
+ * @param devtools The connected session.
+ * @param stableForMs How long `scrollY` has to stop changing before this resolves `true`.
+ * @param timeoutMs How long to keep trying before giving up and resolving `false`.
+ * @returns Whether the page held still for `stableForMs`, within `timeoutMs`.
+ */
+async function waitForScrollSettle(
+  devtools: Devtools,
+  stableForMs = 1_000,
+  timeoutMs = 20_000,
+): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs
+  let previous = -1
+  let stableSince: number | null = null
+
+  while (Date.now() < deadline) {
+    const now = await read(devtools, "Math.round(globalThis.scrollY)", -1)
+    if (now === previous) {
+      stableSince ??= Date.now()
+      if (Date.now() - stableSince >= stableForMs) return true
+    } else {
+      previous = now
+      stableSince = null
+    }
+    await new Promise((done) => setTimeout(done, 100))
+  }
+
+  return false
 }
 
 /**
@@ -1197,14 +1207,27 @@ async function waitForLoad(devtools: Devtools, timeoutMs = 20_000): Promise<bool
  * what matters is that the press added nothing to whatever was already there.
  *
  * **Everything from disabling script execution onward runs inside a `try`, and re-enabling it,
- * navigating back to the address the run was on and waiting for the `data-hydrated` marker
- * `verify.ts` waits for at startup all run inside the matching `finally`.** A throw or a stalled
- * navigation partway through the probe must not leave the page unhydrated for every check after
- * this one — measured, not assumed: a real run under machine load once left a bare `Page.navigate`
- * plus `next("Page.loadEventFired")` waiting past its timeout, which without a `finally` took the
- * whole rest of the `system` block, and the unrestored page took the next block after it too.
+ * reloading the page and waiting for the `data-hydrated` marker `verify.ts` waits for at startup
+ * all run inside the matching `finally`.** A throw or a stalled navigation partway through the
+ * probe must not leave the page unhydrated for every check after this one — measured, not assumed:
+ * a real run under machine load once left a bare `Page.navigate` plus
+ * `next("Page.loadEventFired")` waiting past its timeout, which without a `finally` took the whole
+ * rest of the `system` block, and the unrestored page took the next block after it too.
  * {@link waitForLoad} is what makes the restoration itself safe to run unconditionally — it turns
  * that same timeout into a reading rather than a second throw.
+ *
+ * **The restoring reload does not make this function's `finally` block done, because the
+ * catalogue's own route effect is not done with the page yet.** Every load — this reload included —
+ * re-runs `pages/src/app.tsx`'s route effect, which smoothly scrolls toward whatever card the
+ * address currently deep-links to, and that address still carries whatever route an earlier block
+ * left in it. Measured: several thousand pixels of scroll, still moving several hundred
+ * milliseconds after the reload's own load event. Returning while that animation is running hands
+ * the next block's own `scrollIntoView` and `focus()` calls a scroll position that keeps changing
+ * under them from a cause that has nothing to do with what they are testing — measured to turn
+ * `calendarChecks`' "no key the grid answers scrolls the page" red on code this file never
+ * touches. So the `finally` block's last step waits for `scrollY` to hold still for about a
+ * second, bounded, and records its own named check when it never does, rather than letting a
+ * moving page pass silently into whatever runs next.
  */
 async function authFormNoScriptChecks(devtools: Devtools): Promise<void> {
   const restoreUrl = await read(devtools, "location.href", "")
@@ -1278,6 +1301,18 @@ async function authFormNoScriptChecks(devtools: Devtools): Promise<void> {
       await devtools.send("Page.navigate", { url: restoreUrl }).catch(() => {})
       await waitForLoad(devtools)
     }
+
+    // Last, and inside the same `finally`: the catalogue's own deep-link scroll, restarted by the
+    // reload above, has to actually stop before this function hands the page to whatever runs
+    // next — see this function's own doc for what happens when it does not.
+    const scrollSettled = await waitForScrollSettle(devtools)
+    check(
+      "the page's own route scroll settles after the restoring reload",
+      scrollSettled,
+      scrollSettled
+        ? "scrollY held still for a full second before this check returned"
+        : "scrollY never held still — a later block may have read it while it was still moving",
+    )
   }
 
   check(
@@ -1299,7 +1334,7 @@ async function authFormNoScriptChecks(devtools: Devtools): Promise<void> {
     "the page rehydrates once script execution is re-enabled again",
     rehydrated,
     rehydrated
-      ? "data-hydrated set again after navigating back to where the run was"
+      ? "data-hydrated set again after the restoring reload"
       : "the page never rehydrated after script execution was re-enabled",
   )
 }
