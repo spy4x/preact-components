@@ -10,11 +10,15 @@ Preact + Tailwind primitives extracted from `gb`, `financy` and `offer-lens`.
   handful of glyphs are inline SVG.
 - **Server-renderable.** `document`, `navigator` and timers are touched inside effects or event
   handlers only.
-- **One Preact option hook, for four components' refs.** Importing `Input`, `Button`, `Checkbox`
-  or `Radio` installs `./forward-ref.ts`'s hook on Preact's shared `options` object, which is what
-  lets each of them forward the `ref` it is given to the native element it renders instead of
-  Preact applying it to the component itself. It acts only on those four; nothing else in this
-  package or a caller's own markup is affected.
+- **One Preact option hook, for four components' refs.** `./forward-ref.ts`'s hook, installed on
+  Preact's shared `options` object, is what lets `Input`, `Button`, `Checkbox` and `Radio` forward
+  the `ref` each is given to the native element it renders instead of Preact applying it to the
+  component itself. It loads with any of those four, but also with anything that pulls in
+  `button.tsx` for a reason that has nothing to do with `Button` itself — `buttonClasses`, and the
+  subpaths `confirm-dialog`, `copy-button`, `date-range-picker`, `dropdown`, `geo-button`, `modal`,
+  `on-off-buttons` and `pagination` all import it — and with the package root (`.`), which carries
+  every export. It acts only on those four components; nothing else in this package or a caller's
+  own markup is affected.
 
 ## Components
 
