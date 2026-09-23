@@ -84,8 +84,7 @@
 
     // Tailwind, pinned to the version spy4x/template builds with
     "tailwindcss": "npm:tailwindcss@4.1.12",
-    "tailwindcss/": "npm:/tailwindcss@4.1.12/",
-    "@tailwindcss/forms": "npm:@tailwindcss/forms@0.5.10"
+    "tailwindcss/": "npm:/tailwindcss@4.1.12/"
   },
   "compilerOptions": {
     // An explicit "lib" replaces Deno's default lib set, so "deno.ns" has to be
