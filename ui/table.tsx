@@ -8,6 +8,17 @@ export interface TableProps {
   bodySlots: ComponentChildren[]
   /** Optional `<tfoot>` content. */
   footerSlot?: ComponentChildren
+  /**
+   * Optional `<caption>` content, the table's accessible name.
+   *
+   * Omitted, no `<caption>` is rendered at all — a caller naming the table through
+   * `aria-label`/`aria-labelledby` on a wrapper is unaffected. `captionClass` is how a caller hides
+   * it visually (`"sr-only"`) while keeping it for assistive tech; this primitive applies no
+   * caption styling of its own beyond the browser default.
+   */
+  caption?: ComponentChildren
+  /** Extra utilities for the `<caption>`. Ignored when `caption` is omitted. */
+  captionClass?: string
   /** Sets `data-e2e` on every body row, for end-to-end selectors. */
   rowDataE2E?: string
   class?: string
@@ -24,11 +35,13 @@ const wrapper =
  * instead of overflowing the page on narrow screens.
  */
 export function Table(
-  { headerSlot, bodySlots, footerSlot, rowDataE2E, class: className }: TableProps,
+  { headerSlot, bodySlots, footerSlot, caption, captionClass, rowDataE2E, class: className }:
+    TableProps,
 ) {
   return (
     <div class={cn(wrapper, className)}>
       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
+        {caption && <caption class={captionClass}>{caption}</caption>}
         <thead class="bg-gray-50 dark:bg-gray-700">
           <tr class="*:whitespace-nowrap *:px-6 *:py-3 text-sm font-medium text-gray-900 dark:text-gray-200">
             {headerSlot}

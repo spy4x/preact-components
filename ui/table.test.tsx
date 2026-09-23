@@ -87,6 +87,19 @@ describe("Table", () => {
     expect(html).toContain("mt-8")
     expect(html).toContain("overflow-x-auto")
   })
+
+  it("renders no caption at all when none is given", () => {
+    expect(render(<Table headerSlot={header} bodySlots={[]} />)).not.toContain("<caption")
+  })
+
+  it("renders the caption before the header, with its own class", () => {
+    const html = render(
+      <Table headerSlot={header} bodySlots={[]} caption="Invoices" captionClass="sr-only" />,
+    )
+
+    expect(html).toContain('<caption class="sr-only">Invoices</caption>')
+    expect(html.indexOf("<caption")).toBeLessThan(html.indexOf("<thead"))
+  })
 })
 
 function countOccurrences(haystack: string, needle: string): number {
