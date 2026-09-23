@@ -1,12 +1,17 @@
 /**
  * `EnhancedForm` and the two forms built on it: progressive enhancement, demonstrated with cards a
  * visitor can actually break — a checkbox to simulate a failure, another to simulate a submit that
- * never resolves.
+ * never resolves, and (on `EnhancedForm`'s own card) one that throws before its first `await`.
  *
  * Every card posts to `form-demo/`, the static page `pages/build.ts` copies into the artefact
  * verbatim: with scripts on, `onSubmit` intercepts the post and none of the three cards ever
  * navigates there, but with scripts off — `pages/checks/ui.ts`'s no-JavaScript check — that is
- * exactly where the native submit lands, and the page it lands on is real enough to read.
+ * exactly where the native submit lands. **Only `pages/serve.ts`, the local server `verify` drives,
+ * answers a POST there** — `serve.ts` never reads `request.method` at all, so it hands back the
+ * same file for either verb. The published GitHub Pages site is a static host and answers a POST
+ * with `405 Method Not Allowed`; nothing here or in the no-JavaScript check claims otherwise, and
+ * the check itself reads the method and the body off the recorded network request rather than
+ * trusting the markup.
  */
 
 import {
@@ -29,31 +34,53 @@ function delay(ms: number): Promise<void> {
 }
 
 /**
- * The raw building block: one field, a failure toggle, and an explicit `done` slot so the result
- * visibly replaces the field instead of leaving it on screen re-enabled.
+ * The raw building block: one field, two ways to fail — an asynchronous rejection and a
+ * synchronous throw, which reach `EnhancedForm`'s submit handler differently and both have to end
+ * in `"failed"` — and an explicit `done` slot so the result visibly replaces the field instead of
+ * leaving it on screen re-enabled.
  */
 function EnhancedFormDemo() {
   const submits = useSignal(0)
   const shouldFail = useSignal(false)
+  const throwSync = useSignal(false)
 
   return (
     <div class="max-w-sm space-y-3">
-      <label class="label flex items-center gap-2">
-        <input
-          type="checkbox"
-          class="checkbox"
-          checked={shouldFail.value}
-          onChange={(event) => shouldFail.value = event.currentTarget.checked}
-          data-e2e="enhanced-form-fail-toggle"
-        />
-        Simulate a failure
-      </label>
+      <div class="flex flex-wrap gap-4">
+        <label class="label flex items-center gap-2">
+          <input
+            type="checkbox"
+            class="checkbox"
+            checked={shouldFail.value}
+            onChange={(event) => shouldFail.value = event.currentTarget.checked}
+            data-e2e="enhanced-form-fail-toggle"
+          />
+          Simulate a failure (rejected promise)
+        </label>
+        <label class="label flex items-center gap-2">
+          <input
+            type="checkbox"
+            class="checkbox"
+            checked={throwSync.value}
+            onChange={(event) => throwSync.value = event.currentTarget.checked}
+            data-e2e="enhanced-form-throw-sync-toggle"
+          />
+          Simulate a failure (throws before any await)
+        </label>
+      </div>
       <EnhancedForm
         action={FORM_DEMO_ACTION}
-        onSubmit={async () => {
+        onSubmit={(_data) => {
           submits.value++
-          await delay(200)
-          if (shouldFail.value) throw new Error("simulated failure")
+          // Thrown here, before any `await`, this reaches `onSubmit`'s caller synchronously —
+          // `EnhancedForm`'s own `Promise.resolve().then(() => onSubmit(data))` is what folds it
+          // into the same "failed" path a rejected promise takes, which is the one behaviour
+          // `enhancedFormSynchronousThrowCheck` in `pages/checks/ui.ts` proves.
+          if (throwSync.value) throw new Error("simulated synchronous failure")
+          return (async () => {
+            await delay(200)
+            if (shouldFail.value) throw new Error("simulated failure")
+          })()
         }}
         done={<p class="text-sm text-gray-700 dark:text-gray-300">Done.</p>}
       >
@@ -69,14 +96,29 @@ function EnhancedFormDemo() {
   )
 }
 
-/** One email field. The submit takes 300ms, long enough for a fast double click to land twice. */
+/**
+ * Two instances, because a successful submit replaces the field with a thank-you message and
+ * neither browser check that drives one can leave it resubmittable afterward for the other.
+ *
+ * The first is the one this card's own snippet shows: one email field, `honeypot` on, a submit that
+ * takes 300ms — long enough for a fast double click to land twice — and `subscribes`, which only
+ * ever counts a call that actually reached `onSubmit`. `newsletterFormDoubleClickCheck` in
+ * `pages/checks/ui.ts` drives this one.
+ *
+ * The second, marked `data-e2e="newsletter-form-honeypot"`, exists only for
+ * `enhancedFormsHoneypotChecks` in that same file: proving that a filled honeypot resolves as a
+ * success without ever calling `onSubmit` needs a submit of its own, one the double-click proof
+ * above cannot spare once it has run.
+ */
 function NewsletterFormDemo() {
   const subscribes = useSignal(0)
+  const honeypotSubscribes = useSignal(0)
 
   return (
     <div class="max-w-sm space-y-3">
       <NewsletterForm
         action={FORM_DEMO_ACTION}
+        honeypot
         onSubmit={async () => {
           subscribes.value++
           await delay(300)
@@ -85,6 +127,25 @@ function NewsletterFormDemo() {
       <p class="text-sm text-gray-500 dark:text-gray-400" data-e2e="newsletter-form-subscribes">
         subscribes: {subscribes.value}
       </p>
+      <div
+        class="border-t border-gray-200 pt-3 dark:border-gray-700"
+        data-e2e="newsletter-form-honeypot"
+      >
+        <NewsletterForm
+          action={FORM_DEMO_ACTION}
+          honeypot
+          onSubmit={async () => {
+            honeypotSubscribes.value++
+            await delay(50)
+          }}
+        />
+        <p
+          class="text-sm text-gray-500 dark:text-gray-400"
+          data-e2e="newsletter-form-honeypot-subscribes"
+        >
+          subscribes: {honeypotSubscribes.value}
+        </p>
+      </div>
     </div>
   )
 }
@@ -125,6 +186,7 @@ function ContactFormDemo() {
       </div>
       <ContactForm
         action={FORM_DEMO_ACTION}
+        honeypot
         onSubmit={async () => {
           leads.value++
           if (hang.value) {
