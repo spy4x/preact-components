@@ -13,6 +13,14 @@
  * `harness.test.ts` drives a `Run` directly with fake blocks, which is why the isolation and the
  * summary line are methods on an object a test can create rather than free functions over
  * module-level state.
+ *
+ * **A standing hazard for any check that reloads or renavigates the one page every block shares**:
+ * `pages/src/app.tsx`'s route effect re-runs on every load and smoothly scrolls toward whatever
+ * card the address currently deep-links to, which an earlier block's own routing may have left
+ * pointed anywhere — `system/`'s `authFormNoScriptChecks` waits that scroll out before it returns,
+ * for exactly this reason. A future check that needs a fresh, unhydrated load has a cleaner option
+ * this one does not take: open a second tab for it (`connect` takes a port, not a fixed target) and
+ * leave the shared page, and its address, untouched by the reload entirely.
  */
 
 import { join } from "node:path"

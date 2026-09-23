@@ -107,6 +107,30 @@ function click(devtools: Devtools, selector: string): Promise<boolean> {
 }
 
 /**
+ * Focus an element and then click it, or nothing at all when it is not on the page.
+ *
+ * `click`'s own `.click()` does not focus the element in this harness's Chromium — measured
+ * against `authFormFocusStabilityChecks`, which needs focus to land exactly where it presses so a
+ * later reading of `document.activeElement` means something. Calling `.focus()` first removes the
+ * dependency on whatever a synthetic click's own activation behaviour does or does not do to focus,
+ * which is not the same in every engine.
+ *
+ * @param devtools The connected session.
+ * @param selector What to focus and click.
+ * @returns Whether there was anything to click.
+ */
+function focusAndClick(devtools: Devtools, selector: string): Promise<boolean> {
+  return devtools.evaluate<boolean>(`(() => {
+    const element = document.querySelector('${selector}')
+    if (element) {
+      element.focus()
+      element.click()
+    }
+    return Boolean(element)
+  })()`)
+}
+
+/**
  * Click the bar's button carrying this label, or nothing when there is no bar.
  *
  * By label rather than by position, because the labels are the component's contract — every one of
@@ -128,21 +152,31 @@ function clickBarButton(devtools: Devtools, label: string, bar = BAR): Promise<b
 }
 
 /**
- * `system/`'s browser checks: the calendar's keyboard, the lightbox's, and `SWUpdater` against a
- * real service worker.
+ * `system/`'s browser checks: `AuthForm`, the calendar's keyboard, the lightbox's, and `SWUpdater`
+ * against a real service worker.
  *
- * The three run in that order, and the order is the point. The service-worker block below stages a
- * real registration, a hidden frame inside its scope and a hand-over between two workers; it is the
- * only part of this file with state outside the page, so nothing that could be affected by it runs
- * after it. The lightbox opens a real modal `<dialog>`, which would sit in the top layer over every
- * check that came after if it ever refused to close — `ui.ts` answers that risk by running Modal
- * last of everything, and this file cannot, because `verify.ts` fixes the order of the packages. So
- * the lightbox block closes its dialog unconditionally at the end and asserts that the top layer is
- * empty, which is the same guarantee bought with a teardown instead of an ordering.
+ * `AuthForm` runs first, and its last step is the reason the other three come after it rather than
+ * around it: proving that a submit survives disabled script execution means disabling script
+ * execution and forcing a fresh, unhydrated load of the page, and every check in this file after
+ * that needs the hydrated page back. `authFormNoScriptChecks` re-enables scripts, reloads the page
+ * and waits for the same `data-hydrated` marker `verify.ts` waits for at startup before it
+ * returns — nothing in `authFormChecks` after it, and nothing in this function after
+ * `authFormChecks`, may run before that restoration is confirmed.
+ *
+ * The other three run in the stated order, and that order is the point. The service-worker block
+ * below stages a real registration, a hidden frame inside its scope and a hand-over between two
+ * workers; it is the only other part of this file with state outside the page, so nothing that
+ * could be affected by it runs after it. The lightbox opens a real modal `<dialog>`, which would
+ * sit in the top layer over every check that came after if it ever refused to close — `ui.ts`
+ * answers that risk by running Modal last of everything, and this file cannot, because `verify.ts`
+ * fixes the order of the packages. So the lightbox block closes its dialog unconditionally at the
+ * end and asserts that the top layer is empty, which is the same guarantee bought with a teardown
+ * instead of an ordering.
  *
  * @param devtools The connected session, on a hydrated page.
  */
 export async function systemChecks(devtools: Devtools): Promise<void> {
+  await authFormChecks(devtools)
   await liveRegionChecks(devtools)
   await calendarChecks(devtools)
   await imageLightboxChecks(devtools)
@@ -408,6 +442,900 @@ async function liveRegionChecks(devtools: Devtools): Promise<void> {
       return true
     })()`,
     false,
+  )
+}
+
+/** The `AuthForm` card, and the pieces of it these checks read. */
+const AUTH_FORM = "#demo-AuthForm"
+/** Two real, simultaneously mounted instances — the password-manager and unique-ids proof. */
+const AUTH_AUTOFILL = `${AUTH_FORM} [data-e2e="auth-form-autofill"]`
+/** The one instrumented instance every other check below drives. */
+const AUTH_INTERACTIVE = `${AUTH_FORM} [data-e2e="auth-form-interactive"]`
+const AUTH_ALERT = `${AUTH_INTERACTIVE} [role="alert"]`
+const AUTH_LOGIN = `${AUTH_INTERACTIVE} input[name="login"]`
+const AUTH_PASSWORD = `${AUTH_INTERACTIVE} input[name="password"]`
+const AUTH_CODE = `${AUTH_INTERACTIVE} input[name="code"]`
+const AUTH_TOGGLE = `${AUTH_INTERACTIVE} button[aria-pressed]`
+const AUTH_SET_FORM_ERROR = `${AUTH_INTERACTIVE} [data-e2e="auth-form-set-form-error"]`
+const AUTH_SET_FIELD_ERROR = `${AUTH_INTERACTIVE} [data-e2e="auth-form-set-field-error"]`
+const AUTH_CLEAR_ERROR = `${AUTH_INTERACTIVE} [data-e2e="auth-form-clear-error"]`
+const AUTH_STEP_CODE = `${AUTH_INTERACTIVE} [data-e2e="auth-form-step-code"]`
+const AUTH_STEP_CREDENTIALS = `${AUTH_INTERACTIVE} [data-e2e="auth-form-step-credentials"]`
+const AUTH_TOGGLE_BUSY = `${AUTH_INTERACTIVE} [data-e2e="auth-form-toggle-busy"]`
+const AUTH_REQUEST_SUBMIT = `${AUTH_INTERACTIVE} [data-e2e="auth-form-request-submit"]`
+const AUTH_SIGNINS = `${AUTH_INTERACTIVE} [data-e2e="auth-form-signins"]`
+const AUTH_SIGNUPS = `${AUTH_INTERACTIVE} [data-e2e="auth-form-signups"]`
+const AUTH_CODES = `${AUTH_INTERACTIVE} [data-e2e="auth-form-codes"]`
+
+/** The two messages the guide card's buttons set, read back here so a check can match on them. */
+const AUTH_FORM_ERROR = "Wrong login or password"
+const AUTH_FIELD_ERROR = "No account with that login"
+
+/** What one reading of the interactive card reports, for the checks that need more than one fact. */
+interface AuthFormState {
+  /** Whether the card is on the page at all. */
+  found: boolean
+  passwordType: string
+  passwordAutocomplete: string
+  togglePressed: string
+  toggleFocused: boolean
+  submitDisabled: boolean
+  statusText: string
+  signIns: string
+  signUps: string
+  codes: string
+  /** `document.activeElement`'s `name`, for the focus-move check. */
+  focusedName: string
+  /** `document.activeElement`'s `data-e2e`, for the checks that park focus on a demo control. */
+  focusedE2e: string
+}
+
+const NO_AUTH_STATE: AuthFormState = {
+  found: false,
+  passwordType: "",
+  passwordAutocomplete: "",
+  togglePressed: "",
+  toggleFocused: false,
+  submitDisabled: false,
+  statusText: "",
+  signIns: "not found",
+  signUps: "not found",
+  codes: "not found",
+  focusedName: "",
+  focusedE2e: "",
+}
+
+/** Read {@link AuthFormState} in one round trip. */
+const AUTH_STATE = `(() => {
+  const card = document.querySelector('${AUTH_INTERACTIVE}')
+  if (!card) return null
+  const password = card.querySelector('input[name="password"]')
+  const toggle = card.querySelector('button[aria-pressed]')
+  const submit = card.querySelector('button[type="submit"]')
+  const status = card.querySelector('[role="status"]')
+  const signIns = document.querySelector('${AUTH_SIGNINS}')
+  const signUps = document.querySelector('${AUTH_SIGNUPS}')
+  const codes = document.querySelector('${AUTH_CODES}')
+  const active = document.activeElement
+  return {
+    found: true,
+    passwordType: password ? password.type : "",
+    passwordAutocomplete: password ? password.autocomplete : "",
+    togglePressed: toggle ? toggle.getAttribute("aria-pressed") : "",
+    toggleFocused: Boolean(toggle) && active === toggle,
+    submitDisabled: Boolean(submit) && submit.disabled,
+    statusText: status ? status.textContent.trim() : "",
+    signIns: signIns ? signIns.textContent.trim() : "not found",
+    signUps: signUps ? signUps.textContent.trim() : "not found",
+    codes: codes ? codes.textContent.trim() : "not found",
+    focusedName: active && active.getAttribute ? (active.getAttribute("name") || "") : "",
+    focusedE2e: active && active.getAttribute ? (active.getAttribute("data-e2e") || "") : "",
+  }
+})()`
+
+/**
+ * `AuthForm`'s browser checks: the password-manager markup, the always-present error region, the
+ * focus move to the one-time-code field and its stability across an unrelated re-render, the mode
+ * switch and the show/hide password toggle never submitting, a busy submit — including one started
+ * with `form.requestSubmit()` — calling no callback, and a submit surviving disabled script
+ * execution with no query string added to the URL.
+ *
+ * Every unit test in `system/auth-form.test.tsx` renders to an HTML string, so nothing behind an
+ * effect, a focus change, a real key press, a real pointer press or a real navigation is provable
+ * there. This file is where those are proven, against the two cards `ui-guide/sections/system.tsx`
+ * mounts: `AUTH_AUTOFILL`, two plain instances side by side, and `AUTH_INTERACTIVE`, one instance
+ * with buttons standing in for the round trip an app's own server would otherwise drive.
+ *
+ * `authFormNoScriptChecks` runs last and only there: it disables script execution and forces a
+ * fresh, unhydrated load of the page, so everything after it in this function needs the hydrated
+ * page it restores at its own end. `authFormModeSwitchChecks` runs second, right after the markup
+ * proof and before anything else touches `mode` — it leaves the card in sign-in, the mode every
+ * later check in this file assumes, and it has to switch away from sign-in and back to prove
+ * anything at all.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function authFormChecks(devtools: Devtools): Promise<void> {
+  await autofillChecks(devtools)
+  await authFormModeSwitchChecks(devtools)
+  await authFormErrorChecks(devtools)
+  await authFormFocusChecks(devtools)
+  await authFormFocusStabilityChecks(devtools)
+  await authFormToggleChecks(devtools)
+  await authFormBusyChecks(devtools)
+  await authFormNoScriptChecks(devtools)
+}
+
+/**
+ * Fill every empty text input of the interactive card's form with a value.
+ *
+ * Shared by every check below that submits the form on purpose: the browser's own constraint
+ * validation refuses a `required` field with no value before the submit event this component
+ * listens for is ever dispatched, which would make "nothing happened" mean "validation stopped it"
+ * rather than "the behaviour under test stopped it". Filling first is what isolates the one thing
+ * each of those checks means to prove.
+ *
+ * @param devtools The connected session.
+ * @returns Whether the card's form was found.
+ */
+function fillCredentialFields(devtools: Devtools): Promise<boolean> {
+  return devtools.evaluate<boolean>(`(() => {
+    const card = document.querySelector('${AUTH_INTERACTIVE}')
+    const form = card ? card.querySelector('form') : null
+    if (!form) return false
+    for (const input of form.querySelectorAll('input')) {
+      if (input.value === "") input.value = input.name === "code" ? "123456" : "demo value"
+    }
+    return true
+  })()`)
+}
+
+/** What the autofill card reports about its two instances, read in one round trip. */
+interface AutofillState {
+  forms: number
+  /** One entry per `<form>`, in document order. */
+  fields: Array<{
+    action: string
+    method: string
+    loginName: string
+    loginAutocomplete: string
+    loginId: string
+    loginLabelFor: string
+    loginLabelText: string
+    passwordType: string
+    passwordAutocomplete: string
+    passwordId: string
+    passwordLabelFor: string
+  }>
+}
+
+const NO_AUTOFILL: AutofillState = { forms: 0, fields: [] }
+
+/**
+ * Two real, simultaneously mounted `AuthForm`s — the markup a password manager reads, and the one
+ * page on which two instances' ids could collide.
+ *
+ * Nothing here drives a real password manager: no browser extension is installed in this harness,
+ * so what is proven is the markup a password manager relies on — a `<form>` ancestor, a `<label
+ * for>` pointing at each field's own `id`, and the `autocomplete`/`name`/`type` triad — read back
+ * from the DOM rather than asserted from the source. The two instances are `mode="sign-in"` and
+ * `mode="sign-up"` precisely so their `autocomplete` values differ too.
+ */
+async function autofillChecks(devtools: Devtools): Promise<void> {
+  const state = await read(
+    devtools,
+    `(() => {
+      const forms = [...document.querySelectorAll('${AUTH_AUTOFILL} form')]
+      const fields = forms.map((form) => {
+        const login = form.querySelector('input[name="login"]')
+        const password = form.querySelector('input[name="password"]')
+        const loginLabel = login ? document.querySelector('label[for="' + login.id + '"]') : null
+        const passwordLabel = password
+          ? document.querySelector('label[for="' + password.id + '"]')
+          : null
+        return {
+          action: form.getAttribute("action") || "",
+          method: form.getAttribute("method") || "",
+          loginName: login ? login.name : "",
+          loginAutocomplete: login ? login.autocomplete : "",
+          loginId: login ? login.id : "",
+          loginLabelFor: loginLabel ? loginLabel.getAttribute("for") : "",
+          loginLabelText: loginLabel ? loginLabel.textContent.trim() : "",
+          passwordType: password ? password.type : "",
+          passwordAutocomplete: password ? password.autocomplete : "",
+          passwordId: password ? password.id : "",
+          passwordLabelFor: passwordLabel ? passwordLabel.getAttribute("for") : "",
+        }
+      })
+      return { forms: forms.length, fields }
+    })()`,
+    NO_AUTOFILL,
+  )
+
+  check(
+    "two AuthForm instances on one page each sit inside their own real <form>",
+    state.forms === 2 && state.fields[0]?.action === "/auth/sign-in" &&
+      state.fields[1]?.action === "/auth/sign-up" && state.fields[0]?.method === "post" &&
+      state.fields[1]?.method === "post",
+    `${state.forms} form(s): ${
+      state.fields.map((f) => `${f.action || "no action"} (${f.method || "no method"})`).join(", ")
+    }`,
+  )
+  check(
+    "every field carries the autocomplete/name/type a password manager reads",
+    state.fields.length === 2 &&
+      state.fields.every((f) =>
+        f.loginName === "login" && f.loginAutocomplete === "username" &&
+        f.passwordType === "password"
+      ) && state.fields[0]?.passwordAutocomplete === "current-password" &&
+      state.fields[1]?.passwordAutocomplete === "new-password",
+    state.fields.map((f) =>
+      `login name=${f.loginName} autocomplete=${f.loginAutocomplete}, password type=` +
+      `${f.passwordType} autocomplete=${f.passwordAutocomplete}`
+    ).join(" | "),
+  )
+  check(
+    "every field has a real <label for> pointing at its own id",
+    state.fields.length === 2 &&
+      state.fields.every((f) =>
+        f.loginId !== "" && f.loginLabelFor === f.loginId && f.loginLabelText.length > 0 &&
+        f.passwordId !== "" && f.passwordLabelFor === f.passwordId
+      ),
+    state.fields.map((f) => `login id=${f.loginId} for=${f.loginLabelFor}`).join(" | "),
+  )
+  check(
+    "the two instances' field ids do not collide",
+    state.fields.length === 2 && state.fields[0]?.loginId !== "" &&
+      state.fields[0]?.loginId !== state.fields[1]?.loginId &&
+      state.fields[0]?.passwordId !== state.fields[1]?.passwordId,
+    `login ids: ${state.fields[0]?.loginId} vs ${state.fields[1]?.loginId}`,
+  )
+}
+
+/**
+ * Find the mode-switch control's centre, scrolling it into view first.
+ *
+ * By its own visible text rather than by position or by "the second button in this row": the
+ * labels are the component's contract, so a check keyed to them survives the two buttons around it
+ * changing, and a relabel of the control itself would be caught here rather than silently aimed at
+ * the wrong element.
+ *
+ * @param devtools The connected session.
+ * @returns The point to click, or `null` when no such button was found.
+ */
+function findModeSwitchTarget(devtools: Devtools): Promise<{ x: number; y: number } | null> {
+  return devtools.evaluate<{ x: number; y: number } | null>(`(() => {
+    const card = document.querySelector('${AUTH_INTERACTIVE}')
+    const button = card
+      ? [...card.querySelectorAll("button")].find((candidate) =>
+        /^(Need|Have) an account\\?/.test(candidate.textContent.trim())
+      )
+      : null
+    if (!button) return null
+    button.scrollIntoView({ block: "center", behavior: "instant" })
+    const rect = button.getBoundingClientRect()
+    return { x: Math.round(rect.left + rect.width / 2), y: Math.round(rect.top + rect.height / 2) }
+  })()`)
+}
+
+/**
+ * The mode-switch control never submits the form — proven with a real pointer press rather than
+ * with `.click()`, the way every other button in this file is activated. That distinction matters
+ * here specifically: `.click()` on a `type="submit"` button submits the form exactly as a person's
+ * click does, native activation behaviour rather than a listener, so a check built on `.click()`
+ * cannot tell "this button is wired to switch the mode" apart from "this button happens to be a
+ * submit button that also switches the mode" — both would look identical to it. A real
+ * `Input.dispatchMouseEvent` at the button's own geometry carries no such blind spot.
+ *
+ * Fields are filled first, for the same reason {@link fillCredentialFields}'s own doc gives: an
+ * empty `required` field would stop a wrongly-`type="submit"` button before this check could tell
+ * the difference between validation and the behaviour actually under test.
+ *
+ * The press is asserted to have landed — `passwordAutocomplete` flips from `current-password` to
+ * `new-password` only because `mode` actually changed — before the counters are trusted, because an
+ * unread miss and "correctly did nothing" report the same counters.
+ */
+async function authFormModeSwitchChecks(devtools: Devtools): Promise<void> {
+  await fillCredentialFields(devtools)
+  const before = await read(devtools, AUTH_STATE, NO_AUTH_STATE)
+
+  const toSignUp = await findModeSwitchTarget(devtools)
+  if (toSignUp) await clickAt(devtools, toSignUp)
+  const afterFirstPress = await poll(
+    () => read(devtools, `${AUTH_STATE}?.passwordAutocomplete === "new-password"`, false),
+    3_000,
+  )
+  const switched = await read(devtools, AUTH_STATE, NO_AUTH_STATE)
+
+  check(
+    "a real pointer press on the mode-switch control switches the mode and submits nothing",
+    Boolean(toSignUp) && afterFirstPress && switched.passwordAutocomplete === "new-password" &&
+      switched.signIns === before.signIns && switched.signUps === before.signUps &&
+      switched.codes === before.codes,
+    toSignUp
+      ? `password autocomplete ${before.passwordAutocomplete} → ${switched.passwordAutocomplete}, ` +
+        `sign-ins ${before.signIns} → ${switched.signIns}, sign-ups ${before.signUps} → ` +
+        `${switched.signUps}, codes ${before.codes} → ${switched.codes}`
+      : "no mode-switch button found to press",
+  )
+
+  // Switched back to sign-in, which every later check in this file assumes as the starting mode.
+  const toSignIn = await findModeSwitchTarget(devtools)
+  if (toSignIn) await clickAt(devtools, toSignIn)
+  const afterSecondPress = await poll(
+    () => read(devtools, `${AUTH_STATE}?.passwordAutocomplete === "current-password"`, false),
+    3_000,
+  )
+  const restored = await read(devtools, AUTH_STATE, NO_AUTH_STATE)
+
+  check(
+    "a second press switches back to sign-in, still submitting nothing",
+    Boolean(toSignIn) && afterSecondPress && restored.passwordAutocomplete === "current-password" &&
+      restored.signIns === before.signIns && restored.signUps === before.signUps &&
+      restored.codes === before.codes,
+    toSignIn
+      ? `password autocomplete ${switched.passwordAutocomplete} → ${restored.passwordAutocomplete}, ` +
+        `sign-ins ${switched.signIns} → ${restored.signIns}, sign-ups ${switched.signUps} → ` +
+        `${restored.signUps}`
+      : "no mode-switch button found to press back",
+  )
+}
+
+/** What one reading of the error region and the observer watching it reports. */
+interface AuthRegionState {
+  found: boolean
+  same: boolean
+  connected: boolean
+  text: string
+  mutationsOnRegion: number
+  added: number
+  loginInvalid: string | null
+  passwordInvalid: string | null
+}
+
+const NO_AUTH_REGION: AuthRegionState = {
+  found: false,
+  same: false,
+  connected: false,
+  text: "",
+  mutationsOnRegion: 0,
+  added: 0,
+  loginInvalid: null,
+  passwordInvalid: null,
+}
+
+/** Read {@link AuthRegionState}, against the observer {@link authFormErrorChecks} parked. */
+const READ_AUTH_REGION = `(() => {
+  const region = document.querySelector('${AUTH_ALERT}')
+  const login = document.querySelector('${AUTH_LOGIN}')
+  const password = document.querySelector('${AUTH_PASSWORD}')
+  const records = globalThis.__authRegionMutations || []
+  return {
+    found: Boolean(region),
+    same: Boolean(region) && region === globalThis.__authRegionElement,
+    connected: Boolean(region) && region.isConnected,
+    text: region ? region.textContent.trim() : "",
+    mutationsOnRegion: records.filter((record) => record.onRegion).length,
+    added: records.reduce((total, record) => total + record.added, 0),
+    loginInvalid: login ? login.getAttribute("aria-invalid") : null,
+    passwordInvalid: password ? password.getAttribute("aria-invalid") : null,
+  }
+})()`
+
+/**
+ * The error region before, during and after there is something to announce — the same proof
+ * `liveRegionChecks` above builds for `SWUpdater`, applied to `AuthForm`'s `role="alert"` region.
+ *
+ * The identity comparison is the load-bearing part, for the same reason it is above: finding "a
+ * region with the message in it" after a click would pass just as well against a region created
+ * carrying its message, which is the defect this pattern rules out. A reference to the element is
+ * parked before anything happens and a `MutationObserver` is attached to it, so a later reading can
+ * show the message arriving as a change to the region the reader was already being told to watch.
+ *
+ * The field-level error is checked here too: the same click that fills the region also has to mark
+ * exactly one field `aria-invalid`, never the other.
+ */
+async function authFormErrorChecks(devtools: Devtools): Promise<void> {
+  const idle = await read(
+    devtools,
+    `(() => {
+      const region = document.querySelector('${AUTH_ALERT}')
+      if (!region) return null
+      globalThis.__authRegionElement = region
+      globalThis.__authRegionMutations = []
+      const observer = new MutationObserver((records) => {
+        for (const record of records) {
+          globalThis.__authRegionMutations.push({
+            onRegion: record.target === globalThis.__authRegionElement,
+            added: record.addedNodes.length,
+            removed: record.removedNodes.length,
+          })
+        }
+      })
+      observer.observe(region, { childList: true, subtree: true, characterData: true })
+      globalThis.__authRegionObserver = observer
+      return {
+        role: region.getAttribute("role"),
+        live: region.getAttribute("aria-live"),
+        atomic: region.getAttribute("aria-atomic"),
+        text: region.textContent.trim(),
+        children: region.childElementCount,
+      }
+    })()`,
+    null as { role: string; live: string; atomic: string; text: string; children: number } | null,
+  )
+
+  check(
+    "AuthForm's error region is in the page before there is anything to announce",
+    Boolean(idle) && idle?.role === "alert" && idle?.live === "assertive" &&
+      idle?.atomic === "true" && idle?.text === "" && idle?.children === 0,
+    idle
+      ? `role="${idle.role}" aria-live="${idle.live}" aria-atomic="${idle.atomic}", ` +
+        `${idle.children} element children, text ${JSON.stringify(idle.text)}`
+      : "the interactive card was not on the page, so there was no region to read",
+  )
+
+  await click(devtools, AUTH_SET_FORM_ERROR)
+  await poll(
+    () =>
+      read(
+        devtools,
+        `${READ_AUTH_REGION}.text.includes(${JSON.stringify(AUTH_FORM_ERROR)})`,
+        false,
+      ),
+    3_000,
+  )
+  const announced = await read(devtools, READ_AUTH_REGION, NO_AUTH_REGION)
+
+  check(
+    "a form-level error arrives inside the region that was already in the page",
+    idle?.text === "" && announced.same && announced.connected &&
+      announced.text.includes(AUTH_FORM_ERROR) && announced.mutationsOnRegion >= 1 &&
+      announced.added >= 1 && announced.loginInvalid !== "true" &&
+      announced.passwordInvalid !== "true",
+    idle
+      ? `the element parked while the region was empty is ${
+        announced.same ? "the same element" : "NOT the element"
+      } that now reads ${JSON.stringify(announced.text)}, with ${announced.mutationsOnRegion} ` +
+        `mutation(s) recorded on it directly and neither field marked aria-invalid`
+      : "there was no idle reading to compare against",
+  )
+
+  await click(devtools, AUTH_SET_FIELD_ERROR)
+  await poll(
+    () =>
+      read(
+        devtools,
+        `${READ_AUTH_REGION}.text.includes(${JSON.stringify(AUTH_FIELD_ERROR)})`,
+        false,
+      ),
+    3_000,
+  )
+  const fieldAnnounced = await read(devtools, READ_AUTH_REGION, NO_AUTH_REGION)
+
+  check(
+    "a field-named error reaches the same region and marks only that field aria-invalid",
+    fieldAnnounced.same && fieldAnnounced.text.includes(AUTH_FIELD_ERROR) &&
+      fieldAnnounced.loginInvalid === "true" && fieldAnnounced.passwordInvalid !== "true",
+    `region reads ${JSON.stringify(fieldAnnounced.text)}, login aria-invalid=` +
+      `${fieldAnnounced.loginInvalid}, password aria-invalid=${fieldAnnounced.passwordInvalid}`,
+  )
+
+  await click(devtools, AUTH_CLEAR_ERROR)
+  await poll(() => read(devtools, `${READ_AUTH_REGION}.text === ""`, false), 3_000)
+  const cleared = await read(devtools, READ_AUTH_REGION, NO_AUTH_REGION)
+
+  check(
+    "clearing the error empties the region instead of replacing it",
+    cleared.same && cleared.connected && cleared.text === "",
+    cleared.same
+      ? `the region is still the same element, now reading ${JSON.stringify(cleared.text)}`
+      : "the region was replaced rather than emptied",
+  )
+
+  await read(
+    devtools,
+    `(() => {
+      if (globalThis.__authRegionObserver) globalThis.__authRegionObserver.disconnect()
+      delete globalThis.__authRegionObserver
+      delete globalThis.__authRegionElement
+      delete globalThis.__authRegionMutations
+      return true
+    })()`,
+    false,
+  )
+}
+
+/**
+ * The one-time-code step moves the focus to its field, and no other transition does.
+ *
+ * Read before and after, never asserted from the end state alone: "focus is on the code field" is
+ * equally true of a page that loaded there already, so the check also confirms focus was
+ * *somewhere else* before the step button was pressed.
+ */
+async function authFormFocusChecks(devtools: Devtools): Promise<void> {
+  await click(devtools, AUTH_STEP_CREDENTIALS) // Known starting state, whatever ran before this.
+  const before = await read(devtools, `${AUTH_STATE}?.focusedName || ""`, "")
+
+  await click(devtools, AUTH_STEP_CODE)
+  const appeared = await poll(
+    () => read(devtools, `Boolean(document.querySelector('${AUTH_CODE}'))`, false),
+    3_000,
+  )
+  const after = await read(devtools, `${AUTH_STATE}?.focusedName || ""`, "")
+
+  check(
+    "moving to the one-time-code step moves the focus to its field",
+    appeared && before !== "code" && after === "code",
+    appeared
+      ? `focus was on "${before || "nothing"}" before the step button, "${after || "nothing"}" ` +
+        `after it appeared`
+      : "the code field never appeared within 3s of the step button",
+  )
+
+  await click(devtools, AUTH_STEP_CREDENTIALS) // Leave the card ready for the next block.
+}
+
+/**
+ * The one-time-code focus effect fires once, on the transition into the step — never again for as
+ * long as the step stays `"one-time-code"`.
+ *
+ * `authFormFocusChecks` above proves the move happens; this proves it happens on *no other* render.
+ * Focus is parked on a demo control rather than left wherever the step button leaves it, and two
+ * separate re-renders are forced on that same step — one by setting an error, one by toggling
+ * `busy` — because a single forced render would leave open the possibility that the first one
+ * happened to coincide with something the effect's real dependency was still reacting to. An effect
+ * whose dependency array was dropped calls `.focus()` on the code field every render, which would
+ * pull focus back off the button this parks it on after either forced render.
+ */
+async function authFormFocusStabilityChecks(devtools: Devtools): Promise<void> {
+  await click(devtools, AUTH_STEP_CODE)
+  // Waited out fully, not merely until the code field exists: `authFormFocusChecks` above proves
+  // the step transition's own effect moves focus there, and that move is scheduled after the
+  // commit rather than during it — the element existing is not the same as the effect having run.
+  // Proceeding on existence alone raced that still-pending effect against the focus this function
+  // parks next, and lost often enough to read as a false positive for the very bug it means to
+  // catch: measured, the code field (which carries no `data-e2e`) took the focus a `focusedE2e`
+  // read blamed on nothing at all.
+  await poll(() => read(devtools, `${AUTH_STATE}?.focusedName === "code"`, false), 3_000)
+
+  await focusAndClick(devtools, AUTH_SET_FORM_ERROR)
+  const afterError = await read(devtools, `${AUTH_STATE}?.focusedE2e || ""`, "")
+
+  await focusAndClick(devtools, AUTH_TOGGLE_BUSY)
+  const afterBusy = await read(devtools, `${AUTH_STATE}?.focusedE2e || ""`, "")
+
+  check(
+    "forcing a re-render on the code step does not pull focus back to the code field",
+    afterError === "auth-form-set-form-error" && afterBusy === "auth-form-toggle-busy",
+    `focus read "${afterError || "nothing"}" after setting an error, "${
+      afterBusy || "nothing"
+    }" after toggling busy — the code field would have taken it back on every render`,
+  )
+
+  // Leave the card ready for the next block: busy off, error cleared, back on credentials.
+  await click(devtools, AUTH_TOGGLE_BUSY)
+  await click(devtools, AUTH_CLEAR_ERROR)
+  await click(devtools, AUTH_STEP_CREDENTIALS)
+}
+
+/**
+ * The show/hide password control: a real click, then a real Space press, neither of them a submit.
+ *
+ * Space is used rather than Enter because this harness's own Chromium does not turn a real Enter
+ * press on a focused button into the activation click a person's Enter produces — recorded across
+ * this file and `ui.ts`'s Modal check — while a real Space press does. The click is `.click()`,
+ * which is how every button in this file is activated; nothing here is testing the pointer path
+ * itself, only what the activation does. `signIns` is read before and after both presses, because a
+ * toggle that happened to submit the form would be the one regression a purely visual check misses.
+ */
+async function authFormToggleChecks(devtools: Devtools): Promise<void> {
+  const before = await read(devtools, AUTH_STATE, NO_AUTH_STATE)
+  const clicked = await click(devtools, AUTH_TOGGLE)
+  const afterClick = await read(devtools, AUTH_STATE, NO_AUTH_STATE)
+
+  check(
+    "a real click on the show/hide button reveals the password and presses the button",
+    clicked && before.passwordType === "password" && before.togglePressed === "false" &&
+      afterClick.passwordType === "text" && afterClick.togglePressed === "true" &&
+      afterClick.toggleFocused,
+    clicked
+      ? `type ${before.passwordType} → ${afterClick.passwordType}, aria-pressed ` +
+        `${before.togglePressed} → ${afterClick.togglePressed}, focused after: ` +
+        `${afterClick.toggleFocused}`
+      : "no show/hide button to click",
+  )
+
+  await pressKey(devtools, "Space")
+  const afterSpace = await read(devtools, AUTH_STATE, NO_AUTH_STATE)
+
+  check(
+    "a real Space press on the focused button hides the password again",
+    afterClick.toggleFocused && afterSpace.passwordType === "password" &&
+      afterSpace.togglePressed === "false",
+    afterClick.toggleFocused
+      ? `type ${afterClick.passwordType} → ${afterSpace.passwordType}, aria-pressed ` +
+        `${afterClick.togglePressed} → ${afterSpace.togglePressed}`
+      : "the button did not keep the focus after the click, so Space had nothing to press",
+  )
+
+  check(
+    "neither press on the show/hide button submitted the form",
+    before.signIns === afterClick.signIns && afterClick.signIns === afterSpace.signIns,
+    `sign-ins stayed at "${before.signIns}" across both presses`,
+  )
+}
+
+/**
+ * A busy submit calls no callback, including one started with `form.requestSubmit()` — which
+ * reaches the submit handler without going through the (disabled) submit button at all.
+ *
+ * The demo card's button fills every empty field before calling `requestSubmit()`, so a blocked
+ * submit here is `busy` stopping it and not the browser's own constraint validation stopping an
+ * empty required field — the same request is made once busy and once not, with the same values
+ * left in the fields from the first attempt, so only `busy` differs between the two.
+ */
+async function authFormBusyChecks(devtools: Devtools): Promise<void> {
+  const before = await read(devtools, AUTH_STATE, NO_AUTH_STATE)
+
+  await click(devtools, AUTH_TOGGLE_BUSY)
+  const busy = await read(devtools, AUTH_STATE, NO_AUTH_STATE)
+  await click(devtools, AUTH_REQUEST_SUBMIT)
+  const afterBusySubmit = await read(devtools, AUTH_STATE, NO_AUTH_STATE)
+
+  check(
+    "the submit button is disabled and says so off-screen while busy",
+    busy.submitDisabled && busy.statusText.length > 0,
+    `disabled=${busy.submitDisabled}, status region reads ${JSON.stringify(busy.statusText)}`,
+  )
+  check(
+    "a busy form.requestSubmit() calls no callback",
+    before.signIns === busy.signIns && busy.signIns === afterBusySubmit.signIns,
+    `sign-ins stayed at "${before.signIns}" through toggling busy and requesting a submit`,
+  )
+
+  await click(devtools, AUTH_TOGGLE_BUSY) // Busy off, same filled fields left from the attempt above.
+  const idle = await read(devtools, AUTH_STATE, NO_AUTH_STATE)
+  await click(devtools, AUTH_REQUEST_SUBMIT)
+  const submitted = await poll(
+    () => read(devtools, `${AUTH_STATE}?.signIns !== ${JSON.stringify(idle.signIns)}`, false),
+    3_000,
+  )
+  const afterIdleSubmit = await read(devtools, AUTH_STATE, NO_AUTH_STATE)
+
+  check(
+    "the same form.requestSubmit() calls the callback once busy is cleared",
+    !idle.submitDisabled && submitted && afterIdleSubmit.signIns !== idle.signIns,
+    !idle.submitDisabled
+      ? submitted
+        ? `sign-ins went from "${idle.signIns}" to "${afterIdleSubmit.signIns}"`
+        : "no change in sign-ins within 3s of requesting a submit with busy cleared"
+      : "the submit button was still disabled after toggling busy off",
+  )
+}
+
+/**
+ * Wait for the next `Page.loadEventFired`, without throwing.
+ *
+ * Every other wait in this file goes through {@link poll}, which never throws either — a real
+ * navigation is the one event this harness has no poll-based way to wait for, so this is `next`'s
+ * own timeout turned into a reading instead of an exception. That matters most here: a throw would
+ * abort this function immediately, and this is the one `AuthForm` check that leaves the page in a
+ * state — script execution disabled, possibly mid-navigation — every later check in the `system`
+ * block depends on being undone. `authFormNoScriptChecks` restores that state in a `finally`
+ * block, which a throw from this call would skip.
+ *
+ * @param devtools The connected session.
+ * @param timeoutMs How long to wait before giving up.
+ * @returns Whether the event arrived in time.
+ */
+async function waitForLoad(devtools: Devtools, timeoutMs = 20_000): Promise<boolean> {
+  try {
+    await devtools.next("Page.loadEventFired", timeoutMs)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Wait until `scrollY` has held the same value for a full second, bounded.
+ *
+ * Written for `authFormNoScriptChecks`'s restoring reload specifically: `pages/src/app.tsx`'s
+ * route effect re-runs on every load and smoothly scrolls toward whatever card the address
+ * currently deep-links to, which can still be moving hundreds of milliseconds after the load
+ * event fires. `settleScroll` further down this file polls for two *consecutive* readings a tenth
+ * of a second apart, which is enough to catch the tail of a settling animation but not enough to
+ * rule out the coasting middle of a `scroll-behavior: smooth` one — the reading it returns can
+ * still be moving. A full second is a large enough window to run out that possibility instead of
+ * merely reducing it, and this function's caller is the one place in this file that needs that
+ * assurance rather than a numeric position.
+ *
+ * @param devtools The connected session.
+ * @param stableForMs How long `scrollY` has to stop changing before this resolves `true`.
+ * @param timeoutMs How long to keep trying before giving up and resolving `false`.
+ * @returns Whether the page held still for `stableForMs`, within `timeoutMs`.
+ */
+async function waitForScrollSettle(
+  devtools: Devtools,
+  stableForMs = 1_000,
+  timeoutMs = 20_000,
+): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs
+  let previous = -1
+  let stableSince: number | null = null
+
+  while (Date.now() < deadline) {
+    const now = await read(devtools, "Math.round(globalThis.scrollY)", -1)
+    if (now === previous) {
+      stableSince ??= Date.now()
+      if (Date.now() - stableSince >= stableForMs) return true
+    } else {
+      previous = now
+      stableSince = null
+    }
+    await new Promise((done) => setTimeout(done, 100))
+  }
+
+  return false
+}
+
+/**
+ * A submit before the bundle has run — the gap between the page painting and hydration finishing,
+ * or JavaScript off entirely — must never put the password in the address bar.
+ *
+ * This is the one behaviour in the package no other check in this file can reach: every one of
+ * them runs against Preact's own submit handler on an already-hydrated page, and proving the
+ * no-JavaScript path needs a page that never ran the bundle at all. `Emulation.
+ * setScriptExecutionDisabled` buys that by disabling script execution before the next navigation.
+ * `Runtime.evaluate` keeps working the whole time — DevTools reads and writes the page through its
+ * own privileged channel rather than through the page's own script execution, measured here rather
+ * than assumed — so this check can still fill fields, find the button and read `location.search`
+ * the ordinary way even though nothing the page itself authored can run.
+ *
+ * The card driven is `AUTH_INTERACTIVE`: it carries callbacks and no `action`, the ordinary shape
+ * of a hydrated app and the one `ui-guide/sections/system.tsx`'s own doc names for exactly this
+ * reason. Its markup is prerendered — `catalogue.test.tsx` proves every card is — so the card and
+ * its `<form method="post">` exist on the page in full before any script runs; only the
+ * interactivity hydration would add is missing.
+ *
+ * The button is pressed with a real pointer for the same reason `authFormModeSwitchChecks` uses
+ * one: a `.click()` run through `Runtime.evaluate` is script executing on the page's behalf where
+ * genuinely none should be able to, which would make a pass here prove nothing about a visitor's
+ * own tap. `location.search` is compared before and after rather than asserted empty, because an
+ * earlier block in this same run may have left a query string on the page this check reloads —
+ * what matters is that the press added nothing to whatever was already there.
+ *
+ * **Everything from disabling script execution onward runs inside a `try`, and re-enabling it,
+ * reloading the page and waiting for the `data-hydrated` marker `verify.ts` waits for at startup
+ * all run inside the matching `finally`.** A throw or a stalled navigation partway through the
+ * probe must not leave the page unhydrated for every check after this one — measured, not assumed:
+ * a real run under machine load once left a bare `Page.navigate` plus
+ * `next("Page.loadEventFired")` waiting past its timeout, which without a `finally` took the whole
+ * rest of the `system` block, and the unrestored page took the next block after it too.
+ * {@link waitForLoad} is what makes the restoration itself safe to run unconditionally — it turns
+ * that same timeout into a reading rather than a second throw.
+ *
+ * **The restoring reload does not make this function's `finally` block done, because the
+ * catalogue's own route effect is not done with the page yet.** Every load — this reload included —
+ * re-runs `pages/src/app.tsx`'s route effect, which smoothly scrolls toward whatever card the
+ * address currently deep-links to, and that address still carries whatever route an earlier block
+ * left in it. Measured: several thousand pixels of scroll, still moving several hundred
+ * milliseconds after the reload's own load event. Returning while that animation is running hands
+ * the next block's own `scrollIntoView` and `focus()` calls a scroll position that keeps changing
+ * under them from a cause that has nothing to do with what they are testing — measured to turn
+ * `calendarChecks`' "no key the grid answers scrolls the page" red on code this file never
+ * touches. So the `finally` block's last step waits for `scrollY` to hold still for about a
+ * second, bounded, and records its own named check when it never does, rather than letting a
+ * moving page pass silently into whatever runs next.
+ */
+async function authFormNoScriptChecks(devtools: Devtools): Promise<void> {
+  const restoreUrl = await read(devtools, "location.href", "")
+
+  let unhydrated = false
+  let before = "(page unreadable)"
+  let target: { x: number; y: number } | null = null
+  let settled = false
+  let after = "(page unreadable)"
+
+  try {
+    await devtools.send("Emulation.setScriptExecutionDisabled", { value: true })
+    // `Page.reload`, not `Page.navigate` to the same address: measured against this exact page,
+    // navigating to the URL already loaded did not reliably tear down the already-hydrated
+    // document, so `data-hydrated` read "true" straight through a run that had genuinely disabled
+    // script execution — a false negative for the very bug this check exists to catch.
+    // `ignoreCache` also rules out the bundle answering from HTTP cache as a second way to reach
+    // the same false negative.
+    await devtools.send("Page.reload", { ignoreCache: true })
+    const loaded = await waitForLoad(devtools)
+
+    unhydrated = loaded &&
+      await read(devtools, `document.documentElement.dataset.hydrated !== "true"`, false)
+    before = await read(devtools, "location.search", "(page unreadable)")
+
+    await fillCredentialFields(devtools)
+    target = await read(
+      devtools,
+      `(() => {
+        const card = document.querySelector('${AUTH_INTERACTIVE}')
+        const form = card ? card.querySelector('form') : null
+        const button = form ? form.querySelector('button[type="submit"]') : null
+        if (!button) return null
+        button.scrollIntoView({ block: "center", behavior: "instant" })
+        const rect = button.getBoundingClientRect()
+        return {
+          x: Math.round(rect.left + rect.width / 2),
+          y: Math.round(rect.top + rect.height / 2),
+        }
+      })()`,
+      null as { x: number; y: number } | null,
+    )
+    if (target) await clickAt(devtools, target)
+
+    settled = await poll(
+      () => read(devtools, `document.readyState === "complete"`, false),
+      8_000,
+    )
+    after = await read(devtools, "location.search", "(page unreadable)")
+  } finally {
+    await devtools.send("Emulation.setScriptExecutionDisabled", { value: false }).catch(() => {})
+    // `Page.reload`, not `Page.navigate`, for the same reason the disabling step above uses it:
+    // the submit this function presses lands back on `restoreUrl` whether or not it changed
+    // anything, so this is a reload of the page already there rather than a navigation to a
+    // different one, and `Page.navigate` to that identical address was measured not to reliably
+    // rehydrate it — sending both in sequence races two navigations against each other, which is
+    // worse, so this is the one command rather than a belt-and-braces pair of them.
+    await devtools.send("Page.reload", { ignoreCache: true }).catch(() => {})
+    await waitForLoad(devtools)
+
+    // The one case `reload` alone cannot fix: a target miss or a stray navigation left the page
+    // somewhere other than where the run was. Checked rather than assumed, and only acted on when
+    // it is actually true, so the ordinary run never sends the second navigation this function's
+    // own doc says not to race against the first.
+    const strayed = await read(
+      devtools,
+      `location.href !== ${JSON.stringify(restoreUrl)}`,
+      false,
+    )
+    if (strayed) {
+      await devtools.send("Page.navigate", { url: restoreUrl }).catch(() => {})
+      await waitForLoad(devtools)
+    }
+
+    // Last, and inside the same `finally`: the catalogue's own deep-link scroll, restarted by the
+    // reload above, has to actually stop before this function hands the page to whatever runs
+    // next — see this function's own doc for what happens when it does not.
+    const scrollSettled = await waitForScrollSettle(devtools)
+    check(
+      "the page's own route scroll settles after the restoring reload",
+      scrollSettled,
+      scrollSettled
+        ? "scrollY held still for a full second before this check returned"
+        : "scrollY never held still — a later block may have read it while it was still moving",
+    )
+  }
+
+  check(
+    "a submit with script execution disabled never puts the password in the URL",
+    unhydrated && Boolean(target) && settled && after === before,
+    !unhydrated
+      ? "the fresh load still hydrated, so this proves nothing about a visitor without the bundle"
+      : !target
+      ? "no submit button was found on the unhydrated, prerendered page"
+      : `location.search ${JSON.stringify(before)} → ${JSON.stringify(after)}` +
+        (settled ? "" : " (the page never reached readyState complete)"),
+  )
+
+  const rehydrated = await poll(
+    () => read(devtools, `document.documentElement.dataset.hydrated === "true"`, false),
+    10_000,
+  )
+  check(
+    "the page rehydrates once script execution is re-enabled again",
+    rehydrated,
+    rehydrated
+      ? "data-hydrated set again after the restoring reload"
+      : "the page never rehydrated after script execution was re-enabled",
   )
 }
 
