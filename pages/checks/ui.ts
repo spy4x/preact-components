@@ -153,6 +153,10 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await dateRangeChecks(devtools)
   await paginationChecks(devtools)
   await dataTableChecks(devtools)
+  await enhancedFormResultChecks(devtools)
+  await newsletterFormDoubleClickCheck(devtools)
+  await contactFormRecoveryChecks(devtools)
+  await enhancedFormsNoScriptChecks(devtools)
 
   // Last on purpose: a Modal that refuses to close would sit in the top layer over everything, so a
   // failure here cannot take an unrelated check down with it.
@@ -5392,4 +5396,372 @@ async function dataTableUrlSortCheck(devtools: Devtools): Promise<void> {
   )
 
   await blurActive(devtools)
+}
+
+/**
+ * `EnhancedForm`, `NewsletterForm` and `ContactForm`: progressive-enhancement forms proven twice —
+ * once hydrated, in the functions below, and once with no script running at all, in
+ * {@link enhancedFormsNoScriptChecks}.
+ *
+ * Every card lives in `ui-guide/sections/enhanced-forms.tsx` and posts to `form-demo/`, a static
+ * page `pages/build.ts` copies into the artefact verbatim. With scripts on, `onSubmit` intercepts
+ * every submit below and the page never navigates there — that page only matters to the
+ * no-JavaScript check, which is the one path where nothing here can intercept anything.
+ */
+
+/** Read one card's live region text and whether its `<fieldset>` is disabled, in one round trip. */
+async function enhancedFormReading(
+  devtools: Devtools,
+  card: string,
+): Promise<{ region: string; disabled: boolean }> {
+  return await devtools.evaluate<{ region: string; disabled: boolean }>(`(() => {
+    const c = document.querySelector('${card}')
+    const region = c ? c.querySelector('[role="status"]') : null
+    const fieldset = c ? c.querySelector('fieldset') : null
+    return { region: region ? region.textContent : "", disabled: fieldset ? fieldset.disabled : false }
+  })()`)
+}
+
+/**
+ * `EnhancedForm`'s own card: a submit announces `"Sending…"`, then replaces the field with the
+ * card's explicit `done` slot and announces `"Sent."` — the one card in this file given a `done`
+ * slot of its own, so "the result appears in place" is provable against markup that actually
+ * changed rather than against children that were merely re-enabled.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function enhancedFormResultChecks(devtools: Devtools): Promise<void> {
+  const card = "#demo-EnhancedForm"
+  const before = await enhancedFormReading(devtools, card)
+
+  await devtools.evaluate<null>(
+    `(document.querySelector('${card} button[type="submit"]').click(), null)`,
+  )
+
+  const sending = await poll(
+    async () => (await enhancedFormReading(devtools, card)).region === "Sending…",
+    1_000,
+  )
+  const settled = await poll(
+    async () => (await enhancedFormReading(devtools, card)).region === "Sent.",
+    3_000,
+  )
+  const after = await enhancedFormReading(devtools, card)
+  const doneSlotShown = await devtools.evaluate<boolean>(
+    `document.querySelector('${card}').textContent.includes("Done.")`,
+  )
+
+  check(
+    'EnhancedForm announces "Sending…", then replaces its field with the done slot and ' +
+      'announces "Sent."',
+    before.region === "" && !before.disabled && sending && settled && doneSlotShown,
+    `region "${before.region}" → reached "Sending…": ${sending} → reached "Sent.": ${settled} ` +
+      `("${after.region}"), done slot on screen: ${doneSlotShown}`,
+  )
+}
+
+/**
+ * `NewsletterForm`'s card: two real clicks on the submit button, dispatched back to back with no
+ * gap between them, still call `onSubmit` once.
+ *
+ * The card's own submit takes 300ms, long enough that the second click lands while the first is
+ * still outstanding whichever way Preact's own re-render has or has not caught up with the first
+ * click by then — the synchronous ref `EnhancedForm` checks before either branch of its submit
+ * handler runs is what this proves, not the disabled `<fieldset>` a slower pair of clicks would
+ * also be stopped by.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function newsletterFormDoubleClickCheck(devtools: Devtools): Promise<void> {
+  const card = "#demo-NewsletterForm"
+  const counter = `${card} [data-e2e="newsletter-form-subscribes"]`
+
+  await devtools.evaluate<null>(`(() => {
+    const email = document.querySelector('${card} input[name="email"]')
+    email.value = "ada@example.com"
+    return null
+  })()`)
+
+  await devtools.evaluate<null>(`(() => {
+    const button = document.querySelector('${card} button[type="submit"]')
+    button.click()
+    button.click()
+    return null
+  })()`)
+
+  // `onSubmit`'s own increment runs before its 300ms delay, so the counter settles almost at once;
+  // the region only reaches "done" once that delay elapses. Reading the counter at both moments is
+  // what catches a second call whose increment landed late, after the first read below.
+  const reachedOne = await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `document.querySelector('${counter}').textContent.includes("subscribes: 1")`,
+      ),
+    500,
+  )
+  const settled = await poll(
+    async () => (await enhancedFormReading(devtools, card)).region.startsWith("You're subscribed"),
+    2_000,
+  )
+  const final = await devtools.evaluate<string>(`document.querySelector('${counter}').textContent`)
+
+  check(
+    "two clicks on NewsletterForm's submit button, dispatched with no gap, call onSubmit once",
+    reachedOne && settled && final.includes("subscribes: 1"),
+    `counter reached "subscribes: 1" shortly after both clicks: ${reachedOne}; region reached ` +
+      `"You're subscribed…": ${settled}; counter once settled: "${final.trim()}"`,
+  )
+}
+
+/**
+ * `ContactForm`'s card, driving the two ways a sending state has to end besides success:
+ *
+ * 1. A rejected submit — the failure toggle — moves the live region to the failure text and
+ *    re-enables the fields with what the visitor typed still in them, since `ContactForm` supplies
+ *    no `failed` slot of its own.
+ * 2. A submit that never settles at all — the hang toggle, standing in for a promise abandoned in
+ *    the back/forward cache — is only ever recovered from by the `pageshow` listener
+ *    `EnhancedForm` installs. There is no genuine back/forward-cache round trip to drive here: this
+ *    dispatches the same `persisted: true` event the browser would, through the page's own
+ *    `dispatchEvent`, which is legitimate for proving *this component's own listener* reacts
+ *    correctly — unlike a `.click()` standing in for a person's tap, nothing about *whether the
+ *    browser restores a frozen tab* is this library's contract to prove.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function contactFormRecoveryChecks(devtools: Devtools): Promise<void> {
+  const card = "#demo-ContactForm"
+
+  const fillContact = () =>
+    devtools.evaluate<null>(`(() => {
+      const c = document.querySelector('${card}')
+      c.querySelector('input[name="name"]').value = "Ada Lovelace"
+      c.querySelector('input[name="email"]').value = "ada@example.com"
+      c.querySelector('textarea[name="message"]').value = "Hello there."
+      return null
+    })()`)
+
+  await fillContact()
+  await devtools.evaluate<null>(
+    `(document.querySelector('${card} [data-e2e="contact-form-fail-toggle"]').click(), null)`,
+  )
+  await devtools.evaluate<null>(
+    `(document.querySelector('${card} button[type="submit"]').click(), null)`,
+  )
+
+  const failed = await poll(
+    async () =>
+      (await enhancedFormReading(devtools, card)).region ===
+        "Something went wrong. Please try again.",
+    2_000,
+  )
+  const afterFailure = await enhancedFormReading(devtools, card)
+  const nameKept = await devtools.evaluate<string>(
+    `document.querySelector('${card} input[name="name"]').value`,
+  )
+
+  check(
+    "a rejected ContactForm submit ends the sending state and leaves the fields for a retry",
+    failed && !afterFailure.disabled && nameKept === "Ada Lovelace",
+    `region reached the failure text: ${failed} ("${afterFailure.region}"); fieldset disabled ` +
+      `once settled: ${afterFailure.disabled}; name field kept "${nameKept}"`,
+  )
+
+  // Turn the failure toggle back off before the hang below, which has no toggle of its own to
+  // undo it: leaving it on would make the next check's submit fail instead of hang.
+  await devtools.evaluate<null>(`(() => {
+    const toggle = document.querySelector('${card} [data-e2e="contact-form-fail-toggle"]')
+    if (toggle.checked) toggle.click()
+    return null
+  })()`)
+
+  await devtools.evaluate<null>(
+    `(document.querySelector('${card} [data-e2e="contact-form-hang-toggle"]').click(), null)`,
+  )
+  await devtools.evaluate<null>(
+    `(document.querySelector('${card} button[type="submit"]').click(), null)`,
+  )
+
+  const sending = await poll(
+    async () => (await enhancedFormReading(devtools, card)).disabled,
+    1_000,
+  )
+
+  await devtools.evaluate<null>(
+    `(globalThis.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true })), null)`,
+  )
+
+  const recovered = await poll(async () => {
+    const reading = await enhancedFormReading(devtools, card)
+    return !reading.disabled && reading.region === ""
+  }, 1_000)
+
+  check(
+    "a pageshow with persisted:true ends a sending state whose promise will never settle",
+    sending && recovered,
+    `fieldset disabled while the promise was pending: ${sending}; re-enabled and the region ` +
+      `cleared once pageshow fired: ${recovered}`,
+  )
+
+  // Leave the card as it was found, for whatever reads the page next — and so a later run of this
+  // same check starts from a fresh, un-hung promise rather than one still pending from this run.
+  await devtools.evaluate<null>(`(() => {
+    const hang = document.querySelector('${card} [data-e2e="contact-form-hang-toggle"]')
+    if (hang.checked) hang.click()
+    return null
+  })()`)
+}
+
+/** Wait for the next full navigation, without throwing — see `system/`'s own copy for why. */
+async function waitForNavigation(devtools: Devtools, timeoutMs = 20_000): Promise<boolean> {
+  try {
+    await devtools.next("Page.loadEventFired", timeoutMs)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** One card driven by {@link enhancedFormsNoScriptChecks}: its selector and the fields to fill. */
+interface NoScriptTarget {
+  label: string
+  card: string
+  fields: ReadonlyArray<{ selector: string; value: string }>
+}
+
+const NO_SCRIPT_TARGETS: readonly NoScriptTarget[] = [
+  {
+    label: "NewsletterForm",
+    card: "#demo-NewsletterForm",
+    fields: [{ selector: 'input[name="email"]', value: "ada@example.com" }],
+  },
+  {
+    label: "ContactForm",
+    card: "#demo-ContactForm",
+    fields: [
+      { selector: 'input[name="name"]', value: "Ada Lovelace" },
+      { selector: 'input[name="email"]', value: "ada@example.com" },
+      { selector: 'textarea[name="message"]', value: "Hello there." },
+    ],
+  },
+]
+
+/**
+ * `NewsletterForm` and `ContactForm`, submitted on a page where no script has run at all —
+ * `Emulation.setScriptExecutionDisabled` before a reload buys that, the same way `system/`'s
+ * `authFormNoScriptChecks` does, and for the same reason: every other check in this file runs
+ * against Preact's own hydrated submit handler, and this is the one behaviour that needs a page
+ * that never ran the bundle. `Runtime.evaluate` keeps working the whole time — DevTools reads and
+ * writes the page through its own privileged channel — so this can still fill fields and read
+ * `location.href` even though nothing the page itself authored can run; the submit button itself is
+ * pressed with a real, dispatched pointer, because a `.click()` run through `Runtime.evaluate` is
+ * script executing on the page's behalf where genuinely none should be able to.
+ *
+ * Both cards' `action` points at `form-demo/`, a static page `pages/build.ts` copies into the
+ * artefact — see this section's own module doc. Landing there and reading its own marker back is
+ * what "the server's answer shows" means for a form with no server behind this demo: the file is
+ * served back for a POST exactly as it would be for a GET, which is enough to prove a plain HTML
+ * submit reached somewhere real rather than doing nothing.
+ *
+ * **Everything from disabling script execution onward runs inside a `try`, and re-enabling it,
+ * navigating back and waiting for rehydration all run inside the matching `finally`** — the same
+ * shape `authFormNoScriptChecks` uses, and for the same reason: a throw or a stalled navigation
+ * partway through must not leave every check after this one running against an unhydrated page.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function enhancedFormsNoScriptChecks(devtools: Devtools): Promise<void> {
+  const restoreUrl = await devtools.evaluate<string>("location.href").catch(() => "")
+
+  try {
+    await devtools.send("Emulation.setScriptExecutionDisabled", { value: true })
+
+    for (const [index, target] of NO_SCRIPT_TARGETS.entries()) {
+      if (index === 0) {
+        await devtools.send("Page.reload", { ignoreCache: true })
+      } else {
+        // A fresh, still-unhydrated load of the catalogue itself, not a reload of wherever the
+        // previous target's submit landed — `Page.reload` at that point would reload `form-demo/`.
+        await devtools.send("Page.navigate", { url: restoreUrl })
+      }
+      const loaded = await waitForNavigation(devtools)
+      const unhydrated = loaded &&
+        await devtools.evaluate<boolean>(`document.documentElement.dataset.hydrated !== "true"`)
+          .catch(() => false)
+
+      for (const field of target.fields) {
+        await devtools.evaluate<null>(`(() => {
+          const card = document.querySelector('${target.card}')
+          const el = card ? card.querySelector('${field.selector}') : null
+          if (el) el.value = ${JSON.stringify(field.value)}
+          return null
+        })()`).catch(() => null)
+      }
+
+      const buttonPoint = await devtools.evaluate<{ x: number; y: number } | null>(`(() => {
+        const card = document.querySelector('${target.card}')
+        const form = card ? card.querySelector('form') : null
+        const button = form ? form.querySelector('button[type="submit"]') : null
+        if (!button) return null
+        button.scrollIntoView({ block: "center", behavior: "instant" })
+        const rect = button.getBoundingClientRect()
+        return {
+          x: Math.round(rect.left + rect.width / 2),
+          y: Math.round(rect.top + rect.height / 2),
+        }
+      })()`).catch(() => null)
+
+      if (buttonPoint) {
+        for (const type of ["mousePressed", "mouseReleased"]) {
+          await devtools.send("Input.dispatchMouseEvent", {
+            type,
+            x: buttonPoint.x,
+            y: buttonPoint.y,
+            button: "left",
+            buttons: type === "mousePressed" ? 1 : 0,
+            clickCount: 1,
+          })
+        }
+      }
+
+      const navigated = await waitForNavigation(devtools)
+      const answer = navigated
+        ? await devtools.evaluate<string>(
+          `document.querySelector('[data-e2e="form-demo-answer"]')?.textContent ?? ""`,
+        ).catch(() => "")
+        : ""
+
+      check(
+        `${target.label} submits with no script running, and the server's answer shows`,
+        unhydrated && Boolean(buttonPoint) && navigated && answer.includes("Thanks"),
+        !unhydrated
+          ? "the fresh load still hydrated, so this proves nothing about a visitor without the bundle"
+          : !buttonPoint
+          ? `no submit button was found on the unhydrated, prerendered ${target.label} card`
+          : !navigated
+          ? "the submit never navigated anywhere within the timeout"
+          : `landed on a page whose own marker reads ${JSON.stringify(answer.slice(0, 60))}`,
+      )
+    }
+  } finally {
+    await devtools.send("Emulation.setScriptExecutionDisabled", { value: false }).catch(() => {})
+    await devtools.send("Page.navigate", { url: restoreUrl }).catch(() => {})
+    await waitForNavigation(devtools)
+
+    const rehydrated = await poll(
+      () =>
+        devtools.evaluate<boolean>(`document.documentElement.dataset.hydrated === "true"`)
+          .catch(() => false),
+      10_000,
+    )
+    check(
+      "the page rehydrates once script execution is re-enabled again",
+      rehydrated,
+      rehydrated
+        ? "data-hydrated set again after the restoring navigation"
+        : "the page never rehydrated after script execution was re-enabled",
+    )
+
+    await settledScroll(devtools)
+  }
 }
