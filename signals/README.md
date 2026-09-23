@@ -139,10 +139,10 @@ than a mistyped row in the UI. Each of those replacements is subject to the rule
 
 ### Which answer the store keeps
 
-Four rules decide what a row looks like once several answers have arrived for it: the session the
-request was made in, the order the requests were made in, a freshness check on a remote event, and
-that same freshness check between the answer to one of your own requests and the row the list is
-holding when it lands.
+Five rules decide what a row looks like once several answers have arrived for it: the session the
+request was made in, the order the requests were made in, a freshness check on a remote update,
+what a remote delete is allowed to change, and that same freshness check between the answer to one
+of your own requests and the row the list is holding when it lands.
 
 **An answer is only ever applied to the session that asked for it.** `reset()` raises a generation
 number; every request reads it when it starts and compares it when its answer lands. An answer from
@@ -185,12 +185,17 @@ the row changed, so where the two rows cannot be ordered the event wins — a ch
 clock must not silently drop the write. Pass your own `isNewer` for a model that versions its rows
 some other way.
 
-**A remote `"deleted"` event is not weighed at all.** It replaces the held row wholesale — its name,
-its columns and its `updatedAt` — whatever the clock says, and that is pre-existing behaviour this
-change did not touch. Two consequences to know about. A delete carrying an older copy of the row
-overwrites a newer one. And because the whole row is replaced, the held row's `updatedAt` moves to
-whatever the event carried, so such an event can wind a row's clock backwards and leave the rule
-below judging this client's next write against the wrong instant. Issue #201 tracks it.
+**A remote `"deleted"` event only ever changes `deletedAt`.** It is a claim about archiving the
+row, not about the row as a whole, so `deletedAt` is taken from it unconditionally — a delayed
+delete still deletes, however old the event is — and every other column, `name` included, keeps
+the value the list already held. An old copy of a row riding in on a delayed delete cannot
+overwrite a newer one this way. `updatedAt` is the one column that can still move, and it is judged
+by the same `isNewer` a remote update is judged by: it advances to the event's when the event is
+the later of the two, and stays exactly as held when it is not — so a remote event never winds a
+row's clock backwards. Before this rule a delete replaced the held row wholesale, including
+`updatedAt`, so a delete carrying an older copy of the row overwrote a newer one and wound that
+row's clock back, leaving the rule below judging this client's next write against the wrong
+instant. Issue #201 was that bug.
 
 **The later of a remote change and your own answer wins.** When the answer to one of your own
 requests comes back, it is compared against the row the list is holding — by the same `isNewer`,
@@ -211,8 +216,9 @@ text. There is no port for "succeeded but superseded": an application that wants
 compare `await store.update(…)` against `store.one.byId(id).value` itself.
 
 **The order the three rules that judge your own answer apply in is fixed, and each of them can only
-refuse.** The fourth rule above is not among them — it judges a remote event, which is not an answer
-to anything this client asked for. The session first: an answer from before a `reset()` is disowned
+refuse.** The other rules above are not among them — a remote update's freshness check and a remote
+delete's archiving rule each judge a remote event, which is not an answer to anything this client
+asked for. The session first: an answer from before a `reset()` is disowned
 and never reaches the other two. Then the request order: an answer older than one already applied
 for that row is dropped and never reaches the clock. Then the clock, which decides the list alone.
 None of them can be bypassed by another — an answer fresh by its row's counter may still lose to a
@@ -225,10 +231,11 @@ and your own answer wins — the rule is inert there rather than wrong, and a mo
 writes ordered against other people's has to carry `updatedAt`. Two application servers whose clocks
 disagree will order two changes by the skew rather than by what happened.
 
-And the case this rule exists for needs the delete to move the clock. A server that soft-deletes
-without moving `updatedAt` sends a `"deleted"` event that still replaces the held row — that event
-is never weighed — but the row it leaves carries the instant it had before the delete. The answer
-to the write you already had outstanding then ties with it or beats it, and either way it wins and
+And the case this rule exists for still needs the delete to move the clock. A server that
+soft-deletes without moving `updatedAt` sends a `"deleted"` event whose own freshness check ties
+with the held row, so archiving still applies but the stamp advances to the same instant it already
+carried — the row is left at the instant it had before the delete. The answer to the write you
+already had outstanding then ties with it or beats it, and either way it wins and
 puts the row back undeleted. It beats it whenever your own `PATCH` did move `updatedAt` and the
 `DELETE` did not, which is the ordinary shape of an endpoint that writes `deleted_at` directly, so
 do not read this as a risk that only equal instants carry. The row a colleague deleted reappears,
@@ -246,10 +253,11 @@ them red at once. A soft delete in this library's data contract is an update, an
 writes it as one moves `updatedAt` with it; one that does not should pass its own `isNewer`.
 
 Where any of that is true, pass your own `isNewer` and compare a version column instead. It is
-asked for the two comparisons the rule is made of — a remote `"updated"` event against the held
-row, and your own answer against the held row — and the store never goes around it for either. It
-is not asked about a `"deleted"` or a `"list"` event, because neither of those is weighed against
-anything.
+asked for three comparisons — a remote `"updated"` event against the held row, a remote `"deleted"`
+event's freshness stamp against the held row's, and your own answer against the held row — and the
+store never goes around it for any of them. For a `"deleted"` event it decides only whether the
+freshness stamp advances; the archiving itself is unconditional and does not go through it. It is
+not asked about a `"list"` event, because that is not weighed against anything.
 
 ### Extension points
 
