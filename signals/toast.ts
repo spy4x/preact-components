@@ -53,7 +53,12 @@ export interface ToastStore {
   list: ReadonlySignal<ToastEntry[]>
   /** Push a toast. Returns its id, generated when the message carries none.
    *
-   * Reusing an id replaces that toast in place.
+   * Reusing an id replaces that toast in place. **It does not restart the toast's countdown**,
+   * which is a change: this store used to cancel the old timer and schedule a fresh one, so a
+   * re-push bought the toast its whole delay again. It has no timer to restart now. Under `Toastr`
+   * the replaced toast keeps its remaining time unless the re-push changes `duration`, which
+   * refills the budget in full — the component's rule from #172, and the one way to extend a toast
+   * on screen.
    */
   add(message: ToastMessage): string
   /** Take one toast off the list. This is the port `Toastr`'s `onDismiss` calls. */
