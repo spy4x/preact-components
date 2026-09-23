@@ -286,15 +286,27 @@ export class ChromiumLifecycle {
    */
   endChromium(gracefulCloseTimeoutMs?: number): Promise<void> {
     return this.#processCleanup ??= (async () => {
-      if (this.#session) {
-        const { process, profile, devtools } = this.#session
-        await shutdownChromium(process, profile, devtools, gracefulCloseTimeoutMs)
-      } else if (this.#inFlight) {
-        const { process, profile } = this.#inFlight
-        await shutdownChromium(process, profile, undefined, gracefulCloseTimeoutMs)
+      try {
+        if (this.#session) {
+          const { process, profile, devtools } = this.#session
+          await shutdownChromium(process, profile, devtools, gracefulCloseTimeoutMs)
+        } else if (this.#inFlight) {
+          const { process, profile } = this.#inFlight
+          await shutdownChromium(process, profile, undefined, gracefulCloseTimeoutMs)
+        }
+        this.#session = undefined
+        this.#inFlight = undefined
+      } finally {
+        // Cleared once this cleanup is actually done, not left cached forever: `withOneRetry` calls
+        // `launchOnce` — and so this method, on the failure path — up to twice on the same
+        // `ChromiumLifecycle`, for two different attempts with two different profiles. Caching this
+        // promise permanently (the first shape here) made the *second* attempt's own call return the
+        // *first* attempt's already-resolved promise instead of doing any new work at all — its
+        // profile directory was silently never removed. A caller reached while this promise is still
+        // pending still shares it, since the reset only happens after the real work above finishes;
+        // only a caller that arrives *after* it settles gets a fresh cleanup.
+        this.#processCleanup = undefined
       }
-      this.#session = undefined
-      this.#inFlight = undefined
     })()
   }
 

@@ -183,6 +183,25 @@ describe("ChromiumLifecycle", () => {
     expect(closes).toBe(1)
   })
 
+  it("tears down each of two consecutive failed attempts, not only the first", async () => {
+    // withOneRetry calls launchOnce — and so endChromium, on its failure path — up to twice on the
+    // same ChromiumLifecycle, once per attempt, each with its own process and profile. Caching
+    // endChromium's promise permanently (rather than clearing it once that cleanup is actually done)
+    // made a second call return the first attempt's already-settled promise instead of doing any new
+    // work: its process was never killed and its profile directory was never removed.
+    const lifecycle = new ChromiumLifecycle()
+    const first = fakeProcess()
+    lifecycle.trackAttempt({ process: first, profile: "/tmp/launch-test-attempt-one" })
+    await lifecycle.endChromium(FAST_GRACEFUL_CLOSE_MS)
+
+    const second = fakeProcess()
+    lifecycle.trackAttempt({ process: second, profile: "/tmp/launch-test-attempt-two" })
+    await lifecycle.endChromium(FAST_GRACEFUL_CLOSE_MS)
+
+    expect(first.killedWith).toEqual(["SIGKILL"])
+    expect(second.killedWith).toEqual(["SIGKILL"])
+  })
+
   it("gives a second caller the first call's own completion, instead of returning early", async () => {
     const lifecycle = new ChromiumLifecycle()
     const process = fakeProcess()
