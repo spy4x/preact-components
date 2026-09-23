@@ -548,12 +548,12 @@ own test is about what importing it does to the process rather than about an exp
 The model store is exercised against a fake `fetch`. The toast store is exercised against a fake
 clock that replaces `setTimeout` for the whole process, which is how "this store schedules nothing"
 is asserted against a clock that has really moved rather than against an injected port the store
-could have gone around. No network, no timers left running. The ordering rules above are tested with a second fake `fetch` that holds every
-request open until the test answers it, so two writes to one row can be put in flight and answered
-in the other order. `useUrlFilters` is the one exception: it needs a DOM and a router, so only its
-pure coercion helpers are covered here and its binding to the address bar is covered in a real
-browser, by `pages/checks/signals.ts` — run with `deno task --cwd pages build` and
-`deno task --cwd pages verify`.
+could have gone around. No network, no timers left running. The ordering rules above are tested
+with a second fake `fetch` that holds every request open until the test answers it, so two writes
+to one row can be put in flight and answered in the other order. `useUrlFilters` is the one
+exception: it needs a DOM and a router, so only its pure coercion helpers are covered here and its
+binding to the address bar is covered in a real browser, by `pages/checks/signals.ts` — run with
+`deno task --cwd pages build` and `deno task --cwd pages verify`.
 
 The model store has a second file, `build-model-store.generated.test.ts`. The named tests fix one
 arrangement each and hold everything else still — three small row ids, two requests, a handful of

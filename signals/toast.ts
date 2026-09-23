@@ -83,7 +83,8 @@ function defaultNextId(): string {
  * ```ts
  * export const toast = createToastStore()
  * // pass `toast` to buildModelStore as its ToastPort
- * // render it with <Toastr toasts={toast.list.value} onDismiss={(id) => toast.remove(String(id))} />
+ * // render it with
+ * // <Toastr toasts={toast.list.value} onDismiss={(id) => toast.remove(String(id))} />
  * ```
  */
 export function createToastStore(options: ToastOptions = {}): ToastStore {
