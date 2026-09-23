@@ -1854,11 +1854,12 @@ async function lateMonthChecks(devtools: Devtools): Promise<void> {
   // arrive for two requests and the cells the focus is on are replaced twice, so this is the
   // sequence that used to end with nothing focused at all.
   //
-  // What is asserted is what the calendar owns: the reader ends on a day cell, on the day number
-  // they were on. *Which* month they end on is the owner's arithmetic and not the calendar's —
-  // both presses were read as refused, so both counted from the month on screen, and the owner
-  // drew the month after it and then the month before it in that order. The month is reported in
-  // the detail rather than pinned, because pinning it would be pinning the demo's owner.
+  // The month is pinned as well as the day, because it is the calendar's doing and not the
+  // owner's: both presses were read as refused before the next arrived, so both counted from the
+  // month on screen, and the calendar asked for the month after and then the month *before*. The
+  // owner drew exactly what it was asked for. The reader therefore ends one month behind where
+  // they started, which is the price of the cursor never disagreeing with the focus, and it is
+  // pinned here so that a future change to that trade goes red instead of passing quietly.
   const beforePair = await read(devtools, LATE_STATE, NO_CARD)
   await pressKey(devtools, "PageDown")
   await pressKey(devtools, "PageUp")
@@ -1875,21 +1876,22 @@ async function lateMonthChecks(devtools: Devtools): Promise<void> {
   )
   const afterPair = await read(devtools, LATE_STATE, NO_CARD)
 
+  const pairMonth = monthAfter(beforePair.extra, -1)
+  const pairWanted = `${pairMonth.slice(0, 8)}${dayNumber(beforePair.date)}`
+
   check(
-    "Page Down then Page Up at a slow owner ends on a day, not on nothing",
+    "Page Down then Page Up at a slow owner lands a month back, on the same day number",
     beforePair.date !== "" && afterPair.count === beforePair.count + 2 &&
-      afterPair.onDay && !afterPair.onBody &&
-      dayNumber(afterPair.date) === dayNumber(beforePair.date) &&
-      afterPair.tabStop === afterPair.date,
+      afterPair.onDay && !afterPair.onBody && afterPair.extra === pairMonth &&
+      afterPair.date === pairWanted && afterPair.tabStop === pairWanted,
     beforePair.date !== ""
-      ? `from ${beforePair.date} in ${beforePair.heading}: Page Down Page Up drew ` +
+      ? `from ${beforePair.date} with ${beforePair.extra} on screen, Page Down Page Up drew ` +
         `${afterPair.count - beforePair.count} answers and left the card showing ` +
         `${afterPair.extra || "nothing"}, with the focus on ` +
         `${afterPair.date || afterPair.focused} and the Tab stop on ` +
-        `${
-          afterPair.tabStop || "nowhere"
-        } — the day number the reader was on, in whichever month ` +
-        `the owner's two answers left behind`
+        `${afterPair.tabStop || "nowhere"} — wanted ${pairWanted} in ${pairMonth}, one month ` +
+        `before where the reader started, because both presses were read as refused before ` +
+        `the next arrived and so both were asked from the month on screen`
       : "the focus never reached a day of the late-answering card",
   )
 
