@@ -7,8 +7,12 @@ import type { JSX } from "preact"
  * Exported because a server checking the no-JavaScript path — the one path a client-side check can
  * never run on, since there is no client-side code left to run it — has to read the same field a
  * plain HTML form posted it under.
+ *
+ * Deliberately not a word a browser's own autofill heuristics reach for — `"company"`, `"website"`,
+ * `"url"` and similar strongly signal a category to Chrome's autofill even with `autocomplete="off"`
+ * on the input, and an autofilled honeypot rejects a real visitor's genuine submission.
  */
-export const HONEYPOT_FIELD_NAME = "company-website"
+export const HONEYPOT_FIELD_NAME = "hp-field"
 
 /**
  * A field simple bots fill in and people never see: off-screen rather than `display: none` or
