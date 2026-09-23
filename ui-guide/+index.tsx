@@ -3,7 +3,7 @@
  *
  * Frameworks are the app's business, so this package exports a component and a plain route
  * descriptor instead of a file-based route: any app that imports the library can render the guide
- * and register it in its own navigation, which is what the source guide in `gb` never did.
+ * and register it in its own navigation, which is what one of the source guides never did.
  *
  * Everything below the title is generated from {@link demoRegistry}, so the page cannot show a
  * component the registry does not know about. A component a covered package exports and no section
@@ -268,7 +268,7 @@ export interface UiGuideRoute {
  * Route descriptor for the catalogue.
  *
  * Exported so the guide can be registered in an app's navigation instead of being reachable only by
- * typing its URL — the reason the `gb` guide was effectively dead code. The app decides how to
+ * typing its URL — the reason that source guide was effectively dead code. The app decides how to
  * consume it; nothing here knows about a router.
  *
  * ```tsx

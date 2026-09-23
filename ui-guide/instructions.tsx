@@ -58,7 +58,7 @@ export const documentedClasses: Record<string, string[]> = {
 /**
  * Classes that were deliberately dropped from the theme, with the reason.
  *
- * Both had zero usages in `gb` and survived only because its `ui-guide` referenced them. They are
+ * Both had zero usages in the source application and survived only because its `ui-guide` referenced them. They are
  * listed here so the catalogue states why they are gone, and so the test can prove that neither
  * this page nor the preset brought them back.
  */
@@ -179,7 +179,7 @@ function ClassChip({ name }: { name: string }) {
  * Design-system rules for the pages built out of `theme/`.
  *
  * Not a demo of a `ui/` component — it is the context the components are meant to be assembled in,
- * ported from `financy`'s guide.
+ * ported from a source application's guide.
  */
 export function CatalogInstructions() {
   return (
