@@ -66,7 +66,7 @@ export const ROLEY_FILES: string[] = [
   "out",
   "paper",
   "pencil",
-  "pencil-roley",
+  "pencil-alt",
   "play",
   "play-filled",
   "plus",
@@ -179,13 +179,13 @@ export function parseReadmeClaims(markdown: string): ReadmeClaims {
     exportName: unwrap(exportName),
     source: unwrap(source),
   }))
-  const folds = tableRows(markdown, "| `roley` file ").map(([source, target, kind]) => ({
+  const folds = tableRows(markdown, "| Ported file ").map(([source, target, kind]) => ({
     source: unwrap(source),
     target: unwrap(target),
     kind,
   }))
   const excluded = tableRows(markdown, "| Excluded ")
-    .filter(([, origin]) => unwrap(origin) === "roley")
+    .filter(([, origin]) => unwrap(origin) === "ported")
     .flatMap(([names]) => names.split(",").map((name) => unwrap(name.trim())))
   const sentence = /re-exports \*\*\d+\*\* of the 52 files;([\s\S]*?)are the three absent/.exec(
     markdown,
@@ -321,8 +321,8 @@ export async function audit(): Promise<{
       fail(port.source, `port table names ${port.exportName}, which +index.tsx does not export`)
       continue
     }
-    if (!block.doc.includes("from roley")) {
-      fail(port.exportName, `JSDoc does not name roley as the source family`)
+    if (!block.doc.includes("from a source application")) {
+      fail(port.exportName, `JSDoc does not mark the ported source family`)
     }
     if (!sourcePresent) continue
     const sourceBody = await Deno.readTextFile(`${ROLEY_DIR}${port.source}.svelte`)
@@ -393,7 +393,7 @@ export async function audit(): Promise<{
   )
 
   // --- stroke-width split of the roley family, from the module --------------------------------
-  const roleyBlocks = blocks.filter((block) => block.doc.includes("from roley"))
+  const roleyBlocks = blocks.filter((block) => block.doc.includes("from a source application"))
   const stroked = roleyBlocks.filter((block) => strokeWidth(block.body) === "2").length
   const strokeless = roleyBlocks.filter((block) => strokeWidth(block.body) === undefined).length
   const otherWidths = roleyBlocks
