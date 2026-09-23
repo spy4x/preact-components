@@ -11,6 +11,7 @@
  * a segment of it.
  */
 
+import type { JSX } from "preact"
 import { breadcrumbListJsonLd, normalizeCanonical, type PageHead } from "./head.ts"
 
 /** Which `<head>` element a {@link HeadTag} describes. */
@@ -153,6 +154,6 @@ function renderTag(tag: HeadTag, index: number) {
  * touches no framework and no global, so it also renders under `preact-render-to-string` in a
  * test with no head pipeline at all.
  */
-export function SEOHead(head: PageHead) {
+export function SEOHead(head: PageHead): JSX.Element {
   return <>{seoHeadTags(head).map(renderTag)}</>
 }

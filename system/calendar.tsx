@@ -26,6 +26,7 @@
 
 import { cn } from "@preact-components/cn"
 import { IconChevronLeft, IconChevronRight } from "@preact-components/icons"
+import type { JSX } from "preact"
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "preact/hooks"
 import {
   addDaysIso,
@@ -210,7 +211,7 @@ export function Calendar(
     labels,
     class: className,
   }: CalendarProps,
-) {
+): JSX.Element {
   const copy = { ...defaultLabels, ...labels }
   const firstOfMonth = startOfMonth(monthAnchor)
   const monthKey = firstOfMonth.slice(0, 7)

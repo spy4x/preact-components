@@ -23,6 +23,7 @@
 
 import { cn } from "@preact-components/cn"
 import { IconXMark } from "@preact-components/icons"
+import type { JSX } from "preact"
 import { useEffect, useRef, useState } from "preact/hooks"
 
 /** An image the lightbox can show. */
@@ -175,7 +176,7 @@ export function ImageLightbox(
     onOpen,
     class: className,
   }: ImageLightboxProps,
-) {
+): JSX.Element {
   const [image, setImage] = useState<LightboxImage | null>(null)
   const dialogRef = useRef<HTMLDialogElement>(null)
 
