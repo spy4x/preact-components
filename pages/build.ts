@@ -56,6 +56,14 @@ const ORIGIN = Deno.env.get("PAGES_ORIGIN") ?? DEFAULT_ORIGIN
  * than at the site root. See `sw-demo/sw.js` for why a published site can carry it safely.
  */
 const SW_DEMO_DIRECTORY = "sw-demo"
+/**
+ * Directory copied verbatim into the artefact for the `EnhancedForm`, `NewsletterForm` and
+ * `ContactForm` cards: one static page, served back for a GET or a POST alike, that stands in for
+ * "a server answered" when no script has run. `pages/serve.ts` never looks at `request.method`, so
+ * the same file a hydrated visitor never reaches is exactly what an unhydrated one's native submit
+ * lands on.
+ */
+const FORM_DEMO_DIRECTORY = "form-demo"
 
 /** Sources `deno check` must accept before a single byte is emitted. */
 const CHECKED_ENTRIES = [
@@ -221,6 +229,37 @@ async function copyServiceWorkerDemo(): Promise<string[]> {
   return copied.sort()
 }
 
+/**
+ * Copy `form-demo/` into the artefact, file by file.
+ *
+ * An empty or missing directory throws instead of shipping a catalogue whose progressive-enhancement
+ * cards post to a path with nothing behind it — the no-JavaScript check in `pages/checks/ui.ts`
+ * would then fail against a 404 rather than against the component it is actually testing.
+ *
+ * @returns The file names copied, for the build report.
+ */
+async function copyFormDemo(): Promise<string[]> {
+  const source = join(PAGES_DIRECTORY, FORM_DEMO_DIRECTORY)
+  const target = join(DIST_DIRECTORY, FORM_DEMO_DIRECTORY)
+  await Deno.mkdir(target, { recursive: true })
+
+  const copied: string[] = []
+  for await (const entry of Deno.readDir(source)) {
+    if (!entry.isFile) continue
+    await Deno.copyFile(join(source, entry.name), join(target, entry.name))
+    copied.push(entry.name)
+  }
+
+  if (!copied.includes("index.html")) {
+    throw new Error(
+      `${source} must hold index.html for the EnhancedForm/NewsletterForm/ContactForm cards — ` +
+        `found ${copied.join(", ") || "nothing"}`,
+    )
+  }
+
+  return copied.sort()
+}
+
 /** Build the artefact. */
 async function main(): Promise<void> {
   console.log(`pages build → ${DIST_DIRECTORY}`)
@@ -278,6 +317,7 @@ async function main(): Promise<void> {
 
   await Deno.writeFile(join(DIST_DIRECTORY, "index.html"), new TextEncoder().encode(html))
   const swDemo = await copyServiceWorkerDemo()
+  const formDemo = await copyFormDemo()
 
   console.log(
     `  index.html ${kilobytes(html.length)} · prerendered ${catalogueNames.length} components\n` +
@@ -285,6 +325,7 @@ async function main(): Promise<void> {
       `  assets/${assetNames.css} ${kilobytes(stylesheet.length)}\n` +
       `  assets/${assetNames.js} ${kilobytes(island.length)}\n` +
       `  ${SW_DEMO_DIRECTORY}/ ${swDemo.join(", ")} — registered only when a visitor asks\n` +
+      `  ${FORM_DEMO_DIRECTORY}/ ${formDemo.join(", ")} — the no-JavaScript forms post here\n` +
       `  served from ${ORIGIN}${BASE}`,
   )
 }
