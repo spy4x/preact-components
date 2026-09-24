@@ -1,4 +1,4 @@
-import { check, type Devtools, poll } from "./harness.ts"
+import { centreInView, check, type Devtools, poll } from "./harness.ts"
 import { PAGE_TITLE } from "../src/site.ts"
 
 /**
@@ -165,5 +165,39 @@ export async function pagesChecks(devtools: Devtools): Promise<void> {
     "the deep link outlines its card",
     outline.outline === "2px",
     `outline-width ${outline.outline} from styles.css, with the canonical route as the last hash`,
+  )
+
+  // Every aim in `checks/ui.ts` and `checks/map.ts` starts with `centreInView`, which works out
+  // where the page's own smooth scroll will stop and waits for the page to get there (#269). Proven
+  // here, on this page and its scrollbar, because a target that was a few pixels out would not fail
+  // any of those checks: the wait would run out its budget, return `false` to callers that do not
+  // read it, and let them aim at a page that had stopped anyway — a full run measured every call
+  // doing exactly that, 8px short, before the viewport height excluded the horizontal scrollbar.
+  // The page is sent to the top first, so the scroll is a long one and still running when the
+  // first reads arrive.
+  const AIM = `document.querySelector('#demo-ContactForm form button[type="submit"]')`
+  await devtools.evaluate<null>(`(globalThis.scrollTo({ top: 0, behavior: "instant" }), null)`)
+  const centreStarted = Date.now()
+  const centred = await centreInView(devtools, AIM)
+  const centreMs = Date.now() - centreStarted
+  const placed = await devtools.evaluate<{ found: boolean; offset: number; scrollY: number }>(
+    `(() => {
+      const element = ${AIM}
+      if (element === null) return { found: false, offset: Number.NaN, scrollY: -1 }
+      const box = element.getBoundingClientRect()
+      return {
+        found: true,
+        offset: Math.round(box.top + box.height / 2 - document.documentElement.clientHeight / 2),
+        scrollY: Math.round(globalThis.scrollY),
+      }
+    })()`,
+  )
+  check(
+    "centreInView settles on the target it worked out, with the element in the middle",
+    centred && placed.found && Math.abs(placed.offset) <= 1 && placed.scrollY > 0,
+    !placed.found
+      ? "the ContactForm card has no submit button to centre"
+      : `${centred ? "settled" : "did not settle on its target"} after ${centreMs}ms, at ` +
+        `scrollY ${placed.scrollY}, with the button's centre ${placed.offset}px from the middle`,
   )
 }
