@@ -772,12 +772,20 @@ describe("settledScroll", () => {
 })
 
 describe("centreInView", () => {
-  it("settles on the position its own instant scroll landed on", async () => {
-    const { page, seen, scrollReads } = scriptedPage([0, 0, 800, 800], 800)
+  it("waits for its scroll to reach the centre it worked out, not for the first quiet reads", async () => {
+    // The page reads still twice before the smooth scroll's first frame, then arrives.
+    const { page, scrollReads } = scriptedPage([0, 0, 800, 800], 800)
 
     expect(await centreInView(page, "document.body", 2_000)).toBe(true)
-    expect(seen[0]).toContain(`behavior: "instant"`)
     expect(scrollReads()).toBe(4)
+  })
+
+  it("leaves the scroll to the page, so it replaces a smooth scroll already running", async () => {
+    const { page, seen } = scriptedPage([800], 800)
+
+    await centreInView(page, "document.body", 1_000)
+
+    expect(seen[0]).toContain(`scrollIntoView({ block: "center" })`)
   })
 
   it("reports a missing element without waiting on the page", async () => {

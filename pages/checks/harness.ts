@@ -592,17 +592,21 @@ export async function settledScroll(
 }
 
 /**
- * Scroll an element to the middle of the viewport at once, then confirm the page stays there.
+ * Scroll an element to the middle of the viewport, and wait until the page has come to rest there.
  *
- * The scroll is `behavior: "instant"`, so the position it lands on is known in the same evaluate
- * that asks for it, and {@link settledScroll} is handed that position as its target: the wait
- * cannot mistake a page that has not moved yet for one that has finished moving, which is what an
- * untargeted wait after a smooth `scrollIntoView` did on a loaded machine (#269). An instant scroll
- * also ends a smooth one the page may still have running.
+ * The scroll is the page's own — smooth, since the catalogue sets `scroll-behavior: smooth` — and
+ * that is deliberate: a smooth scroll the page already has running, such as the one to an address
+ * fragment after a load, is replaced by the new one, while an instant scroll was measured losing to
+ * it under load and leaving the page thousands of pixels from the element. So where the scroll will
+ * end is worked out first, in the same evaluate, from the element's place in the document and the
+ * same rules `scrollIntoView({ block: "center" })` follows — its scroll margins included, clamped to
+ * the page's ends — and {@link settledScroll} is handed that as its target. The wait then cannot
+ * mistake a scroll that has not started for one that has finished, which is what an untargeted wait
+ * after a smooth `scrollIntoView` did on a loaded machine (#269).
  *
  * @param page The connected session.
  * @param element A page expression for the element, which may evaluate to `null`.
- * @param timeoutMs How long the page gets to hold still on the landed position.
+ * @param timeoutMs How long the page gets to come to rest on the target.
  * @returns Whether the element was there and the page settled with it in the middle.
  */
 export async function centreInView(
@@ -610,14 +614,21 @@ export async function centreInView(
   element: string,
   timeoutMs = 3_000,
 ): Promise<boolean> {
-  const landed = await page.evaluate<number | null>(`(() => {
+  const target = await page.evaluate<number | null>(`(() => {
     const element = ${element}
     if (element === null || element === undefined) return null
-    element.scrollIntoView({ block: "center", behavior: "instant" })
-    return Math.round(globalThis.scrollY)
+    const box = element.getBoundingClientRect()
+    const style = getComputedStyle(element)
+    const above = parseFloat(style.scrollMarginTop) || 0
+    const below = parseFloat(style.scrollMarginBottom) || 0
+    const top = globalThis.scrollY + box.top - above
+    const middle = top + (box.height + above + below) / 2 - globalThis.innerHeight / 2
+    const bottom = document.documentElement.scrollHeight - globalThis.innerHeight
+    element.scrollIntoView({ block: "center" })
+    return Math.round(Math.min(Math.max(middle, 0), bottom))
   })()`)
-  if (landed === null) return false
-  return await settledScroll(page, { target: landed, timeoutMs })
+  if (target === null) return false
+  return await settledScroll(page, { target, timeoutMs })
 }
 
 /** Wait for Chromium's port file, which appears once the debugging server is up. */
