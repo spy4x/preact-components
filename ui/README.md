@@ -13,16 +13,17 @@ Preact + Tailwind primitives extracted from earlier source applications.
 - **One Preact option hook, for four components' refs.** `./forward-ref.ts`'s hook, installed on
   Preact's shared `options` object, is what lets `Input`, `Button`, `Checkbox` and `Radio` forward
   the `ref` each is given to the native element it renders instead of Preact applying it to the
-  component itself. Fourteen of this package's exports load it — checked with `deno info --json`
-  against every export in `ui/deno.json`, not assumed: the four components themselves —
+  component itself. Seventeen of this package's exports load it — checked by walking each
+  subpath's own module graph for `forward-ref.ts`, not assumed: the four components themselves —
   `./button`'s only other export is `buttonClasses`, so a caller who imports that alone still
   installs the hook; the package root (`.`), which carries every export; `./confirm-dialog`,
-  `./copy-button`, `./date-range-picker`, `./geo-button`, `./modal`, `./on-off-buttons` and
-  `./pagination`, each of which renders a `Button` of its own; `./dropdown`, which uses
-  `buttonClasses` without ever rendering a `Button`; and `./copyable-text`, which loads it
-  transitively through `./copy-button`. `@preact-components/crud` loads it too, transitively,
-  through `./dropdown`. It acts only on the four components it forwards refs for; nothing else in
-  this package or a caller's own markup is affected.
+  `./copy-button`, `./date-range-picker`, `./geo-button`, `./modal`, `./on-off-buttons`,
+  `./pagination`, `./contact-form` and `./newsletter-form`, each of which renders a `Button` of its
+  own; `./dropdown`, which uses `buttonClasses` without ever rendering a `Button`; and
+  `./copyable-text` and `./data-table`, which load it transitively — through `./copy-button` and
+  `./pagination` respectively. `@preact-components/crud` loads it too, transitively, through
+  `./dropdown`. It acts only on the four components it forwards refs for; nothing else in this
+  package or a caller's own markup is affected.
 
 ## Components
 
@@ -33,17 +34,20 @@ Preact + Tailwind primitives extracted from earlier source applications.
 | `Badge`           | `badge`             | `text`, `color`, `type`                                                                                                        |
 | `Button`          | `button`            | `variant`, `size`, native button attrs                                                                                         |
 | `ConfidenceMeter` | `confidence-meter`  | `value` (optional; clamped 0–100, unknown renders no reading), `label`                                                         |
+| `ContactForm`     | `contact-form`      | `action?`, `onSubmit?` (`{ name, email, message }`), `honeypot?`, `labels?`, built on `EnhancedForm`                           |
 | `CopyButton`      | `copy-button`       | `textToCopy`, `copy?` (clipboard port)                                                                                         |
 | `Combobox`        | `combobox`          | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `ariaLabel?`, `aria-labelledby?`, `id?`                                  |
 | `DataTable`       | `data-table`        | `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `captionHidden?`, `empty?`, `paging?`, `rowDataE2E?`, `class?` |
 | `DateRangePicker` | `date-range-picker` | `range`, `onChange`, `timeZone`, `presets`, `labels?` (every key optional)                                                     |
 | `Dropdown`        | `dropdown`          | `trigger`, `triggerLabel` or `triggerNamedByContent` (one is required), `menuLabel`, `vertical`, `horizontal`                  |
 | `DropdownItem`    | `dropdown`          | `href`, `onClick`, `disabled`, `class` — a `role="menuitem"`, out of the tab order                                             |
+| `EnhancedForm`    | `enhanced-form`     | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?` — posts natively before hydration             |
 | `ErrorState`      | `error-state`       | `message` (renders nothing when empty)                                                                                         |
 | `GeoButton`       | `geo-button`        | `onLocation`, `onError?`                                                                                                       |
 | `LoadingScreen`   | `loading-screen`    | `message`, `description`                                                                                                       |
 | `LoadingSkeleton` | `loading-skeleton`  | `rows`                                                                                                                         |
 | `LoadingSpinner`  | `loading-spinner`   | `label`, `size`                                                                                                                |
+| `NewsletterForm`  | `newsletter-form`   | `action?`, `onSubmit?` (`email`), `honeypot?`, `labels?`, built on `EnhancedForm`                                              |
 | `OnOffButtons`    | `on-off-buttons`    | `value`, `amount`, `onSwitch`                                                                                                  |
 | `PageTitle`       | `page-title`        | `children`, `class`                                                                                                            |
 | `Pagination`      | `pagination`        | `page`, `pageCount`, `onChange`, `label`, `previousLabel`, `nextLabel`, `pageLabel`                                            |
@@ -565,6 +569,53 @@ offer today. `columnWidthPercents(widths)` is what reports the split, and `table
 columns, widths })` the rest of the geometry; both are assertable without a DOM. The checklist a
 caller can satisfy, and the one case no props-only component can cover, are on `SkeletonTable`'s
 JSDoc.
+
+## EnhancedForm
+
+A real `<form action method>` that posts on its own before hydration, or whenever `onSubmit` is
+left out, and calls `onSubmit(formData)` in the background once one is given, keeping the page in
+place. `method` defaults to `"post"` unconditionally — the same decision `system/`'s `AuthForm`
+makes — so a submit in the gap before hydration finishes never puts a field's value in the address
+bar; `action` is never defaulted, since an endpoint is always the caller's to name.
+
+While a background submit is outstanding, `children` sits inside a disabled `<fieldset>` (or the
+`sending` slot replaces it, when given); `done`/`failed` replace it once the promise settles.
+Omitting `done`/`failed` keeps `children` on screen, re-enabled, so a caller that wants a retry
+gets one without any extra wiring — `NewsletterForm` and `ContactForm` both take this default for
+`failed`. A second click, or a `form.requestSubmit()`, while a submit is outstanding does nothing:
+a ref checked synchronously, before either branch of the submit handler runs, catches what the
+disabled fieldset has not repainted yet. The sending state always ends — on success, on a
+rejection, on a synchronous throw from `onSubmit`, and on a `pageshow` with `persisted: true`,
+which is what a promise abandoned in the back/forward cache would otherwise leave stuck forever. A
+submit's own id is bumped on that reset too, so if the abandoned promise settles later anyway, the
+stale `.then`/`.catch` finds its id no longer current and does nothing rather than overwriting a
+newer submit already in progress.
+
+The result is announced through one `role="status"` region, present and empty from the first
+render — the same rule `Toastr` and `AuthForm` follow. The slot sits in a wrapper of its own:
+without it, Preact's unkeyed child diffing can match the region's `<p>` against a text-carrying
+`done`/`failed` slot's own `<p>` by type alone, patching the already-being-watched region into the
+slot's content and creating a _new_ region node that reaches the document already holding its
+message — exactly what an always-present region exists to avoid. The region hides itself
+(`sr-only`) from sighted users whenever the current status has a slot of its own on screen at all,
+whatever that slot's own copy says, so a caller whose `done` copy repeats the region's own default
+is not shown the same sentence twice; a status with no slot of its own — the default disabled
+`<fieldset>`, or `ContactForm`'s un-slotted `"failed"` — still shows the region, since nothing else
+on screen carries the message then. Focus moves to the region only when both hold, and only once per
+submit: focus was inside this form the moment the visitor submitted — a real click or keypress on
+the submit button leaves it there, a `form.requestSubmit()` called from outside the form, or a
+submit that started while focus was already elsewhere, does not — and the browser has since dropped
+focus to `<body>`, which is what disabling the fieldset for `"sending"` does. The moment that recovery
+happens, the first condition is cleared, so a visitor who then clicks on plain text — landing on
+`<body>` again — and moves on to reading something else is not pulled back a second time once the
+same submit later reaches `done` or `failed`. A submit nobody focused, or a visitor who has moved
+focus somewhere specific of their own accord, is never pulled back at all.
+
+`NewsletterForm` (one email field) and `ContactForm` (name, email, message) are built on this, each
+with an optional `honeypot` prop: an off-screen field simple bots fill in, `hp-field` by name and
+deliberately not a word a browser's own autofill heuristics reach for. A submit whose honeypot
+carries a value never reaches the caller's `onSubmit`; it resolves as if it had succeeded, because
+telling a bot it was caught only teaches it which field to leave alone next time.
 
 ## Tests
 

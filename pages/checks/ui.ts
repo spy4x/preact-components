@@ -153,6 +153,19 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await dateRangeChecks(devtools)
   await paginationChecks(devtools)
   await dataTableChecks(devtools)
+  await enhancedFormAsyncFailureCheck(devtools)
+  await enhancedFormSynchronousThrowCheck(devtools)
+  await enhancedFormResultChecks(devtools)
+  await newsletterFormDoubleClickCheck(devtools)
+  await newsletterFormRequestSubmitGuardCheck(devtools)
+  await newsletterFormFocusElsewhereCheck(devtools)
+  await newsletterFormBlurWhileSendingCheck(devtools)
+  await enhancedFormsHoneypotChecks(devtools)
+  await contactFormHoneypotCheck(devtools)
+  await contactFormStaleSubmitCheck(devtools)
+  await enhancedFormBackForwardCacheCheck(devtools)
+  await contactFormFailureRetryChecks(devtools)
+  await enhancedFormsNoScriptChecks(devtools)
 
   // Last on purpose: a Modal that refuses to close would sit in the top layer over everything, so a
   // failure here cannot take an unrelated check down with it.
@@ -5392,4 +5405,1456 @@ async function dataTableUrlSortCheck(devtools: Devtools): Promise<void> {
   )
 
   await blurActive(devtools)
+}
+
+/**
+ * `EnhancedForm`, `NewsletterForm` and `ContactForm`: progressive-enhancement forms proven twice —
+ * once hydrated, in the functions below, and once with no script running at all, in
+ * {@link enhancedFormsNoScriptChecks}.
+ *
+ * Every card lives in `ui-guide/sections/enhanced-forms.tsx` and posts to `form-demo/`, a static
+ * page `pages/build.ts` copies into the artefact verbatim. With scripts on, `onSubmit` intercepts
+ * every submit below and the page never navigates there — that page only matters to the
+ * no-JavaScript check, which reads the method and the body off the recorded network request rather
+ * than assuming either: **only the local preview server this file's own `verify` run drives answers
+ * a POST there.** The published GitHub Pages copy is a static host and answers one with `405`.
+ *
+ * **Card lifetimes matter to the order below.** A submit that reaches `"done"` replaces a card's
+ * fields with a thank-you message for good — none of the three demo components offers a way back
+ * from it — so every check that still needs to submit on a given card runs before the one that
+ * finally lets it succeed:
+ *
+ * - `EnhancedForm`'s card takes its two failure proofs first
+ *   ({@link enhancedFormAsyncFailureCheck}, {@link enhancedFormSynchronousThrowCheck}, both of
+ *   which land back on `"idle"`) and its success proof last ({@link enhancedFormResultChecks}).
+ * - `NewsletterForm`'s primary instance takes {@link newsletterFormDoubleClickCheck}, which is
+ *   terminal, so {@link enhancedFormsHoneypotChecks} gets a second instance of its own — see that
+ *   card's doc in `ui-guide/sections/enhanced-forms.tsx`.
+ * - `ContactForm`'s single instance takes {@link contactFormStaleSubmitCheck} and
+ *   {@link enhancedFormBackForwardCacheCheck} first, both of which land back on `"idle"`, and
+ *   {@link contactFormFailureRetryChecks} last, since that is the one that finally succeeds.
+ */
+
+/** One read of a card's live region and its `<fieldset>`. */
+interface EnhancedFormReading {
+  /** The region's own text. */
+  region: string
+  /** Whether the region carries `sr-only` — hidden from sighted users because a slot already shows
+   * the same result in view; see `EnhancedForm`'s own doc for why. */
+  regionSrOnly: boolean
+  /** Whether the card's `<fieldset>` is disabled. `false` once no `<fieldset>` is rendered at all,
+   * which is what a `done`/`failed` slot without one of its own looks like. */
+  disabled: boolean
+}
+
+/** Read one card's live region and `<fieldset>` state in one round trip. */
+async function enhancedFormReading(devtools: Devtools, card: string): Promise<EnhancedFormReading> {
+  return await devtools.evaluate<EnhancedFormReading>(`(() => {
+    const c = document.querySelector('${card}')
+    const region = c ? c.querySelector('[role="status"]') : null
+    const fieldset = c ? c.querySelector('fieldset') : null
+    return {
+      region: region ? region.textContent : "",
+      regionSrOnly: region ? region.className.split(/\\s+/).includes("sr-only") : false,
+      disabled: fieldset ? fieldset.disabled : false,
+    }
+  })()`)
+}
+
+/** Whether the card's live region currently holds document focus. */
+async function regionHasFocus(devtools: Devtools, card: string): Promise<boolean> {
+  return await devtools.evaluate<boolean>(
+    `document.activeElement === document.querySelector('${card} [role="status"]')`,
+  )
+}
+
+/**
+ * Mark the card's current live-region node, so a later {@link regionIdentityHeld} can prove it is
+ * still the exact same, connected node — not a new one Preact created because an unkeyed `<p>`
+ * elsewhere in the same children array matched it by type. See `EnhancedForm`'s own doc for the
+ * defect this guards.
+ */
+async function stashRegionIdentity(devtools: Devtools, card: string): Promise<void> {
+  await devtools.evaluate<null>(`(() => {
+    globalThis.__verifyRegionIdentity = document.querySelector('${card} [role="status"]')
+    return null
+  })()`)
+}
+
+/** Whether the card's live region is still the exact node {@link stashRegionIdentity} marked. */
+async function regionIdentityHeld(devtools: Devtools, card: string): Promise<boolean> {
+  return await devtools.evaluate<boolean>(`(() => {
+    const current = document.querySelector('${card} [role="status"]')
+    return current !== null && current === globalThis.__verifyRegionIdentity && current.isConnected
+  })()`)
+}
+
+/**
+ * Set a checkbox to `checked`, click it only if it is not already there, and read `.checked` back —
+ * never assume a click landed. Every toggle in this section's cards goes through this rather than a
+ * bare `?.click()`, after a mutation test found that a toggle whose selector stopped matching (a
+ * renamed `data-e2e`, say) failed silently: the click was a no-op, the demo's own submit behaved as
+ * if the toggle had never been touched, and the check reading the *outcome* of that submit passed or
+ * failed for a reason that had nothing to do with what it thought it was testing.
+ *
+ * @param devtools The connected session.
+ * @param selector The checkbox.
+ * @param checked The state it must end up in.
+ * @returns Whether the checkbox exists and now reads `checked` as asked — `false` for either a
+ * missing element or a click that did not take.
+ */
+async function setToggle(devtools: Devtools, selector: string, checked: boolean): Promise<boolean> {
+  return await devtools.evaluate<boolean>(`(() => {
+    const el = document.querySelector('${selector}')
+    if (!el) return false
+    if (el.checked !== ${checked}) el.click()
+    return el.checked === ${checked}
+  })()`).catch(() => false)
+}
+
+/** One read of whether a card is ready to be submitted again — see {@link cardCanSubmit}. */
+interface CardReadiness {
+  ok: boolean
+  reason: string
+}
+
+/**
+ * Whether a card has a submit button that is not inside a disabled `<fieldset>` — the precondition
+ * every check in this section that is about to submit a card checks first, so a card an earlier
+ * check left disabled, terminal (its fields replaced by a `done`/`failed` slot with no button at
+ * all) or simply missing — the exact shape a renamed `data-e2e` or a mutated component leaves behind
+ * — is reported as its own named failure instead of a `null` dereference a few lines further down
+ * that would abort every check the rest of this file still has to run.
+ *
+ * @param devtools The connected session.
+ * @param card The card's own selector.
+ */
+async function cardCanSubmit(devtools: Devtools, card: string): Promise<CardReadiness> {
+  return await devtools.evaluate<CardReadiness>(`(() => {
+    const root = document.querySelector('${card}')
+    if (!root) return { ok: false, reason: "no card found at all" }
+    const button = root.querySelector('button[type="submit"]')
+    if (!button) return { ok: false, reason: "no submit button — the card may be in its terminal, fields-replaced state" }
+    const fieldset = root.querySelector("fieldset")
+    if (fieldset && fieldset.disabled) return { ok: false, reason: "the card's fieldset is disabled" }
+    return { ok: true, reason: "" }
+  })()`).catch(() => ({ ok: false, reason: "the card could not be read at all" }))
+}
+
+/**
+ * `EnhancedForm`'s own card, failing through a rejected promise — the ordinary async path, and the
+ * first of two failure proofs this card runs before the success proof that finally consumes it
+ * (see this section's own module doc).
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function enhancedFormAsyncFailureCheck(devtools: Devtools): Promise<void> {
+  const card = "#demo-EnhancedForm"
+  const toggle = `${card} [data-e2e="enhanced-form-fail-toggle"]`
+
+  const ready = await cardCanSubmit(devtools, card)
+  const toggledOn = ready.ok && await setToggle(devtools, toggle, true)
+  check(
+    "EnhancedForm's card is ready and its fail toggle switches on",
+    ready.ok && toggledOn,
+    ready.ok ? `fail toggle switched on: ${toggledOn}` : ready.reason,
+  )
+  if (!ready.ok || !toggledOn) return
+
+  await devtools.evaluate<null>(
+    `(document.querySelector('${card} button[type="submit"]')?.click(), null)`,
+  )
+
+  const failed = await poll(
+    async () =>
+      (await enhancedFormReading(devtools, card)).region ===
+        "Something went wrong. Please try again.",
+    2_000,
+  )
+  const after = await enhancedFormReading(devtools, card)
+
+  check(
+    'EnhancedForm\'s own card: a rejected promise ends in "failed", with no failed slot given',
+    failed && !after.disabled,
+    `region reached the default failure text: ${failed} ("${after.region}"); fieldset ` +
+      `re-enabled once settled: ${!after.disabled}`,
+  )
+
+  // Turn the toggle back off — the synchronous-throw check below reuses this same card.
+  const toggledOff = await setToggle(devtools, toggle, false)
+  check(
+    "EnhancedForm's fail toggle switches back off",
+    toggledOff,
+    `fail toggle switched off: ${toggledOff}`,
+  )
+}
+
+/**
+ * `EnhancedForm`'s own card again, failing through a throw before `onSubmit` ever returns a
+ * promise. `Promise.resolve().then(() => onSubmit(data))` is what folds a synchronous throw into
+ * the same `"failed"` path a rejection takes; this is the check that proves the fold rather than
+ * assuming it works because the rejection path does.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function enhancedFormSynchronousThrowCheck(devtools: Devtools): Promise<void> {
+  const card = "#demo-EnhancedForm"
+  const toggle = `${card} [data-e2e="enhanced-form-throw-sync-toggle"]`
+
+  const ready = await cardCanSubmit(devtools, card)
+  const toggledOn = ready.ok && await setToggle(devtools, toggle, true)
+  check(
+    "EnhancedForm's card is ready and its synchronous-throw toggle switches on",
+    ready.ok && toggledOn,
+    ready.ok ? `throw-sync toggle switched on: ${toggledOn}` : ready.reason,
+  )
+  if (!ready.ok || !toggledOn) return
+
+  await devtools.evaluate<null>(
+    `(document.querySelector('${card} button[type="submit"]')?.click(), null)`,
+  )
+
+  const failed = await poll(
+    async () =>
+      (await enhancedFormReading(devtools, card)).region ===
+        "Something went wrong. Please try again.",
+    2_000,
+  )
+  const after = await enhancedFormReading(devtools, card)
+
+  check(
+    'EnhancedForm\'s own card: a synchronous throw from onSubmit also ends in "failed"',
+    failed && !after.disabled,
+    `region reached the default failure text: ${failed} ("${after.region}"); fieldset ` +
+      `re-enabled once settled: ${!after.disabled}`,
+  )
+
+  const toggledOff = await setToggle(devtools, toggle, false)
+  check(
+    "EnhancedForm's synchronous-throw toggle switches back off",
+    toggledOff,
+    `throw-sync toggle switched off: ${toggledOff}`,
+  )
+}
+
+/**
+ * `EnhancedForm`'s own card, last of its three checks because this is the one that succeeds and
+ * consumes it for good (see this section's own module doc): a submit announces `"Sending…"`, then
+ * replaces the field with the card's explicit `done` slot and announces `"Sent."` — on the *same*
+ * live-region node the page started with, which is what proves the key/wrapper fix actually stops
+ * Preact from reusing that node for the slot's own content (see `EnhancedForm`'s own doc). It also
+ * proves the region hides itself from sighted users once the slot is showing, and that focus lands
+ * on the region rather than being dropped onto `<body>` once the pressed button is gone.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function enhancedFormResultChecks(devtools: Devtools): Promise<void> {
+  const card = "#demo-EnhancedForm"
+
+  const ready = await cardCanSubmit(devtools, card)
+  check(
+    "EnhancedForm's card is ready to submit before its success check begins",
+    ready.ok,
+    ready.reason,
+  )
+  if (!ready.ok) return
+
+  const before = await enhancedFormReading(devtools, card)
+  await stashRegionIdentity(devtools, card)
+
+  // A real, dispatched click rather than a scripted `.click()`: the focus-restoring effect only
+  // acts when focus was inside the form at submit time, which a script-triggered `.click()` does
+  // not reliably produce (unlike a real pointer press, `.click()` fires the click event without
+  // necessarily moving focus first) — this check's own "focus moves to the region" assertion needs
+  // a genuine press for that reason, not only for realism.
+  const point = await elementCenter(devtools, `${card} button[type="submit"]`)
+  check(
+    "the click that starts EnhancedForm's success run lands on its own submit button",
+    point.ok,
+    point.ok ? `(${point.x}, ${point.y})` : point.reason,
+  )
+  if (!point.ok) return
+  await clickAtPoint(devtools, point)
+
+  const sending = await poll(
+    async () => (await enhancedFormReading(devtools, card)).region === "Sending…",
+    1_000,
+  )
+  const settled = await poll(
+    async () => (await enhancedFormReading(devtools, card)).region === "Sent.",
+    3_000,
+  )
+  const after = await enhancedFormReading(devtools, card)
+  const identityHeld = await regionIdentityHeld(devtools, card)
+  const doneSlotShown = await devtools.evaluate<boolean>(
+    `document.querySelector('${card}').textContent.includes("Done.")`,
+  )
+  const focusedRegion = await regionHasFocus(devtools, card)
+
+  check(
+    'EnhancedForm announces "Sending…", then replaces its field with the done slot and ' +
+      'announces "Sent." on the same live-region node the card started this submit with',
+    sending && settled && doneSlotShown && identityHeld,
+    `region "${before.region}" (leftover from this card's own earlier failure checks) → reached ` +
+      `"Sending…": ${sending} → reached "Sent.": ${settled} ("${after.region}"), done slot on ` +
+      `screen: ${doneSlotShown}, same connected region node throughout: ${identityHeld}`,
+  )
+  check(
+    "the region hides itself from sighted users once the done slot shows the same result in view",
+    after.regionSrOnly,
+    `region class ${after.regionSrOnly ? "carries" : "does not carry"} sr-only once done`,
+  )
+  check(
+    "focus moves to the live region once the submit button the visitor pressed is gone",
+    focusedRegion,
+    focusedRegion
+      ? "document.activeElement is the live region"
+      : "focus did not land on the region — a keyboard user may have been dropped onto <body>",
+  )
+}
+
+/** Scroll an element into view, wait for the page to stop moving, then read its centre point. */
+/** Scroll an element into view and read its on-screen centre — see {@link elementCenter}. */
+interface ElementCenter {
+  /** `true` when the element was found, scrolled to and confirmed under its own centre point. */
+  ok: boolean
+  x: number
+  y: number
+  /** Why `ok` is `false`, for the caller's own failure detail. */
+  reason: string
+}
+
+/**
+ * Scroll an element into view, wait for the page to stop moving, read its centre point, and confirm
+ * with `elementFromPoint` that the point actually lands on the element (or a descendant of it) —
+ * before any caller dispatches a real mouse event there. A point derived from a rectangle read a
+ * moment too early or too late (mid-animation, or after an unrelated layout shift elsewhere on this
+ * considerably tall page) can be a real coordinate that no longer lands where it was aimed, and a
+ * click dispatched there proves nothing about the element the caller meant to press.
+ *
+ * @param devtools The connected session.
+ * @param selector The element.
+ */
+async function elementCenter(devtools: Devtools, selector: string): Promise<ElementCenter> {
+  const found = await devtools.evaluate<boolean>(`(() => {
+    const el = document.querySelector('${selector}')
+    if (!el) return false
+    el.scrollIntoView({ block: "center" })
+    return true
+  })()`)
+  if (!found) return { ok: false, x: -1, y: -1, reason: "no such element" }
+
+  await settledScroll(devtools)
+
+  return await devtools.evaluate<ElementCenter>(`(() => {
+    const el = document.querySelector('${selector}')
+    if (!el) return { ok: false, x: -1, y: -1, reason: "element disappeared after settling" }
+    const rect = el.getBoundingClientRect()
+    const x = Math.round(rect.left + rect.width / 2)
+    const y = Math.round(rect.top + rect.height / 2)
+    const under = document.elementFromPoint(x, y)
+    const onTarget = under !== null && (under === el || el.contains(under))
+    return {
+      ok: onTarget,
+      x,
+      y,
+      reason: onTarget
+        ? ""
+        : "elementFromPoint(" + x + ", " + y + ") found " +
+          (under ? under.tagName : "nothing") + ", not the target",
+    }
+  })()`).catch(() => ({ ok: false, x: -1, y: -1, reason: "the page could not be read" }))
+}
+
+/**
+ * Press and release the left mouse button once at one point, through the browser's own input
+ * pipeline. `clickAt` elsewhere in this file does the same for a point derived a different way;
+ * this one exists for {@link doubleClickAt}, which needs `clickCount` to genuinely increment the
+ * way a person's second press does rather than reusing one dispatch twice.
+ *
+ * @param clickCount `1` for an ordinary click, `2` for the second half of a double click —
+ * `MouseEvent.detail`'s own meaning, which is what lets {@link doubleClickAt} build one from two
+ * calls to this rather than duplicating the dispatch.
+ */
+async function clickAtPoint(
+  devtools: Devtools,
+  point: { x: number; y: number },
+  clickCount = 1,
+): Promise<void> {
+  for (const type of ["mousePressed", "mouseReleased"]) {
+    await devtools.send("Input.dispatchMouseEvent", {
+      type,
+      x: point.x,
+      y: point.y,
+      button: "left",
+      buttons: type === "mousePressed" ? 1 : 0,
+      clickCount,
+    })
+  }
+}
+
+/**
+ * Press and release the left mouse button twice at one point, back to back — a real double click,
+ * `clickCount` incrementing the way a person's second press does, rather than two scripted
+ * `.click()` calls a page's own code could never tell apart from one call made twice.
+ */
+async function doubleClickAt(devtools: Devtools, point: { x: number; y: number }): Promise<void> {
+  await clickAtPoint(devtools, point, 1)
+  await clickAtPoint(devtools, point, 2)
+}
+
+/**
+ * `NewsletterForm`'s primary card: a real double click on the submit button, dispatched through
+ * `Input.dispatchMouseEvent` rather than two scripted `.click()` calls, still calls `onSubmit`
+ * once.
+ *
+ * **This does not isolate the synchronous `busyRef` guard from the disabled `<fieldset>`.** A real
+ * double click carries the round trip a `Runtime.evaluate` call to dispatch each press costs, and
+ * that gap was measured to be enough for Preact to have already disabled the fieldset by the time
+ * the second press lands — with the guard itself removed, this check stays green, because the
+ * disabled button alone already stops the second press from doing anything. What isolates the guard
+ * on its own, with no gap for a re-render to close, is {@link newsletterFormRequestSubmitGuardCheck}:
+ * two `form.requestSubmit()` calls made in the same script turn, before either can yield back to the
+ * event loop. This check still matters on its own terms — a real double click is closer to what a
+ * person actually does than a scripted call ever proves — it just proves a different thing.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function newsletterFormDoubleClickCheck(devtools: Devtools): Promise<void> {
+  const card = "#demo-NewsletterForm"
+  const counter = `${card} [data-e2e="newsletter-form-subscribes"]`
+
+  const ready = await cardCanSubmit(devtools, card)
+  check(
+    "NewsletterForm's primary card is ready to submit before the double click",
+    ready.ok,
+    ready.reason,
+  )
+  if (!ready.ok) return
+
+  await devtools.evaluate<null>(`(() => {
+    const email = document.querySelector('${card} input[name="email"]')
+    if (email) email.value = "ada@example.com"
+    return null
+  })()`)
+
+  const point = await elementCenter(devtools, `${card} button[type="submit"]`)
+  check(
+    "the double click's aim lands on NewsletterForm's own submit button",
+    point.ok,
+    point.ok ? `(${point.x}, ${point.y})` : point.reason,
+  )
+  if (!point.ok) return
+
+  await doubleClickAt(devtools, point)
+
+  // `onSubmit`'s own increment runs before its 300ms delay, so the counter settles almost at once;
+  // the region only reaches "done" once that delay elapses. Reading the counter at both moments is
+  // what catches a second call whose increment landed late, after the first read below.
+  const reachedOne = await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `document.querySelector('${counter}')?.textContent.includes("subscribes: 1") ?? false`,
+      ),
+    500,
+  )
+  const settled = await poll(
+    async () => (await enhancedFormReading(devtools, card)).region.startsWith("You're subscribed"),
+    2_000,
+  )
+  const final = await devtools.evaluate<string>(
+    `document.querySelector('${counter}')?.textContent ?? "MISSING"`,
+  ).catch(() => "MISSING")
+
+  check(
+    "a real double click on NewsletterForm's submit button calls onSubmit once",
+    reachedOne && settled && final.includes("subscribes: 1"),
+    `counter reached "subscribes: 1" shortly after the double click: ${reachedOne}; region ` +
+      `reached "You're subscribed…": ${settled}; counter once settled: "${final.trim()}"`,
+  )
+}
+
+/**
+ * `NewsletterForm`'s third instance: two `form.requestSubmit()` calls made in the same script turn,
+ * with no real click and so no focus ever placed anywhere in the form.
+ *
+ * This is what isolates `EnhancedForm`'s synchronous busy guard from the disabled `<fieldset>` a
+ * slower, real double click is also stopped by (see {@link newsletterFormDoubleClickCheck}'s own
+ * doc for the measurement) — `requestSubmit()` calls the form's submit algorithm directly, twice,
+ * before either call yields back to the event loop for Preact to re-render anything. Only the ref
+ * checked synchronously inside `handleSubmit`, before either branch runs, can catch that.
+ *
+ * The same run also proves the focus-theft fix: since nothing here ever focuses the form, the
+ * region must never take focus once the (single, guarded) submit resolves, and the page must not
+ * scroll — both of which the earlier version of this component did, for any submit that happened to
+ * settle while `document.activeElement` was `<body>`, whether or not a visitor was ever engaging
+ * with this particular form.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function newsletterFormRequestSubmitGuardCheck(devtools: Devtools): Promise<void> {
+  const card = '#demo-NewsletterForm [data-e2e="newsletter-form-request-submit"]'
+  const counter = `${card} [data-e2e="newsletter-form-request-submit-subscribes"]`
+
+  const ready = await cardCanSubmit(devtools, card)
+  check(
+    "NewsletterForm's request-submit card is ready to submit before this check begins",
+    ready.ok,
+    ready.reason,
+  )
+  if (!ready.ok) return
+
+  // Blurred explicitly, rather than assumed: whatever an earlier check left focused (the live
+  // region from `enhancedFormResultChecks`, say) must not still be inside this card by accident,
+  // since this check's whole point is that nothing here ever focuses anything.
+  await devtools.evaluate<null>(`(() => {
+    const email = document.querySelector('${card} input[name="email"]')
+    if (email) email.value = "ada@example.com"
+    document.activeElement?.blur?.()
+    return null
+  })()`)
+
+  const scrollBefore = await devtools.evaluate<number>("Math.round(globalThis.scrollY)")
+    .catch(() => -1)
+  const focusedBefore = await devtools.evaluate<string>(
+    `document.activeElement === document.body ? "body" : document.activeElement.tagName`,
+  ).catch(() => "unreadable")
+
+  await devtools.evaluate<null>(`(() => {
+    const form = document.querySelector('${card} form')
+    if (form) {
+      form.requestSubmit()
+      form.requestSubmit()
+    }
+    return null
+  })()`)
+
+  const reachedOne = await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `document.querySelector('${counter}')?.textContent.includes("subscribes: 1") ?? false`,
+      ),
+    1_000,
+  )
+  const settled = await poll(
+    async () => (await enhancedFormReading(devtools, card)).region.startsWith("You're subscribed"),
+    2_000,
+  )
+  const final = await devtools.evaluate<string>(
+    `document.querySelector('${counter}')?.textContent ?? "MISSING"`,
+  ).catch(() => "MISSING")
+
+  check(
+    "two form.requestSubmit() calls in the same script turn call onSubmit once",
+    focusedBefore === "body" && reachedOne && settled && final.includes("subscribes: 1"),
+    focusedBefore !== "body"
+      ? `focus was not on <body> before this check even started (${focusedBefore}), so it proves ` +
+        "nothing about a submit nobody focused"
+      : `counter reached "subscribes: 1" shortly after both calls: ${reachedOne}; region reached ` +
+        `"You're subscribed…": ${settled}; counter once settled: "${final.trim()}"`,
+  )
+
+  const focusedRegionAfter = await regionHasFocus(devtools, card)
+  const scrollAfter = await devtools.evaluate<number>("Math.round(globalThis.scrollY)")
+    .catch(() => -2)
+
+  check(
+    "a submit nobody focused never steals focus or scrolls the page once it settles",
+    !focusedRegionAfter && Math.abs(scrollAfter - scrollBefore) < 5,
+    `region focused after settling: ${focusedRegionAfter}; scrollY ${scrollBefore} → ${scrollAfter}`,
+  )
+}
+
+/**
+ * `NewsletterForm`'s fourth instance: a real click on the submit button — focus genuinely lands
+ * there, unlike {@link newsletterFormRequestSubmitGuardCheck}'s `requestSubmit()` calls — and then,
+ * while the 150ms submit is still outstanding, focus is moved to an unrelated element elsewhere on
+ * the page, standing in for a visitor who submitted and then clicked or tabbed to read something
+ * else entirely before the result came back.
+ *
+ * This is the second half of the focus-theft fix: focus being inside the form *at submit time* is
+ * only one of the two conditions `EnhancedForm`'s effect checks. Once the result lands, focus must
+ * still be sitting on `<body>` — the state disabling or removing the pressed control actually
+ * produces — for the region to take it. A visitor who has since put focus somewhere specific of
+ * their own accord is left exactly there, which is what this check asserts by aiming the dummy
+ * element it creates for the purpose.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function newsletterFormFocusElsewhereCheck(devtools: Devtools): Promise<void> {
+  const card = '#demo-NewsletterForm [data-e2e="newsletter-form-focus-elsewhere"]'
+  const dummyId = "verify-focus-elsewhere-dummy"
+
+  const ready = await cardCanSubmit(devtools, card)
+  check(
+    "NewsletterForm's focus-elsewhere card is ready to submit before this check begins",
+    ready.ok,
+    ready.reason,
+  )
+  if (!ready.ok) return
+
+  await devtools.evaluate<null>(`(() => {
+    const email = document.querySelector('${card} input[name="email"]')
+    if (email) email.value = "ada@example.com"
+    return null
+  })()`)
+
+  const point = await elementCenter(devtools, `${card} button[type="submit"]`)
+  check(
+    "the click that starts this check lands on its own submit button",
+    point.ok,
+    point.ok ? `(${point.x}, ${point.y})` : point.reason,
+  )
+  if (!point.ok) return
+  await clickAtPoint(devtools, point)
+
+  // Moved away as soon as the submit is confirmed outstanding — a real visitor could not click
+  // anywhere before the browser had actually disabled the button, and this check should not either.
+  const sending = await poll(
+    async () => (await enhancedFormReading(devtools, card)).disabled,
+    1_000,
+  )
+
+  // The dummy control's whole lifetime — creating it, reading it back once settled — sits inside
+  // this `try`, and removing it again sits inside the matching `finally`, so a throw in between
+  // (a stalled poll, a page exception) does not leave a stray element behind on a page every check
+  // after this one in the same run still shares.
+  let movedAway = false
+  let settled = false
+  let stillOnDummy = false
+  try {
+    movedAway = await devtools.evaluate<boolean>(`(() => {
+      const dummy = document.createElement("button")
+      dummy.type = "button"
+      dummy.id = ${JSON.stringify(dummyId)}
+      dummy.textContent = "unrelated control"
+      dummy.style.cssText = "position:fixed;top:0;left:0"
+      document.body.appendChild(dummy)
+      dummy.focus()
+      return document.activeElement === dummy
+    })()`).catch(() => false)
+
+    settled = await poll(
+      async () =>
+        (await enhancedFormReading(devtools, card)).region.startsWith("You're subscribed"),
+      2_000,
+    )
+    stillOnDummy = await devtools.evaluate<boolean>(
+      `document.activeElement === document.getElementById(${JSON.stringify(dummyId)})`,
+    ).catch(() => false)
+  } finally {
+    await devtools.evaluate<null>(`(() => {
+      document.getElementById(${JSON.stringify(dummyId)})?.remove()
+      return null
+    })()`).catch(() => null)
+  }
+
+  check(
+    "a visitor who moved focus elsewhere mid-submit keeps it there once the result lands",
+    sending && movedAway && settled && stillOnDummy,
+    !sending
+      ? "the fieldset never disabled — the click may not have started a real submit"
+      : !movedAway
+      ? "could not move focus to the dummy control"
+      : `settled: ${settled}; focus still on the dummy control once it did: ${stillOnDummy}`,
+  )
+}
+
+/**
+ * `NewsletterForm`'s fifth instance: a real click on the submit button, then a blur to `<body>` —
+ * not to a specific other control, {@link newsletterFormFocusElsewhereCheck}'s own case — while the
+ * submit is still outstanding, together with a scroll back to the top of the page.
+ *
+ * This is the one case the previous round's fix did not cover, because it is not a visitor whose
+ * focus was never in the form ({@link newsletterFormRequestSubmitGuardCheck}'s case): disabling the
+ * fieldset for `"sending"` already drops focus to `<body>` in this browser, so the focus-restoring
+ * effect recovers it there — correctly, the first time — before this same submit ever reaches
+ * `"done"`. Without clearing the flag that let that first recovery happen, the effect's second run,
+ * on the transition to `"done"`, would see the flag still set and `document.activeElement` back on
+ * `<body>` — exactly what a visitor clicking on plain text and reading elsewhere also produces — and
+ * pull focus back a second time for a visitor this component had already, correctly, let go of.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function newsletterFormBlurWhileSendingCheck(devtools: Devtools): Promise<void> {
+  const card = '#demo-NewsletterForm [data-e2e="newsletter-form-blur-while-sending"]'
+
+  const ready = await cardCanSubmit(devtools, card)
+  check(
+    "NewsletterForm's blur-while-sending card is ready to submit before this check begins",
+    ready.ok,
+    ready.reason,
+  )
+  if (!ready.ok) return
+
+  await devtools.evaluate<null>(`(() => {
+    const email = document.querySelector('${card} input[name="email"]')
+    if (email) email.value = "ada@example.com"
+    return null
+  })()`)
+
+  const point = await elementCenter(devtools, `${card} button[type="submit"]`)
+  check(
+    "the click that starts this check lands on its own submit button",
+    point.ok,
+    point.ok ? `(${point.x}, ${point.y})` : point.reason,
+  )
+  if (!point.ok) return
+  await clickAtPoint(devtools, point)
+
+  const sending = await poll(
+    async () => (await enhancedFormReading(devtools, card)).disabled,
+    1_000,
+  )
+
+  // This browser's own recovery (disabling the fieldset drops focus to <body>, and the component
+  // then moves it to the region) may already have happened by the time `sending` above resolved —
+  // that race is exactly why the flag has to be cleared the first time it fires, rather than this
+  // check needing to win it. Blurring explicitly and scrolling to the top afterward is what puts
+  // this run into the state a visitor who reads elsewhere produces, regardless of which side of that
+  // race it started from.
+  //
+  // `scrollTo` here (and any scroll a later refocus triggers) can run as a smooth, animated scroll —
+  // reading `scrollY` in the same script turn that starts it catches the animation mid-flight, not
+  // its destination, which is a false mismatch that has nothing to do with the component. Both reads
+  // wait for `settledScroll` first so they see where the page actually came to rest.
+  await devtools.evaluate<null>(`(() => {
+    document.activeElement?.blur?.()
+    globalThis.scrollTo(0, 0)
+    return null
+  })()`).catch(() => null)
+  await settledScroll(devtools)
+  const scrollTarget = await devtools.evaluate<{ blurred: boolean; scrollY: number }>(`(() => ({
+    blurred: document.activeElement === document.body,
+    scrollY: Math.round(globalThis.scrollY),
+  }))()`).catch(() => ({ blurred: false, scrollY: -1 }))
+
+  const settled = await poll(
+    async () => (await enhancedFormReading(devtools, card)).region.startsWith("You're subscribed"),
+    2_000,
+  )
+  await settledScroll(devtools)
+  const after = await devtools.evaluate<{ onBody: boolean; scrollY: number }>(`(() => ({
+    onBody: document.activeElement === document.body,
+    scrollY: Math.round(globalThis.scrollY),
+  }))()`).catch(() => ({ onBody: false, scrollY: -2 }))
+
+  check(
+    "a visitor who blurs to <body> and scrolls away while sending is not pulled back once it settles",
+    sending && scrollTarget.blurred && settled && after.onBody &&
+      after.scrollY === scrollTarget.scrollY,
+    !sending
+      ? "the fieldset never disabled — the click may not have started a real submit"
+      : !scrollTarget.blurred
+      ? "could not blur back to <body>"
+      : `settled: ${settled}; still on <body> once it did: ${after.onBody}; scrollY ` +
+        `${scrollTarget.scrollY} → ${after.scrollY}`,
+  )
+}
+
+/** `name` of the honeypot field `ui/honeypot.tsx` exports as `HONEYPOT_FIELD_NAME`. */
+const HONEYPOT_INPUT_SELECTOR = 'input[name="hp-field"]'
+
+/**
+ * `NewsletterForm`'s second instance — see its own doc in `ui-guide/sections/enhanced-forms.tsx`
+ * for why a dedicated one exists. Two things, both about the same off-screen field:
+ *
+ * 1. Its computed style, not the literal absence of `display:none` in the markup (a render-to-string
+ *    unit test can only show that much, and `ui/honeypot.test.tsx` says so): a real `getComputedStyle`
+ *    read proves the field is not `display: none` and is nonetheless invisible, clipped to a
+ *    fraction of a pixel.
+ * 2. Filling it and submitting: `onSubmit`'s own counter must stay at zero while the card still
+ *    reaches its ordinary success text, since a bot that filled the trap is told nothing different
+ *    from a person who did not.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function enhancedFormsHoneypotChecks(devtools: Devtools): Promise<void> {
+  const card = '#demo-NewsletterForm [data-e2e="newsletter-form-honeypot"]'
+  const counter = `${card} [data-e2e="newsletter-form-honeypot-subscribes"]`
+
+  const style = await devtools.evaluate<
+    { display: string; wrapperDisplay: string; width: number; height: number } | null
+  >(`(() => {
+    const input = document.querySelector('${card} ${HONEYPOT_INPUT_SELECTOR}')
+    if (!input) return null
+    const wrapper = input.closest("div")
+    const inputStyle = getComputedStyle(input)
+    const wrapperStyle = getComputedStyle(wrapper)
+    const rect = wrapper.getBoundingClientRect()
+    return {
+      display: inputStyle.display,
+      wrapperDisplay: wrapperStyle.display,
+      width: rect.width,
+      height: rect.height,
+    }
+  })()`)
+
+  check(
+    "the honeypot field is hidden by layout, not by display:none — read from its computed style",
+    style !== null && style.display !== "none" && style.wrapperDisplay !== "none" &&
+      style.width <= 1 && style.height <= 1,
+    style === null
+      ? "no honeypot field found on the card"
+      : `input display: "${style.display}", wrapper display: "${style.wrapperDisplay}", ` +
+        `wrapper size ${style.width}×${style.height}px`,
+  )
+
+  const ready = await cardCanSubmit(devtools, card)
+  check("NewsletterForm's honeypot card is ready to submit", ready.ok, ready.reason)
+  if (!ready.ok) return
+
+  // The email field is required: an empty one fails the browser's own constraint validation and
+  // blocks the submit before it ever fires, silently — this card's honeypot proof needs a form
+  // that would otherwise submit cleanly, so a bot filling only the trap still has to fill the
+  // field a bot filling everything would.
+  await devtools.evaluate<null>(`(() => {
+    const email = document.querySelector('${card} input[name="email"]')
+    const hp = document.querySelector('${card} ${HONEYPOT_INPUT_SELECTOR}')
+    if (email) email.value = "bot@example.com"
+    if (hp) hp.value = "http://spam.example"
+    return null
+  })()`)
+
+  await devtools.evaluate<null>(
+    `(document.querySelector('${card} button[type="submit"]')?.click(), null)`,
+  )
+
+  const settled = await poll(
+    async () => (await enhancedFormReading(devtools, card)).region.startsWith("You're subscribed"),
+    2_000,
+  )
+  const calls = await devtools.evaluate<string>(
+    `document.querySelector('${counter}')?.textContent ?? "MISSING"`,
+  ).catch(() => "MISSING")
+
+  check(
+    "a filled honeypot resolves as a success without ever calling onSubmit",
+    settled && calls.includes("subscribes: 0"),
+    `region reached "You're subscribed…": ${settled} even though onSubmit's own counter reads ` +
+      `"${calls.trim()}"`,
+  )
+}
+
+/**
+ * `ContactForm`'s dedicated honeypot instance — the same proof {@link enhancedFormsHoneypotChecks}
+ * runs against `NewsletterForm`, on the three-field form instead: a filled honeypot resolves as a
+ * success without ever calling `onSubmit`.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function contactFormHoneypotCheck(devtools: Devtools): Promise<void> {
+  const card = '#demo-ContactForm [data-e2e="contact-form-honeypot"]'
+  const counter = `${card} [data-e2e="contact-form-honeypot-leads"]`
+
+  const ready = await cardCanSubmit(devtools, card)
+  check("ContactForm's honeypot card is ready to submit", ready.ok, ready.reason)
+  if (!ready.ok) return
+
+  await devtools.evaluate<null>(`(() => {
+    const name = document.querySelector('${card} input[name="name"]')
+    const email = document.querySelector('${card} input[name="email"]')
+    const message = document.querySelector('${card} textarea[name="message"]')
+    const hp = document.querySelector('${card} ${HONEYPOT_INPUT_SELECTOR}')
+    if (name) name.value = "Bot Botson"
+    if (email) email.value = "bot@example.com"
+    if (message) message.value = "Automated message."
+    if (hp) hp.value = "http://spam.example"
+    return null
+  })()`)
+
+  await devtools.evaluate<null>(
+    `(document.querySelector('${card} button[type="submit"]')?.click(), null)`,
+  )
+
+  const settled = await poll(
+    async () => (await enhancedFormReading(devtools, card)).region.startsWith("Thanks"),
+    2_000,
+  )
+  const calls = await devtools.evaluate<string>(
+    `document.querySelector('${counter}')?.textContent ?? "MISSING"`,
+  ).catch(() => "MISSING")
+
+  check(
+    "ContactForm: a filled honeypot resolves as a success without ever calling onSubmit",
+    settled && calls.includes("leads: 0"),
+    `region reached "Thanks…": ${settled} even though onSubmit's own counter reads "${calls.trim()}"`,
+  )
+}
+
+/** Fill `ContactForm`'s three fields on the given card. */
+async function fillContact(devtools: Devtools, card: string): Promise<void> {
+  // Guarded rather than assumed present: a check that runs after an earlier one left the card in
+  // its terminal, fields-replaced "done" state has nothing here to fill, and should report that as
+  // an ordinary failed check further down — not as an uncaught page exception that takes the rest
+  // of this file's checks down with it.
+  await devtools.evaluate<null>(`(() => {
+    const c = document.querySelector('${card}')
+    const name = c?.querySelector('input[name="name"]')
+    const email = c?.querySelector('input[name="email"]')
+    const message = c?.querySelector('textarea[name="message"]')
+    if (name) name.value = "Ada Lovelace"
+    if (email) email.value = "ada@example.com"
+    if (message) message.value = "Hello there."
+    return null
+  })()`)
+}
+
+/**
+ * `ContactForm`'s card, submitted normally (no failure, no hang) and reset via a synthetic
+ * `pageshow` while its 200ms submit is still outstanding.
+ *
+ * This is *not* a proof that a genuine back/forward-cache restore fires `pageshow` — that proof is
+ * {@link enhancedFormBackForwardCacheCheck}, which drives a real one. This check needs a
+ * deterministic, precisely-timed trigger for a narrower thing: does a promise that settles *after*
+ * a reset get ignored, rather than resurrecting a status the reset already moved past. A dispatched
+ * event is the right tool for that — it tests this component's own listener reacting to the event
+ * it is written to handle, not whether the browser's bfcache genuinely produces one, which is a
+ * platform contract and not this library's to prove.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function contactFormStaleSubmitCheck(devtools: Devtools): Promise<void> {
+  const card = "#demo-ContactForm"
+
+  const ready = await cardCanSubmit(devtools, card)
+  check(
+    "ContactForm's card is ready to submit before the stale-submit check",
+    ready.ok,
+    ready.reason,
+  )
+  if (!ready.ok) return
+
+  await fillContact(devtools, card)
+  await devtools.evaluate<null>(
+    `(document.querySelector('${card} button[type="submit"]')?.click(), null)`,
+  )
+
+  const sending = await poll(
+    async () => (await enhancedFormReading(devtools, card)).disabled,
+    1_000,
+  )
+
+  await devtools.evaluate<null>(
+    `(globalThis.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true })), null)`,
+  )
+  const resetToIdle = await poll(async () => {
+    const reading = await enhancedFormReading(devtools, card)
+    return !reading.disabled && reading.region === ""
+  }, 1_000)
+
+  // The demo's own submit resolves after 200ms; wait past it so the now-stale promise has settled.
+  await new Promise((resolve) => setTimeout(resolve, 500))
+  const stillIdle = await enhancedFormReading(devtools, card)
+
+  check(
+    "a submit that settles after a pageshow reset does not resurrect the sending state",
+    sending && resetToIdle && stillIdle.region === "" && !stillIdle.disabled,
+    `fieldset disabled while pending: ${sending}; reset to idle: ${resetToIdle}; half a second ` +
+      `after the reset, region reads "${stillIdle.region}" and fieldset disabled: ` +
+      `${stillIdle.disabled}`,
+  )
+}
+
+/** One entry of `Page.getNavigationHistory`'s own list. */
+interface HistoryEntry {
+  id: number
+  url: string
+}
+
+/**
+ * `ContactForm`'s card, stuck `"sending"` forever (the hang toggle) and recovered by a genuine
+ * back/forward-cache restore: `Page.navigate` away to `form-demo/`, then
+ * `Page.navigateToHistoryEntry` back to the catalogue's own entry — a real round trip through the
+ * browser's own history, not `history.back()` run through page script and not a synthetic event.
+ * Standalone: it fills and readies the card itself rather than assuming an earlier check in the
+ * same run already left it filled.
+ *
+ * **`Page.frameNavigated`'s own `type` field, checked for the literal `"BackForwardCacheRestore"`,
+ * is what decides this check** — see the comment beside where it is asserted, further down, for why
+ * a held `performance.getEntriesByType("navigation")` entry (kept as corroborating evidence, along
+ * with `PerformanceObserver`'s own `back-forward-cache-restoration` entry when this repository's
+ * Chromium build implements it, which measured it does not) is not strong enough evidence on its
+ * own: it is ambiguous about a fresh reload of a previously-`"reload"`-typed page, and this exact
+ * check happened to only ever exercise the case where that ambiguity does not arise.
+ *
+ * **Everything from the navigation away onward runs inside a `try`, and restoring runs inside the
+ * matching `finally`** — the same shape {@link enhancedFormsNoScriptChecks} and `system/`'s
+ * `authFormNoScriptChecks` use, for the same reason: a throw or a stalled navigation partway
+ * through must not leave every check after this one running against the wrong page.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function enhancedFormBackForwardCacheCheck(devtools: Devtools): Promise<void> {
+  const card = "#demo-ContactForm"
+  const toggle = `${card} [data-e2e="contact-form-hang-toggle"]`
+  const restoreUrl = await devtools.evaluate<string>("location.href").catch(() => "")
+
+  // Standalone: this check fills the card itself rather than assuming an earlier one in the same
+  // run left it filled, and confirms it is actually ready before touching anything.
+  const ready = await cardCanSubmit(devtools, card)
+  check(
+    "ContactForm's card is ready to submit before the back/forward-cache check",
+    ready.ok,
+    ready.reason,
+  )
+  if (!ready.ok) return
+
+  await fillContact(devtools, card)
+  const toggledOn = await setToggle(devtools, toggle, true)
+  check("ContactForm's hang toggle switches on", toggledOn, `hang toggle switched on: ${toggledOn}`)
+  if (!toggledOn) return
+
+  await devtools.evaluate<null>(
+    `(document.querySelector('${card} button[type="submit"]')?.click(), null)`,
+  )
+  const sending = await poll(
+    async () => (await enhancedFormReading(devtools, card)).disabled,
+    1_000,
+  )
+
+  let restored = false
+  let genuineRestore = false
+  let frameNavigatedType = "(never fired)"
+  let bfcacheObserverFired = false
+  let recovered = false
+
+  let beforeNav = { type: "", count: -1 }
+  let afterNav = { type: "", count: -1 }
+
+  try {
+    // Registered on *this* document, before it is frozen, so both survive a genuine back/forward
+    // resume the same way the rest of this page's JS state does. Neither is what this check's
+    // pass/fail rests on — see the note further down for why — but both are read back as
+    // corroborating evidence.
+    await devtools.evaluate<null>(`(() => {
+      globalThis.__verifyBfcacheRestorations = []
+      try {
+        new PerformanceObserver((list) => {
+          globalThis.__verifyBfcacheRestorations.push(...list.getEntries())
+        }).observe({ type: "back-forward-cache-restoration", buffered: true })
+      } catch {
+        // Not every Chromium build implements this observer entry type at all.
+      }
+      return null
+    })()`).catch(() => null)
+
+    beforeNav = await devtools.evaluate<{ type: string; count: number }>(`(() => {
+      const entries = performance.getEntriesByType("navigation")
+      return { type: entries[0] ? entries[0].type : "", count: entries.length }
+    })()`).catch(() => beforeNav)
+
+    const away = new URL(restoreUrl)
+    away.hash = ""
+    const formDemoUrl = new URL("form-demo/", away).href
+    await devtools.send("Page.navigate", { url: formDemoUrl })
+    await waitForNavigation(devtools)
+
+    const history = await devtools.send<{ currentIndex: number; entries: HistoryEntry[] }>(
+      "Page.getNavigationHistory",
+    )
+    const previous = history.entries[history.currentIndex - 1]
+
+    if (previous) {
+      // Registered before the navigation it is meant to observe — a waiter only sees events that
+      // arrive after it starts listening, so this has to be armed before `navigateToHistoryEntry`,
+      // not read after the fact the way the navigation-timing comparison below can be.
+      const frameNavigatedPromise = devtools.once<{ type?: string }>(
+        "Page.frameNavigated",
+        8_000,
+      ).then((event) => event.type ?? "(no type field)").catch(() => "(the event never arrived)")
+
+      await devtools.send("Page.navigateToHistoryEntry", { entryId: previous.id })
+      frameNavigatedType = await frameNavigatedPromise
+      genuineRestore = frameNavigatedType === "BackForwardCacheRestore"
+
+      restored = await poll(
+        () =>
+          devtools.evaluate<boolean>(`document.querySelector('${card}') !== null`)
+            .catch(() => false),
+        5_000,
+      )
+    }
+
+    afterNav = restored
+      ? await devtools.evaluate<{ type: string; count: number }>(`(() => {
+        const entries = performance.getEntriesByType("navigation")
+        return { type: entries[0] ? entries[0].type : "", count: entries.length }
+      })()`).catch(() => afterNav)
+      : afterNav
+
+    bfcacheObserverFired = restored &&
+      await devtools.evaluate<boolean>(
+        `(globalThis.__verifyBfcacheRestorations ?? []).length > 0`,
+      ).catch(() => false)
+
+    recovered = restored && await poll(async () => {
+      const reading = await enhancedFormReading(devtools, card)
+      return !reading.disabled && reading.region === ""
+    }, 2_000)
+  } finally {
+    const strayed = await devtools.evaluate<boolean>(
+      `location.href !== ${JSON.stringify(restoreUrl)}`,
+    ).catch(() => true)
+    if (strayed) {
+      await devtools.send("Page.navigate", { url: restoreUrl }).catch(() => {})
+      await waitForNavigation(devtools)
+    }
+    await settledScroll(devtools)
+
+    // Leave the hang toggle as it was found, whether or not the round trip above succeeded.
+    const toggledOff = await setToggle(devtools, toggle, false)
+    check(
+      "ContactForm's hang toggle switches back off",
+      toggledOff,
+      `hang toggle switched off: ${toggledOff}`,
+    )
+  }
+
+  // **`Page.frameNavigated`'s own `type` field — checked for the literal value
+  // `"BackForwardCacheRestore"` — is what decides this check, not the navigation-timing comparison
+  // below.** That comparison only works because the entry type this exact run happens to start
+  // with is one a fresh, non-cached history fetch would also produce under some circumstances (a
+  // "reload"-typed entry survives a same-document restore exactly as a "navigate"-typed one does,
+  // but a *fresh* load reachable by reloading first would also read "reload", making the comparison
+  // alone ambiguous about which one actually happened); `frameNavigated`'s `type` names the
+  // outcome directly, from the browser's own navigation state machine, regardless of what the
+  // previous entry happened to be. `PerformanceObserver`'s own `back-forward-cache-restoration`
+  // entry is read too, and would be stronger evidence than the timing comparison if this repository's
+  // Chromium build implemented it — measured: `PerformanceObserver.supportedEntryTypes` does not
+  // list it at all — so it is kept only as corroborating evidence, never required.
+  const timingHeld = restored && afterNav.count === 1 && beforeNav.count === 1 &&
+    afterNav.type === beforeNav.type
+
+  check(
+    "a real back/forward-cache restore ends a sending state whose promise will never settle",
+    sending && restored && genuineRestore && recovered,
+    `fieldset disabled while the promise was pending: ${sending}; landed back on the catalogue: ` +
+      `${restored}; Page.frameNavigated reported "${frameNavigatedType}"` +
+      `; recovered to idle: ${recovered} — corroborating evidence: navigation-timing entry held ` +
+      `(${beforeNav.count} "${beforeNav.type}" → ${afterNav.count} "${afterNav.type}"): ` +
+      `${timingHeld}, PerformanceObserver fired: ${bfcacheObserverFired}`,
+  )
+}
+
+/**
+ * `ContactForm`'s card, last of its four checks because this is the one that finally succeeds and
+ * replaces its fields for good (see this section's own module doc): a rejected submit ends the
+ * sending state and leaves every field on screen, still holding what the visitor typed, and then an
+ * actual second submit — the failure toggle turned off, the same fields resubmitted rather than
+ * refilled — proves "leaves the fields for a retry" is true of a real retry, not only of what
+ * happens to still be on screen a moment after the first submit failed.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function contactFormFailureRetryChecks(devtools: Devtools): Promise<void> {
+  const card = "#demo-ContactForm"
+  const toggle = `${card} [data-e2e="contact-form-fail-toggle"]`
+
+  const ready = await cardCanSubmit(devtools, card)
+  check(
+    "ContactForm's card is ready to submit before the failure-retry check",
+    ready.ok,
+    ready.reason,
+  )
+  if (!ready.ok) return
+
+  await fillContact(devtools, card)
+  const toggledOn = await setToggle(devtools, toggle, true)
+  check("ContactForm's fail toggle switches on", toggledOn, `fail toggle switched on: ${toggledOn}`)
+  if (!toggledOn) return
+
+  await devtools.evaluate<null>(
+    `(document.querySelector('${card} button[type="submit"]')?.click(), null)`,
+  )
+
+  const failed = await poll(
+    async () =>
+      (await enhancedFormReading(devtools, card)).region ===
+        "Something went wrong. Please try again.",
+    2_000,
+  )
+  const afterFailure = await enhancedFormReading(devtools, card)
+  const nameKept = await devtools.evaluate<string>(
+    `document.querySelector('${card} input[name="name"]')?.value ?? ""`,
+  ).catch(() => "")
+
+  check(
+    "a rejected ContactForm submit ends the sending state and leaves the fields on screen",
+    failed && !afterFailure.disabled && nameKept === "Ada Lovelace",
+    `region reached the failure text: ${failed} ("${afterFailure.region}"); fieldset disabled ` +
+      `once settled: ${afterFailure.disabled}; name field kept "${nameKept}"`,
+  )
+
+  const toggledOff = await setToggle(devtools, toggle, false)
+  check(
+    "ContactForm's fail toggle switches back off",
+    toggledOff,
+    `fail toggle switched off: ${toggledOff}`,
+  )
+  if (!toggledOff) return
+
+  // The actual retry: the same fields, submitted again, with no refill.
+  await devtools.evaluate<null>(
+    `(document.querySelector('${card} button[type="submit"]')?.click(), null)`,
+  )
+  const succeeded = await poll(
+    async () => (await enhancedFormReading(devtools, card)).region.startsWith("Thanks"),
+    2_000,
+  )
+  const doneShown = await devtools.evaluate<boolean>(
+    `document.querySelector('${card}')?.textContent.includes("Thanks") ?? false`,
+  ).catch(() => false)
+
+  check(
+    "turning the failure off and pressing submit again — the actual retry — succeeds",
+    succeeded && doneShown,
+    `region reached "Thanks…": ${succeeded}; the done slot is on screen: ${doneShown}`,
+  )
+}
+
+/** Wait for the next full navigation, without throwing — see `system/`'s own copy for why. */
+async function waitForNavigation(devtools: Devtools, timeoutMs = 20_000): Promise<boolean> {
+  try {
+    await devtools.next("Page.loadEventFired", timeoutMs)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** One card driven by {@link enhancedFormsNoScriptChecks}: its selector and the fields to fill. */
+interface NoScriptTarget {
+  label: string
+  card: string
+  fields: ReadonlyArray<{ selector: string; value: string }>
+}
+
+const NO_SCRIPT_TARGETS: readonly NoScriptTarget[] = [
+  {
+    label: "NewsletterForm",
+    card: "#demo-NewsletterForm",
+    fields: [{ selector: 'input[name="email"]', value: "ada@example.com" }],
+  },
+  {
+    label: "ContactForm",
+    card: "#demo-ContactForm",
+    fields: [
+      { selector: 'input[name="name"]', value: "Ada Lovelace" },
+      { selector: 'input[name="email"]', value: "ada@example.com" },
+      { selector: 'textarea[name="message"]', value: "Hello there." },
+    ],
+  },
+]
+
+/** What this file reads off one captured `Network.requestWillBeSent` event. */
+interface CapturedRequest {
+  requestId: string
+  method: string
+  postData?: string
+  hasPostData?: boolean
+}
+
+/**
+ * Wait for the next request whose URL contains `urlIncludes`, ignoring any other traffic in
+ * between.
+ *
+ * Registered *before* the action expected to trigger it: a waiter only sees events that arrive
+ * after it starts listening, so calling this after the click would race whichever request the
+ * click produced.
+ *
+ * @param devtools The connected session.
+ * @param urlIncludes Substring the request's URL must contain.
+ * @param timeoutMs Budget across every non-matching event this has to skip past.
+ */
+async function waitForRequest(
+  devtools: Devtools,
+  urlIncludes: string,
+  timeoutMs: number,
+): Promise<CapturedRequest | null> {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    try {
+      const event = await devtools.once<
+        {
+          requestId: string
+          request: { url: string; method: string; postData?: string; hasPostData?: boolean }
+        }
+      >("Network.requestWillBeSent", Math.max(deadline - Date.now(), 1))
+      if (event.request.url.includes(urlIncludes)) {
+        return {
+          requestId: event.requestId,
+          method: event.request.method,
+          postData: event.request.postData,
+          hasPostData: event.request.hasPostData,
+        }
+      }
+    } catch {
+      return null
+    }
+  }
+  return null
+}
+
+/**
+ * The submitted body of a captured request — inline on the event when Chromium included it, or
+ * fetched separately when it only said one was there.
+ */
+async function requestBody(devtools: Devtools, request: CapturedRequest): Promise<string> {
+  if (request.postData !== undefined) return request.postData
+  if (!request.hasPostData) return ""
+
+  try {
+    const body = await devtools.send<{ postData: string }>("Network.getRequestPostData", {
+      requestId: request.requestId,
+    })
+    return body.postData
+  } catch {
+    return ""
+  }
+}
+
+/**
+ * `NewsletterForm` and `ContactForm`, submitted on a page where no script has run at all —
+ * `Emulation.setScriptExecutionDisabled` before a reload buys that, the same way `system/`'s
+ * `authFormNoScriptChecks` does, and for the same reason: every other check in this file runs
+ * against Preact's own hydrated submit handler, and this is the one behaviour that needs a page
+ * that never ran the bundle. `Runtime.evaluate` keeps working the whole time — DevTools reads and
+ * writes the page through its own privileged channel — so this can still fill fields and read
+ * `location.href` even though nothing the page itself authored can run; the submit button itself is
+ * pressed with a real, dispatched pointer, because a `.click()` run through `Runtime.evaluate` is
+ * script executing on the page's behalf where genuinely none should be able to.
+ *
+ * **What "the server's answer shows" is checked against, twice.** The landed-on page's own marker
+ * is read the same way the earlier version of this check did. On top of that, this reads the
+ * *network request itself* — `Network.requestWillBeSent`, captured before the click so nothing is
+ * missed — and asserts its method is `POST` and its body carries the field this target filled in.
+ * That is the one proof in this file that does not merely observe where the browser ended up: it
+ * observes what the browser actually sent, which is what a caller integrating a real backend cares
+ * about. Only the local preview server answers that POST with content; see this section's own
+ * module doc for why nothing here claims the published site does.
+ *
+ * **Everything from disabling script execution onward runs inside a `try`, and re-enabling it,
+ * navigating back and waiting for rehydration all run inside the matching `finally`.** A throw or a
+ * stalled navigation partway through must not leave every check after this one running against an
+ * unhydrated page — and if the first restoring navigation does not rehydrate the page either, a
+ * second attempt with `Page.reload({ ignoreCache: true })` is what keeps a single flaky navigation
+ * from cascading into the Modal checks that run right after this file's own.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function enhancedFormsNoScriptChecks(devtools: Devtools): Promise<void> {
+  const restoreUrl = await devtools.evaluate<string>("location.href").catch(() => "")
+
+  try {
+    await devtools.send("Emulation.setScriptExecutionDisabled", { value: true })
+
+    for (const [index, target] of NO_SCRIPT_TARGETS.entries()) {
+      if (index === 0) {
+        await devtools.send("Page.reload", { ignoreCache: true })
+      } else {
+        // A fresh, still-unhydrated load of the catalogue itself, not a reload of wherever the
+        // previous target's submit landed — `Page.reload` at that point would reload `form-demo/`.
+        await devtools.send("Page.navigate", { url: restoreUrl })
+      }
+      const loaded = await waitForNavigation(devtools)
+      const unhydrated = loaded &&
+        await devtools.evaluate<boolean>(`document.documentElement.dataset.hydrated !== "true"`)
+          .catch(() => false)
+
+      for (const field of target.fields) {
+        await devtools.evaluate<null>(`(() => {
+          const card = document.querySelector('${target.card}')
+          const el = card ? card.querySelector('${field.selector}') : null
+          if (el) el.value = ${JSON.stringify(field.value)}
+          return null
+        })()`).catch(() => null)
+      }
+
+      const buttonPoint = await elementCenter(devtools, `${target.card} form button[type="submit"]`)
+
+      const requestPromise = waitForRequest(devtools, "form-demo", 10_000)
+      if (buttonPoint.ok) {
+        for (const type of ["mousePressed", "mouseReleased"]) {
+          await devtools.send("Input.dispatchMouseEvent", {
+            type,
+            x: buttonPoint.x,
+            y: buttonPoint.y,
+            button: "left",
+            buttons: type === "mousePressed" ? 1 : 0,
+            clickCount: 1,
+          })
+        }
+      }
+
+      const request = buttonPoint.ok ? await requestPromise : null
+      const navigated = await waitForNavigation(devtools)
+      const answer = navigated
+        ? await devtools.evaluate<string>(
+          `document.querySelector('[data-e2e="form-demo-answer"]')?.textContent ?? ""`,
+        ).catch(() => "")
+        : ""
+
+      check(
+        `${target.label} submits with no script running, and the server's answer shows`,
+        unhydrated && buttonPoint.ok && navigated && answer.includes("Thanks"),
+        !unhydrated
+          ? "the fresh load still hydrated, so this proves nothing about a visitor without the bundle"
+          : !buttonPoint.ok
+          ? `no submit button found or aimed at on the unhydrated, prerendered ${target.label} ` +
+            `card: ${buttonPoint.reason}`
+          : !navigated
+          ? "the submit never navigated anywhere within the timeout"
+          : `landed on a page whose own marker reads ${JSON.stringify(answer.slice(0, 60))}`,
+      )
+
+      const firstField = target.fields[0]
+      const expectedPair = `${
+        encodeURIComponent(firstField.selector.match(/name="([^"]+)"/)?.[1] ?? "")
+      }=`
+      const body = request ? await requestBody(devtools, request) : ""
+
+      check(
+        `${target.label}'s no-script submit is recorded as a real POST carrying its fields`,
+        request !== null && request.method === "POST" && body.includes(expectedPair),
+        request === null
+          ? "no network request to form-demo/ was captured"
+          : `method "${request.method}", body ${JSON.stringify(body.slice(0, 120))}`,
+      )
+    }
+  } finally {
+    await devtools.send("Emulation.setScriptExecutionDisabled", { value: false }).catch(() => {})
+
+    await devtools.send("Page.navigate", { url: restoreUrl }).catch(() => {})
+    await waitForNavigation(devtools)
+    let rehydrated = await poll(
+      () =>
+        devtools.evaluate<boolean>(`document.documentElement.dataset.hydrated === "true"`)
+          .catch(() => false),
+      10_000,
+    )
+
+    // One restoring navigation was occasionally not enough on its own — a second, harder attempt
+    // before giving up is what keeps a single flaky one from taking the Modal checks with it.
+    if (!rehydrated) {
+      await devtools.send("Page.reload", { ignoreCache: true }).catch(() => {})
+      await waitForNavigation(devtools)
+      rehydrated = await poll(
+        () =>
+          devtools.evaluate<boolean>(`document.documentElement.dataset.hydrated === "true"`)
+            .catch(() => false),
+        10_000,
+      )
+    }
+
+    check(
+      "the page rehydrates once script execution is re-enabled again",
+      rehydrated,
+      rehydrated
+        ? "data-hydrated set again after the restoring navigation"
+        : "the page never rehydrated after script execution was re-enabled, even after a retry",
+    )
+
+    await settledScroll(devtools)
+  }
 }
