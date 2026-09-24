@@ -18,9 +18,9 @@
  *
  * **A failed `import("leaflet")`, or a throw while building the map, never throws out of this
  * component.** `mountLeafletMap` (`leaflet-map.ts`) reports either through `onLoadError` instead —
- * see that prop's own doc and function's own doc for why a port, rather than markup this component
- * renders. Nothing calls `onLoadError` once the component has already unmounted, for the same reason
- * nothing builds a map at that point either. The box and the list both stay exactly as usable as
+ * see that prop's own doc for why a port, rather than markup this component renders. Nothing calls
+ * `onLoadError` once the component has already unmounted, for the same reason nothing builds a map
+ * at that point either. The box and the list both stay exactly as usable as
  * they were before the failure.
  *
  * **Changing `center`, `zoom` or `markers` after mount updates the live map** — issue #143's own
@@ -127,11 +127,10 @@ export interface MountArgs {
  * Resolve {@link MountArgs} from `Map`'s own (already-defaulted) props.
  *
  * Exported and tested directly, on its own: nothing inside the mount effect below is observable
- * from a test, since effects never run under `preact-render-to-string` (see `AGENTS.md`) — a test
- * that only rendered `<Map onLoadError={spy} />` could not prove `spy` is what actually reaches
- * `mountLeafletMap`, and a future edit that quietly replaced the forwarded prop with a no-op inside
- * the effect would pass every existing test. This function is what a test can call directly and
- * assert on instead.
+ * from a test, since effects never run under `preact-render-to-string` (see `AGENTS.md`). The tests
+ * prove what this function returns. They do not prove that the effect hands that result to
+ * `mountLeafletMap`: a no-op swapped in for `args.onLoadError` inside the effect would pass every
+ * test, so that one line is covered by reading it.
  *
  * It also doubles as the one place that states `tileUrl`, `zoomInLabel` and `zoomOutLabel` — and now
  * `onLoadError` alongside them — are read once, at mount: the effect closes over whatever this

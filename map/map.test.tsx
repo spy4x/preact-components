@@ -154,12 +154,13 @@ describe("Map", () => {
 /**
  * The mount effect's own arguments live inside a `useEffect`, so no render test can observe them
  * directly — `preact-render-to-string` never runs an effect (see this file's own doc). `mountArgsFrom`
- * is what the effect calls to resolve them, and it is a plain function: this is what actually proves
- * a prop like `onLoadError` reaches the value `mountLeafletMap` is called with, rather than trusting
- * that the effect's own body still forwards it after some future edit.
+ * is what the effect calls to resolve them, and it is a plain function, so these tests prove what
+ * it returns. They do not prove that the effect passes that result on to `mountLeafletMap`: a no-op
+ * swapped in for `args.onLoadError` inside the effect would leave them green. That one line is
+ * covered by reading it, not by a test.
  */
 describe("mountArgsFrom", () => {
-  it("passes onLoadError through unchanged — proves the prop actually reaches mountLeafletMap's call", () => {
+  it("returns the onLoadError it was given, unchanged", () => {
     const onLoadError = (_error: unknown) => {}
 
     const args = mountArgsFrom({

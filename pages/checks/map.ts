@@ -46,9 +46,9 @@ interface MapState {
   /** Text of every plain-list row, in DOM order. */
   listNames: string[]
   /** `""` when nothing hides the list from assistive tech. Otherwise, which element carries the
-   * `aria-hidden="true"` that does: `"an ancestor of the list"`, `"the <ul>"`, or the hidden row's
-   * own text — named rather than a bare boolean so a failing check says what to go and look at,
-   * instead of just that something, somewhere, was hidden. */
+   * `aria-hidden="true"` that does: `"the list's own wrapper"`, `"an ancestor of the list"`,
+   * `"the <ul>"`, or the hidden row's own text — named rather than a bare boolean so a failing
+   * check says what to go and look at, instead of just that something, somewhere, was hidden. */
   listHiddenBy: string
   /** The echo element's text. */
   lastClicked: string
@@ -107,7 +107,7 @@ function readState(devtools: Devtools): Promise<MapState> {
     // Both directions: an ancestor of the wrapper (walking up) hides the whole list from assistive
     // tech; aria-hidden on the ul itself, or on one row, hides only what is inside it — neither is
     // "an ancestor of the wrapper", so a check that only walked up never saw either. Named, not just
-    // detected, so a failing check says which of the three it was rather than merely that one was.
+    // detected, so a failing check says which element it was rather than merely that one was.
     const ariaHiddenTrue = (el) => Boolean(el && el.getAttribute && el.getAttribute("aria-hidden") === "true")
     let listHiddenBy = ""
     for (let el = list; el; el = el.parentElement) {
