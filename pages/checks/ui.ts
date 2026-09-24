@@ -7959,14 +7959,22 @@ async function resetExportCapture(devtools: Devtools): Promise<void> {
   })()`)
 }
 
-/** Whether the armed instrumentation has seen a full create-download-revoke cycle complete. */
+/**
+ * Whether the armed instrumentation has seen a full create-download-revoke cycle complete.
+ *
+ * `@spy4x/platform/browser/download`'s `downloadResponseAsFile` revokes the object URL from a
+ * timer about `REVOKE_DELAY_MS` (5000ms) after the click, not in the click's own task — revoking
+ * too early has historically cancelled a download still starting. The poll budget here is bounded
+ * well above that delay rather than asserting the revoke happens at once, so a slow CI machine
+ * still has room after the real 5s wait.
+ */
 async function exportSettled(devtools: Devtools): Promise<boolean> {
   return await poll(
     () =>
       devtools.evaluate<boolean>(
         `Boolean(globalThis.__exportCheck && globalThis.__exportCheck.revokedUrl)`,
       ),
-    5_000,
+    8_000,
   )
 }
 
@@ -8057,7 +8065,7 @@ async function exportRowsViaSpaceCheck(devtools: Devtools): Promise<void> {
     settled,
     settled
       ? "URL.revokeObjectURL ran, so the create-download-revoke sequence completed"
-      : "no URL.revokeObjectURL call was observed within 5s",
+      : "no URL.revokeObjectURL call was observed within 8s",
   )
   if (!settled) return
 
@@ -8142,7 +8150,7 @@ async function exportAsyncViaEnterCheck(devtools: Devtools): Promise<void> {
     settled,
     settled
       ? "URL.revokeObjectURL ran, so the create-download-revoke sequence completed"
-      : "no URL.revokeObjectURL call was observed within 5s",
+      : "no URL.revokeObjectURL call was observed within 8s",
   )
   if (!settled) return
 
