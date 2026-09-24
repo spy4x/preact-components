@@ -674,14 +674,15 @@ that app's own environment keys directly into the component.
 
 **The escaping is `SEOHead`'s own, reused rather than reimplemented.** `stateInitText` calls
 `seo-head.tsx`'s `jsonLdText`, the same function that already protects `SEOHead`'s own JSON-LD
-script tag: `<` becomes the six characters `\u003c`, which keeps a value containing the literal text `</script>` (or
-`<!--`) from ending the element early — the HTML parser watches for that sequence case-insensitively
-to close _any_ `<script>`, regardless of its `type`, before either JSON or JavaScript ever parses the
-content. U+2028 and U+2029 need nothing extra here: `StateInit` renders `type="application/json"`,
-which the browser never executes, and `readStateInit` reads it back with `JSON.parse`, which has
-always accepted both characters inside a JSON string. `state-init.test.tsx` proves a value carrying
-all three — `</script>`, `<!--` and both separators — survives the round trip through `stateInitText`
-and back through `readStateInit` unchanged, rather than resting on the reasoning alone.
+script tag: `<` becomes the six characters `\u003c`, which keeps a value containing the literal text
+`</script>` (or `<!--`) from ending the element early — the HTML parser watches for that sequence
+case-insensitively to close _any_ `<script>`, regardless of its `type`, before either JSON or
+JavaScript ever parses the content. U+2028 and U+2029 need nothing extra here: `StateInit` renders
+`type="application/json"`, which the browser never executes, and `readStateInit` reads it back with
+`JSON.parse`, which has always accepted both characters inside a JSON string. `state-init.test.tsx`
+proves a value carrying all three — `</script>`, `<!--` and both separators — survives the round
+trip through `stateInitText` and back through `readStateInit` unchanged, rather than resting on the
+reasoning alone.
 
 **`readStateInit` takes an injectable source, defaulted to the real `document`.** The default is
 evaluated inside the function, never at module load, which is what lets `state-init.test.tsx` import
