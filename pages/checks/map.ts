@@ -45,9 +45,11 @@ interface MapState {
   attributionVisible: boolean
   /** Text of every plain-list row, in DOM order. */
   listNames: string[]
-  /** Whether the list — or any ancestor of it — carries `aria-hidden="true"`, which would take it out
-   * of the accessibility tree regardless of what its text reads. */
-  listAriaHidden: boolean
+  /** `""` when nothing hides the list from assistive tech. Otherwise, which element carries the
+   * `aria-hidden="true"` that does: `"an ancestor of the list"`, `"the <ul>"`, or the hidden row's
+   * own text — named rather than a bare boolean so a failing check says what to go and look at,
+   * instead of just that something, somewhere, was hidden. */
+  listHiddenBy: string
   /** The echo element's text. */
   lastClicked: string
 }
@@ -61,7 +63,7 @@ function readState(devtools: Devtools): Promise<MapState> {
         ok: false, box: { width: 0, height: 0 }, boxCarriesSizeClass: false,
         leafletMounted: false, leafletContainerOverflow: "", pinCount: 0, loadedTiles: 0,
         oneTileSrc: "", allTilesLocal: false, tilesOverlapBox: false, attributionText: "",
-        attributionVisible: false, listNames: [], listAriaHidden: false, lastClicked: "",
+        attributionVisible: false, listNames: [], listHiddenBy: "", lastClicked: "",
       }
     }
 
@@ -104,18 +106,23 @@ function readState(devtools: Devtools): Promise<MapState> {
 
     // Both directions: an ancestor of the wrapper (walking up) hides the whole list from assistive
     // tech; aria-hidden on the ul itself, or on one row, hides only what is inside it — neither is
-    // "an ancestor of the wrapper", so a check that only walked up never saw either.
+    // "an ancestor of the wrapper", so a check that only walked up never saw either. Named, not just
+    // detected, so a failing check says which of the three it was rather than merely that one was.
     const ariaHiddenTrue = (el) => Boolean(el && el.getAttribute && el.getAttribute("aria-hidden") === "true")
-    let listAriaHidden = false
+    let listHiddenBy = ""
     for (let el = list; el; el = el.parentElement) {
       if (ariaHiddenTrue(el)) {
-        listAriaHidden = true
+        listHiddenBy = el === list ? "the list's own wrapper" : "an ancestor of the list"
         break
       }
     }
     const ul = list ? list.querySelector("ul") : null
-    if (ariaHiddenTrue(ul) || listRows.some((row) => ariaHiddenTrue(row))) {
-      listAriaHidden = true
+    if (!listHiddenBy && ariaHiddenTrue(ul)) {
+      listHiddenBy = "the <ul>"
+    }
+    if (!listHiddenBy) {
+      const hiddenRow = listRows.find((row) => ariaHiddenTrue(row))
+      if (hiddenRow) listHiddenBy = 'row "' + hiddenRow.textContent.trim() + '"'
     }
 
     return {
@@ -134,7 +141,7 @@ function readState(devtools: Devtools): Promise<MapState> {
       attributionText: attribution ? attribution.textContent.trim() : "",
       attributionVisible,
       listNames: listRows.map((row) => row.textContent.trim()),
-      listAriaHidden,
+      listHiddenBy,
       lastClicked: lastClicked ? lastClicked.textContent.trim() : "",
     }
   })()`)
@@ -223,11 +230,11 @@ export async function mapChecks(devtools: Devtools): Promise<void> {
 
   check(
     "the plain list names the same places, in order, and is not hidden from assistive tech",
-    !withTiles.listAriaHidden &&
+    !withTiles.listHiddenBy &&
       withTiles.listNames.length === PLACE_LABELS.length &&
       withTiles.listNames.every((name, index) => name === PLACE_LABELS[index]),
-    `list reads: ${withTiles.listNames.join(", ") || "(empty)"}, aria-hidden ancestor: ` +
-      `${withTiles.listAriaHidden}`,
+    `list reads: ${withTiles.listNames.join(", ") || "(empty)"}` +
+      (withTiles.listHiddenBy ? `, hidden by: ${withTiles.listHiddenBy}` : ", not hidden"),
   )
 
   await pinKeyboardChecks(devtools)
