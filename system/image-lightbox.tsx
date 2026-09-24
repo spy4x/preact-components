@@ -33,9 +33,11 @@
  * `alt` attribute is still zoomable and still opens, named by `fallbackAlt` (default `"Image"`),
  * and `Lightbox` now also shows that name as a visible caption, which is new here. Only a caller
  * who sets `fallbackAlt=""` opts out of the substitution; only then can an image genuinely have no
- * description, and only then does {@link collectSequence} drop it — from the sequence, and from
- * opening at all if it is the one activated — the same refusal `Lightbox` applies to its own
- * `images` prop.
+ * description, and only then is it refused — not marked zoomable at all ({@link markZoomable},
+ * {@link zoomableAlt}), so a click on it inside a link still follows the link instead of being
+ * cancelled for a lightbox that would have refused to open anyway ({@link collectSequence}, whose
+ * own filtering keeps a described image's position correct even when an earlier, undescribed one
+ * sits between it and the start of the container).
  */
 
 import { describedImages, Lightbox } from "@preact-components/ui/lightbox"
@@ -113,18 +115,41 @@ interface ZoomableMarks {
 }
 
 /**
- * Make every image in the container a keyboard-reachable control.
+ * The `alt` an image will open the lightbox with, after {@link ZoomableMarks.fallbackAlt}'s
+ * substitution — the same rule {@link resolveImage} applies, restated here as a decision
+ * {@link markZoomable} can call before it touches the DOM rather than after.
+ *
+ * @param rawAlt The image's own `alt` attribute, or `null`/`undefined` when it has none.
+ * @param fallbackAlt `alt` used when the image has none.
+ * @returns The trimmed, substituted `alt` — empty only when both `rawAlt` and `fallbackAlt` are.
+ */
+export function zoomableAlt(rawAlt: string | null | undefined, fallbackAlt: string): string {
+  return (rawAlt ?? "").trim() || fallbackAlt
+}
+
+/**
+ * Make every described image in the container a keyboard-reachable control.
  *
  * A Tab stop and a role are the difference between "clicking this image zooms it" and "activating
  * this image zooms it", and only the second is reachable without a mouse. Idempotent, because a
  * container whose images change calls this again.
+ *
+ * **An image {@link zoomableAlt} resolves to nothing is left exactly as it was.** With the default
+ * `fallbackAlt` this never happens — every image gets a real name, `"Image"` at the least — but a
+ * caller who sets `fallbackAlt=""` can have a raw `<img>` with no `alt` at all. Marking it anyway
+ * would make it a button with nothing to call it and nothing for activating it to do; refusing it
+ * here, before any attribute is written, is what keeps it a plain image instead — reachable by Tab
+ * only if it already was (inside a link, say), and a click on it left for the browser's own default
+ * action rather than intercepted. `openAt` makes the same refusal before it cancels a click or key
+ * press, for the same reason.
  */
 function markZoomable(container: Element, marks: ZoomableMarks): void {
   for (const element of container.querySelectorAll(marks.imageSelector)) {
     const image = element as HTMLElement
     if (image.hasAttribute(MARKER)) continue
 
-    const alt = (image.getAttribute("alt") ?? "").trim() || marks.fallbackAlt
+    const alt = zoomableAlt(image.getAttribute("alt"), marks.fallbackAlt)
+    if (!alt) continue
     image.setAttribute(MARKER, "")
     image.setAttribute("role", "button")
     image.setAttribute("tabindex", "0")
@@ -276,6 +301,13 @@ export function ImageLightbox(
       const target = event.target as ImageElementLike | null
       const resolved = resolveImage(target, imageSelector, fallbackAlt)
       if (!resolved) return false
+      // Refused before anything is cancelled: `resolved.alt` is empty only when `fallbackAlt` is
+      // itself empty and the image has no real `alt` — `markZoomable` never marked it a control for
+      // the same reason, so this is the click-layer's own copy of that refusal. Deciding it here,
+      // ahead of `preventDefault()`, is what a mouse click needs: an undescribed image inside a
+      // link must still follow that link, not have its navigation cancelled for a lightbox that is
+      // about to refuse to open anyway.
+      if (!resolved.alt) return false
 
       // The default is what has to go: a click or an Enter press on an image inside a link would
       // otherwise open the lightbox *and* navigate away from it, and Space would scroll the page.
@@ -284,11 +316,6 @@ export function ImageLightbox(
         ...container.querySelectorAll(imageSelector),
       ] as unknown as ImageElementLike[]
       const collected = collectSequence(elements, target, imageSelector, fallbackAlt)
-      // `index < 0` only when `fallbackAlt` is itself empty and the activated image has no real
-      // `alt`: `collectSequence` has already dropped it, the same refusal `Lightbox` applies to its
-      // own `images` prop. Nothing opens — no dialog, no `onOpen` — rather than opening on whatever
-      // happens to sit at position 0.
-      if (collected.index < 0) return false
       setSequence(collected.images)
       setIndex(collected.index)
       setOpen(true)

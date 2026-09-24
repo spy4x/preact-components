@@ -294,8 +294,10 @@ arrives afterward becomes zoomable but is not spliced into a sequence already be
 with no `alt` attribute is unchanged from before `Lightbox` existed: it still opens, named by
 `fallbackAlt` (default `"Image"`), and is now also shown as a visible caption — new here, since the
 old dialog had none. Only a caller who sets `fallbackAlt=""` turns the substitution off, and only
-then can an image genuinely have no description; that image is then refused the same way
-`ImageGallery`'s own `images` prop is.
+then can an image genuinely have no description; that image is then refused the way `ImageGallery`'s
+own `images` prop is, and refused early — never marked a zoom control in the first place, so it
+keeps no Tab stop and no name it cannot act on, and a click on it inside a link still follows the
+link.
 
 **A zoomable image behaves like a button**, because that is what it has become. The component
 gives every image it marks a tab stop, a button's role and a name saying what activating it does,

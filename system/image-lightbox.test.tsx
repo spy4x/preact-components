@@ -6,6 +6,7 @@ import {
   type ImageElementLike,
   ImageLightbox,
   resolveImage,
+  zoomableAlt,
 } from "./image-lightbox.tsx"
 
 /** An element stub with the three properties `resolveImage` reads. */
@@ -42,6 +43,15 @@ describe("resolveImage", () => {
     expect(resolveImage(element({ alt: "  " }), "img", "Illustration")?.alt).toBe("Illustration")
   })
 
+  it("resolves to an empty alt when both the image's own and the placeholder are empty", () => {
+    // The one way an image reaches this component with a genuinely empty description: a caller who
+    // turned the substitution off with `fallbackAlt=""`. `openAt` and `markZoomable` both refuse an
+    // image whose resolved `alt` is empty — see `zoomableAlt`, the same decision restated so it can
+    // be made before any attribute is written, not only once a click has already landed.
+    expect(resolveImage(element({ alt: "" }), "img", "")?.alt).toBe("")
+    expect(resolveImage(element({ alt: "  " }), "img", "")?.alt).toBe("")
+  })
+
   it("trims alt text", () => {
     expect(resolveImage(element({ alt: "  A hero  " }))?.alt).toBe("A hero")
   })
@@ -71,6 +81,25 @@ describe("resolveImage", () => {
     // cancelling the event it opens on, which is a browser's business and `pages/checks/system.ts`'s
     // to prove — this function never sees it.
     expect(resolveImage(element({ matches: (selector) => selector === "a" }))).toBeNull()
+  })
+})
+
+describe("zoomableAlt", () => {
+  it("substitutes fallbackAlt for a missing or blank alt", () => {
+    expect(zoomableAlt(null, "Image")).toBe("Image")
+    expect(zoomableAlt(undefined, "Image")).toBe("Image")
+    expect(zoomableAlt("   ", "Image")).toBe("Image")
+  })
+
+  it("keeps a real alt, trimmed", () => {
+    expect(zoomableAlt("  A hero  ", "Image")).toBe("A hero")
+  })
+
+  it("is empty only when both the image's own alt and fallbackAlt are", () => {
+    // The one case markZoomable and openAt both refuse: fallbackAlt turned off with "" and the
+    // image itself carrying no real description.
+    expect(zoomableAlt(null, "")).toBe("")
+    expect(zoomableAlt("   ", "")).toBe("")
   })
 })
 
