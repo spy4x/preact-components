@@ -623,10 +623,33 @@ Opening the drawer moves real focus to its own button, which is outside the user
 pressed. `pages/checks/system.ts`'s `shellEscapeScopingCheck` proves both directions with real clicks
 and a real Escape, not a scripted event aimed at a mismatched target.
 
+**The user menu's own panel needs a higher `z-index` than the drawer's, and the header's `panelClasses`
+override is why.** `Dropdown`'s panel defaults to `z-10`; the drawer's panel is `z-20`. Both are
+descendants of the header's own `sticky z-30`, so their `z-index` values are compared against each
+other inside that one stacking context, not against the header's own `z-30` — left at the default,
+the drawer painted over an open user menu at phone width, and a tap meant for a menu item landed on
+the drawer instead and closed the menu through `Dropdown`'s own outside-click handling before the
+item's own click ever ran. `Shell` passes `panelClasses="z-30"` to raise the menu above the drawer;
+`shellEscapeScopingCheck`'s first direction now also asserts, with `elementFromPoint` and a real
+click, that the item is genuinely reachable by a pointer, not only by focus.
+
+**The drawer's scrim closes it on a tap, without returning focus to the menu button.** The scrim
+exists so a pointer user has a target to dismiss the drawer with — the panel is 288px wide and the
+scrim is everything beside it — and it calls `close(false)`, the same call `onNavigate` makes for a
+link inside the panel, rather than `close(true)`, the call Escape makes. A tap on the scrim is a
+dismiss by pointer: nothing the visitor touched needs keyboard focus handed back to it, and pulling
+focus onto the now-hidden menu button, which the tap never came near, would be a surprise rather than
+a courtesy.
+
 **The skip link is the first focusable element on the page**, targeting a `<main>` this component
 gives `tabindex="-1"` — activating it moves focus into the content area itself, not only the address
 bar's hash, which is what lets a visitor skip the whole navigation with one key press rather than
 tabbing past every link in it first.
+
+**A drawer link click closes the drawer under a client-side router, exactly as `SiteHeader`'s panel
+links do.** `ShellNavLink` wires the identical `onNavigate={() => close(false)}`, reusing the same
+`close(false)`-not-`close(true)` reasoning: a navigating link, like the scrim, is not the menu button
+asking to close, so it must not fight wherever the click actually sends focus next.
 
 **Every string beyond the caller's own data has an English default and a `labels` override**: the
 menu button's name, the shared `aria-label` on both navigation landmarks, the skip link's text, and
@@ -687,7 +710,7 @@ reads the same as one whose `id` was mistyped, rather than throwing either way.
   injectable `today` for deterministic renders.
 - **No `Nav`, `Auth`, `Menu`, `Header`, `ProfileDropdown`, `ImageGallery`, `LeadForm` or
   `NewsletterForm`.** Each one is in the table below with a reason. `Shell` (#135) and `StateInit`
-  are built as of this package's own commit — see their sections below — and are no longer in that
+  are built as of this package's own commit — see their sections above — and are no longer in that
   table.
 - **`ImageLightbox` uses event delegation, not per-image listeners.** The source attached one
   listener per image and never removed them; delegation also survives images that appear after

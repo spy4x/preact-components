@@ -245,7 +245,19 @@ export function Shell(props: ShellProps): JSX.Element {
           </summary>
 
           <div id={panelId} class="fixed inset-x-0 bottom-0 top-16 z-20" data-e2e="shell-panel">
-            <div class="absolute inset-0 bg-gray-900/25" aria-hidden="true" />
+            {
+              /* A tap here is a dismiss by pointer, not a request for keyboard focus back — the
+                same reasoning `onNavigate` below uses `close(false)` for, so a scrim tap does too:
+                nothing the visitor touched needs focus returned to it, and pulling focus back onto
+                the now-hidden menu button would be a surprise for a tap that landed a whole panel
+                away from it. */
+            }
+            <div
+              class="absolute inset-0 bg-gray-900/25"
+              aria-hidden="true"
+              data-e2e="shell-scrim"
+              onClick={() => close(false)}
+            />
             <nav
               aria-label={navLabel}
               class="relative h-full w-72 max-w-[80vw] overflow-y-auto bg-white p-4 shadow-lg dark:bg-gray-900"
@@ -259,7 +271,7 @@ export function Shell(props: ShellProps): JSX.Element {
           </div>
         </details>
 
-        <div class="flex items-center gap-2">{brand}</div>
+        <div class="flex items-center gap-2" data-e2e="shell-brand">{brand}</div>
 
         <div class="flex flex-1 items-center justify-end gap-4">
           {status}
@@ -269,6 +281,10 @@ export function Shell(props: ShellProps): JSX.Element {
               triggerNamedByContent
               triggerDataE2E="shell-user-menu-button"
               menuLabel={userMenuLabel}
+              // The drawer's own panel sits at z-20 inside this header's sticky z-30 stacking
+              // context; left at Dropdown's default z-10, the drawer painted over the open menu at
+              // phone width and swallowed every click meant for it. z-30 keeps the menu above both.
+              panelClasses="z-30"
             >
               {userMenuItems.map((item, index) => (
                 <DropdownItem
