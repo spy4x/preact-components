@@ -412,8 +412,8 @@ identically is `from <= to`, the same rule a one-day `DateRange` passes by desig
 naming the hour a zone skips in spring — a local time that never happens that day — is accepted the
 same way, because nothing here is told which zone a value is meant for and checks accordingly.
 `rangeForTimePreset`'s own doc in `date-range.ts` names the instant behind the 0- and 2-hour
-`"last-hour"` outcomes, and `date-range.test.ts` pins both, plus the 23- and 25-hour
-`"last-24-hours"` cases, as tests.
+`"last-hour"` outcomes, and `date-range.test.ts` pins both, plus a 23- and a 25-hour
+`"last-24-hours"` case, each with the duration a standard conversion reads back.
 
 `to` is inclusive at the minute named, the same convention `DateRange`'s is at the day, and this
 library truncates seconds — so a `"last-hour"` window covers 61 minutes end to end, not 60: the whole
@@ -422,8 +422,8 @@ of the `to` minute is included, not just its first instant.
 The focus contract above is not re-implemented for this mode — `DateRangePicker`'s open/close
 signals, `closePanel` and the effect that moves focus are the exact same code `withTime` runs
 through, untouched by it. `pages/checks/ui.ts` still proves it holds there rather than assuming so:
-opening moves focus in, Apply and Escape (two of the five closes driven from inside) hand focus back
-to the trigger, and both closes driven from outside leave it alone — driven against the `withTime`
+opening moves focus in, every close driven from inside (both time presets, Apply, Cancel, Escape and
+a second press on the trigger) hands focus back to the trigger, and both closes driven from outside leave it alone — driven against the `withTime`
 card directly, the same way the day-only proof above is driven against its own.
 
 ## Pagination

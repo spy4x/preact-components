@@ -549,7 +549,8 @@ function calendarDateTimeInZone(instant: Date, timeZone: string): string {
  *   round trip reads 2 hours. Example: `now` `2026-10-25T02:10:00Z` in `Europe/Berlin` answers
  *   `{ from: "2026-10-25T02:10", to: "2026-10-25T03:10" }`.
  *
- * `date-range.test.ts` pins both examples above, plus the 23- and 25-hour `"last-24-hours"` cases.
+ * `date-range.test.ts` pins both examples above, plus a 23- and a 25-hour `"last-24-hours"` case,
+ * each with the duration a standard conversion reads back.
  *
  * Every string in every case above is still a correct reading of its own instant, and
  * {@link isValidDateTimeRange} still accepts all of them: a range whose ends read identically is

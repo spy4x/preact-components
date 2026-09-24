@@ -29,6 +29,45 @@ import {
 /** Fixed instant every range assertion resolves against: 2026-08-23, a Sunday. */
 const NOW = new Date("2026-08-23T12:00:00Z")
 
+/** One hour, in milliseconds. */
+const HOUR = 3_600_000
+
+/**
+ * The earliest instant a `YYYY-MM-DDTHH:mm` wall-clock string names in a zone.
+ *
+ * That is what a standard conversion returns for a time the zone's fall-back repeats — Temporal's
+ * default disambiguation picks the earlier of the two — so it is how a caller's round trip reads a
+ * timed range back. Throws for a time the zone skips, which none of these tests converts.
+ */
+function earliestInstant(wall: string, timeZone: string): number {
+  const asUtc = Date.parse(`${wall}:00Z`)
+  const format = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  })
+  const readsAs = (ms: number) => {
+    const parts = Object.fromEntries(format.formatToParts(ms).map((p) => [p.type, p.value]))
+    return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`
+  }
+  const matches: number[] = []
+  for (let minutes = -14 * 60; minutes <= 14 * 60; minutes += 15) {
+    const ms = asUtc - minutes * 60_000
+    if (readsAs(ms) === wall) matches.push(ms)
+  }
+  if (matches.length === 0) throw new Error(`${wall} does not happen in ${timeZone}`)
+  return Math.min(...matches)
+}
+
+/** How many hours a caller's standard conversion reads a timed range as. */
+function roundTripHours(range: { from: string; to: string }, timeZone: string): number {
+  return (earliestInstant(range.to, timeZone) - earliestInstant(range.from, timeZone)) / HOUR
+}
+
 /** Day count of an inclusive range. */
 function dayCount(range: DateRange): number {
   return (parseIsoDate(range.to) - parseIsoDate(range.from)) / 86_400_000 + 1
@@ -890,6 +929,7 @@ describe("rangeForTimePreset", () => {
 
     expect(range).toEqual({ from: "2026-10-25T02:30", to: "2026-10-25T02:30" })
     expect(isValidDateTimeRange(range)).toBe(true)
+    expect(roundTripHours(range, "Europe/Berlin")).toBe(0)
   })
 
   it("reads from a real hour later than it is when only from lands in the Berlin fall-back's second pass", () => {
@@ -905,6 +945,31 @@ describe("rangeForTimePreset", () => {
 
     expect(range).toEqual({ from: "2026-10-25T02:10", to: "2026-10-25T03:10" })
     expect(isValidDateTimeRange(range)).toBe(true)
+    expect(roundTripHours(range, "Europe/Berlin")).toBe(2)
+  })
+
+  it("reads back as 23 hours when only to lands in the Berlin fall-back's second pass", () => {
+    // now is UTC 01:30 on the fall-back day: CET, the second 02:30. Twenty-four real hours before it
+    // is UTC 01:30 the day before, 03:30 CEST. A standard conversion reads "02:30" as its first,
+    // earlier pass, an hour before where to really was, so the round trip is 23 hours.
+    const now = new Date("2026-10-25T01:30:00Z")
+
+    const range = rangeForTimePreset("last-24-hours", { now, timeZone: "Europe/Berlin" })
+
+    expect(range).toEqual({ from: "2026-10-24T03:30", to: "2026-10-25T02:30" })
+    expect(roundTripHours(range, "Europe/Berlin")).toBe(23)
+  })
+
+  it("reads back as 25 hours when only from lands in the Berlin fall-back's second pass", () => {
+    // now is UTC 01:30 the day after the fall-back, 02:30 CET. Twenty-four real hours before it is
+    // UTC 01:30 on the fall-back day: the second 02:30. The conversion reads from as the first pass,
+    // an hour earlier than it was, so the round trip is 25 hours.
+    const now = new Date("2026-10-26T01:30:00Z")
+
+    const range = rangeForTimePreset("last-24-hours", { now, timeZone: "Europe/Berlin" })
+
+    expect(range).toEqual({ from: "2026-10-25T02:30", to: "2026-10-26T02:30" })
+    expect(roundTripHours(range, "Europe/Berlin")).toBe(25)
   })
 })
 
