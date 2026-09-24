@@ -43,6 +43,7 @@ Preact + Tailwind primitives extracted from earlier source applications.
 | `DropdownItem`    | `dropdown`          | `href`, `onClick`, `disabled`, `class` — a `role="menuitem"`, out of the tab order                                             |
 | `EnhancedForm`    | `enhanced-form`     | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?` — posts natively before hydration             |
 | `ErrorState`      | `error-state`       | `message` (renders nothing when empty)                                                                                         |
+| `ExportButton`    | `export-button`     | `columns`, `rows` or `getRows`, `fileName`, `label?`, `resultLabel?`, `errorLabel?`, `onError?`                                |
 | `GeoButton`       | `geo-button`        | `onLocation`, `onError?`                                                                                                       |
 | `ImageGallery`    | `image-gallery`     | `images` (`{ src, alt, thumbSrc? }[]`), `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`               |
 | `Lightbox`        | `lightbox`          | `images`, `index`, `open`, `onClose`, `onIndexChange`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`          |
@@ -759,6 +760,44 @@ same image inside the dialog — the two never run the filter separately over tw
 arrays, which is what let them disagree in `system/image-lightbox.tsx`'s own version of this bug
 before it was fixed there (see the `Lightbox` section above).
 
+## ExportButton
+
+Downloads `rows` — or the result of `getRows`, called only once the button is pressed — as a CSV
+file: a native `<button>`, so Space and Enter activate it with no extra wiring, and a `role="status"`
+live region, present and empty from the first render, that announces `resultLabel(rowCount)` once
+the download has been handed to the browser. `rows` and `getRows` are mutually exclusive at the type
+level — passing both, or neither, is a compile error — and `getRows` may return its array directly
+or a `Promise` of one, since "export everything the current filter matches" is usually a fetch and
+`await`ing a value that is already an array resolves immediately either way.
+
+The writer (`ui/csv.ts`, package-private — not in this package's `exports`, not re-exported from
+`+index.ts`) is RFC 4180 CSV: commas, double quotes and line breaks inside a cell are quoted, with
+an embedded quote doubled; the file is UTF-8 with a leading byte-order mark, which is what makes
+Excel open non-English text correctly instead of guessing the system codepage; and lines are
+`\r\n`-terminated, the ending the RFC itself specifies rather than the bare `\n` some tools merely
+tolerate.
+
+A cell whose text starts with `=`, `+`, `-`, `@`, a tab or a carriage return is prefixed with a
+single quote before anything else runs, because a spreadsheet reads that leading character as the
+start of a formula — the four symbols most CSV-injection guidance names, plus the leading tab and
+carriage return the same guidance lists alongside them. The guard has no exception for a value that
+merely looks safe: a column whose `format` produces a plain negative number such as `-5` is guarded
+exactly like a payload that only starts the same way (`-2+3+cmd|' /C calc'!A1`), and opens as the
+text `-5` in Excel rather than a live number. That is a real cost for a numeric column with
+negative values — a caller who needs the number to stay numeric routes it around a leading `-` in
+its own `format` (parentheses for a negative amount, say) — traded for not having to tell a real
+negative number apart from a payload shaped like one, which content alone cannot do reliably.
+
+Zero rows still downloads a file: the header row alone, a real, openable CSV rather than nothing
+happening for a filter that currently matches nothing. A `getRows` that throws or rejects downloads
+nothing — the live region announces `errorLabel` ("Could not export the file." by default) instead
+of a row count, the optional `onError` port is called with the error, and the button re-enables for
+another try.
+
+Excel (`.xlsx`) is not supported, and staying CSV-only was the point of starting here: `xlsx` would
+be a new, large dependency for formatting, formulas and multiple sheets this button does not need,
+and nothing here forecloses adding it later behind its own prop if a caller needs a real workbook.
+
 ## Tests
 
 `deno task test` from the repo root. Tests render each component with
@@ -768,8 +807,9 @@ in this package's `deno.json` because the root import map has no renderer.
 
 ## Not in this package
 
-`MetricsList`, `Export` and the higher-level selectors (`CurrencySelector`, `DateRangeSelector`,
+`MetricsList` and the higher-level selectors (`CurrencySelector`, `DateRangeSelector`,
 `AccountSelector`) stay app-side for now — `MetricsList` is theme-coupled and belongs with the
-charts work, and `Export` drags in `xlsx`. `DeletionValidation` belongs with the CRUD package.
-`DateTimeFilter`'s time-of-day mode is `DateRangePicker`'s `withTime` option (#142); nothing
-app-side answering to that name is extracted here.
+charts work. `DeletionValidation` belongs with the CRUD package. `DateTimeFilter`'s time-of-day
+mode is `DateRangePicker`'s `withTime` option (#142); nothing app-side answering to that name is
+extracted here. `Export` is extracted as `ExportButton`, CSV only — see its own section above for
+why Excel stayed out.
