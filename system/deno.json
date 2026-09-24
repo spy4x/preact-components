@@ -10,6 +10,7 @@
     "./calendar": "./calendar.tsx",
     "./image-lightbox": "./image-lightbox.tsx",
     "./site-header": "./site-header.tsx",
+    "./shell": "./shell.tsx",
     "./state-init": "./state-init.tsx"
   },
   "publish": {

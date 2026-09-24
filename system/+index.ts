@@ -46,6 +46,14 @@ export {
   resolveImage,
 } from "./image-lightbox.tsx"
 export {
+  Shell,
+  type ShellLabels,
+  type ShellNavItem,
+  type ShellProps,
+  type ShellUser,
+  type ShellUserMenuItem,
+} from "./shell.tsx"
+export {
   type HeadTag,
   type HeadTagName,
   jsonLdText,
