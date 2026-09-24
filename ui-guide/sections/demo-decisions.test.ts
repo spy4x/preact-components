@@ -31,7 +31,7 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { paginationNote } from "./display.tsx"
 import { skeletonTableNote, skeletonWidthReport } from "./feedback.tsx"
-import { comboboxStatusLabel, dateRangeTouched } from "./inputs.tsx"
+import { comboboxStatusLabel, dateRangeTouched, dateTimeRangeTouched } from "./inputs.tsx"
 
 describe("comboboxStatusLabel", () => {
   it("reports the selection while no query is typed", () => {
@@ -104,6 +104,44 @@ describe("dateRangeTouched", () => {
     // `parseIsoDate` round-trips through `formatIsoDate` rather than trusting `Date.parse`, because
     // `Date.parse("2026-02-31")` rolls into March and would look like a valid ordered range.
     expect(dateRangeTouched({ from: "2026-02-31", to: "2026-03-01" })).toBe(
+      "incomplete — Apply stays disabled",
+    )
+  })
+})
+
+describe("dateTimeRangeTouched", () => {
+  it("reports an ordered timed range as its two ends", () => {
+    expect(dateTimeRangeTouched({ from: "2026-02-09T14:00", to: "2026-02-09T18:00" })).toBe(
+      "2026-02-09T14:00 → 2026-02-09T18:00",
+    )
+  })
+
+  it("reports a range whose ends read the same minute, the ambiguous-hour case", () => {
+    // `withTime`'s own edge case: `rangeForTimePreset`'s `"last-hour"` can answer a from and a to
+    // that print the identical minute on the day a zone falls back, and `isValidDateTimeRange`
+    // still accepts the pair — see `date-range.ts`'s own note on `DateTimeRange`.
+    expect(dateTimeRangeTouched({ from: "2026-10-25T02:30", to: "2026-10-25T02:30" })).toBe(
+      "2026-10-25T02:30 → 2026-10-25T02:30",
+    )
+  })
+
+  it("refuses a reversed timed range", () => {
+    expect(dateTimeRangeTouched({ from: "2026-02-09T18:00", to: "2026-02-09T14:00" })).toBe(
+      "incomplete — Apply stays disabled",
+    )
+  })
+
+  it("refuses a half-filled timed range", () => {
+    expect(dateTimeRangeTouched({ from: "2026-02-09T14:00", to: "" })).toBe(
+      "incomplete — Apply stays disabled",
+    )
+  })
+
+  it("refuses a value with no time of day", () => {
+    // Where this and `dateRangeTouched` part ways: a bare calendar date is exactly what the day
+    // picker's Apply button accepts and this one's does not — `withTime`'s fields are always
+    // `datetime-local`, so a value with no time never reaches this helper from the real component.
+    expect(dateTimeRangeTouched({ from: "2026-02-09", to: "2026-02-09" })).toBe(
       "incomplete — Apply stays disabled",
     )
   })

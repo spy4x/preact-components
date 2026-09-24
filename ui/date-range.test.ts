@@ -6,23 +6,67 @@ import {
   type DateRange,
   type DateRangePreset,
   dateRangePresets,
+  type DateTimeRange,
   endOfMonth,
   endOfQuarter,
   endOfYear,
   formatIsoDate,
   isSameDay,
   isValidDateRange,
+  isValidDateTimeRange,
   parseIsoDate,
   presetForRange,
+  presetForTimeRange,
   rangeForPreset,
+  rangeForTimePreset,
   shiftMonth,
   startOfMonth,
   startOfQuarter,
   startOfYear,
+  timeRangePresets,
 } from "./date-range.ts"
 
 /** Fixed instant every range assertion resolves against: 2026-08-23, a Sunday. */
 const NOW = new Date("2026-08-23T12:00:00Z")
+
+/** One hour, in milliseconds. */
+const HOUR = 3_600_000
+
+/**
+ * The earliest instant a `YYYY-MM-DDTHH:mm` wall-clock string names in a zone.
+ *
+ * That is what a standard conversion returns for a time the zone's fall-back repeats — Temporal's
+ * default disambiguation picks the earlier of the two — so it is how a caller's round trip reads a
+ * timed range back. Throws for a time the zone skips, which none of these tests converts.
+ */
+function earliestInstant(wall: string, timeZone: string): number {
+  const asUtc = Date.parse(`${wall}:00Z`)
+  const format = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  })
+  const readsAs = (ms: number) => {
+    const parts = Object.fromEntries(format.formatToParts(ms).map((p) => [p.type, p.value]))
+    return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`
+  }
+  const matches: number[] = []
+  for (let minutes = -14 * 60; minutes <= 14 * 60; minutes += 15) {
+    const ms = asUtc - minutes * 60_000
+    if (readsAs(ms) === wall) matches.push(ms)
+  }
+  if (matches.length === 0) throw new Error(`${wall} does not happen in ${timeZone}`)
+  return Math.min(...matches)
+}
+
+/** How many hours a caller's standard conversion reads a timed range as. */
+function roundTripHours(range: { from: string; to: string }, timeZone: string): number {
+  return (earliestInstant(range.to, timeZone) - earliestInstant(range.from, timeZone)) / HOUR
+}
 
 /** Day count of an inclusive range. */
 function dayCount(range: DateRange): number {
@@ -805,5 +849,219 @@ describe("presetForRange", () => {
     }
 
     expect(coincidences).toBe(143)
+  })
+})
+
+describe("rangeForTimePreset", () => {
+  it("resolves last-hour and last-24-hours to real elapsed windows, minute precision", () => {
+    const now = new Date("2026-08-23T15:45:00Z") // 17:45 CEST — an ordinary Berlin day, no DST edge
+
+    expect(rangeForTimePreset("last-hour", { now, timeZone: "Europe/Berlin" }))
+      .toEqual({ from: "2026-08-23T16:45", to: "2026-08-23T17:45" })
+    expect(rangeForTimePreset("last-24-hours", { now, timeZone: "Europe/Berlin" }))
+      .toEqual({ from: "2026-08-22T17:45", to: "2026-08-23T17:45" })
+  })
+
+  it("covers every declared preset, so a new one cannot land untested", () => {
+    const now = new Date("2026-08-23T12:00:00Z")
+
+    for (const preset of timeRangePresets) {
+      expect(() => rangeForTimePreset(preset, { now, timeZone: "UTC" })).not.toThrow()
+    }
+  })
+
+  it("is a pure function of its arguments", () => {
+    const now = new Date("2026-08-23T12:00:00Z")
+    const options = { now, timeZone: "Europe/Berlin" } as const
+
+    expect(rangeForTimePreset("last-hour", options)).toEqual(
+      rangeForTimePreset("last-hour", options),
+    )
+  })
+
+  it("truncates seconds rather than rounding them into the next minute", () => {
+    const now = new Date("2026-08-23T15:45:59Z")
+
+    expect(rangeForTimePreset("last-hour", { now, timeZone: "UTC" }))
+      .toEqual({ from: "2026-08-23T14:45", to: "2026-08-23T15:45" })
+  })
+
+  it("keeps last-24-hours a real 24 hours across the Berlin spring-forward day, not 24 wall hours", () => {
+    // 2026-03-29 is spring-forward in Europe/Berlin: the day itself is 23 wall-clock hours long
+    // (02:00–03:00 does not happen), so 24 *real* hours back lands 25 wall-clock hours earlier.
+    const now = new Date("2026-03-29T12:00:00Z") // 14:00 CEST
+
+    expect(rangeForTimePreset("last-24-hours", { now, timeZone: "Europe/Berlin" }))
+      .toEqual({ from: "2026-03-28T13:00", to: "2026-03-29T14:00" })
+  })
+
+  it("keeps last-24-hours a real 24 hours across the Berlin fall-back day, not 24 wall hours", () => {
+    // 2026-10-25 is fall-back in Europe/Berlin: the day is 25 wall-clock hours long (02:00–03:00
+    // happens twice), so 24 real hours back lands only 23 wall-clock hours earlier.
+    const now = new Date("2026-10-25T12:00:00Z") // 13:00 CET
+
+    expect(rangeForTimePreset("last-24-hours", { now, timeZone: "Europe/Berlin" }))
+      .toEqual({ from: "2026-10-24T14:00", to: "2026-10-25T13:00" })
+  })
+
+  it("crosses the Berlin spring-forward gap without landing on the skipped wall-clock hour", () => {
+    // now is 30 minutes into the day's 03:00 CEST (the jump from 02:00 CET happened at UTC 01:00,
+    // 30 minutes earlier), so the real hour before it starts 30 minutes into 01:00 CET — the two
+    // ends read 01:30 and 03:30, two nominal hours apart for one real hour, and 02:00–03:00 (the
+    // hour that never happened that day) appears in neither string.
+    const now = new Date("2026-03-29T01:30:00Z")
+
+    const range = rangeForTimePreset("last-hour", { now, timeZone: "Europe/Berlin" })
+
+    expect(range).toEqual({ from: "2026-03-29T01:30", to: "2026-03-29T03:30" })
+    expect(range.from >= "2026-03-29T02:00" && range.from < "2026-03-29T03:00").toBe(false)
+    expect(range.to >= "2026-03-29T02:00" && range.to < "2026-03-29T03:00").toBe(false)
+  })
+
+  it("prints the same wall-clock minute for from and to across the Berlin fall-back's ambiguous hour", () => {
+    // now falls in the *second* 02:30 of the day (CET, after the fall-back at UTC 01:00); the real
+    // hour before it falls in the *first* 02:30 (CEST, before the fall-back). Both are correct
+    // readings of their own instant, and both print "2026-10-25T02:30" — a real hour apart, an
+    // identical wall-clock string, documented on DateTimeRange rather than special-cased away.
+    const now = new Date("2026-10-25T01:30:00Z")
+
+    const range = rangeForTimePreset("last-hour", { now, timeZone: "Europe/Berlin" })
+
+    expect(range).toEqual({ from: "2026-10-25T02:30", to: "2026-10-25T02:30" })
+    expect(isValidDateTimeRange(range)).toBe(true)
+    expect(roundTripHours(range, "Europe/Berlin")).toBe(0)
+  })
+
+  it("reads from a real hour later than it is when only from lands in the Berlin fall-back's second pass", () => {
+    // now is UTC 02:10, an hour after the UTC 01:00 fall-back — unambiguously CET, 03:10 local, the
+    // repeated hour already behind it. The real hour before it, UTC 01:10, is still past the UTC
+    // 01:00 transition too, so it reads the *second* (CET) pass of the repeated hour: from prints
+    // "02:10". A standard conversion of "02:10" defaults to its *first* pass (CEST, the earlier
+    // instant) — one real hour before where this from actually was — so a caller's round trip reads
+    // this range as 2 hours long, not 1.
+    const now = new Date("2026-10-25T02:10:00Z")
+
+    const range = rangeForTimePreset("last-hour", { now, timeZone: "Europe/Berlin" })
+
+    expect(range).toEqual({ from: "2026-10-25T02:10", to: "2026-10-25T03:10" })
+    expect(isValidDateTimeRange(range)).toBe(true)
+    expect(roundTripHours(range, "Europe/Berlin")).toBe(2)
+  })
+
+  it("reads back as 23 hours when only to lands in the Berlin fall-back's second pass", () => {
+    // now is UTC 01:30 on the fall-back day: CET, the second 02:30. Twenty-four real hours before it
+    // is UTC 01:30 the day before, 03:30 CEST. A standard conversion reads "02:30" as its first,
+    // earlier pass, an hour before where to really was, so the round trip is 23 hours.
+    const now = new Date("2026-10-25T01:30:00Z")
+
+    const range = rangeForTimePreset("last-24-hours", { now, timeZone: "Europe/Berlin" })
+
+    expect(range).toEqual({ from: "2026-10-24T03:30", to: "2026-10-25T02:30" })
+    expect(roundTripHours(range, "Europe/Berlin")).toBe(23)
+  })
+
+  it("reads back as 25 hours when only from lands in the Berlin fall-back's second pass", () => {
+    // now is UTC 01:30 the day after the fall-back, 02:30 CET. Twenty-four real hours before it is
+    // UTC 01:30 on the fall-back day: the second 02:30. The conversion reads from as the first pass,
+    // an hour earlier than it was, so the round trip is 25 hours.
+    const now = new Date("2026-10-26T01:30:00Z")
+
+    const range = rangeForTimePreset("last-24-hours", { now, timeZone: "Europe/Berlin" })
+
+    expect(range).toEqual({ from: "2026-10-25T02:30", to: "2026-10-26T02:30" })
+    expect(roundTripHours(range, "Europe/Berlin")).toBe(25)
+  })
+})
+
+describe("isValidDateTimeRange", () => {
+  it("accepts an ordered range and a range whose ends read the same minute", () => {
+    expect(isValidDateTimeRange({ from: "2026-08-01T09:00", to: "2026-08-01T18:00" })).toBe(true)
+    expect(isValidDateTimeRange({ from: "2026-08-01T09:00", to: "2026-08-01T09:00" })).toBe(true)
+  })
+
+  it("rejects a reversed range", () => {
+    expect(isValidDateTimeRange({ from: "2026-08-01T18:00", to: "2026-08-01T09:00" })).toBe(false)
+  })
+
+  it("rejects a value with no time of day, or malformed", () => {
+    expect(isValidDateTimeRange({ from: "2026-08-01", to: "2026-08-01T18:00" })).toBe(false)
+    expect(isValidDateTimeRange({ from: "2026-08-01T9:00", to: "2026-08-01T18:00" })).toBe(false)
+    expect(isValidDateTimeRange({ from: "", to: "" })).toBe(false)
+  })
+
+  it("rejects a day the calendar does not have", () => {
+    expect(isValidDateTimeRange({ from: "2026-02-31T09:00", to: "2026-02-31T18:00" })).toBe(false)
+  })
+
+  it("rejects an hour or minute the clock does not have", () => {
+    expect(isValidDateTimeRange({ from: "2026-08-01T24:00", to: "2026-08-01T23:00" })).toBe(false)
+    expect(isValidDateTimeRange({ from: "2026-08-01T09:60", to: "2026-08-01T23:00" })).toBe(false)
+  })
+
+  it("accepts a wall time that never occurs, the hour a zone skips in spring", () => {
+    // 2026-03-29T02:30 never happens in Europe/Berlin — the clock jumps straight from 01:59:59 to
+    // 03:00:00 — but this function is never told which zone a value is meant for, so it has no way
+    // to know that and does not try: it checks the string's shape and the calendar date only.
+    expect(isValidDateTimeRange({ from: "2026-03-29T02:30", to: "2026-03-29T04:00" })).toBe(true)
+  })
+})
+
+describe("presetForTimeRange", () => {
+  const now = new Date("2026-08-23T12:00:00Z")
+
+  it("names the preset a range came from", () => {
+    expect(
+      presetForTimeRange({ from: "2026-08-23T11:00", to: "2026-08-23T12:00" }, {
+        now,
+        timeZone: "UTC",
+      }),
+    )
+      .toBe("last-hour")
+    expect(
+      presetForTimeRange({ from: "2026-08-22T12:00", to: "2026-08-23T12:00" }, {
+        now,
+        timeZone: "UTC",
+      }),
+    ).toBe("last-24-hours")
+  })
+
+  it("returns undefined for a range neither preset describes", () => {
+    expect(
+      presetForTimeRange({ from: "2026-08-23T10:00", to: "2026-08-23T12:00" }, {
+        now,
+        timeZone: "UTC",
+      }),
+    ).toBeUndefined()
+  })
+
+  it("returns undefined for an invalid range", () => {
+    expect(
+      presetForTimeRange({ from: "2026-08-23T12:00", to: "2026-08-23T11:00" }, {
+        now,
+        timeZone: "UTC",
+      }),
+    ).toBeUndefined()
+  })
+
+  it("honours a caller-supplied candidate list", () => {
+    const range: DateTimeRange = { from: "2026-08-22T12:00", to: "2026-08-23T12:00" }
+    const options = { now, timeZone: "UTC", presets: ["last-hour"] as const }
+
+    expect(presetForTimeRange(range, options)).toBeUndefined()
+  })
+
+  it("resolves the candidates in the caller's zone", () => {
+    const range: DateTimeRange = { from: "2026-08-23T20:00", to: "2026-08-23T21:00" }
+
+    expect(presetForTimeRange(range, { now, timeZone: "Asia/Tokyo" })).toBe("last-hour")
+    expect(presetForTimeRange(range, { now, timeZone: "UTC" })).toBeUndefined()
+  })
+
+  it("resolves the preset whose range matches, for every declared preset", () => {
+    for (const preset of timeRangePresets) {
+      const range = rangeForTimePreset(preset, { now, timeZone: "Europe/Berlin" })
+
+      expect(presetForTimeRange(range, { now, timeZone: "Europe/Berlin" })).toBe(preset)
+    }
   })
 })
