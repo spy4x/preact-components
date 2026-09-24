@@ -29,7 +29,7 @@ export interface StateInitProps {
  * Serialise `data` for embedding inside {@link StateInit}'s `<script type="application/json">`.
  *
  * Reuses `seo-head.tsx`'s own `jsonLdText` rather than a second implementation of the same escape:
- * `<` becomes `<`, which is what keeps a value containing the literal text `</script>` from
+ * `<` becomes the six characters `\u003c`, which is what keeps a value containing the literal text `</script>` from
  * closing the element it is embedded in — the HTML parser looks for that sequence case-insensitively
  * to end *any* `<script>`, whatever its `type`, before either JSON or JavaScript ever gets a look at
  * the content. `<!--` is a `<` too, so the same escape covers it.
@@ -110,8 +110,11 @@ export interface StateInitSourceLike {
  * finds any element with a matching `id`, and this page's own `id` is not a namespace this component
  * controls — a route that renders a sanitised value from elsewhere into a `<div id="state-init">`
  * earlier in the page, entirely unrelated to this component, would otherwise have its `textContent`
- * parsed as this page's server state. Checking `tagName` and the `type` attribute is what keeps
- * `readStateInit` from reading anything but what `StateInit` itself rendered.
+ * parsed as this page's server state. Checking `tagName` and the `type` attribute rules out any
+ * element a sanitiser lets through. It cannot rule out an injected `<script type="application/json">`
+ * with the same `id` placed earlier in the page, since whoever can place one already has HTML
+ * injection; a page that renders untrusted markup should render `StateInit` before it — in `<head>`
+ * is simplest.
  *
  * `undefined` covers every way there is nothing to read: no element with this `id`, an element with
  * this `id` that is not `StateInit`'s own script, no text content, or text that is not valid JSON —

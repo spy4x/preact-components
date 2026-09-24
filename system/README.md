@@ -674,7 +674,7 @@ that app's own environment keys directly into the component.
 
 **The escaping is `SEOHead`'s own, reused rather than reimplemented.** `stateInitText` calls
 `seo-head.tsx`'s `jsonLdText`, the same function that already protects `SEOHead`'s own JSON-LD
-script tag: `<` becomes `<`, which keeps a value containing the literal text `</script>` (or
+script tag: `<` becomes the six characters `\u003c`, which keeps a value containing the literal text `</script>` (or
 `<!--`) from ending the element early — the HTML parser watches for that sequence case-insensitively
 to close _any_ `<script>`, regardless of its `type`, before either JSON or JavaScript ever parses the
 content. U+2028 and U+2029 need nothing extra here: `StateInit` renders `type="application/json"`,
