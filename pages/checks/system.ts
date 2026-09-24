@@ -699,121 +699,58 @@ async function autofillChecks(devtools: Devtools): Promise<void> {
   )
 }
 
-/** One attempt at {@link findModeSwitchTarget}'s scroll-then-aim; `found` is `false` off-card. */
+/** One read of the mode-switch control's aim — see {@link findModeSwitchTarget}. */
 interface ModeSwitchAim {
   found: boolean
   x: number
   y: number
-  /** Whether the computed centre point actually resolves back to the button, right now. */
+  /**
+   * Whether the computed centre point resolves back to the button, right now, via
+   * `elementFromPoint`. Diagnostic only: the click below is dispatched at `(x, y)` regardless, and
+   * this exists so a failure's detail can say whether the aim was already off before the click ever
+   * landed, not to decide whether to click at all.
+   */
   onTarget: boolean
 }
 
 /**
- * Find the mode-switch control's centre, scrolling it into view first.
+ * Find the mode-switch control's centre, scrolling it into view first — one scroll, one read, no
+ * retry.
  *
  * By its own visible text rather than by position or by "the second button in this row": the
  * labels are the component's contract, so a check keyed to them survives the two buttons around it
  * changing, and a relabel of the control itself would be caught here rather than silently aimed at
  * the wrong element.
  *
- * It re-aims rather than trusting one scroll-and-read: `elementFromPoint` at the computed centre has
- * to resolve back to the button itself, or this scrolls and reads again, until that holds or the
- * budget runs out. See {@link pressModeSwitch}'s own doc for why one verified aim here is still not
- * the whole `#253` fix.
+ * This used to retry the whole scroll-and-read, and then the whole aim-and-click, until the mode
+ * actually switched — which a review of `#253` rejected: a mode-switch button that ignored every
+ * other click still passed both checks, "in 2 attempt(s)", because the retry could not tell a slow
+ * correct click from a broken one that happened to work eventually. A real visitor forced to click
+ * twice is exactly the defect this check exists to catch, and a retry inside the check hides it.
+ * `elementFromPoint` still runs, once, so a failure's detail can say whether the computed point was
+ * even on the button before the click — evidence for whoever reads the failure, not a reason to try
+ * again.
  *
  * @param devtools The connected session.
- * @returns The point to click, or `null` when no such button was found on the card at all.
+ * @returns The point to click and whether it verified on the button, or `found: false` when no such
+ * button was found on the card at all.
  */
-async function findModeSwitchTarget(devtools: Devtools): Promise<{ x: number; y: number } | null> {
-  let last: { x: number; y: number } | null = null
-
-  const landed = await poll(async () => {
-    const aim = await devtools.evaluate<ModeSwitchAim>(`(() => {
-      const card = document.querySelector('${AUTH_INTERACTIVE}')
-      const button = card
-        ? [...card.querySelectorAll("button")].find((candidate) =>
-          /^(Need|Have) an account\\?/.test(candidate.textContent.trim())
-        )
-        : null
-      if (!button) return { found: false, x: 0, y: 0, onTarget: false }
-      button.scrollIntoView({ block: "center", behavior: "instant" })
-      const rect = button.getBoundingClientRect()
-      const x = Math.round(rect.left + rect.width / 2)
-      const y = Math.round(rect.top + rect.height / 2)
-      const at = document.elementFromPoint(x, y)
-      return { found: true, x, y, onTarget: at !== null && (at === button || button.contains(at)) }
-    })()`)
-    if (!aim.found) return false
-    last = { x: aim.x, y: aim.y }
-    return aim.onTarget
-  }, 3_000)
-
-  if (!landed && last === null) return null
-  return last
-}
-
-/** What one press of the mode-switch control produced — see {@link pressModeSwitch}. */
-interface ModeSwitchPress {
-  /** Whether a target was ever found to click at all. */
-  found: boolean
-  /** Whether `passwordAutocomplete` reached `expect` within the budget. */
-  landed: boolean
-  /** How many aim-and-click attempts this took, for the failure message. */
-  attempts: number
-}
-
-/**
- * Press the mode-switch control with a real pointer, retrying the aim-and-click as a whole against
- * the state it is actually for, rather than trusting one attempt.
- *
- * **`#253`.** This card sits far enough down the page that scrolling it into view for the *first*
- * time — which is every time in a `system`-only run, and essentially never in a full one, where an
- * earlier block has already scrolled this far — does not stay where `scrollIntoView` and a same-turn
- * `getBoundingClientRect()` read say it does: one frame later, `window.scrollY` was measured moving
- * again on its own by over 100px (most likely a page-specific interaction between this page's two
- * stacked `sticky` bars and scroll anchoring, though nothing here depends on which), enough to put
- * the button's centre behind the sticky bars instead of in the open page below them.
- *
- * {@link findModeSwitchTarget}'s own `elementFromPoint` re-aim closes *that* gap, but not the next
- * one: the click it aims is still a separate round trip away, over the DevTools protocol, and a
- * second correction landing in that exact gap was measured to still miss — two of the runs `#253`'s
- * own investigation kept for evidence show a verified aim followed by a click that still did not
- * switch the mode. Nothing short of retrying the *outcome* — did `passwordAutocomplete` actually
- * reach the mode this press is for — closes every such gap, however many corrections this
- * particular page turns out to have, so that is what this does: aim, click, wait briefly for the
- * real effect, and if it did not land, aim and click again.
- *
- * A miss costs a stray click on whatever the bad aim landed on instead — measured to be the page's
- * own index text or the sticky route bar, neither of them interactive, so a miss costs time and
- * nothing else.
- *
- * @param devtools The connected session.
- * @param expect The `passwordAutocomplete` value this press is for.
- * @param budgetMs Overall time budget across every attempt.
- */
-async function pressModeSwitch(
-  devtools: Devtools,
-  expect: "new-password" | "current-password",
-  budgetMs = 8_000,
-): Promise<ModeSwitchPress> {
-  const deadline = Date.now() + budgetMs
-  let attempts = 0
-  let found = false
-
-  while (Date.now() < deadline) {
-    attempts++
-    const target = await findModeSwitchTarget(devtools)
-    if (!target) continue
-    found = true
-    await clickAt(devtools, target)
-    const landed = await poll(
-      () => read(devtools, `${AUTH_STATE}?.passwordAutocomplete === "${expect}"`, false),
-      Math.max(Math.min(deadline - Date.now(), 1_500), 0),
-    )
-    if (landed) return { found, landed: true, attempts }
-  }
-
-  return { found, landed: false, attempts }
+function findModeSwitchTarget(devtools: Devtools): Promise<ModeSwitchAim> {
+  return devtools.evaluate<ModeSwitchAim>(`(() => {
+    const card = document.querySelector('${AUTH_INTERACTIVE}')
+    const button = card
+      ? [...card.querySelectorAll("button")].find((candidate) =>
+        /^(Need|Have) an account\\?/.test(candidate.textContent.trim())
+      )
+      : null
+    if (!button) return { found: false, x: 0, y: 0, onTarget: false }
+    button.scrollIntoView({ block: "center", behavior: "instant" })
+    const rect = button.getBoundingClientRect()
+    const x = Math.round(rect.left + rect.width / 2)
+    const y = Math.round(rect.top + rect.height / 2)
+    const at = document.elementFromPoint(x, y)
+    return { found: true, x, y, onTarget: at !== null && (at === button || button.contains(at)) }
+  })()`)
 }
 
 /**
@@ -829,45 +766,78 @@ async function pressModeSwitch(
  * empty `required` field would stop a wrongly-`type="submit"` button before this check could tell
  * the difference between validation and the behaviour actually under test.
  *
+ * **`#253`.** `AUTH_INTERACTIVE` sits far enough down the page that the first time anything scrolls
+ * to it, the page can still be mid-flight: the catalogue's `DeletionValidation` demo
+ * (`crud/deletion-validation.tsx:29`) starts a smooth scroll toward itself on hydration, from the
+ * top of the page to roughly 36,500px down, and when the `system` block ran alone that scroll was
+ * still moving when this check's own `scrollIntoView` ran — one more frame of it landed on top,
+ * moving the button 170–540px in the runs measured, after this check had already computed where to
+ * click. In a full run the earlier blocks cost enough wall-clock time that the scroll has always
+ * finished first. `pages/verify.ts` now waits for the whole page to stop scrolling once, right
+ * after hydration and before any block's checks run, which covers every block's own first check
+ * under `--only`, not only this one — see its own comment there. (`crud/`'s self-scroll on load is
+ * a separate, pre-existing defect, tracked on its own issue rather than fixed here.)
+ *
  * The press is asserted to have landed — `passwordAutocomplete` flips from `current-password` to
  * `new-password` only because `mode` actually changed — before the counters are trusted, because an
- * unread miss and "correctly did nothing" report the same counters. {@link pressModeSwitch} is what
- * retries a press whose click missed, which `#253` needed and a single aim-and-click did not survive.
+ * unread miss and "correctly did nothing" report the same counters.
  */
 async function authFormModeSwitchChecks(devtools: Devtools): Promise<void> {
   await fillCredentialFields(devtools)
   const before = await read(devtools, AUTH_STATE, NO_AUTH_STATE)
 
-  const firstPress = await pressModeSwitch(devtools, "new-password")
+  const toSignUp = await findModeSwitchTarget(devtools)
+  if (toSignUp.found) await clickAt(devtools, { x: toSignUp.x, y: toSignUp.y })
+  const afterFirstPress = await poll(
+    () => read(devtools, `${AUTH_STATE}?.passwordAutocomplete === "new-password"`, false),
+    3_000,
+  )
   const switched = await read(devtools, AUTH_STATE, NO_AUTH_STATE)
 
   check(
     "a real pointer press on the mode-switch control switches the mode and submits nothing",
-    firstPress.found && firstPress.landed && switched.passwordAutocomplete === "new-password" &&
+    toSignUp.found && afterFirstPress && switched.passwordAutocomplete === "new-password" &&
       switched.signIns === before.signIns && switched.signUps === before.signUps &&
       switched.codes === before.codes,
-    firstPress.found
-      ? `password autocomplete ${before.passwordAutocomplete} → ${switched.passwordAutocomplete} ` +
-        `in ${firstPress.attempts} attempt(s), sign-ins ${before.signIns} → ${switched.signIns}, ` +
-        `sign-ups ${before.signUps} → ${switched.signUps}, codes ${before.codes} → ${switched.codes}`
-      : "no mode-switch button found to press",
+    !toSignUp.found
+      ? "no mode-switch button found to press"
+      : `password autocomplete ${before.passwordAutocomplete} → ${switched.passwordAutocomplete}` +
+        (toSignUp.onTarget ? "" : " (elementFromPoint did not confirm the aim before the click)") +
+        `, sign-ins ${before.signIns} → ${switched.signIns}, sign-ups ${before.signUps} → ` +
+        `${switched.signUps}, codes ${before.codes} → ${switched.codes}`,
   )
 
-  // Switched back to sign-in, which every later check in this file assumes as the starting mode.
-  const secondPress = await pressModeSwitch(devtools, "current-password")
+  // Switched back to sign-in, which every later check in this file assumes as the starting mode —
+  // but only if the first press actually landed. Without this guard, a first press that silently
+  // did nothing (the mode-switch button ignoring every other click, say) leaves the form in
+  // sign-in the whole time, and the check below reads current-password before and after the second
+  // press and passes on a button that never worked — found in review of `#253`, with a button
+  // rigged to ignore every other click leaving only the first check red.
+  const startedInSignUp = switched.passwordAutocomplete === "new-password"
+
+  const toSignIn = await findModeSwitchTarget(devtools)
+  if (toSignIn.found) await clickAt(devtools, { x: toSignIn.x, y: toSignIn.y })
+  const afterSecondPress = await poll(
+    () => read(devtools, `${AUTH_STATE}?.passwordAutocomplete === "current-password"`, false),
+    3_000,
+  )
   const restored = await read(devtools, AUTH_STATE, NO_AUTH_STATE)
 
   check(
     "a second press switches back to sign-in, still submitting nothing",
-    secondPress.found && secondPress.landed &&
+    startedInSignUp && toSignIn.found && afterSecondPress &&
       restored.passwordAutocomplete === "current-password" &&
       restored.signIns === before.signIns && restored.signUps === before.signUps &&
       restored.codes === before.codes,
-    secondPress.found
-      ? `password autocomplete ${switched.passwordAutocomplete} → ${restored.passwordAutocomplete} ` +
-        `in ${secondPress.attempts} attempt(s), sign-ins ${switched.signIns} → ${restored.signIns}, ` +
-        `sign-ups ${switched.signUps} → ${restored.signUps}`
-      : "no mode-switch button found to press back",
+    !startedInSignUp
+      ? "the form was not in sign-up before this press — the first press above did not land, so " +
+        "this press cannot be told apart from a button that never moved"
+      : !toSignIn.found
+      ? "no mode-switch button found to press back"
+      : `password autocomplete ${switched.passwordAutocomplete} → ${restored.passwordAutocomplete}` +
+        (toSignIn.onTarget ? "" : " (elementFromPoint did not confirm the aim before the click)") +
+        `, sign-ins ${switched.signIns} → ${restored.signIns}, sign-ups ${switched.signUps} → ` +
+        `${restored.signUps}`,
   )
 }
 

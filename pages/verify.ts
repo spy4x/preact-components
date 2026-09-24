@@ -64,6 +64,7 @@ import {
   report,
   runBlocks,
   selectBlocks,
+  settledScroll,
 } from "./checks/harness.ts"
 import { iconsChecks } from "./checks/icons.ts"
 import {
@@ -584,6 +585,16 @@ async function browserPhase(): Promise<void> {
         await hoverCapability(devtools)
 
         if (hydrated) {
+          // The catalogue's `DeletionValidation` demo (`crud/deletion-validation.tsx:29`) starts a
+          // smooth scroll toward itself on hydration — `#253` measured it still moving, roughly
+          // 0 → 36,500px, when a block run started alone right after hydration; the block's own
+          // `scrollIntoView` landed correctly, but one more frame of the still-running smooth
+          // scroll moved the page under it before the first click arrived, 170–540px in the runs
+          // measured. Settling here, once, before any block's own checks run, is what closes that
+          // gap for every block's first check under `--only`, not only `system`'s own. A full run
+          // needs no change: the earlier blocks already cost enough wall-clock time that the
+          // scroll has long since finished by the time this line runs.
+          await settledScroll(devtools)
           await runBlocks(activeBlocks, devtools, resetAfterThrow)
         }
 
