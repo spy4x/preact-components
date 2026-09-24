@@ -149,6 +149,56 @@ describe("Lightbox", () => {
     expect(html).not.toContain("https://acme.example/img/x.png")
   })
 
+  it("shows the counter as its own visible chip, not only in the live region", () => {
+    const html = render(
+      <Lightbox images={IMAGES} index={1} open onClose={() => {}} onIndexChange={() => {}} />,
+    )
+
+    // "2 of 3" appears twice: once in the sr-only live region, once in the visible counter.
+    expect(html.split("2 of 3").length - 1).toBe(2)
+  })
+
+  it("renders no counter for a single image, alongside no previous/next controls", () => {
+    const html = render(
+      <Lightbox
+        images={[IMAGES[0]]}
+        index={0}
+        open
+        onClose={() => {}}
+        onIndexChange={() => {}}
+      />,
+    )
+
+    expect(html).not.toContain("1 of 1")
+  })
+
+  it("takes a counterLabel override, used both visibly and in the announcement", () => {
+    const html = render(
+      <Lightbox
+        images={IMAGES}
+        index={1}
+        open
+        onClose={() => {}}
+        onIndexChange={() => {}}
+        counterLabel={(position, total) => `image ${position}/${total}`}
+      />,
+    )
+
+    expect(html).not.toContain("2 of 3")
+    expect(html.split("image 2/3").length - 1).toBe(2)
+  })
+
+  it("opens nothing when every image lacks a description", () => {
+    const images = [{ src: "https://acme.example/img/x.png", alt: "" }]
+    const html = render(
+      <Lightbox images={images} index={0} open onClose={() => {}} onIndexChange={() => {}} />,
+    )
+
+    expect(html).not.toContain("<img")
+    expect(html).not.toContain("<button")
+    expect(html).not.toContain("https://acme.example/img/x.png")
+  })
+
   it("clamps an out-of-range index instead of rendering nothing", () => {
     const html = render(
       <Lightbox images={IMAGES} index={99} open onClose={() => {}} onIndexChange={() => {}} />,

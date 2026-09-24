@@ -15,12 +15,11 @@
  * one Tailwind group at a time. Second, and the one that actually rules `Modal` out: it renders no
  * ref to its `<dialog>` element, so nothing outside it can attach a listener directly to the dialog
  * itself — which is exactly what Left and Right need, since they must work only while the lightbox
- * is open and must exist from the first render (see the Escape-race rule in `AGENTS.md`). A listener
- * on `Modal`'s own children would only ever see a key that bubbled up from whatever is focused
- * inside it, and a `<dialog>` with no autofocus element takes focus on itself first — outside any
- * wrapper this component could listen on. A native `<dialog>` with its own `ref` sidesteps both
- * problems and keeps one dialog implementation serving both ways in, which is what the issue is
- * actually after; what carries over from `Modal` instead is its exported pure focus-restore helpers
+ * is open. A listener on `Modal`'s own children would only ever see a key that bubbled up from
+ * whatever is focused inside it, which is one step removed from the dialog itself for no reason a
+ * caller of `Modal` controls. A native `<dialog>` with its own `ref` sidesteps both problems and
+ * keeps one dialog implementation serving both ways in, which is what the issue is actually after;
+ * what carries over from `Modal` instead is its exported pure focus-restore helpers
  * ({@link shouldRetargetFocus}, {@link restoreFocus}), reused rather than rewritten.
  *
  * **Escape stays native.** The image dialog does not need a refusable close — nothing here asks
@@ -29,9 +28,18 @@
  * need a listener, because the platform has no opinion about them: it is attached once, on mount,
  * directly on the `<dialog>` element through a `ref`, and reads `open`/the current index/the total
  * from a ref updated every render rather than closing over a stale one — the same shape
- * `ui/tooltip.tsx`'s Escape listener uses, for the same reason: an effect that (re)attached only
- * once the dialog was open would run after the render that opened it already committed, and a key
- * pressed in that gap would find nothing listening.
+ * `ui/tooltip.tsx`'s Escape listener uses. Measured, not assumed: a listener gated on `open` instead
+ * (registered in an effect keyed to it, alongside the `showModal()` effect) turns out **not** to
+ * leave a gap here — both effects commit in the same batch, so a key pressed in the same task as
+ * the opening click still finds a listener. Attaching on mount is simply the same defensive shape
+ * `AGENTS.md`'s Escape-race rule asks for, applied here too, not a fix for a race this component
+ * was measured to have.
+ *
+ * **The counter is visible, not only announced.** A sighted reader sees the same "3 of 8" a screen
+ * reader hears — its own small chip, present exactly when the previous/next buttons are, since
+ * neither means anything for a single image. {@link LightboxProps.counterLabel} is the one prop
+ * that decides its wording, with an English default (`counterText`), so this follows the same label
+ * policy every other user-visible string in this library does.
  *
  * **The live region is always present.** One `role="status"` region sits inside the dialog whether
  * it is open or not, empty until there is something to say — the rule every announcing component in
@@ -39,12 +47,18 @@
  * carries the new image's description together with its position, not the position alone: a reader
  * arrowing through the sequence needs to know what changed, not only where they now are.
  *
- * **An image with no description is not shown.** `alt` is required in {@link LightboxImage}'s type,
- * and {@link describedImages} drops an image whose `alt` is empty after trimming before this
- * component ever renders anything — not the caption, not the counter, not the sequence a reader can
- * arrow into. It does this silently: `alt` is already required by the type, so an empty one only
- * reaches this component at runtime through a caller that bypassed the type system to produce it,
- * and nothing else in this library calls `console.warn` for a value its own type already disallows.
+ * **An image with a genuinely empty description is dropped from `images`.** `alt` is required in
+ * {@link LightboxImage}'s type, and {@link describedImages} drops one whose `alt` is empty after
+ * trimming before this component renders anything for it — not the caption, not the counter, not
+ * the sequence a reader can arrow into; {@link LightboxProps.open} is refused the same way when
+ * nothing survives the filter. It does this silently: `alt` is already required by the type, so an
+ * empty one only reaches this component through a caller that bypassed the type system to produce
+ * it, or supplied no description at all, and nothing else in this library calls `console.warn` for a
+ * value its own type already disallows. `system/image-lightbox.tsx`'s content mode is the one caller
+ * where `alt` is *not* usually empty even when the source `<img>` has none: it substitutes its own
+ * `fallbackAlt` (default `"Image"`) first, unchanged from before this component existed, so a
+ * missing description there still opens and is still captioned — named `"Image"` rather than
+ * dropped — unless that substitution is itself turned off with `fallbackAlt=""`.
  */
 
 import { cn } from "@preact-components/cn"
@@ -134,6 +148,13 @@ export interface LightboxProps {
   previousLabel?: string
   /** Accessible name of the next control. Defaults to `"Next image"`. */
   nextLabel?: string
+  /**
+   * How the counter reads, both in its own visible chip and as the tail of the live-region
+   * announcement — the label policy in `AGENTS.md` (every user-visible string has an English
+   * default and an override prop) applied to the "3 of 8" the issue asks for by name. Defaults to
+   * {@link counterText}: `` (position, total) => `${position} of ${total}` ``.
+   */
+  counterLabel?: (position: number, total: number) => string
   /** Extra utilities for the dialog element. */
   class?: string
 }
@@ -148,6 +169,8 @@ const imageClass =
   "absolute top-1/2 left-1/2 max-h-[90vh] max-w-[90vw] -translate-x-1/2 -translate-y-1/2 object-contain"
 const captionClass =
   "pointer-events-none absolute inset-x-0 bottom-4 mx-auto max-w-[90vw] text-center text-sm text-white/80"
+const counterClass =
+  "pointer-events-none absolute inset-x-0 top-4 mx-auto w-fit rounded-full bg-black/50 px-3 py-1 text-xs text-white/80"
 
 /** What the mount-time keydown listener reads at press time, kept current every render. */
 interface LatestState {
@@ -171,6 +194,7 @@ export function Lightbox(
     closeLabel = "Close",
     previousLabel = "Previous image",
     nextLabel = "Next image",
+    counterLabel = counterText,
     class: className,
   }: LightboxProps,
 ): JSX.Element {
@@ -187,10 +211,18 @@ export function Lightbox(
   // Open/close lifecycle. `showModal()`/`close()` only, never the `open` attribute — a dialog
   // carrying it is non-modal and `showModal()` on it throws, the same measured fact `ui/modal.tsx`
   // documents. The trigger is captured here, before focus moves, so it can be restored on close.
+  //
+  // Gated on `total > 0` as well as `open`: `open` is the caller's own state, and a caller can ask
+  // for a dialog over a sequence that has nothing left in it — every image dropped by
+  // `describedImages`, or `images` empty to begin with. Showing a modal then would be a full-screen
+  // dialog with no image, no caption and no close control, since the content below only renders
+  // when `current` is not `null`. Refusing here is the same rule as refusing to render an
+  // undescribed image applied one level up, to the dialog itself rather than to one image in it.
+  const canOpen = open && total > 0
   useEffect(() => {
     const dialog = dialogRef.current
     if (!dialog) return
-    if (open) {
+    if (canOpen) {
       if (!dialog.open) {
         restoreTarget.current = document.activeElement as FocusableElement | null
         dialog.showModal()
@@ -198,7 +230,7 @@ export function Lightbox(
     } else if (dialog.open) {
       dialog.close()
     }
-  }, [open])
+  }, [canOpen])
 
   // Left/Right, attached once on mount rather than only while open, and reading `latest.current`
   // at press time rather than closing over this render's values — see the module doc's "Escape
@@ -235,9 +267,11 @@ export function Lightbox(
     restoreTarget.current = null
   }
 
-  const announced = open && current
-    ? `${current.alt} — ${counterText(clampedIndex + 1, total)}`
-    : ""
+  // The counter portion is only part of the announcement — and only rendered as its own visible
+  // chip below — once there is more than one image to be "N of" anything: the previous/next
+  // buttons are gated on the same `total > 1`, so the two appear and disappear together.
+  const counter = total > 1 ? counterLabel(clampedIndex + 1, total) : ""
+  const announced = open && current ? `${current.alt}${counter ? ` — ${counter}` : ""}` : ""
 
   return (
     <dialog
@@ -285,6 +319,7 @@ export function Lightbox(
               </button>
             </>
           )}
+          {counter && <p class={counterClass}>{counter}</p>}
           <img src={current.src} alt={current.alt} class={imageClass} />
           <p class={captionClass}>{current.alt}</p>
         </>

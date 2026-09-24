@@ -65,6 +65,7 @@ describe("ImageGallery", () => {
         closeLabel="Dismiss"
         previousLabel="Earlier"
         nextLabel="Later"
+        counterLabel={(position, total) => `image ${position}/${total}`}
       />,
     )
 

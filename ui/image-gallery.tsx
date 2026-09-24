@@ -43,6 +43,11 @@ export interface ImageGalleryProps {
   previousLabel?: string
   /** Accessible name of the lightbox's next control. Defaults to `"Next image"`. */
   nextLabel?: string
+  /**
+   * How the lightbox's visible and announced counter reads. Defaults to
+   * `` (position, total) => `${position} of ${total}` ``.
+   */
+  counterLabel?: (position: number, total: number) => string
   /** Extra utilities for the thumbnail strip. */
   class?: string
 }
@@ -55,7 +60,15 @@ const thumbImageClass = "size-20 object-cover sm:size-24"
  * A strip of thumbnails that opens the shared {@link Lightbox} on the one pressed.
  */
 export function ImageGallery(
-  { images, label, closeLabel, previousLabel, nextLabel, class: className }: ImageGalleryProps,
+  {
+    images,
+    label,
+    closeLabel,
+    previousLabel,
+    nextLabel,
+    counterLabel,
+    class: className,
+  }: ImageGalleryProps,
 ): JSX.Element {
   const shown = describedImages(images)
   const [openIndex, setOpenIndex] = useState<number | null>(null)
@@ -64,7 +77,10 @@ export function ImageGallery(
     <>
       <ul class={cn("flex flex-wrap gap-3", className)}>
         {shown.map((image, index) => (
-          <li key={image.src}>
+          // Position, not `image.src`: two thumbnails can legitimately share one source (the same
+          // picture shown twice, captioned differently), and a duplicate key there would make
+          // Preact's reconciliation treat them as one element instead of two.
+          <li key={index}>
             <button
               type="button"
               class={thumbButtonClass}
@@ -86,6 +102,7 @@ export function ImageGallery(
         closeLabel={closeLabel}
         previousLabel={previousLabel}
         nextLabel={nextLabel}
+        counterLabel={counterLabel}
       />
     </>
   )
