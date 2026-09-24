@@ -147,7 +147,7 @@ describe("Shell", () => {
       <Shell
         navItems={navItems}
         brand="Acme"
-        user={null}
+        user={user}
         labels={{
           menu: "Ouvrir le menu",
           nav: "Navigation principale",
@@ -161,8 +161,10 @@ describe("Shell", () => {
     expect(html).toContain("Ouvrir le menu")
     expect(html).toContain("Navigation principale")
     expect(html).toContain("Aller au contenu")
+    expect(html).toContain('aria-label="Menu du compte"')
     expect(html).not.toContain("Skip to content")
     expect(html).not.toContain("Main navigation")
+    expect(html).not.toContain("Account menu")
   })
 
   it("prints no visible text beyond the caller's own brand, nav items, status and children", () => {
