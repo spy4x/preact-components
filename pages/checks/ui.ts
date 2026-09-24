@@ -1710,11 +1710,16 @@ interface GalleryLightboxState {
 function readGalleryState(devtools: Devtools): Promise<GalleryLightboxState> {
   return devtools.evaluate<GalleryLightboxState>(`(() => {
     const dialog = document.querySelector('${GALLERY_DIALOG}')
-    const img = dialog ? dialog.querySelector("img") : null
+    const modal = Boolean(dialog) && dialog.matches(":modal")
+    const img = modal ? dialog.querySelector("img") : null
     const live = dialog ? dialog.querySelector('[role="status"]') : null
     const active = document.activeElement
     return {
-      open: Boolean(dialog) && dialog.matches(":modal"),
+      open: modal,
+      // Read only while the dialog is genuinely modal: the <img> is a child of Lightbox's own
+      // { open && current && … } branch, which is gated on the *prop* the caller passed, not on
+      // dialog.matches(":modal") — so with showModal() itself broken, this element still exists
+      // and still carries a real alt, and a check that read it unconditionally would not notice.
       imageAlt: img ? img.getAttribute("alt") : "",
       liveText: live ? live.textContent.trim() : "",
       liveSameNode: live !== null && live === globalThis.__verifyGalleryLive,
@@ -1727,18 +1732,41 @@ function readGalleryState(devtools: Devtools): Promise<GalleryLightboxState> {
 }
 
 /**
- * `ImageGallery`'s thumbnail strip and the shared `Lightbox` it opens, driven in the browser that
- * owns both: a thumbnail opens on Enter and on Space, Left and Right page through the sequence and
- * update the live region that was already on the page before anything opened, Escape closes it,
- * and focus returns to the thumbnail that opened it.
+ * Press Enter the way a real keystroke reaches the page: with the character it carries.
  *
- * **Enter is proved by activation, not by the key itself.** `modalChecks` and `dropdownChecks`
- * below measured that `Input.dispatchKeyEvent` for Enter on a focused button does not produce the
- * activation click a person's Enter does in headless Chromium; a real Enter press here would fail
- * on correct code, which is worse than not testing it. So the Enter path is proved with `.click()`
- * standing in for the activation a real Enter would trigger, the same substitution those two
- * checks already make, and the check's own name says so. Space genuinely is a real press — the
- * dropdown checks measured that Space, unlike Enter, does reach a focused button here.
+ * `harness.ts`'s shared `pressKey("Enter")` sends `key`/`code`/the virtual key codes but no
+ * `text` field on the `keyDown` event. Measured in review: that omission is the entire reason a
+ * "real Enter press" elsewhere in this file does not activate a focused `<button>` in headless
+ * Chromium — a `keyDown` carrying `text: "\r"` does activate one. This function is local to this
+ * file rather than folded into `pressKey`, which is shared with every other package's checks and
+ * maintained elsewhere.
+ *
+ * @param devtools The connected session; the key goes to whatever the page has focused.
+ */
+async function pressRealEnter(devtools: Devtools): Promise<void> {
+  await devtools.send("Input.dispatchKeyEvent", {
+    type: "keyDown",
+    key: "Enter",
+    code: "Enter",
+    windowsVirtualKeyCode: 13,
+    nativeVirtualKeyCode: 13,
+    text: "\r",
+  })
+  await devtools.send("Input.dispatchKeyEvent", {
+    type: "keyUp",
+    key: "Enter",
+    code: "Enter",
+    windowsVirtualKeyCode: 13,
+    nativeVirtualKeyCode: 13,
+  })
+}
+
+/**
+ * `ImageGallery`'s thumbnail strip and the shared `Lightbox` it opens, driven in the browser that
+ * owns both: a thumbnail opens on a real Enter press and on Space, Left/Right and a real mouse
+ * click on the previous/next buttons all page through the sequence and update the live region that
+ * was already on the page before anything opened, Escape closes it, and focus returns to the
+ * thumbnail that opened it.
  *
  * `system/image-lightbox.tsx`'s `ImageLightbox` opens the same `Lightbox`, and its own checks in
  * `pages/checks/system.ts` already prove the backdrop click and the linked-image case; this file
@@ -1808,23 +1836,82 @@ async function imageGalleryChecks(devtools: Devtools): Promise<void> {
   const afterEscape = await readGalleryState(devtools)
   check(
     "a real Escape press closes the lightbox and returns focus to the thumbnail that opened it",
-    afterLeft.imageAlt !== "" && !afterEscape.open && afterEscape.focusedIsThumb,
-    afterLeft.imageAlt !== ""
+    // Gated on `afterSpace.open`, not on `afterLeft.imageAlt !== ""`: the latter reads the <img>
+    // that `Lightbox` renders whenever its `open` *prop* is true, which is not the same fact as
+    // the dialog genuinely being `:modal` — measured in review, deleting `showModal()` left that
+    // element in the DOM with a real `alt` while `dialog.matches(":modal")` stayed `false`
+    // throughout, and this check stayed green regardless. `readGalleryState` now reads `imageAlt`
+    // only while the dialog is modal too, so the two guards agree; this one names the fact the
+    // check is actually about.
+    afterSpace.open && !afterEscape.open && afterEscape.focusedIsThumb,
+    afterSpace.open
       ? `open → Escape → open=${afterEscape.open}, focus is on ` +
         `${afterEscape.focusedIsThumb ? "the thumbnail" : afterEscape.focusedLabel}`
       : "the lightbox was never open, so Escape proves nothing",
   )
 
-  // `.click()` stands in for a real Enter press — see this function's own doc.
-  await devtools.evaluate<null>(`(globalThis.__verifyGalleryThumb.click(), null)`)
+  // A real Enter key press, carrying `text: "\r"` — see `pressRealEnter`'s own doc for why that
+  // field, which `harness.ts`'s shared `pressKey` leaves out, is what makes this genuinely a key
+  // press rather than a stand-in for one.
+  await pressRealEnter(devtools)
   await poll(async () => (await readGalleryState(devtools)).open, 3_000)
-  const afterActivate = await readGalleryState(devtools)
+  const afterEnter = await readGalleryState(devtools)
   check(
-    "a thumbnail opens on the activation a real Enter press produces in a real browser (proved via .click(): a real Enter press does not activate a focused button in headless Chromium)",
-    afterEscape.focusedIsThumb && afterActivate.open,
+    "a real Enter press opens the thumbnail's lightbox",
+    afterEscape.focusedIsThumb && !afterEscape.open && afterEnter.open,
     afterEscape.focusedIsThumb
-      ? `closed → activate → ${afterActivate.open ? "open" : "still closed"}`
-      : "focus was not on the thumbnail after Escape, so activating it proves nothing",
+      ? `closed → Enter → ${
+        afterEnter.open ? `open, showing "${afterEnter.imageAlt}"` : "still closed"
+      }`
+      : "focus was not on the thumbnail after Escape, so a key press proves nothing about it",
+  )
+
+  // The previous/next buttons, with real mouse presses at their own rectangles — `.click()` fires
+  // with no hit-testing, so it would "press" a button covered by something else just as readily as
+  // one that is not.
+  await devtools.evaluate<null>(`(() => {
+    const dialog = document.querySelector('${GALLERY_DIALOG}')
+    globalThis.__verifyGalleryNext = dialog?.querySelector('button[aria-label="Next image"]') ?? null
+    globalThis.__verifyGalleryPrevious =
+      dialog?.querySelector('button[aria-label="Previous image"]') ?? null
+    return null
+  })()`)
+
+  const nextAim = await aimAt(devtools, "globalThis.__verifyGalleryNext")
+  const nextLanding = await clickAt(devtools, nextAim, "globalThis.__verifyGalleryNext")
+  await poll(async () => (await readGalleryState(devtools)).imageAlt !== afterEnter.imageAlt, 3_000)
+  const afterNextClick = await readGalleryState(devtools)
+  check(
+    "a real mouse click on the next button moves forward, not backward or nowhere",
+    afterEnter.open && nextAim.onTarget && afterNextClick.imageAlt === afterRight.imageAlt,
+    afterEnter.open
+      ? nextAim.onTarget
+        ? `a real press at ${nextAim.x},${nextAim.y} landed on the next button and moved ` +
+          `"${afterEnter.imageAlt}" → "${afterNextClick.imageAlt}" (the same image Right moved to)`
+        : `no press was sent: the point landed on ${
+          nextLanding?.tag ?? nextAim.tag
+        }, not the button`
+      : "the lightbox never opened, so this proves nothing",
+  )
+
+  const previousAim = await aimAt(devtools, "globalThis.__verifyGalleryPrevious")
+  const previousLanding = await clickAt(devtools, previousAim, "globalThis.__verifyGalleryPrevious")
+  await poll(
+    async () => (await readGalleryState(devtools)).imageAlt !== afterNextClick.imageAlt,
+    3_000,
+  )
+  const afterPreviousClick = await readGalleryState(devtools)
+  check(
+    "a real mouse click on the previous button moves back to where the next button started",
+    afterNextClick.imageAlt !== afterEnter.imageAlt && previousAim.onTarget &&
+      afterPreviousClick.imageAlt === afterEnter.imageAlt,
+    afterNextClick.imageAlt !== afterEnter.imageAlt
+      ? previousAim.onTarget
+        ? `a real press at ${previousAim.x},${previousAim.y} landed on the previous button and ` +
+          `moved "${afterNextClick.imageAlt}" → "${afterPreviousClick.imageAlt}"`
+        : `no press was sent: the point landed on ${previousLanding?.tag ?? previousAim.tag}, ` +
+          `not the button`
+      : "the next button never moved the image, so this proves nothing about the previous one",
   )
 
   // Teardown, unconditional: `modalChecks` runs last in this file precisely because it cannot
