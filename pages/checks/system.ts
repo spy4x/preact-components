@@ -2954,6 +2954,15 @@ async function lateMonthChecks(devtools: Devtools): Promise<void> {
   await frameCard(devtools, LATE)
   const stagedAway = await standOnDay(devtools, LATE_GRID, LATE_DAY)
   const beforeAway = await read(devtools, LATE_STATE, NO_CARD)
+  // When the key went down, by the page's own clock, so the read below can say how much of the
+  // owner's delay it used up — the margin this check runs on, printed rather than assumed.
+  await read(
+    devtools,
+    `(document.addEventListener("keydown", () => {
+      globalThis.__verifyLateKeyAt = performance.now()
+    }, { capture: true, once: true }), true)`,
+    false,
+  )
   await pressKey(devtools, "PageDown")
   // The scroll and the "still on their day, still the old month" read happen in one
   // `Runtime.evaluate`, in that order inside the same page task, so nothing the browser runs between
@@ -2963,18 +2972,31 @@ async function lateMonthChecks(devtools: Devtools): Promise<void> {
   // happened after the month arrived, which is exactly what a `Calendar` that dropped `preventScroll`
   // would still pass under this weaker proof (found in review). The month's own answer count is read
   // in the same breath for the same reason: two facts pinned to one instant are one proof, not two
-  // reads that could straddle the moment the answer lands. A round trip slower than the demo's 300ms
-  // delay can still lose this race and fail on correct code — nothing running one JS statement after
-  // another inside a single page task can promise otherwise — but it now fails loudly instead of
-  // quietly passing broken code, which is the property #267 is about restoring.
-  const stillOnDay = await read(
+  // reads that could straddle the moment the answer lands. A round trip slower than the demo's own
+  // delay still loses this race and fails on correct code — nothing running one JS statement after
+  // another inside a single page task can promise otherwise — but it fails loudly instead of
+  // quietly passing broken code. That is why the card's delay is a full second (#267, see
+  // `LATE_ANSWER_MS` in `ui-guide/sections/system.tsx`): measured under `stress-ng --cpu 0`, this
+  // read ran 65 to 72ms after the key went down, the check still passes with an extra 350ms pause
+  // put in front of it, and the detail below prints the figure on every run so a slower machine
+  // shows how close it came.
+  const away = await read(
     devtools,
     `(() => {
       globalThis.scrollTo({ top: 0, behavior: "instant" })
       const state = ${LATE_STATE}
-      return state.date === ${JSON.stringify(LATE_DAY)} && state.count === ${beforeAway.count}
+      return {
+        still: state.date === ${JSON.stringify(LATE_DAY)} && state.count === ${beforeAway.count},
+        sinceKey: Math.round(performance.now() - (globalThis.__verifyLateKeyAt ?? Number.NaN)),
+      }
     })()`,
-    false,
+    { still: false, sinceKey: Number.NaN },
+  )
+  const stillOnDay = away.still
+  const lateAnswerMs = await read(
+    devtools,
+    `Number(document.querySelector('${LATE}')?.dataset.answerMs ?? Number.NaN)`,
+    Number.NaN,
   )
   const scrolledTo = await settleScroll(devtools)
   const awayWanted = `2026-04-${LATE_DAY.slice(8, 10)}`
@@ -3001,9 +3023,11 @@ async function lateMonthChecks(devtools: Devtools): Promise<void> {
       ? `the reader stayed on ${LATE_DAY} and scrolled the page to ${scrolledTo}; the month then ` +
         `went ${beforeAway.extra} → ${afterAway.extra || "nothing"}, the focus went to ` +
         `${afterAway.date || afterAway.focused} — wanted ${awayWanted} — and the page is at ` +
-        `${scrollAfterAway}`
+        `${scrollAfterAway}; the scroll and the read ran ${away.sinceKey}ms after the key went ` +
+        `down, inside the owner's ${lateAnswerMs}ms`
       : stagedAway
-      ? `the refusal never put the focus back on ${LATE_DAY}`
+      ? `${away.sinceKey}ms after the key went down, against the owner's ${lateAnswerMs}ms, the ` +
+        `reader was not on ${LATE_DAY} with the answer still to come`
       : `the focus was never staged on ${LATE_DAY} of the late-answering card`,
   )
 
