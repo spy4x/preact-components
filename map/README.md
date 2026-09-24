@@ -1,7 +1,9 @@
 # `@preact-components/map`
 
 `Map` — markers on a Leaflet tile layer, plotted from plain data, plus the plain-text list of the
-same places that is the component's real keyboard and screen-reader interface.
+same places next to it. The map's own pins are the keyboard and screen-reader interface; the list is
+a non-interactive overview — see "Keyboard and screen readers" below for why the two are split that
+way.
 
 Extracted per [issue #143](https://github.com/spy4x/preact-components/issues/143), which reverses
 the `docs/not-building.md` entry recorded when `Map` was first evaluated: the blocker then was that
@@ -22,17 +24,19 @@ separate step from importing the component.
 
 ## Props
 
-| Prop            | Type                           | Default    | Notes                                                                                                                      |
-| --------------- | ------------------------------ | ---------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `center`        | `{ lat: number; lng: number }` | required   | View centre.                                                                                                               |
-| `zoom`          | `number`                       | required   | Leaflet zoom level.                                                                                                        |
-| `markers`       | `MapMarker[]`                  | required   | `{ id, lat, lng, label, status? }` — see below.                                                                            |
-| `onMarkerClick` | `(id: string) => void`         | required   | Called from a pin's pointer click and from the matching list row's activation.                                             |
-| `tileUrl`       | `string`                       | required   | Tile URL template, e.g. `"https://tile.example.com/{z}/{x}/{y}.png"`. No default — the application picks its own provider. |
-| `attribution`   | `string`                       | required   | The tile provider's required credit line, rendered as **plain text** — see "Security".                                     |
-| `class`         | `string`                       | —          | Extra classes on the map's own box; this is what sizes it (default `h-80 w-full`).                                         |
-| `label`         | `string`                       | `"Map"`    | Accessible name of the map region.                                                                                         |
-| `listLabel`     | `string`                       | `"Places"` | Heading over the plain-text list.                                                                                          |
+| Prop            | Type                           | Default      | Notes                                                                                                                      |
+| --------------- | ------------------------------ | ------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| `center`        | `{ lat: number; lng: number }` | required     | View centre.                                                                                                               |
+| `zoom`          | `number`                       | required     | Leaflet zoom level.                                                                                                        |
+| `markers`       | `MapMarker[]`                  | required     | `{ id, lat, lng, label, status? }` — see below. See "What a new `markers` identity costs".                                 |
+| `onMarkerClick` | `(id: string) => void`         | required     | Called from a pin's pointer click, or a real Enter or Space press while the pin has focus.                                 |
+| `tileUrl`       | `string`                       | required     | Tile URL template, e.g. `"https://tile.example.com/{z}/{x}/{y}.png"`. No default — the application picks its own provider. |
+| `attribution`   | `string`                       | required     | The tile provider's required credit line, rendered as **plain text** — see "Security".                                     |
+| `class`         | `string`                       | —            | Extra classes on the map's own box; this is what sizes it (default `h-80 w-full`).                                         |
+| `label`         | `string`                       | `"Map"`      | Accessible name of the map region.                                                                                         |
+| `listLabel`     | `string`                       | `"Places"`   | Heading over the plain-text list.                                                                                          |
+| `zoomInLabel`   | `string`                       | `"Zoom in"`  | Leaflet's zoom-in control's tooltip and accessible name.                                                                   |
+| `zoomOutLabel`  | `string`                       | `"Zoom out"` | Leaflet's zoom-out control's tooltip and accessible name.                                                                  |
 
 `MapMarker.status` is `"on" | "off" | "unknown"`, optional; a marker with no `status` is treated as
 `"unknown"` — the same colour `theme/preset.css` already gives that state.
@@ -46,74 +50,106 @@ server, and the page's very first paint before that `import()` resolves, both se
 whatever size `class` gives it. Nothing about the box's size changes once Leaflet mounts inside it,
 because the size comes from that one class and nothing else touches it.
 
-Once Leaflet has loaded, the mount effect creates the map, its tile layer and an empty marker layer
-group, and two more effects keep it live: one calls `setView` when `center` or `zoom` change, the
-other rebuilds the marker layer when `markers` changes. The map is torn down on unmount — the mount
-effect's cleanup calls the handle's `remove()`, Leaflet's own teardown of every DOM node and listener
-it attached.
+Once Leaflet has loaded, the mount effect creates the map, its tile layer, its zoom control and an
+empty marker layer group, and two more effects keep it live: one calls `setView` when `center` or
+`zoom` change, the other rebuilds the marker layer when `markers` changes. The map is torn down on
+unmount — the mount effect's cleanup calls the handle's `remove()`, Leaflet's own teardown of every
+DOM node and listener it attached.
 
-## Why the list, not the pins, is the keyboard path
+## Keyboard and screen readers
 
-The issue asks for two things: every marker reachable by Tab with a name, and a plain list beside the
-map "because a map alone is a poor experience for someone who cannot see it." This package delivers
-both through **one** mechanism rather than two, and the decision is worth stating plainly because the
-issue's wording could be read as asking for the map's own pins to be independently tabbable too.
+**The map's own pins are the keyboard and screen-reader path.** Every pin is a real Tab stop
+(`role="button"`, `tabindex="0"`, both set by Leaflet's own `keyboard: true` option on the marker),
+named by the marker's `label` through an explicit `aria-label` this package sets, and a real Enter or
+Space press on a focused pin calls `onMarkerClick` — Space calls `preventDefault` first so the page
+does not scroll. The plain list beside the map is **not** interactive: no row is a button, none has a
+click handler, and none is in the Tab order. It exists because the issue asks for "a plain list of
+the same places" as a second, always-visible overview — the same information the pins carry, laid
+out as ordinary text rather than as controls.
 
-**The plain list `Map` always renders is the keyboard and screen-reader interface.** Every row is a
-real `<button>`, in the page's Tab order from the first render, named by the marker's `label` as
-text, and its activation — mouse, Enter, Space, or an assistive technology's own gesture — calls
-`onMarkerClick`. The map's own pins are pointer-only: each is `aria-hidden`, and each answers a
-pointer click by calling the same `onMarkerClick`, but none of them carries `tabindex` or a role, so
-none of them is a second, separate stop in the page's Tab order.
+Two things worth being precise about, because an earlier version of this package got both wrong:
 
-Two reasons this is the better shape, not a shortcut:
+1. **Leaflet does not activate a bare marker from the keyboard on its own.** `keyboard: true` gives a
+   marker's icon element `tabindex="0"` and `role="button"`, which is what makes it reachable — but
+   Leaflet's own key-press handling for a marker (`_onKeyPress` in `leaflet-src.js`) exists only
+   inside `bindPopup`, and calling it opens a popup. A marker with no popup bound does nothing on
+   Enter or Space without more work. That work is `leaflet-map.ts`'s `addMarker`: a `keydown`
+   listener, added directly to the DOM element Leaflet created (`marker.getElement()`, read back
+   after `addTo`), that calls `onMarkerClick` on Enter or Space.
+2. **A marker's `title` is a real accessible-name source, just not the one this package uses.**
+   Leaflet copies the `title` option onto the icon element, which does give assistive technology a
+   name — but this package sets `aria-label` explicitly as well, which browsers' accessible-name
+   computation prefers over `title` when both are present. `title` stays for what it is actually for:
+   a native tooltip on mouse hover. The pin's name a screen reader announces comes from `aria-label`.
 
-1. **Leaflet's own keyboard support for a marker is Enter-only and undocumented past that.** Its
-   `keyboard` option (default `true`) puts `tabindex="0"` and `role="button"` on the marker's icon
-   element, with no accessible name of its own (a `DivIcon` sets no `aria-label`, and `alt` only
-   applies to an `<img>`-backed `Icon`) and no Space support — inconsistent with every other keyboard
-   control in this library, which activates on a real Space press (see `AGENTS.md`'s measured browser
-   facts). Reimplementing it well means writing real keyboard handling on an element Leaflet also
-   wants to position, animate and hit-test — solvable, but it duplicates almost everything the list
-   already does correctly, for a second, worse copy of the same interaction.
-2. **A screen-reader user tabbing through twice the stops for the same set of places is not double
-   the access — it is noise.** A map pin conveys nothing non-visually beyond "a button, unnamed
-   unless this package adds a name," while the list row is a normal, ordered, named control. Giving
-   both a tab stop for the same place is the kind of "technically operable" the library's own
-   accessibility policy (`AGENTS.md` → "Component rules", `docs/no-third-party-components.md` →
-   "Accessibility is ours") asks not to stop at.
+`pages/checks/map.ts` proves this in a real browser: Tab from the focused map reaches every pin, in
+marker order, each with the accessible name equal to its `label` (read through the DevTools
+`Accessibility` domain, not the DOM, because that domain is what actually computes the name the way a
+screen reader would); a real Space press and a real Enter press each call `onMarkerClick` with the
+focused pin's `id`.
 
-So `keyboard: false` is passed to every Leaflet marker this package creates, deliberately opting out
-of Leaflet's own handling rather than leaving a half-consistent version of it in place, and the pin's
-wrapper element carries `aria-hidden="true"`. `pages/checks/map.ts` proves the list side of this: every
-row is reachable by Tab in marker order, each has an accessible name, and activating one by keyboard
-calls `onMarkerClick` with that marker's `id`.
+## What a new `markers` identity costs
+
+The marker-sync effect depends on `markers` alone, not on `onMarkerClick`'s identity — the callback
+is read through a ref (`onMarkerClickRef` in `map.tsx`) that is always kept current, so a caller
+passing a fresh inline arrow function on every render (the catalogue's own demo card does exactly
+that) never causes a rebuild by itself.
+
+`markers` is a different matter: the effect clears and rebuilds the **whole** marker layer whenever
+`markers` is a new array, whether or not the places it lists actually changed. Passing a literal
+array in JSX (`markers={[...]}`) or otherwise creating a new array on every render therefore rebuilds
+every pin on every render — every DOM node, every listener, every `aria-label` — even when nothing
+about the data moved. Keep `markers` referentially stable (a `useMemo`, a value from state that is
+only replaced when it really changes, or a module-level constant for fixture data, as the catalogue's
+own card does) unless a rebuild on every render is genuinely acceptable.
 
 ## Leaflet's stylesheet
 
 Leaflet's tiles and pins are positioned by CSS it ships (`leaflet/dist/leaflet.css`); without it,
 tiles render at the wrong size and in the wrong place. This package does not inject that stylesheet
 for you — a component that silently mutated `<head>` would be surprising, and this library's other
-CSS-bearing package (`theme/`) does not do that either. Two routes, depending on what your build can
-do:
+CSS-bearing package (`theme/`) does not do that either.
 
-1. **Add `leaflet` as your own dependency, at the version this package pins (`leaflet@1.9.4`), and
-   import its CSS in your own build** — `import "leaflet/dist/leaflet.css"` (Vite, Node, or a Deno app
-   with its own `leaflet` import-map entry). This is the same shape
-   [`charts/README.md`](../charts/README.md) documents for `d3`: this package's own `deno.json` pins
-   Leaflet so `@preact-components/map` resolves and bundles on its own, and a second, explicit
-   dependency in your app is what lets your own build reach one more file of a package you already
-   effectively depend on.
-2. **`@preact-components/map/leaflet-css`'s `leafletStylesheet()`** — an async function that reads
-   `leaflet/dist/leaflet.css` from the exact copy this package's own `deno.json` pins, with
-   `Deno.readTextFile`. Deno-only, and not re-exported from the package's main barrel — importing
-   `@preact-components/map` itself never touches `Deno.readTextFile`, only a build that reaches for
-   this specific subpath does. This is what `pages/build.ts` uses, so the demo gets Leaflet's real,
-   unmodified stylesheet without this repository's own build declaring its own `leaflet` dependency
-   (`map/deno.json` pins Leaflet "and nowhere else" in this workspace — see its own comment).
+**The one route: add `leaflet` as your own dependency, at the version this package pins
+(`leaflet@1.9.4`), and include its stylesheet in your own build.** Concretely, that is:
 
-Either route ships Leaflet's CSS byte-for-byte; neither copies it into this package or `theme/`,
-which would be a second place a future Leaflet upgrade could drift from.
+```bash
+deno add npm:leaflet@1.9.4   # or: npm i leaflet@1.9.4
+```
+
+then, in whatever your build treats as CSS entry points:
+
+```ts
+import "leaflet/dist/leaflet.css"
+```
+
+For a bundler that resolves CSS imports itself (Vite, webpack, and anything Node-based), that single
+import is the whole of it — the same shape [`charts/README.md`](../charts/README.md) documents for
+`d3`. For a Deno build that compiles its own stylesheet the way this repository's `pages/build.ts`
+does — reading a stylesheet's bytes directly with `Deno.readTextFile` rather than handing the import
+to a bundler — you need `import.meta.resolve("leaflet/dist/leaflet.css")` to resolve at all, which
+needs **your own** `deno.json` to declare Leaflet twice, the same way `map/deno.json` does for its
+own reasons:
+
+```jsonc
+"imports": {
+  "leaflet": "npm:leaflet@1.9.4",
+  "leaflet/": "npm:/leaflet@1.9.4/"
+}
+```
+
+and a lockfile that has actually resolved it — run any task that imports `leaflet` once, or
+`deno install`, before the first build that reads the stylesheet this way — plus `--allow-read` on
+whatever reads the file (Deno's own npm cache, unless you vendor `node_modules` with
+`"nodeModulesDir": "auto"`). None of this is `@preact-components/map`'s to provide: it is exactly
+what installing Leaflet yourself, for your own build, requires — this package neither re-exports
+Leaflet's CSS nor gives you a shortcut around declaring the dependency you are, in substance, already
+taking on the moment you render tiles.
+
+`pages/build.ts` reads `map/leaflet-css.ts` directly, by a relative import — that file is not part of
+this package's published surface (see `map/deno.json`'s `publish.exclude`) precisely because it only
+works inside this workspace, where the pins above already exist in the root repository's own
+resolution. It is not a route available to, or intended for, an external consumer.
 
 ## Security
 
@@ -121,15 +157,17 @@ Leaflet accepts HTML strings in several places — a `DivIcon`'s `html`, popups,
 attribution control — and this component never lets caller data reach any of them as markup.
 
 - **`MapMarker.label`** is rendered as text everywhere it appears: as the matching list row's own
-  text content (a JSX child, escaped the way Preact escapes any text node) and, natively, as a marker
-  pin's `title` attribute (an element property assignment, never parsed as HTML). It is never passed
-  to Leaflet's `DivIcon` `html` option or built into an HTML string. A marker's icon DOM is built with
-  `document.createElement`/`appendChild` in `leaflet-map.ts`, and the resulting `Element` — never a
-  string — is what `DivIcon` receives; Leaflet appends an `Element` it is given rather than parsing it
-  with `innerHTML` (only a string `html` option is parsed that way), so there is no HTML-string step
-  for a label to reach even indirectly. `map/map.test.tsx` and `map/marker-list.test.tsx` both render
-  a marker whose `label` is `<img src=x onerror="alert(1)">` and assert the output contains no `<img`
-  tag and no `onerror=` attribute — only the escaped text.
+  text content (a JSX child, escaped the way Preact escapes any text node), as a pin's `aria-label`
+  and `title` attributes (element property/attribute assignment, never parsed as HTML), and read back
+  only as `event.key`/`.id` inside the pin's own `keydown` listener — nothing about that listener
+  turns any string into markup either. `label` is never passed to Leaflet's `DivIcon` `html` option
+  or built into an HTML string. A marker's icon DOM is built with `document.createElement`/
+  `appendChild` in `leaflet-map.ts`, and the resulting `Element` — never a string — is what `DivIcon`
+  receives; Leaflet appends an `Element` it is given rather than parsing it with `innerHTML` (only a
+  string `html` option is parsed that way), so there is no HTML-string step for a label to reach even
+  indirectly. `map/map.test.tsx` and `map/marker-list.test.tsx` both render a marker whose `label` is
+  `<img src=x onerror="alert(1)">` and assert the output contains no `<img` tag — only the escaped
+  text.
 - **`attribution`** is **plain text, always** — not an HTML prop, and there is no second prop that
   accepts markup. Leaflet's own attribution control is switched off entirely
   (`attributionControl: false`); this component renders `attribution` itself, as a JSX text child of
@@ -147,10 +185,15 @@ attribution control — and this component never lets caller data reach any of t
 
 The element Leaflet mounts into carries `role="group"` and `aria-label={label}` (default `"Map"`),
 set once in this component's own JSX rather than in an effect, so it is present from the first
-render. Leaflet's own keyboard panning (`Map`'s `keyboard` option, default `true`, left untouched)
+render. Leaflet's own keyboard panning (`L.Map`'s `keyboard` option, default `true`, left untouched)
 makes that same element focusable and gives arrow-key/`+`/`-` navigation over the tiles — a different
 feature from marker selection, and one Leaflet already implements reasonably, so this package neither
-disables nor reimplements it.
+disables nor reimplements it. From a freshly focused map, Tab therefore visits the zoom control
+(labelled by `zoomInLabel`/`zoomOutLabel`), then every marker pin in order.
+
+The default zoom control is switched off and rebuilt by hand in `createLeafletMap` purely to reach
+its `zoomInTitle`/`zoomOutTitle` options — there is no way to pass those through `L.Map`'s own
+constructor options or to change them on the control after it is built.
 
 ## Do I need Leaflet?
 
@@ -162,6 +205,16 @@ neither of them can pick it up by accident. Checked with `deno info` against eac
 point (`ui/+index.ts`, `charts/+index.ts`) rather than by reading their source for a `leaflet` import
 — see the pull request that added this package for the exact commands and their output.
 
+## The list heading's level is fixed
+
+`MarkerList` renders its heading as an `<h3>`, unconditionally. This mirrors the level `ui-guide/`'s
+own catalogue happens to nest a card's content at today, but it is not something this component can
+verify about a caller's own page: a `Map` placed directly under an `<h1>` gets a heading that skips
+`<h2>`. Left this way deliberately rather than adding a `headingLevel` prop no other component in
+this library has needed yet — see `docs/no-third-party-components.md` for the general bias against
+adding a knob before a real caller needs it. A future consumer whose page structure needs a different
+level is a reason to add one; this package having only one caller today is not.
+
 ## Tests
 
 ```bash
@@ -170,14 +223,16 @@ deno test --allow-read --allow-env map/   # this package alone
 ```
 
 `map.test.tsx` and `marker-list.test.tsx` render with `preact-render-to-string` and assert on real
-markup — the server-rendered box, the attribution and marker-label escaping, the list's buttons and
-their names, the English defaults and their overrides. `leaflet-map.test.ts` covers the one part of
-the Leaflet-facing module that is plain data (the status → class lookup, checked against
-`theme/preset.css`) rather than DOM construction — everything else in `leaflet-map.ts` needs
-`document`, which this repository's test runner does not provide (see `AGENTS.md`). `leaflet-css.test.ts`
-reads the real, pinned `leaflet.css` and asserts a distinctive rule from it, so a broken resolution
-path fails here rather than silently shipping an empty stylesheet.
+markup — the server-rendered box, the attribution and marker-label escaping, the list's plain
+(non-interactive) rows and their names, the English defaults and their overrides. `leaflet-map.test.ts`
+covers the one part of the Leaflet-facing module that is plain data (the status → class lookup,
+checked against `theme/preset.css`) rather than DOM construction — everything else in
+`leaflet-map.ts` needs `document`, which this repository's test runner does not provide (see
+`AGENTS.md`). `leaflet-css.test.ts` reads the real, pinned `leaflet.css` and asserts a distinctive
+rule from it, so a broken resolution path fails here rather than silently shipping an empty
+stylesheet.
 
 What none of that proves — a real map mounting, tiles loading from the local preview server, the
-attribution staying visible, and the list's keyboard path actually calling `onMarkerClick` — is
-`pages/checks/map.ts`'s job, driven in a real browser by `deno task --cwd pages verify`.
+attribution staying visible, the pin count matching the marker count, and the pins' own keyboard path
+actually calling `onMarkerClick` with the right `id` — is `pages/checks/map.ts`'s job, driven in a
+real browser by `deno task --cwd pages verify`.
