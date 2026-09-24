@@ -101,6 +101,15 @@ describe("zoomableAlt", () => {
     expect(zoomableAlt(null, "")).toBe("")
     expect(zoomableAlt("   ", "")).toBe("")
   })
+
+  it("treats a whitespace-only fallbackAlt exactly like an empty one", () => {
+    // Measured in review: an earlier version trimmed the image's own alt but not fallbackAlt, so
+    // fallbackAlt=" " read as a non-empty (truthy) string and the refusal never triggered — the
+    // image was marked and opened, and collectSequence, which does trim, then disagreed with
+    // resolveImage about whether the image had a description at all.
+    expect(zoomableAlt(null, " ")).toBe("")
+    expect(zoomableAlt("   ", "\t")).toBe("")
+  })
 })
 
 describe("collectSequence", () => {
@@ -174,6 +183,31 @@ describe("collectSequence", () => {
         { src: "https://acme.example/img/alpha.png", alt: "Alpha" },
         { src: "https://acme.example/img/gamma.png", alt: "Gamma" },
       ])
+    })
+
+    it("treats a whitespace-only fallbackAlt exactly like an empty one", () => {
+      // The regression a second review found: an earlier version trimmed the image's own alt but
+      // not fallbackAlt, so " " read as a real name here, opened the clicked image at index -1 —
+      // and Lightbox, clamping a negative index to 0, showed a different image entirely.
+      const result = collectSequence([bare, alpha, gamma], bare, "img", " ")
+
+      expect(result.index).toBe(-1)
+      expect(result.images).toEqual([
+        { src: "https://acme.example/img/alpha.png", alt: "Alpha" },
+        { src: "https://acme.example/img/gamma.png", alt: "Gamma" },
+      ])
+    })
+
+    it("never returns an index for an image resolveImage would also refuse", () => {
+      // The invariant `openAt` relies on: what `resolveImage` decides about the clicked element
+      // and what `collectSequence` decides about that same element, resolved again inside its own
+      // loop, can never disagree — both go through the one `zoomableAlt` rule. Checked directly,
+      // across every fallbackAlt this file's other cases use, rather than trusted by reading.
+      for (const fallbackAlt of ["", " ", "\t"]) {
+        const resolved = resolveImage(bare, "img", fallbackAlt)
+        const collected = collectSequence([bare, alpha, gamma], bare, "img", fallbackAlt)
+        expect(Boolean(resolved?.alt)).toBe(collected.index >= 0)
+      }
     })
   })
 })

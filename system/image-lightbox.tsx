@@ -75,6 +75,23 @@ export interface ImageElementLike {
 }
 
 /**
+ * The `alt` an image will open the lightbox with: its own, trimmed, or `fallbackAlt` — also
+ * trimmed, so a caller who passes whitespace (`" "`) is refused exactly like one who passes `""`,
+ * not treated as a real name because a non-empty string happens to be truthy. One rule, called by
+ * both halves that need it: {@link resolveImage} substitutes it into the image it hands back, and
+ * {@link markZoomable} calls it before touching the DOM at all, so the two can never disagree about
+ * whether a given image has a real description.
+ *
+ * @param rawAlt The image's own `alt` attribute, or `null`/`undefined` when it has none.
+ * @param fallbackAlt `alt` used when the image has none.
+ * @returns The trimmed, substituted `alt` — empty only when both `rawAlt` and `fallbackAlt`,
+ * trimmed, are.
+ */
+export function zoomableAlt(rawAlt: string | null | undefined, fallbackAlt: string): string {
+  return (rawAlt ?? "").trim() || fallbackAlt.trim()
+}
+
+/**
  * Turn an event target into a lightbox image, or `null` when the event missed an image.
  *
  * Only the image itself answers: an event whose target is the link around it, or any other element
@@ -95,8 +112,8 @@ export function resolveImage(
   const src = target.src ?? target.getAttribute?.("src") ?? ""
   if (!src) return null
 
-  const alt = (target.alt ?? target.getAttribute?.("alt") ?? "").trim()
-  return { src, alt: alt || fallbackAlt }
+  const alt = zoomableAlt(target.alt ?? target.getAttribute?.("alt"), fallbackAlt)
+  return { src, alt }
 }
 
 /** Attribute marking an image this component has made zoomable, so cleanup knows what it owns. */
@@ -112,19 +129,6 @@ interface ZoomableMarks {
   zoomLabel: string
   /** Whether to give the image a zoom-in cursor. */
   zoomCursor: boolean
-}
-
-/**
- * The `alt` an image will open the lightbox with, after {@link ZoomableMarks.fallbackAlt}'s
- * substitution — the same rule {@link resolveImage} applies, restated here as a decision
- * {@link markZoomable} can call before it touches the DOM rather than after.
- *
- * @param rawAlt The image's own `alt` attribute, or `null`/`undefined` when it has none.
- * @param fallbackAlt `alt` used when the image has none.
- * @returns The trimmed, substituted `alt` — empty only when both `rawAlt` and `fallbackAlt` are.
- */
-export function zoomableAlt(rawAlt: string | null | undefined, fallbackAlt: string): string {
-  return (rawAlt ?? "").trim() || fallbackAlt
 }
 
 /**
@@ -316,6 +320,13 @@ export function ImageLightbox(
         ...container.querySelectorAll(imageSelector),
       ] as unknown as ImageElementLike[]
       const collected = collectSequence(elements, target, imageSelector, fallbackAlt)
+      // Kept as a second guard rather than trusted as unreachable: `resolved.alt` above and
+      // `collectSequence`'s own filtering both go through `zoomableAlt`, so today the two cannot
+      // disagree — but they did once, when `fallbackAlt` was trimmed in one place and not the
+      // other, and a whitespace `fallbackAlt` reached this branch with `collected.index === -1`,
+      // opening whatever sat at position 0 instead of refusing. This is what keeps that class of
+      // mismatch from reopening the wrong-image bug even if the two decisions drift apart again.
+      if (collected.index < 0) return false
       setSequence(collected.images)
       setIndex(collected.index)
       setOpen(true)
