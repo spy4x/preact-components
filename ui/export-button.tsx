@@ -1,6 +1,7 @@
+import { cn } from "@preact-components/cn"
 import { downloadResponseAsFile } from "@spy4x/platform/browser/download"
 import type { ComponentChildren, JSX } from "preact"
-import { useState } from "preact/hooks"
+import { useRef, useState } from "preact/hooks"
 import { Button } from "./button.tsx"
 import { type CsvColumn, toCsvBytes } from "./csv.ts"
 
@@ -28,8 +29,9 @@ interface ExportButtonBaseProps<T> {
    */
   errorLabel?: string
   /**
-   * Called with the error when `getRows` throws or rejects — a port, the way `GeoButton`'s
-   * `onError` is, for a host that wants to log it or route it through its own toast.
+   * Called with the error when `getRows` throws or rejects, or when the download itself fails — a
+   * port, the way `GeoButton`'s `onError` is, for a host that wants to log it or route it through
+   * its own toast.
    */
   onError?: (error: unknown) => void
   class?: string
@@ -65,6 +67,58 @@ function defaultResultLabel(rowCount: number): string {
   return `Exported ${rowCount} row${rowCount === 1 ? "" : "s"}`
 }
 
+/** What {@link runExport} produced: whether the download went through, and what to announce. */
+export interface ExportRunResult {
+  ok: boolean
+  announcement: string
+}
+
+/**
+ * Resolve `rows` (or call `getRows`), write them as CSV, and hand the result to `download`.
+ *
+ * Split out of the component so the whole path is unit-testable without a browser: `handleClick`
+ * calls a hook (`useState`), so a component that calls it cannot be invoked outside a render — the
+ * same reason `copyable-text.tsx` splits its body out. `download` defaults to the real
+ * `downloadResponseAsFile`; a test hands in a fake one instead, which is what proves a rejecting
+ * `getRows` downloads nothing without needing a real object URL or a real click.
+ *
+ * `onError` is called from in here, not left to the caller: a test of this function alone is then a
+ * test of the whole "nothing downloads, `onError` runs, the error is announced" contract, rather
+ * than only the half a click handler would still owe on its own.
+ *
+ * @param props The button's own props — `columns`, `rows` or `getRows`, `fileName`.
+ * @param resultLabel Success announcement, as a function of the row count.
+ * @param errorLabel Failure announcement.
+ * @param onError Called with the error on failure — from `getRows`, or from `download` itself.
+ * @param download Injected download port; defaults to `downloadResponseAsFile`.
+ */
+export async function runExport<T>(
+  props: ExportButtonProps<T>,
+  resultLabel: (rowCount: number) => string,
+  errorLabel: string,
+  onError: ((error: unknown) => void) | undefined,
+  download: (response: Response, filename: string) => Promise<void> = downloadResponseAsFile,
+): Promise<ExportRunResult> {
+  try {
+    const rows = hasRows(props) ? props.rows : await props.getRows()
+    const response = new Response(toCsvBytes(props.columns, rows), {
+      headers: { "content-type": "text/csv;charset=utf-8" },
+    })
+    await download(response, props.fileName)
+    return { ok: true, announcement: resultLabel(rows.length) }
+  } catch (error) {
+    onError?.(error)
+    return { ok: false, announcement: errorLabel }
+  }
+}
+
+/**
+ * Utilities that make an `aria-disabled` control look and feel disabled — `pagination.tsx`'s own
+ * `ariaDisabledClasses`, copied rather than imported: a one-line Tailwind pair is not worth a
+ * cross-file dependency between two otherwise unrelated components.
+ */
+const busyClasses = "aria-disabled:pointer-events-none aria-disabled:opacity-50"
+
 /**
  * Button that downloads `rows` — or the result of `getRows`, called on click — as a CSV file.
  *
@@ -81,6 +135,24 @@ function defaultResultLabel(rowCount: number): string {
  * throws or rejects downloads nothing: the live region announces `errorLabel` instead of a row
  * count, `onError` is called if given, and the button re-enables for another try.
  *
+ * **Busy is `aria-disabled`, not the native `disabled` attribute** — the same choice
+ * `pagination.tsx` makes, and for the same reason: setting `disabled` on a focused button drops
+ * focus to `<body>`, measured in the headless Chromium this repository drives, and it stays there
+ * once the export finishes. `getRows` is exactly the case a caller reaches for to fetch every
+ * matching row rather than only the page on screen, which is also the case most likely to take
+ * long enough for a keyboard user to notice their focus is gone. `aria-disabled` leaves focus
+ * alone; what it does not do is stop the press, so `handleClick` guards itself — twice, the same
+ * belt-and-suspenders `enhanced-form.tsx`'s `busyRef` uses: a `ref` checked and set synchronously
+ * before anything async runs, so a real double activation arriving in the same task sees the flag
+ * the first press set however far `useState`'s own update has or has not repainted yet, and
+ * `busyClasses`' `pointer-events-none` for every press after that first repaint.
+ *
+ * The live region is cleared, then set, rather than set once directly: a second export with the
+ * same row count would otherwise write the exact string already there, which is a no-op diff as
+ * far as the DOM is concerned and reaches no screen reader. Clearing first, in its own render,
+ * turns that into two real mutations — go quiet, then say it — so a second "Exported 2 rows" is
+ * heard as its own announcement rather than silently not happening.
+ *
  * The download itself is `@spy4x/platform/browser/download`'s `downloadResponseAsFile`, handed a
  * `Response` wrapping the written bytes: a helper already reviewed and published, not a second copy
  * of the `Blob`/object-URL/anchor dance built here. It attaches a temporary anchor, clicks it and
@@ -91,8 +163,6 @@ function defaultResultLabel(rowCount: number): string {
  */
 export function ExportButton<T>(props: ExportButtonProps<T>): JSX.Element {
   const {
-    columns,
-    fileName,
     label = "Export",
     resultLabel = defaultResultLabel,
     errorLabel = "Could not export the file.",
@@ -101,27 +171,31 @@ export function ExportButton<T>(props: ExportButtonProps<T>): JSX.Element {
   } = props
   const [announcement, setAnnouncement] = useState("")
   const [busy, setBusy] = useState(false)
+  const busyRef = useRef(false)
+
+  const announce = (text: string) => {
+    setAnnouncement("")
+    setTimeout(() => setAnnouncement(text), 0)
+  }
 
   const handleClick = async () => {
+    if (busyRef.current) return
+    busyRef.current = true
     setBusy(true)
-    try {
-      const rows = hasRows(props) ? props.rows : await props.getRows()
-      const response = new Response(toCsvBytes(columns, rows), {
-        headers: { "content-type": "text/csv;charset=utf-8" },
-      })
-      await downloadResponseAsFile(response, fileName)
-      setAnnouncement(resultLabel(rows.length))
-    } catch (error) {
-      setAnnouncement(errorLabel)
-      onError?.(error)
-    } finally {
-      setBusy(false)
-    }
+    const result = await runExport(props, resultLabel, errorLabel, onError)
+    announce(result.announcement)
+    busyRef.current = false
+    setBusy(false)
   }
 
   return (
     <>
-      <Button variant="outline" class={className} disabled={busy} onClick={handleClick}>
+      <Button
+        variant="outline"
+        class={cn(busyClasses, className)}
+        aria-disabled={busy ? "true" : undefined}
+        onClick={handleClick}
+      >
         <DownloadIcon />
         {label}
       </Button>
