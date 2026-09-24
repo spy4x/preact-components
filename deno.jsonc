@@ -4,16 +4,18 @@
   // package becomes a real member the moment its own `<pkg>/deno.json` lands.
   // That keeps this file untouched by every package PR — no shared-file conflicts.
   //
-  // `./map` was listed on that basis and never arrived: `Map` is a recorded
-  // "deliberately not built" entry (see `docs/not-building.md`), because it needs
-  // Leaflet — a dependency decision nobody has taken. Dropped rather than kept as a
-  // phantom, so `deno task check` stops printing `Workspace member "./map" not found`
-  // on every invocation. Add it back together with the package, in one change.
+  // `./map` sat here on that same basis for a while and never arrived — `Map` was a recorded
+  // "deliberately not built" entry (see `docs/not-building.md`), because it needed Leaflet, a
+  // dependency decision nobody had taken — and was dropped rather than kept as a phantom, so
+  // `deno task check` stopped printing `Workspace member "./map" not found` on every invocation.
+  // Issue #143 took that decision (Leaflet is one of the "keep" libraries in the owner's global
+  // policy) and added the package back here, together with `map/deno.json`, in the same change.
   "workspace": [
     "./charts",
     "./cn",
     "./crud",
     "./icons",
+    "./map",
     // Not a package: the GitHub Pages demo. It is a member so it can pin its own build-only
     // dependencies in `pages/deno.json` instead of adding them to the import map below.
     "./pages",
