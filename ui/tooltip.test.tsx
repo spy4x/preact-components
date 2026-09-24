@@ -9,8 +9,8 @@ import { Tooltip, type TooltipPlacement } from "./tooltip.tsx"
  * These tests render to markup, so they reach the wiring — which element is described, which one
  * may carry a name, where the surface is anchored, and where its bridge to the trigger is. They
  * reach none of the behaviour: the Escape press that dismisses a hint, the pointer that keeps one
- * up, and the listener registered only while the trigger is engaged all need a browser, and are
- * proven in `pages/checks/ui.ts` instead.
+ * up, and the same-task race a listener attached only after a render used to lose (`#252`) all
+ * need a browser, and are proven in `pages/checks/ui.ts` instead.
  */
 
 /** The `id` of the element carrying `role="tooltip"`, read back from rendered markup. */

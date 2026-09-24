@@ -2115,9 +2115,9 @@ const TOOLTIP_DISMISSED =
  * Tooltip's two halves of one rule: a hint can be dismissed, and a hint can be pointed at.
  *
  * Neither half is reachable from a test that renders to a string. The dismissal is a real Escape
- * press against a `keydown` listener the component registers only while the trigger is engaged,
- * and the hoverable half is the browser's own hit testing — the thing `pointer-events-none` used
- * to fail, and which nothing in rendered markup can answer.
+ * press against a `keydown` listener the component keeps attached for its whole life (`#252`), and
+ * the hoverable half is the browser's own hit testing — the thing `pointer-events-none` used to
+ * fail, and which nothing in rendered markup can answer.
  *
  * **What the browser can show, and what it took to get there.** Tailwind v4 compiles every hover
  * style — `hover:`, `group-hover:` — inside `@media (hover: hover)`, and headless Chromium answers
@@ -2300,6 +2300,7 @@ async function tooltipChecks(devtools: Devtools): Promise<void> {
 
   await escapeOverPointerCheck(devtools)
   await escapeOnFocusCheck(devtools)
+  await tooltipEscapeRaceCheck(devtools)
   await tooltipNameCheck(devtools)
 }
 
@@ -2444,14 +2445,14 @@ async function hoverRevealCheck(devtools: Devtools): Promise<void> {
  *
  * An earlier version of this check began with a control — pointer in the corner, press Escape,
  * assert nothing happened — to pin the listener being registered only while the trigger is
- * engaged. It is gone for two reasons. Nobody can observe that property: engaging the trigger
- * clears the dismissed state anyway, so a component holding one permanent listener would behave
- * identically for every user on every device, and the property is a cost argument, not a
- * behaviour. And it raced: the check before this one blurs the trigger and waits for the hint to
- * stop being shown, but that wait watches a CSS state which stops matching the instant focus
- * leaves, with no render involved, so it could return before the effect cleanup had removed the
- * listener. Two runs in eight then failed on the control press landing on a listener that was
- * still attached. The property is written down in `ui/tooltip.tsx` instead.
+ * engaged. It is gone since `#252`: the component now keeps the listener attached for its whole
+ * life and decides at press time from `hovered`/`focused` instead, which is what closed the
+ * same-task race `tooltipEscapeRaceCheck` proves below. The control also raced on its own terms
+ * even before that fix mattered: the check before this one blurs the trigger and waits for the
+ * hint to stop being shown, but that wait watches a CSS state which stops matching the instant
+ * focus leaves, with no render involved, so it could return before the old effect's cleanup had
+ * removed the listener. Two runs in eight then failed on the control press landing on a listener
+ * that was still attached.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -2564,6 +2565,74 @@ async function escapeOnFocusCheck(devtools: Devtools): Promise<void> {
 
   await devtools.evaluate<null>(`(globalThis.__verifyTooltip?.trigger?.blur(), null)`)
   await pointerToCorner(devtools)
+}
+
+/**
+ * An Escape dispatched in the same task as the focus that reveals the hint must still dismiss it —
+ * `#252`.
+ *
+ * `ui/tooltip.tsx`'s "Dismissible" bullet explains the shape this used to have: a `keydown`
+ * listener that only (re)attached once `engaged` had caught up ran *after* the render an
+ * `onFocusIn` handler already committed synchronously, so a key press landing in that gap found no
+ * listener at all. This drives `focus()` and a bubbling synthetic Escape back to back inside one
+ * `Runtime.evaluate`, before Preact's own scheduling gets a turn to run the effect that would have
+ * (re)attached the old, gated listener — `pages/checks/system.ts`'s `siteHeaderEscapeRaceCheck` is
+ * the reference this follows, two animation frames included: they let the *previous* engagement's
+ * effect cleanup finish first, so a listener left over from an earlier press is not what this one
+ * accidentally passes against.
+ *
+ * `Input.dispatchKeyEvent` is not used here, unlike the two checks above: those exist to prove a
+ * *trusted* key press reaches the listener. This one is not about trust — a plain
+ * `document.addEventListener("keydown", …)` reacts to an untrusted, synthetic event exactly the
+ * same way, and what is in question is only whether a listener exists at the instant the press
+ * lands, which a same-task synthetic dispatch settles on its own.
+ *
+ * The dismissal itself lands through a render — `dismissed.value = true` takes the `hidden`
+ * attribute and `aria-describedby` off through Preact's own scheduling, not a direct DOM write —
+ * so unlike `siteHeaderEscapeRaceCheck`'s `details.open`, this cannot read the outcome inside the
+ * same `Runtime.evaluate` call the press was sent in. Only the focus and the key press have to
+ * land in the same task; reading the result afterwards, once the render has had a chance to run,
+ * still proves the listener was there when the press arrived; a stale listener from a pathological
+ * old build would only make this check pass *late*, and the 3s poll bounds how late.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function tooltipEscapeRaceCheck(devtools: Devtools): Promise<void> {
+  await pointerToCorner(devtools)
+  await poll(() => devtools.evaluate<boolean>(`!${TOOLTIP_SHOWN}`), 3_000)
+
+  const dispatched = await devtools.evaluate<boolean>(`(async () => {
+    // Let the previous engagement's effect cleanup finish first — see the JSDoc above.
+    for (let k = 0; k < 2; k++) {
+      await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)))
+    }
+    const trigger = globalThis.__verifyTooltip?.trigger ?? null
+    if (!trigger) return false
+    // Same task, back to back: the focus that engages the trigger, then the Escape.
+    trigger.focus()
+    trigger.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }),
+    )
+    return true
+  })()`)
+
+  const dismissed = await poll(() => devtools.evaluate<boolean>(TOOLTIP_DISMISSED), 3_000)
+  const after = await devtools.evaluate<TooltipState>(TOOLTIP_STATE)
+
+  check(
+    "an Escape dispatched in the same task as the focus that reveals the hint still dismisses it",
+    dispatched && dismissed && after.described === null,
+    !dispatched
+      ? "the Tooltip card has no live row to focus"
+      : !dismissed
+      ? "the hint still had a box 3s after focus() and a same-task Escape dispatch — the listener " +
+        "was not there yet when the press landed"
+      : `dismissed, and aria-describedby reads ${JSON.stringify(after.described)}`,
+  )
+
+  await devtools.evaluate<null>(`(globalThis.__verifyTooltip?.trigger?.blur(), null)`)
+  await pointerToCorner(devtools)
+  await poll(() => devtools.evaluate<boolean>(`!${TOOLTIP_SHOWN}`), 3_000)
 }
 
 /**
