@@ -3,6 +3,8 @@ import {
   type ButtonSize,
   type ButtonVariant,
   CopyButton,
+  ExportButton,
+  type ExportButtonColumn,
   GeoButton,
 } from "@preact-components/ui"
 import { useSignal } from "@preact/signals"
@@ -136,6 +138,52 @@ function GeoButtonDemo() {
   )
 }
 
+/** A row of the demo table {@link ExportButtonDemo} writes to CSV. */
+interface AttendeeRow {
+  id: number
+  name: string
+  note: string
+}
+
+/** One row's `note` starts with `=`, on purpose — it is what proves the formula guard in the file. */
+const attendeeRows: AttendeeRow[] = [
+  { id: 1, name: "Ada Lovelace", note: "Bringing cake, tea for the room" },
+  { id: 2, name: "Grace Hopper", note: "=SUM(A1:A2)" },
+]
+
+const attendeeColumns: ExportButtonColumn<AttendeeRow>[] = [
+  { key: "id", header: "ID" },
+  { key: "name", header: "Name" },
+  { key: "note", header: "Note" },
+]
+
+/**
+ * Two ways to supply rows: `rows` for data already in hand, `getRows` for "export everything the
+ * current filter matches," fetched only once the button is pressed. Both write the same two rows
+ * here, one of them a note that reads like a spreadsheet formula — opening the downloaded file
+ * shows it prefixed with `'` instead of evaluated.
+ */
+function ExportButtonDemo() {
+  return (
+    <div class="flex flex-wrap items-center gap-3">
+      <ExportButton
+        columns={attendeeColumns}
+        rows={attendeeRows}
+        fileName="attendees.csv"
+        class="js-export-rows"
+      />
+      <ExportButton
+        columns={attendeeColumns}
+        getRows={() =>
+          new Promise<AttendeeRow[]>((resolve) => setTimeout(() => resolve(attendeeRows), 50))}
+        fileName="attendees-async.csv"
+        label="Export (fetched)"
+        class="js-export-async"
+      />
+    </div>
+  )
+}
+
 export const buttonDemos = {
   Button: {
     summary:
@@ -164,5 +212,15 @@ export const buttonDemos = {
   onError={(message) => app.toast.error({ body: message })}
 />`,
     render: () => <GeoButtonDemo />,
+  },
+  ExportButton: {
+    summary:
+      "Downloads `rows` — or the result of `getRows`, called on click — as an RFC 4180 CSV file, UTF-8 with a byte-order mark. A cell that reads like a spreadsheet formula is guarded with a leading `'`.",
+    snippet: `<ExportButton
+  columns={[{ key: "id", header: "ID" }, { key: "name", header: "Name" }]}
+  getRows={() => api.attendees.list()}
+  fileName="attendees.csv"
+/>`,
+    render: () => <ExportButtonDemo />,
   },
 } satisfies DemoFragment

@@ -272,7 +272,7 @@ const catalogue = {
     package: "ui",
     title: "Buttons",
     blurb:
-      "Variants × sizes, plus the two components that wrap a button around a side effect (clipboard, geolocation).",
+      "Variants × sizes, plus the components that wrap a button around a side effect (clipboard, geolocation, a CSV download).",
     demos: buttonDemos,
   },
   display: {
