@@ -328,10 +328,10 @@ export const rowKeyAttribute = "data-row-key"
  * `0` or less, renders the nearest real page rather than an empty body beside a pager that
  * disagrees with it.
  *
- * Every sortable header is a real `<button>`, so Tab and Space reach it (a real Enter press does
- * not activate a focused button in this repository's browser checks — see `pages/checks/ui.ts`).
- * `aria-sort` goes on the `<th>` of whichever data column or columns are in `sort`, `ascending` or
- * `descending`; a column not in `sort`, and a {@link DataTableDisplayColumn} always, carries no
+ * Every sortable header is a real `<button>`, so Tab, Space and Enter all reach it — see
+ * `pages/checks/ui.ts`. `aria-sort` goes on the `<th>` of whichever data column or columns are in
+ * `sort`, `ascending` or `descending`; a column not in `sort`, and a {@link DataTableDisplayColumn}
+ * always, carries no
  * `aria-sort` at all. The chevron beside a sortable header's text is `aria-hidden` — `aria-sort`
  * is what a screen reader is told, the glyph is only ever a sighted hint.
  */
