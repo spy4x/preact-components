@@ -636,7 +636,10 @@ async function browserPhase(): Promise<void> {
               ? `scrollY held still at ${landedAt} before any block's own checks began, after ` +
                 `${settleMs}ms` + (expectsScroll ? ", having left the top" : ", no scroll expected")
               : `scrollY was at ${landedAt} and ${
-                expectsScroll && landedAt === 0 ? "had never left the top" : "still changing"
+                expectsScroll && landedAt === 0
+                  ? "had never left the top (if DeletionValidation no longer scrolls on load, " +
+                    "#255, this wait no longer expects a scroll)"
+                  : "still changing"
               } 10s after hydration`,
           )
           await runBlocks(activeBlocks, devtools, resetAfterThrow)
