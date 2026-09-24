@@ -166,7 +166,15 @@ function LightboxDemo() {
           `data-e2e` so `pages/checks/ui.ts` can tell its `<dialog>` apart from the one above.
         */
       }
-      <div data-e2e="lightbox-empty">
+      {
+        /*
+          data-requested tracks whether the button was actually pressed, on the wrapper rather than
+          the dialog: a check that reads only ":modal never became true" cannot tell "canOpen
+          correctly refused" from "the button did nothing at all" apart, and the second is not this
+          card's claim.
+        */
+      }
+      <div data-e2e="lightbox-empty" data-requested={emptyOpen.value}>
         <Lightbox
           images={[undescribedLightboxImage]}
           index={0}

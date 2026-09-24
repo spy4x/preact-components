@@ -1937,10 +1937,12 @@ const LIGHTBOX_EMPTY_BUTTON = '#demo-Lightbox [data-e2e="lightbox-empty-open"]'
  * `dialog.matches(":modal")` reading, after a real click, can tell the two apart.
  *
  * `holdsFor` is the shape this needs, not `poll`: there is no state to wait *for* here, since
- * correct behaviour is that nothing ever changes. Polling for `:modal` becoming `true` would time
- * out and read as "closed" whether the dialog correctly refused to open or the button was simply
- * missing; asserting the negative holds for a real window is what a check that could tell those two
- * apart over the same evidence needs.
+ * correct behaviour is that nothing ever changes, and polling for `:modal` becoming `true` would
+ * time out and read as "closed" either way. What `holdsFor` alone cannot tell apart — found in
+ * review — is "`canOpen` correctly refused" from "the button did nothing at all": both leave
+ * `:modal` `false` forever. `data-requested` on the card's wrapper, flipped by the demo's own
+ * `onClick`, is the missing half: asserting it became `true` is what makes a no-op button fail this
+ * check instead of passing it.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -1949,23 +1951,39 @@ async function lightboxRefusesEmptyCheck(devtools: Devtools): Promise<void> {
     devtools.evaluate<boolean>(
       `document.querySelector('${LIGHTBOX_EMPTY_CARD} dialog')?.matches(":modal") === true`,
     )
+  // The card's own record of whether the button was pressed, read off the wrapper rather than
+  // inferred from the dialog: a check that only ever reads "never became :modal" cannot tell
+  // `canOpen` correctly refusing apart from the button silently doing nothing, and a demo whose
+  // onClick was replaced with a no-op stayed green under the version of this check that only read
+  // `:modal` — found in review.
+  const readRequested = () =>
+    devtools.evaluate<boolean>(
+      `document.querySelector('${LIGHTBOX_EMPTY_CARD}')?.getAttribute("data-requested") === "true"`,
+    )
 
   const before = await readModal()
+  const requestedBefore = await readRequested()
   const clicked = await devtools.evaluate<boolean>(`(() => {
     const button = document.querySelector('${LIGHTBOX_EMPTY_BUTTON}')
     if (button) button.click()
     return Boolean(button)
   })()`)
+  await poll(readRequested, 3_000)
+  const requestedAfter = await readRequested()
   const stayedClosed = await holdsFor(async () => !(await readModal()), 1_000)
 
   check(
     "Lightbox refuses to open when every image it was given lacks a description",
-    clicked && !before && stayedClosed.held,
+    clicked && !before && !requestedBefore && requestedAfter && stayedClosed.held,
     !clicked
       ? "the card has no lightbox-empty-open button to press"
+      : !requestedAfter
+      ? "the button was pressed but the card never recorded the request, so this proves nothing " +
+        "about canOpen"
       : stayedClosed.held
-      ? `pressed the button that opens a lightbox with one undescribed image; the dialog never ` +
-        `became :modal in ${stayedClosed.elapsedMs}ms`
+      ? `pressed the button that opens a lightbox with one undescribed image (requested: ` +
+        `${requestedBefore} → ${requestedAfter}); the dialog never became :modal in ` +
+        `${stayedClosed.elapsedMs}ms`
       : `the dialog became :modal ${stayedClosed.elapsedMs}ms after the press, though the one ` +
         `image it was given has no description`,
   )
