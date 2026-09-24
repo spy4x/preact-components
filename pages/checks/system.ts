@@ -1080,14 +1080,16 @@ async function authFormFocusStabilityChecks(devtools: Devtools): Promise<void> {
 }
 
 /**
- * The show/hide password control: a real click, then a real Space press, neither of them a submit.
+ * The show/hide password control: a real click, then a real Space press, then a real Enter press,
+ * none of them a submit.
  *
- * Space is the keyboard press exercised here; `ui.ts`'s Dropdown and Modal checks already prove
- * Enter activates a focused native button, so this file does not repeat that proof for every button
- * it drives. The click is `.click()`, which is how every button in this file is activated; nothing
- * here is testing the pointer path itself, only what the activation does. `signIns` is read before
- * and after both presses, because a toggle that happened to submit the form would be the one
- * regression a purely visual check misses.
+ * `ui.ts`'s Dropdown and Modal checks already prove `pressKey(devtools, "Enter")` activates a
+ * focused native button in general, but only a press on this button's own listener can catch a
+ * handler here that called `preventDefault()` on Enter specifically (#261), so the toggle gets its
+ * own Enter press rather than relying on that general proof. The click is `.click()`, which is how
+ * every button in this file is activated; nothing here is testing the pointer path itself, only
+ * what the activation does. `signIns` is read before and after every press, because a toggle that
+ * happened to submit the form would be the one regression a purely visual check misses.
  */
 async function authFormToggleChecks(devtools: Devtools): Promise<void> {
   const before = await read(devtools, AUTH_STATE, NO_AUTH_STATE)
@@ -1119,10 +1121,24 @@ async function authFormToggleChecks(devtools: Devtools): Promise<void> {
       : "the button did not keep the focus after the click, so Space had nothing to press",
   )
 
+  await pressKey(devtools, "Enter")
+  const afterEnter = await read(devtools, AUTH_STATE, NO_AUTH_STATE)
+
   check(
-    "neither press on the show/hide button submitted the form",
-    before.signIns === afterClick.signIns && afterClick.signIns === afterSpace.signIns,
-    `sign-ins stayed at "${before.signIns}" across both presses`,
+    "a real Enter press on the focused button reveals the password again",
+    afterSpace.toggleFocused && afterEnter.passwordType === "text" &&
+      afterEnter.togglePressed === "true",
+    afterSpace.toggleFocused
+      ? `type ${afterSpace.passwordType} → ${afterEnter.passwordType}, aria-pressed ` +
+        `${afterSpace.togglePressed} → ${afterEnter.togglePressed}`
+      : "the button did not keep the focus after Space, so Enter had nothing to press",
+  )
+
+  check(
+    "no press on the show/hide button submitted the form",
+    before.signIns === afterClick.signIns && afterClick.signIns === afterSpace.signIns &&
+      afterSpace.signIns === afterEnter.signIns,
+    `sign-ins stayed at "${before.signIns}" across all three presses`,
   )
 }
 
