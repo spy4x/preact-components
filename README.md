@@ -14,6 +14,10 @@ every package that ships, and it passes for all nine — the publishability swee
 `jsr:@preact-components/<name>` and installs with `deno add`. Until then there is nothing on JSR
 for `deno add` to find.
 
+No published file names a private application (#237). `deno task private-names <names-file>`
+re-checks that against every package's dry-run file list; the owner runs it before each publish —
+see [`docs/pre-publish-checks.md`](./docs/pre-publish-checks.md).
+
 ## Install
 
 Once published, each package below installs on its own:
