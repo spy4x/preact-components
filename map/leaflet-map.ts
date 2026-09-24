@@ -199,3 +199,54 @@ export function createLeafletMap(
     },
   }
 }
+
+/**
+ * Load Leaflet and mount the map, or report the failure without throwing.
+ *
+ * This is `map.tsx`'s mount effect's whole body, factored out so it is testable without a browser —
+ * `load` stands in for the dynamic `import("leaflet")`, the same way `SWUpdater`'s
+ * `serviceWorkerContainer` takes an injectable host — and so the effect itself stays a thin caller
+ * with nothing left in it worth a test of its own. A `leaflet` chunk can fail to load (a network
+ * blip, an ad blocker, a CDN outage on whatever serves the app's own bundle); left as a bare
+ * `import("leaflet")` with no `.catch`, that rejection reached nothing and surfaced only as an
+ * unhandled promise rejection in the console, while the box stayed empty forever with no signal
+ * anyone could act on.
+ *
+ * The failure is reported through `onLoadError`, a port, rather than rendered into the box: this
+ * package already has one documented way to show a message to a human — the `attribution` `<p>` and
+ * the marker `label`s are both plain application data, not application-chrome text this component
+ * owns copy for — and every other failure mode in the library that needs a human-readable message
+ * (`CompareChart`'s `onError` in `charts/`) is a port for the same reason: the host page, not this
+ * component, decides whether that becomes a toast, a logged event, a retry, or nothing a visitor
+ * ever sees. The box and the list both stay exactly as usable as they already were before the
+ * failure — the box keeps its size and the list keeps listing every place — because neither one
+ * depended on Leaflet having loaded in the first place.
+ *
+ * @param load Loads the Leaflet module — `() => import("leaflet")` in production.
+ * @param container The element to mount into.
+ * @param tileUrl Tile URL template.
+ * @param center Initial view centre.
+ * @param zoom Initial zoom.
+ * @param zoomLabels The zoom control's two tooltip/accessible-name strings.
+ * @param onLoadError Called, never thrown, if `load` rejects.
+ * @returns The live handle, or `undefined` if `load` rejected.
+ */
+export async function mountLeafletMap(
+  load: () => Promise<LeafletModule>,
+  container: HTMLElement,
+  tileUrl: string,
+  center: MapCenter,
+  zoom: number,
+  zoomLabels: ZoomLabels,
+  onLoadError: (error: unknown) => void,
+): Promise<LeafletMapHandle | undefined> {
+  let L: LeafletModule
+  try {
+    L = await load()
+  } catch (error) {
+    onLoadError(error)
+    return undefined
+  }
+
+  return createLeafletMap(L, container, tileUrl, center, zoom, zoomLabels)
+}

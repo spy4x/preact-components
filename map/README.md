@@ -24,19 +24,20 @@ separate step from importing the component.
 
 ## Props
 
-| Prop            | Type                           | Default      | Notes                                                                                                                      |
-| --------------- | ------------------------------ | ------------ | -------------------------------------------------------------------------------------------------------------------------- |
-| `center`        | `{ lat: number; lng: number }` | required     | View centre.                                                                                                               |
-| `zoom`          | `number`                       | required     | Leaflet zoom level.                                                                                                        |
-| `markers`       | `MapMarker[]`                  | required     | `{ id, lat, lng, label, status? }` — see below. See "What a new `markers` identity costs".                                 |
-| `onMarkerClick` | `(id: string) => void`         | required     | Called from a pin's pointer click, or a real Enter or Space press while the pin has focus.                                 |
-| `tileUrl`       | `string`                       | required     | Tile URL template, e.g. `"https://tile.example.com/{z}/{x}/{y}.png"`. No default — the application picks its own provider. |
-| `attribution`   | `string`                       | required     | The tile provider's required credit line, rendered as **plain text** — see "Security".                                     |
-| `class`         | `string`                       | —            | Extra classes on the map's own box; this is what sizes it (default `h-80 w-full`).                                         |
-| `label`         | `string`                       | `"Map"`      | Accessible name of the map region.                                                                                         |
-| `listLabel`     | `string`                       | `"Places"`   | Heading over the plain-text list.                                                                                          |
-| `zoomInLabel`   | `string`                       | `"Zoom in"`  | Leaflet's zoom-in control's tooltip and accessible name.                                                                   |
-| `zoomOutLabel`  | `string`                       | `"Zoom out"` | Leaflet's zoom-out control's tooltip and accessible name.                                                                  |
+| Prop            | Type                           | Default             | Notes                                                                                                                      |
+| --------------- | ------------------------------ | ------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `center`        | `{ lat: number; lng: number }` | required            | View centre.                                                                                                               |
+| `zoom`          | `number`                       | required            | Leaflet zoom level.                                                                                                        |
+| `markers`       | `MapMarker[]`                  | required            | `{ id, lat, lng, label, status? }` — see below. See "What a new `markers` identity costs".                                 |
+| `onMarkerClick` | `(id: string) => void`         | required            | Called from a pin's pointer click, or a real Enter or Space press while the pin has focus.                                 |
+| `tileUrl`       | `string`                       | required            | Tile URL template, e.g. `"https://tile.example.com/{z}/{x}/{y}.png"`. No default — the application picks its own provider. |
+| `attribution`   | `string`                       | required            | The tile provider's required credit line, rendered as **plain text** — see "Security".                                     |
+| `class`         | `string`                       | —                   | Extra classes on the map's own box; this is what sizes it (default `h-80 w-full`).                                         |
+| `label`         | `string`                       | `"Map"`             | Accessible name of the map region.                                                                                         |
+| `listLabel`     | `string`                       | `"Places"`          | Heading over the plain-text list.                                                                                          |
+| `zoomInLabel`   | `string`                       | `"Zoom in"`         | Leaflet's zoom-in control's tooltip and accessible name.                                                                   |
+| `zoomOutLabel`  | `string`                       | `"Zoom out"`        | Leaflet's zoom-out control's tooltip and accessible name.                                                                  |
+| `onLoadError`   | `(error: unknown) => void`     | logs to the console | Called if `import("leaflet")` fails. See "A failed Leaflet load" below.                                                    |
 
 `MapMarker.status` is `"on" | "off" | "unknown"`, optional; a marker with no `status` is treated as
 `"unknown"` — the same colour `theme/preset.css` already gives that state.
@@ -55,6 +56,21 @@ empty marker layer group, and two more effects keep it live: one calls `setView`
 `zoom` change, the other rebuilds the marker layer when `markers` changes. The map is torn down on
 unmount — the mount effect's cleanup calls the handle's `remove()`, Leaflet's own teardown of every
 DOM node and listener it attached.
+
+### A failed Leaflet load
+
+`import("leaflet")` can reject — a network blip, an ad blocker, a CDN outage on whatever serves the
+app's own bundle — and `leaflet-map.ts`'s `mountLeafletMap` (the mount effect's whole body, factored
+out so this is testable with no browser) never lets that rejection escape unhandled. It calls
+`onLoadError` instead of throwing, and mounts nothing.
+
+`onLoadError` is a port, not markup this component renders, because the right way to tell a visitor
+matters to the host page, not to this component: a toast, a logged event, a silent retry, or nothing
+a visitor ever sees — the same reasoning `charts/`'s `CompareChart` already applies to its own
+`onError`. Left unset, it logs the error to the console, so a failure is never silent even for a
+caller that supplies nothing. Either way, the box and the list both stay exactly as usable as they
+already were: the box keeps its size — nothing about it depended on Leaflet having loaded — and the
+list keeps listing every place, since it is plain data this component already had.
 
 ## Keyboard and screen readers
 
@@ -188,12 +204,36 @@ set once in this component's own JSX rather than in an effect, so it is present 
 render. Leaflet's own keyboard panning (`L.Map`'s `keyboard` option, default `true`, left untouched)
 makes that same element focusable and gives arrow-key/`+`/`-` navigation over the tiles — a different
 feature from marker selection, and one Leaflet already implements reasonably, so this package neither
-disables nor reimplements it. From a freshly focused map, Tab therefore visits the zoom control
-(labelled by `zoomInLabel`/`zoomOutLabel`), then every marker pin in order.
+disables nor reimplements it. From a freshly focused map, Tab therefore visits every marker pin, in
+order, and only then the zoom control (labelled by `zoomInLabel`/`zoomOutLabel`) — measured, not
+assumed. The reason is fixed at map construction, before this package's own code runs at all:
+`L.Map`'s `initialize` calls `_initPanes()`, which appends the pane that eventually holds every
+marker directly to the map's container, and only afterwards calls `_initControlPos()`, which appends
+a _second_, later sibling — `.leaflet-control-container`, the zoom buttons' real parent — to that
+same container. Markers added later land inside the pane, earlier in the container's children; the
+control the map already carries lands after it. Neither the order this package calls `addTo` in, nor
+`zoomControl: false` plus a hand-built control, changes that structural fact.
 
 The default zoom control is switched off and rebuilt by hand in `createLeafletMap` purely to reach
 its `zoomInTitle`/`zoomOutTitle` options — there is no way to pass those through `L.Map`'s own
 constructor options or to change them on the control after it is built.
+
+## The credit line's own pointer behaviour
+
+A plain Leaflet map's own, built-in attribution control sits _inside_ the map's container, in the
+region Leaflet's wheel-zoom handler watches. Leaflet applies `disableClickPropagation` to that
+control, which stops a click from reaching the map underneath — but not a wheel event, so scrolling
+the wheel over a plain map's own credit line still zooms the map underneath it. This component's
+credit line is a sibling of Leaflet's container instead, never a descendant of it — the same
+placement that keeps it from ever being collapsed, hidden or scrolled by anything Leaflet does to its
+own panes, and that makes it a real hit-test target `document.elementFromPoint` can find. Sitting
+outside the container, it is also outside the region Leaflet's own wheel handler watches at all, so a
+wheel over it scrolls the _page_, the way a wheel over any other piece of chrome next to the map
+already would — not the leaky zoom-through a plain Leaflet map has. A drag started on the credit line
+selects its text rather than panning the map, for the same reason: it is ordinary page text, not part
+of what Leaflet's own drag handling watches. Neither is treated as a defect needing map-specific
+pointer handling of its own; both are what a normal piece of page chrome next to the map already
+does.
 
 ## Do I need Leaflet?
 
@@ -225,12 +265,13 @@ deno test --allow-read --allow-env map/   # this package alone
 `map.test.tsx` and `marker-list.test.tsx` render with `preact-render-to-string` and assert on real
 markup — the server-rendered box, the attribution and marker-label escaping, the list's plain
 (non-interactive) rows and their names, the English defaults and their overrides. `leaflet-map.test.ts`
-covers the one part of the Leaflet-facing module that is plain data (the status → class lookup,
-checked against `theme/preset.css`) rather than DOM construction — everything else in
-`leaflet-map.ts` needs `document`, which this repository's test runner does not provide (see
-`AGENTS.md`). `leaflet-css.test.ts` reads the real, pinned `leaflet.css` and asserts a distinctive
-rule from it, so a broken resolution path fails here rather than silently shipping an empty
-stylesheet.
+covers the parts of the Leaflet-facing module that need no `document` — the status → class lookup,
+checked against `theme/preset.css`, and `mountLeafletMap`'s failure path, driven with a fake `load`
+that rejects, asserting `onLoadError` is called exactly once with the real error and nothing throws.
+Everything else in `leaflet-map.ts` needs `document`, which this repository's test runner does not
+provide (see `AGENTS.md`). `leaflet-css.test.ts` reads the real, pinned `leaflet.css` and asserts a
+distinctive rule from it, so a broken resolution path fails here rather than silently shipping an
+empty stylesheet.
 
 What none of that proves — a real map mounting, tiles loading from the local preview server, the
 attribution staying visible, the pin count matching the marker count, and the pins' own keyboard path

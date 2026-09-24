@@ -13,6 +13,11 @@
  * `cancelled` flag guards the case where the component unmounts while the dynamic `import()` is still
  * in flight, so a `leaflet` module that resolves after that point is never mounted at all.
  *
+ * **A failed `import("leaflet")` never throws.** `mountLeafletMap` (`leaflet-map.ts`) reports it
+ * through `onLoadError` instead — see that prop's own doc and function's own doc for why a port,
+ * rather than markup this component renders. The box and the list both stay exactly as usable as
+ * they were before the failure.
+ *
  * **Changing `center`, `zoom` or `markers` after mount updates the live map** — issue #143's own
  * words — rather than tearing it down and remounting: two effects below call `setView`/`setMarkers`
  * on the handle the mount effect produced, gated on `ready` so they do nothing until that handle
@@ -44,7 +49,7 @@
 import { cn } from "@preact-components/cn"
 import type { JSX } from "preact"
 import { useEffect, useRef, useState } from "preact/hooks"
-import { createLeafletMap, type LeafletMapHandle } from "./leaflet-map.ts"
+import { type LeafletMapHandle, mountLeafletMap } from "./leaflet-map.ts"
 import { MarkerList } from "./marker-list.tsx"
 import type { MapCenter, MapMarker } from "./types.ts"
 
@@ -85,6 +90,19 @@ export interface MapProps {
   zoomInLabel?: string
   /** Leaflet's zoom-out control's tooltip and accessible name. Defaults to `"Zoom out"`. */
   zoomOutLabel?: string
+  /**
+   * Called, never thrown, if Leaflet fails to load — a network blip, an ad blocker, a CDN outage on
+   * whatever serves the dynamic `import("leaflet")` chunk. The box and the list both stay exactly as
+   * usable as before the failure; this port is where the application decides whether that becomes a
+   * toast, a logged event, a retry, or nothing a visitor ever sees. Defaults to logging the error to
+   * the console, so a failure is never silent even for a caller that supplies nothing.
+   */
+  onLoadError?: (error: unknown) => void
+}
+
+/** {@link MapProps.onLoadError}'s default: visible in the console, silent to a visitor. */
+function logLoadError(error: unknown): void {
+  console.error("@preact-components/map: Leaflet failed to load", error)
 }
 
 /** The box's size when `class` does not override it — roomy enough to be useful in a demo, and
@@ -108,6 +126,7 @@ export function Map(
     listLabel = "Places",
     zoomInLabel = "Zoom in",
     zoomOutLabel = "Zoom out",
+    onLoadError = logLoadError,
   }: MapProps,
 ): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -125,19 +144,28 @@ export function Map(
   // `center`, `zoom` and `markers` as the props that update a live map — swapping the tile provider or
   // relabelling the zoom control after mount is not a behaviour this component promises, so both are
   // deliberately left out of the dependency list below.
+  //
+  // `mountLeafletMap` (in `leaflet-map.ts`) is the whole body of this effect, factored out so a
+  // failed `import("leaflet")` is testable without a browser: it never throws, and calls
+  // `onLoadError` instead — see that function's own doc for why a port rather than markup this
+  // component would render.
   useEffect(() => {
     let cancelled = false
+    if (!containerRef.current) return
 
-    import("leaflet").then((leafletModule) => {
-      if (cancelled || !containerRef.current) return
-      const handle = createLeafletMap(
-        leafletModule,
-        containerRef.current,
-        tileUrl,
-        center,
-        zoom,
-        { zoomInLabel, zoomOutLabel },
-      )
+    mountLeafletMap(
+      () => import("leaflet"),
+      containerRef.current,
+      tileUrl,
+      center,
+      zoom,
+      { zoomInLabel, zoomOutLabel },
+      onLoadError,
+    ).then((handle) => {
+      if (cancelled || !handle) {
+        handle?.remove()
+        return
+      }
       handleRef.current = handle
       setReady(true)
     })
