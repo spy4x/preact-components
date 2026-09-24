@@ -1,10 +1,12 @@
 /**
- * The two parts of the run ledger a browser cannot prove: that one package block's throw is
- * contained, and that the last line of the report says so.
+ * The parts of the run ledger a browser cannot prove: that one package block's throw is contained,
+ * that the last line of the report says so, and that `--only`'s block-name selection ({@link
+ * selectBlocks}) is what it claims to be.
  *
- * `verify.ts` needs a real browser and seven minutes to answer either question, which is why the
- * isolation and the summary line live on {@link Run} — an object this file drives with fake blocks
- * in milliseconds. Every case here holds one axis still and varies another: where the throwing
+ * `verify.ts` needs a real browser and seven minutes to answer any of these, which is why the
+ * isolation, the summary line and the selection logic live on plain objects and pure functions this
+ * file drives with fake blocks in milliseconds — {@link Run} for the first two, {@link selectBlocks}
+ * for the third. Every `Run` case here holds one axis still and varies another: where the throwing
  * block sits in the order, how many blocks throw, what kind of value is thrown, and whether the
  * block recorded any checks before it threw.
  */
@@ -19,6 +21,7 @@ import {
   DevtoolsClosedError,
   poll,
   Run,
+  selectBlocks,
 } from "./harness.ts"
 
 /** A block that records one passing check per name it is given and returns. */
@@ -357,6 +360,45 @@ describe("Run.reportLines", () => {
       "INCOMPLETE — 1/2 checks passed, but ui stopped part-way; " +
       "the totals count only the checks that ran",
     ])
+  })
+})
+
+describe("selectBlocks", () => {
+  it("keeps only the named blocks, in the input list's own order", () => {
+    const all = [passing("theme"), passing("icons"), passing("system"), passing("ui")]
+
+    const selection = selectBlocks(all, ["ui", "theme"])
+
+    expect(selection.selected.map((block) => block.name)).toEqual(["theme", "ui"])
+    expect(selection.excluded.map((block) => block.name)).toEqual(["icons", "system"])
+    expect(selection.unknown).toEqual([])
+  })
+
+  it("reports a name that matches no block as unknown, rather than dropping it silently", () => {
+    const all = [passing("theme"), passing("ui")]
+
+    const selection = selectBlocks(all, ["ui", "usi"])
+
+    expect(selection.unknown).toEqual(["usi"])
+    expect(selection.selected.map((block) => block.name)).toEqual(["ui"])
+  })
+
+  it("collapses a name repeated in `only` into one selected block", () => {
+    const all = [passing("theme"), passing("ui")]
+
+    const selection = selectBlocks(all, ["ui", "ui"])
+
+    expect(selection.selected.map((block) => block.name)).toEqual(["ui"])
+  })
+
+  it("selects nothing, and excludes every block, when `only` is empty", () => {
+    const all = [passing("theme"), passing("ui")]
+
+    const selection = selectBlocks(all, [])
+
+    expect(selection.selected).toEqual([])
+    expect(selection.excluded.map((block) => block.name)).toEqual(["theme", "ui"])
+    expect(selection.unknown).toEqual([])
   })
 })
 

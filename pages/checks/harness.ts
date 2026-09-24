@@ -251,6 +251,42 @@ export class Run {
   }
 }
 
+/** What restricting a full block list to a `--only` selection produced — see {@link selectBlocks}. */
+export interface BlockSelection<Context> {
+  /** The blocks to run, in the input list's own order, restricted to the names asked for. */
+  selected: readonly CheckBlock<Context>[]
+  /** Every block `all` had that `only` left out, in the original order. */
+  excluded: readonly CheckBlock<Context>[]
+  /** Names in `only` that matched no block in `all` — a typo, not a filter. */
+  unknown: readonly string[]
+}
+
+/**
+ * Restrict `all` to the blocks named in `only`, preserving `all`'s own order.
+ *
+ * Pure on purpose: `verify.ts`'s `--only` flag is the one caller, and this is what makes its
+ * selection logic testable without a browser. A name in `only` that matches nothing in `all` comes
+ * back in {@link BlockSelection.unknown} rather than being silently dropped — `verify.ts` turns
+ * that into a hard failure instead of quietly running fewer blocks than were asked for, which is
+ * the one way a `--only` typo could pass for a real result.
+ *
+ * @param all Every block, in run order.
+ * @param only Names asked for, in any order; a name repeated in `only` is not repeated in the
+ * result, since a block can only run once.
+ */
+export function selectBlocks<Context>(
+  all: readonly CheckBlock<Context>[],
+  only: readonly string[],
+): BlockSelection<Context> {
+  const wanted = new Set(only)
+  const known = new Set(all.map((block) => block.name))
+  return {
+    selected: all.filter((block) => wanted.has(block.name)),
+    excluded: all.filter((block) => !wanted.has(block.name)),
+    unknown: [...wanted].filter((name) => !known.has(name)),
+  }
+}
+
 /** The ledger the script itself writes to; `harness.test.ts` builds its own instead. */
 const currentRun = new Run()
 

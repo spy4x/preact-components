@@ -58,6 +58,21 @@ had executed. A `$CHROME_PATH` that does not run fails the same way, and says th
 did not run rather than falling back to some other browser on the machine.
 `deno task --cwd pages verify --static` is the one explicit way to leave the browser phase out.
 
+### Running one block alone
+
+`deno task --cwd pages verify --only=system` restricts the browser phase to one workspace package's
+own checks — `--only=system,ui` for more than one. It exists because reproducing a flake that only
+shows up when the other blocks are _not_ run first needs the other blocks left out, and before
+`#253` the only way to do that was to hand-edit `PACKAGE_BLOCKS` in `pages/verify.ts` and revert it
+afterward; three separate reviews had already done exactly that.
+
+This is a debugging tool, never a substitute for a full run, and the output says so loudly: a filtered
+run prints a banner naming the blocks it ran and the blocks it left out entirely, directly above the
+final summary line, so the totals can never be read as a full run's. CI never passes `--only`. An
+unknown block name is a failed check (`--only names only known package blocks`) rather than a run
+that silently did less than it was asked — `pages/checks/harness.test.ts`'s `selectBlocks` cases
+cover that and the ordering and de-duplication `pages/verify.ts` relies on.
+
 This is also the repository's browser test path, and CI runs it. `.github/workflows/pages.yml` runs
 `deno task check`, `deno task publish:dry`, the build and `verify` on every pull request into
 `main` and on every push to `main`, on a runner image that ships Google Chrome. The deploy job

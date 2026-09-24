@@ -18,6 +18,7 @@
  * ```bash
  * deno task build && deno task verify          # both phases
  * deno task verify --static                    # leave the browser out on purpose
+ * deno task verify --only=system               # only the system package's browser checks
  * ```
  *
  * **This is the repository's browser test path, and CI runs it.** Every unit test in the workspace
@@ -34,6 +35,12 @@
  * says which blocks, if any, are missing from the totals. `pages/checks/harness.ts` holds what more
  * than one of those files needs in common — the `Devtools` protocol client, the results ledger,
  * `poll` and `pressKey`.
+ *
+ * **`--only` is a debugging tool, never a substitute for a full run** (`#253`): reproducing a
+ * block-order-dependent flake needs the other blocks left out, which used to mean hand-editing
+ * `PACKAGE_BLOCKS` — three separate reviews already had to. `ONLY`'s own doc above covers what it
+ * does and the loud banner it prints; CI never passes it, and `pages/README.md` documents it for
+ * anyone reaching for it locally.
  */
 
 import { dirname, join } from "node:path"
@@ -56,6 +63,7 @@ import {
   pressKey,
   report,
   runBlocks,
+  selectBlocks,
 } from "./checks/harness.ts"
 import { iconsChecks } from "./checks/icons.ts"
 import {
@@ -82,6 +90,25 @@ const PAGES_DIRECTORY = dirname(fileURLToPath(import.meta.url))
 const DIST_DIRECTORY = join(PAGES_DIRECTORY, "dist")
 /** Base the artefact was built for. */
 const BASE = normalizeBase(Deno.env.get("PAGES_BASE") ?? DEFAULT_BASE)
+
+/**
+ * `--only=system` or `--only=system,ui` restricts the browser phase to just those package blocks —
+ * `undefined` when the flag was not passed, which is every CI run and almost every local one.
+ *
+ * This exists for the same reason a debugging tool a reviewer has already reinvented three times
+ * belongs in the repository rather than in a third reviewer's own scratch edit of `PACKAGE_BLOCKS`
+ * (`#253`): reproducing a block-order-dependent flake needs the *other* blocks left out, and hand-
+ * editing this file to do that is what every review before this one already resorted to. It is a
+ * debugging tool, not a substitute for a full run — see the loud banner this prints once the phase
+ * it restricted has finished, and `pages/README.md`'s "Running one block alone" section.
+ */
+const ONLY = (() => {
+  const arg = Deno.args.find((value) => value.startsWith("--only="))
+  if (!arg) return undefined
+  return arg.slice("--only=".length).split(",").map((name) => name.trim()).filter((name) =>
+    name.length > 0
+  )
+})()
 
 /** Executables tried, in order, when `CHROME_PATH` is unset. */
 const CHROMIUM_CANDIDATES = [
@@ -474,10 +501,36 @@ async function launchChromium(
  * instead of returning early.
  */
 async function browserPhase(): Promise<void> {
+  // `--only` is resolved and validated before `commitBlocks`, for the same reason that call is
+  // already first: an unknown block name is a misconfiguration this phase should refuse before it
+  // goes anywhere near a browser, not a failure buried among checks that never had anything to do
+  // with it.
+  let activeBlocks = PACKAGE_BLOCKS
+  if (ONLY) {
+    // `--only=` with nothing after the `=` parses to an empty list rather than `undefined` — still
+    // truthy, so still worth its own name here rather than silently selecting zero blocks and
+    // reporting a spotless "0/0 checks passed" for a run that touched nothing.
+    if (ONLY.length === 0) {
+      check("--only names at least one known package block", false, "--only was empty")
+      return
+    }
+    const selection = selectBlocks(PACKAGE_BLOCKS, ONLY)
+    if (selection.unknown.length > 0) {
+      check(
+        "--only names only known package blocks",
+        false,
+        `unknown: ${selection.unknown.join(", ")} — known blocks: ` +
+          PACKAGE_BLOCKS.map((block) => block.name).join(", "),
+      )
+      return
+    }
+    activeBlocks = selection.selected
+  }
+
   // Commit to the package blocks before anything can go wrong, so that a phase which dies during
   // startup still reports which blocks it meant to run. `--static` never reaches this line, which
   // is what keeps a deliberate skip from being reported as nine lost blocks.
-  commitBlocks(PACKAGE_BLOCKS.map((block) => block.name))
+  commitBlocks(activeBlocks.map((block) => block.name))
 
   // A missing browser is a failure, not a skip. This phase carries every assertion about behaviour
   // the markup cannot show, so a run that quietly dropped it and still exited 0 reported a green
@@ -531,7 +584,7 @@ async function browserPhase(): Promise<void> {
         await hoverCapability(devtools)
 
         if (hydrated) {
-          await runBlocks(PACKAGE_BLOCKS, devtools, resetAfterThrow)
+          await runBlocks(activeBlocks, devtools, resetAfterThrow)
         }
 
         const errors = devtools.problems()
@@ -712,5 +765,20 @@ if (Deno.args.includes("--static")) {
   console.log("\n--static — browser phase left out on purpose")
 } else {
   await browserPhase()
+  if (ONLY) {
+    const names = PACKAGE_BLOCKS.map((block) => block.name)
+    const excluded = names.filter((name) => !ONLY.includes(name))
+    // Printed right before `report()`'s own output, so it sits directly above the totals it
+    // qualifies rather than scrolling past in the middle of a package's own checks — a filtered
+    // run must never be mistaken for a full one, on the terminal or pasted into a pull request.
+    console.log(
+      `\n*** --only=${ONLY.join(",")} — THIS IS A FILTERED RUN, NOT A FULL ONE. ***\n` +
+        `Blocks that ran: ${names.filter((name) => ONLY.includes(name)).join(", ") || "(none)"}\n` +
+        `Blocks left out and NOT reflected in the totals below: ${
+          excluded.join(", ") || "(none)"
+        }\n` +
+        `CI never passes --only; this run's totals count only the blocks named above.`,
+    )
+  }
 }
 report()
