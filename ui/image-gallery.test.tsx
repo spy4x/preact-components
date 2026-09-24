@@ -14,7 +14,7 @@ const IMAGES: ImageGalleryImage[] = [
 ]
 
 describe("thumbnailKey", () => {
-  it("keeps a thumbnail's key stable when an earlier image is removed", () => {
+  it("keeps a thumbnail's key stable when an earlier, differently-sourced image is removed", () => {
     const before = [{ src: "a.png" }, { src: "b.png" }, { src: "c.png" }]
     const after = [{ src: "b.png" }, { src: "c.png" }] // "a.png" removed
 
@@ -23,6 +23,17 @@ describe("thumbnailKey", () => {
     // image once an earlier one is gone. A key by position alone gives "b.png" "1" before removal
     // and "0" after, which is a *different* key for the same image.
     expect(thumbnailKey(before, 1)).toBe(thumbnailKey(after, 0))
+  })
+
+  it("does not keep a later copy's key stable when an earlier copy of the same src is removed", () => {
+    // The one residual case this helper does not fix, documented rather than hidden: two
+    // thumbnails sharing a src still collide with each other if the earlier one goes, because the
+    // later one's own occurrence count recomputes. Narrower than the bug this replaces — it takes
+    // two thumbnails sharing a source, not any two thumbnails anywhere in the list.
+    const before = [{ src: "a.png" }, { src: "a.png" }, { src: "b.png" }]
+    const after = [{ src: "a.png" }, { src: "b.png" }] // the first "a.png" removed
+
+    expect(thumbnailKey(before, 1)).not.toBe(thumbnailKey(after, 0))
   })
 
   it("gives two thumbnails sharing one src different keys", () => {

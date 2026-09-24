@@ -66,9 +66,14 @@ const thumbImageClass = "size-20 object-cover sm:size-24"
  * and a focused thumbnail — or the lightbox's own focus-restore target, captured by reference at
  * open time — silently lands on a different image. `src` alone is not enough either: two
  * thumbnails can legitimately share one source (the same picture shown twice, captioned
- * differently), and a duplicate key would make Preact treat them as one element. The occurrence
- * count breaks that tie while staying stable under removal, because it only counts *earlier*
- * matching images, never the ones after.
+ * differently), and a duplicate key would make Preact treat them as one element.
+ *
+ * The occurrence count keeps a thumbnail's key stable when the image removed has a *different*
+ * `src`, which is the ordinary case this fixes. It is not stable against every removal: two
+ * thumbnails sharing one `src` still collide with each other if the earlier one is removed, since
+ * the later one's own occurrence count then recomputes to one less than it was. That residual case
+ * is narrower than the bug this replaces — it takes two thumbnails sharing a source, not any two
+ * thumbnails anywhere in the list — and is not fixed here.
  *
  * @param images The images the strip is drawing thumbnails for, in order.
  * @param index Position of the thumbnail to key, into `images`.
