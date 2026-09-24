@@ -18,6 +18,7 @@ import {
   Field,
   Input,
   InputButton,
+  MoneyInput,
   Radio,
   RadioGroup,
   Select,
@@ -338,6 +339,30 @@ function RadioDemo() {
   )
 }
 
+/**
+ * `EUR`, German locale, so the demo proves the same locale mark the issue's own example uses:
+ * typing `"12,5"` here is what `pages/checks/ui.ts` types to prove it lands on `1250`.
+ */
+function MoneyInputDemo() {
+  const amount = useSignal<number | null>(1999)
+  return (
+    <div class="max-w-xs space-y-2">
+      <Field id="guide-money-input" label="Price (EUR, German locale)">
+        <MoneyInput
+          value={amount.value}
+          currency="EUR"
+          locale="de"
+          name="guide-money-amount"
+          onChange={(value) => amount.value = value}
+        />
+      </Field>
+      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
+        amount: {amount.value === null ? "(empty)" : amount.value}
+      </p>
+    </div>
+  )
+}
+
 export const fieldDemos = {
   Field: {
     summary:
@@ -434,5 +459,19 @@ export const fieldDemos = {
   onClick={() => query.value = ""}
 />`,
     render: () => <InputButtonDemo />,
+  },
+  MoneyInput: {
+    summary:
+      'Text field for an amount in a currency\'s smallest unit: `value`/`onChange` carry the integer, `inputmode="decimal"` brings up the numeric keypad, and typing understands `locale`\'s own decimal mark — `"12,5"` with `locale="de"` becomes `1250`. Text that will not parse, or a parsed amount outside `min`/`max`, leaves `value` unchanged and announces a message; the typed text itself is never what a plain form post carries — pass `name` for a hidden field that posts the integer instead.',
+    snippet: `<Field id="price" label="Price">
+  <MoneyInput
+    value={amount.value}
+    currency="EUR"
+    locale="de"
+    name="price"
+    onChange={(value) => amount.value = value}
+  />
+</Field>`,
+    render: () => <MoneyInputDemo />,
   },
 } satisfies DemoFragment

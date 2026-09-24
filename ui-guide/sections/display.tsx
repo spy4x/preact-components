@@ -27,6 +27,7 @@ import {
   type ImageGalleryImage,
   Lightbox,
   type LightboxImage,
+  MoneyDisplay,
   pageRange,
   PageTitle,
   Pagination,
@@ -352,6 +353,26 @@ function ConfidenceMeterDemo() {
       {entries(scores).map(([key, score]) => (
         <ConfidenceMeter key={key} value={score.value} label={score.label} />
       ))}
+    </div>
+  )
+}
+
+/** Three currencies with a different decimal count each, plus one negative amount coloured. */
+function MoneyDisplayDemo() {
+  return (
+    <div class="space-y-1">
+      <p>
+        <MoneyDisplay amount={12345} currency="EUR" /> — two decimals
+      </p>
+      <p>
+        <MoneyDisplay amount={12345} currency="JPY" /> — none, the yen has no minor unit
+      </p>
+      <p>
+        <MoneyDisplay amount={12345} currency="KWD" /> — three, the Kuwaiti dinar's own count
+      </p>
+      <p>
+        <MoneyDisplay amount={-4599} currency="EUR" colorNegative /> — colorNegative
+      </p>
     </div>
   )
 }
@@ -892,6 +913,13 @@ export const displayDemos = {
       "Horizontal meter for a `0…100` score, banded into low / medium / high. Width is inline, so it is correct before hydration.",
     snippet: `<ConfidenceMeter value={88} label="match" />`,
     render: () => <ConfidenceMeterDemo />,
+  },
+  MoneyDisplay: {
+    summary:
+      "Renders an amount in a currency's smallest unit through `Intl.NumberFormat` — `amount={12345}` is €123.45 for `EUR`, ¥12,345 for `JPY` (no minor unit), and three decimals for `KWD`, each asked from `Intl` rather than assumed. `colorNegative` colours a negative amount red; every other style is the caller's own `class`.",
+    snippet: `<MoneyDisplay amount={12345} currency="EUR" />
+<MoneyDisplay amount={-4599} currency="EUR" colorNegative />`,
+    render: () => <MoneyDisplayDemo />,
   },
   Table: {
     summary:
