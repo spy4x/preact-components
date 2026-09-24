@@ -102,12 +102,20 @@ function readState(devtools: Devtools): Promise<MapState> {
         (atPoint === attribution || attribution.contains(atPoint))
     }
 
+    // Both directions: an ancestor of the wrapper (walking up) hides the whole list from assistive
+    // tech; aria-hidden on the ul itself, or on one row, hides only what is inside it — neither is
+    // "an ancestor of the wrapper", so a check that only walked up never saw either.
+    const ariaHiddenTrue = (el) => Boolean(el && el.getAttribute && el.getAttribute("aria-hidden") === "true")
     let listAriaHidden = false
     for (let el = list; el; el = el.parentElement) {
-      if (el.getAttribute && el.getAttribute("aria-hidden") === "true") {
+      if (ariaHiddenTrue(el)) {
         listAriaHidden = true
         break
       }
+    }
+    const ul = list ? list.querySelector("ul") : null
+    if (ariaHiddenTrue(ul) || listRows.some((row) => ariaHiddenTrue(row))) {
+      listAriaHidden = true
     }
 
     return {
@@ -299,33 +307,77 @@ async function domRootNodeId(devtools: Devtools): Promise<number> {
 }
 
 /**
+ * One source `Accessibility.getPartialAXTree` considered while computing an element's name — see
+ * {@link accessibleName}.
+ *
+ * Every source type the browser knows how to read a name from appears once per element, whether or
+ * not that attribute exists — a considered-but-absent `aria-label` reports
+ * `{ type: "attribute", attribute: "aria-label" }` with **no** `value` and **no** `superseded` key,
+ * the exact same absence of a `superseded` key a *winning* source has. Measured, not assumed: an
+ * earlier version of this check treated "not superseded" alone as proof `aria-label` won, and it
+ * stayed green after the line that sets `aria-label` was deleted, because the considered-but-absent
+ * entry is `!superseded` too. Requiring `value` to be present as well is what tells a source that
+ * genuinely won apart from one that was never there to begin with.
+ */
+interface AXNameSource {
+  /** The attribute this source reads, e.g. `"aria-label"` or `"title"` — absent for a source that
+   * is not attribute-based (an element's own text content, a related `aria-labelledby` element). */
+  attribute?: string
+  /** Present when this source actually had a value to offer, whether or not it went on to win —
+   * absent only when the attribute this source reads does not exist on the element at all. */
+  value?: unknown
+  /** `true` when a higher-priority source won instead — present only on a source that had a `value`
+   * and still lost; never present at all on one that was merely considered and found nothing. */
+  superseded?: boolean
+}
+
+/** What {@link accessibleName} reports about one element. */
+interface AXName {
+  /** The computed accessible name, or `undefined` if the selector matched nothing. */
+  value: string | undefined
+  /** Whether `aria-label` is present among the sources and is not superseded — the proof that the
+   * name in `value` actually came from `aria-label`, not merely that it reads the same as `title`
+   * or the element's text would have produced. */
+  fromAriaLabel: boolean
+}
+
+/**
  * Read one element's accessible name the way a screen reader would compute it, through the DevTools
  * `Accessibility` domain — not the DOM. This is what actually distinguishes `aria-label` from
  * `title` and from an element's own text content the way real assistive technology does; a check
- * that read `textContent` or a `title` attribute directly could pass for the wrong reason.
+ * that read `textContent` or a `title` attribute directly could pass for the wrong reason — and, per
+ * review, a check that only compares the *value* still passes when `aria-label` is deleted, because
+ * Leaflet's own `title` (set from the same `label`) computes to the identical string. `fromAriaLabel`
+ * is what closes that gap: it reads `sources`, the ranked list of every name source the browser
+ * considered, and is true only when `aria-label` is among them and was not superseded by a
+ * higher-priority source winning instead.
  *
  * @param devtools The connected session.
  * @param rootNodeId The document's root node id — see {@link domRootNodeId}; share one across every
  * call in the same batch rather than fetching a fresh root per call.
  * @param selector CSS selector for the element, matched against the whole document.
- * @returns The computed accessible name, or `undefined` if the selector matched nothing.
  */
 async function accessibleName(
   devtools: Devtools,
   rootNodeId: number,
   selector: string,
-): Promise<string | undefined> {
+): Promise<AXName> {
   const { nodeId } = await devtools.send<{ nodeId: number }>("DOM.querySelector", {
     nodeId: rootNodeId,
     selector,
   })
-  if (!nodeId) return undefined
+  if (!nodeId) return { value: undefined, fromAriaLabel: false }
 
-  const { nodes } = await devtools.send<{ nodes: Array<{ name?: { value?: string } }> }>(
-    "Accessibility.getPartialAXTree",
-    { nodeId, fetchRelatives: false },
+  const { nodes } = await devtools.send<
+    { nodes: Array<{ name?: { value?: string; sources?: AXNameSource[] } }> }
+  >("Accessibility.getPartialAXTree", { nodeId, fetchRelatives: false })
+
+  const name = nodes[0]?.name
+  const fromAriaLabel = (name?.sources ?? []).some(
+    (source) =>
+      source.attribute === "aria-label" && source.value !== undefined && !source.superseded,
   )
-  return nodes[0]?.name?.value
+  return { value: name?.value, fromAriaLabel }
 }
 
 /**
@@ -384,14 +436,19 @@ async function pinKeyboardChecks(devtools: Devtools): Promise<void> {
 
   await devtools.send("Accessibility.enable", {})
   const rootNodeId = await domRootNodeId(devtools)
-  const names: Array<string | undefined> = []
+  const names: AXName[] = []
   for (const id of PLACE_IDS) {
     names.push(await accessibleName(devtools, rootNodeId, `[data-marker-id="${id}"]`))
   }
   check(
     "every pin's real, screen-reader-computed accessible name equals its label",
-    names.every((name, index) => name === PLACE_LABELS[index]),
-    PLACE_IDS.map((id, index) => `${id}: "${names[index] ?? "(none)"}"`).join(", "),
+    names.every((name, index) => name.value === PLACE_LABELS[index]),
+    PLACE_IDS.map((id, index) => `${id}: "${names[index].value ?? "(none)"}"`).join(", "),
+  )
+  check(
+    "that name comes from aria-label specifically, not merely from title reading the same text",
+    names.every((name) => name.fromAriaLabel),
+    PLACE_IDS.map((id, index) => `${id}: fromAriaLabel=${names[index].fromAriaLabel}`).join(", "),
   )
 
   const beforeSpace = await lastClickedText(devtools)
