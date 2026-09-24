@@ -3983,6 +3983,10 @@ async function arrivingOptionsCheck(devtools: Devtools): Promise<void> {
     () => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.options > 0`),
     armed.delay * 4,
   )
+  // The highlight follows the options in a later commit than the one that drew them, so on a slow
+  // page it can still be on its way when the options already read as there (#269). Waited for,
+  // not read once; a combobox that never highlights still fails, on the reading below.
+  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.active !== null`), 3_000)
   const arrived = await devtools.evaluate<ComboboxReading>(COMBOBOX_STATE)
 
   // The same control again. It empties the list on the press and refills it after the delay, so
@@ -3997,6 +4001,8 @@ async function arrivingOptionsCheck(devtools: Devtools): Promise<void> {
     () => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.options === 0`),
     3_000,
   )
+  // The same for the highlight's departure.
+  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.active === null`), 3_000)
   const departed = await devtools.evaluate<ComboboxReading>(COMBOBOX_STATE)
 
   check(
@@ -4696,6 +4702,8 @@ async function dateRangeChecks(devtools: Devtools): Promise<void> {
     () => devtools.evaluate<boolean>(`${PICKER_STATE}.open === false`),
     3_000,
   )
+  // The focus goes back in an effect after the closing render; see `returnPathChecks` (#269).
+  await poll(() => devtools.evaluate<boolean>(`${PICKER_STATE}.onTrigger`), 3_000)
   const afterEscape = await devtools.evaluate<PickerState>(PICKER_STATE)
 
   check(
@@ -4816,6 +4824,10 @@ async function returnPathChecks(devtools: Devtools): Promise<void> {
       () => devtools.evaluate<boolean>(`${PICKER_STATE}.open === false`),
       3_000,
     )
+    // The focus goes back in an effect after the render that closed the panel, so on a slow page it
+    // can still be on its way when the panel already reads closed (#269). Waited for, not read once;
+    // a picker that never returns it still fails, with the reading below.
+    await poll(() => devtools.evaluate<boolean>(`${PICKER_STATE}.onTrigger`), 3_000)
     const after = await devtools.evaluate<PickerState>(PICKER_STATE)
 
     check(
