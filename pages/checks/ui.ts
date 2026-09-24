@@ -348,7 +348,8 @@ async function dropdownChecks(devtools: Devtools): Promise<void> {
   // `pressKey(devtools, "Enter")` genuinely activates a focused native button (#261) — breaking that
   // by dropping `text` from `KEYS.Enter` in `harness.ts` turns this check red.
   check(
-    "a real Enter press activates Dropdown's trigger, opening the menu and moving focus to its first item",
+    "a real Enter press activates Dropdown's trigger, opening the menu and moving focus to its " +
+      "first item",
     beforeEnterOpen.onTrigger && beforeEnterOpen.expanded === "false" &&
       openedByEnter.expanded === "true" && openedByEnter.inPanel &&
       openedByEnter.label === shape.labels[0],
@@ -432,7 +433,7 @@ async function dropdownChecks(devtools: Devtools): Promise<void> {
     return ${DROPDOWN_STATE}
   })()`)
   check(
-    "activating a Dropdown item closes the menu and returns focus to the trigger",
+    "clicking a Dropdown item closes the menu and returns focus to the trigger",
     beforeActivate.expanded === "true" && afterActivate.hidden && afterActivate.onTrigger,
     beforeActivate.expanded === "true"
       ? `clicked "${shape.labels[shape.labels.length - 1]}", aria-expanded ` +
