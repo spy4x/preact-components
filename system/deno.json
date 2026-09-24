@@ -9,7 +9,9 @@
     "./sw-updater": "./sw-updater.tsx",
     "./calendar": "./calendar.tsx",
     "./image-lightbox": "./image-lightbox.tsx",
-    "./site-header": "./site-header.tsx"
+    "./site-header": "./site-header.tsx",
+    "./shell": "./shell.tsx",
+    "./state-init": "./state-init.tsx"
   },
   "publish": {
     // Every `*.test.*` here renders to `preact-render-to-string` or drives Deno's fake timers; none
