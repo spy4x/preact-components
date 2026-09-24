@@ -7,11 +7,15 @@
  * question only: which calendar date the injected `now` falls on, answered by
  * {@link calendarDateInZone}, this module's single `Intl` call.
  *
- * Tradeoff: a date-only model cannot express one source application's sub-day frames
- * (`Last1Hour` … `Last24Hours`),
- * so they are not presets here; a caller that needs instants converts `from` to the start of that
- * day and `to` to the end of it in its own zone. Nothing in this file is locale-aware: it computes
- * dates and holds no copy at all, so nothing here needs a default or an override.
+ * Sub-day frames (`"last-hour"`, `"last-24-hours"`) are no longer absent: {@link DateTimeRange}
+ * keeps {@link DateRange}'s own `from`/`to` shape and adds a wall-clock time, and
+ * {@link rangeForTimePreset} computes the two of them the same way every preset here is computed —
+ * `now` and `timeZone` passed in, nothing read from the clock. They stay a separate, smaller family
+ * rather than two more members of {@link DateRangePreset}: their return shape is not `DateRange`,
+ * and folding a differently-shaped answer into one function would hand every existing caller of
+ * {@link rangeForPreset} a type they never asked for. Nothing in this file is locale-aware: it
+ * computes dates and times and holds no copy at all, so nothing here needs a default or an
+ * override.
  *
  * Supported window: the four-digit ISO years 0001–9999, e.g. every instant a UI clock can hold.
  * The window is four digits wide, not 0001 upward: year 0000 **is** a representable year — ISO 8601
@@ -431,5 +435,171 @@ export function presetForRange(
 
   return presets.find((preset) =>
     preset !== "custom" && isSameRange(rangeFromToday(preset, today), range)
+  )
+}
+
+const MS_PER_HOUR = 3_600_000
+
+/**
+ * Every sub-day preset the maths knows.
+ *
+ * Kept separate from {@link DateRangePreset} rather than added to it: each of these returns a
+ * {@link DateTimeRange}, a different shape from the plain calendar days {@link rangeForPreset}
+ * returns, and folding a differently-shaped answer into one function would hand every existing
+ * caller of it a type they never asked for.
+ */
+export type TimeRangePreset = "last-hour" | "last-24-hours"
+
+/** Canonical presentation order — the {@link TimeRangePreset} counterpart of {@link dateRangePresets}. */
+export const timeRangePresets: readonly TimeRangePreset[] = ["last-hour", "last-24-hours"]
+
+/**
+ * Inclusive wall-clock range, minute precision, in the caller's zone.
+ *
+ * Same shape as {@link DateRange} — `from`/`to` — carrying a time as well: `YYYY-MM-DDTHH:mm`. `to`
+ * is inclusive the same way {@link DateRange.to} is: the exact minute named is the last one in
+ * range, not the one before it.
+ *
+ * Nothing here converts a wall-clock string back to an instant, so the classic DST hazard — a wall
+ * time that is ambiguous (named twice, the hour a zone falls back) or that never happens (skipped,
+ * the hour a zone springs forward) — is never resolved by this module, because it is never asked
+ * to. {@link rangeForTimePreset} only goes the other way, instant to wall clock, which is always
+ * well-defined; the one place the ambiguous hour still shows through is documented there.
+ */
+export interface DateTimeRange {
+  /** Start of the range, inclusive, wall time in the caller's zone. */
+  from: string
+  /** End of the range, inclusive, wall time in the caller's zone. */
+  to: string
+}
+
+/** Options for {@link rangeForTimePreset}. */
+export interface RangeForTimePresetOptions {
+  /** Instant the preset is resolved against. Injected, never read from the clock. */
+  now: Date
+  /** IANA zone the wall time is expressed in, e.g. `"Europe/Berlin"`. */
+  timeZone: string
+}
+
+/**
+ * The wall-clock date and time an instant reads as in a zone, minute precision.
+ *
+ * `hourCycle: "h23"` rather than the `hour12: false` {@link calendarDateInZone} uses: some `Intl`
+ * implementations answer midnight as `"24:00"` under `hour12: false`, an hour
+ * {@link isValidDateTimeRange} would then have to reject as invalid input rather than a formatting
+ * quirk. Asking for `h23` outright keeps the hour field inside `00`–`23` at the source instead.
+ */
+function calendarDateTimeInZone(instant: Date, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(instant)
+  const field = (type: string) => parts.find((part) => part.type === type)?.value
+  const year = field("year")
+  const month = field("month")
+  const day = field("day")
+  const hour = field("hour")
+  const minute = field("minute")
+  if (!year || !month || !day || !hour || !minute) {
+    throw new Error(`could not read a calendar date and time in ${timeZone}`)
+  }
+  return `${year.padStart(4, "0")}-${month}-${day}T${hour}:${minute}`
+}
+
+/**
+ * The inclusive wall-clock range a sub-day preset describes, minute precision.
+ *
+ * Both ends are computed from real elapsed time — `now`'s instant, minus exactly one or
+ * twenty-four hours in milliseconds — and only then read as a wall clock in `timeZone`, the same
+ * order {@link rangeForPreset}'s own arithmetic keeps: fixed-step first, zone-aware read after.
+ * That order is what makes `"last-24-hours"` correct on the two days a year a zone's clocks
+ * change: the window is always exactly 24 real hours, which prints as 23 or 25 hours on the wall
+ * clock on the day it crosses a change, rather than the reverse — 24 wall-clock hours that are
+ * really 23 or 25 real ones, which is what stepping the clock back a day at a time would give.
+ *
+ * On the day a zone falls back, `"last-hour"` can answer a `from` and a `to` that print the exact
+ * same `YYYY-MM-DDTHH:mm` string despite being a real hour apart — one wall clock reading, at two
+ * different UTC offsets either side of the fall-back. Both strings are correct readings of their
+ * own instant, and {@link isValidDateTimeRange} still accepts the pair: a range whose ends read
+ * identically is `from <= to`, the same rule a one-day {@link DateRange} passes by design.
+ *
+ * @param preset The sub-day preset to resolve.
+ * @param options Injected instant and zone; see {@link RangeForTimePresetOptions}.
+ * @throws When `now` or `timeZone` cannot name a wall-clock date and time.
+ */
+export function rangeForTimePreset(
+  preset: TimeRangePreset,
+  options: RangeForTimePresetOptions,
+): DateTimeRange {
+  const { now, timeZone } = options
+  const hours = preset === "last-hour" ? 1 : 24
+  const from = new Date(now.getTime() - hours * MS_PER_HOUR)
+  return {
+    from: calendarDateTimeInZone(from, timeZone),
+    to: calendarDateTimeInZone(now, timeZone),
+  }
+}
+
+const ISO_DATE_TIME_PATTERN = /^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d$/
+
+/**
+ * Whether a {@link DateTimeRange} is two real wall-clock values, in order.
+ *
+ * The date half of each value is checked the way {@link isValidDateRange} checks a whole one —
+ * round-tripped through {@link parseIsoDate} — so `2026-02-31T10:00` is rejected for the same
+ * reason `2026-02-31` is. Ordering is a plain string comparison rather than a parse into instants:
+ * `YYYY-MM-DDTHH:mm` sorts lexicographically exactly the way it sorts chronologically as a nominal
+ * wall clock, so there is nothing here to convert and, per {@link DateTimeRange}'s own note,
+ * nothing to get wrong about a wall time a zone repeats or skips.
+ */
+export function isValidDateTimeRange(range: DateTimeRange): boolean {
+  if (!ISO_DATE_TIME_PATTERN.test(range.from) || !ISO_DATE_TIME_PATTERN.test(range.to)) {
+    return false
+  }
+  try {
+    parseIsoDate(range.from.slice(0, 10))
+    parseIsoDate(range.to.slice(0, 10))
+  } catch {
+    return false
+  }
+  return range.from <= range.to
+}
+
+function isSameDateTimeRange(a: DateTimeRange, b: DateTimeRange): boolean {
+  return a.from === b.from && a.to === b.to
+}
+
+/** Options for {@link presetForTimeRange}. */
+export interface PresetForTimeRangeOptions {
+  /** Instant the candidate ranges are resolved against. */
+  now: Date
+  /** IANA zone used to resolve the candidates' wall clock. */
+  timeZone: string
+  /** Candidates and their precedence. Defaults to {@link timeRangePresets}. */
+  presets?: readonly TimeRangePreset[]
+}
+
+/**
+ * The first sub-day preset whose range equals `range`, or `undefined` when none does — the
+ * {@link TimeRangePreset} counterpart of {@link presetForRange}.
+ *
+ * `"last-hour"` and `"last-24-hours"` keep moving with the clock, so a range built from what a
+ * person typed a minute ago rarely still equals either of them; this is for a caller that
+ * re-resolves against a fresh `now` to decide whether to keep highlighting one.
+ */
+export function presetForTimeRange(
+  range: DateTimeRange,
+  options: PresetForTimeRangeOptions,
+): TimeRangePreset | undefined {
+  if (!isValidDateTimeRange(range)) return undefined
+  const { now, timeZone, presets = timeRangePresets } = options
+
+  return presets.find((preset) =>
+    isSameDateTimeRange(rangeForTimePreset(preset, { now, timeZone }), range)
   )
 }
