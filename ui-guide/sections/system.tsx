@@ -58,7 +58,10 @@
  * the demo's own — one plain and one wrapped in a link, because "opens the lightbox instead of
  * following the link" is a claim that needs a link to be a claim at all. Two images is also what
  * makes the card honest about the shared `Lightbox` it now opens: with more than one image in the
- * sequence, Left and Right page between them and the previous/next buttons render.
+ * sequence, Left and Right page between them and the previous/next buttons render. A second,
+ * separate `ImageLightbox` instance on the same card, with `fallbackAlt=""`, shows the opposite
+ * case: one image with no description at all, inside its own link, that never becomes a zoom
+ * control and whose link a click still follows.
  *
  * `AuthForm` gets two cards. The first mounts two instances side by side, sign-in and sign-up,
  * which is the card a password manager or `pages/checks/system.ts` reads: real `<form>`s, real
@@ -583,6 +586,14 @@ function placeholder(fill: string): string {
  * wrapped in a link on purpose: the component cancels the event it opens on, so the lightbox opens
  * and the link is not followed. Without JavaScript that link is simply a link, which is the whole
  * progressive-enhancement claim in one element.
+ *
+ * A second, separate `[data-lightbox-bare]` container and its own `<ImageLightbox fallbackAlt="">`
+ * show the opposite case: one image with no `alt` attribute at all, wrapped in a link, and
+ * `fallbackAlt` turned off so nothing substitutes a name for it. That image is never marked a zoom
+ * control — no Tab stop, no role, no name a reader could act on — and a click on it is left for the
+ * browser's own default action, so the link it sits in still works. The other two images above keep
+ * the card's default `fallbackAlt`, unaffected by the second instance: each already carries a real
+ * `alt`, which `fallbackAlt` never overrides.
  */
 function ImageLightboxDemo() {
   return (
@@ -611,6 +622,23 @@ function ImageLightboxDemo() {
         </a>
       </div>
       <ImageLightbox />
+      <div data-e2e="lightbox-bare" data-lightbox-bare class="flex flex-wrap items-start gap-3">
+        <p class="w-full text-xs text-gray-500 dark:text-gray-400">
+          With{" "}
+          <code>fallbackAlt=""</code>, an image with no description at all is not a zoom control —
+          it stays a plain image, and the link below still works.
+        </p>
+        <a href="#lightbox-bare-target" data-e2e="lightbox-bare-link" class="inline-block">
+          <img
+            data-e2e="lightbox-bare-image"
+            src={placeholder("9ca3af")}
+          />
+        </a>
+        <span id="lightbox-bare-target" class="text-xs text-gray-500 dark:text-gray-400">
+          (the link's target)
+        </span>
+      </div>
+      <ImageLightbox containerSelector="[data-lightbox-bare]" fallbackAlt="" />
     </div>
   )
 }

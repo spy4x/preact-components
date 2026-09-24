@@ -72,7 +72,7 @@ function placeholder(fill: string, width = 320, height = 200): string {
  * Four described images and one without a description in the middle of them, so the card shows
  * both halves of the contract with the harder case exercised rather than the easy one: the strip
  * and the lightbox page through the four described images in order, skipping straight from the
- * second to what would be the fourth position — the one — passed in like any other — that
+ * second to what would otherwise be the fourth — the middle one, passed in like any other, is what
  * {@link describedImages} drops before render.
  */
 const galleryImages: ImageGalleryImage[] = [
@@ -113,15 +113,20 @@ function ImageGalleryDemo() {
 /** The three described images, for the standalone `Lightbox` card below. */
 const lightboxImages: LightboxImage[] = galleryImages.slice(0, 3)
 
+/** The one image {@link LightboxDemo}'s fourth button tries to open — undescribed, on purpose. */
+const undescribedLightboxImage: LightboxImage = { src: placeholder("6b7280"), alt: "  " }
+
 /**
  * `Lightbox` on its own, outside `ImageGallery` — the building block `system/image-lightbox.tsx`'s
  * content mode is the other caller of. Nothing here draws thumbnails: the three buttons stand in
  * for whatever trigger a caller already has, each opening the dialog on a different position, so
  * the card also shows that `index` and `open` are the caller's own state rather than the
- * component's.
+ * component's. The fourth button tries to open a second, separate `Lightbox` fed one undescribed
+ * image, so the card also shows the refusal `canOpen` makes when there is nothing to show.
  */
 function LightboxDemo() {
   const openIndex = useSignal<number | null>(null)
+  const emptyOpen = useSignal(false)
 
   return (
     <div class="space-y-2">
@@ -136,6 +141,14 @@ function LightboxDemo() {
             Open "{image.alt}"
           </Button>
         ))}
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="lightbox-empty-open"
+          onClick={() => emptyOpen.value = true}
+        >
+          Open with no description
+        </Button>
       </div>
       <Lightbox
         images={lightboxImages}
@@ -144,9 +157,29 @@ function LightboxDemo() {
         onClose={() => openIndex.value = null}
         onIndexChange={(next) => openIndex.value = next}
       />
+      {
+        /*
+          A second, separate `Lightbox` fed one image with no description, so the fourth button
+          can try to open a sequence `describedImages` leaves empty — proving `canOpen`'s refusal
+          needs a real dialog to ask `showModal()` whether it ran, which no server-rendered markup
+          can show: the closed and the refused-open states render identically. Wrapped in its own
+          `data-e2e` so `pages/checks/ui.ts` can tell its `<dialog>` apart from the one above.
+        */
+      }
+      <div data-e2e="lightbox-empty">
+        <Lightbox
+          images={[undescribedLightboxImage]}
+          index={0}
+          open={emptyOpen.value}
+          onClose={() => emptyOpen.value = false}
+          onIndexChange={() => {}}
+        />
+      </div>
       <p class="text-xs text-gray-500 dark:text-gray-400">
         Left and Right page through the three images while the dialog is open; Escape closes it and
-        returns focus to whichever button opened it.
+        returns focus to whichever button opened it. The fourth button opens a lightbox whose one
+        image has no description — nothing happens, because <code>describedImages</code>{" "}
+        leaves it nothing to show.
       </p>
     </div>
   )
