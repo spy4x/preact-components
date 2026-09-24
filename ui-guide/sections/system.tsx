@@ -56,7 +56,9 @@
  *
  * `ImageLightbox` renders its dialog closed, with nothing else to pin, and the images beside it are
  * the demo's own — one plain and one wrapped in a link, because "opens the lightbox instead of
- * following the link" is a claim that needs a link to be a claim at all.
+ * following the link" is a claim that needs a link to be a claim at all. Two images is also what
+ * makes the card honest about the shared `Lightbox` it now opens: with more than one image in the
+ * sequence, Left and Right page between them and the previous/next buttons render.
  *
  * `AuthForm` gets two cards. The first mounts two instances side by side, sign-in and sign-up,
  * which is the card a password manager or `pages/checks/system.ts` reads: real `<form>`s, real
@@ -1263,7 +1265,7 @@ const state = readStateInit<{ userId: string; features: string[] }>()`,
   },
   ImageLightbox: {
     summary:
-      "Makes the images inside a container zoomable through a native `<dialog>` lightbox. Progressive enhancement in the strict sense: the server renders the page and this only adds a zoom layer after hydration, so a reader without JavaScript loses a zoom they never had. The layer is delegated to the container — one listener rather than one per image, and images arriving later still work. **A zoomable image behaves like a button**: it takes a Tab stop, carries a button's role and a name saying what it does, and opens with Enter or Space, with Space cancelled so the page does not scroll away underneath. A click or an Enter press is cancelled too, so the second image below opens the lightbox instead of following the link it sits in. **The `<dialog>` is the component's real output and it is really closed** until an image is opened. Escape closes it natively and a click on the backdrop closes it, which is only true because the image is positioned inside the dialog rather than filling it — a child that covers the dialog is a backdrop no click can reach. Every string it shows is a prop with an English default.",
+      "Makes the images inside a container zoomable, opening `@preact-components/ui`'s shared `Lightbox` — the same dialog `ImageGallery` opens on a thumbnail. Progressive enhancement in the strict sense: the server renders the page and this only adds a zoom layer after hydration, so a reader without JavaScript loses a zoom they never had. The layer is delegated to the container — one listener rather than one per image, and images arriving later still work. **A zoomable image behaves like a button**: it takes a Tab stop, carries a button's role and a name saying what it does, and opens with Enter or Space, with Space cancelled so the page does not scroll away underneath. A click or an Enter press is cancelled too, so the second image below opens the lightbox instead of following the link it sits in. **The dialog is the component's real output and it is really closed** until an image is opened. Escape closes it natively and a click on the backdrop closes it, which is only true because the image is positioned inside the dialog rather than filling it — a child that covers the dialog is a backdrop no click can reach. **Previous and next page through the container's other zoomable images**, snapshotted at the moment one opens — the two images below are what makes that a claim the card can show rather than describe. Every string it shows is a prop with an English default.",
     snippet: `<ImageLightbox
   containerSelector="[data-lightbox]"
   fallbackAlt="Figure"

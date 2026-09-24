@@ -22,6 +22,11 @@ import {
   CopyableText,
   CopyableTextBody,
   DataTable,
+  describedImages,
+  ImageGallery,
+  type ImageGalleryImage,
+  Lightbox,
+  type LightboxImage,
   pageRange,
   PageTitle,
   Pagination,
@@ -53,6 +58,97 @@ const inlineAvatar = `data:image/svg+xml,${
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#9333ea"/></svg>',
   )
 }`
+
+/**
+ * A flat placeholder rectangle, as a data URI, so `ImageGallery` and `Lightbox`'s cards need no
+ * image asset and no network — the same reason `pages/checks/system.ts`'s `ImageLightbox` card
+ * uses one.
+ */
+function placeholder(fill: string, width = 320, height = 200): string {
+  return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='${width}' height='${height}'%3E%3Crect width='${width}' height='${height}' fill='%23${fill}'/%3E%3C/svg%3E`
+}
+
+/**
+ * Four described images and one without a description, so the card can show both halves of the
+ * contract: the strip and the lightbox page through the first four, and the fifth — passed in like
+ * any other — never reaches either, because {@link describedImages} drops it before render.
+ */
+const galleryImages: ImageGalleryImage[] = [
+  { src: placeholder("9333ea"), alt: "A purple rectangle" },
+  {
+    src: placeholder("2563eb"),
+    alt: "A blue rectangle",
+    thumbSrc: placeholder("2563eb", 96, 96),
+  },
+  { src: placeholder("16a34a"), alt: "A green rectangle" },
+  { src: placeholder("ea580c"), alt: "An orange rectangle" },
+  { src: placeholder("6b7280"), alt: "  " },
+]
+
+/**
+ * The thumbnail strip, opening `Lightbox` on the one pressed.
+ *
+ * The fifth image, whose `alt` is whitespace, is passed in exactly like the other four — the card
+ * shows the count `describedImages` keeps, rather than trusting a claim about what a reader cannot
+ * otherwise see: a sixth thumbnail would be the tell that the rule had quietly stopped holding.
+ */
+function ImageGalleryDemo() {
+  const shown = describedImages(galleryImages)
+
+  return (
+    <div class="space-y-2">
+      <ImageGallery images={galleryImages} />
+      <p class="text-xs text-gray-500 dark:text-gray-400">
+        {galleryImages.length} images passed in, {shown.length} shown — the one whose{" "}
+        <code>alt</code>{" "}
+        is blank after trimming is dropped from the strip and from the lightbox's sequence, not
+        rendered with a placeholder name.
+      </p>
+    </div>
+  )
+}
+
+/** The three described images, for the standalone `Lightbox` card below. */
+const lightboxImages: LightboxImage[] = galleryImages.slice(0, 3)
+
+/**
+ * `Lightbox` on its own, outside `ImageGallery` — the building block `system/image-lightbox.tsx`'s
+ * content mode is the other caller of. Nothing here draws thumbnails: the three buttons stand in
+ * for whatever trigger a caller already has, each opening the dialog on a different position, so
+ * the card also shows that `index` and `open` are the caller's own state rather than the
+ * component's.
+ */
+function LightboxDemo() {
+  const openIndex = useSignal<number | null>(null)
+
+  return (
+    <div class="space-y-2">
+      <div class="flex flex-wrap gap-2">
+        {lightboxImages.map((image, index) => (
+          <Button
+            key={image.src}
+            variant="outline"
+            size="sm"
+            onClick={() => openIndex.value = index}
+          >
+            Open "{image.alt}"
+          </Button>
+        ))}
+      </div>
+      <Lightbox
+        images={lightboxImages}
+        index={openIndex.value ?? 0}
+        open={openIndex.value !== null}
+        onClose={() => openIndex.value = null}
+        onIndexChange={(next) => openIndex.value = next}
+      />
+      <p class="text-xs text-gray-500 dark:text-gray-400">
+        Left and Right page through the three images while the dialog is open; Escape closes it and
+        returns focus to whichever button opened it.
+      </p>
+    </div>
+  )
+}
 
 /** Every size the primitive accepts — a size added to `AvatarSize` does not compile until shown. */
 const avatarSizes: Record<AvatarSize, string> = {
@@ -906,5 +1002,28 @@ export const displayDemos = {
   <button type="button">Archive</button>
 </Tooltip>`,
     render: () => <TooltipDemo />,
+  },
+  ImageGallery: {
+    summary:
+      "A strip of thumbnails — real `<button>` elements, named by each image's `alt` — that opens `Lightbox` on the one pressed. `images` is `{ src, alt, thumbSrc? }`; `thumbSrc` is the thumbnail's own source and defaults to `src` when left out. An image whose `alt` is empty after trimming is dropped before render, not in the strip and not in the lightbox's sequence, and this is silent — `alt` is already required by the type, so an empty one only reaches this component through a caller that bypassed it.",
+    snippet: `<ImageGallery
+  images={[
+    { src: hero, alt: "A hero shot" },
+    { src: team, alt: "The team", thumbSrc: teamThumb },
+  ]}
+/>`,
+    render: () => <ImageGalleryDemo />,
+  },
+  Lightbox: {
+    summary:
+      "The dialog `ImageGallery` and `system/image-lightbox.tsx`'s content mode both open: the current image, its `alt` as a caption, labelled previous/next, a \"3 of 8\" counter announced through a live region that is present whether the dialog is open or not. `images`, `index`, `open`, `onClose` and `onIndexChange` are all the caller's own state — built on a native `<dialog>` rather than `ui/Modal`, so a listener can be attached to the dialog itself for Left and Right; see the component's own doc for what about `Modal` did not fit. Escape and a backdrop click close it natively, and focus returns to whatever had it before the dialog opened.",
+    snippet: `<Lightbox
+  images={images}
+  index={index}
+  open={open}
+  onClose={() => setOpen(false)}
+  onIndexChange={setIndex}
+/>`,
+    render: () => <LightboxDemo />,
   },
 } satisfies DemoFragment
