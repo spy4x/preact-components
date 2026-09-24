@@ -18,6 +18,7 @@ its own PR, each owning exactly one top-level directory.
 | `cn/`       | `cn()` — class-name join + Tailwind conflict resolution                                              |
 | `signals/`  | buildModelStore, useUrlFilters, table-state, theme, toast, patchSignal — and the rest; no components |
 | `crud/`     | CrudList, CrudEditor, AssociationEditor                                                              |
+| `map/`      | `Map` on Leaflet — its own package, so only an app that imports it resolves Leaflet                  |
 | `ui-guide/` | live component catalogue route                                                                       |
 | `pages/`    | demo app (GitHub Pages site and the browser checks under `pages/checks/`), not published             |
 
@@ -64,10 +65,12 @@ Rules for a package config:
 
 - `name` is `@preact-components/<directory>` — that is how sibling packages import you.
 - `exports` lists exactly the entry points that exist today. Adding a file does not add an export.
-- Do not add an `imports` block unless you need a specifier the root does not provide — `d3` is
-  the one exception already in the tree, pinned only in `charts/deno.json` because a single module
-  uses it. Shared deps (preact, signals, arktype, tailwind, `@std/*`, tailwind-merge, wouter-preact)
-  live in the root import map so every package resolves one copy.
+- Do not add an `imports` block unless you need a specifier the root does not provide. Three
+  packages do, each because only it needs the dependency: `charts/deno.json` pins `d3`,
+  `map/deno.json` pins `leaflet` and `@types/leaflet`, and `ui/deno.json` pins the one module of
+  `@spy4x/platform` that `ExportButton` downloads through. Shared deps (preact, signals, arktype,
+  tailwind, `@std/*`, tailwind-merge, wouter-preact) live in the root import map so every package
+  resolves one copy.
 - Sibling imports use the member name: `import { cn } from "@preact-components/cn"`.
 
 Type-checking, formatting, linting and tests are discovered by walking the tree, so a new package is
@@ -191,8 +194,11 @@ names passed to `check(...)` — each one says in a sentence what it proves. Tre
 whose check you cannot find as unproven rather than as working.
 
 Two facts about that browser, both measured rather than assumed, and both worth knowing before you
-write a check: a real Enter press does **not** activate a focused button there, so a trigger is
-activated with a click and the check says so; a real Space press **does**. The browser is launched
+write a check. First: `pressKey` in `pages/checks/harness.ts` sends Enter without its text, and
+Chromium activates a focused button on Enter only when the key-down carries `text: "\r"` — so
+`pressKey(devtools, "Enter")` does **not** activate a button, while a check that sends its own
+`Input.dispatchKeyEvent` with that text does (#261 tracks fixing `pressKey`); a real Space press
+activates one either way. The browser is launched
 with a `--blink-settings` flag in `pages/verify.ts` that gives it a hover-capable, fine pointer —
 headless Chromium otherwise answers `(hover: none)` and `(pointer: none)`, and Tailwind compiles
 every `hover:` and `group-hover:` utility inside `@media (hover: hover)`. So hover styles do apply,
@@ -220,14 +226,33 @@ down:
 - The published GitHub Pages site answers a POST with 405. A form's no-JavaScript path is proven
   against the local preview server, which serves the page for a POST too.
 
+And in wave six:
+
+- The catalogue scrolls itself on load: `DeletionValidation`'s demo smooth-scrolls the page down
+  to its card after hydration (#255). `verify` waits for that scroll to stop before the first
+  block runs, as a named check, so a block run alone does not aim at a moving page.
+- A check that clicks a link should read `defaultPrevented` from a `document` listener that then
+  cancels the event, rather than let the page really navigate: a real navigation leaves the page
+  moving after the check's own wait returns, and a later check pays for it.
+- `settledScroll` returns once two reads 100 ms apart agree, so it cannot tell a scroll that has
+  not started from one that has stopped. Under heavy load that is enough for an aim to miss (#269).
+- A download in a check really saves a file unless the browser is told otherwise. `verify` denies
+  downloads for the whole run (`Browser.setDownloadBehavior`, falling back to
+  `Page.setDownloadBehavior`); a check observes the file's bytes inside the page instead.
+- Deno refuses to resolve a registry version younger than 24 hours unless the lockfile already
+  records it. A dependency published the same day resolves in CI only because `deno.lock` is
+  committed with it.
+
 `verify` bounds itself: each browser launch attempt has its own deadline and is retried once, the
 browser phase has a five-minute deadline, a dead browser fails the run naming the last check that
 passed, and teardown runs on SIGINT, SIGTERM and SIGHUP as well: it closes the browser over
 DevTools, then kills only processes whose command line carries this run's exact `--user-data-dir`.
 Chromium's crash-reporter processes carry no profile argument; they exit on their own shortly after
-the browser. `verify` fails when it finds no browser; `--static` is the one explicit way to leave the browser phase out. The
-GitHub workflow runs `check`, `publish:dry`, the build and `verify` on every pull
-request into `main`, and the Pages deploy waits for them.
+the browser. `verify` fails when it finds no browser. `--static` leaves the browser phase out, and
+`--only=<block>[,<block>]` runs only the named package blocks and says so on the run's last line
+(`FILTERED: ran …`); neither is a full run, and CI passes neither. The GitHub workflow runs
+`check`, `publish:dry`, the build and `verify` on every pull request into `main`, and the Pages
+deploy waits for them.
 
 If a task fails because a specifier cannot be resolved, run the task that needs the new dependency once
 with network access and commit the updated `deno.lock`. **This is a convenience, not a gate:** a stale
@@ -332,8 +357,10 @@ tailwind-merge                   3.7.0
 tailwindcss                     4.1.12
 ```
 
-`d3@7.9.0` is not in this list: it is pinned once, in `charts/deno.json`, not at the root — see
-"Adding a package" above. Everything else here resolves through the root import map.
+Three pins are not in this list, because each is pinned once in the one package that needs it, not
+at the root — see "Adding a package" above: `d3@7.9.0` in `charts/deno.json`, `leaflet@1.9.4` and
+`@types/leaflet@1.9.22` in `map/deno.json`, and `jsr:@spy4x/platform@1.1.0/browser/download` in
+`ui/deno.json`. Everything else here resolves through the root import map.
 
 **What is mechanically checked, and what is not.** Assume nothing here is. Exact pinning is a
 convention held by review: `deno.lock` is committed and Deno keeps it in sync automatically, but it is

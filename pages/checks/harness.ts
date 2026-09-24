@@ -184,7 +184,7 @@ export class Run {
         // check function reads the same as any other throw without this, and a review of this PR
         // found exactly that: a dead browser reported as a failure of whichever component happened
         // to be mid-check when it died. `lastPassedCheck`, not `lastCheck`: an earlier version named
-        // `lastCheck` here, which a second review caught naming a *previous* block's own failure
+        // `lastCheck` here, which review caught naming a *previous* block's own failure
         // marker ("the theme checks ran to completion", itself recorded with `ok: false`) as though
         // it were a check that had passed.
         const last = this.lastPassedCheck?.name
@@ -316,7 +316,7 @@ export function commitBlocks(names: readonly string[]): void {
  * Pure so it is testable without the module-level `Run` singleton. A committed block is not
  * necessarily a block that ran: a run whose browser never starts commits its blocks and then marks
  * every one of them {@link BlockOutcome.NeverRan}. Naming committed blocks as "ran" printed `ran
- * system` under a summary that said `system never ran` (`#253`'s third review).
+ * system` under a summary that said `system never ran` (found in the review of #254).
  *
  * @param blocks A run's committed blocks with how each ended — {@link Run.blocks}.
  */
@@ -340,7 +340,7 @@ export function ranBlockNames(): readonly string[] {
  *
  * Pure so the text is testable without a browser. `verify.ts`'s `filteredRunNote` is the one
  * caller and passes {@link ranBlockNames} as `ran` — never the raw `--only` request, which named
- * blocks that had not run whenever the request was refused (`#253`'s second review).
+ * blocks that had not run whenever the request was refused (found in the review of #254).
  *
  * @param all Every package block's name, in run order.
  * @param ran The blocks that ran, in whole or in part; empty when none did.
@@ -511,12 +511,12 @@ export async function poll(predicate: () => Promise<boolean>, timeoutMs: number)
  * Moved here from `checks/ui.ts` (`#225`, `#238`) once `checks/pages.ts` needed the same wait for a
  * route's scroll rather than a fixed delay — one helper, not two copies drifting apart.
  *
- * The return value is new (`#253`'s second review): every existing caller already ignores it, so
- * adding it changes nothing for them, but `verify.ts`'s one-time settle before `runBlocks` needs to
- * tell "the page had already stopped" apart from "the budget ran out while it was still moving" —
- * this function cannot itself distinguish "never started scrolling" from "settled instantly", which
- * both read as `true` on the first two-reads-agree check, but a caller that only cares whether the
- * budget was enough does not need that distinction.
+ * The return value is new (added in the review of #254): every existing caller already ignores it,
+ * so adding it changes nothing for them, but `verify.ts`'s one-time settle before `runBlocks` needs
+ * to tell "the page had already stopped" apart from "the budget ran out while it was still moving"
+ * — this function cannot itself distinguish "never started scrolling" from "settled instantly",
+ * which both read as `true` on the first two-reads-agree check, but a caller that only cares
+ * whether the budget was enough does not need that distinction.
  *
  * @param devtools The connected session.
  * @param timeoutMs How long to wait for two consecutive reads to agree before giving up.

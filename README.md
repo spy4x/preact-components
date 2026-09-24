@@ -9,7 +9,7 @@ Demo: https://spy4x.github.io/preact-components
 ## Status
 
 Pre-1.0, not yet published to JSR. `deno task publish:dry` runs `deno publish --dry-run` for
-every package that ships, and it passes for all nine — the publishability sweep in #223 is done.
+every package that ships, and it passes for all ten — the publishability sweep in #223 is done.
 "Published" will mean each package below resolves as
 `jsr:@preact-components/<name>` and installs with `deno add`. Until then there is nothing on JSR
 for `deno add` to find.
@@ -31,16 +31,19 @@ deno add jsr:@preact-components/charts    # server-rendered SVG kit + d3 wrapper
 deno add jsr:@preact-components/system    # AuthForm, Calendar, ImageLightbox, SEOHead, Shell, SiteHeader, StateInit, SWUpdater
 deno add jsr:@preact-components/ui        # Badge, Button, Table, DataTable, Dropdown, Combobox, Modal, Tooltip, Toastr — and the rest
 deno add jsr:@preact-components/crud      # CrudList, CrudEditor, AssociationEditor
+deno add jsr:@preact-components/map       # Map on Leaflet (resolves leaflet)
 deno add jsr:@preact-components/ui-guide  # the live component catalogue, as a component your app renders
 ```
 
-Reading each package's own `deno.json`: `system` and `ui` both import `cn` and `icons`; `ui` also
-imports `signals`, for its toast port and, since `DataTable` (#231), for `table-state`; `crud`
-imports `ui`, `cn`, `icons` and `signals`; `ui-guide` imports `ui`, `cn`, `icons`, `signals` and
-`charts` the same way, plus `crud` and `system` directly for their catalogue sections — the full
-set a `ui-guide` install resolves. `cn`, `icons`, `signals`, `theme` and `charts` import no sibling
-package. JSR resolves a package's own dependencies the way npm does, so installing `ui` also
-resolves `cn` and `icons` — neither needs adding by hand.
+Reading each package's sources: `system` and `ui` both import `cn` and `icons`; `system` also
+imports `ui` (`AuthForm`, `Shell` and `ImageLightbox` render its components); `ui` also imports
+`signals`, for its toast port and, since `DataTable` (#231), for `table-state`, and one module of
+`@spy4x/platform` for `ExportButton`'s download; `crud` imports `ui`, `cn`, `icons` and `signals`;
+`map` imports `cn`; `ui-guide` imports `ui`, `cn`, `icons`, `signals` and `charts` the same way,
+plus `crud`, `system` and `map` directly for their catalogue sections — the full set a `ui-guide`
+install resolves. `cn`, `icons`, `signals`, `theme` and `charts` import no sibling package. JSR
+resolves a package's own dependencies the way npm does, so installing `ui` also resolves `cn` and
+`icons` — neither needs adding by hand.
 
 For the compiled Tailwind stylesheet — the tokens and design-system classes every component here
 renders against — see [`theme/README.md`](./theme/README.md): JSR cannot export a CSS file
@@ -81,6 +84,7 @@ icons/       merged icon set (+ brand glyphs)
 cn/          cn() — class-name join + Tailwind conflict resolution
 signals/     buildModelStore, useUrlFilters, table-state, theme, toast, patchSignal — and the rest; no components
 crud/        CrudList, CrudEditor, AssociationEditor
+map/         Map on Leaflet, in its own package so nothing else resolves Leaflet
 ui-guide/    live component catalogue route
 pages/       demo app (GitHub Pages site and the browser checks under pages/checks/), not published
 ```
@@ -102,7 +106,8 @@ pages/       demo app (GitHub Pages site and the browser checks under pages/chec
 
 ## Relationship to other repos
 
-- `spy4x/ts-libs` — framework-agnostic TypeScript. Independent package; no workspace coupling.
+- `spy4x/ts-libs` — framework-agnostic TypeScript, published on JSR as `@spy4x/*`. No workspace
+  coupling: `ui` imports one module of `@spy4x/platform` from JSR at an exact version.
 - `spy4x/template` — the SaaS app template, imports both.
 
 ## Naming policy

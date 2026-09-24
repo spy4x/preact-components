@@ -74,6 +74,11 @@ is a failed check (`--only names only known package blocks`) rather than a run t
 less than it was asked — `pages/checks/harness.test.ts`'s `selectBlocks` cases cover that and the
 ordering and de-duplication `pages/verify.ts` relies on.
 
+`verify` denies downloads for the whole run: right after it connects, it calls
+`Browser.setDownloadBehavior` with `deny`, falls back to `Page.setDownloadBehavior`, and prints a note
+and carries on if neither exists. A check that exports a file reads its bytes inside the page, so it
+never needs the file on disk.
+
 This is also the repository's browser test path, and CI runs it. `.github/workflows/pages.yml` runs
 `deno task check`, `deno task publish:dry`, the build and `verify` on every pull request into
 `main` and on every push to `main`, on a runner image that ships Google Chrome. The deploy job
