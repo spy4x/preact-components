@@ -172,6 +172,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await enhancedFormsNoScriptChecks(devtools)
   await imageGalleryChecks(devtools)
   await lightboxRefusesEmptyCheck(devtools)
+  await exportButtonChecks(devtools)
 
   // Last on purpose: a Modal that refuses to close would sit in the top layer over everything, so a
   // failure here cannot take an unrelated check down with it.
@@ -7865,5 +7866,346 @@ async function enhancedFormsNoScriptChecks(devtools: Devtools): Promise<void> {
     )
 
     await settledScroll(devtools)
+  }
+}
+
+/** `ExportButton`'s two demo instances — see `ui-guide/sections/buttons.tsx`'s `ExportButtonDemo`. */
+const EXPORT_CARD = "#demo-ExportButton"
+const EXPORT_ROWS_BUTTON = `${EXPORT_CARD} button.js-export-rows`
+const EXPORT_ASYNC_BUTTON = `${EXPORT_CARD} button.js-export-async`
+
+/** The exact CSV both demo buttons write — two rows, one of them a formula-like `note`. */
+const EXPORT_EXPECTED_CSV =
+  'ID,Name,Note\r\n1,Ada Lovelace,"Bringing cake, tea for the room"\r\n2,Grace Hopper,\'=SUM(A1:A2)\r\n'
+
+/** The three bytes a UTF-8 byte-order mark decodes to. */
+const EXPORT_EXPECTED_BOM = [0xef, 0xbb, 0xbf]
+
+/** One export's outcome, read back out of the page's own instrumentation. */
+interface ExportCapture {
+  first3: number[]
+  text: string
+  blobType: string
+  downloadName: string
+  anchorConnectedAtClick: boolean
+  anchorConnectedAfter: boolean
+  hadUrlPair: boolean
+}
+
+/**
+ * Patch `URL.createObjectURL`/`URL.revokeObjectURL` and `HTMLAnchorElement.prototype.click` so a
+ * download can be observed from inside the page rather than routed to disk: `pages/verify.ts`
+ * configures no download behaviour anywhere else, and reading the `Blob`'s own bytes plus the
+ * create/revoke pair is measurement enough of what `ExportButton` actually did. Every patched
+ * method still calls through to the original, so the click, the object URL and its lifetime are
+ * the real ones `triggerCsvDownload` produces — nothing here short-circuits the component.
+ */
+async function armExportInstrumentation(devtools: Devtools): Promise<void> {
+  await devtools.evaluate<null>(`(() => {
+    const original = {
+      createObjectURL: URL.createObjectURL.bind(URL),
+      revokeObjectURL: URL.revokeObjectURL.bind(URL),
+      click: HTMLAnchorElement.prototype.click,
+    }
+    globalThis.__exportCheck = { original }
+    const state = globalThis.__exportCheck
+    URL.createObjectURL = (blob) => {
+      const url = original.createObjectURL(blob)
+      state.blobType = blob.type
+      state.bytesPromise = blob.arrayBuffer()
+      state.createdUrl = url
+      return url
+    }
+    URL.revokeObjectURL = (url) => {
+      state.revokedUrl = url
+      return original.revokeObjectURL(url)
+    }
+    HTMLAnchorElement.prototype.click = function () {
+      state.anchor = this
+      state.downloadName = this.download
+      state.anchorConnectedAtClick = this.isConnected
+      return original.click.call(this)
+    }
+    return null
+  })()`)
+}
+
+/** Undo {@link armExportInstrumentation}, restoring the three globals it patched. */
+async function disarmExportInstrumentation(devtools: Devtools): Promise<void> {
+  await devtools.evaluate<null>(`(() => {
+    const state = globalThis.__exportCheck
+    if (state && state.original) {
+      URL.createObjectURL = state.original.createObjectURL
+      URL.revokeObjectURL = state.original.revokeObjectURL
+      HTMLAnchorElement.prototype.click = state.original.click
+    }
+    return null
+  })()`)
+}
+
+/** Clear one interaction's capture fields without re-patching — {@link armExportInstrumentation} runs once. */
+async function resetExportCapture(devtools: Devtools): Promise<void> {
+  await devtools.evaluate<null>(`(() => {
+    const state = globalThis.__exportCheck
+    if (!state) return null
+    delete state.blobType
+    delete state.bytesPromise
+    delete state.createdUrl
+    delete state.revokedUrl
+    delete state.anchor
+    delete state.downloadName
+    delete state.anchorConnectedAtClick
+    return null
+  })()`)
+}
+
+/** Whether the armed instrumentation has seen a full create-download-revoke cycle complete. */
+async function exportSettled(devtools: Devtools): Promise<boolean> {
+  return await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `Boolean(globalThis.__exportCheck && globalThis.__exportCheck.revokedUrl)`,
+      ),
+    5_000,
+  )
+}
+
+/** Read back what the armed instrumentation captured, resolving the `Blob`'s own bytes. */
+async function readExportCapture(devtools: Devtools): Promise<ExportCapture> {
+  return await devtools.evaluate<ExportCapture>(`(async () => {
+    const state = globalThis.__exportCheck
+    const buffer = await state.bytesPromise
+    const bytes = new Uint8Array(buffer)
+    return {
+      first3: [...bytes.slice(0, 3)],
+      text: new TextDecoder().decode(bytes.slice(3)),
+      blobType: state.blobType,
+      downloadName: state.downloadName,
+      anchorConnectedAtClick: state.anchorConnectedAtClick,
+      anchorConnectedAfter: state.anchor ? state.anchor.isConnected : false,
+      hadUrlPair: Boolean(state.createdUrl) && state.createdUrl === state.revokedUrl,
+    }
+  })()`)
+}
+
+/** The live region `ExportButton` renders right after its own trigger — a Fragment child, not a wrapper. */
+function exportRegionExpr(buttonSelector: string): string {
+  return `document.querySelector('${buttonSelector}').nextElementSibling`
+}
+
+/** Mark one button's own live-region node, so a later {@link exportRegionIdentityHeld} can prove it is unchanged. */
+async function stashExportRegionIdentity(
+  devtools: Devtools,
+  buttonSelector: string,
+): Promise<void> {
+  await devtools.evaluate<null>(`(() => {
+    globalThis.__exportRegionIdentity = ${exportRegionExpr(buttonSelector)}
+    return null
+  })()`)
+}
+
+/** Whether one button's own live region is still the exact node {@link stashExportRegionIdentity} marked. */
+async function exportRegionIdentityHeld(
+  devtools: Devtools,
+  buttonSelector: string,
+): Promise<boolean> {
+  return await devtools.evaluate<boolean>(`(() => {
+    const current = ${exportRegionExpr(buttonSelector)}
+    return current !== null && current === globalThis.__exportRegionIdentity && current.isConnected
+  })()`)
+}
+
+/** One button's own live region text. */
+async function exportRegionText(devtools: Devtools, buttonSelector: string): Promise<string> {
+  return await devtools.evaluate<string>(`(${exportRegionExpr(buttonSelector)})?.textContent ?? ""`)
+}
+
+/** Focus one button and confirm it took. */
+async function focusExportButton(devtools: Devtools, buttonSelector: string): Promise<boolean> {
+  return await devtools.evaluate<boolean>(`(() => {
+    const button = document.querySelector('${buttonSelector}')
+    if (!button) return false
+    button.focus()
+    return document.activeElement === button
+  })()`)
+}
+
+/**
+ * A real Space press on the rows-based `ExportButton` downloads the two demo rows as CSV.
+ *
+ * Space is dispatched through `pages/checks/harness.ts`'s `pressKey`, which already carries the
+ * table entry that activates a focused button in this browser. The bytes, the byte-order mark, the
+ * guarded formula-like cell, the temporary link's cleanup and the live-region announcement are all
+ * read from one interaction, because they are all consequences of the one click `Space` produces.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function exportRowsViaSpaceCheck(devtools: Devtools): Promise<void> {
+  await resetExportCapture(devtools)
+
+  const focused = await focusExportButton(devtools, EXPORT_ROWS_BUTTON)
+  check("the rows-based ExportButton can receive focus", focused)
+  if (!focused) return
+
+  await stashExportRegionIdentity(devtools, EXPORT_ROWS_BUTTON)
+  const before = await exportRegionText(devtools, EXPORT_ROWS_BUTTON)
+
+  await pressKey(devtools, "Space")
+  const settled = await exportSettled(devtools)
+  check(
+    "a real Space press on ExportButton hands a download to the browser",
+    settled,
+    settled
+      ? "URL.revokeObjectURL ran, so the create-download-revoke sequence completed"
+      : "no URL.revokeObjectURL call was observed within 5s",
+  )
+  if (!settled) return
+
+  const capture = await readExportCapture(devtools)
+
+  check(
+    "the downloaded bytes start with the UTF-8 byte-order mark",
+    capture.first3.join(",") === EXPORT_EXPECTED_BOM.join(","),
+    `first three bytes: [${capture.first3.join(", ")}]`,
+  )
+  check(
+    "the file is the CSV the rows describe, with the formula-like cell guarded by a leading '",
+    capture.text === EXPORT_EXPECTED_CSV,
+    JSON.stringify(capture.text),
+  )
+  check(
+    "the Blob carries a CSV content type",
+    capture.blobType === "text/csv;charset=utf-8",
+    capture.blobType,
+  )
+  check(
+    "the temporary link named the file, was in the document when clicked, and was removed after",
+    capture.downloadName === "attendees.csv" && capture.anchorConnectedAtClick &&
+      !capture.anchorConnectedAfter,
+    `download="${capture.downloadName}", connected at click: ${capture.anchorConnectedAtClick}, ` +
+      `connected after: ${capture.anchorConnectedAfter}`,
+  )
+  check(
+    "the object URL was revoked with the same URL it was created with",
+    capture.hadUrlPair,
+  )
+
+  const after = await exportRegionText(devtools, EXPORT_ROWS_BUTTON)
+  const identityHeld = await exportRegionIdentityHeld(devtools, EXPORT_ROWS_BUTTON)
+  check(
+    'ExportButton announces "Exported 2 rows" as a change to a region that already existed',
+    before === "" && after === "Exported 2 rows" && identityHeld,
+    `"${before}" → "${after}", same node throughout: ${identityHeld}`,
+  )
+}
+
+/**
+ * A real Enter press on the `getRows`-based `ExportButton` downloads the same two rows, resolved
+ * from a `Promise` rather than handed over directly.
+ *
+ * `pages/checks/harness.ts`'s `pressKey` sends Enter without a `text` field on its key-down, and
+ * `AGENTS.md` recorded that as "Enter does not activate a button here" — `#261` measured that this
+ * was the helper, not the browser: Chromium only runs a focused button's default Enter action when
+ * the key-down carries `text: "\r"`. `harness.ts` is shared machinery this lane does not edit, so
+ * this dispatches its own key-down/key-up pair with that field instead of calling `pressKey`.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function exportAsyncViaEnterCheck(devtools: Devtools): Promise<void> {
+  await resetExportCapture(devtools)
+
+  const focused = await focusExportButton(devtools, EXPORT_ASYNC_BUTTON)
+  check("the getRows-based ExportButton can receive focus", focused)
+  if (!focused) return
+
+  await stashExportRegionIdentity(devtools, EXPORT_ASYNC_BUTTON)
+
+  await devtools.send("Input.dispatchKeyEvent", {
+    type: "keyDown",
+    key: "Enter",
+    code: "Enter",
+    windowsVirtualKeyCode: 13,
+    nativeVirtualKeyCode: 13,
+    text: "\r",
+  })
+  await devtools.send("Input.dispatchKeyEvent", {
+    type: "keyUp",
+    key: "Enter",
+    code: "Enter",
+    windowsVirtualKeyCode: 13,
+    nativeVirtualKeyCode: 13,
+  })
+
+  const settled = await exportSettled(devtools)
+  check(
+    'a real Enter press (key-down carrying text: "\\r") activates ExportButton',
+    settled,
+    settled
+      ? "URL.revokeObjectURL ran, so the create-download-revoke sequence completed"
+      : "no URL.revokeObjectURL call was observed within 5s",
+  )
+  if (!settled) return
+
+  const capture = await readExportCapture(devtools)
+
+  check(
+    "the getRows-based export also starts with the byte-order mark and matches the rows",
+    capture.first3.join(",") === EXPORT_EXPECTED_BOM.join(",") &&
+      capture.text === EXPORT_EXPECTED_CSV,
+    `first three bytes: [${capture.first3.join(", ")}], text: ${JSON.stringify(capture.text)}`,
+  )
+  check(
+    "getRows's own file carries its own name, and its temporary link is gone afterward",
+    capture.downloadName === "attendees-async.csv" && !capture.anchorConnectedAfter,
+    `download="${capture.downloadName}", connected after: ${capture.anchorConnectedAfter}`,
+  )
+
+  const after = await exportRegionText(devtools, EXPORT_ASYNC_BUTTON)
+  const identityHeld = await exportRegionIdentityHeld(devtools, EXPORT_ASYNC_BUTTON)
+  check(
+    "the getRows button announces its own row count in its own region",
+    after === "Exported 2 rows" && identityHeld,
+    `"${after}", same node throughout: ${identityHeld}`,
+  )
+}
+
+/** Tab moves from the rows-based button to the getRows-based one, proving both are real tab stops. */
+async function exportButtonTabReachabilityCheck(devtools: Devtools): Promise<void> {
+  const staged = await focusExportButton(devtools, EXPORT_ROWS_BUTTON)
+
+  await pressKey(devtools, "Tab")
+  const landedOnAsync = await devtools.evaluate<boolean>(
+    `document.activeElement === document.querySelector('${EXPORT_ASYNC_BUTTON}')`,
+  )
+
+  check(
+    "the ExportButton trigger is reachable with Tab",
+    staged && landedOnAsync,
+    staged
+      ? `focus moved from the rows button to the getRows button: ${landedOnAsync}`
+      : "the rows button never received focus, so Tab proves nothing here",
+  )
+}
+
+/**
+ * `ExportButton`'s two demo instances: the rows-based one activated with Space, the `getRows`-based
+ * one activated with Enter, and Tab moving between the two.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function exportButtonChecks(devtools: Devtools): Promise<void> {
+  const cardPresent = await devtools.evaluate<boolean>(
+    `document.querySelector('${EXPORT_CARD}') !== null`,
+  )
+  check("the ExportButton card is on the page", cardPresent)
+  if (!cardPresent) return
+
+  await armExportInstrumentation(devtools)
+  try {
+    await exportRowsViaSpaceCheck(devtools)
+    await exportAsyncViaEnterCheck(devtools)
+    await exportButtonTabReachabilityCheck(devtools)
+  } finally {
+    await disarmExportInstrumentation(devtools).catch(() => {})
   }
 }
