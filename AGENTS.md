@@ -199,8 +199,8 @@ write a check. First: Chromium activates a focused button on Enter only when the
 field was the whole reason an earlier version of this repository's checks avoided Enter and reached
 for `.click()` instead), so `pressKey(devtools, "Enter")` activates a focused button the way a real
 Enter press does; a real Space press activates one either way, with no `text` field needed. The
-browser is launched
-with a `--blink-settings` flag in `pages/verify.ts` that gives it a hover-capable, fine pointer —
+browser is launched with a `--blink-settings` flag in `pages/verify.ts` that gives it a
+hover-capable, fine pointer —
 headless Chromium otherwise answers `(hover: none)` and `(pointer: none)`, and Tailwind compiles
 every `hover:` and `group-hover:` utility inside `@media (hover: hover)`. So hover styles do apply,
 and a check may lean on one. A hover style written by hand as `&:hover` in `theme/preset.css` is
