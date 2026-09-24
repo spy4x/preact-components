@@ -1,10 +1,11 @@
+import type { JSX } from "preact"
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import {
   DateRangePicker,
-  type DateRangePickerDayProps,
   type DateRangePickerLabels,
+  type DateRangePickerProps,
   type DateRangePickerTimeProps,
   type DateRangePresetOption,
 } from "./date-range-picker.tsx"
@@ -25,7 +26,7 @@ const presets: readonly DateRangePresetOption[] = [
 ]
 
 /** The three props every case has to supply; `render` drops handlers, so nothing is clickable here. */
-function renderPicker(overrides: Partial<DateRangePickerDayProps> = {}): string {
+function renderPicker(overrides: Partial<DateRangePickerProps> = {}): string {
   return render(
     <DateRangePicker
       range={null}
@@ -96,6 +97,41 @@ function triggerAccessibleName(html: string): string {
 
   return (content.match(/^<span>([^<]*)<\/span>/)?.[1] ?? "").trim()
 }
+
+/**
+ * `DateRangePickerProps` keeps naming the day-only shape, unchanged since before `withTime`
+ * existed — this is a compile-time proof of that, not a runtime one. Each declaration below is a
+ * shape an existing caller of this component could already have written; if any of them stopped
+ * type-checking, `deno task ts:check` (and `deno test`, which type-checks this file before running
+ * it) would fail here before a single assertion ran. The one exported name that *did* need to
+ * change is {@link AnyDateRangePickerProps} in `date-range-picker.tsx`'s own doc — the type
+ * {@link DateRangePicker} itself takes, so it could grow the `withTime` shape without this one,
+ * the name most existing code already names, changing what it means.
+ */
+
+/** A wrapper that fixes the zone — the commonest shape a wrapper component around this one takes. */
+function UtcDateRangePicker(props: Omit<DateRangePickerProps, "timeZone">): JSX.Element {
+  return <DateRangePicker {...props} timeZone="UTC" />
+}
+
+/** Reading a prop straight off the props type, the way a caller that only reads `presets` would. */
+function presetCount(props: DateRangePickerProps): number {
+  return props.presets.length
+}
+
+/** Indexed access for a handler type, the way a caller typing a standalone `onChange` would. */
+const onRangeChange: DateRangePickerProps["onChange"] = (range) => range.from
+
+describe("DateRangePickerProps", () => {
+  it("still compiles the wrapper, prop-read and indexed-access shapes above", () => {
+    // The proof already happened above, at compile time. This assertion only keeps the three
+    // declarations from being unused exports a linter would flag, and gives the compile-time proof
+    // a place in the test report.
+    expect(typeof UtcDateRangePicker).toBe("function")
+    expect(typeof presetCount).toBe("function")
+    expect(typeof onRangeChange).toBe("function")
+  })
+})
 
 describe("DateRangePicker", () => {
   it("shows the caller's placeholder while no range is chosen", () => {
@@ -427,7 +463,7 @@ describe("DateRangePicker, withTime", () => {
     expect(html).toMatch(/<button[^>]*aria-pressed="true"[^>]*>Last 24 hours<\/button>/)
   })
 
-  it("marks Custom pressed when the caller says the custom range is the chosen one", () => {
+  it("presses neither time preset when the caller says the custom fields are the chosen one", () => {
     const html = renderTimePicker({ selectedPreset: "custom" })
 
     // No "Custom" button exists in this mode — the fields are always present — so nothing reads

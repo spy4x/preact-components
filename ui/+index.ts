@@ -106,8 +106,8 @@ export {
   rowKeyAttribute,
 } from "./data-table.tsx"
 export {
+  type AnyDateRangePickerProps,
   DateRangePicker,
-  type DateRangePickerDayProps,
   type DateRangePickerLabels,
   type DateRangePickerProps,
   type DateRangePickerTimeProps,

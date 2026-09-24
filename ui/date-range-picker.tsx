@@ -70,7 +70,7 @@ const defaultLabels: Required<DateRangePickerLabels> = {
   last24Hours: "Last 24 hours",
 }
 
-/** Props shared by both of {@link DateRangePickerProps}'s two shapes. */
+/** Props shared by both of {@link AnyDateRangePickerProps}'s two shapes. */
 interface DateRangePickerSharedProps {
   /** IANA zone that resolves "today". Required: the server's zone is not the visitor's. */
   timeZone: string
@@ -85,16 +85,18 @@ interface DateRangePickerSharedProps {
 }
 
 /**
- * {@link DateRangePickerProps} with `withTime` off (the default): calendar days, no time of day.
+ * Props for {@link DateRangePicker} with `withTime` off (the default): calendar days, no time of
+ * day. This is the name and the shape the component has always had — `withTime` only adds the
+ * optional `withTime?: false` field, which every caller from before this option existed already
+ * satisfies by not setting it — so `Omit<DateRangePickerProps, "timeZone">` wrappers, a bare
+ * `props.presets` read, and `DateRangePickerProps["onChange"]` all keep compiling unchanged.
+ * `date-range-picker.test.tsx` compiles exactly those three shapes as its own proof.
  *
- * Exported, alongside {@link DateRangePickerTimeProps}, so a caller building up one shape's props
- * with a partial override — a test helper, a wrapper component — can type that override against the
- * one branch it actually uses. `Partial<DateRangePickerProps>` cannot serve that: a mapped type over
- * a union only keeps the properties every branch shares, so `presets` — day mode only — would
- * silently disappear from it, and every property's type would flatten to the union of both branches'
- * types regardless of which one a given override was written for.
+ * {@link AnyDateRangePickerProps} is the type {@link DateRangePicker} itself takes, because it also
+ * has to accept {@link DateRangePickerTimeProps}; this interface is what a caller who only ever uses
+ * the day-only shape — the common case — still names.
  */
-export interface DateRangePickerDayProps extends DateRangePickerSharedProps {
+export interface DateRangePickerProps extends DateRangePickerSharedProps {
   withTime?: false
   /** Controlled value; `null` until the caller has a range. */
   range: DateRange | null
@@ -109,9 +111,9 @@ export interface DateRangePickerDayProps extends DateRangePickerSharedProps {
 }
 
 /**
- * {@link DateRangePickerProps} with `withTime` on: From and To are `datetime-local` fields, and the
- * panel also offers `"last-hour"` and `"last-24-hours"`, the two presets that only make sense with
- * a time of day.
+ * {@link AnyDateRangePickerProps} with `withTime` on: From and To are `datetime-local` fields, and
+ * the panel also offers `"last-hour"` and `"last-24-hours"`, the two presets that only make sense
+ * with a time of day.
  *
  * No `presets` prop: unlike the day list, these two are the component's own, named and ordered the
  * way `labels`' fixed strings are — an English default per entry, overridden through `labels` — so
@@ -132,12 +134,14 @@ export interface DateRangePickerTimeProps extends DateRangePickerSharedProps {
 }
 
 /**
- * Props for {@link DateRangePicker}. Two shapes, chosen by `withTime`: the default carries a
- * calendar-day {@link DateRange}, and `withTime: true` carries a timed {@link DateTimeRange} instead
- * — see {@link DateRangePickerTimeProps}. `withTime` off, including left out entirely, is the first
- * shape, byte for byte what this component accepted before `withTime` existed.
+ * Every shape {@link DateRangePicker} itself accepts, chosen by `withTime`: the default,
+ * {@link DateRangePickerProps}, carries a calendar-day {@link DateRange}, and `withTime: true`
+ * carries a timed {@link DateTimeRange} instead — see {@link DateRangePickerTimeProps}. Named
+ * separately from {@link DateRangePickerProps} so that name can keep meaning what it always has —
+ * see its own doc — rather than becoming a union an existing type reference against it would not
+ * expect.
  */
-export type DateRangePickerProps = DateRangePickerDayProps | DateRangePickerTimeProps
+export type AnyDateRangePickerProps = DateRangePickerProps | DateRangePickerTimeProps
 
 const panelClasses =
   "absolute z-10 mt-2 w-80 rounded-md bg-white p-3 shadow-lg ring-1 ring-black/5 dark:bg-gray-800 dark:ring-gray-600"
@@ -194,9 +198,9 @@ function rangeText<R extends { from: string; to: string }>(
  * included, holds in that mode too: it is driven by open/closed and by where focus is, neither of
  * which `withTime` touches.
  *
- * @param props See {@link DateRangePickerProps}.
+ * @param props See {@link AnyDateRangePickerProps}.
  */
-export function DateRangePicker(props: DateRangePickerProps): JSX.Element {
+export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
   const { timeZone, labels, now, class: className, dataE2E } = props
   const isOpen = useSignal(false)
   const usingCustom = useSignal(false)
