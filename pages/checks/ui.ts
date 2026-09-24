@@ -7894,11 +7894,12 @@ interface ExportCapture {
 
 /**
  * Patch `URL.createObjectURL`/`URL.revokeObjectURL` and `HTMLAnchorElement.prototype.click` so a
- * download can be observed from inside the page rather than routed to disk: `pages/verify.ts`
- * configures no download behaviour anywhere else, and reading the `Blob`'s own bytes plus the
- * create/revoke pair is measurement enough of what `ExportButton` actually did. Every patched
- * method still calls through to the original, so the click, the object URL and its lifetime are
- * the real ones `triggerCsvDownload` produces — nothing here short-circuits the component.
+ * download can be observed from inside the page: `pages/verify.ts` denies every download for the
+ * whole run (`Browser.setDownloadBehavior`, `behavior: "deny"`), so nothing here needs to read a
+ * saved file back — the `Blob`'s own bytes plus the create/revoke pair are measurement enough of
+ * what `ExportButton` actually did. Every patched method still calls through to the original, so
+ * the click, the object URL and its lifetime are the real ones `downloadResponseAsFile`
+ * (`@spy4x/platform/browser/download`) produces — nothing here short-circuits the component.
  */
 async function armExportInstrumentation(devtools: Devtools): Promise<void> {
   await devtools.evaluate<null>(`(() => {
@@ -7960,19 +7961,31 @@ async function resetExportCapture(devtools: Devtools): Promise<void> {
 }
 
 /**
- * Whether the armed instrumentation has seen a full create-download-revoke cycle complete.
+ * Whether the armed instrumentation has seen *this interaction's own* create-download-revoke cycle
+ * complete.
  *
  * `@spy4x/platform/browser/download`'s `downloadResponseAsFile` revokes the object URL from a
  * timer about `REVOKE_DELAY_MS` (5000ms) after the click, not in the click's own task — revoking
  * too early has historically cancelled a download still starting. The poll budget here is bounded
  * well above that delay rather than asserting the revoke happens at once, so a slow CI machine
  * still has room after the real 5s wait.
+ *
+ * `revokedUrl === createdUrl` is required, not merely a truthy `revokedUrl`: `resetExportCapture`
+ * clears both fields before an interaction, but it cannot cancel a *previous* interaction's own
+ * revoke timer, which is still ticking on the page. A review found that delaying that timer past
+ * this poll's own bound let its late revoke land during the *next* interaction's wait and read as
+ * that interaction having settled — `state.revokedUrl` was truthy, just carrying the wrong URL.
+ * Matching it against this interaction's own `createdUrl` is what tells the two apart.
  */
 async function exportSettled(devtools: Devtools): Promise<boolean> {
   return await poll(
     () =>
       devtools.evaluate<boolean>(
-        `Boolean(globalThis.__exportCheck && globalThis.__exportCheck.revokedUrl)`,
+        `Boolean(
+          globalThis.__exportCheck &&
+          globalThis.__exportCheck.revokedUrl &&
+          globalThis.__exportCheck.revokedUrl === globalThis.__exportCheck.createdUrl
+        )`,
       ),
     8_000,
   )
@@ -8036,6 +8049,13 @@ async function focusExportButton(devtools: Devtools, buttonSelector: string): Pr
     button.focus()
     return document.activeElement === button
   })()`)
+}
+
+/** Whether one button is still the focused element. */
+async function exportButtonHasFocus(devtools: Devtools, buttonSelector: string): Promise<boolean> {
+  return await devtools.evaluate<boolean>(
+    `document.activeElement === document.querySelector('${buttonSelector}')`,
+  )
 }
 
 /**
@@ -8108,6 +8128,63 @@ async function exportRowsViaSpaceCheck(devtools: Devtools): Promise<void> {
 }
 
 /**
+ * A second export on the rows-based button, with the same row count as the first, still mutates
+ * the live region — even though the text `resultLabel` produces is identical to what is already
+ * there.
+ *
+ * Setting a `<span>`'s text to the value it already holds is a no-op as far as Preact's own diff is
+ * concerned: nothing reaches the DOM, so nothing reaches a screen reader either. `ExportButton`
+ * clears the region, then sets the real text in a following task — see the component's own doc —
+ * which is what turns even a repeated announcement into two real mutations instead of zero. This is
+ * measured with a `MutationObserver` rather than by reading the text again: the text after both
+ * exports is `"Exported 2 rows"` either way, so the assertion has to be about whether a mutation
+ * happened, not about what the final string reads.
+ *
+ * Runs right after {@link exportRowsViaSpaceCheck}, which has already produced one export on this
+ * same button, so its own settle and its own announcement are already on screen when this starts —
+ * this check produces the *second* one.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function exportAnnouncesAgainCheck(devtools: Devtools): Promise<void> {
+  await resetExportCapture(devtools)
+
+  const watching = await devtools.evaluate<boolean>(`(() => {
+    const region = ${exportRegionExpr(EXPORT_ROWS_BUTTON)}
+    if (!region) return false
+    globalThis.__exportRegionMutations = []
+    const observer = new MutationObserver((records) => {
+      globalThis.__exportRegionMutations.push(records.length)
+    })
+    observer.observe(region, { characterData: true, subtree: true, childList: true })
+    globalThis.__exportRegionObserver = observer
+    return true
+  })()`)
+  check("a mutation observer can watch ExportButton's own live region", watching)
+  if (!watching) return
+
+  const focused = await focusExportButton(devtools, EXPORT_ROWS_BUTTON)
+  if (focused) await pressKey(devtools, "Space")
+  const settled = focused && await exportSettled(devtools)
+
+  const mutationCount = await devtools.evaluate<number>(`(() => {
+    const count = (globalThis.__exportRegionMutations ?? []).reduce((sum, n) => sum + n, 0)
+    globalThis.__exportRegionObserver?.disconnect()
+    delete globalThis.__exportRegionObserver
+    delete globalThis.__exportRegionMutations
+    return count
+  })()`)
+
+  check(
+    "a second export with the same row count still mutates the live region, so it announces again",
+    settled && mutationCount > 0,
+    settled
+      ? `${mutationCount} mutation record(s) observed on the region during the second export`
+      : "the second export never settled, so the region was never checked",
+  )
+}
+
+/**
  * A real Enter press on the `getRows`-based `ExportButton` downloads the same two rows, resolved
  * from a `Promise` rather than handed over directly.
  *
@@ -8144,6 +8221,20 @@ async function exportAsyncViaEnterCheck(devtools: Devtools): Promise<void> {
     nativeVirtualKeyCode: 13,
   })
 
+  // The demo's `getRows` takes 600ms, so the export is still pending here — this is the sample
+  // that catches `disabled={busy}` dropping focus to `<body>`, which `aria-disabled` instead of
+  // the native attribute is what fixes. A dead-on-arrival read (the export already settled by the
+  // time this runs) would prove nothing either way, which is why the demo's delay is long enough
+  // that a round trip or two of DevTools protocol calls cannot outrun it.
+  const focusedWhileBusy = await exportButtonHasFocus(devtools, EXPORT_ASYNC_BUTTON)
+  check(
+    "focus stays on the getRows-based ExportButton while its export is pending",
+    focusedWhileBusy,
+    focusedWhileBusy
+      ? "document.activeElement is still the button"
+      : "focus left the button before the export settled",
+  )
+
   const settled = await exportSettled(devtools)
   check(
     'a real Enter press (key-down carrying text: "\\r") activates ExportButton',
@@ -8153,6 +8244,12 @@ async function exportAsyncViaEnterCheck(devtools: Devtools): Promise<void> {
       : "no URL.revokeObjectURL call was observed within 8s",
   )
   if (!settled) return
+
+  const focusedAfterSettle = await exportButtonHasFocus(devtools, EXPORT_ASYNC_BUTTON)
+  check(
+    "focus is still on the getRows-based ExportButton once its export settles",
+    focusedAfterSettle,
+  )
 
   const capture = await readExportCapture(devtools)
 
@@ -8196,8 +8293,9 @@ async function exportButtonTabReachabilityCheck(devtools: Devtools): Promise<voi
 }
 
 /**
- * `ExportButton`'s two demo instances: the rows-based one activated with Space, the `getRows`-based
- * one activated with Enter, and Tab moving between the two.
+ * `ExportButton`'s two demo instances: the rows-based one activated with Space (twice, to prove a
+ * repeated announcement still lands), the `getRows`-based one activated with Enter — including that
+ * focus stays on it, busy or settled — and Tab moving between the two.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -8211,6 +8309,7 @@ async function exportButtonChecks(devtools: Devtools): Promise<void> {
   await armExportInstrumentation(devtools)
   try {
     await exportRowsViaSpaceCheck(devtools)
+    await exportAnnouncesAgainCheck(devtools)
     await exportAsyncViaEnterCheck(devtools)
     await exportButtonTabReachabilityCheck(devtools)
   } finally {

@@ -174,8 +174,11 @@ function ExportButtonDemo() {
       />
       <ExportButton
         columns={attendeeColumns}
+        // 600ms rather than a near-instant resolve: long enough for a browser check to sample
+        // focus mid-flight (proving it stays on the button while the export is pending, not only
+        // once it settles), short enough not to make the catalogue feel sluggish to a visitor.
         getRows={() =>
-          new Promise<AttendeeRow[]>((resolve) => setTimeout(() => resolve(attendeeRows), 50))}
+          new Promise<AttendeeRow[]>((resolve) => setTimeout(() => resolve(attendeeRows), 600))}
         fileName="attendees-async.csv"
         label="Export (fetched)"
         class="js-export-async"
