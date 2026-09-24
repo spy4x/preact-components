@@ -1,11 +1,15 @@
 /**
  * Leaflet's own stylesheet (`leaflet/dist/leaflet.css`), read from the exact npm package this
- * workspace member pins. Not re-exported from `@preact-components/map`'s main barrel (`+index.ts`):
- * `Deno.readTextFile` is Deno-only, and the main barrel has to stay usable wherever the `Map`
- * component itself can run. A published entry point that only a Deno build ever imports is what this
- * subpath is for — see `map/README.md` → "Leaflet's stylesheet" for the two routes a consumer
- * chooses between, and why this one exists at all next to the simpler "add `leaflet` yourself" route
- * `charts/README.md` already documents for `d3`.
+ * workspace member pins.
+ *
+ * **Not published.** `map/deno.json` excludes this file (`publish.exclude`) and does not list it in
+ * `exports`. `import.meta.resolve("leaflet/dist/leaflet.css")` carries no dependency record a
+ * published consumer's own module resolver can follow — `deno info --json` on this file shows
+ * `"dependencies": null` for that call — so a consumer who imported this as a published subpath
+ * would get a function that throws `TypeError: Import "leaflet/dist/leaflet.css" not a dependency`
+ * the moment they called it, regardless of what their own `deno.json` declared. This file exists only
+ * for `pages/build.ts`, in this same repository, to import by a relative path; every other consumer's
+ * route is documented in `map/README.md` → "Leaflet's stylesheet", and it does not involve this file.
  */
 
 /**

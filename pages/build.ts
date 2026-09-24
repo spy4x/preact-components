@@ -28,7 +28,7 @@
  * 5. The route echo is read out of the rendered document and round-tripped through the resolver.
  */
 
-import { leafletStylesheet } from "@preact-components/map/leaflet-css"
+import { leafletStylesheet } from "../map/leaflet-css.ts"
 import { Scanner } from "@tailwindcss/oxide"
 import { compile } from "tailwindcss"
 import { dirname, join } from "node:path"
@@ -145,11 +145,13 @@ function resolveStylesheet(id: string, base: string): URL {
  * string is emitted exactly as it would be for an app.
  *
  * Leaflet's CSS is not run through Tailwind at all — it is not Tailwind-authored, needs no token or
- * `@apply` resolution, and simply concatenating it is what `@preact-components/map/leaflet-css`
- * exists for (see that module's own doc and `map/README.md` → "Leaflet's stylesheet"): this demo
- * gets Leaflet's real, unmodified stylesheet without declaring its own `leaflet` dependency, the same
- * route a consuming app that adds `@preact-components/map` and does not want a second `leaflet` pin
- * of its own would use.
+ * `@apply` resolution, and simply concatenating it is what `../map/leaflet-css.ts` exists for (see
+ * that module's own doc and `map/README.md` → "Leaflet's stylesheet"). That file is not published —
+ * `import.meta.resolve` on an npm subpath carries no dependency record a consumer's own resolver
+ * could follow, so it would throw for anyone outside this workspace — which is why this reads it by a
+ * relative import rather than as `@preact-components/map`'s own subpath. A real consuming app has no
+ * equivalent shortcut; `map/README.md` → "Leaflet's stylesheet" documents the route that works for
+ * one: add `leaflet` as its own dependency and include the stylesheet in its own build.
  *
  * @returns The compiled stylesheet: `tokens.css` and `preset.css` inlined by Tailwind, with
  * Leaflet's `dist/leaflet.css` appended verbatim.
