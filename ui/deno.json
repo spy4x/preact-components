@@ -21,6 +21,7 @@
     "./empty-state": "./empty-state.tsx",
     "./enhanced-form": "./enhanced-form.tsx",
     "./error-state": "./error-state.tsx",
+    "./export-button": "./export-button.tsx",
     "./field": "./field.tsx",
     "./geo-button": "./geo-button.tsx",
     "./honeypot": "./honeypot.tsx",
