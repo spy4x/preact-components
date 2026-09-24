@@ -5111,6 +5111,38 @@ async function openTimePickerPanel(devtools: Devtools): Promise<PickerTimeState>
 }
 
 /**
+ * Wait until `document.activeElement` stops changing, the same "two consecutive reads agree"
+ * pattern {@link settledScroll} uses, applied to focus instead of scroll position.
+ *
+ * A check that proves an *absence* — that a close driven from outside `withTime`'s panel does not
+ * pull focus onto the trigger — cannot tell "hasn't happened yet" from "correctly never happens" by
+ * reading once right after the panel reads closed: closing the panel and the effect that would
+ * wrongly move focus are two separate Preact commits, same as the closes driven from inside it (see
+ * the Escape-return check above), and a read timed between them would report whatever focus happens
+ * to be resting on mid-transition — which can, by coincidence, look like the correct outcome even
+ * when the wrong one is only a commit away. Found this way: injecting a bug that always pulls focus
+ * back left this check reading "ok" every time, on a state that had not finished settling yet.
+ *
+ * @param devtools The connected session.
+ * @param timeoutMs How long to wait for two consecutive reads to agree before giving up.
+ * @returns Whether two consecutive reads agreed inside the budget.
+ */
+async function settledActiveElement(devtools: Devtools, timeoutMs = 3_000): Promise<boolean> {
+  let previous: string | null = null
+  return await poll(async () => {
+    const current = await devtools.evaluate<string>(`(() => {
+      const active = document.activeElement
+      return active === document.body
+        ? "BODY"
+        : (active?.getAttribute?.("data-e2e") ?? active?.tagName ?? "?")
+    })()`)
+    const settled = current === previous
+    previous = current
+    return settled
+  }, timeoutMs)
+}
+
+/**
  * `withTime`'s own focus contract, and the one behaviour this mode adds: typing into the two
  * `datetime-local` fields and applying carries the typed times to the caller's `onChange`.
  *
@@ -5316,6 +5348,10 @@ async function escapeFromOutsideTimeCheck(devtools: Devtools): Promise<void> {
     () => devtools.evaluate<boolean>(`${PICKER_TIME_STATE}.open === false`),
     3_000,
   )
+  // See settledActiveElement's own doc: reading focus immediately once `closed` is true can catch a
+  // moment between the panel closing and a wrongly-refocusing effect finishing, which reads as
+  // correct by coincidence rather than by the component actually leaving focus alone.
+  await settledActiveElement(devtools)
   const after = await devtools.evaluate<PickerTimeState & { stillAway: boolean }>(`(() => ({
     ...${PICKER_TIME_STATE},
     stillAway: document.activeElement === (globalThis.__verifyPickerTime?.away ?? null),
@@ -5370,6 +5406,10 @@ async function outsideClickTimeCheck(devtools: Devtools): Promise<void> {
     () => devtools.evaluate<boolean>(`${PICKER_TIME_STATE}.open === false`),
     3_000,
   )
+  // See settledActiveElement's own doc: an immediate read here reported this check as passing
+  // against a build with the return-focus bug deliberately reintroduced, because the read landed
+  // between the panel closing and the wrongly-refocusing effect completing.
+  await settledActiveElement(devtools)
   const after = await devtools.evaluate<PickerTimeState & { onBody: boolean }>(`(() => ({
     ...${PICKER_TIME_STATE},
     onBody: document.activeElement === document.body,
