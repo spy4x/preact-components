@@ -25,6 +25,7 @@
 @source "../system";
 @source "../crud";
 @source "../signals";
+@source "../map";
 @source "./src";
 
 /*

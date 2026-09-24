@@ -70,6 +70,7 @@ import {
   settledScroll,
 } from "./checks/harness.ts"
 import { iconsChecks } from "./checks/icons.ts"
+import { mapChecks } from "./checks/map.ts"
 import {
   type AttemptResult,
   ChromiumLifecycle,
@@ -534,7 +535,7 @@ async function browserPhase(): Promise<void> {
 
   // Commit to the package blocks before anything can go wrong, so that a phase which dies during
   // startup still reports which blocks it meant to run. `--static` never reaches this line, which
-  // is what keeps a deliberate skip from being reported as nine lost blocks.
+  // is what keeps a deliberate skip from being reported as ten lost blocks.
   commitBlocks(activeBlocks.map((block) => block.name))
 
   // A missing browser is a failure, not a skip. This phase carries every assertion about behaviour
@@ -775,7 +776,7 @@ async function resetAfterThrow(devtools: Devtools): Promise<void> {
  * dropping the later packages, while the order keeps a *passing* block from leaving the page in a
  * state the next one cannot work in.
  *
- * One list, not nine calls, so the names the run commits to and the functions it calls cannot drift
+ * One list, not ten calls, so the names the run commits to and the functions it calls cannot drift
  * apart — {@link browserPhase} commits these names before it has a browser to run them with.
  */
 const PACKAGE_BLOCKS: readonly CheckBlock<Devtools>[] = [
@@ -787,6 +788,7 @@ const PACKAGE_BLOCKS: readonly CheckBlock<Devtools>[] = [
   { name: "system", run: systemChecks },
   { name: "crud", run: crudChecks },
   { name: "charts", run: chartsChecks },
+  { name: "map", run: mapChecks },
   { name: "ui", run: uiChecks },
 ]
 
