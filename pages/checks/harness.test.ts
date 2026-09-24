@@ -407,7 +407,8 @@ describe("selectBlocks", () => {
 describe("blocksThatRan", () => {
   it("leaves out a block that was committed and never ran", () => {
     // A run whose browser never starts commits its blocks and marks each one `NeverRan`; naming
-    // those as "ran" printed `FILTERED: ran system` under `system never ran` (#253's third review).
+    // those as "ran" printed `FILTERED: ran system` under `system never ran` (found in the review
+    // of #254).
     const blocks = new Map([
       ["theme", BlockOutcome.Completed],
       ["system", BlockOutcome.NeverRan],
@@ -432,7 +433,7 @@ describe("filteredRunLine", () => {
   })
 
   it("reads 'ran (none)' when nothing was committed — not the blocks a bad request named", () => {
-    // The exact regression `#253`'s second review found: an unknown or empty `--only` selection
+    // The exact regression found in the review of #254: an unknown or empty `--only` selection
     // commits nothing, so `ran` here is empty, even though a caller that read the raw `--only`
     // request instead of the committed blocks would have named "system" — `verify --only=system,
     // bogus` printed exactly that before this function existed. `ran` is passed empty here on
