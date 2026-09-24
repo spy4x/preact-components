@@ -28,9 +28,17 @@
  * `MutationObserver` still cover it — but is not spliced into a sequence already being viewed, the
  * same way the source click layer already treats an image arriving after hydration: it works once
  * mounted, not retroactively.
+ *
+ * **A missing description gets `fallbackAlt` substituted, as it always has** — an image with no
+ * `alt` attribute is still zoomable and still opens, named by `fallbackAlt` (default `"Image"`),
+ * and `Lightbox` now also shows that name as a visible caption, which is new here. Only a caller
+ * who sets `fallbackAlt=""` opts out of the substitution; only then can an image genuinely have no
+ * description, and only then does {@link collectSequence} drop it — from the sequence, and from
+ * opening at all if it is the one activated — the same refusal `Lightbox` applies to its own
+ * `images` prop.
  */
 
-import { Lightbox } from "@preact-components/ui/lightbox"
+import { describedImages, Lightbox } from "@preact-components/ui/lightbox"
 import type { JSX } from "preact"
 import { useEffect, useState } from "preact/hooks"
 
@@ -38,7 +46,12 @@ import { useEffect, useState } from "preact/hooks"
 export interface LightboxImage {
   /** Absolute URL where the browser resolved one, the raw attribute otherwise. */
   src: string
-  /** Never empty: falls back to the lightbox's `fallbackAlt`. */
+  /**
+   * The image's description. `resolveImage` substitutes the component's `fallbackAlt` (default
+   * `"Image"`) for a missing one, so this is empty only when a caller has set `fallbackAlt` to `""`
+   * too — see {@link collectSequence}, which then drops the image rather than showing one with no
+   * name.
+   */
   alt: string
 }
 
@@ -135,7 +148,10 @@ function unmarkZoomable(container: Element): void {
 export interface ImageSequence {
   /** Every zoomable image the container held at the moment one was opened, in DOM order. */
   images: LightboxImage[]
-  /** Position of the activated image in {@link ImageSequence.images}; `-1` if it did not resolve. */
+  /**
+   * Position of the activated image in {@link ImageSequence.images}; `-1` if it did not resolve to
+   * an image at all, or resolved but was then dropped for having no description.
+   */
   index: number
 }
 
@@ -143,14 +159,28 @@ export interface ImageSequence {
  * Build the sequence a lightbox pages through, and the position of the image that was opened.
  *
  * Pure: given the container's zoomable elements, already read, and the one that was activated, it
- * decides which resolve to real images and where the activated one landed among them. That is not
- * simply "the position in `elements`" — {@link resolveImage} can refuse an element with no usable
- * `src`, and an element `elements` still lists then never reaches `images` at all.
+ * decides which resolve to real images, which of those `Lightbox` will actually show, and where the
+ * activated one landed among the ones that survive. That is not simply "the position in `elements`"
+ * for two reasons stacked on each other. First, {@link resolveImage} can refuse an element with no
+ * usable `src`, and an element `elements` still lists then never reaches this function's own list at
+ * all. Second, {@link describedImages} — the same function `Lightbox` itself applies to `images`
+ * before it renders anything — is applied here too, before the index is worked out, not after: with
+ * a non-empty `fallbackAlt` (the default) this never removes anything, because `resolveImage` has
+ * already substituted it for a missing `alt`, but a caller who passes `fallbackAlt=""` can produce a
+ * resolved image whose `alt` is still empty, and that image must be missing from this function's
+ * `images` at the same position it will be missing from `Lightbox`'s. Filtering afterward, in the
+ * caller, would have left the two disagreeing about where a later image landed — measured in review:
+ * an earlier version filtered nowhere, and clicking a described image that came after an undescribed
+ * one opened a different image than the one that was clicked.
  *
  * @param elements Every element the container's `imageSelector` currently matches, in DOM order.
  * @param target The element that was clicked or activated with the keyboard.
  * @param imageSelector Selector an image must match — see {@link resolveImage}.
- * @param fallbackAlt `alt` used when an image has none.
+ * @param fallbackAlt `alt` used when an image has none. An empty string opts out of the
+ * substitution, which is what lets `describedImages` drop an image here.
+ * @returns `index` is `-1` both when the activated element did not resolve to an image at all and
+ * when it resolved but was then dropped for having no description — the caller does not need to
+ * tell those two apart, since neither is an image to open.
  */
 export function collectSequence(
   elements: readonly ImageElementLike[],
@@ -158,14 +188,20 @@ export function collectSequence(
   imageSelector = "img",
   fallbackAlt = "Image",
 ): ImageSequence {
-  const images: LightboxImage[] = []
-  let index = -1
+  const resolved: Array<{ element: ImageElementLike; image: LightboxImage }> = []
   for (const element of elements) {
-    const resolved = resolveImage(element, imageSelector, fallbackAlt)
-    if (!resolved) continue
-    if (element === target) index = images.length
-    images.push(resolved)
+    const image = resolveImage(element, imageSelector, fallbackAlt)
+    if (image) resolved.push({ element, image })
   }
+
+  // `describedImages` filters by object identity, so the images it keeps are the very objects
+  // `resolved` holds — `targetPair.image` can therefore be found in `images` by reference,
+  // without restating "alt, trimmed, is not empty" as a second predicate that could drift from
+  // the one `Lightbox` applies.
+  const images = describedImages(resolved.map((pair) => pair.image))
+  const targetPair = resolved.find((pair) => pair.element === target)
+  const index = targetPair ? images.indexOf(targetPair.image) : -1
+
   return { images, index }
 }
 
@@ -248,8 +284,13 @@ export function ImageLightbox(
         ...container.querySelectorAll(imageSelector),
       ] as unknown as ImageElementLike[]
       const collected = collectSequence(elements, target, imageSelector, fallbackAlt)
+      // `index < 0` only when `fallbackAlt` is itself empty and the activated image has no real
+      // `alt`: `collectSequence` has already dropped it, the same refusal `Lightbox` applies to its
+      // own `images` prop. Nothing opens — no dialog, no `onOpen` — rather than opening on whatever
+      // happens to sit at position 0.
+      if (collected.index < 0) return false
       setSequence(collected.images)
-      setIndex(collected.index >= 0 ? collected.index : 0)
+      setIndex(collected.index)
       setOpen(true)
       onOpen?.(resolved)
       return true

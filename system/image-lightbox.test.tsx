@@ -114,6 +114,39 @@ describe("collectSequence", () => {
   it("returns an empty sequence for an empty container", () => {
     expect(collectSequence([], null)).toEqual({ images: [], index: -1 })
   })
+
+  describe('with fallbackAlt disabled ("")', () => {
+    // The default `fallbackAlt` ("Image") means `resolveImage` never produces an empty `alt`, so
+    // these are the one way `describedImages` ever has something to drop here — the exact
+    // regression review found: an earlier version computed the activated position against the
+    // *unfiltered* list, so a described image that came after an undescribed one opened the wrong
+    // picture (or, if the undescribed one was the only image, opened an empty dialog).
+    const bare = element({ src: "https://acme.example/img/bare.png", alt: "" })
+    const alpha = element({ src: "https://acme.example/img/alpha.png", alt: "Alpha" })
+    const gamma = element({ src: "https://acme.example/img/gamma.png", alt: "Gamma" })
+
+    it("opens the clicked, described image at its position after filtering, not before", () => {
+      const result = collectSequence([bare, alpha, gamma], alpha, "img", "")
+
+      expect(result.images).toEqual([
+        { src: "https://acme.example/img/alpha.png", alt: "Alpha" },
+        { src: "https://acme.example/img/gamma.png", alt: "Gamma" },
+      ])
+      // alpha is first in the filtered sequence, not second as it would be counted against the
+      // three raw elements — the miscount the review found.
+      expect(result.index).toBe(0)
+    })
+
+    it("refuses to open an undescribed image clicked on its own", () => {
+      const result = collectSequence([bare, alpha, gamma], bare, "img", "")
+
+      expect(result.index).toBe(-1)
+      expect(result.images).toEqual([
+        { src: "https://acme.example/img/alpha.png", alt: "Alpha" },
+        { src: "https://acme.example/img/gamma.png", alt: "Gamma" },
+      ])
+    })
+  })
 })
 
 describe("ImageLightbox", () => {

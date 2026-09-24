@@ -19,9 +19,10 @@ Extracted from earlier source applications.
 - **No `theme/` dependency.** Utilities are inlined, like `ui/`. `icons/` supplies the four glyphs
   these components draw (`IconChevronLeft`, `IconChevronRight`, `IconXMark`, `IconBars3`) rather
   than duplicating SVG.
-- **`ui/` is a sibling dependency, for one component.** `ImageLightbox` opens
-  `@preact-components/ui`'s shared `Lightbox` instead of rendering its own dialog, so this package
-  imports `ui/` the same way `crud/` already does. Nothing else here imports it.
+- **`ui/` is a sibling dependency.** `Shell` and `AuthForm` already import individual `ui/`
+  components (`Avatar`, `Dropdown`; `Button`, `Field`, `Input`); `ImageLightbox` now does too,
+  opening `@preact-components/ui`'s shared `Lightbox` instead of rendering its own dialog. `crud/`
+  imports `ui/` the same way.
 
 ## Components
 
@@ -289,7 +290,12 @@ shared `Lightbox` — the same dialog `ImageGallery` opens on a thumbnail (`ui/R
 only the zoom. The layer is delegated to the container: one listener instead of one per image,
 images that arrive after hydration still work, and cleanup is complete. Previous and next page
 through the container's other zoomable images, snapshotted at the moment one opens; an image that
-arrives afterward becomes zoomable but is not spliced into a sequence already being viewed.
+arrives afterward becomes zoomable but is not spliced into a sequence already being viewed. An image
+with no `alt` attribute is unchanged from before `Lightbox` existed: it still opens, named by
+`fallbackAlt` (default `"Image"`), and is now also shown as a visible caption — new here, since the
+old dialog had none. Only a caller who sets `fallbackAlt=""` turns the substitution off, and only
+then can an image genuinely have no description; that image is then refused the same way
+`ImageGallery`'s own `images` prop is.
 
 **A zoomable image behaves like a button**, because that is what it has become. The component
 gives every image it marks a tab stop, a button's role and a name saying what activating it does,
