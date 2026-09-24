@@ -1,9 +1,9 @@
 import { cn } from "@preact-components/cn"
-import { downloadResponseAsFile } from "@spy4x/platform/browser/download"
 import type { ComponentChildren, JSX } from "preact"
 import { useRef, useState } from "preact/hooks"
 import { Button } from "./button.tsx"
-import { type CsvColumn, toCsvBytes } from "./csv.ts"
+import type { CsvColumn } from "./csv.ts"
+import { runExport } from "./export-run.ts"
 
 /** One column of an {@link ExportButton}'s file — see `csv.ts`'s {@link CsvColumn}. */
 export type ExportButtonColumn<T> = CsvColumn<T>
@@ -24,8 +24,8 @@ interface ExportButtonBaseProps<T> {
    */
   resultLabel?: (rowCount: number) => string
   /**
-   * What the live region announces when `getRows` throws or rejects. Defaults to
-   * `"Could not export the file."`.
+   * What the live region announces when `getRows` throws or rejects, or when the download itself
+   * fails. Defaults to `"Could not export the file."`.
    */
   errorLabel?: string
   /**
@@ -40,8 +40,8 @@ interface ExportButtonBaseProps<T> {
 /**
  * `rows` and `getRows` are mutually exclusive, enforced at the type level rather than by a runtime
  * check: passing both, or neither, is a compile error instead of an ambiguity about which one a
- * caller meant. {@link hasRows} reads the discriminant back out, the same way `data-table.tsx`'s
- * `isDataColumn` tells its own two column shapes apart.
+ * caller meant. `export-run.ts`'s `hasRows` reads the discriminant back out at runtime, the same
+ * way `data-table.tsx`'s `isDataColumn` tells its own two column shapes apart.
  */
 export type ExportButtonProps<T> =
   & ExportButtonBaseProps<T>
@@ -50,66 +50,9 @@ export type ExportButtonProps<T> =
     | { rows?: never; getRows: () => readonly T[] | Promise<readonly T[]> }
   )
 
-/**
- * `true` for props that specify `rows` directly — see {@link ExportButtonProps}'s own doc. A named
- * type predicate rather than an inline `"rows" in props` check: TypeScript narrows a ternary's own
- * condition, but only a predicate's asserted type reliably narrows the *other* branch down to the
- * `getRows` member too, which is what lets that branch call `props.getRows()` with no `!`.
- */
-function hasRows<T>(
-  props: ExportButtonProps<T>,
-): props is ExportButtonBaseProps<T> & { rows: readonly T[]; getRows?: never } {
-  return "rows" in props
-}
-
 /** Default {@link ExportButtonBaseProps.resultLabel}. */
 function defaultResultLabel(rowCount: number): string {
   return `Exported ${rowCount} row${rowCount === 1 ? "" : "s"}`
-}
-
-/** What {@link runExport} produced: whether the download went through, and what to announce. */
-export interface ExportRunResult {
-  ok: boolean
-  announcement: string
-}
-
-/**
- * Resolve `rows` (or call `getRows`), write them as CSV, and hand the result to `download`.
- *
- * Split out of the component so the whole path is unit-testable without a browser: `handleClick`
- * calls a hook (`useState`), so a component that calls it cannot be invoked outside a render — the
- * same reason `copyable-text.tsx` splits its body out. `download` defaults to the real
- * `downloadResponseAsFile`; a test hands in a fake one instead, which is what proves a rejecting
- * `getRows` downloads nothing without needing a real object URL or a real click.
- *
- * `onError` is called from in here, not left to the caller: a test of this function alone is then a
- * test of the whole "nothing downloads, `onError` runs, the error is announced" contract, rather
- * than only the half a click handler would still owe on its own.
- *
- * @param props The button's own props — `columns`, `rows` or `getRows`, `fileName`.
- * @param resultLabel Success announcement, as a function of the row count.
- * @param errorLabel Failure announcement.
- * @param onError Called with the error on failure — from `getRows`, or from `download` itself.
- * @param download Injected download port; defaults to `downloadResponseAsFile`.
- */
-export async function runExport<T>(
-  props: ExportButtonProps<T>,
-  resultLabel: (rowCount: number) => string,
-  errorLabel: string,
-  onError: ((error: unknown) => void) | undefined,
-  download: (response: Response, filename: string) => Promise<void> = downloadResponseAsFile,
-): Promise<ExportRunResult> {
-  try {
-    const rows = hasRows(props) ? props.rows : await props.getRows()
-    const response = new Response(toCsvBytes(props.columns, rows), {
-      headers: { "content-type": "text/csv;charset=utf-8" },
-    })
-    await download(response, props.fileName)
-    return { ok: true, announcement: resultLabel(rows.length) }
-  } catch (error) {
-    onError?.(error)
-    return { ok: false, announcement: errorLabel }
-  }
 }
 
 /**
