@@ -1,10 +1,10 @@
 /**
- * `ImageLightbox` — makes the images inside a container zoomable, with a `<dialog>` lightbox.
+ * `ImageLightbox` — makes the images inside a container zoomable, opening the shared `Lightbox`.
  *
  * Progressive enhancement in the strict sense: the server renders the page, this adds a zoom layer
  * after hydration, and nothing is added to the markup that a reader without JavaScript would miss.
- * The dialog itself is the only element the component renders, and it is empty until an image is
- * opened.
+ * `Lightbox` is the only element this component renders, and its dialog is empty until an image is
+ * opened — see `@preact-components/ui/lightbox` for what it is built on and why.
  *
  * The click layer is delegated to the container rather than attached to each image: one listener
  * instead of N, images that arrive after hydration still work, and cleanup is complete — the
@@ -19,12 +19,20 @@
  * Escape closes the dialog natively and the backdrop closes it on a click, which is only true
  * because the image is positioned inside the dialog rather than filling it: a dialog whose child
  * covers it is a dialog no click can ever reach.
+ *
+ * **Previous and next page through the container's other zoomable images.** Which images those are
+ * is decided once, at the moment one is opened: {@link collectSequence} reads every element the
+ * container's `imageSelector` currently matches, in DOM order, and that snapshot is what Left,
+ * Right and the lightbox's own buttons page through for as long as the dialog stays open. An image
+ * that arrives in the container afterward becomes zoomable — the click layer and the
+ * `MutationObserver` still cover it — but is not spliced into a sequence already being viewed, the
+ * same way the source click layer already treats an image arriving after hydration: it works once
+ * mounted, not retroactively.
  */
 
-import { cn } from "@preact-components/cn"
-import { IconXMark } from "@preact-components/icons"
+import { Lightbox } from "@preact-components/ui/lightbox"
 import type { JSX } from "preact"
-import { useEffect, useRef, useState } from "preact/hooks"
+import { useEffect, useState } from "preact/hooks"
 
 /** An image the lightbox can show. */
 export interface LightboxImage {
@@ -123,6 +131,44 @@ function unmarkZoomable(container: Element): void {
   }
 }
 
+/** What {@link collectSequence} hands back: the lightbox's whole sequence, and where it opened. */
+export interface ImageSequence {
+  /** Every zoomable image the container held at the moment one was opened, in DOM order. */
+  images: LightboxImage[]
+  /** Position of the activated image in {@link ImageSequence.images}; `-1` if it did not resolve. */
+  index: number
+}
+
+/**
+ * Build the sequence a lightbox pages through, and the position of the image that was opened.
+ *
+ * Pure: given the container's zoomable elements, already read, and the one that was activated, it
+ * decides which resolve to real images and where the activated one landed among them. That is not
+ * simply "the position in `elements`" — {@link resolveImage} can refuse an element with no usable
+ * `src`, and an element `elements` still lists then never reaches `images` at all.
+ *
+ * @param elements Every element the container's `imageSelector` currently matches, in DOM order.
+ * @param target The element that was clicked or activated with the keyboard.
+ * @param imageSelector Selector an image must match — see {@link resolveImage}.
+ * @param fallbackAlt `alt` used when an image has none.
+ */
+export function collectSequence(
+  elements: readonly ImageElementLike[],
+  target: ImageElementLike | null,
+  imageSelector = "img",
+  fallbackAlt = "Image",
+): ImageSequence {
+  const images: LightboxImage[] = []
+  let index = -1
+  for (const element of elements) {
+    const resolved = resolveImage(element, imageSelector, fallbackAlt)
+    if (!resolved) continue
+    if (element === target) index = images.length
+    images.push(resolved)
+  }
+  return { images, index }
+}
+
 export interface ImageLightboxProps {
   /**
    * Container whose images become zoomable. Defaults to `"[data-lightbox]"` — an attribute the
@@ -141,28 +187,23 @@ export interface ImageLightboxProps {
   label?: string
   /** Accessible name of the close control. Defaults to `"Close"`. */
   closeLabel?: string
+  /** Accessible name of the previous control. Defaults to `"Previous image"`. */
+  previousLabel?: string
+  /** Accessible name of the next control. Defaults to `"Next image"`. */
+  nextLabel?: string
   /** Called when an image is opened, with the resolved `src` and `alt`. */
   onOpen?: (image: LightboxImage) => void
   /** Utilities for the dialog. */
   class?: string
 }
 
-const dialogClass =
-  "fixed inset-0 m-0 h-full max-h-none w-full max-w-none bg-black/95 p-0 backdrop:bg-black/80"
-const closeClass =
-  "absolute top-4 right-4 z-10 cursor-pointer rounded-full bg-black/50 p-2 text-white/70 transition-colors hover:text-white focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-white"
-// Positioned rather than stretched: the dialog has to be the thing under the pointer everywhere the
-// image is not, or a backdrop click lands on a full-size child and the documented close is a lie.
-const imageClass =
-  "absolute top-1/2 left-1/2 max-h-[90vh] max-w-[90vw] -translate-x-1/2 -translate-y-1/2 object-contain"
-
 /**
- * Zoomable images inside a container.
+ * Zoomable images inside a container, opening the shared `Lightbox`.
  *
- * Escape and the backdrop both close the lightbox: the first is native `<dialog>` behaviour, the
- * second is the click comparison below. Either way `close` clears the state, which is why no
- * global key listener is needed — the source version kept one alive alongside the native close,
- * so state and dialog could disagree.
+ * Escape and the backdrop both close it: the first is native `<dialog>` behaviour, the second is
+ * `Lightbox`'s own click comparison. Either way its `close` event clears this component's state,
+ * which is why no global key listener is needed for closing — the source version kept one alive
+ * alongside the native close, so state and dialog could disagree.
  */
 export function ImageLightbox(
   {
@@ -173,12 +214,15 @@ export function ImageLightbox(
     zoomLabel = "Zoom",
     label = "Image viewer",
     closeLabel = "Close",
+    previousLabel,
+    nextLabel,
     onOpen,
     class: className,
   }: ImageLightboxProps,
 ): JSX.Element {
-  const [image, setImage] = useState<LightboxImage | null>(null)
-  const dialogRef = useRef<HTMLDialogElement>(null)
+  const [sequence, setSequence] = useState<LightboxImage[]>([])
+  const [index, setIndex] = useState(0)
+  const [open, setOpen] = useState(false)
 
   useEffect(() => {
     const container = document.querySelector(containerSelector)
@@ -192,28 +236,30 @@ export function ImageLightbox(
     const observer = new MutationObserver(mark)
     observer.observe(container, { childList: true, subtree: true })
 
-    const open = (event: Event) => {
-      const resolved = resolveImage(
-        event.target as ImageElementLike | null,
-        imageSelector,
-        fallbackAlt,
-      )
+    const openAt = (event: Event) => {
+      const target = event.target as ImageElementLike | null
+      const resolved = resolveImage(target, imageSelector, fallbackAlt)
       if (!resolved) return false
 
       // The default is what has to go: a click or an Enter press on an image inside a link would
       // otherwise open the lightbox *and* navigate away from it, and Space would scroll the page.
       event.preventDefault()
-      setImage(resolved)
-      dialogRef.current?.showModal()
+      const elements = [
+        ...container.querySelectorAll(imageSelector),
+      ] as unknown as ImageElementLike[]
+      const collected = collectSequence(elements, target, imageSelector, fallbackAlt)
+      setSequence(collected.images)
+      setIndex(collected.index >= 0 ? collected.index : 0)
+      setOpen(true)
       onOpen?.(resolved)
       return true
     }
 
-    const onClick = (event: Event) => open(event)
+    const onClick = (event: Event) => openAt(event)
     const onKeyDown = (event: Event) => {
       const key = (event as KeyboardEvent).key
       if (key !== "Enter" && key !== " ") return
-      open(event)
+      openAt(event)
     }
 
     container.addEventListener("click", onClick)
@@ -226,26 +272,18 @@ export function ImageLightbox(
     }
   }, [containerSelector, imageSelector, fallbackAlt, zoomCursor, zoomLabel, onOpen])
 
-  const close = () => dialogRef.current?.close()
-
   return (
-    <dialog
-      ref={dialogRef}
-      aria-label={label}
-      onClose={() => setImage(null)}
-      onClick={(event) => {
-        if (event.target === dialogRef.current) close()
-      }}
-      class={cn(dialogClass, className)}
-    >
-      {image && (
-        <>
-          <button type="button" onClick={close} aria-label={closeLabel} class={closeClass}>
-            <IconXMark class="size-8" />
-          </button>
-          <img src={image.src} alt={image.alt} class={imageClass} />
-        </>
-      )}
-    </dialog>
+    <Lightbox
+      images={sequence}
+      index={index}
+      open={open}
+      onClose={() => setOpen(false)}
+      onIndexChange={setIndex}
+      label={label}
+      closeLabel={closeLabel}
+      previousLabel={previousLabel}
+      nextLabel={nextLabel}
+      class={className}
+    />
   )
 }

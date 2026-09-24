@@ -1,7 +1,12 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
-import { type ImageElementLike, ImageLightbox, resolveImage } from "./image-lightbox.tsx"
+import {
+  collectSequence,
+  type ImageElementLike,
+  ImageLightbox,
+  resolveImage,
+} from "./image-lightbox.tsx"
 
 /** An element stub with the three properties `resolveImage` reads. */
 function element(overrides: Partial<ImageElementLike> = {}): ImageElementLike {
@@ -66,6 +71,48 @@ describe("resolveImage", () => {
     // cancelling the event it opens on, which is a browser's business and `pages/checks/system.ts`'s
     // to prove — this function never sees it.
     expect(resolveImage(element({ matches: (selector) => selector === "a" }))).toBeNull()
+  })
+})
+
+describe("collectSequence", () => {
+  const hero = element({ src: "https://acme.example/img/hero.png", alt: "A hero" })
+  const team = element({ src: "https://acme.example/img/team.png", alt: "The team" })
+  const product = element({ src: "https://acme.example/img/product.png", alt: "A product" })
+
+  it("resolves every matched element into the sequence, in order", () => {
+    const result = collectSequence([hero, team, product], team)
+
+    expect(result.images).toEqual([
+      { src: "https://acme.example/img/hero.png", alt: "A hero" },
+      { src: "https://acme.example/img/team.png", alt: "The team" },
+      { src: "https://acme.example/img/product.png", alt: "A product" },
+    ])
+  })
+
+  it("finds the activated element's position in the sequence", () => {
+    expect(collectSequence([hero, team, product], product).index).toBe(2)
+    expect(collectSequence([hero, team, product], hero).index).toBe(0)
+  })
+
+  it("skips an element with no usable src, without miscounting the activated one after it", () => {
+    const broken = element({ src: "", getAttribute: () => null })
+    const result = collectSequence([hero, broken, product], product)
+
+    expect(result.images.map((image) => image.src)).toEqual([
+      "https://acme.example/img/hero.png",
+      "https://acme.example/img/product.png",
+    ])
+    // product is second in the resolved sequence, even though it is third among the elements.
+    expect(result.index).toBe(1)
+  })
+
+  it("reports -1 when the activated element itself did not resolve", () => {
+    const broken = element({ src: "", getAttribute: () => null })
+    expect(collectSequence([hero, broken], broken).index).toBe(-1)
+  })
+
+  it("returns an empty sequence for an empty container", () => {
+    expect(collectSequence([], null)).toEqual({ images: [], index: -1 })
   })
 })
 

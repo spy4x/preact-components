@@ -19,6 +19,9 @@ Extracted from earlier source applications.
 - **No `theme/` dependency.** Utilities are inlined, like `ui/`. `icons/` supplies the four glyphs
   these components draw (`IconChevronLeft`, `IconChevronRight`, `IconXMark`, `IconBars3`) rather
   than duplicating SVG.
+- **`ui/` is a sibling dependency, for one component.** `ImageLightbox` opens
+  `@preact-components/ui`'s shared `Lightbox` instead of rendering its own dialog, so this package
+  imports `ui/` the same way `crud/` already does. Nothing else here imports it.
 
 ## Components
 
@@ -28,7 +31,7 @@ Extracted from earlier source applications.
 | `SEOHead`       | `seo-head`       | `title`, `description`, `canonical`, `crumbs?`, `ogImage?`, `jsonLd?`, `noindex?`, `twitterCard?`                    |
 | `SWUpdater`     | `sw-updater`     | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                 |
 | `Calendar`      | `calendar`       | `monthAnchor`, `minDate`, `maxDate`, `slotsByDate`, `onSelectDate?`                                                  |
-| `ImageLightbox` | `image-lightbox` | `containerSelector?`, `imageSelector?`, `fallbackAlt?`, `zoomLabel?`, `onOpen?`                                      |
+| `ImageLightbox` | `image-lightbox` | `containerSelector?`, `imageSelector?`, `fallbackAlt?`, `zoomLabel?`, `previousLabel?`, `nextLabel?`, `onOpen?`      |
 | `SiteHeader`    | `site-header`    | `links`, `currentPath?`, `brand`, `actions?`, `labels?`                                                              |
 | `Shell`         | `shell`          | `navItems`, `currentPath?`, `brand`, `user`, `userMenuItems?`, `status?`, `children`, `labels?`, `class?`            |
 | `StateInit`     | `state-init`     | `data`, `id?` — paired with `readStateInit(id?, source?)`                                                            |
@@ -280,10 +283,13 @@ The day labels are the locale's too: a screen reader is read `9 February 2026` r
 
 ## Progressive enhancement
 
-`ImageLightbox` makes the images inside a container zoomable through a `<dialog>` lightbox. It
-renders nothing but that empty dialog, so a reader without JavaScript loses only the zoom. The
-layer is delegated to the container: one listener instead of one per image, images that arrive
-after hydration still work, and cleanup is complete.
+`ImageLightbox` makes the images inside a container zoomable, opening `@preact-components/ui`'s
+shared `Lightbox` — the same dialog `ImageGallery` opens on a thumbnail (`ui/README.md`'s
+`Lightbox` section). It renders nothing but that empty dialog, so a reader without JavaScript loses
+only the zoom. The layer is delegated to the container: one listener instead of one per image,
+images that arrive after hydration still work, and cleanup is complete. Previous and next page
+through the container's other zoomable images, snapshotted at the moment one opens; an image that
+arrives afterward becomes zoomable but is not spliced into a sequence already being viewed.
 
 **A zoomable image behaves like a button**, because that is what it has become. The component
 gives every image it marks a tab stop, a button's role and a name saying what activating it does,
@@ -709,10 +715,11 @@ reads the same as one whose `id` was mistyped, rather than throwing either way.
   DST boundary and a weekday computed in UTC is the same weekday everywhere. A `timeZone` prop
   survives for the one question that genuinely needs it — which date is _today_ — plus an
   injectable `today` for deterministic renders.
-- **No `Nav`, `Auth`, `Menu`, `Header`, `ProfileDropdown`, `ImageGallery`, `LeadForm` or
-  `NewsletterForm`.** Each one is in the table below with a reason. `Shell` (#135) and `StateInit`
-  are built as of this package's own commit — see their sections above — and are no longer in that
-  table.
+- **No `Nav`, `Auth`, `Menu`, `Header`, `ProfileDropdown`, `LeadForm` or `NewsletterForm`.** Each
+  one is in the table below with a reason. `Shell` (#135) and `StateInit` are built as of this
+  package's own commit — see their sections above — and are no longer in that table.
+  `ImageGallery` was in it too, and is no longer: it is built, in `ui/` rather than here — see
+  `ui/README.md`'s `ImageGallery` section.
 - **`ImageLightbox` uses event delegation, not per-image listeners.** The source attached one
   listener per image and never removed them; delegation also survives images that appear after
   hydration. Escape needs no listener of its own: `<dialog>` closes natively and the `close` event
@@ -732,12 +739,11 @@ reads the same as one whose `id` was mistyped, rather than throwing either way.
 
 ## Not in this package
 
-| Left out                            | Why                                                                                                                                                                                                               |
-| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Menu`, `Header`, `ProfileDropdown` | Two source implementations of the same responsive header, both shaped around one app's markup and brand. The pieces worth keeping are the dual-mode contract and the a11y fixes, which landed in `Calendar`.      |
-| `ImageGallery`                      | Snap-scroll strip plus an arrow-key lightbox. The lightbox half landed as `ImageLightbox`; the strip is a horizontal scroller whose drag and snap behaviour needs a DOM test harness this repo does not have yet. |
-| `LeadForm`, `NewsletterForm`        | Form chrome whose anti-bot fields (honeypot, page-load timestamp) and success states the host must render itself.                                                                                                 |
-| `themeBootstrapScript()`            | The FOUC-free inline `<head>` script belongs with `ts-libs`, next to the other head-platform helpers.                                                                                                             |
+| Left out                            | Why                                                                                                                                                                                                          |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `Menu`, `Header`, `ProfileDropdown` | Two source implementations of the same responsive header, both shaped around one app's markup and brand. The pieces worth keeping are the dual-mode contract and the a11y fixes, which landed in `Calendar`. |
+| `LeadForm`, `NewsletterForm`        | Form chrome whose anti-bot fields (honeypot, page-load timestamp) and success states the host must render itself.                                                                                            |
+| `themeBootstrapScript()`            | The FOUC-free inline `<head>` script belongs with `ts-libs`, next to the other head-platform helpers.                                                                                                        |
 
 The source applications' own `Shell`/`Nav` and `StateInit` used to be in this table too: each read
 straight out of a global app store, hardcoded a brand string or an env key, and one ran an `effect()`
