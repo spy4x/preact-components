@@ -3404,14 +3404,16 @@ async function imageLightboxChecks(devtools: Devtools): Promise<void> {
 
 /**
  * An image with no `alt` at all, where `fallbackAlt=""` has turned the substitution off, is never
- * marked a zoom control, and a real click on it — inside a link — follows the link instead of being
- * cancelled for a lightbox that would have refused to open anyway.
+ * marked a zoom control, and a real click on it — inside a link — is left uncancelled instead of
+ * being cancelled for a lightbox that would have refused to open anyway.
  *
- * The link's target is a same-page fragment (`#lightbox-bare-target`), never an external address:
- * proving the click is not cancelled means letting the browser actually follow it, and nothing in
- * this repository's checks may reach outside the local preview server. `history.replaceState` at
- * the end puts the address back, so a later check reading `location` is not surprised by this one's
- * own navigation.
+ * The measurement is `defaultPrevented`, the same one {@link linkedImageCheck} uses and for the
+ * same reason: a browser follows a link exactly when the click that reached it was not cancelled,
+ * so reading `defaultPrevented` on a listener that then cancels the event itself proves what a real
+ * navigation would have done without ever letting the page actually move. An earlier version of
+ * this check let the click really navigate to a same-page fragment; measured in review, that left
+ * the page settling for some time after the check's own wait returned, and a full run that landed
+ * under load from a concurrent build failed an unrelated check further down the file because of it.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -3439,11 +3441,30 @@ async function bareImageRefusalCheck(devtools: Devtools): Promise<void> {
 
   await read(
     devtools,
+    `(() => {
+      globalThis.__bareImageClick = { clicks: 0, prevented: null }
+      globalThis.__bareImageListener = (event) => {
+        const target = event.target
+        const link = target && target.closest
+          ? target.closest('[data-e2e="lightbox-bare-link"]')
+          : null
+        if (!link) return
+        globalThis.__bareImageClick.clicks++
+        globalThis.__bareImageClick.prevented = event.defaultPrevented
+        event.preventDefault()
+      }
+      document.addEventListener("click", globalThis.__bareImageListener)
+      return true
+    })()`,
+    false,
+  )
+
+  await read(
+    devtools,
     `(document.querySelector('${BARE_IMAGE}')?.scrollIntoView({ block: "center", behavior: "instant" }), true)`,
     false,
   )
   await settleScroll(devtools)
-  const before = await read(devtools, `location.hash`, "unreadable")
   const aim = await read(
     devtools,
     `(() => {
@@ -3464,30 +3485,35 @@ async function bareImageRefusalCheck(devtools: Devtools): Promise<void> {
     MISSED,
   )
   if (aim.onTarget) await clickAt(devtools, aim)
-  await poll(() => read(devtools, `location.hash === "#lightbox-bare-target"`, false), 3_000)
-  const afterHash = await read(devtools, `location.hash`, "unreadable")
-  const modalsOpen = await read(devtools, `document.querySelectorAll("dialog:modal").length`, -1)
+  await poll(() => read(devtools, `globalThis.__bareImageClick?.clicks === 1`, false), 3_000)
+  const outcome = await read(
+    devtools,
+    `(() => {
+      const record = globalThis.__bareImageClick || { clicks: 0, prevented: null }
+      return {
+        clicks: record.clicks,
+        prevented: record.prevented,
+        modalsOpen: document.querySelectorAll("dialog:modal").length,
+      }
+    })()`,
+    { clicks: 0, prevented: null as boolean | null, modalsOpen: -1 },
+  )
 
   check(
-    "a real click on the undescribed, linked image follows the link instead of opening a lightbox",
-    // A transition, not "starts empty": the catalogue is hash-routed, so an earlier check's own
-    // navigation can leave a different hash on the page before this one runs — measured in
-    // review, where a run that reached this check by way of the ToggleSwitch card's own deep link
-    // read `before` as "#/inputs/toggle-switch", not "". What the click has to prove is that the
-    // hash *becomes* the link's target, whatever it was before.
-    aim.onTarget && before !== "#lightbox-bare-target" && afterHash === "#lightbox-bare-target" &&
-      modalsOpen === 0,
+    "a real click on the undescribed, linked image is not cancelled, so the link it sits in still works",
+    aim.onTarget && outcome.clicks === 1 && outcome.prevented === false && outcome.modalsOpen === 0,
     aim.onTarget
-      ? `hash "${before}" → click → "${afterHash}", ${modalsOpen} modal dialog(s) open`
+      ? `a real click on the ${aim.reason} reached document with defaultPrevented=` +
+        `${outcome.prevented}, ${outcome.modalsOpen} modal dialog(s) open`
       : `no click was sent: the point at ${aim.x},${aim.y} lands on ${aim.landedOn} — ${aim.reason}`,
   )
 
-  // Teardown: the address back to where the run started, and any dialog this scenario might have
-  // wrongly opened closed, so neither leaks into a check that runs after this one.
+  // Teardown: this check's own listener removed, and any dialog this scenario might have wrongly
+  // opened closed, so neither leaks into a check that runs after this one.
   await read(
     devtools,
     `(() => {
-      history.replaceState(null, "", location.pathname + location.search)
+      document.removeEventListener("click", globalThis.__bareImageListener)
       for (const dialog of document.querySelectorAll("dialog")) if (dialog.open) dialog.close()
       return true
     })()`,
