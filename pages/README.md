@@ -74,6 +74,28 @@ is a failed check (`--only names only known package blocks`) rather than a run t
 less than it was asked — `pages/checks/harness.test.ts`'s `selectBlocks` cases cover that and the
 ordering and de-duplication `pages/verify.ts` relies on.
 
+### Running under load
+
+A check that waits a fixed time, or reads before the component has finished, passes on an idle
+machine and fails on a busy one — on correct code. CI runners are sometimes busy, so a reviewer
+should be able to make a machine busy on purpose (#269). Start a CPU load on every core with its
+own deadline and a cap on its processes, in one terminal:
+
+```bash
+systemd-run --user --scope --quiet -p TasksMax=100 timeout 1200 stress-ng --cpu 0 --timeout 1100s
+```
+
+and run full `verify` repeatedly in another while it lasts, noting `uptime` with each run:
+
+```bash
+uptime && systemd-run --user --scope --quiet -p TasksMax=500 -p MemoryMax=8G timeout 900 deno task --cwd pages verify
+```
+
+On a 16-core machine that holds the load average near 20, and a full run takes about three minutes
+instead of two. `stress-ng` stops at its own timeout; `timeout 1200` is the backstop. A check that
+fails only under load is a check to fix, not to re-run: poll on the state it asserts, read in the
+same evaluate as the action, or measure a duration with the page's own clock.
+
 `verify` denies downloads for the whole run: right after it connects, it calls
 `Browser.setDownloadBehavior` with `deny`, falls back to `Page.setDownloadBehavior`, and prints a note
 and carries on if neither exists. A check that exports a file reads its bytes inside the page, so it
