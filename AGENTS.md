@@ -215,8 +215,6 @@ down:
   protocol commands land in it only by chance.
 - The catalogue scrolls smoothly. After anything that scrolls or reloads, wait for the page to stop
   moving (`settledScroll` in `harness.ts`) before aiming the pointer or reading a position.
-- `Page.captureScreenshot`'s `clip` is in page coordinates and `getBoundingClientRect` in viewport
-  coordinates; mixing them captures an empty region and compares nothing.
 - A real back/forward-cache restore can be driven: navigate away, then `Page.navigateToHistoryEntry`,
   and `Page.frameNavigated` reports `type: "BackForwardCacheRestore"`.
 - The published GitHub Pages site answers a POST with 405. A form's no-JavaScript path is proven
