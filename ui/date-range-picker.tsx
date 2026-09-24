@@ -6,8 +6,13 @@ import { Button, buttonClasses } from "./button.tsx"
 import {
   type DateRange,
   type DateRangePreset,
+  type DateTimeRange,
   isValidDateRange,
+  isValidDateTimeRange,
   rangeForPreset,
+  rangeForTimePreset,
+  type TimeRangePreset,
+  timeRangePresets,
 } from "./date-range.ts"
 
 /** One option of the preset list: the maths identifier plus the caller's label for it. */
@@ -47,6 +52,10 @@ export interface DateRangePickerLabels {
   apply?: string
   /** Text of the button that discards the custom draft. */
   cancel?: string
+  /** Text of the "last hour" preset. Rendered only when `withTime` is on. */
+  lastHour?: string
+  /** Text of the "last 24 hours" preset. Rendered only when `withTime` is on. */
+  last24Hours?: string
 }
 
 /** The English every label falls back to. */
@@ -57,30 +66,78 @@ const defaultLabels: Required<DateRangePickerLabels> = {
   to: "To",
   apply: "Apply",
   cancel: "Cancel",
+  lastHour: "Last hour",
+  last24Hours: "Last 24 hours",
 }
 
-export interface DateRangePickerProps {
-  /** Controlled value; `null` until the caller has a range. */
-  range: DateRange | null
-  /** Called with the new inclusive range when a preset or the custom panel commits. */
-  onChange: (range: DateRange) => void
+/** Props shared by both of {@link DateRangePickerProps}'s two shapes. */
+interface DateRangePickerSharedProps {
   /** IANA zone that resolves "today". Required: the server's zone is not the visitor's. */
   timeZone: string
-  /** Preset list in render order, each with the caller's label. Include `"custom"` to show the fields. */
-  presets: readonly DateRangePresetOption[]
   /** User-facing copy. Every entry defaults to English, so this and each key in it are optional. */
   labels?: DateRangePickerLabels
-  /** Preset to highlight, e.g. from {@link presetForRange}. */
-  selectedPreset?: DateRangePreset
   /** Instant the presets resolve against; defaults to the clock, read when a button is pressed. */
   now?: Date
-  /** Renders the chosen range in the trigger. Defaults to `from → to` (ISO). */
-  formatRange?: (range: DateRange) => string
   /** Extra utilities for the root container. */
   class?: string
   /** Sets `data-e2e` on the trigger. */
   dataE2E?: string
 }
+
+/**
+ * {@link DateRangePickerProps} with `withTime` off (the default): calendar days, no time of day.
+ *
+ * Exported, alongside {@link DateRangePickerTimeProps}, so a caller building up one shape's props
+ * with a partial override — a test helper, a wrapper component — can type that override against the
+ * one branch it actually uses. `Partial<DateRangePickerProps>` cannot serve that: a mapped type over
+ * a union only keeps the properties every branch shares, so `presets` — day mode only — would
+ * silently disappear from it, and every property's type would flatten to the union of both branches'
+ * types regardless of which one a given override was written for.
+ */
+export interface DateRangePickerDayProps extends DateRangePickerSharedProps {
+  withTime?: false
+  /** Controlled value; `null` until the caller has a range. */
+  range: DateRange | null
+  /** Called with the new inclusive range when a preset or the custom panel commits. */
+  onChange: (range: DateRange) => void
+  /** Preset list in render order, each with the caller's label. Include `"custom"` to show the fields. */
+  presets: readonly DateRangePresetOption[]
+  /** Preset to highlight, e.g. from {@link presetForRange}. */
+  selectedPreset?: DateRangePreset
+  /** Renders the chosen range in the trigger. Defaults to `from → to` (ISO). */
+  formatRange?: (range: DateRange) => string
+}
+
+/**
+ * {@link DateRangePickerProps} with `withTime` on: From and To are `datetime-local` fields, and the
+ * panel also offers `"last-hour"` and `"last-24-hours"`, the two presets that only make sense with
+ * a time of day.
+ *
+ * No `presets` prop: unlike the day list, these two are the component's own, named and ordered the
+ * way `labels`' fixed strings are — an English default per entry, overridden through `labels` — so
+ * there is nothing for a caller to assemble. The custom From/To fields are always present in this
+ * mode, for the same reason: a timed value can only come from typing one or from a preset, and with
+ * only two fixed presets a picker that could not also be typed into would cover very little.
+ */
+export interface DateRangePickerTimeProps extends DateRangePickerSharedProps {
+  withTime: true
+  /** Controlled value; `null` until the caller has a range. */
+  range: DateTimeRange | null
+  /** Called with the new inclusive range when a preset or the custom fields commit. */
+  onChange: (range: DateTimeRange) => void
+  /** Preset to highlight, e.g. from {@link presetForTimeRange}, or `"custom"` for the typed fields. */
+  selectedPreset?: TimeRangePreset | "custom"
+  /** Renders the chosen range in the trigger. Defaults to `from → to` (ISO wall clock). */
+  formatRange?: (range: DateTimeRange) => string
+}
+
+/**
+ * Props for {@link DateRangePicker}. Two shapes, chosen by `withTime`: the default carries a
+ * calendar-day {@link DateRange}, and `withTime: true` carries a timed {@link DateTimeRange} instead
+ * — see {@link DateRangePickerTimeProps}. `withTime` off, including left out entirely, is the first
+ * shape, byte for byte what this component accepted before `withTime` existed.
+ */
+export type DateRangePickerProps = DateRangePickerDayProps | DateRangePickerTimeProps
 
 const panelClasses =
   "absolute z-10 mt-2 w-80 rounded-md bg-white p-3 shadow-lg ring-1 ring-black/5 dark:bg-gray-800 dark:ring-gray-600"
@@ -91,6 +148,20 @@ const dateInputClasses =
 const fieldLabelClasses = "block text-xs font-medium text-gray-700 dark:text-gray-300"
 
 const pressedPresetClasses = "bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100"
+
+/**
+ * The trigger's text for a chosen range: the caller's formatter, or `from → to` (ISO) when there is
+ * none. Generic over the range shape so the one fallback string lives in one place; the two call
+ * sites in {@link DateRangePicker} still branch on `withTime`, because a union of two `formatRange`
+ * signatures cannot be called with a union of their two argument types — only TypeScript's own
+ * narrowing on the discriminant lets each call see one concrete shape.
+ */
+function rangeText<R extends { from: string; to: string }>(
+  range: R,
+  formatRange: ((range: R) => string) | undefined,
+): string {
+  return formatRange?.(range) ?? `${range.from} → ${range.to}`
+}
 
 /**
  * Preset menu plus a custom from/to panel over {@link rangeForPreset}.
@@ -117,26 +188,20 @@ const pressedPresetClasses = "bg-gray-100 text-gray-900 dark:bg-gray-700 dark:te
  * as it never has been — so Escape can arrive from somewhere the person has since walked to, and
  * pulling them back there would be one more way to lose their place rather than a way to keep it.
  *
+ * `withTime` changes what From and To accept and what the custom fields hand back — `datetime-local`
+ * inputs and a {@link DateTimeRange} — and adds the two presets that only make sense with a time of
+ * day, `"last-hour"` and `"last-24-hours"`. Everything else in this doc, the whole focus contract
+ * included, holds in that mode too: it is driven by open/closed and by where focus is, neither of
+ * which `withTime` touches.
+ *
  * @param props See {@link DateRangePickerProps}.
  */
-export function DateRangePicker(
-  {
-    range,
-    onChange,
-    timeZone,
-    presets,
-    labels,
-    selectedPreset,
-    now,
-    formatRange,
-    class: className,
-    dataE2E,
-  }: DateRangePickerProps,
-): JSX.Element {
+export function DateRangePicker(props: DateRangePickerProps): JSX.Element {
+  const { timeZone, labels, now, class: className, dataE2E } = props
   const isOpen = useSignal(false)
   const usingCustom = useSignal(false)
-  const draftFrom = useSignal(range?.from ?? "")
-  const draftTo = useSignal(range?.to ?? "")
+  const draftFrom = useSignal(props.range?.from ?? "")
+  const draftTo = useSignal(props.range?.to ?? "")
   const rootRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -157,19 +222,23 @@ export function DateRangePicker(
     to: labels?.to ?? defaultLabels.to,
     apply: labels?.apply ?? defaultLabels.apply,
     cancel: labels?.cancel ?? defaultLabels.cancel,
+    lastHour: labels?.lastHour ?? defaultLabels.lastHour,
+    last24Hours: labels?.last24Hours ?? defaultLabels.last24Hours,
   }
 
-  const showsCustom = presets.some((option) => option.preset === "custom")
+  // Time mode has no caller-supplied preset list — see `DateRangePickerTimeProps` — so its custom
+  // fields are unconditional; day mode keeps the existing opt-in through a `"custom"` entry.
+  const showsCustom = props.withTime || props.presets.some((option) => option.preset === "custom")
   const draft = { from: draftFrom.value, to: draftTo.value }
-  const canApply = isValidDateRange(draft)
+  const canApply = props.withTime ? isValidDateTimeRange(draft) : isValidDateRange(draft)
 
   // `Custom…` is pressed exactly while the custom fields are the live choice: the caller says the
   // chosen range is the custom one, or the person has reached for the fields in this panel — by
   // activating the button, or by typing into either of them. Reading the button's state off the
   // same signal the fields write is what stops the announced state and the visible one disagreeing.
-  const customPressed = usingCustom.value || selectedPreset === "custom"
-  const isPressed = (preset: DateRangePreset) =>
-    preset === "custom" ? customPressed : preset === selectedPreset
+  const customPressed = usingCustom.value || props.selectedPreset === "custom"
+  const isPressed = (preset: DateRangePreset | TimeRangePreset) =>
+    preset === "custom" ? customPressed : preset === props.selectedPreset
 
   /**
    * Close the panel, saying whether the trigger should get focus back.
@@ -251,8 +320,8 @@ export function DateRangePicker(
 
   /** Opens the panel, seeding the draft from the controlled value so typing resumes where it left off. */
   const openPanel = () => {
-    draftFrom.value = range?.from ?? ""
-    draftTo.value = range?.to ?? ""
+    draftFrom.value = props.range?.from ?? ""
+    draftTo.value = props.range?.to ?? ""
     // The draft is reseeded from the caller's value, so the pressed state is reseeded from the
     // caller's choice: a custom draft that was abandoned last time does not come back pressed.
     usingCustom.value = false
@@ -268,6 +337,7 @@ export function DateRangePicker(
   const instant = () => now ?? new Date()
 
   const selectPreset = (preset: DateRangePreset) => {
+    if (props.withTime) return // day-only presets are not rendered in this mode
     if (preset === "custom") {
       // Nothing opens the panel here. This button is rendered inside the panel, which carries
       // `hidden` while the panel is closed, so it cannot be pressed unless the panel is open
@@ -277,26 +347,43 @@ export function DateRangePicker(
       return
     }
     usingCustom.value = false
-    onChange(rangeForPreset(preset, { now: instant(), timeZone }))
+    props.onChange(rangeForPreset(preset, { now: instant(), timeZone }))
+    closePanel(true)
+  }
+
+  /** Selects `"last-hour"` or `"last-24-hours"`, `withTime`'s own two built-in presets. */
+  const selectTimePreset = (preset: TimeRangePreset) => {
+    if (!props.withTime) return // these buttons are not rendered outside this mode
+    usingCustom.value = false
+    const timeRange = rangeForTimePreset(preset, { now: instant(), timeZone })
+    draftFrom.value = timeRange.from
+    draftTo.value = timeRange.to
+    props.onChange(timeRange)
     closePanel(true)
   }
 
   const applyCustom = () => {
     if (!canApply) return
-    onChange(rangeForPreset("custom", { now: instant(), timeZone, custom: draft }))
+    if (props.withTime) {
+      props.onChange(draft)
+    } else {
+      props.onChange(rangeForPreset("custom", { now: instant(), timeZone, custom: draft }))
+    }
     closePanel(true)
   }
 
   const cancelCustom = () => {
-    draftFrom.value = range?.from ?? ""
-    draftTo.value = range?.to ?? ""
+    draftFrom.value = props.range?.from ?? ""
+    draftTo.value = props.range?.to ?? ""
     usingCustom.value = false
     closePanel(true)
   }
 
-  const triggerText = range
-    ? formatRange?.(range) ?? `${range.from} → ${range.to}`
-    : text.placeholder
+  const triggerText = !props.range
+    ? text.placeholder
+    : props.withTime
+    ? rangeText(props.range, props.formatRange)
+    : rangeText(props.range, props.formatRange)
 
   return (
     <div class={cn("relative inline-flex text-left", className)} ref={rootRef}>
@@ -322,21 +409,38 @@ export function DateRangePicker(
         class={panelClasses}
       >
         <div class="flex flex-wrap gap-1">
-          {presets.map((option) => {
-            const pressed = isPressed(option.preset)
-            return (
-              <button
-                key={option.preset}
-                type="button"
-                class={buttonClasses("ghost", "sm", pressed ? pressedPresetClasses : undefined)}
-                aria-pressed={pressed}
-                onClick={() => selectPreset(option.preset)}
-                data-e2e={`date-range-preset-${option.preset}`}
-              >
-                {option.label}
-              </button>
-            )
-          })}
+          {props.withTime
+            ? timeRangePresets.map((preset) => {
+              const pressed = isPressed(preset)
+              const label = preset === "last-hour" ? text.lastHour : text.last24Hours
+              return (
+                <button
+                  key={preset}
+                  type="button"
+                  class={buttonClasses("ghost", "sm", pressed ? pressedPresetClasses : undefined)}
+                  aria-pressed={pressed}
+                  onClick={() => selectTimePreset(preset)}
+                  data-e2e={`date-range-preset-${preset}`}
+                >
+                  {label}
+                </button>
+              )
+            })
+            : props.presets.map((option) => {
+              const pressed = isPressed(option.preset)
+              return (
+                <button
+                  key={option.preset}
+                  type="button"
+                  class={buttonClasses("ghost", "sm", pressed ? pressedPresetClasses : undefined)}
+                  aria-pressed={pressed}
+                  onClick={() => selectPreset(option.preset)}
+                  data-e2e={`date-range-preset-${option.preset}`}
+                >
+                  {option.label}
+                </button>
+              )
+            })}
         </div>
         {showsCustom && (
           <div class="mt-3 space-y-2 border-t border-gray-200 pt-3 dark:border-gray-600">
@@ -345,7 +449,7 @@ export function DateRangePicker(
               <input
                 id={fromId}
                 ref={fromRef}
-                type="date"
+                type={props.withTime ? "datetime-local" : "date"}
                 class={dateInputClasses}
                 value={draftFrom.value}
                 onInput={(event) => {
@@ -359,7 +463,7 @@ export function DateRangePicker(
               <label class={fieldLabelClasses} for={toId}>{text.to}</label>
               <input
                 id={toId}
-                type="date"
+                type={props.withTime ? "datetime-local" : "date"}
                 class={dateInputClasses}
                 value={draftTo.value}
                 onInput={(event) => {

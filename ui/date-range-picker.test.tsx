@@ -3,8 +3,9 @@ import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import {
   DateRangePicker,
+  type DateRangePickerDayProps,
   type DateRangePickerLabels,
-  type DateRangePickerProps,
+  type DateRangePickerTimeProps,
   type DateRangePresetOption,
 } from "./date-range-picker.tsx"
 
@@ -24,13 +25,27 @@ const presets: readonly DateRangePresetOption[] = [
 ]
 
 /** The three props every case has to supply; `render` drops handlers, so nothing is clickable here. */
-function renderPicker(overrides: Partial<DateRangePickerProps> = {}): string {
+function renderPicker(overrides: Partial<DateRangePickerDayProps> = {}): string {
   return render(
     <DateRangePicker
       range={null}
       onChange={() => {}}
       timeZone="Europe/Paris"
       presets={presets}
+      labels={labels}
+      {...overrides}
+    />,
+  )
+}
+
+/** Same shape as {@link renderPicker}, for the `withTime` cases. */
+function renderTimePicker(overrides: Partial<DateRangePickerTimeProps> = {}): string {
+  return render(
+    <DateRangePicker
+      withTime
+      range={null}
+      onChange={() => {}}
+      timeZone="Europe/Paris"
       labels={labels}
       {...overrides}
     />,
@@ -324,5 +339,157 @@ describe("DateRangePicker", () => {
     expect(html).toContain("mt-4")
     expect(html).toContain('data-e2e="range-picker"')
     expect(html).toContain('data-e2e="date-range-preset-last-7-days"')
+  })
+
+  it(
+    "renders a chosen range identically to before withTime existed, byte for byte",
+    () => {
+      // Captured from this exact prop set before `withTime` was added (`PR #142`'s own evidence),
+      // then generated ids normalised to "ID" — `useId()` is not stable across separate `render`
+      // calls in one process, and every other test here reads ids back out rather than pinning them.
+      const html = renderPicker({
+        range: { from: "2026-08-01", to: "2026-08-23" },
+        selectedPreset: "last-7-days",
+        dataE2E: "snap-1",
+      }).replace(/P\d+-\d+/g, "ID")
+
+      expect(html).toBe(
+        `<div class="relative inline-flex text-left"><button type="button" class="inline-flex items-center rounded-md font-medium transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-purple-900 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50 border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 px-2.5 py-1.5 text-xs min-w-48 justify-between gap-2 truncate" aria-expanded="false" aria-controls="ID-panel" data-e2e="snap-1"><span>2026-08-01 → 2026-08-23</span><span aria-hidden="true">▾</span></button><div id="ID-panel" tabindex="-1" hidden role="group" aria-label="Date range" class="absolute z-10 mt-2 w-80 rounded-md bg-white p-3 shadow-lg ring-1 ring-black/5 dark:bg-gray-800 dark:ring-gray-600"><div class="flex flex-wrap gap-1"><button type="button" class="inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-purple-900 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50 bg-transparent text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700 px-2.5 py-1.5 text-xs" aria-pressed="false" data-e2e="date-range-preset-today">Today</button><button type="button" class="inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-purple-900 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50 hover:bg-gray-100 dark:hover:bg-gray-700 px-2.5 py-1.5 text-xs bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100" aria-pressed="true" data-e2e="date-range-preset-last-7-days">Last 7 days</button><button type="button" class="inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-purple-900 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50 bg-transparent text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700 px-2.5 py-1.5 text-xs" aria-pressed="false" data-e2e="date-range-preset-custom">Custom</button></div><div class="mt-3 space-y-2 border-t border-gray-200 pt-3 dark:border-gray-600"><div><label class="block text-xs font-medium text-gray-700 dark:text-gray-300" for="ID-from">From</label><input id="ID-from" type="date" class="mt-1 block w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" value="2026-08-01" data-e2e="date-range-from"/></div><div><label class="block text-xs font-medium text-gray-700 dark:text-gray-300" for="ID-to">To</label><input id="ID-to" type="date" class="mt-1 block w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" value="2026-08-23" data-e2e="date-range-to"/></div><div class="flex justify-end gap-2"><button type="button" class="inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-purple-900 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50 bg-gray-100 text-gray-900 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600 px-2.5 py-1.5 text-xs">Cancel</button><button data-e2e="date-range-apply" type="button" class="inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-purple-900 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50 bg-purple-900 text-white hover:bg-purple-800 dark:bg-purple-700 dark:hover:bg-purple-600 px-2.5 py-1.5 text-xs">Apply</button></div></div></div></div>`,
+      )
+    },
+  )
+
+  it(
+    "renders the empty, all-defaults state identically to before withTime existed, byte for byte",
+    () => {
+      const html = renderPicker().replace(/P\d+-\d+/g, "ID")
+
+      expect(html).toBe(
+        `<div class="relative inline-flex text-left"><button type="button" class="inline-flex items-center rounded-md font-medium transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-purple-900 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50 border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 px-2.5 py-1.5 text-xs min-w-48 justify-between gap-2 truncate" aria-expanded="false" aria-controls="ID-panel"><span>Pick a range</span><span aria-hidden="true">▾</span></button><div id="ID-panel" tabindex="-1" hidden role="group" aria-label="Date range" class="absolute z-10 mt-2 w-80 rounded-md bg-white p-3 shadow-lg ring-1 ring-black/5 dark:bg-gray-800 dark:ring-gray-600"><div class="flex flex-wrap gap-1"><button type="button" class="inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-purple-900 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50 bg-transparent text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700 px-2.5 py-1.5 text-xs" aria-pressed="false" data-e2e="date-range-preset-today">Today</button><button type="button" class="inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-purple-900 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50 bg-transparent text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700 px-2.5 py-1.5 text-xs" aria-pressed="false" data-e2e="date-range-preset-last-7-days">Last 7 days</button><button type="button" class="inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-purple-900 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50 bg-transparent text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700 px-2.5 py-1.5 text-xs" aria-pressed="false" data-e2e="date-range-preset-custom">Custom</button></div><div class="mt-3 space-y-2 border-t border-gray-200 pt-3 dark:border-gray-600"><div><label class="block text-xs font-medium text-gray-700 dark:text-gray-300" for="ID-from">From</label><input id="ID-from" type="date" class="mt-1 block w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" value data-e2e="date-range-from"/></div><div><label class="block text-xs font-medium text-gray-700 dark:text-gray-300" for="ID-to">To</label><input id="ID-to" type="date" class="mt-1 block w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" value data-e2e="date-range-to"/></div><div class="flex justify-end gap-2"><button type="button" class="inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-purple-900 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50 bg-gray-100 text-gray-900 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600 px-2.5 py-1.5 text-xs">Cancel</button><button disabled data-e2e="date-range-apply" type="button" class="inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-purple-900 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50 bg-purple-900 text-white hover:bg-purple-800 dark:bg-purple-700 dark:hover:bg-purple-600 px-2.5 py-1.5 text-xs">Apply</button></div></div></div></div>`,
+      )
+    },
+  )
+})
+
+describe("DateRangePicker, withTime", () => {
+  it("renders From and To as datetime-local fields, not date fields", () => {
+    const html = renderTimePicker()
+
+    expect(html.match(/type="datetime-local"/g)?.length).toBe(2)
+    expect(html).not.toContain('type="date"')
+  })
+
+  it("always shows the custom fields, with no presets prop to opt in", () => {
+    // Unlike day mode, withTime never gates the fields behind a caller-supplied "custom" entry —
+    // see DateRangePickerTimeProps' own doc for why there is no presets prop in this mode at all.
+    const html = renderTimePicker()
+
+    expect(html.match(/type="datetime-local"/g)?.length).toBe(2)
+    expect(html).toContain("Apply")
+    expect(html).toContain("Cancel")
+  })
+
+  it("shows Last hour and Last 24 hours, English by default", () => {
+    const html = renderTimePicker()
+
+    expect(html).toContain('data-e2e="date-range-preset-last-hour"')
+    expect(html).toContain('data-e2e="date-range-preset-last-24-hours"')
+    expect(html).toMatch(
+      /<button[^>]*data-e2e="date-range-preset-last-hour"[^>]*>Last hour<\/button>/,
+    )
+    expect(html).toMatch(
+      /<button[^>]*data-e2e="date-range-preset-last-24-hours"[^>]*>Last 24 hours<\/button>/,
+    )
+  })
+
+  it("does not show the sub-day presets without withTime", () => {
+    const html = renderPicker()
+
+    expect(html).not.toContain("date-range-preset-last-hour")
+    expect(html).not.toContain("date-range-preset-last-24-hours")
+    expect(html).not.toContain("Last hour")
+    expect(html).not.toContain("Last 24 hours")
+  })
+
+  it("overrides the sub-day presets' labels through labels.lastHour and labels.last24Hours", () => {
+    const html = renderTimePicker({ labels: { lastHour: "60 minutes", last24Hours: "1 day" } })
+
+    expect(html).toContain("60 minutes")
+    expect(html).toContain("1 day")
+    expect(html).not.toContain("Last hour")
+    expect(html).not.toContain("Last 24 hours")
+  })
+
+  it("marks last-hour or last-24-hours pressed through selectedPreset", () => {
+    const html = renderTimePicker({ selectedPreset: "last-24-hours" })
+
+    expect(html.match(/aria-pressed="true"/g)?.length).toBe(1)
+    expect(html).toMatch(/<button[^>]*aria-pressed="true"[^>]*>Last 24 hours<\/button>/)
+  })
+
+  it("marks Custom pressed when the caller says the custom range is the chosen one", () => {
+    const html = renderTimePicker({ selectedPreset: "custom" })
+
+    // No "Custom" button exists in this mode — the fields are always present — so nothing reads
+    // aria-pressed="true" here; `selectedPreset: "custom"` only matters to the two time presets,
+    // and neither of them is the caller's choice.
+    expect(html.match(/aria-pressed="true"/g)).toBeNull()
+  })
+
+  it("shows the chosen timed range as ISO wall clock by default", () => {
+    const html = renderTimePicker({
+      range: { from: "2026-08-01T09:00", to: "2026-08-01T18:00" },
+    })
+
+    expect(html).toContain("2026-08-01T09:00 → 2026-08-01T18:00")
+  })
+
+  it("uses the caller's range formatter for a timed range", () => {
+    const html = renderTimePicker({
+      range: { from: "2026-08-01T09:00", to: "2026-08-01T18:00" },
+      formatRange: (range) => `${range.from} until ${range.to}`,
+    })
+
+    expect(html).toContain("2026-08-01T09:00 until 2026-08-01T18:00")
+  })
+
+  it("seeds the datetime-local fields from the controlled value", () => {
+    const html = renderTimePicker({
+      range: { from: "2026-08-01T09:00", to: "2026-08-01T18:00" },
+    })
+
+    expect(html).toContain('value="2026-08-01T09:00"')
+    expect(html).toContain('value="2026-08-01T18:00"')
+  })
+
+  it("keeps apply disabled while the datetime draft is empty", () => {
+    const html = renderTimePicker()
+
+    expect(html).toMatch(/<button[^>]*disabled[^>]*>Apply<\/button>/)
+  })
+
+  it("enables apply once the controlled range seeds a complete datetime draft", () => {
+    const html = renderTimePicker({
+      range: { from: "2026-08-01T09:00", to: "2026-08-01T18:00" },
+    })
+
+    expect(html).toMatch(/<button[^>]*>Apply<\/button>/)
+  })
+
+  it("keeps apply disabled for a reversed datetime draft, the same rule the day fields follow", () => {
+    const html = renderTimePicker({
+      range: { from: "2026-08-01T18:00", to: "2026-08-01T09:00" },
+    })
+
+    expect(html).toMatch(/<button[^>]*disabled[^>]*>Apply<\/button>/)
+  })
+
+  it("keeps the same focus-contract markup as day mode: a group panel, not a menu", () => {
+    const html = renderTimePicker()
+
+    expect(html).toContain('role="group"')
+    expect(html).not.toContain("aria-haspopup")
+    expect(html).not.toContain('role="menu"')
+    expect(html).toMatch(/<div id="[^"]*-panel" tabindex="-1"/)
   })
 })

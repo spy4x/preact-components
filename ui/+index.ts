@@ -107,8 +107,10 @@ export {
 } from "./data-table.tsx"
 export {
   DateRangePicker,
+  type DateRangePickerDayProps,
   type DateRangePickerLabels,
   type DateRangePickerProps,
+  type DateRangePickerTimeProps,
   type DateRangePresetOption,
 } from "./date-range-picker.tsx"
 export {
@@ -117,21 +119,29 @@ export {
   type DateRange,
   type DateRangePreset,
   dateRangePresets,
+  type DateTimeRange,
   endOfMonth,
   endOfQuarter,
   endOfYear,
   formatIsoDate,
   isSameDay,
   isValidDateRange,
+  isValidDateTimeRange,
   parseIsoDate,
   presetForRange,
   type PresetForRangeOptions,
+  presetForTimeRange,
+  type PresetForTimeRangeOptions,
   rangeForPreset,
   type RangeForPresetOptions,
+  rangeForTimePreset,
+  type RangeForTimePresetOptions,
   shiftMonth,
   startOfMonth,
   startOfQuarter,
   startOfYear,
+  type TimeRangePreset,
+  timeRangePresets,
 } from "./date-range.ts"
 export {
   Dropdown,
