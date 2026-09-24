@@ -22,6 +22,7 @@ import {
   type DateTimeRange,
   Dropdown,
   DropdownItem,
+  FileInput,
   isValidDateRange,
   isValidDateTimeRange,
   OnOffButtons,
@@ -720,6 +721,50 @@ function ToggleFieldDemo() {
 }
 
 /**
+ * `FileInput` with an image-only, size-limited card and a disabled one.
+ *
+ * Selecting, dropping, refusing and removing a file are all browser-only, so what this card can
+ * show ahead of the first click is the closed-state markup: the visually hidden native input inside
+ * its drop zone, the label wired to it, and an always-present, empty `role="status"` for a refusal
+ * that has not happened yet. What a caller actually reads — `onFiles` and `onReject` — is echoed
+ * underneath, in place of trusting the component's own live region to speak for its port.
+ */
+function FileInputDemo() {
+  const chosen = useSignal<string[]>([])
+  const refused = useSignal<string[]>([])
+
+  return (
+    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+      <div class="space-y-2">
+        <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">
+          Images only, up to 2 MB
+        </h4>
+        <FileInput
+          id="guide-file-input"
+          label="Attachments"
+          hint="PNG or JPEG, up to 2 MB each"
+          accept="image/png,image/jpeg"
+          maxSize={2 * 1024 * 1024}
+          multiple
+          onFiles={(files) => chosen.value = files.map((f) => f.name)}
+          onReject={(reasons) => refused.value = reasons.map((r) => `${r.file.name} (${r.reason})`)}
+        />
+        <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="file-input-chosen">
+          chosen: {chosen.value.length === 0 ? "none" : chosen.value.join(", ")}
+        </p>
+        <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="file-input-refused">
+          refused: {refused.value.length === 0 ? "none" : refused.value.join(", ")}
+        </p>
+      </div>
+      <div class="space-y-2">
+        <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">Disabled</h4>
+        <FileInput id="guide-file-input-disabled" label="Attachments" disabled />
+      </div>
+    </div>
+  )
+}
+
+/**
  * The picker with a real range and a highlighted preset.
  *
  * The panel uses `role="group"`, so it can hold the two date inputs that `Dropdown`'s `role="menu"`
@@ -922,6 +967,21 @@ export const inputDemos = {
   required
 />`,
     render: () => <ToggleFieldDemo />,
+  },
+  FileInput: {
+    summary:
+      'File picker on a real `<input type="file">`, hidden with `sr-only` so keyboard, screen-reader and plain-form-post behaviour all stay native; the drop zone is a `<div>` around it, not a second label. `accept` and `maxSize` refusals go through `onReject` and an always-present live region; `previews` (default on) shows and revokes an image thumbnail per file. Does not upload.',
+    snippet: `<FileInput
+  id="attachments"
+  label="Attachments"
+  hint="PNG or JPEG, up to 2 MB each"
+  accept="image/png,image/jpeg"
+  maxSize={2 * 1024 * 1024}
+  multiple
+  onFiles={(files) => chosen.value = files}
+  onReject={(reasons) => refused.value = reasons}
+/>`,
+    render: () => <FileInputDemo />,
   },
   Combobox: {
     summary:

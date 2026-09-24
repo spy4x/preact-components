@@ -168,6 +168,14 @@ export {
   type FieldProps,
   type FieldWiring,
 } from "./field.tsx"
+export {
+  FileInput,
+  type FileInputLabels,
+  type FileInputProps,
+  type FileRejection,
+  formatBytes,
+  matchesAccept,
+} from "./file-input.tsx"
 export { GeoButton, type GeoButtonProps, type GeoCoordinates } from "./geo-button.tsx"
 export { HONEYPOT_FIELD_NAME, honeypotField, honeypotFilled } from "./honeypot.tsx"
 export { ImageGallery, type ImageGalleryImage, type ImageGalleryProps } from "./image-gallery.tsx"

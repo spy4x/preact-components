@@ -23,6 +23,7 @@
     "./error-state": "./error-state.tsx",
     "./export-button": "./export-button.tsx",
     "./field": "./field.tsx",
+    "./file-input": "./file-input.tsx",
     "./geo-button": "./geo-button.tsx",
     "./honeypot": "./honeypot.tsx",
     "./image-gallery": "./image-gallery.tsx",

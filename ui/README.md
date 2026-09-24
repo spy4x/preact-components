@@ -44,6 +44,7 @@ Preact + Tailwind primitives extracted from earlier source applications.
 | `EnhancedForm`    | `enhanced-form`     | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?` — posts natively before hydration                       |
 | `ErrorState`      | `error-state`       | `message` (renders nothing when empty)                                                                                                   |
 | `ExportButton`    | `export-button`     | `columns`, `rows` or `getRows`, `fileName`, `label?`, `resultLabel?`, `errorLabel?`, `onError?`                                          |
+| `FileInput`       | `file-input`        | `id`, `accept?`, `multiple?`, `maxSize?`, `name?`, `onFiles?`, `onReject?`, `label?`, `error?`, `previews?`, `labels?`                   |
 | `GeoButton`       | `geo-button`        | `onLocation`, `onError?`                                                                                                                 |
 | `ImageGallery`    | `image-gallery`     | `images` (`{ src, alt, thumbSrc? }[]`), `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`                         |
 | `Lightbox`        | `lightbox`          | `images`, `index`, `open`, `onClose`, `onIndexChange`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`                    |
@@ -877,6 +878,42 @@ has run — value, message and validity all applied the same way a real keystrok
 — the hidden input re-enables. A form submitted before the effect runs posts no amount at all,
 never a stale one; a form submitted right after posts what was actually typed, or is blocked by
 `setCustomValidity` if that text did not parse.
+
+## FileInput
+
+A real `<input type="file">`, hidden with `sr-only` rather than `display: none`, so it keeps the
+keyboard behaviour, the screen-reader story and the plain form post the browser already gives a file
+input for free. The visible drop zone is a `<div>` around it, not a second `<label>`: the one label
+this component renders (from `label`) carries the only explicit `for`, so there is exactly one
+accessible name, the same guarantee `Field` documents for its own element-child clone. Clicking
+anywhere in the drop zone forwards to the input through a ref; Tab reaching the input and a real
+Space or Enter press open the file chooser with no extra wiring at all, because the browser already
+does that for a focused, undisabled file input regardless of how small it is drawn.
+
+A drop writes its files onto the real input, through a fresh `DataTransfer` — the one documented way
+to set a file input's `FileList` from script — so a plain `<form>` post carries a dropped file the
+same way it carries one chosen through the native picker. `accept` is matched the way the browser
+matches it: an extension (`.png`), a MIME type (`image/png`) or a MIME wildcard (`image/*`), any one
+of a comma-separated list. `maxSize` is a byte comparison. Either refusal is reported through
+`onReject` and rendered into a `role="status"` paragraph that is present, empty, on every render —
+`ExportButton`'s own shape — so a screen reader has something to listen to before the first refusal
+happens, and cleared-then-set so a second identical refusal still reaches it.
+
+Chosen files are listed, each with a remove button named after the file it removes
+(`labels.removeFile`, defaulting to `` `Remove ${name}` ``); removing one rewrites the input's
+`FileList` the same way a drop does. `previews` (default `true`) renders an image file's
+`URL.createObjectURL` thumbnail next to it; the preview is revoked the instant its file leaves the
+list, and every preview still outstanding is revoked on unmount.
+
+`FileInput` renders its own `label`/`hint`/`error`, the same shape `ToggleField` uses, rather than
+being designed as `Field`'s element child: a drop zone's own visible instructions ("Choose files or
+drag and drop") would otherwise sit next to a second label `Field` adds for the same control. A
+caller who wants `Field`'s exact row anyway renders `Field` with `labelFor={false}` and no
+`label`/`hint`/`error` of its own, and passes the wiring's `aria-describedby` through to
+`FileInput`'s own `aria-describedby` prop, which this component folds in alongside the ids it wires
+itself.
+
+It does not upload — sending the chosen files is the caller's own form post or `fetch` call.
 
 ## Tests
 
