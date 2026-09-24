@@ -38,7 +38,7 @@ Preact + Tailwind primitives extracted from earlier source applications.
 | `CopyButton`      | `copy-button`       | `textToCopy`, `copy?` (clipboard port)                                                                                         |
 | `Combobox`        | `combobox`          | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `ariaLabel?`, `aria-labelledby?`, `id?`                                  |
 | `DataTable`       | `data-table`        | `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `captionHidden?`, `empty?`, `paging?`, `rowDataE2E?`, `class?` |
-| `DateRangePicker` | `date-range-picker` | `range`, `onChange`, `timeZone`, `presets`, `labels?` (every key optional)                                                     |
+| `DateRangePicker` | `date-range-picker` | `range`, `onChange`, `timeZone`, `presets` or `withTime`, `labels?` (every key optional)                                       |
 | `Dropdown`        | `dropdown`          | `trigger`, `triggerLabel` or `triggerNamedByContent` (one is required), `menuLabel`, `vertical`, `horizontal`                  |
 | `DropdownItem`    | `dropdown`          | `href`, `onClick`, `disabled`, `class` — a `role="menuitem"`, out of the tab order                                             |
 | `EnhancedForm`    | `enhanced-form`     | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?` — posts natively before hydration             |
@@ -355,6 +355,49 @@ return focus and the two that must not — and so is the move that opens the pan
 either field was typed into, or the caller's `selectedPreset` is `"custom"` — and stops being
 pressed when another preset takes over or the draft is cancelled. It reads that state from the same
 signal the fields write, so what a screen reader announces and what the panel shows cannot disagree.
+
+### `withTime`
+
+Off by default, and off changes nothing: the props, the markup and the behaviour described above are
+exactly what this component had before `withTime` existed. `date-range-picker.test.tsx` pins a
+byte-for-byte snapshot of the day-only render to prove it, taken before `withTime` was added.
+
+With `withTime` on, `range` and `onChange` carry a `DateTimeRange` instead of a `DateRange` — the
+same `from`/`to` shape, a `YYYY-MM-DDTHH:mm` wall time in the picker's `timeZone` rather than a bare
+calendar date, `to` inclusive the same way `DateRange`'s is. The two date fields become
+`datetime-local` fields, and there is no `presets` prop in this mode: the panel shows exactly two
+built-in presets, `"Last hour"` and `"Last 24 hours"` — English by default, overridden through
+`labels.lastHour` and `labels.last24Hours` like every other string here — plus the custom From/To
+fields, which are always present rather than gated behind a `"custom"` entry the caller opts into,
+since typing a value or picking one of the two presets is the only way to reach a timed range at all.
+
+```tsx
+<DateRangePicker
+  withTime
+  range={range.value}
+  onChange={(next) => range.value = next}
+  timeZone="Europe/Berlin"
+/>
+```
+
+`rangeForTimePreset` and `presetForTimeRange`, in `date-range.ts`, are the two presets' own maths —
+plain functions of an injected `now` and `timeZone`, the same convention `rangeForPreset` and
+`presetForRange` follow. Both subtract a fixed number of _real_ milliseconds from `now` before
+reading the wall clock, which is what keeps `"last-24-hours"` exactly right on the two days a year a
+zone's clocks change: the window stays 24 real hours, and it is the _printed_ wall-clock span that
+reads as 23 or 25 hours on that day — not the other way around, a 24-hour-looking span that is
+really 23 or 25 real hours, which is what walking the clock back a day at a time would give. One
+consequence worth knowing rather than being surprised by: on the day a zone falls back, `"last-hour"`'s
+`from` and `to` can print the identical `YYYY-MM-DDTHH:mm` string — the same wall-clock minute, read
+once before the clocks fell back and once after — despite being a real hour apart. Both readings are
+correct; `DateTimeRange`'s own doc in `date-range.ts` carries the detail.
+
+The focus contract above is not re-implemented for this mode — `DateRangePicker`'s open/close
+signals, `closePanel` and the effect that moves focus are the exact same code `withTime` runs
+through, untouched by it. `pages/checks/ui.ts` still proves it holds there rather than assuming so:
+opening moves focus in, Apply and Escape (two of the five closes driven from inside) hand focus back
+to the trigger, and both closes driven from outside leave it alone — driven against the `withTime`
+card directly, the same way the day-only proof above is driven against its own.
 
 ## Pagination
 
@@ -697,7 +740,8 @@ in this package's `deno.json` because the root import map has no renderer.
 
 ## Not in this package
 
-`DateTimeFilter`, `MetricsList`, `Export` and the higher-level selectors
-(`CurrencySelector`, `DateRangeSelector`, `AccountSelector`) stay app-side for now — the first two
-are theme-coupled and belong with the charts work, and `Export` drags in `xlsx`.
-`DeletionValidation` belongs with the CRUD package.
+`MetricsList`, `Export` and the higher-level selectors (`CurrencySelector`, `DateRangeSelector`,
+`AccountSelector`) stay app-side for now — `MetricsList` is theme-coupled and belongs with the charts
+work, and `Export` drags in `xlsx`. `DeletionValidation` belongs with the CRUD package.
+`DateTimeFilter`'s time-of-day mode is `DateRangePicker`'s `withTime` option (#142); nothing app-side
+answering to that name is extracted here.
