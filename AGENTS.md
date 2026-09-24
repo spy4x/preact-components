@@ -223,7 +223,10 @@ down:
 - The catalogue scrolls smoothly. To bring an element into view before aiming at it, use
   `centreInView` in `harness.ts`: it works out where the page's own smooth scroll will stop and
   waits until the page is there. Do not swap it for an instant scroll: under load, an instant
-  scroll lost to a smooth one the page already had running (#269).
+  scroll lost to a smooth one the page already had running (#269). `pages/checks/system.ts` does
+  not follow this yet: it still makes 15 instant `scrollIntoView` calls through its own
+  `settleScroll` helper. Those checks passed under load and under `--cpu-throttle=6` in #274, so
+  they were left alone; move them to `centreInView` when one of them next fails.
   After anything else that scrolls or reloads, wait for the page to stop moving (`settledScroll`)
   before aiming the pointer or reading a position.
 - A real back/forward-cache restore can be driven: navigate away, then `Page.navigateToHistoryEntry`,

@@ -635,13 +635,14 @@ async function browserPhase(): Promise<void> {
           // the block's effect runs before the host page's, which is the one that sets the flag —
           // and on a loaded machine its first frame can come later than two reads 100ms apart,
           // which then agree on the unscrolled page (#269). So when the block is on the page and
-          // not already at the top of the viewport, the wait is told the scroll starts from the
+          // does not sit at the top of the document, the wait is told the scroll starts from the
           // top of the document and holds out until the page has left it. Where it ends is the
           // page's to decide — a destination computed here, from the block's position after
           // hydration, was measured 28px off where Chromium's scroll really stopped — so the wait
           // is not given one. When the block is not on the page, no scroll is expected and the
-          // plain wait applies (#255 may take that scroll away; this reads what the page does
-          // rather than assuming it).
+          // plain wait applies. This only checks whether the alert block is on the page, not
+          // whether it scrolls: the fix for #255 has to drop `from` here and assert instead that
+          // `scrollY` stays at 0.
           const expectsScroll = await devtools.evaluate<boolean>(`(() => {
             const block = document.querySelector('#demo-DeletionValidation [role="alert"]')
             return block !== null && Math.abs(block.getBoundingClientRect().top + globalThis.scrollY) > 1
@@ -661,8 +662,8 @@ async function browserPhase(): Promise<void> {
                 `${settleMs}ms` + (expectsScroll ? ", having left the top" : ", no scroll expected")
               : `scrollY was at ${landedAt} and ${
                 expectsScroll && landedAt === 0
-                  ? "had never left the top (if DeletionValidation no longer scrolls on load, " +
-                    "#255, this wait no longer expects a scroll)"
+                  ? "had never left the top (if DeletionValidation no longer scrolls on load " +
+                    "(#255), drop `from` here and assert that scrollY stays at 0)"
                   : "still changing"
               } 10s after hydration`,
           )
