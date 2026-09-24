@@ -27,42 +27,42 @@ Preact + Tailwind primitives extracted from earlier source applications.
 
 ## Components
 
-| Component         | Subpath             | Ports / key props                                                                                                               |
-| ----------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `Avatar`          | `avatar`            | `name`, `src`, `alt`, `size`                                                                                                    |
-| `AvatarGroup`     | `avatar`            | `items`, `max`, `label`, `size` (a `role="group"`, not a list)                                                                  |
-| `Badge`           | `badge`             | `text`, `color`, `type`                                                                                                         |
-| `Button`          | `button`            | `variant`, `size`, native button attrs                                                                                          |
-| `ConfidenceMeter` | `confidence-meter`  | `value` (optional; clamped 0–100, unknown renders no reading), `label`                                                          |
-| `ContactForm`     | `contact-form`      | `action?`, `onSubmit?` (`{ name, email, message }`), `honeypot?`, `labels?`, built on `EnhancedForm`                            |
-| `CopyButton`      | `copy-button`       | `textToCopy`, `copy?` (clipboard port)                                                                                          |
-| `Combobox`        | `combobox`          | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `ariaLabel?`, `aria-labelledby?`, `id?`                                   |
-| `DataTable`       | `data-table`        | `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `captionHidden?`, `empty?`, `paging?`, `rowDataE2E?`, `class?`  |
-| `DateRangePicker` | `date-range-picker` | `range`, `onChange`, `timeZone`, `presets`, `labels?` (every key optional)                                                      |
-| `Dropdown`        | `dropdown`          | `trigger`, `triggerLabel` or `triggerNamedByContent` (one is required), `menuLabel`, `vertical`, `horizontal`                   |
-| `DropdownItem`    | `dropdown`          | `href`, `onClick`, `disabled`, `class` — a `role="menuitem"`, out of the tab order                                              |
-| `EnhancedForm`    | `enhanced-form`     | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?` — posts natively before hydration              |
-| `ErrorState`      | `error-state`       | `message` (renders nothing when empty)                                                                                          |
-| `GeoButton`       | `geo-button`        | `onLocation`, `onError?`                                                                                                        |
-| `ImageGallery`    | `image-gallery`     | `images` (`{ src, alt, thumbSrc? }[]`), `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`                |
-| `Lightbox`        | `lightbox`          | `images`, `index`, `open`, `onClose`, `onIndexChange`, `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?` |
-| `LoadingScreen`   | `loading-screen`    | `message`, `description`                                                                                                        |
-| `LoadingSkeleton` | `loading-skeleton`  | `rows`                                                                                                                          |
-| `LoadingSpinner`  | `loading-spinner`   | `label`, `size`                                                                                                                 |
-| `NewsletterForm`  | `newsletter-form`   | `action?`, `onSubmit?` (`email`), `honeypot?`, `labels?`, built on `EnhancedForm`                                               |
-| `OnOffButtons`    | `on-off-buttons`    | `value`, `amount`, `onSwitch`                                                                                                   |
-| `PageTitle`       | `page-title`        | `children`, `class`                                                                                                             |
-| `Pagination`      | `pagination`        | `page`, `pageCount`, `onChange`, `label`, `previousLabel`, `nextLabel`, `pageLabel`                                             |
-| `Progress`        | `progress`          | `value`, `max`, `label`, `id` (a caption needs an `id`)                                                                         |
-| `SkeletonCards`   | `skeletons`         | `columns`, `rows`, `lines`                                                                                                      |
-| `SkeletonStatus`  | `skeletons`         | `label` (the loading announcement)                                                                                              |
-| `SkeletonTable`   | `skeletons`         | `rows`, `columns`, `widths`, `reserveHeight`                                                                                    |
-| `SkeletonText`    | `skeletons`         | `lines`, `widths`                                                                                                               |
-| `Table`           | `table`             | `headerSlot`, `bodySlots`, `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`                                              |
-| `Tabs`            | `tabs`              | `tabs`, `active`, `onChange`, `orientation`, `lazy`                                                                             |
-| `Toastr`          | `toastr`            | `toasts`, `onDismiss`, `label`, `dismissLabel`, `dataE2E`                                                                       |
-| `ToggleSwitch`    | `toggle-switch`     | `value`, `onToggle`, `disabled`, `label`                                                                                        |
-| `Tooltip`         | `tooltip`           | `content`, `label`, `placement`, `focusable`                                                                                    |
+| Component         | Subpath             | Ports / key props                                                                                                              |
+| ----------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `Avatar`          | `avatar`            | `name`, `src`, `alt`, `size`                                                                                                   |
+| `AvatarGroup`     | `avatar`            | `items`, `max`, `label`, `size` (a `role="group"`, not a list)                                                                 |
+| `Badge`           | `badge`             | `text`, `color`, `type`                                                                                                        |
+| `Button`          | `button`            | `variant`, `size`, native button attrs                                                                                         |
+| `ConfidenceMeter` | `confidence-meter`  | `value` (optional; clamped 0–100, unknown renders no reading), `label`                                                         |
+| `ContactForm`     | `contact-form`      | `action?`, `onSubmit?` (`{ name, email, message }`), `honeypot?`, `labels?`, built on `EnhancedForm`                           |
+| `CopyButton`      | `copy-button`       | `textToCopy`, `copy?` (clipboard port)                                                                                         |
+| `Combobox`        | `combobox`          | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `ariaLabel?`, `aria-labelledby?`, `id?`                                  |
+| `DataTable`       | `data-table`        | `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `captionHidden?`, `empty?`, `paging?`, `rowDataE2E?`, `class?` |
+| `DateRangePicker` | `date-range-picker` | `range`, `onChange`, `timeZone`, `presets`, `labels?` (every key optional)                                                     |
+| `Dropdown`        | `dropdown`          | `trigger`, `triggerLabel` or `triggerNamedByContent` (one is required), `menuLabel`, `vertical`, `horizontal`                  |
+| `DropdownItem`    | `dropdown`          | `href`, `onClick`, `disabled`, `class` — a `role="menuitem"`, out of the tab order                                             |
+| `EnhancedForm`    | `enhanced-form`     | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?` — posts natively before hydration             |
+| `ErrorState`      | `error-state`       | `message` (renders nothing when empty)                                                                                         |
+| `GeoButton`       | `geo-button`        | `onLocation`, `onError?`                                                                                                       |
+| `ImageGallery`    | `image-gallery`     | `images` (`{ src, alt, thumbSrc? }[]`), `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`               |
+| `Lightbox`        | `lightbox`          | `images`, `index`, `open`, `onClose`, `onIndexChange`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`          |
+| `LoadingScreen`   | `loading-screen`    | `message`, `description`                                                                                                       |
+| `LoadingSkeleton` | `loading-skeleton`  | `rows`                                                                                                                         |
+| `LoadingSpinner`  | `loading-spinner`   | `label`, `size`                                                                                                                |
+| `NewsletterForm`  | `newsletter-form`   | `action?`, `onSubmit?` (`email`), `honeypot?`, `labels?`, built on `EnhancedForm`                                              |
+| `OnOffButtons`    | `on-off-buttons`    | `value`, `amount`, `onSwitch`                                                                                                  |
+| `PageTitle`       | `page-title`        | `children`, `class`                                                                                                            |
+| `Pagination`      | `pagination`        | `page`, `pageCount`, `onChange`, `label`, `previousLabel`, `nextLabel`, `pageLabel`                                            |
+| `Progress`        | `progress`          | `value`, `max`, `label`, `id` (a caption needs an `id`)                                                                        |
+| `SkeletonCards`   | `skeletons`         | `columns`, `rows`, `lines`                                                                                                     |
+| `SkeletonStatus`  | `skeletons`         | `label` (the loading announcement)                                                                                             |
+| `SkeletonTable`   | `skeletons`         | `rows`, `columns`, `widths`, `reserveHeight`                                                                                   |
+| `SkeletonText`    | `skeletons`         | `lines`, `widths`                                                                                                              |
+| `Table`           | `table`             | `headerSlot`, `bodySlots`, `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`                                             |
+| `Tabs`            | `tabs`              | `tabs`, `active`, `onChange`, `orientation`, `lazy`                                                                            |
+| `Toastr`          | `toastr`            | `toasts`, `onDismiss`, `label`, `dismissLabel`, `dataE2E`                                                                      |
+| `ToggleSwitch`    | `toggle-switch`     | `value`, `onToggle`, `disabled`, `label`                                                                                       |
+| `Tooltip`         | `tooltip`           | `content`, `label`, `placement`, `focusable`                                                                                   |
 
 ## Usage
 
