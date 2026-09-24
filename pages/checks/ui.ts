@@ -5163,10 +5163,14 @@ async function dateRangeTimeChecks(devtools: Devtools): Promise<void> {
   await poll(() => devtools.evaluate<boolean>(`${PICKER_TIME_STATE}.inPanel === true`), 3_000)
   const inside = await devtools.evaluate<PickerTimeState>(PICKER_TIME_STATE)
 
+  // Nothing is pressed on this card — it carries no selectedPreset — so `focusIntoPanel`'s own rule
+  // ("the pressed preset comes first... with nothing pressed the first preset") lands here on the
+  // first rendered preset, Last hour, not on a pressed one; `inside.focusPressed` would always read
+  // false on this card and is not what this check is about.
   check(
     "opening withTime's panel moves focus from the trigger into the panel, onto Last hour",
     found.trigger && found.panel && opened.ok && opened.onTrigger && !opened.open &&
-      inside.open && inside.inPanel && !inside.onTrigger && inside.focusPressed,
+      inside.open && inside.inPanel && !inside.onTrigger && inside.label === "Last hour",
     !found.card
       ? "there is no DateRangePicker card on the page to drive"
       : !found.trigger || !found.panel
@@ -5182,7 +5186,7 @@ async function dateRangeTimeChecks(devtools: Devtools): Promise<void> {
       ? `the panel opened and focus stayed on ${
         inside.onTrigger ? "the trigger" : inside.label
       }, so a keyboard user has to tab into it`
-      : !inside.focusPressed
+      : inside.label !== "Last hour"
       ? `focus went to "${inside.label}", not the first preset`
       : `focus on the trigger → "${inside.label}", with the panel no longer hidden`,
   )
@@ -5243,7 +5247,9 @@ async function dateRangeTimeChecks(devtools: Devtools): Promise<void> {
         `fields`
       : !typed.closed
       ? "the panel stayed open after Apply"
-      : "the panel closed but focus did not return to the trigger",
+      : !typed.onTrigger
+      ? "the panel closed but focus did not return to the trigger"
+      : `onChange received "${typed.controlledAfter}", the exact times typed into the two fields`,
   )
 
   const beforeEscape = await openTimePickerPanel(devtools)
@@ -5252,11 +5258,24 @@ async function dateRangeTimeChecks(devtools: Devtools): Promise<void> {
     () => devtools.evaluate<boolean>(`${PICKER_TIME_STATE}.open === false`),
     3_000,
   )
+  // Closing the panel and returning focus are two separate Preact commits — `isOpen.value = false`,
+  // then the effect it schedules — and this deep into a run that has already driven every other
+  // package's own checks plus day mode's, the second one measurably lags the first by more than an
+  // immediate read after `closed` resolves catches: three full runs of this file's own `verify`
+  // reproduced focus landing back on "Last hour" instead of the trigger, reproducibly, with an
+  // immediate read; a standalone repro of just open → type → apply → reopen → Escape, with none of
+  // this file's other checks run first, never showed it at all. Polled for, the same way `closed`
+  // itself is, rather than read once on a guess — a fixed wait chosen to cover one measured run's
+  // lag is exactly as reliable as the load that produced that lag, which is to say not reliable.
+  const returned = await poll(
+    () => devtools.evaluate<boolean>(`${PICKER_TIME_STATE}.onTrigger === true`),
+    3_000,
+  )
   const afterEscape = await devtools.evaluate<PickerTimeState>(PICKER_TIME_STATE)
 
   check(
     "a real Escape press closes withTime's panel and hands focus back to its trigger",
-    beforeEscape.open && beforeEscape.inPanel && !beforeEscape.onTrigger && closed &&
+    beforeEscape.open && beforeEscape.inPanel && !beforeEscape.onTrigger && closed && returned &&
       afterEscape.onTrigger,
     !beforeEscape.open
       ? "the panel was not open, so this proves nothing about Escape"
@@ -5264,7 +5283,7 @@ async function dateRangeTimeChecks(devtools: Devtools): Promise<void> {
       ? `focus was on ${beforeEscape.label}, outside the panel, so the press never came from inside it`
       : !closed
       ? `the panel was still open 3s after a real Escape press from "${beforeEscape.label}"`
-      : !afterEscape.onTrigger
+      : !returned || !afterEscape.onTrigger
       ? `the panel closed and focus fell to ${afterEscape.label}, so the next Tab starts from ` +
         `somewhere the person never went`
       : `Input.dispatchKeyEvent Escape from "${beforeEscape.label}": the panel is hidden again and ` +
@@ -5325,63 +5344,51 @@ async function escapeFromOutsideTimeCheck(devtools: Devtools): Promise<void> {
 }
 
 /**
- * A real click outside an open `withTime` panel closes it and leaves focus on what was clicked —
- * the `withTime` counterpart of {@link outsideClickCheck}, reusing that function's own target: the
- * card's "Usage" summary, restored to closed afterward either way.
+ * A real click outside an open `withTime` panel closes it and does not pull focus back onto the
+ * trigger — the `withTime` counterpart of {@link outsideClickCheck}, but aimed at a different spot.
+ *
+ * {@link outsideClickCheck} clicks the card's own "Usage" summary, which does not work here: the
+ * `withTime` demo is the last of the three on this catalogue card, its panel is 221px tall, and
+ * `position: absolute` puts that panel on top of whatever sits below it in the document rather than
+ * pushing it down — measured directly against this catalogue's own build, where the open panel
+ * covers the Usage summary that follows it. Aimed at the corner {@link pointerToCorner} already
+ * parks the pointer in instead: nothing this catalogue renders ever reaches a fixed page corner
+ * clear above the sticky header, so there is nothing for any card's panel to grow into and cover.
+ * The corner is not a focusable control, so this checks the same fact
+ * {@link outsideClickCheck} does — the click closes the panel without dragging focus back onto the
+ * trigger — by reading where focus actually goes (`document.body`, per how a browser resolves focus
+ * for a plain click with no focusable target) rather than by asserting it landed on the thing
+ * clicked.
  *
  * @param devtools The connected session, on a hydrated page.
  */
 async function outsideClickTimeCheck(devtools: Devtools): Promise<void> {
-  const target = `document.querySelector('#demo-DateRangePicker [data-e2e="usage"] summary')`
-  await devtools.evaluate<null>(`(${target}?.scrollIntoView({ block: "center" }), null)`)
-  await settledScroll(devtools)
-  await pointerToCorner(devtools)
-
   const opened = await openTimePickerPanel(devtools)
-  await devtools.evaluate<null>(`(${target}?.scrollIntoView({ block: "center" }), null)`)
-  await settledScroll(devtools)
-  const aim = await aimAt(devtools, target)
-  const landing = await clickAt(devtools, aim, target)
+  const corner = await pointerToCorner(devtools)
+  await clickAtPoint(devtools, corner)
   const closed = await poll(
     () => devtools.evaluate<boolean>(`${PICKER_TIME_STATE}.open === false`),
     3_000,
   )
-  const after = await devtools.evaluate<PickerTimeState & { onClicked: boolean }>(`(() => ({
+  const after = await devtools.evaluate<PickerTimeState & { onBody: boolean }>(`(() => ({
     ...${PICKER_TIME_STATE},
-    onClicked: document.activeElement === ${target},
+    onBody: document.activeElement === document.body,
   }))()`)
 
   check(
-    "a real click outside an open withTime panel closes it without taking focus back",
-    opened.open && opened.inPanel && aim.onTarget && landing !== null && landing.onTarget &&
-      closed && !after.onTrigger && after.onClicked,
+    "a real click outside an open withTime panel closes it without pulling focus back",
+    opened.open && opened.inPanel && closed && !after.onTrigger && after.onBody,
     !opened.open || !opened.inPanel
       ? "the panel would not open with focus inside, so there is nothing to click away from"
-      : !aim.onTarget
-      ? `there is nothing to click at (${aim.x}, ${aim.y}) — the point reads ${aim.tag}` +
-        (aim.inViewport ? "" : ", outside the viewport")
-      : landing === null
-      ? "the press never reached the page, so this proves nothing about the panel"
-      : !landing.onTarget
-      ? `the press landed on ${landing.tag} at (${landing.x}, ${landing.y}) rather than the ` +
-        `summary aimed at (${aim.x}, ${aim.y}) — a missed press, which proves nothing`
       : !closed
       ? "the panel was still open 3s after a real click outside it"
       : after.onTrigger
-      ? "the outside click pulled focus back onto the trigger, taking it off the control the " +
-        "person had just clicked"
-      : !after.onClicked
-      ? `the panel closed and focus went to ${after.label} rather than staying on what was clicked`
-      : "pressed the summary: the panel is hidden and focus is on the control that was clicked, " +
+      ? "the outside click pulled focus back onto the trigger"
+      : !after.onBody
+      ? `the panel closed but focus went to ${after.label} rather than falling to the page — a ` +
+        `stray focusable control at the corner, which proves less than intended`
+      : "a real click at the page's own corner: the panel is hidden and focus fell to the page, " +
         "not back on the trigger",
-  )
-
-  await devtools.evaluate<null>(
-    `(() => {
-      const details = document.querySelector('#demo-DateRangePicker [data-e2e="usage"] details')
-      if (details !== null) details.open = false
-      return null
-    })()`,
   )
 }
 
