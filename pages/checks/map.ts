@@ -387,33 +387,6 @@ async function accessibleName(
   return { value: name?.value, fromAriaLabel }
 }
 
-/**
- * Send a real Enter press with the `text` field the shared `pressKey` helper omits (`#261`) — a
- * bare `Input.dispatchKeyEvent` with no `text` on the key-down is not the same event a physical
- * Enter press produces, and this check exists specifically to prove Enter, not only Space, reaches
- * this package's own `keydown` listener. Written here rather than added to `harness.ts`'s `pressKey`
- * table, which `#261` tracks fixing on its own.
- *
- * @param devtools The connected session; the key goes to whatever the page has focused.
- */
-async function pressEnterWithText(devtools: Devtools): Promise<void> {
-  await devtools.send("Input.dispatchKeyEvent", {
-    type: "keyDown",
-    key: "Enter",
-    code: "Enter",
-    windowsVirtualKeyCode: 13,
-    nativeVirtualKeyCode: 13,
-    text: "\r",
-  })
-  await devtools.send("Input.dispatchKeyEvent", {
-    type: "keyUp",
-    key: "Enter",
-    code: "Enter",
-    windowsVirtualKeyCode: 13,
-    nativeVirtualKeyCode: 13,
-  })
-}
-
 /** Read the echo element's current text. */
 function lastClickedText(devtools: Devtools): Promise<string> {
   return devtools.evaluate<string>(
@@ -475,7 +448,7 @@ async function pinKeyboardChecks(devtools: Devtools): Promise<void> {
   )
 
   await devtools.evaluate(`document.querySelector('[data-marker-id="${PLACE_IDS[1]}"]').focus()`)
-  await pressEnterWithText(devtools)
+  await pressKey(devtools, "Enter")
   const enterActivated = await poll(
     async () => (await lastClickedText(devtools)) !== afterSpace,
     2_000,
