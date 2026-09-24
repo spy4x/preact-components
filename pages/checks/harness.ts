@@ -527,6 +527,30 @@ export async function poll(predicate: () => Promise<boolean>, timeoutMs: number)
   return false
 }
 
+/** The one thing {@link settledScroll} needs from a session: a page read. `Devtools` has it. */
+export interface PageReader {
+  evaluate<T>(expression: string): Promise<T>
+}
+
+/** What {@link settledScroll} is told about the scroll it waits for. */
+export interface SettleOptions {
+  /**
+   * The `scrollY` that a scroll the caller knows about ends on. Given, only reads within a pixel
+   * of it count toward settling — a pixel, because both sides are rounded from fractional
+   * positions. Left out, the wait assumes no scroll is on its way.
+   */
+  target?: number
+  /**
+   * The `scrollY` a scroll the caller knows about starts from, for a scroll whose end the caller
+   * cannot know in advance — one the page started on its own. Given, reads within a pixel of it
+   * never count toward settling, so the wait holds out until the page has left it. Pass it only
+   * for a scroll that is certain to move the page.
+   */
+  from?: number
+  /** How long to wait before giving up. Three seconds when left out. */
+  timeoutMs?: number
+}
+
 /**
  * Wait until the page has stopped scrolling.
  *
@@ -536,26 +560,64 @@ export async function poll(predicate: () => Promise<boolean>, timeoutMs: number)
  * Moved here from `checks/ui.ts` (`#225`, `#238`) once `checks/pages.ts` needed the same wait for a
  * route's scroll rather than a fixed delay — one helper, not two copies drifting apart.
  *
- * The return value is new (added in the review of #254): every existing caller already ignores it,
- * so adding it changes nothing for them, but `verify.ts`'s one-time settle before `runBlocks` needs
- * to tell "the page had already stopped" apart from "the budget ran out while it was still moving"
- * — this function cannot itself distinguish "never started scrolling" from "settled instantly",
- * which both read as `true` on the first two-reads-agree check, but a caller that only cares
- * whether the budget was enough does not need that distinction.
+ * Settled means two reads 100 ms apart agree. On its own that cannot tell a scroll that has
+ * stopped from one that has not started yet: a smooth scroll the page was asked for a moment ago
+ * reads as a page standing still until its first frame runs, and on a loaded machine that frame can
+ * come later than both reads (#269). So a caller that knows a scroll is coming says so: with its
+ * `target` when it knows where the scroll ends, and the wait counts only reads that sit there; or
+ * with the position it starts `from` when only the page knows where it ends, and the wait counts
+ * only reads that have left it. Either way a scroll that has not started never settles early. A
+ * caller that expects no scroll passes neither and gets the plain two-reads-agree wait, which is
+ * then the right question: is anything still moving?
  *
- * @param devtools The connected session.
- * @param timeoutMs How long to wait for two consecutive reads to agree before giving up.
- * @returns Whether two consecutive reads agreed inside the budget — `false` means the budget ran
- * out while `scrollY` was still changing.
+ * @param page The connected session.
+ * @param options Where an expected scroll ends or starts, and the budget.
+ * @returns Whether the page settled inside the budget — on `target` and away from `from` when they
+ * were given. `false` means the budget ran out while `scrollY` was still changing, had not reached
+ * `target`, or had not left `from`.
  */
-export async function settledScroll(devtools: Devtools, timeoutMs = 3_000): Promise<boolean> {
+export async function settledScroll(
+  page: PageReader,
+  { target, from, timeoutMs = 3_000 }: SettleOptions = {},
+): Promise<boolean> {
   let previous = Number.NaN
   return await poll(async () => {
-    const current = await devtools.evaluate<number>("Math.round(globalThis.scrollY)")
-    const settled = current === previous
+    const current = await page.evaluate<number>("Math.round(globalThis.scrollY)")
+    const settled = current === previous &&
+      (target === undefined || Math.abs(current - target) <= 1) &&
+      (from === undefined || Math.abs(current - from) > 1)
     previous = current
     return settled
   }, timeoutMs)
+}
+
+/**
+ * Scroll an element to the middle of the viewport at once, then confirm the page stays there.
+ *
+ * The scroll is `behavior: "instant"`, so the position it lands on is known in the same evaluate
+ * that asks for it, and {@link settledScroll} is handed that position as its target: the wait
+ * cannot mistake a page that has not moved yet for one that has finished moving, which is what an
+ * untargeted wait after a smooth `scrollIntoView` did on a loaded machine (#269). An instant scroll
+ * also ends a smooth one the page may still have running.
+ *
+ * @param page The connected session.
+ * @param element A page expression for the element, which may evaluate to `null`.
+ * @param timeoutMs How long the page gets to hold still on the landed position.
+ * @returns Whether the element was there and the page settled with it in the middle.
+ */
+export async function centreInView(
+  page: PageReader,
+  element: string,
+  timeoutMs = 3_000,
+): Promise<boolean> {
+  const landed = await page.evaluate<number | null>(`(() => {
+    const element = ${element}
+    if (element === null || element === undefined) return null
+    element.scrollIntoView({ block: "center", behavior: "instant" })
+    return Math.round(globalThis.scrollY)
+  })()`)
+  if (landed === null) return false
+  return await settledScroll(page, { target: landed, timeoutMs })
 }
 
 /** Wait for Chromium's port file, which appears once the debugging server is up. */
