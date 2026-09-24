@@ -71,6 +71,7 @@ export {
 export {
   readStateInit,
   StateInit,
+  type StateInitElementLike,
   type StateInitProps,
   type StateInitSourceLike,
   stateInitText,
