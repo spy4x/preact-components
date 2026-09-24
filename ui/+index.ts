@@ -215,6 +215,8 @@ export {
   type ScrollLockTarget,
   shouldRetargetFocus,
 } from "./modal.tsx"
+export { MoneyDisplay, type MoneyDisplayProps } from "./money-display.tsx"
+export { MoneyInput, type MoneyInputBounds, type MoneyInputProps } from "./money-input.tsx"
 export {
   NewsletterForm,
   type NewsletterFormLabels,
