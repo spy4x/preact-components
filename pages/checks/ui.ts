@@ -5738,10 +5738,12 @@ const PAGER_STATE = `(() => {
  * behind, minus the focus. And the page number is read from `aria-current="page"` after each press,
  * so a control that kept its focus by never doing anything is a failure rather than a pass.
  *
- * Space, not Enter: the Dropdown and Modal checks above already prove Enter activates a focused
- * native button, so this file does not repeat that proof here. A real Space press does too, and it
- * still does on a button carrying `aria-disabled` — which is why the component guards its own
- * handler, and why the last check below presses a disabled control and asserts nothing happened.
+ * Mostly Space: the walk below presses Space, which still activates a button carrying
+ * `aria-disabled` — which is why the component guards its own handler, and why one of the checks
+ * below presses a disabled control and asserts nothing happened. A real Enter press is proven
+ * separately, once, on Next: Space alone would not catch a handler that called `preventDefault()`
+ * on Enter specifically, which the Dropdown and Modal checks elsewhere in this file do not stand in
+ * for here.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -5847,6 +5849,35 @@ async function paginationChecks(devtools: Devtools): Promise<void> {
       ? `Previous lost focus on reaching page 1 — it went to ${toStart.after.label}`
       : `Space from page 5: ${toStart.pages.join(" → ")}, and on the last press Previous went ` +
         `from enabled to disabled while staying the same element with focus`,
+  )
+
+  // A real Enter press, on its own: everything above walked the pager with Space, which does not
+  // prove Enter reaches the same handler — a control that called `preventDefault()` on Enter
+  // specifically would still pass every check above it (#261). The pager is on page 1 here, so Next
+  // is the enabled control to press it on.
+  await devtools.evaluate<null>(`(globalThis.__verifyPager?.next?.focus(), null)`)
+  const beforeEnter = await devtools.evaluate<PagerState>(PAGER_STATE)
+  await pressKey(devtools, "Enter")
+  const movedByEnter = await poll(
+    () => devtools.evaluate<boolean>(`${PAGER_STATE}.page !== ${beforeEnter.page}`),
+    3_000,
+  )
+  const afterEnter = await devtools.evaluate<PagerState>(PAGER_STATE)
+  check(
+    "a real Enter press activates Pagination's Next control",
+    beforeEnter.onNext && !beforeEnter.nextDisabled && movedByEnter &&
+      afterEnter.page === beforeEnter.page + 1 && afterEnter.onNext,
+    !beforeEnter.onNext
+      ? `focus was on ${beforeEnter.label}, not Next, so this proves nothing`
+      : beforeEnter.nextDisabled
+      ? "Next was already disabled, so a press here proves nothing about activation"
+      : !movedByEnter
+      ? "the pager was still on the same page 3s after a real Enter press"
+      : afterEnter.page !== beforeEnter.page + 1
+      ? `a real Enter press moved the pager from page ${beforeEnter.page} to ${afterEnter.page}, ` +
+        `not to ${beforeEnter.page + 1}`
+      : `a real Enter press on Next: page ${beforeEnter.page} → ${afterEnter.page}, focus stayed ` +
+        `on Next`,
   )
 
   // Leave nothing focused. The blocks after this one send their own key presses, and a control
@@ -6022,16 +6053,18 @@ const DATA_TABLE_STATE = `(() => {
  * `Input.dispatchMouseEvent` at the button's own rectangle (`clickMerchantHeader`), and asserts
  * the press landed on the button before trusting anything that followed it — a scripted `.click()`
  * fires with no hit-testing, so it would "click" a button a stray `pointer-events-none` had made
- * unreachable to an actual pointer. A real Enter press is not sent here: the click and Space halves
- * already cover both non-keyboard and keyboard activation for this header, and a dedicated Enter
- * check for every sortable trigger in this catalogue would repeat what {@link modalChecks} and
- * {@link dropdownChecks} already prove about Enter activating a focused native button.
+ * unreachable to an actual pointer. The Space half's own third press is a real Enter press instead:
+ * {@link modalChecks} and {@link dropdownChecks} already prove `pressKey(devtools, "Enter")`
+ * activates a focused native button in general, but only a press on this header's own listener can
+ * catch a handler that called `preventDefault()` on Enter specifically (#261).
  *
  * Three presses on Merchant — ascending, descending, off — return the table to the unsorted
  * baseline before the Space half starts, so the two proofs begin from the same state instead of
  * one inheriting whatever the other left behind; the round trip back to the baseline is itself
  * checked, which is what confirms `toggleSort`'s third step (a rule cycles off, not just between
- * the two directions) actually reaches the header, not only the sort state.
+ * the two directions) actually reaches the header, not only the sort state. The Space half's own
+ * three presses repeat that round trip with its last press swapped for a real Enter, which is what
+ * lets it double as the Enter proof without a fourth press.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -6139,9 +6172,20 @@ async function dataTableChecks(devtools: Devtools): Promise<void> {
         `${String(pressedOnce.merchantAriaSort)} → ${String(pressedTwice.merchantAriaSort)}`,
   )
 
-  // A third press to leave the table unsorted again before the paging check, which asserts its
-  // own "before" state and should not inherit a sort the block above left behind.
-  await pressMerchantHeader(devtools)
+  // A real Enter press, on its own: the two presses above only prove Space reaches the header's
+  // handler — a handler that called `preventDefault()` on Enter specifically would still pass both
+  // of them (#261). Reverses the sort a third time, which conveniently is also the "back to
+  // unsorted" step the paging check below needs.
+  const pressedThrice = await pressMerchantHeader(devtools, "Enter")
+  check(
+    "a real Enter press on the focused header cycles the sort off again, still keeping focus",
+    pressedTwice.rowKeys.join(",") !== pressedThrice.rowKeys.join(",") &&
+      pressedThrice.merchantAriaSort === null && pressedThrice.onMerchant,
+    !pressedThrice.onMerchant
+      ? "the Enter press moved focus off the Merchant header"
+      : `rows ${pressedTwice.rowKeys.join(",")} → ${pressedThrice.rowKeys.join(",")}, aria-sort ` +
+        `${String(pressedTwice.merchantAriaSort)} → ${String(pressedThrice.merchantAriaSort)}`,
+  )
   await blurActive(devtools)
 
   await dataTablePagingCheck(devtools)
@@ -6190,10 +6234,16 @@ async function clickMerchantHeader(devtools: Devtools): Promise<MerchantClick> {
   return { state, onTarget: landing?.onTarget === true, landingTag: landing?.tag ?? "nothing" }
 }
 
-/** Press Space on whatever holds focus (the Merchant header, throughout this file's Space half). */
-async function pressMerchantHeader(devtools: Devtools): Promise<DataTableState> {
+/**
+ * Press a key on whatever holds focus (the Merchant header, throughout this file's Space and Enter
+ * halves). Defaults to Space, which every existing call site still asks for by name.
+ */
+async function pressMerchantHeader(
+  devtools: Devtools,
+  key: "Space" | "Enter" = "Space",
+): Promise<DataTableState> {
   const before = await devtools.evaluate<DataTableState>(DATA_TABLE_STATE)
-  await pressKey(devtools, "Space")
+  await pressKey(devtools, key)
   await poll(
     () =>
       devtools.evaluate<boolean>(
