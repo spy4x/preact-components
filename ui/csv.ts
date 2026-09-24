@@ -1,19 +1,23 @@
 /**
  * RFC 4180 CSV writer. Plain functions only — no Preact, no DOM — so this module can move to
  * `spy4x/ts-libs` unchanged once the writer half of its CSV module is a release the owner decides
- * to cut; `spy4x/preact-components#141` is the issue that made that call. `ExportButton` is the
- * only caller today, and this stays package-private on purpose: not in `ui/deno.json`'s `exports`,
- * not re-exported from `ui/+index.ts`. Import it only from `./export-button.tsx`.
+ * to cut; `spy4x/preact-components#141` is the issue that made that call. `ExportButton`'s own
+ * `export-run.ts` is the only caller today, and this stays package-private on purpose: not in
+ * `ui/deno.json`'s `exports`, not re-exported from `ui/+index.ts`.
  */
 
 /**
  * What a `format` function, or an unformatted field, may hand back for one cell.
  *
  * A `number` or a `bigint` is written unguarded — see {@link csvField} — because neither can hold a
- * separator or a formula body: JavaScript's own `String()` conversion of either produces only
- * digits, at most one leading `-`, and for a `number` at most one `.` or exponent marker, none of
- * which a spreadsheet reads as the start of a formula. A `string` is guarded regardless of what it
- * contains, because a string is exactly the type a spreadsheet-formula payload arrives as.
+ * separator or a formula body: `String()` of either produces digits, at most one `.`, an `e`/`E`
+ * exponent marker, or one of the literal words `Infinity`/`-Infinity`/`NaN` — not the narrower claim
+ * an earlier revision made ("only digits, at most one leading `-` … at most one `.` or exponent
+ * marker"), which `NaN`, `-Infinity` and `-1e+21` all break. None of it is formula syntax a
+ * spreadsheet acts on by itself, checked in LibreOffice for those same three values: `NaN` and
+ * `-Infinity` open as text, `-1e+21` opens as text too — none of the three as a live number, but
+ * none as a formula either. A `string` is guarded regardless of what it contains, because a string
+ * is exactly the type a spreadsheet-formula payload arrives as.
  */
 export type CsvCellValue = string | number | bigint
 
