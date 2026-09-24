@@ -57,6 +57,32 @@ const thumbButtonClass =
 const thumbImageClass = "size-20 object-cover sm:size-24"
 
 /**
+ * A stable key for the thumbnail at `index`: its `src`, plus how many times that `src` already
+ * appeared earlier in `images`.
+ *
+ * Not the image's position on its own — `key={index}` was tried and measured broken in review:
+ * removing an *earlier* image shifts every later thumbnail's position down by one, so Preact
+ * reconciles each of them against the previous render's *next* thumbnail instead of the same one,
+ * and a focused thumbnail — or the lightbox's own focus-restore target, captured by reference at
+ * open time — silently lands on a different image. `src` alone is not enough either: two
+ * thumbnails can legitimately share one source (the same picture shown twice, captioned
+ * differently), and a duplicate key would make Preact treat them as one element. The occurrence
+ * count breaks that tie while staying stable under removal, because it only counts *earlier*
+ * matching images, never the ones after.
+ *
+ * @param images The images the strip is drawing thumbnails for, in order.
+ * @param index Position of the thumbnail to key, into `images`.
+ */
+export function thumbnailKey(images: readonly { src: string }[], index: number): string {
+  const src = images[index].src
+  let occurrence = 0
+  for (let i = 0; i < index; i++) {
+    if (images[i].src === src) occurrence++
+  }
+  return `${src}#${occurrence}`
+}
+
+/**
  * A strip of thumbnails that opens the shared {@link Lightbox} on the one pressed.
  */
 export function ImageGallery(
@@ -77,10 +103,7 @@ export function ImageGallery(
     <>
       <ul class={cn("flex flex-wrap gap-3", className)}>
         {shown.map((image, index) => (
-          // Position, not `image.src`: two thumbnails can legitimately share one source (the same
-          // picture shown twice, captioned differently), and a duplicate key there would make
-          // Preact's reconciliation treat them as one element instead of two.
-          <li key={index}>
+          <li key={thumbnailKey(shown, index)}>
             <button
               type="button"
               class={thumbButtonClass}
