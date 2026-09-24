@@ -52,7 +52,7 @@ export const documentedClasses: Record<string, string[]> = {
   Forms: ["input", "select", "textarea", "label", "checkbox", "radio"],
   Surfaces: ["card", "card-header", "card-body", "card-footer", "scrollbar"],
   "Data display": ["num", "kpi", "kpi-label", "kpi-value", "bar"],
-  Map: ["map-marker"],
+  Map: ["map-marker", "status-on", "status-off", "status-unknown"],
 }
 
 /**
@@ -65,6 +65,8 @@ export const documentedClasses: Record<string, string[]> = {
 export const removedClasses: Record<string, string> = {
   "h6": "use `text-base font-medium`",
   "btn-sm": "use `h-9 px-4` on the button",
+  "power-anomaly":
+    "application-specific wording, not part of this library — colour a marker with `status-on` / `status-off` / `status-unknown` instead",
 }
 
 /**
@@ -88,10 +90,6 @@ export function definedClasses(css: string): Set<string> {
   }
   return names
 }
-
-/** Why the map's five classes have no demo: they are Leaflet marker states, not utilities. */
-const MAP_CLASSES_REASON =
-  "Styled only as the descendant of a status wrapper (`.status-on .map-marker`) and only meaningful on a Leaflet marker. `map/` is not a package the catalogue covers, so nothing in the guide renders one."
 
 /**
  * Why most of the button family has no demo: the component is the API, the class form is `crud/`'s.
@@ -125,11 +123,6 @@ export const UNDEMONSTRATED_CLASSES: Record<string, string> = {
     "Document-level rules for `<body>`. The catalogue renders inside a host page that applies it (`pages/src/document.tsx`), so a demo of it would repaint the page around the demo.",
   "dark":
     "A variant marker on `<html>`, not a class an element wears. The host page's colour-scheme toggle owns it and `pages/checks/theme.ts` drives it.",
-  "map-marker": MAP_CLASSES_REASON,
-  "status-unknown": MAP_CLASSES_REASON,
-  "status-on": MAP_CLASSES_REASON,
-  "status-off": MAP_CLASSES_REASON,
-  "power-anomaly": MAP_CLASSES_REASON,
   "btn-primary-outline": BUTTON_CLASSES_REASON,
   "btn-danger": BUTTON_CLASSES_REASON,
   "btn-danger-outline": BUTTON_CLASSES_REASON,

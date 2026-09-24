@@ -38,6 +38,7 @@ import { feedbackDemos } from "./sections/feedback.tsx"
 import { fieldDemos } from "./sections/fields.tsx"
 import { formDemos } from "./sections/forms.tsx"
 import { inputDemos } from "./sections/inputs.tsx"
+import { mapDemos } from "./sections/map.tsx"
 import { surfaceDemos } from "./sections/surfaces.tsx"
 import { systemDemos } from "./sections/system.tsx"
 
@@ -48,7 +49,7 @@ import { systemDemos } from "./sections/system.tsx"
  * `coverage.ts` reads this list and fails when a package directory is neither catalogued nor
  * excluded with a reason.
  */
-export const packageIds = ["ui", "charts", "system", "crud"] as const
+export const packageIds = ["ui", "charts", "system", "crud", "map"] as const
 
 /** Identifier of a catalogued package: its directory, and the last segment of its specifier. */
 export type PackageId = (typeof packageIds)[number]
@@ -191,7 +192,7 @@ const groupHeadings: Record<GroupId, { title: string; blurb: string }> = {
   data: {
     title: "Data and resources",
     blurb:
-      "The two packages that only matter once there is a resource behind the page: the server-rendered charts and the CRUD scaffolding a resource page is rebuilt from.",
+      "The packages that only matter once there is a resource behind the page: the server-rendered charts, the CRUD scaffolding a resource page is rebuilt from, and the map that plots one on a tile layer.",
   },
   application: {
     title: "App shell",
@@ -256,6 +257,7 @@ export type SectionId =
   | "charts"
   | "system"
   | "crud"
+  | "map"
 
 const catalogue = {
   badges: {
@@ -352,6 +354,14 @@ const catalogue = {
     blurb:
       "The list and editor scaffolding a resource page is rebuilt from — props and slots, no entity and no store assumed. Every card drives a small in-memory store built from the structural interfaces the package declares.",
     demos: crudDemos,
+  },
+  map: {
+    group: "data",
+    package: "map",
+    title: "Map",
+    blurb:
+      "Markers on a Leaflet tile layer, plotted from plain data, with the plain-text list of the same places that is the component's real keyboard and screen-reader interface. The card is its own server render — a labelled empty box — until a browser mounts Leaflet into it.",
+    demos: mapDemos,
   },
 } as const satisfies Record<SectionId, SectionSpec>
 
@@ -467,6 +477,7 @@ export const demoRegistry: DemoRegistry = {
   ...chartsDemos,
   ...systemDemos,
   ...crudDemos,
+  ...mapDemos,
 }
 
 /**
