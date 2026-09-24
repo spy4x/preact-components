@@ -3470,7 +3470,13 @@ async function bareImageRefusalCheck(devtools: Devtools): Promise<void> {
 
   check(
     "a real click on the undescribed, linked image follows the link instead of opening a lightbox",
-    aim.onTarget && before === "" && afterHash === "#lightbox-bare-target" && modalsOpen === 0,
+    // A transition, not "starts empty": the catalogue is hash-routed, so an earlier check's own
+    // navigation can leave a different hash on the page before this one runs — measured in
+    // review, where a run that reached this check by way of the ToggleSwitch card's own deep link
+    // read `before` as "#/inputs/toggle-switch", not "". What the click has to prove is that the
+    // hash *becomes* the link's target, whatever it was before.
+    aim.onTarget && before !== "#lightbox-bare-target" && afterHash === "#lightbox-bare-target" &&
+      modalsOpen === 0,
     aim.onTarget
       ? `hash "${before}" → click → "${afterHash}", ${modalsOpen} modal dialog(s) open`
       : `no click was sent: the point at ${aim.x},${aim.y} lands on ${aim.landedOn} — ${aim.reason}`,
