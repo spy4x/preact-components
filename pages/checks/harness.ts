@@ -406,12 +406,28 @@ interface KeyPress {
   code: string
   /** Virtual key code; Chromium wants it in both the Windows and the native field. */
   keyCode: number
+  /**
+   * The character the key-down carries, when it carries one at all — Chromium only runs a focused
+   * `<button>`'s default action for a key whose key-down event has this field set. `undefined` for
+   * every key in this table that is not itself a character (`Escape`, `Tab`, the arrows, Home, End,
+   * Page Up/Down): a `<button>` has no default action tied to any of them, so there is nothing this
+   * field would change for them.
+   */
+  text?: string
 }
 
 /**
  * Every key this library's components listen for, described once. `Space`'s `key` is a single
  * space character, not an empty string — an earlier run of this kind sent an empty one, which
  * Chromium accepts and no listener recognises.
+ *
+ * `Enter` carries `text: "\r"` — measured in the review of #260 and confirmed by `#261`: a
+ * `keyDown` with no `text` field is not the event a physical Enter press produces, and Chromium
+ * runs a focused `<button>`'s default action (the activation a person's Enter triggers) only for a
+ * `keyDown` that carries one. `Space` needs no `text` field for the same activation: every check in
+ * this repository that presses Space at a focused `<button>` or `role="button"` element already
+ * activates it without one, so unlike Enter, `Space`'s bare `key`/`code`/`keyCode` was never the
+ * gap — the missing `text` field on `Enter` was.
  *
  * A table entry no check uses yet is not dead code the way an unused constant would be: it is
  * vocabulary a keyboard check reaches for once its component is covered, the same way a dictionary
@@ -420,7 +436,7 @@ interface KeyPress {
 const KEYS = {
   Escape: { key: "Escape", code: "Escape", keyCode: 27 },
   Tab: { key: "Tab", code: "Tab", keyCode: 9 },
-  Enter: { key: "Enter", code: "Enter", keyCode: 13 },
+  Enter: { key: "Enter", code: "Enter", keyCode: 13, text: "\r" },
   Space: { key: " ", code: "Space", keyCode: 32 },
   ArrowLeft: { key: "ArrowLeft", code: "ArrowLeft", keyCode: 37 },
   ArrowUp: { key: "ArrowUp", code: "ArrowUp", keyCode: 38 },
@@ -443,6 +459,9 @@ export type KeyName = keyof typeof KEYS
  * event, and the browser skips its own default key handling for those. A synthetic Escape would
  * prove only that a listener was registered, never that pressing Escape does anything.
  *
+ * The key-down carries {@link KeyPress.text} when the key has one — see {@link KEYS}'s own doc for
+ * why `Enter` needs it and `Space` does not.
+ *
  * `press` takes a key **name**, looked up in {@link KEYS}, rather than a description a caller
  * builds itself: the keyboard checks still to be written — arrow keys and Tab in Dropdown, arrow
  * keys/Home/End/Page Up/Page Down in Calendar, Enter/Space on an image that behaves like a button —
@@ -456,15 +475,21 @@ export type KeyName = keyof typeof KEYS
  */
 export async function pressKey(devtools: Devtools, name: KeyName): Promise<void> {
   const press = KEYS[name]
-  for (const type of ["keyDown", "keyUp"]) {
-    await devtools.send("Input.dispatchKeyEvent", {
-      type,
-      key: press.key,
-      code: press.code,
-      windowsVirtualKeyCode: press.keyCode,
-      nativeVirtualKeyCode: press.keyCode,
-    })
-  }
+  await devtools.send("Input.dispatchKeyEvent", {
+    type: "keyDown",
+    key: press.key,
+    code: press.code,
+    windowsVirtualKeyCode: press.keyCode,
+    nativeVirtualKeyCode: press.keyCode,
+    ...("text" in press ? { text: press.text } : {}),
+  })
+  await devtools.send("Input.dispatchKeyEvent", {
+    type: "keyUp",
+    key: press.key,
+    code: press.code,
+    windowsVirtualKeyCode: press.keyCode,
+    nativeVirtualKeyCode: press.keyCode,
+  })
 }
 
 /**
