@@ -78,23 +78,30 @@ ordering and de-duplication `pages/verify.ts` relies on.
 
 A check that waits a fixed time, or reads before the component has finished, passes on an idle
 machine and fails on a busy one — on correct code. CI runners are sometimes busy, so a reviewer
-should be able to make a machine busy on purpose (#269). Start a CPU load on every core with its
-own deadline and a cap on its processes, in one terminal:
+should be able to make the page slow on purpose (#269). There are two ways, and the first is the
+one that finds things:
+
+```bash
+deno task --cwd pages verify --cpu-throttle=6
+```
+
+runs the page's main thread six times slower through Chromium's own CPU throttling, the same on
+every machine, and multiplies the browser phase's deadline by the same rate. Its last line starts
+`THROTTLED:`; CI never passes it. A full run at `6` takes about ten minutes.
+
+The second loads every core of the machine, with its own deadline and a cap on its processes, while
+full runs go on in another terminal, noting `uptime` with each:
 
 ```bash
 systemd-run --user --scope --quiet -p TasksMax=100 timeout 1200 stress-ng --cpu 0 --timeout 1100s
-```
-
-and run full `verify` repeatedly in another while it lasts, noting `uptime` with each run:
-
-```bash
 uptime && systemd-run --user --scope --quiet -p TasksMax=500 -p MemoryMax=8G timeout 900 deno task --cwd pages verify
 ```
 
-On a 16-core machine that holds the load average near 20, and a full run takes about three minutes
-instead of two. `stress-ng` stops at its own timeout; `timeout 1200` is the backstop. A check that
-fails only under load is a check to fix, not to re-run: poll on the state it asserts, read in the
-same evaluate as the action, or measure a duration with the page's own clock.
+On a 16-core machine that holds the load average near 20. It is what the issue asked for, and it is
+worth running, but it is weak: ten full runs of unchanged code at load averages of 20 and 65 all
+passed, while throttled runs found failures on the first try. A check that fails under either is a
+check to fix, not to re-run: poll on the state it asserts, read in the same evaluate as the action,
+or measure a duration with the page's own clock.
 
 `verify` denies downloads for the whole run: right after it connects, it calls
 `Browser.setDownloadBehavior` with `deny`, falls back to `Page.setDownloadBehavior`, and prints a note

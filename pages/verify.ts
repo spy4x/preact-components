@@ -19,6 +19,7 @@
  * deno task build && deno task verify          # both phases
  * deno task verify --static                    # leave the browser out on purpose
  * deno task verify --only=system               # only the system package's browser checks
+ * deno task verify --cpu-throttle=6             # the page's CPU six times slower, see below
  * ```
  *
  * **This is the repository's browser test path, and CI runs it.** Every unit test in the workspace
@@ -114,6 +115,26 @@ const ONLY = (() => {
   return arg.slice("--only=".length).split(",").map((name) => name.trim()).filter((name) =>
     name.length > 0
   )
+})()
+
+/**
+ * `--cpu-throttle=6` runs the page's main thread six times slower, through Chromium's own
+ * `Emulation.setCPUThrottlingRate` — `1` when the flag was not passed, `NaN` when its value is not a
+ * number of at least 1, which the run then reports as a failed check.
+ *
+ * It exists because loading the machine does not reliably slow the page (#269): on unchanged code,
+ * five full runs at a load average near 20 and five near 65 all passed, while throttled runs found
+ * a check that read focus one effect too early and a scroll helper that lost to a smooth scroll the
+ * page already had running. A check that fails only here is reading before the page has finished,
+ * and is fixed the same way as any other. The phase deadline is multiplied by the same
+ * rate, so a slower page is not reported as a hung one. Like `--only`, it is a tool for reproducing
+ * a failure, never a substitute for a CI run, and the run's last line says it was throttled.
+ */
+const CPU_THROTTLE = (() => {
+  const arg = Deno.args.find((value) => value.startsWith("--cpu-throttle="))
+  if (!arg) return 1
+  const rate = Number(arg.slice("--cpu-throttle=".length))
+  return Number.isFinite(rate) && rate >= 1 ? rate : Number.NaN
 })()
 
 /** Executables tried, in order, when `CHROME_PATH` is unset. */
@@ -574,6 +595,9 @@ async function browserPhase(): Promise<void> {
         await devtools.send("Network.enable", {})
         await devtools.send("Page.enable", {})
         await denyDownloads(devtools)
+        if (CPU_THROTTLE > 1) {
+          await devtools.send("Emulation.setCPUThrottlingRate", { rate: CPU_THROTTLE })
+        }
 
         await devtools.send("Page.navigate", { url: server.url })
         await devtools.next("Page.loadEventFired")
@@ -661,8 +685,9 @@ async function browserPhase(): Promise<void> {
       }
     })()
 
+    const phaseDeadlineMs = PHASE_DEADLINE_MS * CPU_THROTTLE
     const deadline = new Promise<"deadline">((resolve) => {
-      setTimeout(() => resolve("deadline"), PHASE_DEADLINE_MS)
+      setTimeout(() => resolve("deadline"), phaseDeadlineMs)
     })
 
     const outcome = await Promise.race([work.then(() => "done" as const), deadline])
@@ -672,7 +697,7 @@ async function browserPhase(): Promise<void> {
       check(
         "the browser phase finished within its deadline",
         false,
-        `no result after ${Math.round(PHASE_DEADLINE_MS / 1000)}s` +
+        `no result after ${Math.round(phaseDeadlineMs / 1000)}s` +
           (running ? `; still running the ${running} checks` : "") +
           `; last completed check: ${lastCheckName() ?? "none"}`,
       )
@@ -878,8 +903,18 @@ await staticPhase()
 let note: string | undefined
 if (Deno.args.includes("--static")) {
   console.log("\n--static — browser phase left out on purpose")
+} else if (Number.isNaN(CPU_THROTTLE)) {
+  check(
+    "--cpu-throttle names a rate of at least 1",
+    false,
+    "the value is not a number of at least 1",
+  )
 } else {
   await browserPhase()
-  note = filteredRunNote()
+  const throttled = CPU_THROTTLE > 1
+    ? `THROTTLED: the page ran ${CPU_THROTTLE} times slower (--cpu-throttle) — not a CI run`
+    : undefined
+  note = [filteredRunNote(), throttled].filter((line) => line !== undefined).join("\n") ||
+    undefined
 }
 report(note)
