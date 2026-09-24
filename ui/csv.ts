@@ -11,12 +11,9 @@
  *
  * A `number` or a `bigint` is written unguarded — see {@link csvField} — because neither can hold a
  * separator or a formula body: `String()` of either produces digits, at most one `.`, an `e`/`E`
- * exponent marker, or one of the literal words `Infinity`/`-Infinity`/`NaN` — not the narrower claim
- * an earlier revision made ("only digits, at most one leading `-` … at most one `.` or exponent
- * marker"), which `NaN`, `-Infinity` and `-1e+21` all break. None of it is formula syntax a
- * spreadsheet acts on by itself, checked in LibreOffice for those same three values: `NaN` and
- * `-Infinity` open as text, `-1e+21` opens as text too — none of the three as a live number, but
- * none as a formula either. A `string` is guarded regardless of what it contains, because a string
+ * exponent marker, or one of the literal words `Infinity`/`-Infinity`/`NaN`. None of it is formula
+ * syntax a spreadsheet acts on by itself, checked in LibreOffice 26.2: `NaN` and `-Infinity` open as
+ * text, `-1e+21` opens as a number, and none opens as a formula. A `string` is guarded regardless of what it contains, because a string
  * is exactly the type a spreadsheet-formula payload arrives as.
  */
 export type CsvCellValue = string | number | bigint

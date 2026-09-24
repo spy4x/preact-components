@@ -106,10 +106,9 @@ describe("csvField", () => {
   })
 
   it("writes NaN, -Infinity and scientific notation unguarded too", () => {
-    // These are exactly the values that break the narrower "only digits, at most one leading -"
-    // claim an earlier revision made — String() of a number can also produce Infinity, -Infinity,
-    // NaN or an e/E exponent marker. All three are still written as-is: a review confirmed in
-    // LibreOffice that none of them opens as a live number, but none opens as a formula either.
+    // String() of a number can also produce Infinity, -Infinity, NaN or an e/E exponent marker.
+    // All three are still written as-is. In LibreOffice 26.2, NaN and -Infinity open as text,
+    // -1e+21 opens as a number, and none of them opens as a formula.
     expect(csvField(NaN)).toBe("NaN")
     expect(csvField(-Infinity)).toBe("-Infinity")
     expect(csvField(-1e21)).toBe("-1e+21")
