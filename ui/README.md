@@ -44,6 +44,8 @@ Preact + Tailwind primitives extracted from earlier source applications.
 | `EnhancedForm`    | `enhanced-form`     | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?` — posts natively before hydration             |
 | `ErrorState`      | `error-state`       | `message` (renders nothing when empty)                                                                                         |
 | `GeoButton`       | `geo-button`        | `onLocation`, `onError?`                                                                                                       |
+| `ImageGallery`    | `image-gallery`     | `images` (`{ src, alt, thumbSrc? }[]`), `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`                                |
+| `Lightbox`        | `lightbox`          | `images`, `index`, `open`, `onClose`, `onIndexChange`, `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`                 |
 | `LoadingScreen`   | `loading-screen`    | `message`, `description`                                                                                                       |
 | `LoadingSkeleton` | `loading-skeleton`  | `rows`                                                                                                                         |
 | `LoadingSpinner`  | `loading-spinner`   | `label`, `size`                                                                                                                |
@@ -616,6 +618,45 @@ with an optional `honeypot` prop: an off-screen field simple bots fill in, `hp-f
 deliberately not a word a browser's own autofill heuristics reach for. A submit whose honeypot
 carries a value never reaches the caller's `onSubmit`; it resolves as if it had succeeded, because
 telling a bot it was caught only teaches it which field to leave alone next time.
+
+## Lightbox
+
+`Lightbox` is the one dialog `ImageGallery`'s thumbnail strip and `system/image-lightbox.tsx`'s
+content mode both open — issue #140's "one lightbox, two ways in". `images`, `index`, `open`,
+`onClose` and `onIndexChange` are the caller's own state; the component owns nothing but the
+dialog's open/close lifecycle and which key or button moved the position.
+
+**Built on a native `<dialog>`, not `Modal`.** The issue asked for `Modal` underneath it, so focus
+handling would be written once, and two things about `Modal` said no instead. `Modal` wraps
+`children` in a fixed `<div class="px-6 py-4">` with no prop that reaches it, which fights a
+full-bleed image before anything else does. The one that actually rules it out: `Modal` renders no
+ref to its `<dialog>`, so nothing outside it can attach a listener straight to the dialog element —
+which is exactly what Left and Right need, since a `<dialog>` with no `autofocus` descendant takes
+focus on itself first, outside any wrapper a caller could listen on. A native `<dialog>` with its
+own `ref` has neither problem. What does carry over from `Modal` is reuse, not composition: its
+exported `shouldRetargetFocus`/`restoreFocus` pair, the same one it uses for its own focus restore.
+
+**Left and Right are attached once, on mount, directly on the `<dialog>` element.** Not gated on
+`open`: an effect that (re)attached only once the dialog was open would run after the render that
+opened it already committed, and a key pressed in that same task would find nothing listening — the
+Escape-race shape `AGENTS.md` and `ui/tooltip.tsx` describe. The listener reads `open`, the current
+position and the total from a ref updated every render, so it always acts on the render the user is
+looking at rather than the one it was attached during. Escape itself needs no listener: this dialog
+never refuses a close, so `<dialog>`'s own Escape handling and its `close` event are the whole
+mechanism, and the `close` event is also where focus is restored.
+
+**The live region is always present**, inside the dialog whether it is open or not, and announces
+the new image's description together with its position — `"A hero shot — 3 of 8"` — not the
+position alone, since a reader arrowing through the sequence needs to know what changed as well as
+where they now are.
+
+**An image with no description is not shown — anywhere.** `alt` is required in `LightboxImage`'s
+type; `describedImages` drops an image whose `alt` is empty after trimming before either caller
+renders anything with it, so the same image is missing from `ImageGallery`'s strip and from
+`Lightbox`'s own sequence, never rendered with a placeholder name. Silent, not warned: `alt` is
+already required by the type, so an empty one only reaches this component through a caller that
+bypassed the type system to produce it, and nothing else in this package calls `console.warn` for a
+value its own type already disallows.
 
 ## Tests
 
