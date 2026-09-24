@@ -54,11 +54,13 @@ import {
   check,
   type CheckBlock,
   commitBlocks,
+  committedBlockNames,
   connect,
   currentBlockName,
   debuggingPort,
   describeError,
   type Devtools,
+  filteredRunLine,
   lastCheckName,
   poll,
   pressKey,
@@ -592,11 +594,26 @@ async function browserPhase(): Promise<void> {
           // 0 → 36,500px, when a block run started alone right after hydration; the block's own
           // `scrollIntoView` landed correctly, but one more frame of the still-running smooth
           // scroll moved the page under it before the first click arrived, 170–540px in the runs
-          // measured. Settling here, once, before any block's own checks run, is what closes that
-          // gap for every block's first check under `--only`, not only `system`'s own. A full run
-          // needs no change: the earlier blocks already cost enough wall-clock time that the
-          // scroll has long since finished by the time this line runs.
-          await settledScroll(devtools)
+          // measured. This line runs before any block, in every run, full or filtered — what
+          // differs between them is not this line but how much of the scroll is still left by the
+          // time a block's own checks start: `system` is `PACKAGE_BLOCKS`' sixth entry, so a full
+          // run has already spent five earlier blocks' worth of wall-clock time by the time it
+          // gets there, and measured runs show the roughly 1.65s scroll has always finished well
+          // before that. A `--only` run that starts straight into `system`, or any other block,
+          // does not get that head start, which is what made this reproduce there and nowhere
+          // else. 10s is a wide margin over that measured 1.65s — generous room for a slower CI
+          // machine — and a run that still has not settled by then fails loudly here instead of
+          // leaving whichever block runs next to blame a stale coordinate on itself.
+          const settleStarted = Date.now()
+          const settled = await settledScroll(devtools, 10_000)
+          const settleMs = Date.now() - settleStarted
+          check(
+            "the page stopped scrolling before the package blocks started",
+            settled,
+            settled
+              ? `scrollY held still before any block's own checks began, after ${settleMs}ms`
+              : "scrollY was still changing 10s after hydration",
+          )
           await runBlocks(activeBlocks, devtools, resetAfterThrow)
         }
 
@@ -776,24 +793,18 @@ const PACKAGE_BLOCKS: readonly CheckBlock<Devtools>[] = [
 /**
  * The line that marks a filtered `--only` run as filtered — `undefined` on every full run.
  *
- * Built once the run has finished, so it names the blocks that actually ran rather than the ones
- * `--only` merely asked for — the two are the same whenever `ONLY` passed its own validation, but
- * this reads {@link PACKAGE_BLOCKS} against `ONLY` directly rather than assuming that.
+ * Builds it from {@link committedBlockNames}, not `ONLY` — see {@link filteredRunLine}'s own doc for
+ * why that distinction is the whole point of this function, and `pages/checks/harness.test.ts` for
+ * the case it protects.
  *
  * Passed to {@link report} as its `note`, which is what makes this the true last line of the run
  * regardless of how many check lines came before it — see that parameter's own doc for the
  * 136-line gap between a banner printed mid-run and the summary line a reader actually looks at,
- * which is the defect this replaces (`#253`'s review).
+ * which is the defect this replaces.
  */
 function filteredRunNote(): string | undefined {
   if (!ONLY) return undefined
-  const names = PACKAGE_BLOCKS.map((block) => block.name)
-  const ran = names.filter((name) => ONLY.includes(name))
-  const excluded = names.filter((name) => !ONLY.includes(name))
-  return `FILTERED: ran ${ran.join(", ") || "(none)"}, left out ${
-    excluded.join(", ") || "(none)"
-  }` +
-    " — not a full run; CI never passes --only"
+  return filteredRunLine(PACKAGE_BLOCKS.map((block) => block.name), committedBlockNames())
 }
 
 await staticPhase()

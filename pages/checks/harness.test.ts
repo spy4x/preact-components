@@ -19,6 +19,7 @@ import {
   connect,
   Devtools,
   DevtoolsClosedError,
+  filteredRunLine,
   poll,
   Run,
   selectBlocks,
@@ -399,6 +400,37 @@ describe("selectBlocks", () => {
     expect(selection.selected).toEqual([])
     expect(selection.excluded.map((block) => block.name)).toEqual(["theme", "ui"])
     expect(selection.unknown).toEqual([])
+  })
+})
+
+describe("filteredRunLine", () => {
+  it("names the blocks that ran and the blocks left out", () => {
+    const line = filteredRunLine(["theme", "system", "ui"], ["system"])
+
+    expect(line).toBe(
+      "FILTERED: ran system, left out theme, ui — not a full run; CI never passes --only",
+    )
+  })
+
+  it("reads 'ran (none)' when nothing was committed — not the blocks a bad request named", () => {
+    // The exact regression `#253`'s second review found: an unknown or empty `--only` selection
+    // commits nothing, so `ran` here is empty, even though a caller that read the raw `--only`
+    // request instead of the committed blocks would have named "system" — `verify --only=system,
+    // bogus` printed exactly that before this function existed. `ran` is passed empty here on
+    // purpose, standing in for that committed-nothing case, regardless of what a request asked for.
+    const line = filteredRunLine(["theme", "system", "ui"], [])
+
+    expect(line).toBe(
+      "FILTERED: ran (none), left out theme, system, ui — not a full run; CI never passes --only",
+    )
+  })
+
+  it("reads 'left out (none)' when every block ran", () => {
+    const line = filteredRunLine(["theme", "ui"], ["theme", "ui"])
+
+    expect(line).toBe(
+      "FILTERED: ran theme, ui, left out (none) — not a full run; CI never passes --only",
+    )
   })
 })
 

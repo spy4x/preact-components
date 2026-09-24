@@ -311,6 +311,42 @@ export function commitBlocks(names: readonly string[]): void {
 }
 
 /**
+ * Names of every block committed so far, in commit order — empty before `commitBlocks` has ever
+ * been called.
+ *
+ * This is the ground truth for what a run actually meant to run, as opposed to what a flag like
+ * `--only` merely asked for: a request and a commit can differ, and the two are supposed to differ
+ * exactly when a run refuses to start at all — an unknown or empty `--only` selection fails its own
+ * check before `commitBlocks` is ever reached, so this reads back empty rather than echoing the bad
+ * request (`#253`'s second review, which found `verify.ts`'s `--only` marker doing the latter).
+ */
+export function committedBlockNames(): readonly string[] {
+  return [...currentRun.blocks.keys()]
+}
+
+/**
+ * Render `--only`'s filtered-run marker line from the blocks that actually ran.
+ *
+ * Pure and exported so this text is testable without a browser or the module-level `Run` singleton
+ * `committedBlockNames()` reads. `verify.ts`'s own `filteredRunNote` is the one caller, and it
+ * passes `committedBlockNames()`'s own result as `ran`, never the raw `--only` request — a test
+ * built around this function, with `ran` explicitly empty while `all` still names several blocks,
+ * is what would go red if a future change went back to reading the request instead: the earlier
+ * shape here read `ONLY` directly, so an unknown or empty `--only` selection — nothing committed,
+ * nothing run — still printed the blocks the flag had *asked* for (`#253`'s second review).
+ *
+ * @param all Every package block's name, in run order.
+ * @param ran The blocks that were actually committed — `committedBlockNames()`'s own result, or
+ * empty for a request that never got that far.
+ */
+export function filteredRunLine(all: readonly string[], ran: readonly string[]): string {
+  const excluded = all.filter((name) => !ran.includes(name))
+  return `FILTERED: ran ${ran.join(", ") || "(none)"}, left out ${
+    excluded.join(", ") || "(none)"
+  } — not a full run; CI never passes --only`
+}
+
+/**
  * The name of the last check recorded so far that genuinely passed, or `undefined` if none has —
  * see {@link Run.lastPassedCheck}. Never a block's own failure marker, even when that marker is the
  * most recently recorded entry.
@@ -469,12 +505,21 @@ export async function poll(predicate: () => Promise<boolean>, timeoutMs: number)
  * Moved here from `checks/ui.ts` (`#225`, `#238`) once `checks/pages.ts` needed the same wait for a
  * route's scroll rather than a fixed delay — one helper, not two copies drifting apart.
  *
+ * The return value is new (`#253`'s second review): every existing caller already ignores it, so
+ * adding it changes nothing for them, but `verify.ts`'s one-time settle before `runBlocks` needs to
+ * tell "the page had already stopped" apart from "the budget ran out while it was still moving" —
+ * this function cannot itself distinguish "never started scrolling" from "settled instantly", which
+ * both read as `true` on the first two-reads-agree check, but a caller that only cares whether the
+ * budget was enough does not need that distinction.
+ *
  * @param devtools The connected session.
  * @param timeoutMs How long to wait for two consecutive reads to agree before giving up.
+ * @returns Whether two consecutive reads agreed inside the budget — `false` means the budget ran
+ * out while `scrollY` was still changing.
  */
-export async function settledScroll(devtools: Devtools, timeoutMs = 3_000): Promise<void> {
+export async function settledScroll(devtools: Devtools, timeoutMs = 3_000): Promise<boolean> {
   let previous = Number.NaN
-  await poll(async () => {
+  return await poll(async () => {
     const current = await devtools.evaluate<number>("Math.round(globalThis.scrollY)")
     const settled = current === previous
     previous = current
