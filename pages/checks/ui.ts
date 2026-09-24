@@ -628,6 +628,7 @@ const DROPDOWN_TRIGGERS_PER_CARD: Record<string, number> = {
   "demo-Dropdown": 4,
   "demo-CrudList": 3,
   "demo-RowActions": 1,
+  "demo-Shell": 1,
 }
 
 /**

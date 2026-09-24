@@ -153,7 +153,8 @@ function clickBarButton(devtools: Devtools, label: string, bar = BAR): Promise<b
 
 /**
  * `system/`'s browser checks: `AuthForm`, the calendar's keyboard, the lightbox's, `SiteHeader`'s
- * mobile panel, and `SWUpdater` against a real service worker.
+ * mobile panel, `Shell`'s drawer and its interaction with `ui/`'s `Dropdown`, and `SWUpdater`
+ * against a real service worker.
  *
  * `AuthForm` runs first, and its last step is the reason the calendar and the lightbox come after
  * it rather than around it: proving that a submit survives disabled script execution means
@@ -185,6 +186,7 @@ export async function systemChecks(devtools: Devtools): Promise<void> {
   await calendarChecks(devtools)
   await imageLightboxChecks(devtools)
   await siteHeaderChecks(devtools)
+  await shellChecks(devtools)
   await serviceWorkerChecks(devtools)
   check(
     "every reading this file took came back without a page exception",
@@ -4481,4 +4483,511 @@ async function siteHeaderHydrationSyncChecks(devtools: Devtools): Promise<void> 
       : "aria-expanded turned true and a real Escape press closed the panel, both once hydration " +
         "caught up",
   )
+}
+
+/** The card `shellChecks` drives, and the pieces of it it reads. */
+const SHELL_CARD = "#demo-Shell"
+const SHELL = SHELL_CARD + ' [data-e2e="shell-demo"]'
+const SHELL_HEADER = SHELL + ' [data-e2e="shell-header"]'
+const SHELL_MENU_BUTTON = SHELL + ' [data-e2e="shell-menu-button"]'
+const SHELL_PANEL = SHELL + ' [data-e2e="shell-panel"]'
+const SHELL_DETAILS = SHELL + " details"
+const SHELL_PANEL_LINKS = SHELL_PANEL + " nav a"
+const SHELL_SKIP_LINK = SHELL + ' [data-e2e="shell-skip-link"]'
+const SHELL_CONTENT = SHELL + ' [data-e2e="shell-content"]'
+const SHELL_USER_MENU_BUTTON = SHELL + ' [data-e2e="shell-user-menu-button"]'
+/** Any item inside the user menu's own panel — where `Dropdown` moves focus once it opens. */
+const SHELL_USER_MENU_ITEM = SHELL + ' [role="menuitem"]'
+
+/** A viewport narrow enough to put `Shell` into its drawer layout (`lg` is 1024px). */
+const SHELL_VIEWPORT_PHONE = { width: 390, height: 844 }
+/** A viewport wide enough to show `Shell`'s desktop sidebar instead of the drawer. */
+const SHELL_VIEWPORT_DESKTOP = { width: 1280, height: 900 }
+
+/** What one reading of the drawer's `<details>` and menu button reports. */
+interface ShellPanelState {
+  found: boolean
+  detailsOpen: boolean
+  expanded: string | null
+}
+
+const READ_SHELL_PANEL = `(() => {
+  const details = document.querySelector('${SHELL_DETAILS}')
+  const button = document.querySelector('${SHELL_MENU_BUTTON}')
+  return {
+    found: Boolean(details) && Boolean(button),
+    detailsOpen: details ? details.open : false,
+    expanded: button ? button.getAttribute("aria-expanded") : null,
+  }
+})()`
+
+const SHELL_PANEL_UNREAD: ShellPanelState = { found: false, detailsOpen: false, expanded: null }
+
+function readShellPanel(devtools: Devtools): Promise<ShellPanelState> {
+  return read(devtools, READ_SHELL_PANEL, SHELL_PANEL_UNREAD)
+}
+
+/** Whether the user menu's own trigger currently reports itself open. */
+function readShellUserMenuOpen(devtools: Devtools): Promise<boolean> {
+  return read(
+    devtools,
+    `document.querySelector('${SHELL_USER_MENU_BUTTON}')?.getAttribute("aria-expanded") === "true"`,
+    false,
+  )
+}
+
+/**
+ * Force both the drawer and the user menu closed before a sub-check needs a known starting state,
+ * rather than assuming the previous one's own teardown landed — the same reasoning
+ * `ensureSiteHeaderClosed` is built on, extended to the second, independent disclosure `Shell` adds.
+ *
+ * The drawer's `<details>` can be closed directly, the same way `ensureSiteHeaderClosed` does it.
+ * `Dropdown` exposes no such seam — its open state is a signal local to the component — so the only
+ * way to close it from outside is the interaction a visitor would use: a click on its own trigger,
+ * which toggles it shut when it is already open.
+ */
+async function ensureShellClosed(devtools: Devtools): Promise<void> {
+  await read(
+    devtools,
+    `(() => {
+      const details = document.querySelector('${SHELL_DETAILS}')
+      if (details) details.open = false
+      return true
+    })()`,
+    false,
+  )
+  if (await readShellUserMenuOpen(devtools)) {
+    await click(devtools, SHELL_USER_MENU_BUTTON)
+  }
+  await poll(async () => {
+    const panel = await readShellPanel(devtools)
+    return !panel.detailsOpen && !(await readShellUserMenuOpen(devtools))
+  }, 3_000)
+}
+
+/**
+ * `Shell`'s mobile drawer: closed by default, opened by a click on the menu button, closed by a
+ * real Escape press with focus returned to the button, closed deterministically even when the click
+ * and the Escape land in the same task, scoped correctly against `ui/`'s `Dropdown` sharing the same
+ * header, reachable from the skip link, and laid out so neither the drawer nor the user menu ever
+ * move the header around them.
+ *
+ * **Phone width, for the panel checks; desktop width for the layout check's own second half.**
+ * `Shell` only builds the `<details>` drawer below `lg` (1024px); `siteHeaderChecks`' own doc
+ * explains why a check like this one has to narrow the viewport itself rather than trust whatever
+ * the rest of the run left it at.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function shellChecks(devtools: Devtools): Promise<void> {
+  await devtools.send("Emulation.setDeviceMetricsOverride", {
+    ...SHELL_VIEWPORT_PHONE,
+    deviceScaleFactor: 1,
+    mobile: false,
+  })
+
+  try {
+    await ensureShellClosed(devtools)
+
+    const idle = await readShellPanel(devtools)
+    check(
+      "Shell's mobile drawer starts closed, with aria-expanded false",
+      idle.found && !idle.detailsOpen && idle.expanded === "false",
+      idle.found
+        ? `details.open=${idle.detailsOpen}, aria-expanded=${idle.expanded}`
+        : "the Shell card was not found at phone width",
+    )
+
+    await focusAndClick(devtools, SHELL_MENU_BUTTON)
+    const opened = await poll(async () => {
+      const state = await readShellPanel(devtools)
+      return state.detailsOpen && state.expanded === "true"
+    }, 3_000)
+    check(
+      "clicking the menu button opens Shell's drawer and flips aria-expanded",
+      opened,
+      `details.open and aria-expanded both true: ${opened}`,
+    )
+
+    const expectedOrder = await read(
+      devtools,
+      `[...document.querySelectorAll('${SHELL_PANEL_LINKS}')]
+        .map((el) => el.textContent.trim())`,
+      [] as string[],
+    )
+    const tabbedThrough: string[] = []
+    for (let index = 0; index < expectedOrder.length; index++) {
+      await pressKey(devtools, "Tab")
+      tabbedThrough.push(
+        await read(
+          devtools,
+          `(document.activeElement ? document.activeElement.textContent.trim() : "")`,
+          "",
+        ),
+      )
+    }
+    check(
+      "Tab walks the open drawer's links, in document order, once the button has focus",
+      opened && expectedOrder.length > 0 && tabbedThrough.length === expectedOrder.length &&
+        tabbedThrough.every((label, index) => label === expectedOrder[index]),
+      `expected ${JSON.stringify(expectedOrder)}, tabbed through ${JSON.stringify(tabbedThrough)}`,
+    )
+
+    await pressKey(devtools, "Escape")
+    const closed = await poll(async () => !(await readShellPanel(devtools)).detailsOpen, 3_000)
+    const focusedButton = await read(
+      devtools,
+      `document.activeElement === document.querySelector('${SHELL_MENU_BUTTON}')`,
+      false,
+    )
+    check(
+      "a real Escape key press closes Shell's drawer and returns focus to the menu button",
+      opened && closed && focusedButton,
+      !opened
+        ? "the drawer was never open, so this proves nothing about Escape"
+        : !closed
+        ? "the drawer was still open 3s after the key press"
+        : `document.activeElement is the menu button: ${focusedButton}`,
+    )
+
+    await shellEscapeRaceCheck(devtools)
+    await shellEscapeScopingCheck(devtools)
+    await shellSkipLinkCheck(devtools)
+    await shellLayoutChecks(devtools)
+  } finally {
+    await devtools.send("Emulation.clearDeviceMetricsOverride", {}).catch(() => {})
+  }
+}
+
+/**
+ * The same race `siteHeaderEscapeRaceCheck` was written against, forced against `Shell`'s own
+ * drawer from the start rather than discovered after the fact: `useMobilePanel`'s Escape listener
+ * is attached once, unconditionally, and reads `detailsRef.current.open` directly, so it cannot be
+ * gated on a signal that lags a render behind the DOM the way an earlier version of this hook was.
+ * Reusing the hook is what makes this check able to reuse the same proof, adapted to `Shell`'s own
+ * selectors.
+ *
+ * `button.click()` and a bubbling, synthetic `keydown` Escape dispatched from the button, back to
+ * back inside one `Runtime.evaluate`, land inside the gap deterministically — see
+ * `siteHeaderEscapeRaceCheck`'s own doc for why two separate real commands cannot. The two animation
+ * frames before the click let the *previous* close's own effect cleanup finish first, the same
+ * reason `siteHeaderEscapeRaceCheck` waits for them: without it, a listener left over from a prior
+ * open can still be attached when this one clicks, and close the panel for the wrong reason.
+ *
+ * @param devtools The connected session, on a hydrated page, viewport already narrowed by the
+ * caller. Waits for the drawer to report closed itself first, rather than assuming it already is.
+ */
+async function shellEscapeRaceCheck(devtools: Devtools): Promise<void> {
+  await ensureShellClosed(devtools)
+  await poll(async () => {
+    const state = await readShellPanel(devtools)
+    return !state.detailsOpen && state.expanded === "false"
+  }, 3_000)
+
+  const stillOpen = await read(
+    devtools,
+    `(async () => {
+      for (let k = 0; k < 2; k++) {
+        await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)))
+      }
+      const button = document.querySelector('${SHELL_MENU_BUTTON}')
+      if (!button) return null
+      button.click()
+      button.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }),
+      )
+      const details = button.closest("details")
+      return details ? details.open : null
+    })()`,
+    null as boolean | null,
+  )
+
+  check(
+    "an Escape dispatched in the same task as the click still closes Shell's drawer",
+    stillOpen === false,
+    stillOpen === null
+      ? "the menu button was not found"
+      : stillOpen
+      ? "details.open still read true immediately after the click and the same-task Escape"
+      : "details.open read false immediately after the click and the same-task Escape",
+  )
+
+  await ensureShellClosed(devtools)
+}
+
+/**
+ * An Escape meant for one of `Shell`'s two independent disclosures must not also close the other —
+ * the mobile drawer (`useMobilePanel`, a `document`-level listener scoped by `event.target`
+ * containment) and `ui/`'s `Dropdown` (a listener on the dropdown's own root, which only ever sees
+ * events bubbling from inside it) sit in the same header, and both can be genuinely open at once.
+ *
+ * **Both halves use real clicks and a real Escape — deliberately not the synthetic, targeted
+ * dispatch `shellEscapeRaceCheck` uses.** A first version of this check dispatched a synthetic
+ * Escape from whichever element was "supposed" to receive it, which let it also aim one at the
+ * drawer while real focus was still inside the *open* dropdown — a combination a real key press can
+ * never produce, because a real `keydown`'s target is always wherever focus actually is. That
+ * mismatch is what failed: `close(true)`'s own `triggerRef.current.focus()` moved real focus out of
+ * the dropdown, which closed it through `Dropdown`'s own blur handling — a correct, unrelated
+ * consequence of restoring focus, not a scoping leak, and not something a real Escape press could
+ * ever trigger this way.
+ *
+ * **`Dropdown` moves focus into its own panel the instant it opens, and closes itself the instant
+ * focus leaves it — which is what makes "both open, with focus genuinely in the drawer" impossible
+ * to construct at all.** The drawer has no such blur handling, so opening the dropdown on top of an
+ * open drawer leaves both genuinely open (checked below). Opening the drawer on top of an open
+ * dropdown, by contrast, moves real focus to the drawer's button and closes the dropdown *before*
+ * any Escape is pressed — proven below as its own assertion, because it is exactly the mechanism
+ * that makes "the reverse" hold: a real Escape aimed at the drawer never has an open dropdown left
+ * to threaten.
+ *
+ * @param devtools The connected session, on a hydrated page, viewport already narrowed by the
+ * caller. Forces both disclosures closed itself, both before and after.
+ */
+async function shellEscapeScopingCheck(devtools: Devtools): Promise<void> {
+  await ensureShellClosed(devtools)
+
+  // Direction 1: the drawer opens, the user menu opens on top of it — the drawer has no blur
+  // handling, so both are genuinely open at once. A real Escape, which goes wherever focus actually
+  // is (inside the user menu's panel, moved there when it opened), must close only the user menu.
+  await focusAndClick(devtools, SHELL_MENU_BUTTON)
+  const drawerOpenedFirst = await poll(async () => {
+    const state = await readShellPanel(devtools)
+    return state.detailsOpen && state.expanded === "true"
+  }, 3_000)
+  await click(devtools, SHELL_USER_MENU_BUTTON)
+  const userMenuOpened = await poll(() => readShellUserMenuOpen(devtools), 3_000)
+  const drawerStillOpenWithMenuOpen = (await readShellPanel(devtools)).detailsOpen
+  // `Dropdown` moves focus into its panel from an effect that runs a render after `aria-expanded`
+  // itself commits — the same render-vs-effect gap `mobile-panel.ts`'s own doc explains — so a real
+  // Escape pressed right after the `aria-expanded` poll above can still find focus on the button
+  // that opened the menu, not inside it. Waiting for focus itself, not merely for the attribute, is
+  // what makes this Escape land where a person's actually would.
+  const focusInUserMenu = await poll(
+    () =>
+      read(
+        devtools,
+        `document.activeElement?.matches('${SHELL_USER_MENU_ITEM}') === true`,
+        false,
+      ),
+    3_000,
+  )
+
+  await pressKey(devtools, "Escape")
+  const userMenuClosedByEscape = await poll(
+    () => readShellUserMenuOpen(devtools).then((v) => !v),
+    3_000,
+  )
+  const drawerStillOpenAfterUserMenuEscape = (await readShellPanel(devtools)).detailsOpen
+
+  check(
+    "an Escape meant for the open user menu does not also close the mobile drawer",
+    drawerOpenedFirst && userMenuOpened && drawerStillOpenWithMenuOpen && focusInUserMenu &&
+      userMenuClosedByEscape && drawerStillOpenAfterUserMenuEscape,
+    !drawerOpenedFirst
+      ? "the drawer never opened, so this proves nothing"
+      : !userMenuOpened
+      ? "the user menu never opened, so this proves nothing"
+      : !drawerStillOpenWithMenuOpen
+      ? "opening the user menu closed the drawer on its own, before Escape was even pressed"
+      : !focusInUserMenu
+      ? "focus never moved into the user menu's panel, so a real Escape proves nothing about it"
+      : !userMenuClosedByEscape
+      ? "the user menu was still open after Escape"
+      : "focus was inside the user menu when Escape was pressed, and it closed the user menu " +
+        "alone, leaving the drawer open behind it",
+  )
+
+  await ensureShellClosed(devtools)
+
+  // Direction 2 ("the reverse"): the user menu opens, then the drawer opens on top of it. Opening
+  // the drawer moves real focus to its own button — outside the user menu's root — which closes the
+  // user menu through its own blur handling, before any Escape is pressed at all. A real Escape,
+  // now aimed at the drawer because that is where focus actually is, closes the drawer; the user
+  // menu — already closed — has nothing left for it to threaten.
+  await click(devtools, SHELL_USER_MENU_BUTTON)
+  const userMenuOpenedSecond = await poll(() => readShellUserMenuOpen(devtools), 3_000)
+  // `Dropdown`'s own "move focus into the panel" effect runs a render behind `aria-expanded`, the
+  // same gap direction 1 waits out above. Left unwaited here, that effect can fire *after* the
+  // drawer's own `.focus()` below, stealing focus back into the user menu's first item and making
+  // the drawer's own Escape land on the wrong element a moment later — measured, not assumed: this
+  // is exactly what turned this direction red the first time it was written.
+  await poll(
+    () =>
+      read(devtools, `document.activeElement?.matches('${SHELL_USER_MENU_ITEM}') === true`, false),
+    3_000,
+  )
+  await focusAndClick(devtools, SHELL_MENU_BUTTON)
+  const drawerOpenedSecond = await poll(async () => {
+    const state = await readShellPanel(devtools)
+    return state.detailsOpen && state.expanded === "true"
+  }, 3_000)
+  const userMenuClosedByBlur = await poll(
+    () => readShellUserMenuOpen(devtools).then((v) => !v),
+    3_000,
+  )
+  await pressKey(devtools, "Escape")
+  const drawerClosedSecond = await poll(
+    async () => !(await readShellPanel(devtools)).detailsOpen,
+    3_000,
+  )
+  const userMenuStillClosedAfterDrawerEscape = !(await readShellUserMenuOpen(devtools))
+
+  check(
+    "opening the mobile drawer closes an open user menu on its own, before Escape is involved",
+    userMenuOpenedSecond && drawerOpenedSecond && userMenuClosedByBlur,
+    !userMenuOpenedSecond
+      ? "the user menu never opened, so this proves nothing"
+      : !drawerOpenedSecond
+      ? "the drawer never opened, so this proves nothing"
+      : "opening the drawer moved focus to its own button, outside the user menu's root, and " +
+        "the user menu's own blur handling closed it before any Escape was pressed",
+  )
+  check(
+    "an Escape meant for the open mobile drawer does not reopen or otherwise affect the user menu",
+    drawerOpenedSecond && userMenuClosedByBlur && drawerClosedSecond &&
+      userMenuStillClosedAfterDrawerEscape,
+    !drawerOpenedSecond || !userMenuClosedByBlur
+      ? "the setup above did not reach the state this check needs, so this proves nothing"
+      : !drawerClosedSecond
+      ? "the drawer was still open after Escape"
+      : "Escape closed the drawer, and the user menu — already closed — stayed closed",
+  )
+
+  await ensureShellClosed(devtools)
+}
+
+/**
+ * The skip link is the first focusable element on the page, and activating it has to move focus to
+ * the content area — not only change the address bar's hash, which a person tabbing through the
+ * page afterwards would never notice.
+ *
+ * @param devtools The connected session, on a hydrated page, viewport already narrowed by the
+ * caller.
+ */
+async function shellSkipLinkCheck(devtools: Devtools): Promise<void> {
+  const focused = await focusAndClick(devtools, SHELL_SKIP_LINK)
+  const after = await read(
+    devtools,
+    `(() => ({
+      activeIsContent: document.activeElement === document.querySelector('${SHELL_CONTENT}'),
+      hashMatches: location.hash === document.querySelector('${SHELL_SKIP_LINK}')?.getAttribute("href"),
+    }))()`,
+    { activeIsContent: false, hashMatches: false },
+  )
+
+  check(
+    "activating the skip link moves focus to the content area, not only the address hash",
+    focused && after.activeIsContent,
+    !focused
+      ? "the skip link was not found"
+      : !after.activeIsContent
+      ? `the hash changed (${after.hashMatches}) but document.activeElement is not the content area`
+      : "document.activeElement is the content area, and the hash changed to match",
+  )
+}
+
+/**
+ * Opening a panel must not move anything else in `Shell`'s header — at phone width, opening the
+ * drawer; at desktop width, opening the user menu, since the drawer does not exist there at all.
+ *
+ * Screenshots of the header's own clipped region, not computed geometry: a byte-identical PNG
+ * before and after is a stronger claim than "the same numbers came out of `getBoundingClientRect`",
+ * since it also catches a visual change geometry alone would miss.
+ *
+ * @param devtools The connected session, on a hydrated page. Switches the viewport itself for each
+ * half and restores phone width — `shellChecks`' own viewport — before returning.
+ */
+async function shellLayoutChecks(devtools: Devtools): Promise<void> {
+  await ensureShellClosed(devtools)
+  await waitForScrollSettle(devtools)
+
+  const headerRect = await read(
+    devtools,
+    `(() => {
+      const header = document.querySelector('${SHELL_HEADER}')
+      if (!header) return null
+      const rect = header.getBoundingClientRect()
+      return { x: Math.round(rect.left), y: Math.round(rect.top), width: Math.round(rect.width), height: Math.round(rect.height) }
+    })()`,
+    null as { x: number; y: number; width: number; height: number } | null,
+  )
+
+  if (headerRect) {
+    const closedShot = await devtools.send<{ data: string }>("Page.captureScreenshot", {
+      clip: { ...headerRect, scale: 1 },
+    })
+    await focusAndClick(devtools, SHELL_MENU_BUTTON)
+    await poll(async () => {
+      const state = await readShellPanel(devtools)
+      return state.detailsOpen && state.expanded === "true"
+    }, 3_000)
+    const openShot = await devtools.send<{ data: string }>("Page.captureScreenshot", {
+      clip: { ...headerRect, scale: 1 },
+    })
+    check(
+      "opening the mobile drawer at phone width leaves the header pixel-for-pixel unchanged",
+      closedShot.data === openShot.data,
+      closedShot.data === openShot.data
+        ? `header screenshots at (${headerRect.x},${headerRect.y}) ${headerRect.width}x${headerRect.height} match byte-for-byte`
+        : "the header's own screenshot changed after the drawer opened",
+    )
+  } else {
+    check(
+      "opening the mobile drawer at phone width leaves the header pixel-for-pixel unchanged",
+      false,
+      "the header was not found",
+    )
+  }
+
+  await ensureShellClosed(devtools)
+
+  await devtools.send("Emulation.setDeviceMetricsOverride", {
+    ...SHELL_VIEWPORT_DESKTOP,
+    deviceScaleFactor: 1,
+    mobile: false,
+  })
+  await waitForScrollSettle(devtools)
+
+  const desktopHeaderRect = await read(
+    devtools,
+    `(() => {
+      const header = document.querySelector('${SHELL_HEADER}')
+      if (!header) return null
+      const rect = header.getBoundingClientRect()
+      return { x: Math.round(rect.left), y: Math.round(rect.top), width: Math.round(rect.width), height: Math.round(rect.height) }
+    })()`,
+    null as { x: number; y: number; width: number; height: number } | null,
+  )
+
+  if (desktopHeaderRect) {
+    const closedShot = await devtools.send<{ data: string }>("Page.captureScreenshot", {
+      clip: { ...desktopHeaderRect, scale: 1 },
+    })
+    await click(devtools, SHELL_USER_MENU_BUTTON)
+    await poll(() => readShellUserMenuOpen(devtools), 3_000)
+    const openShot = await devtools.send<{ data: string }>("Page.captureScreenshot", {
+      clip: { ...desktopHeaderRect, scale: 1 },
+    })
+    check(
+      "opening the user menu at desktop width leaves the header pixel-for-pixel unchanged",
+      closedShot.data === openShot.data,
+      closedShot.data === openShot.data
+        ? `header screenshots at (${desktopHeaderRect.x},${desktopHeaderRect.y}) ` +
+          `${desktopHeaderRect.width}x${desktopHeaderRect.height} match byte-for-byte`
+        : "the header's own screenshot changed after the user menu opened",
+    )
+  } else {
+    check(
+      "opening the user menu at desktop width leaves the header pixel-for-pixel unchanged",
+      false,
+      "the header was not found",
+    )
+  }
+
+  await ensureShellClosed(devtools)
+  await devtools.send("Emulation.setDeviceMetricsOverride", {
+    ...SHELL_VIEWPORT_PHONE,
+    deviceScaleFactor: 1,
+    mobile: false,
+  })
 }
