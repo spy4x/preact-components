@@ -115,7 +115,7 @@ describe("Map", () => {
     expect(namedHtml).toContain('aria-label="Depot locations"')
   })
 
-  it("renders the plain list of the same markers beside the box", () => {
+  it("renders the plain, non-interactive list of the same markers beside the box", () => {
     const html = render(
       <Map
         center={{ lat: 0, lng: 0 }}
@@ -129,7 +129,9 @@ describe("Map", () => {
 
     expect(html).toContain(">London office<")
     expect(html).toContain(">Paris office<")
-    expect(html.match(/<button /g)?.length).toBe(markers.length)
+    // The list is presentational — see map/README.md → "Keyboard and screen readers" — so nothing in
+    // it is a button; the map's own pins, proven only in a browser, are the operable form.
+    expect(html).not.toContain("<button")
   })
 
   it("passes the listLabel prop through to the list heading", () => {

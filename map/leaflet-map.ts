@@ -9,10 +9,17 @@
  * `map/README.md` → "Security"). Nothing in this file runs from `map.tsx` except inside an effect, so
  * none of it runs during a server render.
  *
- * Marker keyboard access is deliberately **not** implemented on the map's own pins — see
- * `map/README.md` → "Why the list, not the pins, is the keyboard path" for the reasoning. Each pin
- * here is `aria-hidden`, not focusable (`keyboard: false`), and answers a mouse or touch click by
- * calling the same `onMarkerClick` port the plain list next to the map calls.
+ * **Marker keyboard access lives on the pins themselves** — see `map/README.md` → "Keyboard and
+ * screen readers" for the full reasoning. Each pin gets `keyboard: true`, which is Leaflet's own
+ * option: it sets `tabindex="0"` and `role="button"` on the marker's icon element
+ * (`leaflet-src.js:7914-7917`), putting every pin in the page's Tab order the moment it mounts. What
+ * Leaflet does **not** do is activate a bare marker on a key press — its `_onKeyPress` handler exists
+ * only inside `bindPopup` (`leaflet-src.js:10489`, `:10595`) and opens a popup, not a marker with
+ * none bound. So this file adds its own `keydown` listener, directly on the icon element Leaflet
+ * created (`marker.getElement()`), that calls `onMarkerClick` on a real Enter or Space press. `title`
+ * gives a mouse user a native hover tooltip; `aria-label`, set on the same element, is what actually
+ * names the pin to a screen reader — `title` alone is a weaker, overridable name source Chromium's
+ * accessible-name computation prefers `aria-label` over.
  */
 
 import type * as Leaflet from "leaflet"
@@ -56,21 +63,20 @@ export interface LeafletMapHandle {
  * HTML string. Passing an `Element` to `L.divIcon({ html })` is what lets Leaflet append it with
  * `appendChild` instead of parsing a string with `innerHTML` — see this file's own doc.
  *
- * The wrapper is `aria-hidden`: this pin is not the keyboard/screen-reader path for its marker (the
- * plain list is), so it carries no accessible name of its own. `title` is set on the *marker*, not
- * this element, by {@link addMarker} — Leaflet copies a `title` option onto the icon element itself,
- * which gives a mouse user a native tooltip with the place's name without this function reaching into
- * `marker.getElement()` after the fact.
+ * The wrapper itself carries no `aria-hidden`: it sits inside the icon element {@link addMarker} names
+ * with `aria-label`, and its own content would otherwise still reach a screen reader's fallback name
+ * computation if the label were ever missing. Only the decorative dot — colour alone, nothing an
+ * assistive technology should read as text — is `aria-hidden`.
  *
  * @param status The marker's status; `STATUS_WRAPPER_CLASS` colours it.
  */
 export function buildMarkerIconElement(status: MapMarkerStatus): HTMLElement {
   const wrapper = document.createElement("span")
   wrapper.className = STATUS_WRAPPER_CLASS[status]
-  wrapper.setAttribute("aria-hidden", "true")
 
   const dot = document.createElement("span")
   dot.className = MARKER_DOT_CLASSES
+  dot.setAttribute("aria-hidden", "true")
   wrapper.appendChild(dot)
 
   return wrapper
@@ -84,15 +90,20 @@ const ICON_SIZE: [number, number] = [20, 20]
 /**
  * Add one marker to a layer group.
  *
- * `keyboard: false` is deliberate — see this file's own doc and `map/README.md`. `click` is wired
- * through Leaflet's own event, which only fires for a real pointer interaction; nothing here invents
- * a synthetic activation path a keyboard could also trigger, since the pin is not meant to be reached
- * that way.
+ * `keyboard: true` is Leaflet's own option, and it is what puts the marker in the Tab order with
+ * `role="button"` (see this file's own doc). `click` is wired through Leaflet's own event, for a
+ * pointer interaction; `keydown` is wired by hand, directly on the DOM element Leaflet created,
+ * because Leaflet has nothing built in that activates a bare marker from the keyboard — only Enter
+ * and Space call `onMarkerClick`, and Space calls `preventDefault` first so the page does not scroll
+ * under a keyboard user the way an unhandled Space on a focused element normally would.
+ *
+ * `marker.getElement()` only returns a node once the marker has been added to a map, which is why
+ * this reads it back *after* `addTo` rather than building the listener into the icon up front.
  *
  * @param L The Leaflet module.
  * @param layer The layer group markers are added to.
  * @param marker The marker to add.
- * @param onMarkerClick Called with the marker's `id` on a pointer click.
+ * @param onMarkerClick Called with the marker's `id` on a pointer click, or a real Enter/Space press.
  */
 function addMarker(
   L: LeafletModule,
@@ -108,11 +119,31 @@ function addMarker(
 
   const leafletMarker = L.marker([marker.lat, marker.lng], {
     icon,
-    keyboard: false,
+    keyboard: true,
     title: marker.label,
   })
   leafletMarker.on("click", () => onMarkerClick(marker.id))
   leafletMarker.addTo(layer)
+
+  const element = leafletMarker.getElement()
+  if (element) {
+    element.setAttribute("aria-label", marker.label)
+    // A stable hook for a browser check to identify which pin is which — never read by anything in
+    // this package itself, and irrelevant to any accessibility API.
+    element.setAttribute("data-marker-id", marker.id)
+    element.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return
+      if (event.key === " ") event.preventDefault()
+      onMarkerClick(marker.id)
+    })
+  }
+}
+
+/** The two zoom-control tooltips {@link createLeafletMap} takes — see `Map`'s `zoomInLabel`/
+ * `zoomOutLabel` props, which is where their English defaults live. */
+export interface ZoomLabels {
+  zoomInLabel: string
+  zoomOutLabel: string
 }
 
 /**
@@ -121,11 +152,18 @@ function addMarker(
  * line itself, as plain text next to (not inside) Leaflet's own DOM, so it is never subject to
  * Leaflet's attribution control being collapsed, hidden, or scrolled out of its corner.
  *
+ * The default zoom control is switched off too and replaced with one built by hand, because that is
+ * the only way to reach its `zoomInTitle`/`zoomOutTitle` options — `L.Map`'s own constructor options
+ * have no equivalent, and the control cannot be reconfigured once built. Leaflet's defaults for those
+ * two ("Zoom in", "Zoom out") are English-only and would otherwise be the one pair of controls in
+ * this component's Tab order with no label prop at all.
+ *
  * @param L The Leaflet module, already loaded.
  * @param container The element Leaflet mounts into — emptied and owned by Leaflet from this call on.
  * @param tileUrl Tile URL template, handed to `L.tileLayer` unmodified.
  * @param center Initial view centre.
  * @param zoom Initial zoom.
+ * @param zoomLabels The zoom control's two tooltip/accessible-name strings.
  */
 export function createLeafletMap(
   L: LeafletModule,
@@ -133,12 +171,18 @@ export function createLeafletMap(
   tileUrl: string,
   center: MapCenter,
   zoom: number,
+  zoomLabels: ZoomLabels,
 ): LeafletMapHandle {
   const map = L.map(container, {
     attributionControl: false,
+    zoomControl: false,
     center: [center.lat, center.lng],
     zoom,
   })
+  L.control.zoom({
+    zoomInTitle: zoomLabels.zoomInLabel,
+    zoomOutTitle: zoomLabels.zoomOutLabel,
+  }).addTo(map)
   L.tileLayer(tileUrl, { attribution: "" }).addTo(map)
   const markerLayer = L.layerGroup().addTo(map)
 

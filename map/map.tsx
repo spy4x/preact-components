@@ -16,12 +16,17 @@
  * **Changing `center`, `zoom` or `markers` after mount updates the live map** — issue #143's own
  * words — rather than tearing it down and remounting: two effects below call `setView`/`setMarkers`
  * on the handle the mount effect produced, gated on `ready` so they do nothing until that handle
- * exists.
+ * exists. The marker effect depends on `markers` alone, not on `onMarkerClick`'s identity — see
+ * `onMarkerClickRef` below — so a caller passing a fresh inline arrow on every render (the catalogue's
+ * own demo does) does not rebuild every pin on every render. It *does* rebuild the whole layer
+ * whenever `markers` itself is a new array, whether or not its contents actually changed — `markers`
+ * is expected to be referentially stable across renders that do not change what is plotted; see
+ * `map/README.md` → "What a new `markers` identity costs".
  *
- * **Keyboard and screen readers.** See `leaflet-map.ts` and `marker-list.tsx`'s own docs, and
- * `map/README.md` → "Why the list, not the pins, is the keyboard path": the plain list this component
- * always renders beside the tile layer is the operable, named form of every marker; the map's own
- * pins are `aria-hidden` and pointer-only.
+ * **Keyboard and screen readers.** See `leaflet-map.ts`'s own doc and `map/README.md` → "Keyboard and
+ * screen readers": the map's own pins are the operable, named form of every marker (real Tab stops,
+ * `role="button"`, `aria-label`), and the plain list this component always renders beside the tile
+ * layer is a non-interactive overview of the same places.
  *
  * **The credit line is always visible.** Leaflet's built-in attribution control is switched off
  * (`leaflet-map.ts`'s `createLeafletMap`); the text below renders the `attribution` prop itself, as a
@@ -50,9 +55,11 @@ export interface MapProps {
   center: MapCenter
   /** Leaflet zoom level. */
   zoom: number
-  /** Places to plot, and to list. */
+  /** Places to plot, and to list. See `map/README.md` → "What a new `markers` identity costs" for
+   * what changing this array's identity, rather than its contents, does. */
   markers: MapMarker[]
-  /** Called with a marker's `id` when its pin or its list row is activated. */
+  /** Called with a marker's `id` when its pin is activated — a pointer click, or a real Enter or
+   * Space press while the pin has focus. */
   onMarkerClick: (id: string) => void
   /**
    * Tile URL template, handed to Leaflet's `L.tileLayer` unmodified — e.g.
@@ -74,6 +81,10 @@ export interface MapProps {
   label?: string
   /** Heading over the plain-text list of markers. Defaults to `"Places"`. */
   listLabel?: string
+  /** Leaflet's zoom-in control's tooltip and accessible name. Defaults to `"Zoom in"`. */
+  zoomInLabel?: string
+  /** Leaflet's zoom-out control's tooltip and accessible name. Defaults to `"Zoom out"`. */
+  zoomOutLabel?: string
 }
 
 /** The box's size when `class` does not override it — roomy enough to be useful in a demo, and
@@ -95,21 +106,38 @@ export function Map(
     class: className,
     label = "Map",
     listLabel = "Places",
+    zoomInLabel = "Zoom in",
+    zoomOutLabel = "Zoom out",
   }: MapProps,
 ): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const handleRef = useRef<LeafletMapHandle | null>(null)
   const [ready, setReady] = useState(false)
 
-  // Mounts once. `tileUrl` is read only here, at mount, because the issue names `center`, `zoom` and
-  // `markers` as the props that update a live map — swapping the tile provider after mount is not a
-  // behaviour this component promises, so it is deliberately left out of the dependency list below.
+  // The latest `onMarkerClick`, read by every pin's own listener through one stable wrapper function
+  // — see `setMarkers`'s call below. Written directly during render (not inside an effect): Preact,
+  // unlike React's strict mode, never renders a function body twice for one commit, so this plain
+  // assignment is not racy, and it is what lets the marker effect below depend on `markers` alone.
+  const onMarkerClickRef = useRef(onMarkerClick)
+  onMarkerClickRef.current = onMarkerClick
+
+  // Mounts once. `tileUrl` and the zoom labels are read only here, at mount, because the issue names
+  // `center`, `zoom` and `markers` as the props that update a live map — swapping the tile provider or
+  // relabelling the zoom control after mount is not a behaviour this component promises, so both are
+  // deliberately left out of the dependency list below.
   useEffect(() => {
     let cancelled = false
 
     import("leaflet").then((leafletModule) => {
       if (cancelled || !containerRef.current) return
-      const handle = createLeafletMap(leafletModule, containerRef.current, tileUrl, center, zoom)
+      const handle = createLeafletMap(
+        leafletModule,
+        containerRef.current,
+        tileUrl,
+        center,
+        zoom,
+        { zoomInLabel, zoomOutLabel },
+      )
       handleRef.current = handle
       setReady(true)
     })
@@ -128,21 +156,23 @@ export function Map(
 
   useEffect(() => {
     if (!ready) return
-    handleRef.current?.setMarkers(markers, onMarkerClick)
-  }, [ready, markers, onMarkerClick])
+    handleRef.current?.setMarkers(markers, (id) => onMarkerClickRef.current(id))
+    // `onMarkerClick` deliberately absent: `onMarkerClickRef` always holds the latest one, so rebuilding
+    // the whole marker layer over an identity change that carries no new places would be wasted work.
+  }, [ready, markers])
 
   return (
     <div class="space-y-4">
       <div class={cn(BOX_BASE, DEFAULT_SIZE, className)} data-e2e="map-box">
         <div ref={containerRef} class="absolute inset-0" role="group" aria-label={label} />
         <p
-          class="pointer-events-none absolute right-0 bottom-0 z-[1000] rounded-tl bg-white/80 px-1.5 py-0.5 text-xs text-gray-700 dark:bg-gray-900/80 dark:text-gray-300"
+          class="absolute right-0 bottom-0 z-[1000] rounded-tl bg-white/80 px-1.5 py-0.5 text-xs text-gray-700 dark:bg-gray-900/80 dark:text-gray-300"
           data-e2e="map-attribution"
         >
           {attribution}
         </p>
       </div>
-      <MarkerList markers={markers} onMarkerClick={onMarkerClick} label={listLabel} />
+      <MarkerList markers={markers} label={listLabel} />
     </div>
   )
 }
