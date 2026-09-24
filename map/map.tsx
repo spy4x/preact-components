@@ -8,14 +8,19 @@
  * `import()` resolves) sees an empty box at the size `class` gives it — the box's size comes from
  * that class alone, so nothing about it changes once Leaflet mounts inside it.
  *
- * **The map is torn down on unmount.** The mount effect's cleanup calls the live handle's `remove()`,
+ * **The map is torn down on unmount, and never built at all if the component is already gone by the
+ * time Leaflet finishes loading.** The mount effect's cleanup calls the live handle's `remove()`,
  * which is Leaflet's own teardown — every DOM node and listener it attached comes off with it. A
- * `cancelled` flag guards the case where the component unmounts while the dynamic `import()` is still
- * in flight, so a `leaflet` module that resolves after that point is never mounted at all.
+ * `cancelled` flag, read by `mountLeafletMap` through a closure passed in as `isCancelled`, is
+ * checked *before* the map is built, not only afterwards — so a `leaflet` module that resolves after
+ * the component unmounts is never mounted into the (by then detached) container at all, rather than
+ * being mounted and immediately torn down.
  *
- * **A failed `import("leaflet")` never throws.** `mountLeafletMap` (`leaflet-map.ts`) reports it
- * through `onLoadError` instead — see that prop's own doc and function's own doc for why a port,
- * rather than markup this component renders. The box and the list both stay exactly as usable as
+ * **A failed `import("leaflet")`, or a throw while building the map, never throws out of this
+ * component.** `mountLeafletMap` (`leaflet-map.ts`) reports either through `onLoadError` instead —
+ * see that prop's own doc and function's own doc for why a port, rather than markup this component
+ * renders. Nothing calls `onLoadError` once the component has already unmounted, for the same reason
+ * nothing builds a map at that point either. The box and the list both stay exactly as usable as
  * they were before the failure.
  *
  * **Changing `center`, `zoom` or `markers` after mount updates the live map** — issue #143's own
@@ -49,7 +54,7 @@
 import { cn } from "@preact-components/cn"
 import type { JSX } from "preact"
 import { useEffect, useRef, useState } from "preact/hooks"
-import { type LeafletMapHandle, mountLeafletMap } from "./leaflet-map.ts"
+import { type LeafletMapHandle, mountLeafletMap, type ZoomLabels } from "./leaflet-map.ts"
 import { MarkerList } from "./marker-list.tsx"
 import type { MapCenter, MapMarker } from "./types.ts"
 
@@ -92,10 +97,13 @@ export interface MapProps {
   zoomOutLabel?: string
   /**
    * Called, never thrown, if Leaflet fails to load — a network blip, an ad blocker, a CDN outage on
-   * whatever serves the dynamic `import("leaflet")` chunk. The box and the list both stay exactly as
-   * usable as before the failure; this port is where the application decides whether that becomes a
-   * toast, a logged event, a retry, or nothing a visitor ever sees. Defaults to logging the error to
-   * the console, so a failure is never silent even for a caller that supplies nothing.
+   * whatever serves the dynamic `import("leaflet")` chunk — or if building the map throws once it
+   * has. Never called at all once the component has unmounted: there is nowhere useful for the error
+   * to go by then, the same reason a map is not built into an unmounted component's detached
+   * container either. The box and the list both stay exactly as usable as before the failure; this
+   * port is where the application decides whether that becomes a toast, a logged event, a retry, or
+   * nothing a visitor ever sees. Defaults to logging the error to the console, so a failure is never
+   * silent even for a caller that supplies nothing. Read once, at mount — see `mountArgsFrom`.
    */
   onLoadError?: (error: unknown) => void
 }
@@ -103,6 +111,49 @@ export interface MapProps {
 /** {@link MapProps.onLoadError}'s default: visible in the console, silent to a visitor. */
 function logLoadError(error: unknown): void {
   console.error("@preact-components/map: Leaflet failed to load", error)
+}
+
+/** Everything the mount effect passes to `mountLeafletMap` that comes from this component's props,
+ * resolved in one place. */
+export interface MountArgs {
+  tileUrl: string
+  center: MapCenter
+  zoom: number
+  zoomLabels: ZoomLabels
+  onLoadError: (error: unknown) => void
+}
+
+/**
+ * Resolve {@link MountArgs} from `Map`'s own (already-defaulted) props.
+ *
+ * Exported and tested directly, on its own: nothing inside the mount effect below is observable
+ * from a test, since effects never run under `preact-render-to-string` (see `AGENTS.md`) — a test
+ * that only rendered `<Map onLoadError={spy} />` could not prove `spy` is what actually reaches
+ * `mountLeafletMap`, and a future edit that quietly replaced the forwarded prop with a no-op inside
+ * the effect would pass every existing test. This function is what a test can call directly and
+ * assert on instead.
+ *
+ * It also doubles as the one place that states `tileUrl`, `zoomInLabel` and `zoomOutLabel` — and now
+ * `onLoadError` alongside them — are read once, at mount: the effect closes over whatever this
+ * returned on the render that created it, and never reads a later one.
+ */
+export function mountArgsFrom(
+  { tileUrl, center, zoom, zoomInLabel, zoomOutLabel, onLoadError }: {
+    tileUrl: string
+    center: MapCenter
+    zoom: number
+    zoomInLabel: string
+    zoomOutLabel: string
+    onLoadError: (error: unknown) => void
+  },
+): MountArgs {
+  return {
+    tileUrl,
+    center,
+    zoom,
+    zoomLabels: { zoomInLabel, zoomOutLabel },
+    onLoadError,
+  }
 }
 
 /** The box's size when `class` does not override it — roomy enough to be useful in a demo, and
@@ -140,27 +191,33 @@ export function Map(
   const onMarkerClickRef = useRef(onMarkerClick)
   onMarkerClickRef.current = onMarkerClick
 
-  // Mounts once. `tileUrl` and the zoom labels are read only here, at mount, because the issue names
-  // `center`, `zoom` and `markers` as the props that update a live map — swapping the tile provider or
-  // relabelling the zoom control after mount is not a behaviour this component promises, so both are
-  // deliberately left out of the dependency list below.
+  // Mounts once. `tileUrl`, the zoom labels and `onLoadError` are read only here, at mount, via
+  // `mountArgsFrom` — see that function's own doc. `center`, `zoom` and `markers` are the props the
+  // issue names as ones that update a live map; swapping the tile provider, relabelling the zoom
+  // control or changing what a load failure reports to after mount is not a behaviour this component
+  // promises, so all three are deliberately left out of the dependency list below.
   //
   // `mountLeafletMap` (in `leaflet-map.ts`) is the whole body of this effect, factored out so a
-  // failed `import("leaflet")` is testable without a browser: it never throws, and calls
-  // `onLoadError` instead — see that function's own doc for why a port rather than markup this
-  // component would render.
+  // failed `import("leaflet")` — or a component that unmounts while it is still loading — is
+  // testable without a browser: it never throws, calls `onLoadError` instead of throwing (unless
+  // already cancelled by then), and never builds a map at all once `isCancelled` reads true. `cancelled`
+  // is read through a closure (`() => cancelled`), not copied, so `mountLeafletMap` always sees this
+  // effect's current value even though the flag can flip to `true` while it is still awaiting `load()`.
   useEffect(() => {
     let cancelled = false
     if (!containerRef.current) return
 
+    const args = mountArgsFrom({ tileUrl, center, zoom, zoomInLabel, zoomOutLabel, onLoadError })
+
     mountLeafletMap(
       () => import("leaflet"),
       containerRef.current,
-      tileUrl,
-      center,
-      zoom,
-      { zoomInLabel, zoomOutLabel },
-      onLoadError,
+      args.tileUrl,
+      args.center,
+      args.zoom,
+      args.zoomLabels,
+      args.onLoadError,
+      () => cancelled,
     ).then((handle) => {
       if (cancelled || !handle) {
         handle?.remove()

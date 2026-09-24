@@ -1,7 +1,7 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
-import { Map } from "./map.tsx"
+import { Map, mountArgsFrom } from "./map.tsx"
 import type { MapMarker } from "./types.ts"
 
 const markers: MapMarker[] = [
@@ -148,5 +148,47 @@ describe("Map", () => {
     )
 
     expect(html).toContain(">Sites<")
+  })
+})
+
+/**
+ * The mount effect's own arguments live inside a `useEffect`, so no render test can observe them
+ * directly — `preact-render-to-string` never runs an effect (see this file's own doc). `mountArgsFrom`
+ * is what the effect calls to resolve them, and it is a plain function: this is what actually proves
+ * a prop like `onLoadError` reaches the value `mountLeafletMap` is called with, rather than trusting
+ * that the effect's own body still forwards it after some future edit.
+ */
+describe("mountArgsFrom", () => {
+  it("passes onLoadError through unchanged — proves the prop actually reaches mountLeafletMap's call", () => {
+    const onLoadError = (_error: unknown) => {}
+
+    const args = mountArgsFrom({
+      tileUrl: "https://tiles.example.com/{z}/{x}/{y}.png",
+      center: { lat: 0, lng: 0 },
+      zoom: 3,
+      zoomInLabel: "Zoom in",
+      zoomOutLabel: "Zoom out",
+      onLoadError,
+    })
+
+    expect(args.onLoadError).toBe(onLoadError)
+  })
+
+  it("groups the two zoom labels into zoomLabels, and passes the rest through unchanged", () => {
+    const center = { lat: 51.5, lng: -0.1 }
+
+    const args = mountArgsFrom({
+      tileUrl: "https://tiles.example.com/{z}/{x}/{y}.png",
+      center,
+      zoom: 5,
+      zoomInLabel: "Zoom in",
+      zoomOutLabel: "Zoom out",
+      onLoadError: () => {},
+    })
+
+    expect(args.tileUrl).toBe("https://tiles.example.com/{z}/{x}/{y}.png")
+    expect(args.center).toBe(center)
+    expect(args.zoom).toBe(5)
+    expect(args.zoomLabels).toEqual({ zoomInLabel: "Zoom in", zoomOutLabel: "Zoom out" })
   })
 })

@@ -212,15 +212,22 @@ export function createLeafletMap(
  * unhandled promise rejection in the console, while the box stayed empty forever with no signal
  * anyone could act on.
  *
- * The failure is reported through `onLoadError`, a port, rather than rendered into the box: this
- * package already has one documented way to show a message to a human — the `attribution` `<p>` and
- * the marker `label`s are both plain application data, not application-chrome text this component
- * owns copy for — and every other failure mode in the library that needs a human-readable message
- * (`CompareChart`'s `onError` in `charts/`) is a port for the same reason: the host page, not this
- * component, decides whether that becomes a toast, a logged event, a retry, or nothing a visitor
- * ever sees. The box and the list both stay exactly as usable as they already were before the
- * failure — the box keeps its size and the list keeps listing every place — because neither one
- * depended on Leaflet having loaded in the first place.
+ * **`isCancelled` is checked before `createLeafletMap` is ever called, not only around the awaited
+ * `load()`.** An earlier version of this function built the map first and left the "did the
+ * component unmount while we were loading?" check to the caller, in the `.then()` after this
+ * function returned — which meant a component that unmounted while `load()` was still in flight
+ * still got a complete Leaflet map built into its now-detached container, immediately torn down
+ * again. Checking here, before `createLeafletMap` runs at all, is what actually skips that work
+ * rather than doing it and discarding the result.
+ *
+ * **A throw from `createLeafletMap` is caught too**, not only a rejection from `load`: without this,
+ * "never throws" was true of the import alone, and a synchronous throw while building the map (a
+ * malformed `tileUrl`, say) still left this function's returned promise rejected.
+ *
+ * **`onLoadError` is never called once `isCancelled` reads true** — see `map.tsx`'s own prop doc for
+ * `onLoadError`: a component that has already unmounted has nowhere for that error to usefully go,
+ * and calling a port after the component that owns it is gone is the kind of surprise a caller has
+ * to guard against defensively if this function does not.
  *
  * @param load Loads the Leaflet module — `() => import("leaflet")` in production.
  * @param container The element to mount into.
@@ -228,8 +235,13 @@ export function createLeafletMap(
  * @param center Initial view centre.
  * @param zoom Initial zoom.
  * @param zoomLabels The zoom control's two tooltip/accessible-name strings.
- * @param onLoadError Called, never thrown, if `load` rejects.
- * @returns The live handle, or `undefined` if `load` rejected.
+ * @param onLoadError Called, never thrown, if `load` rejects or `createLeafletMap` throws — unless
+ * `isCancelled` already reads true by then, in which case it is not called at all.
+ * @param isCancelled Checked once `load()` settles (whether it resolved or rejected) and again after
+ * a successful load, before `createLeafletMap` runs. `true` skips building the map (and skips
+ * `onLoadError` on a rejection) and returns `undefined`.
+ * @returns The live handle, or `undefined` if `load` rejected, `createLeafletMap` threw, or
+ * `isCancelled` read true before the map was built.
  */
 export async function mountLeafletMap(
   load: () => Promise<LeafletModule>,
@@ -239,14 +251,22 @@ export async function mountLeafletMap(
   zoom: number,
   zoomLabels: ZoomLabels,
   onLoadError: (error: unknown) => void,
+  isCancelled: () => boolean,
 ): Promise<LeafletMapHandle | undefined> {
   let L: LeafletModule
   try {
     L = await load()
   } catch (error) {
-    onLoadError(error)
+    if (!isCancelled()) onLoadError(error)
     return undefined
   }
 
-  return createLeafletMap(L, container, tileUrl, center, zoom, zoomLabels)
+  if (isCancelled()) return undefined
+
+  try {
+    return createLeafletMap(L, container, tileUrl, center, zoom, zoomLabels)
+  } catch (error) {
+    if (!isCancelled()) onLoadError(error)
+    return undefined
+  }
 }
