@@ -798,8 +798,9 @@ first character of the string this writer wrote is not enough: this file is comm
 nothing forces the spreadsheet that opens it to read it that way — Excel's own default list
 separator is a semicolon in most European locales, and a `.csv` opened by double-click is split on
 whatever that locale setting is. Measured in LibreOffice 26.2: `x;=cmd|' /C calc'!A0`, opened with
-`;` as the separator, split into two cells, and the second ran as a live formula (in this case a DDE
-payload, which can launch a program) unless the character right after the `;` was guarded too, not
+`;` as the separator, split into two cells, and the second became a formula cell — a DDE payload,
+the known vector for launching a program from a formula, though LibreOffice itself showed an error
+(`Err:509`) rather than running it — unless the character right after the `;` was guarded too, not
 only the first character of the whole string. A bare leading tab or carriage return is also guarded,
 even with nothing after it, per the same guidance this follows.
 
