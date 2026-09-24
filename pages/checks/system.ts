@@ -3411,9 +3411,10 @@ async function imageLightboxChecks(devtools: Devtools): Promise<void> {
  * same reason: a browser follows a link exactly when the click that reached it was not cancelled,
  * so reading `defaultPrevented` on a listener that then cancels the event itself proves what a real
  * navigation would have done without ever letting the page actually move. An earlier version of
- * this check let the click really navigate to a same-page fragment; measured in review, that left
- * the page settling for some time after the check's own wait returned, and a full run that landed
- * under load from a concurrent build failed an unrelated check further down the file because of it.
+ * this check let the click really navigate to a same-page fragment. Measured in review, that left
+ * the page moving for about 200 ms after the check's own wait returned, and a full run under load
+ * from a concurrent build failed an unrelated check further down the file — most likely because of
+ * that movement, though the failure was never reproduced.
  *
  * @param devtools The connected session, on a hydrated page.
  */

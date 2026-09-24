@@ -155,8 +155,8 @@ describe("collectSequence", () => {
 
   describe('with fallbackAlt disabled ("")', () => {
     // The default `fallbackAlt` ("Image") means `resolveImage` never produces an empty `alt`, so
-    // these are the one way `describedImages` ever has something to drop here — the exact
-    // regression review found: an earlier version computed the activated position against the
+    // these are the one way `describedImages` ever has something to drop here. The regression they
+    // guard: an earlier version computed the activated position against the
     // *unfiltered* list, so a described image that came after an undescribed one opened the wrong
     // picture (or, if the undescribed one was the only image, opened an empty dialog).
     const bare = element({ src: "https://acme.example/img/bare.png", alt: "" })
@@ -171,7 +171,7 @@ describe("collectSequence", () => {
         { src: "https://acme.example/img/gamma.png", alt: "Gamma" },
       ])
       // alpha is first in the filtered sequence, not second as it would be counted against the
-      // three raw elements — the miscount the review found.
+      // three raw elements — the miscount this guards against.
       expect(result.index).toBe(0)
     })
 
@@ -186,7 +186,7 @@ describe("collectSequence", () => {
     })
 
     it("treats a whitespace-only fallbackAlt exactly like an empty one", () => {
-      // The regression a second review found: an earlier version trimmed the image's own alt but
+      // The regression this guards: an earlier version trimmed the image's own alt but
       // not fallbackAlt, so " " read as a real name here, opened the clicked image at index -1 —
       // and Lightbox, clamping a negative index to 0, showed a different image entirely.
       const result = collectSequence([bare, alpha, gamma], bare, "img", " ")
