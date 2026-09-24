@@ -144,20 +144,25 @@ deno task check
 Runs `fmt:check`, `lint`, `ts:check` and `test`. All four must pass with zero errors. Use
 `deno task fix` to apply formatting and lint fixes, then re-run `deno task check`.
 
-| Task                    | Does                                                      |
-| ----------------------- | --------------------------------------------------------- |
-| `deno task check`       | all checks; run by both CIs                               |
-| `deno task fmt`         | format (`fmt:check` in CI)                                |
-| `deno task lint`        | lint (`lint:fix` to apply suggestions)                    |
-| `deno task ts:check`    | `deno check` over every `.ts`/`.tsx` in the tree          |
-| `deno task test`        | run all tests                                             |
-| `deno task fix`         | `lint --fix` then format                                  |
-| `deno task publish:dry` | `deno publish --dry-run` for every named workspace member |
+| Task                             | Does                                                       |
+| -------------------------------- | ---------------------------------------------------------- |
+| `deno task check`                | all checks; run by both CIs                                |
+| `deno task fmt`                  | format (`fmt:check` in CI)                                 |
+| `deno task lint`                 | lint (`lint:fix` to apply suggestions)                     |
+| `deno task ts:check`             | `deno check` over every `.ts`/`.tsx` in the tree           |
+| `deno task test`                 | run all tests                                              |
+| `deno task fix`                  | `lint --fix` then format                                   |
+| `deno task publish:dry`          | `deno publish --dry-run` for every named workspace member  |
+| `deno task private-names <file>` | search every package's dry-run file list for private names |
 
 `publish:dry` is not part of `check`: `deno publish --dry-run` refuses a dirty tree, so folding it
 into `check` would fail every local run against uncommitted work. Each CI system runs it as its own
 step, after `check`, against its own clean checkout — `.github/workflows/pages.yml` and
 `.woodpecker.yml` both do this.
+
+`private-names` is not part of `check` either, and no CI runs it: it needs a file of names the owner
+keeps outside the repository, and it exists for the owner to run before every `deno publish`.
+[`docs/pre-publish-checks.md`](./docs/pre-publish-checks.md) says how.
 
 Behaviour needs a second pair, in this order:
 
@@ -198,8 +203,31 @@ hydration check, and before any package's checks run, a check asserts that the b
 answers `(hover: hover)` and `(pointer: fine)`. The browser also delivers real mouse events, so a
 pointer left resting on an element by an earlier check changes its computed colour and can pause a
 timer; a check either parks the pointer away and reads back where it landed, or asserts the element
-is not `:hover` before reading a style off it. `verify` fails
-when it finds no browser; `--static` is the one explicit way to leave the browser phase out. The
+is not `:hover` before reading a style off it.
+
+More facts measured in wave five, each found by a check that failed for a reason nobody had written
+down:
+
+- `<details>` fires its `toggle` event as a queued task, after the click that opened it. A listener
+  attached by an effect that waits for the open state is not there yet when a fast Escape arrives.
+  A check that has to land in that gap clicks and dispatches the key inside one `Runtime.evaluate`,
+  after waiting two animation frames for the previous state's cleanup to finish; two separate
+  protocol commands land in it only by chance.
+- The catalogue scrolls smoothly. After anything that scrolls or reloads, wait for the page to stop
+  moving (`settledScroll` in `harness.ts`) before aiming the pointer or reading a position.
+- `Page.captureScreenshot`'s `clip` is in page coordinates and `getBoundingClientRect` in viewport
+  coordinates; mixing them captures an empty region and compares nothing.
+- A real back/forward-cache restore can be driven: navigate away, then `Page.navigateToHistoryEntry`,
+  and `Page.frameNavigated` reports `type: "BackForwardCacheRestore"`.
+- The published GitHub Pages site answers a POST with 405. A form's no-JavaScript path is proven
+  against the local preview server, which serves the page for a POST too.
+
+`verify` bounds itself: each browser launch attempt has its own deadline and is retried once, the
+browser phase has a five-minute deadline, a dead browser fails the run naming the last check that
+passed, and teardown runs on SIGINT, SIGTERM and SIGHUP as well: it closes the browser over
+DevTools, then kills only processes whose command line carries this run's exact `--user-data-dir`.
+Chromium's crash-reporter processes carry no profile argument; they exit on their own shortly after
+the browser. `verify` fails when it finds no browser; `--static` is the one explicit way to leave the browser phase out. The
 GitHub workflow runs `check`, `publish:dry`, the build and `verify` on every pull
 request into `main`, and the Pages deploy waits for them.
 
@@ -299,6 +327,7 @@ wouter-preact                    3.9.0
 arktype                          2.2.3
 @std/assert                     1.0.19
 @std/expect                     1.0.20
+@std/path                       1.1.6
 @std/testing                    1.0.20
 preact-render-to-string          6.7.0
 tailwind-merge                   3.7.0
