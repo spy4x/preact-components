@@ -30,9 +30,9 @@ const PLACES: MapMarker[] = [
 const LOCAL_TILE_URL = "map-demo/tile.png"
 
 /**
- * `Map` wired to a signal so `onMarkerClick` — from a pin's pointer click or the list's keyboard
- * path — has something visible to echo, the same shape `CalendarInteractiveDemo` in `system.tsx`
- * uses for `onSelectDate`.
+ * `Map` wired to a signal so `onMarkerClick` — from a pin's pointer click, or a real Enter or Space
+ * press while a pin has focus — has something visible to echo, the same shape
+ * `CalendarInteractiveDemo` in `system.tsx` uses for `onSelectDate`.
  */
 function MapInteractiveDemo() {
   const lastClicked = useSignal("none yet")
@@ -51,9 +51,10 @@ function MapInteractiveDemo() {
         onMarkerClick: <span data-e2e="map-last-clicked">{lastClicked.value}</span>
       </p>
       <p class="text-xs text-gray-500 dark:text-gray-400">
-        Tab reaches each row of the list below the map, in order; activating one — by mouse, Enter
-        or Space — updates the id above. A public tile provider needs a real internet connection and
-        its own required credit line, e.g.{" "}
+        Tab reaches each pin on the map, in marker order; activating one — a click, or a real Enter
+        or Space press while it has focus — updates the id above. The list below is a plain,
+        non-interactive overview of the same places, not a second set of controls. A public tile
+        provider needs a real internet connection and its own required credit line, e.g.{" "}
         <code>
           tileUrl="https://tile.openstreetmap.org/{"{z}"}/{"{x}"}/{"{y}"}.png"
         </code>{" "}
@@ -67,7 +68,7 @@ function MapInteractiveDemo() {
 export const mapDemos = {
   Map: {
     summary:
-      "Markers on a Leaflet tile layer, from plain `{ id, lat, lng, label, status? }` data, plus the plain-text list of the same places beside it — the list, not the map's own pins, is the keyboard and screen-reader path (see `map/README.md`). `tileUrl` and `attribution` are both required: the application picks its own tile provider, and providers require the credit line shown. Server-renders as an empty, sized box.",
+      "Markers on a Leaflet tile layer, from plain `{ id, lat, lng, label, status? }` data, plus the plain-text list of the same places beside it — the map's own pins, not the list, are the keyboard and screen-reader path (see `map/README.md`). `tileUrl` and `attribution` are both required: the application picks its own tile provider, and providers require the credit line shown. Server-renders as an empty, sized box.",
     snippet: `<Map
   center={{ lat: 50, lng: 5 }}
   zoom={4}

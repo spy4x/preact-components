@@ -360,7 +360,7 @@ const catalogue = {
     package: "map",
     title: "Map",
     blurb:
-      "Markers on a Leaflet tile layer, plotted from plain data, with the plain-text list of the same places that is the component's real keyboard and screen-reader interface. The card is its own server render — a labelled empty box — until a browser mounts Leaflet into it.",
+      "Markers on a Leaflet tile layer, plotted from plain data — each pin is the component's real keyboard and screen-reader interface — with a plain, non-interactive list of the same places beside it. The card is its own server render — a labelled empty box — until a browser mounts Leaflet into it.",
     demos: mapDemos,
   },
 } as const satisfies Record<SectionId, SectionSpec>

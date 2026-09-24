@@ -7,12 +7,12 @@ rules components are meant to be assembled in.
 
 Covering `map/` (#143) is what makes `@preact-components/ui-guide` resolve Leaflet: `map/`'s exact
 `leaflet`/`@types/leaflet` pins reach an app's dependency graph the moment it imports this package's
-`Map` card, the same way covering `charts/` already put an optional `d3` in reach of the interactive
-chart cards. An app that renders the catalogue gets Leaflet whether or not it uses `Map` itself —
-importing `ui-guide` for its other sections is not a way to avoid this. An app that wants the
-catalogue without that cost has the same option `docs/no-third-party-components.md` always offered
-for `charts/`'s islands: render `@preact-components/ui/`, `system/`, `crud/` and `charts/svg`'s own
-demos directly rather than through this package, or fork the sections it needs.
+`registry.ts`, which imports every section unconditionally, `sections/map.tsx` included — the same
+way covering `charts/` already put an optional `d3` in reach of anything that imports this package.
+This is a build-time fact about the module graph, not a run-time one: `UIGuide`'s own `registry` prop
+(below) can be handed a partial registry that never _renders_ a `Map` card, but the app that built
+that partial registry already resolved and bundled `@preact-components/map` — and therefore
+Leaflet — to get the value it left out. There is no documented way around that.
 
 Ported from one source application's own modular route-per-section guide (the better structure of
 the two source guides) and another's single-file guide component, whose icon gallery is kept
