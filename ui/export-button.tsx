@@ -1,3 +1,4 @@
+import { downloadResponseAsFile } from "@spy4x/platform/browser/download"
 import type { ComponentChildren, JSX } from "preact"
 import { useState } from "preact/hooks"
 import { Button } from "./button.tsx"
@@ -80,10 +81,13 @@ function defaultResultLabel(rowCount: number): string {
  * throws or rejects downloads nothing: the live region announces `errorLabel` instead of a row
  * count, `onError` is called if given, and the button re-enables for another try.
  *
- * The download itself is a `Blob` on an object URL, clicked through a temporary, invisible
- * `<a download>` appended to `document.body` and removed right after, with the object URL revoked
- * in the same step. `document`, `URL` and `Blob` are only touched inside the click handler, so the
- * component still server-renders.
+ * The download itself is `@spy4x/platform/browser/download`'s `downloadResponseAsFile`, handed a
+ * `Response` wrapping the written bytes: a helper already reviewed and published, not a second copy
+ * of the `Blob`/object-URL/anchor dance built here. It attaches a temporary anchor, clicks it and
+ * detaches it in the same task, then revokes the object URL from a timer about five seconds later —
+ * revoking in the click's own task has historically cancelled a download still starting.
+ * `document`, `URL` and `Blob` are only touched inside the click handler, so the component still
+ * server-renders.
  */
 export function ExportButton<T>(props: ExportButtonProps<T>): JSX.Element {
   const {
@@ -102,7 +106,10 @@ export function ExportButton<T>(props: ExportButtonProps<T>): JSX.Element {
     setBusy(true)
     try {
       const rows = hasRows(props) ? props.rows : await props.getRows()
-      triggerCsvDownload(fileName, toCsvBytes(columns, rows))
+      const response = new Response(toCsvBytes(columns, rows), {
+        headers: { "content-type": "text/csv;charset=utf-8" },
+      })
+      await downloadResponseAsFile(response, fileName)
       setAnnouncement(resultLabel(rows.length))
     } catch (error) {
       setAnnouncement(errorLabel)
@@ -121,23 +128,6 @@ export function ExportButton<T>(props: ExportButtonProps<T>): JSX.Element {
       <span role="status" aria-live="polite" class="sr-only">{announcement}</span>
     </>
   )
-}
-
-/**
- * Save `bytes` as `fileName` through the browser's download pipeline: a `Blob`, an object URL, a
- * temporary `<a download>` clicked once, then the URL revoked and the anchor removed. Neither the
- * anchor nor the URL outlives this call.
- */
-function triggerCsvDownload(fileName: string, bytes: Uint8Array<ArrayBuffer>): void {
-  const blob = new Blob([bytes], { type: "text/csv;charset=utf-8" })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement("a")
-  link.href = url
-  link.download = fileName
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
 }
 
 function DownloadIcon(): JSX.Element {

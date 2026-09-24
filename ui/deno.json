@@ -47,6 +47,14 @@
     "./toggle-switch": "./toggle-switch.tsx",
     "./tooltip": "./tooltip.tsx"
   },
+  "imports": {
+    // Owner's shared-libs rule: a helper reusable by other TypeScript projects lives in
+    // spy4x/ts-libs first, imported from there rather than duplicated. `downloadResponseAsFile`
+    // already exists, already reviewed and published, and is used by exactly one module here
+    // (`export-button.tsx`) — the same reason `charts/deno.json` pins `d3` locally instead of in
+    // the root import map: a consumer of every other package in this workspace never resolves it.
+    "@spy4x/platform/browser/download": "jsr:@spy4x/platform@1.1.0/browser/download"
+  },
   "publish": {
     // This package's own `*.test.*` suites, none reachable from `exports`. A glob rather than a
     // per-file list: a hand-kept list has to be remembered on every new test file, and nothing

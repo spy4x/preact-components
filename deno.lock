@@ -1,6 +1,7 @@
 {
   "version": "5",
   "specifiers": {
+    "jsr:@spy4x/platform@1.1.0": "1.1.0",
     "jsr:@std/assert@1.0.19": "1.0.19",
     "jsr:@std/assert@^1.0.19": "1.0.19",
     "jsr:@std/async@^1.5.0": "1.5.0",
@@ -31,6 +32,9 @@
     "npm:wouter-preact@3.9.0": "3.9.0_preact@10.28.2"
   },
   "jsr": {
+    "@spy4x/platform@1.1.0": {
+      "integrity": "0cb80d1f8d1f4ab2d5e3981284e3ff1ddb3be6bda4966d7d1fbc79c7f5452770"
+    },
     "@std/assert@1.0.19": {
       "integrity": "eaada96ee120cb980bc47e040f82814d786fe8162ecc53c91d8df60b8755991e",
       "dependencies": [
@@ -562,6 +566,11 @@
       "pages": {
         "dependencies": [
           "npm:@tailwindcss/oxide@4.1.12"
+        ]
+      },
+      "ui": {
+        "dependencies": [
+          "jsr:@spy4x/platform@1.1.0"
         ]
       },
       "ui-guide": {
