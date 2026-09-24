@@ -5365,6 +5365,13 @@ interface TimeReturnPath {
   /** Completes the sentence "closing withTime's panel by …". */
   name: string
   /**
+   * A page expression run once the panel is open, before `act` — e.g. typing a draft that must not
+   * survive the close. Answers `""` when it acted, and otherwise the reason it could not; `act`
+   * does not run at all when this does not answer `""`. `undefined` for a path with nothing to set
+   * up first.
+   */
+  setup?: string
+  /**
    * A page expression that performs the close. Answers `""` when it acted, and otherwise the
    * reason it could not — a control that is missing is a check this run cannot make, which is a
    * different thing from a component that lost the focus or the value.
@@ -5403,6 +5410,24 @@ const TIME_RETURN_PATHS: readonly TimeReturnPath[] = [
   },
   {
     name: "cancelling the draft",
+    // Types a draft that differs from the card's current value before cancelling. Clicking Cancel
+    // with nothing typed first cannot tell "Cancel discarded the draft" from "there was nothing to
+    // discard, the untouched fields already matched the current value" apart — both leave the
+    // readout unchanged either way. A draft that reads nothing like the current value makes the two
+    // cases different: a Cancel that wrongly committed it would show up as a changed readout.
+    setup: `(() => {
+      const panel = globalThis.__verifyPickerTime?.panel ?? null
+      const from = panel?.querySelector('[data-e2e="date-range-from"]') ?? null
+      const to = panel?.querySelector('[data-e2e="date-range-to"]') ?? null
+      if (!from || !to) return "the panel renders no from or to field to type a draft into"
+      const type = (el, value) => {
+        el.value = value
+        el.dispatchEvent(new Event("input", { bubbles: true }))
+      }
+      type(from, "1999-01-01T00:00")
+      type(to, "1999-01-01T01:00")
+      return ""
+    })()`,
     // Found as the control before apply rather than by its words: the cancel button's text is the
     // caller's copy and may be in any language, while its position beside apply is the component's —
     // the same lookup `RETURN_PATHS`'s own "cancelling the custom draft" entry uses for day mode.
@@ -5448,7 +5473,8 @@ async function timeReturnPathChecks(devtools: Devtools): Promise<void> {
     const before = await devtools.evaluate<string>(
       `(globalThis.__verifyPickerTime?.controlled?.textContent ?? "").trim()`,
     )
-    const refused = await devtools.evaluate<string>(path.act)
+    const setupResult = path.setup === undefined ? "" : await devtools.evaluate<string>(path.setup)
+    const refused = setupResult !== "" ? setupResult : await devtools.evaluate<string>(path.act)
     const closed = await poll(
       () => devtools.evaluate<boolean>(`${PICKER_TIME_STATE}.open === false`),
       3_000,
