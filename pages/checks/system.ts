@@ -1082,12 +1082,12 @@ async function authFormFocusStabilityChecks(devtools: Devtools): Promise<void> {
 /**
  * The show/hide password control: a real click, then a real Space press, neither of them a submit.
  *
- * Space is used rather than Enter because this harness's own Chromium does not turn a real Enter
- * press on a focused button into the activation click a person's Enter produces — recorded across
- * this file and `ui.ts`'s Modal check — while a real Space press does. The click is `.click()`,
- * which is how every button in this file is activated; nothing here is testing the pointer path
- * itself, only what the activation does. `signIns` is read before and after both presses, because a
- * toggle that happened to submit the form would be the one regression a purely visual check misses.
+ * Space is the keyboard press exercised here; `ui.ts`'s Dropdown and Modal checks already prove
+ * Enter activates a focused native button, so this file does not repeat that proof for every button
+ * it drives. The click is `.click()`, which is how every button in this file is activated; nothing
+ * here is testing the pointer path itself, only what the activation does. `signIns` is read before
+ * and after both presses, because a toggle that happened to submit the form would be the one
+ * regression a purely visual check misses.
  */
 async function authFormToggleChecks(devtools: Devtools): Promise<void> {
   const before = await read(devtools, AUTH_STATE, NO_AUTH_STATE)
@@ -1429,9 +1429,9 @@ async function authFormNoScriptChecks(devtools: Devtools): Promise<void> {
  * holds one page that only this card opens. That is judged enough, and proving the absence of
  * interception would be more machinery than the risk deserves.
  *
- * Buttons are activated with `.click()` rather than a key press, which is measured and not assumed:
- * `ui.ts`'s Modal check records that headless Chromium does not turn Enter on a focused button into
- * the activation click a person's Enter produces. No step here is about the keyboard.
+ * Buttons are activated with `.click()` rather than a key press: no step here is about the
+ * keyboard, and `ui.ts`'s Dropdown and Modal checks already prove a real Enter press activates a
+ * focused native button.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -2943,14 +2943,21 @@ async function lateMonthChecks(devtools: Devtools): Promise<void> {
     () => read(devtools, `${LATE_STATE}.date === ${JSON.stringify(LATE_DAY)}`, false),
     3_000,
   )
-  // Scrolling moves no focus, so the reader is still standing on their day — off screen.
-  await read(devtools, `(globalThis.scrollTo({ top: 0, behavior: "instant" }), true)`, false)
-  const scrolledTo = await settleScroll(devtools)
+  // Scrolling moves no focus, so the reader is still standing on their day — off screen. The day is
+  // read inside the same evaluate as the scroll call, at a point this check controls, rather than
+  // after waiting for the scroll to settle: that wait takes at least 100ms, the demo's late card
+  // answers a month change 300ms after the key press, and under load the wait can stretch long
+  // enough for the answer to land first — failing a check that was never wrong (#267). Reading in
+  // the same round trip as the scroll removes that race instead of outrunning it.
   const stillOnDay = await read(
     devtools,
-    `${LATE_STATE}.date === ${JSON.stringify(LATE_DAY)}`,
+    `(() => {
+      globalThis.scrollTo({ top: 0, behavior: "instant" })
+      return ${LATE_STATE}.date === ${JSON.stringify(LATE_DAY)}
+    })()`,
     false,
   )
+  const scrolledTo = await settleScroll(devtools)
   const awayWanted = `2026-04-${LATE_DAY.slice(8, 10)}`
   await poll(
     () =>
@@ -3225,12 +3232,12 @@ const MISSED: AimedClick = { onTarget: false, x: 0, y: 0, landedOn: "nothing", r
 /**
  * `ImageLightbox`'s keyboard and its backdrop, driven in the browser that owns them.
  *
- * Enter and Space are real key presses, and Space is provable here where it is not for an ordinary
- * button: what opens the lightbox is the component's own `keydown` listener rather than the
- * activation click headless Chromium declines to synthesise, so both keys reach it exactly as a
- * person's would. The two clicks are real mouse events at points worked out from the geometry, and
- * each point is checked against `elementFromPoint` before it is used — a press that landed
- * somewhere else is reported as a missed click and never as a failure of the component.
+ * Enter and Space are real key presses: what opens the lightbox is the component's own `keydown`
+ * listener on the image, an element with no native activation of its own, rather than a native
+ * button's default action, so both keys reach it exactly as a person's would. The two clicks are
+ * real mouse events at points worked out from the geometry, and each point is checked against
+ * `elementFromPoint` before it is used — a press that landed somewhere else is reported as a missed
+ * click and never as a failure of the component.
  *
  * @param devtools The connected session, on a hydrated page.
  */
