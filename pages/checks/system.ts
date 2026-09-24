@@ -2939,23 +2939,27 @@ async function lateMonthChecks(devtools: Devtools): Promise<void> {
   const stagedAway = await standOnDay(devtools, LATE_GRID, LATE_DAY)
   const beforeAway = await read(devtools, LATE_STATE, NO_CARD)
   await pressKey(devtools, "PageDown")
-  // `restoredAway` is the "still on their day" proof itself, not merely a wait to get past before
-  // taking one: `poll`'s predicate runs immediately, with no sleep before its first attempt, so this
-  // succeeds on the first round trip whenever the day genuinely has not moved yet — one CDP call
-  // after the press, not a wait bounded by how long anything else takes to settle. Reading the day
-  // again later, after scrolling, would instead read it at a point gated by how long scrolling takes
-  // to settle — at least 100ms — and the demo's late card answers a month change 300ms after the key
-  // press, so under load that second wait could stretch long enough for the answer to land first,
-  // failing a check that was never wrong (#267). A 350ms pause inserted right before such a second
-  // read reproduced that exact failure in an earlier version of this check; reading the day here
-  // instead, before scrolling is even asked for, does not have that second wait to lose.
-  const stillOnDay = await poll(
-    () => read(devtools, `${LATE_STATE}.date === ${JSON.stringify(LATE_DAY)}`, false),
-    3_000,
+  // The scroll and the "still on their day, still the old month" read happen in one
+  // `Runtime.evaluate`, in that order inside the same page task, so nothing the browser runs between
+  // two separate round trips — including the demo's own late answer — can land in between them
+  // unnoticed. Reading the day alone, in an earlier version of this check, proved only that the day
+  // had not moved by the time *that* read ran; it said nothing about whether the scroll had already
+  // happened after the month arrived, which is exactly what a `Calendar` that dropped `preventScroll`
+  // would still pass under this weaker proof (found in review). The month's own answer count is read
+  // in the same breath for the same reason: two facts pinned to one instant are one proof, not two
+  // reads that could straddle the moment the answer lands. A round trip slower than the demo's 300ms
+  // delay can still lose this race and fail on correct code — nothing running one JS statement after
+  // another inside a single page task can promise otherwise — but it now fails loudly instead of
+  // quietly passing broken code, which is the property #267 is about restoring.
+  const stillOnDay = await read(
+    devtools,
+    `(() => {
+      globalThis.scrollTo({ top: 0, behavior: "instant" })
+      const state = ${LATE_STATE}
+      return state.date === ${JSON.stringify(LATE_DAY)} && state.count === ${beforeAway.count}
+    })()`,
+    false,
   )
-  // Scrolling moves no focus, so the reader is still standing on their day — off screen. Nothing
-  // above depends on how long this settles: `stillOnDay` was already read.
-  await read(devtools, `(globalThis.scrollTo({ top: 0, behavior: "instant" }), true)`, false)
   const scrolledTo = await settleScroll(devtools)
   const awayWanted = `2026-04-${LATE_DAY.slice(8, 10)}`
   await poll(
