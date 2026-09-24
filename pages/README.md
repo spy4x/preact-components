@@ -87,7 +87,7 @@ deno task --cwd pages verify --cpu-throttle=6
 
 runs the page's main thread six times slower through Chromium's own CPU throttling, the same on
 every machine, and multiplies the browser phase's deadline by the same rate. Its last line starts
-`THROTTLED:`; CI never passes it. A full run at `6` takes about ten minutes.
+`THROTTLED:`; CI never passes it. A full run at `6` took six minutes here.
 
 The second loads every core of the machine, with its own deadline and a cap on its processes, while
 full runs go on in another terminal, noting `uptime` with each:
