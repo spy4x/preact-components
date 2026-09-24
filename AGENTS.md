@@ -13,7 +13,7 @@ its own PR, each owning exactly one top-level directory.
 | `theme/`    | design-system CSS + tailwind preset                                                                  |
 | `icons/`    | merged icon set, `+index.tsx`                                                                        |
 | `ui/`       | Badge, Button, Table, DataTable, Dropdown, Combobox, Modal, Tooltip, Toastr — and the rest           |
-| `system/`   | AuthForm, Calendar, ImageLightbox, SEOHead + head store, SiteHeader, SWUpdater                       |
+| `system/`   | AuthForm, Calendar, ImageLightbox, SEOHead + head store, Shell, SiteHeader, StateInit, SWUpdater     |
 | `charts/`   | server-rendered SVG kit (scales) + d3 wrappers                                                       |
 | `cn/`       | `cn()` — class-name join + Tailwind conflict resolution                                              |
 | `signals/`  | buildModelStore, useUrlFilters, table-state, theme, toast, patchSignal — and the rest; no components |

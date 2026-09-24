@@ -30,6 +30,8 @@ Extracted from earlier source applications.
 | `Calendar`      | `calendar`       | `monthAnchor`, `minDate`, `maxDate`, `slotsByDate`, `onSelectDate?`                                                  |
 | `ImageLightbox` | `image-lightbox` | `containerSelector?`, `imageSelector?`, `fallbackAlt?`, `zoomLabel?`, `onOpen?`                                      |
 | `SiteHeader`    | `site-header`    | `links`, `currentPath?`, `brand`, `actions?`, `labels?`                                                              |
+| `Shell`         | `shell`          | `navItems`, `currentPath?`, `brand`, `user`, `userMenuItems?`, `status?`, `children`, `labels?`, `class?`            |
+| `StateInit`     | `state-init`     | `data`, `id?` — paired with `readStateInit(id?, source?)`                                                            |
 
 Helpers, all pure: `head.ts` (`normalizeCanonical`, `canonicalUrl`, `breadcrumbItems`,
 `breadcrumbListJsonLd`) and `resolveImage` (click target → lightbox image). `head.ts` also exports
@@ -586,6 +588,86 @@ There is no pure logic in it to unit test: every behaviour is a `document` liste
 a mount-time DOM read, none of which a string render executes. `pages/checks/system.ts` drives all of
 it in a real browser instead.
 
+## The `Shell` contract
+
+`Shell` (#135) is the signed-in app's own frame: a sticky header (menu button, `brand`, `status`,
+user menu), a side navigation that is a plain sidebar from `lg` up and a `<details>`-built drawer
+below it, and a content area with a skip link in front of everything. It is the app-shell sibling of
+`SiteHeader` — that one is a public page's top bar, this one is what wraps every page once a visitor
+is signed in — and the two share `mobile-panel.ts`'s open/close behaviour rather than each writing
+their own.
+
+**`navItems` is redrawn from data in both places; `brand` and `status` are each rendered exactly
+once.** The same vnode-identity rule `SiteHeader`'s `links`/`actions` split follows: `navItems` is an
+array, so the sidebar and the drawer each build their own markup from it and neither steals the
+other's copy, but `brand` and `status` are the caller's own elements and can only ever be mounted in
+one place — both live in the header alone. A nav item with no `href` renders as a plain heading, and
+its `children` are drawn nested beneath it, always visible; there is no collapse/expand per group.
+
+**The user menu is `ui/`'s `Dropdown`, not a second implementation.** `user: null` renders no menu at
+all — a signed-out visitor draws no trigger for an account that has not signed in. Given a user, the
+trigger is an `Avatar` named from `user.name`, and `Dropdown`'s `triggerNamedByContent` is what turns
+that computed name into the trigger button's own accessible name, the same mechanism
+`DateRangePicker` uses for its own trigger.
+
+**The header and the drawer coexist without overlapping, and Escape stays scoped to whichever one is
+actually open.** The drawer's panel is positioned to start below the header's own height (`top-16`
+matching the header's `h-16`) and sits at a lower `z-index`, so the menu button, `status` and the
+user menu stay reachable while the drawer is open. `Dropdown` answers its own Escape and stops it
+from bubbling further — the same "innermost open layer wins" rule that already keeps a dropdown
+inside a dialog from also closing the dialog — so a real Escape pressed with focus in the open user
+menu closes only the user menu, and `mobile-panel.ts`'s own `contains` guard is what would still
+catch it if that stopped being true, exactly as it already does for `SiteHeader` against a `Modal`.
+Opening the drawer moves real focus to its own button, which is outside the user menu's root, so
+`Dropdown`'s own focus-out handling closes an open user menu on its own, before any Escape is ever
+pressed. `pages/checks/system.ts`'s `shellEscapeScopingCheck` proves both directions with real clicks
+and a real Escape, not a scripted event aimed at a mismatched target.
+
+**The skip link is the first focusable element on the page**, targeting a `<main>` this component
+gives `tabindex="-1"` — activating it moves focus into the content area itself, not only the address
+bar's hash, which is what lets a visitor skip the whole navigation with one key press rather than
+tabbing past every link in it first.
+
+**Every string beyond the caller's own data has an English default and a `labels` override**: the
+menu button's name, the shared `aria-label` on both navigation landmarks, the skip link's text, and
+the user menu panel's `aria-label`.
+
+### Reusing `mobile-panel.ts`
+
+`Shell`'s drawer wires the same `detailsRef`, `triggerRef` and `onToggle={handleToggle}` from
+`useMobilePanel` that `SiteHeader` does, against its own `<details>`/`<summary>` markup. Nothing in
+`Shell` reimplements Escape handling, the mount-time DOM read, or the client-navigation close — see
+`useMobilePanel`'s own section above for what all three of those buy a visitor. Reusing the hook
+unchanged, rather than writing a second one shaped like it, is what keeps the SiteHeader-vs-Modal
+Escape-scoping proof and the Shell-vs-Dropdown one testing the same code path.
+
+## The `StateInit` contract
+
+`StateInit` (#135) is a generic SSR→client hydration bridge: the server renders `<StateInit data=
+{value} />` once, and the browser reads the same value back with `readStateInit()`. Which keys
+`data` holds is entirely the caller's business — this file never reads a field of it — which is what
+makes it portable where the source applications' own versions were not: each of those hard-coded
+that app's own environment keys directly into the component.
+
+**The escaping is `SEOHead`'s own, reused rather than reimplemented.** `stateInitText` calls
+`seo-head.tsx`'s `jsonLdText`, the same function that already protects `SEOHead`'s own JSON-LD
+script tag: `<` becomes `<`, which keeps a value containing the literal text `</script>` (or
+`<!--`) from ending the element early — the HTML parser watches for that sequence case-insensitively
+to close _any_ `<script>`, regardless of its `type`, before either JSON or JavaScript ever parses the
+content. U+2028 and U+2029 need nothing extra here: `StateInit` renders `type="application/json"`,
+which the browser never executes, and `readStateInit` reads it back with `JSON.parse`, which has
+always accepted both characters inside a JSON string. `state-init.test.tsx` proves a value carrying
+all three — `</script>`, `<!--` and both separators — survives the round trip through `stateInitText`
+and back through `readStateInit` unchanged, rather than resting on the reasoning alone.
+
+**`readStateInit` takes an injectable source, defaulted to the real `document`.** The default is
+evaluated inside the function, never at module load, which is what lets `state-init.test.tsx` import
+this file and call `readStateInit` with a fake `{ getElementById }` in Deno's test runtime, where no
+`document` global exists at all — the same seam `SWUpdater`'s `container` prop gives its own tests.
+`undefined` is the answer for every way there is nothing to read: no element with the given `id`, an
+element with no text, or text that fails `JSON.parse` — a page that never rendered a `StateInit`
+reads the same as one whose `id` was mistyped, rather than throwing either way.
+
 ## Decisions worth knowing
 
 - **A canonical address that is not a web page is refused, not printed and not omitted.** Throwing
@@ -603,8 +685,10 @@ it in a real browser instead.
   DST boundary and a weekday computed in UTC is the same weekday everywhere. A `timeZone` prop
   survives for the one question that genuinely needs it — which date is _today_ — plus an
   injectable `today` for deterministic renders.
-- **No `Shell`, `Nav`, `Auth`, `Menu`, `Header`, `ProfileDropdown`, `ImageGallery`, `StateInit`,
-  `LeadForm` or `NewsletterForm`.** Each one is in the table below with a reason.
+- **No `Nav`, `Auth`, `Menu`, `Header`, `ProfileDropdown`, `ImageGallery`, `LeadForm` or
+  `NewsletterForm`.** Each one is in the table below with a reason. `Shell` (#135) and `StateInit`
+  are built as of this package's own commit — see their sections below — and are no longer in that
+  table.
 - **`ImageLightbox` uses event delegation, not per-image listeners.** The source attached one
   listener per image and never removed them; delegation also survives images that appear after
   hydration. Escape needs no listener of its own: `<dialog>` closes natively and the `close` event
@@ -624,14 +708,18 @@ it in a real browser instead.
 
 ## Not in this package
 
-| Left out                            | Why                                                                                                                                                                                                                                                           |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Shell`, `Nav`                      | Read straight out of a global app store, hardcode brand strings, and a source application's `Nav` runs an `effect()` at import time. Props-and-ports conversion is a redesign, not a port. `Auth` needed the same redesign and got it — see `AuthForm` above. |
-| `Menu`, `Header`, `ProfileDropdown` | Two source implementations of the same responsive header, both shaped around one app's markup and brand. The pieces worth keeping are the dual-mode contract and the a11y fixes, which landed in `Calendar`.                                                  |
-| `ImageGallery`                      | Snap-scroll strip plus an arrow-key lightbox. The lightbox half landed as `ImageLightbox`; the strip is a horizontal scroller whose drag and snap behaviour needs a DOM test harness this repo does not have yet.                                             |
-| `StateInit`                         | An app's SSR→client hydration bridge, with that app's env keys hardcoded.                                                                                                                                                                                     |
-| `LeadForm`, `NewsletterForm`        | Form chrome whose anti-bot fields (honeypot, page-load timestamp) and success states the host must render itself.                                                                                                                                             |
-| `themeBootstrapScript()`            | The FOUC-free inline `<head>` script belongs with `ts-libs`, next to the other head-platform helpers.                                                                                                                                                         |
+| Left out                            | Why                                                                                                                                                                                                               |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Menu`, `Header`, `ProfileDropdown` | Two source implementations of the same responsive header, both shaped around one app's markup and brand. The pieces worth keeping are the dual-mode contract and the a11y fixes, which landed in `Calendar`.      |
+| `ImageGallery`                      | Snap-scroll strip plus an arrow-key lightbox. The lightbox half landed as `ImageLightbox`; the strip is a horizontal scroller whose drag and snap behaviour needs a DOM test harness this repo does not have yet. |
+| `LeadForm`, `NewsletterForm`        | Form chrome whose anti-bot fields (honeypot, page-load timestamp) and success states the host must render itself.                                                                                                 |
+| `themeBootstrapScript()`            | The FOUC-free inline `<head>` script belongs with `ts-libs`, next to the other head-platform helpers.                                                                                                             |
+
+The source applications' own `Shell`/`Nav` and `StateInit` used to be in this table too: each read
+straight out of a global app store, hardcoded a brand string or an env key, and one ran an `effect()`
+at import time. Props-and-ports conversion for those was a redesign, not a port — `AuthForm` needed
+the same redesign and got it first. `Shell` (#135) and `StateInit` are that redesign, and their own
+sections above describe what changed.
 
 ## Tests
 
@@ -680,3 +768,29 @@ script execution disabled are effects, key presses, a focus change, layout and a
 read — none reachable from a string render — and are proven in `pages/checks/system.ts` instead.
 `mobile-panel.ts` has no test file of its own for the same reason: it holds no logic that is not one
 of those things.
+
+`shell.test.tsx` is the markup half of `Shell`: every nav item's `href` present once in the sidebar
+and once in the drawer, `aria-current` on the one item matching `currentPath` and on no other, an
+item's icon and counter badge rendered in each copy and the badge omitted for zero, a negative
+number or no counter at all, an item with no `href` rendered as a heading with its `children` beneath
+it, `brand` and `status` each rendered exactly once with no anchor of the component's own, no user
+menu when `user` is `null`, the user menu named from the user's own name and every `userMenuItems`
+entry rendered as a link or a button, the skip link positioned before any other link and wired to a
+focusable `#`-targeted `<main>`, a `labels` override replacing every default, and a caller's `class`
+merged onto the root without losing its own — checked, as `site-header.test.tsx` is, against the full
+set of visible words the render produces. Opening the drawer with a real click, a real Escape closing
+it, an Escape aimed at the drawer landing in the same task as the click that opened it, Tab order
+through the drawer's links, the header holding still (byte-identical screenshots) while the drawer
+opens at phone width and while the user menu opens at desktop width, the skip link moving focus to
+the content area rather than only the hash, and the two-directions Escape-scoping proof between the
+drawer and the user menu are effects, key presses, a focus change, layout and real pointer/keyboard
+input — none reachable from a string render — and are proven in `pages/checks/system.ts` instead.
+
+`state-init.test.tsx` is everything `StateInit` has that a string render can prove: `stateInitText`
+round-tripping `</script>`, `<!--` and both line separators unchanged through `JSON.parse`, its
+escaping matching `SEOHead`'s own byte for byte, the rendered `<script type="application/json">`
+matching exactly, the `id` default and override, and `readStateInit` reading a fake `{
+getElementById }` source correctly — including the three ways there is nothing to read: no matching
+`id`, no text content, and text that fails to parse. There is nothing left for `pages/checks/system.ts`
+to prove for this component: it touches no listener, no focus and no timer, so nothing about it is
+unreachable from a string render.
