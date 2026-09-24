@@ -1,10 +1,12 @@
 /**
  * The System section.
  *
- * All six of the package's components are here. Four render from props with no platform access at
- * all; two are platform integration and are handled with an explicit, stated reduction rather than
- * a demo that claims behaviour it cannot show. Those two are the interesting part of this file, so
- * here is the reasoning in full:
+ * All eight of the package's components are here. Six render from props with no reduction needed —
+ * `Shell` and `StateInit` included, `useMobilePanel`'s effects and `StateInit`'s inert
+ * `type="application/json"` script notwithstanding, neither touches anything this guide's own page
+ * could not safely hand it — and two are platform integration, handled with an explicit, stated
+ * reduction rather than a demo that claims behaviour it cannot show. Those two are the interesting
+ * part of this file, so here is the reasoning in full:
  *
  * - **`SEOHead` returns `<title>`, `<meta>` and `<link>` tags.** Rendering it inside a catalogue card
  *   would splice a second `<title>` into the document *body*, and the browser reads the first
@@ -82,7 +84,7 @@
  * `pages/checks/system.ts` drives in a real browser at phone width instead.
  */
 
-import { IconBookOpen } from "@preact-components/icons"
+import { IconBookOpen, IconHome } from "@preact-components/icons"
 import {
   AuthForm,
   type AuthFormError,
@@ -93,7 +95,9 @@ import { Calendar } from "@preact-components/system/calendar"
 import type { PageHead } from "@preact-components/system/head"
 import { ImageLightbox } from "@preact-components/system/image-lightbox"
 import { seoHeadTags } from "@preact-components/system/seo-head"
+import { Shell } from "@preact-components/system/shell"
 import { SiteHeader } from "@preact-components/system/site-header"
+import { readStateInit, StateInit } from "@preact-components/system/state-init"
 import {
   type ContainerLike,
   type RegistrationLike,
@@ -1044,6 +1048,83 @@ function SiteHeaderDemo() {
   )
 }
 
+/**
+ * `Shell`, constrained to a fixed height so the card does not take over the guide's own page —
+ * `min-h-screen` is overridden the same way any Tailwind utility is, by naming a conflicting one
+ * later. The mobile drawer and the user menu still overlay the real viewport when opened, exactly as
+ * they would in a full page, rather than being clipped to this box: that is what a caller's own app
+ * gets, so that is what this card shows too.
+ */
+function ShellDemo() {
+  return (
+    <div
+      class="overflow-hidden rounded-md border border-gray-200 dark:border-gray-700"
+      data-e2e="shell-demo"
+    >
+      <Shell
+        class="h-[420px] min-h-0"
+        brand={<span class="text-lg font-semibold text-gray-900 dark:text-white">Acme</span>}
+        currentPath="/dashboard"
+        navItems={[
+          { name: "Dashboard", href: "/dashboard", Icon: IconHome },
+          { name: "Docs", href: "/docs", Icon: IconBookOpen },
+          {
+            name: "Settings",
+            children: [
+              { name: "Billing", href: "/settings/billing" },
+              { name: "Team", href: "/settings/team", counter: 2 },
+            ],
+          },
+        ]}
+        user={{ name: "Ada Lovelace", email: "ada@example.com" }}
+        userMenuItems={[{ label: "Your profile", href: "/profile" }, { label: "Sign out" }]}
+        status={
+          <span class="text-xs text-gray-500 dark:text-gray-400" data-e2e="shell-status">
+            Connected
+          </span>
+        }
+      >
+        <p class="text-sm text-gray-600 dark:text-gray-300">The page goes here.</p>
+      </Shell>
+    </div>
+  )
+}
+
+/**
+ * `StateInit` written once and read back on a real click — the round trip the component exists for,
+ * not a description of it. `sampleData` carries a `</script>` on purpose, so a successful read-back
+ * is also proof the escaping survived.
+ */
+function StateInitDemo() {
+  const readBack = useSignal("(not read yet)")
+  const sampleData = {
+    userId: 42,
+    features: ["</script>", "<!--", "  "],
+  }
+
+  return (
+    <div class="space-y-3" data-e2e="state-init-demo">
+      <StateInit id="state-init-demo" data={sampleData} />
+      <Button
+        variant="outline"
+        size="sm"
+        data-e2e="state-init-read"
+        onClick={() => {
+          readBack.value = JSON.stringify(readStateInit("state-init-demo"))
+        }}
+      >
+        Read it back
+      </Button>
+      <pre
+        class="max-h-40 overflow-auto rounded-md bg-gray-900 p-3 text-xs text-gray-100"
+        data-e2e="state-init-readback"
+      >
+        <code>{readBack.value}</code>
+      </pre>
+    </div>
+  )
+}
+
 export const systemDemos = {
   AuthForm: {
     summary:
@@ -1110,6 +1191,31 @@ export const systemDemos = {
 const tags = seoHeadTags(head)`,
     render: () => <SeoHeadTagList />,
   },
+  Shell: {
+    summary:
+      "The frame every signed-in app built from `spy4x/template` needs: a header that is always in view (menu button, `brand`, `status`, user menu), a sidebar from `lg` up, and the same navigation in a `<details>`-built drawer below it — reusing `useMobilePanel`, the same hook `SiteHeader` (#139) uses, rather than a second implementation. **No router import, no app state, no hard-coded link, brand text or URL** — `navItems`, `brand`, `user` and `children` are exactly what the caller passes in. **The skip link is the first focusable element**, and it targets a `<main>` this component gives `tabindex=\"-1\"`, so activating it moves focus there rather than only changing the address bar's hash. **The active item is decided by exact string equality**, `href === currentPath`, the same rule `SiteHeader`'s `isCurrentLink` already uses — reused here rather than re-implemented. **The user menu is `ui/`'s own `Dropdown`, named from `Avatar`**: `Avatar`'s own accessible name — the user's name — becomes the trigger's name through `triggerNamedByContent`, the same way `DateRangePicker` names its trigger. **The header and the drawer never overlap, and the header stays on top**: the drawer's overlay starts below the header's own height and sits at a lower `z-index`, which is what keeps the menu button and the user menu independently reachable whichever one is open — proved in `pages/checks/system.ts` by opening both at once and pressing Escape, which closes only the one that was actually focused. **`navItems` is redrawn from data for the sidebar and the drawer — `brand` and `status` are rendered exactly once**, in the header, for the same reason `SiteHeader`'s `actions` is: a caller's own element can only ever be mounted in one place.",
+    snippet: `<Shell
+  brand={<Logo />}
+  currentPath={url.pathname}
+  navItems={[
+    { name: "Dashboard", href: "/dashboard", Icon: IconHome },
+    { name: "Docs", href: "/docs", Icon: IconBookOpen },
+    { name: "Settings", children: [
+      { name: "Billing", href: "/settings/billing" },
+      { name: "Team", href: "/settings/team", counter: unreadInvites },
+    ] },
+  ]}
+  user={session ? { name: session.name, email: session.email } : null}
+  userMenuItems={[
+    { label: "Your profile", href: "/profile" },
+    { label: "Sign out", onClick: () => auth.signOut() },
+  ]}
+  status={<ConnectionIndicator />}
+>
+  <PageContent />
+</Shell>`,
+    render: () => <ShellDemo />,
+  },
   SiteHeader: {
     summary:
       "A public-site top bar: `brand` on the left; `links` on the right from `lg` up, and in a `<details>` disclosure this card's menu button opens below it; an optional `actions` slot and the menu button always in view, beside whichever form `links` is currently taking. **Every link, and every word of `brand`, is a prop** — this component writes no `href`, no label and no brand text of its own, which the card below proves: the only two addresses on the page are `links`' own. **`aria-current=\"page\"` marks the one link whose `href` equals `currentPath`** — exact string equality, so a caller whose routes want prefix matching normalises the comparison itself before handing either one in. **`links` is reachable with no JavaScript at all**: a click on `<summary>` opens and closes the native `<details>` disclosure with nothing running, so every link is there before hydration and with scripts off — proved in `pages/checks/system.ts` by disabling script execution and pressing the button, and by holding the island bundle back so a menu opened before it loads still catches up correctly once it does. **`links` is redrawn from data, not duplicated as markup — `actions` is rendered once, because a caller's own element can only ever be mounted in one place.** **The panel overlays the page instead of pushing the bar down**, positioned against the `<header>` rather than sitting in the row beside the button, so opening it moves nothing else. What JavaScript adds, through the `useMobilePanel` hook `system/README.md` names, is Escape closing the panel and returning focus to the button, a client-side navigation on a panel link closing the panel *without* returning focus (it is moving to the new page, not back to the button), and `aria-expanded` tracking the disclosure's own state — which Chromium already exposes on the accessibility tree natively, `aria-expanded` or not. The menu button keeps one fixed accessible name rather than a pair that swaps with the state, so the state is never announced twice and never goes stale for as long as no script has run. The icon swap between the two glyphs in the button costs no script at all, because `group-open:` is a Tailwind variant compiled from the `<details>` element's own `[open]` attribute. **The desktop row and the mobile panel never coexist in the accessibility tree** — one is always `display:none` — so Tab never reaches a link twice at one viewport width. Every string beyond `links` and `brand` — the menu button's name, the shared `<nav>` label — has an English default and a `labels` override. This hook is shared with the app shell's side navigation (#135), which opens and closes the same way.",
@@ -1124,6 +1230,16 @@ const tags = seoHeadTags(head)`,
   actions={<Button size="sm" onClick={() => navigate("/book-a-call")}>Book a call</Button>}
 />`,
     render: () => <SiteHeaderDemo />,
+  },
+  StateInit: {
+    summary:
+      "A generic SSR→client hydration bridge: the server writes one JSON value into the page with `StateInit`, and the browser reads it back with `readStateInit` — which keys the value holds is the app's business, and this component knows none of them. **The escaping is `SEOHead`'s own `jsonLdText`, reused rather than reimplemented**: `<` becomes `\\u003c`, which is what keeps the literal text `</script>` — or `<!--`, itself a `<` — from closing the element it is embedded in, whatever the script's own `type`. **U+2028 and U+2029 need no escaping here**, unlike the classic `window.x = {…}` shape of this pattern: this component renders `type=\"application/json\"`, which the browser never executes, and `readStateInit` reads it back with `JSON.parse`, which has always accepted both characters inside a JSON string. This card's own sample data carries `</script>`, `<!--` and both separators, and the button below reads it back with the real function, not a copy of it — press it to see the exact value survive the round trip.",
+    snippet: `// Wherever the server renders the page:
+<StateInit data={{ userId: user.id, features: enabledFeatures }} />
+
+// Anywhere on the client:
+const state = readStateInit<{ userId: string; features: string[] }>()`,
+    render: () => <StateInitDemo />,
   },
   SWUpdater: {
     summary:
