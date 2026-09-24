@@ -15,13 +15,14 @@
 
 import * as charts from "@preact-components/charts"
 import * as crud from "@preact-components/crud"
+import * as map from "@preact-components/map"
 import * as system from "@preact-components/system"
 import * as ui from "@preact-components/ui"
 import { parse } from "@std/jsonc"
 import { catalogueSections, type PackageId, packageIds } from "./registry.ts"
 
 /** Barrel namespace of every catalogued package, keyed the way the catalogue keys it. */
-const BARRELS: Record<PackageId, object> = { ui, charts, system, crud }
+const BARRELS: Record<PackageId, object> = { ui, charts, system, crud, map }
 
 /** The repository root: the parent of every package directory. */
 const ROOT = new URL("../", import.meta.url)
@@ -49,6 +50,7 @@ export const EXPORTS_WITHOUT_DEMO: Record<PackageId, readonly AllowedExport[]> =
   ui: [],
   charts: [],
   system: [],
+  map: [],
   crud: [
     { name: "ValidationType", reason: "An enum of validation states, not a component." },
   ],

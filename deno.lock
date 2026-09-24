@@ -16,11 +16,13 @@
     "npm:@preact/signals-core@1.12.1": "1.12.1",
     "npm:@preact/signals@2.5.1": "2.5.1_preact@10.28.2",
     "npm:@tailwindcss/oxide@4.1.12": "4.1.12",
+    "npm:@types/leaflet@1.9.22": "1.9.22",
     "npm:arktype@2.2.3": "2.2.3",
     "npm:d3@7.9.0": "7.9.0",
     "npm:feather-icons@4.29.2": "4.29.2",
     "npm:heroicons@1.0.6": "1.0.6",
     "npm:heroicons@2.2.0": "2.2.0",
+    "npm:leaflet@1.9.4": "1.9.4",
     "npm:lucide-static@1.47.0": "1.47.0",
     "npm:preact-render-to-string@6.7.0": "6.7.0_preact@10.28.2",
     "npm:preact@10.28.2": "10.28.2",
@@ -183,6 +185,15 @@
         "@tailwindcss/oxide-win32-x64-msvc"
       ],
       "scripts": true
+    },
+    "@types/geojson@7946.0.16": {
+      "integrity": "sha512-6C8nqWur3j98U6+lXDfTUWIfgvZU+EumvpHKcYjujKH7woYyLj2sUmff0tRhrqM7BohUw7Pz3ZB1jj2gW9Fvmg=="
+    },
+    "@types/leaflet@1.9.22": {
+      "integrity": "sha512-h3lhECYEKDasG7LFHu+GiHqAvsgLuQvlJvVZzJDGONo3sEL+wUOqSFLnwkZlK0qVxnxbuGFW8iBlJNYs5wgndA==",
+      "dependencies": [
+        "@types/geojson"
+      ]
     },
     "arkregex@0.0.8": {
       "integrity": "sha512-PJcx6G1kQTgLKPUbeYlYecDRaKq15AMSGVajlKFYWlPeJRQL+j3dKE6tyMs40HZ99djS1l9Vhl3ezAHy9JBIqQ==",
@@ -445,6 +456,9 @@
     "internmap@2.0.3": {
       "integrity": "sha512-5Hh7Y1wQbvY5ooGgPbDaL5iYLAPzMTUrjMulskHLH6wnv/A+1q5rgEaiuqEjB+oxGXIVZs1FF+R/KPN3ZSQYYg=="
     },
+    "leaflet@1.9.4": {
+      "integrity": "sha512-nxS1ynzJOmOlHp+iL3FyWqK89GtNL8U8rvlMOsQdTTssxZwCXh8N2NB3GDQOL+YR3XnWyZAxwQixURb+FA74PA=="
+    },
     "lucide-static@1.47.0": {
       "integrity": "sha512-yWIrkdXc688Feq5VjOktsKmV5Ikc7y5Nu3rrdtbr8nWjkJWk8QlnZfVtIak22Af+fNhZ7k4cTJpZo1zmj7X5sA=="
     },
@@ -537,6 +551,12 @@
           "npm:heroicons@1.0.6",
           "npm:heroicons@2.2.0",
           "npm:lucide-static@1.47.0"
+        ]
+      },
+      "map": {
+        "dependencies": [
+          "npm:@types/leaflet@1.9.22",
+          "npm:leaflet@1.9.4"
         ]
       },
       "pages": {

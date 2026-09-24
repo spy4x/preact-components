@@ -8,6 +8,7 @@ import { parse } from "@std/jsonc"
 import { describe, it } from "@std/testing/bdd"
 import * as charts from "@preact-components/charts"
 import * as crud from "@preact-components/crud"
+import * as map from "@preact-components/map"
 import * as system from "@preact-components/system"
 import * as ui from "@preact-components/ui"
 import {
@@ -35,7 +36,7 @@ const EXPORTS = await packageExports()
  * these imports run the same way a caller's own `import * as ui from "@preact-components/ui"`
  * would, so a bug in the read cannot also corrupt what it is compared to.
  */
-const BARRELS: Record<PackageId, object> = { ui, charts, system, crud }
+const BARRELS: Record<PackageId, object> = { ui, charts, system, crud, map }
 
 /** A component name no package exports and no section demonstrates. */
 const GHOST = "GhostWidget"

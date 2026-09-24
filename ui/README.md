@@ -697,7 +697,7 @@ in this package's `deno.json` because the root import map has no renderer.
 
 ## Not in this package
 
-`DateTimeFilter`, `MetricsList`, `Map`, `Export` and the higher-level selectors
+`DateTimeFilter`, `MetricsList`, `Export` and the higher-level selectors
 (`CurrencySelector`, `DateRangeSelector`, `AccountSelector`) stay app-side for now — the first two
-are theme-coupled and belong with the charts work, `Map` loads Leaflet from an unpkg script and
-`Export` drags in `xlsx`. `DeletionValidation` belongs with the CRUD package.
+are theme-coupled and belong with the charts work, and `Export` drags in `xlsx`.
+`DeletionValidation` belongs with the CRUD package.

@@ -157,8 +157,8 @@ under "Install" instead.
   covers the parts a class cannot reach.
 - **Surfaces** — `card`, `card-header`, `card-body`, `card-footer`, `scrollbar`.
 - **Data display** — `num`, `kpi`, `kpi-label`, `kpi-value`, `bar`.
-- **Map** — `map-marker` inside a `status-on` / `status-off` / `status-unknown`
-  or `power-anomaly` container (`.power-anomaly .map-marker` blinks).
+- **Map** — `map-marker` inside a `status-on` / `status-off` / `status-unknown` container, used by
+  `@preact-components/map`'s `Map` component and its plain-text list of markers.
 
 ## Theming
 

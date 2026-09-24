@@ -266,8 +266,8 @@ as the numerator; and `--static`, which commits no package blocks at all, instea
 
 ## Not here
 
-`map/` is not here and is not coming: `Map` is a recorded "deliberately not built" entry in
-`docs/not-building.md`, because it needs Leaflet — a dependency decision. `theme/` is CSS, so its
+`map/` has its own `Map` card now — see `docs/not-building.md`'s "Reopened" note (#143) for the
+dependency decision that changed. `theme/` is CSS, so its
 classes get cards of their own in the catalogue's
 `forms` and `surfaces` sections rather than component cards; `icons/` is the gallery rather than demo
 cards; and the sections that were placeholders when this page was first deployed — `charts/`,

@@ -1,0 +1,38 @@
+{
+  "name": "@preact-components/map",
+  "version": "0.1.0",
+  "exports": {
+    ".": "./+index.ts"
+  },
+  "imports": {
+    // Leaflet is pinned here and nowhere else in the workspace, the same isolation `charts/deno.json`
+    // gives `d3`: a map is one product's need, not every package's, and a component that never
+    // imports `map/` must never carry Leaflet in its graph. `map/README.md` → "Do I need Leaflet?"
+    // has the proof. 1.9.4 is the latest stable release on npm; 2.0.0-alpha.1 is a pre-release and is
+    // not used. `@types/leaflet` is a separate, community-maintained package (Leaflet itself ships no
+    // types) pinned to the newest release compatible with 1.9.x.
+    //
+    // Two entries for the one package: the bare specifier resolves the module `map.tsx` loads with a
+    // dynamic `import()`, and the trailing-slash form resolves the one subpath `leaflet-css.ts` reads
+    // on its own — `leaflet/dist/leaflet.css` — the same two-entry shape the root import map already
+    // uses for `preact`/`preact/` and `tailwindcss`/`tailwindcss/`. `leaflet-css.ts` is not published
+    // (see `publish.exclude` below): `import.meta.resolve` on an npm subpath carries no dependency
+    // record a published consumer's own resolver can follow, so the function throws for anyone but
+    // this workspace — `pages/build.ts` reads it by a relative import instead, and `map/README.md` →
+    // "Leaflet's stylesheet" documents the one route that works for every other consumer.
+    "leaflet": "npm:leaflet@1.9.4",
+    "leaflet/": "npm:/leaflet@1.9.4/",
+    "@types/leaflet": "npm:@types/leaflet@1.9.22"
+  },
+  "publish": {
+    // Every `*.test.*` here renders to `preact-render-to-string` or exercises a pure helper; none of
+    // it is reachable from `exports`, and none of it is anything a consumer runs. `leaflet-css.ts` is
+    // excluded for the reason in the `imports` comment above: it works only inside this workspace,
+    // where `pages/build.ts` reads it by a relative import rather than as a published subpath.
+    "exclude": [
+      "**/*.test.ts",
+      "**/*.test.tsx",
+      "leaflet-css.ts"
+    ]
+  }
+}

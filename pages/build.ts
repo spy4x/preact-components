@@ -28,6 +28,7 @@
  * 5. The route echo is read out of the rendered document and round-tripped through the resolver.
  */
 
+import { leafletStylesheet } from "../map/leaflet-css.ts"
 import { Scanner } from "@tailwindcss/oxide"
 import { compile } from "tailwindcss"
 import { dirname, join } from "node:path"
@@ -66,6 +67,13 @@ const SW_DEMO_DIRECTORY = "sw-demo"
  * recorded network request rather than assuming either.
  */
 const FORM_DEMO_DIRECTORY = "form-demo"
+/**
+ * Directory copied verbatim into the artefact for the `Map` card's tile layer: one tiny PNG, reused
+ * for every `{z}/{x}/{y}` Leaflet asks for, so `deno task verify`'s browser phase never makes a
+ * request past the local preview server — see issue #143's security requirement and
+ * `pages/checks/map.ts`, which asserts the tiles it loads come from here.
+ */
+const MAP_DEMO_DIRECTORY = "map-demo"
 
 /** Sources `deno check` must accept before a single byte is emitted. */
 const CHECKED_ENTRIES = [
@@ -129,13 +137,24 @@ function resolveStylesheet(id: string, base: string): URL {
 }
 
 /**
- * Compile `styles.css` and the classes the scanned sources use.
+ * Compile `styles.css` and the classes the scanned sources use, then append Leaflet's own
+ * stylesheet.
  *
  * The candidate list comes from Tailwind's own Rust scanner, driven by the stylesheet's `@source`
  * rules — the same pipeline the Tailwind CLI runs, so a class that only appears inside a template
  * string is emitted exactly as it would be for an app.
  *
- * @returns The compiled stylesheet, with `tokens.css` and `preset.css` inlined.
+ * Leaflet's CSS is not run through Tailwind at all — it is not Tailwind-authored, needs no token or
+ * `@apply` resolution, and simply concatenating it is what `../map/leaflet-css.ts` exists for (see
+ * that module's own doc and `map/README.md` → "Leaflet's stylesheet"). That file is not published —
+ * `import.meta.resolve` on an npm subpath carries no dependency record a consumer's own resolver
+ * could follow, so it would throw for anyone outside this workspace — which is why this reads it by a
+ * relative import rather than as `@preact-components/map`'s own subpath. A real consuming app has no
+ * equivalent shortcut; `map/README.md` → "Leaflet's stylesheet" documents the route that works for
+ * one: add `leaflet` as its own dependency and include the stylesheet in its own build.
+ *
+ * @returns The compiled stylesheet: `tokens.css` and `preset.css` inlined by Tailwind, with
+ * Leaflet's `dist/leaflet.css` appended verbatim.
  */
 async function compileStylesheet(): Promise<Uint8Array> {
   const entry = await Deno.readTextFile(join(PAGES_DIRECTORY, "styles.css"))
@@ -158,8 +177,13 @@ async function compileStylesheet(): Promise<Uint8Array> {
 
   const scanner = new Scanner({ sources: normalizeSources(compiler.sources) })
   const candidates = scanner.scan()
-  const css = new TextEncoder().encode(compiler.build(candidates))
-  console.log(`  tailwind: ${candidates.length} candidates, theme inlined`)
+  const tailwindCss = compiler.build(candidates)
+  const leafletCss = await leafletStylesheet()
+  const css = new TextEncoder().encode(`${tailwindCss}\n${leafletCss}`)
+  console.log(
+    `  tailwind: ${candidates.length} candidates, theme inlined\n` +
+      `  leaflet.css appended, ${leafletCss.length} bytes`,
+  )
   return css
 }
 
@@ -308,6 +332,11 @@ async function main(): Promise<void> {
     ["index.html"],
     "the EnhancedForm/NewsletterForm/ContactForm cards",
   )
+  const mapDemo = await copyDemoDirectory(
+    MAP_DEMO_DIRECTORY,
+    ["tile.png"],
+    "the Map card",
+  )
 
   console.log(
     `  index.html ${kilobytes(html.length)} · prerendered ${catalogueNames.length} components\n` +
@@ -316,6 +345,9 @@ async function main(): Promise<void> {
       `  assets/${assetNames.js} ${kilobytes(island.length)}\n` +
       `  ${SW_DEMO_DIRECTORY}/ ${swDemo.join(", ")} — registered only when a visitor asks\n` +
       `  ${FORM_DEMO_DIRECTORY}/ ${formDemo.join(", ")} — the no-JavaScript forms post here\n` +
+      `  ${MAP_DEMO_DIRECTORY}/ ${
+        mapDemo.join(", ")
+      } — the local tile the Map card's layer requests\n` +
       `  served from ${ORIGIN}${BASE}`,
   )
 }

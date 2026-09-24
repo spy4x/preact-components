@@ -1,9 +1,18 @@
 # `@preact-components/ui-guide`
 
 The live component catalogue, shipped as a component so every app that imports the library gets it
-free. It renders one demo per component of every package it covers — `ui`, `charts`, `system` and
-`crud` — one card per group of `theme/preset.css` classes, the icon gallery, and the design-system
+free. It renders one demo per component of every package it covers — `ui`, `charts`, `system`, `crud`
+and `map` — one card per group of `theme/preset.css` classes, the icon gallery, and the design-system
 rules components are meant to be assembled in.
+
+Covering `map/` (#143) is what makes `@preact-components/ui-guide` resolve Leaflet: `map/`'s exact
+`leaflet`/`@types/leaflet` pins reach an app's dependency graph the moment it imports this package's
+`registry.ts`, which imports every section unconditionally, `sections/map.tsx` included — the same
+way covering `charts/` already put an optional `d3` in reach of anything that imports this package.
+This is a build-time fact about the module graph, not a run-time one: `UIGuide`'s own `registry` prop
+(below) can be handed a partial registry that never _renders_ a `Map` card, but the app that built
+that partial registry already resolved and bundled `@preact-components/map` — and therefore
+Leaflet — to get the value it left out. There is no documented way around that.
 
 Ported from one source application's own modular route-per-section guide (the better structure of
 the two source guides) and another's single-file guide component, whose icon gallery is kept
@@ -166,12 +175,15 @@ The other direction is `classes.test.tsx`, and it is the one that matters for de
   what the page really applies, so removing a class from a demo removes it from the set — and a class
   named only inside a usage snippet is text, not markup, and does not count.
 
-The exclusions are the honest half: `theme-base` and `dark` are the host page's, the `.map-*` classes
-are Leaflet marker states in a package the guide does not cover, and the `.btn*` classes stay
-documented-but-not-demonstrated because `ui/Button` is the API for a button and `crud/` is the
-class-form consumer (see "Class-name demos" below). Each entry carries its reason, and each is
-checked for staleness — an excluded class the preset no longer defines, or that the catalogue
-demonstrates after all, fails.
+The exclusions are the honest half: `theme-base` and `dark` are the host page's, `power-anomaly` is
+recorded in `removedClasses` instead — one application's wording, dropped rather than demonstrated —
+and the `.btn*` classes stay documented-but-not-demonstrated because `ui/Button` is the API for a
+button and `crud/` is the class-form consumer (see "Class-name demos" below). The `.map-*` classes
+used to be excluded here too, for the same reason `power-anomaly` was — Leaflet marker states in a
+package the guide did not cover — until `map/` landed (#143) and gave them a real card; they are
+demonstrated now, through the `Map` card's plain-text list of markers. Each remaining entry carries
+its reason, and each is checked for staleness — an excluded class the preset no longer defines, or
+that the catalogue demonstrates after all, fails.
 
 ## The groups
 
@@ -271,6 +283,7 @@ the number that matters is checked where it is produced rather than transcribed 
 | **Charts**                 | `charts` | a card per component the package exports                                                 |
 | **System**                 | `system` | a card per component the package exports                                                 |
 | **CRUD**                   | `crud`   | a card per component the package exports                                                 |
+| **Map**                    | `map`    | `Map`                                                                                    |
 
 Nothing here states how many components are _missing_ a card, on purpose: that number moves with every
 component PR. Read `EXPORTS_WITHOUT_DEMO` in `coverage.ts`, which is where a card somebody still owes
