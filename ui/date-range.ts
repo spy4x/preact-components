@@ -468,8 +468,8 @@ export const timeRangePresets: readonly TimeRangePreset[] = ["last-hour", "last-
  * naming the hour a zone springs forward — a local time that never happens that day — passes it, and
  * so does either reading of an hour the zone repeats when it falls back. A caller's own conversion of
  * a repeated hour resolves to whichever of its two instants that conversion defaults to — most date
- * libraries pick the earlier one — and {@link rangeForTimePreset}'s own doc says exactly what that
- * costs `"last-hour"` and `"last-24-hours"` on the day a zone falls back.
+ * libraries pick the earlier one — and {@link rangeForTimePreset}'s own doc lists what that can cost
+ * `"last-hour"` and `"last-24-hours"` on the day a zone falls back.
  */
 export interface DateTimeRange {
   /** Start of the range, inclusive, wall time in the caller's zone. */
@@ -530,15 +530,30 @@ function calendarDateTimeInZone(instant: Date, timeZone: string): string {
  *
  * That correctness is in the strings only, and does not survive a caller converting them back to
  * instants — see {@link DateTimeRange}'s own doc for why a caller would. On the day a zone falls
- * back, `"last-24-hours"` can answer a `from` or `to` that names the repeated hour, and the standard
- * conversion of it (the earlier of its two instants) then makes the round-tripped window read as 23
- * or 25 hours, not 24, depending on which end landed there. `"last-hour"` can go further: when
- * *both* ends land in the repeated hour, they print the exact same `YYYY-MM-DDTHH:mm` string — one
- * wall-clock reading, taken at two different UTC offsets either side of the fall-back — and a
- * caller's round trip then reads the window as zero hours, not one. Both strings are still correct
- * readings of their own instant, and {@link isValidDateTimeRange} still accepts the pair: a range
- * whose ends read identically is `from <= to`, the same rule a one-day {@link DateRange} passes by
- * design.
+ * back, the standard conversion of a repeated hour (the earlier of its two instants) reads a preset
+ * wrong by one hour for every real hour one of its ends spends inside that repeated hour.
+ * `"last-24-hours"` has at most one end there: `from` and `to` are 24 real hours apart, wider than
+ * the roughly two real hours the repeated hour spans across both of its passes, so its round trip
+ * reads as 23 or 25 hours, never both wrong at once, depending on which end landed there and which
+ * pass it fell in. `"last-hour"`'s ends are only a real hour apart, so both can land there at once,
+ * and its round trip has three outcomes:
+ *
+ * - Neither end in the repeated hour: the ordinary 1 hour, correct.
+ * - Both ends there, `from` in the hour's first pass and `to` in its second: they print the exact
+ *   same `YYYY-MM-DDTHH:mm` string — one wall-clock reading, taken at two different UTC offsets
+ *   either side of the fall-back — and the round trip reads 0 hours. Example: `now`
+ *   `2026-10-25T01:30:00Z` in `Europe/Berlin` answers `{ from: "2026-10-25T02:30", to:
+ *   "2026-10-25T02:30" }`.
+ * - Only `from` there, in the second pass, with `to` already past the repeated hour and reading
+ *   correctly on its own: the standard conversion reads `from` a real hour later than it is, and the
+ *   round trip reads 2 hours. Example: `now` `2026-10-25T02:10:00Z` in `Europe/Berlin` answers
+ *   `{ from: "2026-10-25T02:10", to: "2026-10-25T03:10" }`.
+ *
+ * `date-range.test.ts` pins both examples above, plus the 23- and 25-hour `"last-24-hours"` cases.
+ *
+ * Every string in every case above is still a correct reading of its own instant, and
+ * {@link isValidDateTimeRange} still accepts all of them: a range whose ends read identically is
+ * `from <= to`, the same rule a one-day {@link DateRange} passes by design.
  *
  * @param preset The sub-day preset to resolve.
  * @param options Injected instant and zone; see {@link RangeForTimePresetOptions}.

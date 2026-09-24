@@ -397,16 +397,23 @@ reads as 23 or 25 hours on that day rather than the subtraction drifting to matc
 That correctness is in the strings only, and does not survive a caller converting them back into
 instants — the ordinary next step for querying a database with them. On the day a zone falls back, a
 `from` or `to` can name the hour that happens twice, and the standard conversion of it — the earlier
-of its two instants, what most date libraries default to — turns a round-tripped `"last-24-hours"`
-into 23 or 25 hours, not 24, depending on which end landed there, and a round-tripped `"last-hour"`
-into zero when _both_ ends land there: `from` and `to` then print the identical `YYYY-MM-DDTHH:mm`
-string — one wall-clock reading, taken at two different UTC offsets either side of the fall-back —
-and a standard conversion reads that pair as the same instant. Neither this library nor
-`isValidDateTimeRange` resolves or rejects any of this: a range whose ends read identically is
-`from <= to`, the same rule a one-day `DateRange` passes by design, and a typed value naming the hour
-a zone skips in spring — a local time that never happens that day — is accepted the same way,
-because nothing here is told which zone a value is meant for and checks accordingly. `DateTimeRange`'s
-own doc in `date-range.ts` carries the exact instants involved.
+of its two instants, what most date libraries default to — reads a preset wrong by one hour for every
+real hour one of its ends spends inside that repeated hour. `"last-24-hours"`'s two ends are 24 real
+hours apart, wider than the roughly two real hours the repeated hour spans across both of its passes,
+so at most one end ever lands there: the round trip reads 23 or 25 hours, not 24, depending which end
+it is and which pass. `"last-hour"`'s ends are only a real hour apart, so both can land there at once,
+and the round trip then reads one of three ways: the ordinary 1 hour when neither end does; 0 hours
+when both do, because `from` and `to` then print the identical `YYYY-MM-DDTHH:mm` string — one
+wall-clock reading, taken at two different UTC offsets either side of the fall-back — and a standard
+conversion reads that pair as the same instant; and 2 hours when only `from` does, landing in the
+hour's second pass while `to` has already moved past it and reads correctly on its own. Neither this
+library nor `isValidDateTimeRange` resolves or rejects any of this: a range whose ends read
+identically is `from <= to`, the same rule a one-day `DateRange` passes by design, and a typed value
+naming the hour a zone skips in spring — a local time that never happens that day — is accepted the
+same way, because nothing here is told which zone a value is meant for and checks accordingly.
+`rangeForTimePreset`'s own doc in `date-range.ts` names the instant behind the 0- and 2-hour
+`"last-hour"` outcomes, and `date-range.test.ts` pins both, plus the 23- and 25-hour
+`"last-24-hours"` cases, as tests.
 
 `to` is inclusive at the minute named, the same convention `DateRange`'s is at the day, and this
 library truncates seconds — so a `"last-hour"` window covers 61 minutes end to end, not 60: the whole

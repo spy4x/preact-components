@@ -891,6 +891,21 @@ describe("rangeForTimePreset", () => {
     expect(range).toEqual({ from: "2026-10-25T02:30", to: "2026-10-25T02:30" })
     expect(isValidDateTimeRange(range)).toBe(true)
   })
+
+  it("reads from a real hour later than it is when only from lands in the Berlin fall-back's second pass", () => {
+    // now is UTC 02:10, an hour after the UTC 01:00 fall-back — unambiguously CET, 03:10 local, the
+    // repeated hour already behind it. The real hour before it, UTC 01:10, is still past the UTC
+    // 01:00 transition too, so it reads the *second* (CET) pass of the repeated hour: from prints
+    // "02:10". A standard conversion of "02:10" defaults to its *first* pass (CEST, the earlier
+    // instant) — one real hour before where this from actually was — so a caller's round trip reads
+    // this range as 2 hours long, not 1.
+    const now = new Date("2026-10-25T02:10:00Z")
+
+    const range = rangeForTimePreset("last-hour", { now, timeZone: "Europe/Berlin" })
+
+    expect(range).toEqual({ from: "2026-10-25T02:10", to: "2026-10-25T03:10" })
+    expect(isValidDateTimeRange(range)).toBe(true)
+  })
 })
 
 describe("isValidDateTimeRange", () => {
