@@ -1,13 +1,14 @@
 /**
  * The `ui/` controls that are not plain form fields: the two switches, the dropdown, the searchable
- * select, the labelled switch row, and the preset-plus-custom date range.
+ * select, the labelled switch row, and the preset-plus-custom date range, day-only and `withTime`.
  *
  * Each of these is a small state machine whose keyboard and pointer halves only run in a browser.
  * This repository has no DOM harness, so a card shows the closed-state markup the server render
- * produces, and the two decisions the demonstrably interactive halves turn on are exported from
+ * produces, and the three decisions the demonstrably interactive halves turn on are exported from
  * this module as pure functions and asserted in `sections/demo-decisions.test.ts`:
- * {@link comboboxStatusLabel} and {@link dateRangeTouched}. Everything after the first keystroke,
- * hover or click remains browser-only and is described as such on the card.
+ * {@link comboboxStatusLabel}, {@link dateRangeTouched} and {@link dateTimeRangeTouched}. Everything
+ * after the first keystroke, hover or click remains browser-only and is described as such on the
+ * card.
  */
 
 import {
@@ -18,9 +19,11 @@ import {
   type DateRangePickerLabels,
   type DateRangePreset,
   type DateRangePresetOption,
+  type DateTimeRange,
   Dropdown,
   DropdownItem,
   isValidDateRange,
+  isValidDateTimeRange,
   OnOffButtons,
   rangeForPreset,
   ToggleField,
@@ -316,6 +319,20 @@ const datePresetOptions: readonly DateRangePresetOption[] = [
  */
 export function dateRangeTouched(range: DateRange): string {
   return isValidDateRange(range)
+    ? `${range.from} → ${range.to}`
+    : "incomplete — Apply stays disabled"
+}
+
+/**
+ * {@link dateRangeTouched}'s counterpart for a `withTime` range: delegates to `isValidDateTimeRange`,
+ * the function the picker's own Apply button gates on in that mode, for the reason given on
+ * {@link dateRangeTouched} itself.
+ *
+ * @param range Timed range to report on.
+ * @returns A sentence describing it, or that it cannot be applied.
+ */
+export function dateTimeRangeTouched(range: DateTimeRange): string {
+  return isValidDateTimeRange(range)
     ? `${range.from} → ${range.to}`
     : "incomplete — Apply stays disabled"
 }
@@ -801,6 +818,41 @@ function DateRangePickerEmptyDemo() {
   )
 }
 
+/**
+ * The picker with `withTime` on: From and To are `datetime-local` fields, and the panel also offers
+ * the two presets that only make sense with a time of day, `"last-hour"` and `"last-24-hours"`.
+ *
+ * No `presets` prop in this mode — see `DateRangePickerTimeProps`'s own doc for why — so the custom
+ * fields are always here to type an arbitrary range into, rather than gated behind a `"custom"`
+ * entry the caller opts into. `now` is injected, the same way the two day-mode cards above inject
+ * it, so the two sub-day presets resolve to the same numbers at every build.
+ */
+function DateRangePickerWithTimeDemo() {
+  const range = useSignal<DateTimeRange | null>(null)
+
+  return (
+    <div class="space-y-3">
+      <DateRangePicker
+        withTime
+        range={range.value}
+        onChange={(next) => range.value = next}
+        timeZone={fixedZone}
+        now={fixedNow}
+        dataE2E="guide-date-range-time"
+      />
+      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
+        range: {range.value === null ? "none" : dateTimeRangeTouched(range.value)}
+      </p>
+      <p class="text-xs text-gray-500 dark:text-gray-400">
+        <code>Last hour</code> and <code>Last 24 hours</code>{" "}
+        are real elapsed time, not calendar walking: each subtracts exactly one or twenty-four hours
+        from <code>now={fixedNow.toISOString()}</code> before reading the wall clock in{" "}
+        <code>{fixedZone}</code> — the maths that keeps them correct across a clock change.
+      </p>
+    </div>
+  )
+}
+
 export const inputDemos = {
   ToggleSwitch: {
     summary:
@@ -887,7 +939,7 @@ export const inputDemos = {
   },
   DateRangePicker: {
     summary:
-      "Preset menu plus a custom from/to panel over `rangeForPreset`. The value is controlled, every string in the panel defaults to English and can be overridden one key at a time, and `timeZone` is required because the server's zone is not the visitor's. The clock is either injected through `now` or read inside a click handler, never during render, so the first render is deterministic. The panel is a `role=\"group\"` rather than a menu, because it contains form controls. Focus follows the panel: opening moves it to the pressed preset, and Escape, a preset, Apply and Cancel all hand it back to the trigger.",
+      'Preset menu plus a custom from/to panel over `rangeForPreset`. The value is controlled, every string in the panel defaults to English and can be overridden one key at a time, and `timeZone` is required because the server\'s zone is not the visitor\'s. The clock is either injected through `now` or read inside a click handler, never during render, so the first render is deterministic. The panel is a `role="group"` rather than a menu, because it contains form controls. Focus follows the panel: opening moves it to the pressed preset, and Escape, a preset, Apply and Cancel all hand it back to the trigger. `withTime` swaps the two date fields for `datetime-local` ones, carries a timed `DateTimeRange` instead of a `DateRange`, and adds two presets built for a time of day — `"last-hour"` and `"last-24-hours"`, both computed over `rangeForTimePreset`.',
     snippet: `<DateRangePicker
   range={range.value}
   onChange={(next) => range.value = next}
@@ -900,11 +952,20 @@ export const inputDemos = {
 />
 
 // Every label is English by default; override only the ones you need to.
-<DateRangePicker {...props} labels={{ placeholder: "All time" }} />`,
+<DateRangePicker {...props} labels={{ placeholder: "All time" }} />
+
+// withTime: datetime-local fields, a DateTimeRange, and two sub-day presets — no presets prop.
+<DateRangePicker
+  withTime
+  range={timedRange.value}
+  onChange={(next) => timedRange.value = next}
+  timeZone="Europe/Paris"
+/>`,
     render: () => (
       <div class="space-y-6">
         <DateRangePickerDemo />
         <DateRangePickerEmptyDemo />
+        <DateRangePickerWithTimeDemo />
       </div>
     ),
   },
