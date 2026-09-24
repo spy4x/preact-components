@@ -54,7 +54,6 @@ import {
   check,
   type CheckBlock,
   commitBlocks,
-  committedBlockNames,
   connect,
   currentBlockName,
   debuggingPort,
@@ -64,6 +63,7 @@ import {
   lastCheckName,
   poll,
   pressKey,
+  ranBlockNames,
   report,
   runBlocks,
   selectBlocks,
@@ -793,9 +793,10 @@ const PACKAGE_BLOCKS: readonly CheckBlock<Devtools>[] = [
 /**
  * The line that marks a filtered `--only` run as filtered — `undefined` on every full run.
  *
- * Builds it from {@link committedBlockNames}, not `ONLY` — see {@link filteredRunLine}'s own doc for
- * why that distinction is the whole point of this function, and `pages/checks/harness.test.ts` for
- * the case it protects.
+ * Names the blocks that ran, from {@link ranBlockNames} — not the blocks `ONLY` asked for, and not
+ * the blocks committed: a refused request commits nothing, and a run whose browser never starts
+ * commits blocks that then never run. Either way the line names only what the summary above it
+ * counted.
  *
  * Passed to {@link report} as its `note`, which is what makes this the true last line of the run
  * regardless of how many check lines came before it — see that parameter's own doc for the
@@ -804,7 +805,7 @@ const PACKAGE_BLOCKS: readonly CheckBlock<Devtools>[] = [
  */
 function filteredRunNote(): string | undefined {
   if (!ONLY) return undefined
-  return filteredRunLine(PACKAGE_BLOCKS.map((block) => block.name), committedBlockNames())
+  return filteredRunLine(PACKAGE_BLOCKS.map((block) => block.name), ranBlockNames())
 }
 
 await staticPhase()

@@ -311,33 +311,39 @@ export function commitBlocks(names: readonly string[]): void {
 }
 
 /**
- * Names of every block committed so far, in commit order — empty before `commitBlocks` has ever
- * been called.
+ * The blocks in a ledger that ran, in whole or in part, in commit order.
  *
- * This is the ground truth for what a run actually meant to run, as opposed to what a flag like
- * `--only` merely asked for: a request and a commit can differ, and the two are supposed to differ
- * exactly when a run refuses to start at all — an unknown or empty `--only` selection fails its own
- * check before `commitBlocks` is ever reached, so this reads back empty rather than echoing the bad
- * request (`#253`'s second review, which found `verify.ts`'s `--only` marker doing the latter).
+ * Pure so it is testable without the module-level `Run` singleton. A committed block is not
+ * necessarily a block that ran: a run whose browser never starts commits its blocks and then marks
+ * every one of them {@link BlockOutcome.NeverRan}. Naming committed blocks as "ran" printed `ran
+ * system` under a summary that said `system never ran` (`#253`'s third review).
+ *
+ * @param blocks A run's committed blocks with how each ended — {@link Run.blocks}.
  */
-export function committedBlockNames(): readonly string[] {
-  return [...currentRun.blocks.keys()]
+export function blocksThatRan(blocks: ReadonlyMap<string, BlockOutcome>): readonly string[] {
+  return [...blocks].filter(([, outcome]) => outcome !== BlockOutcome.NeverRan).map(([name]) =>
+    name
+  )
 }
 
 /**
- * Render `--only`'s filtered-run marker line from the blocks that actually ran.
+ * Names of every block in this script's own run that ran, in whole or in part — see
+ * {@link blocksThatRan}. Empty before `commitBlocks` has been called, and empty after a run that
+ * refused to start: an unknown or empty `--only` selection fails before anything is committed.
+ */
+export function ranBlockNames(): readonly string[] {
+  return blocksThatRan(currentRun.blocks)
+}
+
+/**
+ * Render `--only`'s filtered-run marker line.
  *
- * Pure and exported so this text is testable without a browser or the module-level `Run` singleton
- * `committedBlockNames()` reads. `verify.ts`'s own `filteredRunNote` is the one caller, and it
- * passes `committedBlockNames()`'s own result as `ran`, never the raw `--only` request — a test
- * built around this function, with `ran` explicitly empty while `all` still names several blocks,
- * is what would go red if a future change went back to reading the request instead: the earlier
- * shape here read `ONLY` directly, so an unknown or empty `--only` selection — nothing committed,
- * nothing run — still printed the blocks the flag had *asked* for (`#253`'s second review).
+ * Pure so the text is testable without a browser. `verify.ts`'s `filteredRunNote` is the one
+ * caller and passes {@link ranBlockNames} as `ran` — never the raw `--only` request, which named
+ * blocks that had not run whenever the request was refused (`#253`'s second review).
  *
  * @param all Every package block's name, in run order.
- * @param ran The blocks that were actually committed — `committedBlockNames()`'s own result, or
- * empty for a request that never got that far.
+ * @param ran The blocks that ran, in whole or in part; empty when none did.
  */
 export function filteredRunLine(all: readonly string[], ran: readonly string[]): string {
   const excluded = all.filter((name) => !ran.includes(name))

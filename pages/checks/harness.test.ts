@@ -15,6 +15,7 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import {
   BlockOutcome,
+  blocksThatRan,
   type CheckBlock,
   connect,
   Devtools,
@@ -400,6 +401,24 @@ describe("selectBlocks", () => {
     expect(selection.selected).toEqual([])
     expect(selection.excluded.map((block) => block.name)).toEqual(["theme", "ui"])
     expect(selection.unknown).toEqual([])
+  })
+})
+
+describe("blocksThatRan", () => {
+  it("leaves out a block that was committed and never ran", () => {
+    // A run whose browser never starts commits its blocks and marks each one `NeverRan`; naming
+    // those as "ran" printed `FILTERED: ran system` under `system never ran` (#253's third review).
+    const blocks = new Map([
+      ["theme", BlockOutcome.Completed],
+      ["system", BlockOutcome.NeverRan],
+      ["ui", BlockOutcome.StoppedPartWay],
+    ])
+
+    expect(blocksThatRan(blocks)).toEqual(["theme", "ui"])
+  })
+
+  it("is empty when every committed block never ran", () => {
+    expect(blocksThatRan(new Map([["system", BlockOutcome.NeverRan]]))).toEqual([])
   })
 })
 
