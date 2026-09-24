@@ -770,6 +770,13 @@ level — passing both, or neither, is a compile error — and `getRows` may ret
 or a `Promise` of one, since "export everything the current filter matches" is usually a fetch and
 `await`ing a value that is already an array resolves immediately either way.
 
+The download itself goes through `@spy4x/platform/browser/download`'s `downloadResponseAsFile`,
+handed a `Response` wrapping the written bytes — `ui` depends on `@spy4x/platform` for that one
+module alone, pinned in `ui/deno.json`'s own `imports` rather than the root import map, the same way
+`charts/deno.json` pins `d3`. It attaches a temporary anchor, clicks it and detaches it in the same
+task, then revokes the object URL from a timer about five seconds later, because revoking in the
+click's own task has historically cancelled a download that was still starting.
+
 The writer (`ui/csv.ts`, package-private — not in this package's `exports`, not re-exported from
 `+index.ts`) is RFC 4180 CSV: commas, double quotes and line breaks inside a cell are quoted, with
 an embedded quote doubled; the file is UTF-8 with a leading byte-order mark, which is what makes
