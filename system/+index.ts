@@ -61,6 +61,13 @@ export {
   type SiteHeaderProps,
 } from "./site-header.tsx"
 export {
+  readStateInit,
+  StateInit,
+  type StateInitProps,
+  type StateInitSourceLike,
+  stateInitText,
+} from "./state-init.tsx"
+export {
   type ContainerLike,
   DEFAULT_UPDATE_MESSAGE,
   type RegistrationLike,
