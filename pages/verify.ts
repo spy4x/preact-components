@@ -573,6 +573,14 @@ async function browserPhase(): Promise<void> {
         await devtools.send("Log.enable", {})
         await devtools.send("Network.enable", {})
         await devtools.send("Page.enable", {})
+        // A real click on a real `<a download>` — `ui/`'s ExportButton checks drive exactly that —
+        // saves a file into this machine's own Downloads folder unless told otherwise; nothing in
+        // this run reads a saved file back, every assertion about a download's bytes is made from
+        // inside the page (see `pages/checks/ui.ts`'s `armExportInstrumentation`). `deny` over
+        // `allow` + a path inside the run's own profile: there is no legitimate download this run
+        // ever needs to land on disk, so refusing every one outright is simpler than routing them
+        // into a directory that then has to be trusted to exist and be cleaned up.
+        await devtools.send("Browser.setDownloadBehavior", { behavior: "deny" })
 
         await devtools.send("Page.navigate", { url: server.url })
         await devtools.next("Page.loadEventFired")
