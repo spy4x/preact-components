@@ -2939,24 +2939,23 @@ async function lateMonthChecks(devtools: Devtools): Promise<void> {
   const stagedAway = await standOnDay(devtools, LATE_GRID, LATE_DAY)
   const beforeAway = await read(devtools, LATE_STATE, NO_CARD)
   await pressKey(devtools, "PageDown")
-  const restoredAway = await poll(
+  // `restoredAway` is the "still on their day" proof itself, not merely a wait to get past before
+  // taking one: `poll`'s predicate runs immediately, with no sleep before its first attempt, so this
+  // succeeds on the first round trip whenever the day genuinely has not moved yet — one CDP call
+  // after the press, not a wait bounded by how long anything else takes to settle. Reading the day
+  // again later, after scrolling, would instead read it at a point gated by how long scrolling takes
+  // to settle — at least 100ms — and the demo's late card answers a month change 300ms after the key
+  // press, so under load that second wait could stretch long enough for the answer to land first,
+  // failing a check that was never wrong (#267). A 350ms pause inserted right before such a second
+  // read reproduced that exact failure in an earlier version of this check; reading the day here
+  // instead, before scrolling is even asked for, does not have that second wait to lose.
+  const stillOnDay = await poll(
     () => read(devtools, `${LATE_STATE}.date === ${JSON.stringify(LATE_DAY)}`, false),
     3_000,
   )
-  // Scrolling moves no focus, so the reader is still standing on their day — off screen. The day is
-  // read inside the same evaluate as the scroll call, at a point this check controls, rather than
-  // after waiting for the scroll to settle: that wait takes at least 100ms, the demo's late card
-  // answers a month change 300ms after the key press, and under load the wait can stretch long
-  // enough for the answer to land first — failing a check that was never wrong (#267). Reading in
-  // the same round trip as the scroll removes that race instead of outrunning it.
-  const stillOnDay = await read(
-    devtools,
-    `(() => {
-      globalThis.scrollTo({ top: 0, behavior: "instant" })
-      return ${LATE_STATE}.date === ${JSON.stringify(LATE_DAY)}
-    })()`,
-    false,
-  )
+  // Scrolling moves no focus, so the reader is still standing on their day — off screen. Nothing
+  // above depends on how long this settles: `stillOnDay` was already read.
+  await read(devtools, `(globalThis.scrollTo({ top: 0, behavior: "instant" }), true)`, false)
   const scrolledTo = await settleScroll(devtools)
   const awayWanted = `2026-04-${LATE_DAY.slice(8, 10)}`
   await poll(
@@ -2975,10 +2974,10 @@ async function lateMonthChecks(devtools: Devtools): Promise<void> {
 
   check(
     "a month arriving under a reader scrolled away moves the focus without moving the page",
-    stagedAway && restoredAway && stillOnDay && scrolledTo === 0 &&
+    stagedAway && stillOnDay && scrolledTo === 0 &&
       afterAway.count === beforeAway.count + 1 && afterAway.onDay &&
       afterAway.date === awayWanted && scrollAfterAway === 0,
-    stagedAway && restoredAway
+    stagedAway && stillOnDay
       ? `the reader stayed on ${LATE_DAY} and scrolled the page to ${scrolledTo}; the month then ` +
         `went ${beforeAway.extra} → ${afterAway.extra || "nothing"}, the focus went to ` +
         `${afterAway.date || afterAway.focused} — wanted ${awayWanted} — and the page is at ` +
