@@ -1274,16 +1274,24 @@ describe("theme preset", () => {
     expect(btn).toContain("outline-width: 2px")
   })
 
-  it("emits the scrollbar vendor pseudos and the blink keyframes", async () => {
+  it("emits the scrollbar vendor pseudos", async () => {
     const css = await preset()
     expect(css).toContain("&::-webkit-scrollbar-thumb")
-    expect(css).toContain("@keyframes blink")
   })
 
   it("emits the map status rules", async () => {
     expect(declarationsOf(await preset(), ".status-on .map-marker")).toContain(
       "var(--color-success, ",
     )
+  })
+
+  it("does not bring back power-anomaly or its blink keyframes", async () => {
+    // #143 gave `map/` the marker classes and dropped this one: `power-anomaly` was one source
+    // application's own wording, not part of this library, and nothing else in the theme ever used
+    // `blink`.
+    const css = await preset()
+    expect(css).not.toContain("power-anomaly")
+    expect(css).not.toContain("@keyframes blink")
   })
 
   it("keeps the document rules opt-in behind .theme-base", async () => {
