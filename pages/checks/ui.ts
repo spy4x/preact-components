@@ -2115,9 +2115,9 @@ const TOOLTIP_DISMISSED =
  * Tooltip's two halves of one rule: a hint can be dismissed, and a hint can be pointed at.
  *
  * Neither half is reachable from a test that renders to a string. The dismissal is a real Escape
- * press against a `keydown` listener the component registers only while the trigger is engaged,
- * and the hoverable half is the browser's own hit testing — the thing `pointer-events-none` used
- * to fail, and which nothing in rendered markup can answer.
+ * press against a `keydown` listener the component keeps attached for its whole life (`#252`), and
+ * the hoverable half is the browser's own hit testing — the thing `pointer-events-none` used to
+ * fail, and which nothing in rendered markup can answer.
  *
  * **What the browser can show, and what it took to get there.** Tailwind v4 compiles every hover
  * style — `hover:`, `group-hover:` — inside `@media (hover: hover)`, and headless Chromium answers
@@ -2300,6 +2300,7 @@ async function tooltipChecks(devtools: Devtools): Promise<void> {
 
   await escapeOverPointerCheck(devtools)
   await escapeOnFocusCheck(devtools)
+  await tooltipEscapeRaceCheck(devtools)
   await tooltipNameCheck(devtools)
 }
 
@@ -2444,14 +2445,14 @@ async function hoverRevealCheck(devtools: Devtools): Promise<void> {
  *
  * An earlier version of this check began with a control — pointer in the corner, press Escape,
  * assert nothing happened — to pin the listener being registered only while the trigger is
- * engaged. It is gone for two reasons. Nobody can observe that property: engaging the trigger
- * clears the dismissed state anyway, so a component holding one permanent listener would behave
- * identically for every user on every device, and the property is a cost argument, not a
- * behaviour. And it raced: the check before this one blurs the trigger and waits for the hint to
- * stop being shown, but that wait watches a CSS state which stops matching the instant focus
- * leaves, with no render involved, so it could return before the effect cleanup had removed the
- * listener. Two runs in eight then failed on the control press landing on a listener that was
- * still attached. The property is written down in `ui/tooltip.tsx` instead.
+ * engaged. It is gone since `#252`: the component now keeps the listener attached for its whole
+ * life and decides at press time from `hovered`/`focused` instead, which is what closed the
+ * same-task race `tooltipEscapeRaceCheck` proves below. The control also raced on its own terms
+ * even before that fix mattered: the check before this one blurs the trigger and waits for the
+ * hint to stop being shown, but that wait watches a CSS state which stops matching the instant
+ * focus leaves, with no render involved, so it could return before the old effect's cleanup had
+ * removed the listener. Two runs in eight then failed on the control press landing on a listener
+ * that was still attached.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -2564,6 +2565,74 @@ async function escapeOnFocusCheck(devtools: Devtools): Promise<void> {
 
   await devtools.evaluate<null>(`(globalThis.__verifyTooltip?.trigger?.blur(), null)`)
   await pointerToCorner(devtools)
+}
+
+/**
+ * An Escape dispatched in the same task as the focus that reveals the hint must still dismiss it —
+ * `#252`.
+ *
+ * `ui/tooltip.tsx`'s "Dismissible" bullet explains the shape this used to have: a `keydown`
+ * listener that only (re)attached once `engaged` had caught up ran *after* the render an
+ * `onFocusIn` handler already committed synchronously, so a key press landing in that gap found no
+ * listener at all. This drives `focus()` and a bubbling synthetic Escape back to back inside one
+ * `Runtime.evaluate`, before Preact's own scheduling gets a turn to run the effect that would have
+ * (re)attached the old, gated listener — `pages/checks/system.ts`'s `siteHeaderEscapeRaceCheck` is
+ * the reference this follows, two animation frames included: they let the *previous* engagement's
+ * effect cleanup finish first, so a listener left over from an earlier press is not what this one
+ * accidentally passes against.
+ *
+ * `Input.dispatchKeyEvent` is not used here, unlike the two checks above: those exist to prove a
+ * *trusted* key press reaches the listener. This one is not about trust — a plain
+ * `document.addEventListener("keydown", …)` reacts to an untrusted, synthetic event exactly the
+ * same way, and what is in question is only whether a listener exists at the instant the press
+ * lands, which a same-task synthetic dispatch settles on its own.
+ *
+ * The dismissal itself lands through a render — `dismissed.value = true` takes the `hidden`
+ * attribute and `aria-describedby` off through Preact's own scheduling, not a direct DOM write —
+ * so unlike `siteHeaderEscapeRaceCheck`'s `details.open`, this cannot read the outcome inside the
+ * same `Runtime.evaluate` call the press was sent in. Only the focus and the key press have to
+ * land in the same task; reading the result afterwards, once the render has had a chance to run,
+ * still proves the listener was there when the press arrived; a stale listener from a pathological
+ * old build would only make this check pass *late*, and the 3s poll bounds how late.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function tooltipEscapeRaceCheck(devtools: Devtools): Promise<void> {
+  await pointerToCorner(devtools)
+  await poll(() => devtools.evaluate<boolean>(`!${TOOLTIP_SHOWN}`), 3_000)
+
+  const dispatched = await devtools.evaluate<boolean>(`(async () => {
+    // Let the previous engagement's effect cleanup finish first — see the JSDoc above.
+    for (let k = 0; k < 2; k++) {
+      await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)))
+    }
+    const trigger = globalThis.__verifyTooltip?.trigger ?? null
+    if (!trigger) return false
+    // Same task, back to back: the focus that engages the trigger, then the Escape.
+    trigger.focus()
+    trigger.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }),
+    )
+    return true
+  })()`)
+
+  const dismissed = await poll(() => devtools.evaluate<boolean>(TOOLTIP_DISMISSED), 3_000)
+  const after = await devtools.evaluate<TooltipState>(TOOLTIP_STATE)
+
+  check(
+    "an Escape dispatched in the same task as the focus that reveals the hint still dismisses it",
+    dispatched && dismissed && after.described === null,
+    !dispatched
+      ? "the Tooltip card has no live row to focus"
+      : !dismissed
+      ? "the hint still had a box 3s after focus() and a same-task Escape dispatch — the listener " +
+        "was not there yet when the press landed"
+      : `dismissed, and aria-describedby reads ${JSON.stringify(after.described)}`,
+  )
+
+  await devtools.evaluate<null>(`(globalThis.__verifyTooltip?.trigger?.blur(), null)`)
+  await pointerToCorner(devtools)
+  await poll(() => devtools.evaluate<boolean>(`!${TOOLTIP_SHOWN}`), 3_000)
 }
 
 /**
@@ -6075,10 +6144,25 @@ async function newsletterFormFocusElsewhereCheck(devtools: Devtools): Promise<vo
  * `<body>` — exactly what a visitor clicking on plain text and reading elsewhere also produces — and
  * pull focus back a second time for a visitor this component had already, correctly, let go of.
  *
+ * **`#249`: two changes from how this check used to read the page.** First, it waits for the
+ * component's own one-time recovery to land — the region holding focus — *before* it does its own
+ * blur, rather than racing it: blurring to `<body>` while that recovery is still outstanding would
+ * hand the still-set flag exactly the state (`<body>` focused) it treats as its own cue to recover
+ * into, for a visitor this check had not yet finished setting up. Second, the blur, the scroll and
+ * the first reading of both happen inside one `Runtime.evaluate`, before this check waits on
+ * anything else — a separate, later read (the previous shape) can be a read of the *result's* own
+ * effects if the submit happens to settle in between, which is a check reading its own setup after
+ * the thing it means to guard against has already run. The scroll is `behavior: "instant"` for the
+ * same reason `pages/verify.ts`'s own doc gives for `resetAfterThrow`'s identical call:
+ * `pages/styles.css` sets `scroll-behavior: smooth` on the document, so a plain `scrollTo(0, 0)`
+ * starts an animation still running when this reads `scrollY` right back — instant is what makes
+ * that same-evaluate reading the settled position rather than a frame of the animation.
+ *
  * @param devtools The connected session, on a hydrated page.
  */
 async function newsletterFormBlurWhileSendingCheck(devtools: Devtools): Promise<void> {
   const card = '#demo-NewsletterForm [data-e2e="newsletter-form-blur-while-sending"]'
+  const region = `${card} [role="status"]`
 
   const ready = await cardCanSubmit(devtools, card)
   check(
@@ -6108,48 +6192,56 @@ async function newsletterFormBlurWhileSendingCheck(devtools: Devtools): Promise<
     1_000,
   )
 
-  // This browser's own recovery (disabling the fieldset drops focus to <body>, and the component
-  // then moves it to the region) may already have happened by the time `sending` above resolved —
-  // that race is exactly why the flag has to be cleared the first time it fires, rather than this
-  // check needing to win it. Blurring explicitly and scrolling to the top afterward is what puts
-  // this run into the state a visitor who reads elsewhere produces, regardless of which side of that
-  // race it started from.
-  //
-  // `scrollTo` here (and any scroll a later refocus triggers) can run as a smooth, animated scroll —
-  // reading `scrollY` in the same script turn that starts it catches the animation mid-flight, not
-  // its destination, which is a false mismatch that has nothing to do with the component. Both reads
-  // wait for `settledScroll` first so they see where the page actually came to rest.
-  await devtools.evaluate<null>(`(() => {
+  // Wait out the component's own one-time recovery before this check does its own blur — see the
+  // JSDoc above. Not a formality: without this, the check's blur can land before that recovery has,
+  // and the still-set flag then reads the check's own blur as its cue to recover into.
+  const recovered = await poll(() => regionHasFocus(devtools, card), 2_000)
+
+  // Blur, scroll and the first reading of both, in the one evaluate — before this waits on
+  // anything else. `behavior: "instant"` is what makes `scrollY` already the settled value here
+  // rather than a frame of a smooth-scroll animation still in flight.
+  const scrollTarget = await devtools.evaluate<{ blurred: boolean; scrollY: number }>(`(() => {
     document.activeElement?.blur?.()
-    globalThis.scrollTo(0, 0)
-    return null
-  })()`).catch(() => null)
-  await settledScroll(devtools)
-  const scrollTarget = await devtools.evaluate<{ blurred: boolean; scrollY: number }>(`(() => ({
-    blurred: document.activeElement === document.body,
-    scrollY: Math.round(globalThis.scrollY),
-  }))()`).catch(() => ({ blurred: false, scrollY: -1 }))
+    globalThis.scrollTo({ top: 0, left: 0, behavior: "instant" })
+    return {
+      blurred: document.activeElement === document.body,
+      scrollY: Math.round(globalThis.scrollY),
+    }
+  })()`).catch(() => ({ blurred: false, scrollY: -1 }))
 
   const settled = await poll(
     async () => (await enhancedFormReading(devtools, card)).region.startsWith("You're subscribed"),
     2_000,
   )
   await settledScroll(devtools)
-  const after = await devtools.evaluate<{ onBody: boolean; scrollY: number }>(`(() => ({
-    onBody: document.activeElement === document.body,
-    scrollY: Math.round(globalThis.scrollY),
-  }))()`).catch(() => ({ onBody: false, scrollY: -2 }))
+  const after = await devtools.evaluate<{ onBody: boolean; onRegion: boolean; scrollY: number }>(
+    `(() => ({
+      onBody: document.activeElement === document.body,
+      onRegion: document.activeElement === document.querySelector('${region}'),
+      scrollY: Math.round(globalThis.scrollY),
+    }))()`,
+  ).catch(() => ({ onBody: false, onRegion: false, scrollY: -2 }))
 
   check(
     "a visitor who blurs to <body> and scrolls away while sending is not pulled back once it settles",
-    sending && scrollTarget.blurred && settled && after.onBody &&
+    sending && recovered && scrollTarget.blurred && settled && after.onBody &&
       after.scrollY === scrollTarget.scrollY,
     !sending
       ? "the fieldset never disabled — the click may not have started a real submit"
+      : !recovered
+      ? "the component's own one-time recovery never moved focus onto the live region before " +
+        "this check blurred, so the blur below cannot be told apart from that recovery's own moment"
       : !scrollTarget.blurred
-      ? "could not blur back to <body>"
-      : `settled: ${settled}; still on <body> once it did: ${after.onBody}; scrollY ` +
-        `${scrollTarget.scrollY} → ${after.scrollY}`,
+      ? "could not blur back to <body> — read in the same evaluate as the blur itself"
+      : !settled
+      ? "the card never reached its 'You're subscribed' result"
+      : !after.onBody
+      ? after.onRegion
+        ? "the result pulled focus back onto the live region after this check had already, " +
+          "deliberately, blurred to <body> — a visitor who had moved on to reading something " +
+          "else would be dragged back to the form"
+        : "focus left <body> for something other than the live region once the result landed"
+      : `settled: ${settled}; scrollY ${scrollTarget.scrollY} → ${after.scrollY}`,
   )
 }
 

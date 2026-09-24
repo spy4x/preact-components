@@ -251,6 +251,42 @@ export class Run {
   }
 }
 
+/** What restricting a full block list to a `--only` selection produced — see {@link selectBlocks}. */
+export interface BlockSelection<Context> {
+  /** The blocks to run, in the input list's own order, restricted to the names asked for. */
+  selected: readonly CheckBlock<Context>[]
+  /** Every block `all` had that `only` left out, in the original order. */
+  excluded: readonly CheckBlock<Context>[]
+  /** Names in `only` that matched no block in `all` — a typo, not a filter. */
+  unknown: readonly string[]
+}
+
+/**
+ * Restrict `all` to the blocks named in `only`, preserving `all`'s own order.
+ *
+ * Pure on purpose: `verify.ts`'s `--only` flag is the one caller, and this is what makes its
+ * selection logic testable without a browser. A name in `only` that matches nothing in `all` comes
+ * back in {@link BlockSelection.unknown} rather than being silently dropped — `verify.ts` turns
+ * that into a hard failure instead of quietly running fewer blocks than were asked for, which is
+ * the one way a `--only` typo could pass for a real result.
+ *
+ * @param all Every block, in run order.
+ * @param only Names asked for, in any order; a name repeated in `only` is not repeated in the
+ * result, since a block can only run once.
+ */
+export function selectBlocks<Context>(
+  all: readonly CheckBlock<Context>[],
+  only: readonly string[],
+): BlockSelection<Context> {
+  const wanted = new Set(only)
+  const known = new Set(all.map((block) => block.name))
+  return {
+    selected: all.filter((block) => wanted.has(block.name)),
+    excluded: all.filter((block) => !wanted.has(block.name)),
+    unknown: [...wanted].filter((name) => !known.has(name)),
+  }
+}
+
 /** The ledger the script itself writes to; `harness.test.ts` builds its own instead. */
 const currentRun = new Run()
 
@@ -272,6 +308,48 @@ export function check(name: string, ok: boolean, detail = ""): void {
  */
 export function commitBlocks(names: readonly string[]): void {
   currentRun.commit(names)
+}
+
+/**
+ * The blocks in a ledger that ran, in whole or in part, in commit order.
+ *
+ * Pure so it is testable without the module-level `Run` singleton. A committed block is not
+ * necessarily a block that ran: a run whose browser never starts commits its blocks and then marks
+ * every one of them {@link BlockOutcome.NeverRan}. Naming committed blocks as "ran" printed `ran
+ * system` under a summary that said `system never ran` (`#253`'s third review).
+ *
+ * @param blocks A run's committed blocks with how each ended — {@link Run.blocks}.
+ */
+export function blocksThatRan(blocks: ReadonlyMap<string, BlockOutcome>): readonly string[] {
+  return [...blocks].filter(([, outcome]) => outcome !== BlockOutcome.NeverRan).map(([name]) =>
+    name
+  )
+}
+
+/**
+ * Names of every block in this script's own run that ran, in whole or in part — see
+ * {@link blocksThatRan}. Empty before `commitBlocks` has been called, and empty after a run that
+ * refused to start: an unknown or empty `--only` selection fails before anything is committed.
+ */
+export function ranBlockNames(): readonly string[] {
+  return blocksThatRan(currentRun.blocks)
+}
+
+/**
+ * Render `--only`'s filtered-run marker line.
+ *
+ * Pure so the text is testable without a browser. `verify.ts`'s `filteredRunNote` is the one
+ * caller and passes {@link ranBlockNames} as `ran` — never the raw `--only` request, which named
+ * blocks that had not run whenever the request was refused (`#253`'s second review).
+ *
+ * @param all Every package block's name, in run order.
+ * @param ran The blocks that ran, in whole or in part; empty when none did.
+ */
+export function filteredRunLine(all: readonly string[], ran: readonly string[]): string {
+  const excluded = all.filter((name) => !ran.includes(name))
+  return `FILTERED: ran ${ran.join(", ") || "(none)"}, left out ${
+    excluded.join(", ") || "(none)"
+  } — not a full run; CI never passes --only`
 }
 
 /**
@@ -303,9 +381,20 @@ export function runBlocks<Context>(
   return currentRun.runBlocks(blocks, context, recover)
 }
 
-/** Print the outcome and exit non-zero when anything failed. */
-export function report(): never {
+/**
+ * Print the outcome and exit non-zero when anything failed.
+ *
+ * @param note Printed as the very last line, directly after the summary — `verify.ts`'s `--only`
+ * uses this for the line that marks a filtered run as filtered (`#253`'s review): a banner printed
+ * earlier in the run, before the block of check lines `reportLines()` prints in one batch at the
+ * end, reads as if it belongs to the run's setup rather than its result, and sits well above the
+ * summary line a reader actually looks at — measured at about 136 lines above it, in a run whose
+ * checks numbered barely more than that. Passed to `report` instead, it is the true last line no
+ * matter how many checks came before it.
+ */
+export function report(note?: string): never {
   for (const line of currentRun.reportLines()) console.log(line)
+  if (note) console.log(note)
   Deno.exit(currentRun.failures() === 0 ? 0 : 1)
 }
 
@@ -422,12 +511,21 @@ export async function poll(predicate: () => Promise<boolean>, timeoutMs: number)
  * Moved here from `checks/ui.ts` (`#225`, `#238`) once `checks/pages.ts` needed the same wait for a
  * route's scroll rather than a fixed delay — one helper, not two copies drifting apart.
  *
+ * The return value is new (`#253`'s second review): every existing caller already ignores it, so
+ * adding it changes nothing for them, but `verify.ts`'s one-time settle before `runBlocks` needs to
+ * tell "the page had already stopped" apart from "the budget ran out while it was still moving" —
+ * this function cannot itself distinguish "never started scrolling" from "settled instantly", which
+ * both read as `true` on the first two-reads-agree check, but a caller that only cares whether the
+ * budget was enough does not need that distinction.
+ *
  * @param devtools The connected session.
  * @param timeoutMs How long to wait for two consecutive reads to agree before giving up.
+ * @returns Whether two consecutive reads agreed inside the budget — `false` means the budget ran
+ * out while `scrollY` was still changing.
  */
-export async function settledScroll(devtools: Devtools, timeoutMs = 3_000): Promise<void> {
+export async function settledScroll(devtools: Devtools, timeoutMs = 3_000): Promise<boolean> {
   let previous = Number.NaN
-  await poll(async () => {
+  return await poll(async () => {
     const current = await devtools.evaluate<number>("Math.round(globalThis.scrollY)")
     const settled = current === previous
     previous = current

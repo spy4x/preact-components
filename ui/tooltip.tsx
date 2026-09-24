@@ -95,18 +95,20 @@ const placementClasses: Record<TooltipPlacement, string> = {
  *
  * A hint nobody can get rid of and nobody can point at is worse than no hint, so both are handled.
  *
- * - **Dismissible.** While the trigger is hovered or focused, one `keydown` listener sits on
- *   `document`, and Escape hides the surface and drops `aria-describedby` without moving focus.
- *   The listener belongs on `document` because the hint can be up while focus is elsewhere
- *   entirely — that is what hovering means. The key is neither consumed nor stopped, so whatever
- *   else Escape does on that page still happens. The hint returns on the next fresh hover or
- *   focus, not during the one it was dismissed in.
+ * - **Dismissible.** One `keydown` listener sits on `document` for the component's whole life, and
+ *   while the trigger is hovered or focused, Escape hides the surface and drops
+ *   `aria-describedby` without moving focus. The listener belongs on `document` because the hint
+ *   can be up while focus is elsewhere entirely — that is what hovering means. The key is neither
+ *   consumed nor stopped, so whatever else Escape does on that page still happens. The hint
+ *   returns on the next fresh hover or focus, not during the one it was dismissed in.
  *
- *   Registering the listener only while the trigger is engaged is a **cost** decision rather than
- *   a behavioural one, and nothing tests it, on purpose: a component that kept one listener for
- *   its whole life would behave identically for every user on every device, since engaging the
- *   trigger clears the dismissed state anyway. What it buys is a page of fifty hints holding no
- *   listeners while nobody is on any of them.
+ *   Attached once on mount rather than only while engaged, and reading `hovered`/`focused` at
+ *   press time rather than closing over `engaged`: an effect that (re)attaches only once
+ *   `engaged` has caught up runs *after* the render an `onPointerEnter`/`onFocusIn` handler
+ *   already committed synchronously (`#252`), so an Escape in the same task as the engagement
+ *   would have found no listener yet. `system/mobile-panel.ts` fixes the same shape the same way.
+ *   The cost is one listener alive for the component's whole life instead of only while engaged;
+ *   `pages/checks/ui.ts`'s `tooltipEscapeRaceCheck` is what makes that cost non-negotiable.
  * - **Hoverable.** The surface takes pointer events and the gap to it is padding rather than a
  *   margin, so the pointer can travel onto the hint and rest there while it is read. The accepted
  *   cost: while a hint is up, its box — bridge included — sits over whatever is behind it and
@@ -138,17 +140,21 @@ export function Tooltip(
   const hovered = useSignal(false)
   const focused = useSignal(false)
   const dismissed = useSignal(false)
-  const engaged = hovered.value || focused.value
 
+  // Empty dependency array, deliberately: this attaches once on mount rather than reacting to
+  // whether the trigger is engaged, and reads `hovered.value`/`focused.value` straight off the
+  // signals at press time instead of closing over a render's value of that condition. See the
+  // class doc's "Dismissible" bullet.
   useEffect(() => {
-    if (!engaged) return
     const dismiss = (event: KeyboardEvent) => {
-      if (event.key === "Escape") dismissed.value = true
+      if (event.key !== "Escape") return
+      if (!hovered.value && !focused.value) return
+      dismissed.value = true
     }
     document.addEventListener("keydown", dismiss)
 
     return () => document.removeEventListener("keydown", dismiss)
-  }, [engaged])
+  }, [])
 
   /**
    * Mark one channel — the pointer or focus — engaged.

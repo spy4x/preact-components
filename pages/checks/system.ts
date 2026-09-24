@@ -699,29 +699,57 @@ async function autofillChecks(devtools: Devtools): Promise<void> {
   )
 }
 
+/** One read of the mode-switch control's aim — see {@link findModeSwitchTarget}. */
+interface ModeSwitchAim {
+  found: boolean
+  x: number
+  y: number
+  /**
+   * Whether the computed centre point resolves back to the button, right now, via
+   * `elementFromPoint`. Diagnostic only: the click below is dispatched at `(x, y)` regardless, and
+   * this exists so a failure's detail can say whether the aim was already off before the click ever
+   * landed, not to decide whether to click at all.
+   */
+  onTarget: boolean
+}
+
 /**
- * Find the mode-switch control's centre, scrolling it into view first.
+ * Find the mode-switch control's centre, scrolling it into view first — one scroll, one read, no
+ * retry.
  *
  * By its own visible text rather than by position or by "the second button in this row": the
  * labels are the component's contract, so a check keyed to them survives the two buttons around it
  * changing, and a relabel of the control itself would be caught here rather than silently aimed at
  * the wrong element.
  *
+ * This used to retry the whole scroll-and-read, and then the whole aim-and-click, until the mode
+ * actually switched — which a review of `#253` rejected: a mode-switch button that ignored every
+ * other click still passed both checks, "in 2 attempt(s)", because the retry could not tell a slow
+ * correct click from a broken one that happened to work eventually. A real visitor forced to click
+ * twice is exactly the defect this check exists to catch, and a retry inside the check hides it.
+ * `elementFromPoint` still runs, once, so a failure's detail can say whether the computed point was
+ * even on the button before the click — evidence for whoever reads the failure, not a reason to try
+ * again.
+ *
  * @param devtools The connected session.
- * @returns The point to click, or `null` when no such button was found.
+ * @returns The point to click and whether it verified on the button, or `found: false` when no such
+ * button was found on the card at all.
  */
-function findModeSwitchTarget(devtools: Devtools): Promise<{ x: number; y: number } | null> {
-  return devtools.evaluate<{ x: number; y: number } | null>(`(() => {
+function findModeSwitchTarget(devtools: Devtools): Promise<ModeSwitchAim> {
+  return devtools.evaluate<ModeSwitchAim>(`(() => {
     const card = document.querySelector('${AUTH_INTERACTIVE}')
     const button = card
       ? [...card.querySelectorAll("button")].find((candidate) =>
         /^(Need|Have) an account\\?/.test(candidate.textContent.trim())
       )
       : null
-    if (!button) return null
+    if (!button) return { found: false, x: 0, y: 0, onTarget: false }
     button.scrollIntoView({ block: "center", behavior: "instant" })
     const rect = button.getBoundingClientRect()
-    return { x: Math.round(rect.left + rect.width / 2), y: Math.round(rect.top + rect.height / 2) }
+    const x = Math.round(rect.left + rect.width / 2)
+    const y = Math.round(rect.top + rect.height / 2)
+    const at = document.elementFromPoint(x, y)
+    return { found: true, x, y, onTarget: at !== null && (at === button || button.contains(at)) }
   })()`)
 }
 
@@ -738,6 +766,18 @@ function findModeSwitchTarget(devtools: Devtools): Promise<{ x: number; y: numbe
  * empty `required` field would stop a wrongly-`type="submit"` button before this check could tell
  * the difference between validation and the behaviour actually under test.
  *
+ * **`#253`.** `AUTH_INTERACTIVE` sits far enough down the page that the first time anything scrolls
+ * to it, the page can still be mid-flight: the catalogue's `DeletionValidation` demo
+ * (`crud/deletion-validation.tsx:29`) starts a smooth scroll toward itself on hydration, from the
+ * top of the page to roughly 36,500px down, and when the `system` block ran alone that scroll was
+ * still moving when this check's own `scrollIntoView` ran — one more frame of it landed on top,
+ * moving the button 170–540px in the runs measured, after this check had already computed where to
+ * click. In a full run the earlier blocks cost enough wall-clock time that the scroll has always
+ * finished first. `pages/verify.ts` now waits for the whole page to stop scrolling once, right
+ * after hydration and before any block's checks run, which covers every block's own first check
+ * under `--only`, not only this one — see its own comment there. (`crud/`'s self-scroll on load is
+ * a separate, pre-existing defect, tracked on its own issue rather than fixed here.)
+ *
  * The press is asserted to have landed — `passwordAutocomplete` flips from `current-password` to
  * `new-password` only because `mode` actually changed — before the counters are trusted, because an
  * unread miss and "correctly did nothing" report the same counters.
@@ -747,7 +787,7 @@ async function authFormModeSwitchChecks(devtools: Devtools): Promise<void> {
   const before = await read(devtools, AUTH_STATE, NO_AUTH_STATE)
 
   const toSignUp = await findModeSwitchTarget(devtools)
-  if (toSignUp) await clickAt(devtools, toSignUp)
+  if (toSignUp.found) await clickAt(devtools, { x: toSignUp.x, y: toSignUp.y })
   const afterFirstPress = await poll(
     () => read(devtools, `${AUTH_STATE}?.passwordAutocomplete === "new-password"`, false),
     3_000,
@@ -756,19 +796,27 @@ async function authFormModeSwitchChecks(devtools: Devtools): Promise<void> {
 
   check(
     "a real pointer press on the mode-switch control switches the mode and submits nothing",
-    Boolean(toSignUp) && afterFirstPress && switched.passwordAutocomplete === "new-password" &&
+    toSignUp.found && afterFirstPress && switched.passwordAutocomplete === "new-password" &&
       switched.signIns === before.signIns && switched.signUps === before.signUps &&
       switched.codes === before.codes,
-    toSignUp
-      ? `password autocomplete ${before.passwordAutocomplete} → ${switched.passwordAutocomplete}, ` +
-        `sign-ins ${before.signIns} → ${switched.signIns}, sign-ups ${before.signUps} → ` +
-        `${switched.signUps}, codes ${before.codes} → ${switched.codes}`
-      : "no mode-switch button found to press",
+    !toSignUp.found
+      ? "no mode-switch button found to press"
+      : `password autocomplete ${before.passwordAutocomplete} → ${switched.passwordAutocomplete}` +
+        (toSignUp.onTarget ? "" : " (elementFromPoint did not confirm the aim before the click)") +
+        `, sign-ins ${before.signIns} → ${switched.signIns}, sign-ups ${before.signUps} → ` +
+        `${switched.signUps}, codes ${before.codes} → ${switched.codes}`,
   )
 
-  // Switched back to sign-in, which every later check in this file assumes as the starting mode.
+  // Switched back to sign-in, which every later check in this file assumes as the starting mode —
+  // but only if the first press actually landed. Without this guard, a first press that silently
+  // did nothing (the mode-switch button ignoring every other click, say) leaves the form in
+  // sign-in the whole time, and the check below reads current-password before and after the second
+  // press and passes on a button that never worked — found in review of `#253`, with a button
+  // rigged to ignore every other click leaving only the first check red.
+  const startedInSignUp = switched.passwordAutocomplete === "new-password"
+
   const toSignIn = await findModeSwitchTarget(devtools)
-  if (toSignIn) await clickAt(devtools, toSignIn)
+  if (toSignIn.found) await clickAt(devtools, { x: toSignIn.x, y: toSignIn.y })
   const afterSecondPress = await poll(
     () => read(devtools, `${AUTH_STATE}?.passwordAutocomplete === "current-password"`, false),
     3_000,
@@ -777,14 +825,19 @@ async function authFormModeSwitchChecks(devtools: Devtools): Promise<void> {
 
   check(
     "a second press switches back to sign-in, still submitting nothing",
-    Boolean(toSignIn) && afterSecondPress && restored.passwordAutocomplete === "current-password" &&
+    startedInSignUp && toSignIn.found && afterSecondPress &&
+      restored.passwordAutocomplete === "current-password" &&
       restored.signIns === before.signIns && restored.signUps === before.signUps &&
       restored.codes === before.codes,
-    toSignIn
-      ? `password autocomplete ${switched.passwordAutocomplete} → ${restored.passwordAutocomplete}, ` +
-        `sign-ins ${switched.signIns} → ${restored.signIns}, sign-ups ${switched.signUps} → ` +
-        `${restored.signUps}`
-      : "no mode-switch button found to press back",
+    !startedInSignUp
+      ? "the form was not in sign-up before this press — the first press above did not land, so " +
+        "this press cannot be told apart from a button that never moved"
+      : !toSignIn.found
+      ? "no mode-switch button found to press back"
+      : `password autocomplete ${switched.passwordAutocomplete} → ${restored.passwordAutocomplete}` +
+        (toSignIn.onTarget ? "" : " (elementFromPoint did not confirm the aim before the click)") +
+        `, sign-ins ${switched.signIns} → ${restored.signIns}, sign-ups ${switched.signUps} → ` +
+        `${restored.signUps}`,
   )
 }
 

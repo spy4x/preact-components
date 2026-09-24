@@ -1,10 +1,12 @@
 /**
- * The two parts of the run ledger a browser cannot prove: that one package block's throw is
- * contained, and that the last line of the report says so.
+ * The parts of the run ledger a browser cannot prove: that one package block's throw is contained,
+ * that the last line of the report says so, and that `--only`'s block-name selection ({@link
+ * selectBlocks}) is what it claims to be.
  *
- * `verify.ts` needs a real browser and seven minutes to answer either question, which is why the
- * isolation and the summary line live on {@link Run} — an object this file drives with fake blocks
- * in milliseconds. Every case here holds one axis still and varies another: where the throwing
+ * `verify.ts` needs a real browser and seven minutes to answer any of these, which is why the
+ * isolation, the summary line and the selection logic live on plain objects and pure functions this
+ * file drives with fake blocks in milliseconds — {@link Run} for the first two, {@link selectBlocks}
+ * for the third. Every `Run` case here holds one axis still and varies another: where the throwing
  * block sits in the order, how many blocks throw, what kind of value is thrown, and whether the
  * block recorded any checks before it threw.
  */
@@ -13,12 +15,15 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import {
   BlockOutcome,
+  blocksThatRan,
   type CheckBlock,
   connect,
   Devtools,
   DevtoolsClosedError,
+  filteredRunLine,
   poll,
   Run,
+  selectBlocks,
 } from "./harness.ts"
 
 /** A block that records one passing check per name it is given and returns. */
@@ -357,6 +362,94 @@ describe("Run.reportLines", () => {
       "INCOMPLETE — 1/2 checks passed, but ui stopped part-way; " +
       "the totals count only the checks that ran",
     ])
+  })
+})
+
+describe("selectBlocks", () => {
+  it("keeps only the named blocks, in the input list's own order", () => {
+    const all = [passing("theme"), passing("icons"), passing("system"), passing("ui")]
+
+    const selection = selectBlocks(all, ["ui", "theme"])
+
+    expect(selection.selected.map((block) => block.name)).toEqual(["theme", "ui"])
+    expect(selection.excluded.map((block) => block.name)).toEqual(["icons", "system"])
+    expect(selection.unknown).toEqual([])
+  })
+
+  it("reports a name that matches no block as unknown, rather than dropping it silently", () => {
+    const all = [passing("theme"), passing("ui")]
+
+    const selection = selectBlocks(all, ["ui", "usi"])
+
+    expect(selection.unknown).toEqual(["usi"])
+    expect(selection.selected.map((block) => block.name)).toEqual(["ui"])
+  })
+
+  it("collapses a name repeated in `only` into one selected block", () => {
+    const all = [passing("theme"), passing("ui")]
+
+    const selection = selectBlocks(all, ["ui", "ui"])
+
+    expect(selection.selected.map((block) => block.name)).toEqual(["ui"])
+  })
+
+  it("selects nothing, and excludes every block, when `only` is empty", () => {
+    const all = [passing("theme"), passing("ui")]
+
+    const selection = selectBlocks(all, [])
+
+    expect(selection.selected).toEqual([])
+    expect(selection.excluded.map((block) => block.name)).toEqual(["theme", "ui"])
+    expect(selection.unknown).toEqual([])
+  })
+})
+
+describe("blocksThatRan", () => {
+  it("leaves out a block that was committed and never ran", () => {
+    // A run whose browser never starts commits its blocks and marks each one `NeverRan`; naming
+    // those as "ran" printed `FILTERED: ran system` under `system never ran` (#253's third review).
+    const blocks = new Map([
+      ["theme", BlockOutcome.Completed],
+      ["system", BlockOutcome.NeverRan],
+      ["ui", BlockOutcome.StoppedPartWay],
+    ])
+
+    expect(blocksThatRan(blocks)).toEqual(["theme", "ui"])
+  })
+
+  it("is empty when every committed block never ran", () => {
+    expect(blocksThatRan(new Map([["system", BlockOutcome.NeverRan]]))).toEqual([])
+  })
+})
+
+describe("filteredRunLine", () => {
+  it("names the blocks that ran and the blocks left out", () => {
+    const line = filteredRunLine(["theme", "system", "ui"], ["system"])
+
+    expect(line).toBe(
+      "FILTERED: ran system, left out theme, ui — not a full run; CI never passes --only",
+    )
+  })
+
+  it("reads 'ran (none)' when nothing was committed — not the blocks a bad request named", () => {
+    // The exact regression `#253`'s second review found: an unknown or empty `--only` selection
+    // commits nothing, so `ran` here is empty, even though a caller that read the raw `--only`
+    // request instead of the committed blocks would have named "system" — `verify --only=system,
+    // bogus` printed exactly that before this function existed. `ran` is passed empty here on
+    // purpose, standing in for that committed-nothing case, regardless of what a request asked for.
+    const line = filteredRunLine(["theme", "system", "ui"], [])
+
+    expect(line).toBe(
+      "FILTERED: ran (none), left out theme, system, ui — not a full run; CI never passes --only",
+    )
+  })
+
+  it("reads 'left out (none)' when every block ran", () => {
+    const line = filteredRunLine(["theme", "ui"], ["theme", "ui"])
+
+    expect(line).toBe(
+      "FILTERED: ran theme, ui, left out (none) — not a full run; CI never passes --only",
+    )
   })
 })
 
