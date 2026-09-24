@@ -423,8 +423,9 @@ The focus contract above is not re-implemented for this mode — `DateRangePicke
 signals, `closePanel` and the effect that moves focus are the exact same code `withTime` runs
 through, untouched by it. `pages/checks/ui.ts` still proves it holds there rather than assuming so:
 opening moves focus in, every close driven from inside (both time presets, Apply, Cancel, Escape and
-a second press on the trigger) hands focus back to the trigger, and both closes driven from outside leave it alone — driven against the `withTime`
-card directly, the same way the day-only proof above is driven against its own.
+a second press on the trigger) hands focus back to the trigger, and both closes driven from outside
+leave it alone — driven against the `withTime` card directly, the same way the day-only proof above
+is driven against its own.
 
 ## Pagination
 
