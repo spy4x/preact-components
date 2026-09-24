@@ -7908,13 +7908,14 @@ async function armExportInstrumentation(devtools: Devtools): Promise<void> {
       revokeObjectURL: URL.revokeObjectURL.bind(URL),
       click: HTMLAnchorElement.prototype.click,
     }
-    globalThis.__exportCheck = { original }
+    globalThis.__exportCheck = { original, createCount: 0 }
     const state = globalThis.__exportCheck
     URL.createObjectURL = (blob) => {
       const url = original.createObjectURL(blob)
       state.blobType = blob.type
       state.bytesPromise = blob.arrayBuffer()
       state.createdUrl = url
+      state.createCount += 1
       return url
     }
     URL.revokeObjectURL = (url) => {
@@ -8058,6 +8059,42 @@ async function exportButtonHasFocus(devtools: Devtools, buttonSelector: string):
   )
 }
 
+/** Whether the button still has focus, and still reads `aria-disabled="true"`, both read together. */
+interface FocusedAndBusy {
+  /** `document.activeElement === the button`, read after the settle below. */
+  focused: boolean
+  /** The button's own `aria-disabled` attribute at that same moment — `"true"` proves the read
+   * actually landed while the export was still pending, not after it had already settled. */
+  ariaDisabled: string | null
+}
+
+/**
+ * Read focus and `aria-disabled` together, after two animation frames.
+ *
+ * A review measured that a bare, immediate read of `document.activeElement` races Chromium's own
+ * focus fix-up after `disabled={busy}`: the DOM attribute lands on `aria-disabled`'s next render
+ * step, and a read issued right after the key press can land before that step commits, so a check
+ * with no wait caught the regression only 3 of 5 runs. Waiting two `requestAnimationFrame`s inside
+ * one `Runtime.evaluate` — comfortably inside the demo's 600ms `getRows` delay — is what gives
+ * Chromium's own rendering pipeline the turns it needs before the read, in the same task as the
+ * read itself so nothing else can run focus-moving code in between. The `aria-disabled` read
+ * alongside it is what proves this sample genuinely landed while the export was still pending,
+ * rather than a settle that happened to race ahead of it.
+ */
+async function exportButtonFocusedAndBusy(
+  devtools: Devtools,
+  buttonSelector: string,
+): Promise<FocusedAndBusy> {
+  return await devtools.evaluate<FocusedAndBusy>(`(async () => {
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+    const button = document.querySelector('${buttonSelector}')
+    return {
+      focused: document.activeElement === button,
+      ariaDisabled: button ? button.getAttribute('aria-disabled') : null,
+    }
+  })()`)
+}
+
 /**
  * A real Space press on the rows-based `ExportButton` downloads the two demo rows as CSV.
  *
@@ -8185,8 +8222,7 @@ async function exportAnnouncesAgainCheck(devtools: Devtools): Promise<void> {
 }
 
 /**
- * A real Enter press on the `getRows`-based `ExportButton` downloads the same two rows, resolved
- * from a `Promise` rather than handed over directly.
+ * Dispatch a real Enter key-down/key-up pair, with `text: "\r"` on the key-down.
  *
  * `pages/checks/harness.ts`'s `pressKey` sends Enter without a `text` field on its key-down, and
  * `AGENTS.md` recorded that as "Enter does not activate a button here" — `#261` measured that this
@@ -8194,17 +8230,9 @@ async function exportAnnouncesAgainCheck(devtools: Devtools): Promise<void> {
  * the key-down carries `text: "\r"`. `harness.ts` is shared machinery this lane does not edit, so
  * this dispatches its own key-down/key-up pair with that field instead of calling `pressKey`.
  *
- * @param devtools The connected session, on a hydrated page.
+ * @param devtools The connected session, on a hydrated page, with the target already focused.
  */
-async function exportAsyncViaEnterCheck(devtools: Devtools): Promise<void> {
-  await resetExportCapture(devtools)
-
-  const focused = await focusExportButton(devtools, EXPORT_ASYNC_BUTTON)
-  check("the getRows-based ExportButton can receive focus", focused)
-  if (!focused) return
-
-  await stashExportRegionIdentity(devtools, EXPORT_ASYNC_BUTTON)
-
+async function pressExportEnter(devtools: Devtools): Promise<void> {
   await devtools.send("Input.dispatchKeyEvent", {
     type: "keyDown",
     key: "Enter",
@@ -8220,19 +8248,35 @@ async function exportAsyncViaEnterCheck(devtools: Devtools): Promise<void> {
     windowsVirtualKeyCode: 13,
     nativeVirtualKeyCode: 13,
   })
+}
+
+/**
+ * A real Enter press on the `getRows`-based `ExportButton` downloads the same two rows, resolved
+ * from a `Promise` rather than handed over directly.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function exportAsyncViaEnterCheck(devtools: Devtools): Promise<void> {
+  await resetExportCapture(devtools)
+
+  const focused = await focusExportButton(devtools, EXPORT_ASYNC_BUTTON)
+  check("the getRows-based ExportButton can receive focus", focused)
+  if (!focused) return
+
+  await stashExportRegionIdentity(devtools, EXPORT_ASYNC_BUTTON)
+
+  await pressExportEnter(devtools)
 
   // The demo's `getRows` takes 600ms, so the export is still pending here — this is the sample
   // that catches `disabled={busy}` dropping focus to `<body>`, which `aria-disabled` instead of
-  // the native attribute is what fixes. A dead-on-arrival read (the export already settled by the
-  // time this runs) would prove nothing either way, which is why the demo's delay is long enough
-  // that a round trip or two of DevTools protocol calls cannot outrun it.
-  const focusedWhileBusy = await exportButtonHasFocus(devtools, EXPORT_ASYNC_BUTTON)
+  // the native attribute is what fixes. See `exportButtonFocusedAndBusy`'s own doc for why the
+  // read waits two animation frames and also checks `aria-disabled` rather than reading focus
+  // alone, right after the key press.
+  const midExport = await exportButtonFocusedAndBusy(devtools, EXPORT_ASYNC_BUTTON)
   check(
     "focus stays on the getRows-based ExportButton while its export is pending",
-    focusedWhileBusy,
-    focusedWhileBusy
-      ? "document.activeElement is still the button"
-      : "focus left the button before the export settled",
+    midExport.focused && midExport.ariaDisabled === "true",
+    `focused: ${midExport.focused}, aria-disabled: ${JSON.stringify(midExport.ariaDisabled)}`,
   )
 
   const settled = await exportSettled(devtools)
@@ -8274,6 +8318,51 @@ async function exportAsyncViaEnterCheck(devtools: Devtools): Promise<void> {
   )
 }
 
+/**
+ * A second Enter press, 100ms after the first, on the `getRows`-based button while its own export
+ * is still pending, is ignored — one download, not two.
+ *
+ * `ui/README.md` and `export-button.tsx`'s own doc both say the click handler ignores a second
+ * press while one export is already running, but nothing committed proved it: a review removed
+ * `handleClick`'s `if (busyRef.current) return` guard and every other check here stayed green,
+ * since none of them presses the button twice. `aria-disabled` does not stop the press the way the
+ * native `disabled` attribute used to, which is exactly why this guard — and a check proving it
+ * still runs — exist.
+ *
+ * Counts `URL.createObjectURL` calls (via `armExportInstrumentation`'s own `createCount`, read
+ * before and after) rather than waiting for a second download to settle: an ignored press produces
+ * no second call at all, so there is nothing for a poll to wait on that a bound could time out over,
+ * the way the other checks here do.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function exportButtonIgnoresSecondPressCheck(devtools: Devtools): Promise<void> {
+  await resetExportCapture(devtools)
+
+  const focused = await focusExportButton(devtools, EXPORT_ASYNC_BUTTON)
+  check("the getRows-based ExportButton can receive focus for the double-press check", focused)
+  if (!focused) return
+
+  const before = await devtools.evaluate<number>(
+    `globalThis.__exportCheck ? globalThis.__exportCheck.createCount : 0`,
+  )
+
+  await pressExportEnter(devtools)
+  await new Promise((resolve) => setTimeout(resolve, 100))
+  await pressExportEnter(devtools)
+
+  const settled = await exportSettled(devtools)
+  const after = await devtools.evaluate<number>(
+    `globalThis.__exportCheck ? globalThis.__exportCheck.createCount : 0`,
+  )
+
+  check(
+    "a second Enter press on a pending getRows export is ignored — one download, not two",
+    settled && after - before === 1,
+    `settled: ${settled}, URL.createObjectURL calls: ${after - before}`,
+  )
+}
+
 /** Tab moves from the rows-based button to the getRows-based one, proving both are real tab stops. */
 async function exportButtonTabReachabilityCheck(devtools: Devtools): Promise<void> {
   const staged = await focusExportButton(devtools, EXPORT_ROWS_BUTTON)
@@ -8295,7 +8384,8 @@ async function exportButtonTabReachabilityCheck(devtools: Devtools): Promise<voi
 /**
  * `ExportButton`'s two demo instances: the rows-based one activated with Space (twice, to prove a
  * repeated announcement still lands), the `getRows`-based one activated with Enter — including that
- * focus stays on it, busy or settled — and Tab moving between the two.
+ * focus stays on it, busy or settled, and that a second press while it is busy is ignored — and Tab
+ * moving between the two.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -8311,6 +8401,7 @@ async function exportButtonChecks(devtools: Devtools): Promise<void> {
     await exportRowsViaSpaceCheck(devtools)
     await exportAnnouncesAgainCheck(devtools)
     await exportAsyncViaEnterCheck(devtools)
+    await exportButtonIgnoresSecondPressCheck(devtools)
     await exportButtonTabReachabilityCheck(devtools)
   } finally {
     await disarmExportInstrumentation(devtools).catch(() => {})
