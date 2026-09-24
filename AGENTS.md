@@ -220,8 +220,15 @@ down:
   A check that has to land in that gap clicks and dispatches the key inside one `Runtime.evaluate`,
   after waiting two animation frames for the previous state's cleanup to finish; two separate
   protocol commands land in it only by chance.
-- The catalogue scrolls smoothly. After anything that scrolls or reloads, wait for the page to stop
-  moving (`settledScroll` in `harness.ts`) before aiming the pointer or reading a position.
+- The catalogue scrolls smoothly. To bring an element into view before aiming at it, use
+  `centreInView` in `harness.ts`: it works out where the page's own smooth scroll will stop and
+  waits until the page is there. Do not swap it for an instant scroll: under load, an instant
+  scroll lost to a smooth one the page already had running (#269). `pages/checks/system.ts` does
+  not follow this yet: it still makes 15 instant `scrollIntoView` calls through its own
+  `settleScroll` helper. Those checks passed under load and under `--cpu-throttle=6` in #274, so
+  they were left alone; move them to `centreInView` when one of them next fails.
+  After anything else that scrolls or reloads, wait for the page to stop moving (`settledScroll`)
+  before aiming the pointer or reading a position.
 - A real back/forward-cache restore can be driven: navigate away, then `Page.navigateToHistoryEntry`,
   and `Page.frameNavigated` reports `type: "BackForwardCacheRestore"`.
 - The published GitHub Pages site answers a POST with 405. A form's no-JavaScript path is proven
@@ -235,8 +242,11 @@ And in wave six:
 - A check that clicks a link should read `defaultPrevented` from a `document` listener that then
   cancels the event, rather than let the page really navigate: a real navigation leaves the page
   moving after the check's own wait returns, and a later check pays for it.
-- `settledScroll` returns once two reads 100 ms apart agree, so it cannot tell a scroll that has
-  not started from one that has stopped. Under heavy load that is enough for an aim to miss (#269).
+- Two reads 100 ms apart that agree cannot tell a scroll that has not started from one that has
+  stopped, and under load a smooth scroll's first frame can come after both (#269). So
+  `settledScroll` is told about a scroll the caller expects: its `target` when the caller knows
+  where it ends, or the position it starts `from` when only the page knows. Without either, it
+  answers only whether anything is moving now.
 - A download in a check really saves a file unless the browser is told otherwise. `verify` denies
   downloads for the whole run (`Browser.setDownloadBehavior`, falling back to
   `Page.setDownloadBehavior`); a check observes the file's bytes inside the page instead.

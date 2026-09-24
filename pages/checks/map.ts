@@ -1,4 +1,4 @@
-import { check, type Devtools, poll, pressKey, settledScroll } from "./harness.ts"
+import { centreInView, check, type Devtools, poll, pressKey } from "./harness.ts"
 
 /** The card these checks drive, and the pieces of it they read. */
 const CARD = "#demo-Map"
@@ -158,10 +158,7 @@ export async function mapChecks(devtools: Devtools): Promise<void> {
   // Scrolled into view before anything else reads a position: `attributionVisible`'s
   // `document.elementFromPoint` check is viewport-relative, and earlier package blocks leave the
   // page scrolled wherever their own last check aimed it.
-  await devtools.evaluate(`(() => {
-    document.querySelector('${CARD}')?.scrollIntoView({ block: "center", behavior: "instant" })
-  })()`)
-  await settledScroll(devtools)
+  await centreInView(devtools, `document.querySelector('${CARD}')`)
 
   const initial = await readState(devtools)
   check("the Map demo card is on the page", initial.ok, initial.ok ? "found" : "not found")

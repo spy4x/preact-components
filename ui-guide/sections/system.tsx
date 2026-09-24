@@ -769,8 +769,17 @@ function CalendarRefusingDemo() {
   )
 }
 
-/** How long this card's slower owner waits before it answers, in milliseconds. */
-const LATE_ANSWER_MS = 300
+/**
+ * How long this card's slower owner waits before it answers, in milliseconds.
+ *
+ * `pages/checks/system.ts` races this number: it presses Page Down, then scrolls the page and reads
+ * the reader's day in the next round trip, and that read has to land before the answer does (#267).
+ * Under `stress-ng --cpu 0` on all sixteen cores that read ran 65 to 72ms after the key went
+ * down (the check prints the figure every run); the issue asked the check to survive an extra
+ * 350ms pause as well. It was 300ms, which a 350ms pause alone overran. 1000ms leaves about 580ms
+ * past both, eight measured round trips, and is still plainly "late" to a person pressing the key.
+ */
+const LATE_ANSWER_MS = 1000
 
 /** The two ways the card below can be late, as a reader picks them. */
 const LATE_MODES = [
@@ -806,7 +815,7 @@ function CalendarLateDemo() {
   const mode = useSignal("timer")
 
   return (
-    <div class="space-y-3" data-e2e="calendar-late">
+    <div class="space-y-3" data-e2e="calendar-late" data-answer-ms={LATE_ANSWER_MS}>
       <div class="flex flex-wrap items-center gap-2">
         {LATE_MODES.map(({ id, label }) => (
           <Button
@@ -1179,7 +1188,7 @@ export const systemDemos = {
   },
   Calendar: {
     summary:
-      "Six-week month grid. **Dual-mode**: with no `onSelectDate` every cell is an `<a href>` and a month arrow with nothing to show is a `<span>` rather than a dead link; supplying the callback turns the cells into `<button>`. `today` and `timeZone` are props, so a render can be pinned — this card passes `2026-03-10` and `UTC` and reads no clock, and a zone the platform cannot resolve falls back to UTC instead of throwing. A date missing from `slotsByDate` has no availability, a `0` has no slots left, and the two are visually alike but carry different accessible labels. Cells also show today, past dates, dates outside the window, and a scarcity dot at or below `lowSlotsThreshold`. **The whole grid is one Tab stop** once hydrated: the arrow keys step a day and a week, Home and End go to the ends of the week, Page Up and Page Down ask `onSelectMonth` for the neighbouring month, and why a day cannot be picked is the cell's own accessible name plus the hint under the grid rather than a `title` nobody can hover. **A month is asked for, never taken**, and the reader keeps their place whatever the owner answers: an owner that draws the month lands them on the same day number in it, an owner that leaves `monthAnchor` where it was — clamping to an allowed range, say — leaves them on the day they pressed from rather than on the grid container, and an owner that draws the month a render or more later, as anything that fetches first does, still lands them on that same day number once it arrives. The fourth card below refuses every month change and the fifth answers 300 ms late; both count what they were asked, because \"the month did not change\" is otherwise indistinguishable from a key press that never arrived. **The week is the locale's**: both the column order and the header text come from `Intl`, so the third card below moves the columns under the same dates as it changes language.",
+      "Six-week month grid. **Dual-mode**: with no `onSelectDate` every cell is an `<a href>` and a month arrow with nothing to show is a `<span>` rather than a dead link; supplying the callback turns the cells into `<button>`. `today` and `timeZone` are props, so a render can be pinned — this card passes `2026-03-10` and `UTC` and reads no clock, and a zone the platform cannot resolve falls back to UTC instead of throwing. A date missing from `slotsByDate` has no availability, a `0` has no slots left, and the two are visually alike but carry different accessible labels. Cells also show today, past dates, dates outside the window, and a scarcity dot at or below `lowSlotsThreshold`. **The whole grid is one Tab stop** once hydrated: the arrow keys step a day and a week, Home and End go to the ends of the week, Page Up and Page Down ask `onSelectMonth` for the neighbouring month, and why a day cannot be picked is the cell's own accessible name plus the hint under the grid rather than a `title` nobody can hover. **A month is asked for, never taken**, and the reader keeps their place whatever the owner answers: an owner that draws the month lands them on the same day number in it, an owner that leaves `monthAnchor` where it was — clamping to an allowed range, say — leaves them on the day they pressed from rather than on the grid container, and an owner that draws the month a render or more later, as anything that fetches first does, still lands them on that same day number once it arrives. The fourth card below refuses every month change and the fifth answers a second late; both count what they were asked, because \"the month did not change\" is otherwise indistinguishable from a key press that never arrived. **The week is the locale's**: both the column order and the header text come from `Intl`, so the third card below moves the columns under the same dates as it changes language.",
     snippet: `<Calendar
   monthAnchor="2026-03-01"
   minDate="2026-03-01"

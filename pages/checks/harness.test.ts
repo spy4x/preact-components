@@ -16,14 +16,17 @@ import { describe, it } from "@std/testing/bdd"
 import {
   BlockOutcome,
   blocksThatRan,
+  centreInView,
   type CheckBlock,
   connect,
   Devtools,
   DevtoolsClosedError,
   filteredRunLine,
+  type PageReader,
   poll,
   Run,
   selectBlocks,
+  settledScroll,
 } from "./harness.ts"
 
 /** A block that records one passing check per name it is given and returns. */
@@ -698,5 +701,97 @@ describe("connect", () => {
     } finally {
       globalThis.fetch = realFetch
     }
+  })
+})
+
+/**
+ * A page whose `scrollY` reads come from a script, one value per read, the last one repeating.
+ * Any other expression — `centreInView`'s scroll — answers `scrollTo`.
+ */
+function scriptedPage(reads: readonly number[], scrollTo: number | null = 0) {
+  const seen: string[] = []
+  let next = 0
+  const page: PageReader = {
+    evaluate<T>(expression: string): Promise<T> {
+      seen.push(expression)
+      if (!expression.startsWith("Math.round(globalThis.scrollY)")) {
+        return Promise.resolve(scrollTo as T)
+      }
+      const value = reads[Math.min(next, reads.length - 1)]
+      next++
+      return Promise.resolve(value as T)
+    },
+  }
+  return { page, seen, scrollReads: () => next }
+}
+
+describe("settledScroll", () => {
+  it("waits for an expected scroll that has not started yet instead of calling it settled", async () => {
+    // Three reads of a page that has not moved yet, then the scroll, then the page at rest on it.
+    const { page, scrollReads } = scriptedPage([0, 0, 0, 240, 500, 500])
+
+    const settled = await settledScroll(page, { target: 500, timeoutMs: 2_000 })
+
+    expect(settled).toBe(true)
+    expect(scrollReads()).toBe(6)
+  })
+
+  it("gives up when the expected scroll never arrives", async () => {
+    const { page } = scriptedPage([0])
+
+    expect(await settledScroll(page, { target: 500, timeoutMs: 450 })).toBe(false)
+  })
+
+  it("accepts a landing a pixel off the target, since both sides are rounded", async () => {
+    const { page } = scriptedPage([499])
+
+    expect(await settledScroll(page, { target: 500, timeoutMs: 450 })).toBe(true)
+  })
+
+  it("waits for a page-started scroll to leave where it began before calling it settled", async () => {
+    const { page, scrollReads } = scriptedPage([0, 0, 0, 900, 1_700, 1_700])
+
+    const settled = await settledScroll(page, { from: 0, timeoutMs: 2_000 })
+
+    expect(settled).toBe(true)
+    expect(scrollReads()).toBe(6)
+  })
+
+  it("gives up when a page-started scroll never leaves where it began", async () => {
+    const { page } = scriptedPage([0])
+
+    expect(await settledScroll(page, { from: 0, timeoutMs: 450 })).toBe(false)
+  })
+
+  it("settles on two agreeing reads when no scroll is expected", async () => {
+    const { page, scrollReads } = scriptedPage([120, 120])
+
+    expect(await settledScroll(page, { timeoutMs: 1_000 })).toBe(true)
+    expect(scrollReads()).toBe(2)
+  })
+})
+
+describe("centreInView", () => {
+  it("waits for its scroll to reach the centre it worked out, not for the first quiet reads", async () => {
+    // The page reads still twice before the smooth scroll's first frame, then arrives.
+    const { page, scrollReads } = scriptedPage([0, 0, 800, 800], 800)
+
+    expect(await centreInView(page, "document.body", 2_000)).toBe(true)
+    expect(scrollReads()).toBe(4)
+  })
+
+  it("leaves the scroll to the page, so it replaces a smooth scroll already running", async () => {
+    const { page, seen } = scriptedPage([800], 800)
+
+    await centreInView(page, "document.body", 1_000)
+
+    expect(seen[0]).toContain(`scrollIntoView({ block: "center" })`)
+  })
+
+  it("reports a missing element without waiting on the page", async () => {
+    const { page, scrollReads } = scriptedPage([0], null)
+
+    expect(await centreInView(page, "null")).toBe(false)
+    expect(scrollReads()).toBe(0)
   })
 })
