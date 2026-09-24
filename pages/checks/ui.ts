@@ -6144,10 +6144,25 @@ async function newsletterFormFocusElsewhereCheck(devtools: Devtools): Promise<vo
  * `<body>` — exactly what a visitor clicking on plain text and reading elsewhere also produces — and
  * pull focus back a second time for a visitor this component had already, correctly, let go of.
  *
+ * **`#249`: two changes from how this check used to read the page.** First, it waits for the
+ * component's own one-time recovery to land — the region holding focus — *before* it does its own
+ * blur, rather than racing it: blurring to `<body>` while that recovery is still outstanding would
+ * hand the still-set flag exactly the state (`<body>` focused) it treats as its own cue to recover
+ * into, for a visitor this check had not yet finished setting up. Second, the blur, the scroll and
+ * the first reading of both happen inside one `Runtime.evaluate`, before this check waits on
+ * anything else — a separate, later read (the previous shape) can be a read of the *result's* own
+ * effects if the submit happens to settle in between, which is a check reading its own setup after
+ * the thing it means to guard against has already run. The scroll is `behavior: "instant"` for the
+ * same reason `pages/checks/harness.ts`'s own doc gives for `resetAfterThrow`'s identical call:
+ * `pages/styles.css` sets `scroll-behavior: smooth` on the document, so a plain `scrollTo(0, 0)`
+ * starts an animation still running when this reads `scrollY` right back — instant is what makes
+ * that same-evaluate reading the settled position rather than a frame of the animation.
+ *
  * @param devtools The connected session, on a hydrated page.
  */
 async function newsletterFormBlurWhileSendingCheck(devtools: Devtools): Promise<void> {
   const card = '#demo-NewsletterForm [data-e2e="newsletter-form-blur-while-sending"]'
+  const region = `${card} [role="status"]`
 
   const ready = await cardCanSubmit(devtools, card)
   check(
@@ -6177,48 +6192,56 @@ async function newsletterFormBlurWhileSendingCheck(devtools: Devtools): Promise<
     1_000,
   )
 
-  // This browser's own recovery (disabling the fieldset drops focus to <body>, and the component
-  // then moves it to the region) may already have happened by the time `sending` above resolved —
-  // that race is exactly why the flag has to be cleared the first time it fires, rather than this
-  // check needing to win it. Blurring explicitly and scrolling to the top afterward is what puts
-  // this run into the state a visitor who reads elsewhere produces, regardless of which side of that
-  // race it started from.
-  //
-  // `scrollTo` here (and any scroll a later refocus triggers) can run as a smooth, animated scroll —
-  // reading `scrollY` in the same script turn that starts it catches the animation mid-flight, not
-  // its destination, which is a false mismatch that has nothing to do with the component. Both reads
-  // wait for `settledScroll` first so they see where the page actually came to rest.
-  await devtools.evaluate<null>(`(() => {
+  // Wait out the component's own one-time recovery before this check does its own blur — see the
+  // JSDoc above. Not a formality: without this, the check's blur can land before that recovery has,
+  // and the still-set flag then reads the check's own blur as its cue to recover into.
+  const recovered = await poll(() => regionHasFocus(devtools, card), 2_000)
+
+  // Blur, scroll and the first reading of both, in the one evaluate — before this waits on
+  // anything else. `behavior: "instant"` is what makes `scrollY` already the settled value here
+  // rather than a frame of a smooth-scroll animation still in flight.
+  const scrollTarget = await devtools.evaluate<{ blurred: boolean; scrollY: number }>(`(() => {
     document.activeElement?.blur?.()
-    globalThis.scrollTo(0, 0)
-    return null
-  })()`).catch(() => null)
-  await settledScroll(devtools)
-  const scrollTarget = await devtools.evaluate<{ blurred: boolean; scrollY: number }>(`(() => ({
-    blurred: document.activeElement === document.body,
-    scrollY: Math.round(globalThis.scrollY),
-  }))()`).catch(() => ({ blurred: false, scrollY: -1 }))
+    globalThis.scrollTo({ top: 0, left: 0, behavior: "instant" })
+    return {
+      blurred: document.activeElement === document.body,
+      scrollY: Math.round(globalThis.scrollY),
+    }
+  })()`).catch(() => ({ blurred: false, scrollY: -1 }))
 
   const settled = await poll(
     async () => (await enhancedFormReading(devtools, card)).region.startsWith("You're subscribed"),
     2_000,
   )
   await settledScroll(devtools)
-  const after = await devtools.evaluate<{ onBody: boolean; scrollY: number }>(`(() => ({
-    onBody: document.activeElement === document.body,
-    scrollY: Math.round(globalThis.scrollY),
-  }))()`).catch(() => ({ onBody: false, scrollY: -2 }))
+  const after = await devtools.evaluate<{ onBody: boolean; onRegion: boolean; scrollY: number }>(
+    `(() => ({
+      onBody: document.activeElement === document.body,
+      onRegion: document.activeElement === document.querySelector('${region}'),
+      scrollY: Math.round(globalThis.scrollY),
+    }))()`,
+  ).catch(() => ({ onBody: false, onRegion: false, scrollY: -2 }))
 
   check(
     "a visitor who blurs to <body> and scrolls away while sending is not pulled back once it settles",
-    sending && scrollTarget.blurred && settled && after.onBody &&
+    sending && recovered && scrollTarget.blurred && settled && after.onBody &&
       after.scrollY === scrollTarget.scrollY,
     !sending
       ? "the fieldset never disabled — the click may not have started a real submit"
+      : !recovered
+      ? "the component's own one-time recovery never moved focus onto the live region before " +
+        "this check blurred, so the blur below cannot be told apart from that recovery's own moment"
       : !scrollTarget.blurred
-      ? "could not blur back to <body>"
-      : `settled: ${settled}; still on <body> once it did: ${after.onBody}; scrollY ` +
-        `${scrollTarget.scrollY} → ${after.scrollY}`,
+      ? "could not blur back to <body> — read in the same evaluate as the blur itself"
+      : !settled
+      ? "the card never reached its 'You're subscribed' result"
+      : !after.onBody
+      ? after.onRegion
+        ? "the result pulled focus back onto the live region after this check had already, " +
+          "deliberately, blurred to <body> — a visitor who had moved on to reading something " +
+          "else would be dragged back to the form"
+        : "focus left <body> for something other than the live region once the result landed"
+      : `settled: ${settled}; scrollY ${scrollTarget.scrollY} → ${after.scrollY}`,
   )
 }
 
