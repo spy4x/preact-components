@@ -1,10 +1,10 @@
 /**
- * `ImageLightbox` — makes the images inside a container zoomable, with a `<dialog>` lightbox.
+ * `ImageLightbox` — makes the images inside a container zoomable, opening the shared `Lightbox`.
  *
  * Progressive enhancement in the strict sense: the server renders the page, this adds a zoom layer
  * after hydration, and nothing is added to the markup that a reader without JavaScript would miss.
- * The dialog itself is the only element the component renders, and it is empty until an image is
- * opened.
+ * `Lightbox` is the only element this component renders, and its dialog is empty until an image is
+ * opened — see `@preact-components/ui/lightbox` for what it is built on and why.
  *
  * The click layer is delegated to the container rather than attached to each image: one listener
  * instead of N, images that arrive after hydration still work, and cleanup is complete — the
@@ -19,18 +19,41 @@
  * Escape closes the dialog natively and the backdrop closes it on a click, which is only true
  * because the image is positioned inside the dialog rather than filling it: a dialog whose child
  * covers it is a dialog no click can ever reach.
+ *
+ * **Previous and next page through the container's other zoomable images.** Which images those are
+ * is decided once, at the moment one is opened: {@link collectSequence} reads every element the
+ * container's `imageSelector` currently matches, in DOM order, and that snapshot is what Left,
+ * Right and the lightbox's own buttons page through for as long as the dialog stays open. An image
+ * that arrives in the container afterward becomes zoomable — the click layer and the
+ * `MutationObserver` still cover it — but is not spliced into a sequence already being viewed, the
+ * same way the source click layer already treats an image arriving after hydration: it works once
+ * mounted, not retroactively.
+ *
+ * **A missing description gets `fallbackAlt` substituted, as it always has** — an image with no
+ * `alt` attribute is still zoomable and still opens, named by `fallbackAlt` (default `"Image"`),
+ * and `Lightbox` now also shows that name as a visible caption, which is new here. Only a caller
+ * who sets `fallbackAlt=""` opts out of the substitution; only then can an image genuinely have no
+ * description, and only then is it refused — not marked zoomable at all ({@link markZoomable},
+ * {@link zoomableAlt}), so a click on it inside a link still follows the link instead of being
+ * cancelled for a lightbox that would have refused to open anyway ({@link collectSequence}, whose
+ * own filtering keeps a described image's position correct even when an earlier, undescribed one
+ * sits between it and the start of the container).
  */
 
-import { cn } from "@preact-components/cn"
-import { IconXMark } from "@preact-components/icons"
+import { describedImages, Lightbox } from "@preact-components/ui/lightbox"
 import type { JSX } from "preact"
-import { useEffect, useRef, useState } from "preact/hooks"
+import { useEffect, useState } from "preact/hooks"
 
 /** An image the lightbox can show. */
 export interface LightboxImage {
   /** Absolute URL where the browser resolved one, the raw attribute otherwise. */
   src: string
-  /** Never empty: falls back to the lightbox's `fallbackAlt`. */
+  /**
+   * The image's description. `resolveImage` substitutes the component's `fallbackAlt` (default
+   * `"Image"`) for a missing one, so this is empty only when a caller has set `fallbackAlt` to `""`
+   * too — see {@link collectSequence}, which then drops the image rather than showing one with no
+   * name.
+   */
   alt: string
 }
 
@@ -49,6 +72,23 @@ export interface ImageElementLike {
   alt?: string
   /** Attribute reader, used when the properties are absent. */
   getAttribute?: (name: string) => string | null
+}
+
+/**
+ * The `alt` an image will open the lightbox with: its own, trimmed, or `fallbackAlt` — also
+ * trimmed, so a caller who passes whitespace (`" "`) is refused exactly like one who passes `""`,
+ * not treated as a real name because a non-empty string happens to be truthy. One rule, called by
+ * both halves that need it: {@link resolveImage} substitutes it into the image it hands back, and
+ * {@link markZoomable} calls it before touching the DOM at all, so the two can never disagree about
+ * whether a given image has a real description.
+ *
+ * @param rawAlt The image's own `alt` attribute, or `null`/`undefined` when it has none.
+ * @param fallbackAlt `alt` used when the image has none.
+ * @returns The trimmed, substituted `alt` — empty only when both `rawAlt` and `fallbackAlt`,
+ * trimmed, are.
+ */
+export function zoomableAlt(rawAlt: string | null | undefined, fallbackAlt: string): string {
+  return (rawAlt ?? "").trim() || fallbackAlt.trim()
 }
 
 /**
@@ -72,8 +112,8 @@ export function resolveImage(
   const src = target.src ?? target.getAttribute?.("src") ?? ""
   if (!src) return null
 
-  const alt = (target.alt ?? target.getAttribute?.("alt") ?? "").trim()
-  return { src, alt: alt || fallbackAlt }
+  const alt = zoomableAlt(target.alt ?? target.getAttribute?.("alt"), fallbackAlt)
+  return { src, alt }
 }
 
 /** Attribute marking an image this component has made zoomable, so cleanup knows what it owns. */
@@ -92,18 +132,28 @@ interface ZoomableMarks {
 }
 
 /**
- * Make every image in the container a keyboard-reachable control.
+ * Make every described image in the container a keyboard-reachable control.
  *
  * A Tab stop and a role are the difference between "clicking this image zooms it" and "activating
  * this image zooms it", and only the second is reachable without a mouse. Idempotent, because a
  * container whose images change calls this again.
+ *
+ * **An image {@link zoomableAlt} resolves to nothing is left exactly as it was.** With the default
+ * `fallbackAlt` this never happens — every image gets a real name, `"Image"` at the least — but a
+ * caller who sets `fallbackAlt=""` can have a raw `<img>` with no `alt` at all. Marking it anyway
+ * would make it a button with nothing to call it and nothing for activating it to do; refusing it
+ * here, before any attribute is written, is what keeps it a plain image instead — reachable by Tab
+ * only if it already was (inside a link, say), and a click on it left for the browser's own default
+ * action rather than intercepted. `openAt` makes the same refusal before it cancels a click or key
+ * press, for the same reason.
  */
 function markZoomable(container: Element, marks: ZoomableMarks): void {
   for (const element of container.querySelectorAll(marks.imageSelector)) {
     const image = element as HTMLElement
     if (image.hasAttribute(MARKER)) continue
 
-    const alt = (image.getAttribute("alt") ?? "").trim() || marks.fallbackAlt
+    const alt = zoomableAlt(image.getAttribute("alt"), marks.fallbackAlt)
+    if (!alt) continue
     image.setAttribute(MARKER, "")
     image.setAttribute("role", "button")
     image.setAttribute("tabindex", "0")
@@ -121,6 +171,67 @@ function unmarkZoomable(container: Element): void {
     }
     image.style.removeProperty("cursor")
   }
+}
+
+/** What {@link collectSequence} hands back: the lightbox's whole sequence, and where it opened. */
+export interface ImageSequence {
+  /** Every zoomable image the container held at the moment one was opened, in DOM order. */
+  images: LightboxImage[]
+  /**
+   * Position of the activated image in {@link ImageSequence.images}; `-1` if it did not resolve to
+   * an image at all, or resolved but was then dropped for having no description.
+   */
+  index: number
+}
+
+/**
+ * Build the sequence a lightbox pages through, and the position of the image that was opened.
+ *
+ * Pure: given the container's zoomable elements, already read, and the one that was activated, it
+ * decides which resolve to real images, which of those `Lightbox` will actually show, and where the
+ * activated one landed among the ones that survive. That is not simply "the position in `elements`"
+ * for two reasons stacked on each other. First, {@link resolveImage} can refuse an element with no
+ * usable `src`, and an element `elements` still lists then never reaches this function's own list at
+ * all. Second, {@link describedImages} — the same function `Lightbox` itself applies to `images`
+ * before it renders anything — is applied here too, before the index is worked out, not after: with
+ * a non-empty `fallbackAlt` (the default) this never removes anything, because `resolveImage` has
+ * already substituted it for a missing `alt`, but a caller who passes `fallbackAlt=""` can produce a
+ * resolved image whose `alt` is still empty, and that image must be missing from this function's
+ * `images` at the same position it will be missing from `Lightbox`'s. Filtering afterward, in the
+ * caller, would have left the two disagreeing about where a later image landed — measured in review:
+ * an earlier version filtered nowhere, and clicking a described image that came after an undescribed
+ * one opened a different image than the one that was clicked.
+ *
+ * @param elements Every element the container's `imageSelector` currently matches, in DOM order.
+ * @param target The element that was clicked or activated with the keyboard.
+ * @param imageSelector Selector an image must match — see {@link resolveImage}.
+ * @param fallbackAlt `alt` used when an image has none. An empty string opts out of the
+ * substitution, which is what lets `describedImages` drop an image here.
+ * @returns `index` is `-1` both when the activated element did not resolve to an image at all and
+ * when it resolved but was then dropped for having no description — the caller does not need to
+ * tell those two apart, since neither is an image to open.
+ */
+export function collectSequence(
+  elements: readonly ImageElementLike[],
+  target: ImageElementLike | null,
+  imageSelector = "img",
+  fallbackAlt = "Image",
+): ImageSequence {
+  const resolved: Array<{ element: ImageElementLike; image: LightboxImage }> = []
+  for (const element of elements) {
+    const image = resolveImage(element, imageSelector, fallbackAlt)
+    if (image) resolved.push({ element, image })
+  }
+
+  // `describedImages` filters by object identity, so the images it keeps are the very objects
+  // `resolved` holds — `targetPair.image` can therefore be found in `images` by reference,
+  // without restating "alt, trimmed, is not empty" as a second predicate that could drift from
+  // the one `Lightbox` applies.
+  const images = describedImages(resolved.map((pair) => pair.image))
+  const targetPair = resolved.find((pair) => pair.element === target)
+  const index = targetPair ? images.indexOf(targetPair.image) : -1
+
+  return { images, index }
 }
 
 export interface ImageLightboxProps {
@@ -141,28 +252,23 @@ export interface ImageLightboxProps {
   label?: string
   /** Accessible name of the close control. Defaults to `"Close"`. */
   closeLabel?: string
+  /** Accessible name of the previous control. Defaults to `"Previous image"`. */
+  previousLabel?: string
+  /** Accessible name of the next control. Defaults to `"Next image"`. */
+  nextLabel?: string
   /** Called when an image is opened, with the resolved `src` and `alt`. */
   onOpen?: (image: LightboxImage) => void
   /** Utilities for the dialog. */
   class?: string
 }
 
-const dialogClass =
-  "fixed inset-0 m-0 h-full max-h-none w-full max-w-none bg-black/95 p-0 backdrop:bg-black/80"
-const closeClass =
-  "absolute top-4 right-4 z-10 cursor-pointer rounded-full bg-black/50 p-2 text-white/70 transition-colors hover:text-white focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-white"
-// Positioned rather than stretched: the dialog has to be the thing under the pointer everywhere the
-// image is not, or a backdrop click lands on a full-size child and the documented close is a lie.
-const imageClass =
-  "absolute top-1/2 left-1/2 max-h-[90vh] max-w-[90vw] -translate-x-1/2 -translate-y-1/2 object-contain"
-
 /**
- * Zoomable images inside a container.
+ * Zoomable images inside a container, opening the shared `Lightbox`.
  *
- * Escape and the backdrop both close the lightbox: the first is native `<dialog>` behaviour, the
- * second is the click comparison below. Either way `close` clears the state, which is why no
- * global key listener is needed — the source version kept one alive alongside the native close,
- * so state and dialog could disagree.
+ * Escape and the backdrop both close it: the first is native `<dialog>` behaviour, the second is
+ * `Lightbox`'s own click comparison. Either way its `close` event clears this component's state,
+ * which is why no global key listener is needed for closing — the source version kept one alive
+ * alongside the native close, so state and dialog could disagree.
  */
 export function ImageLightbox(
   {
@@ -173,12 +279,15 @@ export function ImageLightbox(
     zoomLabel = "Zoom",
     label = "Image viewer",
     closeLabel = "Close",
+    previousLabel,
+    nextLabel,
     onOpen,
     class: className,
   }: ImageLightboxProps,
 ): JSX.Element {
-  const [image, setImage] = useState<LightboxImage | null>(null)
-  const dialogRef = useRef<HTMLDialogElement>(null)
+  const [sequence, setSequence] = useState<LightboxImage[]>([])
+  const [index, setIndex] = useState(0)
+  const [open, setOpen] = useState(false)
 
   useEffect(() => {
     const container = document.querySelector(containerSelector)
@@ -192,28 +301,44 @@ export function ImageLightbox(
     const observer = new MutationObserver(mark)
     observer.observe(container, { childList: true, subtree: true })
 
-    const open = (event: Event) => {
-      const resolved = resolveImage(
-        event.target as ImageElementLike | null,
-        imageSelector,
-        fallbackAlt,
-      )
+    const openAt = (event: Event) => {
+      const target = event.target as ImageElementLike | null
+      const resolved = resolveImage(target, imageSelector, fallbackAlt)
       if (!resolved) return false
+      // Refused before anything is cancelled: `resolved.alt` is empty only when `fallbackAlt` is
+      // itself empty and the image has no real `alt` — `markZoomable` never marked it a control for
+      // the same reason, so this is the click-layer's own copy of that refusal. Deciding it here,
+      // ahead of `preventDefault()`, is what a mouse click needs: an undescribed image inside a
+      // link must still follow that link, not have its navigation cancelled for a lightbox that is
+      // about to refuse to open anyway.
+      if (!resolved.alt) return false
 
       // The default is what has to go: a click or an Enter press on an image inside a link would
       // otherwise open the lightbox *and* navigate away from it, and Space would scroll the page.
       event.preventDefault()
-      setImage(resolved)
-      dialogRef.current?.showModal()
+      const elements = [
+        ...container.querySelectorAll(imageSelector),
+      ] as unknown as ImageElementLike[]
+      const collected = collectSequence(elements, target, imageSelector, fallbackAlt)
+      // Kept as a second guard rather than trusted as unreachable: `resolved.alt` above and
+      // `collectSequence`'s own filtering both go through `zoomableAlt`, so today the two cannot
+      // disagree — but they did once, when `fallbackAlt` was trimmed in one place and not the
+      // other, and a whitespace `fallbackAlt` reached this branch with `collected.index === -1`,
+      // opening whatever sat at position 0 instead of refusing. This is what keeps that class of
+      // mismatch from reopening the wrong-image bug even if the two decisions drift apart again.
+      if (collected.index < 0) return false
+      setSequence(collected.images)
+      setIndex(collected.index)
+      setOpen(true)
       onOpen?.(resolved)
       return true
     }
 
-    const onClick = (event: Event) => open(event)
+    const onClick = (event: Event) => openAt(event)
     const onKeyDown = (event: Event) => {
       const key = (event as KeyboardEvent).key
       if (key !== "Enter" && key !== " ") return
-      open(event)
+      openAt(event)
     }
 
     container.addEventListener("click", onClick)
@@ -226,26 +351,18 @@ export function ImageLightbox(
     }
   }, [containerSelector, imageSelector, fallbackAlt, zoomCursor, zoomLabel, onOpen])
 
-  const close = () => dialogRef.current?.close()
-
   return (
-    <dialog
-      ref={dialogRef}
-      aria-label={label}
-      onClose={() => setImage(null)}
-      onClick={(event) => {
-        if (event.target === dialogRef.current) close()
-      }}
-      class={cn(dialogClass, className)}
-    >
-      {image && (
-        <>
-          <button type="button" onClick={close} aria-label={closeLabel} class={closeClass}>
-            <IconXMark class="size-8" />
-          </button>
-          <img src={image.src} alt={image.alt} class={imageClass} />
-        </>
-      )}
-    </dialog>
+    <Lightbox
+      images={sequence}
+      index={index}
+      open={open}
+      onClose={() => setOpen(false)}
+      onIndexChange={setIndex}
+      label={label}
+      closeLabel={closeLabel}
+      previousLabel={previousLabel}
+      nextLabel={nextLabel}
+      class={className}
+    />
   )
 }

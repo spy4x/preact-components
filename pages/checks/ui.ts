@@ -43,13 +43,15 @@ const DROPDOWN_STATE = `(() => {
 /**
  * `ui/`'s browser checks: Dropdown's pointer and keyboard contract, ToggleSwitch, OnOffButtons,
  * `Field`, Tooltip, Combobox, Toastr, DateRangePicker's focus contract, Pagination's end controls,
- * DataTable's sort-by-header and paging contract, and — last — Modal's keyboard and focus
- * contract.
+ * DataTable's sort-by-header and paging contract, `ImageGallery`'s thumbnail strip and the shared
+ * `Lightbox` it opens, and — last — Modal's keyboard and focus contract.
  *
  * This file runs last of every package's, and Modal's checks run last inside it, for the same
  * reason: Modal opens a real modal dialog, and a dialog that refused to close would sit in the top
- * layer above every check that ran after it. See `PACKAGE_BLOCKS` in `pages/verify.ts` for where
- * the run order across every package is fixed.
+ * layer above every check that ran after it. `imageGalleryChecks` opens one too and closes it again
+ * unconditionally in its own teardown before this function returns, for the same reason, since
+ * `Lightbox`'s checks cannot themselves run last — Modal's have to. See `PACKAGE_BLOCKS` in
+ * `pages/verify.ts` for where the run order across every package is fixed.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -166,6 +168,8 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await enhancedFormBackForwardCacheCheck(devtools)
   await contactFormFailureRetryChecks(devtools)
   await enhancedFormsNoScriptChecks(devtools)
+  await imageGalleryChecks(devtools)
+  await lightboxRefusesEmptyCheck(devtools)
 
   // Last on purpose: a Modal that refuses to close would sit in the top layer over everything, so a
   // failure here cannot take an unrelated check down with it.
@@ -1681,6 +1685,317 @@ async function goneWithin(devtools: Devtools, timeoutMs: number): Promise<Hold> 
   )
 
   return { held, elapsedMs: Date.now() - startedAt }
+}
+
+/** The card `ImageGallery`'s and the shared `Lightbox`'s checks drive. */
+const GALLERY_CARD = "#demo-ImageGallery"
+const GALLERY_DIALOG = `${GALLERY_CARD} dialog`
+
+/** Whether the gallery's lightbox is open, what it shows, and where focus and the live text sit. */
+interface GalleryLightboxState {
+  /** Whether the dialog is really in the top layer, not merely present and closed. */
+  open: boolean
+  /** `alt` of the image currently shown, or `""` when none is. */
+  imageAlt: string
+  /** The always-present live region's text, trimmed. */
+  liveText: string
+  /** Whether that region is the very element parked on `globalThis` before anything opened. */
+  liveSameNode: boolean
+  /** Whether the focused element is the thumbnail parked on `globalThis`. */
+  focusedIsThumb: boolean
+  /** What is focused, for a failure message. */
+  focusedLabel: string
+}
+
+/** Read {@link GalleryLightboxState} in one round trip. */
+function readGalleryState(devtools: Devtools): Promise<GalleryLightboxState> {
+  return devtools.evaluate<GalleryLightboxState>(`(() => {
+    const dialog = document.querySelector('${GALLERY_DIALOG}')
+    const modal = Boolean(dialog) && dialog.matches(":modal")
+    const img = modal ? dialog.querySelector("img") : null
+    const live = dialog ? dialog.querySelector('[role="status"]') : null
+    const active = document.activeElement
+    return {
+      open: modal,
+      // Read only while the dialog is genuinely modal: the <img> is a child of Lightbox's own
+      // { open && current && … } branch, which is gated on the *prop* the caller passed, not on
+      // dialog.matches(":modal") — so with showModal() itself broken, this element still exists
+      // and still carries a real alt, and a check that read it unconditionally would not notice.
+      imageAlt: img ? img.getAttribute("alt") : "",
+      liveText: live ? live.textContent.trim() : "",
+      liveSameNode: live !== null && live === globalThis.__verifyGalleryLive,
+      focusedIsThumb: active === globalThis.__verifyGalleryThumb,
+      focusedLabel: active
+        ? (active.getAttribute("aria-label") || active.tagName)
+        : "nothing",
+    }
+  })()`)
+}
+
+/**
+ * Press Enter the way a real keystroke reaches the page: with the character it carries.
+ *
+ * `harness.ts`'s shared `pressKey("Enter")` sends `key`/`code`/the virtual key codes but no
+ * `text` field on the `keyDown` event. Measured in review: that omission is the entire reason a
+ * "real Enter press" elsewhere in this file does not activate a focused `<button>` in headless
+ * Chromium — a `keyDown` carrying `text: "\r"` does activate one. This function is local to this
+ * file rather than folded into `pressKey`, which is shared with every other package's checks and
+ * maintained elsewhere.
+ *
+ * @param devtools The connected session; the key goes to whatever the page has focused.
+ */
+async function pressRealEnter(devtools: Devtools): Promise<void> {
+  await devtools.send("Input.dispatchKeyEvent", {
+    type: "keyDown",
+    key: "Enter",
+    code: "Enter",
+    windowsVirtualKeyCode: 13,
+    nativeVirtualKeyCode: 13,
+    text: "\r",
+  })
+  await devtools.send("Input.dispatchKeyEvent", {
+    type: "keyUp",
+    key: "Enter",
+    code: "Enter",
+    windowsVirtualKeyCode: 13,
+    nativeVirtualKeyCode: 13,
+  })
+}
+
+/**
+ * `ImageGallery`'s thumbnail strip and the shared `Lightbox` it opens, driven in the browser that
+ * owns both: a thumbnail opens on a real Enter press and on Space, Left/Right and a real mouse
+ * click on the previous/next buttons all page through the sequence and update the live region that
+ * was already on the page before anything opened, Escape closes it, and focus returns to the
+ * thumbnail that opened it.
+ *
+ * `system/image-lightbox.tsx`'s `ImageLightbox` opens the same `Lightbox`, and its own checks in
+ * `pages/checks/system.ts` already prove the backdrop click and the linked-image case; this file
+ * does not repeat them.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function imageGalleryChecks(devtools: Devtools): Promise<void> {
+  // Parked before the dialog is ever opened, so the later identity comparison proves the counter
+  // reaches a region that was already on the page rather than one that arrived with its message
+  // already inside it.
+  await devtools.evaluate<null>(`(() => {
+    globalThis.__verifyGalleryLive = document.querySelector('${GALLERY_DIALOG} [role="status"]')
+    globalThis.__verifyGalleryThumb = document.querySelector('${GALLERY_CARD} button')
+    globalThis.__verifyGalleryThumb.focus()
+    return null
+  })()`)
+
+  const beforeOpen = await readGalleryState(devtools)
+  const focusedThumb = beforeOpen.focusedIsThumb
+  await pressKey(devtools, "Space")
+  await poll(async () => (await readGalleryState(devtools)).open, 3_000)
+  const afterSpace = await readGalleryState(devtools)
+  check(
+    "a real Space press opens the thumbnail's lightbox",
+    focusedThumb && !beforeOpen.open && afterSpace.open,
+    focusedThumb
+      ? `closed → Space → ${
+        afterSpace.open ? `open, showing "${afterSpace.imageAlt}"` : "still closed"
+      }`
+      : "the thumbnail never took focus, so a key press proves nothing about it",
+  )
+
+  await pressKey(devtools, "ArrowRight")
+  await poll(async () => (await readGalleryState(devtools)).imageAlt !== afterSpace.imageAlt, 3_000)
+  const afterRight = await readGalleryState(devtools)
+  check(
+    "a real Right press changes the image and announces it, with its position, in the live region that was already there",
+    afterSpace.open && afterRight.imageAlt !== afterSpace.imageAlt &&
+      afterRight.liveText.includes(afterRight.imageAlt) && afterRight.liveText.includes(" of ") &&
+      afterRight.liveSameNode,
+    afterSpace.open
+      ? `"${afterSpace.imageAlt}" → Right → "${afterRight.imageAlt}", same live region ` +
+        `(${afterRight.liveSameNode}) reads "${afterRight.liveText}"`
+      : "the lightbox never opened, so Right proves nothing",
+  )
+
+  await pressKey(devtools, "ArrowLeft")
+  await poll(async () => (await readGalleryState(devtools)).imageAlt !== afterRight.imageAlt, 3_000)
+  const afterLeft = await readGalleryState(devtools)
+  check(
+    "a real Left press changes the image back",
+    // Gated on the dialog having genuinely opened and Right having genuinely moved, not merely on
+    // Left's own result equalling the start: without both, a Lightbox that never opened at all —
+    // or where Right silently did nothing — reads as "unchanged", which a Left that also did
+    // nothing would pass just as well. Measured: an earlier version of this check gated on neither
+    // and stayed green with `showModal()` deleted from `ui/lightbox.tsx`.
+    afterSpace.open && afterRight.imageAlt !== afterSpace.imageAlt &&
+      afterLeft.imageAlt === afterSpace.imageAlt,
+    afterSpace.open
+      ? `"${afterRight.imageAlt}" → Left → "${afterLeft.imageAlt}"`
+      : "the lightbox never opened, so Left proves nothing",
+  )
+
+  await pressKey(devtools, "Escape")
+  await poll(async () => !(await readGalleryState(devtools)).open, 3_000)
+  const afterEscape = await readGalleryState(devtools)
+  check(
+    "a real Escape press closes the lightbox and returns focus to the thumbnail that opened it",
+    // Gated on `afterSpace.open`, not on `afterLeft.imageAlt !== ""`: the latter reads the <img>
+    // that `Lightbox` renders whenever its `open` *prop* is true, which is not the same fact as
+    // the dialog genuinely being `:modal` — measured in review, deleting `showModal()` left that
+    // element in the DOM with a real `alt` while `dialog.matches(":modal")` stayed `false`
+    // throughout, and this check stayed green regardless. `readGalleryState` now reads `imageAlt`
+    // only while the dialog is modal too, so the two guards agree; this one names the fact the
+    // check is actually about.
+    afterSpace.open && !afterEscape.open && afterEscape.focusedIsThumb,
+    afterSpace.open
+      ? `open → Escape → open=${afterEscape.open}, focus is on ` +
+        `${afterEscape.focusedIsThumb ? "the thumbnail" : afterEscape.focusedLabel}`
+      : "the lightbox was never open, so Escape proves nothing",
+  )
+
+  // A real Enter key press, carrying `text: "\r"` — see `pressRealEnter`'s own doc for why that
+  // field, which `harness.ts`'s shared `pressKey` leaves out, is what makes this genuinely a key
+  // press rather than a stand-in for one.
+  await pressRealEnter(devtools)
+  await poll(async () => (await readGalleryState(devtools)).open, 3_000)
+  const afterEnter = await readGalleryState(devtools)
+  check(
+    "a real Enter press opens the thumbnail's lightbox",
+    afterEscape.focusedIsThumb && !afterEscape.open && afterEnter.open,
+    afterEscape.focusedIsThumb
+      ? `closed → Enter → ${
+        afterEnter.open ? `open, showing "${afterEnter.imageAlt}"` : "still closed"
+      }`
+      : "focus was not on the thumbnail after Escape, so a key press proves nothing about it",
+  )
+
+  // The previous/next buttons, with real mouse presses at their own rectangles — `.click()` fires
+  // with no hit-testing, so it would "press" a button covered by something else just as readily as
+  // one that is not.
+  await devtools.evaluate<null>(`(() => {
+    const dialog = document.querySelector('${GALLERY_DIALOG}')
+    globalThis.__verifyGalleryNext = dialog?.querySelector('button[aria-label="Next image"]') ?? null
+    globalThis.__verifyGalleryPrevious =
+      dialog?.querySelector('button[aria-label="Previous image"]') ?? null
+    return null
+  })()`)
+
+  const nextAim = await aimAt(devtools, "globalThis.__verifyGalleryNext")
+  const nextLanding = await clickAt(devtools, nextAim, "globalThis.__verifyGalleryNext")
+  await poll(async () => (await readGalleryState(devtools)).imageAlt !== afterEnter.imageAlt, 3_000)
+  const afterNextClick = await readGalleryState(devtools)
+  check(
+    "a real mouse click on the next button moves forward, not backward or nowhere",
+    afterEnter.open && nextAim.onTarget && afterNextClick.imageAlt === afterRight.imageAlt,
+    afterEnter.open
+      ? nextAim.onTarget
+        ? `a real press at ${nextAim.x},${nextAim.y} landed on the next button and moved ` +
+          `"${afterEnter.imageAlt}" → "${afterNextClick.imageAlt}" (the same image Right moved to)`
+        : `no press was sent: the point landed on ${
+          nextLanding?.tag ?? nextAim.tag
+        }, not the button`
+      : "the lightbox never opened, so this proves nothing",
+  )
+
+  const previousAim = await aimAt(devtools, "globalThis.__verifyGalleryPrevious")
+  const previousLanding = await clickAt(devtools, previousAim, "globalThis.__verifyGalleryPrevious")
+  await poll(
+    async () => (await readGalleryState(devtools)).imageAlt !== afterNextClick.imageAlt,
+    3_000,
+  )
+  const afterPreviousClick = await readGalleryState(devtools)
+  check(
+    "a real mouse click on the previous button moves back to where the next button started",
+    afterNextClick.imageAlt !== afterEnter.imageAlt && previousAim.onTarget &&
+      afterPreviousClick.imageAlt === afterEnter.imageAlt,
+    afterNextClick.imageAlt !== afterEnter.imageAlt
+      ? previousAim.onTarget
+        ? `a real press at ${previousAim.x},${previousAim.y} landed on the previous button and ` +
+          `moved "${afterNextClick.imageAlt}" → "${afterPreviousClick.imageAlt}"`
+        : `no press was sent: the point landed on ${previousLanding?.tag ?? previousAim.tag}, ` +
+          `not the button`
+      : "the next button never moved the image, so this proves nothing about the previous one",
+  )
+
+  // Teardown, unconditional: `modalChecks` runs last in this file precisely because it cannot
+  // tolerate a dialog left in the top layer, and this one has to leave none behind whatever went
+  // wrong above.
+  await devtools.evaluate<null>(`(() => {
+    const dialog = document.querySelector('${GALLERY_DIALOG}')
+    if (dialog && dialog.open) dialog.close()
+    return null
+  })()`)
+}
+
+/** The standalone `Lightbox` card's fourth button, and the dialog it tries to open. */
+const LIGHTBOX_EMPTY_CARD = '#demo-Lightbox [data-e2e="lightbox-empty"]'
+const LIGHTBOX_EMPTY_BUTTON = '#demo-Lightbox [data-e2e="lightbox-empty-open"]'
+
+/**
+ * `Lightbox` refuses to call `showModal()` when every image it was given has no description —
+ * `canOpen`'s `total > 0` half. No unit test can reach this: a closed dialog and one refused open
+ * for having nothing to show render identical server HTML (`open && current && …` is `false`
+ * either way, since `current` is already `null` when `total` is `0`), so only a real
+ * `dialog.matches(":modal")` reading, after a real click, can tell the two apart.
+ *
+ * `holdsFor` is the shape this needs, not `poll`: there is no state to wait *for* here, since
+ * correct behaviour is that nothing ever changes, and polling for `:modal` becoming `true` would
+ * time out and read as "closed" either way. What `holdsFor` alone cannot tell apart — found in
+ * review — is "`canOpen` correctly refused" from "the button did nothing at all": both leave
+ * `:modal` `false` forever. `data-requested` on the card's wrapper, flipped by the demo's own
+ * `onClick`, is the missing half: asserting it became `true` is what makes a no-op button fail this
+ * check instead of passing it.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function lightboxRefusesEmptyCheck(devtools: Devtools): Promise<void> {
+  const readModal = () =>
+    devtools.evaluate<boolean>(
+      `document.querySelector('${LIGHTBOX_EMPTY_CARD} dialog')?.matches(":modal") === true`,
+    )
+  // The card's own record of whether the button was pressed, read off the wrapper rather than
+  // inferred from the dialog: a check that only ever reads "never became :modal" cannot tell
+  // `canOpen` correctly refusing apart from the button silently doing nothing, and a demo whose
+  // onClick was replaced with a no-op stayed green under the version of this check that only read
+  // `:modal` — found in review.
+  const readRequested = () =>
+    devtools.evaluate<boolean>(
+      `document.querySelector('${LIGHTBOX_EMPTY_CARD}')?.getAttribute("data-requested") === "true"`,
+    )
+
+  const before = await readModal()
+  const requestedBefore = await readRequested()
+  const clicked = await devtools.evaluate<boolean>(`(() => {
+    const button = document.querySelector('${LIGHTBOX_EMPTY_BUTTON}')
+    if (button) button.click()
+    return Boolean(button)
+  })()`)
+  await poll(readRequested, 3_000)
+  const requestedAfter = await readRequested()
+  const stayedClosed = await holdsFor(async () => !(await readModal()), 1_000)
+
+  check(
+    "Lightbox refuses to open when every image it was given lacks a description",
+    clicked && !before && !requestedBefore && requestedAfter && stayedClosed.held,
+    !clicked
+      ? "the card has no lightbox-empty-open button to press"
+      : !requestedAfter
+      ? "the button was pressed but the card never recorded the request, so this proves nothing " +
+        "about canOpen"
+      : stayedClosed.held
+      ? `pressed the button that opens a lightbox with one undescribed image (requested: ` +
+        `${requestedBefore} → ${requestedAfter}); the dialog never became :modal in ` +
+        `${stayedClosed.elapsedMs}ms`
+      : `the dialog became :modal ${stayedClosed.elapsedMs}ms after the press, though the one ` +
+        `image it was given has no description`,
+  )
+
+  // Teardown, unconditional: a broken canOpen would leave this dialog in the top layer, which
+  // would take Modal's own checks down with it — Modal runs last in this file precisely because it
+  // cannot tolerate that.
+  await devtools.evaluate<null>(`(() => {
+    const dialog = document.querySelector('${LIGHTBOX_EMPTY_CARD} dialog')
+    if (dialog && dialog.open) dialog.close()
+    return null
+  })()`)
 }
 
 /** What the card's step control did, and what the close port made of it afterwards. */

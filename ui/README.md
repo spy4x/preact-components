@@ -44,6 +44,8 @@ Preact + Tailwind primitives extracted from earlier source applications.
 | `EnhancedForm`    | `enhanced-form`     | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?` — posts natively before hydration             |
 | `ErrorState`      | `error-state`       | `message` (renders nothing when empty)                                                                                         |
 | `GeoButton`       | `geo-button`        | `onLocation`, `onError?`                                                                                                       |
+| `ImageGallery`    | `image-gallery`     | `images` (`{ src, alt, thumbSrc? }[]`), `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`               |
+| `Lightbox`        | `lightbox`          | `images`, `index`, `open`, `onClose`, `onIndexChange`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`          |
 | `LoadingScreen`   | `loading-screen`    | `message`, `description`                                                                                                       |
 | `LoadingSkeleton` | `loading-skeleton`  | `rows`                                                                                                                         |
 | `LoadingSpinner`  | `loading-spinner`   | `label`, `size`                                                                                                                |
@@ -616,6 +618,75 @@ with an optional `honeypot` prop: an off-screen field simple bots fill in, `hp-f
 deliberately not a word a browser's own autofill heuristics reach for. A submit whose honeypot
 carries a value never reaches the caller's `onSubmit`; it resolves as if it had succeeded, because
 telling a bot it was caught only teaches it which field to leave alone next time.
+
+## Lightbox
+
+`Lightbox` is the one dialog `ImageGallery`'s thumbnail strip and `system/image-lightbox.tsx`'s
+content mode both open — issue #140's "one lightbox, two ways in". `images`, `index`, `open`,
+`onClose` and `onIndexChange` are the caller's own state; the component owns nothing but the
+dialog's open/close lifecycle and which key or button moved the position.
+
+**Built on a native `<dialog>`, not `Modal`.** The issue asked for `Modal` underneath it, so focus
+handling would be written once, and two things about `Modal` said no instead. `Modal` wraps
+`children` in a fixed `<div class="px-6 py-4">` with no prop that reaches it, which fights a
+full-bleed image before anything else does. The one that actually rules it out: `Modal` renders no
+ref to its `<dialog>`, so nothing outside it can attach a listener straight to the dialog element —
+which is exactly what Left and Right need, since they must work only while the lightbox is open. A
+listener on `Modal`'s own children would only ever see a key that bubbled up from whatever is
+focused inside it, one step removed from the dialog itself for no reason a caller of `Modal`
+controls. A native `<dialog>` with its own `ref` has neither problem. What does carry over from
+`Modal` is reuse, not composition: its exported `shouldRetargetFocus`/`restoreFocus` pair, the same
+one it uses for its own focus restore.
+
+**Left and Right are attached once, on mount, directly on the `<dialog>` element**, reading `open`,
+the current position and the total from a ref updated every render — the same shape
+`ui/tooltip.tsx`'s Escape listener uses. This is the defensive shape `AGENTS.md`'s Escape-race rule
+asks for; it is not fixing a race this component was measured to have. A listener gated on `open`
+instead, registered in an effect keyed to it alongside the `showModal()` effect, was measured to
+work too: both effects commit in the same batch, so a key pressed in the same task as the opening
+click still finds a listener. Escape itself needs no listener: this dialog never refuses a close, so
+`<dialog>`'s own Escape handling and its `close` event are the whole mechanism, and the `close`
+event is also where focus is restored.
+
+**The counter is visible, not only announced.** `counterLabel` decides its wording — an English
+default, `` (position, total) => `${position} of ${total}` ``, and an override prop, the same
+policy every other user-visible string in this package follows. Its own chip and the previous/next
+buttons appear and disappear together, both gated on more than one image being in the sequence.
+
+**The live region is always present**, inside the dialog whether it is open or not, and announces
+the new image's description together with its position — `"A hero shot — 3 of 8"` — not the
+position alone, since a reader arrowing through the sequence needs to know what changed as well as
+where they now are.
+
+**An image whose description is genuinely empty is dropped from `images`.** `alt` is required in
+`LightboxImage`'s type; `describedImages` drops one whose `alt` is empty after trimming before
+either caller renders anything with it, so the same image is missing from `ImageGallery`'s strip and
+from `Lightbox`'s own sequence — and `open` is refused the same way when nothing survives the
+filter, rather than showing an empty modal with no close control. Silent, not warned: `alt` is
+already required by the type, so an empty one only reaches this component through a caller that
+bypassed the type system to produce it, and nothing else in this package calls `console.warn` for a
+value its own type already disallows. **This is not the same claim as "an image with no `alt`
+attribute is refused everywhere."** `system/image-lightbox.tsx`'s content mode substitutes its own
+`fallbackAlt` (default `"Image"`) for a missing `alt` first, exactly as it did before `Lightbox`
+existed, so a zoomable image with no `alt` attribute still opens there, named `"Image"` — and, new
+here, shown as a visible caption. Only a caller who also sets `fallbackAlt=""` turns that
+substitution off; only then can content mode produce a genuinely empty description, and only then
+does it get the same refusal `ImageGallery` and `Lightbox` apply to their own `images` prop.
+
+## ImageGallery
+
+A strip of real `<button>` thumbnails, one per image, that opens `Lightbox` on the one pressed —
+the other way into the shared dialog; `system/image-lightbox.tsx`'s content mode is the first. Each
+thumbnail's accessible name is the image's own `alt`, carried by the button through `aria-label`;
+the `<img>` inside it is `alt=""`, decorative, so a screen reader is not given the same name twice.
+`thumbSrc` is the thumbnail's own image source and defaults to `src` — the full image — when a
+caller has one size for both.
+
+`images` is filtered through `describedImages` once, and the filtered list is what both the strip
+and `Lightbox` receive, so an index computed against the strip's own thumbnails always lands on the
+same image inside the dialog — the two never run the filter separately over two different starting
+arrays, which is what let them disagree in `system/image-lightbox.tsx`'s own version of this bug
+before it was fixed there (see the `Lightbox` section above).
 
 ## Tests
 

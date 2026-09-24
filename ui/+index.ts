@@ -159,6 +159,7 @@ export {
 } from "./field.tsx"
 export { GeoButton, type GeoButtonProps, type GeoCoordinates } from "./geo-button.tsx"
 export { HONEYPOT_FIELD_NAME, honeypotField, honeypotFilled } from "./honeypot.tsx"
+export { ImageGallery, type ImageGalleryImage, type ImageGalleryProps } from "./image-gallery.tsx"
 export {
   Input,
   type InputProps,
@@ -169,6 +170,14 @@ export {
   type TextareaProps,
 } from "./input.tsx"
 export { InputButton, type InputButtonProps } from "./input-button.tsx"
+export {
+  counterText,
+  describedImages,
+  Lightbox,
+  type LightboxImage,
+  type LightboxProps,
+  wrapIndex,
+} from "./lightbox.tsx"
 export { LoadingScreen, type LoadingScreenProps } from "./loading-screen.tsx"
 export { LoadingSkeleton, type LoadingSkeletonProps } from "./loading-skeleton.tsx"
 export { LoadingSpinner, type LoadingSpinnerProps, type SpinnerSize } from "./loading-spinner.tsx"

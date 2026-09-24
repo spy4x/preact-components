@@ -1665,6 +1665,8 @@ const LIGHTBOX = "#demo-ImageLightbox"
 const DIALOG = `${LIGHTBOX} dialog`
 const PLAIN_IMAGE = `${LIGHTBOX} [data-e2e="lightbox-image"]`
 const LINKED_IMAGE = `${LIGHTBOX} [data-e2e="lightbox-linked-image"]`
+/** The card's third scenario: an undescribed image inside a link, `fallbackAlt=""`. */
+const BARE_IMAGE = `${LIGHTBOX} [data-e2e="lightbox-bare-image"]`
 
 /**
  * Page exceptions the readings below swallowed.
@@ -3365,6 +3367,8 @@ async function imageLightboxChecks(devtools: Devtools): Promise<void> {
       : "the lightbox was not open, so a backdrop click proves nothing",
   )
 
+  await bareImageRefusalCheck(devtools)
+
   // The linked image leaves the lightbox open, and a real Escape press is what closes it — which
   // is both the last assertion and the teardown every package after this file depends on.
   //
@@ -3392,6 +3396,126 @@ async function imageLightboxChecks(devtools: Devtools): Promise<void> {
     `(() => {
       const dialog = document.querySelector('${DIALOG}')
       if (dialog && dialog.open) dialog.close()
+      return true
+    })()`,
+    false,
+  )
+}
+
+/**
+ * An image with no `alt` at all, where `fallbackAlt=""` has turned the substitution off, is never
+ * marked a zoom control, and a real click on it — inside a link — is left uncancelled instead of
+ * being cancelled for a lightbox that would have refused to open anyway.
+ *
+ * The measurement is `defaultPrevented`, the same one {@link linkedImageCheck} uses and for the
+ * same reason: a browser follows a link exactly when the click that reached it was not cancelled,
+ * so reading `defaultPrevented` on a listener that then cancels the event itself proves what a real
+ * navigation would have done without ever letting the page actually move. An earlier version of
+ * this check let the click really navigate to a same-page fragment. Measured in review, that left
+ * the page moving for about 200 ms after the check's own wait returned, and a full run under load
+ * from a concurrent build failed an unrelated check further down the file — most likely because of
+ * that movement, though the failure was never reproduced.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function bareImageRefusalCheck(devtools: Devtools): Promise<void> {
+  const marks = await read(
+    devtools,
+    `(() => {
+      const image = document.querySelector('${BARE_IMAGE}')
+      if (!image) return { found: false, marked: false }
+      return {
+        found: true,
+        marked: image.hasAttribute("role") || image.hasAttribute("tabindex") ||
+          image.hasAttribute("aria-label"),
+      }
+    })()`,
+    { found: false, marked: true },
+  )
+  check(
+    'an image with no alt and fallbackAlt="" is never marked a zoom control',
+    marks.found && !marks.marked,
+    marks.found
+      ? `role/tabindex/aria-label present: ${marks.marked}`
+      : "the card has no bare, undescribed image to check",
+  )
+
+  await read(
+    devtools,
+    `(() => {
+      globalThis.__bareImageClick = { clicks: 0, prevented: null }
+      globalThis.__bareImageListener = (event) => {
+        const target = event.target
+        const link = target && target.closest
+          ? target.closest('[data-e2e="lightbox-bare-link"]')
+          : null
+        if (!link) return
+        globalThis.__bareImageClick.clicks++
+        globalThis.__bareImageClick.prevented = event.defaultPrevented
+        event.preventDefault()
+      }
+      document.addEventListener("click", globalThis.__bareImageListener)
+      return true
+    })()`,
+    false,
+  )
+
+  await read(
+    devtools,
+    `(document.querySelector('${BARE_IMAGE}')?.scrollIntoView({ block: "center", behavior: "instant" }), true)`,
+    false,
+  )
+  await settleScroll(devtools)
+  const aim = await read(
+    devtools,
+    `(() => {
+      const image = document.querySelector('${BARE_IMAGE}')
+      if (!image) return { onTarget: false, x: 0, y: 0, landedOn: "nothing", reason: "the bare image is missing" }
+      const rect = image.getBoundingClientRect()
+      const x = Math.round(rect.left + rect.width / 2)
+      const y = Math.round(rect.top + rect.height / 2)
+      const at = document.elementFromPoint(x, y)
+      return {
+        onTarget: at === image,
+        x,
+        y,
+        landedOn: at ? at.tagName.toLowerCase() : "nothing",
+        reason: Math.round(rect.width) + "×" + Math.round(rect.height) + " image",
+      }
+    })()`,
+    MISSED,
+  )
+  if (aim.onTarget) await clickAt(devtools, aim)
+  await poll(() => read(devtools, `globalThis.__bareImageClick?.clicks === 1`, false), 3_000)
+  const outcome = await read(
+    devtools,
+    `(() => {
+      const record = globalThis.__bareImageClick || { clicks: 0, prevented: null }
+      return {
+        clicks: record.clicks,
+        prevented: record.prevented,
+        modalsOpen: document.querySelectorAll("dialog:modal").length,
+      }
+    })()`,
+    { clicks: 0, prevented: null as boolean | null, modalsOpen: -1 },
+  )
+
+  check(
+    "a real click on the undescribed, linked image is not cancelled, so the link it sits in still works",
+    aim.onTarget && outcome.clicks === 1 && outcome.prevented === false && outcome.modalsOpen === 0,
+    aim.onTarget
+      ? `a real click on the ${aim.reason} reached document with defaultPrevented=` +
+        `${outcome.prevented}, ${outcome.modalsOpen} modal dialog(s) open`
+      : `no click was sent: the point at ${aim.x},${aim.y} lands on ${aim.landedOn} — ${aim.reason}`,
+  )
+
+  // Teardown: this check's own listener removed, and any dialog this scenario might have wrongly
+  // opened closed, so neither leaks into a check that runs after this one.
+  await read(
+    devtools,
+    `(() => {
+      document.removeEventListener("click", globalThis.__bareImageListener)
+      for (const dialog of document.querySelectorAll("dialog")) if (dialog.open) dialog.close()
       return true
     })()`,
     false,
