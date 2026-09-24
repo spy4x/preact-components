@@ -768,7 +768,7 @@ in this package's `deno.json` because the root import map has no renderer.
 ## Not in this package
 
 `MetricsList`, `Export` and the higher-level selectors (`CurrencySelector`, `DateRangeSelector`,
-`AccountSelector`) stay app-side for now — `MetricsList` is theme-coupled and belongs with the charts
-work, and `Export` drags in `xlsx`. `DeletionValidation` belongs with the CRUD package.
-`DateTimeFilter`'s time-of-day mode is `DateRangePicker`'s `withTime` option (#142); nothing app-side
-answering to that name is extracted here.
+`AccountSelector`) stay app-side for now — `MetricsList` is theme-coupled and belongs with the
+charts work, and `Export` drags in `xlsx`. `DeletionValidation` belongs with the CRUD package.
+`DateTimeFilter`'s time-of-day mode is `DateRangePicker`'s `withTime` option (#142); nothing
+app-side answering to that name is extracted here.
