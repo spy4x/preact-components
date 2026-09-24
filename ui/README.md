@@ -765,10 +765,17 @@ before it was fixed there (see the `Lightbox` section above).
 Downloads `rows` — or the result of `getRows`, called only once the button is pressed — as a CSV
 file: a native `<button>`, so Space and Enter activate it with no extra wiring, and a `role="status"`
 live region, present and empty from the first render, that announces `resultLabel(rowCount)` once
-the download has been handed to the browser. `rows` and `getRows` are mutually exclusive at the type
-level — passing both, or neither, is a compile error — and `getRows` may return its array directly
-or a `Promise` of one, since "export everything the current filter matches" is usually a fetch and
-`await`ing a value that is already an array resolves immediately either way.
+the download has been handed to the browser. A second export with the same row count still
+announces: the region is cleared, then set, because writing the same text twice is a no-op as far as
+the DOM is concerned and would otherwise reach no screen reader. `rows` and `getRows` are mutually
+exclusive at the type level — passing both, or neither, is a compile error — and `getRows` may
+return its array directly or a `Promise` of one, since "export everything the current filter
+matches" is usually a fetch and `await`ing a value that is already an array resolves immediately
+either way. While an export is pending — `getRows` is exactly the case likely to take long enough to
+notice — the button is `aria-disabled`, not natively `disabled`: setting the native attribute on a
+focused button drops focus to `<body>` and leaves it there once the export finishes, measured in the
+headless Chromium this repository drives. `aria-disabled` leaves focus alone; the click handler
+itself ignores a second press while one export is already running.
 
 The download itself goes through `@spy4x/platform/browser/download`'s `downloadResponseAsFile`,
 handed a `Response` wrapping the written bytes — `ui` depends on `@spy4x/platform` for that one
@@ -784,22 +791,33 @@ Excel open non-English text correctly instead of guessing the system codepage; a
 `\r\n`-terminated, the ending the RFC itself specifies rather than the bare `\n` some tools merely
 tolerate.
 
-A cell whose text starts with `=`, `+`, `-`, `@`, a tab or a carriage return is prefixed with a
-single quote before anything else runs, because a spreadsheet reads that leading character as the
-start of a formula — the four symbols most CSV-injection guidance names, plus the leading tab and
-carriage return the same guidance lists alongside them. The guard has no exception for a value that
-merely looks safe: a column whose `format` produces a plain negative number such as `-5` is guarded
-exactly like a payload that only starts the same way (`-2+3+cmd|' /C calc'!A1`), and opens as the
-text `-5` in Excel rather than a live number. That is a real cost for a numeric column with
-negative values — a caller who needs the number to stay numeric routes it around a leading `-` in
-its own `format` (parentheses for a negative amount, say) — traded for not having to tell a real
-negative number apart from a payload shaped like one, which content alone cannot do reliably.
+A `string` cell whose text starts with `=`, `+`, `-` or `@` — or that has one of those right after a
+comma, semicolon, tab, carriage return or line feed _inside_ it — is prefixed with a single quote at
+that point, because a spreadsheet reads that character as the start of a formula. Guarding only the
+first character of the string this writer wrote is not enough: this file is comma-separated, but
+nothing forces the spreadsheet that opens it to read it that way — Excel's own default list
+separator is a semicolon in most European locales, and a `.csv` opened by double-click is split on
+whatever that locale setting is. Measured in LibreOffice 26.2: `x;=cmd|' /C calc'!A0`, opened with
+`;` as the separator, split into two cells, and the second ran as a live formula (in this case a DDE
+payload, which can launch a program) unless the character right after the `;` was guarded too, not
+only the first character of the whole string. A bare leading tab or carriage return is also guarded,
+even with nothing after it, per the same guidance this follows.
+
+The guard has no exception for a `string` that merely looks safe: one reading `-5` is guarded
+exactly like `-2+3+cmd|' /C calc'!A1`, which starts the same way, because content alone cannot tell
+a real negative number from a payload shaped like one. That guard is visible, not hidden: LibreOffice
+(26.2, measured) shows the leading `'` on screen rather than dropping it, so a string cell such as
+`a;-5` reads as `a;'-5` in the opened file — this repository has not verified whether Excel shows the
+mark too. A caller whose numeric column needs to stay a live, unguarded number does not fight the
+guard through `format`'s string output; `format` (and an unformatted field) may return a `number` or
+a `bigint` directly, and either is written with a plain `String()` conversion and no guard at all,
+because neither type can hold a separator or a formula body in the first place.
 
 Zero rows still downloads a file: the header row alone, a real, openable CSV rather than nothing
-happening for a filter that currently matches nothing. A `getRows` that throws or rejects downloads
-nothing — the live region announces `errorLabel` ("Could not export the file." by default) instead
-of a row count, the optional `onError` port is called with the error, and the button re-enables for
-another try.
+happening for a filter that currently matches nothing. A `getRows` that throws or rejects, or a
+download that itself fails, both end the same way: nothing downloads, the live region announces
+`errorLabel` ("Could not export the file." by default) instead of a row count, the optional
+`onError` port is called with the error either way, and the button re-enables for another try.
 
 Excel (`.xlsx`) is not supported, and staying CSV-only was the point of starting here: `xlsx` would
 be a new, large dependency for formatting, formulas and multiple sheets this button does not need,
