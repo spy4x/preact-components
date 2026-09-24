@@ -42,9 +42,10 @@ const DROPDOWN_STATE = `(() => {
 
 /**
  * `ui/`'s browser checks: Dropdown's pointer and keyboard contract, ToggleSwitch, OnOffButtons,
- * `Field`, Tooltip, Combobox, Toastr, DateRangePicker's focus contract, Pagination's end controls,
- * DataTable's sort-by-header and paging contract, `ImageGallery`'s thumbnail strip and the shared
- * `Lightbox` it opens, and — last — Modal's keyboard and focus contract.
+ * `Field`, Tooltip, Combobox, Toastr, DateRangePicker's focus contract in both its day-only and
+ * `withTime` modes, Pagination's end controls, DataTable's sort-by-header and paging contract,
+ * `ImageGallery`'s thumbnail strip and the shared `Lightbox` it opens, and — last — Modal's keyboard
+ * and focus contract.
  *
  * This file runs last of every package's, and Modal's checks run last inside it, for the same
  * reason: Modal opens a real modal dialog, and a dialog that refused to close would sit in the top
@@ -153,6 +154,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await comboboxChecks(devtools)
   await toastrChecks(devtools)
   await dateRangeChecks(devtools)
+  await dateRangeTimeChecks(devtools)
   await paginationChecks(devtools)
   await dataTableChecks(devtools)
   await enhancedFormAsyncFailureCheck(devtools)
@@ -5027,6 +5029,360 @@ async function openPickerPanel(devtools: Devtools): Promise<PickerState> {
   await poll(() => devtools.evaluate<boolean>(`${PICKER_STATE}.inPanel === true`), 3_000)
 
   return await devtools.evaluate<PickerState>(PICKER_STATE)
+}
+
+/**
+ * One read of `withTime`'s trigger, panel and focus — the same shape as {@link PickerState}, minus
+ * the day-mode-only `Custom…` fields nothing in this mode renders.
+ */
+interface PickerTimeState {
+  ok: boolean
+  open: boolean
+  expanded: string | null
+  onTrigger: boolean
+  inPanel: boolean
+  /** `true` when the focused element carries `aria-pressed="true"` — Last hour, on first open. */
+  focusPressed: boolean
+  label: string
+}
+
+/**
+ * Park the `withTime` card's trigger, panel and controlled-value readout on `globalThis`, under a
+ * key of its own so it never collides with {@link PICKER_SETUP}'s day-mode parking — both run on
+ * the same page, one after the other.
+ */
+const PICKER_TIME_SETUP = `(() => {
+  const card = document.querySelector("#demo-DateRangePicker")
+  const trigger = card?.querySelector('[data-e2e="guide-date-range-time"]') ?? null
+  const panelId = trigger?.getAttribute("aria-controls") ?? ""
+  const panel = panelId === "" ? null : document.getElementById(panelId)
+  globalThis.__verifyPickerTime = {
+    trigger,
+    panel,
+    // The paragraph the card renders next to the picker, printing whatever the caller's onChange
+    // last received — read back rather than reaching into Preact state, the same way every other
+    // check in this file learns what a controlled demo is holding.
+    controlled: trigger?.closest("div.space-y-3")?.querySelector('[data-e2e="controlled-value"]') ??
+      null,
+    // A focusable control on the same card, outside this picker's own root — for the two checks
+    // driven from outside it. Reuses the day-mode empty card's trigger; nothing here depends on
+    // what that picker does with a click, only on it being able to hold focus.
+    away: card?.querySelector('[data-e2e="guide-date-range-empty"]') ?? null,
+  }
+  return {
+    card: card !== null,
+    trigger: trigger !== null,
+    panel: panel !== null,
+    controlled: globalThis.__verifyPickerTime.controlled !== null,
+  }
+})()`
+
+/** The panel's state and where focus is, read in one round trip — the `withTime` counterpart of {@link PICKER_STATE}. */
+const PICKER_TIME_STATE = `(() => {
+  const { trigger, panel } = globalThis.__verifyPickerTime ?? {}
+  if (!trigger || !panel) {
+    return { ok: false, open: false, expanded: null, onTrigger: false, inPanel: false, focusPressed: false, label: "" }
+  }
+  const active = document.activeElement
+  const text = active === document.body
+    ? "the page"
+    : ((active?.textContent ?? "").trim() || active?.getAttribute?.("data-e2e") ||
+      (active?.tagName ?? ""))
+  return {
+    ok: true,
+    open: !panel.hasAttribute("hidden") && panel.getBoundingClientRect().height > 0,
+    expanded: trigger.getAttribute("aria-expanded"),
+    onTrigger: active === trigger,
+    inPanel: panel.contains(active),
+    focusPressed: active?.getAttribute?.("aria-pressed") === "true",
+    label: String(text).slice(0, 40),
+  }
+})()`
+
+/**
+ * Open the parked `withTime` panel and wait until focus has landed inside it — the `withTime`
+ * counterpart of {@link openPickerPanel}.
+ */
+async function openTimePickerPanel(devtools: Devtools): Promise<PickerTimeState> {
+  await devtools.evaluate<null>(`(globalThis.__verifyPickerTime?.trigger?.click(), null)`)
+  await poll(() => devtools.evaluate<boolean>(`${PICKER_TIME_STATE}.inPanel === true`), 3_000)
+
+  return await devtools.evaluate<PickerTimeState>(PICKER_TIME_STATE)
+}
+
+/**
+ * `withTime`'s own focus contract, and the one behaviour this mode adds: typing into the two
+ * `datetime-local` fields and applying carries the typed times to the caller's `onChange`.
+ *
+ * The focus contract itself is not new mechanism — {@link DateRangePicker}'s open/close signals,
+ * `closePanel` and the effect that moves focus are the exact same code paths `withTime` runs
+ * through, untouched by it, which is what {@link dateRangeChecks} above already proved for the
+ * day-only mode. This function is the proof that showing a `datetime-local` field instead of a
+ * `date` one, and two built-in presets instead of a caller-supplied list, changed nothing about
+ * where focus goes: the #115/#159 fixes were never mode-specific, and this is what makes that true
+ * rather than assumed.
+ *
+ * `datetime-local`'s value is set and an `input` event dispatched, exactly the way the `Field`
+ * check above drives its `email` input — measured against this catalogue's own build in a real
+ * browser first (kept as this function's own evidence in the pull request), rather than assumed
+ * from the day-only fields' behaviour, which this repository has never had to type into either.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function dateRangeTimeChecks(devtools: Devtools): Promise<void> {
+  await pointerToCorner(devtools)
+  const found = await devtools.evaluate<
+    { card: boolean; trigger: boolean; panel: boolean; controlled: boolean }
+  >(PICKER_TIME_SETUP)
+
+  const presetCounts = await devtools.evaluate<{ withTime: number; dayOnly: number }>(`(() => {
+    const timePanel = globalThis.__verifyPickerTime?.panel ?? null
+    const subDaySelector =
+      '[data-e2e="date-range-preset-last-hour"], [data-e2e="date-range-preset-last-24-hours"]'
+    const withTime = timePanel ? timePanel.querySelectorAll(subDaySelector).length : -1
+    const dayOnly = [...document.querySelectorAll('#demo-DateRangePicker [role="group"]')]
+      .filter((panel) => panel !== timePanel)
+      .reduce((total, panel) => total + panel.querySelectorAll(subDaySelector).length, 0)
+    return { withTime, dayOnly }
+  })()`)
+
+  check(
+    "withTime shows Last hour and Last 24 hours; the day-only cards on the same page show neither",
+    found.panel && presetCounts.withTime === 2 && presetCounts.dayOnly === 0,
+    !found.panel
+      ? "there is no withTime DateRangePicker card on the page to read"
+      : `the withTime panel carries ${presetCounts.withTime} of the two sub-day presets, the ` +
+        `day-only panels on the same page carry ${presetCounts.dayOnly} of them between them`,
+  )
+
+  const opened = await devtools.evaluate<PickerTimeState>(`(() => {
+    globalThis.__verifyPickerTime?.trigger?.focus()
+    return ${PICKER_TIME_STATE}
+  })()`)
+  await devtools.evaluate<null>(`(globalThis.__verifyPickerTime?.trigger?.click(), null)`)
+  await poll(() => devtools.evaluate<boolean>(`${PICKER_TIME_STATE}.inPanel === true`), 3_000)
+  const inside = await devtools.evaluate<PickerTimeState>(PICKER_TIME_STATE)
+
+  check(
+    "opening withTime's panel moves focus from the trigger into the panel, onto Last hour",
+    found.trigger && found.panel && opened.ok && opened.onTrigger && !opened.open &&
+      inside.open && inside.inPanel && !inside.onTrigger && inside.focusPressed,
+    !found.card
+      ? "there is no DateRangePicker card on the page to drive"
+      : !found.trigger || !found.panel
+      ? `the withTime card has ${found.trigger ? "a trigger" : "no trigger"} and ${
+        found.panel ? "a panel" : "no panel it names through aria-controls"
+      }`
+      : !opened.onTrigger
+      ? `focus would not go to the trigger, it stayed on ${opened.label}, so there is no move to ` +
+        `measure`
+      : !inside.open
+      ? `the panel never opened: aria-expanded ${opened.expanded} → ${inside.expanded}`
+      : !inside.inPanel
+      ? `the panel opened and focus stayed on ${
+        inside.onTrigger ? "the trigger" : inside.label
+      }, so a keyboard user has to tab into it`
+      : !inside.focusPressed
+      ? `focus went to "${inside.label}", not the first preset`
+      : `focus on the trigger → "${inside.label}", with the panel no longer hidden`,
+  )
+
+  const typed = await devtools.evaluate<
+    {
+      ok: boolean
+      controlledBefore: string
+      controlledAfter: string
+      closed: boolean
+      onTrigger: boolean
+    }
+  >(`(async () => {
+    const { panel, trigger, controlled } = globalThis.__verifyPickerTime ?? {}
+    if (!panel || !trigger || !controlled) {
+      return { ok: false, controlledBefore: "", controlledAfter: "", closed: false, onTrigger: false }
+    }
+    const from = panel.querySelector('[data-e2e="date-range-from"]')
+    const to = panel.querySelector('[data-e2e="date-range-to"]')
+    const apply = panel.querySelector('[data-e2e="date-range-apply"]')
+    if (!from || !to || !apply) {
+      return { ok: false, controlledBefore: "", controlledAfter: "", closed: false, onTrigger: false }
+    }
+    const controlledBefore = controlled.textContent.trim()
+    const type = (el, value) => {
+      el.value = value
+      el.dispatchEvent(new Event("input", { bubbles: true }))
+    }
+    // "Yesterday 14:00 – 18:00": the literal dates do not matter — nothing here asks what day it is
+    // — only that the exact wall-clock strings typed into the two fields are the ones the caller's
+    // onChange receives back.
+    type(from, "2026-08-22T14:00")
+    type(to, "2026-08-23T18:00")
+    await new Promise((done) => setTimeout(done, 30))
+    apply.click()
+    await new Promise((done) => setTimeout(done, 80))
+    return {
+      ok: true,
+      controlledBefore,
+      controlledAfter: controlled.textContent.trim(),
+      closed: panel.hasAttribute("hidden") || panel.getBoundingClientRect().height === 0,
+      onTrigger: document.activeElement === trigger,
+    }
+  })()`)
+
+  check(
+    "typing into withTime's two fields and applying carries those exact times to onChange",
+    typed.ok && typed.controlledBefore !== typed.controlledAfter &&
+      typed.controlledAfter === "range: 2026-08-22T14:00 → 2026-08-23T18:00" && typed.closed &&
+      typed.onTrigger,
+    !typed.ok
+      ? "the withTime card is missing its from field, to field, apply control or controlled-value " +
+        "readout"
+      : typed.controlledBefore === typed.controlledAfter
+      ? `the readout stayed "${typed.controlledAfter}", so Apply never reached the caller's onChange`
+      : typed.controlledAfter !== "range: 2026-08-22T14:00 → 2026-08-23T18:00"
+      ? `the caller's onChange received "${typed.controlledAfter}", not the times typed into the ` +
+        `fields`
+      : !typed.closed
+      ? "the panel stayed open after Apply"
+      : "the panel closed but focus did not return to the trigger",
+  )
+
+  const beforeEscape = await openTimePickerPanel(devtools)
+  await pressKey(devtools, "Escape")
+  const closed = await poll(
+    () => devtools.evaluate<boolean>(`${PICKER_TIME_STATE}.open === false`),
+    3_000,
+  )
+  const afterEscape = await devtools.evaluate<PickerTimeState>(PICKER_TIME_STATE)
+
+  check(
+    "a real Escape press closes withTime's panel and hands focus back to its trigger",
+    beforeEscape.open && beforeEscape.inPanel && !beforeEscape.onTrigger && closed &&
+      afterEscape.onTrigger,
+    !beforeEscape.open
+      ? "the panel was not open, so this proves nothing about Escape"
+      : !beforeEscape.inPanel
+      ? `focus was on ${beforeEscape.label}, outside the panel, so the press never came from inside it`
+      : !closed
+      ? `the panel was still open 3s after a real Escape press from "${beforeEscape.label}"`
+      : !afterEscape.onTrigger
+      ? `the panel closed and focus fell to ${afterEscape.label}, so the next Tab starts from ` +
+        `somewhere the person never went`
+      : `Input.dispatchKeyEvent Escape from "${beforeEscape.label}": the panel is hidden again and ` +
+        `focus is on the trigger`,
+  )
+
+  await escapeFromOutsideTimeCheck(devtools)
+  await outsideClickTimeCheck(devtools)
+  await blurActive(devtools)
+}
+
+/**
+ * An Escape press from outside an open `withTime` panel closes it and leaves focus where it is —
+ * the `withTime` counterpart of {@link escapeFromOutsideCheck}. See that function's own doc for why
+ * this component does not pull focus back for an Escape that did not come from inside it.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function escapeFromOutsideTimeCheck(devtools: Devtools): Promise<void> {
+  const opened = await openTimePickerPanel(devtools)
+  const moved = await devtools.evaluate<{ ok: boolean; took: boolean }>(`(() => {
+    const away = globalThis.__verifyPickerTime?.away ?? null
+    if (away === null) return { ok: false, took: false }
+    away.focus()
+    return { ok: true, took: document.activeElement === away }
+  })()`)
+
+  await pressKey(devtools, "Escape")
+  const closed = await poll(
+    () => devtools.evaluate<boolean>(`${PICKER_TIME_STATE}.open === false`),
+    3_000,
+  )
+  const after = await devtools.evaluate<PickerTimeState & { stillAway: boolean }>(`(() => ({
+    ...${PICKER_TIME_STATE},
+    stillAway: document.activeElement === (globalThis.__verifyPickerTime?.away ?? null),
+  }))()`)
+
+  check(
+    "a real Escape press from outside an open withTime panel leaves focus where it is",
+    opened.open && moved.ok && moved.took && closed && after.stillAway && !after.onTrigger,
+    !opened.open
+      ? "the panel would not open, so there is nothing to press Escape at"
+      : !moved.ok
+      ? "the card has no outside control to move focus to"
+      : !moved.took
+      ? "focus would not leave the panel, so the press did not come from outside it"
+      : !closed
+      ? "the panel was still open 3s after a real Escape press from outside it"
+      : after.onTrigger
+      ? "Escape from outside dragged focus back onto the trigger, which is the defect this " +
+        "component was changed to stop, in the mode it was changed for"
+      : !after.stillAway
+      ? `Escape from outside closed the panel and moved focus to ${after.label} rather than ` +
+        `leaving it alone`
+      : "focus outside the component → a real Escape press → the panel is hidden and focus has " +
+        "not moved at all",
+  )
+}
+
+/**
+ * A real click outside an open `withTime` panel closes it and leaves focus on what was clicked —
+ * the `withTime` counterpart of {@link outsideClickCheck}, reusing that function's own target: the
+ * card's "Usage" summary, restored to closed afterward either way.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function outsideClickTimeCheck(devtools: Devtools): Promise<void> {
+  const target = `document.querySelector('#demo-DateRangePicker [data-e2e="usage"] summary')`
+  await devtools.evaluate<null>(`(${target}?.scrollIntoView({ block: "center" }), null)`)
+  await settledScroll(devtools)
+  await pointerToCorner(devtools)
+
+  const opened = await openTimePickerPanel(devtools)
+  await devtools.evaluate<null>(`(${target}?.scrollIntoView({ block: "center" }), null)`)
+  await settledScroll(devtools)
+  const aim = await aimAt(devtools, target)
+  const landing = await clickAt(devtools, aim, target)
+  const closed = await poll(
+    () => devtools.evaluate<boolean>(`${PICKER_TIME_STATE}.open === false`),
+    3_000,
+  )
+  const after = await devtools.evaluate<PickerTimeState & { onClicked: boolean }>(`(() => ({
+    ...${PICKER_TIME_STATE},
+    onClicked: document.activeElement === ${target},
+  }))()`)
+
+  check(
+    "a real click outside an open withTime panel closes it without taking focus back",
+    opened.open && opened.inPanel && aim.onTarget && landing !== null && landing.onTarget &&
+      closed && !after.onTrigger && after.onClicked,
+    !opened.open || !opened.inPanel
+      ? "the panel would not open with focus inside, so there is nothing to click away from"
+      : !aim.onTarget
+      ? `there is nothing to click at (${aim.x}, ${aim.y}) — the point reads ${aim.tag}` +
+        (aim.inViewport ? "" : ", outside the viewport")
+      : landing === null
+      ? "the press never reached the page, so this proves nothing about the panel"
+      : !landing.onTarget
+      ? `the press landed on ${landing.tag} at (${landing.x}, ${landing.y}) rather than the ` +
+        `summary aimed at (${aim.x}, ${aim.y}) — a missed press, which proves nothing`
+      : !closed
+      ? "the panel was still open 3s after a real click outside it"
+      : after.onTrigger
+      ? "the outside click pulled focus back onto the trigger, taking it off the control the " +
+        "person had just clicked"
+      : !after.onClicked
+      ? `the panel closed and focus went to ${after.label} rather than staying on what was clicked`
+      : "pressed the summary: the panel is hidden and focus is on the control that was clicked, " +
+        "not back on the trigger",
+  )
+
+  await devtools.evaluate<null>(
+    `(() => {
+      const details = document.querySelector('#demo-DateRangePicker [data-e2e="usage"] details')
+      if (details !== null) details.open = false
+      return null
+    })()`,
+  )
 }
 
 /** One read of the pager being driven: which page it is on, and what its two end controls are. */
