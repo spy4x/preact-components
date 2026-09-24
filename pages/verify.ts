@@ -573,14 +573,7 @@ async function browserPhase(): Promise<void> {
         await devtools.send("Log.enable", {})
         await devtools.send("Network.enable", {})
         await devtools.send("Page.enable", {})
-        // A real click on a real `<a download>` — `ui/`'s ExportButton checks drive exactly that —
-        // saves a file into this machine's own Downloads folder unless told otherwise; nothing in
-        // this run reads a saved file back, every assertion about a download's bytes is made from
-        // inside the page (see `pages/checks/ui.ts`'s `armExportInstrumentation`). `deny` over
-        // `allow` + a path inside the run's own profile: there is no legitimate download this run
-        // ever needs to land on disk, so refusing every one outright is simpler than routing them
-        // into a directory that then has to be trusted to exist and be cleaned up.
-        await devtools.send("Browser.setDownloadBehavior", { behavior: "deny" })
+        await denyDownloads(devtools)
 
         await devtools.send("Page.navigate", { url: server.url })
         await devtools.next("Page.loadEventFired")
@@ -688,6 +681,43 @@ async function hoverCapability(devtools: Devtools): Promise<void> {
       ? "the page did not answer matchMedia"
       : `(hover: hover) ${media.hover}, (pointer: fine) ${media.pointer}`,
   )
+}
+
+/**
+ * Deny every download for the run, so a real click on a real `<a download>` — `ui/`'s
+ * `ExportButton` checks drive exactly that — never saves a file into this machine's own Downloads
+ * folder. Nothing in this run ever reads a saved file back; every assertion about a download's
+ * bytes is made from inside the page (see `pages/checks/ui.ts`'s `armExportInstrumentation`).
+ * `deny`, not `allow` plus a path inside the run's own profile: there is no legitimate download
+ * this run ever needs to land on disk, so refusing every one outright is simpler than routing them
+ * into a directory that then has to be trusted to exist and be cleaned up.
+ *
+ * `Browser.setDownloadBehavior` is tried first, and `Page.setDownloadBehavior` — older, deprecated,
+ * but recognised by a wider range of Chromium builds — second, because a review found the first
+ * command alone can abort the *entire* browser phase on a Chromium that does not recognise it: an
+ * unhandled protocol error one second into the run took every package's checks down with it, not
+ * only this button's, printing `FAIL the browser phase ran to completion` and nothing else. A build
+ * that recognises neither command logs a note and the run continues regardless — a download landing
+ * on disk in that case is a cost this run accepts rather than one worth failing the whole phase over.
+ *
+ * @param devtools The connected session.
+ */
+async function denyDownloads(devtools: Devtools): Promise<void> {
+  try {
+    await devtools.send("Browser.setDownloadBehavior", { behavior: "deny" })
+    return
+  } catch {
+    // Fall through to the older, page-scoped command below.
+  }
+
+  try {
+    await devtools.send("Page.setDownloadBehavior", { behavior: "deny" })
+  } catch (error) {
+    console.log(
+      `neither Browser.setDownloadBehavior nor Page.setDownloadBehavior is supported here ` +
+        `(${describeError(error)}) — downloads are not denied for this run`,
+    )
+  }
 }
 
 /** Whether any dialog is currently open in the page. */
