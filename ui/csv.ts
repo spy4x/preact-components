@@ -6,6 +6,17 @@
  * not re-exported from `ui/+index.ts`. Import it only from `./export-button.tsx`.
  */
 
+/**
+ * What a `format` function, or an unformatted field, may hand back for one cell.
+ *
+ * A `number` or a `bigint` is written unguarded — see {@link csvField} — because neither can hold a
+ * separator or a formula body: JavaScript's own `String()` conversion of either produces only
+ * digits, at most one leading `-`, and for a `number` at most one `.` or exponent marker, none of
+ * which a spreadsheet reads as the start of a formula. A `string` is guarded regardless of what it
+ * contains, because a string is exactly the type a spreadsheet-formula payload arrives as.
+ */
+export type CsvCellValue = string | number | bigint
+
 /** One column of a CSV export: the row field to read, its header text, and how to render a value. */
 export interface CsvColumn<T> {
   /** Row field this column reads. */
@@ -13,66 +24,106 @@ export interface CsvColumn<T> {
   /** Header cell text. */
   header: string
   /**
-   * Cell text for this field. Defaults to `String(value)`, or `""` for `null`/`undefined`.
+   * Cell value for this field. Defaults to the raw value, or `""` for `null`/`undefined`.
+   *
+   * Returning a `number` or a `bigint` — rather than a string built from one, `` `${amount}` `` —
+   * is what keeps a formatted numeric column live in the opened file instead of guarded text; see
+   * {@link CsvCellValue}.
    *
    * Takes the raw field value as `unknown` rather than `T[K]`: correlating it exactly to `key`
    * needs either a per-column generic (which cannot be threaded through a plain array without an
    * awkward union of single-column types) or a cast inside every `format` — this pushes the one
    * cast to the caller, who already knows what the field holds.
    */
-  format?: (value: unknown, row: T) => string
+  format?: (value: unknown, row: T) => CsvCellValue
 }
 
 /**
  * Leading characters a spreadsheet reads as the start of a formula, cast wide on purpose.
  *
- * `=`, `+`, `-` and `@` are the four OWASP's CSV-injection guidance names most often; the same
- * guidance also lists a leading tab and a leading carriage return, which Excel treats the same way
- * once the cell is otherwise unquoted. All six are guarded here — a cell that happens to start with
- * a stray tab is rare, but rare is exactly the case a fixed allow-list of "the four symbols" would
- * miss.
+ * `=`, `+`, `-` and `@` are the four OWASP's CSV-injection guidance names most often.
  */
-const FORMULA_PREFIXES = ["=", "+", "-", "@", "\t", "\r"]
+const FORMULA_LEAD_CHARS = new Set(["=", "+", "-", "@"])
 
 /**
- * Prefix a cell with `'` when it starts with a character a spreadsheet reads as the start of a
- * formula — see {@link FORMULA_PREFIXES}. Every major spreadsheet treats a leading `'` as "force
- * text" and drops it from what is displayed, so the guard is invisible to a reader while it lasts.
+ * Leading characters guarded only when they open the whole cell, not after an inner separator: the
+ * four above, plus a bare leading tab or carriage return, which the same guidance lists as
+ * dangerous on their own rather than as something that can itself start a formula.
+ */
+const CELL_START_GUARD_CHARS = new Set([...FORMULA_LEAD_CHARS, "\t", "\r"])
+
+/**
+ * Characters that start a new cell, or a new row, when this file is opened with a separator other
+ * than the comma this writer chose.
  *
- * This is a bare-content guard with no exceptions for a value that only looks dangerous: a column
- * whose `format` produces a plain negative number such as `-5` is guarded exactly like a formula
- * payload that happens to start the same way (`-2+3+cmd|' /C calc'!A1`), and opens as the text
- * `-5` rather than a live number. The alternative — skip the guard when the rest of the cell parses
- * as a plain number — would have let that payload through unguarded too, since "digits after the
- * leading symbol" is a property an attack string can have as easily as a real number can. A caller
- * whose numeric column needs to stay numeric in the opened file routes it around a leading `-` in
- * its own `format` (parentheses for a negative amount, say); the writer does not special-case it.
+ * A comma-separated file is exactly what this writer emits, but nothing forces the spreadsheet that
+ * opens it to read it that way: Excel's default list separator is a semicolon in most European
+ * locales, and a `.csv` opened by double-click is split on whatever that locale setting is, not on
+ * a comma. A cell this writer never quotes for its own comma-based rule can still be read as *more
+ * than one* cell by a semicolon reader, and a line break — even one this writer wrapped in quotes —
+ * can still be read as starting a new row, because a quote-then-newline pairing does not survive
+ * every reader's own separator setting unchanged (measured in LibreOffice 26.2: a cell holding a
+ * guarded, quoted `\r=1+1` still split into a new, unguarded `=1+1` cell). Guarding only the first
+ * character of the cell this writer wrote is not guarding the cell a different reader sees.
+ */
+const CELL_BOUNDARY_CHARS = new Set([",", ";", "\t", "\r", "\n"])
+
+/**
+ * Prefix `'` in front of every `=`, `+`, `-` or `@` that opens the cell, or that a reader splitting
+ * on a different separator would read as opening a *new* cell or row — see
+ * {@link CELL_BOUNDARY_CHARS}'s own doc for why that split is real even for a cell this writer
+ * never quotes. Every position in the string is checked, not only the first: `x;=1+1` guards the
+ * `=` right after the `;`, becoming `x;'=1+1`, so a semicolon-separated read of it never reaches a
+ * bare `=1+1`.
+ *
+ * The guard has no exception for a value that only looks safe: a `string` cell reading `-5` is
+ * guarded exactly like `-2+3+cmd|' /C calc'!A1`, since content alone cannot tell a real negative
+ * number from a payload shaped like one — `csvField` is what lets a caller skip the guard entirely,
+ * by handing back an actual `number` or `bigint` instead of a string. The one visible cost of the
+ * string path: LibreOffice (26.2, measured) shows the leading `'` on screen rather than hiding it,
+ * so a cell such as `a;-5` — a string whose only fault is a `-` right after a separator — reads as
+ * `a;'-5` in the opened file. This repository has not verified whether Excel shows the mark too.
  */
 function guardFormulaInjection(field: string): string {
-  return FORMULA_PREFIXES.some((prefix) => field.startsWith(prefix)) ? `'${field}` : field
+  let guarded = ""
+  for (let index = 0; index < field.length; index++) {
+    const char = field[index]
+    const opensCell = index === 0
+      ? CELL_START_GUARD_CHARS.has(char)
+      : FORMULA_LEAD_CHARS.has(char) && CELL_BOUNDARY_CHARS.has(field[index - 1])
+    if (opensCell) guarded += "'"
+    guarded += char
+  }
+  return guarded
 }
 
 /** Characters whose presence in a cell forces RFC 4180 quoting. */
 const NEEDS_QUOTING = /[",\r\n]/
 
 /**
- * Render one field as an RFC 4180 CSV cell: guard it against formula injection, then quote it when
- * it holds a comma, a double quote or a line break, doubling every embedded double quote.
+ * Render one value as an RFC 4180 CSV cell.
+ *
+ * A `number` or a `bigint` is written with a plain `String()` conversion, unguarded — see
+ * {@link CsvCellValue}. A `string` is guarded against formula injection, then quoted when it holds
+ * a comma, a double quote or a line break, doubling every embedded double quote.
  *
  * Guarding runs first and quoting is decided on the guarded text, but the two never conflict: the
  * `'` the guard adds is not itself a character quoting cares about, and every character quoting
  * does care about survives the guard step unchanged.
  */
-export function csvField(raw: string): string {
+export function csvField(raw: CsvCellValue): string {
+  if (typeof raw !== "string") return String(raw)
   const guarded = guardFormulaInjection(raw)
   return NEEDS_QUOTING.test(guarded) ? `"${guarded.replaceAll('"', '""')}"` : guarded
 }
 
 /** One column's rendered value for one row, before CSV escaping. */
-function fieldValue<T>(column: CsvColumn<T>, row: T): string {
+function fieldValue<T>(column: CsvColumn<T>, row: T): CsvCellValue {
   const value = (row as Record<string, unknown>)[column.key]
   if (column.format) return column.format(value, row)
-  return value === null || value === undefined ? "" : String(value)
+  if (value === null || value === undefined) return ""
+  if (typeof value === "number" || typeof value === "bigint") return value
+  return String(value)
 }
 
 /** One data row, rendered and escaped, comma-joined. */

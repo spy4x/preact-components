@@ -1,6 +1,13 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
-import { CSV_BYTE_ORDER_MARK, type CsvColumn, csvField, toCsvBytes, toCsvText } from "./csv.ts"
+import {
+  CSV_BYTE_ORDER_MARK,
+  type CsvColumn,
+  csvField,
+  csvHeaderRow,
+  toCsvBytes,
+  toCsvText,
+} from "./csv.ts"
 
 describe("csvField", () => {
   it("leaves a plain cell untouched", () => {
@@ -47,11 +54,55 @@ describe("csvField", () => {
     expect(csvField("-2+3+cmd|' /C calc'!A1")).toBe("'-2+3+cmd|' /C calc'!A1")
   })
 
-  it("guards a plain negative number the same way, trading numeric formatting for safety", () => {
+  it("guards a plain negative number given as a string, trading numeric formatting for safety", () => {
     // Decision recorded in csv.ts's guardFormulaInjection: there is no way to tell "-5" (a
-    // caller-formatted amount) from the start of a formula payload by content alone, so both are
-    // guarded and both open as text in Excel rather than as a live number.
+    // caller-formatted amount) from the start of a formula payload by content alone, so a string
+    // is always guarded. A caller who wants -5 to stay a live number hands back the number itself
+    // (or a bigint) instead — see the "skips the guard entirely" tests below.
     expect(csvField("-5")).toBe("'-5")
+  })
+
+  it("guards = right after a comma, the separator this writer itself uses", () => {
+    expect(csvField("x,=1+1")).toBe(`"x,'=1+1"`)
+  })
+
+  it("guards = right after a semicolon, a separator a different locale's reader uses", () => {
+    expect(csvField("x;=1+1")).toBe("x;'=1+1")
+  })
+
+  it("guards = right after a tab, a separator a tab-delimited reader uses", () => {
+    expect(csvField("x\t=1+1")).toBe("x\t'=1+1")
+  })
+
+  it("guards = right after a line feed inside the cell", () => {
+    expect(csvField("x\n=1+1")).toBe('"x\n\'=1+1"')
+  })
+
+  it("guards = right after a carriage return inside the cell", () => {
+    expect(csvField("x\r=1+1")).toBe('"x\r\'=1+1"')
+  })
+
+  it("guards a DDE payload that only becomes a formula after a semicolon split", () => {
+    // The reviewed exploit: opened with ";" as the list separator, "x;=cmd|' /C calc'!A0" reads as
+    // two cells, the second a live DDE formula, unless the character right after the ";" is
+    // guarded too — not only the first character of the whole string.
+    expect(csvField("x;=cmd|' /C calc'!A0")).toBe("x;'=cmd|' /C calc'!A0")
+  })
+
+  it("pays the documented cost: a plain negative number after a separator still gets the mark", () => {
+    expect(csvField("a;-5")).toBe("a;'-5")
+  })
+
+  it("does not guard a comma, semicolon, tab, CR or LF itself, only what follows it", () => {
+    expect(csvField("a;b,c\td\ne")).toBe('"a;b,c\td\ne"')
+  })
+
+  it("writes a number unguarded, even one that reads like a negative amount", () => {
+    expect(csvField(-5)).toBe("-5")
+  })
+
+  it("writes a bigint unguarded", () => {
+    expect(csvField(-5n)).toBe("-5")
   })
 })
 
@@ -105,6 +156,36 @@ describe("toCsvText", () => {
     expect(toCsvText(risky, [{ note: "=cmd, calc" }])).toBe(
       `Note\r\n"'=cmd, calc"\r\n`,
     )
+  })
+
+  it("writes a raw numeric field unguarded, even a negative one", () => {
+    const amounts: CsvColumn<{ balance: number }>[] = [{ key: "balance", header: "Balance" }]
+    expect(toCsvText(amounts, [{ balance: -5 }])).toBe("Balance\r\n-5\r\n")
+  })
+
+  it("writes a raw bigint field unguarded", () => {
+    const amounts: CsvColumn<{ balance: bigint }>[] = [{ key: "balance", header: "Balance" }]
+    expect(toCsvText(amounts, [{ balance: -5n }])).toBe("Balance\r\n-5\r\n")
+  })
+
+  it("writes a number returned by format unguarded, keeping it a live number", () => {
+    const amounts: CsvColumn<{ cents: number }>[] = [
+      { key: "cents", header: "Amount", format: (value) => (value as number) / 100 },
+    ]
+    expect(toCsvText(amounts, [{ cents: -500 }])).toBe("Amount\r\n-5\r\n")
+  })
+
+  it("guards a string returned by format, even one that reads like the same number", () => {
+    const amounts: CsvColumn<{ cents: number }>[] = [
+      { key: "cents", header: "Amount", format: (value) => `${(value as number) / 100}` },
+    ]
+    expect(toCsvText(amounts, [{ cents: -500 }])).toBe("Amount\r\n'-5\r\n")
+  })
+
+  it("guards a formula-like header the same way a data cell is guarded", () => {
+    const columns: CsvColumn<{ note: string }>[] = [{ key: "note", header: "=1+1" }]
+    expect(csvHeaderRow(columns)).toBe("'=1+1")
+    expect(toCsvText(columns, [])).toBe("'=1+1\r\n")
   })
 })
 
