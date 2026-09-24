@@ -38,9 +38,10 @@
  *
  * **`--only` is a debugging tool, never a substitute for a full run** (`#253`): reproducing a
  * block-order-dependent flake needs the other blocks left out, which used to mean hand-editing
- * `PACKAGE_BLOCKS` — three separate reviews already had to. `ONLY`'s own doc above covers what it
- * does and the loud banner it prints; CI never passes it, and `pages/README.md` documents it for
- * anyone reaching for it locally.
+ * `PACKAGE_BLOCKS` — three separate reviews already had to. `ONLY`'s own doc below covers what it
+ * does; `report`'s `note` parameter is what marks a filtered run's last printed line, so it can
+ * never be mistaken for a full run's; CI never passes `--only`, and `pages/README.md` documents it
+ * for anyone reaching for it locally.
  */
 
 import { dirname, join } from "node:path"
@@ -100,8 +101,9 @@ const BASE = normalizeBase(Deno.env.get("PAGES_BASE") ?? DEFAULT_BASE)
  * belongs in the repository rather than in a third reviewer's own scratch edit of `PACKAGE_BLOCKS`
  * (`#253`): reproducing a block-order-dependent flake needs the *other* blocks left out, and hand-
  * editing this file to do that is what every review before this one already resorted to. It is a
- * debugging tool, not a substitute for a full run — see the loud banner this prints once the phase
- * it restricted has finished, and `pages/README.md`'s "Running one block alone" section.
+ * debugging tool, not a substitute for a full run — see {@link filteredRunNote}, which marks a
+ * filtered run's very last printed line as filtered, and `pages/README.md`'s "Running one block
+ * alone" section.
  */
 const ONLY = (() => {
   const arg = Deno.args.find((value) => value.startsWith("--only="))
@@ -771,25 +773,35 @@ const PACKAGE_BLOCKS: readonly CheckBlock<Devtools>[] = [
   { name: "ui", run: uiChecks },
 ]
 
+/**
+ * The line that marks a filtered `--only` run as filtered — `undefined` on every full run.
+ *
+ * Built once the run has finished, so it names the blocks that actually ran rather than the ones
+ * `--only` merely asked for — the two are the same whenever `ONLY` passed its own validation, but
+ * this reads {@link PACKAGE_BLOCKS} against `ONLY` directly rather than assuming that.
+ *
+ * Passed to {@link report} as its `note`, which is what makes this the true last line of the run
+ * regardless of how many check lines came before it — see that parameter's own doc for the
+ * 136-line gap between a banner printed mid-run and the summary line a reader actually looks at,
+ * which is the defect this replaces (`#253`'s review).
+ */
+function filteredRunNote(): string | undefined {
+  if (!ONLY) return undefined
+  const names = PACKAGE_BLOCKS.map((block) => block.name)
+  const ran = names.filter((name) => ONLY.includes(name))
+  const excluded = names.filter((name) => !ONLY.includes(name))
+  return `FILTERED: ran ${ran.join(", ") || "(none)"}, left out ${
+    excluded.join(", ") || "(none)"
+  }` +
+    " — not a full run; CI never passes --only"
+}
+
 await staticPhase()
+let note: string | undefined
 if (Deno.args.includes("--static")) {
   console.log("\n--static — browser phase left out on purpose")
 } else {
   await browserPhase()
-  if (ONLY) {
-    const names = PACKAGE_BLOCKS.map((block) => block.name)
-    const excluded = names.filter((name) => !ONLY.includes(name))
-    // Printed right before `report()`'s own output, so it sits directly above the totals it
-    // qualifies rather than scrolling past in the middle of a package's own checks — a filtered
-    // run must never be mistaken for a full one, on the terminal or pasted into a pull request.
-    console.log(
-      `\n*** --only=${ONLY.join(",")} — THIS IS A FILTERED RUN, NOT A FULL ONE. ***\n` +
-        `Blocks that ran: ${names.filter((name) => ONLY.includes(name)).join(", ") || "(none)"}\n` +
-        `Blocks left out and NOT reflected in the totals below: ${
-          excluded.join(", ") || "(none)"
-        }\n` +
-        `CI never passes --only; this run's totals count only the blocks named above.`,
-    )
-  }
+  note = filteredRunNote()
 }
-report()
+report(note)

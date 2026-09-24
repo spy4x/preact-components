@@ -66,12 +66,13 @@ shows up when the other blocks are _not_ run first needs the other blocks left o
 `#253` the only way to do that was to hand-edit `PACKAGE_BLOCKS` in `pages/verify.ts` and revert it
 afterward; three separate reviews had already done exactly that.
 
-This is a debugging tool, never a substitute for a full run, and the output says so loudly: a filtered
-run prints a banner naming the blocks it ran and the blocks it left out entirely, directly above the
-final summary line, so the totals can never be read as a full run's. CI never passes `--only`. An
-unknown block name is a failed check (`--only names only known package blocks`) rather than a run
-that silently did less than it was asked — `pages/checks/harness.test.ts`'s `selectBlocks` cases
-cover that and the ordering and de-duplication `pages/verify.ts` relies on.
+This is a debugging tool, never a substitute for a full run, and the output says so loudly: a
+filtered run's very last printed line reads `FILTERED: ran <blocks>, left out <blocks>` — passed to
+`report()` as its `note`, so it prints after every check line and the summary, not somewhere earlier
+a reader could mistake for part of the run's setup. CI never passes `--only`. An unknown block name
+is a failed check (`--only names only known package blocks`) rather than a run that silently did
+less than it was asked — `pages/checks/harness.test.ts`'s `selectBlocks` cases cover that and the
+ordering and de-duplication `pages/verify.ts` relies on.
 
 This is also the repository's browser test path, and CI runs it. `.github/workflows/pages.yml` runs
 `deno task check`, `deno task publish:dry`, the build and `verify` on every pull request into

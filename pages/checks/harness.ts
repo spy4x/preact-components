@@ -339,9 +339,20 @@ export function runBlocks<Context>(
   return currentRun.runBlocks(blocks, context, recover)
 }
 
-/** Print the outcome and exit non-zero when anything failed. */
-export function report(): never {
+/**
+ * Print the outcome and exit non-zero when anything failed.
+ *
+ * @param note Printed as the very last line, directly after the summary — `verify.ts`'s `--only`
+ * uses this for the line that marks a filtered run as filtered (`#253`'s review): a banner printed
+ * earlier in the run, before the block of check lines `reportLines()` prints in one batch at the
+ * end, reads as if it belongs to the run's setup rather than its result, and sits well above the
+ * summary line a reader actually looks at — measured at about 136 lines above it, in a run whose
+ * checks numbered barely more than that. Passed to `report` instead, it is the true last line no
+ * matter how many checks came before it.
+ */
+export function report(note?: string): never {
   for (const line of currentRun.reportLines()) console.log(line)
+  if (note) console.log(note)
   Deno.exit(currentRun.failures() === 0 ? 0 : 1)
 }
 

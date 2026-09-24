@@ -6153,7 +6153,7 @@ async function newsletterFormFocusElsewhereCheck(devtools: Devtools): Promise<vo
  * anything else — a separate, later read (the previous shape) can be a read of the *result's* own
  * effects if the submit happens to settle in between, which is a check reading its own setup after
  * the thing it means to guard against has already run. The scroll is `behavior: "instant"` for the
- * same reason `pages/checks/harness.ts`'s own doc gives for `resetAfterThrow`'s identical call:
+ * same reason `pages/verify.ts`'s own doc gives for `resetAfterThrow`'s identical call:
  * `pages/styles.css` sets `scroll-behavior: smooth` on the document, so a plain `scrollTo(0, 0)`
  * starts an animation still running when this reads `scrollY` right back — instant is what makes
  * that same-evaluate reading the settled position rather than a frame of the animation.
