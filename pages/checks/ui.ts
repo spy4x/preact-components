@@ -260,20 +260,19 @@ async function refForwardingChecks(devtools: Devtools): Promise<void> {
  * Every key is a real press through `Input.dispatchKeyEvent`, and the stray click is a real
  * press-and-release through `Input.dispatchMouseEvent` at viewport coordinates.
  *
- * `.click()` stands in for activation in five places: the open-and-close check presses the trigger
- * twice, the focus-move check presses it once, {@link reopen} presses it once per reopening, and
- * the pointer half of item activation presses an item. The reason is one measurement, made twice:
- * a real **Enter** press on a focused button does not become an activation click in headless
- * Chromium. The Modal checks found that on a trigger, and a probe run of this file found it again
- * on a focused `role="menuitem"` button, which stayed at `aria-expanded="true"` with focus on the
- * item.
+ * `.click()` remains in two places on purpose, each asserting the click path itself rather than
+ * standing in for a keyboard one: the open-and-close check below is named for what it drives, and
+ * the pointer half of item activation is paired with a keyboard half — the Space check further
+ * down — that already covers the keyboard path for the same control. Everywhere else that used to
+ * reach for `.click()` because a real Enter press did not activate a focused button in this
+ * browser — the focus-move check, and {@link reopen}, which every check after it depends on — now
+ * presses Enter for real: `#261` found the missing `text` field on `pressKey`'s `keyDown` was the
+ * whole reason Enter did not work, not the browser.
  *
- * **Space is different, and it is the key to reach for.** A real Space press through the same
- * helper *does* activate a focused menu item: the menu closes and focus goes back to the trigger,
- * which is what the Space check below asserts. So the honest statement of what is unproven here is
- * narrow — Enter as this helper sends it, on a button, in this browser — and not "keyboard
- * activation". Every other key this issue is about, the arrows with Home and End, Escape and Tab,
- * is proven by a real press.
+ * **Space still gets its own check.** A real Space press through the same helper activates a
+ * focused menu item: the menu closes and focus goes back to the trigger, which is what the Space
+ * check below asserts. Every other key this issue is about — Enter on the trigger, the arrows with
+ * Home and End, Escape and Tab — is proven by a real press too.
  *
  * The card holds four dropdowns; this drives the first, the icon trigger named "Row actions" over
  * three items. Its two link items point at this page's own `#inputs` route, so nothing here
@@ -338,24 +337,25 @@ async function dropdownChecks(devtools: Devtools): Promise<void> {
       `${shape.interactive} interactive children are menu items, all out of the tab order`,
   )
 
-  const openedByClick = await devtools.evaluate<{ before: DropdownState; after: DropdownState }>(
-    `(async () => {
-      const state = () => ${DROPDOWN_STATE}
-      globalThis.__verifyDropdown.trigger.focus()
-      const before = state()
-      globalThis.__verifyDropdown.trigger.click()
-      await new Promise((done) => setTimeout(done, 80))
-      return { before, after: state() }
-    })()`,
+  const beforeEnterOpen = await devtools.evaluate<DropdownState>(
+    `(globalThis.__verifyDropdown.trigger.focus(), ${DROPDOWN_STATE})`,
   )
+  await pressKey(devtools, "Enter")
+  await poll(() => devtools.evaluate<boolean>(`${DROPDOWN_STATE}.inPanel === true`), 3_000)
+  const openedByEnter = await devtools.evaluate<DropdownState>(DROPDOWN_STATE)
+  // A real Enter press on a native `<button>`, not `.click()`: proves both that Dropdown's trigger
+  // opens on Enter and, as a side effect anywhere else in this repository needs it, that
+  // `pressKey(devtools, "Enter")` genuinely activates a focused native button (#261) — breaking that
+  // by dropping `text` from `KEYS.Enter` in `harness.ts` turns this check red.
   check(
-    "activating Dropdown's trigger opens the menu and moves focus to its first item",
-    openedByClick.before.onTrigger && openedByClick.before.expanded === "false" &&
-      openedByClick.after.expanded === "true" && openedByClick.after.inPanel &&
-      openedByClick.after.label === shape.labels[0],
-    `focus ${openedByClick.before.onTrigger ? "on the trigger" : openedByClick.before.label} → ` +
-      `"${openedByClick.after.label}", aria-expanded ${openedByClick.before.expanded} → ` +
-      openedByClick.after.expanded,
+    "a real Enter press activates Dropdown's trigger, opening the menu and moving focus to its " +
+      "first item",
+    beforeEnterOpen.onTrigger && beforeEnterOpen.expanded === "false" &&
+      openedByEnter.expanded === "true" && openedByEnter.inPanel &&
+      openedByEnter.label === shape.labels[0],
+    `focus ${beforeEnterOpen.onTrigger ? "on the trigger" : beforeEnterOpen.label} → ` +
+      `"${openedByEnter.label}", aria-expanded ${beforeEnterOpen.expanded} → ` +
+      openedByEnter.expanded,
   )
 
   // Three items, so this walk visits both ends and crosses the middle: down, down, up, End, Home.
@@ -370,8 +370,8 @@ async function dropdownChecks(devtools: Devtools): Promise<void> {
   const expected = [second, third, second, third, first]
   check(
     "Dropdown's arrow, Home and End keys move focus between its menu items",
-    openedByClick.after.inPanel && walk.join(" → ") === expected.join(" → "),
-    openedByClick.after.inPanel
+    openedByEnter.inPanel && walk.join(" → ") === expected.join(" → "),
+    openedByEnter.inPanel
       ? `from "${first}": ${walk.join(" → ")} (expected ${expected.join(" → ")})`
       : "focus was never in the menu, so the keys prove nothing",
   )
@@ -433,7 +433,7 @@ async function dropdownChecks(devtools: Devtools): Promise<void> {
     return ${DROPDOWN_STATE}
   })()`)
   check(
-    "activating a Dropdown item closes the menu and returns focus to the trigger",
+    "clicking a Dropdown item closes the menu and returns focus to the trigger",
     beforeActivate.expanded === "true" && afterActivate.hidden && afterActivate.onTrigger,
     beforeActivate.expanded === "true"
       ? `clicked "${shape.labels[shape.labels.length - 1]}", aria-expanded ` +
@@ -442,10 +442,8 @@ async function dropdownChecks(devtools: Devtools): Promise<void> {
       : "the menu was never open, so activating an item proves nothing",
   )
 
-  // The keyboard half of the same thing, and the last key in the issue's table that nothing else
-  // here proves. Space and Enter are not interchangeable in this browser: a real Space press on a
-  // focused button produces the activation click, a real Enter press does not — measured both
-  // ways, and the reason the checks above reach for `.click()`.
+  // The keyboard half of item activation, alongside the pointer half above: a real Space press on a
+  // focused menu item also produces the activation click, and closes the menu the same way.
   const beforeSpace = await reopen(devtools)
   await pressKey(devtools, "End")
   const onLastItem = await devtools.evaluate<DropdownState>(DROPDOWN_STATE)
@@ -727,7 +725,8 @@ async function triggerNameCheck(devtools: Devtools): Promise<void> {
  * the caller's check says so rather than passing quietly.
  */
 async function reopen(devtools: Devtools): Promise<DropdownState> {
-  await devtools.evaluate<null>(`(globalThis.__verifyDropdown.trigger.click(), null)`)
+  await devtools.evaluate<null>(`(globalThis.__verifyDropdown.trigger.focus(), null)`)
+  await pressKey(devtools, "Enter")
   await poll(() => devtools.evaluate<boolean>(`${DROPDOWN_STATE}.inPanel === true`), 3_000)
 
   return await devtools.evaluate<DropdownState>(DROPDOWN_STATE)
@@ -1736,36 +1735,6 @@ function readGalleryState(devtools: Devtools): Promise<GalleryLightboxState> {
 }
 
 /**
- * Press Enter the way a real keystroke reaches the page: with the character it carries.
- *
- * `harness.ts`'s shared `pressKey("Enter")` sends `key`/`code`/the virtual key codes but no
- * `text` field on the `keyDown` event. Measured in review: that omission is the entire reason a
- * "real Enter press" elsewhere in this file does not activate a focused `<button>` in headless
- * Chromium — a `keyDown` carrying `text: "\r"` does activate one. This function is local to this
- * file rather than folded into `pressKey`, which is shared with every other package's checks and
- * maintained elsewhere.
- *
- * @param devtools The connected session; the key goes to whatever the page has focused.
- */
-async function pressRealEnter(devtools: Devtools): Promise<void> {
-  await devtools.send("Input.dispatchKeyEvent", {
-    type: "keyDown",
-    key: "Enter",
-    code: "Enter",
-    windowsVirtualKeyCode: 13,
-    nativeVirtualKeyCode: 13,
-    text: "\r",
-  })
-  await devtools.send("Input.dispatchKeyEvent", {
-    type: "keyUp",
-    key: "Enter",
-    code: "Enter",
-    windowsVirtualKeyCode: 13,
-    nativeVirtualKeyCode: 13,
-  })
-}
-
-/**
  * `ImageGallery`'s thumbnail strip and the shared `Lightbox` it opens, driven in the browser that
  * owns both: a thumbnail opens on a real Enter press and on Space, Left/Right and a real mouse
  * click on the previous/next buttons all page through the sequence and update the live region that
@@ -1854,10 +1823,9 @@ async function imageGalleryChecks(devtools: Devtools): Promise<void> {
       : "the lightbox was never open, so Escape proves nothing",
   )
 
-  // A real Enter key press, carrying `text: "\r"` — see `pressRealEnter`'s own doc for why that
-  // field, which `harness.ts`'s shared `pressKey` leaves out, is what makes this genuinely a key
-  // press rather than a stand-in for one.
-  await pressRealEnter(devtools)
+  // A real Enter key press, carrying `text: "\r"` — see `pressKey`'s own doc in `harness.ts` for why
+  // that field is what makes this genuinely a key press rather than a stand-in for one (#261).
+  await pressKey(devtools, "Enter")
   await poll(async () => (await readGalleryState(devtools)).open, 3_000)
   const afterEnter = await readGalleryState(devtools)
   check(
@@ -2038,11 +2006,10 @@ async function modalChecks(devtools: Devtools): Promise<void> {
     return { label: button.textContent.trim(), focused: document.activeElement === button }
   })()`)
 
-  // `.click()` rather than a real Enter press, and measured rather than assumed: with Enter sent
-  // through `Input.dispatchKeyEvent` on the focused trigger this run read `dialog.open=false` —
-  // headless Chromium does not turn that key press into the activation click a person's Enter
-  // produces. The Escape press below *is* a real key event, because that is the path under test.
-  await devtools.evaluate<null>(`(globalThis.__verifyModalTrigger.click(), null)`)
+  // A real Enter press, not `.click()`: `#261` found that `Input.dispatchKeyEvent`'s `keyDown`
+  // needs a `text` field to activate a focused button, which `harness.ts`'s shared `pressKey` now
+  // sends. The Escape press below is a real key event too, because that is the path under test.
+  await pressKey(devtools, "Enter")
   // Wait for `:modal`, not merely for the element: Preact renders the `<dialog>` first and calls
   // `showModal()` from an effect a tick later, so an element-presence poll returns while the dialog
   // is still a closed, non-modal node and reads `open === false`.
@@ -4899,6 +4866,10 @@ async function escapeFromOutsideCheck(devtools: Devtools): Promise<void> {
     () => devtools.evaluate<boolean>(`${PICKER_STATE}.open === false`),
     3_000,
   )
+  // See settledActiveElement's own doc: reading focus immediately once `closed` is true can catch a
+  // moment between the panel closing and a wrongly-refocusing effect finishing, which reads as
+  // correct by coincidence rather than by the component actually leaving focus alone (#265).
+  const settled = await settledActiveElement(devtools)
   const after = await devtools.evaluate<PickerState & { stillAway: boolean }>(`(() => ({
     ...${PICKER_STATE},
     stillAway: document.activeElement === (globalThis.__verifyPicker?.away ?? null),
@@ -4906,8 +4877,8 @@ async function escapeFromOutsideCheck(devtools: Devtools): Promise<void> {
 
   check(
     "a real Escape press from outside an open DateRangePicker leaves focus where it is",
-    opened.open && moved.ok && moved.took && moved.outside && closed && after.stillAway &&
-      !after.onTrigger,
+    opened.open && moved.ok && moved.took && moved.outside && closed && settled &&
+      after.stillAway && !after.onTrigger,
     !opened.open
       ? "the panel would not open, so there is nothing to press Escape at"
       : !moved.ok
@@ -4918,6 +4889,8 @@ async function escapeFromOutsideCheck(devtools: Devtools): Promise<void> {
       ? "the control focus was moved to is inside this picker, so this repeats the check above"
       : !closed
       ? "the panel was still open 3s after a real Escape press from outside it"
+      : !settled
+      ? "focus was still moving after the press, so this proves nothing about where it settled"
       : after.onTrigger
       ? "Escape from outside dragged focus back onto the trigger, several controls from where the " +
         "person had got to — which is the defect this component was changed to stop, arriving by " +
@@ -4973,6 +4946,10 @@ async function outsideClickCheck(devtools: Devtools): Promise<void> {
     () => devtools.evaluate<boolean>(`${PICKER_STATE}.open === false`),
     3_000,
   )
+  // See settledActiveElement's own doc: reading focus immediately once `closed` is true can catch a
+  // moment between the panel closing and a wrongly-refocusing effect finishing, which reads as
+  // correct by coincidence rather than by the component actually leaving focus alone (#265).
+  const settled = await settledActiveElement(devtools)
   const after = await devtools.evaluate<PickerState & { onClicked: boolean }>(`(() => ({
     ...${PICKER_STATE},
     onClicked: document.activeElement ===
@@ -4982,7 +4959,7 @@ async function outsideClickCheck(devtools: Devtools): Promise<void> {
   check(
     "a real click outside an open DateRangePicker closes it without taking focus back",
     opened.open && opened.inPanel && aim.onTarget && landing !== null && landing.onTarget &&
-      closed && !after.onTrigger && after.onClicked,
+      closed && settled && !after.onTrigger && after.onClicked,
     !opened.open || !opened.inPanel
       ? "the panel would not open with focus inside, so there is nothing to click away from"
       : !aim.onTarget
@@ -4995,6 +4972,8 @@ async function outsideClickCheck(devtools: Devtools): Promise<void> {
         `summary aimed at (${aim.x}, ${aim.y}) — a missed press, which proves nothing`
       : !closed
       ? "the panel was still open 3s after a real click outside it"
+      : !settled
+      ? "focus was still moving after the click, so this proves nothing about where it settled"
       : after.onTrigger
       ? "the outside click pulled focus back onto the trigger, taking it off the control the " +
         "person had just clicked"
@@ -5112,33 +5091,54 @@ async function openTimePickerPanel(devtools: Devtools): Promise<PickerTimeState>
 }
 
 /**
- * Wait until two reads of `document.activeElement`, one `poll` retry interval (100ms) apart, name
- * the same element — the same "two consecutive reads agree" pattern {@link settledScroll} uses,
- * applied to focus instead of scroll position.
+ * How long {@link settledActiveElement} waits before it starts comparing reads.
  *
- * What this guarantees is exactly that one 100ms interval and no more: focus did not change during
- * it. It cannot guarantee focus will never change again after the moment it returns — nothing short
- * of waiting out every timer and microtask a page could still have queued could promise that. What it
- * is for is narrower and is enough for its two callers: a check that proves an *absence* — that a
- * close driven from outside `withTime`'s panel does not pull focus onto the trigger — cannot tell
- * "hasn't happened yet" from "correctly never happens" by reading once right after the panel reads
- * closed. Closing the panel and the effect that would wrongly move focus afterward are two separate
- * Preact commits, and a read timed between them reports whatever focus happens to be resting on
- * mid-transition, which can, by coincidence, look like the correct outcome even when the wrong one is
- * a commit away. Confirmed by breaking it: with a bug that always pulls focus back onto the trigger
- * reintroduced, a caller that read `document.activeElement` immediately after `closed` — no wait at
- * all — reported "ok" 3 of 3 runs; the same caller waiting on this function's own return value read
- * the pulled-back focus and reported the bug every time. **Its return value has to be checked**: a
- * caller that calls this and reads `document.activeElement` anyway without looking at what came back
- * has proven nothing more than the immediate read already did.
+ * The two-reads-100ms-apart loop below only proves focus held still for one interval; started
+ * immediately, both of those reads can land before a wrong refocus that is merely a little late —
+ * #265's second review measured one arriving 250ms after the panel reported closed, and a caller
+ * using only the loop, with no floor, reported "settled" against that mid-transition value 2 of 2
+ * runs. This floor has to be comfortably past that 250ms for the loop's first read to start only
+ * once a late refocus has already happened, so a wrong one shows up as a real change instead of
+ * being outrun.
+ */
+const FOCUS_SETTLE_FLOOR_MS = 400
+
+/**
+ * Wait past a late refocus effect, then wait until two reads of `document.activeElement`, one
+ * `poll` retry interval (100ms) apart, name the same element — the same "two consecutive reads
+ * agree" pattern {@link settledScroll} uses, applied to focus instead of scroll position, behind a
+ * fixed {@link FOCUS_SETTLE_FLOOR_MS} floor.
+ *
+ * The floor is what the 100ms-apart loop alone cannot promise: that loop guarantees only that focus
+ * did not change during the one interval it measured, and starting it the moment the panel reports
+ * closed can measure an interval that is entirely before a wrong refocus arrives, which is exactly
+ * what #265's second review found for a refocus delayed 250ms — the loop is deliberately unchanged
+ * here, since #265 does not blame its shape, only what ran it too early. Even with the floor, this
+ * cannot guarantee focus will never change again after the moment it returns — nothing short of
+ * waiting out every timer and microtask a page could still have queued could promise that. What it
+ * is for is narrower and is enough for its callers: a check that proves an *absence* — that a close
+ * driven from outside a panel does not pull focus onto the trigger — cannot tell "hasn't happened
+ * yet" from "correctly never happens" by reading once right after the panel reads closed. Closing
+ * the panel and the effect that would wrongly move focus afterward are two separate Preact commits,
+ * and a read timed between them reports whatever focus happens to be resting on mid-transition,
+ * which can, by coincidence, look like the correct outcome even when the wrong one is a commit away.
+ * Confirmed by breaking it: with a bug that always pulls focus back onto the trigger reintroduced, a
+ * caller that read `document.activeElement` immediately after `closed` — no wait at all — reported
+ * "ok" 3 of 3 runs; the same caller waiting on this function's own return value read the pulled-back
+ * focus and reported the bug every time. **Its return value has to be checked**: a caller that calls
+ * this and reads `document.activeElement` anyway without looking at what came back has proven
+ * nothing more than the immediate read already did.
  *
  * @param devtools The connected session.
- * @param timeoutMs How long to wait for two consecutive reads to agree before giving up.
- * @returns Whether two consecutive reads, 100ms apart, agreed inside the budget — `false` when
- * focus was still changing when the budget ran out, which a caller must treat as its own failure
- * rather than press on and read a value this function never confirmed had settled.
+ * @param timeoutMs How long to wait, after the floor, for two consecutive reads to agree before
+ * giving up.
+ * @returns Whether two consecutive reads, 100ms apart, agreed inside the budget once the floor had
+ * passed — `false` when focus was still changing when the budget ran out, which a caller must treat
+ * as its own failure rather than press on and read a value this function never confirmed had
+ * settled.
  */
 async function settledActiveElement(devtools: Devtools, timeoutMs = 3_000): Promise<boolean> {
+  await new Promise((resolve) => setTimeout(resolve, FOCUS_SETTLE_FLOOR_MS))
   let previous: string | null = null
   return await poll(async () => {
     const current = await devtools.evaluate<string>(`(() => {
@@ -5738,10 +5738,12 @@ const PAGER_STATE = `(() => {
  * behind, minus the focus. And the page number is read from `aria-current="page"` after each press,
  * so a control that kept its focus by never doing anything is a failure rather than a pass.
  *
- * Space, not Enter: a real Enter press does not activate a focused button in this browser, measured
- * twice already by the Dropdown and Modal checks above. A real Space press does, and it still does
- * on a button carrying `aria-disabled` — which is why the component guards its own handler, and why
- * the last check below presses a disabled control and asserts nothing happened.
+ * Mostly Space: the walk below presses Space, which still activates a button carrying
+ * `aria-disabled` — which is why the component guards its own handler, and why one of the checks
+ * below presses a disabled control and asserts nothing happened. A real Enter press is proven
+ * separately, once, on Next: Space alone would not catch a handler that called `preventDefault()`
+ * on Enter specifically, which the Dropdown and Modal checks elsewhere in this file do not stand in
+ * for here.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -5847,6 +5849,35 @@ async function paginationChecks(devtools: Devtools): Promise<void> {
       ? `Previous lost focus on reaching page 1 — it went to ${toStart.after.label}`
       : `Space from page 5: ${toStart.pages.join(" → ")}, and on the last press Previous went ` +
         `from enabled to disabled while staying the same element with focus`,
+  )
+
+  // A real Enter press, on its own: everything above walked the pager with Space, which does not
+  // prove Enter reaches the same handler — a control that called `preventDefault()` on Enter
+  // specifically would still pass every check above it (#261). The pager is on page 1 here, so Next
+  // is the enabled control to press it on.
+  await devtools.evaluate<null>(`(globalThis.__verifyPager?.next?.focus(), null)`)
+  const beforeEnter = await devtools.evaluate<PagerState>(PAGER_STATE)
+  await pressKey(devtools, "Enter")
+  const movedByEnter = await poll(
+    () => devtools.evaluate<boolean>(`${PAGER_STATE}.page !== ${beforeEnter.page}`),
+    3_000,
+  )
+  const afterEnter = await devtools.evaluate<PagerState>(PAGER_STATE)
+  check(
+    "a real Enter press activates Pagination's Next control",
+    beforeEnter.onNext && !beforeEnter.nextDisabled && movedByEnter &&
+      afterEnter.page === beforeEnter.page + 1 && afterEnter.onNext,
+    !beforeEnter.onNext
+      ? `focus was on ${beforeEnter.label}, not Next, so this proves nothing`
+      : beforeEnter.nextDisabled
+      ? "Next was already disabled, so a press here proves nothing about activation"
+      : !movedByEnter
+      ? "the pager was still on the same page 3s after a real Enter press"
+      : afterEnter.page !== beforeEnter.page + 1
+      ? `a real Enter press moved the pager from page ${beforeEnter.page} to ${afterEnter.page}, ` +
+        `not to ${beforeEnter.page + 1}`
+      : `a real Enter press on Next: page ${beforeEnter.page} → ${afterEnter.page}, focus stayed ` +
+        `on Next`,
   )
 
   // Leave nothing focused. The blocks after this one send their own key presses, and a control
@@ -6022,16 +6053,18 @@ const DATA_TABLE_STATE = `(() => {
  * `Input.dispatchMouseEvent` at the button's own rectangle (`clickMerchantHeader`), and asserts
  * the press landed on the button before trusting anything that followed it — a scripted `.click()`
  * fires with no hit-testing, so it would "click" a button a stray `pointer-events-none` had made
- * unreachable to an actual pointer. A real Enter press is not sent: this repository's browser
- * measured, elsewhere in this file, that Enter does not activate a focused button here, so every
- * trigger in this catalogue is driven by a click or by Space, never by Enter, and this file does
- * not repeat that measurement per component.
+ * unreachable to an actual pointer. The Space half's own third press is a real Enter press instead:
+ * {@link modalChecks} and {@link dropdownChecks} already prove `pressKey(devtools, "Enter")`
+ * activates a focused native button in general, but only a press on this header's own listener can
+ * catch a handler that called `preventDefault()` on Enter specifically (#261).
  *
  * Three presses on Merchant — ascending, descending, off — return the table to the unsorted
  * baseline before the Space half starts, so the two proofs begin from the same state instead of
  * one inheriting whatever the other left behind; the round trip back to the baseline is itself
  * checked, which is what confirms `toggleSort`'s third step (a rule cycles off, not just between
- * the two directions) actually reaches the header, not only the sort state.
+ * the two directions) actually reaches the header, not only the sort state. The Space half's own
+ * three presses repeat that round trip with its last press swapped for a real Enter, which is what
+ * lets it double as the Enter proof without a fourth press.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -6139,9 +6172,20 @@ async function dataTableChecks(devtools: Devtools): Promise<void> {
         `${String(pressedOnce.merchantAriaSort)} → ${String(pressedTwice.merchantAriaSort)}`,
   )
 
-  // A third press to leave the table unsorted again before the paging check, which asserts its
-  // own "before" state and should not inherit a sort the block above left behind.
-  await pressMerchantHeader(devtools)
+  // A real Enter press, on its own: the two presses above only prove Space reaches the header's
+  // handler — a handler that called `preventDefault()` on Enter specifically would still pass both
+  // of them (#261). Reverses the sort a third time, which conveniently is also the "back to
+  // unsorted" step the paging check below needs.
+  const pressedThrice = await pressMerchantHeader(devtools, "Enter")
+  check(
+    "a real Enter press on the focused header cycles the sort off again, still keeping focus",
+    pressedTwice.rowKeys.join(",") !== pressedThrice.rowKeys.join(",") &&
+      pressedThrice.merchantAriaSort === null && pressedThrice.onMerchant,
+    !pressedThrice.onMerchant
+      ? "the Enter press moved focus off the Merchant header"
+      : `rows ${pressedTwice.rowKeys.join(",")} → ${pressedThrice.rowKeys.join(",")}, aria-sort ` +
+        `${String(pressedTwice.merchantAriaSort)} → ${String(pressedThrice.merchantAriaSort)}`,
+  )
   await blurActive(devtools)
 
   await dataTablePagingCheck(devtools)
@@ -6190,10 +6234,16 @@ async function clickMerchantHeader(devtools: Devtools): Promise<MerchantClick> {
   return { state, onTarget: landing?.onTarget === true, landingTag: landing?.tag ?? "nothing" }
 }
 
-/** Press Space on whatever holds focus (the Merchant header, throughout this file's Space half). */
-async function pressMerchantHeader(devtools: Devtools): Promise<DataTableState> {
+/**
+ * Press a key on whatever holds focus (the Merchant header, throughout this file's Space and Enter
+ * halves). Defaults to Space, which every existing call site still asks for by name.
+ */
+async function pressMerchantHeader(
+  devtools: Devtools,
+  key: "Space" | "Enter" = "Space",
+): Promise<DataTableState> {
   const before = await devtools.evaluate<DataTableState>(DATA_TABLE_STATE)
-  await pressKey(devtools, "Space")
+  await pressKey(devtools, key)
   await poll(
     () =>
       devtools.evaluate<boolean>(
@@ -8222,35 +8272,6 @@ async function exportAnnouncesAgainCheck(devtools: Devtools): Promise<void> {
 }
 
 /**
- * Dispatch a real Enter key-down/key-up pair, with `text: "\r"` on the key-down.
- *
- * `pages/checks/harness.ts`'s `pressKey` sends Enter without a `text` field on its key-down, and
- * `AGENTS.md` recorded that as "Enter does not activate a button here" — `#261` measured that this
- * was the helper, not the browser: Chromium only runs a focused button's default Enter action when
- * the key-down carries `text: "\r"`. `harness.ts` is shared machinery this lane does not edit, so
- * this dispatches its own key-down/key-up pair with that field instead of calling `pressKey`.
- *
- * @param devtools The connected session, on a hydrated page, with the target already focused.
- */
-async function pressExportEnter(devtools: Devtools): Promise<void> {
-  await devtools.send("Input.dispatchKeyEvent", {
-    type: "keyDown",
-    key: "Enter",
-    code: "Enter",
-    windowsVirtualKeyCode: 13,
-    nativeVirtualKeyCode: 13,
-    text: "\r",
-  })
-  await devtools.send("Input.dispatchKeyEvent", {
-    type: "keyUp",
-    key: "Enter",
-    code: "Enter",
-    windowsVirtualKeyCode: 13,
-    nativeVirtualKeyCode: 13,
-  })
-}
-
-/**
  * A real Enter press on the `getRows`-based `ExportButton` downloads the same two rows, resolved
  * from a `Promise` rather than handed over directly.
  *
@@ -8265,7 +8286,7 @@ async function exportAsyncViaEnterCheck(devtools: Devtools): Promise<void> {
 
   await stashExportRegionIdentity(devtools, EXPORT_ASYNC_BUTTON)
 
-  await pressExportEnter(devtools)
+  await pressKey(devtools, "Enter")
 
   // The demo's `getRows` takes 600ms, so the export is still pending here — this is the sample
   // that catches `disabled={busy}` dropping focus to `<body>`, which `aria-disabled` instead of
@@ -8347,9 +8368,9 @@ async function exportButtonIgnoresSecondPressCheck(devtools: Devtools): Promise<
     `globalThis.__exportCheck ? globalThis.__exportCheck.createCount : 0`,
   )
 
-  await pressExportEnter(devtools)
+  await pressKey(devtools, "Enter")
   await new Promise((resolve) => setTimeout(resolve, 100))
-  await pressExportEnter(devtools)
+  await pressKey(devtools, "Enter")
 
   const settled = await exportSettled(devtools)
   const after = await devtools.evaluate<number>(

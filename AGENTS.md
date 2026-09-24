@@ -194,12 +194,13 @@ names passed to `check(...)` — each one says in a sentence what it proves. Tre
 whose check you cannot find as unproven rather than as working.
 
 Two facts about that browser, both measured rather than assumed, and both worth knowing before you
-write a check. First: `pressKey` in `pages/checks/harness.ts` sends Enter without its text, and
-Chromium activates a focused button on Enter only when the key-down carries `text: "\r"` — so
-`pressKey(devtools, "Enter")` does **not** activate a button, while a check that sends its own
-`Input.dispatchKeyEvent` with that text does (#261 tracks fixing `pressKey`); a real Space press
-activates one either way. The browser is launched
-with a `--blink-settings` flag in `pages/verify.ts` that gives it a hover-capable, fine pointer —
+write a check. First: Chromium activates a focused button on Enter only when the key-down carries
+`text: "\r"` — `pressKey` in `pages/checks/harness.ts` sends it for `Enter` (#261 found the missing
+field was the whole reason an earlier version of this repository's checks avoided Enter and reached
+for `.click()` instead), so `pressKey(devtools, "Enter")` activates a focused button the way a real
+Enter press does; a real Space press activates one either way, with no `text` field needed. The
+browser is launched with a `--blink-settings` flag in `pages/verify.ts` that gives it a
+hover-capable, fine pointer —
 headless Chromium otherwise answers `(hover: none)` and `(pointer: none)`, and Tailwind compiles
 every `hover:` and `group-hover:` utility inside `@media (hover: hover)`. So hover styles do apply,
 and a check may lean on one. A hover style written by hand as `&:hover` in `theme/preset.css` is

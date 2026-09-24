@@ -274,8 +274,8 @@ async function actWatched(
  * Click one of the demo's controls, by the name it carries in `data-e2e`.
  *
  * A click and not a key press: the hook has no keyboard contract of its own, every control is a
- * plain `<button>` or wouter's `<Link>`, and in headless Chromium a real Enter press does not
- * activate a focused button.
+ * plain `<button>` or wouter's `<Link>`, and nothing here needs to prove that a keyboard press also
+ * reaches it.
  *
  * @param name The control's `data-e2e` value.
  */

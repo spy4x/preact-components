@@ -1080,14 +1080,16 @@ async function authFormFocusStabilityChecks(devtools: Devtools): Promise<void> {
 }
 
 /**
- * The show/hide password control: a real click, then a real Space press, neither of them a submit.
+ * The show/hide password control: a real click, then a real Space press, then a real Enter press,
+ * none of them a submit.
  *
- * Space is used rather than Enter because this harness's own Chromium does not turn a real Enter
- * press on a focused button into the activation click a person's Enter produces — recorded across
- * this file and `ui.ts`'s Modal check — while a real Space press does. The click is `.click()`,
- * which is how every button in this file is activated; nothing here is testing the pointer path
- * itself, only what the activation does. `signIns` is read before and after both presses, because a
- * toggle that happened to submit the form would be the one regression a purely visual check misses.
+ * `ui.ts`'s Dropdown and Modal checks already prove `pressKey(devtools, "Enter")` activates a
+ * focused native button in general, but only a press on this button's own listener can catch a
+ * handler here that called `preventDefault()` on Enter specifically (#261), so the toggle gets its
+ * own Enter press rather than relying on that general proof. The click is `.click()`, which is how
+ * every button in this file is activated; nothing here is testing the pointer path itself, only
+ * what the activation does. `signIns` is read before and after every press, because a toggle that
+ * happened to submit the form would be the one regression a purely visual check misses.
  */
 async function authFormToggleChecks(devtools: Devtools): Promise<void> {
   const before = await read(devtools, AUTH_STATE, NO_AUTH_STATE)
@@ -1119,10 +1121,24 @@ async function authFormToggleChecks(devtools: Devtools): Promise<void> {
       : "the button did not keep the focus after the click, so Space had nothing to press",
   )
 
+  await pressKey(devtools, "Enter")
+  const afterEnter = await read(devtools, AUTH_STATE, NO_AUTH_STATE)
+
   check(
-    "neither press on the show/hide button submitted the form",
-    before.signIns === afterClick.signIns && afterClick.signIns === afterSpace.signIns,
-    `sign-ins stayed at "${before.signIns}" across both presses`,
+    "a real Enter press on the focused button reveals the password again",
+    afterSpace.toggleFocused && afterEnter.passwordType === "text" &&
+      afterEnter.togglePressed === "true",
+    afterSpace.toggleFocused
+      ? `type ${afterSpace.passwordType} → ${afterEnter.passwordType}, aria-pressed ` +
+        `${afterSpace.togglePressed} → ${afterEnter.togglePressed}`
+      : "the button did not keep the focus after Space, so Enter had nothing to press",
+  )
+
+  check(
+    "no press on the show/hide button submitted the form",
+    before.signIns === afterClick.signIns && afterClick.signIns === afterSpace.signIns &&
+      afterSpace.signIns === afterEnter.signIns,
+    `sign-ins stayed at "${before.signIns}" across all three presses`,
   )
 }
 
@@ -1429,9 +1445,9 @@ async function authFormNoScriptChecks(devtools: Devtools): Promise<void> {
  * holds one page that only this card opens. That is judged enough, and proving the absence of
  * interception would be more machinery than the risk deserves.
  *
- * Buttons are activated with `.click()` rather than a key press, which is measured and not assumed:
- * `ui.ts`'s Modal check records that headless Chromium does not turn Enter on a focused button into
- * the activation click a person's Enter produces. No step here is about the keyboard.
+ * Buttons are activated with `.click()` rather than a key press: no step here is about the
+ * keyboard, and `ui.ts`'s Dropdown and Modal checks already prove a real Enter press activates a
+ * focused native button.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -2939,18 +2955,28 @@ async function lateMonthChecks(devtools: Devtools): Promise<void> {
   const stagedAway = await standOnDay(devtools, LATE_GRID, LATE_DAY)
   const beforeAway = await read(devtools, LATE_STATE, NO_CARD)
   await pressKey(devtools, "PageDown")
-  const restoredAway = await poll(
-    () => read(devtools, `${LATE_STATE}.date === ${JSON.stringify(LATE_DAY)}`, false),
-    3_000,
-  )
-  // Scrolling moves no focus, so the reader is still standing on their day — off screen.
-  await read(devtools, `(globalThis.scrollTo({ top: 0, behavior: "instant" }), true)`, false)
-  const scrolledTo = await settleScroll(devtools)
+  // The scroll and the "still on their day, still the old month" read happen in one
+  // `Runtime.evaluate`, in that order inside the same page task, so nothing the browser runs between
+  // two separate round trips — including the demo's own late answer — can land in between them
+  // unnoticed. Reading the day alone, in an earlier version of this check, proved only that the day
+  // had not moved by the time *that* read ran; it said nothing about whether the scroll had already
+  // happened after the month arrived, which is exactly what a `Calendar` that dropped `preventScroll`
+  // would still pass under this weaker proof (found in review). The month's own answer count is read
+  // in the same breath for the same reason: two facts pinned to one instant are one proof, not two
+  // reads that could straddle the moment the answer lands. A round trip slower than the demo's 300ms
+  // delay can still lose this race and fail on correct code — nothing running one JS statement after
+  // another inside a single page task can promise otherwise — but it now fails loudly instead of
+  // quietly passing broken code, which is the property #267 is about restoring.
   const stillOnDay = await read(
     devtools,
-    `${LATE_STATE}.date === ${JSON.stringify(LATE_DAY)}`,
+    `(() => {
+      globalThis.scrollTo({ top: 0, behavior: "instant" })
+      const state = ${LATE_STATE}
+      return state.date === ${JSON.stringify(LATE_DAY)} && state.count === ${beforeAway.count}
+    })()`,
     false,
   )
+  const scrolledTo = await settleScroll(devtools)
   const awayWanted = `2026-04-${LATE_DAY.slice(8, 10)}`
   await poll(
     () =>
@@ -2968,10 +2994,10 @@ async function lateMonthChecks(devtools: Devtools): Promise<void> {
 
   check(
     "a month arriving under a reader scrolled away moves the focus without moving the page",
-    stagedAway && restoredAway && stillOnDay && scrolledTo === 0 &&
+    stagedAway && stillOnDay && scrolledTo === 0 &&
       afterAway.count === beforeAway.count + 1 && afterAway.onDay &&
       afterAway.date === awayWanted && scrollAfterAway === 0,
-    stagedAway && restoredAway
+    stagedAway && stillOnDay
       ? `the reader stayed on ${LATE_DAY} and scrolled the page to ${scrolledTo}; the month then ` +
         `went ${beforeAway.extra} → ${afterAway.extra || "nothing"}, the focus went to ` +
         `${afterAway.date || afterAway.focused} — wanted ${awayWanted} — and the page is at ` +
@@ -3225,12 +3251,12 @@ const MISSED: AimedClick = { onTarget: false, x: 0, y: 0, landedOn: "nothing", r
 /**
  * `ImageLightbox`'s keyboard and its backdrop, driven in the browser that owns them.
  *
- * Enter and Space are real key presses, and Space is provable here where it is not for an ordinary
- * button: what opens the lightbox is the component's own `keydown` listener rather than the
- * activation click headless Chromium declines to synthesise, so both keys reach it exactly as a
- * person's would. The two clicks are real mouse events at points worked out from the geometry, and
- * each point is checked against `elementFromPoint` before it is used — a press that landed
- * somewhere else is reported as a missed click and never as a failure of the component.
+ * Enter and Space are real key presses: what opens the lightbox is the component's own `keydown`
+ * listener on the image, an element with no native activation of its own, rather than a native
+ * button's default action, so both keys reach it exactly as a person's would. The two clicks are
+ * real mouse events at points worked out from the geometry, and each point is checked against
+ * `elementFromPoint` before it is used — a press that landed somewhere else is reported as a missed
+ * click and never as a failure of the component.
  *
  * @param devtools The connected session, on a hydrated page.
  */

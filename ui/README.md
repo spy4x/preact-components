@@ -541,9 +541,10 @@ like page 1, because `DataTable` has no way to know there were more before them.
 `sortRows` and takes a caller-supplied `pageCount` instead is tracked in
 [#235](https://github.com/spy4x/preact-components/issues/235) rather than built here.
 
-**Every sortable header is a real `<button>`**, so Tab and Space reach it — a real Enter press
-does not activate a focused button in this repository's browser checks, so `pages/checks/ui.ts`
-proves the Space path. Pressing it calls `toggleSort`, which cycles that column through
+**Every sortable header is a real `<button>`**, so Tab, Space and Enter all reach it —
+`pages/checks/ui.ts` proves the click and Space paths for this header, and a real Enter press
+activating a focused native button is proven once, for `Dropdown` and `Modal`, rather than
+per component. Pressing it calls `toggleSort`, which cycles that column through
 ascending → descending → off and, if the column was not already part of `sort`, appends it as the
 _least significant_ rule rather than replacing what was there. That is the whole of how a
 multi-column sort is built: there is no modifier key, a keyboard user just Tabs to a second
