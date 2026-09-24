@@ -889,7 +889,6 @@ describe("rangeForTimePreset", () => {
     const range = rangeForTimePreset("last-hour", { now, timeZone: "Europe/Berlin" })
 
     expect(range).toEqual({ from: "2026-10-25T02:30", to: "2026-10-25T02:30" })
-    expect(now.getTime() - Date.parse("2026-10-25T01:30:00Z") + 3_600_000).toBe(3_600_000)
     expect(isValidDateTimeRange(range)).toBe(true)
   })
 })
@@ -917,6 +916,13 @@ describe("isValidDateTimeRange", () => {
   it("rejects an hour or minute the clock does not have", () => {
     expect(isValidDateTimeRange({ from: "2026-08-01T24:00", to: "2026-08-01T23:00" })).toBe(false)
     expect(isValidDateTimeRange({ from: "2026-08-01T09:60", to: "2026-08-01T23:00" })).toBe(false)
+  })
+
+  it("accepts a wall time that never occurs, the hour a zone skips in spring", () => {
+    // 2026-03-29T02:30 never happens in Europe/Berlin — the clock jumps straight from 01:59:59 to
+    // 03:00:00 — but this function is never told which zone a value is meant for, so it has no way
+    // to know that and does not try: it checks the string's shape and the calendar date only.
+    expect(isValidDateTimeRange({ from: "2026-03-29T02:30", to: "2026-03-29T04:00" })).toBe(true)
   })
 })
 

@@ -457,14 +457,19 @@ export const timeRangePresets: readonly TimeRangePreset[] = ["last-hour", "last-
  * Inclusive wall-clock range, minute precision, in the caller's zone.
  *
  * Same shape as {@link DateRange} — `from`/`to` — carrying a time as well: `YYYY-MM-DDTHH:mm`. `to`
- * is inclusive the same way {@link DateRange.to} is: the exact minute named is the last one in
- * range, not the one before it.
+ * is inclusive at the minute named, the same convention {@link DateRange.to} uses for a whole day —
+ * which means a `"last-hour"` window covers 61 minutes end to end, not 60: the whole of the `to`
+ * minute is included, not just its first instant.
  *
- * Nothing here converts a wall-clock string back to an instant, so the classic DST hazard — a wall
- * time that is ambiguous (named twice, the hour a zone falls back) or that never happens (skipped,
- * the hour a zone springs forward) — is never resolved by this module, because it is never asked
- * to. {@link rangeForTimePreset} only goes the other way, instant to wall clock, which is always
- * well-defined; the one place the ambiguous hour still shows through is documented there.
+ * This module never converts a wall-clock string back to an instant, so it is never asked to resolve
+ * the classic DST hazard on its own — but a caller who does convert one, the ordinary next step for
+ * querying a database with it, meets it squarely. {@link isValidDateTimeRange} checks the string's
+ * shape and calendar date only, not whether the named local time actually occurs: a `from` or `to`
+ * naming the hour a zone springs forward — a local time that never happens that day — passes it, and
+ * so does either reading of an hour the zone repeats when it falls back. A caller's own conversion of
+ * a repeated hour resolves to whichever of its two instants that conversion defaults to — most date
+ * libraries pick the earlier one — and {@link rangeForTimePreset}'s own doc says exactly what that
+ * costs `"last-hour"` and `"last-24-hours"` on the day a zone falls back.
  */
 export interface DateTimeRange {
   /** Start of the range, inclusive, wall time in the caller's zone. */
@@ -517,16 +522,23 @@ function calendarDateTimeInZone(instant: Date, timeZone: string): string {
  * Both ends are computed from real elapsed time — `now`'s instant, minus exactly one or
  * twenty-four hours in milliseconds — and only then read as a wall clock in `timeZone`, the same
  * order {@link rangeForPreset}'s own arithmetic keeps: fixed-step first, zone-aware read after.
- * That order is what makes `"last-24-hours"` correct on the two days a year a zone's clocks
- * change: the window is always exactly 24 real hours, which prints as 23 or 25 hours on the wall
- * clock on the day it crosses a change, rather than the reverse — 24 wall-clock hours that are
- * really 23 or 25 real ones, which is what stepping the clock back a day at a time would give.
+ * Read only as the strings this function returns, that order is what keeps `"last-24-hours"`
+ * correct on the two days a year a zone's clocks change: the subtraction is always exactly 24 real
+ * hours, and it is the *printed* wall-clock span that reads as 23 or 25 hours on that day, rather
+ * than the reverse — a 24-hour-looking span that is really 23 or 25 real ones, which is what
+ * stepping the clock back a day at a time would give.
  *
- * On the day a zone falls back, `"last-hour"` can answer a `from` and a `to` that print the exact
- * same `YYYY-MM-DDTHH:mm` string despite being a real hour apart — one wall clock reading, at two
- * different UTC offsets either side of the fall-back. Both strings are correct readings of their
- * own instant, and {@link isValidDateTimeRange} still accepts the pair: a range whose ends read
- * identically is `from <= to`, the same rule a one-day {@link DateRange} passes by design.
+ * That correctness is in the strings only, and does not survive a caller converting them back to
+ * instants — see {@link DateTimeRange}'s own doc for why a caller would. On the day a zone falls
+ * back, `"last-24-hours"` can answer a `from` or `to` that names the repeated hour, and the standard
+ * conversion of it (the earlier of its two instants) then makes the round-tripped window read as 23
+ * or 25 hours, not 24, depending on which end landed there. `"last-hour"` can go further: when
+ * *both* ends land in the repeated hour, they print the exact same `YYYY-MM-DDTHH:mm` string — one
+ * wall-clock reading, taken at two different UTC offsets either side of the fall-back — and a
+ * caller's round trip then reads the window as zero hours, not one. Both strings are still correct
+ * readings of their own instant, and {@link isValidDateTimeRange} still accepts the pair: a range
+ * whose ends read identically is `from <= to`, the same rule a one-day {@link DateRange} passes by
+ * design.
  *
  * @param preset The sub-day preset to resolve.
  * @param options Injected instant and zone; see {@link RangeForTimePresetOptions}.
@@ -548,14 +560,17 @@ export function rangeForTimePreset(
 const ISO_DATE_TIME_PATTERN = /^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d$/
 
 /**
- * Whether a {@link DateTimeRange} is two real wall-clock values, in order.
+ * Whether a {@link DateTimeRange} is two well-formed wall-clock values, in order — not necessarily
+ * two real ones: nothing here checks whether a named local time actually occurs in any zone, since
+ * this function is not handed one. A range naming the hour a zone skips passes it just the same.
  *
  * The date half of each value is checked the way {@link isValidDateRange} checks a whole one —
  * round-tripped through {@link parseIsoDate} — so `2026-02-31T10:00` is rejected for the same
  * reason `2026-02-31` is. Ordering is a plain string comparison rather than a parse into instants:
  * `YYYY-MM-DDTHH:mm` sorts lexicographically exactly the way it sorts chronologically as a nominal
- * wall clock, so there is nothing here to convert and, per {@link DateTimeRange}'s own note,
- * nothing to get wrong about a wall time a zone repeats or skips.
+ * wall clock, so there is nothing here to convert, and so nothing here to get wrong about a wall
+ * time a zone repeats or skips — see {@link DateTimeRange}'s own doc for what a caller who does
+ * convert one meets instead.
  */
 export function isValidDateTimeRange(range: DateTimeRange): boolean {
   if (!ISO_DATE_TIME_PATTERN.test(range.from) || !ISO_DATE_TIME_PATTERN.test(range.to)) {

@@ -358,9 +358,14 @@ signal the fields write, so what a screen reader announces and what the panel sh
 
 ### `withTime`
 
-Off by default, and off changes nothing: the props, the markup and the behaviour described above are
-exactly what this component had before `withTime` existed. `date-range-picker.test.tsx` pins a
-byte-for-byte snapshot of the day-only render to prove it, taken before `withTime` was added.
+Off by default, and off changes nothing: the markup and the behaviour described above are exactly
+what this component had before `withTime` existed — `date-range-picker.test.tsx` pins a byte-for-byte
+snapshot of the day-only render to prove it, taken before `withTime` was added. `DateRangePickerProps`
+keeps naming the exact shape it always has; it only grows one new optional field, `withTime?: false`,
+that every caller from before this option existed already satisfies by not setting it, so a wrapper
+typed `Omit<DateRangePickerProps, "timeZone">` or a bare `props.presets` read keeps compiling
+unchanged. `DateRangePicker` itself takes the wider `AnyDateRangePickerProps`, which also allows
+`DateRangePickerTimeProps` — the shape below.
 
 With `withTime` on, `range` and `onChange` carry a `DateTimeRange` instead of a `DateRange` — the
 same `from`/`to` shape, a `YYYY-MM-DDTHH:mm` wall time in the picker's `timeZone` rather than a bare
@@ -383,14 +388,29 @@ since typing a value or picking one of the two presets is the only way to reach 
 `rangeForTimePreset` and `presetForTimeRange`, in `date-range.ts`, are the two presets' own maths —
 plain functions of an injected `now` and `timeZone`, the same convention `rangeForPreset` and
 `presetForRange` follow. Both subtract a fixed number of _real_ milliseconds from `now` before
-reading the wall clock, which is what keeps `"last-24-hours"` exactly right on the two days a year a
-zone's clocks change: the window stays 24 real hours, and it is the _printed_ wall-clock span that
-reads as 23 or 25 hours on that day — not the other way around, a 24-hour-looking span that is
-really 23 or 25 real hours, which is what walking the clock back a day at a time would give. One
-consequence worth knowing rather than being surprised by: on the day a zone falls back, `"last-hour"`'s
-`from` and `to` can print the identical `YYYY-MM-DDTHH:mm` string — the same wall-clock minute, read
-once before the clocks fell back and once after — despite being a real hour apart. Both readings are
-correct; `DateTimeRange`'s own doc in `date-range.ts` carries the detail.
+reading the wall clock: `"last-hour"` is always exactly one real hour before `now`, `"last-24-hours"`
+always exactly twenty-four, whatever that prints as. Read only as the two strings this library hands
+back, both stay right on the two days a year a zone's clocks change — the _printed_ wall-clock span
+reads as 23 or 25 hours on that day rather than the subtraction drifting to match a misleading
+24-hour-looking one.
+
+That correctness is in the strings only, and does not survive a caller converting them back into
+instants — the ordinary next step for querying a database with them. On the day a zone falls back, a
+`from` or `to` can name the hour that happens twice, and the standard conversion of it — the earlier
+of its two instants, what most date libraries default to — turns a round-tripped `"last-24-hours"`
+into 23 or 25 hours, not 24, depending on which end landed there, and a round-tripped `"last-hour"`
+into zero when _both_ ends land there: `from` and `to` then print the identical `YYYY-MM-DDTHH:mm`
+string — one wall-clock reading, taken at two different UTC offsets either side of the fall-back —
+and a standard conversion reads that pair as the same instant. Neither this library nor
+`isValidDateTimeRange` resolves or rejects any of this: a range whose ends read identically is
+`from <= to`, the same rule a one-day `DateRange` passes by design, and a typed value naming the hour
+a zone skips in spring — a local time that never happens that day — is accepted the same way,
+because nothing here is told which zone a value is meant for and checks accordingly. `DateTimeRange`'s
+own doc in `date-range.ts` carries the exact instants involved.
+
+`to` is inclusive at the minute named, the same convention `DateRange`'s is at the day, and this
+library truncates seconds — so a `"last-hour"` window covers 61 minutes end to end, not 60: the whole
+of the `to` minute is included, not just its first instant.
 
 The focus contract above is not re-implemented for this mode — `DateRangePicker`'s open/close
 signals, `closePanel` and the effect that moves focus are the exact same code `withTime` runs
