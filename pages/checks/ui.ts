@@ -169,6 +169,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await contactFormFailureRetryChecks(devtools)
   await enhancedFormsNoScriptChecks(devtools)
   await imageGalleryChecks(devtools)
+  await lightboxRefusesEmptyCheck(devtools)
 
   // Last on purpose: a Modal that refuses to close would sit in the top layer over everything, so a
   // failure here cannot take an unrelated check down with it.
@@ -1919,6 +1920,61 @@ async function imageGalleryChecks(devtools: Devtools): Promise<void> {
   // wrong above.
   await devtools.evaluate<null>(`(() => {
     const dialog = document.querySelector('${GALLERY_DIALOG}')
+    if (dialog && dialog.open) dialog.close()
+    return null
+  })()`)
+}
+
+/** The standalone `Lightbox` card's fourth button, and the dialog it tries to open. */
+const LIGHTBOX_EMPTY_CARD = '#demo-Lightbox [data-e2e="lightbox-empty"]'
+const LIGHTBOX_EMPTY_BUTTON = '#demo-Lightbox [data-e2e="lightbox-empty-open"]'
+
+/**
+ * `Lightbox` refuses to call `showModal()` when every image it was given has no description —
+ * `canOpen`'s `total > 0` half. No unit test can reach this: a closed dialog and one refused open
+ * for having nothing to show render identical server HTML (`open && current && …` is `false`
+ * either way, since `current` is already `null` when `total` is `0`), so only a real
+ * `dialog.matches(":modal")` reading, after a real click, can tell the two apart.
+ *
+ * `holdsFor` is the shape this needs, not `poll`: there is no state to wait *for* here, since
+ * correct behaviour is that nothing ever changes. Polling for `:modal` becoming `true` would time
+ * out and read as "closed" whether the dialog correctly refused to open or the button was simply
+ * missing; asserting the negative holds for a real window is what a check that could tell those two
+ * apart over the same evidence needs.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function lightboxRefusesEmptyCheck(devtools: Devtools): Promise<void> {
+  const readModal = () =>
+    devtools.evaluate<boolean>(
+      `document.querySelector('${LIGHTBOX_EMPTY_CARD} dialog')?.matches(":modal") === true`,
+    )
+
+  const before = await readModal()
+  const clicked = await devtools.evaluate<boolean>(`(() => {
+    const button = document.querySelector('${LIGHTBOX_EMPTY_BUTTON}')
+    if (button) button.click()
+    return Boolean(button)
+  })()`)
+  const stayedClosed = await holdsFor(async () => !(await readModal()), 1_000)
+
+  check(
+    "Lightbox refuses to open when every image it was given lacks a description",
+    clicked && !before && stayedClosed.held,
+    !clicked
+      ? "the card has no lightbox-empty-open button to press"
+      : stayedClosed.held
+      ? `pressed the button that opens a lightbox with one undescribed image; the dialog never ` +
+        `became :modal in ${stayedClosed.elapsedMs}ms`
+      : `the dialog became :modal ${stayedClosed.elapsedMs}ms after the press, though the one ` +
+        `image it was given has no description`,
+  )
+
+  // Teardown, unconditional: a broken canOpen would leave this dialog in the top layer, which
+  // would take Modal's own checks down with it — Modal runs last in this file precisely because it
+  // cannot tolerate that.
+  await devtools.evaluate<null>(`(() => {
+    const dialog = document.querySelector('${LIGHTBOX_EMPTY_CARD} dialog')
     if (dialog && dialog.open) dialog.close()
     return null
   })()`)

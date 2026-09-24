@@ -1665,6 +1665,8 @@ const LIGHTBOX = "#demo-ImageLightbox"
 const DIALOG = `${LIGHTBOX} dialog`
 const PLAIN_IMAGE = `${LIGHTBOX} [data-e2e="lightbox-image"]`
 const LINKED_IMAGE = `${LIGHTBOX} [data-e2e="lightbox-linked-image"]`
+/** The card's third scenario: an undescribed image inside a link, `fallbackAlt=""`. */
+const BARE_IMAGE = `${LIGHTBOX} [data-e2e="lightbox-bare-image"]`
 
 /**
  * Page exceptions the readings below swallowed.
@@ -3365,6 +3367,8 @@ async function imageLightboxChecks(devtools: Devtools): Promise<void> {
       : "the lightbox was not open, so a backdrop click proves nothing",
   )
 
+  await bareImageRefusalCheck(devtools)
+
   // The linked image leaves the lightbox open, and a real Escape press is what closes it — which
   // is both the last assertion and the teardown every package after this file depends on.
   //
@@ -3392,6 +3396,93 @@ async function imageLightboxChecks(devtools: Devtools): Promise<void> {
     `(() => {
       const dialog = document.querySelector('${DIALOG}')
       if (dialog && dialog.open) dialog.close()
+      return true
+    })()`,
+    false,
+  )
+}
+
+/**
+ * An image with no `alt` at all, where `fallbackAlt=""` has turned the substitution off, is never
+ * marked a zoom control, and a real click on it — inside a link — follows the link instead of being
+ * cancelled for a lightbox that would have refused to open anyway.
+ *
+ * The link's target is a same-page fragment (`#lightbox-bare-target`), never an external address:
+ * proving the click is not cancelled means letting the browser actually follow it, and nothing in
+ * this repository's checks may reach outside the local preview server. `history.replaceState` at
+ * the end puts the address back, so a later check reading `location` is not surprised by this one's
+ * own navigation.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function bareImageRefusalCheck(devtools: Devtools): Promise<void> {
+  const marks = await read(
+    devtools,
+    `(() => {
+      const image = document.querySelector('${BARE_IMAGE}')
+      if (!image) return { found: false, marked: false }
+      return {
+        found: true,
+        marked: image.hasAttribute("role") || image.hasAttribute("tabindex") ||
+          image.hasAttribute("aria-label"),
+      }
+    })()`,
+    { found: false, marked: true },
+  )
+  check(
+    'an image with no alt and fallbackAlt="" is never marked a zoom control',
+    marks.found && !marks.marked,
+    marks.found
+      ? `role/tabindex/aria-label present: ${marks.marked}`
+      : "the card has no bare, undescribed image to check",
+  )
+
+  await read(
+    devtools,
+    `(document.querySelector('${BARE_IMAGE}')?.scrollIntoView({ block: "center", behavior: "instant" }), true)`,
+    false,
+  )
+  await settleScroll(devtools)
+  const before = await read(devtools, `location.hash`, "unreadable")
+  const aim = await read(
+    devtools,
+    `(() => {
+      const image = document.querySelector('${BARE_IMAGE}')
+      if (!image) return { onTarget: false, x: 0, y: 0, landedOn: "nothing", reason: "the bare image is missing" }
+      const rect = image.getBoundingClientRect()
+      const x = Math.round(rect.left + rect.width / 2)
+      const y = Math.round(rect.top + rect.height / 2)
+      const at = document.elementFromPoint(x, y)
+      return {
+        onTarget: at === image,
+        x,
+        y,
+        landedOn: at ? at.tagName.toLowerCase() : "nothing",
+        reason: Math.round(rect.width) + "×" + Math.round(rect.height) + " image",
+      }
+    })()`,
+    MISSED,
+  )
+  if (aim.onTarget) await clickAt(devtools, aim)
+  await poll(() => read(devtools, `location.hash === "#lightbox-bare-target"`, false), 3_000)
+  const afterHash = await read(devtools, `location.hash`, "unreadable")
+  const modalsOpen = await read(devtools, `document.querySelectorAll("dialog:modal").length`, -1)
+
+  check(
+    "a real click on the undescribed, linked image follows the link instead of opening a lightbox",
+    aim.onTarget && before === "" && afterHash === "#lightbox-bare-target" && modalsOpen === 0,
+    aim.onTarget
+      ? `hash "${before}" → click → "${afterHash}", ${modalsOpen} modal dialog(s) open`
+      : `no click was sent: the point at ${aim.x},${aim.y} lands on ${aim.landedOn} — ${aim.reason}`,
+  )
+
+  // Teardown: the address back to where the run started, and any dialog this scenario might have
+  // wrongly opened closed, so neither leaks into a check that runs after this one.
+  await read(
+    devtools,
+    `(() => {
+      history.replaceState(null, "", location.pathname + location.search)
+      for (const dialog of document.querySelectorAll("dialog")) if (dialog.open) dialog.close()
       return true
     })()`,
     false,
