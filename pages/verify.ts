@@ -606,15 +606,38 @@ async function browserPhase(): Promise<void> {
           // else. 10s is a wide margin over that measured 1.65s — generous room for a slower CI
           // machine — and a run that still has not settled by then fails loudly here instead of
           // leaving whichever block runs next to blame a stale coordinate on itself.
+          //
+          // That scroll is requested, not finished, by the time the page reports itself hydrated —
+          // the block's effect runs before the host page's, which is the one that sets the flag —
+          // and on a loaded machine its first frame can come later than two reads 100ms apart,
+          // which then agree on the unscrolled page (#269). So when the block is on the page and
+          // not already at the top of the viewport, the wait is told the scroll starts from the
+          // top of the document and holds out until the page has left it. Where it ends is the
+          // page's to decide — a destination computed here, from the block's position after
+          // hydration, was measured 28px off where Chromium's scroll really stopped — so the wait
+          // is not given one. When the block is not on the page, no scroll is expected and the
+          // plain wait applies (#255 may take that scroll away; this reads what the page does
+          // rather than assuming it).
+          const expectsScroll = await devtools.evaluate<boolean>(`(() => {
+            const block = document.querySelector('#demo-DeletionValidation [role="alert"]')
+            return block !== null && Math.abs(block.getBoundingClientRect().top + globalThis.scrollY) > 1
+          })()`)
           const settleStarted = Date.now()
-          const settled = await settledScroll(devtools, 10_000)
+          const settled = await settledScroll(devtools, {
+            from: expectsScroll ? 0 : undefined,
+            timeoutMs: 10_000,
+          })
           const settleMs = Date.now() - settleStarted
+          const landedAt = await devtools.evaluate<number>("Math.round(globalThis.scrollY)")
           check(
             "the page stopped scrolling before the package blocks started",
             settled,
             settled
-              ? `scrollY held still before any block's own checks began, after ${settleMs}ms`
-              : "scrollY was still changing 10s after hydration",
+              ? `scrollY held still at ${landedAt} before any block's own checks began, after ` +
+                `${settleMs}ms` + (expectsScroll ? ", having left the top" : ", no scroll expected")
+              : `scrollY was at ${landedAt} and ${
+                expectsScroll && landedAt === 0 ? "had never left the top" : "still changing"
+              } 10s after hydration`,
           )
           await runBlocks(activeBlocks, devtools, resetAfterThrow)
         }

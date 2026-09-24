@@ -1,4 +1,4 @@
-import { check, type Devtools, poll, pressKey, settledScroll } from "./harness.ts"
+import { centreInView, check, type Devtools, poll, pressKey, settledScroll } from "./harness.ts"
 
 /** One side of a dropdown's open/closed state. */
 interface State {
@@ -521,10 +521,7 @@ async function strayClickCheck(devtools: Devtools): Promise<void> {
   const before = await reopen(devtools)
   // Centre the panel rather than the trigger: the panel is what gets clicked, and the coordinates
   // are viewport pixels, so it has to be on screen and it has to have stopped moving.
-  await devtools.evaluate<null>(
-    `(globalThis.__verifyDropdown.panel.scrollIntoView({ block: "center" }), null)`,
-  )
-  await settledScroll(devtools)
+  await centreInView(devtools, `globalThis.__verifyDropdown.panel`)
 
   const spot = await devtools.evaluate<Spot>(`(() => {
     const { panel } = globalThis.__verifyDropdown
@@ -1211,13 +1208,36 @@ async function budgetCheck(devtools: Devtools): Promise<void> {
       devtools.evaluate<boolean>(`(globalThis.__verifyToastr?.region?.children.length ?? 0) > 0`),
     Math.round(ran.duration * 1.25),
   )
+  // The resumed lifetime is measured in the page, from the focus move to the mutation that empties
+  // the stack. Measured from here instead, it carried a round trip and a poll interval on each end,
+  // and on a loaded machine those alone pushed a correct 300ms resume past 900ms (#269).
   const out = await devtools.evaluate<{ ok: boolean; outside: boolean }>(`(() => {
     const parked = globalThis.__verifyToastr ?? {}
     if (!parked.clear || !parked.region) return { ok: false, outside: false }
+    const clock = { leftAt: 0, goneAt: -1 }
+    globalThis.__verifyToastrResume = clock
+    const observer = new MutationObserver(() => {
+      if (parked.region.children.length > 0) return
+      clock.goneAt = performance.now()
+      observer.disconnect()
+    })
+    observer.observe(parked.region, { childList: true })
+    clock.leftAt = performance.now()
     parked.clear.focus()
     return { ok: true, outside: !parked.region.contains(document.activeElement) }
   })()`)
-  const resumed = await goneWithin(devtools, ran.duration * 4)
+  const gone = await poll(
+    () => devtools.evaluate<boolean>(`(globalThis.__verifyToastrResume?.goneAt ?? -1) >= 0`),
+    ran.duration * 4,
+  )
+  const resumed: Hold = {
+    held: gone,
+    elapsedMs: gone
+      ? await devtools.evaluate<number>(
+        `Math.round(globalThis.__verifyToastrResume.goneAt - globalThis.__verifyToastrResume.leftAt)`,
+      )
+      : ran.duration * 4,
+  }
 
   const owed = ran.duration - ran.elapsed
   const restart = ran.duration
@@ -1404,10 +1424,7 @@ async function pointerPauseCheck(devtools: Devtools): Promise<void> {
   // stopped moving in between — the same reason `strayClickCheck` waits above. The *stack* is what
   // gets centred, not the card: the card is taller than the viewport, and centring it left the
   // stack below the fold with no point to aim at.
-  await devtools.evaluate<null>(
-    `(globalThis.__verifyToastr?.region?.scrollIntoView({ block: "center" }), null)`,
-  )
-  await settledScroll(devtools)
+  await centreInView(devtools, `globalThis.__verifyToastr?.region ?? null`)
 
   const pushed = await pushAutoToast(devtools)
   const spot = await devtools.evaluate<Point>(`(() => {
@@ -2445,10 +2462,7 @@ const TOOLTIP_DISMISSED =
  */
 async function tooltipChecks(devtools: Devtools): Promise<void> {
   await devtools.evaluate<null>(TOOLTIP_SETUP)
-  await devtools.evaluate<null>(
-    `(globalThis.__verifyTooltip?.row?.scrollIntoView({ block: "center" }), null)`,
-  )
-  await settledScroll(devtools)
+  await centreInView(devtools, `globalThis.__verifyTooltip?.row ?? null`)
   // The Dropdown checks above leave the pointer at viewport coordinates, and viewport coordinates
   // do not scroll with the page: without parking it first, the pointer can be resting on this very
   // trigger while the check reads the trigger "at rest".
@@ -4441,10 +4455,7 @@ async function reopenCheck(devtools: Devtools): Promise<void> {
  * @param devtools The connected session.
  */
 async function scrollToParked(devtools: Devtools): Promise<void> {
-  await devtools.evaluate<null>(
-    `(globalThis.__verifyCombobox?.input?.scrollIntoView({ block: "center" }), null)`,
-  )
-  await settledScroll(devtools)
+  await centreInView(devtools, `globalThis.__verifyCombobox?.input ?? null`)
   await pointerToCorner(devtools)
 }
 
@@ -4921,11 +4932,10 @@ async function escapeFromOutsideCheck(devtools: Devtools): Promise<void> {
  * @param devtools The connected session, on a hydrated page.
  */
 async function outsideClickCheck(devtools: Devtools): Promise<void> {
-  await devtools.evaluate<null>(
-    `(document.querySelector('#demo-DateRangePicker [data-e2e="usage"] summary')
-      ?.scrollIntoView({ block: "center" }), null)`,
+  await centreInView(
+    devtools,
+    `document.querySelector('#demo-DateRangePicker [data-e2e="usage"] summary')`,
   )
-  await settledScroll(devtools)
   await pointerToCorner(devtools)
 
   const opened = await openPickerPanel(devtools)
@@ -4938,8 +4948,7 @@ async function outsideClickCheck(devtools: Devtools): Promise<void> {
   // nothing at all when the panel never moved the page — cheaper than being wrong about which of the
   // two runs was the fluke.
   const target = `document.querySelector('#demo-DateRangePicker [data-e2e="usage"] summary')`
-  await devtools.evaluate<null>(`(${target}?.scrollIntoView({ block: "center" }), null)`)
-  await settledScroll(devtools)
+  await centreInView(devtools, target)
   const aim = await aimAt(devtools, target)
   const landing = await clickAt(devtools, aim, target)
   const closed = await poll(
@@ -6217,10 +6226,7 @@ const MERCHANT_TARGET = "globalThis.__verifyDataTable?.merchant ?? null"
  */
 async function clickMerchantHeader(devtools: Devtools): Promise<MerchantClick> {
   const before = await devtools.evaluate<DataTableState>(DATA_TABLE_STATE)
-  await devtools.evaluate<null>(
-    `(globalThis.__verifyDataTable?.merchant?.scrollIntoView({ block: "center" }), null)`,
-  )
-  await settledScroll(devtools)
+  await centreInView(devtools, `globalThis.__verifyDataTable?.merchant ?? null`)
   const aim = await aimAt(devtools, MERCHANT_TARGET)
   const landing = await clickAt(devtools, aim, MERCHANT_TARGET)
   await poll(
@@ -6773,15 +6779,10 @@ interface ElementCenter {
  * @param selector The element.
  */
 async function elementCenter(devtools: Devtools, selector: string): Promise<ElementCenter> {
-  const found = await devtools.evaluate<boolean>(`(() => {
-    const el = document.querySelector('${selector}')
-    if (!el) return false
-    el.scrollIntoView({ block: "center" })
-    return true
-  })()`)
+  const found = await devtools.evaluate<boolean>(`document.querySelector('${selector}') !== null`)
   if (!found) return { ok: false, x: -1, y: -1, reason: "no such element" }
 
-  await settledScroll(devtools)
+  await centreInView(devtools, `document.querySelector('${selector}')`)
 
   return await devtools.evaluate<ElementCenter>(`(() => {
     const el = document.querySelector('${selector}')
