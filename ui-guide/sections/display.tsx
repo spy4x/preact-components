@@ -69,9 +69,11 @@ function placeholder(fill: string, width = 320, height = 200): string {
 }
 
 /**
- * Four described images and one without a description, so the card can show both halves of the
- * contract: the strip and the lightbox page through the first four, and the fifth — passed in like
- * any other — never reaches either, because {@link describedImages} drops it before render.
+ * Four described images and one without a description in the middle of them, so the card shows
+ * both halves of the contract with the harder case exercised rather than the easy one: the strip
+ * and the lightbox page through the four described images in order, skipping straight from the
+ * second to what would be the fourth position — the one — passed in like any other — that
+ * {@link describedImages} drops before render.
  */
 const galleryImages: ImageGalleryImage[] = [
   { src: placeholder("9333ea"), alt: "A purple rectangle" },
@@ -80,17 +82,17 @@ const galleryImages: ImageGalleryImage[] = [
     alt: "A blue rectangle",
     thumbSrc: placeholder("2563eb", 96, 96),
   },
+  { src: placeholder("6b7280"), alt: "  " },
   { src: placeholder("16a34a"), alt: "A green rectangle" },
   { src: placeholder("ea580c"), alt: "An orange rectangle" },
-  { src: placeholder("6b7280"), alt: "  " },
 ]
 
 /**
  * The thumbnail strip, opening `Lightbox` on the one pressed.
  *
- * The fifth image, whose `alt` is whitespace, is passed in exactly like the other four — the card
+ * The third image, whose `alt` is whitespace, is passed in exactly like the other four — the card
  * shows the count `describedImages` keeps, rather than trusting a claim about what a reader cannot
- * otherwise see: a sixth thumbnail would be the tell that the rule had quietly stopped holding.
+ * otherwise see: a fifth thumbnail would be the tell that the rule had quietly stopped holding.
  */
 function ImageGalleryDemo() {
   const shown = describedImages(galleryImages)
