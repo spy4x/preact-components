@@ -615,57 +615,45 @@ async function browserPhase(): Promise<void> {
         await hoverCapability(devtools)
 
         if (hydrated) {
-          // The catalogue's `DeletionValidation` demo (`crud/deletion-validation.tsx:29`) starts a
-          // smooth scroll toward itself on hydration — `#253` measured it still moving, roughly
+          // The catalogue's `DeletionValidation` demo (`crud/deletion-validation.tsx`) used to start
+          // a smooth scroll toward itself on hydration — `#253` measured it still moving, roughly
           // 0 → 36,500px, when a block run started alone right after hydration; the block's own
           // `scrollIntoView` landed correctly, but one more frame of the still-running smooth
           // scroll moved the page under it before the first click arrived, 170–540px in the runs
-          // measured. This line runs before any block, in every run, full or filtered — what
-          // differs between them is not this line but how much of the scroll is still left by the
-          // time a block's own checks start: `system` is `PACKAGE_BLOCKS`' sixth entry, so a full
-          // run has already spent five earlier blocks' worth of wall-clock time by the time it
-          // gets there, and measured runs show the roughly 1.65s scroll has always finished well
-          // before that. A `--only` run that starts straight into `system`, or any other block,
-          // does not get that head start, which is what made this reproduce there and nowhere
-          // else. 10s is a wide margin over that measured 1.65s — generous room for a slower CI
-          // machine — and a run that still has not settled by then fails loudly here instead of
-          // leaving whichever block runs next to blame a stale coordinate on itself.
+          // measured. `#255` fixed the demo to start with an empty dependency list, and fixed the
+          // component itself to scroll only when its dependency list changes to a new, non-empty
+          // one, so hydration no longer starts a scroll at all.
           //
-          // That scroll is requested, not finished, by the time the page reports itself hydrated —
-          // the block's effect runs before the host page's, which is the one that sets the flag —
-          // and on a loaded machine its first frame can come later than two reads 100ms apart,
-          // which then agree on the unscrolled page (#269). So when the block is on the page and
-          // does not sit at the top of the document, the wait is told the scroll starts from the
-          // top of the document and holds out until the page has left it. Where it ends is the
-          // page's to decide — a destination computed here, from the block's position after
-          // hydration, was measured 28px off where Chromium's scroll really stopped — so the wait
-          // is not given one. When the block is not on the page, no scroll is expected and the
-          // plain wait applies. This only checks whether the alert block is on the page, not
-          // whether it scrolls: the fix for #255 has to drop `from` here and assert instead that
-          // `scrollY` stays at 0.
-          const expectsScroll = await devtools.evaluate<boolean>(`(() => {
-            const block = document.querySelector('#demo-DeletionValidation [role="alert"]')
-            return block !== null && Math.abs(block.getBoundingClientRect().top + globalThis.scrollY) > 1
-          })()`)
-          const settleStarted = Date.now()
-          const settled = await settledScroll(devtools, {
-            from: expectsScroll ? 0 : undefined,
-            timeoutMs: 10_000,
-          })
-          const settleMs = Date.now() - settleStarted
-          const landedAt = await devtools.evaluate<number>("Math.round(globalThis.scrollY)")
+          // `settledScroll` alone is not enough to prove that: it is one read after two agree 100ms
+          // apart, so a scroll whose first frame has not run yet — one `#255`'s own review measured
+          // starting a full second after load — reads as a quiet page at 0 and passes right through
+          // it. HOLD_MS below is how long this check keeps reading `scrollY` every
+          // `HOLD_INTERVAL_MS` after the plain settle, requiring 0 on every read, wide enough (2s) to
+          // run out a late-starting scroll instead of merely reducing the chance of missing one, the
+          // same reasoning `pages/checks/system.ts`'s `waitForScrollSettle` applies to its own
+          // full-second hold. A run where the page moves at any point in that window — one of
+          // `DeletionValidation` or the demo scrolling on mount, early or late — fails loudly here
+          // instead of leaving whichever block runs next to blame a stale coordinate on itself.
+          const HOLD_MS = 2_000
+          const HOLD_INTERVAL_MS = 100
+
+          const settled = await settledScroll(devtools, { timeoutMs: 10_000 })
+          let landedAt = await devtools.evaluate<number>("Math.round(globalThis.scrollY)")
+          let heldAtTop = landedAt === 0
+          const holdDeadline = Date.now() + HOLD_MS
+          while (heldAtTop && Date.now() < holdDeadline) {
+            await new Promise((done) => setTimeout(done, HOLD_INTERVAL_MS))
+            landedAt = await devtools.evaluate<number>("Math.round(globalThis.scrollY)")
+            heldAtTop = landedAt === 0
+          }
           check(
-            "the page stopped scrolling before the package blocks started",
-            settled,
-            settled
-              ? `scrollY held still at ${landedAt} before any block's own checks began, after ` +
-                `${settleMs}ms` + (expectsScroll ? ", having left the top" : ", no scroll expected")
-              : `scrollY was at ${landedAt} and ${
-                expectsScroll && landedAt === 0
-                  ? "had never left the top (if DeletionValidation no longer scrolls on load " +
-                    "(#255), drop `from` here and assert that scrollY stays at 0)"
-                  : "still changing"
-              } 10s after hydration`,
+            `the catalogue holds at the top of the page for ${HOLD_MS}ms after hydration and a settle`,
+            settled && heldAtTop,
+            !settled
+              ? `scrollY was at ${landedAt} and still changing 10s after hydration`
+              : heldAtTop
+              ? `scrollY held at 0 for ${HOLD_MS}ms, read every ${HOLD_INTERVAL_MS}ms`
+              : `scrollY moved to ${landedAt} during the ${HOLD_MS}ms hold after hydration`,
           )
           await runBlocks(activeBlocks, devtools, resetAfterThrow)
         }
