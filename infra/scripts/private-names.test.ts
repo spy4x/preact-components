@@ -1,4 +1,4 @@
-import { fromFileUrl } from "@std/path"
+import { fromFileUrl, join } from "@std/path"
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import {
@@ -6,6 +6,7 @@ import {
   matchLines,
   parseDryRunFiles,
   parseNames,
+  PUBLISHED_PACKAGES,
   readAndMatch,
   readNames,
   wordBoundaryPattern,
@@ -191,5 +192,30 @@ describe("readAndMatch", () => {
 
   it("fails loudly on a missing file too, the same as readNames does", async () => {
     await expect(readAndMatch(MISSING_PATH, ["acmecorp"])).rejects.toThrow(/could not read/)
+  })
+})
+
+describe("PUBLISHED_PACKAGES", () => {
+  it("lists every top-level directory whose deno.json names a package", () => {
+    const root = fromFileUrl(new URL("../../", import.meta.url))
+    const named: string[] = []
+    for (const entry of Deno.readDirSync(root)) {
+      if (!entry.isDirectory) continue
+      // Deno accepts a package config named either way, so a `deno.jsonc` package counts too.
+      let text: string | undefined
+      for (const file of ["deno.json", "deno.jsonc"]) {
+        try {
+          text = Deno.readTextFileSync(join(root, entry.name, file))
+          break
+        } catch (error) {
+          if (!(error instanceof Deno.errors.NotFound)) throw error
+        }
+      }
+      if (text === undefined) continue
+      // Some package configs carry comments, so this reads the one field instead of parsing JSON.
+      if (/^\s*"name"\s*:/m.test(text)) named.push(entry.name)
+    }
+    expect(named.length).toBeGreaterThan(0)
+    expect([...PUBLISHED_PACKAGES].sort()).toEqual(named.sort())
   })
 })
