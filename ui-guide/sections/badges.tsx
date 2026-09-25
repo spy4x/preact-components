@@ -1,4 +1,11 @@
-import { Badge, type BadgeColor, type BadgeType } from "@preact-components/ui"
+import {
+  Badge,
+  type BadgeColor,
+  type BadgeType,
+  CiStatusPill,
+  StatusMark,
+  type StatusMarkStatus,
+} from "@preact-components/ui"
 import { entries } from "../record.ts"
 import type { DemoFragment } from "../registry.ts"
 
@@ -39,6 +46,35 @@ function BadgeMatrix() {
   )
 }
 
+/** Every status a `StatusMark` accepts (#257), for the coverage guard — see {@link colors}. */
+const statuses: Record<StatusMarkStatus, string> = {
+  ready: "ready",
+  beta: "beta",
+  wip: "wip",
+  paused: "paused",
+  archived: "archived",
+  "known-issue": "known-issue",
+}
+
+function StatusMarkRow() {
+  return (
+    <div class="flex flex-wrap items-center gap-4">
+      {entries(statuses).map(([status]) => <StatusMark key={status} status={status} />)}
+    </div>
+  )
+}
+
+function CiStatusPillRow() {
+  return (
+    <div class="flex flex-wrap items-center gap-2">
+      <CiStatusPill status="passing" />
+      <CiStatusPill status="failing" />
+      <CiStatusPill status="running" />
+      <CiStatusPill status="queued" />
+    </div>
+  )
+}
+
 export const badgeDemos = {
   Badge: {
     summary:
@@ -46,5 +82,19 @@ export const badgeDemos = {
     snippet: `<Badge text="paid" color="green" />
 <Badge text="draft" color="gray" type="outline" />`,
     render: () => <BadgeMatrix />,
+  },
+  StatusMark: {
+    summary:
+      "A shape paired with a word (#257): `ready`/`beta`/`wip`/`paused`/`archived`/`known-issue`. The shape is decorative (`aria-hidden`) and told apart without colour — six distinct silhouettes — while `label` carries the real meaning as text. A new component beside `Badge`, not a change to it.",
+    snippet: `<StatusMark status="ready" />
+<StatusMark status="known-issue" label="Flaky on Safari" />`,
+    render: () => <StatusMarkRow />,
+  },
+  CiStatusPill: {
+    summary:
+      "A CI status string mapped to a coloured pill, extending `Badge`'s palette. Presentational only — fetching the actual CI state is the consuming site's job. A status this component does not recognise (anything but `passing`/`failing`/`running`) falls back to a neutral pill instead of throwing.",
+    snippet: `<CiStatusPill status="passing" />
+<CiStatusPill status="queued" />  {/* unrecognised → neutral pill, its own text */}`,
+    render: () => <CiStatusPillRow />,
   },
 } satisfies DemoFragment

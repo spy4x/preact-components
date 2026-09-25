@@ -23,10 +23,14 @@ import {
   CopyableTextBody,
   DataTable,
   describedImages,
+  type Fact,
+  FactCard,
   ImageGallery,
   type ImageGalleryImage,
+  InstallBox,
   Lightbox,
   type LightboxImage,
+  MarginNote,
   MoneyDisplay,
   pageRange,
   PageTitle,
@@ -289,6 +293,42 @@ function CardDemo() {
       </Card>
     </div>
   )
+}
+
+/** `Card`/`CardHeader`/`CardBody` composed with a `<dl>` of facts (#257) — not a fourth card primitive. */
+function FactCardDemo() {
+  const facts: Fact[] = [
+    { key: "Stack", value: "Deno + Hono + Fresh" },
+    { key: "Hosting", value: "Hetzner, one Compose stack" },
+    { key: "Status", value: "In production" },
+  ]
+  return <FactCard title="Antonshubin.com" facts={facts} class="max-w-md" />
+}
+
+/** `MarginNote` beside a paragraph, so the sm: float actually has something to sit next to. */
+function MarginNoteDemo() {
+  return (
+    <div class="flow-root max-w-prose text-sm text-gray-600 dark:text-gray-300">
+      <MarginNote
+        sourceHref="https://example.com/benchmark"
+        sourceLabel="Benchmark"
+        checkedOn="2026-09-01"
+      >
+        Cold start under 50ms on a shared vCPU.
+      </MarginNote>
+      <p>
+        The library ships a component-testing harness that drives a real browser over the DevTools
+        protocol, so behaviour behind an effect, a key press or a timer is proven in the browser
+        rather than assumed from a string render. Every claim in the catalogue that depends on a
+        real event is backed by one of those checks.
+      </p>
+    </div>
+  )
+}
+
+/** `InstallBox` with the library's own install command. */
+function InstallBoxDemo() {
+  return <InstallBox command="deno add jsr:@preact-components/ui" class="max-w-sm" />
 }
 
 /**
@@ -988,6 +1028,32 @@ export const displayDemos = {
   </div>
 </CardFooter>`,
     render: () => <CardDemo />,
+  },
+  FactCard: {
+    summary:
+      "Key/value facts as a real `<dl>`, composed from `Card`/`CardHeader`/`CardBody` (#257) rather than a fourth card primitive. `title`/`action` are optional — omitting `title` leaves the header out entirely.",
+    snippet: `<FactCard
+  title="Antonshubin.com"
+  facts={[
+    { key: "Stack", value: "Deno + Hono + Fresh" },
+    { key: "Status", value: <StatusMark status="ready" /> },
+  ]}
+/>`,
+    render: () => <FactCardDemo />,
+  },
+  MarginNote: {
+    summary:
+      "A short aside with an optional source link or a `checked on` date, rendered as a real `<time>`. A side column on wide screens, inline on narrow ones, by CSS alone — no JavaScript media-query listener, so the layout is correct before hydration.",
+    snippet: `<MarginNote sourceHref={benchmarkUrl} sourceLabel="Benchmark" checkedOn="2026-09-01">
+  Cold start under 50ms on a shared vCPU.
+</MarginNote>`,
+    render: () => <MarginNoteDemo />,
+  },
+  InstallBox: {
+    summary:
+      "A code snippet box with a copy button, built on `CopyButton` rather than a second clipboard implementation. The command is real, selectable text — not a background image.",
+    snippet: `<InstallBox command="deno add jsr:@preact-components/ui" />`,
+    render: () => <InstallBoxDemo />,
   },
   Progress: {
     summary:

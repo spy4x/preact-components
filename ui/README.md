@@ -25,48 +25,65 @@ Preact + Tailwind primitives extracted from earlier source applications.
   `./dropdown`. It acts only on the four components it forwards refs for; nothing else in this
   package or a caller's own markup is affected.
 
+## Ledger rows (#257)
+
+A line with no real columns — an outcome sentence, a price line — is not a new component. Apply
+`theme/preset.css`'s own `border-subtle` token directly: `class="border-subtle flex
+items-baseline justify-between gap-4 border-b py-2 last:border-b-0"` on each row, inside whatever
+wraps the list (a `<ul>`, a `<div>`, `Card`'s `CardBody`). This is not what `Table` itself does —
+`Table`'s own row dividers are `divide-gray-200 dark:divide-gray-600` (and `divide-gray-100` in the
+body), literal Tailwind grays that do not read `border-subtle` or any other design token, so they
+do not repaint under `ink` or any other palette. The recipe here is deliberately the token-based
+one `Table` does not use, on markup that is not a table because the content has no columns to be
+one. See #257's own "What I suggest" for the two options this decides between.
+
 ## Components
 
-| Component         | Subpath             | Ports / key props                                                                                                                        |
-| ----------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `Avatar`          | `avatar`            | `name`, `src`, `alt`, `size`                                                                                                             |
-| `AvatarGroup`     | `avatar`            | `items`, `max`, `label`, `size` (a `role="group"`, not a list)                                                                           |
-| `Badge`           | `badge`             | `text`, `color`, `type`                                                                                                                  |
-| `Button`          | `button`            | `variant`, `size`, native button attrs                                                                                                   |
-| `ConfidenceMeter` | `confidence-meter`  | `value` (optional; clamped 0–100, unknown renders no reading), `label`                                                                   |
-| `ContactForm`     | `contact-form`      | `action?`, `onSubmit?` (`{ name, email, message }`), `honeypot?`, `labels?`, built on `EnhancedForm`                                     |
-| `CopyButton`      | `copy-button`       | `textToCopy`, `copy?` (clipboard port)                                                                                                   |
-| `Combobox`        | `combobox`          | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `ariaLabel?`, `aria-labelledby?`, `id?`                                            |
-| `DataTable`       | `data-table`        | `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `captionHidden?`, `empty?`, `paging?`, `rowDataE2E?`, `class?`           |
-| `DateRangePicker` | `date-range-picker` | `range`, `onChange`, `timeZone`, `presets` or `withTime`, `labels?` (every key optional)                                                 |
-| `Dropdown`        | `dropdown`          | `trigger`, `triggerLabel` or `triggerNamedByContent` (one is required), `menuLabel`, `vertical`, `horizontal`                            |
-| `DropdownItem`    | `dropdown`          | `href`, `onClick`, `disabled`, `class` — a `role="menuitem"`, out of the tab order                                                       |
-| `EnhancedForm`    | `enhanced-form`     | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?` — posts natively before hydration                       |
-| `ErrorState`      | `error-state`       | `message` (renders nothing when empty)                                                                                                   |
-| `ExportButton`    | `export-button`     | `columns`, `rows` or `getRows`, `fileName`, `label?`, `resultLabel?`, `errorLabel?`, `onError?`                                          |
-| `FileInput`       | `file-input`        | `id`, `accept?`, `multiple?`, `maxSize?`, `name?`, `onFiles?`, `onReject?`, `label?`, `error?`, `previews?`, `labels?`                   |
-| `GeoButton`       | `geo-button`        | `onLocation`, `onError?`                                                                                                                 |
-| `ImageGallery`    | `image-gallery`     | `images` (`{ src, alt, thumbSrc? }[]`), `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`                         |
-| `Lightbox`        | `lightbox`          | `images`, `index`, `open`, `onClose`, `onIndexChange`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`                    |
-| `LoadingScreen`   | `loading-screen`    | `message`, `description`                                                                                                                 |
-| `LoadingSkeleton` | `loading-skeleton`  | `rows`                                                                                                                                   |
-| `LoadingSpinner`  | `loading-spinner`   | `label`, `size`                                                                                                                          |
-| `MoneyDisplay`    | `money-display`     | `amount` (smallest unit), `currency`, `locale?`, `colorNegative?`, `class?`                                                              |
-| `MoneyInput`      | `money-input`       | `value` (smallest unit or `null`), `onChange`, `currency`, `locale?`, `min?`, `max?`, `name?`, `id?`, `invalidMessage?`, `rangeMessage?` |
-| `NewsletterForm`  | `newsletter-form`   | `action?`, `onSubmit?` (`email`), `honeypot?`, `labels?`, built on `EnhancedForm`                                                        |
-| `OnOffButtons`    | `on-off-buttons`    | `value`, `amount`, `onSwitch`                                                                                                            |
-| `PageTitle`       | `page-title`        | `children`, `class`                                                                                                                      |
-| `Pagination`      | `pagination`        | `page`, `pageCount`, `onChange`, `label`, `previousLabel`, `nextLabel`, `pageLabel`                                                      |
-| `Progress`        | `progress`          | `value`, `max`, `label`, `id` (a caption needs an `id`)                                                                                  |
-| `SkeletonCards`   | `skeletons`         | `columns`, `rows`, `lines`                                                                                                               |
-| `SkeletonStatus`  | `skeletons`         | `label` (the loading announcement)                                                                                                       |
-| `SkeletonTable`   | `skeletons`         | `rows`, `columns`, `widths`, `reserveHeight`                                                                                             |
-| `SkeletonText`    | `skeletons`         | `lines`, `widths`                                                                                                                        |
-| `Table`           | `table`             | `headerSlot`, `bodySlots`, `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`                                                       |
-| `Tabs`            | `tabs`              | `tabs`, `active`, `onChange`, `orientation`, `lazy`                                                                                      |
-| `Toastr`          | `toastr`            | `toasts`, `onDismiss`, `label`, `dismissLabel`, `dataE2E`                                                                                |
-| `ToggleSwitch`    | `toggle-switch`     | `value`, `onToggle`, `disabled`, `label`                                                                                                 |
-| `Tooltip`         | `tooltip`           | `content`, `label`, `placement`, `focusable`                                                                                             |
+| Component         | Subpath             | Ports / key props                                                                                                                                                                                    |
+| ----------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Avatar`          | `avatar`            | `name`, `src`, `alt`, `size`                                                                                                                                                                         |
+| `AvatarGroup`     | `avatar`            | `items`, `max`, `label`, `size` (a `role="group"`, not a list)                                                                                                                                       |
+| `Badge`           | `badge`             | `text`, `color`, `type`                                                                                                                                                                              |
+| `Button`          | `button`            | `variant`, `size`, native button attrs                                                                                                                                                               |
+| `CiStatusPill`    | `ci-status-pill`    | `status` (any string; unrecognised falls back to a neutral pill), `label?` — extends `Badge`'s palette                                                                                               |
+| `ConfidenceMeter` | `confidence-meter`  | `value` (optional; clamped 0–100, unknown renders no reading), `label`                                                                                                                               |
+| `ContactForm`     | `contact-form`      | `action?`, `onSubmit?` (`{ name, email, message }`), `honeypot?`, `labels?`, built on `EnhancedForm`                                                                                                 |
+| `CopyButton`      | `copy-button`       | `textToCopy`, `copy?` (clipboard port)                                                                                                                                                               |
+| `Combobox`        | `combobox`          | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `ariaLabel?`, `aria-labelledby?`, `id?`                                                                                                        |
+| `DataTable`       | `data-table`        | `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `captionHidden?`, `empty?`, `paging?`, `rowDataE2E?`, `class?`                                                                       |
+| `DateRangePicker` | `date-range-picker` | `range`, `onChange`, `timeZone`, `presets` or `withTime`, `labels?` (every key optional)                                                                                                             |
+| `Dropdown`        | `dropdown`          | `trigger`, `triggerLabel` or `triggerNamedByContent` (one is required), `menuLabel`, `vertical`, `horizontal`                                                                                        |
+| `DropdownItem`    | `dropdown`          | `href`, `onClick`, `disabled`, `class` — a `role="menuitem"`, out of the tab order                                                                                                                   |
+| `EnhancedForm`    | `enhanced-form`     | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?` — posts natively before hydration                                                                                   |
+| `ErrorState`      | `error-state`       | `message` (renders nothing when empty)                                                                                                                                                               |
+| `ExportButton`    | `export-button`     | `columns`, `rows` or `getRows`, `fileName`, `label?`, `resultLabel?`, `errorLabel?`, `onError?`                                                                                                      |
+| `FactCard`        | `fact-card`         | `title?`, `action?`, `facts` (`{ key, value }[]`, rendered as a `<dl>`) — composes `Card`/`CardHeader`/`CardBody`                                                                                    |
+| `FileInput`       | `file-input`        | `id`, `accept?`, `multiple?`, `maxSize?`, `name?`, `onFiles?`, `onReject?`, `label?`, `error?`, `previews?`, `labels?`                                                                               |
+| `GeoButton`       | `geo-button`        | `onLocation`, `onError?`                                                                                                                                                                             |
+| `ImageGallery`    | `image-gallery`     | `images` (`{ src, alt, thumbSrc? }[]`), `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`                                                                                     |
+| `InstallBox`      | `install-box`       | `command`, `copy?`, `copyLabel?` — built on `CopyButton`                                                                                                                                             |
+| `Lightbox`        | `lightbox`          | `images`, `index`, `open`, `onClose`, `onIndexChange`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`                                                                                |
+| `LoadingScreen`   | `loading-screen`    | `message`, `description`                                                                                                                                                                             |
+| `LoadingSkeleton` | `loading-skeleton`  | `rows`                                                                                                                                                                                               |
+| `LoadingSpinner`  | `loading-spinner`   | `label`, `size`                                                                                                                                                                                      |
+| `MarginNote`      | `margin-note`       | `children`, `sourceHref?`, `sourceLabel?`, `checkedOn?` (ISO date, rendered as `<time>`), `checkedLabel?`, `locale?` (default `"en"`), `label?` (accessible name, default `"Note"`); extends nothing |
+| `MoneyDisplay`    | `money-display`     | `amount` (smallest unit), `currency`, `locale?`, `colorNegative?`, `class?`                                                                                                                          |
+| `MoneyInput`      | `money-input`       | `value` (smallest unit or `null`), `onChange`, `currency`, `locale?`, `min?`, `max?`, `name?`, `id?`, `invalidMessage?`, `rangeMessage?`                                                             |
+| `NewsletterForm`  | `newsletter-form`   | `action?`, `onSubmit?` (`email`), `honeypot?`, `labels?`, built on `EnhancedForm`                                                                                                                    |
+| `OnOffButtons`    | `on-off-buttons`    | `value`, `amount`, `onSwitch`                                                                                                                                                                        |
+| `PageTitle`       | `page-title`        | `children`, `class`                                                                                                                                                                                  |
+| `Pagination`      | `pagination`        | `page`, `pageCount`, `onChange`, `label`, `previousLabel`, `nextLabel`, `pageLabel`                                                                                                                  |
+| `Progress`        | `progress`          | `value`, `max`, `label`, `id` (a caption needs an `id`)                                                                                                                                              |
+| `SkeletonCards`   | `skeletons`         | `columns`, `rows`, `lines`                                                                                                                                                                           |
+| `SkeletonStatus`  | `skeletons`         | `label` (the loading announcement)                                                                                                                                                                   |
+| `SkeletonTable`   | `skeletons`         | `rows`, `columns`, `widths`, `reserveHeight`                                                                                                                                                         |
+| `SkeletonText`    | `skeletons`         | `lines`, `widths`                                                                                                                                                                                    |
+| `StatusMark`      | `status-mark`       | `status` (`ready`/`beta`/`wip`/`paused`/`archived`/`known-issue`), `label?` — a sibling of `Badge`, not an extension of it: `Badge` is colour-plus-text with no shape                                |
+| `Table`           | `table`             | `headerSlot`, `bodySlots`, `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`                                                                                                                   |
+| `Tabs`            | `tabs`              | `tabs`, `active`, `onChange`, `orientation`, `lazy`                                                                                                                                                  |
+| `Toastr`          | `toastr`            | `toasts`, `onDismiss`, `label`, `dismissLabel`, `dataE2E`                                                                                                                                            |
+| `ToggleSwitch`    | `toggle-switch`     | `value`, `onToggle`, `disabled`, `label`                                                                                                                                                             |
+| `Tooltip`         | `tooltip`           | `content`, `label`, `placement`, `focusable`                                                                                                                                                         |
 
 ## Usage
 

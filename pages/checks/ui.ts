@@ -151,6 +151,9 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
 
   await refForwardingChecks(devtools)
 
+  await installBoxChecks(devtools)
+  await marginNoteChecks(devtools)
+
   await tooltipChecks(devtools)
   await comboboxChecks(devtools)
   await toastrChecks(devtools)
@@ -243,6 +246,206 @@ async function refForwardingChecks(devtools: Devtools): Promise<void> {
         ? "clicking the trigger moved focus onto the native element through the ref"
         : `clicking the trigger left focus on ${after.label} instead of the target`,
     )
+  }
+}
+
+/** The checkmark path {@link CopyButton} swaps in for its own glyph while `copied` is true. */
+const COPY_BUTTON_CHECKMARK = "m5 13 4 4L19 7"
+
+/**
+ * `InstallBox` copies its command on a real click and on a real Enter press.
+ *
+ * Both are behind `ui/copy-button.tsx`'s click handler and its own `copied`-state timer, neither
+ * reachable from a string render. The icon swap (the button's own SVG `d` attribute flipping to
+ * {@link COPY_BUTTON_CHECKMARK}) proves the button reacted, but not what reached the clipboard — an
+ * earlier version of this check stopped there, so `textToCopy=""` would still have swapped the icon
+ * and passed. `navigator.clipboard.writeText` is patched in the page for that reason, the same way
+ * `pages/checks/ui-guide.ts`'s copy-block check does it: every write is recorded, reset before each
+ * half of this check, and required to equal the box's own `<code>` text — not the "Usage" snippet's
+ * `<pre><code>`, a second `<code>` the same card carries for the JSX source, which is why the
+ * button's own container is queried rather than the card as a whole. `CopyButton` itself has no
+ * check of its own anywhere in this file; `InstallBox` is what first puts a real trigger for it in
+ * the catalogue.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function installBoxChecks(devtools: Devtools): Promise<void> {
+  await centreInView(devtools, `document.querySelector('#demo-InstallBox')`)
+
+  await devtools.evaluate<null>(`(() => {
+    const writeText = (text) => {
+      globalThis.__installBoxCopied = text
+      return Promise.resolve()
+    }
+    try {
+      navigator.clipboard.writeText = writeText
+    } catch {
+      Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true })
+    }
+    return null
+  })()`)
+
+  const iconPath = () =>
+    `(document.querySelector('#demo-InstallBox button[aria-label="Copy command"] svg path')` +
+    `?.getAttribute("d") ?? null)`
+  const commandText = () =>
+    `(document.querySelector('#demo-InstallBox button[aria-label="Copy command"]')` +
+    `?.parentElement.querySelector("code")?.textContent ?? null)`
+
+  const beforeClick = await devtools.evaluate<string | null>(iconPath())
+  const spot = await devtools.evaluate<{ x: number; y: number } | null>(`(() => {
+    const button = document.querySelector('#demo-InstallBox button[aria-label="Copy command"]')
+    if (!button) return null
+    const box = button.getBoundingClientRect()
+    return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
+  })()`)
+
+  await devtools.evaluate<null>(`(globalThis.__installBoxCopied = undefined, null)`)
+  if (spot !== null) {
+    for (const type of ["mousePressed", "mouseReleased"]) {
+      await devtools.send("Input.dispatchMouseEvent", {
+        type,
+        x: spot.x,
+        y: spot.y,
+        button: "left",
+        buttons: type === "mousePressed" ? 1 : 0,
+        clickCount: 1,
+      })
+    }
+  }
+  await poll(
+    async () => (await devtools.evaluate<string | null>(iconPath())) === COPY_BUTTON_CHECKMARK,
+    2_000,
+  )
+  const afterClick = await devtools.evaluate<string | null>(iconPath())
+  const command = await devtools.evaluate<string | null>(commandText())
+  const clickCopied = await devtools.evaluate<string | undefined>(`globalThis.__installBoxCopied`)
+
+  check(
+    "a real click on InstallBox's copy control swaps its icon to the checkmark and copies its command",
+    spot !== null && beforeClick !== COPY_BUTTON_CHECKMARK &&
+      afterClick === COPY_BUTTON_CHECKMARK &&
+      clickCopied === command,
+    spot === null
+      ? 'the InstallBox card has no [aria-label="Copy command"] control to click'
+      : beforeClick === COPY_BUTTON_CHECKMARK
+      ? "the icon was already the checkmark before anything was clicked, so this proves nothing"
+      : `clicked at (${spot.x}, ${spot.y}): icon path ${JSON.stringify(beforeClick)} → ` +
+        `${JSON.stringify(afterClick)}, clipboard ${JSON.stringify(clickCopied)} vs command ` +
+        `${JSON.stringify(command)}`,
+  )
+
+  // Wait for the confirmation timer (1500ms default) to clear before pressing Enter, so the second
+  // half of this check starts from the same rest state as the first.
+  await poll(
+    async () => (await devtools.evaluate<string | null>(iconPath())) !== COPY_BUTTON_CHECKMARK,
+    3_000,
+  )
+
+  await devtools.evaluate<null>(
+    `(document.querySelector('#demo-InstallBox button[aria-label="Copy command"]')?.focus(), null)`,
+  )
+  const focused = await devtools.evaluate<boolean>(
+    `document.activeElement === document.querySelector('#demo-InstallBox button[aria-label="Copy command"]')`,
+  )
+  const beforeEnter = await devtools.evaluate<string | null>(iconPath())
+  await devtools.evaluate<null>(`(globalThis.__installBoxCopied = undefined, null)`)
+  await pressKey(devtools, "Enter")
+  await poll(
+    async () => (await devtools.evaluate<string | null>(iconPath())) === COPY_BUTTON_CHECKMARK,
+    2_000,
+  )
+  const afterEnter = await devtools.evaluate<string | null>(iconPath())
+  const enterCopied = await devtools.evaluate<string | undefined>(`globalThis.__installBoxCopied`)
+
+  check(
+    "a real Enter press on the focused copy control also swaps its icon to the checkmark and copies its command",
+    focused && beforeEnter !== COPY_BUTTON_CHECKMARK && afterEnter === COPY_BUTTON_CHECKMARK &&
+      enterCopied === command,
+    !focused
+      ? "the copy control never took focus, so a key press here proves nothing"
+      : beforeEnter === COPY_BUTTON_CHECKMARK
+      ? "the icon was already the checkmark before Enter was pressed, so this proves nothing"
+      : `focused, then a real Enter press: icon path ${JSON.stringify(beforeEnter)} → ` +
+        `${JSON.stringify(afterEnter)}, clipboard ${JSON.stringify(enterCopied)} vs command ` +
+        `${JSON.stringify(command)}`,
+  )
+
+  await devtools.evaluate<null>(
+    `(document.querySelector('#demo-InstallBox button[aria-label="Copy command"]')?.blur(), null)`,
+  )
+}
+
+/**
+ * `MarginNote` sits beside its paragraph on a wide viewport and inline with it on a narrow one —
+ * the one claim in its own doc comment ("side column on wide screens, inline on narrow, CSS-only")
+ * a string render cannot prove, because it depends on which media query matches, not on markup.
+ *
+ * The desktop half reads both `getComputedStyle(aside).float` and actual geometry: `float` alone
+ * only proves the CSS property resolved to `"right"`, not that the note ended up sitting where a
+ * float placement should put it, so this also requires the note to share rows with its sibling
+ * paragraph and its left edge to sit right of that paragraph's own left edge — a full-width note
+ * would start where the paragraph starts. The sibling, not the card's description, is the one
+ * measured.
+ *
+ * `Emulation.setDeviceMetricsOverride` narrows the viewport for the phone-width half and
+ * `clearDeviceMetricsOverride` restores it in a `finally`, so a package block that runs after this
+ * one is never handed a viewport this check changed and forgot to put back.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function marginNoteChecks(devtools: Devtools): Promise<void> {
+  await centreInView(devtools, `document.querySelector('#demo-MarginNote aside')`)
+  const desktop = await devtools.evaluate<
+    { float: string; asideLeft: number; paragraphLeft: number; overlaps: boolean } | null
+  >(
+    `(() => {
+      const aside = document.querySelector('#demo-MarginNote aside')
+      const paragraph = aside?.parentElement?.querySelector(':scope > p')
+      if (!aside || !paragraph) return null
+      const a = aside.getBoundingClientRect()
+      const p = paragraph.getBoundingClientRect()
+      return {
+        float: getComputedStyle(aside).float,
+        asideLeft: a.left,
+        paragraphLeft: p.left,
+        overlaps: a.top < p.bottom && p.top < a.bottom,
+      }
+    })()`,
+  )
+  check(
+    "MarginNote sits beside its paragraph at desktop width — sharing rows with its sibling paragraph, right of its left edge",
+    desktop !== null && desktop.float === "right" && desktop.overlaps &&
+      desktop.asideLeft > desktop.paragraphLeft + 8,
+    desktop === null
+      ? "the MarginNote card has no <aside> or <p> to read"
+      : `float ${JSON.stringify(desktop.float)}, aside.left ${desktop.asideLeft} vs ` +
+        `paragraph.left ${desktop.paragraphLeft}, overlapping ${desktop.overlaps} at desktop width`,
+  )
+
+  try {
+    await devtools.send("Emulation.setDeviceMetricsOverride", {
+      width: 375,
+      height: 812,
+      deviceScaleFactor: 1,
+      mobile: true,
+    })
+    await centreInView(devtools, `document.querySelector('#demo-MarginNote aside')`)
+    const phoneFloat = await devtools.evaluate<string | null>(
+      `(() => {
+        const aside = document.querySelector('#demo-MarginNote aside')
+        return aside ? getComputedStyle(aside).float : null
+      })()`,
+    )
+    check(
+      "MarginNote falls back to inline block layout at 375px, clear of the sm: float",
+      phoneFloat === "none",
+      phoneFloat === null
+        ? "the MarginNote card has no <aside> to read at 375px"
+        : `getComputedStyle(aside).float reads ${JSON.stringify(phoneFloat)} at 375px`,
+    )
+  } finally {
+    await devtools.send("Emulation.clearDeviceMetricsOverride")
   }
 }
 
@@ -2470,7 +2673,7 @@ async function tooltipChecks(devtools: Devtools): Promise<void> {
   // The Dropdown checks above leave the pointer at viewport coordinates, and viewport coordinates
   // do not scroll with the page: without parking it first, the pointer can be resting on this very
   // trigger while the check reads the trigger "at rest".
-  await pointerToCorner(devtools)
+  await pointerAwayFromTooltips(devtools)
 
   await hoverRevealCheck(devtools)
 
@@ -2519,7 +2722,7 @@ async function tooltipChecks(devtools: Devtools): Promise<void> {
   )
   const onHint = await devtools.evaluate<TooltipState>(TOOLTIP_STATE)
   const held = await holdsFor(() => devtools.evaluate<boolean>(TOOLTIP_HOVERED), 600)
-  await pointerToCorner(devtools)
+  await pointerAwayFromTooltips(devtools)
   const left = await poll(
     () =>
       devtools.evaluate<boolean>(
@@ -2650,7 +2853,7 @@ async function hoverRevealCheck(devtools: Devtools): Promise<void> {
   await devtools.evaluate<null>(`(globalThis.__verifyTooltip?.trigger?.blur(), null)`)
   // The point comes back from the helper that dispatched the move, so this reads the place the
   // pointer actually went rather than a second copy of the same two numbers.
-  const parked = await pointerToCorner(devtools)
+  const parked = await pointerAwayFromTooltips(devtools)
   const corner = await devtools.evaluate<Corner>(`(() => {
     const trigger = globalThis.__verifyTooltip?.trigger ?? null
     const at = document.elementFromPoint(${parked.x}, ${parked.y})
@@ -2666,7 +2869,7 @@ async function hoverRevealCheck(devtools: Devtools): Promise<void> {
   const revealed = await poll(() => devtools.evaluate<boolean>(TOOLTIP_SHOWN), 3_000)
   const shown = await devtools.evaluate<TooltipState>(TOOLTIP_STATE)
 
-  await pointerToCorner(devtools)
+  await pointerAwayFromTooltips(devtools)
   const hidAgain = await poll(() => devtools.evaluate<boolean>(`!${TOOLTIP_SHOWN}`), 3_000)
   const after = await devtools.evaluate<TooltipState>(TOOLTIP_STATE)
 
@@ -2760,7 +2963,7 @@ async function hoverRevealCheck(devtools: Devtools): Promise<void> {
  * @param devtools The connected session, on a hydrated page.
  */
 async function escapeOverPointerCheck(devtools: Devtools): Promise<void> {
-  await pointerToCorner(devtools)
+  await pointerAwayFromTooltips(devtools)
   const hovering = await hoverTrigger(devtools)
   await devtools.evaluate<null>(`(globalThis.__verifyFocusBefore = document.activeElement, null)`)
   const before = await devtools.evaluate<TooltipState>(TOOLTIP_STATE)
@@ -2782,7 +2985,7 @@ async function escapeOverPointerCheck(devtools: Devtools): Promise<void> {
     `document.activeElement === document.body ? "the page" : document.activeElement.tagName`,
   )
 
-  await pointerToCorner(devtools)
+  await pointerAwayFromTooltips(devtools)
   await poll(() => devtools.evaluate<boolean>(`!${TOOLTIP_HOVERED}`), 3_000)
   const again = await hoverTrigger(devtools)
   const back = await devtools.evaluate<TooltipState>(TOOLTIP_STATE)
@@ -2832,7 +3035,7 @@ async function escapeOverPointerCheck(devtools: Devtools): Promise<void> {
  * @param devtools The connected session, on a hydrated page.
  */
 async function escapeOnFocusCheck(devtools: Devtools): Promise<void> {
-  await pointerToCorner(devtools)
+  await pointerAwayFromTooltips(devtools)
   await poll(() => devtools.evaluate<boolean>(`!${TOOLTIP_SHOWN}`), 3_000)
   await devtools.evaluate<null>(`(globalThis.__verifyTooltip?.trigger?.focus(), null)`)
   const revealed = await poll(() => devtools.evaluate<boolean>(TOOLTIP_SHOWN), 3_000)
@@ -2867,7 +3070,7 @@ async function escapeOnFocusCheck(devtools: Devtools): Promise<void> {
   )
 
   await devtools.evaluate<null>(`(globalThis.__verifyTooltip?.trigger?.blur(), null)`)
-  await pointerToCorner(devtools)
+  await pointerAwayFromTooltips(devtools)
 }
 
 /**
@@ -2901,7 +3104,7 @@ async function escapeOnFocusCheck(devtools: Devtools): Promise<void> {
  * @param devtools The connected session, on a hydrated page.
  */
 async function tooltipEscapeRaceCheck(devtools: Devtools): Promise<void> {
-  await pointerToCorner(devtools)
+  await pointerAwayFromTooltips(devtools)
   await poll(() => devtools.evaluate<boolean>(`!${TOOLTIP_SHOWN}`), 3_000)
 
   const dispatched = await devtools.evaluate<boolean>(`(async () => {
@@ -2934,7 +3137,7 @@ async function tooltipEscapeRaceCheck(devtools: Devtools): Promise<void> {
   )
 
   await devtools.evaluate<null>(`(globalThis.__verifyTooltip?.trigger?.blur(), null)`)
-  await pointerToCorner(devtools)
+  await pointerAwayFromTooltips(devtools)
   await poll(() => devtools.evaluate<boolean>(`!${TOOLTIP_SHOWN}`), 3_000)
 }
 
@@ -3204,6 +3407,70 @@ async function pointerToCorner(devtools: Devtools): Promise<{ x: number; y: numb
   })
 
   return POINTER_CORNER
+}
+
+/**
+ * Park the pointer clear of every Tooltip in the catalogue's own demo card, for the checks in this
+ * file that drive that card.
+ *
+ * {@link pointerToCorner}'s top-left corner is not clear of it: the card pins five of its six
+ * tooltips permanently open (`contentClass="visible opacity-100"`) so the catalogue can show every
+ * placement at once — `top`, `right`, `bottom` and two more besides the one row left to hover — and
+ * `centreInView` scrolls the page to centre the card's *last* row (the one check that reveals its
+ * own hint on hover). On a viewport shorter than the card — the 780×493 this harness actually
+ * measured running, not the 800×600 assumed here before that measurement — that scroll leaves the
+ * card's *top* row, and the bubbles pinned above and around it (including the `bottom`-placed one,
+ * which anchors *below* its own trigger and so reaches past the row nominally above it), sitting
+ * within a few pixels of the viewport's own top-left corner. A pointer parked there lands on one of
+ * those bubbles instead of clear space: the bubble is a descendant of its own trigger and takes
+ * pointer events by design (`ui/tooltip.tsx`'s "Hoverable" bullet), so landing on it puts that
+ * *other* Tooltip into `:hover` — and a real Escape pressed while the pointer sits there, meant for
+ * the row under test, dismisses whichever pinned tooltip the corner happened to land on instead.
+ * Found by watching the group wrapper around the `Archive` hint lose its description this way, well
+ * after the check driving it had moved the pointer elsewhere on purpose — the corner was never
+ * involved as far as that check's own steps went.
+ *
+ * The bottom-right corner was picked as clear of all of that, but only because it happens to sit on
+ * the page's own vertical scrollbar rather than on the card at all — an accident of this viewport's
+ * width, not a property of the card's layout the way the doc comment above describes it. So this
+ * checks the actual landing spot with `elementFromPoint` before handing it back, and fails loudly —
+ * a check failure, not a silent bad read — if it lands inside a tooltip bubble or its trigger,
+ * rather than trusting the corner forever.
+ *
+ * @param devtools The connected session.
+ * @returns Where the pointer now is.
+ */
+async function pointerAwayFromTooltips(devtools: Devtools): Promise<{ x: number; y: number }> {
+  const { x, y } = await devtools.evaluate<{ x: number; y: number }>(
+    `({ x: innerWidth - 4, y: innerHeight - 4 })`,
+  )
+  await devtools.send("Input.dispatchMouseEvent", {
+    type: "mouseMoved",
+    x,
+    y,
+    button: "none",
+    buttons: 0,
+  })
+
+  const landedInTooltip = await devtools.evaluate<boolean>(
+    `(() => {
+      const target = document.elementFromPoint(${x}, ${y})
+      if (target === null) return false
+      if (target.closest('[role="tooltip"]') !== null) return true
+      const described = target.closest("[aria-describedby]")
+      if (described === null) return false
+      return [...described.getAttribute("aria-describedby").split(/\\s+/)]
+        .some((id) => document.getElementById(id)?.getAttribute("role") === "tooltip")
+    })()`,
+  )
+  if (landedInTooltip) {
+    throw new Error(
+      `pointerAwayFromTooltips's landing spot (${x}, ${y}) is inside a tooltip or its trigger ` +
+        `on this run's viewport — pick a different clear spot rather than trusting the corner`,
+    )
+  }
+
+  return { x, y }
 }
 
 /** Which row the browser has under the pointer, and what the two rows are painted. */
