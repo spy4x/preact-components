@@ -11,20 +11,21 @@
  *
  * 1. **The d3 islands are inert in this page's server render, and that is the component's
  *    contract, not a defect.** `D3LineChart` renders an empty, labelled `<svg>` and draws into it
- *    from an effect, so the prerendered card for it is an empty box plus its tooltip `<div>`. The
- *    card says so. Confirming that the axes and the path actually appear needs a browser, which the
+ *    from an effect; this page also loads the component only when it shows, so the prerendered card
+ *    is a placeholder. The card says so. Confirming that the axes and the path actually appear needs a browser, which the
  *    `ui-guide/` suite deliberately does not have.
  * 2. **No date comes from the machine clock.** Every time series here is built from explicit ISO
  *    instants in `Z`, and the `CompareChart` range is two fixed `Date`s, so a build on any machine
  *    in any zone renders the same markup.
  *
  * Imports are subpaths rather than the barrel, which is what `charts/README.md` recommends: a
- * consumer who only draws SVG charts then reaches no `d3` specifier at all.
+ * consumer who only draws SVG charts then reaches no `d3` specifier at all. The two d3 islands are
+ * not imported here at all: `charts-d3.tsx` loads them with a dynamic `import()` when this page
+ * shows, so an app that mounts the guide loads d3 only once someone opens the charts page. Until the
+ * module arrives — which includes the server render — their cards show a placeholder.
  */
 
 import { type BarDatum, Bars } from "@spy4x/preact-charts/bars"
-import { CompareChart } from "@spy4x/preact-charts/compare-chart"
-import { D3LineChart } from "@spy4x/preact-charts/d3-line-chart"
 import { DonutChart } from "@spy4x/preact-charts/donut-chart"
 import { Kpi, type KpiTone } from "@spy4x/preact-charts/kpi"
 import { KpiGrid } from "@spy4x/preact-charts/kpi"
@@ -35,6 +36,7 @@ import type { TimeSeriesPoint } from "@spy4x/preact-charts/time-series"
 import { Button } from "@spy4x/preact-ui"
 import { entries } from "../record.ts"
 import type { DemoFragment } from "../registry.ts"
+import { LazyCompareChart, LazyD3LineChart } from "./charts-d3.tsx"
 
 /** A handful of rows in the shape `Bars` takes — no helper, no fetch, no scale to compute. */
 const bars: BarDatum[] = [
@@ -243,7 +245,7 @@ export const chartsDemos = {
   },
   D3LineChart: {
     summary:
-      "The interactive island: d3 v7 draws into the svg from an effect, re-renders on resize and shows a tooltip built by `tooltipFormat`. It server-renders as an empty, labelled `<svg>` because nothing touches the DOM before the effect runs — so the card below is genuinely empty in this page's server-rendered markup, and confirming that the axes and the path appear needs a browser. `ignoreZeroes` draws zeroes as a gap with a legend note, and `referenceValue` adds a dashed target marker. Needs `d3`, an optional peer declared in `charts/deno.json` and absent from the root import map.",
+      "The interactive island: d3 v7 draws into the svg from an effect, re-renders on resize and shows a tooltip built by `tooltipFormat`. It server-renders as an empty, labelled `<svg>` because nothing touches the DOM before the effect runs. This page goes one step further and loads the component itself only when the page opens, so its server-rendered card is a placeholder, and confirming that the axes and the path appear needs a browser. `ignoreZeroes` draws zeroes as a gap with a legend note, and `referenceValue` adds a dashed target marker. Needs `d3`, an optional peer declared in `charts/deno.json` and absent from the root import map.",
     snippet: `<D3LineChart
   data={revenue.data}
   timeFrame="hours"
@@ -254,14 +256,14 @@ export const chartsDemos = {
 />`,
     render: () => (
       <div class="space-y-6">
-        <D3LineChart
+        <LazyD3LineChart
           data={revenue}
           timeFrame="hours"
           referenceValue={12}
           ariaLabel="Revenue, k€"
           tickFormat={(value) => value.toFixed(1)}
         />
-        <D3LineChart
+        <LazyD3LineChart
           data={[...revenue, { timeGroup: "2026-03-01T22:00:00.000Z", value: 0 }]}
           timeFrame="hours"
           ignoreZeroes
@@ -281,7 +283,7 @@ export const chartsDemos = {
   onError={(message) => app.toast.error({ body: message })}
 />`,
     render: () => (
-      <CompareChart
+      <LazyCompareChart
         range={range}
         data={revenue}
         timeFrame="hours"

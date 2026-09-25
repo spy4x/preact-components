@@ -16,41 +16,56 @@
  *   renders print what the helper asked the observer for.
  */
 
+import { barPercent } from "@spy4x/preact-charts/bars"
 import {
-  barPercent,
-  chartPayloadSchema,
-  createInViewObserver,
   DEFAULT_AXIS_COLOR,
   DEFAULT_CHART_PALETTE,
-  DEFAULT_D3_LINE_CHART_COLORS,
   DEFAULT_GRID_COLOR,
   DEFAULT_SURFACE_COLOR,
   DEFAULT_TEXT_COLOR,
   DEFAULT_TRACK_COLOR,
-  defaultTooltipFormat,
-  donutGeometry,
-  extent,
-  formatTimeTick,
-  linearScale,
+  seriesColor,
+} from "@spy4x/preact-charts/colors"
+import { donutGeometry } from "@spy4x/preact-charts/donut-chart"
+import { loadMetricSeries, useMetricSeries } from "@spy4x/preact-charts/metric-panel"
+import {
+  chartPayloadSchema,
   loadChartPayload,
-  loadMetricSeries,
+  previousPeriod,
+  timeSeriesPointSchema,
+} from "@spy4x/preact-charts/payload"
+import {
+  extent,
+  linearScale,
   niceScale,
   niceStep,
   paddedDomain,
-  previousPeriod,
-  seriesColor,
   ticks,
-  TIME_FRAMES,
-  timeSeriesPointSchema,
-  useInView,
-  useMetricSeries,
   xLabelStride,
-  yDomainFor,
-} from "@spy4x/preact-charts"
-import { assertD3Available, MISSING_D3_LINE_ERROR } from "@spy4x/preact-charts/d3-line-chart"
+} from "@spy4x/preact-charts/scales"
+import { TIME_FRAMES } from "@spy4x/preact-charts/time-series"
+import { createInViewObserver, useInView } from "@spy4x/preact-charts/use-in-view"
 import { type } from "arktype"
 import type { ExampleFragment } from "../example.tsx"
 import { toExampleDemos } from "../example.tsx"
+import type { LazyModuleState } from "../lazy.ts"
+import { d3LineChartModule } from "./charts-d3.tsx"
+
+/**
+ * What an example that needs `charts/d3-line-chart` prints until the charts page has loaded it.
+ *
+ * That module imports d3, so these examples reach it through {@link d3LineChartModule} rather than a
+ * static import (see `charts-d3.tsx`). The server render, and the browser's first render, print this
+ * line; the real output replaces it once the module arrives.
+ *
+ * @param state The module's load state, when it is not loaded.
+ * @returns The line the card prints instead of its output.
+ */
+function pendingD3Output(state: LazyModuleState<unknown>): string {
+  return state.status === "failed"
+    ? `<charts/d3-line-chart did not load: ${state.message}>`
+    : "<loading charts/d3-line-chart, which imports d3>"
+}
 
 /**
  * The stats port of the `useMetricSeries` card. It lives outside the card because the hook reloads
@@ -206,14 +221,19 @@ console.log({
       "DEFAULT_TRACK_COLOR",
       "DEFAULT_D3_LINE_CHART_COLORS",
     ],
-    run: () => ({
-      axis: DEFAULT_AXIS_COLOR,
-      grid: DEFAULT_GRID_COLOR,
-      text: DEFAULT_TEXT_COLOR,
-      surface: DEFAULT_SURFACE_COLOR,
-      track: DEFAULT_TRACK_COLOR,
-      d3Line: DEFAULT_D3_LINE_CHART_COLORS.line,
-    }),
+    run: () => {
+      const d3Line = d3LineChartModule.use()
+      if (d3Line.status !== "loaded") return pendingD3Output(d3Line)
+      const { DEFAULT_D3_LINE_CHART_COLORS } = d3Line.module
+      return {
+        axis: DEFAULT_AXIS_COLOR,
+        grid: DEFAULT_GRID_COLOR,
+        text: DEFAULT_TEXT_COLOR,
+        surface: DEFAULT_SURFACE_COLOR,
+        track: DEFAULT_TRACK_COLOR,
+        d3Line: DEFAULT_D3_LINE_CHART_COLORS.line,
+      }
+    },
   },
   formatTimeTick: {
     title: "Time labels",
@@ -229,6 +249,9 @@ console.log({
 })`,
     covers: ["TIME_FRAMES", "formatTimeTick", "defaultTooltipFormat"],
     run: () => {
+      const d3Line = d3LineChartModule.use()
+      if (d3Line.status !== "loaded") return pendingD3Output(d3Line)
+      const { defaultTooltipFormat, formatTimeTick } = d3Line.module
       const at = new Date(2026, 2, 14, 9, 30)
       return {
         ticks: TIME_FRAMES.map((frame) => `${frame}: ${formatTimeTick(at, frame)}`),
@@ -250,6 +273,9 @@ console.log([
 ])`,
     covers: ["yDomainFor"],
     run: () => {
+      const d3Line = d3LineChartModule.use()
+      if (d3Line.status !== "loaded") return pendingD3Output(d3Line)
+      const { yDomainFor } = d3Line.module
       const points = [0, 8, 20, 14].map((value, hour) => ({ timeGroup: hour * 3_600_000, value }))
       return [
         yDomainFor(points),
@@ -275,6 +301,9 @@ try {
 console.log({ isTheExportedMessage: message === MISSING_D3_LINE_ERROR, message })`,
     covers: ["assertD3Available", "MISSING_D3_LINE_ERROR"],
     run: () => {
+      const d3Line = d3LineChartModule.use()
+      if (d3Line.status !== "loaded") return pendingD3Output(d3Line)
+      const { assertD3Available, MISSING_D3_LINE_ERROR } = d3Line.module
       assertD3Available({ line: () => {} })
       let message = ""
       try {
