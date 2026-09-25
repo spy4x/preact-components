@@ -8,6 +8,7 @@
  * them, and `coverage.ts` counts those names as covered.
  */
 
+import { untracked } from "@preact/signals"
 import type { JSX } from "preact"
 import type { Demo } from "./registry.ts"
 
@@ -21,7 +22,11 @@ export interface Example {
   snippet: string
   /** Every export the example demonstrates, as its package exports it; at least one. */
   covers: readonly [string, ...string[]]
-  /** Calls the real export and returns what the card prints as its output. */
+  /**
+   * Calls the real export and returns what the card prints as its output. It runs once per render
+   * of the card's output, so it may call hooks; its signal reads are untracked (see
+   * {@link toExampleDemos}).
+   */
   run: () => unknown
 }
 
@@ -62,7 +67,10 @@ export function formatOutput(value: unknown): string {
  * Turns a section's examples into registry cards whose live part is the output of running them.
  *
  * `run` is called inside the card's render, so it runs on the server render and again in the
- * browser, never at import time.
+ * browser, never at import time. Being inside a render, it may call hooks. It is called inside
+ * `untracked`: otherwise the card would subscribe to every signal `run` reads, a write to one of
+ * them would render the card again, `run` would build fresh signals and write them again, and in
+ * the browser the page would never finish loading.
  *
  * @param examples The section's examples.
  * @returns One card per example, keyed as given.
@@ -88,7 +96,7 @@ function ExampleOutput({ run }: { run: () => unknown }): JSX.Element {
       <pre
         data-e2e="example-output"
         class="overflow-x-auto font-mono text-xs whitespace-pre-wrap [overflow-wrap:anywhere] text-gray-900 dark:text-gray-100"
-      ><code>{formatOutput(run())}</code></pre>
+      ><code>{formatOutput(untracked(run))}</code></pre>
     </figure>
   )
 }

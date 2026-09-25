@@ -193,8 +193,11 @@ list. Adding a new export to the pending list to skip its example is what review
 3. Remove every covered name from `examples-pending.ts`.
 
 Every name in `covers` has to appear as a whole word in both the `snippet` and `run`, and the
-snippet cannot be empty; `example.test.tsx` fails otherwise. `run` is called when the card renders, so the output on the page is the real export's, never a
-copy. Keep it deterministic — no clock, no random, no network — since the server render and the
+snippet cannot be empty; `example.test.tsx` fails otherwise. `run` is called when the card
+renders, so the output on the page is the real export's, never a copy. Being inside a render, `run`
+may call a hook. The card calls it inside `untracked`, so `run` may read and write signals freely:
+a tracked read would subscribe the card, and the write after it would render the card again and
+again until the page stopped loading. Keep it deterministic — no clock, no random, no network — since the server render and the
 browser render have to match.
 
 ### A component without a card is visible, not absent

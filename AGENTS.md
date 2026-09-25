@@ -81,12 +81,14 @@ Type-checking, formatting, linting and tests are discovered by walking the tree,
 covered without touching root config or `infra/scripts/type-check.ts`.
 
 The catalogue has to be told about the package: add its directory to `packageIds` in
-`ui-guide/registry.ts` and give every component it exports a card, or add it to `EXCLUDED_PACKAGES`
-in `ui-guide/coverage.ts` with a reason. A package directory with neither fails `deno task test`.
-Adding a component to a catalogued package means adding its card to that package's section in
-`ui-guide/sections/`; `deno task test` fails without one. The test cannot see a helper — anything
-not named in PascalCase — or a changed component, so those rest on the rule in "Every change
-updates the UI guide" below.
+`ui-guide/registry.ts` (or to `examplePackageIds` when it exports nothing that renders) and give
+every value it exports a card or an example, or add it to `EXCLUDED_PACKAGES` in
+`ui-guide/coverage.ts` with a reason. A package directory with none of these fails
+`deno task test`. Adding an export to a catalogued package means adding its card or example to that
+package's section in `ui-guide/sections/` — a component gets a card in `<package>.tsx`, anything
+else an example in `<package>-examples.tsx` (`ui-guide/README.md`, "Adding an example");
+`deno task test` fails without one. The test cannot see a changed export, so that rests on the rule
+in "Every change updates the UI guide" below.
 
 ## Branch-first workflow
 
@@ -374,9 +376,9 @@ so a change it does not show is a change nobody sees: a new prop gets a demo, a 
 changes the demo's snippet, and a helper or hook a component card does not already exercise gets
 an example of its own.
 
-`deno task test` enforces only part of this: every component-named export of a catalogued package
-needs a card (`ui-guide/coverage.ts`). That a card still matches its component, and that a helper
-or hook is shown at all, is held by review.
+`deno task test` enforces only part of this: every value a catalogued package exports needs a card
+or an example (`ui-guide/coverage.ts`). That a card or an example still matches what it shows is
+held by review.
 
 ## Validation
 

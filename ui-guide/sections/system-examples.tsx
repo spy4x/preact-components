@@ -5,10 +5,6 @@
  * lightbox helpers take structural ports rather than browser objects, so their cards hand them the
  * smallest plain object — or an `EventTarget` — that satisfies the port, and print what the helper
  * did with it.
- *
- * An example that reads a signal and then writes it runs inside `untracked`. `run` is called during
- * the card's render, and a signal read there subscribes the card to it, so the write that follows
- * would re-render the card, which runs the example again, forever — the page never finishes loading.
  */
 
 import {
@@ -35,7 +31,6 @@ import {
   watchForUpdate,
 } from "@preact-components/system"
 import type { CalendarDay, PageHead, RailShellItem } from "@preact-components/system"
-import { untracked } from "@preact/signals"
 import { collectSequence, zoomableAlt } from "@preact-components/system/image-lightbox"
 import type { ExampleFragment } from "../example.tsx"
 import { toExampleDemos } from "../example.tsx"
@@ -110,18 +105,17 @@ const onPricing = head.value.title
 resetHead()
 const afterReset = head.value.title`,
     covers: ["createHeadStore"],
-    run: () =>
-      untracked(() => {
-        const { head, setHead, resetHead } = createHeadStore({
-          title: "Acme",
-          description: "Tools for small teams.",
-          canonical: "https://example.com/",
-        })
-        setHead({ title: "Pricing — Acme", canonical: "https://example.com/pricing" })
-        const onPricing = head.value.title
-        resetHead()
-        return { onPricing, afterReset: head.value.title }
-      }),
+    run: () => {
+      const { head, setHead, resetHead } = createHeadStore({
+        title: "Acme",
+        description: "Tools for small teams.",
+        canonical: "https://example.com/",
+      })
+      setHead({ title: "Pricing — Acme", canonical: "https://example.com/pricing" })
+      const onPricing = head.value.title
+      resetHead()
+      return { onPricing, afterReset: head.value.title }
+    },
   },
   seoHeadTags: {
     title: "The head tags as data",
