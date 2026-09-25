@@ -259,6 +259,26 @@ And in wave six:
   records it. A dependency published the same day resolves in CI only because `deno.lock` is
   committed with it.
 
+And in wave seven:
+
+- `verify` serves `pages/dist` as it finds it and never checks that it was built from the current
+  source (#280). Run `deno task --cwd pages build` right before every `verify`, and always after a
+  rebase or a branch switch. A bundle left over from before a rebase made six checks fail on
+  correct code, and a change that fixed nothing looked like the fix.
+- Loading the machine with `stress-ng` reproduced none of the checks that failed under load;
+  slowing the page itself with `verify --cpu-throttle=<rate>` did. `pages/README.md` says how.
+- A page that has never had a real click or key press does not have focus, and Chromium sends no
+  `focus` or `blur` event for a scripted `.focus()` or `.blur()` there. A check that needs those
+  events clicks first (#273). A block run alone with `--only` meets this; a full run hides it,
+  because an earlier block's real key presses already gave the page focus.
+- `Input.insertText` delivers its whole string as one `input` event. A check about what happens
+  between keystrokes sends one character per call.
+- Preact keeps a text field's value while hydrating and fires no `input` event for it, so text
+  typed before the bundle ran is invisible to the component until it reads the field on mount.
+  `MoneyInput` does; a new input component that keeps its own state has to as well.
+- Prove a mutation in its own throwaway worktree with a path no other run uses, and never rebuild
+  a worktree while a `verify` is still running against it.
+
 `verify` bounds itself: each browser launch attempt has its own deadline and is retried once, the
 browser phase has a five-minute deadline, a dead browser fails the run naming the last check that
 passed, and teardown runs on SIGINT, SIGTERM and SIGHUP as well: it closes the browser over
