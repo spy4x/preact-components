@@ -2,6 +2,7 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { type ReadonlySignal, signal } from "@preact/signals"
 import { render } from "preact-render-to-string"
+import { search } from "@spy4x/platform/universal/text"
 import {
   CrudList,
   type CrudListBaseProps,
@@ -10,7 +11,6 @@ import {
   RowActions,
   rowsForStatus,
 } from "./crud-list.tsx"
-import { search } from "./search.ts"
 import type { CrudListStore } from "./store.ts"
 import type { CrudModel, CrudStatus, StoreErrorLike } from "./types.ts"
 

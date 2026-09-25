@@ -2,6 +2,7 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { computed, signal } from "@preact/signals"
 import { render } from "preact-render-to-string"
+import type { ValidationModel } from "@spy4x/validation/model"
 import {
   associationActions,
   AssociationEditor,
@@ -12,7 +13,6 @@ import {
 } from "./association-editor.tsx"
 import { TextField } from "./field.tsx"
 import type { CrudRow, OperationState } from "./types.ts"
-import type { ValidationModel } from "./validation.ts"
 
 /** A junction row: it exists only to join a lamp box and a zone. */
 interface ZoneLampBox extends CrudRow {

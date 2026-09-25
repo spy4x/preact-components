@@ -1,10 +1,10 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { computed, signal } from "@preact/signals"
+import type { ValidationModel } from "@spy4x/validation/model"
 import type { CrudEditorStore } from "./store.ts"
 import { editorState, submitEditor, toggleArchiveState } from "./crud-editor.tsx"
 import type { CrudRow, DeletionDependency } from "./types.ts"
-import type { ValidationModel } from "./validation.ts"
 
 interface Region extends CrudRow {
   name: string

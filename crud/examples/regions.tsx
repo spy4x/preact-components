@@ -13,17 +13,11 @@
  * components below be typed by the row and nothing else.
  */
 
-import {
-  CrudEditor,
-  CrudList,
-  RowAction,
-  RowActions,
-  search,
-  TextField,
-} from "@preact-components/crud"
+import { CrudEditor, CrudList, RowAction, RowActions, TextField } from "@preact-components/crud"
 import { buildModelStore } from "@preact-components/signals/build-model-store"
 import { createToastStore } from "@preact-components/signals/toast"
 import { signal } from "@preact/signals"
+import { search } from "@spy4x/platform/universal/text"
 import { type } from "arktype"
 
 // #region Model — one schema, and the row type derived from it

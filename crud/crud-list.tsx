@@ -8,7 +8,7 @@ import { Table } from "@preact-components/ui/table"
 import { type ReadonlySignal, type Signal, useSignal } from "@preact/signals"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId } from "preact/hooks"
-import { filterRows } from "./search.ts"
+import { filterRows } from "@spy4x/platform/universal/text"
 import type { CrudListStore } from "./store.ts"
 import type { CrudModel, CrudStatus, StoreErrorLike } from "./types.ts"
 

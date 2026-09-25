@@ -3,7 +3,7 @@ import type { ReadonlySignal, Signal } from "@preact/signals"
 import type { ComponentChildren, JSX } from "preact"
 import { Fragment } from "preact"
 import { useId } from "preact/hooks"
-import type { FieldIssue, ValidationModel } from "./validation.ts"
+import type { FieldIssue, ValidationModel } from "@spy4x/validation/model"
 
 /**
  * Field rows for a CRUD editor.

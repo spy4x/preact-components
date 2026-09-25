@@ -2,6 +2,7 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { signal } from "@preact/signals"
 import { render } from "preact-render-to-string"
+import type { ValidationModel } from "@spy4x/validation/model"
 import {
   CheckboxField,
   commitNumber,
@@ -10,7 +11,6 @@ import {
   SelectField,
   TextField,
 } from "./field.tsx"
-import type { ValidationModel } from "./validation.ts"
 
 interface Form {
   name: string
