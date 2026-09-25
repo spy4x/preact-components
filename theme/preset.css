@@ -158,15 +158,16 @@
   border-radius: var(--radius-primary, 0.5rem);
 
   /*
-   * Tailwind's `outline-*` utilities set width and offset only; the colour is left at its
-   * `currentColor` initial value, which is `.btn-primary`'s own text colour — the same colour as
-   * its background is close to, so the ring can sit near-invisible against the page behind it (an
-   * ink palette's `--color-primary-foreground` on `--color-primary` is the case this was found in;
-   * see `ink.css`'s own header for why `--color-focus-ring` exists). Scoped to ink with `:where()`,
-   * so it adds no specificity and the default palettes keep the browser's own focus colour.
+   * Tailwind's `outline-*` utilities set width and offset only and leave the colour alone, so a
+   * focused `.btn` draws the browser's own focus colour. That colour is near-black in a dark page,
+   * about 1.07:1 against the default dark canvas (#297) and as faint under ink, so under `.dark`
+   * the ring reads the same chain the form fields' focus outline reads: `--color-focus-ring` (ink
+   * sets it), else the accent `--color-primary-muted`, else purple-400, the default dark accent.
+   * Scoped with `:where()`, so it adds no specificity, and the light palette keeps the browser's
+   * ring. The tone buttons below set their own ring colour, a lighter shade under `.dark`.
    */
-  :where(.dark[data-theme="ink"]) &:focus-visible {
-    outline-color: var(--color-focus-ring);
+  :where(.dark) &:focus-visible {
+    outline-color: var(--color-focus-ring, var(--color-primary-muted, oklch(0.714 0.203 305.504)));
   }
 
   &:disabled,
@@ -210,30 +211,35 @@
 
 @utility btn-danger-outline {
   @apply border hover:bg-red-700 hover:text-red-50 focus-visible:outline-red-700;
+  @apply dark:focus-visible:outline-red-500;
   border-color: var(--color-danger, oklch(0.577 0.245 27.325));
   color: var(--color-danger, oklch(0.577 0.245 27.325));
 }
 
 @utility btn-warning {
   @apply border hover:bg-orange-700 focus-visible:outline-orange-700;
+  @apply dark:focus-visible:outline-orange-500;
   background-color: var(--color-warning, oklch(0.646 0.222 41.116));
   color: var(--color-warning-foreground, oklch(0.98 0.016 73.684));
 }
 
 @utility btn-warning-outline {
   @apply border hover:bg-orange-700 hover:text-orange-50 focus-visible:outline-orange-700;
+  @apply dark:focus-visible:outline-orange-500;
   border-color: var(--color-warning, oklch(0.646 0.222 41.116));
   color: var(--color-warning, oklch(0.646 0.222 41.116));
 }
 
 @utility btn-success {
   @apply border hover:bg-green-700 focus-visible:outline-green-700;
+  @apply dark:focus-visible:outline-green-500;
   background-color: var(--color-success, oklch(0.527 0.154 150.069));
   color: var(--color-success-foreground, oklch(0.982 0.018 155.826));
 }
 
 @utility btn-success-outline {
   @apply border hover:bg-green-700 hover:text-green-50 focus-visible:outline-green-700;
+  @apply dark:focus-visible:outline-green-500;
   border-color: var(--color-success, oklch(0.527 0.154 150.069));
   color: var(--color-success, oklch(0.527 0.154 150.069));
 }

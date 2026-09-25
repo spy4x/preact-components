@@ -29,7 +29,8 @@
  */
 
 :root {
-  /* Primary — buttons, links, focus rings, active nav. */
+  /* Primary — buttons, links, focus rings, active nav. --color-primary-muted is the focus ring of
+     form fields, and of `.btn` under `.dark`; an app sets --color-focus-ring to move both off it. */
   --color-primary: oklch(0.38 0.17 293); /* purple-900 */
   --color-primary-foreground: oklch(0.977 0.014 308.299); /* purple-50 */
   --color-primary-muted: oklch(0.558 0.288 302.321); /* purple-600 */
