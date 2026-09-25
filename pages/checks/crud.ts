@@ -279,8 +279,9 @@ function clickButtonByText(devtools: Devtools, card: string, text: string): Prom
  * `DeletionValidation`'s browser checks, on the catalogue's own demo (`#255`): the alert region is
  * present and empty on load, a non-empty dependency list brings it into view with the message
  * arriving as a mutation of the same, already-parked region (not a replacement), a re-render for a
- * reason unrelated to the dependency list does not move the page, and emptying the list removes the
- * visible content while the region itself stays on the page.
+ * reason unrelated to the dependency list does not move the page, emptying the list removes the
+ * visible content while the region itself stays on the page, and a second blocked attempt — the
+ * list restored to the same content after being emptied — scrolls into view again.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -331,6 +332,12 @@ async function deletionValidationChecks(devtools: Devtools): Promise<void> {
         `block never scrolled into view`,
   )
 
+  // Where the first attempt actually landed — read once, after it settled — is this run's own
+  // target for the second attempt below, rather than a formula guessing at `scrollIntoView`'s
+  // landing spot: the same content produces the same landing position, so the real first landing
+  // is exactly right and needs no guessing.
+  const firstLandingScrollY = await devtools.evaluate<number>("Math.round(globalThis.scrollY)")
+
   // Scrolled to the top, deliberately away from the block, before the unrelated re-render: the
   // block is already in view right after the previous check, so a `scrollIntoView` this click
   // wrongly triggered would be a no-op there and this check would not catch it. Parked away from
@@ -362,6 +369,40 @@ async function deletionValidationChecks(devtools: Devtools): Promise<void> {
       emptied.regionText === "" && emptied.regionClass === "",
     `clicked=${clickedEmpty} found=${emptied.regionFound} role has "alert"=${emptied.hasAlertRole} ` +
       `class="${emptied.regionClass}" text="${emptied.regionText}"`,
+  )
+
+  // A second blocked archive attempt: `DeletionValidation` resets the signature it last scrolled
+  // for whenever the list goes empty (`crud/deletion-validation.tsx`'s effect), which is what makes
+  // it scroll again here even though the content restored is identical to the first attempt's. This
+  // is the behaviour the old, dependency-free effect existed for — a comment there still says so —
+  // and nothing in this file proved it kept working once the effect gained a signature check.
+  //
+  // Parked away from the block first, same reasoning as the unrelated-re-render check above: it is
+  // still in view from the first attempt, so a scroll that silently did nothing here would look the
+  // same as one that correctly did nothing. The wait for the second attempt targets
+  // `firstLandingScrollY`, the position this run's own first attempt actually landed at — a plain
+  // settle would pass on a read taken before the scroll's first frame runs, which is exactly the
+  // blind spot the hydration check above had to be fixed for; a `target` wait only settles on a read
+  // that has arrived there, so a scroll that has not started yet cannot pass for "done".
+  await devtools.evaluate(`globalThis.scrollTo({ top: 0, behavior: "instant" })`)
+  await settledScroll(devtools, { timeoutMs: 2_000 })
+  const clickedRestoreAgain = await clickButtonByText(
+    devtools,
+    DELETION_CARD,
+    "Restore the dependency list",
+  )
+  const settledOnSecondShow = await settledScroll(devtools, {
+    target: firstLandingScrollY,
+    timeoutMs: 5_000,
+  })
+  const shownAgain = await readDeletionState(devtools)
+  const scrollYOnSecondShow = await devtools.evaluate<number>("Math.round(globalThis.scrollY)")
+  check(
+    "a second blocked attempt, with the list restored to the same content, scrolls into view again",
+    clickedRestoreAgain && settledOnSecondShow && shownAgain.inViewport,
+    `clicked=${clickedRestoreAgain} settled=${settledOnSecondShow} ` +
+      `inViewport=${shownAgain.inViewport} target=${firstLandingScrollY} ` +
+      `scrollY=${scrollYOnSecondShow}`,
   )
 }
 
