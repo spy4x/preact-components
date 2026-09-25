@@ -1,9 +1,30 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
-import { MoneyInput, resolveMoneyInputEdit } from "./money-input.tsx"
+import { editableText, MoneyInput, resolveMoneyInputEdit } from "./money-input.tsx"
 
 const INVALID = "Enter a valid amount"
+
+/** Locales exercised by the round-trip test below — matches `ui/money.test.ts`'s own list. */
+const ROUND_TRIP_LOCALES = [
+  "sv",
+  "fi",
+  "nb",
+  "lt",
+  "sl",
+  "he",
+  "ur",
+  "ar-EG",
+  "fa",
+  "bn",
+  "mr",
+  "de",
+  "fr",
+  "de-CH",
+  "en-IN",
+  "en",
+  "ja",
+]
 
 describe("resolveMoneyInputEdit", () => {
   it("resolves empty text to a null value and no message", () => {
@@ -111,6 +132,25 @@ describe("resolveMoneyInputEdit", () => {
       () => "Too expensive",
     )
     expect(customRange.message).toBe("Too expensive")
+  })
+
+  it("round-trips value, editableText's own shown text, and the parsed-back edit for every listed locale", () => {
+    // What `MoneyInput` itself does on every keystroke: format the committed value the way the
+    // field would show it, then feed that text straight back through the same resolution a real
+    // edit goes through. sv/fi/nb/lt/sl print U+2212 MINUS SIGN for a negative amount; ar-EG/fa/bn/
+    // mr print their own digit glyphs; de/fr/de-CH/en-IN exercise the module's own marks.
+    for (const locale of ROUND_TRIP_LOCALES) {
+      for (const value of [12345, -12345, 0, 1]) {
+        const text = editableText(value, "USD", locale)
+        const edit = resolveMoneyInputEdit(text, "USD", locale, {}, INVALID)
+        expect({ locale, value, text, edit }).toEqual({
+          locale,
+          value,
+          text,
+          edit: { value, message: undefined },
+        })
+      }
+    }
   })
 })
 

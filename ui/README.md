@@ -836,9 +836,12 @@ one. Both go through `ui/money.ts` (package-private, not in this package's `expo
 assume two decimal places — the yen (`JPY`) has none, the Kuwaiti dinar (`KWD`) has three, both
 read from `Intl` rather than a hard-coded table — and never round a typed amount that has more
 fraction digits than the currency allows; it is refused, the same way `"1.005"` for a two-decimal
-currency is refused rather than guessed at as `100` or `101` cents. `ui/money.ts` is a temporary,
-byte-identical-in-behaviour copy of `spy4x/ts-libs#189`'s `platform/universal/money.ts`, kept here
-until that PR ships in a release; `#275` tracks importing it instead and deleting this copy.
+currency is refused rather than guessed at as `100` or `101` cents. A grouping mark is accepted only
+where `Intl` itself would place one for that locale, or not at all — never stripped wherever it
+stands, which is what let `"12.50"` typed in a German field (where `.` is the grouping mark, not
+the decimal mark) silently become €1,250.00. `ui/money.ts` is a temporary, byte-identical-in-
+behaviour copy of `spy4x/ts-libs#189`'s `platform/universal/money.ts`, kept here until that PR ships
+in a release; `#275` tracks importing it instead and deleting this copy.
 
 `MoneyDisplay` is a bare `<span>` — this is text, not a control, so it carries no role or label of
 its own. `colorNegative` colours a negative amount red; every other style is the caller's `class`.
@@ -853,6 +856,14 @@ empty, from the very first render, the same shape `Combobox`'s own status region
 same reason: a region that arrives with its message already inside it is commonly not announced at
 all, only a _change_ to a region already being watched is. `inputmode="decimal"` brings up the
 numeric keyboard on a phone.
+
+While that message stands, the visible control's own `setCustomValidity` is set to it, so a real
+form submit is refused by the browser and the message is what the browser shows — the same way a
+missing `required` value is. The typed text and the message both stay exactly as they are when the
+field loses focus with a message standing: blur does not silently revert to the last committed
+amount and drop the message, which would otherwise let someone tab past a rejected entry and never
+learn it was thrown away. Blur only reformats the shown text, to `locale`'s canonical form, when the
+last edit resolved cleanly.
 
 The typed text itself is never what a plain form post carries: the visible `<input>` has no `name`,
 so a form submitted before hydration — or with no `onSubmit` at all — posts nothing from it. Pass

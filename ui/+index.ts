@@ -217,6 +217,7 @@ export {
 } from "./modal.tsx"
 export { MoneyDisplay, type MoneyDisplayProps } from "./money-display.tsx"
 export {
+  editableText,
   MoneyInput,
   type MoneyInputBounds,
   type MoneyInputEdit,

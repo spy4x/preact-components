@@ -1,8 +1,8 @@
 import { cn } from "@preact-components/cn"
 import { useSignal } from "@preact/signals"
 import type { JSX } from "preact"
-import { useId, useRef } from "preact/hooks"
-import { currencyDecimals, formatMoney, parseMoney } from "./money.ts"
+import { useEffect, useId, useRef } from "preact/hooks"
+import { currencyDecimals, formatMoney, moneyDecimalString, parseMoney } from "./money.ts"
 
 export interface MoneyInputBounds {
   /** Smallest-unit lower bound, when one is set. */
@@ -108,18 +108,18 @@ export function resolveMoneyInputEdit(
 /**
  * The text a person edits: the amount's digits and decimal mark in `locale`, with no currency
  * symbol and no grouping — grouping separators would have to be re-parsed back out on every
- * keystroke for no benefit, since {@link parseMoney} already strips them. Safe to build with a
- * division by a power of ten for the same reason {@link formatMoney} is — see `money.ts`'s module
- * doc — because this is what is shown, not what gets parsed back into the stored amount.
+ * keystroke for no benefit, since {@link parseMoney} already understands them being absent. Built
+ * from {@link moneyDecimalString}'s exact decimal string, not a division by a power of ten: that
+ * division is not exact for a `value` near `Number.MAX_SAFE_INTEGER` — see `money.ts`'s module doc.
  */
-function editableText(value: number | null, currency: string, locale: string): string {
+export function editableText(value: number | null, currency: string, locale: string): string {
   if (value === null) return ""
   const decimals = currencyDecimals(currency, locale)
   return new Intl.NumberFormat(locale, {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
     useGrouping: false,
-  }).format(value / 10 ** decimals)
+  }).format(moneyDecimalString(value, decimals) as unknown as number)
 }
 
 /**
@@ -134,6 +134,15 @@ function editableText(value: number | null, currency: string, locale: string): s
  * rendered, empty, from the very first render — the same shape `Combobox` uses for its own
  * status text, and for the same reason: a region that arrives with its message already inside it is
  * commonly not announced at all, only a *change* to a region already being watched is.
+ *
+ * **A message on screen also blocks a real form submit**, through the visible `<input>`'s own
+ * `setCustomValidity`: the browser refuses to submit a form with an invalid control and shows the
+ * message itself, the same way a missing `required` value does. The typed text and the message
+ * both stay exactly as they are when the field loses focus while one stands — blur does *not*
+ * silently revert to the last committed amount and drop the message, which would let a person tab
+ * past a rejected `20,00` in a field capped at `10.00` and never learn their entry was thrown away.
+ * Blur only re-formats the shown text (to `locale`'s canonical grouping-free form) when the last
+ * edit resolved to a value and no message is standing.
  *
  * **The typed text is never what a plain form posts.** The visible `<input>` carries no `name`, so
  * a `<form method="post">` submitted before hydration — or with `onSubmit` left out entirely —
@@ -168,10 +177,20 @@ export function MoneyInput(
   const id = callerId ?? generatedId
   const statusId = `${id}-status`
 
+  const inputRef = useRef<HTMLInputElement>(null)
   const draft = useSignal(editableText(value, currency, locale))
   const message = useSignal<string | undefined>(undefined)
   const focused = useRef(false)
   const synced = useRef({ value, currency, locale })
+
+  // Keeps the browser's own constraint validation in sync with `message`: while a message stands,
+  // a real form submit through this control is refused and the message itself is what the browser
+  // shows, the same way a missing `required` value is. An effect, not set inline during render,
+  // because `inputRef.current` is not attached to the DOM node yet on the render that first sets
+  // `message`.
+  useEffect(() => {
+    inputRef.current?.setCustomValidity(message.value ?? "")
+  }, [message.value])
 
   if (
     !focused.current &&
@@ -205,9 +224,12 @@ export function MoneyInput(
 
   function handleBlur() {
     focused.current = false
-    draft.value = editableText(value, currency, locale)
-    message.value = undefined
-    synced.current = { value, currency, locale }
+    // Only re-format when the last edit resolved cleanly. A standing message means the typed text
+    // was refused (or fell outside min/max), and blur must not discard it — see the class doc.
+    if (message.value === undefined) {
+      draft.value = editableText(value, currency, locale)
+      synced.current = { value, currency, locale }
+    }
   }
 
   const describedBy = [callerDescribedBy, message.value ? statusId : undefined]
@@ -216,6 +238,7 @@ export function MoneyInput(
   return (
     <>
       <input
+        ref={inputRef}
         id={id}
         type="text"
         inputMode="decimal"
