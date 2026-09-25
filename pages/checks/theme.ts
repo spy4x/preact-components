@@ -2,8 +2,8 @@ import { check, type Devtools } from "./harness.ts"
 
 /**
  * `theme/`'s browser checks: the form controls and surfaces of the class chapter as native events
- * and computed styles, the palette toggle, and the Tailwind/`tokens.css` output that only a real
- * stylesheet could have produced.
+ * and computed styles, the palette toggle, the Tailwind/`tokens.css` output that only a real
+ * stylesheet could have produced, and the opt-in `data-theme="ink"` palette (#257).
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -236,5 +236,45 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
     "tokens.css switches the palette on the .dark class",
     styled.light !== "rgba(0, 0, 0, 0)" && styled.light !== styled.dark,
     `canvas ${styled.light} light / ${styled.dark} dark`,
+  )
+
+  // Ink (#257) is opt-in and applies only together with .dark, on <html> — the same element the
+  // light/dark toggle above already owns, per the convention `ui-guide/sections/surfaces.tsx`'s
+  // ink card documents rather than fakes locally. This reads document.body's canvas background
+  // (the same property the "tokens.css switches the palette" check above reads) with .dark alone,
+  // then with .dark plus data-theme="ink", then with .dark alone again, and restores whatever
+  // state <html> had before the probe ran.
+  const ink = await devtools.evaluate<{ before: string; ink: string; after: string }>(
+    `(async () => {
+    const root = document.documentElement
+    const wasDark = root.classList.contains("dark")
+    const wasTheme = root.getAttribute("data-theme")
+    const canvas = () => getComputedStyle(document.body).backgroundColor
+
+    root.classList.add("dark")
+    root.removeAttribute("data-theme")
+    await new Promise((done) => setTimeout(done, 30))
+    const before = canvas()
+
+    root.setAttribute("data-theme", "ink")
+    await new Promise((done) => setTimeout(done, 30))
+    const ink = canvas()
+
+    root.removeAttribute("data-theme")
+    await new Promise((done) => setTimeout(done, 30))
+    const after = canvas()
+
+    root.classList.toggle("dark", wasDark)
+    if (wasTheme === null) root.removeAttribute("data-theme")
+    else root.setAttribute("data-theme", wasTheme)
+
+    return { before, ink, after }
+  })()`,
+  )
+  check(
+    'data-theme="ink" together with .dark on <html> repaints the canvas, and removing it ' +
+      "restores the default dark canvas",
+    ink.before !== ink.ink && ink.before === ink.after,
+    `default dark ${ink.before} → ink ${ink.ink} → default dark again ${ink.after}`,
   )
 }
