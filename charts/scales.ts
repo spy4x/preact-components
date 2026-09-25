@@ -3,13 +3,19 @@
  *
  * Nothing here touches Preact, the DOM or `d3`: every function is a total, deterministic mapping
  * from numbers to numbers, which is why the axis behaviour is testable without a renderer. The
- * `niceStep`/`ticks` pair comes from an earlier source application; the degenerate, reversed and
- * extreme-magnitude cases are hardened here.
+ * `niceStep`/`ticks` pair now lives once, in `@spy4x/platform/universal/axis` (spy4x/ts-libs#70,
+ * spy4x/preact-components#123), and is re-exported here so `./scales` — this package's own public
+ * subpath — keeps both names for its existing importers (`ticks.worker.ts`, `line-chart.tsx`, the
+ * package barrels). `niceScale` below still keeps its own copy of the tick loop, with the same
+ * iteration cap as ts-libs, until ts-libs exports that loop (spy4x/ts-libs#201).
  */
+import { niceStep, ticks } from "@spy4x/platform/universal/axis"
+export { niceStep, ticks }
 
 /**
- * Hard ceiling on generated ticks. A safety net rather than a tested path: the index-driven loop
- * terminates on its own for every input the tests exercise.
+ * Hard ceiling on the ticks `niceScale` generates. It caps both the output length and the loop's
+ * iterations, so an absurd tick target cannot hang it; the `nice-scale.worker.ts` deadline test
+ * covers this.
  */
 const MAX_TICKS = 1_000
 
@@ -44,57 +50,6 @@ export function extent(values: readonly number[]): readonly [number, number] | n
     if (value > max) max = value
   }
   return min <= max ? [min, max] : null
-}
-
-/**
- * Round a positive span up to a sensible tick step at the requested tick count.
- *
- * The magnitude is chosen from the span (1, 2, 5 or 10 × 10ⁿ) and then divided by `target`, so the
- * result is a round number *and* the axis lands on roughly `target` steps.
- *
- * No floor is applied. The source clamped with `Math.max(1e-9, step)`, which below about `3e-9`
- * made the step coarser than requested and below `1e-9` made it exceed the span itself — so
- * `ticks(0, 1e-12)` returned a single `0` tick. Non-positive and non-finite spans still fall back
- * to `1`, and a span whose step underflows keeps the smallest positive step rather than collapsing
- * to `0`.
- */
-export function niceStep(span: number, target = 5): number {
-  if (!Number.isFinite(span) || span <= 0) return 1
-
-  const wanted = normaliseTarget(target)
-  const exponent = Math.floor(Math.log10(span))
-  const fraction = span / 10 ** exponent
-
-  let niceFraction: number
-  if (fraction < 1.5) niceFraction = 1
-  else if (fraction < 3) niceFraction = 2
-  else if (fraction < 7) niceFraction = 5
-  else niceFraction = 10
-
-  const step = (niceFraction * 10 ** exponent) / wanted
-  if (Number.isFinite(step) && step > 0) return step
-
-  // Subnormal spans underflow here; keep the smallest positive step rather than returning 0,
-  // which would make tick generation divide by zero.
-  const fallback = span / wanted
-  return Number.isFinite(fallback) && fallback > 0 ? fallback : Number.MIN_VALUE
-}
-
-/**
- * Tick values covering `[min, max]`, expanded outward to the next nice step.
- *
- * Reversed bounds are swapped rather than rejected, `min === max` returns that single value so a
- * degenerate axis divides by nothing, and non-finite bounds return an empty axis.
- */
-export function ticks(min: number, max: number, maxTicks = 5): number[] {
-  if (!Number.isFinite(min) || !Number.isFinite(max)) return []
-
-  const [low, high] = min <= max ? [min, max] : [max, min]
-  if (low === high) return [low]
-
-  const step = niceStep(high - low, maxTicks)
-  if (!Number.isFinite(step) || step <= 0) return [low, high]
-  return ticksForStep(low, high, step)
 }
 
 /** Pad a domain by a fraction of its span, so points never sit on the axis frame. */
@@ -191,6 +146,17 @@ export function xLabelStride(count: number, maxLabels = 8): number {
  * because one ulp at `1e18` is 128 while the nice step is 20 — so the source looped forever there.
  * Multiplying the index moves the cursor in multiples of the step and always terminates; repeated
  * values collapse, leaving the representable bounds.
+ *
+ * **Bounded by `MAX_TICKS`, not just its output.** `steps` is `(end - start) / step`, and an absurd
+ * tick target (`niceScale(1e6, 2e6, { target: 1e25 })`, say) makes `step` many orders of magnitude
+ * smaller than the float precision at `low`/`high`'s magnitude. Every `roundToStep` result then
+ * collapses onto the same handful of doubles, so `out.length` almost stops growing while `index`
+ * keeps climbing toward a `steps` that can itself be `1e25` — relying on `out.length < MAX_TICKS`
+ * alone never terminates, which is exactly this bug: it shipped on `main` until it was found and
+ * fixed the same way in `@spy4x/platform/universal/axis`'s copy (spy4x/ts-libs#70) and ported back.
+ * Capping the loop itself at `Math.min(steps + 1, MAX_TICKS)` is the fix: return whichever ticks
+ * distinguish themselves within `MAX_TICKS` iterations — as few as one, if the target is absurd
+ * enough that nothing else is representable — rather than hang the page.
  */
 function ticksForStep(low: number, high: number, step: number): number[] {
   const start = Math.floor(low / step) * step
@@ -199,7 +165,8 @@ function ticksForStep(low: number, high: number, step: number): number[] {
   if (!Number.isFinite(steps) || steps < 0) return [low, high]
 
   const out: number[] = []
-  for (let index = 0; index <= steps + 1 && out.length < MAX_TICKS; index++) {
+  const iterationCeiling = Math.min(steps + 1, MAX_TICKS)
+  for (let index = 0; index <= iterationCeiling && out.length < MAX_TICKS; index++) {
     const value = roundToStep(start + index * step, step)
     if (value < low - step / 2 || value > high + step / 2) continue
     if (out.length > 0 && out[out.length - 1] === value) continue

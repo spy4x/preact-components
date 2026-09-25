@@ -206,7 +206,10 @@ single SVG subpath does not.
 ## Axis behaviour
 
 `scales.ts` is pure logic with no renderer, so it is where a real bug would hurt most and it is tested
-hardest. The rules it guarantees:
+hardest. `ticks` and `niceStep` themselves now live once, in `@spy4x/platform/universal/axis`
+(spy4x/ts-libs#70, refs spy4x/preact-components#123), and are re-exported from here so `./scales`
+keeps both names for its existing importers. `niceScale` still keeps its own capped copy of the tick
+loop until ts-libs exports one (spy4x/ts-libs#201). The rules that pair guarantees:
 
 - `ticks(min, max)` expands outward to a nice step (`1, 2, 5, 10 × 10ⁿ`) and returns both ends
   inclusive — about `target + 1` values.
@@ -225,12 +228,22 @@ hardest. The rules it guarantees:
   because a non-terminating loop would hang the suite rather than fail it.
 - Non-positive, non-finite and subnormal spans never produce a `0`, `NaN` or infinite step.
 
+`niceScale`'s own tick generation is a separate, package-local caller of the same step/round idea
+(this package has no `ticks`/`niceStep` implementation of its own left to guarantee those against),
+and carries the same iteration-cap fix as `@spy4x/platform/universal/axis`'s `ticks`: an absurd
+target (`niceScale(min, max, { target: 1e25 })`) used to loop as many times as `steps` demanded —
+`out.length < MAX_TICKS` alone never stopped it once `out.length` almost stopped growing — and now
+caps at `MAX_TICKS` iterations instead.
+
 ## Tests
 
-`deno task test` from the repo root. `scales.test.ts` covers the axis maths including degenerate,
-negative, tiny, huge and boundary-tick cases, and runs the non-termination case (`ticks(1e18, 1e18 +
-100)`) in a worker with a deadline — `deno test` has no per-test timeout, so an in-process call would
-hang the suite instead of failing it. The chart suites render each component with
+`deno task test` from the repo root. `scales.test.ts` covers `extent`, `paddedDomain`, `niceScale`,
+`linearScale` and `xLabelStride` — the axis helpers this package still owns — including degenerate,
+negative, tiny, huge and boundary-tick cases, and runs `niceScale`'s own non-termination case
+(`niceScale(1e6, 2e6, { target: 1e25 })`) and a termination check on the re-exported `ticks`
+(`ticks(1e18, 1e18 + 100)`) each in a worker with a deadline — `deno test` has no per-test timeout, so
+an in-process call would hang the suite instead of failing it. `ticks`/`niceStep` themselves are
+tested once, in `@spy4x/platform`'s own `axis.test.ts`. The chart suites render each component with
 `preact-render-to-string` and assert on real markup — tick counts, path geometry for a known dataset,
 legend rows, percent widths, gradient stops and empty states. `d3-line-chart.test.tsx` additionally
 covers the pure helpers behind the island (`yDomainFor`, `formatTimeTick`), the missing-d3 guard

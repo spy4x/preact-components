@@ -1,14 +1,13 @@
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert"
 import { describe, it } from "@std/testing/bdd"
-import {
-  extent,
-  linearScale,
-  niceScale,
-  niceStep,
-  paddedDomain,
-  ticks,
-  xLabelStride,
-} from "./scales.ts"
+import { extent, linearScale, niceScale, paddedDomain, xLabelStride } from "./scales.ts"
+
+// `niceStep` and `ticks` themselves — the pair now imported from `@spy4x/platform/universal/axis`
+// (spy4x/ts-libs#70) — are tested once, there; `axis.test.ts` covers most of the cases this file
+// used to, but not the subnormal-span sweep (`Number.MIN_VALUE`, `1e-320`, `1e-310`),
+// `ticks(-1e18, 1e18)` or the 1e-12..1e12 target sweep — see "Needs ts-libs" in the PR body. The
+// termination regression below stays: it proves `./scales.ts`'s own re-export still behaves, not
+// just the upstream implementation in isolation.
 
 /** Every tick must be a multiple of `step`, allowing for float noise at extreme magnitudes. */
 function assertTickInvariants(values: number[], step: number): void {
@@ -78,154 +77,60 @@ Deno.test({
   },
 })
 
-describe("niceStep", () => {
-  it("returns 1 for spans it cannot scale", () => {
-    assertEquals(niceStep(0), 1)
-    assertEquals(niceStep(-3), 1)
-    assertEquals(niceStep(NaN), 1)
-    assertEquals(niceStep(Infinity), 1)
-  })
+/**
+ * Call `niceScale` in a worker and give up after `timeoutMs`.
+ *
+ * `niceScale`'s own `ticksForStep` can loop as many times as an absurd `target` option asks for;
+ * see the deadline note on `probeTicks` above for why this runs off the main thread.
+ */
+async function probeNiceScale(
+  request: { min: number; max: number; options?: { target?: number; padRatio?: number } },
+  timeoutMs: number,
+): Promise<number[] | "timeout"> {
+  const worker = new Worker(new URL("./nice-scale.worker.ts", import.meta.url), { type: "module" })
 
-  it("picks a sensible magnitude for the requested target", () => {
-    assertEquals(niceStep(12), 2)
-    assertEquals(niceStep(80), 20)
-    assertEquals(niceStep(250), 40)
-    assertEquals(niceStep(9_500), 2_000)
-  })
-
-  it("scales the step with the target tick count", () => {
-    assertEquals(niceStep(100, 10), 10)
-    assertEquals(niceStep(100, 2), 50)
-    assertEquals(niceStep(100, 1), 100)
-  })
-
-  it("falls back to the default target for a garbage target", () => {
-    assertEquals(niceStep(100, 0), niceStep(100))
-    assertEquals(niceStep(100, NaN), niceStep(100))
-    assertEquals(niceStep(100, -4), niceStep(100))
-  })
-
-  it("floors a fractional target instead of producing fractional steps", () => {
-    assertEquals(niceStep(100, 4.9), niceStep(100, 4))
-  })
-
-  it("keeps a readable step for tiny spans", () => {
-    assertAlmostEquals(niceStep(1e-12), 2e-13, 1e-25)
-    assertAlmostEquals(niceStep(1e-9, 10), 1e-10, 1e-20)
-  })
-
-  it("keeps a finite step for huge spans", () => {
-    assertEquals(niceStep(2e18), 4e17)
-    assertEquals(niceStep(1e300) > 0, true)
-    assert(Number.isFinite(niceStep(1e300)))
-  })
-
-  it("never returns a subnormal or zero step", () => {
-    for (const span of [Number.MIN_VALUE, 5e-324, 1e-320, 1e-310]) {
-      const step = niceStep(span)
-      assert(step > 0, `step for span ${span} was ${step}`)
-      assert(Number.isFinite(step), `step for span ${span} was ${step}`)
-    }
-  })
-
-  it("lands on roughly the requested number of steps for spans 1e-12..1e12", () => {
-    for (let exponent = -12; exponent <= 12; exponent++) {
-      for (const multiplier of [1, 2.5, 7.5]) {
-        const span = multiplier * 10 ** exponent
-        const count = ticks(0, span, 5).length
-        assert(count >= 5 && count <= 8, `span ${span} produced ${count} ticks`)
+  try {
+    return await new Promise<number[] | "timeout">((resolve) => {
+      const timer = setTimeout(() => resolve("timeout"), timeoutMs)
+      worker.onmessage = (event: MessageEvent<number[]>) => {
+        clearTimeout(timer)
+        resolve(event.data)
       }
+      worker.onerror = () => {
+        clearTimeout(timer)
+        resolve("timeout")
+      }
+      worker.postMessage(request)
+    })
+  } finally {
+    worker.terminate()
+  }
+}
+
+// Sanitizers are disabled for the same reason as the `ticks` termination test above.
+Deno.test({
+  name: "niceScale - terminates for an absurd tick target instead of hanging",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    // A target of 1e25 makes niceStep's step many orders of magnitude smaller than the float
+    // precision at this magnitude, so `ticksForStep`'s index climbed toward a `steps` of 1e25 while
+    // `out.length` almost stopped growing — `out.length < MAX_TICKS` alone never stopped the loop.
+    // This shipped on `main` (spy4x/preact-components#123) until the same fix landed in
+    // `@spy4x/platform/universal/axis` (spy4x/ts-libs#70) and was ported back here.
+    const min = 1e6
+    const max = 2e6
+    const result = await probeNiceScale({ min, max, options: { target: 1e25 } }, 2_000)
+
+    if (result === "timeout") {
+      throw new Error(
+        `niceScale(${min}, ${max}, { target: 1e25 }) did not terminate within 2000ms: ` +
+          "ticksForStep must cap its loop at MAX_TICKS iterations, not just its output length",
+      )
     }
-  })
-})
 
-describe("ticks", () => {
-  it("returns a single value when min equals max", () => {
-    assertEquals(ticks(4, 4), [4])
-    assertEquals(ticks(0, 0), [0])
-    assertEquals(ticks(-3.5, -3.5), [-3.5])
-  })
-
-  it("expands outward to the next nice step", () => {
-    assertEquals(ticks(0, 1), [0, 0.2, 0.4, 0.6, 0.8, 1])
-    assertEquals(ticks(2, 6), [2, 3, 4, 5, 6])
-  })
-
-  it("covers negative ranges", () => {
-    assertEquals(ticks(-10, -2), [-10, -8, -6, -4, -2])
-    // The axis may reach half a step outside the data on either end.
-    assertEquals(ticks(-5, 5), [-6, -4, -2, 0, 2, 4, 6])
-  })
-
-  it("treats reversed bounds as the same range", () => {
-    assertEquals(ticks(6, 2), ticks(2, 6))
-    assertEquals(ticks(1, -1), ticks(-1, 1))
-  })
-
-  it("returns an empty axis for non-finite bounds", () => {
-    assertEquals(ticks(NaN, 10), [])
-    assertEquals(ticks(0, Infinity), [])
-    assertEquals(ticks(-Infinity, Infinity), [])
-  })
-
-  it("keeps distinct values for a span far below one unit", () => {
-    const values = ticks(0, 1e-12)
-
-    assertEquals(values.length, 6)
-    assertEquals(new Set(values).size, 6)
-    assertAlmostEquals(values[1], 2e-13, 1e-25)
-    assertAlmostEquals(values[5], 1e-12, 1e-25)
-  })
-
-  it("does not collapse a sub-nanosecond range to zero", () => {
-    const values = ticks(1e-15, 5e-15)
-
-    assert(values.length >= 3, `expected a usable axis, got ${values}`)
-    assert(values.every((value) => value > 0))
-  })
-
-  it("stays usable across a span of 1e36", () => {
-    const values = ticks(-1e18, 1e18)
-
-    assert(values.length >= 5 && values.length <= 8, `got ${values.length} ticks`)
-    assert(values.some((value) => value === 0), `expected a zero tick, got ${values}`)
-    assertTickInvariants(values, 4e17)
-  })
-
-  it("returns about target + 1 ticks, bounds inclusive", () => {
-    assertEquals(ticks(0, 100, 10).length, 11)
-    assertEquals(ticks(0, 100, 5).length, 6)
-    assertEquals(ticks(0, 100, 1).length, 2)
-    assertEquals(ticks(0, 100, 2).length, 3)
-  })
-
-  it("never returns more than about the requested tick count plus a buffer", () => {
-    for (const target of [1, 2, 3, 4, 5, 8, 10, 20]) {
-      const count = ticks(0, 37.5, target).length
-      assert(count <= target + 2, `target ${target} produced ${count} ticks`)
-      assert(count >= 2, `target ${target} produced ${count} ticks`)
-    }
-  })
-
-  it("returns strictly increasing ticks for an awkward span", () => {
-    const values = ticks(0.9, 1.1)
-
-    assertTickInvariants(values, 0.04)
-    assert(values[0] >= 0.9 - 0.02, `${values[0]} starts before the range`)
-    assert(values[values.length - 1] <= 1.1 + 0.02, `axis ends after the range`)
-  })
-
-  it("keeps ticks inside the padded bounds for a large negative span", () => {
-    const values = ticks(-9_500, -50)
-
-    assertTickInvariants(values, niceStep(9_450))
-    assert(values[0] >= -9_500 - niceStep(9_450) / 2)
-  })
-
-  it("tolerates a garbage tick target", () => {
-    assertEquals(ticks(0, 100, 0), ticks(0, 100))
-    assertEquals(ticks(0, 100, NaN), ticks(0, 100))
-  })
+    assert(result.length >= 1, `expected at least one tick, got ${result}`)
+  },
 })
 
 describe("extent", () => {
