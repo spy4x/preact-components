@@ -83,12 +83,24 @@ describe("the ink theme", () => {
     }
   })
 
-  it("repaints .btn-primary's fill without any change to preset.css", async () => {
+  it("repaints .btn-primary's fill by redeclaring --color-primary under .dark[data-theme=ink]", async () => {
     const css = await compileInk(["btn", "btn-primary"])
-    const rule = css.slice(
-      css.indexOf(".btn-primary {"),
-      css.indexOf("}", css.indexOf(".btn-primary {")),
+    const inkRule = css.slice(
+      css.indexOf('.dark[data-theme="ink"]'),
+      css.indexOf("}", css.indexOf('.dark[data-theme="ink"]')) + 1,
     )
-    expect(rule).toContain("var(--color-primary,")
+    // `.btn-primary` itself only ever reads `var(--color-primary, <default>)`, unchanged by ink —
+    // proving that alone would still pass if ink's own --color-primary declaration were deleted,
+    // since the rule would just fall through to the default. The actual repaint happens in ink's
+    // own block, so assert its declared value directly.
+    expect(inkRule).toContain("--color-primary: oklch(0.72 0.15 200)")
+  })
+
+  it("points .btn's focus-visible outline at --color-focus-ring", async () => {
+    const css = await compileInk(["btn", "btn-primary"])
+    // `compiler.build()` emits `.btn`'s nested `&:focus-visible` blocks unflattened (as authored
+    // in preset.css), so this reads the declaration directly rather than assuming a flattened
+    // `.btn:focus-visible { ... }` selector, which never appears in this output.
+    expect(css).toContain("outline-color: var(--color-focus-ring, currentColor)")
   })
 })

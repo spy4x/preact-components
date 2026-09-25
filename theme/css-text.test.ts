@@ -31,54 +31,83 @@ describe("the generated CSS text constants", () => {
 })
 
 /**
- * Every default-palette declaration `tokens.css` carried before #257 added `INK_CSS` and the two
- * font tokens, copied here verbatim rather than re-derived, so a change to any of them fails this
- * test by name instead of passing because the assertion moved with the file. This is the "every
- * existing token resolves to the same value" half of #257's done-when: ink is additive, and the
- * default (Eirene) palette renders exactly as it did before this change.
+ * Parses a top-level `selector { ... }` block's declarations into a property → value map, so a
+ * comparison can catch an appended or reordered declaration that a `toContain` check on a fixed
+ * string cannot: `toContain` only proves the listed strings are somewhere in the file, not that
+ * nothing else was added alongside them (a duplicate `--color-primary` appended after the real one
+ * still contains the original string). Comments are stripped before parsing, and only the requested
+ * selector's own braces are read — `tokens.css` has exactly one `:root` and one `.dark` block, both
+ * flat, so a non-greedy match up to the first closing brace is exact.
  */
-const UNCHANGED_DEFAULT_TOKEN_DECLARATIONS = [
-  `--color-primary: oklch(0.38 0.17 293); /* purple-900 */`,
-  `--color-primary-foreground: oklch(0.977 0.014 308.299); /* purple-50 */`,
-  `--color-primary-muted: oklch(0.558 0.288 302.321); /* purple-600 */`,
-  `--color-surface: oklch(1 0 0); /* white */`,
-  `--color-canvas: oklch(0.985 0.002 247.839); /* gray-50 */`,
-  `--color-border-subtle: oklch(0.928 0.006 264.531); /* gray-200 */`,
-  `--color-border-control: oklch(0.872 0.01 258.338); /* gray-300 */`,
-  `--color-foreground: oklch(0.13 0.028 261.692); /* gray-950 */`,
-  `--color-muted-foreground: oklch(0.551 0.027 264.364); /* gray-500 */`,
-  `--color-placeholder: oklch(0.551 0.027 264.364); /* gray-500 */`,
-  `--color-danger: oklch(0.577 0.245 27.325); /* red-600 */`,
-  `--color-danger-foreground: oklch(0.971 0.013 17.38); /* red-50 */`,
-  `--color-warning: oklch(0.646 0.222 41.116); /* orange-600 */`,
-  `--color-warning-foreground: oklch(0.98 0.016 73.684); /* orange-50 */`,
-  `--color-success: oklch(0.527 0.154 150.069); /* green-700 */`,
-  `--color-success-foreground: oklch(0.982 0.018 155.826); /* green-50 */`,
-  `--radius-primary: 0.5rem; /* rounded-lg */`,
-  `--radius-control: 0.375rem; /* rounded-md */`,
-  `--font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;`,
-  `--color-primary: oklch(0.21 0.006 285.885); /* near-black chrome, not purple */`,
-  `--color-primary-muted: oklch(0.714 0.203 305.504); /* purple-400 */`,
-  `--color-surface: oklch(0.278 0.033 256.848); /* gray-800 */`,
-  `--color-canvas: oklch(0.21 0.034 264.665); /* gray-900 */`,
-  `--color-border-subtle: oklch(0.373 0.034 259.733); /* gray-700 */`,
-  `--color-border-control: oklch(0.446 0.03 256.802); /* gray-600 */`,
-  `--color-foreground: oklch(0.985 0.002 247.839); /* gray-50 */`,
-  `--color-muted-foreground: oklch(0.707 0.022 261.325); /* gray-400 */`,
-  `--color-placeholder: oklch(0.707 0.022 261.325); /* gray-400 */`,
-  `--color-danger: oklch(0.637 0.237 25.331); /* red-500 */`,
-]
+function parseBlock(css: string, selector: string): Record<string, string> {
+  const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, "")
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  const match = withoutComments.match(new RegExp(`${escaped}\\s*\\{([\\s\\S]*?)\\}`))
+  if (!match) throw new Error(`no ${selector} block found`)
+  const declarations: Record<string, string> = {}
+  for (const line of match[1].split(";")) {
+    const trimmed = line.trim()
+    if (!trimmed) continue
+    const colon = trimmed.indexOf(":")
+    if (colon === -1) continue
+    declarations[trimmed.slice(0, colon).trim()] = trimmed.slice(colon + 1).trim()
+  }
+  return declarations
+}
+
+/**
+ * Every default-palette token `tokens.css` carried before #257 added `INK_CSS`, copied here as a
+ * property → value map rather than re-derived, so a changed, removed or appended declaration in
+ * either block fails this test by name. This is the "every existing token resolves to the same
+ * value" half of #257's done-when: ink is additive, and the default (Eirene) palette renders
+ * exactly as it did before this change.
+ */
+const UNCHANGED_ROOT_TOKENS: Record<string, string> = {
+  "--color-primary": "oklch(0.38 0.17 293)",
+  "--color-primary-foreground": "oklch(0.977 0.014 308.299)",
+  "--color-primary-muted": "oklch(0.558 0.288 302.321)",
+  "--color-surface": "oklch(1 0 0)",
+  "--color-canvas": "oklch(0.985 0.002 247.839)",
+  "--color-border-subtle": "oklch(0.928 0.006 264.531)",
+  "--color-border-control": "oklch(0.872 0.01 258.338)",
+  "--color-foreground": "oklch(0.13 0.028 261.692)",
+  "--color-muted-foreground": "oklch(0.551 0.027 264.364)",
+  "--color-placeholder": "oklch(0.551 0.027 264.364)",
+  "--color-danger": "oklch(0.577 0.245 27.325)",
+  "--color-danger-foreground": "oklch(0.971 0.013 17.38)",
+  "--color-warning": "oklch(0.646 0.222 41.116)",
+  "--color-warning-foreground": "oklch(0.98 0.016 73.684)",
+  "--color-success": "oklch(0.527 0.154 150.069)",
+  "--color-success-foreground": "oklch(0.982 0.018 155.826)",
+  "--radius-primary": "0.5rem",
+  "--radius-control": "0.375rem",
+  "--font-sans": `"Poppins", ui-sans-serif, system-ui, sans-serif`,
+}
+
+const UNCHANGED_DARK_TOKENS: Record<string, string> = {
+  "--color-primary": "oklch(0.21 0.006 285.885)",
+  "--color-primary-foreground": "oklch(0.977 0.014 308.299)",
+  "--color-primary-muted": "oklch(0.714 0.203 305.504)",
+  "--color-surface": "oklch(0.278 0.033 256.848)",
+  "--color-canvas": "oklch(0.21 0.034 264.665)",
+  "--color-border-subtle": "oklch(0.373 0.034 259.733)",
+  "--color-border-control": "oklch(0.446 0.03 256.802)",
+  "--color-foreground": "oklch(0.985 0.002 247.839)",
+  "--color-muted-foreground": "oklch(0.707 0.022 261.325)",
+  "--color-placeholder": "oklch(0.707 0.022 261.325)",
+  "--color-danger": "oklch(0.637 0.237 25.331)",
+}
 
 describe("the default token set, after #257", () => {
-  it("still declares every pre-existing token at its pre-existing value", () => {
-    for (const declaration of UNCHANGED_DEFAULT_TOKEN_DECLARATIONS) {
-      expect(TOKENS_CSS, `missing or changed: ${declaration}`).toContain(declaration)
-    }
+  it("still declares every pre-existing token at its pre-existing value, and no more", () => {
+    expect(parseBlock(TOKENS_CSS, ":root")).toEqual(UNCHANGED_ROOT_TOKENS)
+    expect(parseBlock(TOKENS_CSS, ".dark")).toEqual(UNCHANGED_DARK_TOKENS)
   })
 
-  it("adds --font-serif and --font-mono as system stacks, no font files", () => {
-    expect(TOKENS_CSS).toContain(`--font-serif: ui-serif,`)
-    expect(TOKENS_CSS).toContain(`--font-mono: ui-monospace,`)
+  it("does not redeclare --font-serif or --font-mono in :root", () => {
+    const root = parseBlock(TOKENS_CSS, ":root")
+    expect(root).not.toHaveProperty("--font-serif")
+    expect(root).not.toHaveProperty("--font-mono")
     expect(TOKENS_CSS).not.toMatch(/\.(woff2?|ttf|otf)/)
   })
 })
