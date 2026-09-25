@@ -5,7 +5,10 @@ import type { CsvColumn } from "@spy4x/platform/universal/csv"
 import { Button } from "./button.tsx"
 import { runExport } from "./export-run.ts"
 
-/** One column of an {@link ExportButton}'s file — see `@spy4x/platform/universal/csv`'s {@link CsvColumn}. */
+/**
+ * One column of an {@link ExportButton}'s file — see `@spy4x/platform/universal/csv`'s
+ * {@link CsvColumn}.
+ */
 export type ExportButtonColumn<T> = CsvColumn<T>
 
 interface ExportButtonBaseProps<T> {

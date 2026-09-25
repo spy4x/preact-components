@@ -788,12 +788,11 @@ module alone, pinned in `ui/deno.json`'s own `imports` rather than the root impo
 task, then revokes the object URL from a timer about five seconds later, because revoking in the
 click's own task has historically cancelled a download that was still starting.
 
-The writer (`ui/csv.ts`, package-private — not in this package's `exports`, not re-exported from
-`+index.ts`) is RFC 4180 CSV: commas, double quotes and line breaks inside a cell are quoted, with
-an embedded quote doubled; the file is UTF-8 with a leading byte-order mark, which is what makes
-Excel open non-English text correctly instead of guessing the system codepage; and lines are
-`\r\n`-terminated, the ending the RFC itself specifies rather than the bare `\n` some tools merely
-tolerate.
+The writer (`@spy4x/platform/universal/csv`) is RFC 4180 CSV: commas, double quotes and line breaks
+inside a cell are quoted, with an embedded quote doubled; the file is UTF-8 with a leading
+byte-order mark, which is what makes Excel open non-English text correctly instead of guessing the
+system codepage; and lines are `\r\n`-terminated, the ending the RFC itself specifies rather than the
+bare `\n` some tools merely tolerate.
 
 A `string` cell whose text starts with `=`, `+`, `-` or `@` — or that has one of those right after a
 comma, semicolon, tab, carriage return or line feed _inside_ it — is prefixed with a single quote at
@@ -806,7 +805,13 @@ whatever that locale setting is. Measured in LibreOffice 26.2: `x;=cmd|' /C calc
 the known vector for launching a program from a formula, though LibreOffice itself showed an error
 (`Err:509`) rather than running it — unless the character right after the `;` was guarded too, not
 only the first character of the whole string. A bare leading tab or carriage return is also guarded,
-even with nothing after it, per the same guidance this follows.
+even with nothing after it, per the same guidance this follows. `@spy4x/platform/universal/csv`
+(1.3.0) guards four cases further than that: a bare leading line feed, alongside the tab and
+carriage return; the full-width Unicode formula-lead characters `＝＋－＠`, not only their ASCII
+forms; a leading run of whitespace before a formula character, whether at the very start of a cell
+or right after a separator; and a `format` callback's return value when it is not a string, a
+`number` or a `bigint` — that value is now guarded and quoted like a string instead of being
+written out with an unguarded `String()`.
 
 The guard has no exception for a `string` that merely looks safe: one reading `-5` is guarded
 exactly like `-2+3+cmd|' /C calc'!A1`, which starts the same way, because content alone cannot tell
@@ -832,17 +837,14 @@ and nothing here forecloses adding it later behind its own prop if a caller need
 
 Money in this convention is a whole number in a currency's smallest unit — `1250` means `€12.50`.
 `MoneyDisplay` renders one as text; `MoneyInput` is a text field that turns typed text back into
-one. Both go through `ui/money.ts` (package-private, not in this package's `exports` or
-`+index.ts`), whose two rules matter for any caller that formats or parses money by hand: never
-assume two decimal places — the yen (`JPY`) has none, the Kuwaiti dinar (`KWD`) has three, both
-read from `Intl` rather than a hard-coded table — and never round a typed amount that has more
-fraction digits than the currency allows; it is refused, the same way `"1.005"` for a two-decimal
-currency is refused rather than guessed at as `100` or `101` cents. A grouping mark is accepted only
-where `Intl` itself would place one for that locale, or not at all — never stripped wherever it
-stands, which is what let `"12.50"` typed in a German field (where `.` is the grouping mark, not
-the decimal mark) silently become €1,250.00. `ui/money.ts` is a temporary, byte-identical-in-
-behaviour copy of `spy4x/ts-libs#189`'s `platform/universal/money.ts`, kept here until that PR ships
-in a release; `#275` tracks importing it instead and deleting this copy.
+one. Both go through `@spy4x/platform/universal/money`, whose two rules matter for any caller that
+formats or parses money by hand: never assume two decimal places — the yen (`JPY`) has none, the
+Kuwaiti dinar (`KWD`) has three, both read from `Intl` rather than a hard-coded table — and never
+round a typed amount that has more fraction digits than the currency allows; it is refused, the same
+way `"1.005"` for a two-decimal currency is refused rather than guessed at as `100` or `101` cents. A
+grouping mark is accepted only where `Intl` itself would place one for that locale, or not at all —
+never stripped wherever it stands, which is what let `"12.50"` typed in a German field (where `.` is
+the grouping mark, not the decimal mark) silently become €1,250.00.
 
 `MoneyDisplay` is a bare `<span>` — this is text, not a control, so it carries no role or label of
 its own. `colorNegative` colours a negative amount red; every other style is the caller's `class`.

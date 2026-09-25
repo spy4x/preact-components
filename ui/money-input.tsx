@@ -115,7 +115,8 @@ export function resolveMoneyInputEdit(
  * symbol and no grouping — grouping separators would have to be re-parsed back out on every
  * keystroke for no benefit, since {@link parseMoney} already understands them being absent. Built
  * from {@link moneyDecimalString}'s exact decimal string, not a division by a power of ten: that
- * division is not exact for a `value` near `Number.MAX_SAFE_INTEGER` — see `money.ts`'s module doc.
+ * division is not exact for a `value` near `Number.MAX_SAFE_INTEGER` — see
+ * `@spy4x/platform/universal/money`'s module doc.
  */
 export function editableText(value: number | null, currency: string, locale: string): string {
   if (value === null) return ""

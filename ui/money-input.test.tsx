@@ -5,7 +5,10 @@ import { editableText, MoneyInput, resolveMoneyInputEdit } from "./money-input.t
 
 const INVALID = "Enter a valid amount"
 
-/** Locales exercised by the round-trip test below — matches `ui/money.test.ts`'s own list. */
+/**
+ * Locales exercised by the round-trip test below — matches ts-libs'
+ * `platform/universal/money.test.ts`'s own list.
+ */
 const ROUND_TRIP_LOCALES = [
   "sv",
   "fi",
@@ -69,8 +72,9 @@ describe("resolveMoneyInputEdit", () => {
       message: undefined,
     })
     // The naive `parseFloat("0.1") * 100 + parseFloat("0.2") * 100` drifts to 30.000000000000004;
-    // this goes through the same digit-based `parseMoney` `money.test.ts` already proves against
-    // that drift, wired here to confirm `resolveMoneyInputEdit` does not reintroduce it.
+    // this goes through the same digit-based `parseMoney` ts-libs' `platform/universal/money.test.ts`
+    // already proves against that drift, wired here to confirm `resolveMoneyInputEdit` does not
+    // reintroduce it.
     expect(resolveMoneyInputEdit(String(0.1 + 0.2), "USD", "en", {}, INVALID)).toEqual({
       message: INVALID,
     })
