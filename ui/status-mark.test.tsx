@@ -53,6 +53,14 @@ describe("StatusMark", () => {
     expect(html.slice(pos)).toContain("WIP")
   })
 
+  it("colours only the shape, so the word keeps the page's text colour", () => {
+    for (const status of STATUSES) {
+      const html = render(<StatusMark status={status} />)
+      const outer = html.slice(0, html.indexOf(">") + 1)
+      expect(outer).not.toMatch(/text-(success|muted|warning|danger)/)
+    }
+  })
+
   it("renders a different SVG for every status, so the shapes are distinct", () => {
     const svgs = STATUSES.map((status) => {
       const html = render(<StatusMark status={status} />)

@@ -63,12 +63,18 @@ describe("MarginNote", () => {
   })
 
   it("reads checkedOn as the UTC calendar date, not shifted by the local time zone", () => {
-    // 2026-01-01 parses as UTC midnight; a time zone west of UTC (e.g. America/Los_Angeles, the
-    // one this repository's own AGENTS.md names for this exact check) would read that back as
-    // "December 31, 2025" without an explicit UTC time zone in the formatter — this proves the
-    // date shown never depends on process.env.TZ.
-    const html = render(<MarginNote checkedOn="2026-01-01">Boundary date.</MarginNote>)
-    expect(html).toContain("January 1, 2026")
-    expect(html).not.toContain("December 31, 2025")
+    // 2026-01-01 parses as UTC midnight; a time zone west of UTC reads that back as
+    // "December 31, 2025" unless the formatter pins UTC. CI runs in UTC, so the test pins a
+    // western zone itself rather than depending on where it runs.
+    const previous = Deno.env.get("TZ")
+    Deno.env.set("TZ", "America/Los_Angeles")
+    try {
+      const html = render(<MarginNote checkedOn="2026-01-01">Boundary date.</MarginNote>)
+      expect(html).toContain("January 1, 2026")
+      expect(html).not.toContain("December 31, 2025")
+    } finally {
+      if (previous === undefined) Deno.env.delete("TZ")
+      else Deno.env.set("TZ", previous)
+    }
   })
 })

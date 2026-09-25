@@ -383,8 +383,10 @@ async function installBoxChecks(devtools: Devtools): Promise<void> {
  *
  * The desktop half reads both `getComputedStyle(aside).float` and actual geometry: `float` alone
  * only proves the CSS property resolved to `"right"`, not that the note ended up sitting where a
- * float placement should put it, so this also requires the note's left edge to sit to the right of
- * the paragraph's own left edge — the shape "beside", not just "floated".
+ * float placement should put it, so this also requires the note to share rows with its sibling
+ * paragraph and its left edge to sit right of that paragraph's own left edge — a full-width note
+ * would start where the paragraph starts. The sibling, not the card's description, is the one
+ * measured.
  *
  * `Emulation.setDeviceMetricsOverride` narrows the viewport for the phone-width half and
  * `clearDeviceMetricsOverride` restores it in a `finally`, so a package block that runs after this
@@ -395,26 +397,30 @@ async function installBoxChecks(devtools: Devtools): Promise<void> {
 async function marginNoteChecks(devtools: Devtools): Promise<void> {
   await centreInView(devtools, `document.querySelector('#demo-MarginNote aside')`)
   const desktop = await devtools.evaluate<
-    { float: string; asideLeft: number; paragraphLeft: number } | null
+    { float: string; asideLeft: number; paragraphLeft: number; overlaps: boolean } | null
   >(
     `(() => {
       const aside = document.querySelector('#demo-MarginNote aside')
-      const paragraph = document.querySelector('#demo-MarginNote p')
+      const paragraph = aside?.parentElement?.querySelector(':scope > p')
       if (!aside || !paragraph) return null
+      const a = aside.getBoundingClientRect()
+      const p = paragraph.getBoundingClientRect()
       return {
         float: getComputedStyle(aside).float,
-        asideLeft: aside.getBoundingClientRect().left,
-        paragraphLeft: paragraph.getBoundingClientRect().left,
+        asideLeft: a.left,
+        paragraphLeft: p.left,
+        overlaps: a.top < p.bottom && p.top < a.bottom,
       }
     })()`,
   )
   check(
-    "MarginNote sits beside its paragraph at desktop width — floated right of the paragraph's own left edge",
-    desktop !== null && desktop.float === "right" && desktop.asideLeft > desktop.paragraphLeft,
+    "MarginNote sits beside its paragraph at desktop width — sharing rows with its sibling paragraph, right of its left edge",
+    desktop !== null && desktop.float === "right" && desktop.overlaps &&
+      desktop.asideLeft > desktop.paragraphLeft + 8,
     desktop === null
       ? "the MarginNote card has no <aside> or <p> to read"
       : `float ${JSON.stringify(desktop.float)}, aside.left ${desktop.asideLeft} vs ` +
-        `paragraph.left ${desktop.paragraphLeft} at desktop width`,
+        `paragraph.left ${desktop.paragraphLeft}, overlapping ${desktop.overlaps} at desktop width`,
   )
 
   try {
