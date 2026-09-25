@@ -14,8 +14,8 @@ Preact + Tailwind primitives extracted from earlier source applications.
 - **One Preact option hook, for four components' refs.** `./forward-ref.ts`'s hook, installed on
   Preact's shared `options` object, is what lets `Input`, `Button`, `Checkbox` and `Radio` forward
   the `ref` each is given to the native element it renders instead of Preact applying it to the
-  component itself. Seventeen of this package's exports load it — checked by walking each
-  subpath's own module graph for `forward-ref.ts`, not assumed: the four components themselves —
+  component itself. Seventeen of this package's exports load it — counted once, by hand, by walking each
+  subpath's own module graph for `forward-ref.ts`; no check repeats the count: the four components themselves —
   `./button`'s only other export is `buttonClasses`, so a caller who imports that alone still
   installs the hook; the package root (`.`), which carries every export; `./confirm-dialog`,
   `./copy-button`, `./date-range-picker`, `./geo-button`, `./modal`, `./on-off-buttons`,
