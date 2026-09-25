@@ -7,8 +7,10 @@
  * that splits code at dynamic imports ships it as its own file.
  *
  * Server rendering and hydration see the same thing: the module is never loaded during a render,
- * only from an effect, so the first render on either side is the caller's placeholder. Once one card
- * has loaded the module, a card mounted later renders with it straight away.
+ * only from an effect, so the first render on either side is the caller's placeholder. The load
+ * starts one task after the effect, so a card that hydration mounts and the host's first route read
+ * unmounts again never starts it. Once one card has loaded the module, a card mounted later renders
+ * with it straight away.
  */
 
 import { useEffect, useState } from "preact/hooks"
@@ -55,11 +57,18 @@ export function lazyModule<T>(load: () => Promise<T>): LazyModule<T> {
       useEffect(() => {
         if (state.status !== "loading") return
         let mounted = true
-        start().then((next) => {
-          if (mounted) setState(next)
-        })
+        // One task later, not now: hydration mounts every page of the guide, because the served
+        // document carries them all, and the host's first read of the address then replaces them
+        // with one page in a re-render queued as a microtask. A card that mounted only for that
+        // hydration is unmounted before this timer fires, and its load never starts.
+        const timer = setTimeout(() => {
+          start().then((next) => {
+            if (mounted) setState(next)
+          })
+        }, 0)
         return () => {
           mounted = false
+          clearTimeout(timer)
         }
       }, [])
 
