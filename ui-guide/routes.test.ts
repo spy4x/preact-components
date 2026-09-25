@@ -14,6 +14,7 @@ import {
   demoHref,
   type IndexRouteMatch,
   pageHref,
+  pageOfFragment,
   pageOfRoute,
   parseRoute,
   routeHref,
@@ -555,6 +556,21 @@ describe("guide pages", () => {
   it("round-trips every page's href to that page", () => {
     for (const page of guidePages) {
       expect(pageOfRoute(parseRoute(pageHref(page.id))), page.id).toBe(page.id)
+    }
+  })
+})
+
+describe("pageOfFragment", () => {
+  it("opens the page holding a section's or a page's own id", () => {
+    expect(pageOfFragment("#inputs")).toBe("ui")
+    expect(pageOfFragment("#forms")).toBe("theme")
+    expect(pageOfFragment("#crud")).toBe("crud")
+    expect(pageOfFragment("#icons")).toBe("icons")
+  })
+
+  it("names no page for a fragment the guide does not render, or for a route", () => {
+    for (const hash of ["", "#", "#top", "#lightbox-bare-target", "#overview", "#all", "#/ui"]) {
+      expect(pageOfFragment(hash), hash).toBeUndefined()
     }
   })
 })

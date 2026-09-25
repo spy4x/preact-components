@@ -30,7 +30,10 @@
  * shipped before hash routing, so it stays: it resolves against every section's demo names, and it
  * is the one case where the section is derived rather than named. Every other bare fragment —
  * `#icons`, `#top`, a section's own DOM id — is deliberately **not** a route: the index match means
- * "not ours", the host leaves the DOM alone, and the browser's native anchor scroll keeps working.
+ * "not ours", and the browser's native anchor scroll keeps working. Because the guide renders one
+ * page at a time, the element such a fragment names can be on a page that is not showing;
+ * {@link pageOfFragment} answers which page holds a section's or a page's own id, and the shell
+ * opens it.
  *
  * Routes derive from {@link catalogueSections} rather than from a hand-kept parallel list: slugs are
  * {@link routeSlug} of the section id and of the component name, and {@link parseRoute} reads the
@@ -48,8 +51,8 @@
  * honest form of the same guarantee, and the build fails, not just the test.
  *
  * Pure by construction — no DOM, no `window`, no `location`, no renderer — so every decision below is
- * unit-testable without a browser. The host page owns the effects: {@link parseRoute} answers *which*
- * route a hash is, and `pages/src/app.tsx` is what scrolls, marks and titles.
+ * unit-testable without a browser. The effects live elsewhere: {@link parseRoute} answers *which*
+ * route a hash is, the shell (`shell.tsx`) scrolls and marks, and the host titles the document.
  */
 
 import {
@@ -233,6 +236,26 @@ export function pageOfRoute(
   if (match.kind === "page") return match.pageId
   const section = sections.find((candidate) => candidate.id === match.sectionId)
   return section ? pageOfSection(section) : undefined
+}
+
+/**
+ * The page holding the element a bare fragment names, for the ids the guide itself renders: a
+ * section's (`#inputs`) and a page's own (`#icons`, the gallery). `undefined` for anything else —
+ * a card's in-page target, `#top`, a route — whose page the guide cannot know without rendering it.
+ *
+ * @param hash The address's fragment, `#inputs`.
+ * @param sections Sections to resolve against; defaults to the catalogue's.
+ * @returns The page to open so the element is there, or `undefined`.
+ */
+export function pageOfFragment(
+  hash: string,
+  sections: readonly CatalogueSection[] = catalogueSections,
+): GuidePageId | undefined {
+  const id = /^#([^/]+)$/.exec(hash)?.[1]
+  if (id === undefined) return undefined
+  const section = sections.find((candidate) => candidate.id === id)
+  if (section) return pageOfSection(section)
+  return guidePageIds.find((pageId) => pageId === id && pageId !== "overview" && pageId !== "all")
 }
 
 /**

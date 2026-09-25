@@ -453,7 +453,8 @@ export function missingDemos(registry: PartialDemoRegistry): string[] {
 }
 
 /**
- * The guide's pages, in navigation order: the overview, then one page per package.
+ * The guide's pages, in navigation order: the overview, one page per package, then `all`, every
+ * page at once.
  *
  * A page is what the guide renders at one time. The sections above are still the unit a card
  * belongs to and a route names; a page is the package they belong to, so `ui/`'s seven sections are

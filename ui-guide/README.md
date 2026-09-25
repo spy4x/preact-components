@@ -24,13 +24,14 @@ verbatim in spirit.
 An app renders the component at whatever path its router wants, and hands it the address:
 
 ```tsx
-import { UIGuide } from "@preact-components/ui-guide"
+import { UIGuide, useLocationHash } from "@preact-components/ui-guide"
 
-<UIGuide hash={hash} onRouteChange={({ page }) => document.title = page.title} />
+<UIGuide hash={useLocationHash()} onRouteChange={({ page }) => document.title = page.title} />
 ```
 
-`hash` is `location.hash` for a hash-routed host, re-read on every `hashchange`; the guide reads
-nothing from `location` itself. Leave it `undefined` until the host has read the address — on the
+`hash` is `location.hash` for a hash-routed host, re-read on every `hashchange` — which is what
+`useLocationHash()` returns; the guide itself reads nothing from `location`. Without a `hash` the
+guide shows every page at once, and its links change the address and nothing else. Leave it `undefined` until the host has read the address — on the
 server and in the first client render — and the guide renders its `all` page: every page at once,
 which is the markup a reader without JavaScript gets and the tree hydration has to match. Once it is
 a string, the guide renders that route's page and, in an effect, marks and scrolls to the card or
@@ -44,8 +45,8 @@ import { uiGuideRoute } from "@preact-components/ui-guide"
 
 const nav = [...appLinks, { href: uiGuideRoute.path, label: uiGuideRoute.label }]
 
-// at the route:
-<uiGuideRoute.component hash={hash} />
+// at the route — it reads the address's hash itself:
+<uiGuideRoute.component />
 ```
 
 | Prop            | Meaning                                                                                                                            |
@@ -54,7 +55,7 @@ const nav = [...appLinks, { href: uiGuideRoute.path, label: uiGuideRoute.label }
 | `navigate`      | Called with a link's `#/…` href instead of following it, for a host that routes by something other than the fragment.              |
 | `onRouteChange` | Called after a route is shown, with the route and the page showing, so the host can title the document.                            |
 | `pageExtras`    | Host content appended to one page, after its cards — a demo that needs a page of its own.                                          |
-| `labels`        | Overrides for the shell's own strings: the overview's title and line, the navigation's name, the menu and close buttons.           |
+| `labels`        | Overrides for the shell's own strings, each with an English default: titles, button and skip-link names, the overview's counts.    |
 | `registry`      | Registry to render; defaults to the complete one. A partial one raises the banner.                                                 |
 | `copy`          | Clipboard port, forwarded to every copy control — each card's usage block and the icon gallery. Defaults to `navigator.clipboard`. |
 | `class`         | Extra utilities on the guide's root.                                                                                               |
@@ -75,7 +76,9 @@ The shell is a navigation and a page. At `lg` and up the navigation is a sticky 
 page; below that it is a native modal `<dialog>` behind a menu button, which Enter or Space opens,
 Escape closes, and which puts focus back on the button when it closes. The navigation is a `<nav>`
 named by `labels.nav`; it lists every page, marks the one showing `aria-current="page"`, and under it
-lists that page's sections and cards, marking the one the route names `aria-current="true"`.
+lists that page's sections and cards, marking the one the route names `aria-current="true"`. A skip
+link, the guide's first link, moves focus past the navigation to the page. A page's link opens the
+page at its title, including the pages whose id is also their section's (`#/crud`).
 
 A host that keeps sticky chrome above the guide sets `--ui-guide-top` to its height, and the
 navigation column and the phone menu bar stick below it. The page column clips what overflows it
@@ -90,16 +93,18 @@ page replaced the group heading as the unit a reader navigates by, so no heading
 (`@preact-components/ui-guide/routes`) and from the barrel. It is pure — no DOM, no `window`, no
 `location` — so the decision it makes is unit-testable, and the shell owns the effects.
 
-| Hash                     | Match                                                                   | Page            |
-| ------------------------ | ----------------------------------------------------------------------- | --------------- |
-| `""`, `#`, `#/`          | index, `reason: "empty"`                                                | overview        |
-| `#/ui`, `#/icons`        | page — a page whose id is no section's                                  | that page       |
-| `#/inputs`               | section `inputs` — its slug is `routeSlug(id)`, nothing hand-kept       | its package's   |
-| `#/inputs/toggle-switch` | demo `ToggleSwitch`, canonical href from `demoHref(section, name)`      | its package's   |
-| `#toggle-switch`         | the same demo: the bare fragment this page shipped before, kept working | its package's   |
-| `#/nonsense`             | index, `reason: "unknown"` — the sentinel, never a throw                | the one showing |
+| Hash                     | Match                                                                   | Page               |
+| ------------------------ | ----------------------------------------------------------------------- | ------------------ |
+| `""`, `#`, `#/`          | index, `reason: "empty"`                                                | overview           |
+| `#/ui`, `#/icons`        | page — a page whose id is no section's                                  | that page          |
+| `#/inputs`               | section `inputs` — its slug is `routeSlug(id)`, nothing hand-kept       | its package's      |
+| `#/inputs/toggle-switch` | demo `ToggleSwitch`, canonical href from `demoHref(section, name)`      | its package's      |
+| `#toggle-switch`         | the same demo: the bare fragment this page shipped before, kept working | its package's      |
+| `#inputs`, `#icons`      | index, `reason: "unknown"` — a section's or a page's own DOM id         | the one holding it |
+| `#/nonsense`, `#top`     | index, `reason: "unknown"` — the sentinel, never a throw                | the one showing    |
 
-`pageOfRoute` answers the last column, and `pageHref` writes a page's href. A page whose id is also a
+`pageOfRoute` answers the last column for a route, `pageOfFragment` for a bare fragment that names
+an element the guide renders, and `pageHref` writes a page's href. A page whose id is also a
 section's (`charts`, `crud`, `map`, `system`) shares that section's route.
 
 Four decisions worth stating, because a later wave will build on them:
@@ -115,9 +120,11 @@ Four decisions worth stating, because a later wave will build on them:
   silent redirect to `inputs`: the build checks one canonical href per demo, and accepting a second
   would weaken that check.
 - **The index match means "not ours".** A bare fragment that is not a demo name — `#top`, a card's
-  own in-page link, a section's own DOM id — resolves to the index route, and the shell keeps the page
-  showing, so the element the fragment points at is still there for the browser's native anchor
-  handling. Only a first route that names nothing opens the overview.
+  own in-page link, a section's own DOM id — resolves to the index route. When it is a section's or a
+  page's id (`#inputs`, `#icons`), the shell opens the page that holds it and scrolls there, since on
+  another page the element is not rendered; anything else keeps the page showing, so the element is
+  still there for the browser's native anchor handling. Only a first route that names nothing opens
+  the overview.
 - **A page is not a card's address.** Pages are routes a reader navigates by; a card is still
   addressed by its section, so every link written before pages existed still opens its card.
 

@@ -12,7 +12,8 @@
  * trimmed by hand is named in the red banner at the top of the page instead of quietly shrinking it.
  */
 
-import type { ComponentChildren } from "preact"
+import type { ComponentChildren, JSX } from "preact"
+import { useLocationHash } from "./location-hash.ts"
 import { UIGuide, type UIGuideProps } from "./shell.tsx"
 
 /** A route a host app can register, in the shape most routers want. */
@@ -36,16 +37,33 @@ export interface UiGuideRoute {
  * import { uiGuideRoute } from "@preact-components/ui-guide"
  *
  * const navLinks = [...appLinks, { href: uiGuideRoute.path, label: uiGuideRoute.label }]
- * // and at the route: <uiGuideRoute.component />
+ * // and at the route, one line — the component reads the address's hash itself:
+ * <uiGuideRoute.component />
  * ```
+ *
+ * A host that renders `UIGuide` directly passes the hash the same way:
+ * `<UIGuide hash={useLocationHash()} />`. Without a `hash`, the guide shows every page at once and
+ * its links change the address and nothing else.
  */
 export const uiGuideRoute: UiGuideRoute = {
   path: "/ui-guide",
   label: "UI Guide",
-  component: UIGuide,
+  component: HashRoutedGuide,
+}
+
+/**
+ * The guide, routed by the address's hash: what {@link uiGuideRoute} mounts. A `hash` the caller
+ * passes wins over the address.
+ *
+ * @param props See {@link UIGuideProps}.
+ */
+function HashRoutedGuide(props: UIGuideProps): JSX.Element {
+  const hash = useLocationHash()
+  return <UIGuide {...props} hash={props.hash ?? hash} />
 }
 
 export { DemoCard, type DemoCardProps } from "./card.tsx"
+export { useLocationHash } from "./location-hash.ts"
 export { type GuideRouteChange, UIGuide, type UIGuideLabels, type UIGuideProps } from "./shell.tsx"
 export { IconGallery, type IconGalleryProps, iconNames } from "./icons.tsx"
 export {
@@ -54,6 +72,7 @@ export {
   type DemoRouteMatch,
   type IndexRouteMatch,
   pageHref,
+  pageOfFragment,
   pageOfRoute,
   type PageRouteEntry,
   type PageRouteMatch,

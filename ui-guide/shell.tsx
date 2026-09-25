@@ -9,6 +9,8 @@
  *
  * A route that names nothing (`#top`, a card's own in-page link) keeps the page that is showing.
  * Switching to the overview under it would take the element the fragment points at off the page.
+ * A bare fragment that names a section's or a page's own id (`#inputs`, `#icons`) opens the page
+ * that holds it, and the shell scrolls to it there.
  *
  * At `lg` and up the navigation is a sticky column beside the page. Below that it is a native modal
  * `<dialog>` behind a menu button: the button opens it with a click, Enter or Space, Escape closes
@@ -38,6 +40,7 @@ import {
 import {
   demoHref,
   pageHref,
+  pageOfFragment,
   pageOfRoute,
   parseRoute,
   routeHref,
@@ -58,6 +61,19 @@ export interface UIGuideLabels {
   closeNav?: string
   /** What a page with no cards yet says. */
   comingSoon?: string
+  /** The link that jumps past the navigation to the page. Defaults to `"Skip to content"`. */
+  skipToContent?: string
+  /**
+   * The overview's line of totals. Defaults to
+   * `"<cards> live cards · <icons> icons · <packages> packages"`.
+   */
+  stats?: (totals: { cards: number; icons: number; packages: number }) => string
+  /** An overview card's count of live cards. Defaults to `"<count> cards"`, and `"1 card"`. */
+  cardCount?: (count: number) => string
+  /** The icons page's overview card. Defaults to `"<count> icons"`. */
+  iconCount?: (count: number) => string
+  /** An overview card for a package with no cards yet. Defaults to `"Examples coming"`. */
+  examplesComing?: string
 }
 
 const DEFAULT_LABELS: Required<UIGuideLabels> = {
@@ -68,6 +84,12 @@ const DEFAULT_LABELS: Required<UIGuideLabels> = {
   openNav: "Menu",
   closeNav: "Close the guide navigation",
   comingSoon: "Runnable examples for this package are coming. Its README documents it until then.",
+  skipToContent: "Skip to content",
+  stats: ({ cards, icons, packages }) =>
+    `${cards} live cards · ${icons} icons · ${packages} packages`,
+  cardCount: (count) => `${count} ${count === 1 ? "card" : "cards"}`,
+  iconCount: (count) => `${count} icons`,
+  examplesComing: "Examples coming",
 }
 
 /** What the shell tells its host after it has shown a route. */
@@ -83,8 +105,9 @@ export interface UIGuideProps {
    * The address's fragment, `location.hash` for a hash-routed host.
    *
    * Leave it `undefined` until the host has read the address — on the server and in the first
-   * client render — and the shell renders the overview and touches nothing; a string makes it
-   * render that route's page and mark, scroll and report it.
+   * client render — and the shell renders the `all` page, every package at once, and touches
+   * nothing; a string makes it render that route's page and mark, scroll and report it.
+   * `useLocationHash` (`location-hash.ts`) is that value for a host that routes by the fragment.
    */
   hash?: string
   /**
@@ -136,7 +159,9 @@ export function UIGuide(
   // page, for a reader without JavaScript and for hydration to match. That is not a page the reader
   // chose, so it is not kept: a first route that names none opens the overview.
   const shownPage = useRef<GuidePageId>("overview")
-  const pageId = hash === undefined ? "all" : pageOfRoute(route) ?? shownPage.current
+  const pageId = hash === undefined
+    ? "all"
+    : pageOfRoute(route) ?? pageOfFragment(hash) ?? shownPage.current
   if (hash !== undefined) shownPage.current = pageId
   const page = guidePages.find((candidate) => candidate.id === pageId) ?? guidePages[0]
 
@@ -144,6 +169,8 @@ export function UIGuide(
   const dialog = useRef<HTMLDialogElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
   const dialogId = useId()
+  const contentId = useId()
+  const content = useRef<HTMLDivElement>(null)
   const scrolledPage = useRef<GuidePageId | undefined>(undefined)
 
   // The dialog is opened and closed on the element itself, in the handler, and `navOpen` follows
@@ -166,7 +193,8 @@ export function UIGuide(
 
     // The first route read replaces the `all` document with one page, which is not a page change a
     // reader made: a fresh load keeps whatever scroll the browser restored.
-    const pageChanged = scrolledPage.current !== undefined && scrolledPage.current !== page.id
+    const firstRead = scrolledPage.current === undefined
+    const pageChanged = !firstRead && scrolledPage.current !== page.id
     scrolledPage.current = page.id
 
     if (route.kind === "demo") {
@@ -176,13 +204,25 @@ export function UIGuide(
       card.scrollIntoView({ block: "start" })
       return
     }
-    if (route.kind === "section") {
+    // A section that shares its page's id (`#/crud`) is that page's own route, so it opens the page
+    // at its title, below; scrolling to the section would land past the heading.
+    if (route.kind === "section" && route.sectionId !== page.id) {
       document.getElementById(route.sectionId)?.scrollIntoView({ block: "start" })
       return
     }
-    // A new page starts at its top, at once: animating down a page that was just replaced shows
-    // nothing but the wrong content moving.
-    if (pageChanged) globalThis.scrollTo({ top: 0, behavior: "instant" })
+    if (route.kind === "index" && route.reason === "unknown") {
+      // A bare fragment: the browser scrolled to its element when the address changed, unless the
+      // element was not on the page yet — a page switched to hold it, or a fresh load whose `all`
+      // document was just replaced. Only then does the shell scroll there itself.
+      const target = /^#([^/]+)$/.exec(hash)?.[1]
+      const element = target === undefined ? null : document.getElementById(target)
+      if (element && (firstRead || pageChanged)) element.scrollIntoView({ block: "start" })
+      return
+    }
+    // A page's route starts it at its top: at once for a new page, since animating down a page that
+    // was just replaced shows nothing but the wrong content moving, and by the page's own scroll
+    // for the page already showing. A fresh load keeps the scroll the browser restored.
+    if (!firstRead) globalThis.scrollTo({ top: 0, behavior: pageChanged ? "instant" : "auto" })
   }, [hash])
 
   const follow = (href: string, event: JSX.TargetedMouseEvent<HTMLAnchorElement>) => {
@@ -195,105 +235,131 @@ export function UIGuide(
   const missing = missingDemos(registry)
 
   return (
-    <div
-      class={cn(
-        "ui-guide w-full lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-10",
-        className,
-      )}
-      data-guide-page={page.id}
-    >
-      <div class="sticky top-[var(--ui-guide-top,0px)] z-20 flex items-center gap-3 border-b border-gray-200 bg-white/95 py-2 backdrop-blur lg:hidden dark:border-gray-700 dark:bg-gray-900/95">
-        <button
-          ref={trigger}
-          type="button"
-          aria-haspopup="dialog"
-          aria-expanded={navOpen}
-          aria-controls={dialogId}
-          onClick={openNav}
-          class={buttonClasses("outline", "sm")}
-          data-e2e="ui-guide-nav-open"
-        >
-          <IconBars3 class="size-4" />
-          {labels.openNav}
-        </button>
-        <span class="min-w-0 truncate text-sm font-medium text-gray-900 dark:text-gray-100">
-          {page.title}
-        </span>
-      </div>
-
-      <aside class="hidden lg:sticky lg:top-[var(--ui-guide-top,0px)] lg:block lg:max-h-[calc(100dvh-var(--ui-guide-top,0px))] lg:overflow-y-auto lg:py-8">
-        <GuideNav
-          label={labels.nav}
-          page={page}
-          route={route}
-          registry={registry}
-          follow={follow}
-        />
-      </aside>
-
-      <dialog
-        ref={dialog}
-        id={dialogId}
-        aria-label={labels.nav}
-        data-e2e="ui-guide-nav-dialog"
-        onClose={() => {
-          // The `close` event is a queued task, so a reopen can land before it; that event is
-          // stale, and acting on it would empty a dialog that is open again.
-          if (dialog.current?.open) return
-          setNavOpen(false)
-          trigger.current?.focus()
-        }}
-        class="m-0 h-dvh max-h-none w-[min(20rem,85vw)] max-w-none overflow-y-auto border-r border-gray-200 bg-white p-4 text-gray-900 backdrop:bg-gray-950/50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-      >
-        <div class="mb-4 flex items-center justify-between gap-3">
-          <span class="font-mono text-sm font-semibold text-purple-900 dark:text-purple-300">
-            {labels.title}
-          </span>
-          <button
-            type="button"
-            aria-label={labels.closeNav}
-            onClick={closeNav}
-            class={buttonClasses("ghost", "sm")}
-          >
-            <IconXMark class="size-4" />
-          </button>
-        </div>
-        {navOpen
-          ? (
-            <GuideNav
-              label={labels.nav}
-              page={page}
-              route={route}
-              registry={registry}
-              follow={follow}
-            />
-          )
-          : null}
-      </dialog>
-
+    <div class={cn("ui-guide w-full", className)} data-guide-page={page.id}>
       {
-        /* `overflow-x: clip`, not `hidden`: a demo whose tooltip or code runs past a phone's edge is
-        cut there instead of scrolling the whole page sideways, and a clip is no scroll container, so
-        nothing inside loses its sticky or its vertical overflow. */
+        /* First in the guide, ahead of every navigation link. It moves focus itself rather than
+        leaving it to the fragment, so it works under a host that routes by something else, and the
+        fragment stays for a reader without JavaScript. */
       }
-      <div class="min-w-0 space-y-10 overflow-x-clip py-8">
-        <p class="sr-only" aria-live="polite">{page.title}</p>
-        {missing.length > 0 ? <MissingDemoBanner names={missing} /> : null}
-        {(page.id === "all" ? [guidePages[0], ...packagePages] : [page]).map((shown) =>
-          shown.id === "overview"
-            ? <Overview key={shown.id} labels={labels} registry={registry} />
-            : (
-              <PackagePage
-                key={shown.id}
-                page={shown}
-                nested={page.id === "all"}
+      <a
+        href={`#${contentId}`}
+        onClick={(event) => {
+          event.preventDefault()
+          const target = content.current
+          if (!target) return
+          // Focusable only while the skip link has put focus there: a column that stayed focusable
+          // would take the focus of every click on a non-focusable spot inside it, which a menu
+          // reads as focus leaving it, and closes.
+          target.tabIndex = -1
+          target.addEventListener("blur", () => target.removeAttribute("tabindex"), { once: true })
+          target.focus()
+          target.scrollIntoView({ block: "start" })
+        }}
+        class="sr-only rounded-md bg-white px-3 py-2 text-sm font-medium text-purple-900 shadow focus:not-sr-only focus:absolute focus:z-40 dark:bg-gray-900 dark:text-purple-200"
+        data-e2e="ui-guide-skip"
+      >
+        {labels.skipToContent}
+      </a>
+      <div class="lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-10">
+        <div class="sticky top-[var(--ui-guide-top,0px)] z-20 flex items-center gap-3 border-b border-gray-200 bg-white/95 py-2 backdrop-blur lg:hidden dark:border-gray-700 dark:bg-gray-900/95">
+          <button
+            ref={trigger}
+            type="button"
+            aria-haspopup="dialog"
+            aria-expanded={navOpen}
+            aria-controls={dialogId}
+            onClick={openNav}
+            class={buttonClasses("outline", "sm")}
+            data-e2e="ui-guide-nav-open"
+          >
+            <IconBars3 class="size-4" />
+            {labels.openNav}
+          </button>
+          <span class="min-w-0 truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+            {page.title}
+          </span>
+        </div>
+
+        <aside class="hidden lg:sticky lg:top-[var(--ui-guide-top,0px)] lg:block lg:max-h-[calc(100dvh-var(--ui-guide-top,0px))] lg:overflow-y-auto lg:py-8">
+          <GuideNav
+            label={labels.nav}
+            page={page}
+            route={route}
+            registry={registry}
+            follow={follow}
+          />
+        </aside>
+
+        <dialog
+          ref={dialog}
+          id={dialogId}
+          aria-label={labels.nav}
+          data-e2e="ui-guide-nav-dialog"
+          onClose={() => {
+            // The `close` event is a queued task, so a reopen can land before it; that event is
+            // stale, and acting on it would empty a dialog that is open again.
+            if (dialog.current?.open) return
+            setNavOpen(false)
+            // Chromium already returns focus to the button that opened a modal dialog, so the
+            // browser check passes with or without this line; it is here for engines that do not.
+            trigger.current?.focus()
+          }}
+          class="m-0 h-dvh max-h-none w-[min(20rem,85vw)] max-w-none overflow-y-auto border-r border-gray-200 bg-white p-4 text-gray-900 backdrop:bg-gray-950/50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+        >
+          <div class="mb-4 flex items-center justify-between gap-3">
+            <span class="font-mono text-sm font-semibold text-purple-900 dark:text-purple-300">
+              {labels.title}
+            </span>
+            <button
+              type="button"
+              aria-label={labels.closeNav}
+              onClick={closeNav}
+              class={buttonClasses("ghost", "sm")}
+            >
+              <IconXMark class="size-4" />
+            </button>
+          </div>
+          {navOpen
+            ? (
+              <GuideNav
+                label={labels.nav}
+                page={page}
+                route={route}
                 registry={registry}
-                copy={copy}
-                labels={labels}
-                extra={pageExtras?.[shown.id]}
+                follow={follow}
               />
             )
-        )}
+            : null}
+        </dialog>
+
+        {
+          /* `overflow-x: clip`, not `hidden`: a demo whose tooltip or code runs past a phone's
+          edge is cut there instead of scrolling the whole page sideways, and a clip is no scroll
+          container, so nothing inside loses its sticky or its vertical overflow. */
+        }
+        <div
+          ref={content}
+          id={contentId}
+          class="min-w-0 space-y-10 overflow-x-clip py-8 outline-none"
+        >
+          <p class="sr-only" aria-live="polite">{page.title}</p>
+          {missing.length > 0 ? <MissingDemoBanner names={missing} /> : null}
+          {(page.id === "all" ? [guidePages[0], ...packagePages] : [page]).map((shown) =>
+            shown.id === "overview"
+              ? <Overview key={shown.id} labels={labels} registry={registry} follow={follow} />
+              : (
+                <PackagePage
+                  key={shown.id}
+                  page={shown}
+                  nested={page.id === "all"}
+                  registry={registry}
+                  copy={copy}
+                  labels={labels}
+                  extra={pageExtras?.[shown.id]}
+                />
+              )
+          )}
+        </div>
       </div>
     </div>
   )
@@ -444,7 +510,11 @@ function Prose({ text }: { text: string }) {
 
 /** The landing page: what the library is, and a card per page. */
 function Overview(
-  { labels, registry }: { labels: Required<UIGuideLabels>; registry: PartialDemoRegistry },
+  { labels, registry, follow }: {
+    labels: Required<UIGuideLabels>
+    registry: PartialDemoRegistry
+    follow: GuideNavProps["follow"]
+  },
 ) {
   const cards = catalogueNames.filter((name) => name in registry).length
   return (
@@ -455,16 +525,18 @@ function Overview(
         </h1>
         <p class="max-w-[65ch] text-base text-gray-600 dark:text-gray-300">{labels.tagline}</p>
         <p class="text-sm text-gray-500 dark:text-gray-400">
-          {`${cards} live cards · ${iconNames.length} icons · ${packagePages.length} packages`}
+          {labels.stats({ cards, icons: iconNames.length, packages: packagePages.length })}
         </p>
       </header>
       <ul class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {packagePages.map((page) => {
           const count = page.sections.reduce((total, section) => total + section.names.length, 0)
+          const href = pageHref(page.id)
           return (
             <li key={page.id} class="min-w-0">
               <a
-                href={pageHref(page.id)}
+                href={href}
+                onClick={(event) => follow(href, event)}
                 class="block h-full rounded-lg border border-gray-200 bg-white p-4 shadow-xs transition-colors hover:border-purple-400 dark:border-gray-700 dark:bg-gray-800 dark:hover:border-purple-500"
               >
                 <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">
@@ -478,10 +550,10 @@ function Overview(
                 </p>
                 <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
                   {page.id === "icons"
-                    ? `${iconNames.length} icons`
+                    ? labels.iconCount(iconNames.length)
                     : count > 0
-                    ? `${count} ${count === 1 ? "card" : "cards"}`
-                    : "Examples coming"}
+                    ? labels.cardCount(count)
+                    : labels.examplesComing}
                 </p>
               </a>
             </li>
