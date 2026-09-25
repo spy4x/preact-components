@@ -147,7 +147,7 @@ export const chartsDemos = {
     snippet: `<LineChart
   title="Orders per month"
   series={[{ name: "Orders", points: months.map((m) => ({ x: m.label, y: m.orders })) }]}
-  yFormat={(value) => \`\${value} kg\`}
+  yFormat={(value) => value.toFixed(0)}
   xStride={2}
 />`,
     render: () => (
@@ -265,7 +265,7 @@ export const chartsDemos = {
           data={[...revenue, { timeGroup: "2026-03-01T22:00:00.000Z", value: 0 }]}
           timeFrame="hours"
           ignoreZeroes
-          ariaLabel="Power with a gap for missing values"
+          ariaLabel="Revenue with a gap for missing values"
         />
       </div>
     ),
