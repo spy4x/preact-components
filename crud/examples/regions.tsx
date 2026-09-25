@@ -1,12 +1,12 @@
 /**
- * gb's `regions` resource, ported end to end as the worked example for this package.
+ * A source application's `regions` resource, ported end to end as the worked example for this
+ * package.
  *
- * The two source files — `apps/web/routes/devices/regions/(_islands)/List.tsx` (116 lines) and
- * `…/Editor.tsx` (204 lines) — become the schema, the store and the two components below. Every
- * slot that is genuinely about a region is still written out; everything the source files restated
- * (the page layout, the count badge, the debounced search box, the status select, the table shell,
- * the validation loop, the archive toggle, the dependency block, the save button's enabled rule)
- * is the scaffold's.
+ * The two source files — a list (116 lines) and an editor (204 lines) — become the schema, the
+ * store and the two components below. Every slot that is genuinely about a region is still written
+ * out; everything the source files restated (the page layout, the count badge, the debounced search
+ * box, the status select, the table shell, the validation loop, the archive toggle, the dependency
+ * block, the save button's enabled rule) is the scaffold's.
  *
  * The store is the real one — `buildModelStore` from `@preact-components/signals`. This package
  * only ever reads it through the structural interfaces in `store.ts`, which is what lets the two
@@ -75,24 +75,24 @@ export const navigate = (url: string): void => {
 
 // #region Components — 14 lines of list, 15 lines of editor, was 320 between them
 
-/** `/devices/regions` — the table. */
+/** `/regions` — the table. */
 export function RegionList() {
   return (
     <CrudList
       store={regionStore}
       title="Regions"
       match={(region, word) => search(region.name, word)}
-      addHref="/devices/regions/add"
+      addHref="/regions/add"
       canAdd={() => canChange.value}
       header={<th class="text-left" scope="col">Name</th>}
       row={(region) => (
         <td class="text-gray-900">
-          <a href={`/devices/regions/${region.id}/edit`} class="hover:underline">{region.name}</a>
+          <a href={`/regions/${region.id}/edit`} class="hover:underline">{region.name}</a>
         </td>
       )}
       actions={(region) => (
         <RowActions>
-          <RowAction href={`/devices/regions/${region.id}/edit`}>
+          <RowAction href={`/regions/${region.id}/edit`}>
             {canChange.value ? "Edit" : "View"}
           </RowAction>
         </RowActions>
@@ -106,7 +106,7 @@ export type RegionEditorProps =
   | { mode: "add"; editId?: undefined }
   | { mode: "edit"; editId: number }
 
-/** `/devices/regions/add` and `/devices/regions/[id]/edit` — the form. */
+/** `/regions/add` and `/regions/[id]/edit` — the form. */
 export function RegionEditor(props: RegionEditorProps) {
   return (
     <CrudEditor
@@ -115,12 +115,13 @@ export function RegionEditor(props: RegionEditorProps) {
       blank={blankRegion}
       schema={regionBaseSchema}
       entity="Region"
-      cancelHref="/devices/regions"
+      cancelHref="/regions"
       canChange={() => canChange.value}
       // A region archives rather than being removed. Nothing blocks the archive in this example;
-      // in gb the port answers with the region's zones, which have to be archived first.
+      // in the source application the port answers with the region's zones, which have to be
+      // archived first.
       archive={{}}
-      onCreated={(region) => navigate(`/devices/regions/${region.id}/edit`)}
+      onCreated={(region) => navigate(`/regions/${region.id}/edit`)}
     >
       {({ vm, vl }) => <TextField vm={vm} vl={vl} name="name" label="Name" />}
     </CrudEditor>

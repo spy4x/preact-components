@@ -1,10 +1,11 @@
 # `@preact-components/ui-guide`
 
 The live component catalogue, shipped as a component so every app that imports the library gets it
-free. It is a shell — a side navigation and one page at a time — around one demo per component of
-every package it covers (`ui`, `charts`, `system`, `crud` and `map`), one card per group of
-`theme/preset.css` classes, the icon gallery, and the design-system rules components are meant to be
-assembled in.
+free. It shows one page at a time: an overview, then one page per package, picked from a side
+navigation that becomes a modal dialog behind a menu button on a phone. The pages hold one demo per
+component of every package it covers (`ui`, `charts`, `system`, `crud` and `map`), one card per
+group of `theme/preset.css` classes, the icon gallery, and the design-system rules components are
+meant to be assembled in. An app mounts it in one line, `<uiGuideRoute.component />` (see "Usage").
 
 Covering `map/` (#143) is what makes `@preact-components/ui-guide` resolve Leaflet: `map/`'s exact
 `leaflet`/`@types/leaflet` pins reach an app's dependency graph the moment it imports this package's
@@ -30,12 +31,12 @@ import { UIGuide, useLocationHash } from "@preact-components/ui-guide"
 ```
 
 `hash` is `location.hash` for a hash-routed host, re-read on every `hashchange` — which is what
-`useLocationHash()` returns; the guide itself reads nothing from `location`. Without a `hash` the
-guide shows every page at once, and its links change the address and nothing else. Leave it `undefined` until the host has read the address — on the
-server and in the first client render — and the guide renders its `all` page: every page at once,
-which is the markup a reader without JavaScript gets and the tree hydration has to match. Once it is
-a string, the guide renders that route's page and, in an effect, marks and scrolls to the card or
-section the route names.
+`useLocationHash()` returns; the guide itself reads nothing from `location`. While `hash` is
+`undefined` — on the server and in the first client render, before the host has read the address —
+the guide renders its `all` page: every page at once, which is the markup a reader without
+JavaScript gets and the tree hydration has to match, and its links change the address and nothing
+else. Once it is a string, the guide renders that route's page and, in an effect, marks and scrolls
+to the card or section the route names.
 
 Or registers the route descriptor, which is the fix for one source guide being an orphan reachable
 only by typing its URL:

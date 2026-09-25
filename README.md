@@ -20,30 +20,31 @@ see [`docs/pre-publish-checks.md`](./docs/pre-publish-checks.md).
 
 ## Install
 
-Once published, each package below installs on its own:
+Every package is published at the same version every time, so the caret range a package puts on
+its siblings (`^0.1.N`) always resolves to the set published with it — see
+[`docs/publishing.md`](./docs/publishing.md). Once published, each package below installs on its
+own:
 
 ```bash
 deno add jsr:@preact-components/cn        # class-name join + Tailwind conflict resolution
 deno add jsr:@preact-components/icons     # merged icon set
-deno add jsr:@preact-components/signals   # buildModelStore, useUrlFilters, table-state, theme, toast, patchSignal
+deno add jsr:@preact-components/signals   # stores and state helpers; no components
 deno add jsr:@preact-components/theme     # design tokens + Tailwind preset
-deno add jsr:@preact-components/charts    # server-rendered SVG kit + d3 wrappers
-deno add jsr:@preact-components/system    # AuthForm, Calendar, ImageLightbox, SEOHead, Shell, SiteHeader, StateInit, SWUpdater
-deno add jsr:@preact-components/ui        # Badge, Button, Table, DataTable, Dropdown, Combobox, Modal, Tooltip, Toastr — and the rest
-deno add jsr:@preact-components/crud      # CrudList, CrudEditor, AssociationEditor
-deno add jsr:@preact-components/map       # Map on Leaflet (resolves leaflet)
-deno add jsr:@preact-components/ui-guide  # the live component catalogue, as a component your app renders
+deno add jsr:@preact-components/charts    # server-rendered SVG charts + d3 islands
+deno add jsr:@preact-components/system    # app-level pieces: auth form, calendar, shells, SEO head
+deno add jsr:@preact-components/ui        # the component set
+deno add jsr:@preact-components/crud      # list and editor scaffold for one collection
+deno add jsr:@preact-components/map       # map on Leaflet (resolves leaflet)
+deno add jsr:@preact-components/ui-guide  # the live component catalogue, mounted in one line
 ```
 
-Reading each package's sources: `system` and `ui` both import `cn` and `icons`; `system` also
-imports `ui` (`AuthForm`, `Shell` and `ImageLightbox` render its components); `ui` also imports
-`signals`, for its toast port and, since `DataTable` (#231), for `table-state`, and one module of
-`@spy4x/platform` for `ExportButton`'s download; `crud` imports `ui`, `cn`, `icons` and `signals`;
-`map` imports `cn`; `ui-guide` imports `ui`, `cn`, `icons`, `signals` and `charts` the same way,
-plus `crud`, `system` and `map` directly for their catalogue sections — the full set a `ui-guide`
-install resolves. `cn`, `icons`, `signals`, `theme` and `charts` import no sibling package. JSR
-resolves a package's own dependencies the way npm does, so installing `ui` also resolves `cn` and
-`icons` — neither needs adding by hand.
+Which package imports which sibling, read from the sources: `ui` imports `cn`, `icons` and
+`signals`; `system` imports `cn`, `icons` and `ui`; `crud` imports `cn`, `icons`, `signals` and
+`ui`; `map` imports `cn`; `ui-guide` imports every other package, for its catalogue.
+`cn`, `icons`, `signals`, `theme` and `charts` import no sibling. JSR resolves a package's own
+dependencies, so installing `ui` also resolves `cn`, `icons` and `signals` — none needs adding by
+hand. `charts`, `crud`, `signals`, `system` and `ui` also import helpers from `spy4x/ts-libs`
+(`@spy4x/platform`, `@spy4x/time`, `@spy4x/validation`), which JSR resolves the same way.
 
 For the compiled Tailwind stylesheet — the tokens and design-system classes every component here
 renders against — see [`theme/README.md`](./theme/README.md): JSR cannot export a CSS file
@@ -58,6 +59,19 @@ import { Badge } from "@preact-components/ui/badge"
 ```
 
 Every component's own README under the directories below lists its full prop surface.
+
+The UI guide — the catalogue the demo site shows — is a component too. It has an overview and one
+page per package, picked from a side navigation that becomes a dialog on a phone, and an app mounts
+it in one line:
+
+```tsx
+import { uiGuideRoute } from "@preact-components/ui-guide"
+
+<uiGuideRoute.component />
+```
+
+Set `history.scrollRestoration = "manual"` in the host page, so a reload lands on what the address
+names. [`ui-guide/README.md`](./ui-guide/README.md) has the props and the route grammar.
 
 ## Accessibility
 
@@ -75,19 +89,19 @@ reusable Preact + signals package. See [`CREDITS.md`](./CREDITS.md).
 
 ## Scope
 
-```
-theme/       design-system CSS + tailwind preset
-ui/          Badge, Button, Table, DataTable, Dropdown, Combobox, Modal, Tooltip, Toastr — and the rest
-system/      AuthForm, Calendar, ImageLightbox, SEOHead + head store, Shell, SiteHeader, StateInit, SWUpdater
-charts/      server-rendered SVG kit (scales) + d3 wrappers
-icons/       merged icon set (+ brand glyphs)
-cn/          cn() — class-name join + Tailwind conflict resolution
-signals/     buildModelStore, useUrlFilters, table-state, theme, toast, patchSignal — and the rest; no components
-crud/        CrudList, CrudEditor, AssociationEditor
-map/         Map on Leaflet, in its own package so nothing else resolves Leaflet
-ui-guide/    live component catalogue route
-pages/       demo app (GitHub Pages site and the browser checks under pages/checks/), not published
-```
+| Directory   | Contents                                                                                                                                 |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `theme/`    | design-system CSS + Tailwind preset, and the opt-in dark ink palette, as strings (`TOKENS_CSS`, `PRESET_CSS`, `INK_CSS`)                 |
+| `icons/`    | merged icon set: one component per glyph, all listed by the guide's icon gallery                                                         |
+| `ui/`       | `Badge`, `Button`, `Table`, `DataTable`, `Dropdown`, `Combobox`, `Modal`, `Tooltip`, `Toastr` — and the rest                             |
+| `system/`   | `AuthForm`, `Calendar`, `ImageLightbox`, `RailShell`, `SEOHead` + `head` store, `Shell`, `SiteHeader`, `StateInit`, `SWUpdater`          |
+| `charts/`   | server-rendered SVG charts (`LineChart`, `Bars`, `DonutChart`, `Kpi`), axis maths (`scales`), d3 islands (`D3LineChart`, `CompareChart`) |
+| `cn/`       | `cn()` — class-name join + Tailwind conflict resolution                                                                                  |
+| `signals/`  | `buildModelStore`, `useUrlFilters`, `table-state`, `createThemeStore`, `createToastStore`, `patchSignal` — and the rest; no components   |
+| `crud/`     | `CrudList`, `CrudEditor`, `AssociationEditor`, `DeletionValidation`, field rows                                                          |
+| `map/`      | `Map` on Leaflet — its own package, so only an app that imports it resolves Leaflet                                                      |
+| `ui-guide/` | live component catalogue: an overview and one page per package behind a side navigation (`UIGuide`, `uiGuideRoute`)                      |
+| `pages/`    | demo app (GitHub Pages site and the browser checks under `pages/checks/`), not published                                                 |
 
 ## Rules
 
@@ -113,4 +127,6 @@ pages/       demo app (GitHub Pages site and the browser checks under pages/chec
 
 ## Naming policy
 
-Three repos, not a monorepo. Publish pins exactly and commits lockfiles.
+Three repos, not a monorepo. Third-party dependencies publish at the exact versions pinned here,
+and the lockfile is committed. Sibling packages publish as caret ranges, which is why every package
+is released at one version — see [`docs/publishing.md`](./docs/publishing.md).

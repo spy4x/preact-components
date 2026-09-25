@@ -8,19 +8,24 @@ its own PR, each owning exactly one top-level directory.
 
 ## Package layout
 
-| Directory   | Contents                                                                                             |
-| ----------- | ---------------------------------------------------------------------------------------------------- |
-| `theme/`    | design-system CSS + tailwind preset                                                                  |
-| `icons/`    | merged icon set, `+index.tsx`                                                                        |
-| `ui/`       | Badge, Button, Table, DataTable, Dropdown, Combobox, Modal, Tooltip, Toastr — and the rest           |
-| `system/`   | AuthForm, Calendar, ImageLightbox, SEOHead + head store, Shell, SiteHeader, StateInit, SWUpdater     |
-| `charts/`   | server-rendered SVG kit (scales) + d3 wrappers                                                       |
-| `cn/`       | `cn()` — class-name join + Tailwind conflict resolution                                              |
-| `signals/`  | buildModelStore, useUrlFilters, table-state, theme, toast, patchSignal — and the rest; no components |
-| `crud/`     | CrudList, CrudEditor, AssociationEditor                                                              |
-| `map/`      | `Map` on Leaflet — its own package, so only an app that imports it resolves Leaflet                  |
-| `ui-guide/` | live component catalogue route                                                                       |
-| `pages/`    | demo app (GitHub Pages site and the browser checks under `pages/checks/`), not published             |
+| Directory   | Contents                                                                                                                                 |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `theme/`    | design-system CSS + Tailwind preset, and the opt-in dark ink palette, as strings (`TOKENS_CSS`, `PRESET_CSS`, `INK_CSS`)                 |
+| `icons/`    | merged icon set: one component per glyph, all listed by the guide's icon gallery                                                         |
+| `ui/`       | `Badge`, `Button`, `Table`, `DataTable`, `Dropdown`, `Combobox`, `Modal`, `Tooltip`, `Toastr` — and the rest                             |
+| `system/`   | `AuthForm`, `Calendar`, `ImageLightbox`, `RailShell`, `SEOHead` + `head` store, `Shell`, `SiteHeader`, `StateInit`, `SWUpdater`          |
+| `charts/`   | server-rendered SVG charts (`LineChart`, `Bars`, `DonutChart`, `Kpi`), axis maths (`scales`), d3 islands (`D3LineChart`, `CompareChart`) |
+| `cn/`       | `cn()` — class-name join + Tailwind conflict resolution                                                                                  |
+| `signals/`  | `buildModelStore`, `useUrlFilters`, `table-state`, `createThemeStore`, `createToastStore`, `patchSignal` — and the rest; no components   |
+| `crud/`     | `CrudList`, `CrudEditor`, `AssociationEditor`, `DeletionValidation`, field rows                                                          |
+| `map/`      | `Map` on Leaflet — its own package, so only an app that imports it resolves Leaflet                                                      |
+| `ui-guide/` | live component catalogue: an overview and one page per package behind a side navigation (`UIGuide`, `uiGuideRoute`)                      |
+| `pages/`    | demo app (GitHub Pages site and the browser checks under `pages/checks/`), not published                                                 |
+
+A name in backticks in this table must be an export or a subpath of that package, and each
+catalogued package's README lists every component it exports in a "Components" table.
+`infra/scripts/export-lists.test.ts` holds both against the packages' real exports, and it runs in
+`deno task test`.
 
 ## What belongs in this library
 
@@ -79,7 +84,9 @@ The catalogue has to be told about the package: add its directory to `packageIds
 `ui-guide/registry.ts` and give every component it exports a card, or add it to `EXCLUDED_PACKAGES`
 in `ui-guide/coverage.ts` with a reason. A package directory with neither fails `deno task test`.
 Adding a component to a catalogued package means adding its card to that package's section in
-`ui-guide/sections/`; a helper — anything not named in PascalCase — needs nothing.
+`ui-guide/sections/`; `deno task test` fails without one. The test cannot see a helper — anything
+not named in PascalCase — or a changed component, so those rest on the rule in "Every change
+updates the UI guide" below.
 
 ## Branch-first workflow
 
@@ -165,6 +172,11 @@ step, after `check`, against its own clean checkout — `.github/workflows/pages
 `private-names` is not part of `check` either, and no CI runs it: it needs a file of names the owner
 keeps outside the repository, and it exists for the owner to run before every `deno publish`.
 [`docs/pre-publish-checks.md`](./docs/pre-publish-checks.md) says how.
+
+Every package is published at the same version, every time, together (owner decision,
+2026-09-25, #230): sibling imports publish as caret ranges, and one version for all is what keeps
+`^0.1.N` resolving to the set published with it. [`docs/publishing.md`](./docs/publishing.md) has
+the release steps.
 
 Behaviour needs a second pair, in this order:
 
@@ -353,6 +365,18 @@ prop. Nothing in the library throws for want of a label.
 The one exception is a name that cannot be defaulted because only the caller knows it — the
 accessible name of an icon-only trigger, for instance. Those stay required, and required means a
 type error rather than a warning at runtime.
+
+## Every change updates the UI guide
+
+**A new or changed component, helper or hook updates its card or example in `ui-guide/` in the same
+pull request.** Owner rule, 2026-09-25. The guide is how a reader finds out what the library does,
+so a change it does not show is a change nobody sees: a new prop gets a demo, a changed default
+changes the demo's snippet, and a helper or hook a component card does not already exercise gets
+an example of its own.
+
+`deno task test` enforces only part of this: every component-named export of a catalogued package
+needs a card (`ui-guide/coverage.ts`). That a card still matches its component, and that a helper
+or hook is shown at all, is held by review.
 
 ## Validation
 

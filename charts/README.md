@@ -177,9 +177,11 @@ Two failures, both loud, and neither can be turned into a confusing one:
    `d3` namespace and against objects that lack a line generator
    (`d3-line-chart.test.tsx`), not by driving a browser without d3.
 
-### Proving it
+### The probe, and what it shows today
 
-`charts/probe/no-d3-dependency.ts` is a runnable probe, not a claim:
+`charts/probe/no-d3-dependency.ts` is a runnable probe. No CI runs it, and on `main` today its
+second step fails ([issue #123](https://github.com/spy4x/preact-components/issues/123) tracks the
+fix), so what follows is what the probe is built to show, not what a passing run shows today:
 
 ```bash
 deno task --cwd charts probe:no-d3
@@ -196,12 +198,12 @@ specifier pointed at a file that does not exist, and then
 3. repeats it with no `d3` entry in the map at all — what a consumer who never added the dependency
    has — and asserts the message names the file and the fix.
 
-All five assertions are checked and printed as `ok`; the probe exits non-zero if any of them changes. No bundler and no
-bundle-size tool is added for it, and none is used — the byte figures in issue #25 come from a Vite
-build outside this repo and **are not reproducible from this repo**. What is reproducible here is the
-structural claim: the barrel re-exports the d3 islands (assertion 1 of the control, `+index.ts` in the
-failing set), so a consumer who imports it needs d3 resolvable, while a consumer of `svg` or any
-single SVG subpath does not.
+It prints each of its five assertions as `ok` or `FAIL`, and exits non-zero if any fails. No bundler
+and no bundle-size tool is added for it, and none is used — the byte figures in issue #25 come from
+a Vite build outside this repo and **are not reproducible from this repo**. What is reproducible
+here is the structural claim: the barrel re-exports the d3 islands (assertion 1 of the control,
+`+index.ts` in the failing set), so a consumer who imports it needs d3 resolvable, while a consumer
+of `svg` or any single SVG subpath does not.
 
 ## Axis behaviour
 
@@ -248,12 +250,11 @@ tested once, in `@spy4x/platform`'s own `axis.test.ts`. The chart suites render 
 legend rows, percent widths, gradient stops and empty states. `d3-line-chart.test.tsx` additionally
 covers the pure helpers behind the island (`yDomainFor`, `formatTimeTick`), the missing-d3 guard
 (`assertD3Available`) and its server-rendered shell, since d3 itself needs a DOM.
-`preact-render-to-string` is pinned in this package's `deno.json` because the root import map has no
-renderer.
+`preact-render-to-string` comes from the root import map, which pins it for every package's tests.
 
 `charts/probe/no-d3-dependency.ts` is the dependency-boundary suite: it is a task, not a test, because
 it spawns `deno check`/`deno test` subprocesses. `charts/probe/no-d3-path.test.ts` is picked up by
-`deno task test` too, and passing there proves nothing on its own — it is the scratch-map run in the
+`deno task test` too, and passing there shows nothing on its own — it is the scratch-map run in the
 probe that gives it its meaning.
 
 ## Not in this package

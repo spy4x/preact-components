@@ -7,10 +7,10 @@
  * links to — which the build reads back and holds against the resolver, since under hash routing the
  * one document is the whole site and a link the resolver would not accept must fail here.
  *
- * **Why Deno-only.** `template` and `gb` bundle with Vite, and Vite would work here — but it would
- * need a `package.json`, a `node_modules` tree and a second lockfile in CI, plus hand-written
- * aliases for every `@preact-components/*` member Vite cannot see, only to bundle 37 modules and
- * 60 kB of CSS. `deno bundle --platform browser` and Tailwind's own `compile()` API do both from the
+ * **Why Deno-only.** `template` and another app bundle with Vite, and Vite would work here — but it
+ * would need a `package.json`, a `node_modules` tree and a second lockfile in CI, plus hand-written
+ * aliases for every `@preact-components/*` member Vite cannot see, only to bundle 37 modules and 60
+ * kB of CSS. `deno bundle --platform browser` and Tailwind's own `compile()` API do both from the
  * workspace's existing pinned dependencies, through the same import map the packages already use.
  *
  * Steps, in order:

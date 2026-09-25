@@ -1,17 +1,18 @@
 /**
- * Guards the `roley` bookkeeping in `README.md` against the module and against the pinned source
- * inventory.
+ * Guards the ported set's bookkeeping in `README.md` against the module and against the pinned
+ * source inventory. "The ported set" is one earlier private application's icon folder (see
+ * `README.md` → "How this set was merged"); this file names neither the application nor its paths.
  *
  * The earlier bookkeeping drifted four times because its "counts" were derived from `README.md`
  * itself: a check whose expected values live in the file it guards shrinks with the thing it
  * polices. Everything here is therefore anchored outside the claims:
  *
- * - {@linkcode ROLEY_FILES} is the recorded inventory. `roley` is a read-only sibling checkout and
- *   never reaches CI, so its 52 `.svelte` names have to be pinned here as a literal. A human edits
+ * - {@linkcode PORTED_FILES} is the recorded inventory. The source is a private checkout and never
+ *   reaches CI, so its 52 `.svelte` names have to be pinned here as a literal. A human edits
  *   this list deliberately when the source changes.
- * - {@linkcode BARREL} records which of those files `roley/index.ts` re-exports, read from that
- *   file at audit time and pinned here for the same reason.
- * - {@linkcode ROLEY_DIR} is the source of truth for the geometry a port claims to carry.
+ * - {@linkcode BARREL_EXPORTED} records which of those files the source's `index.ts` re-exports,
+ *   read from that file at audit time and pinned here for the same reason.
+ * - The source folder, when its path is given, is the truth for the geometry a port carries.
  * - `+index.tsx` is the source of truth for what this package actually ships.
  *
  * Called by `check-readme.test.ts`. Every failure names the file or the count it caught, so a red
@@ -20,18 +21,21 @@
  * Run it by hand for the full report:
  *
  * ```bash
- * deno run --allow-read icons/check-readme.ts
+ * deno run --allow-read icons/check-readme.ts [path/to/the/ported/set/icons/]
  * ```
+ *
+ * Without the path, the two comparisons against the source report themselves as not run.
  */
 
 /**
- * Pinned inventory of `roley/src/lib/client/components/icons/*.svelte` (52 files).
+ * Pinned inventory of the ported set's `*.svelte` files (52 files).
  *
  * Typed as a `string[]` rather than a literal tuple so a human who edits this list is caught by the
- * audit below instead of by the type checker: a tuple length would make `ROLEY_FILES.length !== 52`
- * a compile error, which fails the wrong way round (the mutation has to be observable *at runtime*).
+ * audit below instead of by the type checker: a tuple length would make `PORTED_FILES.length !==
+ * 52` a compile error, which fails the wrong way round (the mutation has to be observable *at
+ * runtime*).
  */
-export const ROLEY_FILES: string[] = [
+export const PORTED_FILES: string[] = [
   "arrowLeft",
   "arrowRight",
   "back",
@@ -86,12 +90,12 @@ export const ROLEY_FILES: string[] = [
   "warning",
 ]
 
-/** Files `roley/index.ts` re-exports; the other three are `facebook`, `paper` and `plus copy`. */
-export const BARREL_EXPORTED = ROLEY_FILES.filter((file) =>
+/** Files the source's `index.ts` re-exports; the three others: `facebook`, `paper`, `plus copy`. */
+export const BARREL_EXPORTED = PORTED_FILES.filter((file) =>
   !["facebook", "paper", "plus copy"].includes(file)
 )
 
-/** Files that are not `roley`'s to license as icons: third-party trademarked brand marks. */
+/** Files that are not the source's to license as icons: third-party trademarked brand marks. */
 export const BRAND_MARKS = ["facebook", "google", "instagram"] as const
 
 /** A file that carries no inline geometry at all, so there is nothing to port. */
@@ -99,18 +103,6 @@ export const NO_GEOMETRY = ["dot"] as const
 
 /** A file whose barrel name was dropped for a collision and whose drawing is not published here. */
 export const NOT_PORTED = ["upload"] as const
-
-/**
- * Read-only sibling checkout, used for barrel membership and per-port geometry comparison.
- *
- * `roley` lives outside this repository, so only the half of the audit that compares against the
- * source tree needs it. The half that must hold everywhere — the pinned inventory, the ledger, the
- * derived counts and the module's own facts — does not depend on this path.
- */
-export const ROLEY_DIR = new URL(
-  "../../../../roley/src/lib/client/components/icons/",
-  import.meta.url,
-).pathname
 
 /** This package's directory, for `+index.tsx` and `README.md`. */
 const HERE = new URL("./", import.meta.url).pathname
@@ -126,7 +118,7 @@ export interface IconBlock {
 export interface ReadmeClaims {
   ports: { exportName: string; source: string }[]
   folds: { source: string; target: string; kind: string }[]
-  /** The rule-4 exclusion table's `roley` row, split into file names. */
+  /** The rule-4 exclusion table's ported-set row, split into file names. */
   excluded: string[]
   /** Names in the "barrel exported N of the 52 … are the three absent" sentence. */
   barrelAbsent: string[]
@@ -203,14 +195,19 @@ export interface Finding {
   detail: string
 }
 
-/** Every source file `roley/index.ts` re-exports, parsed from the barrel itself. */
-export async function barrelFromSource(dir = ROLEY_DIR): Promise<Set<string>> {
+/** Every source file the source's `index.ts` re-exports, parsed from the barrel itself. */
+export async function barrelFromSource(dir: string): Promise<Set<string>> {
   const barrel = await Deno.readTextFile(`${dir}/index.ts`)
   return new Set([...barrel.matchAll(/from "\.\/([^"]+)\.svelte"/g)].map((match) => match[1]))
 }
 
-/** Audit `README.md` against the pinned inventory, `roley` and `+index.tsx`. */
-export async function audit(): Promise<{
+/**
+ * Audit `README.md` against the pinned inventory, the source and `+index.tsx`.
+ *
+ * @param sourceDir The ported set's icon folder, ending in `/`. Only the barrel and geometry
+ *   comparisons need it; without it they are reported as not run, and everything else still runs.
+ */
+export async function audit(sourceDir?: string): Promise<{
   findings: Finding[]
   checked: string[]
   skipped: string[]
@@ -221,7 +218,8 @@ export async function audit(): Promise<{
   const fail = (name: string, detail: string) => findings.push({ case: name, detail })
 
   // Does the sibling checkout exist? Determines whether the source-comparison half can run at all.
-  const sourcePresent = await Deno.stat(ROLEY_DIR).then(() => true, () => false)
+  const sourcePresent = sourceDir !== undefined &&
+    await Deno.stat(sourceDir).then(() => true, () => false)
   const moduleSource = await Deno.readTextFile(`${HERE}+index.tsx`)
   const markdown = await Deno.readTextFile(`${HERE}README.md`)
   const blocks = parseIconBlocks(moduleSource)
@@ -230,17 +228,17 @@ export async function audit(): Promise<{
   const claims = parseReadmeClaims(markdown)
 
   // --- the pinned inventory is self-consistent ------------------------------------------------
-  const duplicates = ROLEY_FILES.filter((file, i) => ROLEY_FILES.indexOf(file) !== i)
-  if (duplicates.length) fail("ROLEY_FILES", `recorded twice: ${duplicates.join(", ")}`)
-  if (ROLEY_FILES.length !== 52) {
-    fail("ROLEY_FILES.length", `${ROLEY_FILES.length} recorded, expected 52`)
+  const duplicates = PORTED_FILES.filter((file, i) => PORTED_FILES.indexOf(file) !== i)
+  if (duplicates.length) fail("PORTED_FILES", `recorded twice: ${duplicates.join(", ")}`)
+  if (PORTED_FILES.length !== 52) {
+    fail("PORTED_FILES.length", `${PORTED_FILES.length} recorded, expected 52`)
   }
-  checked.push(`inventory: ${ROLEY_FILES.length} pinned files, no duplicates`)
+  checked.push(`inventory: ${PORTED_FILES.length} pinned files, no duplicates`)
 
   // --- every file lands on exactly one side of the ledger -------------------------------------
   const sides = new Map<string, string[]>()
   const add = (file: string, side: string) => {
-    if (!ROLEY_FILES.includes(file)) {
+    if (!PORTED_FILES.includes(file)) {
       fail(file, `README.md lists ${file} as ${side}, but it is not in the recorded inventory`)
       return
     }
@@ -252,7 +250,7 @@ export async function audit(): Promise<{
   for (const file of NO_GEOMETRY) add(file, "no geometry")
   for (const file of NOT_PORTED) add(file, "barrelled, not ported")
 
-  for (const file of ROLEY_FILES) {
+  for (const file of PORTED_FILES) {
     const on = sides.get(file)
     if (!on) fail(file, "not accounted for on any side of the ledger")
     else if (on.length > 1) fail(file, `on ${on.length} sides at once: ${on.join(" + ")}`)
@@ -261,7 +259,7 @@ export async function audit(): Promise<{
     .map((port) => port.source)
     .filter((source) => claims.folds.some((fold) => fold.source === source))
   for (const file of onBothTables) fail(file, "listed as both a port and a fold")
-  checked.push(`ledger: ${ROLEY_FILES.length} files, each on exactly one side`)
+  checked.push(`ledger: ${PORTED_FILES.length} files, each on exactly one side`)
 
   // --- rule 4 is the exclusion list: every non-export must be on it, nothing else may be ------
   const nonExports = [...sides.keys()].filter((file) => !sides.get(file)!.includes("port"))
@@ -271,7 +269,7 @@ export async function audit(): Promise<{
     }
   }
   for (const file of claims.excluded) {
-    if (!ROLEY_FILES.includes(file)) {
+    if (!PORTED_FILES.includes(file)) {
       fail(file, "listed in the rule-4 exclusion table but not in the recorded inventory")
     }
     if (sides.get(file)?.includes("port")) {
@@ -279,42 +277,46 @@ export async function audit(): Promise<{
     }
   }
   checked.push(
-    `rule-4 exclusions: ${claims.excluded.length} roley files, ` +
+    `rule-4 exclusions: ${claims.excluded.length} ported-set files, ` +
       `${nonExports.length} non-exporting files all listed`,
   )
 
   // --- barrel membership, against the barrel's own name for each file -------------------------
-  // `roley` is a read-only sibling checkout and never reaches CI, so this half reports itself as
-  // unverified there instead of failing: the inventory stays pinned above, which is what carries the
-  // check to a machine without the source tree.
-  const barrel = await barrelFromSource().catch(() => new Set<string>())
+  // The source is a private checkout and never reaches CI, so this half reports itself as
+  // unverified there instead of failing: the inventory stays pinned above, which is what carries
+  // the check to a machine without the source tree.
+  const barrel = sourcePresent
+    ? await barrelFromSource(sourceDir).catch(() => new Set<string>())
+    : new Set<string>()
   if (barrel.size === 0) {
     skipped.push(
-      `barrel membership: ${ROLEY_DIR}/index.ts not present; ` +
+      `barrel membership: no source index.ts given or readable; ` +
         `${BARREL_EXPORTED.length} exports recorded as pinned`,
     )
   } else {
-    const absent = ROLEY_FILES.filter((file) => !barrel.has(file))
+    const absent = PORTED_FILES.filter((file) => !barrel.has(file))
     for (const file of claims.barrelAbsent) {
       if (!absent.includes(file)) {
-        fail(file, `README.md says it is absent from roley's barrel, but index.ts exports it`)
+        fail(file, `README.md says it is absent from the source's barrel, but index.ts exports it`)
       }
     }
     for (const file of absent) {
       if (!claims.barrelAbsent.includes(file)) {
-        fail(file, `absent from roley's barrel but not named in the README's absent list`)
+        fail(file, `absent from the source's barrel but not named in the README's absent list`)
       }
     }
     for (const file of NO_GEOMETRY) {
-      if (!barrel.has(file)) fail(file, "README.md says roley exports it, but the barrel does not")
+      if (!barrel.has(file)) {
+        fail(file, "README.md says the source exports it, but the barrel does not")
+      }
     }
     if (barrel.size !== BARREL_EXPORTED.length) {
-      fail("roley/index.ts", `${barrel.size} exports on disk, ${BARREL_EXPORTED.length} recorded`)
+      fail("source index.ts", `${barrel.size} exports on disk, ${BARREL_EXPORTED.length} recorded`)
     }
     checked.push(`barrel: ${barrel.size} exports, ${absent.length} absent (${absent.join(", ")})`)
   }
 
-  // --- every port names an export that exists, and carries roley's exact geometry -------------
+  // --- every port names an export that exists, and carries the source's exact geometry ------
   for (const port of claims.ports) {
     const block = byName.get(port.exportName)
     if (!block) {
@@ -325,10 +327,10 @@ export async function audit(): Promise<{
       fail(port.exportName, `JSDoc does not mark the ported source family`)
     }
     if (!sourcePresent) continue
-    const sourceBody = await Deno.readTextFile(`${ROLEY_DIR}${port.source}.svelte`)
+    const sourceBody = await Deno.readTextFile(`${sourceDir}${port.source}.svelte`)
       .catch(() => undefined)
     if (sourceBody === undefined) {
-      fail(port.source, `cannot read the roley source to compare ${port.exportName}'s geometry`)
+      fail(port.source, `cannot read the source file to compare ${port.exportName}'s geometry`)
       continue
     }
     const mine = pathDataList(block.body).join("|")
@@ -336,9 +338,9 @@ export async function audit(): Promise<{
     // `IconSuccess` is fed by two byte-identical source files; either is an acceptable match.
     const alsoMatches = (["checkCircle", "success"] as const).filter((file) => file !== port.source)
     if (mine !== theirs && !alsoMatches.length) {
-      fail(port.source, `${port.exportName}'s path data is not byte-identical to roley's`)
+      fail(port.source, `${port.exportName}'s path data is not byte-identical to the source's`)
     } else if (mine !== theirs) {
-      const sibling = await Deno.readTextFile(`${ROLEY_DIR}${alsoMatches[0]}.svelte`)
+      const sibling = await Deno.readTextFile(`${sourceDir}${alsoMatches[0]}.svelte`)
         .catch(() => "")
       if (pathDataList(sibling).join("|") !== mine) {
         fail(port.source, `${port.exportName}'s path data matches neither source`)
@@ -347,11 +349,11 @@ export async function audit(): Promise<{
   }
   checked.push(
     sourcePresent
-      ? `ports: ${claims.ports.length} rows, geometry compared to the roley sources`
-      : `ports: ${claims.ports.length} rows (geometry not compared; no roley checkout here)`,
+      ? `ports: ${claims.ports.length} rows, geometry compared to the source files`
+      : `ports: ${claims.ports.length} rows (geometry not compared; no source folder given)`,
   )
   if (!sourcePresent) {
-    skipped.push(`per-port geometry vs roley: ${ROLEY_DIR} not present`)
+    skipped.push(`per-port geometry vs the source: no source folder given or readable`)
   }
 
   // --- derived counts, computed here and compared to what the prose claims --------------------
@@ -374,7 +376,7 @@ export async function audit(): Promise<{
   }
   if (
     derived.ports + derived.folds + derived.brandMarks + derived.noGeometry + derived.notPorted !==
-      ROLEY_FILES.length
+      PORTED_FILES.length
   ) {
     fail(
       "ledger arithmetic",
@@ -383,7 +385,7 @@ export async function audit(): Promise<{
         `${
           derived.ports + derived.folds + derived.brandMarks + derived.noGeometry +
           derived.notPorted
-        }, expected ${ROLEY_FILES.length}`,
+        }, expected ${PORTED_FILES.length}`,
     )
   }
   checked.push(
@@ -392,11 +394,11 @@ export async function audit(): Promise<{
       `${derived.foldTargets} distinct exports`,
   )
 
-  // --- stroke-width split of the roley family, from the module --------------------------------
-  const roleyBlocks = blocks.filter((block) => block.doc.includes("from a source application"))
-  const stroked = roleyBlocks.filter((block) => strokeWidth(block.body) === "2").length
-  const strokeless = roleyBlocks.filter((block) => strokeWidth(block.body) === undefined).length
-  const otherWidths = roleyBlocks
+  // --- stroke-width split of the ported family, from the module -------------------------------
+  const portedBlocks = blocks.filter((block) => block.doc.includes("from a source application"))
+  const stroked = portedBlocks.filter((block) => strokeWidth(block.body) === "2").length
+  const strokeless = portedBlocks.filter((block) => strokeWidth(block.body) === undefined).length
+  const otherWidths = portedBlocks
     .filter((block) => {
       const width = strokeWidth(block.body)
       return width !== undefined && width !== "2"
@@ -411,14 +413,14 @@ export async function audit(): Promise<{
       `claims ${claimedTotal[1]} glyphs, +index.tsx exports ${blocks.length}`,
     )
   }
-  if (roleyBlocks.length !== derived.ports) {
+  if (portedBlocks.length !== derived.ports) {
     fail(
-      "roley family in +index.tsx",
-      `${roleyBlocks.length} glyphs marked roley, but the port table lists ${derived.ports}`,
+      "ported family in +index.tsx",
+      `${portedBlocks.length} glyphs marked as ported, but the port table lists ${derived.ports}`,
     )
   }
   for (const odd of otherWidths) {
-    fail(odd, "roley glyph is neither stroke-2 nor strokeless; the README's split is stale")
+    fail(odd, "ported glyph is neither stroke-2 nor strokeless; the README's split is stale")
   }
   const claimed = new RegExp(`(\\d+) \\\`stroke-2\\\`[^.]*?(\\d+) filled`).exec(markdown)
   if (!claimed) {
@@ -430,7 +432,7 @@ export async function audit(): Promise<{
     )
   }
   checked.push(
-    `roley family: ${stroked} stroke-2 + ${strokeless} strokeless = ${roleyBlocks.length}`,
+    `ported family: ${stroked} stroke-2 + ${strokeless} strokeless = ${portedBlocks.length}`,
   )
 
   // --- the contract's size counts, from the module --------------------------------------------
@@ -474,7 +476,7 @@ export async function audit(): Promise<{
 }
 
 if (import.meta.main) {
-  const { findings, checked, skipped } = await audit()
+  const { findings, checked, skipped } = await audit(Deno.args[0])
   for (const line of checked) console.log(`  ok   ${line}`)
   for (const line of skipped) console.log(`  --   ${line}`)
   for (const { case: name, detail } of findings) console.error(`  FAIL ${name}: ${detail}`)

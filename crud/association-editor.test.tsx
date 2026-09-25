@@ -14,36 +14,35 @@ import {
 import { TextField } from "./field.tsx"
 import type { CrudRow, OperationState } from "./types.ts"
 
-/** A junction row: it exists only to join a lamp box and a zone. */
-interface ZoneLampBox extends CrudRow {
-  lampBoxId: number
+/** A junction row: it exists only to join a site and a zone. */
+interface ZoneSite extends CrudRow {
+  siteId: number
   zoneId: number
 }
 
-const row = (patch: Partial<ZoneLampBox> = {}): ZoneLampBox => ({
+const row = (patch: Partial<ZoneSite> = {}): ZoneSite => ({
   id: 0,
-  lampBoxId: 7,
+  siteId: 7,
   zoneId: 0,
   deletedAt: null,
   ...patch,
 })
 
 /** The duplicate rule both source editors wrote: same parent, same child, different row. */
-const samePair = (a: ZoneLampBox, b: ZoneLampBox) =>
-  a.lampBoxId === b.lampBoxId && a.zoneId === b.zoneId
-const conflict = (value: ZoneLampBox, rows: ZoneLampBox[]) =>
+const samePair = (a: ZoneSite, b: ZoneSite) => a.siteId === b.siteId && a.zoneId === b.zoneId
+const conflict = (value: ZoneSite, rows: ZoneSite[]) =>
   rows.find((other) => other.id !== value.id && samePair(other, value))
 
 const idle: OperationState = { inProgress: false, result: null, error: null }
 
 interface FakeStore {
-  store: CrudAssociationStore<ZoneLampBox>
+  store: CrudAssociationStore<ZoneSite>
   removed: number[]
   restored: number[]
 }
 
 /** A junction store with no network behind it: it records removals and restores. */
-function fakeStore(rows: ZoneLampBox[] = []): FakeStore {
+function fakeStore(rows: ZoneSite[] = []): FakeStore {
   const removed: number[] = []
   const restored: number[] = []
 
@@ -76,12 +75,12 @@ function fakeStore(rows: ZoneLampBox[] = []): FakeStore {
 const conflictInput = {
   conflict,
   field: "zoneId" as const,
-  message: "This zone is already associated with this lamp box.",
+  message: "This zone is already associated with this site.",
   removedMessage: "This association existed before and was removed.",
 }
 
 describe("conflictIssue", () => {
-  const clean: ValidationModel<ZoneLampBox> = {}
+  const clean: ValidationModel<ZoneSite> = {}
 
   it("leaves the model clean when nothing duplicates it", () => {
     const vl = conflictIssue(row({ zoneId: 3 }), clean, { ...conflictInput, rows: [] })
@@ -147,7 +146,7 @@ describe("AssociationEditor", () => {
   const shared = {
     blank: row(),
     entity: "association",
-    cancelHref: "/devices/lamp-boxes/7/zones",
+    cancelHref: "/sites/7/zones",
     conflictField: "zoneId" as const,
     conflict,
   }
