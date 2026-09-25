@@ -23,6 +23,7 @@ const MENU_DIALOG = `[data-e2e="ui-guide-nav-dialog"]`
  * @param devtools The connected session, on a hydrated page.
  */
 export async function uiGuideChecks(devtools: Devtools): Promise<void> {
+  await serverTextChecks(devtools)
   await copyBlockChecks(devtools)
   await withViewport(devtools, 1280, 800, () => navigationChecks(devtools))
   await withViewport(devtools, 375, 812, () => phoneNavigationChecks(devtools))
@@ -192,6 +193,187 @@ async function copyBlockChecks(devtools: Devtools): Promise<void> {
     feedback,
     "the glyph changed after the click",
   )
+}
+
+/** One card's text, split into the part compared everywhere and the part an effect draws. */
+interface CardText {
+  /** The card's text with every {@link DrawnInBrowser.selector} match left out. */
+  rest: string
+  /** The text of those matches alone; empty for a card with nothing listed. */
+  drawn: string
+  /** How many elements matched the selector (outermost matches only). */
+  parts: number
+}
+
+/**
+ * The text of every card, keyed by its `demo-<Name>` id, with each run of whitespace collapsed to
+ * one space. A page expression taking the root to read and a map of card id to the selector of the
+ * part left out of `rest`, so the same reading applies to the served document parsed in the page
+ * and to the live one.
+ *
+ * A `<textarea>` counts by its value rather than its child text: the server writes the value as the
+ * element's text, while Preact in the browser sets the `value` property and leaves the element
+ * empty, so `textContent` alone reports every filled textarea as a difference.
+ */
+const CARD_TEXTS = `(root, drawnBy) => {
+  const squash = (text) => text.replace(/\\s+/g, " ").trim()
+  const read = (card) => {
+    const selector = drawnBy[card.id]
+    const rest = []
+    const drawn = []
+    let parts = 0
+    const walk = (node, into) => {
+      if (node.nodeType === Node.TEXT_NODE) return void into.push(node.data)
+      if (node.nodeType !== Node.ELEMENT_NODE) return
+      if (into === rest && selector && node.matches(selector)) {
+        into = drawn
+        parts++
+      }
+      if (node.nodeName === "TEXTAREA") return void into.push(" " + node.value + " ")
+      for (const child of node.childNodes) walk(child, into)
+    }
+    walk(card, rest)
+    return { rest: squash(rest.join("")), drawn: squash(drawn.join(" ")), parts }
+  }
+  return Object.fromEntries(
+    [...root.querySelectorAll('article[id^="demo-"]')].map((card) => [card.id, read(card)]),
+  )
+}`
+
+/** A part of a card that an effect draws, so its text exists only in the browser. */
+interface DrawnInBrowser {
+  /** A selector inside the card for that part; everything else in the card is still compared. */
+  selector: string
+  /** Why this part cannot match the served document. */
+  reason: string
+  /**
+   * How many elements the selector matches in the card in the browser. A different count fails the
+   * run, so a second element that happens to match (another status region, another chart) is not
+   * left out silently.
+   */
+  parts: number
+}
+
+/**
+ * The cards with a part whose text is expected to differ between the served document and the page
+ * after it runs. Only the part the selector names is left out; the rest of the card is compared
+ * like any other. A listed part whose text stops differing fails the check, so the list cannot
+ * outlive its reason.
+ */
+const TEXT_DRAWN_IN_BROWSER: Record<string, DrawnInBrowser> = {
+  "demo-CrudEditor": {
+    selector: `[role="status"][aria-atomic="true"]`,
+    parts: 1,
+    reason: "validation runs in an effect, so the cross-field message in the live region above " +
+      "Save exists only in the browser",
+  },
+  "demo-D3LineChart": {
+    selector: `svg[role="img"]`,
+    parts: 2,
+    reason: "d3 draws the chart's axes and lines into its svg in an effect",
+  },
+  "demo-CompareChart": {
+    selector: `svg[role="img"]`,
+    parts: 1,
+    reason: "d3 draws the chart's axes and lines into its svg in an effect",
+  },
+  "demo-Map": {
+    selector: ".leaflet-control-container",
+    parts: 1,
+    reason: "Leaflet adds its zoom controls in an effect",
+  },
+}
+
+/**
+ * #303: every card shows the same text in the browser as in the served, server-rendered document.
+ *
+ * Preact replaces text that differs from the server's while it hydrates, and logs nothing, so a card
+ * whose output depends on the clock, the time zone, the locale or a browser-only API passes the
+ * console check while a reader without JavaScript sees something else. The served `index.html` is
+ * fetched from the page's own address and parsed there; it is the guide's `all` page, so it holds
+ * every card. Each package page is then opened, and every card's text, read the same way, is
+ * compared with the served card of the same id. Text only: attributes and styles are not compared.
+ */
+async function serverTextChecks(devtools: Devtools): Promise<void> {
+  const drawnBy = JSON.stringify(
+    Object.fromEntries(
+      Object.entries(TEXT_DRAWN_IN_BROWSER).map(([id, { selector }]) => [id, selector]),
+    ),
+  )
+  const served = await devtools.evaluate<Record<string, CardText>>(`(async () => {
+    const response = await fetch(location.href.split("#")[0], { cache: "no-store" })
+    const html = await response.text()
+    const document = new DOMParser().parseFromString(html, "text/html")
+    return (${CARD_TEXTS})(document, ${drawnBy})
+  })()`)
+
+  const differing = new Map<string, string>()
+  const missing: string[] = []
+  const stillSame: string[] = []
+  const wrongParts: string[] = []
+  const seen = new Set<string>()
+  for (const page of guidePages.filter((each) => each.id !== "all" && each.sections.length > 0)) {
+    await openGuidePage(devtools, page.id)
+    const live = await devtools.evaluate<Record<string, CardText>>(
+      `(${CARD_TEXTS})(document, ${drawnBy})`,
+    )
+    for (const [id, text] of Object.entries(live)) {
+      seen.add(id)
+      const server = served[id]
+      if (server === undefined) {
+        missing.push(id)
+        continue
+      }
+      if (server.rest !== text.rest) differing.set(id, whereTextsDiffer(server.rest, text.rest))
+      if (id in TEXT_DRAWN_IN_BROWSER && server.drawn === text.drawn) stillSame.push(id)
+      const listedParts = TEXT_DRAWN_IN_BROWSER[id]?.parts
+      if (listedParts !== undefined && text.parts !== listedParts) {
+        wrongParts.push(`#${id} (${text.parts}, listed ${listedParts})`)
+      }
+    }
+  }
+
+  const expected = guidePages.filter((page) => page.id !== "all").reduce(
+    (total, page) => total + page.sections.reduce((sum, section) => sum + section.names.length, 0),
+    0,
+  )
+  const listed = Object.keys(TEXT_DRAWN_IN_BROWSER)
+  const unseen = listed.filter((id) => !seen.has(id))
+  check(
+    "every card shows the same text in the browser as in the served document",
+    seen.size === expected && Object.keys(served).length === expected && missing.length === 0 &&
+      differing.size === 0 && stillSame.length === 0 && unseen.length === 0 &&
+      wrongParts.length === 0,
+    [
+      `${seen.size}/${expected} cards read in the browser, ${Object.keys(served).length} served, ` +
+      `${listed.length} with a part drawn in the browser left out`,
+      missing.length > 0 ? `not in the served document: ${missing.join(", ")}` : "",
+      differing.size > 0
+        ? `text differs: ${[...differing].map(([id, where]) => `#${id} (${where})`).join(", ")}`
+        : "",
+      stillSame.length > 0
+        ? `listed part now the same on both sides, so drop it from the list: ${
+          stillSame.join(", ")
+        }`
+        : "",
+      unseen.length > 0 ? `listed but no such card: ${unseen.join(", ")}` : "",
+      wrongParts.length > 0
+        ? `a listed selector matches a different number of parts: ${wrongParts.join(", ")}`
+        : "",
+    ].filter(Boolean).join("; "),
+  )
+}
+
+/**
+ * Where two card texts part: a few characters of each from the first one that differs, so a failure
+ * says what changed as well as which card.
+ */
+function whereTextsDiffer(served: string, live: string): string {
+  let at = 0
+  while (at < served.length && served[at] === live[at]) at++
+  const from = Math.max(0, at - 10)
+  const excerpt = (text: string) => JSON.stringify(text.slice(from, at + 30))
+  return `served ${excerpt(served)}, browser ${excerpt(live)}`
 }
 
 /** What one page of the guide shows, read off the live document. */
