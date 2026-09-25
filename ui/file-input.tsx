@@ -65,7 +65,11 @@ export interface FileInputProps {
   multiple?: boolean
   /** Largest accepted file size, in bytes. Omitted accepts any size. */
   maxSize?: number
-  /** Visible label text, above the drop zone. */
+  /**
+   * Visible label text, above the drop zone. Nested inside `Field`, `Field` supplies the
+   * association and this may be left out. Standalone, it is the input's only accessible name —
+   * pass one, or the control reaches assistive tech with none.
+   */
   label?: ComponentChildren
   /** Helper text under the file list. */
   hint?: ComponentChildren
@@ -113,6 +117,12 @@ export interface FileInputProps {
 const dropZoneBase = cn(
   "flex flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed",
   "border-gray-300 px-6 py-8 text-center transition-colors dark:border-gray-600",
+  // The native input is clipped to 1px (`sr-only`), so its own `:focus-visible` paints nothing a
+  // sighted keyboard user can see. `has-[:focus-visible]` reads that state off the descendant input
+  // and rings the visible zone instead — the same ring every other focusable control in this
+  // package uses, moved from the (invisible) input onto the box that stands in for it.
+  "has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-purple-900",
+  "has-[:focus-visible]:ring-offset-2 dark:has-[:focus-visible]:ring-purple-400",
 )
 const dropZoneInteractive = "cursor-pointer hover:border-gray-400 dark:hover:border-gray-500"
 const dropZoneDragging = "border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950/30"
@@ -214,6 +224,7 @@ export function FileInput(
   const [rejectionMessage, setRejectionMessage] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
   const previewUrls = useRef<Map<File, string>>(new Map())
+  const rejectionTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const [, forceRender] = useState(0)
 
   // Creates a preview for every image newly in `files`, revokes one for every file that left it.
@@ -245,6 +256,7 @@ export function FileInput(
     return () => {
       for (const url of previewUrls.current.values()) URL.revokeObjectURL(url)
       previewUrls.current.clear()
+      if (rejectionTimer.current !== undefined) clearTimeout(rejectionTimer.current)
     }
   }, [])
 
@@ -260,17 +272,20 @@ export function FileInput(
 
   const resolvedBrowse = labels.browse ?? "Choose files"
   const resolvedDropHint = labels.dropHint ?? "or drag and drop"
-  const removeFileLabel = labels.removeFile ?? defaultRemoveFileLabel
-  const tooLargeLabel = labels.tooLarge ?? defaultTooLarge
-  const wrongTypeLabel = labels.wrongType ?? defaultWrongType
-  const tooManyLabel = labels.tooMany ?? defaultTooMany
+  const {
+    removeFile: removeFileLabel,
+    tooLarge: tooLargeLabel,
+    wrongType: wrongTypeLabel,
+    tooMany: tooManyLabel,
+  } = resolveLabels(labels)
 
   const announceRejection = (text: string) => {
     // Cleared, then set on the next tick — the same two-step `ExportButton` uses, so a second
     // refusal with the exact same text is a real DOM mutation and not a silent no-op a screen
     // reader never hears.
+    if (rejectionTimer.current !== undefined) clearTimeout(rejectionTimer.current)
     setRejectionMessage("")
-    setTimeout(() => setRejectionMessage(text), 0)
+    rejectionTimer.current = setTimeout(() => setRejectionMessage(text), 0)
   }
 
   const syncInputFiles = (list: File[]) => {
@@ -282,30 +297,14 @@ export function FileInput(
   }
 
   const handleFiles = (selected: File[]) => {
-    const accepted: File[] = []
-    const rejected: FileRejection[] = []
-    for (const file of selected) {
-      if (maxSize !== undefined && file.size > maxSize) {
-        rejected.push({ file, reason: "too-large" })
-        continue
-      }
-      if (!matchesAccept(file, accept)) {
-        rejected.push({ file, reason: "wrong-type" })
-        continue
-      }
-      accepted.push(file)
-    }
+    const { accepted: keep, rejected } = classifyFiles(selected, { accept, maxSize, multiple })
 
-    // Without `multiple`, only the first accepted file has a slot: the rest are refused with
-    // `"too-many"` rather than silently dropped, since a silent drop gives no reason a caller's
-    // `onReject` — or the live region — could ever surface.
-    let keep = accepted
-    if (!multiple && accepted.length > 1) {
-      keep = accepted.slice(0, 1)
-      for (const file of accepted.slice(1)) rejected.push({ file, reason: "too-many" })
-    }
-
-    const next = multiple ? dedupeFiles([...files, ...keep]) : keep
+    // Without `multiple`, a batch that accepts nothing new (every file in it refused) leaves the
+    // file already chosen in place rather than clearing it — the browser has already swapped the
+    // native input's own `.files` for the refused selection by the time this runs, so `files`
+    // itself is the only place the earlier file still exists; `syncInputFiles` below writes it
+    // back onto the input.
+    const next = multiple ? dedupeFiles([...files, ...keep]) : keep.length > 0 ? keep : files
     setFiles(next)
     syncInputFiles(next)
     onFiles?.(next)
@@ -460,6 +459,63 @@ function defaultWrongType(name: string): string {
 /** Default {@link FileInputLabels.tooMany}. */
 function defaultTooMany(name: string): string {
   return `${name} was not chosen — only one file is allowed`
+}
+
+/**
+ * Fills in every message-building label {@link FileInputLabels} leaves unset with its default,
+ * exported so a caller's override — or the fallback it replaces — can be checked directly, without
+ * driving a real file chooser to reach the code that would otherwise call it.
+ */
+export function resolveLabels(labels: FileInputLabels): {
+  removeFile: (name: string) => string
+  tooLarge: (name: string, maxSize: number) => string
+  wrongType: (name: string) => string
+  tooMany: (name: string) => string
+} {
+  return {
+    removeFile: labels.removeFile ?? defaultRemoveFileLabel,
+    tooLarge: labels.tooLarge ?? defaultTooLarge,
+    wrongType: labels.wrongType ?? defaultWrongType,
+    tooMany: labels.tooMany ?? defaultTooMany,
+  }
+}
+
+/**
+ * Splits `selected` into the files {@link FileInput} would keep and the files it would refuse,
+ * applying `accept`, `maxSize` and `multiple` exactly as `handleFiles` does — extracted so the
+ * classification itself (including the `maxSize` boundary) can be unit-tested without a browser.
+ *
+ * @param selected The files a chooser or drop just offered.
+ * @param options `accept`/`maxSize`/`multiple`, read the same way {@link FileInputProps} does.
+ */
+export function classifyFiles(
+  selected: File[],
+  options: { accept?: string; maxSize?: number; multiple?: boolean },
+): { accepted: File[]; rejected: FileRejection[] } {
+  const accepted: File[] = []
+  const rejected: FileRejection[] = []
+  for (const file of selected) {
+    if (options.maxSize !== undefined && file.size > options.maxSize) {
+      rejected.push({ file, reason: "too-large" })
+      continue
+    }
+    if (!matchesAccept(file, options.accept)) {
+      rejected.push({ file, reason: "wrong-type" })
+      continue
+    }
+    accepted.push(file)
+  }
+
+  // Without `multiple`, only the first accepted file has a slot: the rest are refused with
+  // `"too-many"` rather than silently dropped, since a silent drop gives no reason a caller's
+  // `onReject` — or the live region — could ever surface.
+  let keep = accepted
+  if (!options.multiple && accepted.length > 1) {
+    keep = accepted.slice(0, 1)
+    for (const file of accepted.slice(1)) rejected.push({ file, reason: "too-many" })
+  }
+
+  return { accepted: keep, rejected }
 }
 
 /**
