@@ -385,75 +385,135 @@ async function installBoxChecks(devtools: Devtools): Promise<void> {
 }
 
 /**
- * `MarginNote` sits beside its paragraph on a wide viewport and inline with it on a narrow one —
- * the one claim in its own doc comment ("side column on wide screens, inline on narrow, CSS-only")
- * a string render cannot prove, because it depends on which media query matches, not on markup.
+ * `MarginNote` floats by the width of its column, not the viewport's (#296): inline in a column
+ * narrower than 30rem at any viewport width, beside its paragraph in a column at least that wide
+ * even on a phone-width viewport. A string render cannot prove it, because it depends on which
+ * container query matches, not on markup.
  *
- * The desktop half reads both `getComputedStyle(aside).float` and actual geometry: `float` alone
- * only proves the CSS property resolved to `"right"`, not that the note ended up sitting where a
- * float placement should put it, so this also requires the note to share rows with its sibling
- * paragraph and its left edge to sit right of that paragraph's own left edge — a full-width note
- * would start where the paragraph starts. The sibling, not the card's description, is the one
- * measured.
+ * Each case reads the column's layout through `layoutOf`: `getComputedStyle(aside).float` and the
+ * geometry of the note against its sibling paragraph. `float` alone only proves the property
+ * resolved; "beside" also needs the two to share rows with the note's left edge right of the
+ * paragraph's, and "inline" needs the note to end above the paragraph's top.
  *
- * `Emulation.setDeviceMetricsOverride` narrows the viewport for the phone-width half and
- * `clearDeviceMetricsOverride` restores it in a `finally`, so a package block that runs after this
- * one is never handed a viewport this check changed and forgot to put back.
+ * Four cases, so each direction is proven at a viewport where a viewport breakpoint would answer
+ * the other way, plus two readings that pin the threshold:
+ *
+ * 1. The catalogue card as rendered, at the run's own viewport (at least 640px, asserted, so the
+ *    old `sm:` breakpoint would have floated it) and narrower than 30rem (also asserted): inline.
+ * 2. The same column widened to 640px on that viewport: beside the paragraph. Then 479px (inline)
+ *    and 480px (beside), so a threshold moved away from 30rem in either direction fails one.
+ * 3. The card as rendered at a 375px viewport: inline.
+ * 4. The column widened to 640px at that 375px viewport: beside the paragraph.
+ *
+ * The viewport override is cleared and then the column's inline `width` and `max-width` are put
+ * back in a `finally`, so a package block that runs after this one is handed the page it expects.
  *
  * @param devtools The connected session, on a hydrated page.
  */
 async function marginNoteChecks(devtools: Devtools): Promise<void> {
-  await centreInView(devtools, `document.querySelector('#demo-MarginNote aside')`)
-  const desktop = await devtools.evaluate<
-    { float: string; asideLeft: number; paragraphLeft: number; overlaps: boolean } | null
-  >(
-    `(() => {
-      const aside = document.querySelector('#demo-MarginNote aside')
-      const paragraph = aside?.parentElement?.querySelector(':scope > p')
-      if (!aside || !paragraph) return null
-      const a = aside.getBoundingClientRect()
-      const p = paragraph.getBoundingClientRect()
-      return {
-        float: getComputedStyle(aside).float,
-        asideLeft: a.left,
-        paragraphLeft: p.left,
-        overlaps: a.top < p.bottom && p.top < a.bottom,
-      }
-    })()`,
-  )
-  check(
-    "MarginNote sits beside its paragraph at desktop width — sharing rows with its sibling paragraph, right of its left edge",
-    desktop !== null && desktop.float === "right" && desktop.overlaps &&
-      desktop.asideLeft > desktop.paragraphLeft + 8,
-    desktop === null
-      ? "the MarginNote card has no <aside> or <p> to read"
-      : `float ${JSON.stringify(desktop.float)}, aside.left ${desktop.asideLeft} vs ` +
-        `paragraph.left ${desktop.paragraphLeft}, overlapping ${desktop.overlaps} at desktop width`,
-  )
+  const asideQuery = `document.querySelector('#demo-MarginNote aside')`
+  interface Layout {
+    float: string
+    columnWidth: number
+    viewportWidth: number
+    asideLeft: number
+    asideBottom: number
+    paragraphLeft: number
+    paragraphTop: number
+    overlaps: boolean
+  }
+  /** Set the column's inline width (`""` puts the card's own back) and read the note's layout. */
+  const layoutOf = (width: string) =>
+    devtools.evaluate<Layout | null>(
+      `(() => {
+        const aside = ${asideQuery}
+        const column = aside?.parentElement
+        const paragraph = column?.querySelector(':scope > p')
+        if (!aside || !column || !paragraph) return null
+        column.style.width = ${JSON.stringify(width)}
+        column.style.maxWidth = ${JSON.stringify(width === "" ? "" : "none")}
+        const a = aside.getBoundingClientRect()
+        const p = paragraph.getBoundingClientRect()
+        return {
+          float: getComputedStyle(aside).float,
+          columnWidth: column.getBoundingClientRect().width,
+          viewportWidth: innerWidth,
+          asideLeft: a.left,
+          asideBottom: a.bottom,
+          paragraphLeft: p.left,
+          paragraphTop: p.top,
+          overlaps: a.top < p.bottom && p.top < a.bottom,
+        }
+      })()`,
+    )
+  const describe = (layout: Layout | null) =>
+    layout === null
+      ? "the MarginNote card has no <aside>, column or <p> to read"
+      : `float ${JSON.stringify(layout.float)} in a ${layout.columnWidth}px column at a ` +
+        `${layout.viewportWidth}px viewport; aside.left ${layout.asideLeft} vs paragraph.left ` +
+        `${layout.paragraphLeft}, aside.bottom ${layout.asideBottom} vs paragraph.top ` +
+        `${layout.paragraphTop}, overlapping ${layout.overlaps}`
+  const isInline = (layout: Layout | null) =>
+    layout !== null && layout.float === "none" && layout.asideBottom <= layout.paragraphTop + 0.5
+  const isBeside = (layout: Layout | null) =>
+    layout !== null && layout.float === "right" && layout.overlaps &&
+    layout.asideLeft > layout.paragraphLeft + 8
 
   try {
+    await centreInView(devtools, asideQuery)
+    const narrowDesktop = await layoutOf("")
+    check(
+      "MarginNote stays inline in a column narrower than 30rem on a viewport of at least 640px",
+      narrowDesktop !== null && narrowDesktop.viewportWidth >= 640 &&
+        narrowDesktop.columnWidth < 480 && isInline(narrowDesktop),
+      describe(narrowDesktop),
+    )
+    const wideDesktop = await layoutOf("640px")
+    check(
+      "MarginNote floats beside its paragraph once its column is 640px wide",
+      isBeside(wideDesktop),
+      describe(wideDesktop),
+    )
+    const justBelow = await layoutOf("479px")
+    check(
+      "MarginNote stays inline in a 479px column, one pixel under the 30rem threshold",
+      isInline(justBelow),
+      describe(justBelow),
+    )
+    const atThreshold = await layoutOf("480px")
+    check(
+      "MarginNote floats beside its paragraph in a 480px column, exactly the 30rem threshold",
+      isBeside(atThreshold),
+      describe(atThreshold),
+    )
+    await layoutOf("")
+
     await devtools.send("Emulation.setDeviceMetricsOverride", {
       width: 375,
       height: 812,
       deviceScaleFactor: 1,
       mobile: true,
     })
-    await centreInView(devtools, `document.querySelector('#demo-MarginNote aside')`)
-    const phoneFloat = await devtools.evaluate<string | null>(
-      `(() => {
-        const aside = document.querySelector('#demo-MarginNote aside')
-        return aside ? getComputedStyle(aside).float : null
-      })()`,
-    )
+    await centreInView(devtools, asideQuery)
+    const narrowPhone = await layoutOf("")
     check(
-      "MarginNote falls back to inline block layout at 375px, clear of the sm: float",
-      phoneFloat === "none",
-      phoneFloat === null
-        ? "the MarginNote card has no <aside> to read at 375px"
-        : `getComputedStyle(aside).float reads ${JSON.stringify(phoneFloat)} at 375px`,
+      "MarginNote stays inline in the catalogue card at a 375px viewport",
+      narrowPhone !== null && narrowPhone.viewportWidth === 375 && isInline(narrowPhone),
+      describe(narrowPhone),
+    )
+    const widePhone = await layoutOf("640px")
+    check(
+      "MarginNote floats beside its paragraph in a 640px column even at a 375px viewport",
+      widePhone !== null && widePhone.viewportWidth === 375 && isBeside(widePhone),
+      describe(widePhone),
     )
   } finally {
-    await devtools.send("Emulation.clearDeviceMetricsOverride")
+    // The viewport first: if putting the column back throws, later blocks still get their window.
+    try {
+      await devtools.send("Emulation.clearDeviceMetricsOverride")
+    } finally {
+      await layoutOf("")
+    }
   }
 }
 

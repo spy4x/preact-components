@@ -970,6 +970,38 @@ announced the same way a `maxSize`/`accept` refusal is, rather than silently dro
 
 It does not upload — sending the chosen files is the caller's own form post or `fetch` call.
 
+## MarginNote
+
+`MarginNote` floats beside its paragraph by the width of the column it sits in, not by the
+viewport's: in a column at least 30rem (480px) wide it floats right, 12rem wide, beside the text
+that follows it; in a narrower column it renders inline, in reading order, whatever the screen size.
+A note in a sidebar or a narrow card on a desktop therefore no longer squeezes its paragraph into a
+sliver beside it.
+
+That is a CSS container query, and a container query measures an ancestor, never the element
+itself. So the caller marks the column as the container with Tailwind's `@container` class, which
+sets `container-type: inline-size`, and puts the note before the paragraph it annotates:
+
+```tsx
+<div class="@container flow-root max-w-prose">
+  <MarginNote sourceHref={benchmarkUrl} sourceLabel="Benchmark">
+    Cold start under 50ms on a shared vCPU.
+  </MarginNote>
+  <p>The paragraph the note sits beside.</p>
+</div>
+```
+
+The query measures the nearest ancestor marked `@container`, which is not necessarily the column the
+note sits in: a narrow column without the class, inside a wider ancestor that has it, floats the
+note. So put `@container` on the column itself. With no container above it at all, the note never
+floats, which is the safe reading: inline is correct in a column of any width, while a float is
+correct only in a wide one.
+
+`container-type: inline-size` stops an element from taking its width from its content. A column
+marked `@container` therefore needs its width from its parent — a block in normal flow, a grid
+track, or an explicit width. A flex item with no width of its own collapses to 0px. `flow-root` keeps the floated note
+inside the column when the paragraph is shorter than the note.
+
 ## Tests
 
 `deno task test` from the repo root. Tests render each component with

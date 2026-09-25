@@ -49,10 +49,12 @@ function formatCheckedOn(iso: string, locale: string): string {
  *
  * A real `<aside>`, named `"Note"` by default through `aria-label` so it reads as a landmark
  * distinct from the surrounding prose — a caller with several notes on one page overrides `label`
- * to tell them apart. Column placement is CSS alone: a wide viewport floats the note into the right
- * margin (`float: right`, into whatever margin the caller's own layout leaves for it), a narrow one
- * renders it inline, in reading order, through the `sm:`-gated utilities below — no JavaScript
- * media-query listener, so the layout is correct before hydration.
+ * to tell them apart. Column placement is CSS alone, and it follows the width of the column the note
+ * sits in, not the viewport's: in a column at least 30rem (480px) wide the note floats right beside
+ * its paragraph, in a narrower one it renders inline, in reading order. That is a container query
+ * (`@min-[30rem]:`), so the caller marks the column as the container with Tailwind's `@container`
+ * class (`container-type: inline-size`); with no container above it the note never floats. No
+ * JavaScript listener, so the layout is correct before hydration.
  */
 export function MarginNote(
   {
@@ -70,7 +72,7 @@ export function MarginNote(
     <aside
       aria-label={label}
       class={cn(
-        "border-subtle text-muted block border-l-2 pl-3 text-sm sm:float-right sm:ml-6 sm:w-48 sm:border-l-0 sm:pl-0",
+        "border-subtle text-muted block border-l-2 pl-3 text-sm @min-[30rem]:float-right @min-[30rem]:ml-6 @min-[30rem]:w-48 @min-[30rem]:border-l-0 @min-[30rem]:pl-0",
         className,
       )}
     >
