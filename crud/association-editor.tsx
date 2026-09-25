@@ -2,10 +2,10 @@ import { IconLoading } from "@spy4x/preact-icons"
 import type { ReadonlySignal, Signal } from "@preact/signals"
 import type { Type } from "arktype"
 import type { ComponentChildren, JSX } from "preact"
+import { timeAgo } from "@spy4x/platform/universal/time"
 import { setFieldIssue, type ValidationModel } from "@spy4x/validation/model"
 import { CrudEditor, type CrudEditorMode, type CrudEditorSlot } from "./crud-editor.tsx"
 import type { CrudEditorStore } from "./store.ts"
-import { timeAgo } from "./time-ago.ts"
 import type { CrudRow, OperationResult, OperationState } from "./types.ts"
 
 /**

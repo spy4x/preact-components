@@ -9,7 +9,6 @@
     "./deletion-validation": "./deletion-validation.tsx",
     "./field": "./field.tsx",
     "./store": "./store.ts",
-    "./time-ago": "./time-ago.ts",
     "./types": "./types.ts"
   },
   "publish": {

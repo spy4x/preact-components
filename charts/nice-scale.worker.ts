@@ -1,7 +1,7 @@
 /**
  * Worker used by `scales.test.ts` to call {@link niceScale} off the main thread.
  *
- * `niceScale`'s own tick generation (`ticksForStep`) can loop as many times as an absurd `target`
+ * `niceScale`'s tick generation (ts-libs' `stepAxis`) could loop as many times as an absurd `target`
  * option asks for, and `deno test` has no per-test timeout, so a regression here would hang the
  * whole suite instead of failing it. Running the call in a worker lets the test terminate it on a
  * deadline and report a failure — the same reason `ticks.worker.ts` exists for the public `ticks`.

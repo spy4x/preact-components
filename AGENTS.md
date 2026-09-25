@@ -433,7 +433,7 @@ arktype                          2.2.3
 @std/testing                    1.0.20
 preact-render-to-string          6.7.0
 tailwind-merge                   3.7.0
-@spy4x/platform, time, validation 1.3.0
+@spy4x/platform, time, validation 1.4.0
 tailwindcss                     4.1.12
 ```
 

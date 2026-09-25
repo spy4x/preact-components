@@ -263,7 +263,10 @@ the entities blocking the archive are the same both times. Scrolling stays insid
 rather than becoming a caller-controlled port, because every caller wants the same outcome and a
 port would only make each one write the same call back in.
 `RowActions`/`RowAction` are the per-row menu: a link when given an `href`, a button when given an
-`onClick`, red when `danger`. `timeAgo` and `formatTimestamp` format the archive line.
+`onClick`, red when `danger`. `timeAgo` and `formatTimestamp` format the archive line; both come from
+`@spy4x/platform/universal/time` (#306). `formatTimestamp` is ts-libs' `formatTime` under this
+package's name, and it decides "Today" in `options.timeZone`, the zone it prints in. `timeAgo`
+measures from the host clock.
 
 ## Worked example: a source application's regions, end to end
 
@@ -424,7 +427,8 @@ Small, deliberate, and each one is why the source files could drift:
 - **The error banner renders `error.message`.** The source files interpolated the error object into
   a paragraph.
 - **`timeAgo` no longer reports "0 years ago"** for something 360–364 days old; it keeps counting
-  months until a full year has passed.
+  months until a full year has passed. ts-libs carries the same fix since 1.4.0
+  (spy4x/ts-libs#206).
 - **`undelete`, not `restore`.** The state layer names the operation `undelete`, and the scaffold
   uses its vocabulary — the button label stays "Restore".
 - **The archive toggle is a port (`archive`), not a default.** Every source editor had one; a
@@ -438,7 +442,7 @@ Small, deliberate, and each one is why the source files could drift:
 deno test crud/       # from the repository root
 ```
 
-Every module has a colocated suite: the relative timestamps (`time-ago.test.ts`), the save-enabled
+Every module has a colocated suite: the time labels (`time.test.ts`), the save-enabled
 rule, the submit routing, the archive toggle and editor chrome (`crud-editor.test.ts`), the field rows
 rendered to real markup (`field.test.tsx`), the list's status switch, count, error, search binding
 and actions column (`crud-list.test.tsx`), the two structural interfaces satisfied by the real

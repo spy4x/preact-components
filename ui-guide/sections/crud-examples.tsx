@@ -55,12 +55,12 @@ const examples: ExampleFragment = {
   timeAgo: {
     title: "timeAgo()",
     summary:
-      "How long ago a timestamp was, in words; `now` is a parameter, so a render never depends on the clock.",
+      "How long ago a timestamp was, in words, measured from the clock; two and a half hours ago always reads the same.",
     snippet: `import { timeAgo } from "@spy4x/preact-crud"
 
-timeAgo("2026-01-01T10:00:00Z", new Date("2026-01-01T12:30:00Z"))`,
+timeAgo(Date.now() - 150 * 60_000)`,
     covers: ["timeAgo"],
-    run: () => timeAgo("2026-01-01T10:00:00Z", new Date("2026-01-01T12:30:00Z")),
+    run: () => timeAgo(Date.now() - 150 * 60_000),
   },
   formatTimestamp: {
     title: "formatTimestamp()",

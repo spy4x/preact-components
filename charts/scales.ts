@@ -3,21 +3,14 @@
  *
  * Nothing here touches Preact, the DOM or `d3`: every function is a total, deterministic mapping
  * from numbers to numbers, which is why the axis behaviour is testable without a renderer. The
- * `niceStep`/`ticks` pair now lives once, in `@spy4x/platform/universal/axis` (spy4x/ts-libs#70,
- * spy4x/preact-components#123), and is re-exported here so `./scales` — this package's own public
- * subpath — keeps both names for its existing importers (`ticks.worker.ts`, `line-chart.tsx`, the
- * package barrels). `niceScale` below still keeps its own copy of the tick loop, with the same
- * iteration cap as ts-libs, until ts-libs exports that loop (spy4x/ts-libs#201).
+ * `niceStep`/`ticks` pair and the tick loop behind `niceScale` live once, in
+ * `@spy4x/platform/universal/axis` (spy4x/ts-libs#70, spy4x/ts-libs#201,
+ * spy4x/preact-components#123). `niceStep` and `ticks` are re-exported here so `./scales` — this
+ * package's own public subpath — keeps both names for its existing importers (`ticks.worker.ts`,
+ * `line-chart.tsx`, the package barrels).
  */
-import { niceStep, ticks } from "@spy4x/platform/universal/axis"
+import { niceStep, stepAxis, ticks } from "@spy4x/platform/universal/axis"
 export { niceStep, ticks }
-
-/**
- * Hard ceiling on the ticks `niceScale` generates. It caps both the output length and the loop's
- * iterations, so an absurd tick target cannot hang it; the `nice-scale.worker.ts` deadline test
- * covers this.
- */
-const MAX_TICKS = 1_000
 
 /** Domain returned when the caller passes values that cannot be plotted. */
 const FALLBACK_DOMAIN: readonly [number, number] = [0, 1]
@@ -77,24 +70,20 @@ export function paddedDomain(
  * This is what a chart actually wants: the caller hands in the raw data extent, and gets back a
  * domain whose bounds are multiples of {@link NiceScale.step} together with the matching ticks. A
  * single-value series still produces a usable, non-degenerate domain.
+ *
+ * Rounding and ticks come from `stepAxis`, so they follow its rules: every tick is an exact multiple
+ * of the step, even a step like `2.5` (`niceScale(0, 10, { target: 4 })` starts at `-2.5`); a padded
+ * domain that overflows to `±Infinity` has no ticks; `Infinity` is never a tick or a bound that a
+ * finite domain rounds up to; and a step too fine for the domain leaves the bounds unrounded
+ * instead of turning them into `Infinity`. A step `niceStep` cannot produce falls back to `1`.
  */
 export function niceScale(min: number, max: number, options: NiceScaleOptions = {}): NiceScale {
-  const target = normaliseTarget(options.target)
   const padded = paddedDomain(min, max, options.padRatio)
-  const step = niceStep(padded.max - padded.min, target)
-  if (!Number.isFinite(step) || step <= 0) {
-    return {
-      min: padded.min,
-      max: padded.max,
-      step: 1,
-      ticks: ticksForStep(padded.min, padded.max, 1),
-    }
-  }
-
-  const low = roundToStep(Math.floor(padded.min / step) * step, step)
-  const high = roundToStep(Math.ceil(padded.max / step) * step, step)
-
-  return { min: low, max: high, step, ticks: ticksForStep(low, high, step) }
+  // `niceStep` treats a missing, non-finite or below-1 target as the default of 5.
+  const nice = niceStep(padded.max - padded.min, options.target)
+  const step = Number.isFinite(nice) && nice > 0 ? nice : 1
+  const axis = stepAxis(padded.min, padded.max, step)
+  return { min: axis.min, max: axis.max, step, ticks: axis.ticks }
 }
 
 /**
@@ -132,61 +121,4 @@ export function xLabelStride(count: number, maxLabels = 8): number {
   const limit = Number.isFinite(maxLabels) && maxLabels >= 1 ? Math.floor(maxLabels) : 8
   if (!Number.isFinite(count) || count <= 1) return 1
   return Math.max(1, Math.ceil(count / limit))
-}
-
-/**
- * Tick values for `[low, high]` at a given step, limited to the bounds ± half a step.
- *
- * Values are rounded relative to the step instead of to a fixed number of decimals: rounding to
- * eight decimals collapses every tick of a sub-nanosecond span to `0`, and a fixed-decimal form
- * cannot represent a step like `2e-13` at all.
- *
- * The loop advances by index rather than by cursor. Where the step is finer than the float precision
- * of the bounds, `v += step` is a no-op — `ticks(1e18, 1e18 + 100)` never terminates with a cursor,
- * because one ulp at `1e18` is 128 while the nice step is 20 — so the source looped forever there.
- * Multiplying the index moves the cursor in multiples of the step and always terminates; repeated
- * values collapse, leaving the representable bounds.
- *
- * **Bounded by `MAX_TICKS`, not just its output.** `steps` is `(end - start) / step`, and an absurd
- * tick target (`niceScale(1e6, 2e6, { target: 1e25 })`, say) makes `step` many orders of magnitude
- * smaller than the float precision at `low`/`high`'s magnitude. Every `roundToStep` result then
- * collapses onto the same handful of doubles, so `out.length` almost stops growing while `index`
- * keeps climbing toward a `steps` that can itself be `1e25` — relying on `out.length < MAX_TICKS`
- * alone never terminates, which is exactly this bug: it shipped on `main` until it was found and
- * fixed the same way in `@spy4x/platform/universal/axis`'s copy (spy4x/ts-libs#70) and ported back.
- * Capping the loop itself at `Math.min(steps + 1, MAX_TICKS)` is the fix: return whichever ticks
- * distinguish themselves within `MAX_TICKS` iterations — as few as one, if the target is absurd
- * enough that nothing else is representable — rather than hang the page.
- */
-function ticksForStep(low: number, high: number, step: number): number[] {
-  const start = Math.floor(low / step) * step
-  const end = Math.ceil(high / step) * step
-  const steps = Math.round((end - start) / step)
-  if (!Number.isFinite(steps) || steps < 0) return [low, high]
-
-  const out: number[] = []
-  const iterationCeiling = Math.min(steps + 1, MAX_TICKS)
-  for (let index = 0; index <= iterationCeiling && out.length < MAX_TICKS; index++) {
-    const value = roundToStep(start + index * step, step)
-    if (value < low - step / 2 || value > high + step / 2) continue
-    if (out.length > 0 && out[out.length - 1] === value) continue
-    out.push(value)
-  }
-
-  return out.length > 0 ? out : [low, high]
-}
-
-/** Round to the precision implied by `step`, keeping only exactly representable magnitudes. */
-function roundToStep(value: number, step: number): number {
-  const decimals = -Math.floor(Math.log10(step))
-  const factor = decimals > 0 ? 10 ** decimals : 1
-  if (!Number.isFinite(factor) || factor === 0) return value
-
-  const rounded = Math.round(value * factor) / factor
-  return Number.isFinite(rounded) ? rounded : value
-}
-
-/** Coerce a tick target to a usable step count; garbage falls back to the default of 5. */
-function normaliseTarget(target: number | undefined): number {
-  return target !== undefined && Number.isFinite(target) && target >= 1 ? Math.floor(target) : 5
 }
