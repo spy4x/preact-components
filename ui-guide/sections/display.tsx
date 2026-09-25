@@ -307,9 +307,10 @@ function FactCardDemo() {
 
 /**
  * `MarginNote` before a paragraph in a column marked `@container`, so the note's container query
- * has a column to measure. The card is narrower than 30rem, so the note sits inline here; in a
- * column at least 30rem wide it floats beside the paragraph (the browser check widens this column
- * to prove it).
+ * has a column to measure. At most window widths this card's column is narrower than 30rem, so the
+ * note sits inline; in a window about 600 to 720px wide the column is wider than 30rem and the note
+ * floats beside the paragraph. The browser check sets the column's width itself, so it does not
+ * depend on which of these the run's window gives.
  */
 function MarginNoteDemo() {
   return (
@@ -1059,7 +1060,7 @@ export const displayDemos = {
   },
   MarginNote: {
     summary:
-      "A short aside with an optional source link or a `checked on` date, rendered as a real `<time>`. It floats beside its paragraph in a column at least 30rem wide and sits inline in a narrower one, whatever the screen size — a CSS container query, so the column carries Tailwind's `@container` class. This card is narrower than 30rem, so the note is inline here.",
+      "A short aside with an optional source link or a `checked on` date, rendered as a real `<time>`. It floats beside its paragraph in a column at least 30rem wide and sits inline in a narrower one, whatever the screen size — a CSS container query, so the column carries Tailwind's `@container` class. At most window widths this card's column is narrower than 30rem, so the note sits inline; in a window about 600 to 720px wide the column is wider than 30rem and the note floats.",
     snippet: `<div class="@container flow-root">
   <MarginNote sourceHref={benchmarkUrl} sourceLabel="Benchmark" checkedOn="2026-09-01">
     Cold start under 50ms on a shared vCPU.
