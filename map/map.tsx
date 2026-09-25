@@ -54,7 +54,12 @@
 import { cn } from "@spy4x/preact-cn"
 import type { JSX } from "preact"
 import { useEffect, useRef, useState } from "preact/hooks"
-import { type LeafletMapHandle, mountLeafletMap, type ZoomLabels } from "./leaflet-map.ts"
+import {
+  leafletFromImport,
+  type LeafletMapHandle,
+  mountLeafletMap,
+  type ZoomLabels,
+} from "./leaflet-map.ts"
 import { MarkerList } from "./marker-list.tsx"
 import type { MapCenter, MapMarker } from "./types.ts"
 
@@ -209,7 +214,7 @@ export function Map(
     const args = mountArgsFrom({ tileUrl, center, zoom, zoomInLabel, zoomOutLabel, onLoadError })
 
     mountLeafletMap(
-      () => import("leaflet"),
+      () => import("leaflet").then(leafletFromImport),
       containerRef.current,
       args.tileUrl,
       args.center,

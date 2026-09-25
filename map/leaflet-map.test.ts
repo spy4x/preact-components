@@ -1,6 +1,7 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import {
+  leafletFromImport,
   type LeafletModule,
   MARKER_DOT_CLASSES,
   mountLeafletMap,
@@ -52,6 +53,25 @@ describe("MARKER_DOT_CLASSES", () => {
 function fakeLeafletModule(map: (...args: unknown[]) => unknown): LeafletModule {
   return { map } as unknown as LeafletModule
 }
+
+describe("leafletFromImport", () => {
+  it("returns the namespace when the import resolved to it", () => {
+    const namespace = { map: () => {} } as unknown as LeafletModule
+    expect(leafletFromImport(namespace)).toBe(namespace)
+  })
+
+  it("unwraps the namespace when the import resolved to { default: L }", () => {
+    const namespace = { map: () => {} } as unknown as LeafletModule
+    expect(leafletFromImport({ default: namespace })).toBe(namespace)
+  })
+
+  it("throws a named error when the import resolved to neither shape", () => {
+    const shape = /neither the Leaflet namespace nor \{ default: Leaflet \}/
+    expect(() => leafletFromImport({} as unknown as LeafletModule)).toThrow(shape)
+    expect(() => leafletFromImport({ default: {} } as unknown as { default: LeafletModule }))
+      .toThrow(shape)
+  })
+})
 
 describe("mountLeafletMap", () => {
   it("reports a failed load through onLoadError instead of throwing", async () => {
