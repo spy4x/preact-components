@@ -39,7 +39,7 @@ describe("example cards", () => {
 })
 
 describe("every registered example", () => {
-  it("calls each export it covers, in its snippet and in its run", () => {
+  it("names each export it covers, in its snippet and in its run", () => {
     // Without this, a name could be added to `covers` and struck from the pending list with no
     // example ever running it.
     const examples = Object.entries(exampleDemos)
