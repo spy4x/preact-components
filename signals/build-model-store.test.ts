@@ -2,8 +2,9 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { effect, signal } from "@preact/signals"
 import { type } from "arktype"
+import { ErrType } from "@spy4x/platform/universal/errors"
 import { buildModelStore } from "./build-model-store.ts"
-import { ErrType, RemoteEvent, type ToastMessage } from "./types.ts"
+import { RemoteEvent, type ToastMessage } from "./types.ts"
 
 const dateSchema = type("Date | string.date.iso.parse")
 
@@ -259,7 +260,7 @@ describe("buildModelStore create", () => {
     const result = await store.create({ name: "" })
 
     expect(calls).toEqual([])
-    expect(result.error?.type).toBe(ErrType.VALIDATION)
+    expect(result.error?.type).toBe(ErrType.Validation)
     expect(store.op.create.value.inProgress).toBe(false)
     expect(toast.messages[0].body).toBe(
       "Provided data doesn't seem valid. Check the form validation error messages.",
@@ -270,8 +271,8 @@ describe("buildModelStore create", () => {
     const { impl } = queueFetch()
     const store = buildStore({ fetch: impl })
     const { error } = await store.create({ name: 42 } as unknown as { name: string })
-    expect(error?.type).toBe(ErrType.VALIDATION)
-    if (error?.type !== ErrType.VALIDATION) throw new Error("expected a validation error")
+    expect(error?.type).toBe(ErrType.Validation)
+    if (error?.type !== ErrType.Validation) throw new Error("expected a validation error")
     expect(error.errors.name?.[0].path).toBe("name")
     expect(error.errors.name?.[0].message).toContain("string")
   })
@@ -280,15 +281,15 @@ describe("buildModelStore create", () => {
     const { impl } = queueFetch(new Error("network down"))
     const store = buildStore({ fetch: impl })
     const result = await store.create({ name: "North" })
-    expect(result.error?.type).toBe(ErrType.CONNECTION)
-    expect(store.op.create.value.error?.type).toBe(ErrType.CONNECTION)
+    expect(result.error?.type).toBe(ErrType.Connection)
+    expect(store.op.create.value.error?.type).toBe(ErrType.Connection)
   })
 
   it("reports a payload error when the created row does not match the schema", async () => {
     const { impl } = queueFetch(Response.json({ id: "three", name: "North" }, { status: 201 }))
     const store = buildStore({ fetch: impl })
     const result = await store.create({ name: "North" })
-    expect(result.error?.type).toBe(ErrType.PAYLOAD)
+    expect(result.error?.type).toBe(ErrType.Payload)
     expect(result.error?.message).toContain("Malformed zone response")
     expect(store.state.value.list).toEqual([])
   })
@@ -353,8 +354,8 @@ describe("buildModelStore update", () => {
     const { impl, calls } = queueFetch()
     const store = buildStore({ fetch: impl })
     const result = await store.update(4, { name: 7 } as unknown as { name: string })
-    expect(result.error?.type).toBe(ErrType.VALIDATION)
-    expect(store.op.update(4).value?.error?.type).toBe(ErrType.VALIDATION)
+    expect(result.error?.type).toBe(ErrType.Validation)
+    expect(store.op.update(4).value?.error?.type).toBe(ErrType.Validation)
     expect(calls).toEqual([])
   })
 })
@@ -694,7 +695,7 @@ describe("buildModelStore requests answered out of order", () => {
 
     // The newest request has answered, so nothing the store will act on is outstanding — the
     // delete's answer is already destined for the bin, and its flag must not outlive it.
-    expect(store.op.update(1).value?.error?.type).toBe(ErrType.SERVER)
+    expect(store.op.update(1).value?.error?.type).toBe(ErrType.Server)
     expect(store.op.update(1).value?.inProgress).toBe(false)
     expect(store.op.delete(1).value?.inProgress).toBe(false)
 
@@ -774,7 +775,7 @@ describe("buildModelStore requests answered out of order", () => {
     // it is stale. The cost of that one rule is visible here: the server holds "First" and the
     // store shows "North" until the next remote event or reload says otherwise.
     expect(store.state.value.list[0].name).toBe("North")
-    expect(store.op.update(1).value?.error?.type).toBe(ErrType.SERVER)
+    expect(store.op.update(1).value?.error?.type).toBe(ErrType.Server)
     expect(store.op.update(1).value?.inProgress).toBe(false)
     expect(toast.messages).toEqual([{ title: "Failed to update zone", body: "name taken" }])
   })
@@ -908,7 +909,7 @@ describe("buildModelStore requests answered out of order", () => {
 
     // The mirror of the update case: the failed delete is the newest request, and the update
     // behind it will be discarded, so its slot may not keep saying "saving".
-    expect(store.op.delete(1).value?.error?.type).toBe(ErrType.SERVER)
+    expect(store.op.delete(1).value?.error?.type).toBe(ErrType.Server)
     expect(store.op.delete(1).value?.inProgress).toBe(false)
     expect(store.op.update(1).value?.inProgress).toBe(false)
 
@@ -1042,7 +1043,7 @@ describe("buildModelStore requests answered out of order", () => {
     await restoring
 
     // A failed undelete settles its slot too, and releases the delete's for the same reason.
-    expect(store.op.update(1).value?.error?.type).toBe(ErrType.SERVER)
+    expect(store.op.update(1).value?.error?.type).toBe(ErrType.Server)
     expect(store.op.update(1).value?.inProgress).toBe(false)
     expect(store.op.delete(1).value?.inProgress).toBe(false)
 
@@ -1173,7 +1174,7 @@ describe("buildModelStore notifications", () => {
     const toast = toastRecorder()
     const store = buildStore({ fetch: impl, toast: toast.port })
     const result = await store.create({ name: "North" })
-    expect(result.error?.type).toBe(ErrType.SERVER)
+    expect(result.error?.type).toBe(ErrType.Server)
     expect(result.error?.message).toBe("boom")
     expect(toast.messages).toEqual([])
   })
@@ -1190,7 +1191,7 @@ describe("buildModelStore notifications", () => {
     const { impl } = queueFetch(Response.json({ error: "nope" }, { status: 400 }))
     const store = buildStore({ fetch: impl })
     const result = await store.create({ name: "North" })
-    expect(result.error?.type).toBe(ErrType.SERVER)
+    expect(result.error?.type).toBe(ErrType.Server)
   })
 })
 
@@ -1228,8 +1229,20 @@ describe("buildModelStore remote events", () => {
     await store.onWs([row(2, "South"), { id: "three", name: "Broken" }], RemoteEvent.CREATED)
 
     expect(store.state.value.list.map((r) => r.id)).toEqual([1])
-    expect(store.op.list.value.error?.type).toBe(ErrType.PAYLOAD)
+    expect(store.op.list.value.error?.type).toBe(ErrType.Payload)
     expect(toast.messages[0].body).toContain("Malformed zone update")
+  })
+
+  it("names the offending field in the malformed-update toast", async () => {
+    const { impl } = queueFetch()
+    const toast = toastRecorder()
+    const store = buildStore({ fetch: impl, toast: toast.port })
+
+    await store.onWs([{ ...row(3, "Broken"), id: "three" }], RemoteEvent.CREATED)
+
+    // `firstIssueMessage` returns arktype's path-prefixed message, so a feed item that fails on a
+    // nested or secondary column still says which one.
+    expect(toast.messages[0].body).toMatch(/^Malformed zone update: id must be a number/)
   })
 
   it("resolves the list operation on a full sync", async () => {
@@ -1598,9 +1611,9 @@ describe("buildModelStore remote change against a request in flight", () => {
     // the promise that the caller learns its own outcome holds for a failure exactly as it does
     // for a success.
     expect(store.state.value.list[0].name).toBe("Theirs")
-    expect(answer.error?.type).toBe(ErrType.SERVER)
+    expect(answer.error?.type).toBe(ErrType.Server)
     expect(store.op.update(1).value?.inProgress).toBe(false)
-    expect(store.op.update(1).value?.error?.type).toBe(ErrType.SERVER)
+    expect(store.op.update(1).value?.error?.type).toBe(ErrType.Server)
     expect(toast.messages).toEqual([{ title: "Failed to update zone", body: "conflict" }])
   })
 
@@ -2435,7 +2448,7 @@ describe("buildModelStore across a reset", () => {
 
     expect(store.op.update(1).value).toBeUndefined()
     expect(toast.messages).toEqual([])
-    expect(answer.error?.type).toBe(ErrType.SERVER)
+    expect(answer.error?.type).toBe(ErrType.Server)
     expect(answer.result).toBeNull()
   })
 
@@ -2455,7 +2468,7 @@ describe("buildModelStore across a reset", () => {
     // loudest of the four operations and the one where a missing generation check shows first.
     expect(store.op.create.value).toEqual({ inProgress: false, error: null, result: null })
     expect(toast.messages).toEqual([])
-    expect(answer.error?.type).toBe(ErrType.SERVER)
+    expect(answer.error?.type).toBe(ErrType.Server)
     expect(answer.result).toBeNull()
   })
 
@@ -2474,7 +2487,7 @@ describe("buildModelStore across a reset", () => {
 
     expect(store.op.delete(1).value).toBeUndefined()
     expect(toast.messages).toEqual([])
-    expect(answer.error?.type).toBe(ErrType.SERVER)
+    expect(answer.error?.type).toBe(ErrType.Server)
     expect(answer.result).toBeNull()
   })
 
@@ -2493,7 +2506,7 @@ describe("buildModelStore across a reset", () => {
 
     expect(store.op.update(1).value).toBeUndefined()
     expect(toast.messages).toEqual([])
-    expect(answer.error?.type).toBe(ErrType.SERVER)
+    expect(answer.error?.type).toBe(ErrType.Server)
     expect(answer.result).toBeNull()
   })
 

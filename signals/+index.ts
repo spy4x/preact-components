@@ -54,23 +54,11 @@ export {
 } from "./theme.ts"
 export { createToastStore, type ToastEntry, type ToastOptions, type ToastStore } from "./toast.ts"
 export {
-  type ConnectionError,
-  ErrType,
-  type FieldIssue,
   type Model,
-  type OperationResult,
-  type OperationState,
-  type PayloadError,
   RemoteEvent,
-  type RequestError,
-  type ResponseError,
-  type ServerError,
-  type StoreError,
   type ToastMessage,
   type ToastPort,
   type ToastVariant,
-  type ValidationError,
-  type ValidationIssues,
 } from "./types.ts"
 export {
   type FilterField,
@@ -79,14 +67,3 @@ export {
   type UrlFilters,
   useUrlFilters,
 } from "./use-url-filters.ts"
-export {
-  connectionError,
-  firstIssueMessage,
-  isSilentError,
-  responseError,
-  type SchemaInput,
-  type SchemaOutput,
-  toValidationError,
-  validate,
-  type ValidationResult,
-} from "./validate.ts"

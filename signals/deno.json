@@ -11,8 +11,7 @@
     "./theme": "./theme.ts",
     "./toast": "./toast.ts",
     "./types": "./types.ts",
-    "./use-url-filters": "./use-url-filters.ts",
-    "./validate": "./validate.ts"
+    "./use-url-filters": "./use-url-filters.ts"
   },
   "publish": {
     // This package's own `*.test.*` suites, none reachable from `exports`; see `ui/deno.json` for
