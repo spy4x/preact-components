@@ -54,9 +54,10 @@ import { d3LineChartModule } from "./charts-d3.tsx"
 /**
  * What an example that needs `charts/d3-line-chart` prints until the charts page has loaded it.
  *
- * That module imports d3, so these examples reach it through {@link d3LineChartModule} rather than a
- * static import (see `charts-d3.tsx`). The server render, and the browser's first render, print this
- * line; the real output replaces it once the module arrives.
+ * That module imports d3, so these examples reach it through {@link d3LineChartModule} rather
+ * than a static import (see `charts-d3.tsx`). The served page and the browser's first render print
+ * this line, and the real output replaces it once the module arrives. With scripts off it never
+ * changes, so it says where the output is computed rather than promising a load.
  *
  * @param state The module's load state, when it is not loaded.
  * @returns The line the card prints instead of its output.
@@ -64,7 +65,7 @@ import { d3LineChartModule } from "./charts-d3.tsx"
 function pendingD3Output(state: LazyModuleState<unknown>): string {
   return state.status === "failed"
     ? `<charts/d3-line-chart did not load: ${state.message}>`
-    : "<loading charts/d3-line-chart, which imports d3>"
+    : "<computed in the browser: needs charts/d3-line-chart, which imports d3>"
 }
 
 /**

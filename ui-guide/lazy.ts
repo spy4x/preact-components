@@ -1,5 +1,6 @@
 /**
- * Load a module the first time a card on the showing page needs it, instead of when the guide loads.
+ * Load a module the first time a card on the showing page needs it, instead of when the guide
+ * loads.
  *
  * The guide renders one page at a time, so a card whose component pulls a large dependency — the
  * charts page's d3 islands — can reach that dependency through a dynamic `import()` from an effect.

@@ -9,11 +9,11 @@
  *
  * Two honesty notes a reader should have before the cards:
  *
- * 1. **The d3 islands are inert in this page's server render, and that is the component's
- *    contract, not a defect.** `D3LineChart` renders an empty, labelled `<svg>` and draws into it
- *    from an effect; this page also loads the component only when it shows, so the prerendered card
- *    is a placeholder. The card says so. Confirming that the axes and the path actually appear needs a browser, which the
- *    `ui-guide/` suite deliberately does not have.
+ * 1. **The d3 islands are inert in this page's server render, and that is the component's contract,
+ *    not a defect.** `D3LineChart` renders an empty, labelled `<svg>` and draws into it from an
+ *    effect; this page also loads the component only when it shows, so the prerendered card is a
+ *    placeholder. The card says so. Confirming that the axes and the path actually appear needs a
+ *    browser, which the `ui-guide/` suite deliberately does not have.
  * 2. **No date comes from the machine clock.** Every time series here is built from explicit ISO
  *    instants in `Z`, and the `CompareChart` range is two fixed `Date`s, so a build on any machine
  *    in any zone renders the same markup.
@@ -21,8 +21,8 @@
  * Imports are subpaths rather than the barrel, which is what `charts/README.md` recommends: a
  * consumer who only draws SVG charts then reaches no `d3` specifier at all. The two d3 islands are
  * not imported here at all: `charts-d3.tsx` loads them with a dynamic `import()` when this page
- * shows, so an app that mounts the guide loads d3 only once someone opens the charts page. Until the
- * module arrives — which includes the server render — their cards show a placeholder.
+ * shows, so an app that mounts the guide loads d3 only once someone opens the charts page. Until
+ * the module arrives — which includes the server render — their cards show a placeholder.
  */
 
 import { type BarDatum, Bars } from "@spy4x/preact-charts/bars"
