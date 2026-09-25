@@ -8461,10 +8461,6 @@ interface MoneyInputReading {
   clearedEcho: string
   clearedMessage: string
   clearedAriaInvalid: string | null
-  beforeUnresolvedEcho: string
-  beforeUnresolvedValue: string
-  midEditValue: string
-  midEditMessage: string
 }
 
 /**
@@ -8524,16 +8520,6 @@ async function moneyInputChecks(devtools: Devtools): Promise<void> {
     const clearedMessage = status.textContent.trim()
     const clearedAriaInvalid = input.getAttribute("aria-invalid")
 
-    setValue(input, "3,50")
-    await settle()
-    const beforeUnresolvedEcho = echo()
-    const beforeUnresolvedValue = input.value
-
-    setValue(input, "not a number")
-    await settle()
-    const midEditValue = input.value
-    const midEditMessage = status.textContent.trim()
-
     return {
       initialEcho,
       groupedParseEcho,
@@ -8548,10 +8534,6 @@ async function moneyInputChecks(devtools: Devtools): Promise<void> {
       clearedEcho,
       clearedMessage,
       clearedAriaInvalid,
-      beforeUnresolvedEcho,
-      beforeUnresolvedValue,
-      midEditValue,
-      midEditMessage,
     }
   })()`)
 
@@ -8588,11 +8570,56 @@ async function moneyInputChecks(devtools: Devtools): Promise<void> {
       read.clearedAriaInvalid === null,
     `echo "${read.clearedEcho}", message "${read.clearedMessage}", aria-invalid="${read.clearedAriaInvalid}"`,
   )
+  // A real click focuses the field — through the browser's own input pipeline, not a scripted
+  // `.focus()` call — so the Tab press right after this has something real to blur away from.
+  const fieldPoint = await elementCenter(devtools, `${MONEY_INPUT_CARD} #guide-money-input`)
+  check(
+    "the field itself is reachable for a real click",
+    fieldPoint.ok,
+    fieldPoint.ok ? `(${fieldPoint.x}, ${fieldPoint.y})` : fieldPoint.reason,
+  )
+  if (!fieldPoint.ok) return
+  await clickAtPoint(devtools, fieldPoint)
+
+  const typed = await devtools.evaluate<
+    {
+      beforeUnresolvedEcho: string
+      beforeUnresolvedValue: string
+      midEditValue: string
+      midEditMessage: string
+    }
+  >(`(async () => {
+    const settle = () => new Promise((done) => setTimeout(done, 30))
+    const card = document.querySelector('${MONEY_INPUT_CARD}')
+    const input = card.querySelector('#guide-money-input')
+    const status = card.querySelector('#guide-money-input-status')
+    const echo = () => card.querySelector('[data-e2e="controlled-value"]').textContent.trim()
+    const setValue = (el, text) => {
+      const setter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value",
+      ).set
+      setter.call(el, text)
+      el.dispatchEvent(new Event("input", { bubbles: true }))
+    }
+
+    setValue(input, "3,50")
+    await settle()
+    const beforeUnresolvedEcho = echo()
+    const beforeUnresolvedValue = input.value
+
+    setValue(input, "not a number")
+    await settle()
+    const midEditValue = input.value
+    const midEditMessage = status.textContent.trim()
+
+    return { beforeUnresolvedEcho, beforeUnresolvedValue, midEditValue, midEditMessage }
+  })()`)
   check(
     "an unresolved edit still shows its own typed text right up to the blur",
-    read.beforeUnresolvedEcho.includes("350") && read.midEditValue === "not a number" &&
-      read.midEditMessage === "Enter a valid amount",
-    `before blur echo "${read.beforeUnresolvedEcho}" "${read.beforeUnresolvedValue}", mid-edit "${read.midEditValue}" message "${read.midEditMessage}"`,
+    typed.beforeUnresolvedEcho.includes("350") && typed.midEditValue === "not a number" &&
+      typed.midEditMessage === "Enter a valid amount",
+    `before blur echo "${typed.beforeUnresolvedEcho}" "${typed.beforeUnresolvedValue}", mid-edit "${typed.midEditValue}" message "${typed.midEditMessage}"`,
   )
 
   // A real blur — Tab through the browser's own input pipeline, not a dispatched `blur` event —
