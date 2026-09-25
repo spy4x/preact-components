@@ -266,7 +266,7 @@ port would only make each one write the same call back in.
 `onClick`, red when `danger`. `timeAgo` and `formatTimestamp` format the archive line; both come from
 `@spy4x/platform/universal/time` (#306). `formatTimestamp` is ts-libs' `formatTime` under this
 package's name, and it decides "Today" in `options.timeZone`, the zone it prints in. `timeAgo`
-measures from the host clock and keeps one local fix (see below).
+measures from the host clock.
 
 ## Worked example: a source application's regions, end to end
 
@@ -427,8 +427,8 @@ Small, deliberate, and each one is why the source files could drift:
 - **The error banner renders `error.message`.** The source files interpolated the error object into
   a paragraph.
 - **`timeAgo` no longer reports "0 years ago"** for something 360–364 days old; it keeps counting
-  months until a full year has passed. ts-libs 1.3.0's `timeAgo` still has that gap, so
-  `crud/time.ts` wraps it and rewrites the one wrong label.
+  months until a full year has passed. ts-libs carries the same fix since 1.4.0
+  (spy4x/ts-libs#206).
 - **`undelete`, not `restore`.** The state layer names the operation `undelete`, and the scaffold
   uses its vocabulary — the button label stays "Restore".
 - **The archive toggle is a port (`archive`), not a default.** Every source editor had one; a

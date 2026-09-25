@@ -69,8 +69,8 @@ export type { CrudEditorStore, CrudListStore } from "./store.ts"
 export {
   formatTime as formatTimestamp,
   type FormatTimeOptions as FormatTimestampOptions,
+  timeAgo,
 } from "@spy4x/platform/universal/time"
-export { timeAgo } from "./time.ts"
 export type {
   CrudModel,
   CrudRow,

@@ -10,9 +10,10 @@ describe("timeAgo", () => {
     expect(timeAgo(undefined)).toBe("-")
   })
 
-  it("keeps counting months for something 360 to 364 days old", () => {
-    expect(timeAgo(Date.now() - 360 * DAY)).toBe("12 months ago")
-    expect(timeAgo(Date.now() - 364 * DAY)).toBe("12 months ago")
+  // ts-libs before 1.4.0 said "0 years ago" here: it switched to years at 360 days but counted
+  // them in 365-day steps (spy4x/ts-libs#206).
+  it("says 12 months, not 0 years, for something 362 days old", () => {
+    expect(timeAgo(Date.now() - 362 * DAY)).toBe("12 months ago")
   })
 
   it("switches to years once a full year has passed", () => {
