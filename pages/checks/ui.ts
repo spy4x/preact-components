@@ -151,6 +151,9 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
 
   await refForwardingChecks(devtools)
 
+  await installBoxChecks(devtools)
+  await marginNoteChecks(devtools)
+
   await tooltipChecks(devtools)
   await comboboxChecks(devtools)
   await toastrChecks(devtools)
@@ -243,6 +246,160 @@ async function refForwardingChecks(devtools: Devtools): Promise<void> {
         ? "clicking the trigger moved focus onto the native element through the ref"
         : `clicking the trigger left focus on ${after.label} instead of the target`,
     )
+  }
+}
+
+/** The checkmark path {@link CopyButton} swaps in for its own glyph while `copied` is true. */
+const COPY_BUTTON_CHECKMARK = "m5 13 4 4L19 7"
+
+/**
+ * `InstallBox` copies its command on a real click and on a real Enter press.
+ *
+ * Both are behind `ui/copy-button.tsx`'s click handler and its own `copied`-state timer, neither
+ * reachable from a string render. The copied state is read off the icon swap — the button's own SVG
+ * `d` attribute flips to {@link COPY_BUTTON_CHECKMARK} while `copied` is true — rather than off the
+ * clipboard: `navigator.clipboard` needs a permission grant this harness does not ask for, and the
+ * icon swap is the same signal a sighted user gets. `CopyButton` itself has no check of its own
+ * anywhere in this file; `InstallBox` is what first puts a real trigger for it in the catalogue.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function installBoxChecks(devtools: Devtools): Promise<void> {
+  await centreInView(devtools, `document.querySelector('#demo-InstallBox')`)
+
+  const iconPath = () =>
+    `(document.querySelector('#demo-InstallBox button[aria-label="Copy command"] svg path')` +
+    `?.getAttribute("d") ?? null)`
+
+  const beforeClick = await devtools.evaluate<string | null>(iconPath())
+  const spot = await devtools.evaluate<{ x: number; y: number } | null>(`(() => {
+    const button = document.querySelector('#demo-InstallBox button[aria-label="Copy command"]')
+    if (!button) return null
+    const box = button.getBoundingClientRect()
+    return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
+  })()`)
+
+  if (spot !== null) {
+    for (const type of ["mousePressed", "mouseReleased"]) {
+      await devtools.send("Input.dispatchMouseEvent", {
+        type,
+        x: spot.x,
+        y: spot.y,
+        button: "left",
+        buttons: type === "mousePressed" ? 1 : 0,
+        clickCount: 1,
+      })
+    }
+  }
+  await poll(
+    async () => (await devtools.evaluate<string | null>(iconPath())) === COPY_BUTTON_CHECKMARK,
+    2_000,
+  )
+  const afterClick = await devtools.evaluate<string | null>(iconPath())
+
+  check(
+    "a real click on InstallBox's copy control swaps its icon to the checkmark",
+    spot !== null && beforeClick !== COPY_BUTTON_CHECKMARK && afterClick === COPY_BUTTON_CHECKMARK,
+    spot === null
+      ? 'the InstallBox card has no [aria-label="Copy command"] control to click'
+      : beforeClick === COPY_BUTTON_CHECKMARK
+      ? "the icon was already the checkmark before anything was clicked, so this proves nothing"
+      : `clicked at (${spot.x}, ${spot.y}): icon path ${JSON.stringify(beforeClick)} → ` +
+        `${JSON.stringify(afterClick)}`,
+  )
+
+  // Wait for the confirmation timer (1500ms default) to clear before pressing Enter, so the second
+  // half of this check starts from the same rest state as the first.
+  await poll(
+    async () => (await devtools.evaluate<string | null>(iconPath())) !== COPY_BUTTON_CHECKMARK,
+    3_000,
+  )
+
+  await devtools.evaluate<null>(
+    `(document.querySelector('#demo-InstallBox button[aria-label="Copy command"]')?.focus(), null)`,
+  )
+  const focused = await devtools.evaluate<boolean>(
+    `document.activeElement === document.querySelector('#demo-InstallBox button[aria-label="Copy command"]')`,
+  )
+  const beforeEnter = await devtools.evaluate<string | null>(iconPath())
+  await pressKey(devtools, "Enter")
+  await poll(
+    async () => (await devtools.evaluate<string | null>(iconPath())) === COPY_BUTTON_CHECKMARK,
+    2_000,
+  )
+  const afterEnter = await devtools.evaluate<string | null>(iconPath())
+
+  check(
+    "a real Enter press on the focused copy control also swaps its icon to the checkmark",
+    focused && beforeEnter !== COPY_BUTTON_CHECKMARK && afterEnter === COPY_BUTTON_CHECKMARK,
+    !focused
+      ? "the copy control never took focus, so a key press here proves nothing"
+      : beforeEnter === COPY_BUTTON_CHECKMARK
+      ? "the icon was already the checkmark before Enter was pressed, so this proves nothing"
+      : `focused, then a real Enter press: icon path ${JSON.stringify(beforeEnter)} → ` +
+        `${JSON.stringify(afterEnter)}`,
+  )
+
+  await devtools.evaluate<null>(
+    `(document.querySelector('#demo-InstallBox button[aria-label="Copy command"]')?.blur(), null)`,
+  )
+}
+
+/**
+ * `MarginNote` sits beside its paragraph on a wide viewport and inline with it on a narrow one —
+ * the one claim in its own doc comment ("side column on wide screens, inline on narrow, CSS-only")
+ * a string render cannot prove, because it depends on which media query matches, not on markup.
+ *
+ * Read off `getComputedStyle(aside).float` rather than off geometry: a float that resolves to
+ * `"none"` is proof enough that the component fell back to the block layout its doc comment
+ * promises, without this check also having to reason about where the surrounding paragraph's text
+ * wrapped.
+ *
+ * `Emulation.setDeviceMetricsOverride` narrows the viewport for the phone-width half and
+ * `clearDeviceMetricsOverride` restores it in a `finally`, so a package block that runs after this
+ * one is never handed a viewport this check changed and forgot to put back.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function marginNoteChecks(devtools: Devtools): Promise<void> {
+  await centreInView(devtools, `document.querySelector('#demo-MarginNote aside')`)
+  const desktopFloat = await devtools.evaluate<string | null>(
+    `(() => {
+      const aside = document.querySelector('#demo-MarginNote aside')
+      return aside ? getComputedStyle(aside).float : null
+    })()`,
+  )
+  check(
+    "MarginNote sits beside its paragraph at desktop width — a real float, not just its class",
+    desktopFloat === "right",
+    desktopFloat === null
+      ? "the MarginNote card has no <aside> to read"
+      : `getComputedStyle(aside).float reads ${JSON.stringify(desktopFloat)} at desktop width`,
+  )
+
+  try {
+    await devtools.send("Emulation.setDeviceMetricsOverride", {
+      width: 375,
+      height: 812,
+      deviceScaleFactor: 1,
+      mobile: true,
+    })
+    await centreInView(devtools, `document.querySelector('#demo-MarginNote aside')`)
+    const phoneFloat = await devtools.evaluate<string | null>(
+      `(() => {
+        const aside = document.querySelector('#demo-MarginNote aside')
+        return aside ? getComputedStyle(aside).float : null
+      })()`,
+    )
+    check(
+      "MarginNote falls back to inline block layout at 375px, clear of the sm: float",
+      phoneFloat === "none",
+      phoneFloat === null
+        ? "the MarginNote card has no <aside> to read at 375px"
+        : `getComputedStyle(aside).float reads ${JSON.stringify(phoneFloat)} at 375px`,
+    )
+  } finally {
+    await devtools.send("Emulation.clearDeviceMetricsOverride")
   }
 }
 
