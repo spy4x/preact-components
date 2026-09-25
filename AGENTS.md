@@ -378,7 +378,7 @@ overlap is **not** checked by anything here — compare them by hand with
 Current pins (root `deno.jsonc`, the single source of truth):
 
 ```
-preact                          10.28.2
+preact                          10.29.8
 @preact/signals                  2.5.1
 @preact/signals-core            1.12.1
 wouter-preact                    3.9.0
