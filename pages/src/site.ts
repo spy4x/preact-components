@@ -19,7 +19,7 @@ export const PAGE_TITLE = "preact-components — live UI guide"
 
 /** Meta description, and the blurb the Open Graph card shows. */
 export const PAGE_DESCRIPTION =
-  "Live component demos from @preact-components — ui, charts, system and crud — plus the " +
+  "Live component demos from @spy4x/preact-* — ui, charts, system and crud — plus the " +
   "whole icon set: dropdowns open, toggles toggle, charts draw, icons are searchable and copyable."
 
 /** Inline SVG favicon, so the page never requests a file that does not exist. */

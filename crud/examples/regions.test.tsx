@@ -1,6 +1,6 @@
 import { expect } from "@std/expect"
 import { afterAll, beforeAll, describe, it } from "@std/testing/bdd"
-import { RemoteEvent } from "@preact-components/signals/types"
+import { RemoteEvent } from "@spy4x/preact-signals/types"
 import { render } from "preact-render-to-string"
 import { canChange, type Region, RegionEditor, RegionList, regionStore } from "./regions.tsx"
 

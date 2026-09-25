@@ -22,7 +22,7 @@ import {
   submitEditor,
   timeAgo,
   toggleArchiveState,
-} from "@preact-components/crud"
+} from "@spy4x/preact-crud"
 import { signal } from "@preact/signals"
 import type { ExampleFragment } from "../example.tsx"
 import { toExampleDemos } from "../example.tsx"
@@ -56,7 +56,7 @@ const examples: ExampleFragment = {
     title: "timeAgo()",
     summary:
       "How long ago a timestamp was, in words; `now` is a parameter, so a render never depends on the clock.",
-    snippet: `import { timeAgo } from "@preact-components/crud"
+    snippet: `import { timeAgo } from "@spy4x/preact-crud"
 
 timeAgo("2026-01-01T10:00:00Z", new Date("2026-01-01T12:30:00Z"))`,
     covers: ["timeAgo"],
@@ -66,7 +66,7 @@ timeAgo("2026-01-01T10:00:00Z", new Date("2026-01-01T12:30:00Z"))`,
     title: "formatTimestamp()",
     summary:
       "An absolute timestamp for a `title` attribute: the date and a 24-hour time, the time alone, or `-` for an unset column.",
-    snippet: `import { formatTimestamp } from "@preact-components/crud"
+    snippet: `import { formatTimestamp } from "@spy4x/preact-crud"
 
 formatTimestamp("2026-01-15T09:05:00Z", { full: true, timeZone: "UTC" })
 formatTimestamp("2026-01-15T09:05:00Z", { timeOnly: true, timeZone: "UTC" })
@@ -82,7 +82,7 @@ formatTimestamp(null)`,
     title: "The rows a list shows",
     summary:
       "`rowsForStatus` picks the Active or Archived slice of a store, and `listRows` filters that slice by the search box, one word at a time.",
-    snippet: `import { listRows, rowsForStatus } from "@preact-components/crud"
+    snippet: `import { listRows, rowsForStatus } from "@spy4x/preact-crud"
 
 const match = (row, word) => row.name.toLowerCase().includes(word.toLowerCase())
 
@@ -103,7 +103,7 @@ listRows(store, "active", "launch", match).map((row) => row.name)`,
     title: "editorState()",
     summary:
       "Whether the editor's form is valid, busy, and savable: Save is live only once the row has loaded, nothing is invalid, nothing is in flight and nothing blocks the archive.",
-    snippet: `import { editorState } from "@preact-components/crud"
+    snippet: `import { editorState } from "@spy4x/preact-crud"
 
 const ready = { initialized: true, validation: {}, canChange: true, inProgress: false, blocked: 0 }
 
@@ -130,7 +130,7 @@ editorState({ ...ready, blocked: 2 })`,
     title: "submitEditor()",
     summary:
       "Routes a save to the store write its mode implies: an add creates, an edit updates, and an edit whose archive is blocked writes nothing. The card prints which store methods each submit reached.",
-    snippet: `import { submitEditor } from "@preact-components/crud"
+    snippet: `import { submitEditor } from "@spy4x/preact-crud"
 
 const calls = []
 const store = {
@@ -167,7 +167,7 @@ submitEditor({ mode: "edit", id: 1, store, value: row, blocked: 2 })`,
     title: "toggleArchiveState()",
     summary:
       "The archive checkbox's next state: archiving stamps `deletedAt` with the current time and asks what still points at the row; un-archiving clears both.",
-    snippet: `import { toggleArchiveState } from "@preact-components/crud"
+    snippet: `import { toggleArchiveState } from "@spy4x/preact-crud"
 
 const dependents = () => [{ kind: "Tasks", values: [{ title: "Write copy", url: "/tasks/7" }] }]
 
@@ -194,7 +194,7 @@ toggleArchiveState({ id: 3, deletedAt: "2026-01-15T09:00:00Z" }, dependents)`,
     title: "Field values in and out",
     summary:
       '`setField` writes one field into a model signal as a fresh object, `fieldText` shows a value in a control (`null` as empty, never `"null"`), and `commitNumber` reads a number box, half-typed input included.',
-    snippet: `import { commitNumber, fieldText, setField } from "@preact-components/crud"
+    snippet: `import { commitNumber, fieldText, setField } from "@spy4x/preact-crud"
 import { signal } from "@preact/signals"
 
 const vm = signal({ name: "Launch plan", budget: null })
@@ -217,7 +217,7 @@ commitNumber("12e")`,
     title: "A duplicate association as a field issue",
     summary:
       "`conflictIssue` files a duplicate under `CONFLICT` on the field the user has to change, with the duplicate's id as payload; `isRestorable` says whether that duplicate was removed and can be brought back instead.",
-    snippet: `import { CONFLICT, conflictIssue, isRestorable } from "@preact-components/crud"
+    snippet: `import { CONFLICT, conflictIssue, isRestorable } from "@spy4x/preact-crud"
 
 const rows = [
   { id: 1, name: "Paper supplier", deletedAt: null },
@@ -254,7 +254,7 @@ isRestorable(rows[1])`,
     title: "associationActions()",
     summary:
       "Binds an association editor's Delete and Restore buttons to the store's `delete` and `undelete`. The card prints which store method each button reached.",
-    snippet: `import { associationActions } from "@preact-components/crud"
+    snippet: `import { associationActions } from "@spy4x/preact-crud"
 
 const calls = []
 // The store's other members are left out; these two are all the actions call.

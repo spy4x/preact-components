@@ -32,13 +32,13 @@ import {
   type SortRule,
   ThemeValue,
   toggleSort,
-} from "@preact-components/signals"
+} from "@spy4x/preact-signals"
 import {
   clearFilterFields,
   filterSearch,
   filterWrite,
   restoredAddress,
-} from "@preact-components/signals/use-url-filters"
+} from "@spy4x/preact-signals/use-url-filters"
 import { type } from "arktype"
 import type { ExampleFragment } from "../example.tsx"
 import { toExampleDemos } from "../example.tsx"
@@ -48,7 +48,7 @@ const examples: ExampleFragment = {
     title: "Sort rules in the address",
     summary:
       "`parseSort` reads rules out of a URL parameter, `toggleSort` advances one column through asc, desc and off, and `serializeSort` writes the rules back.",
-    snippet: `import { parseSort, serializeSort, toggleSort } from "@preact-components/signals"
+    snippet: `import { parseSort, serializeSort, toggleSort } from "@spy4x/preact-signals"
 
 const rules = parseSort("name:asc", ["name", "size"], [])
 const next = toggleSort(toggleSort(rules, "name"), "size")
@@ -64,7 +64,7 @@ serializeSort(next)`,
     title: "sortRows() and removeSortRule()",
     summary:
       "`sortRows` orders rows by several rules at once, numbers as numbers and empty cells last, without changing the input; `removeSortRule` takes one column out of the rules.",
-    snippet: `import { removeSortRule, type SortRule, sortRows } from "@preact-components/signals"
+    snippet: `import { removeSortRule, type SortRule, sortRows } from "@spy4x/preact-signals"
 
 const files = [
   { name: "notes.txt", size: 12 },
@@ -103,8 +103,8 @@ console.log({
     summary:
       "What `useUrlFilters` does for each field: `resolveFilterValue` turns a parameter into a value, falling back to the default for a missing or unreadable one; `shouldPersistFilter` says whether a value belongs in the address; `filterWrite` says what to do to the parameter.",
     snippet: `import { signal } from "@preact/signals"
-import { resolveFilterValue, shouldPersistFilter } from "@preact-components/signals"
-import { filterWrite } from "@preact-components/signals/use-url-filters"
+import { resolveFilterValue, shouldPersistFilter } from "@spy4x/preact-signals"
+import { filterWrite } from "@spy4x/preact-signals/use-url-filters"
 
 const page = { signal: signal(1), urlParam: "page", initialValue: 1 }
 console.log({
@@ -130,8 +130,7 @@ console.log({
     title: "filterSearch() and restoredAddress()",
     summary:
       "How `useUrlFilters` rewrites the address: `filterSearch` applies the filters' writes and keeps every parameter they do not own; `restoredAddress` puts back a fragment the router dropped, or answers `undefined` when nothing needs fixing.",
-    snippet:
-      `import { filterSearch, restoredAddress } from "@preact-components/signals/use-url-filters"
+    snippet: `import { filterSearch, restoredAddress } from "@spy4x/preact-signals/use-url-filters"
 
 const search = filterSearch("?tab=files&page=3", [
   { urlParam: "page" },
@@ -165,7 +164,7 @@ console.log({
     summary:
       "Resets every filter to its default inside one `batch`, so whatever watches the filters — `useUrlFilters` writing the address — reacts once rather than once per field, and a reader presses Back once to undo the clear.",
     snippet: `import { signal } from "@preact/signals"
-import { clearFilterFields } from "@preact-components/signals/use-url-filters"
+import { clearFilterFields } from "@spy4x/preact-signals/use-url-filters"
 
 const status = signal("open")
 const page = signal(4)
@@ -192,7 +191,7 @@ console.log({ before, after: { status: status.value, page: page.value } })`,
     summary:
       "Replaces an object signal's value with a copy that has some fields changed, so everything reading the signal updates once.",
     snippet: `import { signal } from "@preact/signals"
-import { patchSignal } from "@preact-components/signals"
+import { patchSignal } from "@spy4x/preact-signals"
 
 const settings = signal({ pageSize: 20, density: "comfortable", showArchived: false })
 patchSignal(settings, { density: "compact" })
@@ -208,7 +207,7 @@ settings.value`,
     title: "setMapEntry() and deleteMapEntry()",
     summary:
       "Return a new `Map` with one entry set or removed, leaving the original alone — what a `Map` held in a signal needs, since the signal only notices a new value.",
-    snippet: `import { deleteMapEntry, setMapEntry } from "@preact-components/signals"
+    snippet: `import { deleteMapEntry, setMapEntry } from "@spy4x/preact-signals"
 
 const cart: ReadonlyMap<string, number> = new Map([["apples", 3]])
 const added = setMapEntry(cart, "pears", 2)
@@ -226,7 +225,7 @@ console.log({ cart, added, removed })`,
     title: "createToastStore()",
     summary:
       "The list of toasts on screen, which `Toastr` renders: each call adds one and returns its id, and `remove` takes one off. The store runs no timers; whatever renders the toasts removes them.",
-    snippet: `import { createToastStore } from "@preact-components/signals"
+    snippet: `import { createToastStore } from "@spy4x/preact-signals"
 
 let count = 0
 const toasts = createToastStore({ nextId: () => \`toast-\${++count}\` })
@@ -254,7 +253,7 @@ toasts.list.value`,
     title: "createThemeStore() and ThemeValue",
     summary:
       "The light, dark or system theme preference as signals: `preference` is what the reader chose, `actual` is what gets painted. Storage, the system setting and the painting are ports, so this card hands in stand-ins and paints nothing.",
-    snippet: `import { createThemeStore, ThemeValue } from "@preact-components/signals"
+    snippet: `import { createThemeStore, ThemeValue } from "@spy4x/preact-signals"
 
 const saved = new Map([["theme", ThemeValue.DARK as string]])
 const theme = createThemeStore({
@@ -297,7 +296,7 @@ console.log({ actual, preference: theme.preference.value, stored: saved.get("the
     title: "createClipboard()",
     summary:
       "Copies text and reports the outcome through callbacks instead of throwing. `copy` resolves to `true` or `false`; with no clipboard — an insecure page, a server render — it reports `CLIPBOARD_UNAVAILABLE` at once, which is what this card prints.",
-    snippet: `import { CLIPBOARD_UNAVAILABLE, createClipboard } from "@preact-components/signals"
+    snippet: `import { CLIPBOARD_UNAVAILABLE, createClipboard } from "@spy4x/preact-signals"
 
 const reported: string[] = []
 const clipboard = createClipboard({ clipboard: null })
@@ -319,7 +318,7 @@ console.log({ reported, isTheExportedMessage: reported[0] === CLIPBOARD_UNAVAILA
     title: "buildModelStore() and RemoteEvent",
     summary:
       "A store for one REST collection, validated with arktype. `onWs` applies a feed event named by `RemoteEvent`; an invalid `create` is refused before any request. This card's `fetch` is never called, so it prints only what the store did without the network.",
-    snippet: `import { buildModelStore, RemoteEvent } from "@preact-components/signals"
+    snippet: `import { buildModelStore, RemoteEvent } from "@spy4x/preact-signals"
 import { type } from "arktype"
 
 const notes = buildModelStore({

@@ -185,7 +185,7 @@ export function exportListProblems(
   }
 
   const installed = new Set(
-    [...docs.readme.matchAll(/^deno add jsr:@preact-components\/([a-z-]+)/gm)].map((m) => m[1]),
+    [...docs.readme.matchAll(/^deno add jsr:@spy4x\/preact-([a-z-]+)/gm)].map((m) => m[1]),
   )
   for (const id of installed) {
     if (!(id in packages)) problems.push(`README.md installs ${id}, which is not a package`)

@@ -1,9 +1,9 @@
-# `@preact-components/icons`
+# `@spy4x/preact-icons`
 
 Merged icon set. 119 glyphs, one named export per glyph, no runtime dependencies beyond Preact.
 
 ```tsx
-import { IconSearch, IconTrashBin } from "@preact-components/icons"
+import { IconSearch, IconTrashBin } from "@spy4x/preact-icons"
 
 <IconSearch />
 <IconTrashBin class="size-4 text-red-500" />

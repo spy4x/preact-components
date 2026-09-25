@@ -1,5 +1,5 @@
 {
-  "name": "@preact-components/cn",
+  "name": "@spy4x/preact-cn",
   "version": "0.1.0",
   "exports": {
     ".": "./cn.ts"

@@ -57,7 +57,7 @@ So a package joins the workspace when you create its own config, and the array i
 mkdir ui
 cat > ui/deno.json <<'EOF'
 {
-  "name": "@preact-components/ui",
+  "name": "@spy4x/preact-ui",
   "version": "0.1.0",
   "exports": {
     ".": "./mod.ts"
@@ -68,14 +68,14 @@ EOF
 
 Rules for a package config:
 
-- `name` is `@preact-components/<directory>` — that is how sibling packages import you.
+- `name` is `@spy4x/preact-<directory>` — that is how sibling packages import you.
 - `exports` lists exactly the entry points that exist today. Adding a file does not add an export.
 - Do not add an `imports` block unless you need a specifier the root does not provide. Two
   packages do, each because only it needs the dependency: `charts/deno.json` pins `d3`, and
   `map/deno.json` pins `leaflet` and `@types/leaflet`. Shared deps (preact, signals, arktype,
   tailwind, `@std/*`, tailwind-merge, wouter-preact, and `@spy4x/*` from spy4x/ts-libs) live in the
   root import map so every package resolves one copy.
-- Sibling imports use the member name: `import { cn } from "@preact-components/cn"`.
+- Sibling imports use the member name: `import { cn } from "@spy4x/preact-cn"`.
 
 Type-checking, formatting, linting and tests are discovered by walking the tree, so a new package is
 covered without touching root config or `infra/scripts/type-check.ts`.

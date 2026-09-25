@@ -10,7 +10,7 @@
  * `classes.test.tsx`, so a chip cannot name a class the card does not apply.
  */
 
-import { INK_CSS } from "@preact-components/theme"
+import { INK_CSS } from "@spy4x/preact-theme"
 import type { ClassDemoFragment } from "../registry.ts"
 
 /**

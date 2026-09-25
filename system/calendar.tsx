@@ -24,8 +24,8 @@
  * Cairo, and an Arabic header reads a weekday rather than the two characters all seven share.
  */
 
-import { cn } from "@preact-components/cn"
-import { IconChevronLeft, IconChevronRight } from "@preact-components/icons"
+import { cn } from "@spy4x/preact-cn"
+import { IconChevronLeft, IconChevronRight } from "@spy4x/preact-icons"
 import type { JSX } from "preact"
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "preact/hooks"
 import {

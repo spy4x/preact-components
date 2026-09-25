@@ -4,7 +4,7 @@
  * Progressive enhancement in the strict sense: the server renders the page, this adds a zoom layer
  * after hydration, and nothing is added to the markup that a reader without JavaScript would miss.
  * `Lightbox` is the only element this component renders, and its dialog is empty until an image is
- * opened — see `@preact-components/ui/lightbox` for what it is built on and why.
+ * opened — see `@spy4x/preact-ui/lightbox` for what it is built on and why.
  *
  * The click layer is delegated to the container rather than attached to each image: one listener
  * instead of N, images that arrive after hydration still work, and cleanup is complete — the
@@ -40,7 +40,7 @@
  * sits between it and the start of the container).
  */
 
-import { describedImages, Lightbox } from "@preact-components/ui/lightbox"
+import { describedImages, Lightbox } from "@spy4x/preact-ui/lightbox"
 import type { JSX } from "preact"
 import { useEffect, useState } from "preact/hooks"
 

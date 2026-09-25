@@ -51,7 +51,7 @@ interface ForwardedType {
  * The failure mode differs by where it happens. Inside this repository, the browser checks in
  * `pages/checks/ui.ts` call `.focus()` through a forwarded ref and assert the real element took
  * it, so a broken hook fails a named check loudly, in CI, before anything ships. In an app that
- * only imports `@preact-components/ui` — where this file runs the same way, but nothing asserts on
+ * only imports `@spy4x/preact-ui` — where this file runs the same way, but nothing asserts on
  * it — a broken hook would not raise or log anything: `ref` would silently go back to holding the
  * component instance, the original bug this file exists to fix, surfacing only the next time
  * something calls a DOM method on it.

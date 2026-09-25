@@ -1,4 +1,4 @@
-import { guidePages } from "@preact-components/ui-guide/registry"
+import { guidePages } from "@spy4x/preact-ui-guide/registry"
 import {
   centreInView,
   check,

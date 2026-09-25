@@ -1,16 +1,16 @@
 /**
  * The icon gallery — the one genuinely meta-driven part of the catalogue.
  *
- * It reads the whole `@preact-components/icons` namespace instead of a hand-written list, so a new
+ * It reads the whole `@spy4x/preact-icons` namespace instead of a hand-written list, so a new
  * glyph appears here, is searchable and is copyable the moment it is exported. There is no registry
  * entry for it and no count to bump: `icons.test.ts` asserts that the gallery renders exactly the
  * module's exports.
  */
 
-import * as icons from "@preact-components/icons"
-import { copyToClipboard } from "@preact-components/ui/copy-button"
+import * as icons from "@spy4x/preact-icons"
+import { copyToClipboard } from "@spy4x/preact-ui/copy-button"
 import { useSignal } from "@preact/signals"
-import { cn } from "@preact-components/cn"
+import { cn } from "@spy4x/preact-cn"
 import type { ComponentType, JSX } from "preact"
 
 /** One glyph, with the prop surface every icon in the package shares. */

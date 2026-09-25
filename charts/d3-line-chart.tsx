@@ -68,7 +68,7 @@ const DEFAULT_WIDTH = 628
 
 /** Actionable message for a consumer whose bundler handed this island a `d3` that carries nothing. */
 export const MISSING_D3_LINE_ERROR =
-  "@preact-components/charts/d3-line-chart needs d3, which is an optional peer of this package: " +
+  "@spy4x/preact-charts/d3-line-chart needs d3, which is an optional peer of this package: " +
   "the SVG charts (bars, donut-chart, kpi, line-chart, scales) and metric-panel never load it. " +
   "Add the dependency yourself — `deno add npm:d3@7.9.0` or `npm i d3@7.9.0` — or import only the " +
   "zero-JS charts."

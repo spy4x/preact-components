@@ -1,5 +1,5 @@
 /**
- * `@preact-components/signals/clipboard` — copy text, report through a callback.
+ * `@spy4x/preact-signals/clipboard` — copy text, report through a callback.
  *
  * The source store imported the app's toast singleton to say "copied". Here the feedback is a port
  * the caller supplies, so the same helper works in an app with toasts, one with a tooltip, and a

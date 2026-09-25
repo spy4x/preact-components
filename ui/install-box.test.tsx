@@ -5,9 +5,9 @@ import { InstallBox } from "./install-box.tsx"
 
 describe("InstallBox", () => {
   it("renders the command as real, selectable text inside a code element", () => {
-    const html = render(<InstallBox command="deno add jsr:@preact-components/ui" />)
+    const html = render(<InstallBox command="deno add jsr:@spy4x/preact-ui" />)
     expect(html).toContain("<code")
-    expect(html).toContain("deno add jsr:@preact-components/ui")
+    expect(html).toContain("deno add jsr:@spy4x/preact-ui")
   })
 
   it("renders a copy control labelled for the command", () => {

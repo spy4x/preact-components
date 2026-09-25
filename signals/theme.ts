@@ -1,7 +1,7 @@
 import { computed, effect, type ReadonlySignal, type Signal, signal } from "@preact/signals"
 
 /**
- * `@preact-components/signals/theme` — light/dark/system preference on signals.
+ * `@spy4x/preact-signals/theme` — light/dark/system preference on signals.
  *
  * The source store was a module-level singleton that read `localStorage` and touched `document` at
  * import time, which is why it could not be shared, reset, or tested. Here nothing is read until

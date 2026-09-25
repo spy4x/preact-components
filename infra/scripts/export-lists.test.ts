@@ -42,7 +42,7 @@ function docs(): Docs {
     readme: [
       "## Install",
       "",
-      ...ids.map((id) => `deno add jsr:@preact-components/${id}`),
+      ...ids.map((id) => `deno add jsr:@spy4x/preact-${id}`),
       "",
       "## Scope",
       "",
@@ -116,8 +116,8 @@ describe("export lists", () => {
   it("reports an install line for no package and a package with no install line", () => {
     const input = docs()
     input.readme = input.readme.replace(
-      "deno add jsr:@preact-components/cn",
-      "deno add jsr:@preact-components/nav",
+      "deno add jsr:@spy4x/preact-cn",
+      "deno add jsr:@spy4x/preact-nav",
     )
     expect(exportListProblems(input, packages())).toEqual([
       "README.md installs nav, which is not a package",

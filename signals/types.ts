@@ -33,7 +33,7 @@ export enum RemoteEvent {
   DELETED = "deleted",
 }
 
-/** Kind of a toast, selecting its colour and glyph. Matches `ToastVariant` in `@preact-components/ui`. */
+/** Kind of a toast, selecting its colour and glyph. Matches `ToastVariant` in `@spy4x/preact-ui`. */
 export type ToastVariant = "success" | "error" | "info" | "warning"
 
 /** Notification content the store hands to its toast port. */
@@ -48,7 +48,7 @@ export interface ToastMessage {
   type?: ToastVariant
   /**
    * Auto-dismiss delay in milliseconds, spelled the way `Toastr` spells it in
-   * `@preact-components/ui` — one name on both sides of that boundary, so a delay set here is the
+   * `@spy4x/preact-ui` — one name on both sides of that boundary, so a delay set here is the
    * delay the component runs. `0` keeps the toast until somebody dismisses it.
    *
    * Omitting it leaves the delay to whatever renders the toast; `Toastr` uses five seconds.

@@ -180,7 +180,7 @@ export function CatalogInstructions() {
       <div class="mb-4 border-b border-gray-200 pb-2 dark:border-gray-700">
         <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">General instructions</h2>
         <p class="text-sm text-gray-500 dark:text-gray-400">
-          What <code>@preact-components/theme</code>{" "}
+          What <code>@spy4x/preact-theme</code>{" "}
           provides, and the page conventions the components assume.
         </p>
       </div>

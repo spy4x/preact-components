@@ -16,7 +16,7 @@ The design system and the original markup are by [Eirene](https://github.com/Eir
 Live guide: https://spy4x.github.io/preact-components — every component running, with its code.
 
 ```bash
-deno add jsr:@preact-components/ui   # once published; see Status below
+deno add jsr:@spy4x/preact-ui   # once published; see Status below
 ```
 
 ## Status
@@ -24,7 +24,7 @@ deno add jsr:@preact-components/ui   # once published; see Status below
 Pre-1.0, not yet published to JSR. `deno task publish:dry` runs `deno publish --dry-run` for
 every package that ships, and it passes for all ten — the publishability sweep in #223 is done.
 "Published" will mean each package below resolves as
-`jsr:@preact-components/<name>` and installs with `deno add`. Until then there is nothing on JSR
+`jsr:@spy4x/preact-<name>` and installs with `deno add`. Until then there is nothing on JSR
 for `deno add` to find.
 
 No published file names a private application (#237). `deno task private-names <names-file>`
@@ -39,16 +39,16 @@ its siblings (`^0.1.N`) always resolves to the set published with it — see
 own:
 
 ```bash
-deno add jsr:@preact-components/cn        # class-name join + Tailwind conflict resolution
-deno add jsr:@preact-components/icons     # merged icon set
-deno add jsr:@preact-components/signals   # stores and state helpers; no components
-deno add jsr:@preact-components/theme     # design tokens + Tailwind preset
-deno add jsr:@preact-components/charts    # server-rendered SVG charts + d3 islands
-deno add jsr:@preact-components/system    # app-level pieces: auth form, calendar, shells, SEO head
-deno add jsr:@preact-components/ui        # the component set
-deno add jsr:@preact-components/crud      # list and editor scaffold for one collection
-deno add jsr:@preact-components/map       # map on Leaflet (resolves leaflet)
-deno add jsr:@preact-components/ui-guide  # the live component catalogue, mounted in one line
+deno add jsr:@spy4x/preact-cn        # class-name join + Tailwind conflict resolution
+deno add jsr:@spy4x/preact-icons     # merged icon set
+deno add jsr:@spy4x/preact-signals   # stores and state helpers; no components
+deno add jsr:@spy4x/preact-theme     # design tokens + Tailwind preset
+deno add jsr:@spy4x/preact-charts    # server-rendered SVG charts + d3 islands
+deno add jsr:@spy4x/preact-system    # app-level pieces: auth form, calendar, shells, SEO head
+deno add jsr:@spy4x/preact-ui        # the component set
+deno add jsr:@spy4x/preact-crud      # list and editor scaffold for one collection
+deno add jsr:@spy4x/preact-map       # map on Leaflet (resolves leaflet)
+deno add jsr:@spy4x/preact-ui-guide  # the live component catalogue, mounted in one line
 ```
 
 Which package imports which sibling, read from the sources: `ui` imports `cn`, `icons` and
@@ -66,7 +66,7 @@ directly, so getting it is a short build-script recipe, not a plain `@import`.
 ## Usage
 
 ```tsx
-import { Badge } from "@preact-components/ui/badge"
+import { Badge } from "@spy4x/preact-ui/badge"
 
 <Badge text="Active" color="green" />
 ```
@@ -78,7 +78,7 @@ page per package, picked from a side navigation that becomes a dialog on a phone
 it in one line:
 
 ```tsx
-import { uiGuideRoute } from "@preact-components/ui-guide"
+import { uiGuideRoute } from "@spy4x/preact-ui-guide"
 
 <uiGuideRoute.component />
 ```

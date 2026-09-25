@@ -21,8 +21,8 @@
  * this package free of a `theme/` dependency.
  */
 
-import { cn } from "@preact-components/cn"
-import { type IconProps, IconXMark } from "@preact-components/icons"
+import { cn } from "@spy4x/preact-cn"
+import { type IconProps, IconXMark } from "@spy4x/preact-icons"
 import type { ComponentChildren, ComponentType, JSX } from "preact"
 import { useId, useRef } from "preact/hooks"
 import { isCurrentLink } from "./site-header.tsx"

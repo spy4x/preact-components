@@ -13,7 +13,7 @@ import { describe, it } from "@std/testing/bdd"
 import { computed, Signal, signal } from "@preact/signals"
 import * as barrel from "./+index.ts"
 
-describe("importing @preact-components/signals", () => {
+describe("importing @spy4x/preact-signals", () => {
   it("adds no member to Signal.prototype", () => {
     // Referenced so the import is unmistakably evaluated before the assertion, whatever a bundler
     // or a future module-graph optimisation would like to do with an unused namespace import.

@@ -9,7 +9,7 @@
 
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
-import { routeTable, routeTableDrift } from "@preact-components/ui-guide/routes"
+import { routeTable, routeTableDrift } from "@spy4x/preact-ui-guide/routes"
 import { renderRouteTable, ROUTE_TABLE_ID, routeTableFromHtml } from "./route-echo.ts"
 
 /** A document with `payload` inside the echo element, spaced the way the template would render it. */

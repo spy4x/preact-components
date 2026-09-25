@@ -43,10 +43,10 @@ import {
   Tabs,
   Tooltip,
   type TooltipPlacement,
-} from "@preact-components/ui"
-import { serializeSort, type SortRule } from "@preact-components/signals/table-state"
+} from "@spy4x/preact-ui"
+import { serializeSort, type SortRule } from "@spy4x/preact-signals/table-state"
 import { useSignal } from "@preact/signals"
-import { IconTrashBin } from "@preact-components/icons"
+import { IconTrashBin } from "@spy4x/preact-icons"
 import { entries } from "../record.ts"
 import type { DemoFragment } from "../registry.ts"
 
@@ -328,7 +328,7 @@ function MarginNoteDemo() {
 
 /** `InstallBox` with the library's own install command. */
 function InstallBoxDemo() {
-  return <InstallBox command="deno add jsr:@preact-components/ui" class="max-w-sm" />
+  return <InstallBox command="deno add jsr:@spy4x/preact-ui" class="max-w-sm" />
 }
 
 /**
@@ -1063,7 +1063,7 @@ export const displayDemos = {
   InstallBox: {
     summary:
       "A code snippet box with a copy button, built on `CopyButton` rather than a second clipboard implementation. The command is real, selectable text — not a background image.",
-    snippet: `<InstallBox command="deno add jsr:@preact-components/ui" />`,
+    snippet: `<InstallBox command="deno add jsr:@spy4x/preact-ui" />`,
     render: () => <InstallBoxDemo />,
   },
   Progress: {

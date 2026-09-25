@@ -1,5 +1,5 @@
 /**
- * `@preact-components/theme` — TypeScript entry point.
+ * `@spy4x/preact-theme` — TypeScript entry point.
  *
  * The design system itself is two plain CSS files, `tokens.css` and `preset.css` (see
  * `README.md`), and JSR refuses a CSS file as a package export: "Expected a JavaScript or

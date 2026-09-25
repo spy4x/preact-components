@@ -1,4 +1,4 @@
-import { cn } from "@preact-components/cn"
+import { cn } from "@spy4x/preact-cn"
 import { formatMoney } from "@spy4x/platform/universal/money"
 import type { JSX } from "preact"
 

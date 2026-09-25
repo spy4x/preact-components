@@ -5,9 +5,9 @@
  * its `id="demo-<Name>"` is what every deep link and every browser check addresses.
  */
 
-import { CopyButton } from "@preact-components/ui"
+import { CopyButton } from "@spy4x/preact-ui"
 import type { ComponentChildren, JSX } from "preact"
-import { cn } from "@preact-components/cn"
+import { cn } from "@spy4x/preact-cn"
 
 /** Props of one catalogue card: its identity, the port, and the live example as children. */
 export interface DemoCardProps {

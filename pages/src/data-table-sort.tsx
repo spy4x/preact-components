@@ -27,9 +27,9 @@
  */
 
 import { useSignal } from "@preact/signals"
-import { type FilterField, useUrlFilters } from "@preact-components/signals/use-url-filters"
-import { parseSort, serializeSort, type SortRule } from "@preact-components/signals/table-state"
-import { DataTable } from "@preact-components/ui/data-table"
+import { type FilterField, useUrlFilters } from "@spy4x/preact-signals/use-url-filters"
+import { parseSort, serializeSort, type SortRule } from "@spy4x/preact-signals/table-state"
+import { DataTable } from "@spy4x/preact-ui/data-table"
 import { Router } from "wouter-preact"
 
 /** One customer order, small enough that sorting three rows is easy to read off the page. */

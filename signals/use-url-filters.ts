@@ -3,7 +3,7 @@ import { useEffect, useRef } from "preact/hooks"
 import { useSearchParams } from "wouter-preact"
 
 /**
- * `@preact-components/signals/use-url-filters` — two-way binding between URL parameters and filter
+ * `@spy4x/preact-signals/use-url-filters` — two-way binding between URL parameters and filter
  * signals.
  *
  * Ported from `template/libs/client/preact/use-url-filters.ts`. The template version registered its

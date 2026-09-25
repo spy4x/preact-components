@@ -14,14 +14,14 @@
  * its package does not export.
  */
 
-import * as charts from "@preact-components/charts"
-import * as cn from "@preact-components/cn"
-import * as crud from "@preact-components/crud"
-import * as map from "@preact-components/map"
-import * as signals from "@preact-components/signals"
-import * as system from "@preact-components/system"
-import * as theme from "@preact-components/theme"
-import * as ui from "@preact-components/ui"
+import * as charts from "@spy4x/preact-charts"
+import * as cn from "@spy4x/preact-cn"
+import * as crud from "@spy4x/preact-crud"
+import * as map from "@spy4x/preact-map"
+import * as signals from "@spy4x/preact-signals"
+import * as system from "@spy4x/preact-system"
+import * as theme from "@spy4x/preact-theme"
+import * as ui from "@spy4x/preact-ui"
 import { parse } from "@std/jsonc"
 import { EXAMPLES_PENDING } from "./examples-pending.ts"
 import { catalogueSections, coveredPackageIds, exampleDemos, type PackageId } from "./registry.ts"

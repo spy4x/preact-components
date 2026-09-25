@@ -1,4 +1,4 @@
-# `@preact-components/crud`
+# `@spy4x/preact-crud`
 
 The list and editor scaffolding every resource page in a source application was rebuilt from: one table with search,
 a status filter, a count and row actions, and one add/edit form with validation, a soft delete and a
@@ -6,7 +6,7 @@ dependency block. The package knows no entity — the store arrives as a prop an
 arrive as slots.
 
 ```ts
-import { CrudEditor, CrudList, RowAction, RowActions, TextField } from "@preact-components/crud"
+import { CrudEditor, CrudList, RowAction, RowActions, TextField } from "@spy4x/preact-crud"
 import { search } from "@spy4x/platform/universal/text"
 ```
 

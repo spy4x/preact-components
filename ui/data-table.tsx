@@ -1,10 +1,10 @@
-import { cn } from "@preact-components/cn"
+import { cn } from "@spy4x/preact-cn"
 import {
   type SortDirection,
   sortRows,
   type SortRule,
   toggleSort,
-} from "@preact-components/signals/table-state"
+} from "@spy4x/preact-signals/table-state"
 import type { ComponentChildren, JSX } from "preact"
 import { EmptyState } from "./empty-state.tsx"
 import { Pagination } from "./pagination.tsx"

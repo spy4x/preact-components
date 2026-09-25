@@ -98,29 +98,29 @@ import {
   IconHome,
   IconPencilSquare,
   IconSearch,
-} from "@preact-components/icons"
+} from "@spy4x/preact-icons"
 import {
   AuthForm,
   type AuthFormError,
   type AuthMode,
   type AuthStep,
-} from "@preact-components/system/auth-form"
-import { Calendar } from "@preact-components/system/calendar"
-import type { PageHead } from "@preact-components/system/head"
-import { ImageLightbox } from "@preact-components/system/image-lightbox"
-import { seoHeadTags } from "@preact-components/system/seo-head"
-import { RailShell, type RailShellItem } from "@preact-components/system/rail-shell"
-import { Shell } from "@preact-components/system/shell"
-import { SiteHeader } from "@preact-components/system/site-header"
-import { readStateInit, StateInit } from "@preact-components/system/state-init"
+} from "@spy4x/preact-system/auth-form"
+import { Calendar } from "@spy4x/preact-system/calendar"
+import type { PageHead } from "@spy4x/preact-system/head"
+import { ImageLightbox } from "@spy4x/preact-system/image-lightbox"
+import { seoHeadTags } from "@spy4x/preact-system/seo-head"
+import { RailShell, type RailShellItem } from "@spy4x/preact-system/rail-shell"
+import { Shell } from "@spy4x/preact-system/shell"
+import { SiteHeader } from "@spy4x/preact-system/site-header"
+import { readStateInit, StateInit } from "@spy4x/preact-system/state-init"
 import {
   type ContainerLike,
   type RegistrationLike,
   SWUpdater,
   watchForUpdate,
   type WorkerLike,
-} from "@preact-components/system/sw-updater"
-import { Button } from "@preact-components/ui"
+} from "@spy4x/preact-system/sw-updater"
+import { Button } from "@spy4x/preact-ui"
 import { useSignal } from "@preact/signals"
 import { useRef } from "preact/hooks"
 import type { DemoFragment } from "../registry.ts"
@@ -1369,7 +1369,7 @@ const state = readStateInit<{ userId: string; features: string[] }>()`,
   },
   ImageLightbox: {
     summary:
-      "Makes the images inside a container zoomable, opening `@preact-components/ui`'s shared `Lightbox` — the same dialog `ImageGallery` opens on a thumbnail. Progressive enhancement in the strict sense: the server renders the page and this only adds a zoom layer after hydration, so a reader without JavaScript loses a zoom they never had. The layer is delegated to the container — one listener rather than one per image, and images arriving later still work. **A zoomable image behaves like a button**: it takes a Tab stop, carries a button's role and a name saying what it does, and opens with Enter or Space, with Space cancelled so the page does not scroll away underneath. A click or an Enter press is cancelled too, so the second image below opens the lightbox instead of following the link it sits in. **The dialog is the component's real output and it is really closed** until an image is opened. Escape closes it natively and a click on the backdrop closes it, which is only true because the image is positioned inside the dialog rather than filling it — a child that covers the dialog is a backdrop no click can reach. **Previous and next page through the container's other zoomable images**, snapshotted at the moment one opens — the two images below are what makes that a claim the card can show rather than describe. Every string it shows is a prop with an English default.",
+      "Makes the images inside a container zoomable, opening `@spy4x/preact-ui`'s shared `Lightbox` — the same dialog `ImageGallery` opens on a thumbnail. Progressive enhancement in the strict sense: the server renders the page and this only adds a zoom layer after hydration, so a reader without JavaScript loses a zoom they never had. The layer is delegated to the container — one listener rather than one per image, and images arriving later still work. **A zoomable image behaves like a button**: it takes a Tab stop, carries a button's role and a name saying what it does, and opens with Enter or Space, with Space cancelled so the page does not scroll away underneath. A click or an Enter press is cancelled too, so the second image below opens the lightbox instead of following the link it sits in. **The dialog is the component's real output and it is really closed** until an image is opened. Escape closes it natively and a click on the backdrop closes it, which is only true because the image is positioned inside the dialog rather than filling it — a child that covers the dialog is a backdrop no click can reach. **Previous and next page through the container's other zoomable images**, snapshotted at the moment one opens — the two images below are what makes that a claim the card can show rather than describe. Every string it shows is a prop with an English default.",
     snippet: `<ImageLightbox
   containerSelector="[data-lightbox]"
   fallbackAlt="Figure"

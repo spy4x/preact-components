@@ -1,4 +1,4 @@
-# @preact-components/theme
+# @spy4x/preact-theme
 
 The design-system CSS every component in this repo styles against: design tokens,
 a Tailwind 4 preset, and the class names components render.
@@ -9,7 +9,7 @@ Tailwind 4, CSS-first — no `tailwind.config.ts` is shipped or required.
 
 `tokens.css` and `preset.css` ship inside the published package as plain files, not as
 `deno.json` `exports` entries — JSR refuses a CSS file as an export ("Expected a JavaScript or
-TypeScript module, but identified a Css module"), so `@preact-components/theme/tokens.css` is not
+TypeScript module, but identified a Css module"), so `@spy4x/preact-theme/tokens.css` is not
 an importable specifier, from JSR or from the npm package JSR publishes alongside it. A `file:`
 path does not exist either once the package comes from the registry: a module JSR serves resolves
 its own `import.meta.url` to the registry's `https:` address, not to a location on disk, so there
@@ -24,7 +24,7 @@ itself:
 
 ```ts
 // build.ts
-import { PRESET_CSS, TOKENS_CSS } from "@preact-components/theme"
+import { PRESET_CSS, TOKENS_CSS } from "@spy4x/preact-theme"
 import { fileURLToPath } from "node:url"
 import { compile } from "tailwindcss"
 
@@ -32,14 +32,14 @@ import { compile } from "tailwindcss"
 // package exports. Anything else (`tailwindcss` itself) is a real npm package, resolved through
 // the workspace/import map the way `pages/build.ts` resolves it.
 const THEME_STYLESHEETS: Record<string, string> = {
-  "@preact-components/theme/tokens.css": TOKENS_CSS,
-  "@preact-components/theme/preset.css": PRESET_CSS,
+  "@spy4x/preact-theme/tokens.css": TOKENS_CSS,
+  "@spy4x/preact-theme/preset.css": PRESET_CSS,
 }
 
 const entry = `
   @import "tailwindcss";
-  @import "@preact-components/theme/tokens.css";
-  @import "@preact-components/theme/preset.css";
+  @import "@spy4x/preact-theme/tokens.css";
+  @import "@spy4x/preact-theme/preset.css";
 `
 
 const compiler = await compile(entry, {
@@ -62,7 +62,7 @@ const compiler = await compile(entry, {
 
 This is the whole recipe — no `node_modules`, no network access and no read permission beyond
 what resolving `tailwindcss` itself already needs. It has been run, verbatim, against this package
-served from a local JSR-compatible registry and imported as `jsr:@preact-components/theme`: the compiled output
+served from a local JSR-compatible registry and imported as `jsr:@spy4x/preact-theme`: the compiled output
 contained both `.btn` and `--color-primary`. That was a one-off run by hand; no check repeats it.
 `compiler.build([...candidates])` (Tailwind's own scanner output, as `pages/build.ts` drives it) is
 the compiled stylesheet with the design system in it.
@@ -76,7 +76,7 @@ Then tell Tailwind where the library's components live, so the classes they use
 are emitted:
 
 ```css
-@source "../node_modules/@preact-components";
+@source "../node_modules/@spy4x";
 ```
 
 `@tailwindcss/forms` is optional: the preset's own form rules render without it,
@@ -123,8 +123,8 @@ which is plain filesystem resolution and never goes through this package's `expo
 ```
 
 `deno install --node-modules-dir` does **not** give a Deno app this same shortcut: it materialises
-`node_modules` for this package's npm dependencies, not for `@preact-components/theme` itself, so
-there is no `node_modules/@preact-components/theme/tokens.css` to import that way. Use the recipe
+`node_modules` for this package's npm dependencies, not for `@spy4x/preact-theme` itself, so
+there is no `node_modules/@spy4x/preact-theme/tokens.css` to import that way. Use the recipe
 under "Install" instead.
 
 ## What it ships
@@ -160,7 +160,7 @@ under "Install" instead.
 - **Surfaces** — `card`, `card-header`, `card-body`, `card-footer`, `scrollbar`.
 - **Data display** — `num`, `kpi`, `kpi-label`, `kpi-value`, `bar`.
 - **Map** — `map-marker` inside a `status-on` / `status-off` / `status-unknown` container, used by
-  `@preact-components/map`'s `Map` component and its plain-text list of markers.
+  `@spy4x/preact-map`'s `Map` component and its plain-text list of markers.
 
 ## Theming
 
@@ -170,8 +170,8 @@ properties. No CSS fork, no `!important`:
 
 ```css
 @import "tailwindcss";
-@import "@preact-components/theme/tokens.css";
-@import "@preact-components/theme/preset.css";
+@import "@spy4x/preact-theme/tokens.css";
+@import "@spy4x/preact-theme/preset.css";
 
 /* After tokens.css, so this wins the cascade. */
 :root {
@@ -180,7 +180,7 @@ properties. No CSS fork, no `!important`:
 }
 ```
 
-(The two `@preact-components/theme` ids are not real specifiers — see "Install" above for what
+(The two `@spy4x/preact-theme` ids are not real specifiers — see "Install" above for what
 actually resolves them: the entry string a build script hands to `compile()`, matched by
 `loadStylesheet` and answered from `TOKENS_CSS`/`PRESET_CSS`.)
 
@@ -208,19 +208,19 @@ the default Eirene palette above. Importing it is the one extra line past the "I
 
 ```ts
 // build.ts
-import { INK_CSS, PRESET_CSS, TOKENS_CSS } from "@preact-components/theme"
+import { INK_CSS, PRESET_CSS, TOKENS_CSS } from "@spy4x/preact-theme"
 
 const THEME_STYLESHEETS: Record<string, string> = {
-  "@preact-components/theme/tokens.css": TOKENS_CSS,
-  "@preact-components/theme/ink.css": INK_CSS,
-  "@preact-components/theme/preset.css": PRESET_CSS,
+  "@spy4x/preact-theme/tokens.css": TOKENS_CSS,
+  "@spy4x/preact-theme/ink.css": INK_CSS,
+  "@spy4x/preact-theme/preset.css": PRESET_CSS,
 }
 
 const entry = `
   @import "tailwindcss";
-  @import "@preact-components/theme/tokens.css";
-  @import "@preact-components/theme/ink.css";
-  @import "@preact-components/theme/preset.css";
+  @import "@spy4x/preact-theme/tokens.css";
+  @import "@spy4x/preact-theme/ink.css";
+  @import "@spy4x/preact-theme/preset.css";
 `
 ```
 

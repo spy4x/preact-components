@@ -1,9 +1,9 @@
-# `@preact-components/cn`
+# `@spy4x/preact-cn`
 
 One function: join conditional class names and resolve conflicting Tailwind utilities.
 
 ```ts
-import { cn } from "@preact-components/cn"
+import { cn } from "@spy4x/preact-cn"
 
 cn("p-2", isActive && "bg-blue-500", isDisabled && "opacity-50")
 ```
@@ -26,6 +26,6 @@ from `theme/`. So:
 
 ## Why its own package
 
-`cn` used to live at `@preact-components/signals/cn`, with no dependency on the rest of
+`cn` used to live at `@spy4x/preact-signals/cn`, with no dependency on the rest of
 `signals/` — it is a pure string function, not state. It moved into its own package so a consumer
 that only wants class-name merging does not pull in the signals layer.

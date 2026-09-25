@@ -14,14 +14,7 @@
  * trusting the markup.
  */
 
-import {
-  Button,
-  ContactForm,
-  EnhancedForm,
-  Field,
-  Input,
-  NewsletterForm,
-} from "@preact-components/ui"
+import { Button, ContactForm, EnhancedForm, Field, Input, NewsletterForm } from "@spy4x/preact-ui"
 import { useSignal } from "@preact/signals"
 import type { DemoFragment } from "../registry.ts"
 

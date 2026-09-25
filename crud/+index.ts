@@ -1,10 +1,10 @@
 /**
- * `@preact-components/crud` — the list and editor scaffolding every resource page was rebuilt from.
+ * `@spy4x/preact-crud` — the list and editor scaffolding every resource page was rebuilt from.
  *
  * A package receives the store it reads through props and supplies the table cells and the form
  * fields as slots; nothing here imports an application's state singleton, and nothing here assumes
  * an entity. Import a single module from its own subpath
- * (`@preact-components/crud/crud-list`) when the barrel would pull in more than you need.
+ * (`@spy4x/preact-crud/crud-list`) when the barrel would pull in more than you need.
  */
 
 export {

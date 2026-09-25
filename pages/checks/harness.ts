@@ -24,8 +24,8 @@
  */
 
 import { join } from "node:path"
-import type { GuidePageId } from "@preact-components/ui-guide/registry"
-import { pageHref } from "@preact-components/ui-guide/routes"
+import type { GuidePageId } from "@spy4x/preact-ui-guide/registry"
+import { pageHref } from "@spy4x/preact-ui-guide/routes"
 
 /** One assertion's outcome. */
 export interface CheckRecord {

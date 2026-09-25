@@ -1,10 +1,10 @@
 /**
- * `@preact-components/charts/svg` — every export of the package that never reaches `d3`.
+ * `@spy4x/preact-charts/svg` — every export of the package that never reaches `d3`.
  *
  * The issue's split made visible at the import site instead of in documentation: a server route, an
  * MPA or an SSR bundle imports this subpath and cannot accidentally take on the interactive islands,
  * because nothing this module re-exports imports `d3` (directly or through types). `D3LineChart` and
- * `CompareChart` stay on their own subpaths, and `@preact-components/charts` keeps re-exporting both
+ * `CompareChart` stay on their own subpaths, and `@spy4x/preact-charts` keeps re-exporting both
  * halves for callers who already carry the dependency.
  *
  * The probe in `charts/probe/no-d3-dependency.ts` is meant to prove this: it type-checks and tests

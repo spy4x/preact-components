@@ -86,10 +86,10 @@
  * way a caller of `ButtonVariant` or `CalendarDayReason` already expects.
  */
 
-import { cn } from "@preact-components/cn"
-import { Button } from "@preact-components/ui/button"
-import { Field } from "@preact-components/ui/field"
-import { Input } from "@preact-components/ui/input"
+import { cn } from "@spy4x/preact-cn"
+import { Button } from "@spy4x/preact-ui/button"
+import { Field } from "@spy4x/preact-ui/field"
+import { Input } from "@spy4x/preact-ui/input"
 import type { JSX } from "preact"
 import { useEffect, useId, useRef, useState } from "preact/hooks"
 

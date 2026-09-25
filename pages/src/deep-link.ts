@@ -7,7 +7,7 @@
  * point it at `index.html`. A fragment also survives a move to a custom domain.
  *
  * The page is now multipage by hash route (`#/inputs`, `#/inputs/toggle-switch`), and that grammar
- * lives in `@preact-components/ui-guide/routes`: it is the library's, so an app registering the
+ * lives in `@spy4x/preact-ui-guide/routes`: it is the library's, so an app registering the
  * guide inherits the same URLs the demo uses. What stays here is the card-level half — the
  * `demo-<Name>` element id, and the names-explicit fragment lookup — plus the one slug rule, which
  * is {@link routeSlug}'s and is re-exported as {@link demoSlug} so nothing keeps a second copy of it.
@@ -18,7 +18,7 @@
  * Pure functions, no DOM: the host page owns the scrolling, these own the mapping.
  */
 
-import { routeSlug } from "@preact-components/ui-guide/routes"
+import { routeSlug } from "@spy4x/preact-ui-guide/routes"
 
 /** The catalogue's card id for a component: what {@link demoElementId} produces. */
 export function demoElementId(name: string): string {

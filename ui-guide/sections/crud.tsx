@@ -33,12 +33,12 @@ import {
   SelectField,
   TextareaField,
   TextField,
-} from "@preact-components/crud"
-import type { CrudAssociationStore } from "@preact-components/crud/association-editor"
-import type { CrudListStore } from "@preact-components/crud/store"
-import type { CrudEditorStore } from "@preact-components/crud/store"
-import type { OperationState } from "@preact-components/crud"
-import { Button } from "@preact-components/ui"
+} from "@spy4x/preact-crud"
+import type { CrudAssociationStore } from "@spy4x/preact-crud/association-editor"
+import type { CrudListStore } from "@spy4x/preact-crud/store"
+import type { CrudEditorStore } from "@spy4x/preact-crud/store"
+import type { OperationState } from "@spy4x/preact-crud"
+import { Button } from "@spy4x/preact-ui"
 import { computed, type ReadonlySignal, signal, useSignal } from "@preact/signals"
 import { search } from "@spy4x/platform/universal/text"
 import type { FieldIssue, ValidationModel } from "@spy4x/validation/model"

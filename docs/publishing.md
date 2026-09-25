@@ -6,8 +6,8 @@ The owner decided this on 2026-09-25
 
 ## Why one version for every package
 
-`deno publish` writes a sibling import as a caret range: `system` imports `@preact-components/cn`,
-and the published `system` asks for `jsr:@preact-components/cn@^0.1.0`. A caret below 1.0 accepts
+`deno publish` writes a sibling import as a caret range: `system` imports `@spy4x/preact-cn`,
+and the published `system` asks for `jsr:@spy4x/preact-cn@^0.1.0`. A caret below 1.0 accepts
 every later `0.1.x`. If the packages were published at different versions, a consumer's lockfile
 could combine a `ui` with a `cn` that nobody tested together.
 

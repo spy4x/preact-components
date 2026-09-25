@@ -2,7 +2,7 @@ import { type ReadonlySignal, signal } from "@preact/signals"
 import type { ToastMessage, ToastVariant } from "./types.ts"
 
 /**
- * `@preact-components/signals/toast` — the store behind `Toastr`.
+ * `@spy4x/preact-signals/toast` — the store behind `Toastr`.
  *
  * Ported from a source application's module-level singleton. It is a factory here so a test can
  * inject its id
@@ -10,7 +10,7 @@ import type { ToastMessage, ToastVariant } from "./types.ts"
  * `remove` that takes one off it.
  *
  * **The store runs no timers.** Auto-dismiss belongs to whatever renders the toast, because that is
- * the side that knows whether a pointer is resting on one. `Toastr` in `@preact-components/ui` runs
+ * the side that knows whether a pointer is resting on one. `Toastr` in `@spy4x/preact-ui` runs
  * a timer per toast, pauses it while the stack is hovered or holds focus, and calls `remove` when
  * the time is up. A store that also scheduled its own removal would take the toast away mid-read,
  * whatever the component had paused — that was #175, and the two timers racing was #174's other
@@ -28,7 +28,7 @@ import type { ToastMessage, ToastVariant } from "./types.ts"
 /**
  * A toast as the store holds it.
  *
- * Assignable to `ToastItem` in `@preact-components/ui` as it stands — same `duration`, same `type`,
+ * Assignable to `ToastItem` in `@spy4x/preact-ui` as it stands — same `duration`, same `type`,
  * same `id` — which is what lets `Toastr toasts={store.list.value}` be the wiring both READMEs
  * show.
  */

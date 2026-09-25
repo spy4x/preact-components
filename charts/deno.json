@@ -1,5 +1,5 @@
 {
-  "name": "@preact-components/charts",
+  "name": "@spy4x/preact-charts",
   "version": "0.1.0",
   "exports": {
     ".": "./+index.ts",

@@ -29,9 +29,9 @@ import {
   TAB_BAR_SLOTS,
   tabBarSlots,
   watchForUpdate,
-} from "@preact-components/system"
-import type { CalendarDay, PageHead, RailShellItem } from "@preact-components/system"
-import { collectSequence, zoomableAlt } from "@preact-components/system/image-lightbox"
+} from "@spy4x/preact-system"
+import type { CalendarDay, PageHead, RailShellItem } from "@spy4x/preact-system"
+import { collectSequence, zoomableAlt } from "@spy4x/preact-system/image-lightbox"
 import type { ExampleFragment } from "../example.tsx"
 import { toExampleDemos } from "../example.tsx"
 
@@ -56,7 +56,7 @@ const examples: ExampleFragment = {
     title: "normalizeCanonical()",
     summary:
       "A canonical address in the one spelling a search engine should see: resolved, with dot segments removed.",
-    snippet: `import { normalizeCanonical } from "@preact-components/system"
+    snippet: `import { normalizeCanonical } from "@spy4x/preact-system"
 
 normalizeCanonical("https://example.com/docs/../guide?page=2")`,
     covers: ["normalizeCanonical"],
@@ -70,7 +70,7 @@ normalizeCanonical("https://example.com/docs/../guide?page=2")`,
   breadcrumbItems,
   breadcrumbListJsonLd,
   canonicalUrl,
-} from "@preact-components/system"
+} from "@spy4x/preact-system"
 
 const page = "https://example.com/docs/setup#install"
 const crumbs = [{ name: "Docs", href: "/docs" }, { name: "Setup" }]
@@ -93,7 +93,7 @@ breadcrumbListJsonLd(page, crumbs)["@id"]`,
     title: "createHeadStore()",
     summary:
       "One page-head signal per request: `setHead` merges a page's fields over the defaults, and `resetHead` puts the defaults back before the next page.",
-    snippet: `import { createHeadStore } from "@preact-components/system"
+    snippet: `import { createHeadStore } from "@spy4x/preact-system"
 
 const { head, setHead, resetHead } = createHeadStore({
   title: "Acme",
@@ -121,7 +121,7 @@ const afterReset = head.value.title`,
     title: "The head tags as data",
     summary:
       "`seoHeadTags` is every tag `SEOHead` renders, in document order, for a head pipeline that is not a component tree; `seoHeadJsonLd` is the JSON-LD graph, and `jsonLdText` serialises it for a `<script>` body with `<` escaped.",
-    snippet: `import { jsonLdText, seoHeadJsonLd, seoHeadTags } from "@preact-components/system"
+    snippet: `import { jsonLdText, seoHeadJsonLd, seoHeadTags } from "@spy4x/preact-system"
 
 const head = {
   title: "Pricing — Acme",
@@ -154,7 +154,7 @@ jsonLdText(seoHeadJsonLd(head))`,
     title: "Server state into the page and back",
     summary:
       '`stateInitText` is the JSON body `StateInit` writes, with `<` escaped so `</script>` cannot end it; `readStateInit` reads it back, trusting only a `<script type="application/json">` — here from a stand-in for `document`.',
-    snippet: `import { readStateInit, stateInitText } from "@preact-components/system"
+    snippet: `import { readStateInit, stateInitText } from "@spy4x/preact-system"
 
 const text = stateInitText({ user: "Ada", note: "</script> is safe" })
 const page = {
@@ -182,7 +182,7 @@ readStateInit("state-init", page)`,
     title: "describeCalendarDay()",
     summary:
       "The default accessible description of one calendar cell: the date as the locale writes it, then how many are left or why it cannot be picked.",
-    snippet: `import { describeCalendarDay } from "@preact-components/system"
+    snippet: `import { describeCalendarDay } from "@spy4x/preact-system"
 
 const day = {
   date: "2026-03-11",
@@ -218,7 +218,7 @@ describeCalendarDay({ ...day, disabled: true, reason: "past", availableCount: un
     title: "isCurrentLink()",
     summary:
       "Whether a header link is the current page — exact equality, so `/docs` is not current while `/docs/intro` is on screen.",
-    snippet: `import { isCurrentLink } from "@preact-components/system"
+    snippet: `import { isCurrentLink } from "@spy4x/preact-system"
 
 isCurrentLink("/pricing", "/pricing")
 isCurrentLink("/docs", "/docs/intro")
@@ -234,7 +234,7 @@ isCurrentLink("/docs", undefined)`,
     title: "The phone tab bar's split",
     summary:
       '`tabBarSlots` decides which `RailShell` entries become tabs and which go behind "More": everything fits in `TAB_BAR_SLOTS` or fewer, otherwise four tabs and the primary action leads the overflow.',
-    snippet: `import { TAB_BAR_SLOTS, tabBarSlots } from "@preact-components/system"
+    snippet: `import { TAB_BAR_SLOTS, tabBarSlots } from "@spy4x/preact-system"
 
 const items = ["home", "inbox", "files", "reports", "people", "settings"]
   .map((key) => ({ key, label: key }))
@@ -259,8 +259,8 @@ more.map((item) => item.key)`,
     title: "What the lightbox opens",
     summary:
       "`zoomableAlt` picks an image's description or the fallback, `resolveImage` turns a clicked element into a lightbox image, and `collectSequence` builds the images the lightbox pages through and where the clicked one sits — here from stand-ins for `<img>` elements.",
-    snippet: `import { resolveImage } from "@preact-components/system"
-import { collectSequence, zoomableAlt } from "@preact-components/system/image-lightbox"
+    snippet: `import { resolveImage } from "@spy4x/preact-system"
+import { collectSequence, zoomableAlt } from "@spy4x/preact-system/image-lightbox"
 
 const image = (src, alt) => ({ matches: (s) => s === "img", src, alt })
 const images = [image("/a.jpg", "Harbour at dawn"), image("/b.jpg", null), image("/c.jpg", " ")]
@@ -286,7 +286,7 @@ collectSequence(images, images[2])`,
     title: "Finding and registering the service worker",
     summary:
       "`serviceWorkerContainer` returns `navigator.serviceWorker`, or nothing off a browser; `startUpdates` registers the worker with it and watches for an update, and the function it returns stops watching.",
-    snippet: `import { serviceWorkerContainer, startUpdates } from "@preact-components/system"
+    snippet: `import { serviceWorkerContainer, startUpdates } from "@spy4x/preact-system"
 
 const registered = []
 const container = Object.assign(new EventTarget(), {
@@ -318,7 +318,7 @@ stop()`,
   DEFAULT_UPDATE_MESSAGE,
   skipWaiting,
   watchForUpdate,
-} from "@preact-components/system"
+} from "@spy4x/preact-system"
 
 const log = []
 const waiting = Object.assign(new EventTarget(), {
@@ -354,7 +354,7 @@ stop()`,
     title: "reloadOnControllerChange()",
     summary:
       "Reloads once the new worker controls the page — armed when the visitor asks for the reload, never at registration, so other tabs are left alone.",
-    snippet: `import { reloadOnControllerChange } from "@preact-components/system"
+    snippet: `import { reloadOnControllerChange } from "@spy4x/preact-system"
 
 let reloads = 0
 const container = Object.assign(new EventTarget(), {

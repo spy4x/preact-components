@@ -11,7 +11,7 @@
  * `classes.test.tsx`, so a chip cannot name a class the card does not apply.
  */
 
-import { IconSearch } from "@preact-components/icons"
+import { IconSearch } from "@spy4x/preact-icons"
 import { useSignal } from "@preact/signals"
 import type { ClassDemoFragment } from "../registry.ts"
 

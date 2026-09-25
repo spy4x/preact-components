@@ -5,7 +5,7 @@
 
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
-import { catalogueNames, catalogueSections } from "@preact-components/ui-guide/registry"
+import { catalogueNames, catalogueSections } from "@spy4x/preact-ui-guide/registry"
 import { componentFromFragment, demoElementId, demoSlug, demoUrl } from "./deep-link.ts"
 
 /** Names in the shape `ui/` exports them. */

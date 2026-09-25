@@ -1,9 +1,9 @@
 /**
- * `@preact-components/ui` — Preact + Tailwind primitives.
+ * `@spy4x/preact-ui` — Preact + Tailwind primitives.
  *
  * Every component in here takes what it needs through props or ports; none of them import an
  * application's state singleton. Import a single component from its own subpath
- * (`@preact-components/ui/badge`) when the barrel would pull in more than you need.
+ * (`@spy4x/preact-ui/badge`) when the barrel would pull in more than you need.
  */
 
 export {

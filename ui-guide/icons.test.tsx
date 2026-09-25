@@ -1,7 +1,7 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
-import * as icons from "@preact-components/icons"
+import * as icons from "@spy4x/preact-icons"
 import { filterIconNames, IconGallery, iconNames, iconSnippet } from "./icons.tsx"
 
 /** Function exports of the icon module — the gallery's source of truth, read the same way. */

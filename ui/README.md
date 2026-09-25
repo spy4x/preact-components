@@ -1,4 +1,4 @@
-# `@preact-components/ui`
+# `@spy4x/preact-ui`
 
 Preact + Tailwind primitives extracted from earlier source applications.
 
@@ -8,7 +8,7 @@ Preact + Tailwind primitives extracted from earlier source applications.
   state arrives as props; side effects (clipboard, geolocation, toasts) arrive as callbacks.
 - **Tailwind classes, rendered against the theme.** Components write Tailwind utilities and the
   theme's class names (`input`, `btn-input-icon`), so a page needs `theme/`'s stylesheet; a few
-  glyphs come from `@preact-components/icons`.
+  glyphs come from `@spy4x/preact-icons`.
 - **Server-renderable.** `document`, `navigator` and timers are touched inside effects or event
   handlers only.
 - **One Preact option hook, for four components' refs.** `./forward-ref.ts`'s hook, installed on
@@ -22,7 +22,7 @@ Preact + Tailwind primitives extracted from earlier source applications.
   `./on-off-buttons`, `./pagination`, `./contact-form` and `./newsletter-form`, each of which
   renders a `Button` of its own; `./dropdown`, which uses `buttonClasses` without ever rendering a
   `Button`; and `./copyable-text` and `./data-table`, which load it transitively — through
-  `./copy-button` and `./pagination` respectively. `@preact-components/crud` loads it too,
+  `./copy-button` and `./pagination` respectively. `@spy4x/preact-crud` loads it too,
   transitively, through `./dropdown`. It acts only on the four components it forwards refs for;
   nothing else in this package or a caller's own markup is affected.
 
@@ -107,9 +107,9 @@ one. See #257's own "What I suggest" for the two options this decides between.
 ## Usage
 
 ```tsx
-import { Badge, Button, Toastr, ToggleSwitch } from "@preact-components/ui"
+import { Badge, Button, Toastr, ToggleSwitch } from "@spy4x/preact-ui"
 // or one component at a time, so the barrel does not pull in the rest
-import { Badge } from "@preact-components/ui/badge"
+import { Badge } from "@spy4x/preact-ui/badge"
 ```
 
 Wiring side effects through ports, so the package stays app-agnostic:
@@ -147,7 +147,7 @@ from the tabs whose panel it omitted. Ids are derived from each `TabItem.id` (`$
 
 `Toastr` auto-dismisses each toast after `toast.duration` milliseconds (default
 `defaultToastDuration`, which is 5000; `0` keeps it until dismissed) and reports it through
-`onDismiss` — the caller owns the stack. `createToastStore` in `@preact-components/signals` writes
+`onDismiss` — the caller owns the stack. `createToastStore` in `@spy4x/preact-signals` writes
 that same `duration` field, so the wiring above needs no adapter; `String(id)` is there because
 `ToastItem.id` is `string | number` and that store's ids are strings.
 
@@ -178,7 +178,7 @@ timer's delay as a 32-bit signed integer. `NaN` starts no timer and so keeps the
 does.
 
 **This component owns the dismiss timer, and the store it is wired to owns none.** The pause can
-only hold a timer this component runs, so `createToastStore` from `@preact-components/signals`
+only hold a timer this component runs, so `createToastStore` from `@spy4x/preact-signals`
 schedules nothing: it holds the list, and `onDismiss` calls its `remove`. The side that can see a
 pointer resting on a toast is the side that should be timing it, which is why the timer lives here
 rather than there.
@@ -526,12 +526,12 @@ and where it falls in the sentence is the translator's business.
 
 ## DataTable
 
-`Table`'s markup joined to `@preact-components/signals/table-state`'s sort rules: a sortable,
+`Table`'s markup joined to `@spy4x/preact-signals/table-state`'s sort rules: a sortable,
 optionally paged table with no sort state of its own.
 
 ```tsx
-import { DataTable } from "@preact-components/ui/data-table"
-import type { SortRule } from "@preact-components/signals/table-state"
+import { DataTable } from "@spy4x/preact-ui/data-table"
+import type { SortRule } from "@spy4x/preact-signals/table-state"
 
 const sort = useSignal<SortRule<"date" | "merchant" | "amount">[]>([])
 

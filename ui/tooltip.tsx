@@ -1,4 +1,4 @@
-import { cn } from "@preact-components/cn"
+import { cn } from "@spy4x/preact-cn"
 import { type Signal, useSignal } from "@preact/signals"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId } from "preact/hooks"

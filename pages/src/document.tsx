@@ -6,14 +6,14 @@
  * markup `preact-render-to-string` produced from the same `App` the island hydrates, which is what
  * makes hydration match rather than repair.
  *
- * The `<head>` itself comes from `@preact-components/system`'s `SEOHead`, rendered to a string the
+ * The `<head>` itself comes from `@spy4x/preact-system`'s `SEOHead`, rendered to a string the
  * same way `appHtml` is: this is the one real consumer of that component in the repository, and
  * its canonical address is now parsed rather than concatenated — see `renderDocument` below.
  */
 
-import type { RouteTable } from "@preact-components/ui-guide/routes"
+import type { RouteTable } from "@spy4x/preact-ui-guide/routes"
 import { renderToString } from "preact-render-to-string"
-import { SEOHead } from "@preact-components/system/seo-head"
+import { SEOHead } from "@spy4x/preact-system/seo-head"
 import { renderRouteTable } from "./route-echo.ts"
 import { FAVICON, PAGE_DESCRIPTION, PAGE_TITLE } from "./site.ts"
 
@@ -69,7 +69,7 @@ export function renderDocument(
   { base, origin, cssHref, islandSrc, appHtml, routeTable }: DocumentOptions,
 ): string {
   // `SEOHead` parses this before it publishes it — see `normalizeCanonical` in
-  // `@preact-components/system/head` — so a stray query string or fragment on either input is
+  // `@spy4x/preact-system/head` — so a stray query string or fragment on either input is
   // resolved and cleaned rather than concatenated straight into the tag set.
   const canonical = `${origin}${base}`
 
