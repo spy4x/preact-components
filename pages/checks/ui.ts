@@ -9346,13 +9346,14 @@ async function fileInputTooManyRefusalCheck(
  * `multiple`, `handleFiles` keeps at most one file, and a batch that accepts nothing new used to
  * fall through to an empty list, discarding the earlier valid file along with the refused one.
  *
- * Runs right after {@link fileInputTooManyRefusalCheck}, which leaves the "Single file only" card
- * holding `ok.png` — the file this check offers a wrong-type refusal against. `DOM.setFileInputFiles`
- * is safe here for a single file, unlike the too-many check's own drop: the truncation that check's
- * own doc describes only bites a `FileList` carrying more than one file, and this call always sets
- * exactly one.
+ * Selects `ok.png` itself, through a fresh `DOM.setFileInputFiles` call, rather than reusing the
+ * file {@link fileInputTooManyRefusalCheck} leaves behind: that check sets the native input's own
+ * `files` through a real drop, and a `DOM.setFileInputFiles` call right after one of those was
+ * observed, in practice, to not reliably redeliver a `change` event on this same node — two
+ * `DOM.setFileInputFiles` calls in a row, the shape {@link fileInputRefusalChecks} already relies
+ * on, is the reliable one.
  *
- * @param devtools The connected session, on a hydrated page, right after the too-many check.
+ * @param devtools The connected session, on a hydrated page.
  * @param fixture Real files on disk, from {@link writeFileInputFixtures}.
  */
 async function fileInputRefusalKeepsPriorFileCheck(
@@ -9361,15 +9362,22 @@ async function fileInputRefusalKeepsPriorFileCheck(
 ): Promise<void> {
   const inputSelector = `${FILE_INPUT_CARD} #${FILE_INPUT_SINGLE_ID}`
 
-  const before = await devtools.evaluate<string[]>(
-    `Array.from(document.querySelector('${inputSelector}')?.files ?? []).map((f) => f.name)`,
-  )
+  const selectNodeId = await domNodeId(devtools, inputSelector)
   check(
-    "the single-file card already holds ok.png before this check offers a refusal",
-    before.includes("ok.png"),
-    `input.files: [${before.join(", ")}]`,
+    "the single-file FileInput's native input is found for its own selection",
+    selectNodeId !== null,
   )
-  if (!before.includes("ok.png")) return
+  if (selectNodeId === null) return
+
+  await devtools.send("DOM.setFileInputFiles", { files: [fixture.ok], nodeId: selectNodeId })
+  const chosen = await poll(async () => {
+    const names = await devtools.evaluate<string[]>(
+      `Array.from(document.querySelector('${inputSelector}')?.files ?? []).map((f) => f.name)`,
+    )
+    return names.includes("ok.png")
+  }, 5_000)
+  check("the single-file card accepts ok.png ahead of this check's own refusal", chosen)
+  if (!chosen) return
 
   const nodeId = await domNodeId(devtools, inputSelector)
   check(

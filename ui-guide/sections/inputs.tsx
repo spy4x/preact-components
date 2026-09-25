@@ -739,8 +739,8 @@ function ToggleFieldDemo() {
  * The "Single file only" card carries no `multiple`, so a second file dropped or picked alongside
  * the first is refused with reason `"too-many"` rather than silently dropped; the paragraph under it
  * echoes `onReject` the same way the first card does. It also restricts `accept` to PNG, which
- * `pages/checks/ui.ts`'s `fileInputRefusalKeepsPriorFileCheck` uses to prove a later refusal — wrong
- * type, on a card that accepts only one file — leaves the file already chosen in place.
+ * `pages/checks/ui.ts`'s `fileInputRefusalKeepsPriorFileCheck` uses to prove a wrong-type refusal
+ * leaves a file already chosen in place, on a card that only ever holds one.
  *
  * The last card's `<form>` carries no `onSubmit`: it is the plain post `FileInput`'s own doc
  * promises, proven by `pages/checks/ui.ts`'s `fileInputFormPostCheck` against the `form-demo/`
