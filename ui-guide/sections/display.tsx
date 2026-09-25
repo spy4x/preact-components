@@ -214,18 +214,12 @@ const progressTones: Record<ProgressTone, string> = {
   danger: "danger",
 }
 
-/**
- * Every placement — the record is the coverage guard for `TooltipPlacement`.
- *
- * The key order is the card's order, chosen for a phone: in the two-column grid, `right` sits in
- * the left column and `left` in the right one, so each forced-visible hint opens towards the middle
- * of the card rather than past its edge.
- */
+/** Every placement — the record is the coverage guard for `TooltipPlacement`. */
 const tooltipPlacements: Record<TooltipPlacement, string> = {
-  right: "right",
-  left: "left",
   top: "top (default)",
+  right: "right",
   bottom: "bottom",
+  left: "left",
 }
 
 /** One example user per card, so the anatomy cards are about layout rather than about lorem. */
@@ -887,23 +881,29 @@ function CopyableTextDemo() {
  */
 function TooltipDemo() {
   return (
-    <div class="grid grid-cols-2 gap-6 sm:grid-cols-4">
+    <div class="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-4">
       {entries(tooltipPlacements).map(([placement, label]) => (
-        <div key={placement} class="space-y-2 text-center">
+        // One placement per row on a phone. Each cell keeps room above and below its trigger for
+        // a top or bottom hint, and the hint is one short word, so no hint covers a trigger.
+        <div
+          key={placement}
+          class="flex flex-col items-center pt-10 text-center"
+          data-e2e="tooltip-placement"
+        >
           <Tooltip
-            content="Supplementary, never the trigger's only name"
+            content="Hint"
             label={label}
             placement={placement}
             class="bg-gray-100 px-2 py-1 dark:bg-gray-700"
-            contentClass="visible max-w-32 opacity-100"
+            contentClass="visible opacity-100"
           >
             <span class="text-sm">{placement}</span>
           </Tooltip>
-          <p class="text-xs text-gray-500 dark:text-gray-400">{label}</p>
+          <p class="mt-10 text-xs text-gray-500 dark:text-gray-400">{label}</p>
         </div>
       ))}
-      <div class="col-span-2 space-y-2 sm:col-span-4">
-        <div class="text-center">
+      <div class="col-span-full space-y-2">
+        <div class="pt-20 text-center">
           <Tooltip
             content="An interactive trigger keeps its own tab stop, so the wrapper drops its own"
             label="Archive the invoice"
@@ -920,11 +920,11 @@ function TooltipDemo() {
           </Tooltip>
         </div>
         <p class="text-xs text-gray-500 dark:text-gray-400">
-          `focusable={false}` — with a {`<button>`}{" "}
+          {"`focusable={false}`"} — with a {`<button>`}{" "}
           inside, a second tab stop for one control is a keyboard trap rather than a convenience.
         </p>
       </div>
-      <div class="col-span-2 space-y-2 sm:col-span-4" data-e2e="tooltip-live">
+      <div class="col-span-full space-y-2" data-e2e="tooltip-live">
         <div class="text-center">
           <Tooltip
             content="Escape hides this hint, and the pointer may rest on it while it is read"
