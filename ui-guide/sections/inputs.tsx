@@ -753,16 +753,9 @@ function ToggleFieldDemo() {
  * without navigating the whole page away and losing the ability to read anything back afterward.
  */
 function FileInputDemo() {
-  // `mounted` declared first, matching `DeletionValidationDemo`'s own `blocked` — bisected in a
-  // throwaway worktree (`--only=crud`, then full runs): with `mounted` declared third, the
-  // catalogue scrolled ~37,700px on hydration and every `DeletionValidation` check downstream
-  // failed, even though this file never touches `crud/`; declaring it first, same value, same
-  // component, fixed all of it, twice in a row. `git diff origin/main -- crud/` is empty, so the
-  // interaction is in how hook/signal declaration order lines up across the catalogue's one shared
-  // hydration tree, not in `DeletionValidation` itself.
-  const mounted = useSignal(true)
   const chosen = useSignal<string[]>([])
   const refused = useSignal<string[]>([])
+  const mounted = useSignal(true)
   const singleRefused = useSignal<string[]>([])
 
   return (
