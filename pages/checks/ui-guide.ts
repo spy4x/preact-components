@@ -23,6 +23,7 @@ const MENU_DIALOG = `[data-e2e="ui-guide-nav-dialog"]`
  * @param devtools The connected session, on a hydrated page.
  */
 export async function uiGuideChecks(devtools: Devtools): Promise<void> {
+  await serverTextChecks(devtools)
   await copyBlockChecks(devtools)
   await withViewport(devtools, 1280, 800, () => navigationChecks(devtools))
   await withViewport(devtools, 375, 812, () => phoneNavigationChecks(devtools))
@@ -192,6 +193,107 @@ async function copyBlockChecks(devtools: Devtools): Promise<void> {
     feedback,
     "the glyph changed after the click",
   )
+}
+
+/**
+ * The text of every card, keyed by its `demo-<Name>` id, with each run of whitespace collapsed to
+ * one space. A page expression, so the same reading applies to the served document parsed in the
+ * page and to the live one.
+ *
+ * A `<textarea>` counts by its value rather than its child text: the server writes the value as the
+ * element's text, while Preact in the browser sets the `value` property and leaves the element
+ * empty, so `textContent` alone reports every filled textarea as a difference.
+ */
+const CARD_TEXTS = `(root) => {
+  const textOf = (node) => {
+    if (node.nodeType === Node.TEXT_NODE) return node.data
+    if (node.nodeName === "TEXTAREA") return " " + node.value + " "
+    return [...node.childNodes].map(textOf).join("")
+  }
+  return Object.fromEntries(
+    [...root.querySelectorAll('article[id^="demo-"]')]
+      .map((card) => [card.id, textOf(card).replace(/\\s+/g, " ").trim()]),
+  )
+}`
+
+/**
+ * The cards whose text is expected to differ between the served document and the page after it
+ * runs, each with the reason. A card listed here that stops differing fails the check, so the list
+ * cannot outlive its reason.
+ */
+const TEXT_DIFFERS_IN_BROWSER: Record<string, string> = {
+  "demo-CrudEditor": "validation runs in an effect, so the cross-field message above Save exists " +
+    "only in the browser",
+  "demo-D3LineChart": "d3 draws the chart in an effect; the server renders a placeholder",
+  "demo-CompareChart": "d3 draws the chart in an effect; the server renders a placeholder",
+  "demo-Map": "Leaflet builds the map, and its zoom controls, in an effect",
+}
+
+/**
+ * #303: every card shows the same text in the browser as in the served, server-rendered document.
+ *
+ * Preact replaces text that differs from the server's while it hydrates, and logs nothing, so a card
+ * whose output depends on the clock, the time zone, the locale or a browser-only API passes the
+ * console check while a reader without JavaScript sees something else. The served `index.html` is
+ * fetched from the page's own address and parsed there; it is the guide's `all` page, so it holds
+ * every card. Each package page is then opened, and every card's text, read the same way, is
+ * compared with the served card of the same id. Text only: attributes and styles are not compared.
+ */
+async function serverTextChecks(devtools: Devtools): Promise<void> {
+  const served = await devtools.evaluate<Record<string, string>>(`(async () => {
+    const response = await fetch(location.href.split("#")[0], { cache: "no-store" })
+    const html = await response.text()
+    const document = new DOMParser().parseFromString(html, "text/html")
+    return (${CARD_TEXTS})(document)
+  })()`)
+
+  const differing = new Map<string, string>()
+  const missing: string[] = []
+  const seen = new Set<string>()
+  for (const page of guidePages.filter((each) => each.id !== "all" && each.sections.length > 0)) {
+    await openGuidePage(devtools, page.id)
+    const live = await devtools.evaluate<Record<string, string>>(`(${CARD_TEXTS})(document)`)
+    for (const [id, text] of Object.entries(live)) {
+      seen.add(id)
+      if (!(id in served)) missing.push(id)
+      else if (served[id] !== text) differing.set(id, whereTextsDiffer(served[id], text))
+    }
+  }
+
+  const expected = guidePages.filter((page) => page.id !== "all").reduce(
+    (total, page) => total + page.sections.reduce((sum, section) => sum + section.names.length, 0),
+    0,
+  )
+  const unlisted = [...differing].filter(([id]) => !(id in TEXT_DIFFERS_IN_BROWSER))
+  const fixed = Object.keys(TEXT_DIFFERS_IN_BROWSER).filter((id) => !differing.has(id))
+  check(
+    "every card shows the same text in the browser as in the served document",
+    seen.size === expected && Object.keys(served).length === expected && missing.length === 0 &&
+      unlisted.length === 0 && fixed.length === 0,
+    [
+      `${seen.size}/${expected} cards read in the browser, ${Object.keys(served).length} served, ` +
+      `${Object.keys(TEXT_DIFFERS_IN_BROWSER).length} listed as drawn in the browser`,
+      missing.length > 0 ? `not in the served document: ${missing.join(", ")}` : "",
+      unlisted.length > 0
+        ? `text differs: ${unlisted.map(([id, where]) => `#${id} (${where})`).join(", ")}`
+        : "",
+      fixed.length > 0
+        ? `listed but now the same, so drop it from the list: ${fixed.join(", ")}`
+        : "",
+    ].filter(Boolean).join("; "),
+  )
+}
+
+/**
+ * Where two card texts part: a few characters of each from the first one that differs, so a failure
+ * says what changed as well as which card.
+ */
+function whereTextsDiffer(served: string, live: string): string {
+  let at = 0
+  while (at < served.length && served[at] === live[at]) at++
+  const from = Math.max(0, at - 10)
+  const excerpt = (text: string) => JSON.stringify(text.slice(from, at + 30))
+  return `served ${excerpt(served)}, browser ${excerpt(live)}`
 }
 
 /** What one page of the guide shows, read off the live document. */
