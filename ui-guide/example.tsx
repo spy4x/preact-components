@@ -68,9 +68,10 @@ export function formatOutput(value: unknown): string {
  *
  * `run` is called inside the card's render, so it runs on the server render and again in the
  * browser, never at import time. Being inside a render, it may call hooks. It is called inside
- * `untracked`: otherwise the card would subscribe to every signal `run` reads, a write to one of
- * them would render the card again, `run` would build fresh signals and write them again, and in
- * the browser the page would never finish loading.
+ * `untracked`, and so is the formatting of what it returns, which may itself be a signal:
+ * otherwise the card would subscribe to every signal `run` reads, a write to one of them would
+ * render the card again, `run` would build fresh signals and write them again, and in the browser
+ * the page would never finish loading.
  *
  * @param examples The section's examples.
  * @returns One card per example, keyed as given.
@@ -96,7 +97,7 @@ function ExampleOutput({ run }: { run: () => unknown }): JSX.Element {
       <pre
         data-e2e="example-output"
         class="overflow-x-auto font-mono text-xs whitespace-pre-wrap [overflow-wrap:anywhere] text-gray-900 dark:text-gray-100"
-      ><code>{formatOutput(untracked(run))}</code></pre>
+      ><code>{untracked(() => formatOutput(run()))}</code></pre>
     </figure>
   )
 }

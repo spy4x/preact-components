@@ -174,7 +174,8 @@ variant to a component fails `deno check` until the catalogue shows it.
 ### The allow-list carries a reason, and it only shrinks
 
 Two lists feed it. `EXPORTS_WITHOUT_DEMO` in `coverage.ts` holds an export with a sentence saying
-why it has no card or example; it is empty today. `examples-pending.ts` holds, per package and one
+why it has no card or example; today that is `useUrlFilters` alone, whose card would read and
+write the host application's own address. `examples-pending.ts` holds, per package and one
 name per line, every export that had neither when example cards were added; each carries the reason
 "example pending (#215)". An entry the package no longer exports fails, and so does one that
 has a card or an example since — so adding an example fails the tests until its names leave the
@@ -197,8 +198,8 @@ snippet cannot be empty; `example.test.tsx` fails otherwise. `run` is called whe
 renders, so the output on the page is the real export's, never a copy. Being inside a render, `run`
 may call a hook. The card calls it inside `untracked`, so `run` may read and write signals freely:
 a tracked read would subscribe the card, and the write after it would render the card again and
-again until the page stopped loading. Keep it deterministic — no clock, no random, no network — since the server render and the
-browser render have to match.
+again until the page stopped loading. Keep it deterministic — no clock, no random, no network —
+since the server render and the browser render have to match.
 
 ### A component without a card is visible, not absent
 

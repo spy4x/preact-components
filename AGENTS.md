@@ -85,10 +85,13 @@ The catalogue has to be told about the package: add its directory to `packageIds
 every value it exports a card or an example, or add it to `EXCLUDED_PACKAGES` in
 `ui-guide/coverage.ts` with a reason. A package directory with none of these fails
 `deno task test`. Adding an export to a catalogued package means adding its card or example to that
-package's section in `ui-guide/sections/` — a component gets a card in `<package>.tsx`, anything
-else an example in `<package>-examples.tsx` (`ui-guide/README.md`, "Adding an example");
-`deno task test` fails without one. The test cannot see a changed export, so that rests on the rule
-in "Every change updates the UI guide" below.
+package's section in `ui-guide/sections/` — a component gets a card in the section file that holds
+its kind (`ui/` spreads its cards over several files; the other packages have `<package>.tsx`),
+anything else an example in `<package>-examples.tsx` (`ui-guide/README.md`, "Adding an example");
+`deno task test` fails without one. The one way out is an entry in `EXPORTS_WITHOUT_DEMO` in
+`ui-guide/coverage.ts` with a sentence saying why no card or example is possible, which review
+challenges. The test cannot see a changed export, so that rests on the rule in "Every change updates
+the UI guide" below.
 
 ## Branch-first workflow
 
@@ -377,8 +380,8 @@ changes the demo's snippet, and a helper or hook a component card does not alrea
 an example of its own.
 
 `deno task test` enforces only part of this: every value a catalogued package exports needs a card
-or an example (`ui-guide/coverage.ts`). That a card or an example still matches what it shows is
-held by review.
+or an example, or an entry in `EXPORTS_WITHOUT_DEMO` with its reason (`ui-guide/coverage.ts`). That
+a card or an example still matches what it shows is held by review.
 
 ## Validation
 
