@@ -34,4 +34,14 @@ describe("CiStatusPill", () => {
   it("renders a caller-supplied label instead of the default", () => {
     expect(render(<CiStatusPill status="passing" label="All green" />)).toContain("All green")
   })
+
+  it("falls back to the Unknown label for an empty status instead of rendering an empty pill", () => {
+    const html = render(<CiStatusPill status="" />)
+    expect(html).toContain("Unknown")
+    expect(html).toContain("gray")
+  })
+
+  it("falls back to the Unknown label for a whitespace-only status", () => {
+    expect(render(<CiStatusPill status="   " />)).toContain("Unknown")
+  })
 })

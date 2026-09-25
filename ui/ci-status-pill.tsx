@@ -55,9 +55,14 @@ export function normalizeCiStatus(status: string): CiStatus {
  */
 export function CiStatusPill({ status, label, class: className }: CiStatusPillProps): JSX.Element {
   const normalized = normalizeCiStatus(status)
+  const fallbackText = normalized === "unknown"
+    // An empty or all-whitespace status has no caller spelling worth showing — fall back to the
+    // same "Unknown" text a recognised status would get, rather than rendering an empty pill.
+    ? (status.trim() || DEFAULT_LABELS.unknown)
+    : DEFAULT_LABELS[normalized]
   return (
     <Badge
-      text={label ?? (normalized === "unknown" ? status : DEFAULT_LABELS[normalized])}
+      text={label ?? fallbackText}
       color={COLORS[normalized]}
       class={className}
     />
