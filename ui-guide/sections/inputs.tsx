@@ -12,6 +12,7 @@
  */
 
 import {
+  Button,
   Combobox,
   type ComboboxOptionState,
   type DateRange,
@@ -22,6 +23,8 @@ import {
   type DateTimeRange,
   Dropdown,
   DropdownItem,
+  Field,
+  FileInput,
   isValidDateRange,
   isValidDateTimeRange,
   OnOffButtons,
@@ -720,6 +723,125 @@ function ToggleFieldDemo() {
 }
 
 /**
+ * `FileInput` in five shapes: image-only and size-limited, disabled, nested inside a `Field`, capped
+ * at one file, and posting through a plain `<form>`.
+ *
+ * Selecting, dropping, refusing and removing a file are all browser-only, so what a card can show
+ * ahead of the first click is the closed-state markup: the visually hidden native input inside its
+ * drop zone, the label wired to it, and an always-present, empty `role="status"` for a refusal that
+ * has not happened yet. What a caller actually reads — `onFiles` and `onReject` — is echoed
+ * underneath, in place of trusting the component's own live region to speak for its port.
+ *
+ * The "Inside a Field" card passes `label` and `hint` to `Field`, not to `FileInput`: `FileInput`
+ * renders no label of its own there, and `Field`'s own clone is what supplies `FileInput`'s
+ * `aria-describedby`.
+ *
+ * The "Single file only" card carries no `multiple`, so a second file dropped or picked alongside
+ * the first is refused with reason `"too-many"` rather than silently dropped; the paragraph under it
+ * echoes `onReject` the same way the first card does. It also restricts `accept` to PNG, which
+ * `pages/checks/ui.ts`'s `fileInputRefusalKeepsPriorFileCheck` uses to prove a wrong-type refusal
+ * leaves a file already chosen in place, on a card that only ever holds one.
+ *
+ * The last card's `<form>` carries no `onSubmit`: it is the plain post `FileInput`'s own doc
+ * promises, proven by `pages/checks/ui.ts`'s `fileInputFormPostCheck` against the `form-demo/`
+ * static page the `EnhancedForm` cards already post to when no script runs theirs.
+ *
+ * The first card's own toggle button (`data-e2e="file-input-toggle-mount"`) is scaffolding, not a
+ * `FileInput` prop: this catalogue never unmounts a card on its own — every section stays in the
+ * markup once rendered, anchored rather than routed — so proving preview URLs are revoked "on
+ * unmount" needs a real Preact unmount somewhere, and this button is what gives the check one
+ * without navigating the whole page away and losing the ability to read anything back afterward.
+ */
+function FileInputDemo() {
+  const chosen = useSignal<string[]>([])
+  const refused = useSignal<string[]>([])
+  const mounted = useSignal(true)
+  const singleRefused = useSignal<string[]>([])
+
+  return (
+    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+      <div class="space-y-2">
+        <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">
+          Images only, up to 2 MB
+        </h4>
+        {mounted.value && (
+          <FileInput
+            id="guide-file-input"
+            label="Attachments"
+            hint="PNG or JPEG, up to 2 MB each"
+            accept="image/png,image/jpeg"
+            maxSize={2 * 1024 * 1024}
+            multiple
+            onFiles={(files) => chosen.value = files.map((f) => f.name)}
+            onReject={(reasons) =>
+              refused.value = reasons.map((r) => `${r.file.name} (${r.reason})`)}
+          />
+        )}
+        <button
+          type="button"
+          class="text-xs text-blue-600 underline dark:text-blue-400"
+          data-e2e="file-input-toggle-mount"
+          onClick={() => mounted.value = !mounted.value}
+        >
+          {mounted.value ? "Unmount" : "Remount"} this card
+        </button>
+        <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="file-input-chosen">
+          chosen: {chosen.value.length === 0 ? "none" : chosen.value.join(", ")}
+        </p>
+        <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="file-input-refused">
+          refused: {refused.value.length === 0 ? "none" : refused.value.join(", ")}
+        </p>
+      </div>
+      <div class="space-y-2">
+        <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">Disabled</h4>
+        <FileInput id="guide-file-input-disabled" label="Attachments" disabled />
+      </div>
+      <div class="space-y-2">
+        <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">Inside a Field</h4>
+        <Field
+          id="guide-file-input-field"
+          label="Attachments"
+          hint="Up to 2 MB each"
+        >
+          <FileInput id="guide-file-input-field" />
+        </Field>
+        <p class="text-xs text-gray-500 dark:text-gray-400">
+          `Field` renders the one visible label; `FileInput` itself gets no `label`, `hint` or
+          `error` here, so it renders none of its own.
+        </p>
+      </div>
+      <div class="space-y-2">
+        <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">
+          Single file only (drop or pick more than one)
+        </h4>
+        <FileInput
+          id="guide-file-input-single"
+          label="Attachment"
+          accept="image/png"
+          labels={{ tooMany: (name) => `${name}: un seul fichier est autorisé` }}
+          onReject={(reasons) =>
+            singleRefused.value = reasons.map((r) => `${r.file.name} (${r.reason})`)}
+        />
+        <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="file-input-single-refused">
+          refused: {singleRefused.value.length === 0 ? "none" : singleRefused.value.join(", ")}
+        </p>
+      </div>
+      <div class="space-y-2 sm:col-span-2">
+        <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">A plain form post</h4>
+        <form action="form-demo/" method="post" encType="multipart/form-data" class="space-y-3">
+          <FileInput id="guide-file-input-form" name="attachment" label="Attachment" />
+          <Button type="submit" variant="outline">Send</Button>
+        </form>
+        <p class="text-xs text-gray-500 dark:text-gray-400">
+          No `onSubmit`: whatever this form posts is the browser's own multipart body, built from
+          the native input `FileInput` wraps.
+        </p>
+      </div>
+    </div>
+  )
+}
+
+/**
  * The picker with a real range and a highlighted preset.
  *
  * The panel uses `role="group"`, so it can hold the two date inputs that `Dropdown`'s `role="menu"`
@@ -922,6 +1044,21 @@ export const inputDemos = {
   required
 />`,
     render: () => <ToggleFieldDemo />,
+  },
+  FileInput: {
+    summary:
+      'File picker on a real `<input type="file">`, hidden with `sr-only` so keyboard, screen-reader and plain-form-post behaviour all stay native; the drop zone is a `<div>` around it, not a second label. `accept` and `maxSize` refusals go through `onReject` and an always-present live region; `previews` (default on) shows and revokes an image thumbnail per file. Does not upload.',
+    snippet: `<FileInput
+  id="attachments"
+  label="Attachments"
+  hint="PNG or JPEG, up to 2 MB each"
+  accept="image/png,image/jpeg"
+  maxSize={2 * 1024 * 1024}
+  multiple
+  onFiles={(files) => chosen.value = files}
+  onReject={(reasons) => refused.value = reasons}
+/>`,
+    render: () => <FileInputDemo />,
   },
   Combobox: {
     summary:
