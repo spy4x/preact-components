@@ -85,8 +85,8 @@ const HARNESS_IMPORTS: Record<string, string> = {
   "@std/testing": "jsr:@std/testing@1.0.20",
   // The root map's `@std/testing` entry does not cover the subpath the suites import.
   "@std/testing/bdd": "jsr:@std/testing@1.0.20/bdd",
-  "preact": "npm:preact@10.28.2",
-  "preact/": "npm:/preact@10.28.2/",
+  "preact": "npm:preact@10.29.8",
+  "preact/": "npm:/preact@10.29.8/",
   "preact-render-to-string": "npm:preact-render-to-string@6.7.0",
 }
 
