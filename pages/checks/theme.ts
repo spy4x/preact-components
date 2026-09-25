@@ -333,7 +333,9 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
   // ordinary focus, not yet the one this check reads), tabs forward and Shift+Tabs straight back,
   // and only then reads what the second, keyboard-driven focus actually committed.
   // The light palette is probed too: the dark fix must not change the ring every existing
-  // consumer's light primary button draws (#291's third review found an earlier fix had).
+  // consumer's light primary button draws (#291's third review found an earlier fix had). So in
+  // the light palette a `.btn-primary`'s ring must also be the browser's own focus colour, read
+  // off an element whose outline is `-webkit-focus-ring-color`; 3:1 alone let a purple ring pass.
   const palettes = [
     { dark: true, ink: true, name: "under ink" },
     { dark: true, ink: false, name: "in the default dark palette" },
@@ -415,6 +417,7 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
       outlineColor: string
       pageBackground: string
       cardBackground: string
+      browserRing: string
       ratio: number
     }>(`(async () => {
       const root = document.documentElement
@@ -452,6 +455,10 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
       const outlineColor = getComputedStyle(button).outlineColor
       const pageBackground = getComputedStyle(document.body).backgroundColor
       const cardBackground = getComputedStyle(button.parentElement).backgroundColor
+      const reference = document.createElement("div")
+      reference.style.outline = "2px solid -webkit-focus-ring-color"
+      button.parentElement.appendChild(reference)
+      const browserRing = getComputedStyle(reference).outlineColor
 
       // Chromium's computed-style serialization keeps a colour in whatever colour function it was
       // authored in rather than always converting to rgb() — this repository's tokens are oklch(),
@@ -508,7 +515,7 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
       if (wasTheme === null) root.removeAttribute("data-theme")
       else root.setAttribute("data-theme", wasTheme)
 
-      return { outlineColor, pageBackground, cardBackground, ratio }
+      return { outlineColor, pageBackground, cardBackground, browserRing, ratio }
     })()`)
     check(
       `${palette.name}, a focused .btn.${buttonClass}'s outline clears 3:1 contrast against the ` +
@@ -517,5 +524,12 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
       `outline ${focusRing.outlineColor} vs page ${focusRing.pageBackground} and card ` +
         `${focusRing.cardBackground}, lower ratio ${focusRing.ratio.toFixed(2)}:1`,
     )
+    if (!palette.dark && buttonClass === "btn-primary") {
+      check(
+        "in the default light palette, a focused .btn.btn-primary keeps the browser's own ring",
+        focusRing.outlineColor === focusRing.browserRing,
+        `outline ${focusRing.outlineColor}, browser's focus colour ${focusRing.browserRing}`,
+      )
+    }
   }
 }
