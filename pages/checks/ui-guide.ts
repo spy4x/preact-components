@@ -499,13 +499,10 @@ async function overflowChecks(devtools: Devtools): Promise<void> {
  * The cards whose live example is wider than a 375px page column, which the column clips. Each is
  * the card body's own markup, owned by the card, and waiting for a fix there; a card that starts
  * overflowing, or one of these that stops, fails the check above, so the list cannot drift.
+ *
+ * Empty: every card fits a 375px column. A card listed here needs the reason it cannot fit yet.
  */
-const CLIPPED_AT_PHONE_WIDTH: Record<string, string> = {
-  "demo-Tabs": "the tab row does not wrap or scroll",
-  "demo-Pagination": "Previous and Next run past the row",
-  "demo-Tooltip": "the hint bubbles are positioned past the edge",
-  "demo-Map": "the `tileUrl` example does not wrap",
-}
+const CLIPPED_AT_PHONE_WIDTH: Record<string, string> = {}
 
 /**
  * How far past the page column the content showing runs, per card (`demo-<Name>`) or `host extra`
