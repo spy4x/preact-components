@@ -565,7 +565,8 @@ function readRegionIdentity(devtools: Devtools): Promise<RegionIdentity> {
 /**
  * Commit one field by its visible label, through a real click followed by a blur — what commits a
  * `TextField`: it writes on blur, not on input, so setting `.value` alone would leave the model
- * untouched.
+ * untouched. The real click is `#273`'s fix: see below for what a bare `.focus()`/`.blur()` pair
+ * missed and why a full run never showed it.
  *
  * The click is a genuine `Input.dispatchMouseEvent` press-and-release at the input's own
  * coordinates, not `.focus()` — `#273` traced `verify --only=crud` failing four checks, every time,
