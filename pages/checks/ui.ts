@@ -2470,7 +2470,7 @@ async function tooltipChecks(devtools: Devtools): Promise<void> {
   // The Dropdown checks above leave the pointer at viewport coordinates, and viewport coordinates
   // do not scroll with the page: without parking it first, the pointer can be resting on this very
   // trigger while the check reads the trigger "at rest".
-  await pointerToCorner(devtools)
+  await pointerAwayFromTooltips(devtools)
 
   await hoverRevealCheck(devtools)
 
@@ -2519,7 +2519,7 @@ async function tooltipChecks(devtools: Devtools): Promise<void> {
   )
   const onHint = await devtools.evaluate<TooltipState>(TOOLTIP_STATE)
   const held = await holdsFor(() => devtools.evaluate<boolean>(TOOLTIP_HOVERED), 600)
-  await pointerToCorner(devtools)
+  await pointerAwayFromTooltips(devtools)
   const left = await poll(
     () =>
       devtools.evaluate<boolean>(
@@ -2650,7 +2650,7 @@ async function hoverRevealCheck(devtools: Devtools): Promise<void> {
   await devtools.evaluate<null>(`(globalThis.__verifyTooltip?.trigger?.blur(), null)`)
   // The point comes back from the helper that dispatched the move, so this reads the place the
   // pointer actually went rather than a second copy of the same two numbers.
-  const parked = await pointerToCorner(devtools)
+  const parked = await pointerAwayFromTooltips(devtools)
   const corner = await devtools.evaluate<Corner>(`(() => {
     const trigger = globalThis.__verifyTooltip?.trigger ?? null
     const at = document.elementFromPoint(${parked.x}, ${parked.y})
@@ -2666,7 +2666,7 @@ async function hoverRevealCheck(devtools: Devtools): Promise<void> {
   const revealed = await poll(() => devtools.evaluate<boolean>(TOOLTIP_SHOWN), 3_000)
   const shown = await devtools.evaluate<TooltipState>(TOOLTIP_STATE)
 
-  await pointerToCorner(devtools)
+  await pointerAwayFromTooltips(devtools)
   const hidAgain = await poll(() => devtools.evaluate<boolean>(`!${TOOLTIP_SHOWN}`), 3_000)
   const after = await devtools.evaluate<TooltipState>(TOOLTIP_STATE)
 
@@ -2760,7 +2760,7 @@ async function hoverRevealCheck(devtools: Devtools): Promise<void> {
  * @param devtools The connected session, on a hydrated page.
  */
 async function escapeOverPointerCheck(devtools: Devtools): Promise<void> {
-  await pointerToCorner(devtools)
+  await pointerAwayFromTooltips(devtools)
   const hovering = await hoverTrigger(devtools)
   await devtools.evaluate<null>(`(globalThis.__verifyFocusBefore = document.activeElement, null)`)
   const before = await devtools.evaluate<TooltipState>(TOOLTIP_STATE)
@@ -2782,7 +2782,7 @@ async function escapeOverPointerCheck(devtools: Devtools): Promise<void> {
     `document.activeElement === document.body ? "the page" : document.activeElement.tagName`,
   )
 
-  await pointerToCorner(devtools)
+  await pointerAwayFromTooltips(devtools)
   await poll(() => devtools.evaluate<boolean>(`!${TOOLTIP_HOVERED}`), 3_000)
   const again = await hoverTrigger(devtools)
   const back = await devtools.evaluate<TooltipState>(TOOLTIP_STATE)
@@ -2832,7 +2832,7 @@ async function escapeOverPointerCheck(devtools: Devtools): Promise<void> {
  * @param devtools The connected session, on a hydrated page.
  */
 async function escapeOnFocusCheck(devtools: Devtools): Promise<void> {
-  await pointerToCorner(devtools)
+  await pointerAwayFromTooltips(devtools)
   await poll(() => devtools.evaluate<boolean>(`!${TOOLTIP_SHOWN}`), 3_000)
   await devtools.evaluate<null>(`(globalThis.__verifyTooltip?.trigger?.focus(), null)`)
   const revealed = await poll(() => devtools.evaluate<boolean>(TOOLTIP_SHOWN), 3_000)
@@ -2867,7 +2867,7 @@ async function escapeOnFocusCheck(devtools: Devtools): Promise<void> {
   )
 
   await devtools.evaluate<null>(`(globalThis.__verifyTooltip?.trigger?.blur(), null)`)
-  await pointerToCorner(devtools)
+  await pointerAwayFromTooltips(devtools)
 }
 
 /**
@@ -2901,7 +2901,7 @@ async function escapeOnFocusCheck(devtools: Devtools): Promise<void> {
  * @param devtools The connected session, on a hydrated page.
  */
 async function tooltipEscapeRaceCheck(devtools: Devtools): Promise<void> {
-  await pointerToCorner(devtools)
+  await pointerAwayFromTooltips(devtools)
   await poll(() => devtools.evaluate<boolean>(`!${TOOLTIP_SHOWN}`), 3_000)
 
   const dispatched = await devtools.evaluate<boolean>(`(async () => {
@@ -2934,7 +2934,7 @@ async function tooltipEscapeRaceCheck(devtools: Devtools): Promise<void> {
   )
 
   await devtools.evaluate<null>(`(globalThis.__verifyTooltip?.trigger?.blur(), null)`)
-  await pointerToCorner(devtools)
+  await pointerAwayFromTooltips(devtools)
   await poll(() => devtools.evaluate<boolean>(`!${TOOLTIP_SHOWN}`), 3_000)
 }
 
@@ -3204,6 +3204,46 @@ async function pointerToCorner(devtools: Devtools): Promise<{ x: number; y: numb
   })
 
   return POINTER_CORNER
+}
+
+/**
+ * Park the pointer clear of every Tooltip in the catalogue's own demo card, for the checks in this
+ * file that drive that card.
+ *
+ * {@link pointerToCorner}'s top-left corner is not clear of it: the card pins five of its six
+ * tooltips permanently open (`contentClass="visible opacity-100"`) so the catalogue can show every
+ * placement at once, and `centreInView` scrolls the page to centre the card's *last* row (the one
+ * check that reveals its own hint on hover). On a viewport shorter than the card — headless
+ * Chromium's default 800×600 among them — that scroll leaves the card's *top* row, and the bubbles
+ * pinned above it, sitting within a few pixels of the viewport's own top-left corner. A pointer
+ * parked there lands on one of those bubbles instead of clear space: the bubble is a descendant of
+ * its own trigger and takes pointer events by design (`ui/tooltip.tsx`'s "Hoverable" bullet), so
+ * landing on it puts that *other* Tooltip into `:hover` — and a real Escape pressed while the
+ * pointer sits there, meant for the row under test, dismisses whichever pinned tooltip the corner
+ * happened to land on instead. Found by watching the group wrapper around the `Archive` hint lose
+ * its description this way, well after the check driving it had moved the pointer elsewhere on
+ * purpose — the corner was never involved as far as that check's own steps went.
+ *
+ * The bottom-right corner has no such row above it: the card's placements only ever anchor a hint
+ * above or beside its own trigger, never past the card's last row, so nothing here ever reaches
+ * down that far.
+ *
+ * @param devtools The connected session.
+ * @returns Where the pointer now is.
+ */
+async function pointerAwayFromTooltips(devtools: Devtools): Promise<{ x: number; y: number }> {
+  const { x, y } = await devtools.evaluate<{ x: number; y: number }>(
+    `({ x: innerWidth - 4, y: innerHeight - 4 })`,
+  )
+  await devtools.send("Input.dispatchMouseEvent", {
+    type: "mouseMoved",
+    x,
+    y,
+    button: "none",
+    buttons: 0,
+  })
+
+  return { x, y }
 }
 
 /** Which row the browser has under the pointer, and what the two rows are painted. */

@@ -308,7 +308,7 @@ function FactCardDemo() {
 /** `MarginNote` beside a paragraph, so the sm: float actually has something to sit next to. */
 function MarginNoteDemo() {
   return (
-    <div class="max-w-prose text-sm text-gray-600 dark:text-gray-300">
+    <div class="flow-root max-w-prose text-sm text-gray-600 dark:text-gray-300">
       <MarginNote
         sourceHref="https://example.com/benchmark"
         sourceLabel="Benchmark"
