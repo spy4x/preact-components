@@ -31,7 +31,7 @@ Extracted from earlier source applications.
 | `AuthForm`      | `auth-form`      | `mode`, `step`, `onModeChange?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `action?` |
 | `SEOHead`       | `seo-head`       | `title`, `description`, `canonical`, `crumbs?`, `ogImage?`, `jsonLd?`, `noindex?`, `twitterCard?`                    |
 | `SWUpdater`     | `sw-updater`     | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                 |
-| `Calendar`      | `calendar`       | `monthAnchor`, `minDate`, `maxDate`, `slotsByDate`, `onSelectDate?`                                                  |
+| `Calendar`      | `calendar`       | `monthAnchor`, `minDate`, `maxDate`, `availableByDate`, `onSelectDate?`                                              |
 | `ImageLightbox` | `image-lightbox` | `containerSelector?`, `imageSelector?`, `fallbackAlt?`, `zoomLabel?`, `previousLabel?`, `nextLabel?`, `onOpen?`      |
 | `SiteHeader`    | `site-header`    | `links`, `currentPath?`, `brand`, `actions?`, `labels?`                                                              |
 | `Shell`         | `shell`          | `navItems`, `currentPath?`, `brand`, `user`, `userMenuItems?`, `status?`, `children`, `labels?`, `class?`            |
@@ -259,9 +259,11 @@ cells is only safe once a key handler is there to give the movement back, so a p
 hydrated — no JavaScript, or an embedded render — keeps the natural tab order it always had.
 
 A day that cannot be picked is still focusable and its accessible name is the reason it cannot be:
-`19 August 2026 — no times available`. The same sentence is shown under the grid while it has
-focus, for the reader who has no screen reader to read the cell out and no mouse to hover a
-`title` with. The grid itself is a `grid` of `row`s and `gridcell`s named after the month it shows.
+`19 August 2026 — not available`. The reason is one of `past` (before `minDate`), `after` (after
+`maxDate`), `none-left` (`availableByDate` holds `0` for the day) and `unavailable` (the day is not
+in `availableByDate`, or belongs to a neighbouring month). The same sentence is shown under the
+grid while it has focus, for the reader who has no screen reader to read the cell out and no mouse
+to hover a `title` with. The grid itself is a `grid` of `row`s and `gridcell`s named after the month it shows.
 
 **What that evidence is, and is not.** Every accessibility claim in this file is a claim about
 markup and focus order, read back from the DOM in headless Chromium by `pages/checks/system.ts`.

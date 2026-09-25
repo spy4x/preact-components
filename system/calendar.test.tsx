@@ -9,31 +9,31 @@ const MIN = "2026-08-03"
 const MAX = "2026-09-30"
 
 /**
- * A month where every in-horizon day is bookable.
+ * A month where every in-horizon day is selectable.
  *
- * Two days carry deliberate states: `full` (0 slots left) and `gone` (absent from the map, so no
- * availability at all).
+ * Two days carry deliberate states: `none-left` (0 available) and `gone` (absent from the map, so
+ * no availability at all).
  */
-const slotsByDate: Record<string, number> = {}
-for (let date = MIN; date <= MAX; date = addDaysIso(date, 1)) slotsByDate[date] = 3
-slotsByDate["2026-08-12"] = 0
-delete slotsByDate["2026-08-19"]
+const availableByDate: Record<string, number> = {}
+for (let date = MIN; date <= MAX; date = addDaysIso(date, 1)) availableByDate[date] = 3
+availableByDate["2026-08-12"] = 0
+delete availableByDate["2026-08-19"]
 
 const base: CalendarProps = {
   monthAnchor: MONTH,
   minDate: MIN,
   maxDate: MAX,
-  slotsByDate,
+  availableByDate,
   today: "2026-08-10",
 }
 
 /**
  * Dates a reader can pick, in document order.
  *
- * Read off the element rather than off the accessible label, which is localised prose: a bookable
+ * Read off the element rather than off the accessible label, which is localised prose: a selectable
  * day is the one rendered as a link or a button, and a day that cannot be picked is a `<span>`.
  */
-function bookableDates(html: string): string[] {
+function selectableDates(html: string): string[] {
   return [...html.matchAll(/<(?:a|button)[^>]*data-calendar-date="(\d{4}-\d{2}-\d{2})"/g)]
     .map((match) => match[1])
 }
@@ -46,8 +46,8 @@ function columnHeaders(html: string): string[] {
 /**
  * Day numbers of the peek cells, in document order.
  *
- * Matched through the cell's own wrapper rather than on `aria-hidden` alone: the scarcity dot
- * carries that attribute too, and counting those instead is how this reads 39 cells in a
+ * Matched through the cell's own wrapper rather than on `aria-hidden` alone: the low-availability
+ * dot carries that attribute too, and counting those instead is how this reads 39 cells in a
  * thirty-one-day month.
  */
 function peekDays(html: string): string[] {
@@ -89,21 +89,21 @@ describe("Calendar", () => {
     expect(hidden.slice(5).join(" ")).toBe("01 02 03 04 05 06")
   })
 
-  it("puts the horizon boundary in the grid as the first bookable day", () => {
+  it("puts the horizon boundary in the grid as the first selectable day", () => {
     const html = render(<Calendar {...base} />)
 
-    // 08-01/08-02 are before `minDate`, so they are inert; bookable days are links or buttons.
-    expect(bookableDates(html)[0]).toBe("2026-08-03")
+    // 08-01/08-02 are before `minDate`, so they are inert; selectable days are links or buttons.
+    expect(selectableDates(html)[0]).toBe("2026-08-03")
   })
 
-  it("renders bookable days as anchors without a select handler", () => {
+  it("renders selectable days as anchors without a select handler", () => {
     const html = render(<Calendar {...base} />)
 
     expect(html).toContain('<a href="?date=2026-08-10"')
     expect(html).not.toContain("<button")
   })
 
-  it("renders bookable days as buttons when a select handler is supplied", () => {
+  it("renders selectable days as buttons when a select handler is supplied", () => {
     const html = render(<Calendar {...base} onSelectDate={() => {}} />)
 
     expect(html).toContain('<button type="button"')
@@ -112,10 +112,10 @@ describe("Calendar", () => {
 
   it("uses a custom href builder in link mode", () => {
     const html = render(
-      <Calendar {...base} dateHref={(date) => `/book?date=${date}`} />,
+      <Calendar {...base} dateHref={(date) => `/pick?date=${date}`} />,
     )
 
-    expect(html).toContain('href="/book?date=2026-08-10"')
+    expect(html).toContain('href="/pick?date=2026-08-10"')
   })
 
   it("greys out days before the horizon and describes them as past", () => {
@@ -133,18 +133,18 @@ describe("Calendar", () => {
     expect(html).toContain('href="?date=2026-08-15"')
   })
 
-  it("distinguishes a day with no slots left from a day with no availability", () => {
+  it("distinguishes a day with none left from a day with no availability", () => {
     const html = render(<Calendar {...base} />)
 
-    expect(html).toContain('aria-label="12 August 2026 — no slots left"')
-    expect(html).toContain('aria-label="19 August 2026 — no times available"')
+    expect(html).toContain('aria-label="12 August 2026 — none left"')
+    expect(html).toContain('aria-label="19 August 2026 — not available"')
     expect(html).toContain("line-through")
   })
 
-  it("counts the remaining slots in the accessible label", () => {
-    const html = render(<Calendar {...base} slotsByDate={{ "2026-08-05": 1 }} />)
+  it("counts what is still available in the accessible label", () => {
+    const html = render(<Calendar {...base} availableByDate={{ "2026-08-05": 1 }} />)
 
-    expect(html).toContain('aria-label="5 August 2026 — 1 slot available"')
+    expect(html).toContain('aria-label="5 August 2026 — 1 available"')
   })
 
   it("marks the selected day with aria-current and the accent", () => {
@@ -180,21 +180,21 @@ describe("Calendar", () => {
   it("renders a dead month arrow as an inert span, not a navigable link", () => {
     const html = render(<Calendar {...base} />)
 
-    // July 2026 is before the horizon and holds no slots, so the arrow is inert — a disabled
+    // July 2026 is before the horizon and holds no availability, so the arrow is inert — a disabled
     // anchor would still be focusable and still navigable with Enter.
     expect(html).toContain('<span aria-disabled="true" aria-label="Previous month: July 2026"')
     expect(html).not.toContain('href="?month=2026-07-01"')
     expect(html).not.toContain('aria-label="Previous month: July 2026" disabled')
   })
 
-  it("keeps an arrow live while its month still holds a stray slot", () => {
+  it("keeps an arrow live while its month still holds a stray available day", () => {
     const html = render(
       <Calendar
         {...base}
         monthAnchor="2026-11-01"
         minDate="2026-11-02"
         maxDate="2026-11-30"
-        slotsByDate={{ "2026-10-30": 2 }}
+        availableByDate={{ "2026-10-30": 2 }}
       />,
     )
 
@@ -226,17 +226,17 @@ describe("Calendar", () => {
     expect(html).toContain("Weiter")
   })
 
-  it("draws a scarcity dot only below the threshold", () => {
-    const scarce = render(<Calendar {...base} slotsByDate={{ "2026-08-05": 2 }} />)
-    const plenty = render(<Calendar {...base} slotsByDate={{ "2026-08-05": 9 }} />)
+  it("draws a low-availability dot only below the threshold", () => {
+    const scarce = render(<Calendar {...base} availableByDate={{ "2026-08-05": 2 }} />)
+    const plenty = render(<Calendar {...base} availableByDate={{ "2026-08-05": 9 }} />)
 
     expect(scarce).toContain("rounded-full")
     expect(plenty).not.toContain("rounded-full")
   })
 
-  it("honours a custom scarcity threshold", () => {
+  it("honours a custom low-availability threshold", () => {
     const html = render(
-      <Calendar {...base} slotsByDate={{ "2026-08-05": 5 }} lowSlotsThreshold={5} />,
+      <Calendar {...base} availableByDate={{ "2026-08-05": 5 }} lowAvailableThreshold={5} />,
     )
 
     expect(html).toContain("rounded-full")
@@ -252,11 +252,16 @@ describe("Calendar", () => {
 
   it("stays server-renderable without a today prop", () => {
     const html = render(
-      <Calendar monthAnchor={MONTH} minDate={MIN} maxDate={MAX} slotsByDate={slotsByDate} />,
+      <Calendar
+        monthAnchor={MONTH}
+        minDate={MIN}
+        maxDate={MAX}
+        availableByDate={availableByDate}
+      />,
     )
 
     expect(html).toContain("August 2026")
-    expect(bookableDates(html).length).toBeGreaterThan(0)
+    expect(selectableDates(html).length).toBeGreaterThan(0)
   })
 })
 
@@ -288,7 +293,7 @@ describe("Calendar, as a screen reader is told about it", () => {
   it("says why a day cannot be picked, somewhere other than a title attribute", () => {
     const html = render(<Calendar {...base} />)
 
-    expect(html).toContain('aria-label="19 August 2026 — no times available"')
+    expect(html).toContain('aria-label="19 August 2026 — not available"')
     expect(html).toContain('aria-disabled="true"')
     expect(html).not.toContain("title=")
   })
@@ -325,7 +330,7 @@ describe("Calendar, as the locale shapes it", () => {
   })
 
   it("writes the day labels in the locale's language", () => {
-    const html = render(<Calendar {...base} locale="fr-FR" slotsByDate={{ "2026-08-05": 1 }} />)
+    const html = render(<Calendar {...base} locale="fr-FR" availableByDate={{ "2026-08-05": 1 }} />)
 
     expect(html).toContain("5 août 2026")
   })
@@ -336,7 +341,7 @@ describe("Calendar, given input it cannot use", () => {
     const html = render(<Calendar {...base} today={undefined} timeZone="Mars/Phobos" />)
 
     expect(html).toContain("August 2026")
-    expect(bookableDates(html).length).toBeGreaterThan(0)
+    expect(selectableDates(html).length).toBeGreaterThan(0)
   })
 
   it("refuses a month anchor that is not a date the calendar has", () => {
