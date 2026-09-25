@@ -33,6 +33,7 @@ import { Scanner } from "@tailwindcss/oxide"
 import { compile } from "tailwindcss"
 import { dirname, join } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
+import { BUILD_HASH_FILE, computeBuildFingerprint } from "./build-fingerprint.ts"
 import { demoElementId } from "./src/deep-link.ts"
 import { renderDocument } from "./src/document.tsx"
 import { renderApp } from "./src/prerender.tsx"
@@ -44,6 +45,8 @@ import { normalizeSources } from "./src/tailwind-sources.ts"
 
 /** This file's directory: the demo's root, `pages/`. */
 const PAGES_DIRECTORY = dirname(fileURLToPath(import.meta.url))
+/** The repository root — where the root `deno.jsonc` and `deno.lock` live. */
+const REPO_ROOT = dirname(PAGES_DIRECTORY)
 /** What the artefact is built into. Gitignored, and excluded from the repo's own checks. */
 const DIST_DIRECTORY = join(PAGES_DIRECTORY, "dist")
 /** GitHub Pages serves a project site from `/<repo>/`; `PAGES_BASE` overrides it for a custom domain. */
@@ -337,6 +340,13 @@ async function main(): Promise<void> {
     ["tile.png"],
     "the Map card",
   )
+
+  // Written last, after every other artefact file, so a build that throws partway through never
+  // leaves a hash on disk that claims a `dist/` newer than what actually got written — `verify.ts`
+  // reads this file and refuses to run against a `dist/` that does not match the working tree
+  // (#280).
+  const buildFingerprint = await computeBuildFingerprint(REPO_ROOT)
+  await Deno.writeTextFile(join(DIST_DIRECTORY, BUILD_HASH_FILE), buildFingerprint)
 
   console.log(
     `  index.html ${kilobytes(html.length)} · prerendered ${catalogueNames.length} components\n` +
