@@ -3,7 +3,7 @@
  *
  * The sections live in `sections/*.tsx` and hand their cards over here. A section states the package
  * its keys belong to and the group it is read in, and everything the page and the route model need —
- * {@link catalogueSections}, {@link catalogueNames}, {@link catalogueGroups} — is derived from that
+ * {@link catalogueSections}, {@link catalogueNames}, {@link sectionIds} — is derived from that
  * one record, so there is no second list to keep in step.
  *
  * Nothing in this file checks itself. `coverage.ts` is the check: it reads every covered package's
@@ -125,8 +125,9 @@ export type SectionKind = "component" | "class"
  * The group a section belongs to, as the reader's reason for looking rather than as a package
  * boundary.
  *
- * The five ids are the one hand-kept list in the grouping: reading order for the groups themselves,
- * because a group is a heading and headings do not fall out of a record the way an array order does.
+ * The five ids are the one hand-kept list in the grouping: reading order for the groups themselves.
+ * The guide no longer draws a group as a heading — a package's page is what a reader navigates by —
+ * so a group now only decides where its sections fall in that page's order.
  * Everything else derives. `foundations` carries the two cards whose whole content is a mark — the
  * palette and the button surface. `surfaces` is what a page is made of: the things it shows, the
  * feedback it shows when there is nothing to show, and the two sections that document
@@ -147,66 +148,6 @@ export const catalogueGroupIds = [
 
 /** Identifier of a top-level group, e.g. `"inputs"`. */
 export type GroupId = (typeof catalogueGroupIds)[number]
-
-/**
- * One group as a reader sees it: an id with the heading and the sentence above its sections.
- *
- * The headings are hand-written for the same reason the ids are: a heading is prose, and prose
- * cannot be derived from a key without reading worse than the key. What *is* derived is the
- * membership, in {@link catalogueGroups} — so the expensive half (which sections are in it) cannot
- * go stale, and the cheap half is a line of copy.
- */
-export interface CatalogueGroup {
-  /** The group, e.g. `"inputs"`. */
-  id: GroupId
-  /** Heading shown above the group, e.g. `"Inputs"`. */
-  title: string
-  /** One sentence on what the group collects, and why those sections are read together. */
-  blurb: string
-}
-
-/**
- * The five groups' headings, in {@link catalogueGroupIds} order.
- *
- * Annotated over `Record<GroupId, …>`, so a group added to {@link catalogueGroupIds} without a
- * heading is a missing property and a heading for a group that does not exist is excess — the same
- * two-way tie the module doc's guard 7 describes, one level up. Nothing here names a section: the
- * members come from the specs, so this record cannot lose one.
- */
-const groupHeadings: Record<GroupId, { title: string; blurb: string }> = {
-  foundations: {
-    title: "Foundations",
-    blurb:
-      "The two cards that are a surface before they are anything else: the palette, and the button.",
-  },
-  surfaces: {
-    title: "Surfaces and page furniture",
-    blurb:
-      "What a page shows and the feedback it shows instead: headings, meters and tables; the loading, error and toast states; and the two sections that document `preset.css`'s own controls and utilities, which is what an app applies to markup the library does not own.",
-  },
-  inputs: {
-    title: "Inputs",
-    blurb:
-      "One story in two halves: `ui/`'s controlled primitives, and the same controls written as the preset's class on a native element.",
-  },
-  data: {
-    title: "Data and resources",
-    blurb:
-      "The packages that only matter once there is a resource behind the page: the server-rendered charts, the CRUD scaffolding a resource page is rebuilt from, and the map that plots one on a tile layer.",
-  },
-  application: {
-    title: "App shell",
-    blurb:
-      "The chrome an adopter wires first: the heads a page needs, the service-worker prompt, the dual-mode calendar and the blog image enhancer. The state layer these are assembled through is `signals/`, which has nothing to render and so has no section here — read its own README instead.",
-  },
-}
-
-/** The groups with their headings, in render order: what the page and its navigation iterate. */
-export const catalogueGroupsWithHeadings: CatalogueGroup[] = catalogueGroupIds.map((id) => ({
-  id,
-  title: groupHeadings[id].title,
-  blurb: groupHeadings[id].blurb,
-}))
 
 /** Heading, blurb, group and demos of one catalogue section, before it is resolved for rendering. */
 interface SectionSpec {
@@ -374,7 +315,7 @@ const catalogue = {
  * {@link catalogue}'s declaration order, which is the reading order within a group (badges before
  * buttons, a class section after the `ui/` sections it mirrors).
  */
-export const catalogueGroups: Record<GroupId, readonly SectionId[]> = (() => {
+const catalogueGroups: Record<GroupId, readonly SectionId[]> = (() => {
   const grouped: Record<GroupId, SectionId[]> = {
     foundations: [],
     surfaces: [],
@@ -393,11 +334,9 @@ export const catalogueGroups: Record<GroupId, readonly SectionId[]> = (() => {
 })()
 
 /**
- * The groups' sections as one array, in group order then declaration order.
- *
- * The flattening {@link catalogueSections} is built from, and the reason the page can draw group
- * headings without a second order to keep in step: it is the groups read back, so the flat render
- * order and the grouped view are the same list.
+ * The groups' sections as one array, in group order then declaration order: the reading order
+ * {@link catalogueSections} is built from, and so the order each page lists its sections in. The
+ * groups are no longer drawn as headings; they only order the sections.
  */
 export const sectionIds: SectionId[] = catalogueGroupIds.flatMap((groupId) => [
   ...catalogueGroups[groupId],
@@ -512,3 +451,127 @@ export const classDemoNames: string[] = catalogueSections
 export function missingDemos(registry: PartialDemoRegistry): string[] {
   return catalogueNames.filter((name) => !(name in registry))
 }
+
+/**
+ * The guide's pages, in navigation order: the overview, one page per package, then `all`, every
+ * page at once.
+ *
+ * A page is what the guide renders at one time. The sections above are still the unit a card
+ * belongs to and a route names; a page is the package they belong to, so `ui/`'s seven sections are
+ * one page read top to bottom, and a package with one section (`charts`, `crud`, `map`, `system`)
+ * is a page of one. `theme` holds the two class sections. `icons` renders the gallery, and
+ * `signals` and `cn` have no cards yet: their pages say what the package is until their examples
+ * land.
+ *
+ * `all` is every other page at once. It is what the guide renders before its host has read the
+ * address — so it is the served document, the page a reader without JavaScript gets — and a route
+ * of its own, for searching the whole library with the browser's find.
+ */
+export const guidePageIds = [
+  "overview",
+  "ui",
+  "system",
+  "crud",
+  "charts",
+  "map",
+  "signals",
+  "theme",
+  "icons",
+  "cn",
+  "all",
+] as const
+
+/** Identifier of one page of the guide, e.g. `"ui"`. */
+export type GuidePageId = (typeof guidePageIds)[number]
+
+/** One page as the navigation and the page header show it. */
+export interface GuidePage {
+  id: GuidePageId
+  /** Navigation label and page heading, e.g. `"Components"`. */
+  title: string
+  /** One or two sentences under the page heading. */
+  blurb: string
+  /** The package the page documents, e.g. `@preact-components/ui`; `undefined` for the overview. */
+  packageName: string | undefined
+  /** The sections the page renders, in reading order; empty for a page with no cards. */
+  sections: CatalogueSection[]
+}
+
+/** Title and blurb of every page, hand-written because they are prose. */
+const pageCopy: Record<GuidePageId, { title: string; blurb: string }> = {
+  overview: {
+    title: "Overview",
+    blurb: "What the library holds, one page per package.",
+  },
+  ui: {
+    title: "UI",
+    blurb:
+      "The controls and surfaces an app is assembled from: buttons and badges, tables and meters, fields and pickers, dialogs, toasts and the empty and error states.",
+  },
+  system: {
+    title: "System",
+    blurb: catalogue.system.blurb,
+  },
+  crud: {
+    title: "CRUD",
+    blurb: catalogue.crud.blurb,
+  },
+  charts: {
+    title: "Charts",
+    blurb: catalogue.charts.blurb,
+  },
+  map: {
+    title: "Map",
+    blurb: catalogue.map.blurb,
+  },
+  signals: {
+    title: "Signals",
+    blurb:
+      "State helpers built on `@preact/signals`: the model store, filters bound to the address bar, table state, toasts and the theme store. The package renders nothing of its own.",
+  },
+  theme: {
+    title: "Theme",
+    blurb:
+      "The design tokens and the classes `preset.css` ships: the half of the stylesheet an app applies to markup the library does not own.",
+  },
+  icons: {
+    title: "Icons",
+    blurb: "Every glyph the icon package exports. Search by name, click a glyph to copy its JSX.",
+  },
+  all: {
+    title: "Everything",
+    blurb:
+      "Every page of the guide on one page: the whole library in one scroll, for the browser's own find.",
+  },
+  cn: {
+    title: "cn",
+    blurb:
+      "`cn()` joins class names and resolves conflicting Tailwind utilities, so a caller's class wins over a component's default.",
+  },
+}
+
+/**
+ * The page a section is read on: its package's page, and `theme` for a class section.
+ *
+ * @param section Section to place.
+ * @returns The page that renders it.
+ */
+export function pageOfSection(section: Pick<CatalogueSection, "package">): GuidePageId {
+  return section.package
+}
+
+/** Every page of the guide, resolved, in {@link guidePageIds} order. */
+export const guidePages: GuidePage[] = guidePageIds.map((id) => ({
+  id,
+  title: pageCopy[id].title,
+  blurb: pageCopy[id].blurb,
+  packageName: id === "overview" || id === "all" ? undefined : `@preact-components/${id}`,
+  sections: id === "all"
+    ? catalogueSections
+    : catalogueSections.filter((section) => pageOfSection(section) === id),
+}))
+
+/** The pages that document one package each: every page but the overview and `all`. */
+export const packagePages: GuidePage[] = guidePages.filter((page) =>
+  page.id !== "overview" && page.id !== "all"
+)

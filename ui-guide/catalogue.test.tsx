@@ -27,40 +27,39 @@ function firstDifference(actual: string[], expected: string[]): number | undefin
 }
 
 /**
- * The group whose run of rendered sections stopped matching, for a failure message.
+ * The page whose run of rendered sections stopped matching, for a failure message.
  *
- * The expected sequence is `group, its sections, next group, …`, so the position of the mismatch is
- * enough to say which group is wrong without a second comparison: the last group marker at or
- * before it owns the ids after it. When the mismatch *is* a group marker, that group is the one
- * whose sections were rendered where the marker should be — the one to look at either way.
+ * The expected sequence is `page, its sections, next page, …`, so the position of the mismatch is
+ * enough to say which page is wrong without a second comparison: the last page marker at or before
+ * it owns the ids after it.
  *
  * @param expected The sequence this file requires.
  * @param index Where the rendered ids and the expected ones stop agreeing.
- * @returns The group's id, or `"the catalogue"` for a mismatch before every group.
+ * @returns The page's marker, or `"the catalogue"` for a mismatch before every page.
  */
 function atFault(expected: string[], index: number): string {
-  const markers = expected.slice(0, index + 1).filter((id) => id.startsWith("group-"))
+  const markers = expected.slice(0, index + 1).filter((id) => id.startsWith("page-"))
 
   return markers.at(-1) ?? "the catalogue"
 }
 
 /**
- * Which section ids each rendered group must hold, in render order, spelled out.
+ * Which section ids each package's page must hold, in render order, spelled out.
  *
- * Hand-written on purpose: read from `catalogueGroups`, an assertion would shrink with the very
- * thing it polices — a section dropped from a group would be missing from both sides. This is the
- * independent copy, so the expectation breaks when the data does.
- *
- * Filing a section is structural — `SectionSpec.group` is one field, so a section cannot be in two
- * groups and a section with no group does not compile — and this map is the second opinion about
- * *which* group each one belongs in, which no type can have: a valid group id is a valid group id.
+ * Hand-written on purpose: read from `guidePages`, an assertion would shrink with the very thing it
+ * polices — a section dropped from a page would be missing from both sides. This is the independent
+ * copy, so the expectation breaks when the data does.
  */
-const SECTIONS_IN_GROUPS: Record<string, string[]> = {
-  "group-foundations": ["badges", "buttons"],
-  "group-surfaces": ["display", "feedback", "forms", "surfaces"],
-  "group-inputs": ["inputs", "fields"],
-  "group-data": ["charts", "crud"],
-  "group-application": ["system"],
+const SECTIONS_ON_PAGES: Record<string, string[]> = {
+  "page-ui": ["badges", "buttons", "display", "feedback", "inputs", "fields", "enhanced-forms"],
+  "page-system": ["system"],
+  "page-crud": ["crud"],
+  "page-charts": ["charts"],
+  "page-map": ["map"],
+  "page-signals": [],
+  "page-theme": ["forms", "surfaces"],
+  "page-icons": ["icons"],
+  "page-cn": [],
 }
 
 /** One entry removed from the shipped registry, to reach the banner a partial one produces. */
@@ -131,66 +130,27 @@ describe("UIGuide", () => {
     expect(html).toContain('id="instructions"')
   })
 
-  it("renders the sections in the groups' order, and files each one in its group", () => {
+  it("renders every package's page on the all page, in navigation order, each with its sections", () => {
     const html = render(<UIGuide />)
 
-    // Two things are asserted here, and only one of them a test can see at all. **The order** — the
-    // ids are read in document order and compared against a hand-written sequence, so a rendered
-    // order that stopped matching the registry is red. Read from `catalogueSections`, this would
-    // compare the page against the registry's own flattening and could not detect a wrong order at
-    // all. **The group headings** — that each group is drawn, with its own `h2`, above its sections.
-    //
-    // What this is *not* is a containment check: `ids.slice` between two group markers proves
-    // nothing about nesting, because anything before the first group (`instructions`) can never be
-    // inside any run. Nesting is structural in the renderer (a section is a child of its group
-    // element) and filing a section is structural: `SectionSpec.group` is one field. Said plainly
-    // because the first version of this test claimed more than it checked.
-    for (
-      const heading of [
-        "Foundations",
-        "Surfaces and page furniture",
-        "Inputs",
-        "Data and resources",
-        "App shell",
-      ]
-    ) {
-      expect(html, heading).toContain(`>${heading}</h2>`)
-    }
-
+    // Without a hash the guide renders its `all` page: the overview, then every package's page in
+    // the navigation's order. The ids are read in document order and compared against the
+    // hand-written sequence above, so a section filed on the wrong page, or a page out of order, is
+    // red — and the failure names the page whose run stopped matching rather than printing a diff
+    // over every id in the catalogue.
+    expect(html).toContain(`data-guide-page="all"`)
     const ids = [...html.matchAll(/id="([a-z-]+)"/g)].map((match) => match[1])
-    const groups = ids.filter((id) => id.startsWith("group-") && !id.endsWith("-heading"))
-
-    expect(groups).toEqual([
-      "group-foundations",
-      "group-surfaces",
-      "group-inputs",
-      "group-data",
-      "group-application",
-    ])
-
-    // Every section the catalogue renders, in the order it must appear: group by group, and the
-    // groups in the order above. Filtered to the ids this file names, because the document also
-    // carries a card anchor (`demo-…`), a form control and a gallery cell per demo. The gallery is
-    // last, which is what makes the run between the first and last group sections-only: nothing else
-    // may appear among them.
     const known = new Set([
       "instructions",
-      "icons",
-      ...Object.values(SECTIONS_IN_GROUPS).flat(),
-      ...groups,
+      ...Object.keys(SECTIONS_ON_PAGES),
+      ...Object.values(SECTIONS_ON_PAGES).flat(),
     ])
     const rendered = ids.filter((id) => known.has(id))
-
     const expected = [
       "instructions",
-      ...groups.flatMap((group) => [group, ...SECTIONS_IN_GROUPS[group]]),
-      "icons",
+      ...Object.entries(SECTIONS_ON_PAGES).flatMap(([page, sections]) => [page, ...sections]),
     ]
-    // One comparison, named: the whole sequence is asserted, and the failure is reported against the
-    // group whose run stopped matching rather than as a diff over every id. An earlier revision
-    // asserted this *and* a per-group run loop; the loop could never fail once this passed — its run
-    // is a slice of the same comparison — so it was deleted rather than kept as a guard that proves
-    // nothing, and its label moved here.
+
     const differing = firstDifference(rendered, expected)
     const at = differing ?? 0
     const mismatch = differing === undefined ? {} : {
@@ -202,7 +162,7 @@ describe("UIGuide", () => {
     expect(
       mismatch,
       `${mismatch.where} renders the wrong sections: ${JSON.stringify(mismatch.rendered)} where ` +
-        `the groups' order requires ${JSON.stringify(mismatch.expected)}`,
+        `the pages' order requires ${JSON.stringify(mismatch.expected)}`,
     ).toEqual({})
   })
 

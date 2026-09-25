@@ -12,8 +12,12 @@ import { App } from "./app.tsx"
 /**
  * Prerender the page.
  *
- * @returns The markup `index.html` ships inside `#root`, which the browser half hydrates.
+ * @param hash Render as if the address carried this hash. Left out, the markup is the guide's `all`
+ * page, every package at once — what `index.html` ships inside `#root` and the browser half
+ * hydrates; given, it is one page's
+ * markup, which the build and `verify` read to prove every page renders its cards.
+ * @returns The markup.
  */
-export function renderApp(): string {
-  return renderToString(<App />)
+export function renderApp(hash?: string): string {
+  return renderToString(<App initialHash={hash} />)
 }

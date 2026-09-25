@@ -3,8 +3,8 @@ import { PAGE_TITLE } from "../src/site.ts"
 
 /**
  * `pages/`'s own browser checks: the hash-routing grammar the host page's island wires up — the
- * canonical deep link, the legacy fragment, a section route, an unknown route falling back to the
- * landing page — and the deep-link outline rule that depends on it.
+ * canonical deep link, the legacy fragment, a section route, an unknown route keeping the page it
+ * lands on — and the deep-link outline rule that depends on it.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -102,6 +102,7 @@ export async function pagesChecks(devtools: Devtools): Promise<void> {
     unknownMarked: number
     unknownTitle: string
     unknownChipCurrent: string
+    unknownPage: string
   }>(
     `(async () => {
       const settle = () => new Promise((done) => setTimeout(done, 400))
@@ -120,6 +121,7 @@ export async function pagesChecks(devtools: Devtools): Promise<void> {
         unknownMarked: marked(),
         unknownTitle: document.title,
         unknownChipCurrent: current(),
+        unknownPage: document.querySelector("[data-guide-page]")?.dataset.guidePage ?? "",
       }
     })()`,
   )
@@ -140,12 +142,15 @@ export async function pagesChecks(devtools: Devtools): Promise<void> {
         ? ""
         : ` — never reached the expected range within ${SECTION_SCROLL_DEADLINE_MS}ms`),
   )
+  // A hash that names no route is not the guide's: an in-page link on a card (`#inputs`, `#crud`)
+  // sets one, so the page it points into has to stay. The title follows the page, not the card.
   check(
-    "an unknown route falls back to the landing page and clears the mark",
+    "an unknown route keeps the page showing, titles it, and clears the mark",
     routes.markedBeforeUnknown === 1 && routes.unknownMarked === 0 &&
-      routes.unknownChipCurrent === "" && routes.unknownTitle === PAGE_TITLE,
-    `#/nonsense → "${routes.unknownTitle}", ${routes.markedBeforeUnknown} marked before → ` +
-      `${routes.unknownMarked} after`,
+      routes.unknownChipCurrent === "" && routes.unknownPage === "ui" &&
+      routes.unknownTitle === `UI — ${PAGE_TITLE}`,
+    `#/nonsense → page "${routes.unknownPage}", "${routes.unknownTitle}", ` +
+      `${routes.markedBeforeUnknown} marked before → ${routes.unknownMarked} after`,
   )
 
   // This check used to share one `evaluate` call with `theme.ts`'s Tailwind/`tokens.css` checks —

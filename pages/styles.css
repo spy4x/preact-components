@@ -30,125 +30,31 @@
 @source "./src";
 
 /*
- * The host page's own geometry, as three numbers the rules below share rather than repeat.
+ * The host page's own geometry.
  *
- * `--sticky-stack` is the two sticky rows at the top of the page: the header (`h-14`) and the route
- * bar that sticks under it (`top-14`, `h-14`), so every anchored element has to clear 7rem of
- * chrome. `--prose-measure` is one measure for body prose, because the failure mode of a guide this
- * long is not a missing colour but a 130-character line. `--card-min` is the smallest a demo card
- * may get inside the catalogue's grid.
+ * `--ui-guide-top` is the guide's own knob: the height of the chrome above it that stays on screen,
+ * which is this page's sticky header (`h-14`). The guide's side navigation and its phone menu bar
+ * stick below it. `--sticky-stack` is what an anchored card or section has to clear: the header,
+ * plus the guide's menu bar below `lg`.
  */
 :root {
+  --ui-guide-top: 3.5rem;
   --sticky-stack: 7rem;
   --prose-measure: 65ch;
-  --card-min: 20rem;
 }
 
 /*
- * Deep-link target. The catalogue renders `id="demo-<Name>"` and the host page's rail resolves a
- * `#/…` demo route onto that card, marking it here.
- *
- * The outline reads `--color-primary-muted`, not `--color-primary`: in the dark palette the latter is
- * near-black chrome (`oklch(0.21 0.006 285.885)`) against a `--color-surface` card
- * (`oklch(0.278 0.033 256.848)`), which is an outline nobody can see. The muted token is the accent
- * in both palettes — purple-600 light, purple-400 dark.
- */
-article[id^="demo-"][data-deep-link] {
-  outline: 2px solid var(--color-primary-muted, oklch(0.558 0.288 302.321));
-  outline-offset: 2px;
-}
-
-/*
- * Anchors clear the sticky chrome. This was 5rem for a page whose header was the only sticky row;
- * the route bar is a second one, so the clearance grew with it. The behaviour is unchanged — a marked
- * card and a section's own `<section id>` land below the chrome instead of under it.
+ * Anchors clear the sticky chrome, so a marked card and a section's own `<section id>` land below
+ * it instead of under it.
  */
 article[id^="demo-"],
 section[id] {
   scroll-margin-top: var(--sticky-stack);
 }
 
-/*
- * Prose measure.
- *
- * `.measure` is the host's own prose. The catalogue renders its intro and its section blurbs itself
- * and the host owns no markup there, so those two also carry the measure — as deliberately shallow
- * structural selectors: `section > div > :is(h1…h6) + p` reaches the section heading and the icon
- * gallery's, and a card's own heading is three levels down, inside its `<article>`, so nothing
- * inside a card is matched.
- *
- * The heading level is matched as a set rather than as `h2`, because the level belongs to
- * `ui-guide/`: `feat/ui-guide-groups` demotes a section heading to `h3` under its group heading, and
- * a `+ h2` sibling combinator would stop matching every section blurb there — silently, since the
- * measure is a `max-width` and nothing renders differently except the line length. Measured with that
- * change on top: 12 of 12 section blurbs at 521px with this selector, 0 of 12 at 960px without it.
- */
-.measure,
-main section[id] > div > :is(h1, h2, h3, h4, h5, h6) + p,
-main section[id] > div > div > :is(h1, h2, h3, h4, h5, h6) + p,
-main section > div > :is(h1, h2, h3, h4, h5, h6) + p {
+/* The host's own prose. */
+.measure {
   max-width: var(--prose-measure);
-}
-
-/*
- * The card grid.
- *
- * `UIGuide` renders its cards as `grid grid-cols-1` — one column, forty rows — and the host styles
- * that container rather than editing `ui-guide/`, which this wave does not own. `auto-fill` with a
- * minimum card width lays the column out at a readable card size instead of stretching one card
- * across it, and leaves a section with a single card on one track rather than a full-width card; the
- * `min(100%, …)` guard is what keeps a narrow viewport at one full-width column rather than a card
- * wider than the page.
- */
-main section[id] > div.grid {
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--card-min)), 1fr));
-}
-
-/*
- * A card that opens something is not a half-column card: a `<table>` shell scrolls inside its card
- * rather than laying out in it, and a dropdown panel is positioned against its trigger and bleeds
- * out of a card narrower than its menu (measured: 17px past the card at a 344px column). Both take
- * the whole row — the sizing rule is per card content, not per section, so it needs no list of
- * section ids to keep in step with `registry.ts`.
- */
-main section[id] > div.grid > article:has(table),
-main section[id] > div.grid > article:has([role="menu"]) {
-  grid-column: 1 / -1;
-}
-
-/*
- * The other half of the same problem, one level down: a card is a grid item, and a grid item's
- * automatic minimum size is its content's — a card holding a table has a min-content width of its
- * own (measured: 545px) — so the card would widen the page instead of the table scrolling inside it.
- */
-main section[id] > div.grid > article {
-  min-width: 0;
-}
-
-/*
- * `UIGuide` ships page padding of its own (`p-4 sm:p-6`) because it is written to be a page. In the
- * shell it is a column beside the rail, and that padding would indent the catalogue from the rail
- * next to it; the shell already pads, so the inner padding goes. `min-width: 0` is the other half:
- * the catalogue column is a grid item whose automatic minimum size is its content's — and a card
- * holding a table has a min-content width of its own (measured: 545px) — so without this the column
- * would push the page wider than the viewport instead of the table scrolling inside its card.
- */
-.guide-columns > section {
-  padding: 0;
-  min-width: 0;
-}
-
-/*
- * The missing-demo banner renders its names as adjacent inline `<code>`s with no soft-wrap
- * opportunity, so a long list widens the whole document instead of wrapping (measured before this
- * rule: 1330px of horizontal overflow at a 375px viewport). Contained here rather than in
- * `ui-guide/`; the package-side fix is a follow-up.
- */
-[data-e2e="ui-guide-missing-demos"] p {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.25rem 0.5rem;
 }
 
 @media (prefers-reduced-motion: no-preference) {

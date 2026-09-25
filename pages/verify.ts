@@ -47,8 +47,13 @@
 
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
-import { catalogueNames, catalogueSections } from "@preact-components/ui-guide/registry"
-import { routeTableDrift } from "@preact-components/ui-guide/routes"
+import {
+  catalogueNames,
+  catalogueSections,
+  type GuidePageId,
+  guidePages,
+} from "@preact-components/ui-guide/registry"
+import { pageHref, routeTableDrift } from "@preact-components/ui-guide/routes"
 import { BUILD_HASH_FILE, computeBuildFingerprint } from "./build-fingerprint.ts"
 import { chartsChecks } from "./checks/charts.ts"
 import { crudChecks } from "./checks/crud.ts"
@@ -63,6 +68,7 @@ import {
   type Devtools,
   filteredRunLine,
   lastCheckName,
+  openGuidePage,
   poll,
   pressKey,
   ranBlockNames,
@@ -87,6 +93,7 @@ import { themeChecks } from "./checks/theme.ts"
 import { uiChecks } from "./checks/ui.ts"
 import { uiGuideChecks } from "./checks/ui-guide.ts"
 import { demoElementId } from "./src/deep-link.ts"
+import { renderApp } from "./src/prerender.tsx"
 import { routeTableFromHtml } from "./src/route-echo.ts"
 import { type PreviewServer, serveDist } from "./serve.ts"
 import { DEFAULT_BASE, normalizeBase } from "./src/site.ts"
@@ -239,6 +246,34 @@ async function staticPhase(): Promise<void> {
     ".theme-base and .btn rules found",
   )
 
+  // The served document is the guide's `all` page — every page at once, which is what a reader
+  // without JavaScript gets and what the island hydrates before it reads the address. Each page on
+  // its own is rendered here from the same `App`, and has to carry its own cards and no others:
+  // that is the page a reader with JavaScript sees once the address is read.
+  check(
+    "index.html prerenders the guide's all-pages document",
+    html.includes(`data-guide-page="all"`),
+    `data-guide-page="all"`,
+  )
+  const wrongPages = guidePages.flatMap((page) => {
+    const markup = renderApp(pageHref(page.id))
+    const own = page.sections.flatMap((section) => section.names).map(demoElementId).sort()
+    const rendered = [...markup.matchAll(/<article id="(demo-[^"]+)"/g)].map((match) => match[1])
+      .sort()
+    const current = new RegExp(`aria-current="page" data-guide-page-link="${page.id}"`)
+    return markup.includes(`data-guide-page="${page.id}"`) && current.test(markup) &&
+        rendered.join() === own.join()
+      ? []
+      : [`${page.id} (${rendered.length} cards, ${own.length} its own)`]
+  })
+  check(
+    "every guide page renders alone, marked current, with its own cards and no others",
+    wrongPages.length === 0,
+    wrongPages.length === 0
+      ? `${guidePages.length} pages: ${guidePages.map((page) => page.id).join(", ")}`
+      : `wrong: ${wrongPages.join(", ")}`,
+  )
+
   // Counted against the catalogue rather than the `ui` barrel: the cards the guide renders are the
   // registry's, and every covered package contributes some.
   const named = catalogueNames.filter((name) => html.includes(`id="${demoElementId(name)}"`))
@@ -315,9 +350,14 @@ async function staticPhase(): Promise<void> {
     routeDrift.length === 0 ? "every entry round-tripped" : routeDrift.join(" | "),
   )
 
-  // A route no chip points at would be a page nobody can reach; a chip pointing at a route the
-  // resolver refuses would be a dead link. Both directions, over the whole catalogue.
-  const routeEntries = [...(routes?.sections ?? []), ...(routes?.demos ?? [])]
+  // A route no link points at would be a page nobody can reach; a link pointing at a route the
+  // resolver refuses would be a dead link. Both directions, over the whole catalogue: the `all`
+  // page's navigation lists every page, section and card.
+  const routeEntries = [
+    ...(routes?.pages ?? []),
+    ...(routes?.sections ?? []),
+    ...(routes?.demos ?? []),
+  ]
   const linked = routeEntries.filter((entry) => html.includes(`href="${entry.href}"`))
   check(
     "every emitted route is a link in the prerendered navigation",
@@ -872,6 +912,24 @@ async function resetAfterThrow(devtools: Devtools): Promise<void> {
 }
 
 /**
+ * A package block that runs on one page of the guide: the page is opened first, because the guide
+ * renders one page at a time and a block's cards are on its package's page.
+ *
+ * @param pageId The page the block's cards are on.
+ * @param run The block.
+ * @returns The block, preceded by opening its page.
+ */
+function onPage(
+  pageId: GuidePageId,
+  run: (devtools: Devtools) => Promise<void>,
+): (devtools: Devtools) => Promise<void> {
+  return async (devtools) => {
+    await openGuidePage(devtools, pageId)
+    await run(devtools)
+  }
+}
+
+/**
  * Every workspace package's browser checks, in the one fixed order this file owns.
  *
  * Every package with something a browser can drive is named here, including the two that own no
@@ -888,20 +946,23 @@ async function resetAfterThrow(devtools: Devtools): Promise<void> {
  * dropping the later packages, while the order keeps a *passing* block from leaving the page in a
  * state the next one cannot work in.
  *
+ * Every block but `ui-guide` runs on its package's page ({@link onPage}); `ui-guide` checks the
+ * shell itself and moves between pages on its own.
+ *
  * One list, not ten calls, so the names the run commits to and the functions it calls cannot drift
  * apart — {@link browserPhase} commits these names before it has a browser to run them with.
  */
 const PACKAGE_BLOCKS: readonly CheckBlock<Devtools>[] = [
-  { name: "theme", run: themeChecks },
-  { name: "icons", run: iconsChecks },
+  { name: "theme", run: onPage("theme", themeChecks) },
+  { name: "icons", run: onPage("icons", iconsChecks) },
   { name: "ui-guide", run: uiGuideChecks },
-  { name: "pages", run: pagesChecks },
-  { name: "signals", run: signalsChecks },
-  { name: "system", run: systemChecks },
-  { name: "crud", run: crudChecks },
-  { name: "charts", run: chartsChecks },
-  { name: "map", run: mapChecks },
-  { name: "ui", run: uiChecks },
+  { name: "pages", run: onPage("overview", pagesChecks) },
+  { name: "signals", run: onPage("signals", signalsChecks) },
+  { name: "system", run: onPage("system", systemChecks) },
+  { name: "crud", run: onPage("crud", crudChecks) },
+  { name: "charts", run: onPage("charts", chartsChecks) },
+  { name: "map", run: onPage("map", mapChecks) },
+  { name: "ui", run: onPage("ui", uiChecks) },
 ]
 
 /**

@@ -1,4 +1,4 @@
-import { check, type Devtools, pressKey } from "./harness.ts"
+import { check, type Devtools, openGuidePage, pressKey } from "./harness.ts"
 
 /**
  * `theme/`'s browser checks: the form controls and surfaces of the class chapter as native events
@@ -177,6 +177,8 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
   // this probe used to read alongside `light`/`dark` is `pages.ts`'s "the deep link outlines its
   // card" check now — that assertion is about routing, not the theme, and reading it here would mean
   // this file also owning the deep-link hash the routing checks set up.
+  // The Button card is on the `ui` page.
+  await openGuidePage(devtools, "ui")
   const styled = await devtools.evaluate<{
     buttonRadius: string
     buttonBackground: string

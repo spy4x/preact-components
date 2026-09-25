@@ -1,9 +1,10 @@
 # `@preact-components/ui-guide`
 
 The live component catalogue, shipped as a component so every app that imports the library gets it
-free. It renders one demo per component of every package it covers — `ui`, `charts`, `system`, `crud`
-and `map` — one card per group of `theme/preset.css` classes, the icon gallery, and the design-system
-rules components are meant to be assembled in.
+free. It is a shell — a side navigation and one page at a time — around one demo per component of
+every package it covers (`ui`, `charts`, `system`, `crud` and `map`), one card per group of
+`theme/preset.css` classes, the icon gallery, and the design-system rules components are meant to be
+assembled in.
 
 Covering `map/` (#143) is what makes `@preact-components/ui-guide` resolve Leaflet: `map/`'s exact
 `leaflet`/`@types/leaflet` pins reach an app's dependency graph the moment it imports this package's
@@ -20,13 +21,21 @@ verbatim in spirit.
 
 ## Usage
 
-An app renders the component at whatever path its router wants:
+An app renders the component at whatever path its router wants, and hands it the address:
 
 ```tsx
-import { UIGuide } from "@preact-components/ui-guide"
+import { UIGuide, useLocationHash } from "@preact-components/ui-guide"
 
-<UIGuide />
+<UIGuide hash={useLocationHash()} onRouteChange={({ page }) => document.title = page.title} />
 ```
+
+`hash` is `location.hash` for a hash-routed host, re-read on every `hashchange` — which is what
+`useLocationHash()` returns; the guide itself reads nothing from `location`. Without a `hash` the
+guide shows every page at once, and its links change the address and nothing else. Leave it `undefined` until the host has read the address — on the
+server and in the first client render — and the guide renders its `all` page: every page at once,
+which is the markup a reader without JavaScript gets and the tree hydration has to match. Once it is
+a string, the guide renders that route's page and, in an effect, marks and scrolls to the card or
+section the route names.
 
 Or registers the route descriptor, which is the fix for one source guide being an orphan reachable
 only by typing its URL:
@@ -36,53 +45,98 @@ import { uiGuideRoute } from "@preact-components/ui-guide"
 
 const nav = [...appLinks, { href: uiGuideRoute.path, label: uiGuideRoute.label }]
 
-// at the route:
+// at the route — it reads the address's hash itself:
 <uiGuideRoute.component />
 ```
 
-| Prop       | Meaning                                                                                                                            |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `registry` | Registry to render; defaults to the complete one. A partial one raises the banner.                                                 |
-| `copy`     | Clipboard port, forwarded to every copy control — each card's usage block and the icon gallery. Defaults to `navigator.clipboard`. |
-| `class`    | Extra utilities on the catalogue's root.                                                                                           |
+Set `history.scrollRestoration = "manual"` in the host, as `pages/src/app.tsx` does. The guide
+scrolls to what the address names on its first read, but the browser's own restore after a reload
+can still win now and then, because the server sends the longer all-pages document first. The
+guide does not set it itself: it is the host's setting.
 
-Nothing here imports an app's state: the two things a catalogue needs from its host — where to put a
-copied snippet — arrive as ports.
+| Prop            | Meaning                                                                                                                            |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `hash`          | The address's fragment. `undefined` renders every page; a string renders the page its route names.                                 |
+| `navigate`      | Called with a link's `#/…` href instead of following it, for a host that routes by something other than the fragment.              |
+| `onRouteChange` | Called after a route is shown, with the route and the page showing, so the host can title the document.                            |
+| `pageExtras`    | Host content appended to one page, after its cards — a demo that needs a page of its own.                                          |
+| `labels`        | Overrides for the shell's own strings, each with an English default: titles, button and skip-link names, the overview's counts.    |
+| `registry`      | Registry to render; defaults to the complete one. A partial one raises the banner.                                                 |
+| `copy`          | Clipboard port, forwarded to every copy control — each card's usage block and the icon gallery. Defaults to `navigator.clipboard`. |
+| `class`         | Extra utilities on the guide's root.                                                                                               |
+
+Nothing here imports an app's state: what a catalogue needs from its host — the address, where to put
+a copied snippet — arrives as props and ports.
+
+## Pages
+
+`registry.ts`'s `guidePages` is what the guide renders at one time: the overview, one page per
+package (`ui`, `system`, `crud`, `charts`, `map`, `signals`, `theme`, `icons`, `cn`), and `all`. A
+section belongs to its package's page — `theme` holds the two class sections — so `ui/`'s sections
+are one page read top to bottom and a package with one section is a page of one. `signals` and `cn`
+have no cards yet, and their pages say so. `all` renders every other page in navigation order: it is
+the served document and a route of its own, for searching the whole library with the browser's find.
+
+The shell is a navigation and a page. At `lg` and up the navigation is a sticky column beside the
+page; below that it is a native modal `<dialog>` behind a menu button, which Enter or Space opens,
+Escape closes, and which puts focus back on the button when it closes. The navigation is a `<nav>`
+named by `labels.nav`; it lists every page, marks the one showing `aria-current="page"`, and under it
+lists that page's sections and cards, marking the one the route names `aria-current="true"`. A skip
+link, the guide's first link, moves focus past the navigation to the page. A page's link opens the
+page at its title, including the pages whose id is also their section's (`#/crud`).
+
+A host that keeps sticky chrome above the guide sets `--ui-guide-top` to its height, and the
+navigation column and the phone menu bar stick below it. The page column clips what overflows it
+sideways, so a demo that runs past a phone's edge is cut there rather than scrolling the page.
+
+A section still names a group in `registry.ts`, but the group only orders the sections: a package's
+page replaced the group heading as the unit a reader navigates by, so no heading is drawn for it.
 
 ## Routes
 
 `routes.ts` is the catalogue's URL grammar, exported as its own subpath
 (`@preact-components/ui-guide/routes`) and from the barrel. It is pure — no DOM, no `window`, no
-`location` — so the decision it makes is unit-testable and the host owns the effects.
+`location` — so the decision it makes is unit-testable, and the shell owns the effects.
 
-| Hash                     | Match                                                                   |
-| ------------------------ | ----------------------------------------------------------------------- |
-| `""`, `#`, `#/`          | index, `reason: "empty"`                                                |
-| `#/inputs`               | section `inputs` — its slug is `routeSlug(id)`, nothing hand-kept       |
-| `#/inputs/toggle-switch` | demo `ToggleSwitch`, canonical href from `demoHref(section, name)`      |
-| `#toggle-switch`         | the same demo: the bare fragment this page shipped before, kept working |
-| `#/nonsense`             | index, `reason: "unknown"` — the sentinel, never a throw                |
+| Hash                     | Match                                                                   | Page               |
+| ------------------------ | ----------------------------------------------------------------------- | ------------------ |
+| `""`, `#`, `#/`          | index, `reason: "empty"`                                                | overview           |
+| `#/ui`, `#/icons`        | page — a page whose id is no section's                                  | that page          |
+| `#/inputs`               | section `inputs` — its slug is `routeSlug(id)`, nothing hand-kept       | its package's      |
+| `#/inputs/toggle-switch` | demo `ToggleSwitch`, canonical href from `demoHref(section, name)`      | its package's      |
+| `#toggle-switch`         | the same demo: the bare fragment this page shipped before, kept working | its package's      |
+| `#inputs`, `#icons`      | index, `reason: "unknown"` — a section's or a page's own DOM id         | the one holding it |
+| `#/nonsense`, `#top`     | index, `reason: "unknown"` — the sentinel, never a throw                | the one showing    |
 
-Three decisions worth stating, because a later wave will build on them:
+`pageOfRoute` answers the last column for a route, `pageOfFragment` for a bare fragment that names
+an element the guide renders, and `pageHref` writes a page's href. A page whose id is also a
+section's (`charts`, `crud`, `map`, `system`) shares that section's route.
 
-- **The routes derive from `catalogueSections`.** `routeSlug` of the section id is the section slug
-  and `routeSlug` of the component name is the demo slug — one slug rule, the same one
-  `pages/src/deep-link.ts`'s `demoSlug` delegates to. A section added to `registry.ts` is routable
-  with no second edit, and `routes.test.ts` fails if the resolver stops accepting one or if the
-  number of routes stops equalling the number of sections. There is deliberately **no**
+Four decisions worth stating, because a later wave will build on them:
+
+- **The routes derive from `catalogueSections` and `guidePages`.** `routeSlug` of the section id is
+  the section slug and `routeSlug` of the component name is the demo slug — one slug rule, the same
+  one `pages/src/deep-link.ts`'s `demoSlug` delegates to. A section added to `registry.ts` is
+  routable with no second edit, and `routes.test.ts` fails if the resolver stops accepting one or if
+  the number of routes stops equalling the number of sections. There is deliberately **no**
   `Record<SectionId, …>` of routes: `SectionId` is a type while the ids at runtime come from a plain
   array, so a mapped type could only be fed by a hand-kept list.
 - **A demo must live in the section its URL names.** `#/buttons/toggle-switch` is `"unknown"`, not a
   silent redirect to `inputs`: the build checks one canonical href per demo, and accepting a second
   would weaken that check.
-- **The index match means "not ours".** A bare fragment that is not a demo name — `#icons`, `#top`, a
-  section's own DOM id — resolves to the index route, so a host leaves the DOM alone and the
-  browser's native anchor handling keeps working. `#inputs` scrolling to the `inputs` section is the
-  browser's `id`, not a route.
+- **The index match means "not ours".** A bare fragment that is not a demo name — `#top`, a card's
+  own in-page link, a section's own DOM id — resolves to the index route. When it is a section's or a
+  page's id (`#inputs`, `#icons`), the shell opens the page that holds it and scrolls there, since on
+  another page the element is not rendered; anything else keeps the page showing, so the element is
+  still there for the browser's native anchor handling. Only a first route that names nothing opens
+  the overview.
+- **A page is not a card's address.** Pages are routes a reader navigates by; a card is still
+  addressed by its section, so every link written before pages existed still opens its card.
 
 `routeTable()` is the route table a host can echo into its single document, and `routeTableDrift()`
 is the build guard over it: `pages/build.ts` embeds the table, reads it back out of the emitted HTML
-and fails when an entry is missing, duplicated, non-canonical, or one the resolver would not accept.
+and fails when a page, section or demo entry is missing, duplicated, non-canonical, or one the
+resolver would not accept.
 
 ## The coverage rule
 
@@ -185,114 +239,42 @@ demonstrated now, through the `Map` card's plain-text list of markers. Each rema
 its reason, and each is checked for staleness — an excluded class the preset no longer defines, or
 that the catalogue demonstrates after all, fails.
 
-## The groups
+## Heading levels are the outline
 
-Twelve sections in one scroll is a wall, not a structure. The catalogue reads them in five groups,
-each of which is a reason a reader is looking rather than a package boundary:
-
-| Group                           | Sections                                   | Why these are read together                                                                                                                                  |
-| ------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Foundations**                 | `badges`, `buttons`                        | The two cards whose whole content is a mark: the palette, and the button surface. One control's visible difference from another is a fill and a size.        |
-| **Surfaces and page furniture** | `display`, `feedback`, `surfaces`, `forms` | What a page shows and the feedback it shows instead, plus the two sections documenting `preset.css`'s own class families — the same material one level down. |
-| **Inputs**                      | `inputs`, `fields`                         | One story in two halves: `ui/`'s controlled primitives, and the same controls written as the preset class on a native element.                               |
-| **Data and resources**          | `charts`, `crud`                           | The two packages that only matter once there is a resource behind the page.                                                                                  |
-| **App shell**                   | `system`                                   | The chrome an adopter wires first: navigation, heads, the service-worker prompt, the calendar.                                                               |
-
-The app shell is a group of one. `signals/` was read beside it — the layer a shell is assembled
-through — until that package stopped exporting components and left the catalogue; the group stays
-because "the chrome I wire first" is a reader's own reason for looking, not a leftover of the
-package it once shared a heading with. `forms` sits with `surfaces` and not with `fields`, which
-puts the two class-family sections next to each other: they document the same thing (classes on
-markup the library does not own) at the two levels a page meets them.
-
-### The group is a property of the section
-
-`registry.ts` attaches the group to the section — `SectionSpec.group: GroupId` — and derives
-`catalogueGroups` from those specs. So there is one order, the groups', and one membership: a
-section cannot be filed twice, and a section with no `group` does not type-check. `catalogueSections`
-is the flattening of `catalogueGroups`, which is why the flat array `routes.ts`, `pages/` and
-`verify.ts` read cannot disagree with the grouped view the page draws.
-
-| Failure                                                         | Caught by                                                                                                   |
-| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| a section with no group                                         | `deno check` — `TS2741` "Property `group` is missing … required in type `SectionSpec`", at that section     |
-| a group that is not one of the five, or a misspelling of one    | `deno check` — `TS2322` `"tools"` is not assignable to `GroupId`                                            |
-| a section id that names no section, or no spec for one          | `deno check` — `TS1360` (id in `SectionId`, no spec) or `TS2353` (spec keyed to an id not in the union)     |
-| a group with no heading / a heading for no group                | `deno check` — `TS2741` "Property `tools` is missing" in the heading record, or `TS2353` for a leftover one |
-| a literal duplicate section key                                 | `deno check` — `TS1117` "An object literal cannot have multiple properties with the same name"              |
-| a section cloned under a second id                              | `registry.test.ts` — "a name appears in two sections", and `routes.test.ts` — "two demo names share a slug" |
-| the derived record losing a section, or doubling one            | `catalogue.test.tsx` — the rendered ids against a hand-written sequence                                     |
-| the group vocabulary renamed, reordered or dropped              | `catalogue.test.tsx` — the rendered group ids and headings, written out in render order                     |
-| the page rendering a section outside its group, or out of order | `catalogue.test.tsx` — "renders the sections in the groups' order", against a hand-written id sequence      |
-
-Both memberships and the guards behind them are worth stating precisely, because an earlier revision
-of this documentation claimed two things that are false:
-
-- **"Exactly one group" is structural, not a checked list** — a section has one `group` field, so "in
-  two groups" is inexpressible, and the compiler is what says so. What no shape can see is a section
-  whose `group` is a _valid_ group it does not belong in: that is a reading matter, and the render
-  test only catches it because the correct order is written down by hand.
-- **A partition guard over member lists _is_ expressible; the obvious formulations are not.**
-  `readonly SectionId[]` per group is satisfied by `[]`, and TypeScript erases duplicate tuple
-  members — `["badges", "badges"] as const` is the union `"badges"` with a reported length of 1 — so
-  union arithmetic and `Distinct`-style recursion cannot see a repeat. Asserting each group's literal
-  _width_ can: `{ [G in GroupId]: Members[G]["length"] }` against written-out numbers goes red when a
-  member is dropped, moved into another group, or invented. (Probed with the real diagnostics; the
-  probe and its outputs are in the PR for #99.) The groups-first record is therefore a working
-  alternative, and this shape was chosen over it because it states one fact once: the section says
-  which group it is in, and the record is compiled from that, where the width assertions are a second
-  place the same fact has to be written.
-
-The heading copy lives in `registry.ts` beside the ids (`groupHeadings`), because a heading is prose:
-a group whose sections are all still there can still be headed wrongly, and only a reader can say.
-
-### Heading levels are the outline
-
-`h1` the page title → `h2` a group → `h3` a section and its cards → `h4` a class card. One level per
-nesting the document has, which is why the sections moved from `h2` to `h3` when the groups arrived:
-a section is no longer a top-level division of the page. No test pins a section's level, so treat this
-as a stated decision rather than a guarded one: `catalogue.test.tsx` checks the group headings and the
-rendered order, and nothing asserts a section's heading level.
-
-This is the one change a **host** can notice, because a stylesheet may key on the level. Hosts that
-selected section blurbs as `section[id] > div > h2 + p` should widen the selector to
-`:is(h1, h2, h3, h4, h5, h6)`; the published package's markup is not shaped by the demo's CSS. The
-reverse is deliberately preserved: the group wrapper sits _around_ each `<section id>`, so a
-section's own `div.grid` stays a direct child of it and structural selectors such as
-`main section[id] > div.grid` keep matching.
+On one page: `h1` the page → `h2` a section → `h3` a card. On the `all` page the overview's `h1` is
+the only one, a package's page is an `h2` and its sections `h3`, beside their cards. A package with
+one section keeps its section heading for the outline and hides it visually, since it would repeat
+the page's. No test pins a level, so treat this as a stated decision rather than a guarded one.
 
 ## Coverage
 
-One row per section, in render order, naming the demos it registers. Between them the sections cover
-every component the catalogue demonstrates and every class of `preset.css` that something demonstrates.
+One row per section. No count and no card list is written here: both moved with every component PR,
+and a list in this file was wrong more often than it was right. The guide's own navigation lists every
+card, the overview prints the counts from the registry, and `pages/build.ts` asserts a prerendered card
+per entry of `catalogueNames` against the emitted HTML.
 
-The counts are deliberately not repeated here: the guide prints them under its own title, and
-`pages/build.ts` asserts a prerendered card per entry of `catalogueNames` against the emitted HTML, so
-the number that matters is checked where it is produced rather than transcribed into prose.
-
-| Section                    | Package  | Cards                                                                                    |
-| -------------------------- | -------- | ---------------------------------------------------------------------------------------- |
-| **Badges**                 | `ui`     | `Badge`                                                                                  |
-| **Buttons**                | `ui`     | `Button`, `CopyButton`, `GeoButton`                                                      |
-| **Display**                | `ui`     | `PageTitle`, `ConfidenceMeter`, `Table`                                                  |
-| **Feedback**               | `ui`     | `ErrorState`, `LoadingSpinner`, `LoadingSkeleton`, `LoadingScreen`, `Toastr`             |
-| **Inputs**                 | `ui`     | `ToggleSwitch`, `OnOffButtons`, `Dropdown`                                               |
-| **Fields**                 | `ui`     | `Field`, `Input`, `Textarea`, `Select`, `Checkbox`, `Radio`, `RadioGroup`, `InputButton` |
-| **Forms**                  | `theme`  | `.input`, `.select`, `.textarea`, `.label`, `.checkbox`, `.radio`, `.btn-input-icon`     |
-| **Surfaces and utilities** | `theme`  | `.card`, `.scrollbar`, the type scale, the KPI tile, the colour atoms                    |
-| **Charts**                 | `charts` | a card per component the package exports                                                 |
-| **System**                 | `system` | a card per component the package exports                                                 |
-| **CRUD**                   | `crud`   | a card per component the package exports                                                 |
-| **Map**                    | `map`    | `Map`                                                                                    |
+| Section                    | Package  | Page     |
+| -------------------------- | -------- | -------- |
+| **Badges**                 | `ui`     | `ui`     |
+| **Buttons**                | `ui`     | `ui`     |
+| **Display**                | `ui`     | `ui`     |
+| **Feedback**               | `ui`     | `ui`     |
+| **Inputs**                 | `ui`     | `ui`     |
+| **Fields**                 | `ui`     | `ui`     |
+| **Enhanced forms**         | `ui`     | `ui`     |
+| **Forms**                  | `theme`  | `theme`  |
+| **Surfaces and utilities** | `theme`  | `theme`  |
+| **Charts**                 | `charts` | `charts` |
+| **System**                 | `system` | `system` |
+| **CRUD**                   | `crud`   | `crud`   |
+| **Map**                    | `map`    | `map`    |
 
 Nothing here states how many components are _missing_ a card, on purpose: that number moves with every
 component PR. Read `EXPORTS_WITHOUT_DEMO` in `coverage.ts`, which is where a card somebody still owes
 is declared. A count in this file was wrong twice while this section was being written, which is the
 argument against a third one.
 
-The `ui` sections are written up; the `charts`, `system` and `crud` cards are placeholders with a
-one-line summary and a live render, and their section blurbs say so — the real demos land in
-follow-up PRs. `signals/` has no section at all: it is excluded in `coverage.ts` because everything
+`signals/` has no section at all: it is excluded in `coverage.ts` because everything
 it exports is a factory or a pure function (`buildModelStore`, `createToastStore`, `useUrlFilters`,
 `sortRows`), which a written-up example in its own README serves better than a card would.
 
@@ -337,9 +319,10 @@ ships escaped (`aria-label="Copy the &lt;Badge /&gt; snippet"`, which reads as `
 snippet`), and the checkmark `CopyButton` shows for 1.5s is the visual confirmation.
 
 `copy.test.tsx` asserts the wiring at the props level, since the repository has no DOM harness: it
-walks the element tree `UIGuide` returns, finds each card's `CopyButton` and checks the `textToCopy`
-and `copy` it was handed. `pages/checks/ui-guide.ts` is what proves the click: it clicks every usage
-block in a real browser and compares each clipboard write to the text of the block it came from.
+records every `DemoCard` element the guide creates while it renders, finds each card's `CopyButton`
+and checks the `textToCopy` and `copy` it was handed. `pages/checks/ui-guide.ts` is what proves the
+click: it opens every page with cards in a real browser, clicks every usage block and compares each
+clipboard write to the text of the block it came from.
 
 ## Not carried over
 
@@ -374,8 +357,10 @@ inputs a healthy tree cannot produce, plus the package-directory decision), `reg
 catalogue's own data — one demo per card, every card in one section, the class cards namespaced apart
 from the components, and the missing-card report), `routes.test.ts` (the resolver, the href builders,
 a route for every section driven from `catalogueSections`, and the drift check that `pages/build.ts`
-runs over the emitted route echo), `catalogue.test.tsx` (every demo renders, the banner, the route
-descriptor, a usage block and copy control per card), `icons.test.tsx` (gallery exhaustiveness,
+runs over the emitted route echo, and the page each route opens), `catalogue.test.tsx` (every demo
+renders, the banner, the route descriptor, a usage block and copy control per card, and the `all`
+page's order), `shell.test.tsx` (the page a hash renders, the navigation's marks and names, a
+host's page extra), `icons.test.tsx` (gallery exhaustiveness,
 filter), `instructions.test.ts` (a documented class is defined), `classes.test.tsx` (a defined class
 is demonstrated, or excluded with a reason) and `copy.test.tsx` (every card's copy control is wired to
 its own snippet and to the injected port). Tests render real markup with `preact-render-to-string`

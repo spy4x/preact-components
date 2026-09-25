@@ -12,12 +12,12 @@ workspace member only so it can import its sibling packages the way an app does.
 
 ## What runs at that URL
 
-| Piece             | Where it comes from                                                                                                       |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| The catalogue     | `UIGuide` from `@preact-components/ui-guide`, unmodified — instructions, every section of the catalogue, the icon gallery |
-| The host page     | `src/app.tsx` — header, a sticky route landing bar, a section rail with deep links, the colour-scheme switch, the footer  |
-| The styles        | `theme/tokens.css` + `theme/preset.css`, compiled by Tailwind into one stylesheet                                         |
-| The interactivity | `src/+main.tsx`, one Preact island that hydrates the prerendered markup                                                   |
+| Piece             | Where it comes from                                                                                               |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------- |
+| The catalogue     | `UIGuide` from `@preact-components/ui-guide`, unmodified — its navigation, one page at a time, and the deep links |
+| The host page     | `src/app.tsx` — header, the colour-scheme switch, the footer, and the address handed to the guide                 |
+| The styles        | `theme/tokens.css` + `theme/preset.css`, compiled by Tailwind into one stylesheet                                 |
+| The interactivity | `src/+main.tsx`, one Preact island that hydrates the prerendered markup                                           |
 
 Static files only. `index.html` ships the whole catalogue prerendered, so it reads with JavaScript
 off; the island is what makes the dropdowns open, the switches toggle, the icon filter filter, the
@@ -154,41 +154,29 @@ a cached island.
 The catalogue is multipage, and every page is a **hash route**:
 
 ```
-https://spy4x.github.io/preact-components/#/inputs                 section
-https://spy4x.github.io/preact-components/#/inputs/toggle-switch   demo card
+https://spy4x.github.io/preact-components/#/ui                     a package's page
+https://spy4x.github.io/preact-components/#/inputs                 a section, on its package's page
+https://spy4x.github.io/preact-components/#/inputs/toggle-switch   a demo card, on its package's page
 https://spy4x.github.io/preact-components/#toggle-switch           the legacy deep link, still resolved
+https://spy4x.github.io/preact-components/#/all                    every page at once
 ```
 
-The grammar lives in the library — `@preact-components/ui-guide/routes`, described in
-`ui-guide/README.md` — because an app registering the guide inherits the same URLs. The host page
-consumes it: `src/app.tsx`'s `useRoute()` calls `parseRoute(location.hash)` on load and on every
-`hashchange`, and the rail — which is also what writes the links — marks the demo's card with
-`data-deep-link` (outlined by `styles.css`), scrolls it into view and rewrites `document.title`; a
-section route scrolls the section; an index match clears the mark and does nothing else, which is
-what keeps the browser's own anchors (`#top`, `#icons`) working.
+The grammar and the shell both live in the library — `@preact-components/ui-guide`, described in
+`ui-guide/README.md` — because an app registering the guide inherits the same URLs and the same
+navigation. The host page only reads the address: `src/app.tsx`'s `useHash()` reads `location.hash`
+on load and on every `hashchange` and passes it to `UIGuide` as `hash`. The guide renders that
+route's page, marks a demo's card with `data-deep-link` and scrolls it into view, scrolls a section
+route to its section, and keeps the page showing for a hash that names no route, so the browser's own
+anchors keep working. The host titles the document from the `onRouteChange` port, and hands the
+signals page its two address-bound demos through `pageExtras`.
 
-The page is laid out as a multipage document rather than one long scroll, and `styles.css` carries
-the three numbers that shape it:
+The served `index.html` is the guide's `all` page — every page at once — because the island reads
+the address in an effect: before it has, the guide renders everything, which is also what a reader
+without JavaScript gets and what the no-script checks under `checks/` submit forms on.
 
-- **A sticky route bar** (`data-route-landing`, `top-14`, one row tall) states the route the reader
-  is on — a section's title, blurb and demo count, or the demo's canonical URL. It exists because a
-  hash route lands mid-document: without it, `#/inputs` scrolls to a bare `<h2>`. It is a live region,
-  because a hash change is not a navigation a screen reader would otherwise announce.
-- **A rail** lists the twelve sections as links to their own pages — `#/inputs` is the primary
-  affordance — with each section's demos behind a `<details>` the route opens. Below `lg` it is a
-  wrapped row of section links with only the active section's demos; from `lg` up it is a sticky
-  scrolling column beside the catalogue. Every demo link is in the prerendered document either way,
-  which is what `verify.ts`'s "every emitted route is a link in the prerendered navigation" reads.
-- **A 65ch prose measure** (`--prose-measure`) for every paragraph, and a card grid of
-  `repeat(auto-fill, minmax(min(100%, 20rem), 1fr))` in which a card holding a table or a dropdown
-  panel spans the row.
-
-The grid, the measure and the sticky offsets are the host's rules over containers `ui-guide/` owns —
-`UIGuide` renders `grid grid-cols-1` and its own page padding. That is a deliberate trade: the rail
-belongs to the demo, not to the library, and a component that hard-coded a two-column grid would
-impose this page's layout on every app that registers it. The cost is structural selectors
-(`section[id] > div.grid`, `section[id] > div > h2 + p`) that reach into markup this package does not
-own, and a package-side change to those containers would need the rules revisited with it.
+`styles.css` carries the host's side of the layout: `--ui-guide-top`, the height of the sticky header
+the guide's own sticky navigation sits under, and `--sticky-stack`, what an anchored card has to
+clear. The card grid, the prose measure and the navigation are the guide's own.
 
 Why hash rather than per-route prerendered files:
 
@@ -204,8 +192,7 @@ Why hash rather than per-route prerendered files:
 - `uiGuideRoute.path` (`/ui-guide`) is still intentionally _not_ used: the descriptor is a route an
   app registers in its own router, and this page _is_ the app. The demo's URL is the site root.
 
-Every link in the rail is such a route, and the `copy` chip beside each demo puts that component's
-JSX on the clipboard — the same snippets the catalogue shows under "Usage".
+Every link in the guide's navigation is such a route.
 
 ### The route echo
 
