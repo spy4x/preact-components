@@ -2,7 +2,13 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import { Field } from "./field.tsx"
-import { FileInput, formatBytes, matchesAccept } from "./file-input.tsx"
+import {
+  classifyFiles,
+  FileInput,
+  formatBytes,
+  matchesAccept,
+  resolveLabels,
+} from "./file-input.tsx"
 
 /** A minimal real `File`, the same platform primitive the browser hands the component. */
 function file(name: string, size: number, type = ""): File {
@@ -59,6 +65,81 @@ describe("formatBytes", () => {
 
   it("renders a fractional unit to one decimal place", () => {
     expect(formatBytes(1.5 * 1024)).toBe("1.5 KB")
+  })
+})
+
+describe("classifyFiles", () => {
+  it("accepts a file exactly at maxSize", () => {
+    const f = file("photo.png", 100, "image/png")
+
+    const { accepted, rejected } = classifyFiles([f], { maxSize: 100 })
+
+    expect(accepted).toEqual([f])
+    expect(rejected).toEqual([])
+  })
+
+  it("refuses a file one byte over maxSize", () => {
+    const f = file("photo.png", 101, "image/png")
+
+    const { accepted, rejected } = classifyFiles([f], { maxSize: 100 })
+
+    expect(accepted).toEqual([])
+    expect(rejected).toEqual([{ file: f, reason: "too-large" }])
+  })
+
+  it("refuses everything past the first file when multiple is unset", () => {
+    const a = file("a.png", 10, "image/png")
+    const b = file("b.png", 10, "image/png")
+
+    const { accepted, rejected } = classifyFiles([a, b], { multiple: false })
+
+    expect(accepted).toEqual([a])
+    expect(rejected).toEqual([{ file: b, reason: "too-many" }])
+  })
+
+  it("keeps every accepted file when multiple is set", () => {
+    const a = file("a.png", 10, "image/png")
+    const b = file("b.png", 10, "image/png")
+
+    const { accepted, rejected } = classifyFiles([a, b], { multiple: true })
+
+    expect(accepted).toEqual([a, b])
+    expect(rejected).toEqual([])
+  })
+})
+
+describe("resolveLabels", () => {
+  it("uses the labels.removeFile override instead of the default", () => {
+    const { removeFile } = resolveLabels({ removeFile: (name) => `Drop ${name}` })
+
+    expect(removeFile("a.png")).toBe("Drop a.png")
+  })
+
+  it("uses the labels.tooLarge override instead of the default", () => {
+    const { tooLarge } = resolveLabels({ tooLarge: (name) => `${name} is huge` })
+
+    expect(tooLarge("a.png", 10)).toBe("a.png is huge")
+  })
+
+  it("uses the labels.wrongType override instead of the default", () => {
+    const { wrongType } = resolveLabels({ wrongType: (name) => `${name} is wrong` })
+
+    expect(wrongType("a.png")).toBe("a.png is wrong")
+  })
+
+  it("uses the labels.tooMany override instead of the default", () => {
+    const { tooMany } = resolveLabels({ tooMany: (name) => `${name} is extra` })
+
+    expect(tooMany("a.png")).toBe("a.png is extra")
+  })
+
+  it("falls back to the built-in message when a label is not overridden", () => {
+    const { removeFile, tooLarge, wrongType, tooMany } = resolveLabels({})
+
+    expect(removeFile("a.png")).toBe("Remove a.png")
+    expect(tooLarge("a.png", 1024)).toBe("a.png is larger than 1 KB")
+    expect(wrongType("a.png")).toBe("a.png is not an accepted file type")
+    expect(tooMany("a.png")).toBe("a.png was not chosen — only one file is allowed")
   })
 })
 
