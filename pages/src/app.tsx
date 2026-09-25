@@ -1,8 +1,8 @@
 /**
  * The demo's host page — the app shell this library deliberately does not ship.
  *
- * A sticky header, the guide, a footer. The guide (`UIGuide`) owns everything between: its side
- * navigation, one page at a time, and the deep links that mark and scroll to a card. What the host
+ * A sticky header, the guide, a footer. The guide — `uiGuideRoute.component`, which is `UIGuide`
+ * routed by the address's hash — owns everything between: its side navigation, one page at a time, and the deep links that mark and scroll to a card. What the host
  * adds is what only it knows — the address, read from `location.hash` and handed in as a prop, and
  * the document's title, set from the route the guide reports.
  *
@@ -14,7 +14,7 @@
 import { IconGitHub } from "@preact-components/icons"
 import { buttonClasses } from "@preact-components/ui/button"
 import { copyToClipboard } from "@preact-components/ui/copy-button"
-import { type GuideRouteChange, UIGuide, useLocationHash } from "@preact-components/ui-guide"
+import { type GuideRouteChange, uiGuideRoute } from "@preact-components/ui-guide"
 import { useEffect, useState } from "preact/hooks"
 import { DataTableSortDemo } from "./data-table-sort.tsx"
 import { PAGE_TITLE, REPOSITORY } from "./site.ts"
@@ -50,8 +50,6 @@ export interface AppProps {
  * @param props See {@link AppProps}.
  */
 export function App({ initialHash }: AppProps) {
-  const hash = useLocationHash(initialHash)
-
   useEffect(() => {
     // The island's boot marker. `verify.ts` asserts it, which is how the check tells "hydrated" from
     // "the script was fetched and threw".
@@ -62,8 +60,9 @@ export function App({ initialHash }: AppProps) {
     <div id="top" class="min-h-dvh">
       <SiteHeader />
       <main class="mx-auto max-w-7xl px-4 sm:px-6">
-        <UIGuide
-          hash={hash}
+        {/* The one-line mount an app uses: the route's component reads the hash itself. */}
+        <uiGuideRoute.component
+          hash={initialHash}
           copy={copyText}
           onRouteChange={titleDocument}
           pageExtras={{

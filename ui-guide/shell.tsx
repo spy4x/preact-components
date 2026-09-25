@@ -217,6 +217,11 @@ export function UIGuide(
       const target = /^#([^/]+)$/.exec(hash)?.[1]
       const element = target === undefined ? null : document.getElementById(target)
       if (element && (firstRead || pageChanged)) element.scrollIntoView({ block: "start" })
+      // A fragment that names a page with no element of that id (`#ui`, `#theme`) opened the page
+      // itself, which starts at its top like the page's own route.
+      if (!element && !firstRead && pageOfFragment(hash) !== undefined) {
+        globalThis.scrollTo({ top: 0, behavior: pageChanged ? "instant" : "auto" })
+      }
       return
     }
     // A page's route starts it at its top: at once for a new page, since animating down a page that
@@ -255,7 +260,7 @@ export function UIGuide(
           target.focus()
           target.scrollIntoView({ block: "start" })
         }}
-        class="sr-only rounded-md bg-white px-3 py-2 text-sm font-medium text-purple-900 shadow focus:not-sr-only focus:absolute focus:z-40 dark:bg-gray-900 dark:text-purple-200"
+        class="sr-only rounded-md bg-white px-3 py-2 text-sm font-medium text-purple-900 shadow focus:not-sr-only focus:absolute focus:px-3 focus:py-2 focus:z-40 dark:bg-gray-900 dark:text-purple-200"
         data-e2e="ui-guide-skip"
       >
         {labels.skipToContent}
