@@ -28,8 +28,11 @@ export function FactCard({ title, action, facts, class: className }: FactCardPro
       {title && <CardHeader title={title} action={action} />}
       <CardBody>
         <dl class="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
-          {facts.map((fact) => (
-            <div key={fact.key}>
+          {facts.map((fact, index) => (
+            // The index, not fact.key: two facts can share the same label on purpose (e.g. two
+            // "Region" rows for two providers), and keying on fact.key would collide, silently
+            // dropping or misordering rows for callers with duplicate labels.
+            <div key={index}>
               <dt class="kpi-label">{fact.key}</dt>
               <dd class="text-sm">{fact.value}</dd>
             </div>
