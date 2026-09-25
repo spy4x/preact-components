@@ -10,13 +10,13 @@ entries below — not effort, and not taste.
 
 ## The list
 
-| Component        | Why not now                                                                                                                                                            |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Carousel`       | `roley` has shadcn/embla-based carousels. No Deno-app evidence of need. Embla-style physics is a large hand-written surface — a poor fit for the no-dependency policy. |
-| `Accordion`      | `roley` has shadcn's (Radix-based). No consumer in `gb`, `financy` or `template`. Fold into `Dropdown` or `Tabs` if it ever appears.                                   |
-| `Drawer`/`Sheet` | `roley` has shadcn's (Vaul-based). Mobile nav in `gb` and `financy` uses plain off-canvas CSS, which is adequate. Build only if a product needs gesture dismissal.     |
-| `RichTextEditor` | `evisa` wraps CodeMirror 6. Heavy, niche, and CodeMirror is a large third-party surface — a poor fit while the no-dependency policy holds.                             |
-| `TreeView`       | No evidence of need anywhere in `~/sync/code`.                                                                                                                         |
+| Component        | Why not now                                                                                                                                                                                  |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Carousel`       | A private application has shadcn/embla-based carousels. No Deno-app evidence of need. Embla-style physics is a large hand-written surface — a poor fit for the no-dependency policy.         |
+| `Accordion`      | A private application has shadcn's (Radix-based). No consumer in `financy`, `template` or any other Deno app. Fold into `Dropdown` or `Tabs` if it ever appears.                             |
+| `Drawer`/`Sheet` | A private application has shadcn's (Vaul-based). Mobile nav in `financy` and another Deno app uses plain off-canvas CSS, which is adequate. Build only if a product needs gesture dismissal. |
+| `RichTextEditor` | An earlier application wrapped CodeMirror 6. Heavy, niche, and CodeMirror is a large third-party surface — a poor fit while the no-dependency policy holds.                                  |
+| `TreeView`       | No evidence of need in any of the owner's applications.                                                                                                                                      |
 
 ## Reopened
 
@@ -39,6 +39,6 @@ Until both hold, the answer is no.
 
 ## Sources of design intent
 
-`roley` and `evisa` appear above because they are where the need was first noticed. They are **design
-intent sources only, never code sources**: both use shadcn, Radix and bits-ui, which #34 excludes.
+The applications above appear only because they are where the need was first noticed. They are
+**design intent sources only, never code sources**: they use shadcn, Radix and bits-ui, which #34 excludes.
 Port the markup and the behaviour; never the dependency.

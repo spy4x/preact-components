@@ -48,30 +48,20 @@ dependency does not satisfy the policy — it produces the same upgrade breakage
 pin, no upstream changelog, and an unsolved licence question. If the package name is gone but the
 implementation is theirs, the policy is broken.
 
-## `roley` and `evisa` are design-intent sources, never code sources
+## Private applications are design-intent sources, never code sources
 
-`roley` and `evisa` in `~/sync/code` use shadcn, Radix and bits-ui. They are where a large part of
-this library's _design intent_ was first observed, and they are useful to read: the markup, the
+Two earlier private applications use shadcn, Radix and bits-ui. They are where a large part of this
+library's _design intent_ was first observed, and they are useful to read: the markup, the
 interaction model, the states a surface has.
 
-**Port the markup and the behaviour. Never the dependency.** Concretely, that means reading how
-`roley` composes a dialog and writing our own `ui/modal.tsx` against the same idea — not importing
+**Port the markup and the behaviour. Never the dependency.** Concretely, that means reading how one
+of them composes a dialog and writing our own `ui/modal.tsx` against the same idea — not importing
 `bits-ui`, and not transcribing its internals either.
 
-The same line applies to icons, and it is the reason this document does not list `roley` among the
-icon sources. `roley` carries its own 52-glyph Svelte icon set, and six of its glyphs draw geometry
-identical to ours (`arrowLeft`, `arrowRight`, `back`, `down`, `up`, `trash`), but every matching
-glyph of ours is annotated `from template` and all six are stock Heroicons v1 paths. The overlap is a
-shared upstream, not a port. See [`icons/README.md`](../icons/README.md) and "Deferred decisions"
-below for what the icon set's provenance actually is.
-
-> **The paragraph above is out of date.** The pull request this note used to wait on, #98, has
-> landed and did add that project to the source table in [`icons/README.md`](../icons/README.md), so
-> the claim that it is not an icon source is false rather than conditional. The shared-upstream
-> explanation of the six glyphs may still hold and is not the same claim; it needs re-reading rather
-> than deleting. Reconciling this paragraph is part of #127, which owns the wider sweep of this
-> document — including the project names in it, which is why the correction removes them together
-> rather than one at a time. The note under "Deferred decisions" says the same.
+One of the two is also one of the icon set's six sources: its own 52-file Svelte icon set is what
+[`icons/README.md`](../icons/README.md) calls "the ported set", and 18 of its glyphs ship here
+([issue #15](https://github.com/spy4x/preact-components/issues/15)). That is a port of drawings —
+inline SVG paths — and brings no dependency with it, so the rule above holds for it too.
 
 ## Behaviour is implemented, not imported
 
@@ -321,22 +311,10 @@ this:
 - All 119 glyphs are inline source in `icons/+index.tsx`, `{ class?: string }` prop surface, no
   codegen, no build step, no runtime dependency beyond Preact.
 
-> **Reconciled.** The pull request this note used to wait on, #98, landed some time ago, so the
-> count above is read from the tree rather than from a pending change; `icons/check-readme.ts` and
-> `icons/+index.test.ts` both guard it independently, and the browser suite's own icon check would
-> pass at ninety-one, so neither of those three is what to trust for the exact number — the module
-> export count is. The source-project count above was one short of the tree for a while: it named
-> five projects where six had contributed — the same project the design-intent paragraph above
-> discusses was missing from the icon-set list specifically. Fixed above by counting it rather than
-> naming any project again in this bullet.
->
-> **The same applies to the paragraph earlier in this document** naming two projects as
-> design-intent sources rather than code sources, which says one of them is not among the icon
-> sources and explains its six geometry-identical glyphs as a shared upstream. Since #98 landed,
-> that project _is_ an icon source, so the sentence is false rather than conditional. The
-> shared-upstream explanation of the six glyphs may still hold — `icons/provenance.ts` found no
-> reason to doubt it for those six specifically — but re-reading that paragraph against the current
-> tree, rather than deleting it, is part of #127's wider sweep of this document.
+> The glyph count above is the module's: `icons/+index.test.ts` asserts 119 exports, and
+> `deno task test` runs it. The source count is six, the ported set included — the section on
+> design-intent sources earlier in this document says why that set is a port of drawings and not of
+> a dependency.
 
 **This document does not resolve that question and must not be read as doing so.** For the 24
 glyphs `icons/provenance.ts` could not match to a pack, no licence is asserted and none is inferred.
