@@ -24,7 +24,8 @@ function packages(): Record<string, PackageSurface> {
 /** Docs that agree with {@link packages}: every row, every install line, every component. */
 function docs(): Docs {
   const ids = Object.keys(packages())
-  const rows = ids.map((id) => `| \`${id}/\` | ${id === "cn" ? "`cn()`" : "`Widget`"} |`)
+  const contents: Record<string, string> = { cn: "`cn()`", map: "`Widget`, `widgetHelper`" }
+  const rows = ids.map((id) => `| \`${id}/\` | ${contents[id] ?? "`Widget`"} |`)
   const summary = ["| Directory | Contents |", "| --- | --- |", ...rows].join("\n")
   const packageReadmes: Record<string, string> = {}
   for (const id of CATALOGUED) {
@@ -69,6 +70,15 @@ describe("export lists", () => {
     ])
   })
 
+  it("reports an export a complete summary row leaves out", () => {
+    const surfaces = packages()
+    surfaces.cn.names.push("cx")
+    expect(exportListProblems(docs(), surfaces)).toEqual([
+      "AGENTS.md's cn/ row does not name `cx`, which cn exports",
+      "README.md's cn/ row does not name `cx`, which cn exports",
+    ])
+  })
+
   it("accepts a subpath name in a summary row", () => {
     const input = docs()
     input.readme = input.readme.replace("| `ui/` | `Widget` |", "| `ui/` | `Widget`, `widget` |")
@@ -77,9 +87,9 @@ describe("export lists", () => {
 
   it("reports a published package with no summary row", () => {
     const input = docs()
-    input.readme = input.readme.replace("| `map/` | `Widget` |\n", "")
+    input.readme = input.readme.replace("| `system/` | `Widget` |\n", "")
     expect(exportListProblems(input, packages())).toEqual([
-      "README.md has no row for the published package map/",
+      "README.md has no row for the published package system/",
     ])
   })
 

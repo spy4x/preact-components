@@ -9,7 +9,8 @@
  * 1. the "Package layout" table in `AGENTS.md` and the "Scope" table in `README.md` — a summary,
  *    one row per package. Every name written in backticks in a row must be a value export or a
  *    subpath of that package, and every published package needs a row. A summary may stop at
- *    "and the rest", so it is not required to name everything;
+ *    "and the rest", so it is not required to name everything — except for the few small packages
+ *    in {@linkcode COMPLETE_SUMMARIES}, whose row must name every value export;
  * 2. the `deno add` lines in `README.md`'s Install section — one line per published package, and
  *    no line for a package that does not exist;
  * 3. the "Components" table of each catalogued package's own README — the complete list. Its
@@ -33,6 +34,12 @@ const ROOT = new URL("../../", import.meta.url)
 
 /** Packages whose README must carry a complete "Components" table. */
 export const CATALOGUED = ["charts", "crud", "map", "system", "ui"] as const
+
+/**
+ * Packages whose summary row must name every value export: small enough to list in full, so a new
+ * export there (a third stylesheet, say) shows up in the summary or fails the check.
+ */
+export const COMPLETE_SUMMARIES = ["cn", "map", "theme"] as const
 
 /** What one published package exports, as read from its modules. */
 export interface PackageSurface {
@@ -146,9 +153,16 @@ export function exportListProblems(
       const id = directory.replace(/^`|\/`$/g, "")
       if (!(id in packages)) continue
       seen.add(id)
-      for (const name of backticked(contents)) {
+      const named = backticked(contents)
+      for (const name of named) {
         if (!known(id, name)) {
           problems.push(`${file} lists \`${name}\` under ${id}/, which ${id} does not export`)
+        }
+      }
+      if (!(COMPLETE_SUMMARIES as readonly string[]).includes(id)) continue
+      for (const name of packages[id].names) {
+        if (!named.includes(name)) {
+          problems.push(`${file}'s ${id}/ row does not name \`${name}\`, which ${id} exports`)
         }
       }
     }
