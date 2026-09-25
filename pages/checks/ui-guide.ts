@@ -27,6 +27,9 @@ export async function uiGuideChecks(devtools: Devtools): Promise<void> {
   await withViewport(devtools, 1280, 800, () => navigationChecks(devtools))
   await withViewport(devtools, 375, 812, () => phoneNavigationChecks(devtools))
   await withViewport(devtools, 375, 812, () => overflowChecks(devtools))
+  for (const width of [375, 1280]) {
+    await withViewport(devtools, width, 812, () => tooltipTriggerCheck(devtools, width))
+  }
   await coldDeepLinkCheck(devtools)
   await coldFragmentCheck(devtools)
   await reloadAtTopCheck(devtools)
@@ -407,6 +410,46 @@ async function phoneNavigationChecks(devtools: Devtools): Promise<void> {
     `dialog reopened ${reopened}, Map link rendered ${linked}, ` +
       `${followed ? "clicked" : "could not click"} → page "${page}", dialog open ` +
       `${after.open}, focus back on the menu button ${after.onButton}`,
+  )
+}
+
+/**
+ * The Tooltip card shows every placement with its hint forced visible, so a reader can see where
+ * each one opens. That only works while no hint covers a trigger: at the given width, the element
+ * the browser finds at the middle of each placement trigger is the trigger itself or inside it.
+ *
+ * @param devtools The connected session.
+ * @param width The viewport width the caller set, for the check's name.
+ */
+async function tooltipTriggerCheck(devtools: Devtools, width: number): Promise<void> {
+  await openGuidePage(devtools, "ui")
+  const cells = `[...document.querySelectorAll('#demo-Tooltip [data-e2e="tooltip-placement"]')]`
+  const count = await devtools.evaluate<number>(`${cells}.length`)
+  const covered: string[] = []
+  for (let index = 0; index < count; index++) {
+    const trigger = `${cells}[${index}].querySelector("[aria-describedby]")`
+    const inView = await centreInView(devtools, trigger)
+    const hit = await devtools.evaluate<{ name: string; own: boolean; by: string }>(`(() => {
+      const trigger = ${trigger}
+      const box = trigger.getBoundingClientRect()
+      const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)
+      return {
+        name: trigger.textContent.trim(),
+        own: hit !== null && trigger.contains(hit),
+        by: hit === null ? "nothing" : (hit.closest("[role=tooltip]") ? "a hint" : hit.tagName),
+      }
+    })()`)
+    if (!inView || !hit.own) covered.push(`${hit.name} (${inView ? hit.by : "not in view"})`)
+  }
+  await devtools.evaluate(`globalThis.scrollTo({ top: 0, behavior: "instant" })`)
+  check(
+    `at ${width}px no Tooltip placement trigger is covered by a hint`,
+    count === 4 && covered.length === 0,
+    count !== 4
+      ? `found ${count} placement cells in #demo-Tooltip, expected 4`
+      : covered.length === 0
+      ? "top, right, bottom and left are each the element at their own centre"
+      : `covered: ${covered.join(", ")}`,
   )
 }
 
