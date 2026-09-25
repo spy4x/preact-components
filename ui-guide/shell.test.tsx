@@ -9,7 +9,14 @@ import { describe, it } from "@std/testing/bdd"
 import { options } from "preact"
 import { render } from "preact-render-to-string"
 import { UIGuide, type UIGuideProps } from "./shell.tsx"
-import { catalogueNames, guidePages } from "./registry.ts"
+import { catalogueNames, demoRegistry, guidePages } from "./registry.ts"
+
+/** The complete registry without the cards of one package's page. */
+function withoutPage(id: string): UIGuideProps["registry"] {
+  const page = guidePages.find((candidate) => candidate.id === id)!
+  const dropped = new Set(page.sections.flatMap((section) => section.names))
+  return Object.fromEntries(Object.entries(demoRegistry).filter(([name]) => !dropped.has(name)))
+}
 
 /** The card ids a render carries, in document order. */
 function cardsIn(html: string): string[] {
@@ -62,14 +69,18 @@ describe("UIGuide's pages", () => {
     expect(render(<UIGuide hash="#/nonsense" />)).toContain(`data-guide-page="overview"`)
   })
 
-  it("says a package with no cards yet has examples coming", () => {
-    const html = render(<UIGuide hash="#/cn" />)
+  it("says a package with no card in the registry has examples coming", () => {
+    expect(render(<UIGuide hash="#/cn" />)).not.toContain("Runnable examples for this package")
+
+    const registry = withoutPage("cn")
+    const html = render(<UIGuide hash="#/cn" registry={registry} />)
 
     expect(html).toContain(`data-guide-page="cn"`)
     expect(html).toContain("Runnable examples for this package are coming.")
-    expect(render(<UIGuide hash="#/cn" labels={{ comingSoon: "Bientôt." }} />)).toContain(
-      "Bientôt.",
-    )
+    expect(render(<UIGuide hash="#/cn" registry={registry} labels={{ comingSoon: "Bientôt." }} />))
+      .toContain(
+        "Bientôt.",
+      )
   })
 
   it("renders the icon gallery on the icons page", () => {
@@ -202,7 +213,7 @@ describe("UIGuide's navigate port", () => {
 
 describe("UIGuide's own copy", () => {
   it("prints the overview's counts in English, or through the labels when given", () => {
-    const english = render(<UIGuide hash="" />)
+    const english = render(<UIGuide hash="" registry={withoutPage("cn")} />)
     expect(english).toMatch(/\d+ live cards · \d+ icons · \d+ packages/)
     expect(english).toMatch(/>\d+ cards</)
     expect(english).toContain(">Examples coming<")
@@ -210,6 +221,7 @@ describe("UIGuide's own copy", () => {
     const french = render(
       <UIGuide
         hash=""
+        registry={withoutPage("cn")}
         labels={{
           stats: ({ cards }) => `${cards} fiches`,
           cardCount: (count) => `${count} fiches`,

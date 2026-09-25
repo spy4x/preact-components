@@ -37,6 +37,11 @@ import { displayDemos } from "./sections/display.tsx"
 import { enhancedFormDemos } from "./sections/enhanced-forms.tsx"
 import { uiExamples } from "./sections/ui-examples.tsx"
 import { signalsExamples } from "./sections/signals-examples.tsx"
+import { chartsExamples } from "./sections/charts-examples.tsx"
+import { systemExamples } from "./sections/system-examples.tsx"
+import { crudExamples } from "./sections/crud-examples.tsx"
+import { themeExamples } from "./sections/theme-examples.tsx"
+import { cnExamples } from "./sections/cn-examples.tsx"
 import { feedbackDemos } from "./sections/feedback.tsx"
 import { fieldDemos } from "./sections/fields.tsx"
 import { formDemos } from "./sections/forms.tsx"
@@ -222,6 +227,11 @@ export type SectionId =
   | "map"
   | "ui-examples"
   | "signals-examples"
+  | "charts-examples"
+  | "system-examples"
+  | "crud-examples"
+  | "theme-examples"
+  | "cn-examples"
 
 const catalogue = {
   badges: {
@@ -344,6 +354,50 @@ const catalogue = {
     blurb: "Each helper run on this page, its output printed under the code.",
     demos: signalsExamples,
   },
+  "charts-examples": {
+    group: "application",
+    package: "charts",
+    kind: "example",
+    title: "Helpers",
+    blurb:
+      "The scales, colours and loaders `charts/` exports beside its charts, each run on this page.",
+    demos: chartsExamples,
+  },
+  "system-examples": {
+    group: "application",
+    package: "system",
+    kind: "example",
+    title: "Helpers",
+    blurb:
+      "The functions and constants `system/` exports beside its components, each run on this page.",
+    demos: systemExamples,
+  },
+  "crud-examples": {
+    group: "application",
+    package: "crud",
+    kind: "example",
+    title: "Helpers",
+    blurb:
+      "The functions and constants `crud/` exports beside its components, each run on this page.",
+    demos: crudExamples,
+  },
+  "theme-examples": {
+    group: "application",
+    package: "theme",
+    kind: "example",
+    title: "Stylesheets as text",
+    blurb:
+      "The stylesheets exported as strings, for a build that turns them into a compiled stylesheet.",
+    demos: themeExamples,
+  },
+  "cn-examples": {
+    group: "application",
+    package: "cn",
+    kind: "example",
+    title: "cn",
+    blurb: "`cn()` run on this page, its output printed under the code.",
+    demos: cnExamples,
+  },
 } as const satisfies Record<SectionId, SectionSpec>
 
 /**
@@ -463,6 +517,11 @@ export const demoRegistry: DemoRegistry = {
   ...mapDemos,
   ...uiExamples,
   ...signalsExamples,
+  ...chartsExamples,
+  ...systemExamples,
+  ...crudExamples,
+  ...themeExamples,
+  ...cnExamples,
 }
 
 /**
@@ -520,9 +579,8 @@ export function missingDemos(registry: PartialDemoRegistry): string[] {
  *
  * A page is what the guide renders at one time. The sections above are still the unit a card
  * belongs to and a route names; a page is the package they belong to, so `ui/`'s sections are
- * one page read top to bottom, and a package with one section (`charts`, `crud`, `map`, `system`)
- * is a page of one. `theme` holds the two class sections. `icons` renders the gallery, and
- * `cn` has no card yet: its page says what the package is until its example lands.
+ * one page read top to bottom, and a package with one section (`map`, `signals`, `cn`) is a page of
+ * one. `theme` holds the two class sections and its examples, and `icons` renders the gallery.
  *
  * `all` is every other page at once. It is what the guide renders before its host has read the
  * address — so it is the served document, the page a reader without JavaScript gets — and a route

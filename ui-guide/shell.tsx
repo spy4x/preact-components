@@ -60,7 +60,7 @@ export interface UIGuideLabels {
   openNav?: string
   /** The dialog's close button's accessible name. Defaults to `"Close the guide navigation"`. */
   closeNav?: string
-  /** What a page with no cards yet says. */
+  /** What a package page with no card in the registry says. */
   comingSoon?: string
   /** The link that jumps past the navigation to the page. Defaults to `"Skip to content"`. */
   skipToContent?: string
@@ -73,7 +73,7 @@ export interface UIGuideLabels {
   cardCount?: (count: number) => string
   /** The icons page's overview card. Defaults to `"<count> icons"`. */
   iconCount?: (count: number) => string
-  /** An overview card for a package with no cards yet. Defaults to `"Examples coming"`. */
+  /** An overview card for a package with no card in the registry. Defaults to `"Examples coming"`. */
   examplesComing?: string
 }
 
@@ -537,7 +537,10 @@ function Overview(
       </header>
       <ul class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {packagePages.map((page) => {
-          const count = page.sections.reduce((total, section) => total + section.names.length, 0)
+          const count = page.sections.reduce(
+            (total, section) => total + section.names.filter((name) => name in registry).length,
+            0,
+          )
           const href = pageHref(page.id)
           return (
             <li key={page.id} class="min-w-0">
@@ -601,7 +604,8 @@ function PackagePage(
       </header>
 
       {page.id === "icons" ? <IconGallery copy={copy} /> : null}
-      {page.sections.length === 0 && page.id !== "icons"
+      {page.id !== "icons" &&
+          page.sections.every((section) => section.names.every((name) => !(name in registry)))
         ? <p class="text-sm text-gray-600 dark:text-gray-300">{labels.comingSoon}</p>
         : null}
 

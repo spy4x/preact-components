@@ -128,7 +128,6 @@ export const EXAMPLES_PENDING: Record<PackageId, readonly string[]> = {
     "DEFAULT_TRACK_COLOR",
     "defaultTooltipFormat",
     "donutGeometry",
-    "extent",
     "formatTimeTick",
     "linearScale",
     "loadChartPayload",
@@ -157,7 +156,6 @@ export const EXAMPLES_PENDING: Record<PackageId, readonly string[]> = {
     "describeCalendarDay",
     "isCurrentLink",
     "jsonLdText",
-    "normalizeCanonical",
     "readStateInit",
     "reloadOnControllerChange",
     "resolveImage",
@@ -185,7 +183,6 @@ export const EXAMPLES_PENDING: Record<PackageId, readonly string[]> = {
     "rowsForStatus",
     "setField",
     "submitEditor",
-    "timeAgo",
     "toggleArchiveState",
   ],
   map: [],
@@ -210,12 +207,6 @@ export const EXAMPLES_PENDING: Record<PackageId, readonly string[]> = {
     "ThemeValue",
     "useUrlFilters",
   ],
-  theme: [
-    "INK_CSS",
-    "PRESET_CSS",
-    "TOKENS_CSS",
-  ],
-  cn: [
-    "cn",
-  ],
+  theme: [],
+  cn: [],
 }
