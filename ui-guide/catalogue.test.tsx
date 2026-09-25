@@ -234,7 +234,7 @@ describe("uiGuideRoute", () => {
 
   it("renders the catalogue through the descriptor", () => {
     // The point of the descriptor: an app registers `uiGuideRoute` in its navigation and renders
-    // it at `path` instead of leaving the guide unreachable, as `gb`'s was.
+    // it at `path` instead of leaving the guide unreachable, as one source application's was.
     expect(render(<uiGuideRoute.component />)).toBe(render(<UIGuide />))
   })
 })

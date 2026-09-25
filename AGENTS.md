@@ -10,7 +10,7 @@ its own PR, each owning exactly one top-level directory.
 
 | Directory   | Contents                                                                                                                                 |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `theme/`    | design-system CSS + Tailwind preset, also as strings (`TOKENS_CSS`, `PRESET_CSS`)                                                        |
+| `theme/`    | design-system CSS + Tailwind preset, and the opt-in dark ink palette, as strings (`TOKENS_CSS`, `PRESET_CSS`, `INK_CSS`)                 |
 | `icons/`    | merged icon set: one component per glyph, all listed by the guide's icon gallery                                                         |
 | `ui/`       | `Badge`, `Button`, `Table`, `DataTable`, `Dropdown`, `Combobox`, `Modal`, `Tooltip`, `Toastr` — and the rest                             |
 | `system/`   | `AuthForm`, `Calendar`, `ImageLightbox`, `RailShell`, `SEOHead` + `head` store, `Shell`, `SiteHeader`, `StateInit`, `SWUpdater`          |
@@ -19,7 +19,7 @@ its own PR, each owning exactly one top-level directory.
 | `signals/`  | `buildModelStore`, `useUrlFilters`, `table-state`, `createThemeStore`, `createToastStore`, `patchSignal` — and the rest; no components   |
 | `crud/`     | `CrudList`, `CrudEditor`, `AssociationEditor`, `DeletionValidation`, field rows                                                          |
 | `map/`      | `Map` on Leaflet — its own package, so only an app that imports it resolves Leaflet                                                      |
-| `ui-guide/` | live component catalogue (`UIGuide`) and its route descriptor (`uiGuideRoute`)                                                           |
+| `ui-guide/` | live component catalogue: an overview and one page per package behind a side navigation (`UIGuide`, `uiGuideRoute`)                      |
 | `pages/`    | demo app (GitHub Pages site and the browser checks under `pages/checks/`), not published                                                 |
 
 A name in backticks in this table must be an export or a subpath of that package, and each

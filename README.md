@@ -35,12 +35,12 @@ deno add jsr:@preact-components/system    # app-level pieces: auth form, calenda
 deno add jsr:@preact-components/ui        # the component set
 deno add jsr:@preact-components/crud      # list and editor scaffold for one collection
 deno add jsr:@preact-components/map       # map on Leaflet (resolves leaflet)
-deno add jsr:@preact-components/ui-guide  # the live component catalogue, as a component your app renders
+deno add jsr:@preact-components/ui-guide  # the live component catalogue: mount <uiGuideRoute.component />
 ```
 
 Which package imports which sibling, read from the sources: `ui` imports `cn`, `icons` and
 `signals`; `system` imports `cn`, `icons` and `ui`; `crud` imports `cn`, `icons`, `signals` and
-`ui`; `map` imports `cn`; `ui-guide` imports every other package except `theme`, for its catalogue.
+`ui`; `map` imports `cn`; `ui-guide` imports every other package, for its catalogue.
 `cn`, `icons`, `signals`, `theme` and `charts` import no sibling. JSR resolves a package's own
 dependencies, so installing `ui` also resolves `cn`, `icons` and `signals` — none needs adding by
 hand. `charts`, `crud`, `signals`, `system` and `ui` also import helpers from `spy4x/ts-libs`
@@ -60,6 +60,19 @@ import { Badge } from "@preact-components/ui/badge"
 
 Every component's own README under the directories below lists its full prop surface.
 
+The UI guide — the catalogue the demo site shows — is a component too. It has an overview and one
+page per package, picked from a side navigation that becomes a dialog on a phone, and an app mounts
+it in one line:
+
+```tsx
+import { uiGuideRoute } from "@preact-components/ui-guide"
+
+<uiGuideRoute.component />
+```
+
+Set `history.scrollRestoration = "manual"` in the host page, so a reload lands on what the address
+names. [`ui-guide/README.md`](./ui-guide/README.md) has the props and the route grammar.
+
 ## Accessibility
 
 Roles, labels, keyboard handling and focus are written by hand — this repository uses no
@@ -78,7 +91,7 @@ reusable Preact + signals package. See [`CREDITS.md`](./CREDITS.md).
 
 | Directory   | Contents                                                                                                                                 |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `theme/`    | design-system CSS + Tailwind preset, also as strings (`TOKENS_CSS`, `PRESET_CSS`)                                                        |
+| `theme/`    | design-system CSS + Tailwind preset, and the opt-in dark ink palette, as strings (`TOKENS_CSS`, `PRESET_CSS`, `INK_CSS`)                 |
 | `icons/`    | merged icon set: one component per glyph, all listed by the guide's icon gallery                                                         |
 | `ui/`       | `Badge`, `Button`, `Table`, `DataTable`, `Dropdown`, `Combobox`, `Modal`, `Tooltip`, `Toastr` — and the rest                             |
 | `system/`   | `AuthForm`, `Calendar`, `ImageLightbox`, `RailShell`, `SEOHead` + `head` store, `Shell`, `SiteHeader`, `StateInit`, `SWUpdater`          |
@@ -87,7 +100,7 @@ reusable Preact + signals package. See [`CREDITS.md`](./CREDITS.md).
 | `signals/`  | `buildModelStore`, `useUrlFilters`, `table-state`, `createThemeStore`, `createToastStore`, `patchSignal` — and the rest; no components   |
 | `crud/`     | `CrudList`, `CrudEditor`, `AssociationEditor`, `DeletionValidation`, field rows                                                          |
 | `map/`      | `Map` on Leaflet — its own package, so only an app that imports it resolves Leaflet                                                      |
-| `ui-guide/` | live component catalogue (`UIGuide`) and its route descriptor (`uiGuideRoute`)                                                           |
+| `ui-guide/` | live component catalogue: an overview and one page per package behind a side navigation (`UIGuide`, `uiGuideRoute`)                      |
 | `pages/`    | demo app (GitHub Pages site and the browser checks under `pages/checks/`), not published                                                 |
 
 ## Rules
