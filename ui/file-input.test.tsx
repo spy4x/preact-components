@@ -1,6 +1,7 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
+import { Field } from "./field.tsx"
 import { FileInput, formatBytes, matchesAccept } from "./file-input.tsx"
 
 /** A minimal real `File`, the same platform primitive the browser hands the component. */
@@ -177,5 +178,46 @@ describe("FileInput", () => {
     expect(overridden).toContain("Parcourir")
     expect(overridden).toContain("ou glisser-déposer")
     expect(overridden).not.toContain("Choose files")
+  })
+
+  it("nests inside Field with exactly one label, naming the real input", () => {
+    const html = render(
+      <Field id="attachments" label="Attachments" hint="Up to 2 MB each" error="Too many files">
+        <FileInput id="attachments" />
+      </Field>,
+    )
+
+    expect(html.match(/<label\b/g)?.length).toBe(1)
+    expect(html).toContain('for="attachments"')
+    expect(html.match(/id="attachments"/g)?.length).toBe(1)
+  })
+
+  it("folds Field's aria-describedby together with its own rejection-region id", () => {
+    const html = render(
+      <Field id="attachments" label="Attachments" hint="Up to 2 MB each" error="Too many files">
+        <FileInput id="attachments" />
+      </Field>,
+    )
+
+    // FileInput's own errorId/hintId are unset here (its local `hint`/`error` props are never
+    // passed when nested — only Field's are), so its own rejection id leads, followed by the
+    // merged value Field's clone already carries (Field's own error id then its own hint id).
+    expect(html).toContain(
+      'aria-describedby="attachments-rejection attachments-error attachments-hint"',
+    )
+  })
+
+  it("reads aria-invalid from Field's clone when nested, alongside its own error prop", () => {
+    const nested = render(
+      <Field id="attachments" label="Attachments" error="Too many files">
+        <FileInput id="attachments" />
+      </Field>,
+    )
+    const standalone = render(<FileInput id="attachments" error="Too many files" />)
+    const neither = render(<FileInput id="attachments" />)
+
+    expect(nested).toContain('aria-invalid="true"')
+    expect(standalone).toContain('aria-invalid="true"')
+    expect(neither).not.toContain("aria-invalid")
   })
 })

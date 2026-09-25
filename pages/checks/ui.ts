@@ -8941,6 +8941,10 @@ const FILE_INPUT_CHOSEN_SELECTOR = `${FILE_INPUT_CARD} [data-e2e="file-input-cho
 const FILE_INPUT_REFUSED_SELECTOR = `${FILE_INPUT_CARD} [data-e2e="file-input-refused"]`
 const FILE_INPUT_TOGGLE_SELECTOR = `${FILE_INPUT_CARD} [data-e2e="file-input-toggle-mount"]`
 const FILE_INPUT_FORM_ID = "guide-file-input-form"
+const FILE_INPUT_SINGLE_ID = "guide-file-input-single"
+const FILE_INPUT_SINGLE_REFUSED_SELECTOR =
+  `${FILE_INPUT_CARD} [data-e2e="file-input-single-refused"]`
+const FILE_INPUT_FIELD_ID = "guide-file-input-field"
 
 /** The real, on-disk files {@link fileInputChecks} feeds through `DOM.setFileInputFiles` or a drop. */
 interface FileInputFixture {
@@ -9236,6 +9240,124 @@ async function fileInputRefusalChecks(
 }
 
 /**
+ * Without `multiple`, a second file offered alongside the first is refused with reason `"too-many"`
+ * and announced, rather than silently dropped — the "Single file only" card in `FileInputDemo` has
+ * no `multiple`.
+ *
+ * This has to arrive as a drop, not a `DOM.setFileInputFiles` selection: `handleChange` reads
+ * `event.currentTarget.files`, and a real browser truncates a non-`multiple` file input's own
+ * `FileList` to the last file before the `change` event ever fires — `DOM.setFileInputFiles` goes
+ * through that same input-element semantics, so a non-`multiple` input never sees a second file
+ * that way regardless of what this component does with it, and a check built on it would prove
+ * nothing about the refusal path. `handleDrop` instead reads `event.dataTransfer.files` straight off
+ * the drag event, which is never gated by the `multiple` attribute, so a two-file drop is the one
+ * real interaction that actually offers this component more than one file at once with `multiple`
+ * absent — the same drag mechanics {@link fileInputDropCheck} already proves add a single file.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ * @param fixture Real files on disk, from {@link writeFileInputFixtures}.
+ */
+async function fileInputTooManyRefusalCheck(
+  devtools: Devtools,
+  fixture: FileInputFixture,
+): Promise<void> {
+  const inputSelector = `${FILE_INPUT_CARD} #${FILE_INPUT_SINGLE_ID}`
+  const zoneSelector =
+    `${FILE_INPUT_CARD} [data-e2e="file-input-zone"]:has(#${FILE_INPUT_SINGLE_ID})`
+  const found = await devtools.evaluate<boolean>(
+    `document.querySelector('${inputSelector}') !== null`,
+  )
+  check("the single-file FileInput's native input is found", found)
+  if (!found) return
+
+  const point = await elementCenter(devtools, zoneSelector)
+  check("the single-file FileInput's drop zone can be aimed at", point.ok, point.reason)
+  if (!point.ok) return
+
+  const dragData = { items: [], files: [fixture.ok, fixture.drop], dragOperationsMask: 1 }
+  await devtools.send("Input.dispatchDragEvent", {
+    type: "dragEnter",
+    x: point.x,
+    y: point.y,
+    data: dragData,
+  })
+  await devtools.send("Input.dispatchDragEvent", {
+    type: "drop",
+    x: point.x,
+    y: point.y,
+    data: dragData,
+  })
+
+  const readRefused = () =>
+    devtools.evaluate<string>(
+      `document.querySelector('${FILE_INPUT_SINGLE_REFUSED_SELECTOR}')?.textContent ?? ""`,
+    )
+  const settled = await poll(async () => (await readRefused()).includes("too-many"), 5_000)
+  const refused = await readRefused()
+  check(
+    "dropping two files onto a non-multiple FileInput refuses the second with reason " +
+      "too-many, reported through onReject",
+    settled,
+    `refused: "${refused.trim()}"`,
+  )
+
+  const region = await devtools.evaluate<string>(
+    `document.querySelector('#${FILE_INPUT_SINGLE_ID}-rejection')?.textContent ?? ""`,
+  )
+  check(
+    "the too-many refusal is announced in FileInput's own live region",
+    region.includes("only one file"),
+    `"${region}"`,
+  )
+
+  const keptCount = await devtools.evaluate<number>(
+    `document.querySelector('${inputSelector}')?.files?.length ?? -1`,
+  )
+  check(
+    "only the first file is kept on the input's own files list, the rest refused rather than added",
+    keptCount === 1,
+    `input.files.length = ${keptCount}`,
+  )
+}
+
+/**
+ * `FileInput` nested inside `Field` renders exactly one label, naming the real input, and that
+ * input is reachable with Tab and readable as the browser's own accessible name — the unit test in
+ * `ui/file-input.test.tsx` proves the same shape from the server-rendered string; this proves the
+ * hydrated DOM agrees, since a duplicate label or a broken `for`/`id` pairing would still pass a
+ * string-matching unit test built the wrong way but fail an accessible-name query here.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function fileInputFieldNestingCheck(devtools: Devtools): Promise<void> {
+  const selector = `${FILE_INPUT_CARD} #${FILE_INPUT_FIELD_ID}`
+  const found = await devtools.evaluate<boolean>(
+    `document.querySelector('${selector}') !== null`,
+  )
+  check("the Field-nested FileInput's native input is found", found)
+  if (!found) return
+
+  const labelCount = await devtools.evaluate<number>(`(() => {
+    const card = document.querySelector('${FILE_INPUT_CARD}')
+    return card ? card.querySelectorAll('label[for="${FILE_INPUT_FIELD_ID}"]').length : -1
+  })()`)
+  check(
+    "Field's own clone supplies the only label for the nested FileInput, not a second one",
+    labelCount === 1,
+    `label[for="${FILE_INPUT_FIELD_ID}"] count = ${labelCount}`,
+  )
+
+  const describedBy = await devtools.evaluate<string>(
+    `document.querySelector('${selector}')?.getAttribute('aria-describedby') ?? ""`,
+  )
+  check(
+    "the nested FileInput's aria-describedby carries both its own rejection id and Field's hint id",
+    describedBy.includes(`${FILE_INPUT_FIELD_ID}-rejection`) && describedBy.includes("-hint"),
+    `aria-describedby="${describedBy}"`,
+  )
+}
+
+/**
  * Every preview `URL.createObjectURL` creates is revoked exactly twice over: once when its own file
  * leaves the list, and once more, for whatever is still outstanding, when the whole card unmounts.
  *
@@ -9315,15 +9437,20 @@ async function fileInputPreviewRevokeChecks(
 /**
  * A plain `<form method="post" enctype="multipart/form-data">` around its own `FileInput` instance
  * (`ui-guide/sections/inputs.tsx`'s third card, `id="guide-file-input-form"`) posts the chosen file
- * with no script involved at all — the card's `<form>` carries no `onSubmit`, so a press of its
- * submit button is a real, unintercepted browser submit whether or not the bundle has hydrated.
+ * with no script running at all — not merely no hydrated `onSubmit` to intercept it, but the whole
+ * bundle disabled the way {@link enhancedFormsNoScriptChecks} disables it for `NewsletterForm` and
+ * `ContactForm`, via `Emulation.setScriptExecutionDisabled` before a reload. That is what "without
+ * JavaScript doing anything" in #145's own done-when box means: a hydrated hander that happens not
+ * to call `preventDefault` still proves nothing about a visitor whose script never ran in the first
+ * place, and only a page that genuinely never executed the bundle does.
  *
- * Unlike {@link enhancedFormsNoScriptChecks}, this does not disable script execution first: there is
- * nothing here for a hydrated handler to intercept, since none was ever wired — proving the post is
- * plain is exactly what pressing the button with script running and reading the real network request
- * back does. Both what the browser did (the request's method and its multipart body, read the same
- * way {@link enhancedFormsNoScriptChecks} reads them) and where it landed (`form-demo/`'s own marker)
- * are checked, since the second alone would not tell a real POST from a client-side navigation.
+ * Three things are checked against that unhydrated page, in order: the visually hidden native input
+ * (`sr-only`, not `display:none`) is still found by `DOM.setFileInputFiles` and still a real,
+ * unhidden element — proving the hiding technique itself never depends on the bundle having run to
+ * keep the control usable; the submit still produces a real `POST` whose multipart body carries the
+ * chosen file, read the same way {@link enhancedFormsNoScriptChecks} reads its captured request; and
+ * the landed-on page carries the server's own marker, so the second check does not merely tell a
+ * real POST from a client-side navigation without also confirming where it actually went.
  *
  * @param devtools The connected session, on a hydrated page.
  * @param fixture Real files on disk, from {@link writeFileInputFixtures}.
@@ -9334,62 +9461,113 @@ async function fileInputFormPostCheck(
 ): Promise<void> {
   const restoreUrl = await devtools.evaluate<string>("location.href").catch(() => "")
 
-  const nodeId = await domNodeId(devtools, `#${FILE_INPUT_FORM_ID}`)
-  check("the plain-form FileInput's native input is found", nodeId !== null)
-  if (nodeId === null) return
-  await devtools.send("DOM.setFileInputFiles", { files: [fixture.ok], nodeId })
+  try {
+    await devtools.send("Emulation.setScriptExecutionDisabled", { value: true })
+    await devtools.send("Page.reload", { ignoreCache: true })
+    const loaded = await waitForNavigation(devtools)
+    const unhydrated = loaded &&
+      await devtools.evaluate<boolean>(`document.documentElement.dataset.hydrated !== "true"`)
+        .catch(() => false)
+    check(
+      "the fresh reload for this check never ran the bundle",
+      unhydrated,
+      unhydrated
+        ? "data-hydrated absent, as expected"
+        : "the page hydrated despite the disabled flag",
+    )
+    if (!unhydrated) return
 
-  const buttonPoint = await elementCenter(devtools, `${FILE_INPUT_CARD} form button[type="submit"]`)
-  check("the plain form's submit button can be aimed at", buttonPoint.ok, buttonPoint.reason)
-  if (!buttonPoint.ok) return
+    const nodeId = await domNodeId(devtools, `#${FILE_INPUT_FORM_ID}`)
+    check(
+      "the plain-form FileInput's native input is reachable with no script running",
+      nodeId !== null,
+    )
+    if (nodeId === null) return
 
-  const requestPromise = waitForRequest(devtools, "form-demo", 10_000)
-  for (const type of ["mousePressed", "mouseReleased"]) {
-    await devtools.send("Input.dispatchMouseEvent", {
-      type,
-      x: buttonPoint.x,
-      y: buttonPoint.y,
-      button: "left",
-      buttons: type === "mousePressed" ? 1 : 0,
-      clickCount: 1,
-    })
+    const stillVisuallyHidden = await devtools.evaluate<boolean>(`(() => {
+      const el = document.querySelector('#${FILE_INPUT_FORM_ID}')
+      if (!el) return false
+      const style = getComputedStyle(el)
+      return style.display !== "none" && el.type === "file"
+    })()`).catch(() => false)
+    check(
+      "the list-less, unhydrated native input is still the sr-only technique, not display:none",
+      stillVisuallyHidden,
+    )
+
+    await devtools.send("DOM.setFileInputFiles", { files: [fixture.ok], nodeId })
+
+    const buttonPoint = await elementCenter(
+      devtools,
+      `${FILE_INPUT_CARD} form button[type="submit"]`,
+    )
+    check(
+      "the plain form's submit button can be aimed at with no script running",
+      buttonPoint.ok,
+      buttonPoint.reason,
+    )
+    if (!buttonPoint.ok) return
+
+    const requestPromise = waitForRequest(devtools, "form-demo", 10_000)
+    for (const type of ["mousePressed", "mouseReleased"]) {
+      await devtools.send("Input.dispatchMouseEvent", {
+        type,
+        x: buttonPoint.x,
+        y: buttonPoint.y,
+        button: "left",
+        buttons: type === "mousePressed" ? 1 : 0,
+        clickCount: 1,
+      })
+    }
+
+    const request = await requestPromise
+    const navigated = await waitForNavigation(devtools)
+    const answer = navigated
+      ? await devtools.evaluate<string>(
+        `document.querySelector('[data-e2e="form-demo-answer"]')?.textContent ?? ""`,
+      ).catch(() => "")
+      : ""
+    const body = request ? await requestBody(devtools, request) : ""
+
+    check(
+      "FileInput's plain form posts and lands on the server's own answer, no script involved",
+      navigated && answer.includes("Thanks"),
+      navigated
+        ? `landed on a page whose own marker reads ${JSON.stringify(answer.slice(0, 60))}`
+        : "the submit never navigated anywhere within the timeout",
+    )
+    check(
+      "the post is a real multipart/form-data request carrying the chosen file under its field " +
+        "name, with no script running",
+      request !== null && request.method === "POST" && body.includes('name="attachment"') &&
+        body.includes('filename="ok.png"'),
+      request === null
+        ? "no network request to form-demo/ was captured"
+        : `method "${request.method}", body ${JSON.stringify(body.slice(0, 200))}`,
+    )
+  } finally {
+    await devtools.send("Emulation.setScriptExecutionDisabled", { value: false }).catch(() => {})
+    await devtools.send("Page.navigate", { url: restoreUrl }).catch(() => {})
+    await waitForNavigation(devtools)
+    let rehydrated = await poll(
+      () =>
+        devtools.evaluate<boolean>(`document.documentElement.dataset.hydrated === "true"`)
+          .catch(() => false),
+      10_000,
+    )
+    if (!rehydrated) {
+      await devtools.send("Page.reload", { ignoreCache: true }).catch(() => {})
+      await waitForNavigation(devtools)
+      rehydrated = await poll(
+        () =>
+          devtools.evaluate<boolean>(`document.documentElement.dataset.hydrated === "true"`)
+            .catch(() => false),
+        10_000,
+      )
+    }
+    check("the catalogue rehydrates once FileInput's plain-form post navigates back", rehydrated)
+    await settledScroll(devtools)
   }
-
-  const request = await requestPromise
-  const navigated = await waitForNavigation(devtools)
-  const answer = navigated
-    ? await devtools.evaluate<string>(
-      `document.querySelector('[data-e2e="form-demo-answer"]')?.textContent ?? ""`,
-    ).catch(() => "")
-    : ""
-  const body = request ? await requestBody(devtools, request) : ""
-
-  check(
-    "FileInput's plain form posts and lands on the server's own answer, no script involved",
-    navigated && answer.includes("Thanks"),
-    navigated
-      ? `landed on a page whose own marker reads ${JSON.stringify(answer.slice(0, 60))}`
-      : "the submit never navigated anywhere within the timeout",
-  )
-  check(
-    "the post is a real multipart/form-data request carrying the chosen file under its field name",
-    request !== null && request.method === "POST" && body.includes('name="attachment"') &&
-      body.includes('filename="ok.png"'),
-    request === null
-      ? "no network request to form-demo/ was captured"
-      : `method "${request.method}", body ${JSON.stringify(body.slice(0, 200))}`,
-  )
-
-  await devtools.send("Page.navigate", { url: restoreUrl }).catch(() => {})
-  await waitForNavigation(devtools)
-  const rehydrated = await poll(
-    () =>
-      devtools.evaluate<boolean>(`document.documentElement.dataset.hydrated === "true"`)
-        .catch(() => false),
-    10_000,
-  )
-  check("the catalogue rehydrates once FileInput's plain-form post navigates back", rehydrated)
-  await settledScroll(devtools)
 }
 
 /**
@@ -9418,6 +9596,8 @@ async function fileInputChecks(devtools: Devtools): Promise<void> {
     await fileInputSelectionCheck(devtools, fixture)
     await fileInputDropCheck(devtools, fixture)
     await fileInputRefusalChecks(devtools, fixture)
+    await fileInputTooManyRefusalCheck(devtools, fixture)
+    await fileInputFieldNestingCheck(devtools)
     await fileInputPreviewRevokeChecks(devtools, fixture)
     await fileInputFormPostCheck(devtools, fixture)
   } finally {

@@ -11,7 +11,12 @@ import { useEffect, useRef, useState } from "preact/hooks"
  */
 export interface FileRejection {
   file: File
-  reason: "too-large" | "wrong-type"
+  /**
+   * `"too-many"` is the third reason: a caller without `multiple` who drops (or otherwise hands
+   * in) more than one file at once. The native picker already limits a click-driven choice to one,
+   * so this reason only ever fires from a drop.
+   */
+  reason: "too-large" | "wrong-type" | "too-many"
 }
 
 /**
@@ -33,6 +38,8 @@ export interface FileInputLabels {
   tooLarge?: (name: string, maxSize: number) => string
   /** Refusal text for a file `accept` does not match, given its name. */
   wrongType?: (name: string) => string
+  /** Refusal text for an extra file beyond one, when `multiple` is not set, given its name. */
+  tooMany?: (name: string) => string
 }
 
 export interface FileInputProps {
@@ -50,8 +57,11 @@ export interface FileInputProps {
    * Omitted or empty accepts everything.
    */
   accept?: string
-  /** Allows more than one file. Extra files from a drop, beyond one, are silently dropped when this
-   * is not set — the browser's own picker already limits a click-driven choice to one. */
+  /**
+   * Allows more than one file. Without it, a drop that carries more than one file keeps the first
+   * accepted one and refuses the rest with reason `"too-many"` — the native picker already limits
+   * a click-driven choice to one, so only a drop can offer more than the single slot allows.
+   */
   multiple?: boolean
   /** Largest accepted file size, in bytes. Omitted accepts any size. */
   maxSize?: number
@@ -81,14 +91,23 @@ export interface FileInputProps {
   /** Extra utilities on the wrapper. */
   class?: string
   /**
-   * Extra ids to describe the input by, alongside the ones this component wires itself — the same
-   * slot `Field`'s clone would fill in if this were its element child. `Field`'s own `label`/`hint`/
-   * `error` are not used here: a second visible label competing with this component's own would be
-   * the exact duplication `Field`'s docs warn `Checkbox` and `ToggleField` away from. A caller who
-   * wants `Field`'s row anyway renders it with `labelFor={false}`, no `label`/`hint`/`error` of its
-   * own, and passes this prop through from the wiring's `aria-describedby`.
+   * Extra ids to describe the input by, alongside the ones this component wires itself. This is
+   * exactly the slot `Field`'s element-child clone fills when `FileInput` is nested inside one:
+   * `<Field id={id} label="Attachments" hint="…" error={error}><FileInput id={id} /></Field>`
+   * clones `id` and `aria-describedby` onto `FileInput`, and this component folds the incoming
+   * value in alongside its own rejection-region id rather than replacing it — see this component's
+   * own doc for the nested form.
    */
   "aria-describedby"?: string
+  /**
+   * Set by `Field`'s element-child clone when it carries an error — the same prop a plain `<input>`
+   * gets from `Field`, added here so `FileInput` reads it too rather than only computing its own
+   * from a local `error` prop that, nested inside `Field`, is never passed. Either source marking
+   * it invalid is enough: this component's own `error` prop still works standalone. `Field` clones
+   * this on as the JS boolean `true` (not the string `"true"`), so the type accepts either — a
+   * caller writing JSX by hand tends to write the string.
+   */
+  "aria-invalid"?: boolean | string
 }
 
 const dropZoneBase = cn(
@@ -131,12 +150,40 @@ const hintText = "mt-2 text-sm text-gray-500 dark:text-gray-400"
  * first shape `ExportButton`'s announcement uses, and for the same reason: setting a live region's
  * text for the first time, on the same render it appears, is not guaranteed to be read.
  *
+ * **Without `multiple`, an extra file is a refusal, not a silent drop.** A click-driven choice
+ * cannot offer more than one file when `multiple` is absent — the browser's own picker enforces
+ * that — but a drop can still carry several. The first accepted file keeps its slot; every other
+ * accepted file is refused with reason `"too-many"`, through the same `onReject` and the same live
+ * region every other refusal uses, rather than disappearing with nothing for a caller or a screen
+ * reader to notice.
+ *
  * **Previews.** Every image file in the list gets a `URL.createObjectURL` thumbnail, tracked in a
  * `Map` kept in a ref (mutating it does not itself re-render, so an effect that changes it also
  * bumps a counter state to force the repaint the new URL needs). The same effect revokes a preview
  * the instant its file is no longer in the list, and an unmount effect revokes every preview still
  * outstanding — both are what `URL.revokeObjectURL` is for, and both are counted by mutation in
  * this component's `pages/checks/ui.ts` proof, since neither can be seen in a render-to-string test.
+ *
+ * **Works inside `Field`.** The native `<input type="file">` is a labelable element, so `Field`'s
+ * ordinary element-child clone works unmodified:
+ *
+ * ```tsx
+ * <Field id={id} label="Attachments" hint="Up to 2 MB each" error={error}>
+ *   <FileInput id={id} accept="image/*" onFiles={(files) => …} />
+ * </Field>
+ * ```
+ *
+ * Omit `label`, `hint` and `error` on `FileInput` itself when nesting it this way — `Field` already
+ * renders the one visible label the association needs, and this component would otherwise render a
+ * second one describing the same control. `Field`'s clone hands `FileInput` its own `id` (already
+ * the same value) and an `aria-describedby` built from `Field`'s own hint and error ids; this
+ * component reads that through its `"aria-describedby"` prop and folds it in alongside its own
+ * rejection-region id, rather than letting either replace the other, so the region a screen reader
+ * hears a refusal in is never left off the input's description just because `Field` is the one
+ * naming it. `Field`'s clone also adds `aria-invalid="true"` while its own `error` is set; this
+ * component reads that through its `"aria-invalid"` prop too, since nested inside `Field` its own
+ * local `error` prop is never passed and so would never mark the input invalid on its own. A caller
+ * using `FileInput` standalone never passes either prop, and nothing here changes for it.
  *
  * `document`, `File`, `DataTransfer` and `URL` are only touched inside effects and event handlers,
  * so the component still server-renders with an empty file list and an empty live region.
@@ -159,6 +206,7 @@ export function FileInput(
     labels = {},
     class: className,
     "aria-describedby": callerDescribedBy,
+    "aria-invalid": callerInvalid,
   }: FileInputProps,
 ): JSX.Element {
   const [files, setFiles] = useState<File[]>([])
@@ -206,12 +254,16 @@ export function FileInput(
   const rejectionId = `${id}-rejection`
   const describedBy = [errorId, hintId, rejectionId, callerDescribedBy].filter(Boolean).join(" ") ||
     undefined
+  const invalid = message !== undefined || callerInvalid === true || callerInvalid === "true"
+    ? "true"
+    : undefined
 
   const resolvedBrowse = labels.browse ?? "Choose files"
   const resolvedDropHint = labels.dropHint ?? "or drag and drop"
   const removeFileLabel = labels.removeFile ?? defaultRemoveFileLabel
   const tooLargeLabel = labels.tooLarge ?? defaultTooLarge
   const wrongTypeLabel = labels.wrongType ?? defaultWrongType
+  const tooManyLabel = labels.tooMany ?? defaultTooMany
 
   const announceRejection = (text: string) => {
     // Cleared, then set on the next tick — the same two-step `ExportButton` uses, so a second
@@ -244,7 +296,16 @@ export function FileInput(
       accepted.push(file)
     }
 
-    const next = multiple ? dedupeFiles([...files, ...accepted]) : accepted.slice(0, 1)
+    // Without `multiple`, only the first accepted file has a slot: the rest are refused with
+    // `"too-many"` rather than silently dropped, since a silent drop gives no reason a caller's
+    // `onReject` — or the live region — could ever surface.
+    let keep = accepted
+    if (!multiple && accepted.length > 1) {
+      keep = accepted.slice(0, 1)
+      for (const file of accepted.slice(1)) rejected.push({ file, reason: "too-many" })
+    }
+
+    const next = multiple ? dedupeFiles([...files, ...keep]) : keep
     setFiles(next)
     syncInputFiles(next)
     onFiles?.(next)
@@ -253,7 +314,9 @@ export function FileInput(
       const text = rejected.map((rejection) =>
         rejection.reason === "too-large"
           ? tooLargeLabel(rejection.file.name, maxSize ?? 0)
-          : wrongTypeLabel(rejection.file.name)
+          : rejection.reason === "wrong-type"
+          ? wrongTypeLabel(rejection.file.name)
+          : tooManyLabel(rejection.file.name)
       ).join(" ")
       announceRejection(text)
       onReject?.(rejected)
@@ -330,7 +393,7 @@ export function FileInput(
           disabled={disabled}
           class="sr-only"
           aria-describedby={describedBy}
-          aria-invalid={message !== undefined ? "true" : undefined}
+          aria-invalid={invalid}
           onChange={handleChange}
         />
         <UploadIcon />
@@ -392,6 +455,11 @@ function defaultTooLarge(name: string, maxSize: number): string {
 /** Default {@link FileInputLabels.wrongType}. */
 function defaultWrongType(name: string): string {
   return `${name} is not an accepted file type`
+}
+
+/** Default {@link FileInputLabels.tooMany}. */
+function defaultTooMany(name: string): string {
+  return `${name} was not chosen — only one file is allowed`
 }
 
 /**

@@ -905,13 +905,27 @@ Chosen files are listed, each with a remove button named after the file it remov
 `URL.createObjectURL` thumbnail next to it; the preview is revoked the instant its file leaves the
 list, and every preview still outstanding is revoked on unmount.
 
-`FileInput` renders its own `label`/`hint`/`error`, the same shape `ToggleField` uses, rather than
-being designed as `Field`'s element child: a drop zone's own visible instructions ("Choose files or
-drag and drop") would otherwise sit next to a second label `Field` adds for the same control. A
-caller who wants `Field`'s exact row anyway renders `Field` with `labelFor={false}` and no
-`label`/`hint`/`error` of its own, and passes the wiring's `aria-describedby` through to
-`FileInput`'s own `aria-describedby` prop, which this component folds in alongside the ids it wires
-itself.
+`FileInput` also works nested inside `Field`, unmodified: the native `<input type="file">` is a
+labelable element, so `Field`'s ordinary element-child clone (`id`, `aria-describedby`,
+`aria-invalid`) applies the same way it does to a plain `<input>`.
+
+```tsx
+<Field id={id} label="Attachments" hint="Up to 2 MB each" error={error}>
+  <FileInput id={id} accept="image/*" onFiles={(files) => …} />
+</Field>
+```
+
+Omit `label`, `hint` and `error` on `FileInput` itself when nesting it this way — `Field` already
+renders the one visible label the association needs, and `FileInput` would otherwise render a
+second one for the same control. `FileInput` reads `Field`'s cloned `aria-describedby` through its
+own `"aria-describedby"` prop and folds it in alongside its own rejection-region id, and reads
+`Field`'s cloned `aria-invalid` (a JS boolean, not the string `"true"`) through its own
+`"aria-invalid"` prop, so either source marking the control invalid is enough.
+
+Without `multiple`, offering more than one file — a multi-select in the OS picker, or a drop of
+several files — keeps only the first and refuses the rest with reason `"too-many"`
+(`labels.tooMany`), reported through `onReject` and announced the same way a `maxSize`/`accept`
+refusal is, rather than silently dropped.
 
 It does not upload — sending the chosen files is the caller's own form post or `fetch` call.
 

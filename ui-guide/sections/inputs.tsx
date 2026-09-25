@@ -23,6 +23,7 @@ import {
   type DateTimeRange,
   Dropdown,
   DropdownItem,
+  Field,
   FileInput,
   isValidDateRange,
   isValidDateTimeRange,
@@ -722,15 +723,24 @@ function ToggleFieldDemo() {
 }
 
 /**
- * `FileInput` with an image-only, size-limited card and a disabled one.
+ * `FileInput` in six shapes: image-only and size-limited, disabled, nested inside a `Field`, capped
+ * at one file, and posting through a plain `<form>`.
  *
- * Selecting, dropping, refusing and removing a file are all browser-only, so what this card can
- * show ahead of the first click is the closed-state markup: the visually hidden native input inside
- * its drop zone, the label wired to it, and an always-present, empty `role="status"` for a refusal
- * that has not happened yet. What a caller actually reads — `onFiles` and `onReject` — is echoed
+ * Selecting, dropping, refusing and removing a file are all browser-only, so what a card can show
+ * ahead of the first click is the closed-state markup: the visually hidden native input inside its
+ * drop zone, the label wired to it, and an always-present, empty `role="status"` for a refusal that
+ * has not happened yet. What a caller actually reads — `onFiles` and `onReject` — is echoed
  * underneath, in place of trusting the component's own live region to speak for its port.
  *
- * The third card's `<form>` carries no `onSubmit`: it is the plain post `FileInput`'s own doc
+ * The "Inside a Field" card passes `label` and `hint` to `Field`, not to `FileInput`: `FileInput`
+ * renders no label of its own there, and `Field`'s own clone is what supplies `FileInput`'s
+ * `aria-describedby`.
+ *
+ * The "Single file only" card carries no `multiple`, so a second file dropped or picked alongside
+ * the first is refused with reason `"too-many"` rather than silently dropped; the paragraph under it
+ * echoes `onReject` the same way the first card does.
+ *
+ * The last card's `<form>` carries no `onSubmit`: it is the plain post `FileInput`'s own doc
  * promises, proven by `pages/checks/ui.ts`'s `fileInputFormPostCheck` against the `form-demo/`
  * static page the `EnhancedForm` cards already post to when no script runs theirs.
  *
@@ -744,6 +754,7 @@ function FileInputDemo() {
   const chosen = useSignal<string[]>([])
   const refused = useSignal<string[]>([])
   const mounted = useSignal(true)
+  const singleRefused = useSignal<string[]>([])
 
   return (
     <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
@@ -782,6 +793,34 @@ function FileInputDemo() {
       <div class="space-y-2">
         <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">Disabled</h4>
         <FileInput id="guide-file-input-disabled" label="Attachments" disabled />
+      </div>
+      <div class="space-y-2">
+        <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">Inside a Field</h4>
+        <Field
+          id="guide-file-input-field"
+          label="Attachments"
+          hint="Up to 2 MB each"
+        >
+          <FileInput id="guide-file-input-field" />
+        </Field>
+        <p class="text-xs text-gray-500 dark:text-gray-400">
+          `Field` renders the one visible label; `FileInput` itself gets no `label`, `hint` or
+          `error` here, so it renders none of its own.
+        </p>
+      </div>
+      <div class="space-y-2">
+        <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">
+          Single file only (drop or pick more than one)
+        </h4>
+        <FileInput
+          id="guide-file-input-single"
+          label="Attachment"
+          onReject={(reasons) =>
+            singleRefused.value = reasons.map((r) => `${r.file.name} (${r.reason})`)}
+        />
+        <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="file-input-single-refused">
+          refused: {singleRefused.value.length === 0 ? "none" : singleRefused.value.join(", ")}
+        </p>
       </div>
       <div class="space-y-2 sm:col-span-2">
         <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">A plain form post</h4>
