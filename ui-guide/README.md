@@ -49,6 +49,11 @@ const nav = [...appLinks, { href: uiGuideRoute.path, label: uiGuideRoute.label }
 <uiGuideRoute.component />
 ```
 
+Set `history.scrollRestoration = "manual"` in the host, as `pages/src/app.tsx` does. The guide
+scrolls to what the address names on its first read, but the browser's own restore after a reload
+can still win now and then, because the server sends the longer all-pages document first. The
+guide does not set it itself: it is the host's setting.
+
 | Prop            | Meaning                                                                                                                            |
 | --------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | `hash`          | The address's fragment. `undefined` renders every page; a string renders the page its route names.                                 |

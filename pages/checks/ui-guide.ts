@@ -623,7 +623,8 @@ async function coldFragmentCheck(devtools: Devtools): Promise<void> {
 /**
  * A page reloaded far down opens at its top. The server sends the longer `all` document, so a
  * position the browser restored would land somewhere unrelated, and late enough to override a later
- * scroll (#292's third review); the guide's first read scrolls on purpose instead.
+ * scroll (#292's third review). Two things hold it, and either alone keeps this check green: the
+ * host sets `history.scrollRestoration = "manual"`, and the guide scrolls on its first read.
  */
 async function reloadAtTopCheck(devtools: Devtools): Promise<void> {
   await openGuidePage(devtools, "system")
