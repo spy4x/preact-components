@@ -46,6 +46,15 @@ export {
   resolveImage,
 } from "./image-lightbox.tsx"
 export {
+  RailShell,
+  type RailShellItem,
+  type RailShellLabels,
+  type RailShellProps,
+  TAB_BAR_SLOTS,
+  tabBarSlots,
+  type TabBarSplit,
+} from "./rail-shell.tsx"
+export {
   Shell,
   type ShellLabels,
   type ShellNavItem,

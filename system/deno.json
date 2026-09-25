@@ -11,6 +11,7 @@
     "./image-lightbox": "./image-lightbox.tsx",
     "./site-header": "./site-header.tsx",
     "./shell": "./shell.tsx",
+    "./rail-shell": "./rail-shell.tsx",
     "./state-init": "./state-init.tsx"
   },
   "publish": {
