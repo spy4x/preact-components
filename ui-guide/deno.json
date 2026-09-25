@@ -32,7 +32,9 @@
     "exclude": [
       "**/*.test.ts",
       "**/*.test.tsx",
-      "coverage.ts"
+      "coverage.ts",
+      // Only `coverage.ts` and its test import it, and both are excluded above.
+      "examples-pending.ts"
     ]
   }
 }
