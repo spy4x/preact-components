@@ -1,7 +1,118 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
-import { MoneyInput } from "./money-input.tsx"
+import { MoneyInput, resolveMoneyInputEdit } from "./money-input.tsx"
+
+const INVALID = "Enter a valid amount"
+
+describe("resolveMoneyInputEdit", () => {
+  it("resolves empty text to a null value and no message", () => {
+    expect(resolveMoneyInputEdit("", "EUR", "en", {}, INVALID)).toEqual({
+      value: null,
+      message: undefined,
+    })
+    expect(resolveMoneyInputEdit("   ", "EUR", "en", {}, INVALID)).toEqual({
+      value: null,
+      message: undefined,
+    })
+  })
+
+  it("resolves a plain amount and clears the message", () => {
+    expect(resolveMoneyInputEdit("12.50", "USD", "en", {}, INVALID)).toEqual({
+      value: 1250,
+      message: undefined,
+    })
+  })
+
+  it("understands the German group and decimal marks", () => {
+    expect(resolveMoneyInputEdit("1.234,56", "EUR", "de", {}, INVALID)).toEqual({
+      value: 123456,
+      message: undefined,
+    })
+  })
+
+  it("understands JPY's zero decimals and KWD's three", () => {
+    expect(resolveMoneyInputEdit("12345", "JPY", "en", {}, INVALID)).toEqual({
+      value: 12345,
+      message: undefined,
+    })
+    expect(resolveMoneyInputEdit("1.234", "KWD", "en", {}, INVALID)).toEqual({
+      value: 1234,
+      message: undefined,
+    })
+  })
+
+  it("has no 0.1 + 0.2 style rounding error", () => {
+    expect(resolveMoneyInputEdit("0.30", "USD", "en", {}, INVALID)).toEqual({
+      value: 30,
+      message: undefined,
+    })
+    // The naive `parseFloat("0.1") * 100 + parseFloat("0.2") * 100` drifts to 30.000000000000004;
+    // this goes through the same digit-based `parseMoney` `money.test.ts` already proves against
+    // that drift, wired here to confirm `resolveMoneyInputEdit` does not reintroduce it.
+    expect(resolveMoneyInputEdit(String(0.1 + 0.2), "USD", "en", {}, INVALID)).toEqual({
+      message: INVALID,
+    })
+  })
+
+  it("parses a negative amount", () => {
+    expect(resolveMoneyInputEdit("-12.50", "USD", "en", {}, INVALID)).toEqual({
+      value: -1250,
+      message: undefined,
+    })
+  })
+
+  it("refuses text that cannot be parsed, using invalidMessage, and leaves value unset", () => {
+    const edit = resolveMoneyInputEdit("abc", "USD", "en", {}, INVALID)
+    expect(edit).toEqual({ message: INVALID })
+    expect("value" in edit).toBe(false)
+  })
+
+  it("refuses an amount beyond Number.MAX_SAFE_INTEGER the same way", () => {
+    expect(resolveMoneyInputEdit("99999999999999999", "USD", "en", {}, INVALID)).toEqual({
+      message: INVALID,
+    })
+  })
+
+  it("refuses an amount below min, through rangeMessage", () => {
+    const edit = resolveMoneyInputEdit("4.00", "USD", "en", { min: 500 }, INVALID)
+    expect(edit.value).toBeUndefined()
+    expect(edit.message).toBe("Enter an amount of at least $5.00")
+  })
+
+  it("refuses an amount above max, through rangeMessage", () => {
+    const edit = resolveMoneyInputEdit("6.00", "USD", "en", { max: 500 }, INVALID)
+    expect(edit.value).toBeUndefined()
+    expect(edit.message).toBe("Enter an amount of at most $5.00")
+  })
+
+  it("names both bounds when both are set", () => {
+    const edit = resolveMoneyInputEdit("6.00", "USD", "en", { min: 100, max: 500 }, INVALID)
+    expect(edit.message).toBe("Enter an amount between $1.00 and $5.00")
+  })
+
+  it("accepts an amount exactly at min and exactly at max", () => {
+    expect(resolveMoneyInputEdit("5.00", "USD", "en", { min: 500, max: 500 }, INVALID)).toEqual({
+      value: 500,
+      message: undefined,
+    })
+  })
+
+  it("uses the caller's own invalidMessage and rangeMessage instead of the defaults", () => {
+    const customInvalid = resolveMoneyInputEdit("abc", "USD", "en", {}, "Not a valid price")
+    expect(customInvalid).toEqual({ message: "Not a valid price" })
+
+    const customRange = resolveMoneyInputEdit(
+      "6.00",
+      "USD",
+      "en",
+      { max: 500 },
+      INVALID,
+      () => "Too expensive",
+    )
+    expect(customRange.message).toBe("Too expensive")
+  })
+})
 
 describe("MoneyInput", () => {
   it("shows the amount as editable decimal text, without a currency symbol or grouping", () => {

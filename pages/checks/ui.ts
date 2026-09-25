@@ -8471,6 +8471,13 @@ async function moneyInputChecks(devtools: Devtools): Promise<void> {
     clearedEcho: string
     clearedMessage: string
     clearedAriaInvalid: string | null
+    beforeBlurEcho: string
+    beforeBlurValue: string
+    midEditValue: string
+    midEditMessage: string
+    afterBlurValue: string
+    afterBlurMessage: string
+    afterBlurAriaInvalid: string | null
   }>(`(async () => {
     const settle = () => new Promise((done) => setTimeout(done, 30))
     const card = document.querySelector('${MONEY_INPUT_CARD}')
@@ -8508,6 +8515,25 @@ async function moneyInputChecks(devtools: Devtools): Promise<void> {
     const clearedMessage = status.textContent.trim()
     const clearedAriaInvalid = input.getAttribute("aria-invalid")
 
+    // Blur reverts an in-progress, unresolved edit back to the last value the field actually
+    // reported, rather than leaving invalid text sitting in a control nobody is looking at.
+    input.focus()
+    setValue(input, "3,50")
+    await settle()
+    const beforeBlurEcho = echo()
+    const beforeBlurValue = input.value
+
+    setValue(input, "not a number")
+    await settle()
+    const midEditValue = input.value
+    const midEditMessage = status.textContent.trim()
+
+    input.dispatchEvent(new Event("blur", { bubbles: true }))
+    await settle()
+    const afterBlurValue = input.value
+    const afterBlurMessage = status.textContent.trim()
+    const afterBlurAriaInvalid = input.getAttribute("aria-invalid")
+
     return {
       initialEcho,
       germanParseEcho,
@@ -8520,6 +8546,13 @@ async function moneyInputChecks(devtools: Devtools): Promise<void> {
       clearedEcho,
       clearedMessage,
       clearedAriaInvalid,
+      beforeBlurEcho,
+      beforeBlurValue,
+      midEditValue,
+      midEditMessage,
+      afterBlurValue,
+      afterBlurMessage,
+      afterBlurAriaInvalid,
     }
   })()`)
 
@@ -8550,5 +8583,17 @@ async function moneyInputChecks(devtools: Devtools): Promise<void> {
     read.clearedEcho.includes("(empty)") && read.clearedMessage === "" &&
       read.clearedAriaInvalid === null,
     `echo "${read.clearedEcho}", message "${read.clearedMessage}", aria-invalid="${read.clearedAriaInvalid}"`,
+  )
+  check(
+    "an unresolved edit still shows its own typed text right up to the blur",
+    read.beforeBlurEcho.includes("350") && read.midEditValue === "not a number" &&
+      read.midEditMessage === "Enter a valid amount",
+    `before blur echo "${read.beforeBlurEcho}" "${read.beforeBlurValue}", mid-edit "${read.midEditValue}" message "${read.midEditMessage}"`,
+  )
+  check(
+    "blurring an unresolved edit reverts the shown text to the last value and drops the message",
+    read.afterBlurValue === read.beforeBlurValue && read.afterBlurMessage === "" &&
+      read.afterBlurAriaInvalid === null,
+    `after blur "${read.afterBlurValue}" (before blur was "${read.beforeBlurValue}"), message "${read.afterBlurMessage}", aria-invalid="${read.afterBlurAriaInvalid}"`,
   )
 }
