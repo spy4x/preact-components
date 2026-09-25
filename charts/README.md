@@ -235,7 +235,7 @@ on a huge value (`niceScale(1e18, 1e18 + 100, { target: 1e300 })`) keeps finite 
 The re-exported `ticks` changed with ts-libs 1.4.0 too: every tick now lands on the step
 (`ticks(0, 10, 4)` was `[0, 3, 5, 8, 10]` and is `[0, 2.5, 5, 7.5, 10]`), and `Infinity` is never a
 tick. `LineChart` calls `ticks` when a caller passes an explicit `yDomain`, so such a chart with a
-`yTicks` other than 1, 2, 5 or 10 draws its gridlines in new places.
+`yTicks` other than 1, 5 or 10 draws its gridlines in new places.
 
 ## Tests
 
