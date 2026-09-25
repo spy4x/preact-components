@@ -9148,7 +9148,11 @@ async function moneyInputPreHydrationChecks(devtools: Devtools): Promise<void> {
 
   try {
     await devtools.send("Fetch.enable", {
-      patterns: [{ urlPattern: "*", resourceType: "Script", requestStage: "Request" }],
+      patterns: [{
+        urlPattern: "*/assets/main.*.js",
+        resourceType: "Script",
+        requestStage: "Request",
+      }],
     })
     const paused = devtools.once<{ requestId: string }>("Fetch.requestPaused", 20_000)
     await devtools.send("Page.reload", { ignoreCache: true })
