@@ -10,7 +10,7 @@ The design system and the original markup are by [Eirene](https://github.com/Eir
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/guide-overview-dark.png">
-  <img src="docs/screenshots/guide-overview-light.png" width="1280" alt="The live UI guide's overview page: a side navigation listing every package, and one card per package — UI, System, CRUD, Charts, Map, Signals, Theme, Icons and cn — each with its import name, a one-line summary and how many live examples it has.">
+  <img src="docs/screenshots/guide-overview-light.png" width="1280" alt="The live UI guide's overview page: a side navigation listing every package, and one card per package — UI, System, CRUD, Charts, Map, Signals, Theme, Icons and cn — each with its import name, a one-line summary and a count of its live cards or icons, or the words Examples coming for a package that has none yet.">
 </picture>
 
 Live guide: https://spy4x.github.io/preact-components — every component running, with its code.
@@ -105,7 +105,7 @@ reusable Preact + signals package. See [`CREDITS.md`](./CREDITS.md).
 Taken from a local build of the demo site by `deno task --cwd pages screenshots`, in the headless
 Chromium the browser checks use, at 1280×800 and twice the pixel density.
 
-![The UI package's page in the opt-in ink dark palette: the side navigation lists the UI components by group, and the Badge, StatusMark and CiStatusPill cards show their live examples.](docs/screenshots/guide-ui-ink.png)
+![The UI package's page in the opt-in ink dark palette: the side navigation lists the UI components by group, the Badge and StatusMark cards show their live examples, and the CiStatusPill card's description starts below them.](docs/screenshots/guide-ui-ink.png)
 
 ![The Charts package's page in the light palette: a bar chart of orders by plan, followed by the line and donut chart cards with their descriptions.](docs/screenshots/guide-charts-light.png)
 
@@ -116,12 +116,16 @@ files that do — build, generation and audit scripts such as `theme/generate.ts
 `icons/provenance.ts` and `ui-guide/coverage.ts` — are listed under `publish.exclude` in their
 package's `deno.json`. A component touches `window` or `document` only inside an effect or an event
 handler, so it renders to HTML on a server (`preact-render-to-string`, which is how every test here
-renders it) and hydrates in the browser. The browser APIs it uses are standard ones — Clipboard,
-Geolocation, the Service Worker container and `localStorage` — each reached through a port the
-caller can replace, with the browser's own as the default. No package makes a network request, so
-none depends on Fetch, Streams or Web Crypto; data arrives through props. The tests and the build
-run under Deno 2; running a published package under Node or Bun through JSR's npm compatibility
-layer has not been tried.
+renders it) and hydrates in the browser. The browser APIs the components call are standard ones,
+among them Clipboard, Geolocation, the Service Worker container, `localStorage`, the History API,
+`IntersectionObserver` and `ResizeObserver`. Some are reached through a port the caller can replace,
+with the browser's own as the default; others, such as the observers in `charts/` and the History
+API in `signals/`, are called directly. Two components cause network requests, both to addresses the
+caller chooses: `Map` loads Leaflet with a dynamic `import()` and fetches map tiles from the
+`tileUrl` it is given, and `SWUpdater` registers the service-worker script it is given, which the
+browser downloads. Nothing else requests anything, and no package calls Fetch, Streams or Web
+Crypto; data arrives through props. The tests and the build run under Deno 2; running a published
+package under Node or Bun through JSR's npm compatibility layer has not been tried.
 
 ## Scope
 
