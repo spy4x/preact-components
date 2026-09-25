@@ -46,4 +46,29 @@ describe("MarginNote", () => {
   it("passes the caller's class through", () => {
     expect(render(<MarginNote class="mt-4">Note.</MarginNote>)).toContain("mt-4")
   })
+
+  it("names the landmark by the caller's label instead of the default Note", () => {
+    const html = render(<MarginNote label="Benchmark note">A note.</MarginNote>)
+    expect(html).toContain('aria-label="Benchmark note"')
+    expect(html).not.toContain('aria-label="Note"')
+  })
+
+  it("formats checkedOn in the caller's own locale", () => {
+    const html = render(
+      <MarginNote checkedOn="2026-09-25" locale="fr">
+        Still true.
+      </MarginNote>,
+    )
+    expect(html).toContain("septembre 2026")
+  })
+
+  it("reads checkedOn as the UTC calendar date, not shifted by the local time zone", () => {
+    // 2026-01-01 parses as UTC midnight; a time zone west of UTC (e.g. America/Los_Angeles, the
+    // one this repository's own AGENTS.md names for this exact check) would read that back as
+    // "December 31, 2025" without an explicit UTC time zone in the formatter — this proves the
+    // date shown never depends on process.env.TZ.
+    const html = render(<MarginNote checkedOn="2026-01-01">Boundary date.</MarginNote>)
+    expect(html).toContain("January 1, 2026")
+    expect(html).not.toContain("December 31, 2025")
+  })
 })
