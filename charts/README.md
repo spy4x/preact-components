@@ -226,11 +226,16 @@ keeps both names for its existing importers. `niceScale` takes its tick loop fro
 `niceScale` has no tick loop of its own: it pads the domain, picks the step with `niceStep`, and
 takes the rounded bounds and ticks from `@spy4x/platform/universal/axis`'s `stepAxis`
 (spy4x/preact-components#306), which carries the same iteration cap as `ticks`. Moving onto it
-changed four things. Every tick of a step with more than one significant digit now lands on the
+changed five things. Every tick of a step with more than one significant digit now lands on the
 step (`niceScale(0, 10, { target: 4 })` starts at `-2.5`, not `-2`). A padded domain that
 overflows to `±Infinity` has no ticks instead of `[a, Infinity]`. `Infinity` is never a tick, and a
 finite domain near the largest double no longer rounds its `max` up to `Infinity`. An absurd target
 on a huge value (`niceScale(1e18, 1e18 + 100, { target: 1e300 })`) keeps finite bounds.
+
+The re-exported `ticks` changed with ts-libs 1.4.0 too: every tick now lands on the step
+(`ticks(0, 10, 4)` was `[0, 3, 5, 8, 10]` and is `[0, 2.5, 5, 7.5, 10]`), and `Infinity` is never a
+tick. `LineChart` calls `ticks` when a caller passes an explicit `yDomain`, so such a chart with a
+`yTicks` other than 1, 2, 5 or 10 draws its gridlines in new places.
 
 ## Tests
 

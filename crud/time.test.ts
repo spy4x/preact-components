@@ -23,8 +23,9 @@ describe("timeAgo", () => {
 
 describe("formatTimestamp", () => {
   // 23:59 on 14 January in Pago Pago (UTC-11), while the clock already reads 00:30 on 15 January
-  // there. Every host zone from UTC-10 to UTC+13 puts both instants on 15 January, so a "today"
-  // decided in the host's zone would print "Today 23:59".
+  // there. Every host zone from UTC-10 to UTC+12 puts both instants on 15 January, so a "today"
+  // decided in the host's zone would print "Today 23:59". In UTC+13 the next test catches that bug
+  // instead, so the two tests together catch it in any host zone.
   const beforeMidnight = "2026-01-15T10:59:00Z"
   const clock = { now: () => Date.parse("2026-01-15T11:30:00Z") }
 
