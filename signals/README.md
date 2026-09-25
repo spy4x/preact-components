@@ -25,13 +25,17 @@ another's sort codec.
 | `theme`             | `createThemeStore` — light/dark/system, persistence, `matchMedia`    |
 | `toast`             | `createToastStore` — the list behind `Toastr`; runs no timers        |
 | `clipboard`         | `createClipboard` — `navigator.clipboard` plus a feedback port       |
-| `validate`          | `validate(schema, value)` → `{ error, data }`                        |
 | `map-entry`         | `setMapEntry` / `deleteMapEntry` — immutable `Map` writes            |
 | `patch-signal`      | `patchSignal` — merge a partial object into a signal's value         |
 | `use-url-filters`   | `useUrlFilters` — two-way binding between URL params and signals     |
 
-`types.ts` holds the shared shapes (`OperationState`, `OperationResult`, `ErrType`, `ValidationError`,
-`RemoteEvent`, `ToastMessage`, …) and is re-exported from the barrel.
+`types.ts` holds the shapes this package owns (`Model`, `RemoteEvent`, `ToastMessage`, `ToastPort`)
+and is re-exported from the barrel. The store's error envelope and operation state come from
+spy4x/ts-libs, so every package reports failures in one shape: `validate`, `ValidationError` and
+`firstIssueMessage` from `@spy4x/validation`, and `ErrType`, `StoreError`, `RequestError`,
+`OperationState`, `OperationResult`, `connectionError`, `responseError` and `isSilentError` from
+`@spy4x/platform/universal/errors`. `ErrType` is numeric there (`ErrType.Validation`,
+`ErrType.Connection`, `ErrType.Server`, `ErrType.Payload`).
 
 ## `For` and `Show` live in the dependency, not here
 
@@ -471,7 +475,7 @@ reached the component under its old name, both clocks ran, and a toast lived whi
   a spread of `Extra | undefined` against a generic `Extra`. The rest are local narrowing inside one
   function, each next to the check that justifies it — `parseSort` after its allow-list and direction
   tests, `resolveFilterValue` and the `filters` map in `useUrlFilters` where a generic `T` loses its
-  key mapping, and `responseError` after `typeof body === "object"`. To audit them:
+  key mapping. To audit them:
 
   ```bash
   grep -n " as " signals/*.ts | grep -v "\.test\." | grep -v "as const"

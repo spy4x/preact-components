@@ -1,25 +1,18 @@
 import { computed, effect, type ReadonlySignal, signal } from "@preact/signals"
 import { Type, type } from "arktype"
-import { deleteMapEntry, setMapEntry } from "./map-entry.ts"
-import {
-  ErrType,
-  type Model,
-  type OperationResult,
-  type OperationState,
-  RemoteEvent,
-  type RequestError,
-  type ToastPort,
-  type ValidationError,
-} from "./types.ts"
 import {
   connectionError,
-  firstIssueMessage,
+  ErrType,
   isSilentError,
+  type OperationResult,
+  type OperationState,
+  type RequestError,
   responseError,
-  type SchemaInput,
-  type SchemaOutput,
-  validate,
-} from "./validate.ts"
+  type ValidationError,
+} from "@spy4x/platform/universal/errors"
+import { firstIssueMessage, type SchemaInput, type SchemaOutput, validate } from "@spy4x/validation"
+import { deleteMapEntry, setMapEntry } from "./map-entry.ts"
+import { type Model, RemoteEvent, type ToastPort } from "./types.ts"
 
 /**
  * `@preact-components/signals/build-model-store` — a signals CRUD store for one REST collection.
@@ -682,7 +675,7 @@ export function buildModelStore<
       const { error, data } = validate(schemas.full, item)
       if (error) {
         const payloadError: RequestError = {
-          type: ErrType.PAYLOAD,
+          type: ErrType.Payload,
           message: `Malformed ${model} update: ${firstIssueMessage(error) ?? "unknown issue"}`,
         }
         patch({ listOp: { inProgress: false, error: payloadError, result: null } })
@@ -869,7 +862,7 @@ function createRequest(model: string, fetchImpl: typeof fetch): ModelStoreReques
 }
 
 function malformed(model: string, detail: string): RequestError {
-  return { type: ErrType.PAYLOAD, message: `Malformed ${model} response: ${detail}` }
+  return { type: ErrType.Payload, message: `Malformed ${model} response: ${detail}` }
 }
 
 function jsonRequest(method: string, body: unknown): RequestInit {

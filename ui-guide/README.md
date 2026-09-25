@@ -125,8 +125,8 @@ variant to a component fails `deno check` until the catalogue shows it.
 name and a sentence. Two things belong in it, and they read the same way to the check — this export
 is component-shaped and no card is expected:
 
-- **Not a component.** The one entry today is an `enum`, which is an object rather than something
-  to render: `ValidationType` in `crud`.
+- **Not a component.** An `enum` is an object rather than something to render. No package has such
+  an entry today.
 - **A card somebody still owes.** A component whose demo is honestly not written yet goes here with
   a reason saying so, instead of being quietly absent.
 

@@ -6,14 +6,8 @@ dependency block. The package knows no entity — the store arrives as a prop an
 arrive as slots.
 
 ```ts
-import {
-  CrudEditor,
-  CrudList,
-  RowAction,
-  RowActions,
-  search,
-  TextField,
-} from "@preact-components/crud"
+import { CrudEditor, CrudList, RowAction, RowActions, TextField } from "@preact-components/crud"
+import { search } from "@spy4x/platform/universal/text"
 ```
 
 ## Why it exists
@@ -165,7 +159,7 @@ The harness is the six parts, once:
    runs after the schema and may read signals — that is how a check against a not-yet-loaded
    collection fixes itself. A rule that compares two fields, or a value arktype rejects before it
    becomes an object, has no field row of its own to report against; `validateSchema` files that
-   under `FORM_FIELD` (from `crud/validation.ts`) instead of dropping it, and the editor shows
+   under `FORM_FIELD` (from `@spy4x/validation/model`) instead of dropping it, and the editor shows
    it as a form-level message — see part 6.
 3. **Archive** by toggling `deletedAt` on the model — when the caller passed `archive`. The update
    that carries the stamp is the update the form already submits; the scaffold never issues a
@@ -406,8 +400,6 @@ unreachable. Here the removed duplicate renders a Restore offer beside the confl
 
 Small, deliberate, and each one is why the source files could drift:
 
-- **`search(value, word, condition)` lost its third argument.** Callers write
-  `row.module === Kind.X && search(label, word)` instead of folding the condition into the matcher.
 - **Statuses are `"active" | "archived"`, not numeric enums.** A `DeviceStatus.ACTIVE = 1` is not a
   library's to define, and the wording is a prop (`{ archived: "Banned" }`).
 - **The error banner renders `error.message`.** The source files interpolated the error object into
@@ -427,9 +419,8 @@ Small, deliberate, and each one is why the source files could drift:
 deno test crud/       # from the repository root
 ```
 
-Every module has a colocated suite: the validation fold (`validation.test.ts`), search and
-filtering (`search.test.ts`), the relative timestamps (`time-ago.test.ts`), the save-enabled rule,
-the submit routing, the archive toggle and editor chrome (`crud-editor.test.ts`), the field rows
+Every module has a colocated suite: the relative timestamps (`time-ago.test.ts`), the save-enabled
+rule, the submit routing, the archive toggle and editor chrome (`crud-editor.test.ts`), the field rows
 rendered to real markup (`field.test.tsx`), the list's status switch, count, error, search binding
 and actions column (`crud-list.test.tsx`), the two structural interfaces satisfied by the real
 `buildModelStore` (`store.test.ts`), and the ported regions resource

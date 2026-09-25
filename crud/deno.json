@@ -8,11 +8,9 @@
     "./crud-list": "./crud-list.tsx",
     "./deletion-validation": "./deletion-validation.tsx",
     "./field": "./field.tsx",
-    "./search": "./search.ts",
     "./store": "./store.ts",
     "./time-ago": "./time-ago.ts",
-    "./types": "./types.ts",
-    "./validation": "./validation.ts"
+    "./types": "./types.ts"
   },
   "publish": {
     // `examples/` demonstrates the package against a real store, in prose the package README

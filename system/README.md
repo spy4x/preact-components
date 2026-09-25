@@ -486,7 +486,7 @@ behaviour is not the same in every engine.
 **`mode` and `step` are string unions**, the same shape every other prop union in this library uses
 (`ButtonVariant`, `CalendarDayReason`) rather than a TypeScript `enum`. An `enum` earns its place in
 this codebase for a value that is internal bookkeeping and never crosses a serialisation boundary —
-`ValidationType` in `crud/`, say. `mode` and `step` are the opposite: an app's server hands one back
+`ValidationType` in `@spy4x/validation/model`, say. `mode` and `step` are the opposite: an app's server hands one back
 after a real round trip, so the value has to survive JSON without a second lookup table translating
 an integer back into a string.
 

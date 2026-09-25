@@ -2,11 +2,11 @@ import { IconLoading } from "@preact-components/icons"
 import type { ReadonlySignal, Signal } from "@preact/signals"
 import type { Type } from "arktype"
 import type { ComponentChildren, JSX } from "preact"
+import { setFieldIssue, type ValidationModel } from "@spy4x/validation/model"
 import { CrudEditor, type CrudEditorMode, type CrudEditorSlot } from "./crud-editor.tsx"
 import type { CrudEditorStore } from "./store.ts"
 import { timeAgo } from "./time-ago.ts"
 import type { CrudRow, OperationResult, OperationState } from "./types.ts"
-import { setFieldIssue, type ValidationModel } from "./validation.ts"
 
 /**
  * The editor for a junction row, composed from {@link CrudEditor} rather than rebuilt beside it.
