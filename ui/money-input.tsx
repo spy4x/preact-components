@@ -1,8 +1,13 @@
 import { cn } from "@preact-components/cn"
 import { useSignal } from "@preact/signals"
+import {
+  currencyDecimals,
+  formatMoney,
+  moneyDecimalString,
+  parseMoney,
+} from "@spy4x/platform/universal/money"
 import type { JSX } from "preact"
 import { useEffect, useId, useRef } from "preact/hooks"
-import { currencyDecimals, formatMoney, moneyDecimalString, parseMoney } from "./money.ts"
 
 export interface MoneyInputBounds {
   /** Smallest-unit lower bound, when one is set. */
