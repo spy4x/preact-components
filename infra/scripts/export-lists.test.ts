@@ -79,6 +79,26 @@ describe("export lists", () => {
     ])
   })
 
+  it("reports a summary row for a directory that is not a published package", () => {
+    const input = docs()
+    input.agents = input.agents.replace(
+      "| `ui/` | `Widget` |",
+      "| `ui/` | `Widget` |\n| `auth/` | `Login`, `Nav` |",
+    )
+    expect(exportListProblems(input, packages())).toEqual([
+      "AGENTS.md has a row for auth/, which is not a published package",
+    ])
+  })
+
+  it("accepts the pages/ row, which publishes nothing", () => {
+    const input = docs()
+    input.agents = input.agents.replace(
+      "| `ui/` | `Widget` |",
+      "| `ui/` | `Widget` |\n| `pages/` | demo app, not published |",
+    )
+    expect(exportListProblems(input, packages())).toEqual([])
+  })
+
   it("accepts a subpath name in a summary row", () => {
     const input = docs()
     input.readme = input.readme.replace("| `ui/` | `Widget` |", "| `ui/` | `Widget`, `widget` |")
@@ -118,6 +138,18 @@ describe("export lists", () => {
     input.packageReadmes.system += "\n| `Nav` | | `items` |"
     expect(exportListProblems(input, packages())).toEqual([
       "system/README.md lists the component `Nav`, which system does not export",
+    ])
+  })
+
+  it("checks every component a Components row names, not only the first", () => {
+    const input = docs()
+    input.packageReadmes.ui = input.packageReadmes.ui.replace(
+      "| `Widget` |",
+      "| `Widget`, `Gadget` |",
+    )
+    expect(exportListProblems(input, packages())).toEqual([
+      "ui/README.md says `widget` exports `Gadget`, and it does not",
+      "ui/README.md lists the component `Gadget`, which ui does not export",
     ])
   })
 

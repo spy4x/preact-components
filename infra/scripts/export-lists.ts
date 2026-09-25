@@ -14,8 +14,9 @@
  * 2. the `deno add` lines in `README.md`'s Install section — one line per published package, and
  *    no line for a package that does not exist;
  * 3. the "Components" table of each catalogued package's own README — the complete list. Its
- *    first column must name exactly the package's component-named exports, no more and no fewer,
- *    and where the second column names a subpath, that subpath must export the component.
+ *    first column must name exactly the package's component-named exports, no more and no fewer —
+ *    every backticked name in that column counts, so a row may name several — and where the second
+ *    column names a subpath, that subpath must export every component the row names.
  *
  * "Component-named" is the catalogue's own rule (`ui-guide/coverage.ts`): an initial capital and a
  * lower-case letter somewhere after it. The catalogued packages are the ones the guide gives cards
@@ -40,6 +41,13 @@ export const CATALOGUED = ["charts", "crud", "map", "system", "ui"] as const
  * export there (a third stylesheet, say) shows up in the summary or fails the check.
  */
 export const COMPLETE_SUMMARIES = ["cn", "map", "theme"] as const
+
+/**
+ * Workspace members that publish nothing, whose summary rows name no exports: `pages/` is the demo
+ * site. A row for any other directory that is not a published package is reported, so a row left
+ * behind by a package that left the workspace fails the check.
+ */
+export const UNPUBLISHED_MEMBERS = ["pages"] as const
 
 /** What one published package exports, as read from its modules. */
 export interface PackageSurface {
@@ -68,7 +76,8 @@ export function isComponentName(name: string): boolean {
 }
 
 /**
- * Removes `//` and `/* *\/` comments and trailing commas from a `deno.json`, so `JSON.parse` reads it.
+ * Removes `//` and `/* *\/` comments and trailing commas from a `deno.json`, so `JSON.parse`
+ * reads it.
  *
  * Strings are kept whole, so a `//` inside one survives. This covers the JSONC every config in this
  * repository uses; it is not a general parser.
@@ -151,7 +160,11 @@ export function exportListProblems(
     const seen = new Set<string>()
     for (const [directory, contents = ""] of rows) {
       const id = directory.replace(/^`|\/`$/g, "")
-      if (!(id in packages)) continue
+      if ((UNPUBLISHED_MEMBERS as readonly string[]).includes(id)) continue
+      if (!(id in packages)) {
+        problems.push(`${file} has a row for ${id}/, which is not a published package`)
+        continue
+      }
       seen.add(id)
       const named = backticked(contents)
       for (const name of named) {
@@ -189,12 +202,12 @@ export function exportListProblems(
     }
     const listed = new Set<string>()
     for (const [first = "", second = ""] of rows) {
-      const [name] = backticked(first)
-      if (!name) continue
-      listed.add(name)
       const [subpath] = backticked(second)
-      if (subpath && !(packages[id].subpaths[subpath] ?? []).includes(name)) {
-        problems.push(`${id}/README.md says \`${subpath}\` exports \`${name}\`, and it does not`)
+      for (const name of backticked(first)) {
+        listed.add(name)
+        if (subpath && !(packages[id].subpaths[subpath] ?? []).includes(name)) {
+          problems.push(`${id}/README.md says \`${subpath}\` exports \`${name}\`, and it does not`)
+        }
       }
     }
     const components = packages[id].names.filter(isComponentName)
