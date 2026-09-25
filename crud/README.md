@@ -233,8 +233,15 @@ Four behaviours the copies got wrong, now in one place:
 
 ## `DeletionValidation`, `RowActions`, `timeAgo`
 
-`DeletionValidation` renders the entities that block an archive and scrolls itself into view. It
-lives here rather than in `ui/` because only the CRUD scaffold produces a `DeletionDependency`.
+`DeletionValidation` renders the entities that block an archive. It lives here rather than in `ui/`
+because only the CRUD scaffold produces a `DeletionDependency`. Its `role="alert"` region is on the
+page on every render, empty until `dependencies` is non-empty — the pattern `ui/`'s toasts and
+combobox use, so a screen reader reliably announces the text rather than meeting a region already
+holding it. It scrolls itself into view, but only when `dependencies` changes to a new, non-empty
+list: a re-render with the same content — including a caller that rebuilds the array from scratch —
+never moves the page, and a second blocked archive attempt, whose list replaces the first, does.
+Scrolling stays inside the component rather than becoming a caller-controlled port, because every
+caller wants the same outcome and a port would only make each one write the same call back in.
 `RowActions`/`RowAction` are the per-row menu: a link when given an `href`, a button when given an
 `onClick`, red when `danger`. `timeAgo` and `formatTimestamp` format the archive line.
 
