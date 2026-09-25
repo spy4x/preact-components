@@ -5,10 +5,11 @@
     // JSR refuses a CSS file as an export ("Expected a JavaScript or TypeScript module, but
     // identified a Css module"), and a JSR-installed module cannot read a sibling file by a
     // `file:` path either (its `import.meta.url` is the registry's own `https:` address). So
-    // `tokens.css`/`preset.css` still ship inside the published package — see `publish.exclude`
-    // below, which does not touch them — but the one thing this map can point at is `+index.ts`,
-    // which exports their text as generated string constants. `README.md` → "Install" says how a
-    // consumer turns those into a compiled stylesheet.
+    // `tokens.css`/`preset.css`/`ink.css` still ship inside the published package — see
+    // `publish.exclude` below, which does not touch them — but the one thing this map can point at
+    // is `+index.ts`, which exports their text as generated string constants. `README.md` →
+    // "Install" says how a consumer turns those into a compiled stylesheet, and "Theming" → "Ink"
+    // the one extra line for `ink.css`.
     ".": "./+index.ts"
   },
   "publish": {
@@ -16,9 +17,9 @@
     // real Tailwind compiler to prove it emits the right classes, and `load-stylesheet.ts` is the
     // reader that lets them do that without a Vite or PostCSS toolchain (its own JSDoc already
     // says it "is a test helper, not part of the package's public surface"). `generate.ts` is the
-    // script that writes `tokens-css.ts`/`preset-css.ts`, not something a consumer ever runs, and
-    // `css-text.test.ts` only guards that generation step. None of it is reachable from
-    // `exports`, and a published consumer never runs any of it.
+    // script that writes `tokens-css.ts`/`preset-css.ts`/`ink-css.ts`, not something a consumer
+    // ever runs, and `css-text.test.ts` only guards that generation step. None of it is reachable
+    // from `exports`, and a published consumer never runs any of it.
     "exclude": [
       "**/*.test.ts",
       "**/*.test.tsx",
