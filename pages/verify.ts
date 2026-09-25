@@ -49,6 +49,7 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { catalogueNames, catalogueSections } from "@preact-components/ui-guide/registry"
 import { routeTableDrift } from "@preact-components/ui-guide/routes"
+import { BUILD_HASH_FILE, computeBuildFingerprint } from "./build-fingerprint.ts"
 import { chartsChecks } from "./checks/charts.ts"
 import { crudChecks } from "./checks/crud.ts"
 import {
@@ -92,6 +93,8 @@ import { DEFAULT_BASE, normalizeBase } from "./src/site.ts"
 
 /** This file's directory: the demo's root, `pages/`. */
 const PAGES_DIRECTORY = dirname(fileURLToPath(import.meta.url))
+/** The repository root — where the root `deno.jsonc` and `deno.lock` live. */
+const REPO_ROOT = dirname(PAGES_DIRECTORY)
 /** The artefact `build.ts` writes. */
 const DIST_DIRECTORY = join(PAGES_DIRECTORY, "dist")
 /** Base the artefact was built for. */
@@ -145,6 +148,37 @@ const CHROMIUM_CANDIDATES = [
   "google-chrome-stable",
   "chrome",
 ]
+
+/**
+ * Refuse a `dist/` that was not built from the working tree it is about to be verified against.
+ *
+ * Recomputes the same fingerprint `build.ts` writes into `dist/.build-hash` and compares it before
+ * anything else runs — before the static phase reads a single other file out of `dist/`, and before
+ * the browser launches (#280). A `dist/` left over from before a rebase, or built against a
+ * different branch, used to pass every check silently: nothing compared the artefact to the source
+ * it claims to be built from, so a fix that changed nothing could look like it had.
+ *
+ * @returns Whether the recorded hash matches the working tree right now.
+ */
+async function checkBuildFingerprint(): Promise<boolean> {
+  const expected = await computeBuildFingerprint(REPO_ROOT)
+
+  let recorded: string | undefined
+  try {
+    recorded = (await Deno.readTextFile(join(DIST_DIRECTORY, BUILD_HASH_FILE))).trim()
+  } catch {
+    recorded = undefined
+  }
+
+  const ok = recorded !== undefined && recorded === expected
+  const detail = ok
+    ? `fingerprint matches: ${expected}`
+    : recorded === undefined
+    ? `no ${BUILD_HASH_FILE} in ${DIST_DIRECTORY} — run \`deno task --cwd pages build\``
+    : `dist/ is stale — run \`deno task --cwd pages build\``
+  check("dist/ was built from the current working tree", ok, detail)
+  return ok
+}
 
 /** Read the artefact and assert its shape. */
 async function staticPhase(): Promise<void> {
@@ -886,6 +920,10 @@ const PACKAGE_BLOCKS: readonly CheckBlock<Devtools>[] = [
 function filteredRunNote(): string | undefined {
   if (!ONLY) return undefined
   return filteredRunLine(PACKAGE_BLOCKS.map((block) => block.name), ranBlockNames())
+}
+
+if (!(await checkBuildFingerprint())) {
+  report()
 }
 
 await staticPhase()
