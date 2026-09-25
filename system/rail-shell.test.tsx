@@ -116,6 +116,16 @@ describe("RailShell", () => {
     expect(html).toContain(`<h2 id="${headingId}"`)
   })
 
+  it("highlights More when the current page is behind it, and only then", () => {
+    const moreTag = (html: string) =>
+      html.match(/<button[^>]*data-e2e="rail-shell-more"[^>]*>/)?.[0] ?? ""
+    const behind = render(<RailShell items={itemsOf(7)} currentKey="i6">page</RailShell>)
+    expect(moreTag(behind)).toContain("font-semibold")
+    expect(moreTag(behind)).not.toContain("aria-current")
+    const inBar = render(<RailShell items={itemsOf(7)} currentKey="i2">page</RailShell>)
+    expect(moreTag(inBar)).not.toContain("font-semibold")
+  })
+
   it("prints English defaults for every label", () => {
     const html = render(<RailShell items={itemsOf(6)}>page</RailShell>)
     expect(html.match(/aria-label="Main navigation"/g)).toHaveLength(2)
