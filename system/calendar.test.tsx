@@ -38,6 +38,11 @@ function selectableDates(html: string): string[] {
     .map((match) => match[1])
 }
 
+/** The `class` of the one cell drawn for `date`, or `undefined` when the grid has none. */
+function cellClass(html: string, date: string): string | undefined {
+  return new RegExp(`<[a-z]+[^>]*data-calendar-date="${date}"[^>]*class="([^"]*)"`).exec(html)?.[1]
+}
+
 /** The text of every column header, in column order. */
 function columnHeaders(html: string): string[] {
   return [...html.matchAll(/role="columnheader"[^>]*>([^<]+)</g)].map((match) => match[1])
@@ -138,7 +143,8 @@ describe("Calendar", () => {
 
     expect(html).toContain('aria-label="12 August 2026 — none left"')
     expect(html).toContain('aria-label="19 August 2026 — not available"')
-    expect(html).toContain("line-through")
+    expect(cellClass(html, "2026-08-12")).toContain("line-through")
+    expect(cellClass(html, "2026-08-19")).not.toContain("line-through")
   })
 
   it("counts what is still available in the accessible label", () => {
@@ -236,7 +242,7 @@ describe("Calendar", () => {
 
   it("honours a custom low-availability threshold", () => {
     const html = render(
-      <Calendar {...base} availableByDate={{ "2026-08-05": 5 }} lowAvailableThreshold={5} />,
+      <Calendar {...base} availableByDate={{ "2026-08-05": 5 }} lowAvailabilityThreshold={5} />,
     )
 
     expect(html).toContain("rounded-full")

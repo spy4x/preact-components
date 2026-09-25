@@ -171,6 +171,11 @@ navigable with Enter.
 
 ## The calendar's keyboard
 
+`Calendar`'s props, its reason value and its default labels were renamed before the first publish,
+which is a breaking change: `availableByDate`, `lowAvailabilityThreshold`,
+`CalendarDay.availableCount` and the reason `none-left` replace the earlier names, and
+[#295](https://github.com/spy4x/preact-components/pull/295) has the old-to-new table.
+
 The whole grid is one Tab stop, and the focus moves inside it:
 
 | Key                 | What it does                                                       |
@@ -260,10 +265,11 @@ hydrated — no JavaScript, or an embedded render — keeps the natural tab orde
 
 A day that cannot be picked is still focusable and its accessible name is the reason it cannot be:
 `19 August 2026 — not available`. The reason is one of `past` (before `minDate`), `after` (after
-`maxDate`), `none-left` (`availableByDate` holds `0` for the day) and `unavailable` (the day is not
-in `availableByDate`, or belongs to a neighbouring month). The same sentence is shown under the
-grid while it has focus, for the reader who has no screen reader to read the cell out and no mouse
-to hover a `title` with. The grid itself is a `grid` of `row`s and `gridcell`s named after the month it shows.
+`maxDate`), `none-left` (`availableByDate` holds `0` for the day; the cell is also struck through)
+and `unavailable` (the day is not in `availableByDate`, or belongs to a neighbouring month). The
+same sentence is shown under the grid while it has focus, for the reader who has no screen reader
+to read the cell out and no mouse to hover a `title` with. The grid itself is a `grid` of `row`s
+and `gridcell`s named after the month it shows.
 
 **What that evidence is, and is not.** Every accessibility claim in this file is a claim about
 markup and focus order, read back from the DOM in headless Chromium by `pages/checks/system.ts`.

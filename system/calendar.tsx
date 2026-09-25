@@ -56,7 +56,7 @@ export interface CalendarDay {
   /** `null` when the day is selectable. */
   reason: CalendarDayReason | null
   /** How many are still available, or `undefined` when the day has no availability at all. */
-  available: number | undefined
+  availableCount: number | undefined
   selected: boolean
   today: boolean
 }
@@ -81,8 +81,8 @@ export function describeCalendarDay(day: CalendarDay): string {
     case "unavailable":
       return `${day.label} — not available`
     default:
-      return typeof day.available === "number"
-        ? `${day.label} — ${day.available} available`
+      return typeof day.availableCount === "number"
+        ? `${day.label} — ${day.availableCount} available`
         : `${day.label} — available`
   }
 }
@@ -107,7 +107,8 @@ export interface CalendarProps {
   maxDate: string
   /**
    * How many are still available per `YYYY-MM-DD`. A date the map omits has no availability, and a
-   * `0` marks the day as having none left — the cell looks the same, the accessible label does not.
+   * `0` marks the day as having none left: both cells are greyed out, the none-left one is also
+   * struck through, and each accessible label names its own reason.
    */
   availableByDate?: Readonly<Record<string, number>>
   selectedDate?: string | null
@@ -163,7 +164,7 @@ export interface CalendarProps {
   /** Month href in link mode. Defaults to `?month=YYYY-MM-DD`. */
   monthHref?: (monthAnchor: string) => string
   /** Available count at or below which a low-availability dot is drawn. Defaults to `4`. */
-  lowAvailableThreshold?: number
+  lowAvailabilityThreshold?: number
   /**
    * Locale for the month heading, the weekday headers, the day labels and the column order.
    * Defaults to `"en-GB"`.
@@ -205,7 +206,7 @@ export function Calendar(
     onSelectMonth,
     dateHref = (date) => `?date=${date}`,
     monthHref = (month) => `?month=${month}`,
-    lowAvailableThreshold = 4,
+    lowAvailabilityThreshold = 4,
     locale = "en-GB",
     labels,
     class: className,
@@ -243,7 +244,7 @@ export function Calendar(
       inMonth,
       disabled: reason !== null,
       reason,
-      available,
+      availableCount: available,
       selected: selectedDate === date,
       today: date === currentDate,
     }
@@ -639,8 +640,9 @@ export function Calendar(
       )
     }
 
-    const scarce = !day.selected && typeof day.available === "number" && day.available > 0 &&
-      day.available <= lowAvailableThreshold
+    const scarce = !day.selected && typeof day.availableCount === "number" &&
+      day.availableCount > 0 &&
+      day.availableCount <= lowAvailabilityThreshold
     const stateClass = day.selected ? selectedClass : day.today ? todayClass : selectableClass
     const attributes = {
       ...shared,
