@@ -865,11 +865,18 @@ amount and drop the message, which would otherwise let someone tab past a reject
 learn it was thrown away. Blur only reformats the shown text, to `locale`'s canonical form, when the
 last edit resolved cleanly.
 
-The typed text itself is never what a plain form post carries: the visible `<input>` has no `name`,
-so a form submitted before hydration — or with no `onSubmit` at all — posts nothing from it. Pass
-`name` for a second, `type="hidden"` input that carries the smallest-unit integer instead (empty
-string for a `null` value), which is what a server reads back — the same shape `ui/honeypot.tsx`'s
-field uses for a plain HTML form's own posted data.
+The visible `<input>` has no `name`, so it never posts anything of its own. Pass `name` for a
+second, `type="hidden"` input that carries the smallest-unit integer instead (empty string for a
+`null` value), which is what a server reads back — the same shape `ui/honeypot.tsx`'s field uses
+for a plain HTML form's own posted data. That hidden input starts out `disabled`, so it is left out
+of `FormData` entirely, until a mount effect has resolved whatever text is already sitting in the
+visible field: Preact does not overwrite an input's `value` while hydrating, so text typed before
+the bundle ran survives untouched in the DOM, and without this step a form submitted in that gap
+would post the server-rendered amount rather than what the visitor actually typed. Once that effect
+has run — value, message and validity all applied the same way a real keystroke would resolve them
+— the hidden input re-enables. A form submitted before the effect runs posts no amount at all,
+never a stale one; a form submitted right after posts what was actually typed, or is blocked by
+`setCustomValidity` if that text did not parse.
 
 ## Tests
 

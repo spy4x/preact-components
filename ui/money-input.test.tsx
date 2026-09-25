@@ -140,7 +140,7 @@ describe("resolveMoneyInputEdit", () => {
     // edit goes through. sv/fi/nb/lt/sl print U+2212 MINUS SIGN for a negative amount; ar-EG/fa/bn/
     // mr print their own digit glyphs; de/fr/de-CH/en-IN exercise the module's own marks.
     for (const locale of ROUND_TRIP_LOCALES) {
-      for (const value of [12345, -12345, 0, 1]) {
+      for (const value of [12345, -12345, 0, 1, 9007199254740991]) {
         const text = editableText(value, "USD", locale)
         const edit = resolveMoneyInputEdit(text, "USD", locale, {}, INVALID)
         expect({ locale, value, text, edit }).toEqual({
@@ -195,13 +195,18 @@ describe("MoneyInput", () => {
     expect(visibleInput).not.toMatch(/name="amount"/)
   })
 
-  it("posts the smallest-unit integer through a hidden field named `name`", () => {
+  it("carries the smallest-unit integer in a hidden field named `name`, disabled before it mounts", () => {
     const html = render(
       <MoneyInput value={1250} currency="USD" name="amount" onChange={() => {}} />,
     )
     expect(html).toContain('type="hidden"')
     expect(html).toContain('name="amount"')
     expect(html).toContain('value="1250"')
+    // `preact-render-to-string` never runs effects, so this is the server-rendered, pre-hydration
+    // markup — the same markup a fresh page's HTML carries. `disabled` here is what keeps that
+    // markup out of `FormData` until the mount effect has reconciled whatever the visible field
+    // actually shows; see `resolveMoneyInputEdit`'s round-trip test and `ui/README.md`.
+    expect(html).toContain("disabled")
   })
 
   it("posts an empty hidden value for a null amount", () => {
@@ -210,6 +215,7 @@ describe("MoneyInput", () => {
     )
     const hiddenInput = html.match(/<input[^>]*type="hidden"[^>]*>/)?.[0] ?? ""
     expect(hiddenInput).not.toMatch(/value="[^"]/)
+    expect(hiddenInput).toMatch(/disabled/)
   })
 
   it("renders no hidden field at all when name is left out", () => {

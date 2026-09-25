@@ -174,6 +174,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await lightboxRefusesEmptyCheck(devtools)
   await exportButtonChecks(devtools)
   await moneyInputChecks(devtools)
+  await moneyInputPreHydrationChecks(devtools)
 
   // Last on purpose: a Modal that refuses to close would sit in the top layer over everything, so a
   // failure here cannot take an unrelated check down with it.
@@ -8758,4 +8759,160 @@ async function moneyInputChecks(devtools: Devtools): Promise<void> {
       `after fixing and clicking Save: "${afterFixedSubmit.trim()}"`,
     )
   }
+}
+
+/**
+ * The bug review found: Preact does not overwrite an input's `value` while hydrating, so text typed
+ * into `MoneyInput` before its bundle has even finished loading stays exactly where a visitor left
+ * it, while `draft`, `value` and the hidden amount input all still carry whatever the server
+ * rendered. A form submitted in that gap used to post the stale server amount, silently. The fix is
+ * a mount effect that parses whatever text is already in the field and a hidden input that stays
+ * `disabled` — dropped from `FormData` entirely — until that effect has run; this proves both
+ * halves against a real, unhydrated load rather than a scripted `dispatchEvent`.
+ *
+ * The bundle is held back with `Fetch.enable` on `resourceType: "Script"`, not
+ * `Emulation.setScriptExecutionDisabled` the way `enhancedFormsNoScriptChecks` above holds a whole
+ * page back: that flag skips a blocked `<script>` permanently, so re-enabling it cannot retroactively
+ * run one already parsed past, and the restoring navigation those checks use to get a hydrated page
+ * back would also throw away whatever was typed. `Fetch.requestPaused` instead leaves the request
+ * outstanding — the document still parses and renders fully around it — so continuing it later runs
+ * the very bundle this check needs, against the very DOM the typing already changed. Chromium's
+ * preload scanner can dispatch that request before the parser has reached the field's own markup, so
+ * this polls for the field rather than waiting on a `Page` lifecycle event, and the pause is
+ * registered before the reload that triggers it — a promise started after the click that is meant to
+ * produce it would race whatever the click actually produced, the same hazard `waitForRequest`'s own
+ * doc above states.
+ *
+ * Runs on the shared page, like `system/`'s `authFormNoScriptChecks`, and restores it the same way:
+ * `Fetch.disable` and a restoring navigation, both inside a `finally` so a throw partway through
+ * cannot leave every check after this one running against an unhydrated page, with a second, harder
+ * attempt if the first restoring navigation does not rehydrate, and a wait for the route's own scroll
+ * to settle before returning.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function moneyInputPreHydrationChecks(devtools: Devtools): Promise<void> {
+  const restoreUrl = await devtools.evaluate<string>("location.href").catch(() => "")
+
+  let fieldReady = false
+  let unhydratedWhileTyping = false
+  let typedValue = "(page unreadable)"
+  let hiddenDisabledWhileTyping: boolean | null = null
+  let rehydrated = false
+  let submitResult = "(not read)"
+
+  try {
+    await devtools.send("Fetch.enable", {
+      patterns: [{ urlPattern: "*", resourceType: "Script", requestStage: "Request" }],
+    })
+    const paused = devtools.once<{ requestId: string }>("Fetch.requestPaused", 20_000)
+    await devtools.send("Page.reload", { ignoreCache: true })
+    const { requestId } = await paused
+
+    fieldReady = await poll(
+      () =>
+        devtools.evaluate<boolean>(
+          `document.querySelector('${MONEY_INPUT_CARD} #guide-money-input') !== null`,
+        ).catch(() => false),
+      10_000,
+    )
+
+    if (fieldReady) {
+      unhydratedWhileTyping = await devtools.evaluate<boolean>(
+        `document.documentElement.dataset.hydrated !== "true"`,
+      ).catch(() => false)
+
+      const fieldPoint = await elementCenter(devtools, `${MONEY_INPUT_CARD} #guide-money-input`)
+      if (fieldPoint.ok) {
+        await clickAtPoint(devtools, fieldPoint)
+        // A native, JS-free selection — the field carries no listener at all yet — so the
+        // insertion right after it replaces the server-rendered text rather than appending to it.
+        await devtools.evaluate<null>(`(() => {
+          document.querySelector('${MONEY_INPUT_CARD} #guide-money-input').select()
+          return null
+        })()`)
+        await typeInto(devtools, "20,00")
+      }
+
+      typedValue = await devtools.evaluate<string>(
+        `document.querySelector('${MONEY_INPUT_CARD} #guide-money-input').value`,
+      ).catch(() => "(unreadable)")
+      hiddenDisabledWhileTyping = await devtools.evaluate<boolean>(
+        `document.querySelector(
+          '${MONEY_INPUT_CARD} input[type=hidden][name="guide-money-amount"]',
+        ).disabled`,
+      ).catch(() => null)
+    }
+
+    // Release the bundle — the document already carries whatever was typed above, untouched.
+    await devtools.send("Fetch.continueRequest", { requestId }).catch(() => {})
+
+    rehydrated = await poll(
+      () =>
+        devtools.evaluate<boolean>(`document.documentElement.dataset.hydrated === "true"`)
+          .catch(() => false),
+      15_000,
+    )
+
+    if (rehydrated) {
+      const submitPoint = await elementCenter(
+        devtools,
+        `${MONEY_INPUT_CARD} [data-e2e="money-input-submit"]`,
+      )
+      if (submitPoint.ok) {
+        await clickAtPoint(devtools, submitPoint)
+        await new Promise((resolve) => setTimeout(resolve, 60))
+        submitResult = await devtools.evaluate<string>(
+          `document.querySelector(
+            '${MONEY_INPUT_CARD} [data-e2e="money-input-submits"]',
+          ).textContent.trim()`,
+        ).catch(() => "(unreadable)")
+      }
+    }
+  } finally {
+    await devtools.send("Fetch.disable", {}).catch(() => {})
+
+    await devtools.send("Page.navigate", { url: restoreUrl }).catch(() => {})
+    let restored = await poll(
+      () =>
+        devtools.evaluate<boolean>(`document.documentElement.dataset.hydrated === "true"`)
+          .catch(() => false),
+      15_000,
+    )
+    if (!restored) {
+      await devtools.send("Page.reload", { ignoreCache: true }).catch(() => {})
+      restored = await poll(
+        () =>
+          devtools.evaluate<boolean>(`document.documentElement.dataset.hydrated === "true"`)
+            .catch(() => false),
+        15_000,
+      )
+    }
+    check(
+      "the page rehydrates once the pre-hydration MoneyInput check restores it",
+      restored,
+      restored
+        ? "data-hydrated set again after the restoring navigation"
+        : "the page never rehydrated after the restoring navigation, even after a retry",
+    )
+    await settledScroll(devtools)
+  }
+
+  check(
+    "text typed before the bundle has even loaded sits in the field unparsed, and the hidden amount stays disabled",
+    fieldReady && unhydratedWhileTyping && typedValue === "20,00" &&
+      hiddenDisabledWhileTyping === true,
+    `field ready: ${fieldReady}, unhydrated while typing: ${unhydratedWhileTyping}, ` +
+      `field value "${typedValue}", hidden input disabled: ${hiddenDisabledWhileTyping}`,
+  )
+  check(
+    "the field hydrates once the held-back bundle is released",
+    rehydrated,
+    rehydrated ? "data-hydrated set" : "never hydrated after the bundle was released",
+  )
+  check(
+    "a real submit right after hydration posts what was typed before the bundle loaded, never the stale server amount",
+    submitResult === "submits: 1, posted: 2000",
+    `after a real click on Save: "${submitResult}"`,
+  )
 }

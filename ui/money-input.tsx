@@ -144,11 +144,15 @@ export function editableText(value: number | null, currency: string, locale: str
  * Blur only re-formats the shown text (to `locale`'s canonical grouping-free form) when the last
  * edit resolved to a value and no message is standing.
  *
- * **The typed text is never what a plain form posts.** The visible `<input>` carries no `name`, so
- * a `<form method="post">` submitted before hydration — or with `onSubmit` left out entirely —
- * posts nothing from it. When `name` is given, a second, `type="hidden"` input carries the
- * smallest-unit integer instead (empty string for `null`), which is what a server reads back. A
- * caller that only ever submits through `onChange`-driven state can leave `name` out.
+ * **A plain form never posts a stale amount, not even before hydration.** The visible `<input>`
+ * carries no `name`, so it never posts anything of its own. When `name` is given, a second,
+ * `type="hidden"` input carries the smallest-unit integer instead (empty string for `null`) — but
+ * it starts out `disabled`, which drops it from `FormData` entirely, because Preact's hydration
+ * leaves text typed into the visible field before the bundle ran exactly where the browser put it,
+ * unparsed. A mount effect reads that text once, resolves it the same way `handleInput` would, and
+ * only then re-enables the hidden input — so a form submitted in the gap before hydration posts no
+ * amount at all, never the server-rendered one, and a form submitted right after posts what the
+ * visitor actually typed while the page was still loading.
  *
  * A local `draft` signal holds the edited text — the same "purely visual" local state `Input`'s own
  * house rule allows — and is only resynced from `value`/`currency`/`locale` while the field is not
@@ -182,6 +186,7 @@ export function MoneyInput(
   const message = useSignal<string | undefined>(undefined)
   const focused = useRef(false)
   const synced = useRef({ value, currency, locale })
+  const mounted = useSignal(false)
 
   // Keeps the browser's own constraint validation in sync with `message`: while a message stands,
   // a real form submit through this control is refused and the message itself is what the browser
@@ -191,6 +196,33 @@ export function MoneyInput(
   useEffect(() => {
     inputRef.current?.setCustomValidity(message.value ?? "")
   }, [message.value])
+
+  // Runs once, after hydration attaches. Preact does not overwrite an input's `value` while
+  // hydrating, so whatever a visitor typed before the bundle ran is still sitting in the DOM,
+  // untouched by `handleInput` and unknown to `draft`, `value` or the hidden input below — see the
+  // class doc. Reading it here and resolving it through the same path `handleInput` uses is what
+  // makes that typed text (or its rejection) take effect exactly once, the moment it is safe to.
+  useEffect(() => {
+    const text = inputRef.current?.value ?? ""
+    draft.value = text
+    const edit = resolveMoneyInputEdit(
+      text,
+      currency,
+      locale,
+      { min, max },
+      invalidMessage,
+      rangeMessage,
+    )
+    message.value = edit.message
+    if ("value" in edit) {
+      const resolved = edit.value as number | null
+      synced.current = { value: resolved, currency, locale }
+      if (resolved !== value) onChange(resolved)
+    } else {
+      synced.current = { value, currency, locale }
+    }
+    mounted.value = true
+  }, [])
 
   if (
     !focused.current &&
@@ -254,7 +286,12 @@ export function MoneyInput(
         onBlur={handleBlur}
       />
       {name !== undefined && (
-        <input type="hidden" name={name} value={value === null ? "" : String(value)} />
+        <input
+          type="hidden"
+          name={name}
+          value={value === null ? "" : String(value)}
+          disabled={!mounted.value}
+        />
       )}
       <span id={statusId} role="status" aria-live="polite" aria-atomic="true">
         {message.value ?? ""}
