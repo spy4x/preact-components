@@ -265,7 +265,7 @@ more.map((item) => item.key)`,
     title: "What the lightbox opens",
     summary:
       "`zoomableAlt` picks an image's description or the fallback, `resolveImage` turns a clicked element into a lightbox image, and `collectSequence` builds the images the lightbox pages through and where the clicked one sits — here from stand-ins for `<img>` elements.",
-    snippet: `import { resolveImage, zoomableAlt } from "@preact-components/system"
+    snippet: `import { resolveImage } from "@preact-components/system"
 import { collectSequence, zoomableAlt } from "@preact-components/system/image-lightbox"
 
 const image = (src, alt) => ({ matches: (s) => s === "img", src, alt })

@@ -200,7 +200,7 @@ toggleArchiveState({ id: 3, deletedAt: "2026-01-15T09:00:00Z" }, dependents)`,
     summary:
       '`setField` writes one field into a model signal as a fresh object, `fieldText` shows a value in a control (`null` as empty, never `"null"`), and `commitNumber` reads a number box, half-typed input included.',
     snippet: `import { commitNumber, fieldText, setField } from "@preact-components/crud"
-import { signal, untracked } from "@preact/signals"
+import { signal } from "@preact/signals"
 
 const vm = signal({ name: "Launch plan", budget: null })
 setField(vm, "budget", commitNumber(" 1200 "))
