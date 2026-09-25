@@ -201,13 +201,17 @@ describe("PUBLISHED_PACKAGES", () => {
     const named: string[] = []
     for (const entry of Deno.readDirSync(root)) {
       if (!entry.isDirectory) continue
-      let text: string
-      try {
-        text = Deno.readTextFileSync(join(root, entry.name, "deno.json"))
-      } catch (error) {
-        if (error instanceof Deno.errors.NotFound) continue
-        throw error
+      // Deno accepts a package config named either way, so a `deno.jsonc` package counts too.
+      let text: string | undefined
+      for (const file of ["deno.json", "deno.jsonc"]) {
+        try {
+          text = Deno.readTextFileSync(join(root, entry.name, file))
+          break
+        } catch (error) {
+          if (!(error instanceof Deno.errors.NotFound)) throw error
+        }
       }
+      if (text === undefined) continue
       // Some package configs carry comments, so this reads the one field instead of parsing JSON.
       if (/^\s*"name"\s*:/m.test(text)) named.push(entry.name)
     }
