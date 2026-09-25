@@ -3,9 +3,10 @@
 The live component catalogue, shipped as a component so every app that imports the library gets it
 free. It shows one page at a time: an overview, then one page per package, picked from a side
 navigation that becomes a modal dialog behind a menu button on a phone. The pages hold one demo per
-component of every package it covers (`ui`, `charts`, `system`, `crud` and `map`), one card per
-group of `theme/preset.css` classes, the icon gallery, and the design-system rules components are
-meant to be assembled in. An app mounts it in one line, `<uiGuideRoute.component />` (see "Usage").
+component of every package it covers (`ui`, `charts`, `system`, `crud` and `map`), an example card
+per helper (`signals`, `theme` and `cn` have only helpers), one card per group of
+`theme/preset.css` classes, the icon gallery, and the design-system rules components are meant to
+be assembled in. An app mounts it in one line, `<uiGuideRoute.component />` (see "Usage").
 
 Covering `map/` (#143) is what makes `@preact-components/ui-guide` resolve Leaflet: `map/`'s exact
 `leaflet`/`@types/leaflet` pins reach an app's dependency graph the moment it imports this package's
@@ -74,8 +75,8 @@ a copied snippet — arrives as props and ports.
 `registry.ts`'s `guidePages` is what the guide renders at one time: the overview, one page per
 package (`ui`, `system`, `crud`, `charts`, `map`, `signals`, `theme`, `icons`, `cn`), and `all`. A
 section belongs to its package's page — `theme` holds the two class sections — so `ui/`'s sections
-are one page read top to bottom and a package with one section is a page of one. `signals` and `cn`
-have no cards yet, and their pages say so. `all` renders every other page in navigation order: it is
+are one page read top to bottom and a package with one section is a page of one. `cn` has no card
+yet, and its page says so. `all` renders every other page in navigation order: it is
 the served document and a route of its own, for searching the whole library with the browser's find.
 
 The shell is a navigation and a page. At `lg` and up the navigation is a sticky column beside the
@@ -146,47 +147,53 @@ Both of the source guides documented **class names** rather than component APIs,
 of them ended up documenting `.btn-sm` and `.h6` — classes with zero usages that only its own
 ui-guide kept alive.
 
-### One rule: a PascalCase export is a component, and a component has a card
+### One rule: every export has a card or an example
 
 `coverage.ts` reads every covered package's value exports — from its barrel, and from every subpath
-module its `deno.json` publishes, so a component reachable only through its own subpath is seen too
-— and splits them by name. A name with an initial capital and a lower-case letter after it is a
-component (`Badge`, `EmptyState`, `D3LineChart`); everything else is a helper (`clampProgress`,
-`DEFAULT_AXIS_COLOR`, `CONFLICT`) and needs no entry anywhere. Every component must have a card in
-some section, or a line in the allow-list below.
+module its `deno.json` publishes, so an export reachable only through its own subpath is seen too.
+A **component** is a function named in PascalCase (`Badge`, `EmptyState`, `D3LineChart`), and it
+needs a card in a component section; an example does not count as its card. Anything else — a
+function (`clampProgress`), a constant (`DEFAULT_AXIS_COLOR`), an enum (`ThemeValue`) — needs a
+card or an example card that names it in its `covers`. An export with neither needs a line in the
+allow-list below.
 
-Four kinds of drift fail `deno task test`, each naming the component and the package it belongs to:
+Each kind of drift fails `deno task test`, naming the export and its package:
 
-| Drift                                              | Message                                                                     |
-| -------------------------------------------------- | --------------------------------------------------------------------------- |
-| exported with no card and no allow-list entry      | `crud exports CrudList and no section demonstrates it — write a demo, or …` |
-| a card keyed to a name the package does not export | `the ui sections demo Badge, which ui does not export`                      |
-| an allow-list entry the package does not export    | `ui does not export FakeHelper, which EXPORTS_WITHOUT_DEMO names`           |
-| an allow-list entry whose component has a card     | `ui's Badge has a demo, so its EXPORTS_WITHOUT_DEMO entry is stale`         |
-
-This used to be about 580 lines of conditional types, so the failure arrived at `deno check` rather
-than at `deno test`. Both run in the same `deno task check`, so the earlier arrival bought nothing,
-and it cost a hand-written helper name per helper, in seven lists — the hand-kept list it was meant
-to remove. The rule above needs none of them: a helper is recognised by how it is named, which is how
-every package already names one.
+| Drift                                                 | Message                                                                         |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------- |
+| a component with no card and no allow-list entry      | `crud exports the component CrudList and no section demonstrates it — …`        |
+| anything else with no card, no example, no entry      | `ui exports clampProgress and no card or example covers it — …`                 |
+| a card or an example naming a name the package lacks  | `the ui sections demo Badge, which ui does not export`                          |
+| an allow-list entry the package does not export       | `ui does not export FakeHelper, which the allow-list names`                     |
+| an allow-list entry whose export is covered after all | `ui's clampProgress has a card or an example, so its allow-list entry is stale` |
 
 Prop vocabulary is guarded one level down: demos iterate a `Record<Union, …>` keyed by a prop's own
 union type (`ButtonVariant`, `BadgeColor`, `SpinnerSize`, `BadgeType`, `ToastVariant`), so adding a
 variant to a component fails `deno check` until the catalogue shows it.
 
-### The allow-list is one list, and every entry carries its reason
+### The allow-list carries a reason, and it only shrinks
 
-`EXPORTS_WITHOUT_DEMO` in `coverage.ts` is the only list. It is keyed by package, and each entry is a
-name and a sentence. Two things belong in it, and they read the same way to the check — this export
-is component-shaped and no card is expected:
+Two lists feed it. `EXPORTS_WITHOUT_DEMO` in `coverage.ts` holds an export with a sentence saying
+why it has no card or example; it is empty today. `examples-pending.ts` holds, per package and one
+name per line, every export that had neither when example cards were added; each carries the reason
+"example pending (#215)". An entry the package no longer exports fails, and so does one that
+has a card or an example since — so adding an example fails the tests until its names leave the
+list. Adding a new export to the pending list to skip its example is what review refuses.
 
-- **Not a component.** An `enum` is an object rather than something to render. No package has such
-  an entry today.
-- **A card somebody still owes.** A component whose demo is honestly not written yet goes here with
-  a reason saying so, instead of being quietly absent.
+### Adding an example
 
-Neither can be parked and forgotten: an entry the package no longer exports fails, and so does one
-whose component has a card after all.
+1. Pick the package's example section — `sections/ui-examples.tsx` and
+   `sections/signals-examples.tsx` are the pattern — or add one: a file exporting
+   `exampleDemos({...})`, and a `catalogue` entry in `registry.ts` with `kind: "example"`.
+2. Add an entry keyed by the card id, usually the main export's name, so the card is
+   `#demo-<key>`: a `title`, a one-sentence `summary`, the `snippet` a reader copies, the names it
+   `covers`, and `run`, which makes the same calls as the snippet and returns what the card prints.
+   One example may cover several related exports.
+3. Remove every covered name from `examples-pending.ts`.
+
+`run` is called when the card renders, so the output on the page is the real export's, never a
+copy. Keep it deterministic — no clock, no random, no network — since the server render and the
+browser render have to match.
 
 ### A component without a card is visible, not absent
 
@@ -202,11 +209,12 @@ and it is tested rather than assumed.
 ### A package added later has to make a decision
 
 `coverage.test.ts` walks the top-level directories for a `deno.json` and fails when one is neither a
-`packageIds` entry nor an `EXCLUDED_PACKAGES` entry with a reason. Covering a package and excluding
-it are both one line, and both are visible in review — the difference between a package that is
-deliberately out of the guide and one nobody noticed. That is how `icons/` (the gallery reads the
-barrel itself), `theme/` (CSS), `pages/` (the demo's host app, not a package) and `ui-guide/` itself
-are written down.
+`coveredPackageIds` entry nor an `EXCLUDED_PACKAGES` entry with a reason. `coveredPackageIds` is
+`packageIds` — the packages whose markup the guide renders, which the host's stylesheet scans — then
+`examplePackageIds` (`signals`, `theme`, `cn`), which export nothing that renders. Covering a
+package and excluding it are both one line, and both are visible in review. That is how `icons/`
+(the gallery reads the barrel itself), `pages/` (the demo's host app, not a package) and
+`ui-guide/` itself are written down.
 
 ### The theme's class names are checked against the theme, in both directions
 
@@ -254,30 +262,28 @@ and a list in this file was wrong more often than it was right. The guide's own 
 card, the overview prints the counts from the registry, and `pages/build.ts` asserts a prerendered card
 per entry of `catalogueNames` against the emitted HTML.
 
-| Section                    | Package  | Page     |
-| -------------------------- | -------- | -------- |
-| **Badges**                 | `ui`     | `ui`     |
-| **Buttons**                | `ui`     | `ui`     |
-| **Display**                | `ui`     | `ui`     |
-| **Feedback**               | `ui`     | `ui`     |
-| **Inputs**                 | `ui`     | `ui`     |
-| **Fields**                 | `ui`     | `ui`     |
-| **Enhanced forms**         | `ui`     | `ui`     |
-| **Forms**                  | `theme`  | `theme`  |
-| **Surfaces and utilities** | `theme`  | `theme`  |
-| **Charts**                 | `charts` | `charts` |
-| **System**                 | `system` | `system` |
-| **CRUD**                   | `crud`   | `crud`   |
-| **Map**                    | `map`    | `map`    |
+| Section                    | Package   | Page      |
+| -------------------------- | --------- | --------- |
+| **Badges**                 | `ui`      | `ui`      |
+| **Buttons**                | `ui`      | `ui`      |
+| **Display**                | `ui`      | `ui`      |
+| **Feedback**               | `ui`      | `ui`      |
+| **Inputs**                 | `ui`      | `ui`      |
+| **Fields**                 | `ui`      | `ui`      |
+| **Enhanced forms**         | `ui`      | `ui`      |
+| **Forms**                  | `theme`   | `theme`   |
+| **Surfaces and utilities** | `theme`   | `theme`   |
+| **Charts**                 | `charts`  | `charts`  |
+| **System**                 | `system`  | `system`  |
+| **CRUD**                   | `crud`    | `crud`    |
+| **Map**                    | `map`     | `map`     |
+| **Helpers** (examples)     | `ui`      | `ui`      |
+| **Signals** (examples)     | `signals` | `signals` |
 
 Nothing here states how many components are _missing_ a card, on purpose: that number moves with every
-component PR. Read `EXPORTS_WITHOUT_DEMO` in `coverage.ts`, which is where a card somebody still owes
-is declared. A count in this file was wrong twice while this section was being written, which is the
+component PR. Read `examples-pending.ts` and `EXPORTS_WITHOUT_DEMO` in `coverage.ts`, which is where a card or
+an example somebody still owes is declared. A count in this file was wrong twice while this section was being written, which is the
 argument against a third one.
-
-`signals/` has no section at all: it is excluded in `coverage.ts` because everything
-it exports is a factory or a pure function (`buildModelStore`, `createToastStore`, `useUrlFilters`,
-`sortRows`), which a written-up example in its own README serves better than a card would.
 
 `Fields` is the `ui/` half of the form story — the controlled primitives, each with the demo an app
 writes — and `forms`/`surfaces` are the other half: the preset styles markup the library does not own,
@@ -285,15 +291,15 @@ so a page built out of these packages writes its own cards, controls and contain
 controls with a preset class and nothing wrapped around them; `surfaces` is the card, the scroll
 container, the type scale, the KPI tile and the colour atoms.
 
-The class cards declare `package: "theme"`, which is what keeps them out of the coverage rule,
+The class cards declare `package: "theme"` and are a class section, which keeps them out of the coverage rule,
 and their ids are namespaced (`class-input`, `class-card`) because a card id becomes a URL fragment:
 `input` and `Input` write the same slug, and `card` collides with `Card`, which merged while this
 section was being written. Their other contract — a heading, and a class list that matches their own markup — is enforced
 by `classes.test.tsx`.
 
 The catalogue is checked against the packages' own exports, not against this table, so the table is
-prose and nothing reads it: `coverage.test.ts` fails when a covered package has a component with no
-card, whichever section it should have been in.
+prose and nothing reads it: `coverage.test.ts` fails when a covered package has an export with no card or
+example, whichever section it should have been in.
 
 Two demos needed a `class` override to be renderable inside a page: `LoadingScreen` is a
 full-viewport overlay and `Toastr` is pinned to the page corner, so both are shown inside a
@@ -363,8 +369,9 @@ renders, the banner, the route descriptor, a usage block and copy control per ca
 page's order), `shell.test.tsx` (the page a hash renders, the navigation's marks and names, a
 host's page extra), `icons.test.tsx` (gallery exhaustiveness,
 filter), `instructions.test.ts` (a documented class is defined), `classes.test.tsx` (a defined class
-is demonstrated, or excluded with a reason) and `copy.test.tsx` (every card's copy control is wired to
-its own snippet and to the injected port). Tests render real markup with `preact-render-to-string`
+is demonstrated, or excluded with a reason) `copy.test.tsx` (every card's copy control is wired to
+its own snippet and to the injected port) and `example.test.tsx` (an example runs when its card
+renders, on its package's page, and how its output is printed). Tests render real markup with `preact-render-to-string`
 and assert on it; no DOM, no browser.
 
 `preact-render-to-string` is pinned once, in the root import map, not in this package's own
