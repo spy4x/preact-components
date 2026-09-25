@@ -203,8 +203,8 @@ of `svg` or any single SVG subpath does not.
 `scales.ts` is pure logic with no renderer, so it is where a real bug would hurt most and it is tested
 hardest. `ticks` and `niceStep` themselves now live once, in `@spy4x/platform/universal/axis`
 (spy4x/ts-libs#70, refs spy4x/preact-components#123), and are re-exported from here so `./scales`
-keeps both names for its existing importers. `niceScale` still keeps its own capped copy of the tick
-loop until ts-libs exports one (spy4x/ts-libs#201). The rules that pair guarantees:
+keeps both names for its existing importers. `niceScale` takes its tick loop from the same module's
+`stepAxis` (spy4x/ts-libs#201), described below. The rules that pair guarantees:
 
 - `ticks(min, max)` expands outward to a nice step (`1, 2, 5, 10 × 10ⁿ`) and returns both ends
   inclusive — about `target + 1` values.
@@ -223,12 +223,14 @@ loop until ts-libs exports one (spy4x/ts-libs#201). The rules that pair guarante
   because a non-terminating loop would hang the suite rather than fail it.
 - Non-positive, non-finite and subnormal spans never produce a `0`, `NaN` or infinite step.
 
-`niceScale`'s own tick generation is a separate, package-local caller of the same step/round idea
-(this package has no `ticks`/`niceStep` implementation of its own left to guarantee those against),
-and carries the same iteration-cap fix as `@spy4x/platform/universal/axis`'s `ticks`: an absurd
-target (`niceScale(min, max, { target: 1e25 })`) used to loop as many times as `steps` demanded —
-`out.length < MAX_TICKS` alone never stopped it once `out.length` almost stopped growing — and now
-caps at `MAX_TICKS` iterations instead.
+`niceScale` has no tick loop of its own: it pads the domain, picks the step with `niceStep`, and
+takes the rounded bounds and ticks from `@spy4x/platform/universal/axis`'s `stepAxis`
+(spy4x/preact-components#306), which carries the same iteration cap as `ticks`. Moving onto it
+changed four things. Every tick of a step with more than one significant digit now lands on the
+step (`niceScale(0, 10, { target: 4 })` starts at `-2.5`, not `-2`). A padded domain that
+overflows to `±Infinity` has no ticks instead of `[a, Infinity]`. `Infinity` is never a tick, and a
+finite domain near the largest double no longer rounds its `max` up to `Infinity`. An absurd target
+on a huge value (`niceScale(1e18, 1e18 + 100, { target: 1e300 })`) keeps finite bounds.
 
 ## Tests
 

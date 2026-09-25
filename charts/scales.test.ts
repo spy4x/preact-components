@@ -80,8 +80,9 @@ Deno.test({
 /**
  * Call `niceScale` in a worker and give up after `timeoutMs`.
  *
- * `niceScale`'s own `ticksForStep` can loop as many times as an absurd `target` option asks for;
- * see the deadline note on `probeTicks` above for why this runs off the main thread.
+ * The tick loop behind `niceScale` (ts-libs' `stepAxis`) could loop as many times as an absurd
+ * `target` option asks for before its iteration cap; see the deadline note on `probeTicks` above
+ * for why this runs off the main thread.
  */
 async function probeNiceScale(
   request: { min: number; max: number; options?: { target?: number; padRatio?: number } },
@@ -114,10 +115,9 @@ Deno.test({
   sanitizeResources: false,
   fn: async () => {
     // A target of 1e25 makes niceStep's step many orders of magnitude smaller than the float
-    // precision at this magnitude, so `ticksForStep`'s index climbed toward a `steps` of 1e25 while
-    // `out.length` almost stopped growing — `out.length < MAX_TICKS` alone never stopped the loop.
-    // This shipped on `main` (spy4x/preact-components#123) until the same fix landed in
-    // `@spy4x/platform/universal/axis` (spy4x/ts-libs#70) and was ported back here.
+    // precision at this magnitude, so the tick loop's index climbs toward a `steps` of 1e25 while
+    // its output almost stops growing — only a cap on the iterations themselves stops it. The loop
+    // now lives in `@spy4x/platform/universal/axis`'s `stepAxis`; this guards niceScale's use of it.
     const min = 1e6
     const max = 2e6
     const result = await probeNiceScale({ min, max, options: { target: 1e25 } }, 2_000)
@@ -125,7 +125,7 @@ Deno.test({
     if (result === "timeout") {
       throw new Error(
         `niceScale(${min}, ${max}, { target: 1e25 }) did not terminate within 2000ms: ` +
-          "ticksForStep must cap its loop at MAX_TICKS iterations, not just its output length",
+          "the tick loop must cap its iterations at MAX_TICKS, not just its output length",
       )
     }
 
@@ -248,6 +248,46 @@ describe("niceScale", () => {
     assert(scale.min <= -1e18)
     assert(scale.max >= 1e18)
     assert(scale.ticks.length >= 5)
+  })
+
+  // The five cases below are where `niceScale` changed when it moved onto ts-libs' `stepAxis`
+  // (spy4x/preact-components#306). Its own loop rounded ticks to the step's leading digit only.
+  it("lands every tick on a step with more than one significant digit", () => {
+    const scale = niceScale(0, 10, { target: 4 })
+
+    assertEquals(scale.step, 2.5)
+    assertEquals(scale.min, -2.5)
+    assertEquals(scale.max, 12.5)
+    assertEquals(scale.ticks, [-2.5, 0, 2.5, 5, 7.5, 10, 12.5])
+  })
+
+  it("gives no ticks when padding overflows the domain to Infinity", () => {
+    const scale = niceScale(0, 1.7e308)
+
+    assertEquals(scale.max, Infinity)
+    assertEquals(scale.ticks, [])
+  })
+
+  it("keeps the bounds finite for an absurd tick target on a huge value", () => {
+    const scale = niceScale(1e18, 1e18 + 100, { target: 1e300 })
+
+    assertEquals(scale.min, 1e18)
+    assertEquals(scale.max, 1e18 + 100)
+    assertEquals(scale.ticks, [1e18, 1e18 + 100])
+  })
+
+  it("keeps max finite when rounding up to the step would overflow", () => {
+    const scale = niceScale(8e307, 1.7e308, { padRatio: 0 })
+
+    assertEquals(scale.max, 1.7e308)
+    assertEquals(scale.ticks, [8e307, 1.7e308])
+  })
+
+  it("never returns Infinity as a tick near the largest double", () => {
+    const scale = niceScale(0, 1.7e308, { target: 8, padRatio: 0 })
+
+    assert(scale.ticks.every(Number.isFinite), `non-finite tick in ${scale.ticks}`)
+    assertEquals(scale.ticks.at(-1), 1.7e308)
   })
 
   it("handles a tiny span", () => {
