@@ -319,12 +319,13 @@ FAIL README.md contract prose: claims 79 size-5 + 38 size-6, module has 80 + 38
 FAIL checkCircle: README.md lists checkCircle as fold, but it is not in the recorded inventory
 ```
 
-The barrel and geometry comparisons need a read-only sibling checkout of the ported set's source
-application beside this one, which CI does not have; there they report as `-- not run` rather than
-failing. The pinned inventory carries
-the ledger checks everywhere.
+The barrel and geometry comparisons need the ported set's own icon folder, from a private
+checkout that CI does not have. Pass its path to run them; without it they report as `-- not run`
+rather than failing, which is what `deno task test` sees. The pinned inventory carries the ledger
+checks everywhere.
 
 ```bash
 deno task test
-deno run --allow-read icons/check-readme.ts # the full report
+deno run --allow-read icons/check-readme.ts                      # the full report
+deno run --allow-read icons/check-readme.ts /path/to/icons/      # with the source comparisons
 ```
