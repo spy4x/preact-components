@@ -81,19 +81,42 @@ async function findChromium(): Promise<string> {
   throw new Error(`no Chromium found; tried ${candidates.join(", ")}`)
 }
 
-/** Put the page in one palette: the `.dark` class, and `data-theme="ink"` for ink. */
-async function applyPalette(devtools: Devtools, palette: Palette): Promise<void> {
-  const dark = palette !== Palette.LIGHT
-  await devtools.send("Emulation.setEmulatedMedia", {
-    features: [{ name: "prefers-color-scheme", value: dark ? "dark" : "light" }],
-  })
-  await devtools.evaluate<null>(`(() => {
-    const root = document.documentElement
-    root.classList.toggle("dark", ${dark})
-    if (${palette === Palette.INK}) root.dataset.theme = "ink"
-    else delete root.dataset.theme
-    return null
-  })()`)
+/**
+ * Load one route in one palette, the way a visitor who chose it would see it.
+ *
+ * The colour scheme goes through the page's own mechanism: the stored `pc-theme` preference, which
+ * the pre-paint script in `src/document.tsx` reads before the first paint and the theme button
+ * reads when it mounts. So the page is loaded, the preference stored, and the page reloaded; setting
+ * the `.dark` class after the fact would leave the button reading "Dark" on a dark page. Ink is not
+ * a stored preference in the demo site, so it is added to the reloaded page as `data-theme="ink"`.
+ */
+async function open(devtools: Devtools, url: string, shot: Shot): Promise<void> {
+  const dark = shot.palette !== Palette.LIGHT
+  await devtools.send("Page.navigate", { url: `${url}${shot.hash}` })
+  await waitForHydration(devtools, shot)
+  await devtools.evaluate<null>(
+    `(localStorage.setItem("pc-theme", "${dark ? "dark" : "light"}"), null)`,
+  )
+  const loaded = devtools.next("Page.loadEventFired")
+  await devtools.send("Page.reload", {})
+  await loaded
+  await waitForHydration(devtools, shot)
+  const scheme = await devtools.evaluate<boolean>(
+    `document.documentElement.classList.contains("dark")`,
+  )
+  if (scheme !== dark) throw new Error(`${shot.file}: the page did not load in the stored scheme`)
+  if (shot.palette === Palette.INK) {
+    await devtools.evaluate<null>(`(document.documentElement.dataset.theme = "ink", null)`)
+  }
+}
+
+/** Wait until the island has hydrated, or fail naming the shot. */
+async function waitForHydration(devtools: Devtools, shot: Shot): Promise<void> {
+  const hydrated = await poll(
+    () => devtools.evaluate<boolean>("document.documentElement.dataset.hydrated === 'true'"),
+    15_000,
+  )
+  if (!hydrated) throw new Error(`${shot.file}: ${shot.hash} did not hydrate within 15s`)
 }
 
 /** Open one route, wait for the page to settle, and write the PNG. */
@@ -104,13 +127,7 @@ async function take(devtools: Devtools, url: string, shot: Shot): Promise<void> 
     deviceScaleFactor: shot.scale,
     mobile: false,
   })
-  await devtools.send("Page.navigate", { url: `${url}${shot.hash}` })
-  const hydrated = await poll(
-    () => devtools.evaluate<boolean>("document.documentElement.dataset.hydrated === 'true'"),
-    15_000,
-  )
-  if (!hydrated) throw new Error(`${shot.hash} did not hydrate within 15s`)
-  await applyPalette(devtools, shot.palette)
+  await open(devtools, url, shot)
   await devtools.evaluate<null>(`(async () => {
     await document.fonts.ready
     globalThis.scrollTo({ top: 0, behavior: "instant" })
@@ -130,22 +147,10 @@ async function main(): Promise<void> {
   await Deno.mkdir(OUT_DIRECTORY, { recursive: true })
   const server = await serveDist(DIST_DIRECTORY, BASE, 0)
   const profile = await Deno.makeTempDir({ prefix: "pages-screenshots-" })
-  const process = new Deno.Command(chromium, {
-    args: [
-      "--headless=new",
-      "--no-sandbox",
-      "--disable-gpu",
-      "--disable-dev-shm-usage",
-      "--no-first-run",
-      "--hide-scrollbars",
-      "--remote-debugging-port=0",
-      `--user-data-dir=${profile}`,
-      "about:blank",
-    ],
-    stdout: "null",
-    stderr: "null",
-  }).spawn()
+  let process: Deno.ChildProcess | undefined
   let devtools: Devtools | undefined
+  // `shutdownChromium` removes the profile even when no browser ever started, so a failed spawn
+  // leaves no folder behind.
   const teardown = async () => {
     await shutdownChromium(process, profile, devtools)
     await server.close()
@@ -156,6 +161,21 @@ async function main(): Promise<void> {
   }
 
   try {
+    process = new Deno.Command(chromium, {
+      args: [
+        "--headless=new",
+        "--no-sandbox",
+        "--disable-gpu",
+        "--disable-dev-shm-usage",
+        "--no-first-run",
+        "--hide-scrollbars",
+        "--remote-debugging-port=0",
+        `--user-data-dir=${profile}`,
+        "about:blank",
+      ],
+      stdout: "null",
+      stderr: "null",
+    }).spawn()
     devtools = await connect(await debuggingPort(profile))
     await devtools.send("Page.enable", {})
     for (const shot of SHOTS) await take(devtools, server.url, shot)
