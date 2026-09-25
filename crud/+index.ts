@@ -76,11 +76,3 @@ export type {
   SoftDeletable,
   StoreErrorLike,
 } from "./types.ts"
-
-// Re-exported from spy4x/ts-libs, not defined here. Each name is one another package in this
-// repository still imports from this barrel: `ui-guide/sections/crud.tsx` (`FieldIssue`,
-// `ValidationModel`, `search`) and the catalogue's allow-list in `ui-guide/coverage.ts`
-// (`ValidationType`). Everything else — `FORM_FIELD`, `setFieldIssue`, `validateSchema`,
-// `filterRows`, … — is imported from ts-libs directly.
-export { search } from "@spy4x/platform/universal/text"
-export { type FieldIssue, type ValidationModel, ValidationType } from "@spy4x/validation/model"

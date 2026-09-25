@@ -51,9 +51,7 @@ export const EXPORTS_WITHOUT_DEMO: Record<PackageId, readonly AllowedExport[]> =
   charts: [],
   system: [],
   map: [],
-  crud: [
-    { name: "ValidationType", reason: "An enum of validation states, not a component." },
-  ],
+  crud: [],
 }
 
 /**
