@@ -1,50 +1,54 @@
 /**
- * The catalogue's coverage rule: every component a catalogued package exports has a demo.
+ * The catalogue's coverage rule: every value a catalogued package exports is shown somewhere.
  *
- * One rule and one allow-list. A value export is a **component** when it is named like one —
- * {@link isComponentName} — and a helper otherwise; helpers need no entry anywhere. A component must
- * have a card in some section, unless {@link EXPORTS_WITHOUT_DEMO} names it with a reason.
+ * A **component** — {@link isComponent} — needs a card in a component section. Anything else — a
+ * function, a constant, an enum, a label map — needs a card or an example card that names it in
+ * its `covers` (`example.tsx`). An export with neither must be named by {@link allowedExports},
+ * with a reason.
  *
  * The exports are read from the package rather than from a list, and from the barrel *and* every
- * subpath module the package publishes, so a component reachable only through its own subpath is
+ * subpath module the package publishes, so an export reachable only through its own subpath is
  * still seen. `coverage.test.ts` runs {@link coverageProblems} over that read and fails with the
- * offender's name when the rule is broken: a component with no demo, an allow-list entry the package
- * does not export, an allow-list entry whose component has a demo after all, and a demo keyed to a
- * name its package does not export.
+ * offender's name when the rule is broken: an export with no card or example, an allow-list entry
+ * the package does not export or that is covered after all, and a card or example naming a name
+ * its package does not export.
  */
 
 import * as charts from "@preact-components/charts"
+import * as cn from "@preact-components/cn"
 import * as crud from "@preact-components/crud"
 import * as map from "@preact-components/map"
+import * as signals from "@preact-components/signals"
 import * as system from "@preact-components/system"
+import * as theme from "@preact-components/theme"
 import * as ui from "@preact-components/ui"
 import { parse } from "@std/jsonc"
-import { catalogueSections, type PackageId, packageIds } from "./registry.ts"
+import { EXAMPLES_PENDING } from "./examples-pending.ts"
+import { catalogueSections, coveredPackageIds, exampleDemos, type PackageId } from "./registry.ts"
 
 /** Barrel namespace of every catalogued package, keyed the way the catalogue keys it. */
-const BARRELS: Record<PackageId, object> = { ui, charts, system, crud, map }
+const BARRELS: Record<PackageId, object> = { ui, charts, system, crud, map, signals, theme, cn }
+
+/** One package's value exports: each name, and the value it is bound to. */
+export type PackageNamespace = Readonly<Record<string, unknown>>
 
 /** The repository root: the parent of every package directory. */
 const ROOT = new URL("../", import.meta.url)
 
-/** One component-named export the catalogue does not demonstrate, and why it does not. */
+/** One export the catalogue does not show, and why it does not. */
 export interface AllowedExport {
   /** Value export name, exactly as its package exports it. */
   name: string
-  /** Why there is no card: it is not a component, or its demo is still owed. */
+  /** Why there is no card or example. */
   reason: string
 }
 
 /**
- * Component-named exports with no demo — the catalogue's one allow-list.
+ * Exports with no card and no example, each with a reason — the allow-list for anything other
+ * than a pending example, which {@link EXAMPLES_PENDING} lists instead.
  *
- * Two cases live here, and both read the same way to the check: the name is component-shaped and no
- * card is expected. Either it is not a component at all (an `enum` is an object, not something to
- * render), or it is a component whose demo somebody still owes. The reason is what tells them apart
- * for a reader, and it is required because an entry with no argument is how a list rots.
- *
- * An entry the package no longer exports, and an entry whose component has been demoed since, are
- * both failures — so a name cannot be parked here and forgotten.
+ * The reason is required because an entry with no argument is how a list rots. An entry the
+ * package no longer exports, and an entry covered since, are both failures.
  */
 export const EXPORTS_WITHOUT_DEMO: Record<PackageId, readonly AllowedExport[]> = {
   ui: [],
@@ -52,26 +56,33 @@ export const EXPORTS_WITHOUT_DEMO: Record<PackageId, readonly AllowedExport[]> =
   system: [],
   map: [],
   crud: [],
+  signals: [],
+  theme: [],
+  cn: [],
 }
 
+/** The reason every {@link EXAMPLES_PENDING} name carries in {@link allowedExports}. */
+export const PENDING_REASON = "example pending (#215)"
+
 /**
- * Packages that carry a `deno.json` and are deliberately not demo sources.
- *
- * `coverage.test.ts` walks the top-level directories and fails when one with a package config is in
- * neither this record nor {@link packageIds}, so a package added later has to make a decision:
- * covering it and excluding it are both one line, and both are visible in review.
+ * The whole allow-list: {@link EXPORTS_WITHOUT_DEMO}, plus every {@link EXAMPLES_PENDING} name with
+ * {@link PENDING_REASON}.
+ */
+export const allowedExports = Object.fromEntries(
+  coveredPackageIds.map((id) => [id, [
+    ...EXPORTS_WITHOUT_DEMO[id],
+    ...EXAMPLES_PENDING[id].map((name) => ({ name, reason: PENDING_REASON })),
+  ]]),
+) as unknown as Record<PackageId, readonly AllowedExport[]>
+
+/**
+ * Packages that carry a `deno.json` and are deliberately not covered. `coverage.test.ts` fails when
+ * a package directory is in neither this record nor {@link coveredPackageIds}.
  */
 export const EXCLUDED_PACKAGES = {
-  cn: {
-    reason:
-      "One function, no component to demo — see cn/README.md for the theme-class rule instead of a catalogue card.",
-  },
   icons: {
     reason:
       "Covered by the icon gallery: it reads the barrel itself, so a new glyph is in the catalogue with no entry here.",
-  },
-  theme: {
-    reason: "Design tokens and a Tailwind preset — CSS, no components and nothing to render.",
   },
   "ui-guide": {
     reason:
@@ -81,49 +92,50 @@ export const EXCLUDED_PACKAGES = {
     reason:
       "The GitHub Pages demo, this guide's host app. A workspace member for its build-only pins, not a package: it publishes nothing.",
   },
-  signals: {
-    reason:
-      "State factories and pure functions — a store, a sort comparator, a validator — with nothing to render. It exported `For` and `Show` until `@preact/signals/utils` was found to ship both; what is left is `signals/README.md`'s to explain, not a card's.",
-  },
 } as const satisfies Record<string, { reason: string }>
 
 /**
- * Whether a value export is named the way a component is.
- *
- * Components are PascalCase: an initial capital and a lower-case letter somewhere after it. That
- * leaves camelCase (`clampProgress`) and all-caps constants (`DEFAULT_AXIS_COLOR`, `CONFLICT`) as
- * helpers, which is the convention every package already writes, and it keeps `D3LineChart` and
- * `OnOffButtons` on the component side.
- *
- * The one thing it cannot see is a component deliberately named in camelCase. Nothing in these
- * packages is, and a component that were would be caught in review rather than here.
+ * Whether a value export is named the way a component is: PascalCase, an initial capital and a
+ * lower-case letter after it. `D3LineChart` is; `clampProgress` and `DEFAULT_AXIS_COLOR` are not.
  *
  * @param name Value export name.
- * @returns `true` when the name reads as a component's.
  */
 export function isComponentName(name: string): boolean {
   return /^[A-Z]/.test(name) && /[a-z]/.test(name)
 }
 
-/** Component names one package's sections demonstrate, in render order. */
+/**
+ * Whether an export is a component: a function named like one. A PascalCase object — an enum such
+ * as `ThemeValue` — is not, so an example can cover it.
+ *
+ * @param name Value export name.
+ * @param value The value it is bound to.
+ */
+export function isComponent(name: string, value: unknown): boolean {
+  return isComponentName(name) && typeof value === "function"
+}
+
+/** Names one package's component sections demonstrate, in render order. */
 export function demoedNamesOf(id: PackageId): string[] {
-  return catalogueSections.filter((section) => section.package === id).flatMap((s) => s.names)
+  return catalogueSections
+    .filter((section) => section.package === id && section.kind === "component")
+    .flatMap((section) => section.names)
+}
+
+/** Names one package's example cards cover, in render order. */
+export function exampledNamesOf(id: PackageId): string[] {
+  return catalogueSections
+    .filter((section) => section.package === id && section.kind === "example")
+    .flatMap((section) => section.names.flatMap((key) => exampleDemos[key].covers))
 }
 
 /**
- * A package's subpath modules, resolved from its `deno.json` `exports` map: everything the map
- * publishes besides the barrel itself.
- *
- * {@link valueExportsOf} walks this same list to decide which modules to read, and
- * `coverage.test.ts` walks it too to build its fixtures, so the read and the test can never drift
- * apart on which modules count as a package's subpath surface. A target that is not a TypeScript
- * source is skipped — every catalogued package's `exports` map is all `.ts`/`.tsx` today, but
- * nothing here assumes that stays true — and one declared as anything but a string is an error
- * rather than a silent skip.
+ * A package's subpath modules, resolved from its `deno.json` `exports` map: everything it publishes
+ * besides the barrel. A target that is not TypeScript is skipped.
  *
  * @param id Package to read.
- * @returns Each subpath entry's own key and its target module resolved to an importable URL.
- * @throws When the package config declares no `exports` object, or declares a non-string target.
+ * @returns Each subpath key and its module as an importable URL.
+ * @throws When the config declares no `exports` object, or a non-string target.
  */
 export async function subpathModulesOf(
   id: PackageId,
@@ -149,73 +161,87 @@ export async function subpathModulesOf(
 }
 
 /**
- * Every value export a consumer can reach in one package: the barrel, and every subpath module.
- *
- * The barrel alone is not enough. A component exported from its own module and never re-exported is
- * reachable through `@preact-components/ui/its-module` and would otherwise be invisible to this
- * check, which is how one shipped with no card before.
+ * Every value export a consumer can reach in one package: the barrel, and every subpath module, since
+ * an export only its own subpath carries is otherwise invisible.
  *
  * @param id Package to read.
- * @returns Its value export names, barrel first, each once.
- * @throws When the package config declares no `exports` object, or declares a non-string target.
+ * @throws When the config declares no `exports` object, or a non-string target.
  */
-export async function valueExportsOf(id: PackageId): Promise<string[]> {
-  const names = new Set(Object.keys(BARRELS[id]))
+export async function valueExportsOf(id: PackageId): Promise<PackageNamespace> {
+  const merged: Record<string, unknown> = { ...BARRELS[id] }
   for (const { href } of await subpathModulesOf(id)) {
-    const namespace = await import(href) as object
-    for (const name of Object.keys(namespace)) names.add(name)
+    Object.assign(merged, await import(href) as object)
   }
 
-  return [...names]
+  return merged
 }
 
 /** Every catalogued package's value exports, keyed by package. */
-export async function packageExports(): Promise<Record<PackageId, string[]>> {
-  const read = await Promise.all(packageIds.map(async (id) => [id, await valueExportsOf(id)]))
-  return Object.fromEntries(read) as Record<PackageId, string[]>
+export async function packageExports(): Promise<Record<PackageId, PackageNamespace>> {
+  const read = await Promise.all(
+    coveredPackageIds.map(async (id) => [id, await valueExportsOf(id)]),
+  )
+  return Object.fromEntries(read) as Record<PackageId, PackageNamespace>
 }
 
 /**
  * Every way the catalogue and the packages it covers disagree, one message per problem.
  *
- * Both inputs are parameters so a test can drive the rule with an export list or an allow-list the
- * shipped tree cannot produce: in a healthy tree every list agrees, and a check that can only be run
- * against agreement proves nothing.
+ * Both inputs are parameters so a test can drive the rule with exports or an allow-list the shipped
+ * tree cannot produce: in a healthy tree every list agrees, and a check that can only be run against
+ * agreement proves nothing.
  *
  * @param exports Each package's value exports; normally {@link packageExports}'.
- * @param allowed Component-named exports excused from having a demo; defaults to the shipped list.
+ * @param allowed Exports excused from having a card or example; defaults to {@link allowedExports}.
+ * @param examplesOf Names a package's examples cover; defaults to {@link exampledNamesOf}.
  * @returns One message per problem, package by package; empty when the catalogue is complete.
  */
 export function coverageProblems(
-  exports: Record<PackageId, readonly string[]>,
-  allowed: Record<PackageId, readonly AllowedExport[]> = EXPORTS_WITHOUT_DEMO,
+  exports: Record<PackageId, PackageNamespace>,
+  allowed: Record<PackageId, readonly AllowedExport[]> = allowedExports,
+  examplesOf: (id: PackageId) => readonly string[] = exampledNamesOf,
 ): string[] {
   const problems: string[] = []
 
-  for (const id of packageIds) {
-    const exported = new Set(exports[id])
+  for (const id of coveredPackageIds) {
+    const exported = new Set(Object.keys(exports[id]))
     const demoed = new Set(demoedNamesOf(id))
+    const exampled = new Set(examplesOf(id))
     const excused = new Set(allowed[id].map((entry) => entry.name))
 
-    for (const name of exported) {
-      if (!isComponentName(name) || demoed.has(name) || excused.has(name)) continue
-      problems.push(
-        `${id} exports ${name} and no section demonstrates it — write a demo, or add an ` +
-          `EXPORTS_WITHOUT_DEMO entry saying why there is none`,
-      )
+    for (const [name, value] of Object.entries(exports[id])) {
+      if (demoed.has(name) || excused.has(name)) continue
+      if (isComponent(name, value)) {
+        problems.push(
+          `${id} exports the component ${name} and no section demonstrates it — write a demo ` +
+            `card (an example does not count), or add an EXPORTS_WITHOUT_DEMO entry saying why`,
+        )
+      } else if (!exampled.has(name)) {
+        problems.push(
+          `${id} exports ${name} and no card or example covers it — write an example, or add ` +
+            `an EXPORTS_WITHOUT_DEMO entry saying why there is none`,
+        )
+      }
     }
 
     for (const { name } of allowed[id]) {
       if (!exported.has(name)) {
-        problems.push(`${id} does not export ${name}, which EXPORTS_WITHOUT_DEMO names`)
-      } else if (demoed.has(name)) {
-        problems.push(`${id}'s ${name} has a demo, so its EXPORTS_WITHOUT_DEMO entry is stale`)
+        problems.push(`${id} does not export ${name}, which the allow-list names`)
+      } else if (
+        demoed.has(name) || (exampled.has(name) && !isComponent(name, exports[id][name]))
+      ) {
+        problems.push(`${id}'s ${name} has a card or an example, so its allow-list entry is stale`)
       }
     }
 
     for (const name of demoed) {
       if (!exported.has(name)) {
         problems.push(`the ${id} sections demo ${name}, which ${id} does not export`)
+      }
+    }
+    for (const name of exampled) {
+      if (!exported.has(name)) {
+        problems.push(`the ${id} examples cover ${name}, which ${id} does not export`)
       }
     }
   }

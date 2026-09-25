@@ -1,0 +1,91 @@
+/**
+ * Example cards: how the guide shows an export that renders nothing — a function, a constant, a
+ * label map.
+ *
+ * A component card shows the component. An example card shows code and what that code returns,
+ * computed by running the real export when the card renders, so the output on the page cannot
+ * drift from what the library does. One example may cover several related exports; `covers` names
+ * them, and `coverage.ts` counts those names as covered.
+ */
+
+import type { JSX } from "preact"
+import type { Demo } from "./registry.ts"
+
+/** One example, as a section writes it. */
+export interface Example {
+  /** Card heading, e.g. `"cn()"`. */
+  title: string
+  /** One sentence on what the export is for. */
+  summary: string
+  /** The code a reader copies: the same calls {@link Example.run} makes. */
+  snippet: string
+  /** Every export the example demonstrates, as its package exports it; at least one. */
+  covers: readonly [string, ...string[]]
+  /** Calls the real export and returns what the card prints as its output. */
+  run: () => unknown
+}
+
+/** A section's examples, keyed by card id: the card renders as `id="demo-<key>"`. */
+export type ExampleFragment = Record<string, Example>
+
+/** An example resolved into the registry's card shape, with its heading and its covered names. */
+export interface ExampleDemo extends Demo {
+  title: string
+  covers: readonly [string, ...string[]]
+}
+
+/**
+ * Prints a value the way a reader expects to see a result: JSON, with the values JSON drops spelled
+ * out instead of lost.
+ *
+ * `undefined`, functions, `bigint`, `Map` and `Set` have no JSON form; each is printed as a short
+ * tag so an example returning one still shows something true.
+ *
+ * @param value What an example's `run` returned.
+ * @returns The text the card prints.
+ */
+export function formatOutput(value: unknown): string {
+  const tagged = (_key: string, item: unknown): unknown => {
+    if (item === undefined) return "<undefined>"
+    if (typeof item === "function") return `<function ${item.name || "anonymous"}>`
+    if (typeof item === "bigint") return `${item}n`
+    if (item instanceof Map) return Object.fromEntries(item)
+    if (item instanceof Set) return [...item]
+    return item
+  }
+  return JSON.stringify(value, tagged, 2)
+}
+
+/**
+ * Turns a section's examples into registry cards whose live part is the output of running them.
+ *
+ * `run` is called inside the card's render, so it runs on the server render and again in the
+ * browser, never at import time.
+ *
+ * @param examples The section's examples.
+ * @returns One card per example, keyed as given.
+ */
+export function exampleDemos(examples: ExampleFragment): Record<string, ExampleDemo> {
+  return Object.fromEntries(
+    Object.entries(examples).map(([key, example]) => [key, {
+      title: example.title,
+      summary: example.summary,
+      snippet: example.snippet,
+      covers: example.covers,
+      render: () => <ExampleOutput run={example.run} />,
+    }]),
+  )
+}
+
+/** The output block of an example card: what `run` returned, formatted. */
+function ExampleOutput({ run }: { run: () => unknown }): JSX.Element {
+  return (
+    <figure>
+      <figcaption class="mb-1 text-xs text-gray-500 dark:text-gray-400">Output</figcaption>
+      <pre
+        data-e2e="example-output"
+        class="overflow-x-auto font-mono text-xs whitespace-pre-wrap [overflow-wrap:anywhere] text-gray-900 dark:text-gray-100"
+      ><code>{formatOutput(run())}</code></pre>
+    </figure>
+  )
+}

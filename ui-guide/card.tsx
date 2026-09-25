@@ -21,6 +21,8 @@ export interface DemoCardProps {
   snippet: string
   /** Classes the card applies; a class card renders them as chips. */
   classes?: string[]
+  /** Show the usage block open: an example card's code is its content, not a detail. */
+  usageOpen?: boolean
   /** Clipboard port, forwarded to the copy button. */
   copy?: (text: string) => void | Promise<void>
   /** The live example. */
@@ -38,7 +40,7 @@ export interface DemoCardProps {
  * @param props See {@link DemoCardProps}.
  */
 export function DemoCard(
-  { name, label, summary, snippet, classes, copy, children }: DemoCardProps,
+  { name, label, summary, snippet, classes, usageOpen, copy, children }: DemoCardProps,
 ): JSX.Element {
   return (
     <article
@@ -78,7 +80,7 @@ export function DemoCard(
       </p>
       <div class="mb-3 overflow-visible rounded-md bg-gray-50 p-4 dark:bg-gray-900">{children}</div>
       <div class="flex items-start justify-between gap-3" data-e2e="usage">
-        <details class="min-w-0 flex-1">
+        <details class="min-w-0 flex-1" open={usageOpen}>
           <summary class="cursor-pointer text-xs text-gray-500 dark:text-gray-400">Usage</summary>
           <pre class="mt-2 overflow-x-auto rounded-md bg-gray-900 p-3 text-xs text-gray-100">
             <code>{snippet}</code>

@@ -15,7 +15,7 @@ import { CopyButton, copyToClipboard } from "@preact-components/ui/copy-button"
 import { options } from "preact"
 import { render } from "preact-render-to-string"
 import { DemoCard, type DemoCardProps, UIGuide } from "./+index.tsx"
-import { catalogueNames, classDemos, demoRegistry } from "./registry.ts"
+import { cardLabel, catalogueNames, demoRegistry } from "./registry.ts"
 
 /** A clipboard port, in the shape `UIGuideProps.copy` takes. */
 type CopyPort = (text: string) => void | Promise<void>
@@ -175,9 +175,9 @@ describe("usage block copy controls", () => {
 
     expect(labels.length).toBe(catalogueNames.length)
     for (const name of catalogueNames) {
-      // A component card names the component, a class card its title; either way no control is one
-      // of thirty identical "Copy" buttons to a screen reader.
-      expect(labels, name).toContain(classDemos[name]?.title ?? `<${name} />`)
+      // A component card names the component, a class or example card its title; either way no one
+      // control is one of thirty identical "Copy" buttons to a screen reader.
+      expect(labels, name).toContain(cardLabel(name))
     }
   })
 })

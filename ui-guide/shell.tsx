@@ -26,6 +26,7 @@ import { DemoCard, MissingDemoBanner } from "./card.tsx"
 import { IconGallery, iconNames } from "./icons.tsx"
 import { CatalogInstructions } from "./instructions.tsx"
 import {
+  cardLabel,
   catalogueNames,
   type CatalogueSection,
   classDemos,
@@ -479,7 +480,7 @@ function NavSection(
                     : "text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800",
                 )}
               >
-                {classDemos[name]?.title ?? name}
+                {section.kind === "component" ? name : cardLabel(name)}
               </a>
             </li>
           )
@@ -623,18 +624,19 @@ function PackagePage(
             </div>
             <div class="grid grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))] gap-4 [&>article:has([role=menu])]:col-span-full [&>article:has(table)]:col-span-full">
               {demos.map(([name, demo]) => {
-                // A class card is headed by its own title and lists the classes it applies; a
-                // component card is headed by the component. `classDemos` is keyed by card id, so a
-                // component name can never collide with one.
+                // A class card is headed by its own title and lists the classes it applies, an
+                // example card by its title with its code open; a component card is headed by the
+                // component.
                 const classDemo = section.kind === "class" ? classDemos[name] : undefined
                 return (
                   <DemoCard
                     key={name}
                     name={name}
-                    label={classDemo?.title ?? `<${name} />`}
+                    label={cardLabel(name)}
                     summary={demo.summary}
                     snippet={demo.snippet}
                     classes={classDemo?.classes}
+                    usageOpen={section.kind === "example"}
                     copy={copy}
                   >
                     {demo.render()}
