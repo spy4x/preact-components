@@ -1,6 +1,6 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
-import type { CsvColumn } from "./csv.ts"
+import type { CsvColumn } from "@spy4x/platform/universal/csv"
 import { type ExportRunProps, runExport } from "./export-run.ts"
 
 interface Row {

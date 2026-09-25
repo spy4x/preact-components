@@ -1,11 +1,11 @@
 import { cn } from "@preact-components/cn"
 import type { ComponentChildren, JSX } from "preact"
 import { useRef, useState } from "preact/hooks"
+import type { CsvColumn } from "@spy4x/platform/universal/csv"
 import { Button } from "./button.tsx"
-import type { CsvColumn } from "./csv.ts"
 import { runExport } from "./export-run.ts"
 
-/** One column of an {@link ExportButton}'s file — see `csv.ts`'s {@link CsvColumn}. */
+/** One column of an {@link ExportButton}'s file — see `@spy4x/platform/universal/csv`'s {@link CsvColumn}. */
 export type ExportButtonColumn<T> = CsvColumn<T>
 
 interface ExportButtonBaseProps<T> {
