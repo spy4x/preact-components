@@ -32,8 +32,6 @@ import {
   addDaysIso,
   dayInMonth,
   dayLabel,
-  isoToday,
-  isValidTimeZone,
   localeFirstWeekday,
   monthFirstWeekday,
   monthLabel,
@@ -41,6 +39,7 @@ import {
   startOfMonth,
   weekdayLabels,
 } from "./date.ts"
+import { todayInTz, validTimeZoneOr } from "@spy4x/time/tz"
 
 /** Why a day cannot be picked. */
 export type CalendarDayReason = "past" | "after" | "full" | "unavailable"
@@ -221,7 +220,7 @@ export function Calendar(
   // A zone the platform cannot resolve is the environment failing rather than the caller's code:
   // `Intl` answers an unknown one with a `RangeError`, and a grid that refuses to draw at all is a
   // worse answer than a grid whose "today" is UTC.
-  const currentDate = today ?? isoToday(isValidTimeZone(timeZone) ? timeZone : "UTC")
+  const currentDate = today ?? todayInTz(validTimeZoneOr(timeZone, "UTC"))
 
   // Six weeks, weekday-aligned: the leading cells step back into the previous month, then days
   // are appended until the grid is full.
