@@ -268,20 +268,68 @@ const TEXT_DRAWN_IN_BROWSER: Record<string, DrawnInBrowser> = {
       "Save exists only in the browser",
   },
   "demo-D3LineChart": {
-    selector: `svg[role="img"]`,
+    selector: `[data-e2e="d3-chart-slot"]`,
     parts: 2,
-    reason: "d3 draws the chart's axes and lines into its svg in an effect",
+    reason: "charts/d3-line-chart loads when the charts page opens: the served page holds a " +
+      "placeholder, and d3 draws the chart's axes, lines and legend in its place",
   },
   "demo-CompareChart": {
-    selector: `svg[role="img"]`,
+    selector: `[data-e2e="d3-chart-slot"]`,
     parts: 1,
-    reason: "d3 draws the chart's axes and lines into its svg in an effect",
+    reason: "charts/compare-chart loads when the charts page opens: the served page holds a " +
+      "placeholder, and the browser shows the toggle and the chart d3 draws in its place",
+  },
+  "demo-DEFAULT_AXIS_COLOR": {
+    selector: `[data-e2e="example-output"]`,
+    parts: 1,
+    reason: "charts/d3-line-chart loads when the charts page opens, and this output reads " +
+      "DEFAULT_D3_LINE_CHART_COLORS from it",
+  },
+  "demo-formatTimeTick": {
+    selector: `[data-e2e="example-output"]`,
+    parts: 1,
+    reason: "charts/d3-line-chart loads when the charts page opens, and this output calls " +
+      "formatTimeTick and defaultTooltipFormat from it",
+  },
+  "demo-yDomainFor": {
+    selector: `[data-e2e="example-output"]`,
+    parts: 1,
+    reason: "charts/d3-line-chart loads when the charts page opens, and this output calls " +
+      "yDomainFor from it",
+  },
+  "demo-assertD3Available": {
+    selector: `[data-e2e="example-output"]`,
+    parts: 1,
+    reason: "charts/d3-line-chart loads when the charts page opens, and this output calls " +
+      "assertD3Available from it",
   },
   "demo-Map": {
     selector: ".leaflet-control-container",
     parts: 1,
     reason: "Leaflet adds its zoom controls in an effect",
   },
+}
+
+/**
+ * Wait until the showing page has replaced every placeholder of a lazily loaded module
+ * (`ui-guide/lazy.ts`) with what that module draws: the charts page loads d3 when it opens, so its
+ * cards and examples read their placeholder text until the module arrives. Reading before then
+ * would find a listed part the same on both sides and fail for the wrong reason. A page with no
+ * placeholder returns at once; one still showing a placeholder after 15s is left for the text check
+ * to report.
+ *
+ * @param devtools The connected session, on the page about to be read.
+ */
+async function lazyContentShown(devtools: Devtools): Promise<void> {
+  await poll(
+    () =>
+      devtools.evaluate<boolean>(`(() => {
+        if (document.querySelector('[data-e2e="d3-chart-placeholder"]') !== null) return false
+        return ![...document.querySelectorAll('[data-e2e="example-output"]')]
+          .some((output) => output.textContent.includes("needs charts/d3-line-chart"))
+      })()`),
+    15_000,
+  )
 }
 
 /**
@@ -314,6 +362,7 @@ async function serverTextChecks(devtools: Devtools): Promise<void> {
   const seen = new Set<string>()
   for (const page of guidePages.filter((each) => each.id !== "all" && each.sections.length > 0)) {
     await openGuidePage(devtools, page.id)
+    await lazyContentShown(devtools)
     const live = await devtools.evaluate<Record<string, CardText>>(
       `(${CARD_TEXTS})(document, ${drawnBy})`,
     )
