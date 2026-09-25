@@ -312,11 +312,12 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
     `light canvas ${inkWithoutDark.before} → with data-theme="ink" alone ${inkWithoutDark.withInk}`,
   )
 
-  // A focused `.btn` has to show a ring of at least 3:1 against the page in every palette. Tailwind's
-  // `outline-*` utilities leave the ring's colour alone, so a `.btn` draws the browser's own focus
-  // colour unless preset.css sets one, and in a dark page that colour is near-black: #291 found it
-  // under ink, and #297 in the default dark palette (about 1.07:1). preset.css now points `.btn`'s
-  // ring at --color-focus-ring under any `.dark`, and the tone buttons use a lighter shade there.
+  // A focused `.btn` has to show a ring of at least 3:1 against the page and against a card, in
+  // every palette. Tailwind's `outline-*` utilities leave the ring's colour alone, so a `.btn`
+  // draws the browser's own focus colour unless preset.css sets one, and in a dark page that colour
+  // is near-black: #291 found it under ink, and #297 in the default dark palette (about 1.07:1).
+  // preset.css now points `.btn`'s ring at --color-focus-ring under any `.dark`, and the tone
+  // buttons use a lighter shade there.
   // `.btn` and its tones are classes this preset ships, not a component the catalogue instantiates
   // anywhere — the nearest catalogue card, "Button", is `ui/Button`, a different, Tailwind-utility
   // button with its own `focus-visible:ring-*` styling and no connection to this class at all. So
@@ -366,11 +367,18 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
       button.className = "btn ${buttonClass}"
       button.textContent = "Focus ring probe"
       button.id = "ink-focus-ring-probe"
-      button.style.position = "fixed"
-      button.style.top = "8px"
-      button.style.left = "8px"
-      button.style.zIndex = "99999"
-      document.body.appendChild(button)
+      // The button sits on a card painted in --color-surface, because a ring must read against a
+      // raised surface as well as the page: #297's second report was orange-700 at 2.98:1 on an
+      // ink card, while the same ring clears 3:1 on ink's darker page.
+      const card = document.createElement("div")
+      card.style.position = "fixed"
+      card.style.top = "8px"
+      card.style.left = "8px"
+      card.style.zIndex = "99999"
+      card.style.padding = "12px"
+      card.style.background = "var(--color-surface)"
+      card.appendChild(button)
+      document.body.appendChild(card)
 
       const box = button.getBoundingClientRect()
       return { x: box.x + box.width / 2, y: box.y + box.height / 2 }
@@ -406,6 +414,7 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
     const focusRing = await devtools.evaluate<{
       outlineColor: string
       pageBackground: string
+      cardBackground: string
       ratio: number
     }>(`(async () => {
       const root = document.documentElement
@@ -414,7 +423,7 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
 
       const button = document.getElementById("ink-focus-ring-probe")
       if (document.activeElement !== button) {
-        button.remove()
+        button.parentElement.remove()
         throw new Error(
           "the probe button never received focus — document.activeElement is " +
             (document.activeElement ? document.activeElement.tagName : "nothing") +
@@ -425,7 +434,7 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
 
       const outlineStyle = getComputedStyle(button).outlineStyle
       if (outlineStyle === "none") {
-        button.remove()
+        button.parentElement.remove()
         throw new Error(
           "the probe button never entered :focus-visible — outline-style is none, so " +
             "outlineColor below would be the browser's unrelated default rather than anything " +
@@ -442,6 +451,7 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
       )
       const outlineColor = getComputedStyle(button).outlineColor
       const pageBackground = getComputedStyle(document.body).backgroundColor
+      const cardBackground = getComputedStyle(button.parentElement).backgroundColor
 
       // Chromium's computed-style serialization keeps a colour in whatever colour function it was
       // authored in rather than always converting to rgb() — this repository's tokens are oklch(),
@@ -486,23 +496,26 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
         const [r, g, b] = linearRgb(color).map((channel) => Math.max(0, Math.min(1, channel)))
         return 0.2126 * r + 0.7152 * g + 0.0722 * b
       }
-      const lighter = Math.max(luminance(outlineColor), luminance(pageBackground))
-      const darker = Math.min(luminance(outlineColor), luminance(pageBackground))
-      const ratio = (lighter + 0.05) / (darker + 0.05)
+      function contrast(background) {
+        const lighter = Math.max(luminance(outlineColor), luminance(background))
+        const darker = Math.min(luminance(outlineColor), luminance(background))
+        return (lighter + 0.05) / (darker + 0.05)
+      }
+      const ratio = Math.min(contrast(pageBackground), contrast(cardBackground))
 
-      button.remove()
+      button.parentElement.remove()
       root.classList.toggle("dark", wasDark)
       if (wasTheme === null) root.removeAttribute("data-theme")
       else root.setAttribute("data-theme", wasTheme)
 
-      return { outlineColor, pageBackground, ratio }
+      return { outlineColor, pageBackground, cardBackground, ratio }
     })()`)
     check(
       `${palette.name}, a focused .btn.${buttonClass}'s outline clears 3:1 contrast against the ` +
-        "page",
+        "page and against a card",
       focusRing.ratio >= 3,
-      `outline ${focusRing.outlineColor} vs page ${focusRing.pageBackground}, ratio ` +
-        `${focusRing.ratio.toFixed(2)}:1`,
+      `outline ${focusRing.outlineColor} vs page ${focusRing.pageBackground} and card ` +
+        `${focusRing.cardBackground}, lower ratio ${focusRing.ratio.toFixed(2)}:1`,
     )
   }
 }
