@@ -44,9 +44,9 @@ const DROPDOWN_STATE = `(() => {
  * `ui/`'s browser checks: Dropdown's pointer and keyboard contract, ToggleSwitch, OnOffButtons,
  * `Field`, Tooltip, Combobox, Toastr, DateRangePicker's focus contract in both its day-only and
  * `withTime` modes, Pagination's end controls, DataTable's sort-by-header and paging contract,
- * `ImageGallery`'s thumbnail strip and the shared `Lightbox` it opens, `ExportButton`'s two demo
- * instances, `FileInput`'s keyboard, drag-and-drop, refusal, preview-revocation and plain-form-post
- * contract, and — last — Modal's keyboard and focus contract.
+ * `ImageGallery`'s thumbnail strip and the shared `Lightbox` it opens, `FileInput`'s keyboard,
+ * drag-and-drop, refusal, preview-revocation and plain-form-post contract, and — last — Modal's
+ * keyboard and focus contract.
  *
  * This file runs last of every package's, and Modal's checks run last inside it, for the same
  * reason: Modal opens a real modal dialog, and a dialog that refused to close would sit in the top
@@ -9052,11 +9052,32 @@ async function fileInputKeyboardChecks(devtools: Devtools): Promise<void> {
     staged,
   )
   if (staged) {
+    // The native input the browser actually focuses is clipped to 1px (`sr-only`), so its own
+    // `:focus-visible` paints nothing a sighted keyboard user could see. The visible drop zone
+    // reads that state off its descendant with `has-[:focus-visible]:ring-*`, so it is the zone's
+    // own computed `boxShadow` (a Tailwind ring is implemented as one) that has to change, not the
+    // input's.
+    const zoneBefore = await devtools.evaluate<string>(
+      `getComputedStyle(document.querySelector('${FILE_INPUT_ZONE_SELECTOR}'))?.boxShadow ?? ""`,
+    )
+
     await pressKey(devtools, "Tab")
     const landed = await devtools.evaluate<boolean>(
       `document.activeElement === document.querySelector('${FILE_INPUT_SELECTOR}')`,
     )
     check("the FileInput native input is reachable with Tab", landed)
+
+    if (landed) {
+      const zoneAfter = await devtools.evaluate<string>(
+        `getComputedStyle(document.querySelector('${FILE_INPUT_ZONE_SELECTOR}'))?.boxShadow ?? ""`,
+      )
+      check(
+        "tabbing to the native input changes the visible drop zone's computed style, so keyboard " +
+          "focus is shown somewhere a sighted user can see it",
+        zoneAfter !== zoneBefore,
+        `unfocused boxShadow: ${JSON.stringify(zoneBefore)}, focused: ${JSON.stringify(zoneAfter)}`,
+      )
+    }
   }
 
   const focused = await devtools.evaluate<boolean>(`(() => {
@@ -9321,6 +9342,76 @@ async function fileInputTooManyRefusalCheck(
 }
 
 /**
+ * A refusal on a non-`multiple` `FileInput` must not clear a file already chosen: without
+ * `multiple`, `handleFiles` keeps at most one file, and a batch that accepts nothing new used to
+ * fall through to an empty list, discarding the earlier valid file along with the refused one.
+ *
+ * Runs right after {@link fileInputTooManyRefusalCheck}, which leaves the "Single file only" card
+ * holding `ok.png` — the file this check offers a wrong-type refusal against. `DOM.setFileInputFiles`
+ * is safe here for a single file, unlike the too-many check's own drop: the truncation that check's
+ * own doc describes only bites a `FileList` carrying more than one file, and this call always sets
+ * exactly one.
+ *
+ * @param devtools The connected session, on a hydrated page, right after the too-many check.
+ * @param fixture Real files on disk, from {@link writeFileInputFixtures}.
+ */
+async function fileInputRefusalKeepsPriorFileCheck(
+  devtools: Devtools,
+  fixture: FileInputFixture,
+): Promise<void> {
+  const inputSelector = `${FILE_INPUT_CARD} #${FILE_INPUT_SINGLE_ID}`
+
+  const before = await devtools.evaluate<string[]>(
+    `Array.from(document.querySelector('${inputSelector}')?.files ?? []).map((f) => f.name)`,
+  )
+  check(
+    "the single-file card already holds ok.png before this check offers a refusal",
+    before.includes("ok.png"),
+    `input.files: [${before.join(", ")}]`,
+  )
+  if (!before.includes("ok.png")) return
+
+  const nodeId = await domNodeId(devtools, inputSelector)
+  check(
+    "the single-file FileInput's native input is found for the wrong-type refusal",
+    nodeId !== null,
+  )
+  if (nodeId === null) return
+
+  await devtools.send("DOM.setFileInputFiles", { files: [fixture.wrongType], nodeId })
+
+  const readRefused = () =>
+    devtools.evaluate<string>(
+      `document.querySelector('${FILE_INPUT_SINGLE_REFUSED_SELECTOR}')?.textContent ?? ""`,
+    )
+  const settled = await poll(async () => (await readRefused()).includes("wrong-type"), 5_000)
+  const refused = await readRefused()
+  check(
+    "offering a wrong-type file to the single-file card refuses it instead of accepting it",
+    settled,
+    `refused: "${refused.trim()}"`,
+  )
+
+  const afterList = await devtools.evaluate<boolean>(
+    `document.querySelector('${FILE_INPUT_CARD} button[aria-label="Remove ok.png"]') !== null`,
+  )
+  check(
+    "ok.png is still in FileInput's own rendered list after the refusal, not cleared by it",
+    afterList,
+  )
+
+  const afterFiles = await devtools.evaluate<string[]>(
+    `Array.from(document.querySelector('${inputSelector}')?.files ?? []).map((f) => f.name)`,
+  )
+  check(
+    "ok.png is still in the native input's own files after the refusal, and notes.txt was never " +
+      "added to it",
+    afterFiles.includes("ok.png") && !afterFiles.includes("notes.txt"),
+    `input.files: [${afterFiles.join(", ")}]`,
+  )
+}
+
+/**
  * `FileInput` nested inside `Field` renders exactly one label, naming the real input, and that
  * input is reachable with Tab and readable as the browser's own accessible name — the unit test in
  * `ui/file-input.test.tsx` proves the same shape from the server-rendered string; this proves the
@@ -9358,9 +9449,10 @@ async function fileInputFieldNestingCheck(devtools: Devtools): Promise<void> {
 }
 
 /**
- * Every preview `URL.createObjectURL` creates is revoked exactly twice over: once when its own file
- * leaves the list, and once more, for whatever is still outstanding, when the whole card unmounts.
- * The same removal also checks the thing a rendered list update cannot prove by itself: that the
+ * A preview's `URL.createObjectURL` is revoked on two separate occasions, checked here as two
+ * separate increases of a patched revoke counter, not as an exact count: once when its own file
+ * leaves the list, and again, for whatever is still outstanding, when the whole card unmounts. The
+ * same removal also checks the thing a rendered list update cannot prove by itself: that the
  * removed file is genuinely gone from the native input's own `files`, the property a real `<form>`
  * post reads — not only out of the component's own rendered `<li>`.
  *
@@ -9448,7 +9540,7 @@ async function fileInputPreviewRevokeChecks(
 
 /**
  * A plain `<form method="post" enctype="multipart/form-data">` around its own `FileInput` instance
- * (`ui-guide/sections/inputs.tsx`'s third card, `id="guide-file-input-form"`) posts the chosen file
+ * (`ui-guide/sections/inputs.tsx`'s fifth card, `id="guide-file-input-form"`) posts the chosen file
  * with no script running at all — not merely no hydrated `onSubmit` to intercept it, but the whole
  * bundle disabled the way {@link enhancedFormsNoScriptChecks} disables it for `NewsletterForm` and
  * `ContactForm`, via `Emulation.setScriptExecutionDisabled` before a reload. That is what "without
@@ -9456,11 +9548,11 @@ async function fileInputPreviewRevokeChecks(
  * to call `preventDefault` still proves nothing about a visitor whose script never ran in the first
  * place, and only a page that genuinely never executed the bundle does.
  *
- * Three things are checked against that unhydrated page, in order: the visually hidden native input
- * (`sr-only`, not `display:none`) is still found by `DOM.setFileInputFiles` and still a real,
- * unhidden element — proving the hiding technique itself never depends on the bundle having run to
- * keep the control usable; the submit still produces a real `POST` whose multipart body carries the
- * chosen file, read the same way {@link enhancedFormsNoScriptChecks} reads its captured request; and
+ * Three things are checked against that unhydrated page, in order: the native input is still found
+ * by `DOM.setFileInputFiles`, and its computed `display` is still not `none` — the one property this
+ * check reads back, not the full `sr-only` technique — proving the input never depends on the bundle
+ * having run to stay reachable; the submit still produces a real `POST` whose multipart body carries
+ * the chosen file, read the same way {@link enhancedFormsNoScriptChecks} reads its captured request; and
  * the landed-on page carries the server's own marker, so the second check does not merely tell a
  * real POST from a client-side navigation without also confirming where it actually went.
  *
@@ -9503,7 +9595,7 @@ async function fileInputFormPostCheck(
       return style.display !== "none" && el.type === "file"
     })()`).catch(() => false)
     check(
-      "the list-less, unhydrated native input is still the sr-only technique, not display:none",
+      "the unhydrated native input still has display !== none, not the full sr-only technique",
       stillVisuallyHidden,
     )
 
@@ -9541,8 +9633,12 @@ async function fileInputFormPostCheck(
       : ""
     const body = request ? await requestBody(devtools, request) : ""
 
+    // Landing on the server's own marker is a sanity check on the local preview server's
+    // form-demo/ route, not proof of anything FileInput itself does — the component's contract
+    // ends at handing the browser a real multipart POST, which the check right after this one
+    // verifies directly from the captured request body.
     check(
-      "FileInput's plain form posts and lands on the server's own answer, no script involved",
+      "the preview server's form-demo/ route answers the plain-form post with its own marker",
       navigated && answer.includes("Thanks"),
       navigated
         ? `landed on a page whose own marker reads ${JSON.stringify(answer.slice(0, 60))}`
@@ -9609,6 +9705,7 @@ async function fileInputChecks(devtools: Devtools): Promise<void> {
     await fileInputDropCheck(devtools, fixture)
     await fileInputRefusalChecks(devtools, fixture)
     await fileInputTooManyRefusalCheck(devtools, fixture)
+    await fileInputRefusalKeepsPriorFileCheck(devtools, fixture)
     await fileInputFieldNestingCheck(devtools)
     await fileInputPreviewRevokeChecks(devtools, fixture)
     await fileInputFormPostCheck(devtools, fixture)

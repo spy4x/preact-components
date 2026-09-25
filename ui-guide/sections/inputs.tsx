@@ -723,7 +723,7 @@ function ToggleFieldDemo() {
 }
 
 /**
- * `FileInput` in six shapes: image-only and size-limited, disabled, nested inside a `Field`, capped
+ * `FileInput` in five shapes: image-only and size-limited, disabled, nested inside a `Field`, capped
  * at one file, and posting through a plain `<form>`.
  *
  * Selecting, dropping, refusing and removing a file are all browser-only, so what a card can show
@@ -738,7 +738,9 @@ function ToggleFieldDemo() {
  *
  * The "Single file only" card carries no `multiple`, so a second file dropped or picked alongside
  * the first is refused with reason `"too-many"` rather than silently dropped; the paragraph under it
- * echoes `onReject` the same way the first card does.
+ * echoes `onReject` the same way the first card does. It also restricts `accept` to PNG, which
+ * `pages/checks/ui.ts`'s `fileInputRefusalKeepsPriorFileCheck` uses to prove a later refusal — wrong
+ * type, on a card that accepts only one file — leaves the file already chosen in place.
  *
  * The last card's `<form>` carries no `onSubmit`: it is the plain post `FileInput`'s own doc
  * promises, proven by `pages/checks/ui.ts`'s `fileInputFormPostCheck` against the `form-demo/`
@@ -815,6 +817,7 @@ function FileInputDemo() {
         <FileInput
           id="guide-file-input-single"
           label="Attachment"
+          accept="image/png"
           onReject={(reasons) =>
             singleRefused.value = reasons.map((r) => `${r.file.name} (${r.reason})`)}
         />
