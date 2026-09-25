@@ -36,10 +36,17 @@ export interface MoneyInputProps {
   /** Shown, and announced, when the typed text cannot be parsed as an amount. */
   invalidMessage?: string
   /** Shown, and announced, when a parsed amount falls outside `min`/`max`. */
-  rangeMessage?: (bounds: MoneyInputBounds, currency: string, locale: string) => string
+  rangeMessage?: MoneyInputRangeMessage
   class?: string
   "aria-describedby"?: string
 }
+
+/** A {@link MoneyInputProps.rangeMessage} function. */
+export type MoneyInputRangeMessage = (
+  bounds: MoneyInputBounds,
+  currency: string,
+  locale: string,
+) => string
 
 function defaultRangeMessage(
   { min, max }: MoneyInputBounds,
@@ -53,6 +60,49 @@ function defaultRangeMessage(
   }
   if (min !== undefined) return `Enter an amount of at least ${formatMoney(min, currency, locale)}`
   return `Enter an amount of at most ${formatMoney(max as number, currency, locale)}`
+}
+
+/** What one edit of {@link MoneyInput}'s text resolves to — see {@link resolveMoneyInputEdit}. */
+export interface MoneyInputEdit {
+  /**
+   * The new `value` to report through `onChange`. Left out (rather than `undefined` meaning
+   * "clear it") when the text does not resolve to a value at all, so a caller can tell "report
+   * `null`" apart from "report nothing, the previous value stands" with a plain `"value" in edit`
+   * check instead of a second flag.
+   */
+  value?: number | null
+  /** The message to show, or `undefined` to clear whatever was shown before. */
+  message: string | undefined
+}
+
+/**
+ * The whole decision one edit of {@link MoneyInput}'s text makes, as a pure function with no
+ * signal, ref or DOM in it — everything {@link MoneyInput} itself does with an edit is call this
+ * and apply the result. Kept separate so every rule below is a plain, fast unit test instead of a
+ * simulated keystroke: empty text clears the value; text {@link parseMoney} refuses (a letter, too
+ * many fraction digits, an amount beyond `Number.MAX_SAFE_INTEGER`, …) reports `invalidMessage` and
+ * leaves the value where it was; a parsed amount outside `bounds` reports `rangeMessage` the same
+ * way; anything else reports the parsed value and clears the message.
+ */
+export function resolveMoneyInputEdit(
+  text: string,
+  currency: string,
+  locale: string,
+  bounds: MoneyInputBounds,
+  invalidMessage: string,
+  rangeMessage: MoneyInputRangeMessage = defaultRangeMessage,
+): MoneyInputEdit {
+  if (text.trim() === "") return { value: null, message: undefined }
+
+  const result = parseMoney(text, currency, locale)
+  if (!result.ok) return { message: invalidMessage }
+
+  const { min, max } = bounds
+  if ((min !== undefined && result.value < min) || (max !== undefined && result.value > max)) {
+    return { message: rangeMessage(bounds, currency, locale) }
+  }
+
+  return { value: result.value, message: undefined }
 }
 
 /**
@@ -137,23 +187,16 @@ export function MoneyInput(
     const text = event.currentTarget.value
     draft.value = text
 
-    if (text.trim() === "") {
-      message.value = undefined
-      onChange(null)
-      return
-    }
-
-    const result = parseMoney(text, currency, locale)
-    if (!result.ok) {
-      message.value = invalidMessage
-      return
-    }
-    if ((min !== undefined && result.value < min) || (max !== undefined && result.value > max)) {
-      message.value = rangeMessage({ min, max }, currency, locale)
-      return
-    }
-    message.value = undefined
-    onChange(result.value)
+    const edit = resolveMoneyInputEdit(
+      text,
+      currency,
+      locale,
+      { min, max },
+      invalidMessage,
+      rangeMessage,
+    )
+    message.value = edit.message
+    if ("value" in edit) onChange(edit.value as number | null)
   }
 
   function handleFocus() {

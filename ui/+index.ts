@@ -216,7 +216,14 @@ export {
   shouldRetargetFocus,
 } from "./modal.tsx"
 export { MoneyDisplay, type MoneyDisplayProps } from "./money-display.tsx"
-export { MoneyInput, type MoneyInputBounds, type MoneyInputProps } from "./money-input.tsx"
+export {
+  MoneyInput,
+  type MoneyInputBounds,
+  type MoneyInputEdit,
+  type MoneyInputProps,
+  type MoneyInputRangeMessage,
+  resolveMoneyInputEdit,
+} from "./money-input.tsx"
 export {
   NewsletterForm,
   type NewsletterFormLabels,
