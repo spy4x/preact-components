@@ -214,12 +214,18 @@ const progressTones: Record<ProgressTone, string> = {
   danger: "danger",
 }
 
-/** Every placement — the record is the coverage guard for `TooltipPlacement`. */
+/**
+ * Every placement — the record is the coverage guard for `TooltipPlacement`.
+ *
+ * The key order is the card's order, chosen for a phone: in the two-column grid, `right` sits in
+ * the left column and `left` in the right one, so each forced-visible hint opens towards the middle
+ * of the card rather than past its edge.
+ */
 const tooltipPlacements: Record<TooltipPlacement, string> = {
-  top: "top (default)",
   right: "right",
-  bottom: "bottom",
   left: "left",
+  top: "top (default)",
+  bottom: "bottom",
 }
 
 /** One example user per card, so the anatomy cards are about layout rather than about lorem. */
@@ -889,7 +895,7 @@ function TooltipDemo() {
             label={label}
             placement={placement}
             class="bg-gray-100 px-2 py-1 dark:bg-gray-700"
-            contentClass="visible opacity-100"
+            contentClass="visible max-w-32 opacity-100"
           >
             <span class="text-sm">{placement}</span>
           </Tooltip>
@@ -897,34 +903,39 @@ function TooltipDemo() {
         </div>
       ))}
       <div class="col-span-2 space-y-2 sm:col-span-4">
-        <Tooltip
-          content="An interactive trigger keeps its own tab stop, so the wrapper drops its own"
-          label="Archive the invoice"
-          focusable={false}
-          contentClass="visible opacity-100"
-        >
-          <button
-            type="button"
-            class="rounded-md border border-gray-300 px-2 py-1 text-sm hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700"
+        <div class="text-center">
+          <Tooltip
+            content="An interactive trigger keeps its own tab stop, so the wrapper drops its own"
+            label="Archive the invoice"
+            focusable={false}
+            contentClass="visible max-w-48 opacity-100"
           >
-            <IconTrashBin class="size-4" />
-            Archive
-          </button>
-        </Tooltip>
+            <button
+              type="button"
+              class="rounded-md border border-gray-300 px-2 py-1 text-sm hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700"
+            >
+              <IconTrashBin class="size-4" />
+              Archive
+            </button>
+          </Tooltip>
+        </div>
         <p class="text-xs text-gray-500 dark:text-gray-400">
           `focusable={false}` — with a {`<button>`}{" "}
           inside, a second tab stop for one control is a keyboard trap rather than a convenience.
         </p>
       </div>
       <div class="col-span-2 space-y-2 sm:col-span-4" data-e2e="tooltip-live">
-        <Tooltip
-          content="Escape hides this hint, and the pointer may rest on it while it is read"
-          label="Delivery estimate"
-          placement="bottom"
-          class="bg-gray-100 px-2 py-1 dark:bg-gray-700"
-        >
-          <span class="text-sm">Hover me, or tab to me</span>
-        </Tooltip>
+        <div class="text-center">
+          <Tooltip
+            content="Escape hides this hint, and the pointer may rest on it while it is read"
+            label="Delivery estimate"
+            placement="bottom"
+            class="bg-gray-100 px-2 py-1 dark:bg-gray-700"
+            contentClass="max-w-48"
+          >
+            <span class="text-sm">Hover me, or tab to me</span>
+          </Tooltip>
+        </div>
         <p class="text-xs text-gray-500 dark:text-gray-400">
           The one hint here that reveals itself. Point at it and it stays up while the pointer is on
           it, because the gap to it is the surface's own padding rather than dead space; press
