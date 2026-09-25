@@ -396,16 +396,17 @@ async function installBoxChecks(devtools: Devtools): Promise<void> {
  * paragraph's, and "inline" needs the note to end above the paragraph's top.
  *
  * Four cases, so each direction is proven at a viewport where a viewport breakpoint would answer
- * the other way:
+ * the other way, plus two readings that pin the threshold:
  *
  * 1. The catalogue card as rendered, at the run's own viewport (at least 640px, asserted, so the
  *    old `sm:` breakpoint would have floated it) and narrower than 30rem (also asserted): inline.
- * 2. The same column widened to 640px on that viewport: beside the paragraph.
+ * 2. The same column widened to 640px on that viewport: beside the paragraph. Then 479px (inline)
+ *    and 480px (beside), so a threshold moved away from 30rem in either direction fails one.
  * 3. The card as rendered at a 375px viewport: inline.
  * 4. The column widened to 640px at that 375px viewport: beside the paragraph.
  *
- * The column's inline `width` and `max-width` are put back and the viewport override is cleared in
- * a `finally`, so a package block that runs after this one is handed the page it expects.
+ * The viewport override is cleared and then the column's inline `width` and `max-width` are put
+ * back in a `finally`, so a package block that runs after this one is handed the page it expects.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -473,6 +474,18 @@ async function marginNoteChecks(devtools: Devtools): Promise<void> {
       isBeside(wideDesktop),
       describe(wideDesktop),
     )
+    const justBelow = await layoutOf("479px")
+    check(
+      "MarginNote stays inline in a 479px column, one pixel under the 30rem threshold",
+      isInline(justBelow),
+      describe(justBelow),
+    )
+    const atThreshold = await layoutOf("480px")
+    check(
+      "MarginNote floats beside its paragraph in a 480px column, exactly the 30rem threshold",
+      isBeside(atThreshold),
+      describe(atThreshold),
+    )
     await layoutOf("")
 
     await devtools.send("Emulation.setDeviceMetricsOverride", {
@@ -495,8 +508,12 @@ async function marginNoteChecks(devtools: Devtools): Promise<void> {
       describe(widePhone),
     )
   } finally {
-    await layoutOf("")
-    await devtools.send("Emulation.clearDeviceMetricsOverride")
+    // The viewport first: if putting the column back throws, later blocks still get their window.
+    try {
+      await devtools.send("Emulation.clearDeviceMetricsOverride")
+    } finally {
+      await layoutOf("")
+    }
   }
 }
 
