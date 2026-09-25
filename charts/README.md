@@ -113,7 +113,7 @@ No, unless you render `D3LineChart` or `CompareChart`. This is the full list:
 | `d3-line-chart` (`D3LineChart`)                 | `scales`, `colors`, `time-series`, `payload`     |
 | `compare-chart` (`CompareChart`)                | `line-chart`, `bars`, `donut-chart`, `kpi`       |
 | the package barrel `.` (re-exports both halves) | `metric-panel`, `use-in-view`, the `svg` barrel  |
-| `ui-guide`'s registry (imports the barrel)      | every suite here except `d3-line-chart.test.tsx` |
+| `ui-guide`'s charts sections (load it lazily)   | every suite here except `d3-line-chart.test.tsx` |
 | `compare-chart.test.tsx`                        | —                                                |
 
 `CompareChart` imports `D3LineChart`, so it needs d3 for that reason alone. Type-only imports count
