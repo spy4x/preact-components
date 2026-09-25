@@ -31,6 +31,12 @@ export {
 } from "./button.tsx"
 export { Checkbox, type CheckboxProps } from "./checkbox.tsx"
 export {
+  type CiStatus,
+  CiStatusPill,
+  type CiStatusPillProps,
+  normalizeCiStatus,
+} from "./ci-status-pill.tsx"
+export {
   Card,
   CardBody,
   type CardBodyProps,
@@ -161,6 +167,7 @@ export {
 } from "./enhanced-form.tsx"
 export { ErrorState, type ErrorStateProps } from "./error-state.tsx"
 export { ExportButton, type ExportButtonColumn, type ExportButtonProps } from "./export-button.tsx"
+export { type Fact, FactCard, type FactCardProps } from "./fact-card.tsx"
 export {
   Field,
   type FieldChild,
@@ -179,6 +186,7 @@ export {
 export { GeoButton, type GeoButtonProps, type GeoCoordinates } from "./geo-button.tsx"
 export { HONEYPOT_FIELD_NAME, honeypotField, honeypotFilled } from "./honeypot.tsx"
 export { ImageGallery, type ImageGalleryImage, type ImageGalleryProps } from "./image-gallery.tsx"
+export { InstallBox, type InstallBoxProps } from "./install-box.tsx"
 export {
   Input,
   type InputProps,
@@ -200,6 +208,7 @@ export {
 export { LoadingScreen, type LoadingScreenProps } from "./loading-screen.tsx"
 export { LoadingSkeleton, type LoadingSkeletonProps } from "./loading-skeleton.tsx"
 export { LoadingSpinner, type LoadingSpinnerProps, type SpinnerSize } from "./loading-spinner.tsx"
+export { MarginNote, type MarginNoteProps } from "./margin-note.tsx"
 export {
   applyScrollLock,
   backdropClickDismisses,
@@ -255,6 +264,7 @@ export {
   type RadioOption,
   type RadioProps,
 } from "./radio.tsx"
+export { type Status, StatusMark, type StatusMarkProps } from "./status-mark.tsx"
 export { Table, type TableProps } from "./table.tsx"
 export {
   columnWidthPercents,

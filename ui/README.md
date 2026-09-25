@@ -25,6 +25,17 @@ Preact + Tailwind primitives extracted from earlier source applications.
   `./dropdown`. It acts only on the four components it forwards refs for; nothing else in this
   package or a caller's own markup is affected.
 
+## Ledger rows (#257)
+
+A line with no real columns — an outcome sentence, a price line — is not a new component. Apply
+`theme/preset.css`'s own `border-subtle` and `border-control` tokens directly, the way `Table`'s
+own rows do: `class="border-subtle flex items-baseline justify-between gap-4 border-b py-2
+last:border-b-0"` on each row, inside whatever wraps the list (a `<ul>`, a `<div>`, `Card`'s
+`CardBody`). Nothing here is a new primitive: it is the same divider styling `Table` already
+applies to a `<tr>`, read off the same tokens, on markup that is not a table because the content
+has no columns to be one. See #257's own "What I suggest" for the two options this decides
+between.
+
 ## Components
 
 | Component         | Subpath             | Ports / key props                                                                                                                        |
@@ -33,6 +44,7 @@ Preact + Tailwind primitives extracted from earlier source applications.
 | `AvatarGroup`     | `avatar`            | `items`, `max`, `label`, `size` (a `role="group"`, not a list)                                                                           |
 | `Badge`           | `badge`             | `text`, `color`, `type`                                                                                                                  |
 | `Button`          | `button`            | `variant`, `size`, native button attrs                                                                                                   |
+| `CiStatusPill`    | `ci-status-pill`    | `status` (any string; unrecognised falls back to a neutral pill), `label?` — extends `Badge`'s palette                                   |
 | `ConfidenceMeter` | `confidence-meter`  | `value` (optional; clamped 0–100, unknown renders no reading), `label`                                                                   |
 | `ContactForm`     | `contact-form`      | `action?`, `onSubmit?` (`{ name, email, message }`), `honeypot?`, `labels?`, built on `EnhancedForm`                                     |
 | `CopyButton`      | `copy-button`       | `textToCopy`, `copy?` (clipboard port)                                                                                                   |
@@ -44,13 +56,16 @@ Preact + Tailwind primitives extracted from earlier source applications.
 | `EnhancedForm`    | `enhanced-form`     | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?` — posts natively before hydration                       |
 | `ErrorState`      | `error-state`       | `message` (renders nothing when empty)                                                                                                   |
 | `ExportButton`    | `export-button`     | `columns`, `rows` or `getRows`, `fileName`, `label?`, `resultLabel?`, `errorLabel?`, `onError?`                                          |
+| `FactCard`        | `fact-card`         | `title?`, `action?`, `facts` (`{ key, value }[]`, rendered as a `<dl>`) — composes `Card`/`CardHeader`/`CardBody`                        |
 | `FileInput`       | `file-input`        | `id`, `accept?`, `multiple?`, `maxSize?`, `name?`, `onFiles?`, `onReject?`, `label?`, `error?`, `previews?`, `labels?`                   |
 | `GeoButton`       | `geo-button`        | `onLocation`, `onError?`                                                                                                                 |
 | `ImageGallery`    | `image-gallery`     | `images` (`{ src, alt, thumbSrc? }[]`), `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`                         |
+| `InstallBox`      | `install-box`       | `command`, `copy?`, `copyLabel?` — built on `CopyButton`                                                                                 |
 | `Lightbox`        | `lightbox`          | `images`, `index`, `open`, `onClose`, `onIndexChange`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`                    |
 | `LoadingScreen`   | `loading-screen`    | `message`, `description`                                                                                                                 |
 | `LoadingSkeleton` | `loading-skeleton`  | `rows`                                                                                                                                   |
 | `LoadingSpinner`  | `loading-spinner`   | `label`, `size`                                                                                                                          |
+| `MarginNote`      | `margin-note`       | `children`, `sourceHref?`, `sourceLabel?`, `checkedOn?` (ISO date, rendered as `<time>`), `checkedLabel?`                                |
 | `MoneyDisplay`    | `money-display`     | `amount` (smallest unit), `currency`, `locale?`, `colorNegative?`, `class?`                                                              |
 | `MoneyInput`      | `money-input`       | `value` (smallest unit or `null`), `onChange`, `currency`, `locale?`, `min?`, `max?`, `name?`, `id?`, `invalidMessage?`, `rangeMessage?` |
 | `NewsletterForm`  | `newsletter-form`   | `action?`, `onSubmit?` (`email`), `honeypot?`, `labels?`, built on `EnhancedForm`                                                        |
@@ -62,6 +77,7 @@ Preact + Tailwind primitives extracted from earlier source applications.
 | `SkeletonStatus`  | `skeletons`         | `label` (the loading announcement)                                                                                                       |
 | `SkeletonTable`   | `skeletons`         | `rows`, `columns`, `widths`, `reserveHeight`                                                                                             |
 | `SkeletonText`    | `skeletons`         | `lines`, `widths`                                                                                                                        |
+| `StatusMark`      | `status-mark`       | `status` (`ready`/`beta`/`wip`/`paused`/`archived`/`known-issue`), `label?` — extends `Badge` with a shape, not a change to it           |
 | `Table`           | `table`             | `headerSlot`, `bodySlots`, `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`                                                       |
 | `Tabs`            | `tabs`              | `tabs`, `active`, `onChange`, `orientation`, `lazy`                                                                                      |
 | `Toastr`          | `toastr`            | `toasts`, `onDismiss`, `label`, `dismissLabel`, `dataE2E`                                                                                |
