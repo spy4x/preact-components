@@ -45,7 +45,14 @@ function pad2(value: number): string {
   return String(value).padStart(2, "0")
 }
 
-/** The ISO date `days` after `date` (negative goes back). DST-proof: fixed UTC day steps. */
+/**
+ * The ISO date `days` after `date` (negative goes back). DST-proof: fixed UTC day steps.
+ *
+ * Duplicates `@spy4x/time/tz`'s `addDays` in effect, kept here on purpose: this module's grid
+ * arithmetic is zone-free by design (see the package README's "Timezone-free grid arithmetic"),
+ * `addDays` takes a zone argument this call site has no use for, and the fixed-step UTC version is
+ * about ten times cheaper on a 42-day grid than a zone-aware call per day would be.
+ */
 export function addDaysIso(date: string, days: number): string {
   return utcMsToIso(isoToUtcMs(date) + days * 86_400_000)
 }
