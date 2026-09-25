@@ -2,11 +2,13 @@ import { pageHref } from "@spy4x/preact-ui-guide/routes"
 import { check, type Devtools, poll } from "./harness.ts"
 
 /**
- * A string only d3's code carries: the 12-hour time format of the en-US locale `d3-time-format`
- * installs as its default when it is imported. `pages/build.ts` minifies the bundle, which renames
- * identifiers but leaves string literals alone, so this survives into whichever file holds d3.
+ * Strings only d3's code carries; a script that holds any of them counts as carrying d3. The first
+ * is the 12-hour time format of the en-US locale `d3-time-format` installs as its default when it
+ * is imported; the second is the property `d3-selection` stores bound data under, so a static
+ * import of part of d3 without `d3-time-format` is caught too. `pages/build.ts` minifies the
+ * bundle, which renames identifiers but leaves string literals and property names alone.
  */
-const D3_MARKER = "%-I:%M:%S %p"
+const D3_MARKERS = ["%-I:%M:%S %p", "__data__"]
 
 /** The id the frame gets, so every expression below finds the same one. */
 const FRAME_ID = "charts-lazy-d3-frame"
@@ -15,7 +17,7 @@ const FRAME_ID = "charts-lazy-d3-frame"
 interface ScriptReport {
   /** Path of every `.js` file the frame's document fetched, in the order it fetched them. */
   scripts: string[]
-  /** The subset whose body carries {@link D3_MARKER}. */
+  /** The subset whose body carries one of {@link D3_MARKERS}. */
   withD3: string[]
 }
 
@@ -41,10 +43,10 @@ interface ChartsState {
  * document with its own module map: it opens at the overview, lists every script the frame fetched
  * and reads each one for d3's code, then opens the frame's charts page and reads again. A second
  * tab would do the same, but `connect` in `harness.ts` needs the debugging port, which a block does
- * not get; the frame needs nothing but the page. The frame is fixed over the viewport, invisible and
- * click-through, so its charts measure a real width and nothing the pointer does reaches it, and it
- * is removed before the block ends. The shared page's scroll position is read before and after, and
- * the check fails if the frame moved it.
+ * not get; the frame needs nothing but the page. The frame is fixed over the viewport, invisible
+ * and click-through, so its charts measure a real width and nothing the pointer does reaches it,
+ * and it is removed before the block ends. The shared page's scroll position is read before and
+ * after, and the check fails if the frame moved it.
  *
  * @param devtools The connected session, on a hydrated page showing the charts page.
  */
@@ -162,7 +164,7 @@ async function readScripts(devtools: Devtools, frame: string): Promise<ScriptRep
     const withD3 = []
     for (const path of scripts) {
       const text = await (await fetch(path)).text()
-      if (text.includes(${JSON.stringify(D3_MARKER)})) withD3.push(path)
+      if (${JSON.stringify(D3_MARKERS)}.some((marker) => text.includes(marker))) withD3.push(path)
     }
     return { scripts, withD3 }
   })()`)
@@ -187,10 +189,10 @@ async function readCharts(devtools: Devtools, frame: string): Promise<ChartsStat
       }))
     const outputs = [...page.querySelectorAll('[data-e2e="example-output"]')]
     return {
-      placeholders: page.querySelectorAll('[data-e2e="d3-chart-loading"]').length,
+      placeholders: page.querySelectorAll('[data-e2e="d3-chart-placeholder"]').length,
       svgs,
       pendingExamples: outputs.filter((output) =>
-        output.textContent.includes("<loading charts/d3-line-chart")
+        output.textContent.includes("needs charts/d3-line-chart")
       ).length,
       timeLabels: page.querySelector("#demo-formatTimeTick [data-e2e='example-output']")
         ?.textContent.replace(/\\s+/g, " ").trim() ?? "",
