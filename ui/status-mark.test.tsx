@@ -1,9 +1,16 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
-import { type Status, StatusMark } from "./status-mark.tsx"
+import { StatusMark, type StatusMarkStatus } from "./status-mark.tsx"
 
-const STATUSES: Status[] = ["ready", "beta", "wip", "paused", "archived", "known-issue"]
+const STATUSES: StatusMarkStatus[] = [
+  "ready",
+  "beta",
+  "wip",
+  "paused",
+  "archived",
+  "known-issue",
+]
 
 describe("StatusMark", () => {
   it("renders the default English label for every status", () => {
@@ -18,9 +25,18 @@ describe("StatusMark", () => {
     expect(render(<StatusMark status="ready" label="Shipped" />)).not.toContain("Ready")
   })
 
-  it("hides the shape from assistive tech", () => {
+  it("hides the shape from assistive tech, and only the shape — the word sits outside it", () => {
     const html = render(<StatusMark status="wip" />)
     expect(html).toContain('aria-hidden="true"')
+    // Hiding the whole mark (word included) would still contain aria-hidden="true", so this reads
+    // the hidden wrapper's own content and requires the visible word not be inside it: the wrapper
+    // opens at aria-hidden="true" and, since it holds only the SVG, closes at the first </span>
+    // that follows.
+    const start = html.indexOf('aria-hidden="true"')
+    const end = html.indexOf("</span>", start)
+    const hiddenWrapper = html.slice(start, end)
+    expect(hiddenWrapper).not.toContain("WIP")
+    expect(html.slice(end)).toContain("WIP")
   })
 
   it("renders a different SVG for every status, so the shapes are distinct", () => {

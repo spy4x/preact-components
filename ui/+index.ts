@@ -264,7 +264,7 @@ export {
   type RadioOption,
   type RadioProps,
 } from "./radio.tsx"
-export { type Status, StatusMark, type StatusMarkProps } from "./status-mark.tsx"
+export { StatusMark, type StatusMarkProps, type StatusMarkStatus } from "./status-mark.tsx"
 export { Table, type TableProps } from "./table.tsx"
 export {
   columnWidthPercents,

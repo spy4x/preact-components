@@ -3,8 +3,8 @@ import {
   type BadgeColor,
   type BadgeType,
   CiStatusPill,
-  type Status,
   StatusMark,
+  type StatusMarkStatus,
 } from "@preact-components/ui"
 import { entries } from "../record.ts"
 import type { DemoFragment } from "../registry.ts"
@@ -47,7 +47,7 @@ function BadgeMatrix() {
 }
 
 /** Every status a `StatusMark` accepts (#257), for the coverage guard — see {@link colors}. */
-const statuses: Record<Status, string> = {
+const statuses: Record<StatusMarkStatus, string> = {
   ready: "ready",
   beta: "beta",
   wip: "wip",
