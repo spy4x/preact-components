@@ -434,7 +434,7 @@ async function tooltipTriggerCheck(devtools: Devtools, width: number): Promise<v
       const box = trigger.getBoundingClientRect()
       const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)
       return {
-        name: trigger.textContent.trim(),
+        name: trigger.getAttribute("aria-label") ?? trigger.textContent.trim(),
         own: hit !== null && trigger.contains(hit),
         by: hit === null ? "nothing" : (hit.closest("[role=tooltip]") ? "a hint" : hit.tagName),
       }
