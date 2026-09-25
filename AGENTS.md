@@ -79,7 +79,9 @@ The catalogue has to be told about the package: add its directory to `packageIds
 `ui-guide/registry.ts` and give every component it exports a card, or add it to `EXCLUDED_PACKAGES`
 in `ui-guide/coverage.ts` with a reason. A package directory with neither fails `deno task test`.
 Adding a component to a catalogued package means adding its card to that package's section in
-`ui-guide/sections/`; a helper — anything not named in PascalCase — needs nothing.
+`ui-guide/sections/`; `deno task test` fails without one. The test cannot see a helper — anything
+not named in PascalCase — or a changed component, so those rest on the rule in "Every change
+updates the UI guide" below.
 
 ## Branch-first workflow
 
@@ -358,6 +360,18 @@ prop. Nothing in the library throws for want of a label.
 The one exception is a name that cannot be defaulted because only the caller knows it — the
 accessible name of an icon-only trigger, for instance. Those stay required, and required means a
 type error rather than a warning at runtime.
+
+## Every change updates the UI guide
+
+**A new or changed component, helper or hook updates its card or example in `ui-guide/` in the same
+pull request.** Owner rule, 2026-09-25. The guide is how a reader finds out what the library does,
+so a change it does not show is a change nobody sees: a new prop gets a demo, a changed default
+changes the demo's snippet, and a helper or hook a component card does not already exercise gets
+an example of its own.
+
+`deno task test` enforces only part of this: every component-named export of a catalogued package
+needs a card (`ui-guide/coverage.ts`). That a card still matches its component, and that a helper
+or hook is shown at all, is held by review.
 
 ## Validation
 
