@@ -195,38 +195,77 @@ async function copyBlockChecks(devtools: Devtools): Promise<void> {
   )
 }
 
+/** One card's text, split into the part compared everywhere and the part an effect draws. */
+interface CardText {
+  /** The card's text with every {@link DrawnInBrowser.selector} match left out. */
+  rest: string
+  /** The text of those matches alone; empty for a card with nothing listed. */
+  drawn: string
+}
+
 /**
  * The text of every card, keyed by its `demo-<Name>` id, with each run of whitespace collapsed to
- * one space. A page expression, so the same reading applies to the served document parsed in the
- * page and to the live one.
+ * one space. A page expression taking the root to read and a map of card id to the selector of the
+ * part left out of `rest`, so the same reading applies to the served document parsed in the page
+ * and to the live one.
  *
  * A `<textarea>` counts by its value rather than its child text: the server writes the value as the
  * element's text, while Preact in the browser sets the `value` property and leaves the element
  * empty, so `textContent` alone reports every filled textarea as a difference.
  */
-const CARD_TEXTS = `(root) => {
-  const textOf = (node) => {
-    if (node.nodeType === Node.TEXT_NODE) return node.data
-    if (node.nodeName === "TEXTAREA") return " " + node.value + " "
-    return [...node.childNodes].map(textOf).join("")
+const CARD_TEXTS = `(root, drawnBy) => {
+  const squash = (text) => text.replace(/\\s+/g, " ").trim()
+  const read = (card) => {
+    const selector = drawnBy[card.id]
+    const rest = []
+    const drawn = []
+    const walk = (node, into) => {
+      if (node.nodeType === Node.TEXT_NODE) return void into.push(node.data)
+      if (node.nodeType !== Node.ELEMENT_NODE) return
+      if (into === rest && selector && node.matches(selector)) into = drawn
+      if (node.nodeName === "TEXTAREA") return void into.push(" " + node.value + " ")
+      for (const child of node.childNodes) walk(child, into)
+    }
+    walk(card, rest)
+    return { rest: squash(rest.join("")), drawn: squash(drawn.join(" ")) }
   }
   return Object.fromEntries(
-    [...root.querySelectorAll('article[id^="demo-"]')]
-      .map((card) => [card.id, textOf(card).replace(/\\s+/g, " ").trim()]),
+    [...root.querySelectorAll('article[id^="demo-"]')].map((card) => [card.id, read(card)]),
   )
 }`
 
+/** A part of a card that an effect draws, so its text exists only in the browser. */
+interface DrawnInBrowser {
+  /** A selector inside the card for that part; everything else in the card is still compared. */
+  selector: string
+  /** Why this part cannot match the served document. */
+  reason: string
+}
+
 /**
- * The cards whose text is expected to differ between the served document and the page after it
- * runs, each with the reason. A card listed here that stops differing fails the check, so the list
- * cannot outlive its reason.
+ * The cards with a part whose text is expected to differ between the served document and the page
+ * after it runs. Only the part the selector names is left out; the rest of the card is compared
+ * like any other. A listed part whose text stops differing fails the check, so the list cannot
+ * outlive its reason.
  */
-const TEXT_DIFFERS_IN_BROWSER: Record<string, string> = {
-  "demo-CrudEditor": "validation runs in an effect, so the cross-field message above Save exists " +
-    "only in the browser",
-  "demo-D3LineChart": "d3 draws the chart in an effect; the server renders a placeholder",
-  "demo-CompareChart": "d3 draws the chart in an effect; the server renders a placeholder",
-  "demo-Map": "Leaflet builds the map, and its zoom controls, in an effect",
+const TEXT_DRAWN_IN_BROWSER: Record<string, DrawnInBrowser> = {
+  "demo-CrudEditor": {
+    selector: `[role="status"][aria-atomic="true"]`,
+    reason: "validation runs in an effect, so the cross-field message in the live region above " +
+      "Save exists only in the browser",
+  },
+  "demo-D3LineChart": {
+    selector: `svg[role="img"]`,
+    reason: "d3 draws the chart's axes and lines into its svg in an effect",
+  },
+  "demo-CompareChart": {
+    selector: `svg[role="img"]`,
+    reason: "d3 draws the chart's axes and lines into its svg in an effect",
+  },
+  "demo-Map": {
+    selector: ".leaflet-control-container",
+    reason: "Leaflet adds its zoom controls in an effect",
+  },
 }
 
 /**
@@ -240,23 +279,36 @@ const TEXT_DIFFERS_IN_BROWSER: Record<string, string> = {
  * compared with the served card of the same id. Text only: attributes and styles are not compared.
  */
 async function serverTextChecks(devtools: Devtools): Promise<void> {
-  const served = await devtools.evaluate<Record<string, string>>(`(async () => {
+  const drawnBy = JSON.stringify(
+    Object.fromEntries(
+      Object.entries(TEXT_DRAWN_IN_BROWSER).map(([id, { selector }]) => [id, selector]),
+    ),
+  )
+  const served = await devtools.evaluate<Record<string, CardText>>(`(async () => {
     const response = await fetch(location.href.split("#")[0], { cache: "no-store" })
     const html = await response.text()
     const document = new DOMParser().parseFromString(html, "text/html")
-    return (${CARD_TEXTS})(document)
+    return (${CARD_TEXTS})(document, ${drawnBy})
   })()`)
 
   const differing = new Map<string, string>()
   const missing: string[] = []
+  const stillSame: string[] = []
   const seen = new Set<string>()
   for (const page of guidePages.filter((each) => each.id !== "all" && each.sections.length > 0)) {
     await openGuidePage(devtools, page.id)
-    const live = await devtools.evaluate<Record<string, string>>(`(${CARD_TEXTS})(document)`)
+    const live = await devtools.evaluate<Record<string, CardText>>(
+      `(${CARD_TEXTS})(document, ${drawnBy})`,
+    )
     for (const [id, text] of Object.entries(live)) {
       seen.add(id)
-      if (!(id in served)) missing.push(id)
-      else if (served[id] !== text) differing.set(id, whereTextsDiffer(served[id], text))
+      const server = served[id]
+      if (server === undefined) {
+        missing.push(id)
+        continue
+      }
+      if (server.rest !== text.rest) differing.set(id, whereTextsDiffer(server.rest, text.rest))
+      if (id in TEXT_DRAWN_IN_BROWSER && server.drawn === text.drawn) stillSame.push(id)
     }
   }
 
@@ -264,22 +316,25 @@ async function serverTextChecks(devtools: Devtools): Promise<void> {
     (total, page) => total + page.sections.reduce((sum, section) => sum + section.names.length, 0),
     0,
   )
-  const unlisted = [...differing].filter(([id]) => !(id in TEXT_DIFFERS_IN_BROWSER))
-  const fixed = Object.keys(TEXT_DIFFERS_IN_BROWSER).filter((id) => !differing.has(id))
+  const listed = Object.keys(TEXT_DRAWN_IN_BROWSER)
+  const unseen = listed.filter((id) => !seen.has(id))
   check(
     "every card shows the same text in the browser as in the served document",
     seen.size === expected && Object.keys(served).length === expected && missing.length === 0 &&
-      unlisted.length === 0 && fixed.length === 0,
+      differing.size === 0 && stillSame.length === 0 && unseen.length === 0,
     [
       `${seen.size}/${expected} cards read in the browser, ${Object.keys(served).length} served, ` +
-      `${Object.keys(TEXT_DIFFERS_IN_BROWSER).length} listed as drawn in the browser`,
+      `${listed.length} with a part drawn in the browser left out`,
       missing.length > 0 ? `not in the served document: ${missing.join(", ")}` : "",
-      unlisted.length > 0
-        ? `text differs: ${unlisted.map(([id, where]) => `#${id} (${where})`).join(", ")}`
+      differing.size > 0
+        ? `text differs: ${[...differing].map(([id, where]) => `#${id} (${where})`).join(", ")}`
         : "",
-      fixed.length > 0
-        ? `listed but now the same, so drop it from the list: ${fixed.join(", ")}`
+      stillSame.length > 0
+        ? `listed part now the same on both sides, so drop it from the list: ${
+          stillSame.join(", ")
+        }`
         : "",
+      unseen.length > 0 ? `listed but no such card: ${unseen.join(", ")}` : "",
     ].filter(Boolean).join("; "),
   )
 }
