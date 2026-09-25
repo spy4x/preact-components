@@ -3,9 +3,9 @@
 The live component catalogue, shipped as a component so every app that imports the library gets it
 free. It shows one page at a time: an overview, then one page per package, picked from a side
 navigation that becomes a modal dialog behind a menu button on a phone. The pages hold one demo per
-component of every package it covers (`ui`, `charts`, `system`, `crud` and `map`), one card per group
-of `theme/preset.css` classes, the icon gallery, and the design-system rules components are meant to
-be assembled in. An app mounts it in one line, `<uiGuideRoute.component />` (see "Usage").
+component of every package it covers (`ui`, `charts`, `system`, `crud` and `map`), one card per
+group of `theme/preset.css` classes, the icon gallery, and the design-system rules components are
+meant to be assembled in. An app mounts it in one line, `<uiGuideRoute.component />` (see "Usage").
 
 Covering `map/` (#143) is what makes `@preact-components/ui-guide` resolve Leaflet: `map/`'s exact
 `leaflet`/`@types/leaflet` pins reach an app's dependency graph the moment it imports this package's

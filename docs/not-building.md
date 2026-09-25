@@ -40,5 +40,5 @@ Until both hold, the answer is no.
 ## Sources of design intent
 
 The applications above appear only because they are where the need was first noticed. They are
-**design intent sources only, never code sources**: they use shadcn, Radix and bits-ui, which #34 excludes.
-Port the markup and the behaviour; never the dependency.
+**design intent sources only, never code sources**: they use shadcn, Radix and bits-ui, which #34
+excludes. Port the markup and the behaviour; never the dependency.

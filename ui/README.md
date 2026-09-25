@@ -14,17 +14,17 @@ Preact + Tailwind primitives extracted from earlier source applications.
 - **One Preact option hook, for four components' refs.** `./forward-ref.ts`'s hook, installed on
   Preact's shared `options` object, is what lets `Input`, `Button`, `Checkbox` and `Radio` forward
   the `ref` each is given to the native element it renders instead of Preact applying it to the
-  component itself. Seventeen of this package's exports load it — counted once, by hand, by walking each
-  subpath's own module graph for `forward-ref.ts`; no check repeats the count: the four components themselves —
-  `./button`'s only other export is `buttonClasses`, so a caller who imports that alone still
-  installs the hook; the package root (`.`), which carries every export; `./confirm-dialog`,
-  `./copy-button`, `./date-range-picker`, `./geo-button`, `./modal`, `./on-off-buttons`,
-  `./pagination`, `./contact-form` and `./newsletter-form`, each of which renders a `Button` of its
-  own; `./dropdown`, which uses `buttonClasses` without ever rendering a `Button`; and
-  `./copyable-text` and `./data-table`, which load it transitively — through `./copy-button` and
-  `./pagination` respectively. `@preact-components/crud` loads it too, transitively, through
-  `./dropdown`. It acts only on the four components it forwards refs for; nothing else in this
-  package or a caller's own markup is affected.
+  component itself. Seventeen of this package's exports load it — counted once, by hand, by walking
+  each subpath's own module graph for `forward-ref.ts`; no check repeats the count: the four
+  components themselves — `./button`'s only other export is `buttonClasses`, so a caller who imports
+  that alone still installs the hook; the package root (`.`), which carries every export;
+  `./confirm-dialog`, `./copy-button`, `./date-range-picker`, `./geo-button`, `./modal`,
+  `./on-off-buttons`, `./pagination`, `./contact-form` and `./newsletter-form`, each of which
+  renders a `Button` of its own; `./dropdown`, which uses `buttonClasses` without ever rendering a
+  `Button`; and `./copyable-text` and `./data-table`, which load it transitively — through
+  `./copy-button` and `./pagination` respectively. `@preact-components/crud` loads it too,
+  transitively, through `./dropdown`. It acts only on the four components it forwards refs for;
+  nothing else in this package or a caller's own markup is affected.
 
 ## Ledger rows (#257)
 

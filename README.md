@@ -35,7 +35,7 @@ deno add jsr:@preact-components/system    # app-level pieces: auth form, calenda
 deno add jsr:@preact-components/ui        # the component set
 deno add jsr:@preact-components/crud      # list and editor scaffold for one collection
 deno add jsr:@preact-components/map       # map on Leaflet (resolves leaflet)
-deno add jsr:@preact-components/ui-guide  # the live component catalogue: mount <uiGuideRoute.component />
+deno add jsr:@preact-components/ui-guide  # the live component catalogue, mounted in one line
 ```
 
 Which package imports which sibling, read from the sources: `ui` imports `cn`, `icons` and

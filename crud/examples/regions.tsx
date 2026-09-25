@@ -2,11 +2,11 @@
  * A source application's `regions` resource, ported end to end as the worked example for this
  * package.
  *
- * The two source files — a list (116 lines) and an editor (204 lines) — become the schema, the store and the two components below. Every
- * slot that is genuinely about a region is still written out; everything the source files restated
- * (the page layout, the count badge, the debounced search box, the status select, the table shell,
- * the validation loop, the archive toggle, the dependency block, the save button's enabled rule)
- * is the scaffold's.
+ * The two source files — a list (116 lines) and an editor (204 lines) — become the schema, the
+ * store and the two components below. Every slot that is genuinely about a region is still written
+ * out; everything the source files restated (the page layout, the count badge, the debounced search
+ * box, the status select, the table shell, the validation loop, the archive toggle, the dependency
+ * block, the save button's enabled rule) is the scaffold's.
  *
  * The store is the real one — `buildModelStore` from `@preact-components/signals`. This package
  * only ever reads it through the structural interfaces in `store.ts`, which is what lets the two

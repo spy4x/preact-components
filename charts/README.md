@@ -198,12 +198,12 @@ specifier pointed at a file that does not exist, and then
 3. repeats it with no `d3` entry in the map at all — what a consumer who never added the dependency
    has — and asserts the message names the file and the fix.
 
-It prints each of its five assertions as `ok` or `FAIL`, and exits non-zero if any fails. No bundler and no
-bundle-size tool is added for it, and none is used — the byte figures in issue #25 come from a Vite
-build outside this repo and **are not reproducible from this repo**. What is reproducible here is the
-structural claim: the barrel re-exports the d3 islands (assertion 1 of the control, `+index.ts` in the
-failing set), so a consumer who imports it needs d3 resolvable, while a consumer of `svg` or any
-single SVG subpath does not.
+It prints each of its five assertions as `ok` or `FAIL`, and exits non-zero if any fails. No bundler
+and no bundle-size tool is added for it, and none is used — the byte figures in issue #25 come from
+a Vite build outside this repo and **are not reproducible from this repo**. What is reproducible
+here is the structural claim: the barrel re-exports the d3 islands (assertion 1 of the control,
+`+index.ts` in the failing set), so a consumer who imports it needs d3 resolvable, while a consumer
+of `svg` or any single SVG subpath does not.
 
 ## Axis behaviour
 

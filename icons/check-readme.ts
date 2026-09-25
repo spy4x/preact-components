@@ -31,9 +31,9 @@
  * Pinned inventory of the ported set's `*.svelte` files (52 files).
  *
  * Typed as a `string[]` rather than a literal tuple so a human who edits this list is caught by the
- * audit below instead of by the type checker: a tuple length would make
- * `PORTED_FILES.length !== 52` a compile error, which fails the wrong way round (the mutation has to
- * be observable *at runtime*).
+ * audit below instead of by the type checker: a tuple length would make `PORTED_FILES.length !==
+ * 52` a compile error, which fails the wrong way round (the mutation has to be observable *at
+ * runtime*).
  */
 export const PORTED_FILES: string[] = [
   "arrowLeft",
