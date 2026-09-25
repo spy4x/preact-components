@@ -9400,9 +9400,16 @@ async function fileInputRefusalKeepsPriorFileCheck(
     `refused: "${refused.trim()}"`,
   )
 
-  const afterList = await devtools.evaluate<boolean>(
-    `document.querySelector('${FILE_INPUT_CARD} button[aria-label="Remove ok.png"]') !== null`,
-  )
+  // Scoped to the single-file card's own wrapper (the input's zone's parent — the outer <div> a
+  // caller's own class lands on), not the whole demo card: the main, `multiple`-carrying card also
+  // has ok.png chosen by this point (`fileInputSelectionCheck`), so an unscoped selector would find
+  // that card's own remove button and pass even if this card's own list had been cleared by the
+  // refusal.
+  const afterList = await devtools.evaluate<boolean>(`(() => {
+    const input = document.querySelector('${inputSelector}')
+    const wrapper = input?.closest('[data-e2e="file-input-zone"]')?.parentElement
+    return (wrapper?.querySelector('button[aria-label="Remove ok.png"]') ?? null) !== null
+  })()`)
   check(
     "ok.png is still in FileInput's own rendered list after the refusal, not cleared by it",
     afterList,
