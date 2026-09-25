@@ -104,12 +104,12 @@ describe("the ink theme", () => {
     expect(token("--color-nav-active")).not.toBe(token("--color-primary"))
   })
 
-  it("points .btn's focus-visible outline at --color-focus-ring", async () => {
+  it("points .btn's focus-visible outline at --color-focus-ring under any .dark", async () => {
     const css = await compileInk(["btn", "btn-primary"])
     // `compiler.build()` emits `.btn`'s nested `&:focus-visible` blocks unflattened (as authored
     // in preset.css), so this reads the declaration directly rather than assuming a flattened
     // `.btn:focus-visible { ... }` selector, which never appears in this output.
-    expect(css).toContain(':where(.dark[data-theme="ink"]) &:focus-visible')
+    expect(css).toContain(":where(.dark) &:focus-visible")
     expect(css).toContain("outline-color: var(--color-focus-ring);")
     expect(css).not.toContain("var(--color-focus-ring, currentColor)")
   })
