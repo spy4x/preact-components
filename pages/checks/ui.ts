@@ -173,6 +173,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await imageGalleryChecks(devtools)
   await lightboxRefusesEmptyCheck(devtools)
   await exportButtonChecks(devtools)
+  await moneyInputChecks(devtools)
 
   // Last on purpose: a Modal that refuses to close would sit in the top layer over everything, so a
   // failure here cannot take an unrelated check down with it.
@@ -8440,4 +8441,114 @@ async function exportButtonChecks(devtools: Devtools): Promise<void> {
   } finally {
     await disarmExportInstrumentation(devtools).catch(() => {})
   }
+}
+
+/** `MoneyInput`'s card: `Field`-wired, `EUR`, German locale, `name="guide-money-amount"`. */
+const MONEY_INPUT_CARD = "#demo-MoneyInput"
+
+/**
+ * `MoneyInput`'s behaviour that only a real browser can prove: the German decimal mark actually
+ * parses into the smallest-unit integer the demo echoes, unparsable text leaves that integer
+ * unchanged while announcing a message through the live region present since the first render, and
+ * a plain form post carries the integer through the hidden field rather than the typed text.
+ */
+async function moneyInputChecks(devtools: Devtools): Promise<void> {
+  const cardPresent = await devtools.evaluate<boolean>(
+    `document.querySelector('${MONEY_INPUT_CARD}') !== null`,
+  )
+  check("the MoneyInput card is on the page", cardPresent)
+  if (!cardPresent) return
+
+  const read = await devtools.evaluate<{
+    initialEcho: string
+    germanParseEcho: string
+    germanHiddenValue: string
+    invalidEcho: string
+    invalidMessage: string
+    invalidAriaInvalid: string | null
+    invalidDescribedBy: string
+    invalidHiddenValue: string
+    clearedEcho: string
+    clearedMessage: string
+    clearedAriaInvalid: string | null
+  }>(`(async () => {
+    const settle = () => new Promise((done) => setTimeout(done, 30))
+    const card = document.querySelector('${MONEY_INPUT_CARD}')
+    const input = card.querySelector('#guide-money-input')
+    const hidden = card.querySelector('input[type=hidden][name="guide-money-amount"]')
+    const status = card.querySelector('#guide-money-input-status')
+    const echo = () => card.querySelector('[data-e2e="controlled-value"]').textContent.trim()
+    const setValue = (nativeElement, text) => {
+      const setter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value",
+      ).set
+      setter.call(nativeElement, text)
+      nativeElement.dispatchEvent(new Event("input", { bubbles: true }))
+    }
+
+    const initialEcho = echo()
+
+    setValue(input, "12,5")
+    await settle()
+    const germanParseEcho = echo()
+    const germanHiddenValue = hidden.value
+
+    setValue(input, "abc")
+    await settle()
+    const invalidEcho = echo()
+    const invalidMessage = status.textContent.trim()
+    const invalidAriaInvalid = input.getAttribute("aria-invalid")
+    const invalidDescribedBy = input.getAttribute("aria-describedby") ?? ""
+    const invalidHiddenValue = hidden.value
+
+    setValue(input, "")
+    await settle()
+    const clearedEcho = echo()
+    const clearedMessage = status.textContent.trim()
+    const clearedAriaInvalid = input.getAttribute("aria-invalid")
+
+    return {
+      initialEcho,
+      germanParseEcho,
+      germanHiddenValue,
+      invalidEcho,
+      invalidMessage,
+      invalidAriaInvalid,
+      invalidDescribedBy,
+      invalidHiddenValue,
+      clearedEcho,
+      clearedMessage,
+      clearedAriaInvalid,
+    }
+  })()`)
+
+  check(
+    "starts from the demo's own initial amount",
+    read.initialEcho.includes("1999"),
+    read.initialEcho,
+  )
+  check(
+    "typing '12,5' in the German demo parses to 1250, the group mark understood too",
+    read.germanParseEcho.includes("1250") && read.germanHiddenValue === "1250",
+    `echo "${read.germanParseEcho}", hidden value "${read.germanHiddenValue}"`,
+  )
+  check(
+    "typing letters leaves the posted integer unchanged and shows the invalid message",
+    read.invalidEcho.includes("1250") && read.invalidHiddenValue === "1250" &&
+      read.invalidMessage === "Enter a valid amount",
+    `echo "${read.invalidEcho}", hidden value "${read.invalidHiddenValue}", message "${read.invalidMessage}"`,
+  )
+  check(
+    "marks the control invalid and describes it by the live region while the message stands",
+    read.invalidAriaInvalid === "true" &&
+      read.invalidDescribedBy.includes("guide-money-input-status"),
+    `aria-invalid="${read.invalidAriaInvalid}" aria-describedby="${read.invalidDescribedBy}"`,
+  )
+  check(
+    "clearing the field posts nothing and drops the message",
+    read.clearedEcho.includes("(empty)") && read.clearedMessage === "" &&
+      read.clearedAriaInvalid === null,
+    `echo "${read.clearedEcho}", message "${read.clearedMessage}", aria-invalid="${read.clearedAriaInvalid}"`,
+  )
 }
