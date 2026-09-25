@@ -23,12 +23,12 @@ export interface DeletionValidationProps {
  * write the same `scrollIntoView` call back in, for no caller-specific behaviour to control. The
  * effect is keyed on the list's content, not its identity or a plain render, so a re-render that
  * rebuilds an equal, still non-empty list (a keystroke elsewhere, a timer) never moves the page.
- * Three cases, precisely: a first render with a non-empty list scrolls; a later render that
- * replaces one non-empty list with an *equal* one, without the list ever going empty in between,
- * does not; and a render that replaces an *empty* list with a non-empty one scrolls again, however
- * many times that happens — which is what makes a second blocked archive attempt scroll for
- * `CrudEditor` below, since it empties `dependencies` while the archive is retried and only
- * repopulates it once the store answers again.
+ * In full: a first render with a non-empty list scrolls; a later render whose non-empty list has
+ * different content scrolls; a later render that replaces one non-empty list with an *equal* one,
+ * without the list ever going empty in between, does not; and a render that replaces an *empty*
+ * list with a non-empty one scrolls again, however many times that happens — which is what makes a
+ * second blocked archive attempt scroll for `CrudEditor` below, since unchecking its archive
+ * checkbox empties `dependencies` and rechecking it refills the list straight away.
  *
  * **The `role="alert"` region is rendered on every render, empty until there is something to say** —
  * the pattern `ui/`'s toasts and combobox use, and `system/`'s `AuthForm` for its own assertive

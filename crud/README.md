@@ -240,7 +240,8 @@ at all, so a parent that spaces its last child differently (`CrudEditor`'s own `
 does, #279) can pick up a bottom margin it did not have before — empty until `dependencies` is
 non-empty, the pattern `ui/`'s toasts and combobox use, so a screen reader reliably announces the
 text rather than meeting a region already holding it. A first render with a non-empty list scrolls
-the block into view; a later render that replaces one non-empty list with an _equal_ one, without the
+the block into view, and so does a later render whose non-empty list has different content; a later
+render that replaces one non-empty list with an _equal_ one, without the
 list ever going empty in between (a caller that rebuilds the array from scratch on every render, a
 keystroke elsewhere, a timer), does not move the page; a render that replaces an _empty_ list with a
 non-empty one scrolls again, which is what a second blocked archive attempt does for `CrudEditor` —
