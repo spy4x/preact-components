@@ -28,15 +28,29 @@ describe("StatusMark", () => {
   it("hides the shape from assistive tech, and only the shape — the word sits outside it", () => {
     const html = render(<StatusMark status="wip" />)
     expect(html).toContain('aria-hidden="true"')
-    // Hiding the whole mark (word included) would still contain aria-hidden="true", so this reads
-    // the hidden wrapper's own content and requires the visible word not be inside it: the wrapper
-    // opens at aria-hidden="true" and, since it holds only the SVG, closes at the first </span>
-    // that follows.
-    const start = html.indexOf('aria-hidden="true"')
-    const end = html.indexOf("</span>", start)
-    const hiddenWrapper = html.slice(start, end)
+    // Hiding the whole mark (word included) would still contain aria-hidden="true", so this finds
+    // the aria-hidden <span>'s own matching close tag — balanced against any <span> nested inside
+    // it, not just the first "</span>" textually after it, which would under-count if the mark's
+    // outer wrapper were the one hidden — and requires the visible word to sit outside that range.
+    const ariaIndex = html.indexOf('aria-hidden="true"')
+    const tagStart = html.lastIndexOf("<span", ariaIndex)
+    let pos = html.indexOf(">", ariaIndex) + 1
+    let depth = 1
+    while (depth > 0) {
+      const nextOpen = html.indexOf("<span", pos)
+      const nextClose = html.indexOf("</span>", pos)
+      if (nextClose === -1) throw new Error("unbalanced <span> in rendered StatusMark output")
+      if (nextOpen !== -1 && nextOpen < nextClose) {
+        depth++
+        pos = nextOpen + "<span".length
+      } else {
+        depth--
+        pos = nextClose + "</span>".length
+      }
+    }
+    const hiddenWrapper = html.slice(tagStart, pos)
     expect(hiddenWrapper).not.toContain("WIP")
-    expect(html.slice(end)).toContain("WIP")
+    expect(html.slice(pos)).toContain("WIP")
   })
 
   it("renders a different SVG for every status, so the shapes are distinct", () => {
