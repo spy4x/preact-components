@@ -157,6 +157,19 @@
   @apply focus-visible:outline-2 focus-visible:outline-offset-2;
   border-radius: var(--radius-primary, 0.5rem);
 
+  /*
+   * Tailwind's `outline-*` utilities set width and offset only; the colour is left at its
+   * `currentColor` initial value, which is `.btn-primary`'s own text colour — the same colour as
+   * its background is close to, so the ring can sit near-invisible against the page behind it (an
+   * ink palette's `--color-primary-foreground` on `--color-primary` is the case this was found in;
+   * see `ink.css`'s own header for why `--color-focus-ring` exists). No default palette defines
+   * `--color-focus-ring`, so this falls back to the previous `currentColor` there — no visual
+   * change to the default theme.
+   */
+  &:focus-visible {
+    outline-color: var(--color-focus-ring, currentColor);
+  }
+
   &:disabled,
   &[disabled] {
     @apply cursor-not-allowed opacity-50 pointer-events-none shadow-none hover:opacity-100;
