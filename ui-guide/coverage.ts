@@ -56,7 +56,13 @@ export const EXPORTS_WITHOUT_DEMO: Record<PackageId, readonly AllowedExport[]> =
   system: [],
   map: [],
   crud: [],
-  signals: [],
+  signals: [
+    {
+      name: "useUrlFilters",
+      reason:
+        "It binds filters to the page's own address: it reads the parameters of whichever application hosts the catalogue, and writes that application's address as soon as a filter changes. Its pure parts have example cards; the hook is demonstrated by the demo app (`pages/src/url-filters.tsx`) and driven in a browser by `pages/checks/signals.ts`.",
+    },
+  ],
   theme: [],
   cn: [],
 }
