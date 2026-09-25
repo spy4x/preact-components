@@ -8597,7 +8597,10 @@ async function moneyInputChecks(devtools: Devtools): Promise<void> {
 
   // A real blur — Tab through the browser's own input pipeline, not a dispatched `blur` event —
   // while the field's text is still refused. Text and message must stay exactly as they are.
+  // `onBlur` runs synchronously on the DOM's own blur event, but the re-render it triggers is not
+  // synchronous with it — a short settle avoids reading the DOM before that render has landed.
   await pressKey(devtools, "Tab")
+  await new Promise((resolve) => setTimeout(resolve, 60))
   const afterRealBlur = await devtools.evaluate<{
     value: string
     message: string
@@ -8633,6 +8636,7 @@ async function moneyInputChecks(devtools: Devtools): Promise<void> {
     return null
   })()`)
   await pressKey(devtools, "Tab")
+  await new Promise((resolve) => setTimeout(resolve, 60))
 
   const beforeAdd = await devtools.evaluate<string>(
     `document.querySelector('${MONEY_INPUT_CARD} #guide-money-input').value`,
