@@ -21,8 +21,17 @@
  * `HARNESS_IMPORTS`.
  *
  * The difference from a normal run is confined to the scratch directory: `charts/deno.json`, which
- * declares the real `d3` and the workspace member that would publish it, is not copied, and the
- * scratch config carries neither a workspace nor an `imports` block. Nothing is written to the repo.
+ * declares the real `d3` and the workspace member that would publish it, is not copied, so nothing
+ * under `scratch/charts` is a workspace member of anything. The check runs with `--config` pointed
+ * at the real root `deno.jsonc` — not a rebuilt one — so the JSX/`lib` `compilerOptions` never drift
+ * from the repo's, and, just as important, so Deno finds the repo's own `deno.lock` next to it the
+ * normal way: a config with no matching `deno.lock` beside it makes every `jsr:`/`npm:` specifier a
+ * fresh resolution, which a package published inside Deno's 24-hour minimum-dependency-age window
+ * (spy4x/ts-libs#70's `@spy4x/platform` release, the first non-local dependency this package took
+ * on) fails outright — `deno.lock` already has that exact version pinned, and passing `--lock`
+ * explicitly at a copied lockfile does not restore that, only sitting where the real one already is
+ * does. `--import-map` still layers the `d3` remap and the harness specifiers over the real map's
+ * `imports`, exactly as before; nothing is written to the repo.
  *
  * Run it from anywhere in the worktree — `deno task --cwd charts probe:no-d3`, or
  * `deno run --allow-run --allow-read --allow-write --allow-env charts/probe/no-d3-dependency.ts`.
@@ -115,21 +124,6 @@ export function bareImportMap(rootConfig: string): Record<string, string> {
   delete parsed[D3_SPECIFIER]
 
   return { ...parsed, ...HARNESS_IMPORTS }
-}
-
-/**
- * Deno has no CLI flag for `jsx`/`jsxImportSource` and `--no-config` would drop the ones this repo
- * sets, so the probe writes a scratch config carrying the root `compilerOptions` verbatim — the
- * probe cannot silently disagree with the repo's own JSX or `lib` settings.
- *
- * `imports` is empty on purpose: it stops Deno treating `charts/` as a workspace member, whose own
- * config would put the real `d3` back on the probe's import map.
- */
-export function probeConfig(rootConfig: string): Record<string, unknown> {
-  return {
-    compilerOptions: JSON.parse(objectLiteral(rootConfig, '"compilerOptions": {')),
-    imports: {},
-  }
 }
 
 /**
@@ -232,8 +226,10 @@ async function main(): Promise<void> {
       `${JSON.stringify({ imports: importMapWithoutD3(rootConfig) }, null, 2)}\n`,
     )
 
-    const configPath = `${scratch}/deno.json`
-    await Deno.writeTextFile(configPath, `${JSON.stringify(probeConfig(rootConfig), null, 2)}\n`)
+    // The real root config, not a rebuilt one — see the module doc for why: it carries the repo's
+    // own `compilerOptions`, and, more importantly, has `deno.lock` sitting next to it, which is
+    // what keeps a freshly-published dependency version out of the minimum-dependency-age gate.
+    const configPath = new URL("deno.jsonc", WORKSPACE_ROOT).pathname
 
     // `PROBE_DIR` is `charts/probe/`; the tree to copy is its parent.
     const chartsRoot = new URL("../", PROBE_DIR).pathname.replace(/\/$/, "")
