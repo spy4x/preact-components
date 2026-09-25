@@ -142,8 +142,8 @@ waits for that job, so a red check, a red publish dry-run or a red `verify` bloc
    the bundle carries those packages. The island is split at dynamic imports
    (`deno bundle --code-splitting`): `main.<hash>.js` is the entry, and the chunks beside it keep
    the bundler's content-hashed names. d3 and Leaflet each land in chunks of their own, fetched
-   only through a dynamic import; d3's is fetched when the charts page opens. The build prints each file and its byte size; read
-   them there rather than here.
+   only through a dynamic import; d3's is fetched when the charts page opens. The build prints
+   each file and its byte size; read them there rather than here.
 4. **Prerender**: `renderToString(<App />)` inside Deno, wrapped by `document.tsx`. Before writing
    anything, the build asserts that every name in `catalogueNames` — every card the sections render,
    across all covered packages — has a `demo-<Name>` card in the markup it is about to publish,

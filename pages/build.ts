@@ -4,8 +4,8 @@
  * One static directory, no server. `index.html` carries the whole catalogue prerendered, plus the
  * href and src of two content-hashed assets, so a redeploy can never serve a new document against a
  * cached island or stylesheet. It also carries the **route echo** — every hash route the navigation
- * links to — which the build reads back and holds against the resolver, since under hash routing the
- * one document is the whole site and a link the resolver would not accept must fail here.
+ * links to — which the build reads back and holds against the resolver, since under hash routing
+ * the one document is the whole site and a link the resolver would not accept must fail here.
  *
  * **Why Deno-only.** `template` and another app bundle with Vite, and Vite would work here — but it
  * would need a `package.json`, a `node_modules` tree and a second lockfile in CI, plus hand-written
@@ -23,8 +23,8 @@
  *    and the catalogue does not show it.
  * 2. Tailwind compiles `styles.css` over the sources its `@source` rules name (`ui/`, `ui-guide/`,
  *    `icons/`, the host page).
- * 3. `deno bundle` produces the island, split at every dynamic `import()` into chunks written beside
- *    it.
+ * 3. `deno bundle` produces the island, split at every dynamic `import()` into chunks written
+ *    beside it.
  * 4. `App` prerenders, `renderDocument` frames it, and the artefact is written.
  * 5. The route echo is read out of the rendered document and round-tripped through the resolver.
  */
@@ -66,9 +66,9 @@ const SW_DEMO_DIRECTORY = "sw-demo"
  * `ContactForm` cards: one static page that stands in for "a server answered" when no script has
  * run. `pages/serve.ts`, which `deno task verify` runs against, never looks at `request.method`, so
  * it answers a POST with this same file; the published GitHub Pages copy is served by a static host
- * that answers a POST with `405 Method Not Allowed` instead — nothing here claims the published site
- * accepts one, and `pages/checks/ui.ts`'s no-JavaScript check reads the method and the body off the
- * recorded network request rather than assuming either.
+ * that answers a POST with `405 Method Not Allowed` instead — nothing here claims the published
+ * site accepts one, and `pages/checks/ui.ts`'s no-JavaScript check reads the method and the body
+ * off the recorded network request rather than assuming either.
  */
 const FORM_DEMO_DIRECTORY = "form-demo"
 /**
@@ -91,8 +91,8 @@ const CHECKED_ENTRIES = [
 /**
  * Run a command in this directory and fail the build when it does.
  *
- * Output is inherited rather than captured: a type error names the file and the line that caused it,
- * and that is the whole value of the message.
+ * Output is inherited rather than captured: a type error names the file and the line that caused
+ * it, and that is the whole value of the message.
  *
  * @param command Executable to run.
  * @param args Arguments, in order.
@@ -152,8 +152,8 @@ function resolveStylesheet(id: string, base: string): URL {
  * `@apply` resolution, and simply concatenating it is what `../map/leaflet-css.ts` exists for (see
  * that module's own doc and `map/README.md` → "Leaflet's stylesheet"). That file is not published —
  * `import.meta.resolve` on an npm subpath carries no dependency record a consumer's own resolver
- * could follow, so it would throw for anyone outside this workspace — which is why this reads it by a
- * relative import rather than as `@spy4x/preact-map`'s own subpath. A real consuming app has no
+ * could follow, so it would throw for anyone outside this workspace — which is why this reads it by
+ * a relative import rather than as `@spy4x/preact-map`'s own subpath. A real consuming app has no
  * equivalent shortcut; `map/README.md` → "Leaflet's stylesheet" documents the route that works for
  * one: add `leaflet` as its own dependency and include the stylesheet in its own build.
  *
@@ -216,8 +216,9 @@ const ENTRY_OUTPUT = "+main.js"
  *
  * @returns The entry's bytes, which the caller names by fingerprint, and the chunks, which keep the
  * names the bundler gave them.
- * @throws When the bundler wrote no entry, or a chunk imports the entry by its original name — the
- * entry is renamed on the way into `dist/`, so such an import would point nowhere.
+ * @throws When the bundler wrote no entry, wrote a file that is not JavaScript (a CSS chunk, say,
+ * which nothing would serve), or a chunk imports the entry by its original name — the entry is
+ * renamed on the way into `dist/`, so such an import would point nowhere.
  */
 async function bundleIsland(): Promise<Island> {
   const outputDirectory = await Deno.makeTempDir({ prefix: "pages-island-" })
@@ -244,7 +245,10 @@ async function bundleIsland(): Promise<Island> {
 
     const chunks: Island["chunks"] = []
     for (const { name } of produced) {
-      if (name === ENTRY_OUTPUT || !name.endsWith(".js")) continue
+      if (name === ENTRY_OUTPUT) continue
+      if (!name.endsWith(".js")) {
+        throw new Error(`deno bundle wrote ${name}, and the build writes only .js files to dist/`)
+      }
       const bytes = await Deno.readFile(join(outputDirectory, name))
       if (new TextDecoder().decode(bytes).includes(ENTRY_OUTPUT)) {
         throw new Error(`${name} imports ${ENTRY_OUTPUT}, which is renamed in dist/`)
