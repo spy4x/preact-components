@@ -143,37 +143,114 @@ export async function crudChecks(devtools: Devtools): Promise<void> {
 /** The card {@link deletionValidationChecks} drives: the `DeletionValidation` catalogue demo. */
 const DELETION_CARD = "#demo-DeletionValidation"
 
-/** One reading of the `DeletionValidation` demo's alert region and its place on the page. */
+/**
+ * One reading of the `DeletionValidation` demo's alert region and its place on the page.
+ *
+ * `ok` and `regionFound` are separate on purpose: `ok` is only about the demo card, which is always
+ * on the page once the catalogue has rendered, whatever `DeletionValidation` itself does. A check
+ * that needs the region present has to read `regionFound` — folding the two into one flag would let
+ * a region that never renders while the list is empty hide behind "card not found" instead of
+ * failing the check that is actually about the region.
+ */
 interface DeletionValidationReading {
-  /** `false` when the card itself was not found; every other field is then noise. */
+  /** `false` when the demo card itself was not found; every other field is then noise. */
   ok: boolean
-  /** Whether the region carries `role="alert"`. */
+  /** Whether the alert region was found on the page at all. */
+  regionFound: boolean
+  /** Whether the region carries `role="alert"`. `false` when the region was not found. */
   hasAlertRole: boolean
-  /** The region's own `class` attribute, `""` when it has none. */
+  /** The region's own `class` attribute, `""` when it has none or was not found. */
   regionClass: string
-  /** The region's text, trimmed — `""` while the dependency list is empty. */
+  /** The region's text, trimmed — `""` while the dependency list is empty or not found. */
   regionText: string
-  /** Whether the region's top sits inside the viewport. */
+  /** Whether the region's top sits inside the viewport. `false` when not found. */
   inViewport: boolean
 }
 
 /** Read every field {@link DeletionValidationReading} declares, in one round trip. */
 function readDeletionState(devtools: Devtools): Promise<DeletionValidationReading> {
   return devtools.evaluate<DeletionValidationReading>(`(() => {
-    const card = document.querySelector('${DELETION_CARD}')
-    const region = card ? card.querySelector('[role="alert"]') : null
-    if (!card || !region) {
-      return { ok: false, hasAlertRole: false, regionClass: "", regionText: "", inViewport: false }
+    const notFound = {
+      regionFound: false, hasAlertRole: false, regionClass: "", regionText: "", inViewport: false,
     }
+    const card = document.querySelector('${DELETION_CARD}')
+    if (!card) return { ok: false, ...notFound }
+    const region = card.querySelector('[role="alert"]')
+    if (!region) return { ok: true, ...notFound }
     const box = region.getBoundingClientRect()
     const viewport = document.documentElement.clientHeight
     return {
       ok: true,
+      regionFound: true,
       hasAlertRole: region.getAttribute("role") === "alert",
       regionClass: region.getAttribute("class") ?? "",
       regionText: region.textContent.trim(),
       inViewport: box.top >= 0 && box.top < viewport,
     }
+  })()`)
+}
+
+/**
+ * Park a reference to the `DeletionValidation` region on `globalThis`, with a `MutationObserver`
+ * watching it — the same technique {@link parkRegion} elsewhere in this file uses for `CrudEditor`'s
+ * region, under its own global names so the two do not collide. Call this only while the region is
+ * known to exist
+ * (`readDeletionState`'s `regionFound`); a region that only renders once the list is non-empty
+ * cannot be parked before that, which is itself the failure {@link deletionValidationChecks} needs
+ * to see rather than paper over.
+ *
+ * @param devtools The connected session.
+ * @returns Whether a region was found to park.
+ */
+function parkDeletionRegion(devtools: Devtools): Promise<boolean> {
+  return devtools.evaluate<boolean>(`(() => {
+    const region = document.querySelector('${DELETION_CARD} [role="alert"]')
+    if (!region) return false
+    globalThis.__deletionRegionElement = region
+    globalThis.__deletionRegionMutations = 0
+    const observer = new MutationObserver((records) => {
+      for (const record of records) {
+        if (record.target === globalThis.__deletionRegionElement) globalThis.__deletionRegionMutations++
+      }
+    })
+    observer.observe(region, { childList: true, subtree: true, characterData: true, attributes: true })
+    globalThis.__deletionRegionObserver = observer
+    return true
+  })()`)
+}
+
+/** What {@link readDeletionRegionIdentity} answers about the region {@link parkDeletionRegion} parked. */
+interface DeletionRegionIdentity {
+  /** Whether a `role="alert"` region is still on the page at all. */
+  found: boolean
+  /** Whether it is the very element {@link parkDeletionRegion} parked, not a replacement. */
+  same: boolean
+  /** Whether that element is still attached to the document. */
+  connected: boolean
+  /** Its text, trimmed. */
+  text: string
+  /** Mutations the observer recorded whose target was the parked element itself. */
+  mutations: number
+}
+
+/**
+ * Read whether the page's `DeletionValidation` region is still the element
+ * {@link parkDeletionRegion} parked, and disconnect the observer.
+ *
+ * @param devtools The connected session.
+ */
+function readDeletionRegionIdentity(devtools: Devtools): Promise<DeletionRegionIdentity> {
+  return devtools.evaluate<DeletionRegionIdentity>(`(() => {
+    const region = document.querySelector('${DELETION_CARD} [role="alert"]')
+    const reading = {
+      found: Boolean(region),
+      same: Boolean(region) && region === globalThis.__deletionRegionElement,
+      connected: Boolean(region) && region.isConnected,
+      text: region ? region.textContent.trim() : "",
+      mutations: globalThis.__deletionRegionMutations || 0,
+    }
+    globalThis.__deletionRegionObserver?.disconnect()
+    return reading
   })()`)
 }
 
@@ -200,7 +277,8 @@ function clickButtonByText(devtools: Devtools, card: string, text: string): Prom
 
 /**
  * `DeletionValidation`'s browser checks, on the catalogue's own demo (`#255`): the alert region is
- * present and empty on load, a non-empty dependency list brings it into view, a re-render for a
+ * present and empty on load, a non-empty dependency list brings it into view with the message
+ * arriving as a mutation of the same, already-parked region (not a replacement), a re-render for a
  * reason unrelated to the dependency list does not move the page, and emptying the list removes the
  * visible content while the region itself stays on the page.
  *
@@ -217,10 +295,19 @@ async function deletionValidationChecks(devtools: Devtools): Promise<void> {
 
   check(
     "the region exists before there is anything to say, carrying role=alert and no class",
-    initial.hasAlertRole && initial.regionText === "" && initial.regionClass === "",
-    `role has "alert"=${initial.hasAlertRole} class="${initial.regionClass}" ` +
-      `text="${initial.regionText}"`,
+    initial.regionFound && initial.hasAlertRole && initial.regionText === "" &&
+      initial.regionClass === "",
+    `found=${initial.regionFound} role has "alert"=${initial.hasAlertRole} ` +
+      `class="${initial.regionClass}" text="${initial.regionText}"`,
   )
+
+  // Parked while the list is still empty, not after it arrives: a reading taken only once the
+  // message is showing could not tell "the same region gained text" from "a new region, rendered
+  // only because the list is non-empty now, replaced one that was never there" — and that second
+  // shape is exactly what a region rendered only while `dependencies` is non-empty produces. If the
+  // region cannot be parked here (`regionFound` was already false above), `parkedBeforeShow` carries
+  // that failure into the check below rather than silently skipping it.
+  const parkedBeforeShow = initial.regionFound && await parkDeletionRegion(devtools)
 
   const clickedRestore = await clickButtonByText(
     devtools,
@@ -229,12 +316,19 @@ async function deletionValidationChecks(devtools: Devtools): Promise<void> {
   )
   const settledOnShow = await settledScroll(devtools, { timeoutMs: 5_000 })
   const shown = await readDeletionState(devtools)
+  const identity = await readDeletionRegionIdentity(devtools)
   check(
     "a new non-empty list brings the block into view, and the message arrives as a change to it",
-    clickedRestore && settledOnShow && shown.regionText.startsWith("To archive this Region") &&
-      shown.inViewport,
-    `clicked=${clickedRestore} settled=${settledOnShow} inViewport=${shown.inViewport} ` +
-      `text="${shown.regionText}"`,
+    clickedRestore && settledOnShow && shown.inViewport && parkedBeforeShow &&
+      identity.found && identity.same && identity.connected &&
+      identity.text.startsWith("To archive this Region") && identity.mutations >= 1,
+    !parkedBeforeShow
+      ? "there was no region to park before the list went from empty to non-empty"
+      : `clicked=${clickedRestore} settled=${settledOnShow} inViewport=${shown.inViewport} ` +
+        `same=${identity.same} connected=${identity.connected} mutations=${identity.mutations} ` +
+        `text="${identity.text}" — a region rendered only while the list is non-empty would ` +
+        `replace rather than mutate the parked element, and inViewport would stay false if the ` +
+        `block never scrolled into view`,
   )
 
   // Scrolled to the top, deliberately away from the block, before the unrelated re-render: the
@@ -264,9 +358,9 @@ async function deletionValidationChecks(devtools: Devtools): Promise<void> {
   const emptied = await waitForDeletionState(devtools, (reading) => reading.regionText === "")
   check(
     "emptying the list clears its content but keeps the alert region on the page",
-    clickedEmpty && emptied.ok && emptied.hasAlertRole && emptied.regionText === "" &&
-      emptied.regionClass === "",
-    `clicked=${clickedEmpty} role has "alert"=${emptied.hasAlertRole} ` +
+    clickedEmpty && emptied.ok && emptied.regionFound && emptied.hasAlertRole &&
+      emptied.regionText === "" && emptied.regionClass === "",
+    `clicked=${clickedEmpty} found=${emptied.regionFound} role has "alert"=${emptied.hasAlertRole} ` +
       `class="${emptied.regionClass}" text="${emptied.regionText}"`,
   )
 }
