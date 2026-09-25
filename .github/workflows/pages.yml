@@ -3,7 +3,8 @@ name: Pages
 # Two things live here, and the second is why this file is no longer deploy-only.
 #
 # GitHub Pages can only be deployed by a GitHub workflow — Woodpecker cannot reach it. Woodpecker
-# still runs `deno task check` on the same events, but it runs it in `denoland/deno:2.9.7`, which
+# still runs `deno task check` on the same pull-request and push events (and publishes on a `v*`
+# tag, which this workflow ignores), but it runs it in `denoland/deno:2.9.7`, which
 # has no browser, so it cannot run `pages/verify.ts`. That script is where every assertion about
 # keyboard, focus and effects lives, because this repository's unit tests render to a string and can
 # see none of it. GitHub's `ubuntu-latest` image ships Google Chrome, which `verify.ts` already

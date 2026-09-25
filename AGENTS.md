@@ -175,7 +175,7 @@ step, after `check`, against its own clean checkout — `.github/workflows/pages
 `.woodpecker.yml` both do this.
 
 `private-names` is not part of `check` either, and no CI runs it: it needs a file of names the owner
-keeps outside the repository, and it exists for the owner to run before every `deno publish`.
+keeps outside the repository, and it is run before every release tag is pushed.
 [`docs/pre-publish-checks.md`](./docs/pre-publish-checks.md) says how.
 
 Every package is published at the same version, every time, together (owner decision,

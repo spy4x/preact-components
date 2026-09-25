@@ -42,4 +42,8 @@ steps:
       JSR_TOKEN:
         from_secret: JSR_TOKEN
     commands:
+      # `deno publish` exits 0 when every version is already on JSR, so a tag pushed without the
+      # version bump would go green and publish nothing; this refuses any tag that is not `v` plus
+      # the one version every package declares.
+      - deno run --allow-read --allow-env=CI_COMMIT_TAG infra/scripts/release-tag.ts
       - deno publish --token "$${JSR_TOKEN}"

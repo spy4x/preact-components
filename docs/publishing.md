@@ -47,9 +47,10 @@ file stays wrong in that version for good.
    deno task private-names /path/to/names.txt
    ```
 
-4. Tag that commit `v<version>` and push the tag. Woodpecker's `publish` step (`.woodpecker.yml`)
-   runs `check` and `publish:dry` again, then `deno publish` with the `JSR_TOKEN` secret, which
-   publishes every named workspace member at once:
+4. Tag that commit `v<version>` and push the tag. Woodpecker's tag build (`.woodpecker.yml`) runs
+   `check` and `publish:dry` again; its `publish` step then refuses a tag that is not `v` plus the
+   version every package declares (`infra/scripts/release-tag.ts`), and runs `deno publish` with
+   the `JSR_TOKEN` secret, which publishes every named workspace member at once:
 
    ```bash
    git tag v0.1.0 && git push origin v0.1.0
@@ -61,8 +62,32 @@ subset of the packages: a package published alone at a new version breaks the ru
 
 ## One-time setup
 
-The `publish` step needs two things that live outside this repository, both set up once by the
-owner: the `preact-components` scope on jsr.io, and a `JSR_TOKEN` secret on this repository in
-Woodpecker (repository id 9), holding a JSR token that may publish to that scope. A tag pushed
-before either exists fails at the `publish` step and publishes nothing; once both exist, restart
-that pipeline.
+The `publish` step needs three things that live outside this repository, all set up once by the
+owner:
+
+- the ten packages, created on jsr.io in the `spy4x` scope before the first tag — `deno publish`
+  with a token does not create a package, it refuses the whole run and names the missing ones:
+  `preact-cn`, `preact-icons`, `preact-signals`, `preact-theme`, `preact-charts`,
+  `preact-system`, `preact-ui`, `preact-crud`, `preact-map` and `preact-ui-guide`, each at
+  `https://jsr.io/new?scope=spy4x&package=<name>`;
+- a JSR token that may publish to the `spy4x` scope (the one `spy4x/ts-libs` publishes with will
+  do);
+- a `JSR_TOKEN` secret holding it on this repository in Woodpecker (repository id 9), allowed for
+  the `tag` event only, so no push or pull-request build can read it.
+
+A new package added later is created on jsr.io the same way before the tag that first publishes it.
+
+## When a tag build fails
+
+- **Before any step runs** (`secret "jsr_token" not found`): the secret is missing or not allowed
+  for tags. Add it, then restart the pipeline.
+- **In `check` or `publish-dry`**, or when `release-tag.ts` refuses the tag: nothing was
+  published. Fix the cause in a pull request, then move the tag to the merge commit
+  (`git tag -f v<version> <commit>`, `git push -f origin v<version>`).
+- **`deno publish` names packages that do not exist:** nothing was published. Create them on
+  jsr.io, then restart the pipeline.
+- **`deno publish` fails part-way:** the packages published before the failure are on JSR for good.
+  A temporary failure (network, registry) is fixed by restarting the pipeline, and JSR skips what it
+  already has. A failure in a package's own files is fixed in a pull request, and the tag moves to
+  the fix as above; the published packages are skipped and the rest go out at the same version. The
+  fix must not change a package that already published, or the same version would mean two things.

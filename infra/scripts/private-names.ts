@@ -29,7 +29,7 @@
  * reading a listed file all abort the run with a clear message and a non-zero exit, rather than
  * being silently skipped or surfacing as a raw stack trace.
  *
- * Exits non-zero if any package has a match, zero otherwise. Run it before every `deno publish`:
+ * Exits non-zero if any package has a match, zero otherwise. Run it before every release tag is pushed:
  *
  * ```bash
  * deno task private-names /path/to/names.txt
