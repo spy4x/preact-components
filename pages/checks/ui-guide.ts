@@ -258,16 +258,23 @@ async function navigationChecks(devtools: Devtools): Promise<void> {
   )
 
   // The skip link is the guide's first link: a real Enter on it moves focus past the navigation.
-  await devtools.evaluate(`document.querySelector('[data-e2e="ui-guide-skip"]').focus()`)
+  // The column it lands on is focusable only while it holds that focus; one that stayed focusable
+  // would take the focus of every click on a non-focusable spot inside it, and a menu there closes.
+  const SKIP = `document.querySelector('[data-e2e="ui-guide-skip"]')`
+  const COLUMN = `document.getElementById(${SKIP}.getAttribute("href").slice(1))`
+  await devtools.evaluate(`${SKIP}.focus()`)
+  const padding = await devtools.evaluate<string>(`getComputedStyle(${SKIP}).paddingLeft`)
   await pressKey(devtools, "Enter")
-  const skipped = await devtools.evaluate<{ onContent: boolean }>(`(() => {
-    const skip = document.querySelector('[data-e2e="ui-guide-skip"]')
-    return { onContent: document.activeElement?.id === skip.getAttribute("href").slice(1) }
-  })()`)
+  const onContent = await devtools.evaluate<boolean>(`document.activeElement === ${COLUMN}`)
+  await pressKey(devtools, "Tab")
+  const released = await devtools.evaluate<boolean>(
+    `document.activeElement !== ${COLUMN} && !${COLUMN}.hasAttribute("tabindex")`,
+  )
   check(
-    "a real Enter on the skip link moves focus from the navigation to the page",
-    skipped.onContent,
-    `focus on the page column: ${skipped.onContent}`,
+    "a real Enter on the skip link moves focus to the page, which is unfocusable again after Tab",
+    padding === "12px" && onContent && released,
+    `skip link padding while focused ${padding}; focus on the page column: ${onContent}; after ` +
+      `Tab the column is ${released ? "no longer focusable" : "still focusable or focused"}`,
   )
 
   // Within the page showing, the navigation lists its cards; a click on one lands on it.
@@ -587,5 +594,27 @@ async function coldFragmentCheck(devtools: Devtools): Promise<void> {
     "a bare fragment loaded cold opens the page that holds its element, in view",
     hydrated && landed,
     `${HREF} → page "${page}", #icons ${landed ? "in view" : "not in view"}`,
+  )
+
+  // A fragment naming a page with no element of that id opens the page at its top, as its route
+  // does, rather than keeping the scroll of the page it replaced.
+  await devtools.evaluate(`(scrollTo({ top: 1500, behavior: "instant" }), null)`)
+  await settledScroll(devtools)
+  const from = await devtools.evaluate<number>("Math.round(scrollY)")
+  await devtools.evaluate(`(location.hash = "#theme", null)`)
+  await poll(
+    () =>
+      devtools.evaluate<boolean>(`document.querySelector('[data-guide-page="theme"]') !== null`),
+    3_000,
+  )
+  await settledScroll(devtools)
+  const theme = await devtools.evaluate<{ page: string; top: number }>(`({
+    page: document.querySelector("[data-guide-page]")?.dataset.guidePage ?? "",
+    top: Math.round(scrollY),
+  })`)
+  check(
+    "a fragment naming a page opens that page at its top",
+    from > 0 && theme.page === "theme" && theme.top === 0,
+    `#theme from scrollY ${from} → page "${theme.page}" at scrollY ${theme.top}`,
   )
 }
