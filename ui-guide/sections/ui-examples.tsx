@@ -372,8 +372,10 @@ const input = { isSameNode: (node: unknown) => node === input }
   typing: typingState(sizes, soldOut),
   firstUsable: selectableIndex(sizes, 0, soldOut),
   empty: listboxContent([], "xl"),
-  left: leavesCombobox(input, {} as Node),
-  focusWentNowhere: leavesCombobox(input, null),
+  leaves: {
+    toAnotherElement: leavesCombobox(input, {} as Node),
+    toNowhere: leavesCombobox(input, null),
+  },
 })`,
     covers: ["openingState", "typingState", "selectableIndex", "listboxContent", "leavesCombobox"],
     run: () => {
@@ -385,8 +387,10 @@ const input = { isSameNode: (node: unknown) => node === input }
         typing: typingState(sizes, soldOut),
         firstUsable: selectableIndex(sizes, 0, soldOut),
         empty: listboxContent([], "xl"),
-        left: leavesCombobox(input, {} as Node),
-        focusWentNowhere: leavesCombobox(input, null),
+        leaves: {
+          toAnotherElement: leavesCombobox(input, {} as Node),
+          toNowhere: leavesCombobox(input, null),
+        },
       }
     },
   },
