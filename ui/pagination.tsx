@@ -208,7 +208,11 @@ export function Pagination(
           {previousLabel}
         </Button>
       )}
-      <ul class="flex items-center gap-1">
+      {
+        /* `flex-wrap`: on a phone the page numbers wrap between Previous and Next rather than
+      running past the page edge; the two controls keep their places on either side. */
+      }
+      <ul class="flex flex-wrap items-center justify-center gap-1">
         {pageRange(current, pageCount).map((item, index) =>
           !("page" in item)
             ? (
