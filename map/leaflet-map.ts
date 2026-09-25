@@ -34,15 +34,24 @@ export type LeafletModule = typeof Leaflet
  * Leaflet ships as CommonJS. Some bundlers hand a dynamic import of it back as the namespace itself
  * (`L.map` is right there); others — esbuild with code splitting, which is what
  * `deno bundle --code-splitting` runs — wrap it as `{ default: L }`, and `L.map` is then undefined,
- * so the map never mounts. This accepts both shapes.
+ * so the map never mounts. This accepts both shapes, and throws on anything else rather than hand
+ * back a value that fails later with an unrelated-looking error.
  *
  * @param imported What `import("leaflet")` resolved to.
  * @returns The namespace with `map`, `tileLayer` and the rest on it.
+ * @throws When the import resolved to neither shape.
  */
 export function leafletFromImport(
   imported: LeafletModule | { default: LeafletModule },
 ): LeafletModule {
-  return "map" in imported ? imported : imported.default
+  const L = "map" in imported ? imported : imported.default
+  if (typeof L?.map !== "function") {
+    throw new Error(
+      `@spy4x/preact-map: import("leaflet") resolved to neither the Leaflet namespace ` +
+        `nor { default: Leaflet }`,
+    )
+  }
+  return L
 }
 
 /** The wrapper class `.status-on`/`.status-off`/`.status-unknown .map-marker` in `theme/preset.css`
@@ -246,7 +255,8 @@ export function createLeafletMap(
  * and calling a port after the component that owns it is gone is the kind of surprise a caller has
  * to guard against defensively if this function does not.
  *
- * @param load Loads the Leaflet module — `() => import("leaflet")` in production.
+ * @param load Loads the Leaflet module — `() => import("leaflet").then(leafletFromImport)` in
+ *   production.
  * @param container The element to mount into.
  * @param tileUrl Tile URL template.
  * @param center Initial view centre.

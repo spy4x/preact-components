@@ -64,6 +64,13 @@ describe("leafletFromImport", () => {
     const namespace = { map: () => {} } as unknown as LeafletModule
     expect(leafletFromImport({ default: namespace })).toBe(namespace)
   })
+
+  it("throws a named error when the import resolved to neither shape", () => {
+    const shape = /neither the Leaflet namespace nor \{ default: Leaflet \}/
+    expect(() => leafletFromImport({} as unknown as LeafletModule)).toThrow(shape)
+    expect(() => leafletFromImport({ default: {} } as unknown as { default: LeafletModule }))
+      .toThrow(shape)
+  })
 })
 
 describe("mountLeafletMap", () => {
