@@ -15,7 +15,8 @@ way covering `charts/` already put an optional `d3` in reach of anything that im
 This is a build-time fact about the module graph, not a run-time one: `UIGuide`'s own `registry` prop
 (below) can be handed a partial registry that never _renders_ a `Map` card, but the app that built
 that partial registry already resolved and bundled `@spy4x/preact-map` — and therefore
-Leaflet — to get the value it left out. There is no documented way around that.
+Leaflet — to get the value it left out. There is no documented way around that. What an app loads
+at run time is smaller: see "d3 loads with the charts page" below.
 
 Ported from one source application's own modular route-per-section guide (the better structure of
 the two source guides) and another's single-file guide component, whose icon gallery is kept
@@ -74,7 +75,7 @@ a copied snippet — arrives as props and ports.
 
 `registry.ts`'s `guidePages` is what the guide renders at one time: the overview, one page per
 package (`ui`, `system`, `crud`, `charts`, `map`, `signals`, `theme`, `icons`, `cn`), and `all`. A
-section belongs to its package's page — `theme` holds the two class sections and its examples — so
+section belongs to its package's page — `theme` holds the class sections and its examples — so
 `ui/`'s sections are one page read top to bottom and a package with one section is a page of one.
 A package page with no card in the registry says its examples are coming. `all` renders every other page in navigation order: it is
 the served document and a route of its own, for searching the whole library with the browser's find.
@@ -114,7 +115,7 @@ page replaced the group heading as the unit a reader navigates by, so no heading
 an element the guide renders, and `pageHref` writes a page's href. A page whose id is also a
 section's (`charts`, `crud`, `map`, `system`) shares that section's route.
 
-Four decisions worth stating, because a later wave will build on them:
+Decisions worth stating, because a later wave will build on them:
 
 - **The routes derive from `catalogueSections` and `guidePages`.** `routeSlug` of the section id is
   the section slug and `routeSlug` of the component name is the demo slug — one slug rule, the same
@@ -173,9 +174,9 @@ variant to a component fails `deno check` until the catalogue shows it.
 
 ### The allow-list carries a reason, and it only shrinks
 
-Two lists feed it. `EXPORTS_WITHOUT_DEMO` in `coverage.ts` holds an export with a sentence saying
-why it has no card or example; today that is `useUrlFilters` alone, whose card would read and
-write the host application's own address. `examples-pending.ts` holds, per package and one
+Lists feed it. `EXPORTS_WITHOUT_DEMO` in `coverage.ts` holds an export with a sentence saying
+why it has no card or example — `useUrlFilters`, for instance, whose card would read and write
+the host application's own address. `examples-pending.ts` holds, per package and one
 name per line, every export that had neither when example cards were added; each carries the reason
 "example pending (#215)". An entry the package no longer exports fails, and so does one that
 has a card or an example since — so adding an example fails the tests until its names leave the
@@ -232,7 +233,7 @@ test pins that behaviour down.
 
 The other direction is `classes.test.tsx`, and it is the one that matters for dead CSS: a class
 `preset.css` defines that nothing demonstrates has to be either demonstrated or named in
-`UNDEMONSTRATED_CLASSES` with a reason, or the suite fails. Two decisions are worth stating:
+`UNDEMONSTRATED_CLASSES` with a reason, or the suite fails. Decisions worth stating:
 
 - **A test rather than a type.** The class list lives in CSS — Tailwind `@utility` blocks and plain
   selectors — so there is no union for TypeScript to derive a `Record` from without a code-generation
@@ -253,6 +254,25 @@ package the guide did not cover — until `map/` landed (#143) and gave them a r
 demonstrated now, through the `Map` card's plain-text list of markers. Each remaining entry carries
 its reason, and each is checked for staleness — an excluded class the preset no longer defines, or
 that the catalogue demonstrates after all, fails.
+
+## d3 loads with the charts page
+
+An app that mounts the guide does not load d3 until someone opens the charts page. The d3 islands,
+`D3LineChart` and `CompareChart`, and the helpers exported from the same module as `D3LineChart`,
+are reached only through `sections/charts-d3.tsx`, whose dynamic `import()` runs from an effect when
+a card on the charts page mounts (`lazy.ts`). No module the package's exports reach imports
+`charts/d3-line-chart`, `charts/compare-chart` or the `@spy4x/preact-charts` barrel statically;
+the charts sections import the other subpaths directly. A type checker still resolves `d3`: the
+dynamic import and the `import type` of the islands' props both name those modules. A bundler that
+splits code at dynamic imports ships d3 in a file of its own, and the demo site's build does
+(`pages/build.ts`).
+
+Until the module arrives the cards show a placeholder, and the examples that need it print a loading
+line — on the server, and in the browser's first render, so hydration matches. The load starts one
+task after the effect: hydration mounts every page, because the served document carries them all,
+and the host's first read of the address unmounts the pages it does not show before that task runs.
+`pages/checks/charts.ts` proves the behaviour in a browser: a fresh load of the overview fetches no
+script that carries d3, and opening the charts page fetches one and draws the charts.
 
 ## Heading levels are the outline
 
@@ -291,10 +311,10 @@ per entry of `catalogueNames` against the emitted HTML.
 | **Stylesheets as text** (examples) | `theme`   | `theme`   |
 | **cn** (examples)                  | `cn`      | `cn`      |
 
-Nothing here states how many components are _missing_ a card, on purpose: that number moves with every
-component PR. Read `examples-pending.ts` and `EXPORTS_WITHOUT_DEMO` in `coverage.ts`, which is where a card or
-an example somebody still owes is declared. A count in this file was wrong twice while this section was being written, which is the
-argument against a third one.
+Nothing here states how many components are _missing_ a card, on purpose: that number moves with
+every component PR. Read `examples-pending.ts` and `EXPORTS_WITHOUT_DEMO` in `coverage.ts`, which is
+where a card or an example somebody still owes is declared. A count in this file went wrong more
+than once while this section was being written, which is the argument against writing one.
 
 `Fields` is the `ui/` half of the form story — the controlled primitives, each with the demo an app
 writes — and `forms`/`surfaces` are the other half: the preset styles markup the library does not own,
@@ -312,8 +332,8 @@ The catalogue is checked against the packages' own exports, not against this tab
 prose and nothing reads it: `coverage.test.ts` fails when a covered package has an export with no card or
 example, whichever section it should have been in.
 
-Two demos needed a `class` override to be renderable inside a page: `LoadingScreen` is a
-full-viewport overlay and `Toastr` is pinned to the page corner, so both are shown inside a
+Some demos need a `class` override to be renderable inside a page: `LoadingScreen`, for instance,
+is a full-viewport overlay and `Toastr` is pinned to the page corner, so both are shown inside a
 positioned box (the package merges classes through `cn`, where a later position utility wins).
 
 ## The icon gallery
@@ -334,7 +354,7 @@ was rendered with. The button sits next to the `<details>` rather than inside it
 click would toggle the disclosure as well as copying. Its accessible name is the card it belongs
 to, so the catalogue is not one long row of identical "Copy" buttons to a screen reader: the attribute
 ships escaped (`aria-label="Copy the &lt;Badge /&gt; snippet"`, which reads as `Copy the <Badge />
-snippet`), and the checkmark `CopyButton` shows for 1.5s is the visual confirmation.
+snippet`), and the checkmark `CopyButton` shows for a moment is the visual confirmation.
 
 `copy.test.tsx` asserts the wiring at the props level, since the repository has no DOM harness: it
 records every `DemoCard` element the guide creates while it renders, finds each card's `CopyButton`
@@ -344,11 +364,11 @@ clipboard write to the text of the block it came from.
 
 ## Not carried over
 
-- **One source's `currency.tsx` (221 LOC) — dropped.** It demonstrates `CurrencyDisplay`,
+- **One source's `currency.tsx` — dropped.** It demonstrates `CurrencyDisplay`,
   `CurrencySelector` and `ExchangeRateBadge`, which are domain-coupled to that product and
   deliberately not part of `ui/`.
 - **The same source's `form.tsx` (`UIGuideEditor`) — dropped.** It was an empty `<form class="card">`
-  scaffold with three buttons and "Inputs go here…"; `Button` and `Table` cover the same ground with
+  scaffold with a few buttons and "Inputs go here…"; `Button` and `Table` cover the same ground with
   real assertions.
 - **`.btn-sm` and `.h6` demos — dropped.** The theme dropped both classes; the guide now has a test
   that stops them coming back (see above).
@@ -372,21 +392,25 @@ deno test --allow-read --allow-env ui-guide/   # this package alone
 
 The suites: `coverage.test.ts` (the coverage rule, driven against the real packages and against
 inputs a healthy tree cannot produce, plus the package-directory decision), `registry.test.ts` (the
-catalogue's own data — one demo per card, every card in one section, the class cards namespaced apart
-from the components, and the missing-card report), `routes.test.ts` (the resolver, the href builders,
-a route for every section driven from `catalogueSections`, and the drift check that `pages/build.ts`
-runs over the emitted route echo, and the page each route opens), `catalogue.test.tsx` (every demo
-renders, the banner, the route descriptor, a usage block and copy control per card, and the `all`
-page's order), `shell.test.tsx` (the page a hash renders, the navigation's marks and names, a
-host's page extra), `icons.test.tsx` (gallery exhaustiveness,
+catalogue's own data — one demo per card, every card in one section, the class cards namespaced
+apart from the components, and the missing-card report), `routes.test.ts` (the resolver, the href
+builders, a route for every section driven from `catalogueSections`, and the drift check that
+`pages/build.ts` runs over the emitted route echo, and the page each route opens),
+`catalogue.test.tsx` (every demo renders, the banner, the route descriptor, a usage block and copy
+control per card, and the `all` page's order), `shell.test.tsx` (the page a hash renders, the
+navigation's marks and names, a host's page extra), `icons.test.tsx` (gallery exhaustiveness,
 filter), `instructions.test.ts` (a documented class is defined), `classes.test.tsx` (a defined class
-is demonstrated, or excluded with a reason) `copy.test.tsx` (every card's copy control is wired to
-its own snippet and to the injected port) and `example.test.tsx` (an example runs when its card
-renders, on its package's page, uses every export it covers, and how its output is printed). Tests render real markup with `preact-render-to-string`
-and assert on it; no DOM, no browser.
+is demonstrated, or excluded with a reason), `copy.test.tsx` (every card's copy control is wired to
+its own snippet and to the injected port), `example.test.tsx` (an example runs when its card
+renders, on its package's page, uses every export it covers, and how its output is printed),
+`lazy.test.tsx` (a lazy module renders its loading state on the server without starting the load),
+`sections/charts-d3.test.tsx` (the charts page server-renders its d3 cards and examples as
+placeholders) and `sections/demo-decisions.test.ts` (the pure decisions behind the interactive
+demos, such as what a caller holds after a port fires). Tests render real markup with
+`preact-render-to-string` and assert on it; no DOM, no browser.
 
 `preact-render-to-string` is pinned once, in the root import map, not in this package's own
-`deno.json` — #219 replaced the six identical per-package copies this and `ui/` used to carry with
+`deno.json` — #219 replaced the identical per-package copies this and `ui/` used to carry with
 that one shared pin. `@std/jsonc` is still pinned in this package's own `deno.json`, because `coverage.ts` reads
 each package's `exports` out of a `deno.json` and Deno writes those configs with comments; it is not
 reachable from any published entry point.
