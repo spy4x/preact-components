@@ -10,7 +10,93 @@
  * `classes.test.tsx`, so a chip cannot name a class the card does not apply.
  */
 
+import { INK_CSS } from "@preact-components/theme"
 import type { ClassDemoFragment } from "../registry.ts"
+
+/**
+ * Every custom property `.dark[data-theme="ink"]` declares, as a `property → value` map parsed
+ * straight out of `INK_CSS` — the same generated constant a consuming app splices into its own
+ * build. Reading the values here rather than copying them by hand is what {@link InkPaletteDemo}'s
+ * swatches need: a literal copy drifts silently the moment `ink.css` changes, and nothing catches
+ * that until someone notices the catalogue disagrees with the theme it is showing.
+ */
+function parseInkDeclarations(): Record<string, string> {
+  const start = INK_CSS.indexOf('.dark[data-theme="ink"] {')
+  const end = INK_CSS.indexOf("\n}", start)
+  const block = INK_CSS.slice(start, end)
+  const declarations: Record<string, string> = {}
+  for (const match of block.matchAll(/(--[a-z-]+):\s*([^;]+);/g)) {
+    declarations[match[1]] = match[2].trim()
+  }
+  return declarations
+}
+
+/** Which of {@link parseInkDeclarations}'s properties get a swatch, and the label each carries. */
+const INK_SWATCH_LABELS: Record<string, string> = {
+  "--color-surface-page": "surface-page",
+  "--color-surface-rail": "surface-rail",
+  "--color-surface-card": "surface-card",
+  "--color-surface-active": "surface-active",
+  "--color-hairline": "hairline",
+  "--color-text": "text",
+  "--color-text-muted": "text-muted",
+  "--color-primary": "primary action",
+  "--color-nav-active": "nav-active",
+  "--color-focus-ring": "focus-ring",
+}
+
+/**
+ * Swatches for the ink theme's tokens (#257): the surface scale, the hairline, the two text
+ * tones, the one accent, and the nav-active/focus tokens split off it.
+ *
+ * `ink.css` only paints once `.dark` and `data-theme="ink"` sit together, and the convention this
+ * catalogue holds everywhere else is that `.dark` is a variant marker on `<html>`, owned by the
+ * host page's colour-scheme toggle — not a class an inner element wears (see
+ * `UNDEMONSTRATED_CLASSES["dark"]` in `instructions.tsx`). So this card does not fake a scoped
+ * `.dark[data-theme="ink"]` locally: the swatches below read the palette's own values straight out
+ * of `INK_CSS` (see {@link parseInkDeclarations}), and the real cascade — `<html class="dark"
+ * data-theme="ink">` repainting a page through the same tokens `preset.css` already reads — is
+ * proven in the browser by `pages/checks/theme.ts` instead, which is the only place in this
+ * repository that ever toggles `.dark` on `<html>`. A couple of ink's own declarations are
+ * themselves a `var(--other-token)` reference rather than a literal colour
+ * (`--color-surface-page: var(--color-canvas)`, for one) — {@link resolveInkValue} follows those
+ * one level, which is as deep as `ink.css` itself ever nests them.
+ */
+function resolveInkValue(value: string, declared: Record<string, string>): string {
+  const reference = value.match(/^var\((--[a-z-]+)\)$/)
+  return reference ? (declared[reference[1]] ?? value) : value
+}
+
+function InkPaletteDemo() {
+  const declared = parseInkDeclarations()
+  const swatches = Object.entries(INK_SWATCH_LABELS).map(([property, label]) => ({
+    label,
+    value: resolveInkValue(declared[property] ?? "", declared),
+  }))
+  return (
+    <div class="card max-w-md">
+      <div class="card-body space-y-3">
+        <p class="text-sm text-muted">
+          Ink is dark-only: set <code>data-theme="ink"</code> together with <code>.dark</code> on
+          {" "}
+          <code>&lt;html&gt;</code>.
+        </p>
+        <div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
+          {swatches.map((swatch) => (
+            <div key={swatch.label} class="flex flex-col items-center gap-1">
+              <span
+                aria-hidden="true"
+                class="rounded-primary border border-subtle block size-10"
+                style={`background: ${swatch.value}`}
+              />
+              <span class="text-muted text-xs">{swatch.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 /** The four-part surface: header, body, footer, all three edges from the tokens. */
 function CardDemo() {
@@ -277,5 +363,17 @@ export const surfaceDemos = {
 <span class="border-control border px-2 py-1 text-xs">border-control</span>
 <span class="bg-canvas border-subtle border px-2 py-1 text-xs">bg-canvas</span>`,
     render: () => <ColourAtomsDemo />,
+  },
+  "class-ink-palette": {
+    title: "Ink palette",
+    classes: ["card", "card-body", "text-muted", "rounded-primary", "border-subtle"],
+    summary:
+      'The ink theme (#257): an additional, opt-in dark palette, `.dark[data-theme="ink"]`. It repaints the same tokens above — the default Eirene palette is unaffected — and adds a four-step surface scale, a hairline rule colour, two text tones, and `--color-nav-active`/`--color-focus-ring`, split off `--color-primary` so focus rings and the rail indicator do not use the accent. Links, checkboxes, outline buttons and bars still do.',
+    snippet: `<html class="dark" data-theme="ink">
+  <body class="theme-base">
+    <nav style="background: var(--color-surface-rail)">…</nav>
+  </body>
+</html>`,
+    render: () => <InkPaletteDemo />,
   },
 } satisfies ClassDemoFragment

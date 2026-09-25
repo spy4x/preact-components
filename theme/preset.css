@@ -157,6 +157,18 @@
   @apply focus-visible:outline-2 focus-visible:outline-offset-2;
   border-radius: var(--radius-primary, 0.5rem);
 
+  /*
+   * Tailwind's `outline-*` utilities set width and offset only; the colour is left at its
+   * `currentColor` initial value, which is `.btn-primary`'s own text colour — the same colour as
+   * its background is close to, so the ring can sit near-invisible against the page behind it (an
+   * ink palette's `--color-primary-foreground` on `--color-primary` is the case this was found in;
+   * see `ink.css`'s own header for why `--color-focus-ring` exists). Scoped to ink with `:where()`,
+   * so it adds no specificity and the default palettes keep the browser's own focus colour.
+   */
+  :where(.dark[data-theme="ink"]) &:focus-visible {
+    outline-color: var(--color-focus-ring);
+  }
+
   &:disabled,
   &[disabled] {
     @apply cursor-not-allowed opacity-50 pointer-events-none shadow-none hover:opacity-100;
@@ -265,8 +277,10 @@
    * exactly the build-time coupling the tokens avoid.
    */
   &:focus {
-    border-color: var(--color-primary-muted, oklch(0.558 0.288 302.321));
-    outline: 1px solid var(--color-primary-muted, oklch(0.558 0.288 302.321));
+    /* --color-focus-ring is defined only by ink, so the default palettes keep the accent here. */
+    border-color: var(--color-focus-ring, var(--color-primary-muted, oklch(0.558 0.288 302.321)));
+    outline: 1px solid var(--color-focus-ring, var(--color-primary-muted, oklch(0.558 0.288
+      302.321)));
     outline-offset: -1px;
     box-shadow: none;
   }
@@ -288,8 +302,10 @@
   }
 
   &:focus {
-    border-color: var(--color-primary-muted, oklch(0.558 0.288 302.321));
-    outline: 1px solid var(--color-primary-muted, oklch(0.558 0.288 302.321));
+    /* --color-focus-ring is defined only by ink, so the default palettes keep the accent here. */
+    border-color: var(--color-focus-ring, var(--color-primary-muted, oklch(0.558 0.288 302.321)));
+    outline: 1px solid var(--color-focus-ring, var(--color-primary-muted, oklch(0.558 0.288
+      302.321)));
     outline-offset: -1px;
     box-shadow: none;
   }

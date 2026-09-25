@@ -15,8 +15,9 @@ path does not exist either once the package comes from the registry: a module JS
 its own `import.meta.url` to the registry's `https:` address, not to a location on disk, so there
 is nothing on the installing machine to point a bundler's `@import` at.
 
-What the package exports instead is the two files' **text**, as `TOKENS_CSS` and `PRESET_CSS`
-string constants. A build script — Deno or Node, the entry point every bundler already calls —
+What the package exports instead is each file's **text**, as `TOKENS_CSS` and `PRESET_CSS` string
+constants — the two required files; `INK_CSS`, a third and optional one, is "Theming" → "Ink"
+below. A build script — Deno or Node, the entry point every bundler already calls —
 hands that text to Tailwind's own compiler through `loadStylesheet`, the same hook
 [this repository's own `pages/build.ts`](../pages/build.ts) uses to resolve `@import "tailwindcss"`
 itself:
@@ -132,6 +133,7 @@ under "Install" instead.
 | ------------ | -------------------------------------------------------------------------- |
 | `tokens.css` | every design token as a custom property: light in `:root`, dark in `.dark` |
 | `preset.css` | base type, colour atoms, buttons, forms, surfaces, data display, map atoms |
+| `ink.css`    | additional, opt-in dark palette (#257): `.dark[data-theme="ink"]`          |
 
 ### Classes
 
@@ -186,6 +188,76 @@ actually resolves them: the entry string a build script hands to `compile()`, ma
 were designed against in the source applications they were extracted from; dark
 mode swaps it for near-black chrome. The full list is in `tokens.css`, each with
 the Tailwind palette value it came from.
+
+### Fonts
+
+`tokens.css` declares `--font-sans`; it does not declare `--font-serif` or `--font-mono`. Both
+exist already — Tailwind 4 defines all three as part of its own default theme, so `font-serif` and
+`font-mono` utilities and a bare `<code>` element already resolve to a system stack with no
+declaration from this package. Redeclaring either in `:root` here would win the cascade over an
+app's own `@theme --font-mono`, the same problem the header comment in `tokens.css` explains for
+colour tokens — an app could not override it. #257 asked for the two tokens to exist for a
+proof-first site's use of monospace and serif text, not for this package to own their default
+value, so this package leaves both at Tailwind's own default and only names `--font-sans` as its
+one opinionated addition.
+
+### Ink
+
+`INK_CSS` is a second, additional palette (#257) — dark-only, opt-in, and it changes nothing about
+the default Eirene palette above. Importing it is the one extra line past the "Install" recipe:
+
+```ts
+// build.ts
+import { INK_CSS, PRESET_CSS, TOKENS_CSS } from "@preact-components/theme"
+
+const THEME_STYLESHEETS: Record<string, string> = {
+  "@preact-components/theme/tokens.css": TOKENS_CSS,
+  "@preact-components/theme/ink.css": INK_CSS,
+  "@preact-components/theme/preset.css": PRESET_CSS,
+}
+
+const entry = `
+  @import "tailwindcss";
+  @import "@preact-components/theme/tokens.css";
+  @import "@preact-components/theme/ink.css";
+  @import "@preact-components/theme/preset.css";
+`
+```
+
+`ink.css`'s position among the three imports does not matter: `.dark[data-theme="ink"]` is more
+specific than `:root` and `.dark`, so its declarations win wherever both match. It repaints the
+same custom properties `tokens.css` declares, so `preset.css`'s rules pick the ink values up
+through their `var(--token, <default>)` reads; the three focus rules noted below are the only
+preset changes. An app that skips importing `ink.css` gets the default palette only, exactly as
+before this file existed.
+
+Ink applies to an element carrying **both** `.dark` and `data-theme="ink"` — the selector is
+`.dark[data-theme="ink"]`, because the palette has no light variant:
+
+```html
+<html class="dark" data-theme="ink">
+```
+
+Beyond repainting `--color-primary`, `--color-surface`, `--color-canvas` and the rest of the
+tokens above, ink adds a handful its own: a four-step surface scale for a navigation rail
+(`--color-surface-page`, `--color-surface-rail`, `--color-surface-card`, `--color-surface-active`),
+a hairline rule colour (`--color-hairline`), two named text tones (`--color-text`,
+`--color-text-muted`), and — the reason ink exists as a second selector rather than a copy of the
+default dark palette — `--color-nav-active` and `--color-focus-ring`, split off `--color-primary`
+so focus states and a rail's current item do not use the accent. `--color-nav-active` is a
+**foreground/indicator** colour: a rail draws its current item's icon or text in it, not its
+background — the background a rail paints behind its current item is `--color-surface-active`
+above, a separate token. `--color-focus-ring` is read by three focus rules in `preset.css`:
+`.btn`'s ring, only under `.dark[data-theme="ink"]`, and the `.input`/`.select`/`.textarea`
+outline, which falls back to the accent it drew before wherever ink is not applied. The default
+palettes therefore draw exactly the focus rings they drew before. The default palette's
+`--color-primary` stays documented as covering buttons, links, focus rings and active nav all at
+once — ink is the one palette that splits focus
+rings and a rail's active indicator off it, onto their own tokens. Everything else that reads
+`--color-primary` or `--color-primary-muted` in `preset.css` still carries the accent under ink:
+`.btn-primary`'s fill, links (`.btn-link`, `.text-primary`, `.border-primary`), `bg-primary`,
+checkboxes, radios, `.btn-primary-outline` and `.bar`. That is narrower than #257 asked (the accent
+on the primary action alone); moving those is left for a later change.
 
 Two consequences of the design worth knowing:
 
