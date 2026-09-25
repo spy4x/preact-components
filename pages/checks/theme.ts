@@ -312,14 +312,16 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
     `light canvas ${inkWithoutDark.before} → with data-theme="ink" alone ${inkWithoutDark.withInk}`,
   )
 
-  // #257's reviewer round: under ink, .btn's focus-visible outline used to draw in currentColor,
-  // which on .btn-primary is that button's own near-black text — invisible against its own fill.
-  // preset.css now points it at var(--color-focus-ring, currentColor). `.btn`/`.btn-primary` are
-  // classes this preset ships, not a component the catalogue instantiates anywhere — the nearest
-  // catalogue card, "Button", is `ui/Button`, a different, Tailwind-utility button with its own
-  // `focus-visible:ring-*` styling and no connection to this class at all. So this probe builds a
-  // real `<button class="btn btn-primary">` itself, fixed on screen so a real click can reach it,
-  // reads it, and removes it again.
+  // A focused `.btn` has to show a ring of at least 3:1 against the page in every palette. Tailwind's
+  // `outline-*` utilities leave the ring's colour alone, so a `.btn` draws the browser's own focus
+  // colour unless preset.css sets one, and in a dark page that colour is near-black: #291 found it
+  // under ink, and #297 in the default dark palette (about 1.07:1). preset.css now points `.btn`'s
+  // ring at --color-focus-ring under any `.dark`, and the tone buttons use a lighter shade there.
+  // `.btn` and its tones are classes this preset ships, not a component the catalogue instantiates
+  // anywhere — the nearest catalogue card, "Button", is `ui/Button`, a different, Tailwind-utility
+  // button with its own `focus-visible:ring-*` styling and no connection to this class at all. So
+  // this probe builds a real `<button class="btn …">` itself, fixed on screen so a real click can
+  // reach it, reads it, and removes it again.
   //
   // A script call to .focus() was tried first to read the outline back, and Chromium does not
   // enter :focus-visible for a button focused that way — it reads back the browser's own
@@ -329,31 +331,39 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
   // button and back — both genuine keyboard interactions — so this clicks the button once (an
   // ordinary focus, not yet the one this check reads), tabs forward and Shift+Tabs straight back,
   // and only then reads what the second, keyboard-driven focus actually committed.
-  // The same probe runs in the default light palette too: the ink fix must not change the ring
-  // every existing consumer's primary button draws (#291's third review found it had).
-  for (
-    const palette of [{ ink: true, name: "under ink" }, {
-      ink: false,
-      name: "in the default light palette",
-    }]
-  ) {
+  // The light palette is probed too: the dark fix must not change the ring every existing
+  // consumer's light primary button draws (#291's third review found an earlier fix had).
+  const palettes = [
+    { dark: true, ink: true, name: "under ink" },
+    { dark: true, ink: false, name: "in the default dark palette" },
+    { dark: false, ink: false, name: "in the default light palette" },
+  ]
+  const buttonClasses = [
+    "btn-primary",
+    "btn-danger",
+    "btn-danger-outline",
+    "btn-warning",
+    "btn-warning-outline",
+    "btn-success",
+    "btn-success-outline",
+  ]
+  const probes = palettes.flatMap((palette) =>
+    buttonClasses.map((buttonClass) => ({ palette, buttonClass }))
+  )
+  for (const { palette, buttonClass } of probes) {
     const rect = await devtools.evaluate<{ x: number; y: number }>(`(() => {
       const root = document.documentElement
       window.__inkFocusRingRestore = {
         wasDark: root.classList.contains("dark"),
         wasTheme: root.getAttribute("data-theme"),
       }
-      if (${palette.ink}) {
-        root.classList.add("dark")
-        root.setAttribute("data-theme", "ink")
-      } else {
-        root.classList.remove("dark")
-        root.removeAttribute("data-theme")
-      }
+      root.classList.toggle("dark", ${palette.dark})
+      if (${palette.ink}) root.setAttribute("data-theme", "ink")
+      else root.removeAttribute("data-theme")
 
       const button = document.createElement("button")
       button.type = "button"
-      button.className = "btn btn-primary"
+      button.className = "btn ${buttonClass}"
       button.textContent = "Focus ring probe"
       button.id = "ink-focus-ring-probe"
       button.style.position = "fixed"
@@ -488,7 +498,8 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
       return { outlineColor, pageBackground, ratio }
     })()`)
     check(
-      `${palette.name}, a focused .btn.btn-primary's outline clears 3:1 contrast against the page`,
+      `${palette.name}, a focused .btn.${buttonClass}'s outline clears 3:1 contrast against the ` +
+        "page",
       focusRing.ratio >= 3,
       `outline ${focusRing.outlineColor} vs page ${focusRing.pageBackground}, ratio ` +
         `${focusRing.ratio.toFixed(2)}:1`,
