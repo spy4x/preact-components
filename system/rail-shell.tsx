@@ -59,6 +59,11 @@ export interface RailShellLabels {
   skipToContent?: string
 }
 
+/**
+ * Everything `RailShell` draws comes from here: the destinations, which one is current, the primary
+ * action, the `navigate` port for entries without an `href`, the page itself, and every label.
+ * Nothing is read from app state or the window.
+ */
 export interface RailShellProps {
   /** The destinations, in display order. The first four become tabs when the phone bar overflows. */
   items: readonly RailShellItem[]
@@ -225,9 +230,13 @@ function MoreDots(): JSX.Element {
  * **The overlay is a modal `<dialog>`.** "More" opens it with `showModal()`, which moves focus to
  * the first control inside it; Escape closes it natively; a click on the backdrop closes it here,
  * which works because the dialog has no padding and its content fills it, so only a backdrop click
- * has the dialog itself as its target. Choosing an entry closes it too. Every way of closing ends in
- * the `close` event, which returns focus to "More". With no JavaScript, "More" and the close button
- * still work in a browser that supports `command`/`commandfor` invokers, and every entry is a link.
+ * has the dialog itself as its target. Choosing an entry or the close button closes it too. Every
+ * way of closing ends in the `close` event, whose handler returns focus to "More". Chromium also
+ * restores focus to "More" by itself when a modal dialog closes, so in Chromium no check can tell
+ * the component's part from the browser's; the handler is there for engines that do not. With no
+ * JavaScript, "More" and the close button still work in a browser that supports
+ * `command`/`commandfor` invokers — `pages/checks/system.ts` proves it in Chromium with script
+ * execution disabled — and every entry with an `href` is a link.
  */
 export function RailShell(props: RailShellProps): JSX.Element {
   const {

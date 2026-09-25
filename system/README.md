@@ -855,10 +855,13 @@ unreachable on a phone. `tabBarSlots(items, primary)` is that rule as a pure fun
 `Lightbox`, rather than the `<details>` disclosure the other two shells share: a modal gets Escape,
 an inert page behind it and the top layer from the browser. `showModal()` moves focus to the first
 control inside, which is the close button. Escape closes it natively, a click on the backdrop closes
-it, and choosing an entry closes it. Every way of closing ends in the `close` event, and that
-returns focus to "More". With no JavaScript every entry that has an `href` is a plain link, and
+it, and choosing an entry or the close button closes it. Every way of closing ends in the `close`
+event, whose handler returns focus to "More". Chromium also returns focus to "More" by itself when a
+modal dialog closes, so in Chromium no check can prove the component's part; the handler is there
+for engines that do not. With no JavaScript every entry that has an `href` is a plain link, and
 "More" and the close button carry `command`/`commandfor`, so a browser that supports invoker
-commands still opens and closes the overlay.
+commands still opens and closes the overlay — `pages/checks/system.ts` proves that in Chromium with
+script execution disabled.
 
 **Nothing covers the page.** The rail is a column in the layout, and its contents stick to the top
 while the page scrolls. The tab bar sticks to the bottom but keeps its place in the flow, so the
