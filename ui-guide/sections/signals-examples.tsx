@@ -6,18 +6,13 @@
  * prints the same thing on the server and in the browser. Where a helper answers through a promise,
  * the card prints what it did synchronously and its summary says what the promise resolves to.
  *
- * A card whose `run` reads a signal wraps it in `untracked`. `run` is called while the card renders,
- * so without it the card would subscribe to the signals it reads, and one it then writes would
- * render the card again, which builds fresh signals and writes them again: in the browser that loop
- * never ends, and the page never finishes loading.
- *
  * `useUrlFilters` has no card: a card calling it would read the parameters of whichever application
  * hosts the catalogue, and write that application's address as soon as a filter changed. Its pure
- * parts have cards here, and the hook itself is demonstrated by the demo app (`pages/src/url-filters.tsx`) and driven by
- * `pages/checks/signals.ts`.
+ * parts have cards here, and the hook itself is demonstrated by the demo app
+ * (`pages/src/url-filters.tsx`) and driven by `pages/checks/signals.ts`.
  */
 
-import { signal, untracked } from "@preact/signals"
+import { signal } from "@preact/signals"
 import {
   buildModelStore,
   CLIPBOARD_UNAVAILABLE,
@@ -181,17 +176,16 @@ clearFilterFields({
 })
 console.log({ before, after: { status: status.value, page: page.value } })`,
     covers: ["clearFilterFields"],
-    run: () =>
-      untracked(() => {
-        const status = signal("open")
-        const page = signal(4)
-        const before = { status: status.value, page: page.value }
-        clearFilterFields({
-          status: { signal: status, urlParam: "status", initialValue: "" },
-          page: { signal: page, urlParam: "page", initialValue: 1 },
-        })
-        return { before, after: { status: status.value, page: page.value } }
-      }),
+    run: () => {
+      const status = signal("open")
+      const page = signal(4)
+      const before = { status: status.value, page: page.value }
+      clearFilterFields({
+        status: { signal: status, urlParam: "status", initialValue: "" },
+        page: { signal: page, urlParam: "page", initialValue: 1 },
+      })
+      return { before, after: { status: status.value, page: page.value } }
+    },
   },
   patchSignal: {
     title: "patchSignal()",
@@ -204,12 +198,11 @@ const settings = signal({ pageSize: 20, density: "comfortable", showArchived: fa
 patchSignal(settings, { density: "compact" })
 settings.value`,
     covers: ["patchSignal"],
-    run: () =>
-      untracked(() => {
-        const settings = signal({ pageSize: 20, density: "comfortable", showArchived: false })
-        patchSignal(settings, { density: "compact" })
-        return settings.value
-      }),
+    run: () => {
+      const settings = signal({ pageSize: 20, density: "comfortable", showArchived: false })
+      patchSignal(settings, { density: "compact" })
+      return settings.value
+    },
   },
   setMapEntry: {
     title: "setMapEntry() and deleteMapEntry()",
@@ -243,20 +236,19 @@ toasts.info({ body: "Two new comments" })
 toasts.remove(failed)
 toasts.list.value`,
     covers: ["createToastStore"],
-    run: () =>
-      untracked(() => {
-        let count = 0
-        const toasts = createToastStore({ nextId: () => `toast-${++count}` })
-        toasts.success({ body: "Settings saved" })
-        const failed = toasts.error({
-          title: "Upload failed",
-          body: "The file is over 10 MB",
-          duration: 0,
-        })
-        toasts.info({ body: "Two new comments" })
-        toasts.remove(failed)
-        return toasts.list.value
-      }),
+    run: () => {
+      let count = 0
+      const toasts = createToastStore({ nextId: () => `toast-${++count}` })
+      toasts.success({ body: "Settings saved" })
+      const failed = toasts.error({
+        title: "Upload failed",
+        body: "The file is over 10 MB",
+        duration: 0,
+      })
+      toasts.info({ body: "Two new comments" })
+      toasts.remove(failed)
+      return toasts.list.value
+    },
   },
   createThemeStore: {
     title: "createThemeStore() and ThemeValue",
@@ -280,27 +272,26 @@ actual.push(theme.actual.value)
 theme.dispose()
 console.log({ actual, preference: theme.preference.value, stored: saved.get("theme") })`,
     covers: ["createThemeStore", "ThemeValue"],
-    run: () =>
-      untracked(() => {
-        const saved = new Map([["theme", ThemeValue.DARK as string]])
-        const theme = createThemeStore({
-          storage: {
-            getItem: (key) => saved.get(key) ?? null,
-            setItem: (key, value) => void saved.set(key, value),
-          },
-          media: () => ({ matches: false }),
-          apply: () => {},
-        })
-        const actual = [theme.actual.value]
-        theme.attach()
-        actual.push(theme.actual.value)
-        theme.toggle()
-        actual.push(theme.actual.value)
-        theme.set(ThemeValue.SYSTEM)
-        actual.push(theme.actual.value)
-        theme.dispose()
-        return { actual, preference: theme.preference.value, stored: saved.get("theme") }
-      }),
+    run: () => {
+      const saved = new Map([["theme", ThemeValue.DARK as string]])
+      const theme = createThemeStore({
+        storage: {
+          getItem: (key) => saved.get(key) ?? null,
+          setItem: (key, value) => void saved.set(key, value),
+        },
+        media: () => ({ matches: false }),
+        apply: () => {},
+      })
+      const actual = [theme.actual.value]
+      theme.attach()
+      actual.push(theme.actual.value)
+      theme.toggle()
+      actual.push(theme.actual.value)
+      theme.set(ThemeValue.SYSTEM)
+      actual.push(theme.actual.value)
+      theme.dispose()
+      return { actual, preference: theme.preference.value, stored: saved.get("theme") }
+    },
   },
   createClipboard: {
     title: "createClipboard()",
@@ -352,29 +343,28 @@ console.log({
   createError: notes.op.create.value.error?.message,
 })`,
     covers: ["buildModelStore", "RemoteEvent"],
-    run: () =>
-      untracked(() => {
-        const notes = buildModelStore({
-          model: "note",
-          endpoint: "/api/notes",
-          schemas: {
-            full: type({ id: "number", title: "string", deletedAt: "string | null" }),
-            create: type({ title: "string > 0" }),
-            update: type({ "title?": "string > 0" }),
-          },
-          fetch: () => Promise.reject(new Error("this example sends no requests")),
-        })
-        void notes.onWs([
-          { id: 1, title: "Meeting agenda", deletedAt: null },
-          { id: 2, title: "Old draft", deletedAt: "2026-01-05" },
-        ], RemoteEvent.LIST)
-        void notes.create({ title: "" })
-        return {
-          active: notes.list.nonDeleted.value.map((note) => note.title),
-          archived: notes.list.deleted.value.map((note) => note.title),
-          createError: notes.op.create.value.error?.message,
-        }
-      }),
+    run: () => {
+      const notes = buildModelStore({
+        model: "note",
+        endpoint: "/api/notes",
+        schemas: {
+          full: type({ id: "number", title: "string", deletedAt: "string | null" }),
+          create: type({ title: "string > 0" }),
+          update: type({ "title?": "string > 0" }),
+        },
+        fetch: () => Promise.reject(new Error("this example sends no requests")),
+      })
+      void notes.onWs([
+        { id: 1, title: "Meeting agenda", deletedAt: null },
+        { id: 2, title: "Old draft", deletedAt: "2026-01-05" },
+      ], RemoteEvent.LIST)
+      void notes.create({ title: "" })
+      return {
+        active: notes.list.nonDeleted.value.map((note) => note.title),
+        archived: notes.list.deleted.value.map((note) => note.title),
+        createError: notes.op.create.value.error?.message,
+      }
+    },
   },
 }
 
