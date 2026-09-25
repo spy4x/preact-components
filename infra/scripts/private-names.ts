@@ -47,6 +47,8 @@ const ROOT = fromFileUrl(new URL("../../", import.meta.url))
  * `pages/`, the GitHub Pages demo, which carries no package `name` and `deno publish` never
  * touches — see `AGENTS.md` → "Adding a package". A new package joins this list in the same
  * change that adds its own `deno.json`, the same moment it joins the workspace array.
+ * `private-names.test.ts` compares this list with every top-level directory whose `deno.json` has
+ * a `name`, so a package left out fails `deno task test` rather than going unchecked.
  */
 export const PUBLISHED_PACKAGES: readonly string[] = [
   "cn",
@@ -57,6 +59,7 @@ export const PUBLISHED_PACKAGES: readonly string[] = [
   "system",
   "ui",
   "crud",
+  "map",
   "ui-guide",
 ]
 
