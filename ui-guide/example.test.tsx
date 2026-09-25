@@ -2,13 +2,13 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import { UIGuide } from "./+index.tsx"
-import { exampleDemos, formatOutput } from "./example.tsx"
-import { exampleDemos as registeredExamples } from "./registry.ts"
+import { formatOutput, toExampleDemos } from "./example.tsx"
+import { exampleDemos } from "./registry.ts"
 
 describe("example cards", () => {
   it("run the export when the card renders, not when the section is built", () => {
     let calls = 0
-    const cards = exampleDemos({
+    const cards = toExampleDemos({
       counter: {
         title: "counter()",
         summary: "Counts its own calls.",
@@ -25,7 +25,7 @@ describe("example cards", () => {
 
   it("render on their package's page with their title, output and open code", () => {
     const html = render(<UIGuide hash="#/signals" />)
-    const [key, example] = Object.entries(registeredExamples).find(([, demo]) =>
+    const [key, example] = Object.entries(exampleDemos).find(([, demo]) =>
       demo.covers.includes("toggleSort")
     )!
 
@@ -35,6 +35,25 @@ describe("example cards", () => {
     expect(card).toContain(`data-e2e="example-output"`)
     expect(card).toMatch(/<details[^>]* open/)
     expect(render(<UIGuide hash="#/ui" />), "not on another page").not.toContain(`demo-${key}"`)
+  })
+})
+
+describe("every registered example", () => {
+  it("calls each export it covers, in its snippet and in its run", () => {
+    // Without this, a name could be added to `covers` and struck from the pending list with no
+    // example ever running it.
+    const examples = Object.entries(exampleDemos)
+    expect(examples.length).toBeGreaterThan(0)
+
+    for (const [key, example] of examples) {
+      expect(example.snippet.trim(), `${key}: empty snippet`).not.toBe("")
+      const code = example.run.toString()
+      for (const name of example.covers) {
+        const word = new RegExp(`\\b${name}\\b`)
+        expect(word.test(example.snippet), `${key}: ${name} is not in the snippet`).toBe(true)
+        expect(word.test(code), `${key}: ${name} is not in run`).toBe(true)
+      }
+    }
   })
 })
 

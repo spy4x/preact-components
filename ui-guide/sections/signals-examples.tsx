@@ -6,7 +6,7 @@
 
 import { parseSort, serializeSort, toggleSort } from "@preact-components/signals"
 import type { ExampleFragment } from "../example.tsx"
-import { exampleDemos } from "../example.tsx"
+import { toExampleDemos } from "../example.tsx"
 
 const examples: ExampleFragment = {
   toggleSort: {
@@ -28,4 +28,4 @@ serializeSort(next)`,
 }
 
 /** The `signals/` examples, as registry cards. */
-export const signalsExamples = exampleDemos(examples)
+export const signalsExamples = toExampleDemos(examples)

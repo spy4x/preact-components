@@ -6,7 +6,7 @@
 
 import { formatBytes } from "@preact-components/ui"
 import type { ExampleFragment } from "../example.tsx"
-import { exampleDemos } from "../example.tsx"
+import { toExampleDemos } from "../example.tsx"
 
 const examples: ExampleFragment = {
   formatBytes: {
@@ -22,4 +22,4 @@ const examples: ExampleFragment = {
 }
 
 /** The `ui/` helper examples, as registry cards. */
-export const uiExamples = exampleDemos(examples)
+export const uiExamples = toExampleDemos(examples)

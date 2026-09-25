@@ -87,6 +87,7 @@ export {
   type SectionRouteMatch,
 } from "./routes.ts"
 export {
+  cardLabel,
   catalogueGroupIds,
   catalogueNames,
   type CatalogueSection,
@@ -96,10 +97,13 @@ export {
   type ClassDemoFragment,
   classDemoNames,
   classDemos,
+  coveredPackageIds,
   type Demo,
   type DemoFragment,
   type DemoRegistry,
   demoRegistry,
+  exampleDemos,
+  examplePackageIds,
   type GroupId,
   type GuidePage,
   type GuidePageId,
@@ -116,3 +120,10 @@ export {
   type SectionKind,
   type SectionPackage,
 } from "./registry.ts"
+export {
+  type Example,
+  type ExampleDemo,
+  type ExampleFragment,
+  formatOutput,
+  toExampleDemos,
+} from "./example.tsx"

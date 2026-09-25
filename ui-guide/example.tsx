@@ -28,10 +28,12 @@ export interface Example {
 /** A section's examples, keyed by card id: the card renders as `id="demo-<key>"`. */
 export type ExampleFragment = Record<string, Example>
 
-/** An example resolved into the registry's card shape, with its heading and its covered names. */
+/** An example resolved into the registry's card shape: its heading, its covered names and `run`. */
 export interface ExampleDemo extends Demo {
   title: string
   covers: readonly [string, ...string[]]
+  /** The example's own `run`, kept so a test can read which exports it calls. */
+  run: () => unknown
 }
 
 /**
@@ -65,13 +67,14 @@ export function formatOutput(value: unknown): string {
  * @param examples The section's examples.
  * @returns One card per example, keyed as given.
  */
-export function exampleDemos(examples: ExampleFragment): Record<string, ExampleDemo> {
+export function toExampleDemos(examples: ExampleFragment): Record<string, ExampleDemo> {
   return Object.fromEntries(
     Object.entries(examples).map(([key, example]) => [key, {
       title: example.title,
       summary: example.summary,
       snippet: example.snippet,
       covers: example.covers,
+      run: example.run,
       render: () => <ExampleOutput run={example.run} />,
     }]),
   )
