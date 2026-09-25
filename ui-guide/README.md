@@ -74,9 +74,9 @@ a copied snippet — arrives as props and ports.
 
 `registry.ts`'s `guidePages` is what the guide renders at one time: the overview, one page per
 package (`ui`, `system`, `crud`, `charts`, `map`, `signals`, `theme`, `icons`, `cn`), and `all`. A
-section belongs to its package's page — `theme` holds the two class sections — so `ui/`'s sections
-are one page read top to bottom and a package with one section is a page of one. `cn` has no card
-yet, and its page says so. `all` renders every other page in navigation order: it is
+section belongs to its package's page — `theme` holds the two class sections and its examples — so
+`ui/`'s sections are one page read top to bottom and a package with one section is a page of one.
+A package page with no card in the registry says its examples are coming. `all` renders every other page in navigation order: it is
 the served document and a route of its own, for searching the whole library with the browser's find.
 
 The shell is a navigation and a page. At `lg` and up the navigation is a sticky column beside the
@@ -182,16 +182,18 @@ list. Adding a new export to the pending list to skip its example is what review
 
 ### Adding an example
 
-1. Pick the package's example section — `sections/ui-examples.tsx` and
-   `sections/signals-examples.tsx` are the pattern — or add one: a file exporting
-   `exampleDemos({...})`, and a `catalogue` entry in `registry.ts` with `kind: "example"`.
+1. Open the package's example section, `sections/<package>-examples.tsx`. Every package with
+   helpers has one, so adding an example never touches `registry.ts`. A new section is a file
+   exporting `toExampleDemos({...})` plus a `catalogue` entry in `registry.ts` with
+   `kind: "example"`.
 2. Add an entry keyed by the card id, usually the main export's name, so the card is
    `#demo-<key>`: a `title`, a one-sentence `summary`, the `snippet` a reader copies, the names it
    `covers`, and `run`, which makes the same calls as the snippet and returns what the card prints.
    One example may cover several related exports.
 3. Remove every covered name from `examples-pending.ts`.
 
-`run` is called when the card renders, so the output on the page is the real export's, never a
+Every name in `covers` has to appear as a whole word in both the `snippet` and `run`, and the
+snippet cannot be empty; `example.test.tsx` fails otherwise. `run` is called when the card renders, so the output on the page is the real export's, never a
 copy. Keep it deterministic — no clock, no random, no network — since the server render and the
 browser render have to match.
 
@@ -262,23 +264,28 @@ and a list in this file was wrong more often than it was right. The guide's own 
 card, the overview prints the counts from the registry, and `pages/build.ts` asserts a prerendered card
 per entry of `catalogueNames` against the emitted HTML.
 
-| Section                    | Package   | Page      |
-| -------------------------- | --------- | --------- |
-| **Badges**                 | `ui`      | `ui`      |
-| **Buttons**                | `ui`      | `ui`      |
-| **Display**                | `ui`      | `ui`      |
-| **Feedback**               | `ui`      | `ui`      |
-| **Inputs**                 | `ui`      | `ui`      |
-| **Fields**                 | `ui`      | `ui`      |
-| **Enhanced forms**         | `ui`      | `ui`      |
-| **Forms**                  | `theme`   | `theme`   |
-| **Surfaces and utilities** | `theme`   | `theme`   |
-| **Charts**                 | `charts`  | `charts`  |
-| **System**                 | `system`  | `system`  |
-| **CRUD**                   | `crud`    | `crud`    |
-| **Map**                    | `map`     | `map`     |
-| **Helpers** (examples)     | `ui`      | `ui`      |
-| **Signals** (examples)     | `signals` | `signals` |
+| Section                            | Package   | Page      |
+| ---------------------------------- | --------- | --------- |
+| **Badges**                         | `ui`      | `ui`      |
+| **Buttons**                        | `ui`      | `ui`      |
+| **Display**                        | `ui`      | `ui`      |
+| **Feedback**                       | `ui`      | `ui`      |
+| **Inputs**                         | `ui`      | `ui`      |
+| **Fields**                         | `ui`      | `ui`      |
+| **Enhanced forms**                 | `ui`      | `ui`      |
+| **Forms**                          | `theme`   | `theme`   |
+| **Surfaces and utilities**         | `theme`   | `theme`   |
+| **Charts**                         | `charts`  | `charts`  |
+| **System**                         | `system`  | `system`  |
+| **CRUD**                           | `crud`    | `crud`    |
+| **Map**                            | `map`     | `map`     |
+| **Helpers** (examples)             | `ui`      | `ui`      |
+| **Signals** (examples)             | `signals` | `signals` |
+| **Helpers** (examples)             | `charts`  | `charts`  |
+| **Helpers** (examples)             | `system`  | `system`  |
+| **Helpers** (examples)             | `crud`    | `crud`    |
+| **Stylesheets as text** (examples) | `theme`   | `theme`   |
+| **cn** (examples)                  | `cn`      | `cn`      |
 
 Nothing here states how many components are _missing_ a card, on purpose: that number moves with every
 component PR. Read `examples-pending.ts` and `EXPORTS_WITHOUT_DEMO` in `coverage.ts`, which is where a card or
@@ -371,7 +378,7 @@ host's page extra), `icons.test.tsx` (gallery exhaustiveness,
 filter), `instructions.test.ts` (a documented class is defined), `classes.test.tsx` (a defined class
 is demonstrated, or excluded with a reason) `copy.test.tsx` (every card's copy control is wired to
 its own snippet and to the injected port) and `example.test.tsx` (an example runs when its card
-renders, on its package's page, and how its output is printed). Tests render real markup with `preact-render-to-string`
+renders, on its package's page, uses every export it covers, and how its output is printed). Tests render real markup with `preact-render-to-string`
 and assert on it; no DOM, no browser.
 
 `preact-render-to-string` is pinned once, in the root import map, not in this package's own
