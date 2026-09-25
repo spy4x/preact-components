@@ -260,7 +260,7 @@ function TeamFieldsDemo() {
   return (
     <div class="space-y-4">
       <div class="grid grid-cols-1 gap-x-6 gap-y-6 sm:grid-cols-6">
-        <TextField vm={vm} vl={vl} name="name" label="Name" placeholder="North" />
+        <TextField vm={vm} vl={vl} name="name" label="Name" placeholder="Design" />
         <NumberField
           vm={vm}
           vl={vl}
@@ -705,7 +705,7 @@ export const crudDemos = {
     summary:
       'One labelled text input that reads and writes one field of a model signal. It commits on **blur**, trimmed, so a keystroke is not a store write. The row generates its own control id with `useId`, which is what stops two editors — or two rows — on one page sharing `id="name"` and stealing each other\'s label. `span` sets the grid cell, `hint` the helper text, and `renderIssue` replaces the default red paragraph.',
     snippet:
-      `<TextField vm={vm} vl={vl} name="name" label="Name" placeholder="North" span="sm:col-span-2" />`,
+      `<TextField vm={vm} vl={vl} name="name" label="Name" placeholder="Design" span="sm:col-span-2" />`,
     render: () => <TeamFieldsDemo />,
   },
   NumberField: {
