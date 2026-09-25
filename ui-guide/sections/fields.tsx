@@ -341,12 +341,26 @@ function RadioDemo() {
 
 /**
  * `EUR`, German locale, so the demo proves the same locale mark the issue's own example uses:
- * typing `"12,5"` here is what `pages/checks/ui.ts` types to prove it lands on `1250`.
+ * typing a German-grouped amount here is what `pages/checks/ui.ts` types to prove grouping is
+ * understood. A real `<form>` with its own submit button lets a browser check prove a real submit
+ * is blocked while the field's text is refused, and posts once it is fixed. The "Add 5.00" button
+ * changes `value` from outside the field, unrelated to typing, so a browser check can prove the
+ * shown text re-syncs to an external change while the field is not focused.
  */
 function MoneyInputDemo() {
   const amount = useSignal<number | null>(1999)
+  const submits = useSignal(0)
+  const lastSubmitted = useSignal("")
   return (
-    <div class="max-w-xs space-y-2">
+    <form
+      class="max-w-xs space-y-2"
+      onSubmit={(event) => {
+        event.preventDefault()
+        submits.value++
+        const data = new FormData(event.currentTarget)
+        lastSubmitted.value = String(data.get("guide-money-amount") ?? "")
+      }}
+    >
       <Field id="guide-money-input" label="Price (EUR, German locale)">
         <MoneyInput
           value={amount.value}
@@ -359,7 +373,22 @@ function MoneyInputDemo() {
       <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
         amount: {amount.value === null ? "(empty)" : amount.value}
       </p>
-    </div>
+      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="money-input-submits">
+        submits: {submits.value}, posted: {lastSubmitted.value || "(none)"}
+      </p>
+      <div class="flex gap-2">
+        <Button type="submit" size="sm" data-e2e="money-input-submit">Save</Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          data-e2e="money-input-add-five"
+          onClick={() => amount.value = (amount.value ?? 0) + 500}
+        >
+          Add 5.00
+        </Button>
+      </div>
+    </form>
   )
 }
 

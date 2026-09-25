@@ -8446,11 +8446,35 @@ async function exportButtonChecks(devtools: Devtools): Promise<void> {
 /** `MoneyInput`'s card: `Field`-wired, `EUR`, German locale, `name="guide-money-amount"`. */
 const MONEY_INPUT_CARD = "#demo-MoneyInput"
 
+/** One typed-then-read snapshot from {@link moneyInputChecks}'s first, single-`evaluate` pass. */
+interface MoneyInputReading {
+  initialEcho: string
+  groupedParseEcho: string
+  groupedHiddenValue: string
+  invalidEcho: string
+  invalidMessage: string
+  invalidAriaInvalid: string | null
+  invalidDescribedBy: string
+  invalidHiddenValue: string
+  invalidCheckValidity: boolean
+  invalidValidationMessage: string
+  clearedEcho: string
+  clearedMessage: string
+  clearedAriaInvalid: string | null
+  beforeUnresolvedEcho: string
+  beforeUnresolvedValue: string
+  midEditValue: string
+  midEditMessage: string
+}
+
 /**
- * `MoneyInput`'s behaviour that only a real browser can prove: the German decimal mark actually
- * parses into the smallest-unit integer the demo echoes, unparsable text leaves that integer
- * unchanged while announcing a message through the live region present since the first render, and
- * a plain form post carries the integer through the hidden field rather than the typed text.
+ * `MoneyInput`'s behaviour that only a real browser can prove: a genuine grouping mark parses into
+ * the smallest-unit integer the demo echoes, unparsable text leaves that integer unchanged while
+ * announcing a message through the live region present since the first render and blocking a real
+ * form submit through `setCustomValidity`, a real blur (`Tab`, not a dispatched `blur` event) keeps
+ * the typed text and the message rather than reverting them, an external change to `value` re-syncs
+ * the shown text while the field is not focused, and a real click on the demo's own submit button
+ * is refused while the field is invalid and succeeds once it is fixed, posting the parsed integer.
  */
 async function moneyInputChecks(devtools: Devtools): Promise<void> {
   const cardPresent = await devtools.evaluate<boolean>(
@@ -8459,47 +8483,30 @@ async function moneyInputChecks(devtools: Devtools): Promise<void> {
   check("the MoneyInput card is on the page", cardPresent)
   if (!cardPresent) return
 
-  const read = await devtools.evaluate<{
-    initialEcho: string
-    germanParseEcho: string
-    germanHiddenValue: string
-    invalidEcho: string
-    invalidMessage: string
-    invalidAriaInvalid: string | null
-    invalidDescribedBy: string
-    invalidHiddenValue: string
-    clearedEcho: string
-    clearedMessage: string
-    clearedAriaInvalid: string | null
-    beforeBlurEcho: string
-    beforeBlurValue: string
-    midEditValue: string
-    midEditMessage: string
-    afterBlurValue: string
-    afterBlurMessage: string
-    afterBlurAriaInvalid: string | null
-  }>(`(async () => {
+  const read = await devtools.evaluate<MoneyInputReading>(`(async () => {
     const settle = () => new Promise((done) => setTimeout(done, 30))
     const card = document.querySelector('${MONEY_INPUT_CARD}')
     const input = card.querySelector('#guide-money-input')
     const hidden = card.querySelector('input[type=hidden][name="guide-money-amount"]')
     const status = card.querySelector('#guide-money-input-status')
     const echo = () => card.querySelector('[data-e2e="controlled-value"]').textContent.trim()
-    const setValue = (nativeElement, text) => {
+    const setValue = (el, text) => {
       const setter = Object.getOwnPropertyDescriptor(
         window.HTMLInputElement.prototype,
         "value",
       ).set
-      setter.call(nativeElement, text)
-      nativeElement.dispatchEvent(new Event("input", { bubbles: true }))
+      setter.call(el, text)
+      el.dispatchEvent(new Event("input", { bubbles: true }))
     }
 
     const initialEcho = echo()
 
-    setValue(input, "12,5")
+    // A real thousands separator, not just a decimal mark — proves grouping is understood, not
+    // only decoded.
+    setValue(input, "1.234,56")
     await settle()
-    const germanParseEcho = echo()
-    const germanHiddenValue = hidden.value
+    const groupedParseEcho = echo()
+    const groupedHiddenValue = hidden.value
 
     setValue(input, "abc")
     await settle()
@@ -8508,6 +8515,8 @@ async function moneyInputChecks(devtools: Devtools): Promise<void> {
     const invalidAriaInvalid = input.getAttribute("aria-invalid")
     const invalidDescribedBy = input.getAttribute("aria-describedby") ?? ""
     const invalidHiddenValue = hidden.value
+    const invalidCheckValidity = input.checkValidity()
+    const invalidValidationMessage = input.validationMessage
 
     setValue(input, "")
     await settle()
@@ -8515,44 +8524,34 @@ async function moneyInputChecks(devtools: Devtools): Promise<void> {
     const clearedMessage = status.textContent.trim()
     const clearedAriaInvalid = input.getAttribute("aria-invalid")
 
-    // Blur reverts an in-progress, unresolved edit back to the last value the field actually
-    // reported, rather than leaving invalid text sitting in a control nobody is looking at.
-    input.focus()
     setValue(input, "3,50")
     await settle()
-    const beforeBlurEcho = echo()
-    const beforeBlurValue = input.value
+    const beforeUnresolvedEcho = echo()
+    const beforeUnresolvedValue = input.value
 
     setValue(input, "not a number")
     await settle()
     const midEditValue = input.value
     const midEditMessage = status.textContent.trim()
 
-    input.dispatchEvent(new Event("blur", { bubbles: true }))
-    await settle()
-    const afterBlurValue = input.value
-    const afterBlurMessage = status.textContent.trim()
-    const afterBlurAriaInvalid = input.getAttribute("aria-invalid")
-
     return {
       initialEcho,
-      germanParseEcho,
-      germanHiddenValue,
+      groupedParseEcho,
+      groupedHiddenValue,
       invalidEcho,
       invalidMessage,
       invalidAriaInvalid,
       invalidDescribedBy,
       invalidHiddenValue,
+      invalidCheckValidity,
+      invalidValidationMessage,
       clearedEcho,
       clearedMessage,
       clearedAriaInvalid,
-      beforeBlurEcho,
-      beforeBlurValue,
+      beforeUnresolvedEcho,
+      beforeUnresolvedValue,
       midEditValue,
       midEditMessage,
-      afterBlurValue,
-      afterBlurMessage,
-      afterBlurAriaInvalid,
     }
   })()`)
 
@@ -8562,13 +8561,13 @@ async function moneyInputChecks(devtools: Devtools): Promise<void> {
     read.initialEcho,
   )
   check(
-    "typing '12,5' in the German demo parses to 1250, the group mark understood too",
-    read.germanParseEcho.includes("1250") && read.germanHiddenValue === "1250",
-    `echo "${read.germanParseEcho}", hidden value "${read.germanHiddenValue}"`,
+    "typing '1.234,56' in the German demo parses to 123456, a real grouping mark understood too",
+    read.groupedParseEcho.includes("123456") && read.groupedHiddenValue === "123456",
+    `echo "${read.groupedParseEcho}", hidden value "${read.groupedHiddenValue}"`,
   )
   check(
     "typing letters leaves the posted integer unchanged and shows the invalid message",
-    read.invalidEcho.includes("1250") && read.invalidHiddenValue === "1250" &&
+    read.invalidEcho.includes("123456") && read.invalidHiddenValue === "123456" &&
       read.invalidMessage === "Enter a valid amount",
     `echo "${read.invalidEcho}", hidden value "${read.invalidHiddenValue}", message "${read.invalidMessage}"`,
   )
@@ -8579,6 +8578,11 @@ async function moneyInputChecks(devtools: Devtools): Promise<void> {
     `aria-invalid="${read.invalidAriaInvalid}" aria-describedby="${read.invalidDescribedBy}"`,
   )
   check(
+    "sets the visible control's own custom validity to the message, so a real submit would be refused",
+    read.invalidCheckValidity === false && read.invalidValidationMessage === "Enter a valid amount",
+    `checkValidity()=${read.invalidCheckValidity}, validationMessage="${read.invalidValidationMessage}"`,
+  )
+  check(
     "clearing the field posts nothing and drops the message",
     read.clearedEcho.includes("(empty)") && read.clearedMessage === "" &&
       read.clearedAriaInvalid === null,
@@ -8586,14 +8590,141 @@ async function moneyInputChecks(devtools: Devtools): Promise<void> {
   )
   check(
     "an unresolved edit still shows its own typed text right up to the blur",
-    read.beforeBlurEcho.includes("350") && read.midEditValue === "not a number" &&
+    read.beforeUnresolvedEcho.includes("350") && read.midEditValue === "not a number" &&
       read.midEditMessage === "Enter a valid amount",
-    `before blur echo "${read.beforeBlurEcho}" "${read.beforeBlurValue}", mid-edit "${read.midEditValue}" message "${read.midEditMessage}"`,
+    `before blur echo "${read.beforeUnresolvedEcho}" "${read.beforeUnresolvedValue}", mid-edit "${read.midEditValue}" message "${read.midEditMessage}"`,
+  )
+
+  // A real blur — Tab through the browser's own input pipeline, not a dispatched `blur` event —
+  // while the field's text is still refused. Text and message must stay exactly as they are.
+  await pressKey(devtools, "Tab")
+  const afterRealBlur = await devtools.evaluate<{
+    value: string
+    message: string
+    ariaInvalid: string | null
+    stillFocused: boolean
+  }>(`(() => {
+    const card = document.querySelector('${MONEY_INPUT_CARD}')
+    const input = card.querySelector('#guide-money-input')
+    const status = card.querySelector('#guide-money-input-status')
+    return {
+      value: input.value,
+      message: status.textContent.trim(),
+      ariaInvalid: input.getAttribute("aria-invalid"),
+      stillFocused: document.activeElement === input,
+    }
+  })()`)
+  check(
+    "a real blur (Tab) keeps the typed text and the message instead of silently reverting them",
+    afterRealBlur.value === "not a number" && afterRealBlur.message === "Enter a valid amount" &&
+      afterRealBlur.ariaInvalid === "true" && !afterRealBlur.stillFocused,
+    `after Tab: value "${afterRealBlur.value}", message "${afterRealBlur.message}", ` +
+      `aria-invalid="${afterRealBlur.ariaInvalid}", still focused=${afterRealBlur.stillFocused}`,
+  )
+
+  // Fix the field, blur it for real again, then change `value` from outside the field entirely
+  // (the demo's own "Add 5.00" button) — the shown text must re-sync while unfocused.
+  await devtools.evaluate<null>(`(() => {
+    const card = document.querySelector('${MONEY_INPUT_CARD}')
+    const input = card.querySelector('#guide-money-input')
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set
+    setter.call(input, "10,00")
+    input.dispatchEvent(new Event("input", { bubbles: true }))
+    return null
+  })()`)
+  await pressKey(devtools, "Tab")
+
+  const beforeAdd = await devtools.evaluate<string>(
+    `document.querySelector('${MONEY_INPUT_CARD} #guide-money-input').value`,
+  )
+  const addPoint = await elementCenter(
+    devtools,
+    `${MONEY_INPUT_CARD} [data-e2e="money-input-add-five"]`,
   )
   check(
-    "blurring an unresolved edit reverts the shown text to the last value and drops the message",
-    read.afterBlurValue === read.beforeBlurValue && read.afterBlurMessage === "" &&
-      read.afterBlurAriaInvalid === null,
-    `after blur "${read.afterBlurValue}" (before blur was "${read.beforeBlurValue}"), message "${read.afterBlurMessage}", aria-invalid="${read.afterBlurAriaInvalid}"`,
+    "the demo's Add 5.00 button is reachable for a real click",
+    addPoint.ok,
+    addPoint.ok ? `(${addPoint.x}, ${addPoint.y})` : addPoint.reason,
   )
+  if (addPoint.ok) {
+    await clickAtPoint(devtools, addPoint)
+    const afterAdd = await devtools.evaluate<string>(
+      `document.querySelector('${MONEY_INPUT_CARD} #guide-money-input').value`,
+    )
+    check(
+      "an external change to value re-syncs the shown text while the field is not focused",
+      afterAdd === "15,00" && afterAdd !== beforeAdd,
+      `before "${beforeAdd}", after a real click on Add 5.00 "${afterAdd}"`,
+    )
+  }
+
+  // A real form submit — a real click on the demo's own submit button, never a scripted
+  // `form.requestSubmit()` or `dispatchEvent(new Event("submit"))`. Refused while the field's own
+  // text is invalid; posts the parsed integer once it is fixed.
+  await devtools.evaluate<null>(`(() => {
+    const card = document.querySelector('${MONEY_INPUT_CARD}')
+    const input = card.querySelector('#guide-money-input')
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set
+    setter.call(input, "abc")
+    input.dispatchEvent(new Event("input", { bubbles: true }))
+    return null
+  })()`)
+
+  const submitsSelector = `${MONEY_INPUT_CARD} [data-e2e="money-input-submits"]`
+  const beforeBlockedSubmit = await devtools.evaluate<string>(
+    `document.querySelector('${submitsSelector}').textContent`,
+  )
+  const blockedSubmitPoint = await elementCenter(
+    devtools,
+    `${MONEY_INPUT_CARD} [data-e2e="money-input-submit"]`,
+  )
+  check(
+    "the demo's Save button is reachable for a real click while the field is invalid",
+    blockedSubmitPoint.ok,
+    blockedSubmitPoint.ok
+      ? `(${blockedSubmitPoint.x}, ${blockedSubmitPoint.y})`
+      : blockedSubmitPoint.reason,
+  )
+  if (blockedSubmitPoint.ok) {
+    await clickAtPoint(devtools, blockedSubmitPoint)
+    const afterBlockedSubmit = await devtools.evaluate<string>(
+      `document.querySelector('${submitsSelector}').textContent`,
+    )
+    check(
+      "a real click on Save does not submit the form while the field's text is refused",
+      afterBlockedSubmit === beforeBlockedSubmit,
+      `before "${beforeBlockedSubmit}", after clicking Save while invalid "${afterBlockedSubmit}"`,
+    )
+  }
+
+  await devtools.evaluate<null>(`(() => {
+    const card = document.querySelector('${MONEY_INPUT_CARD}')
+    const input = card.querySelector('#guide-money-input')
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set
+    setter.call(input, "7,00")
+    input.dispatchEvent(new Event("input", { bubbles: true }))
+    return null
+  })()`)
+  const fixedSubmitPoint = await elementCenter(
+    devtools,
+    `${MONEY_INPUT_CARD} [data-e2e="money-input-submit"]`,
+  )
+  check(
+    "the demo's Save button is reachable for a real click once the field is fixed",
+    fixedSubmitPoint.ok,
+    fixedSubmitPoint.ok
+      ? `(${fixedSubmitPoint.x}, ${fixedSubmitPoint.y})`
+      : fixedSubmitPoint.reason,
+  )
+  if (fixedSubmitPoint.ok) {
+    await clickAtPoint(devtools, fixedSubmitPoint)
+    const afterFixedSubmit = await devtools.evaluate<string>(
+      `document.querySelector('${submitsSelector}').textContent`,
+    )
+    check(
+      "a real click on Save submits once the field's text is fixed, posting the parsed integer",
+      afterFixedSubmit.trim() === "submits: 1, posted: 700",
+      `after fixing and clicking Save: "${afterFixedSubmit.trim()}"`,
+    )
+  }
 }
