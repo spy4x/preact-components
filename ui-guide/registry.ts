@@ -28,12 +28,20 @@
  */
 
 import type { ComponentChildren } from "preact"
+import type { ExampleDemo } from "./example.tsx"
 import { badgeDemos } from "./sections/badges.tsx"
 import { buttonDemos } from "./sections/buttons.tsx"
 import { chartsDemos } from "./sections/charts.tsx"
 import { crudDemos } from "./sections/crud.tsx"
 import { displayDemos } from "./sections/display.tsx"
 import { enhancedFormDemos } from "./sections/enhanced-forms.tsx"
+import { uiExamples } from "./sections/ui-examples.tsx"
+import { signalsExamples } from "./sections/signals-examples.tsx"
+import { chartsExamples } from "./sections/charts-examples.tsx"
+import { systemExamples } from "./sections/system-examples.tsx"
+import { crudExamples } from "./sections/crud-examples.tsx"
+import { themeExamples } from "./sections/theme-examples.tsx"
+import { cnExamples } from "./sections/cn-examples.tsx"
 import { feedbackDemos } from "./sections/feedback.tsx"
 import { fieldDemos } from "./sections/fields.tsx"
 import { formDemos } from "./sections/forms.tsx"
@@ -43,16 +51,29 @@ import { surfaceDemos } from "./sections/surfaces.tsx"
 import { systemDemos } from "./sections/system.tsx"
 
 /**
- * Every package the catalogue demonstrates, in reading order.
+ * Every package whose components the catalogue renders, in reading order.
  *
- * Adding one here is what makes its every exported component somebody's to account for;
- * `coverage.ts` reads this list and fails when a package directory is neither catalogued nor
- * excluded with a reason.
+ * Their markup is on the page, so the host's stylesheet has to scan them (`pages/styles.css`).
  */
 export const packageIds = ["ui", "charts", "system", "crud", "map"] as const
 
+/**
+ * Packages the catalogue covers with example cards alone: nothing they export renders markup of its
+ * own, so no stylesheet needs to scan them.
+ */
+export const examplePackageIds = ["signals", "theme", "cn"] as const
+
+/**
+ * Every package the catalogue accounts for: {@link packageIds}, then {@link examplePackageIds}.
+ *
+ * Adding one here is what makes its every value export somebody's to account for; `coverage.ts`
+ * reads this list and fails when a package directory is neither catalogued nor excluded with a
+ * reason.
+ */
+export const coveredPackageIds = [...packageIds, ...examplePackageIds] as const
+
 /** Identifier of a catalogued package: its directory, and the last segment of its specifier. */
-export type PackageId = (typeof packageIds)[number]
+export type PackageId = (typeof coveredPackageIds)[number]
 
 /** `@preact-components/<id>` — the specifier a reader copies out of the guide. */
 export function packageSpecifier(id: SectionPackage): string {
@@ -86,14 +107,14 @@ export type DemoFragment = Record<string, Demo>
 /**
  * The package the class sections document.
  *
- * `theme/` exports no components, so it is not a {@link packageIds} entry and its exports are never
- * enumerated; a class section names it to say which package's vocabulary its cards belong to, and
- * that is what keeps its card ids out of the coverage rule.
+ * A class section names it to say which package's vocabulary its cards belong to. Its card ids are
+ * not exports, and `coverage.ts` reads only component and example sections, so they stay out of
+ * the coverage rule.
  */
 export const CLASS_PACKAGE = "theme" as const
 
-/** A section's package: one of the catalogued component packages, or the theme's classes. */
-export type SectionPackage = PackageId | typeof CLASS_PACKAGE
+/** A section's package: any catalogued package. */
+export type SectionPackage = PackageId
 
 /**
  * One card of a class section: the same shape as {@link Demo}, plus what only a class card has.
@@ -118,8 +139,11 @@ export interface ClassDemo extends Demo {
  */
 export type ClassDemoFragment = Record<string, ClassDemo>
 
-/** What a section's cards are keyed by: a catalogued package's components, or the theme's classes. */
-export type SectionKind = "component" | "class"
+/**
+ * What a section's cards are: a package's components, the theme's classes, or examples of exports
+ * that render nothing (`example.tsx`).
+ */
+export type SectionKind = "component" | "class" | "example"
 
 /**
  * The group a section belongs to, as the reader's reason for looking rather than as a package
@@ -158,6 +182,8 @@ interface SectionSpec {
    * the coverage rule never looks for them among a package's exports.
    */
   package: SectionPackage
+  /** `"example"` for a section of {@link ExampleDemo}s; left out, the package decides the kind. */
+  kind?: "example"
   /**
    * The group the section is read in.
    *
@@ -199,6 +225,13 @@ export type SectionId =
   | "system"
   | "crud"
   | "map"
+  | "ui-examples"
+  | "signals-examples"
+  | "charts-examples"
+  | "system-examples"
+  | "crud-examples"
+  | "theme-examples"
+  | "cn-examples"
 
 const catalogue = {
   badges: {
@@ -304,6 +337,67 @@ const catalogue = {
       "Markers on a Leaflet tile layer, plotted from plain data — each pin is the component's real keyboard and screen-reader interface — with a plain, non-interactive list of the same places beside it. The card is its own server render — a labelled empty box — until a browser mounts Leaflet into it.",
     demos: mapDemos,
   },
+  "ui-examples": {
+    group: "application",
+    package: "ui",
+    kind: "example",
+    title: "Helpers",
+    blurb:
+      "The functions and constants `ui/` exports beside its components, each run on this page.",
+    demos: uiExamples,
+  },
+  "signals-examples": {
+    group: "application",
+    package: "signals",
+    kind: "example",
+    title: "Signals",
+    blurb: "Each helper run on this page, its output printed under the code.",
+    demos: signalsExamples,
+  },
+  "charts-examples": {
+    group: "application",
+    package: "charts",
+    kind: "example",
+    title: "Helpers",
+    blurb:
+      "The scales, colours and loaders `charts/` exports beside its charts, each run on this page.",
+    demos: chartsExamples,
+  },
+  "system-examples": {
+    group: "application",
+    package: "system",
+    kind: "example",
+    title: "Helpers",
+    blurb:
+      "The functions and constants `system/` exports beside its components, each run on this page.",
+    demos: systemExamples,
+  },
+  "crud-examples": {
+    group: "application",
+    package: "crud",
+    kind: "example",
+    title: "Helpers",
+    blurb:
+      "The functions and constants `crud/` exports beside its components, each run on this page.",
+    demos: crudExamples,
+  },
+  "theme-examples": {
+    group: "application",
+    package: "theme",
+    kind: "example",
+    title: "Stylesheets as text",
+    blurb:
+      "The stylesheets exported as strings, for a build that turns them into a compiled stylesheet.",
+    demos: themeExamples,
+  },
+  "cn-examples": {
+    group: "application",
+    package: "cn",
+    kind: "example",
+    title: "cn",
+    blurb: "`cn()` run on this page, its output printed under the code.",
+    demos: cnExamples,
+  },
 } as const satisfies Record<SectionId, SectionSpec>
 
 /**
@@ -379,7 +473,11 @@ export const catalogueSections: CatalogueSection[] = sectionIds.map((id) => {
   return {
     id,
     group: section.group,
-    kind: section.package === CLASS_PACKAGE ? "class" : "component",
+    kind: "kind" in section
+      ? section.kind
+      : section.package === CLASS_PACKAGE
+      ? "class"
+      : "component",
     title: section.title,
     blurb: section.blurb,
     package: section.package,
@@ -417,6 +515,13 @@ export const demoRegistry: DemoRegistry = {
   ...systemDemos,
   ...crudDemos,
   ...mapDemos,
+  ...uiExamples,
+  ...signalsExamples,
+  ...chartsExamples,
+  ...systemExamples,
+  ...crudExamples,
+  ...themeExamples,
+  ...cnExamples,
 }
 
 /**
@@ -432,6 +537,22 @@ export const classDemos: Record<string, ClassDemo> = Object.fromEntries(
     .filter((section) => section.kind === "class")
     .flatMap((section) => section.names.map((name) => [name, demoRegistry[name]])),
 ) as Record<string, ClassDemo>
+
+/** Every example card the catalogue renders, keyed by card id; derived like {@link classDemos}. */
+export const exampleDemos: Record<string, ExampleDemo> = Object.fromEntries(
+  catalogueSections
+    .filter((section) => section.kind === "example")
+    .flatMap((section) => section.names.map((name) => [name, demoRegistry[name]])),
+) as Record<string, ExampleDemo>
+
+/**
+ * A card's heading: a class or example card's own title, and `<Name />` for a component.
+ *
+ * @param name Card key.
+ */
+export function cardLabel(name: string): string {
+  return classDemos[name]?.title ?? exampleDemos[name]?.title ?? `<${name} />`
+}
 
 /** Card ids of the class sections, in render order: the demos that document classes, not components. */
 export const classDemoNames: string[] = catalogueSections
@@ -457,11 +578,9 @@ export function missingDemos(registry: PartialDemoRegistry): string[] {
  * page at once.
  *
  * A page is what the guide renders at one time. The sections above are still the unit a card
- * belongs to and a route names; a page is the package they belong to, so `ui/`'s seven sections are
- * one page read top to bottom, and a package with one section (`charts`, `crud`, `map`, `system`)
- * is a page of one. `theme` holds the two class sections. `icons` renders the gallery, and
- * `signals` and `cn` have no cards yet: their pages say what the package is until their examples
- * land.
+ * belongs to and a route names; a page is the package they belong to, so `ui/`'s sections are
+ * one page read top to bottom, and a package with one section (`map`, `signals`, `cn`) is a page of
+ * one. `theme` holds the two class sections and its examples, and `icons` renders the gallery.
  *
  * `all` is every other page at once. It is what the guide renders before its host has read the
  * address — so it is the served document, the page a reader without JavaScript gets — and a route

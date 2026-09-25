@@ -7,22 +7,30 @@ import { expect } from "@std/expect"
 import { parse } from "@std/jsonc"
 import { describe, it } from "@std/testing/bdd"
 import * as charts from "@preact-components/charts"
+import * as cn from "@preact-components/cn"
 import * as crud from "@preact-components/crud"
 import * as map from "@preact-components/map"
+import * as signals from "@preact-components/signals"
 import * as system from "@preact-components/system"
+import * as theme from "@preact-components/theme"
 import * as ui from "@preact-components/ui"
 import {
   type AllowedExport,
+  allowedExports,
   coverageProblems,
   demoedNamesOf,
+  exampledNamesOf,
   EXCLUDED_PACKAGES,
-  EXPORTS_WITHOUT_DEMO,
+  isComponent,
   isComponentName,
   packageExports,
+  type PackageNamespace,
+  PENDING_REASON,
   subpathModulesOf,
   valueExportsOf,
 } from "./coverage.ts"
-import { type PackageId, packageIds } from "./registry.ts"
+import { EXAMPLES_PENDING } from "./examples-pending.ts"
+import { coveredPackageIds, type PackageId, packageIds } from "./registry.ts"
 
 /** The repository root: the parent of every package directory, same as `coverage.ts`'s own. */
 const ROOT = new URL("../", import.meta.url)
@@ -30,34 +38,35 @@ const ROOT = new URL("../", import.meta.url)
 /** Every catalogued package's value exports, read once for the whole file. */
 const EXPORTS = await packageExports()
 
-/**
- * Every package's barrel, imported directly — ground truth `packageExports()`'s read is checked
- * against below, independent of the function under test: whatever `coverage.ts` does internally,
- * these imports run the same way a caller's own `import * as ui from "@preact-components/ui"`
- * would, so a bug in the read cannot also corrupt what it is compared to.
- */
-const BARRELS: Record<PackageId, object> = { ui, charts, system, crud, map }
+/** Every barrel imported directly: ground truth for the read, independent of `coverage.ts`. */
+const BARRELS: Record<PackageId, object> = { ui, charts, system, crud, map, signals, theme, cn }
 
 /** A component name no package exports and no section demonstrates. */
 const GHOST = "GhostWidget"
 
+/** A helper name no package exports and no card or example covers. */
+const GHOST_HELPER = "ghostHelper"
+
+/** The shipped `ui` exports, plus one invented export. */
+function uiWith(name: string, value: unknown): Record<PackageId, PackageNamespace> {
+  return { ...EXPORTS, ui: { ...EXPORTS.ui, [name]: value } }
+}
+
+/** The shipped exports with one of a package's names taken away. */
+function without(id: PackageId, name: string): Record<PackageId, PackageNamespace> {
+  const { [name]: _dropped, ...rest } = EXPORTS[id]
+  return { ...EXPORTS, [id]: rest }
+}
+
 /**
- * Every subpath module that carries at least one name its package's barrel does not, keyed by
- * package and then by the module's own subpath (`"./avatar"`, not a file path).
- *
- * Walks {@link subpathModulesOf}, the same list `valueExportsOf` reads, so this can never name a
- * module the read does not also see, and a module added to a package's `exports` later is picked up
- * here without editing this file. Each module is imported and inspected directly, never through
- * `valueExportsOf`: the fixture has to say what a module exports independently of the function it is
- * checking, or a break in that function could hide the break from its own guard.
- *
- * @returns Barrel-absent names per subpath, per package; a package with none of its own is present
- *   with an empty object rather than omitted.
+ * Per package, every subpath module (`"./avatar"`) carrying a name its barrel does not. Walks
+ * {@link subpathModulesOf} but imports each module itself, never through `valueExportsOf`, so a
+ * break in the read cannot hide from its own guard.
  */
 async function subpathOnlyNames(): Promise<Record<PackageId, Record<string, string[]>>> {
   const byPackage = {} as Record<PackageId, Record<string, string[]>>
 
-  for (const id of packageIds) {
+  for (const id of coveredPackageIds) {
     const barrelNames = new Set(Object.keys(BARRELS[id]))
     const byModule: Record<string, string[]> = {}
 
@@ -76,18 +85,7 @@ async function subpathOnlyNames(): Promise<Record<PackageId, Record<string, stri
 /** {@link subpathOnlyNames}, read once for the whole file. */
 const SUBPATH_ONLY_NAMES = await subpathOnlyNames()
 
-/**
- * One package's subpath keys, read straight from its `deno.json` `exports` map — independent of
- * {@link subpathModulesOf}, so a bug in that helper cannot also corrupt what checks it.
- *
- * Applies the same two filters `subpathModulesOf` applies (drop the barrel entry `"."`, drop a
- * target that is not `.ts`/`.tsx`) to the map itself, and stops there: this reads the declaration,
- * it does not resolve a target into an import URL or import anything, so it stays a second reading
- * of the config rather than a second implementation of the helper it checks.
- *
- * @param id Package to read.
- * @returns Every subpath key the config declares for a TypeScript target, besides the barrel.
- */
+/** One package's TypeScript subpath keys, read straight from its `deno.json`, not the helper. */
 async function declaredSubpaths(id: PackageId): Promise<string[]> {
   const config = parse(await Deno.readTextFile(new URL(`./${id}/deno.json`, ROOT)))
   const declared = (config as { exports?: Record<string, unknown> } | null)?.exports ?? {}
@@ -101,14 +99,8 @@ async function declaredSubpaths(id: PackageId): Promise<string[]> {
 }
 
 /**
- * The problems one deliberately broken input adds, and nothing else.
- *
- * Every fixture below asserts on its own injection alone. Asserting the whole list instead would
- * tie each of them to the catalogue being clean, so one genuinely missing demo would print six
- * failures naming five components invented for these tests and one real one.
- *
- * @param problems What the rule reported for the broken input.
- * @returns The problems the shipped tree does not already report.
+ * The problems one broken input adds beyond the shipped tree's, so each fixture asserts on its own
+ * injection alone and one real gap does not fail every fixture.
  */
 function injectedBy(problems: string[]): string[] {
   const shipped = new Set(coverageProblems(EXPORTS))
@@ -120,16 +112,10 @@ function allowing(
   id: PackageId,
   entries: AllowedExport[],
 ): Record<PackageId, readonly AllowedExport[]> {
-  return { ...EXPORTS_WITHOUT_DEMO, [id]: entries }
+  return { ...allowedExports, [id]: entries }
 }
 
-/**
- * Top-level directories that carry a package config.
- *
- * Read from the tree rather than from the root `workspace` array: a directory that ships a
- * `deno.json` is a package whatever a config somewhere else says, and the guide's coverage claim is
- * about what exists.
- */
+/** Top-level directories that carry a `deno.json`, read from the tree, not the workspace list. */
 async function packageDirectories(): Promise<string[]> {
   const root = new URL("../", import.meta.url)
   const directories: string[] = []
@@ -148,37 +134,26 @@ async function packageDirectories(): Promise<string[]> {
 }
 
 describe("the coverage rule", () => {
-  it("accounts for every component every catalogued package exports", () => {
+  it("accounts for every value every catalogued package exports", () => {
     expect(coverageProblems(EXPORTS)).toEqual([])
 
     // A floor under the read itself, derived from `BARRELS` rather than picked: whatever a
-    // package's real barrel exports for real, `packageExports()`'s read of that package must
-    // contain too. This is not a count, so nothing here needs revising when a package's real
-    // surface grows or shrinks — and unlike the bidirectional check above, which only misses a
-    // *component*-named export, this one also catches a read that silently drops a helper, which
-    // carries no card and so nothing else here would ever ask after it.
-    for (const id of packageIds) {
-      const barrelNames = Object.keys(BARRELS[id])
-      const lost = barrelNames.filter((name) => !EXPORTS[id].includes(name))
-
+    // package's real barrel exports, `packageExports()`'s read of that package must contain too.
+    for (const id of coveredPackageIds) {
+      const lost = Object.keys(BARRELS[id]).filter((name) => !(name in EXPORTS[id]))
       expect(lost, `${id}: barrel names the read lost`).toEqual([])
+    }
+    for (const id of packageIds) {
       expect(demoedNamesOf(id).length, `${id}: cards`).toBeGreaterThan(0)
     }
   })
 
   describe("reads every subpath module, not only the barrel", () => {
-    // The hole this closes: a component exported from its own module and never re-exported is
-    // reachable through the subpath and was invisible to a barrel-only check. One `it` per module
-    // named in SUBPATH_ONLY_NAMES, so a read that skips exactly one module fails with that module's
-    // name rather than passing because some other module covered for it.
+    // One `it` per module, so a read that skips exactly one module names it.
 
     it("lists exactly the TypeScript subpaths each package's deno.json publishes", async () => {
-      // subpathModulesOf is what SUBPATH_ONLY_NAMES (and the per-module steps below) are derived
-      // from, so a bug that drops a module from that helper's own output would drop it from the
-      // fixture too, and no `it` would ever be registered to notice. This checks the helper against
-      // an independent reading of the same deno.json, so that kind of drop fails here directly
-      // instead of failing to fail anywhere.
-      for (const id of packageIds) {
+      // Checks the helper the fixture is derived from against deno.json itself.
+      for (const id of coveredPackageIds) {
         const declared = (await declaredSubpaths(id)).sort()
         const fromHelper = (await subpathModulesOf(id)).map((m) => m.subpath).sort()
 
@@ -188,19 +163,16 @@ describe("the coverage rule", () => {
 
     let moduleCount = 0
 
-    for (const id of packageIds) {
+    for (const id of coveredPackageIds) {
       for (const [subpath, names] of Object.entries(SUBPATH_ONLY_NAMES[id])) {
         moduleCount++
         it(`${id}${subpath} reaches valueExportsOf beyond the barrel`, async () => {
-          // The names under test have to be genuinely barrel-absent, checked against the barrel
-          // module imported directly rather than through valueExportsOf — otherwise a filter that
-          // picked the wrong names (inverted, or broken some other way) would still pass, since every
-          // assertion below would then be true by construction.
+          // The names must really be barrel-absent, or every assertion below holds by construction.
           const barrelNames = new Set(Object.keys(BARRELS[id]))
           const notBarrelAbsent = names.filter((name) => barrelNames.has(name))
           expect(notBarrelAbsent, `${id}${subpath}: names the barrel already carries`).toEqual([])
 
-          const exported = await valueExportsOf(id)
+          const exported = Object.keys(await valueExportsOf(id))
           for (const name of names) {
             expect(exported, `${id}${subpath} exports ${name}`).toContain(name)
           }
@@ -209,11 +181,7 @@ describe("the coverage rule", () => {
     }
 
     it("found at least one such module in a package known to have them", () => {
-      // A derivation that silently found nothing would register zero steps above and this whole
-      // describe block would pass having asserted nothing — exactly the vacuous pass the loop is
-      // supposed to rule out. Measured on the shipped tree: ui publishes six subpath modules with a
-      // barrel-absent name, charts publishes one. Asserted as a floor, not a count, so this does not
-      // need editing when a module is added, renamed, or re-exported through a barrel later.
+      // A derivation that found nothing would register no step above and pass vacuously.
       expect(moduleCount, "subpath modules with a barrel-absent name, across all packages")
         .toBeGreaterThan(0)
       expect(Object.keys(SUBPATH_ONLY_NAMES.ui).length, "ui").toBeGreaterThan(0)
@@ -222,23 +190,60 @@ describe("the coverage rule", () => {
   })
 
   it("names a component that no section demonstrates", () => {
-    const problems = injectedBy(coverageProblems({ ...EXPORTS, ui: [...EXPORTS.ui, GHOST] }))
+    const problems = injectedBy(coverageProblems(uiWith(GHOST, () => null)))
 
     expect(problems.length, problems.join(" | ")).toBe(1)
     expect(problems[0]).toContain(GHOST)
     expect(problems[0]).toContain("no section demonstrates it")
   })
 
-  it("leaves a helper-named export alone", () => {
-    expect(injectedBy(coverageProblems({ ...EXPORTS, ui: [...EXPORTS.ui, "ghostHelper"] })))
+  it("names a helper that no card or example covers", () => {
+    const problems = injectedBy(coverageProblems(uiWith(GHOST_HELPER, () => null)))
+
+    expect(problems.length, problems.join(" | ")).toBe(1)
+    expect(problems[0]).toContain(GHOST_HELPER)
+    expect(problems[0]).toContain("no card or example covers it")
+  })
+
+  it("names a PascalCase object with no example as a helper, not a component", () => {
+    const problems = injectedBy(coverageProblems(uiWith(GHOST, { A: 1 })))
+
+    expect(problems.length, problems.join(" | ")).toBe(1)
+    expect(problems[0]).toContain("no card or example covers it")
+  })
+
+  it("counts a helper an example covers", () => {
+    const exampled = exampledNamesOf("ui")[0]
+    expect(exampled, "ui ships an example").toBeDefined()
+    expect(allowedExports.ui.map((entry) => entry.name)).not.toContain(exampled)
+    expect(coverageProblems(EXPORTS).filter((problem) => problem.includes(` ${exampled} `)))
       .toEqual([])
+  })
+
+  it("does not count an example as a component's card", () => {
+    const withGhost = (id: PackageId) => [...exampledNamesOf(id), ...(id === "ui" ? [GHOST] : [])]
+    const problems = injectedBy(
+      coverageProblems(uiWith(GHOST, () => null), allowedExports, withGhost),
+    )
+
+    expect(problems.length, problems.join(" | ")).toBe(1)
+    expect(problems[0]).toContain(`component ${GHOST}`)
+  })
+
+  it("names an example covering a name its package does not export", () => {
+    const exampled = exampledNamesOf("signals")[0]
+    const problems = injectedBy(coverageProblems(without("signals", exampled)))
+
+    expect(problems.length, problems.join(" | ")).toBe(1)
+    expect(problems[0]).toContain(exampled)
+    expect(problems[0]).toContain("examples cover")
   })
 
   it("names an allow-list entry the package does not export", () => {
     const problems = injectedBy(
       coverageProblems(
         EXPORTS,
-        allowing("ui", [{ name: GHOST, reason: "Invented for this test." }]),
+        allowing("ui", [...allowedExports.ui, { name: GHOST, reason: "Invented for this test." }]),
       ),
     )
 
@@ -252,7 +257,7 @@ describe("the coverage rule", () => {
     const problems = injectedBy(
       coverageProblems(
         EXPORTS,
-        allowing("ui", [{ name: demoed, reason: "A demo somebody still owes." }]),
+        allowing("ui", [...allowedExports.ui, { name: demoed, reason: PENDING_REASON }]),
       ),
     )
 
@@ -261,22 +266,39 @@ describe("the coverage rule", () => {
     expect(problems[0]).toContain("stale")
   })
 
+  it("names a pending entry whose helper has an example after all", () => {
+    const exampled = exampledNamesOf("signals")[0]
+    const problems = injectedBy(
+      coverageProblems(
+        EXPORTS,
+        allowing("signals", [...allowedExports.signals, {
+          name: exampled,
+          reason: PENDING_REASON,
+        }]),
+      ),
+    )
+
+    expect(problems.length, problems.join(" | ")).toBe(1)
+    expect(problems[0]).toContain(exampled)
+    expect(problems[0]).toContain("stale")
+  })
+
   it("names a demo keyed to a name its package does not export", () => {
     const demoed = demoedNamesOf("ui")[0]
-    const problems = injectedBy(
-      coverageProblems({ ...EXPORTS, ui: EXPORTS.ui.filter((name) => name !== demoed) }),
-    )
+    const problems = injectedBy(coverageProblems(without("ui", demoed)))
 
     expect(problems.length, problems.join(" | ")).toBe(1)
     expect(problems[0]).toContain(demoed)
     expect(problems[0]).toContain("does not export")
   })
 
-  it("gives every allow-list entry a reason", () => {
-    for (const id of packageIds) {
-      for (const entry of EXPORTS_WITHOUT_DEMO[id]) {
+  it("gives every allow-list entry a reason, and names each pending export once", () => {
+    for (const id of coveredPackageIds) {
+      for (const entry of allowedExports[id]) {
         expect(entry.reason.length, `${id}: ${entry.name}`).toBeGreaterThan(20)
       }
+      const pending = EXAMPLES_PENDING[id]
+      expect(new Set(pending).size, `${id}: a pending name listed twice`).toBe(pending.length)
     }
   })
 
@@ -284,6 +306,8 @@ describe("the coverage rule", () => {
     for (const name of ["Badge", "EmptyState", "D3LineChart", "OnOffButtons", "ErrType"]) {
       expect(isComponentName(name), `${name} is a component name`).toBe(true)
     }
+    expect(isComponent("Badge", () => null), "a PascalCase function").toBe(true)
+    expect(isComponent("ThemeValue", { Light: 1 }), "a PascalCase object").toBe(false)
     for (
       const name of ["clampProgress", "cn", "DEFAULT_AXIS_COLOR", "CONFLICT", "SKELETON_METRICS"]
     ) {
@@ -295,19 +319,19 @@ describe("the coverage rule", () => {
 describe("package coverage", () => {
   it("covers every package in the tree, or excludes it with a reason", async () => {
     const directories = await packageDirectories()
-    expect(directories.length).toBeGreaterThan(packageIds.length)
+    expect(directories.length).toBeGreaterThan(coveredPackageIds.length)
 
-    const covered = new Set<string>(packageIds)
+    const covered = new Set<string>(coveredPackageIds)
     const excluded = new Set<string>(Object.keys(EXCLUDED_PACKAGES))
 
     for (const directory of directories) {
       expect(
         covered.has(directory) || excluded.has(directory),
-        `${directory}/ carries a deno.json — catalogue it in packageIds, or exclude it with a reason`,
+        `${directory}/ carries a deno.json — catalogue it in coveredPackageIds, or exclude it with a reason`,
       ).toBe(true)
     }
 
-    for (const id of packageIds) {
+    for (const id of coveredPackageIds) {
       expect(directories, `${id}/ is a catalogued source`).toContain(id)
     }
     for (const id of Object.keys(EXCLUDED_PACKAGES) as Array<keyof typeof EXCLUDED_PACKAGES>) {

@@ -13,7 +13,9 @@ import {
   CLASS_PACKAGE,
   classDemoNames,
   classDemos,
+  coveredPackageIds,
   demoRegistry,
+  exampleDemos,
   guidePages,
   missingDemos,
   type PackageId,
@@ -37,7 +39,8 @@ describe("the catalogue", () => {
   it("gives every demo a summary, a snippet and a render function", () => {
     for (const [name, demo] of Object.entries(demoRegistry)) {
       expect(demo.summary.length, name).toBeGreaterThan(10)
-      expect(demo.snippet, name).toContain("<")
+      // A component or class snippet is JSX; an example's is the code it runs.
+      if (!(name in exampleDemos)) expect(demo.snippet, name).toContain("<")
       expect(typeof demo.render, name).toBe("function")
     }
   })
@@ -55,7 +58,7 @@ describe("the catalogue", () => {
     expect(catalogueSections.length).toBeGreaterThan(packageIds.length)
 
     for (const section of catalogueSections) {
-      expect([...packageIds, CLASS_PACKAGE], section.id).toContain(section.package)
+      expect(coveredPackageIds, section.id).toContain(section.package)
       expect(section.packageName, section.id).toBe(`@preact-components/${section.package}`)
       expect(section.title.length, section.id).toBeGreaterThan(0)
       expect(section.blurb.length, section.id).toBeGreaterThan(10)

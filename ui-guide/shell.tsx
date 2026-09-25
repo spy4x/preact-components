@@ -26,6 +26,7 @@ import { DemoCard, MissingDemoBanner } from "./card.tsx"
 import { IconGallery, iconNames } from "./icons.tsx"
 import { CatalogInstructions } from "./instructions.tsx"
 import {
+  cardLabel,
   catalogueNames,
   type CatalogueSection,
   classDemos,
@@ -59,7 +60,7 @@ export interface UIGuideLabels {
   openNav?: string
   /** The dialog's close button's accessible name. Defaults to `"Close the guide navigation"`. */
   closeNav?: string
-  /** What a page with no cards yet says. */
+  /** What a package page with no card in the registry says. */
   comingSoon?: string
   /** The link that jumps past the navigation to the page. Defaults to `"Skip to content"`. */
   skipToContent?: string
@@ -72,7 +73,7 @@ export interface UIGuideLabels {
   cardCount?: (count: number) => string
   /** The icons page's overview card. Defaults to `"<count> icons"`. */
   iconCount?: (count: number) => string
-  /** An overview card for a package with no cards yet. Defaults to `"Examples coming"`. */
+  /** An overview card for a package with no card in the registry. Defaults to `"Examples coming"`. */
   examplesComing?: string
 }
 
@@ -479,7 +480,7 @@ function NavSection(
                     : "text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800",
                 )}
               >
-                {classDemos[name]?.title ?? name}
+                {section.kind === "component" ? name : cardLabel(name)}
               </a>
             </li>
           )
@@ -536,7 +537,10 @@ function Overview(
       </header>
       <ul class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {packagePages.map((page) => {
-          const count = page.sections.reduce((total, section) => total + section.names.length, 0)
+          const count = page.sections.reduce(
+            (total, section) => total + section.names.filter((name) => name in registry).length,
+            0,
+          )
           const href = pageHref(page.id)
           return (
             <li key={page.id} class="min-w-0">
@@ -600,7 +604,8 @@ function PackagePage(
       </header>
 
       {page.id === "icons" ? <IconGallery copy={copy} /> : null}
-      {page.sections.length === 0 && page.id !== "icons"
+      {page.id !== "icons" &&
+          page.sections.every((section) => section.names.every((name) => !(name in registry)))
         ? <p class="text-sm text-gray-600 dark:text-gray-300">{labels.comingSoon}</p>
         : null}
 
@@ -623,18 +628,19 @@ function PackagePage(
             </div>
             <div class="grid grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))] gap-4 [&>article:has([role=menu])]:col-span-full [&>article:has(table)]:col-span-full">
               {demos.map(([name, demo]) => {
-                // A class card is headed by its own title and lists the classes it applies; a
-                // component card is headed by the component. `classDemos` is keyed by card id, so a
-                // component name can never collide with one.
+                // A class card is headed by its own title and lists the classes it applies, an
+                // example card by its title with its code open; a component card is headed by the
+                // component.
                 const classDemo = section.kind === "class" ? classDemos[name] : undefined
                 return (
                   <DemoCard
                     key={name}
                     name={name}
-                    label={classDemo?.title ?? `<${name} />`}
+                    label={cardLabel(name)}
                     summary={demo.summary}
                     snippet={demo.snippet}
                     classes={classDemo?.classes}
+                    usageOpen={section.kind === "example"}
                     copy={copy}
                   >
                     {demo.render()}

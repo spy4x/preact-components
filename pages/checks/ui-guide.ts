@@ -278,13 +278,25 @@ async function navigationChecks(devtools: Devtools): Promise<void> {
       `Tab the column is ${released ? "no longer focusable" : "still focusable or focused"}`,
   )
 
-  // Within the page showing, the navigation lists its cards; a click on one lands on it.
-  const target = crudCards.at(-1) ?? ""
+  // Within the page showing, the navigation lists its cards; a click on one lands on it. A
+  // component card, whose link text is its name; an example card's link reads its title.
+  const target = (crud?.sections ?? []).filter((section) => section.kind === "component")
+    .flatMap((section) => section.names).map((name) => `demo-${name}`).at(-1) ?? ""
   const name = target.replace(/^demo-/, "")
-  const linkClicked = await clickElement(
-    devtools,
-    `${ASIDE_NAV} a[href$="/${name.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase()}"]`,
-  )
+  const link = `${ASIDE_NAV} a[href$="/${
+    name.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase()
+  }"]`
+  // The column scrolls on its own once its list outgrows the screen; scroll it, not the page, to
+  // bring the link into view, then aim at it where it is.
+  await devtools.evaluate(`(() => {
+    const link = document.querySelector(${JSON.stringify(link)})
+    const column = link?.closest("aside")
+    if (!link || !column) return null
+    const offset = link.getBoundingClientRect().top - column.getBoundingClientRect().top
+    column.scrollTop += offset - column.clientHeight / 2
+    return null
+  })()`)
+  const linkClicked = await clickElement(devtools, link, { inPlace: true })
   const landed = await poll(
     () =>
       devtools.evaluate<boolean>(`(() => {
