@@ -11,7 +11,7 @@ import { PAGE_DESCRIPTION, PAGE_TITLE } from "./site.ts"
 import { renderDocument } from "./document.tsx"
 
 /** No sections or demos: nothing under test here reads the route table's contents. */
-const EMPTY_ROUTE_TABLE: RouteTable = { sections: [], demos: [] }
+const EMPTY_ROUTE_TABLE: RouteTable = { pages: [], sections: [], demos: [] }
 
 const OPTIONS = {
   base: "/preact-components/",

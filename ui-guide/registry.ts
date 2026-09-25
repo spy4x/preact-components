@@ -512,3 +512,126 @@ export const classDemoNames: string[] = catalogueSections
 export function missingDemos(registry: PartialDemoRegistry): string[] {
   return catalogueNames.filter((name) => !(name in registry))
 }
+
+/**
+ * The guide's pages, in navigation order: the overview, then one page per package.
+ *
+ * A page is what the guide renders at one time. The sections above are still the unit a card
+ * belongs to and a route names; a page is the package they belong to, so `ui/`'s seven sections are
+ * one page read top to bottom, and a package with one section (`charts`, `crud`, `map`, `system`)
+ * is a page of one. `theme` holds the two class sections. `icons` renders the gallery, and
+ * `signals` and `cn` have no cards yet: their pages say what the package is until their examples
+ * land.
+ *
+ * `all` is every other page at once. It is what the guide renders before its host has read the
+ * address — so it is the served document, the page a reader without JavaScript gets — and a route
+ * of its own, for searching the whole library with the browser's find.
+ */
+export const guidePageIds = [
+  "overview",
+  "ui",
+  "system",
+  "crud",
+  "charts",
+  "map",
+  "signals",
+  "theme",
+  "icons",
+  "cn",
+  "all",
+] as const
+
+/** Identifier of one page of the guide, e.g. `"ui"`. */
+export type GuidePageId = (typeof guidePageIds)[number]
+
+/** One page as the navigation and the page header show it. */
+export interface GuidePage {
+  id: GuidePageId
+  /** Navigation label and page heading, e.g. `"Components"`. */
+  title: string
+  /** One or two sentences under the page heading. */
+  blurb: string
+  /** The package the page documents, e.g. `@preact-components/ui`; `undefined` for the overview. */
+  packageName: string | undefined
+  /** The sections the page renders, in reading order; empty for a page with no cards. */
+  sections: CatalogueSection[]
+}
+
+/** Title and blurb of every page, hand-written because they are prose. */
+const pageCopy: Record<GuidePageId, { title: string; blurb: string }> = {
+  overview: {
+    title: "Overview",
+    blurb: "What the library holds, one page per package.",
+  },
+  ui: {
+    title: "UI",
+    blurb:
+      "The controls and surfaces an app is assembled from: buttons and badges, tables and meters, fields and pickers, dialogs, toasts and the empty and error states.",
+  },
+  system: {
+    title: "System",
+    blurb: catalogue.system.blurb,
+  },
+  crud: {
+    title: "CRUD",
+    blurb: catalogue.crud.blurb,
+  },
+  charts: {
+    title: "Charts",
+    blurb: catalogue.charts.blurb,
+  },
+  map: {
+    title: "Map",
+    blurb: catalogue.map.blurb,
+  },
+  signals: {
+    title: "Signals",
+    blurb:
+      "State helpers built on `@preact/signals`: the model store, filters bound to the address bar, table state, toasts and the theme store. The package renders nothing of its own.",
+  },
+  theme: {
+    title: "Theme",
+    blurb:
+      "The design tokens and the classes `preset.css` ships: the half of the stylesheet an app applies to markup the library does not own.",
+  },
+  icons: {
+    title: "Icons",
+    blurb: "Every glyph the icon package exports. Search by name, click a glyph to copy its JSX.",
+  },
+  all: {
+    title: "Everything",
+    blurb:
+      "Every page of the guide on one page: the whole library in one scroll, for the browser's own find.",
+  },
+  cn: {
+    title: "cn",
+    blurb:
+      "`cn()` joins class names and resolves conflicting Tailwind utilities, so a caller's class wins over a component's default.",
+  },
+}
+
+/**
+ * The page a section is read on: its package's page, and `theme` for a class section.
+ *
+ * @param section Section to place.
+ * @returns The page that renders it.
+ */
+export function pageOfSection(section: Pick<CatalogueSection, "package">): GuidePageId {
+  return section.package
+}
+
+/** Every page of the guide, resolved, in {@link guidePageIds} order. */
+export const guidePages: GuidePage[] = guidePageIds.map((id) => ({
+  id,
+  title: pageCopy[id].title,
+  blurb: pageCopy[id].blurb,
+  packageName: id === "overview" || id === "all" ? undefined : `@preact-components/${id}`,
+  sections: id === "all"
+    ? catalogueSections
+    : catalogueSections.filter((section) => pageOfSection(section) === id),
+}))
+
+/** The pages that document one package each: every page but the overview and `all`. */
+export const packagePages: GuidePage[] = guidePages.filter((page) =>
+  page.id !== "overview" && page.id !== "all"
+)

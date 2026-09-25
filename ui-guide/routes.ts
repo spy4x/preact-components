@@ -13,10 +13,18 @@
  * | Hash                     | Match                                                        |
  * | ------------------------ | ------------------------------------------------------------ |
  * | `#`, `#/`, `""`          | {@link IndexRouteMatch}, `reason: "empty"` — the landing page |
+ * | `#/ui`                   | {@link PageRouteMatch} — one page of the guide                |
  * | `#/inputs`               | {@link SectionRouteMatch} — one section of the catalogue      |
  * | `#/inputs/toggle-switch` | {@link DemoRouteMatch} — one demo card                        |
  * | `#toggle-switch`         | {@link DemoRouteMatch} — the shipped legacy deep link         |
  * | `#/nonsense`             | {@link IndexRouteMatch}, `reason: "unknown"` — never a throw  |
+ *
+ * A page is what the guide renders at one time: the overview, or one package (see `guidePages` in
+ * `registry.ts`). Every route names one — {@link pageOfRoute} — except an unknown one, which names
+ * none, so the host keeps the page it is on. A page whose id is also a section's (`charts`, `crud`,
+ * `map`, `system`) has that section's route as its own; the others (`ui`, `theme`, `icons`,
+ * `signals`, `cn`) match as a {@link PageRouteMatch}, and no page id is a section id of another
+ * page, which `routes.test.ts` asserts.
  *
  * A bare fragment (`#toggle-switch`, `#ToggleSwitch`, `#demo-ToggleSwitch`) is the shape the page
  * shipped before hash routing, so it stays: it resolves against every section's demo names, and it
@@ -44,7 +52,15 @@
  * route a hash is, and `pages/src/app.tsx` is what scrolls, marks and titles.
  */
 
-import { type CatalogueSection, catalogueSections, type SectionId } from "./registry.ts"
+import {
+  type CatalogueSection,
+  catalogueSections,
+  type GuidePageId,
+  guidePageIds,
+  guidePages,
+  pageOfSection,
+  type SectionId,
+} from "./registry.ts"
 
 /** Matched the landing route: the catalogue's index, and the fallback for anything that is not one. */
 export interface IndexRouteMatch {
@@ -97,8 +113,21 @@ export interface DemoRouteMatch {
   hash: string
 }
 
-/** What a hash resolved to: a section, a demo, or the landing route that means "no route here". */
-export type RouteMatch = IndexRouteMatch | SectionRouteMatch | DemoRouteMatch
+/** Matched one page of the guide whose id names no section: `#/ui`, `#/icons`. */
+export interface PageRouteMatch {
+  kind: "page"
+  /** The page, as `registry.ts` identifies it. */
+  pageId: GuidePageId
+  /** The page's heading. */
+  title: string
+  /** Canonical href, `#/ui`. */
+  href: string
+  /** The hash as normalised. */
+  hash: string
+}
+
+/** What a hash resolved to: a page, a section, a demo, or the landing route. */
+export type RouteMatch = IndexRouteMatch | PageRouteMatch | SectionRouteMatch | DemoRouteMatch
 
 /** One section's route, as the emitted route table carries it. */
 export interface SectionRouteEntry {
@@ -124,8 +153,16 @@ export interface DemoRouteEntry {
   href: string
 }
 
+/** One page's route, as the emitted route table carries it. */
+export interface PageRouteEntry {
+  /** The page, as `registry.ts` identifies it. */
+  pageId: string
+  /** Canonical href. */
+  href: string
+}
+
 /**
- * The routes the deployed document echoes: one entry per section, one per demo.
+ * The routes the deployed document echoes: one entry per page, per section and per demo.
  *
  * Every field is a `string` on purpose: this is the shape a JSON echo parses back into, and the whole
  * point of {@link routeTableDrift} is to hold those strings against the real section ids and demo
@@ -133,6 +170,7 @@ export interface DemoRouteEntry {
  * heard of, which is one of the failures the build has to be able to name.
  */
 export interface RouteTable {
+  pages: PageRouteEntry[]
   sections: SectionRouteEntry[]
   demos: DemoRouteEntry[]
 }
@@ -162,6 +200,39 @@ export function routeSlug(name: string): string {
  */
 export function routeHref(sectionId: SectionId): string {
   return `#/${routeSlug(sectionId)}`
+}
+
+/**
+ * Canonical href of a page: `#/` for the overview, `#/<id>` for the rest.
+ *
+ * A page whose id is a section's shares that section's href, which is what makes `#/charts` both.
+ *
+ * @param pageId Page to link to.
+ * @returns `#/ui`.
+ */
+export function pageHref(pageId: GuidePageId): string {
+  return pageId === "overview" ? "#/" : `#/${routeSlug(pageId)}`
+}
+
+/**
+ * The page a route opens, or `undefined` for a hash that names no route.
+ *
+ * `undefined` is the host's cue to stay on the page it is on: a bare fragment such as `#top` or a
+ * card's own in-page link is the browser's business, and switching pages under it would take the
+ * element it points at off the page.
+ *
+ * @param match A route {@link parseRoute} returned.
+ * @param sections Sections to resolve against; defaults to the catalogue's.
+ * @returns The page to render.
+ */
+export function pageOfRoute(
+  match: RouteMatch,
+  sections: readonly CatalogueSection[] = catalogueSections,
+): GuidePageId | undefined {
+  if (match.kind === "index") return match.reason === "empty" ? "overview" : undefined
+  if (match.kind === "page") return match.pageId
+  const section = sections.find((candidate) => candidate.id === match.sectionId)
+  return section ? pageOfSection(section) : undefined
 }
 
 /**
@@ -196,6 +267,7 @@ export function demoHref(sectionId: SectionId, name: string): string {
  */
 export function routeTable(sections: readonly CatalogueSection[] = catalogueSections): RouteTable {
   return {
+    pages: guidePageIds.map((pageId) => ({ pageId, href: pageHref(pageId) })),
     sections: sections.map((section) => ({
       sectionId: section.id,
       slug: routeSlug(section.id),
@@ -239,6 +311,25 @@ export function routeTableDrift(
   const emittedHrefs = new Set<string>()
   const emittedSections = new Set<string>()
   const emittedDemos = new Set<string>()
+  const emittedPages = new Set<string>()
+
+  // Pages first, in their own href set: a page whose id is a section's shares that section's href on
+  // purpose, so a shared href is not drift here.
+  for (const entry of table.pages) {
+    const label = `page ${JSON.stringify(entry.pageId)} (${JSON.stringify(entry.href)})`
+    const pageId = guidePageIds.find((id) => id === entry.pageId)
+    if (!pageId) {
+      drift.push(`${label}: no such page in the guide`)
+      continue
+    }
+    if (emittedPages.has(pageId)) drift.push(`${label}: page emitted twice`)
+    emittedPages.add(pageId)
+    if (entry.href !== pageHref(pageId)) {
+      drift.push(`${label}: not the canonical href ${JSON.stringify(pageHref(pageId))}`)
+    }
+    const opened = pageOfRoute(parseRoute(entry.href, sections), sections)
+    if (opened !== pageId) drift.push(`${label}: opens page ${opened ?? "none"}`)
+  }
 
   for (const entry of table.sections) {
     const label = `section ${JSON.stringify(entry.sectionId)} (${JSON.stringify(entry.href)})`
@@ -310,6 +401,10 @@ export function routeTableDrift(
     }
   }
 
+  for (const pageId of guidePageIds) {
+    if (!emittedPages.has(pageId)) drift.push(`page ${JSON.stringify(pageId)}: no route emitted`)
+  }
+
   for (const section of sections) {
     if (!emittedSections.has(section.id)) {
       drift.push(`section ${JSON.stringify(section.id)}: no route emitted`)
@@ -358,7 +453,20 @@ export function parseRoute(
     const section = sections.find((candidate) =>
       routeSlug(candidate.id) === segments[0].toLowerCase()
     )
-    if (!section) return indexRoute("unknown", normalised)
+    if (!section) {
+      const page = guidePages.find((candidate) =>
+        candidate.id !== "overview" && routeSlug(candidate.id) === segments[0].toLowerCase()
+      )
+      return page && segments.length === 1
+        ? {
+          kind: "page",
+          pageId: page.id,
+          title: page.title,
+          href: pageHref(page.id),
+          hash: normalised,
+        }
+        : indexRoute("unknown", normalised)
+    }
     if (segments.length === 1) {
       return {
         kind: "section",
@@ -453,6 +561,7 @@ function nameIn(section: CatalogueSection, segment: string): string | undefined 
 /** How a match reads in a drift message: `index (unknown)`, `section inputs`, `demo inputs/Badge`. */
 function describe(match: RouteMatch): string {
   if (match.kind === "index") return `index (${match.reason})`
+  if (match.kind === "page") return `page ${match.pageId}`
   if (match.kind === "section") return `section ${match.sectionId}`
   return `demo ${match.sectionId}/${match.name}`
 }

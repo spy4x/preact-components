@@ -38,6 +38,7 @@ describe("the route echo", () => {
 
   it("escapes a payload that would close the element it lives in", () => {
     const table = {
+      pages: [],
       sections: [],
       demos: [{
         sectionId: "inputs",

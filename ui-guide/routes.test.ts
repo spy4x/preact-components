@@ -9,10 +9,12 @@
 
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
-import { catalogueSections } from "./registry.ts"
+import { catalogueSections, guidePages, pageOfSection } from "./registry.ts"
 import {
   demoHref,
   type IndexRouteMatch,
+  pageHref,
+  pageOfRoute,
   parseRoute,
   routeHref,
   type RouteMatch,
@@ -474,5 +476,85 @@ describe("routeTableDrift", () => {
 
     const drift = routeTableDrift(drifted)
     expect(drift.join(" "), "the report says the href is used twice").toContain("emitted twice")
+  })
+
+  it("names a page whose href opens another page", () => {
+    const drifted = table((copy) => {
+      const ui = copy.pages.find((page) => page.pageId === "ui")
+      if (ui) ui.href = "#/icons"
+    })
+
+    const drift = routeTableDrift(drifted)
+    expect(drift.join(" | "), "the report names the page and the href").toContain(
+      'page "ui" ("#/icons")',
+    )
+    expect(drift.join(" | "), "and the page it opens instead").toContain("opens page icons")
+  })
+
+  it("names a page the table left out entirely", () => {
+    const drifted = table((copy) => {
+      copy.pages = copy.pages.filter((page) => page.pageId !== "cn")
+    })
+
+    expect(routeTableDrift(drifted)).toEqual(['page "cn": no route emitted'])
+  })
+})
+
+describe("guide pages", () => {
+  const cases: Array<{ hash: string; page: string | undefined }> = [
+    { hash: "", page: "overview" },
+    { hash: "#/", page: "overview" },
+    { hash: "#/ui", page: "ui" },
+    { hash: "#/UI", page: "ui" },
+    { hash: "#/icons", page: "icons" },
+    { hash: "#/all", page: "all" },
+    { hash: "#/cn", page: "cn" },
+    { hash: "#/signals", page: "signals" },
+    { hash: "#/inputs", page: "ui" },
+    { hash: "#/inputs/toggle-switch", page: "ui" },
+    { hash: "#toggle-switch", page: "ui" },
+    { hash: "#/forms", page: "theme" },
+    { hash: "#/charts", page: "charts" },
+    { hash: "#/crud/crud-editor", page: "crud" },
+    { hash: "#/ui/toggle-switch", page: undefined },
+    { hash: "#/nonsense", page: undefined },
+    { hash: "#inputs", page: undefined },
+  ]
+  for (const { hash, page } of cases) {
+    it(`opens ${page ?? "no page"} for ${JSON.stringify(hash)}`, () => {
+      expect(pageOfRoute(parseRoute(hash)), hash).toBe(page)
+    })
+  }
+
+  it("matches a page whose id is not a section's as a page route, with its canonical href", () => {
+    expect(parseRoute("#/theme")).toEqual({
+      kind: "page",
+      pageId: "theme",
+      title: "Theme",
+      href: "#/theme",
+      hash: "#/theme",
+    })
+  })
+
+  it("keeps a section's route when its id is also its page's", () => {
+    expect(parseRoute("#/charts").kind).toBe("section")
+    expect(pageHref("charts")).toBe(routeHref("charts"))
+  })
+
+  it("links the overview at the bare route", () => {
+    expect(pageHref("overview")).toBe("#/")
+  })
+
+  it("gives no page an id that is another page's section", () => {
+    for (const page of guidePages) {
+      const section = catalogueSections.find((candidate) => candidate.id === page.id)
+      if (section) expect(pageOfSection(section), page.id).toBe(page.id)
+    }
+  })
+
+  it("round-trips every page's href to that page", () => {
+    for (const page of guidePages) {
+      expect(pageOfRoute(parseRoute(pageHref(page.id))), page.id).toBe(page.id)
+    }
   })
 })
