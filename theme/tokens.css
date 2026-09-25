@@ -59,6 +59,10 @@
   --radius-primary: 0.5rem; /* rounded-lg */
   --radius-control: 0.375rem; /* rounded-md */
   --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
+  /* Heading/body serif and code/data mono — system stacks only. Self-hosting a face
+     (Literata, IBM Plex Mono, …) is the consuming site's own build, not this package's. */
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 }
 
 .dark {
