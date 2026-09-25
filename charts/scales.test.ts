@@ -3,9 +3,11 @@ import { describe, it } from "@std/testing/bdd"
 import { extent, linearScale, niceScale, paddedDomain, xLabelStride } from "./scales.ts"
 
 // `niceStep` and `ticks` themselves — the pair now imported from `@spy4x/platform/universal/axis`
-// (spy4x/ts-libs#70) — are tested once, there; `axis.test.ts` covers the cases this file used to.
-// The termination regression below stays: it proves `./scales.ts`'s own re-export still behaves,
-// not just the upstream implementation in isolation.
+// (spy4x/ts-libs#70) — are tested once, there; `axis.test.ts` covers most of the cases this file
+// used to, but not the subnormal-span sweep (`Number.MIN_VALUE`, `1e-320`, `1e-310`),
+// `ticks(-1e18, 1e18)` or the 1e-12..1e12 target sweep — see "Needs ts-libs" in the PR body. The
+// termination regression below stays: it proves `./scales.ts`'s own re-export still behaves, not
+// just the upstream implementation in isolation.
 
 /** Every tick must be a multiple of `step`, allowing for float noise at extreme magnitudes. */
 function assertTickInvariants(values: number[], step: number): void {
@@ -72,6 +74,62 @@ Deno.test({
     assertEquals(result.length, 2)
     assertEquals(result[0], min)
     assertEquals(result[1], max)
+  },
+})
+
+/**
+ * Call `niceScale` in a worker and give up after `timeoutMs`.
+ *
+ * `niceScale`'s own `ticksForStep` can loop as many times as an absurd `target` option asks for;
+ * see the deadline note on `probeTicks` above for why this runs off the main thread.
+ */
+async function probeNiceScale(
+  request: { min: number; max: number; options?: { target?: number; padRatio?: number } },
+  timeoutMs: number,
+): Promise<number[] | "timeout"> {
+  const worker = new Worker(new URL("./nice-scale.worker.ts", import.meta.url), { type: "module" })
+
+  try {
+    return await new Promise<number[] | "timeout">((resolve) => {
+      const timer = setTimeout(() => resolve("timeout"), timeoutMs)
+      worker.onmessage = (event: MessageEvent<number[]>) => {
+        clearTimeout(timer)
+        resolve(event.data)
+      }
+      worker.onerror = () => {
+        clearTimeout(timer)
+        resolve("timeout")
+      }
+      worker.postMessage(request)
+    })
+  } finally {
+    worker.terminate()
+  }
+}
+
+// Sanitizers are disabled for the same reason as the `ticks` termination test above.
+Deno.test({
+  name: "niceScale - terminates for an absurd tick target instead of hanging",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    // A target of 1e25 makes niceStep's step many orders of magnitude smaller than the float
+    // precision at this magnitude, so `ticksForStep`'s index climbed toward a `steps` of 1e25 while
+    // `out.length` almost stopped growing — `out.length < MAX_TICKS` alone never stopped the loop.
+    // This shipped on `main` (spy4x/preact-components#123) until the same fix landed in
+    // `@spy4x/platform/universal/axis` (spy4x/ts-libs#70) and was ported back here.
+    const min = 1e6
+    const max = 2e6
+    const result = await probeNiceScale({ min, max, options: { target: 1e25 } }, 2_000)
+
+    if (result === "timeout") {
+      throw new Error(
+        `niceScale(${min}, ${max}, { target: 1e25 }) did not terminate within 2000ms: ` +
+          "ticksForStep must cap its loop at MAX_TICKS iterations, not just its output length",
+      )
+    }
+
+    assert(result.length >= 1, `expected at least one tick, got ${result}`)
   },
 })
 

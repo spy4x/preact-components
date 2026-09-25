@@ -32,14 +32,16 @@
   },
   "publish": {
     // `probe/` runs `probe:no-d3` against this repository's own tree and is meaningless outside it;
-    // `ticks.worker.ts` exists only so `scales.test.ts` can call `ticks` off the main thread with a
-    // deadline (see its own JSDoc) and is loaded by no published module; the rest are this package's
-    // own `*.test.*` suites. None of it is reachable from `exports`.
+    // `ticks.worker.ts` and `nice-scale.worker.ts` exist only so `scales.test.ts` can call `ticks`
+    // and `niceScale` off the main thread with a deadline (see their own JSDoc) and are loaded by no
+    // published module; the rest are this package's own `*.test.*` suites. None of it is reachable
+    // from `exports`.
     "exclude": [
       "**/*.test.ts",
       "**/*.test.tsx",
       "probe/",
-      "ticks.worker.ts"
+      "ticks.worker.ts",
+      "nice-scale.worker.ts"
     ]
   }
 }

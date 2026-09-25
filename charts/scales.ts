@@ -145,6 +145,17 @@ export function xLabelStride(count: number, maxLabels = 8): number {
  * because one ulp at `1e18` is 128 while the nice step is 20 — so the source looped forever there.
  * Multiplying the index moves the cursor in multiples of the step and always terminates; repeated
  * values collapse, leaving the representable bounds.
+ *
+ * **Bounded by `MAX_TICKS`, not just its output.** `steps` is `(end - start) / step`, and an absurd
+ * tick target (`niceScale(1e6, 2e6, { target: 1e25 })`, say) makes `step` many orders of magnitude
+ * smaller than the float precision at `low`/`high`'s magnitude. Every `roundToStep` result then
+ * collapses onto the same handful of doubles, so `out.length` almost stops growing while `index`
+ * keeps climbing toward a `steps` that can itself be `1e25` — relying on `out.length < MAX_TICKS`
+ * alone never terminates, which is exactly this bug: it shipped on `main` until it was found and
+ * fixed the same way in `@spy4x/platform/universal/axis`'s copy (spy4x/ts-libs#70) and ported back.
+ * Capping the loop itself at `Math.min(steps + 1, MAX_TICKS)` is the fix: return whichever ticks
+ * distinguish themselves within `MAX_TICKS` iterations — as few as one, if the target is absurd
+ * enough that nothing else is representable — rather than hang the page.
  */
 function ticksForStep(low: number, high: number, step: number): number[] {
   const start = Math.floor(low / step) * step
@@ -153,7 +164,8 @@ function ticksForStep(low: number, high: number, step: number): number[] {
   if (!Number.isFinite(steps) || steps < 0) return [low, high]
 
   const out: number[] = []
-  for (let index = 0; index <= steps + 1 && out.length < MAX_TICKS; index++) {
+  const iterationCeiling = Math.min(steps + 1, MAX_TICKS)
+  for (let index = 0; index <= iterationCeiling && out.length < MAX_TICKS; index++) {
     const value = roundToStep(start + index * step, step)
     if (value < low - step / 2 || value > high + step / 2) continue
     if (out.length > 0 && out[out.length - 1] === value) continue
