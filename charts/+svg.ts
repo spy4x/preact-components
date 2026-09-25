@@ -7,8 +7,11 @@
  * `CompareChart` stay on their own subpaths, and `@preact-components/charts` keeps re-exporting both
  * halves for callers who already carry the dependency.
  *
- * Verified by the probe in `charts/probe/no-d3-dependency.ts`, which type-checks and tests this
- * graph with the `d3` specifier remapped so it cannot resolve.
+ * The probe in `charts/probe/no-d3-dependency.ts` is meant to prove this: it type-checks and tests
+ * this graph with the `d3` specifier remapped so it cannot resolve. It is not yet a proof. Neither
+ * `deno task check` nor CI runs it, and on `main` it exits 1 unless `NO_COLOR=1` is set: it
+ * searches the test output for a summary line, and colour codes in that output break the match
+ * (#123).
  */
 
 export { type BarDatum, barPercent, Bars, type BarsProps } from "./bars.tsx"
