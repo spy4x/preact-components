@@ -28,6 +28,23 @@ import type { MapCenter, MapMarker, MapMarkerStatus } from "./types.ts"
 /** The `leaflet` module, loaded once via the dynamic `import()` in `map.tsx`'s mount effect. */
 export type LeafletModule = typeof Leaflet
 
+/**
+ * The Leaflet namespace out of whatever `import("leaflet")` resolved to.
+ *
+ * Leaflet ships as CommonJS. Some bundlers hand a dynamic import of it back as the namespace itself
+ * (`L.map` is right there); others — esbuild with code splitting, which is what
+ * `deno bundle --code-splitting` runs — wrap it as `{ default: L }`, and `L.map` is then undefined,
+ * so the map never mounts. This accepts both shapes.
+ *
+ * @param imported What `import("leaflet")` resolved to.
+ * @returns The namespace with `map`, `tileLayer` and the rest on it.
+ */
+export function leafletFromImport(
+  imported: LeafletModule | { default: LeafletModule },
+): LeafletModule {
+  return "map" in imported ? imported : imported.default
+}
+
 /** The wrapper class `.status-on`/`.status-off`/`.status-unknown .map-marker` in `theme/preset.css`
  * reads for a marker's colour, keyed by {@link MapMarkerStatus} so a status this union does not name
  * is a type error rather than an unstyled pin. */
