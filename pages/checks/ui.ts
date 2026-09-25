@@ -9325,9 +9325,12 @@ async function fileInputTooManyRefusalCheck(
   const region = await devtools.evaluate<string>(
     `document.querySelector('#${FILE_INPUT_SINGLE_ID}-rejection')?.textContent ?? ""`,
   )
+  // This card's own `labels.tooMany` override reads "un seul fichier est autorisé" instead of the
+  // default English "only one file is allowed" — asserting the override's own text here, rather
+  // than the default, is what proves `labels` actually reaches the rendered message.
   check(
-    "the too-many refusal is announced in FileInput's own live region",
-    region.includes("only one file"),
+    "the too-many refusal is announced in FileInput's own live region, in the label override's own text",
+    region.includes("un seul fichier est autorisé"),
     `"${region}"`,
   )
 

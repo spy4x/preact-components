@@ -818,6 +818,7 @@ function FileInputDemo() {
           id="guide-file-input-single"
           label="Attachment"
           accept="image/png"
+          labels={{ tooMany: (name) => `${name}: un seul fichier est autorisé` }}
           onReject={(reasons) =>
             singleRefused.value = reasons.map((r) => `${r.file.name} (${r.reason})`)}
         />
