@@ -991,8 +991,15 @@ sets `container-type: inline-size`, and puts the note before the paragraph it an
 </div>
 ```
 
-With no container above it the note never floats, which is the safe reading: inline is correct in a
-column of any width, while a float is correct only in a wide one. `flow-root` keeps the floated note
+The query measures the nearest ancestor marked `@container`, which is not necessarily the column the
+note sits in: a narrow column without the class, inside a wider ancestor that has it, floats the
+note. So put `@container` on the column itself. With no container above it at all, the note never
+floats, which is the safe reading: inline is correct in a column of any width, while a float is
+correct only in a wide one.
+
+`container-type: inline-size` stops an element from taking its width from its content. A column
+marked `@container` therefore needs its width from its parent — a block in normal flow, a grid
+track, or an explicit width. A flex item with no width of its own collapses to 0px. `flow-root` keeps the floated note
 inside the column when the paragraph is shorter than the note.
 
 ## Tests
