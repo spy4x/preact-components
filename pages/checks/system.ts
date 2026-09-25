@@ -1667,7 +1667,8 @@ const REFUSED_RESET = `${REFUSED} [data-e2e="calendar-refused-reset"]`
  * falling back to today. Standing on the 19th is therefore what separates "the focus went back to
  * the day the reader was on" from "the focus went to the day the grid would have picked anyway":
  * a fix that restored the focus to the Tab stop rather than to the day the press started from
- * would land on the 10th and fail here. The card gives it slots, so it is a bookable `<button>`.
+ * would land on the 10th and fail here. The card gives it availability, so it is a selectable
+ * `<button>`.
  */
 const REFUSED_DAY = "2026-03-19"
 
@@ -1993,7 +1994,7 @@ async function calendarChecks(devtools: Devtools): Promise<void> {
 
   await burstChecks(devtools)
 
-  // Aimed rather than assumed: the focus is put on the day immediately left of the first bookable
+  // Aimed rather than assumed: the focus is put on the day immediately left of the first selectable
   // one, which the card's data makes a day with no availability, so one press right crosses from a
   // day that cannot be picked to one that can. The reason used to live in a `title`, which is why
   // the grid is also counted for them.
@@ -2003,17 +2004,17 @@ async function calendarChecks(devtools: Devtools): Promise<void> {
       const grid = document.querySelector('${GRID}')
       if (!grid) return { staged: false, from: "", to: "", reason: "no grid on the page" }
       const cells = [...grid.querySelectorAll("[data-calendar-date]")]
-      const bookable = cells.findIndex((cell) =>
+      const selectable = cells.findIndex((cell) =>
         cell.tagName === "A" || cell.tagName === "BUTTON"
       )
-      if (bookable < 1) {
-        return { staged: false, from: "", to: "", reason: "no bookable day with a day before it" }
+      if (selectable < 1) {
+        return { staged: false, from: "", to: "", reason: "no selectable day with a day before it" }
       }
-      cells[bookable - 1].focus()
+      cells[selectable - 1].focus()
       return {
-        staged: document.activeElement === cells[bookable - 1],
-        from: cells[bookable - 1].getAttribute("data-calendar-date"),
-        to: cells[bookable].getAttribute("data-calendar-date"),
+        staged: document.activeElement === cells[selectable - 1],
+        from: cells[selectable - 1].getAttribute("data-calendar-date"),
+        to: cells[selectable].getAttribute("data-calendar-date"),
         reason: "",
       }
     })()`,
@@ -2034,19 +2035,19 @@ async function calendarChecks(devtools: Devtools): Promise<void> {
     { ...NO_CALENDAR, disabled: false, label: "", titles: -1 },
   )
   await pressKey(devtools, "ArrowRight")
-  const onBookable = await read(devtools, CALENDAR_STATE, NO_CALENDAR)
+  const onSelectable = await read(devtools, CALENDAR_STATE, NO_CALENDAR)
 
   check(
     "a day that cannot be picked takes focus, and says why where a keyboard reaches it",
-    staged.staged && onDisabled.disabled && onDisabled.label.includes("no times available") &&
+    staged.staged && onDisabled.disabled && onDisabled.label.includes("not available") &&
       onDisabled.hintShown && onDisabled.hint === onDisabled.label &&
-      onBookable.date === staged.to && onBookable.hint.includes("available") &&
-      !onBookable.hint.includes("no times") && onDisabled.titles === 0,
+      onSelectable.date === staged.to && onSelectable.hint.includes("available") &&
+      !onSelectable.hint.includes("not available") && onDisabled.titles === 0,
     staged.staged
       ? `focus on ${onDisabled.date}: aria-disabled=${onDisabled.disabled}, named ` +
         `"${onDisabled.label}", hint ${onDisabled.hintShown ? "shown" : "hidden"} reading ` +
-        `"${onDisabled.hint}"; one press right lands on ${onBookable.date} and the hint reads ` +
-        `"${onBookable.hint}"; ${onDisabled.titles} title attributes inside the grid`
+        `"${onDisabled.hint}"; one press right lands on ${onSelectable.date} and the hint reads ` +
+        `"${onSelectable.hint}"; ${onDisabled.titles} title attributes inside the grid`
       : `nothing was staged: ${staged.reason}`,
   )
 

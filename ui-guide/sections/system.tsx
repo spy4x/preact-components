@@ -667,7 +667,7 @@ function CalendarDemo() {
       maxDate="2026-04-30"
       today="2026-03-10"
       timeZone="UTC"
-      slotsByDate={{
+      availableByDate={{
         "2026-03-11": 6,
         "2026-03-12": 3,
         "2026-03-13": 0,
@@ -700,7 +700,7 @@ function CalendarInteractiveDemo() {
         maxDate="2026-12-31"
         today="2026-03-10"
         timeZone="UTC"
-        slotsByDate={{ "2026-03-11": 6, "2026-03-12": 3, "2026-03-18": 2, "2026-04-14": 5 }}
+        availableByDate={{ "2026-03-11": 6, "2026-03-12": 3, "2026-03-18": 2, "2026-04-14": 5 }}
         selectedDate={picked.value}
         onSelectDate={(date) => picked.value = date}
         onSelectMonth={(anchor) => month.value = anchor}
@@ -745,7 +745,7 @@ function CalendarRefusingDemo() {
         maxDate="2026-12-31"
         today="2026-03-10"
         timeZone="UTC"
-        slotsByDate={{ "2026-03-11": 6, "2026-03-19": 4, "2026-03-25": 2 }}
+        availableByDate={{ "2026-03-11": 6, "2026-03-19": 4, "2026-03-25": 2 }}
         selectedDate={picked.value}
         onSelectDate={(date) => picked.value = date}
         onSelectMonth={(anchor) => {
@@ -845,7 +845,7 @@ function CalendarLateDemo() {
         maxDate="2026-12-31"
         today="2026-03-10"
         timeZone="UTC"
-        slotsByDate={{ "2026-03-19": 4, "2026-04-19": 3, "2026-02-19": 5 }}
+        availableByDate={{ "2026-03-19": 4, "2026-04-19": 3, "2026-02-19": 5 }}
         selectedDate={picked.value}
         onSelectDate={(date) => picked.value = date}
         onSelectMonth={(anchor) => {
@@ -915,7 +915,7 @@ function CalendarLocaleDemo() {
         maxDate="2026-04-30"
         today="2026-03-10"
         timeZone="UTC"
-        slotsByDate={{ "2026-03-11": 6, "2026-03-12": 3, "2026-03-18": 2 }}
+        availableByDate={{ "2026-03-11": 6, "2026-03-12": 3, "2026-03-18": 2 }}
       />
       <p class="text-xs text-gray-500 dark:text-gray-400">
         locale: <span data-e2e="calendar-locale-tag">{locale.value}</span>
@@ -1255,14 +1255,14 @@ export const systemDemos = {
   },
   Calendar: {
     summary:
-      "Six-week month grid. **Dual-mode**: with no `onSelectDate` every cell is an `<a href>` and a month arrow with nothing to show is a `<span>` rather than a dead link; supplying the callback turns the cells into `<button>`. `today` and `timeZone` are props, so a render can be pinned — this card passes `2026-03-10` and `UTC` and reads no clock, and a zone the platform cannot resolve falls back to UTC instead of throwing. A date missing from `slotsByDate` has no availability, a `0` has no slots left, and the two are visually alike but carry different accessible labels. Cells also show today, past dates, dates outside the window, and a scarcity dot at or below `lowSlotsThreshold`. **The whole grid is one Tab stop** once hydrated: the arrow keys step a day and a week, Home and End go to the ends of the week, Page Up and Page Down ask `onSelectMonth` for the neighbouring month, and why a day cannot be picked is the cell's own accessible name plus the hint under the grid rather than a `title` nobody can hover. **A month is asked for, never taken**, and the reader keeps their place whatever the owner answers: an owner that draws the month lands them on the same day number in it, an owner that leaves `monthAnchor` where it was — clamping to an allowed range, say — leaves them on the day they pressed from rather than on the grid container, and an owner that draws the month a render or more later, as anything that fetches first does, still lands them on that same day number once it arrives. The fourth card below refuses every month change and the fifth answers a second late; both count what they were asked, because \"the month did not change\" is otherwise indistinguishable from a key press that never arrived. **The week is the locale's**: both the column order and the header text come from `Intl`, so the third card below moves the columns under the same dates as it changes language.",
+      "Six-week month grid. **Dual-mode**: with no `onSelectDate` every cell is an `<a href>` and a month arrow with nothing to show is a `<span>` rather than a dead link; supplying the callback turns the cells into `<button>`. `today` and `timeZone` are props, so a render can be pinned — this card passes `2026-03-10` and `UTC` and reads no clock, and a zone the platform cannot resolve falls back to UTC instead of throwing. A date missing from `availableByDate` has no availability and a `0` has none left: both are greyed out, the none-left day is also struck through, and each carries its own accessible label. Cells also show today, past dates, dates outside the window, and a low-availability dot at or below `lowAvailabilityThreshold`. **The whole grid is one Tab stop** once hydrated: the arrow keys step a day and a week, Home and End go to the ends of the week, Page Up and Page Down ask `onSelectMonth` for the neighbouring month, and why a day cannot be picked is the cell's own accessible name plus the hint under the grid rather than a `title` nobody can hover. **A month is asked for, never taken**, and the reader keeps their place whatever the owner answers: an owner that draws the month lands them on the same day number in it, an owner that leaves `monthAnchor` where it was — clamping to an allowed range, say — leaves them on the day they pressed from rather than on the grid container, and an owner that draws the month a render or more later, as anything that fetches first does, still lands them on that same day number once it arrives. The fourth card below refuses every month change and the fifth answers a second late; both count what they were asked, because \"the month did not change\" is otherwise indistinguishable from a key press that never arrived. **The week is the locale's**: both the column order and the header text come from `Intl`, so the third card below moves the columns under the same dates as it changes language.",
     snippet: `<Calendar
   monthAnchor="2026-03-01"
   minDate="2026-03-01"
   maxDate="2026-04-30"
   today="2026-03-10"
   timeZone="UTC"
-  slotsByDate={{ "2026-03-12": 3, "2026-03-13": 0 }}
+  availableByDate={{ "2026-03-12": 3, "2026-03-13": 0 }}
   selectedDate="2026-03-12"
   onSelectDate={(date) => picked.value = date}
 />`,

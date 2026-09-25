@@ -1,7 +1,7 @@
 /**
  * `Calendar` — single-month date grid with a dual-mode render.
  *
- * Pass `onSelectDate` and every bookable day is a `<button>`; omit it and the same grid renders
+ * Pass `onSelectDate` and every selectable day is a `<button>`; omit it and the same grid renders
  * `<a href>` links built by `dateHref`. One component therefore serves the hydrated island and
  * the no-JS/embedded fallback, and the URL stays the source of truth in both. Month arrows follow
  * the same rule.
@@ -42,7 +42,7 @@ import {
 import { todayInTz, validTimeZoneOr } from "@spy4x/time/tz"
 
 /** Why a day cannot be picked. */
-export type CalendarDayReason = "past" | "after" | "full" | "unavailable"
+export type CalendarDayReason = "past" | "after" | "none-left" | "unavailable"
 
 /** One cell of the grid, resolved. Passed to `labels.day` and exported so callers can wrap it. */
 export interface CalendarDay {
@@ -53,10 +53,10 @@ export interface CalendarDay {
   /** `false` for a day that belongs to the neighbouring month. */
   inMonth: boolean
   disabled: boolean
-  /** `null` when the day is bookable. */
+  /** `null` when the day is selectable. */
   reason: CalendarDayReason | null
-  /** Remaining slots, or `undefined` when the day has no availability at all. */
-  slots: number | undefined
+  /** How many are still available, or `undefined` when the day has no availability at all. */
+  availableCount: number | undefined
   selected: boolean
   today: boolean
 }
@@ -76,13 +76,13 @@ export function describeCalendarDay(day: CalendarDay): string {
       return `${day.label} — past`
     case "after":
       return `${day.label} — outside the allowed range`
-    case "full":
-      return `${day.label} — no slots left`
+    case "none-left":
+      return `${day.label} — none left`
     case "unavailable":
-      return `${day.label} — no times available`
+      return `${day.label} — not available`
     default:
-      return typeof day.slots === "number"
-        ? `${day.label} — ${day.slots} slot${day.slots === 1 ? "" : "s"} available`
+      return typeof day.availableCount === "number"
+        ? `${day.label} — ${day.availableCount} available`
         : `${day.label} — available`
   }
 }
@@ -101,15 +101,16 @@ export interface CalendarProps {
    * over into the following month.
    */
   monthAnchor: string
-  /** First bookable date, `YYYY-MM-DD`. */
+  /** First selectable date, `YYYY-MM-DD`. */
   minDate: string
-  /** Last bookable date, `YYYY-MM-DD`. */
+  /** Last selectable date, `YYYY-MM-DD`. */
   maxDate: string
   /**
-   * Remaining slots per `YYYY-MM-DD`. A date the map omits has no availability, and a `0` marks
-   * the day as having no slots left — the cell looks the same, the accessible label does not.
+   * How many are still available per `YYYY-MM-DD`. A date the map omits has no availability, and a
+   * `0` marks the day as having none left: both cells are greyed out, the none-left one is also
+   * struck through, and each accessible label names its own reason.
    */
-  slotsByDate?: Readonly<Record<string, number>>
+  availableByDate?: Readonly<Record<string, number>>
   selectedDate?: string | null
   /**
    * Zone used to resolve `today` when the `today` prop is omitted. Defaults to `"UTC"`; a zone
@@ -122,7 +123,7 @@ export interface CalendarProps {
    */
   today?: string
   /**
-   * Called when a bookable day is picked. Supplying it switches the grid from `<a href>` to
+   * Called when a selectable day is picked. Supplying it switches the grid from `<a href>` to
    * `<button>` and disables navigation-free rendering — that is the whole dual-mode contract.
    */
   onSelectDate?: (date: string) => void
@@ -162,8 +163,8 @@ export interface CalendarProps {
   dateHref?: (date: string) => string
   /** Month href in link mode. Defaults to `?month=YYYY-MM-DD`. */
   monthHref?: (monthAnchor: string) => string
-  /** Remaining-slot count at or below which a scarcity dot is drawn. Defaults to `4`. */
-  lowSlotsThreshold?: number
+  /** Available count at or below which a low-availability dot is drawn. Defaults to `4`. */
+  lowAvailabilityThreshold?: number
   /**
    * Locale for the month heading, the weekday headers, the day labels and the column order.
    * Defaults to `"en-GB"`.
@@ -197,7 +198,7 @@ export function Calendar(
     monthAnchor,
     minDate,
     maxDate,
-    slotsByDate = {},
+    availableByDate = {},
     selectedDate,
     timeZone = "UTC",
     today,
@@ -205,7 +206,7 @@ export function Calendar(
     onSelectMonth,
     dateHref = (date) => `?date=${date}`,
     monthHref = (month) => `?month=${month}`,
-    lowSlotsThreshold = 4,
+    lowAvailabilityThreshold = 4,
     locale = "en-GB",
     labels,
     class: className,
@@ -235,15 +236,15 @@ export function Calendar(
   }
 
   const days: CalendarDay[] = cells.map(({ date, inMonth }) => {
-    const slots = slotsByDate[date]
-    const reason = dayReason(date, inMonth, minDate, maxDate, slots)
+    const available = availableByDate[date]
+    const reason = dayReason(date, inMonth, minDate, maxDate, available)
     return {
       date,
       label: dayLabel(date, locale),
       inMonth,
       disabled: reason !== null,
       reason,
-      slots,
+      availableCount: available,
       selected: selectedDate === date,
       today: date === currentDate,
     }
@@ -272,7 +273,7 @@ export function Calendar(
   // from what the *render* is showing is a step lost: the second of two presses would count from
   // the day the first has left, and — because a press can also change the month — from the month
   // the first has left. Everything below therefore counts from this cursor and from the props the
-  // component never changes itself (`minDate`, `maxDate`, `slotsByDate`, `locale`), never from
+  // component never changes itself (`minDate`, `maxDate`, `availableByDate`, `locale`), never from
   // `firstOfMonth`, `days` or `activeDate`, which are all answers to the last render.
   //
   // The render reconciles it, unless a press is still waiting to be answered: a caller that
@@ -441,7 +442,7 @@ export function Calendar(
    */
   const monthShown = (monthKey: string) =>
     (monthKey >= minDate.slice(0, 7) && monthKey <= maxDate.slice(0, 7)) ||
-    Object.keys(slotsByDate).some((date) => date.slice(0, 7) === monthKey)
+    Object.keys(availableByDate).some((date) => date.slice(0, 7) === monthKey)
 
   const previousMonth = shiftMonth(firstOfMonth, -1)
   const nextMonth = shiftMonth(firstOfMonth, 1)
@@ -627,15 +628,21 @@ export function Calendar(
         <span
           {...shared}
           aria-disabled="true"
-          class={cn(cellBase, disabledClass, day.reason === "full" && fullClass, focusRing)}
+          class={cn(
+            cellBase,
+            disabledClass,
+            day.reason === "none-left" && noneLeftClass,
+            focusRing,
+          )}
         >
           {dayNumber}
         </span>
       )
     }
 
-    const scarce = !day.selected && typeof day.slots === "number" && day.slots > 0 &&
-      day.slots <= lowSlotsThreshold
+    const scarce = !day.selected && typeof day.availableCount === "number" &&
+      day.availableCount > 0 &&
+      day.availableCount <= lowAvailabilityThreshold
     const stateClass = day.selected ? selectedClass : day.today ? todayClass : selectableClass
     const attributes = {
       ...shared,
@@ -764,7 +771,7 @@ export function Calendar(
 
 const outOfMonthClass = "text-gray-300 dark:text-gray-600"
 const disabledClass = "text-gray-400 cursor-not-allowed dark:text-gray-500"
-const fullClass = "line-through decoration-gray-300 dark:decoration-gray-600"
+const noneLeftClass = "line-through decoration-gray-300 dark:decoration-gray-600"
 const selectedClass = "bg-purple-900 font-semibold text-white hover:bg-purple-800"
 const todayClass =
   "bg-purple-50 font-semibold text-purple-800 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-200 dark:hover:bg-purple-900/50"
@@ -822,12 +829,12 @@ function dayReason(
   inMonth: boolean,
   minDate: string,
   maxDate: string,
-  slots: number | undefined,
+  available: number | undefined,
 ): CalendarDayReason | null {
   if (!inMonth) return "unavailable"
   if (date < minDate) return "past"
   if (date > maxDate) return "after"
-  if (slots === 0) return "full"
-  if (slots === undefined) return "unavailable"
+  if (available === 0) return "none-left"
+  if (available === undefined) return "unavailable"
   return null
 }
