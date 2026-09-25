@@ -305,10 +305,15 @@ function FactCardDemo() {
   return <FactCard title="Antonshubin.com" facts={facts} class="max-w-md" />
 }
 
-/** `MarginNote` beside a paragraph, so the sm: float actually has something to sit next to. */
+/**
+ * `MarginNote` before a paragraph in a column marked `@container`, so the note's container query
+ * has a column to measure. The card is narrower than 30rem, so the note sits inline here; in a
+ * column at least 30rem wide it floats beside the paragraph (the browser check widens this column
+ * to prove it).
+ */
 function MarginNoteDemo() {
   return (
-    <div class="flow-root max-w-prose text-sm text-gray-600 dark:text-gray-300">
+    <div class="@container flow-root max-w-prose text-sm text-gray-600 dark:text-gray-300">
       <MarginNote
         sourceHref="https://example.com/benchmark"
         sourceLabel="Benchmark"
@@ -1054,10 +1059,13 @@ export const displayDemos = {
   },
   MarginNote: {
     summary:
-      "A short aside with an optional source link or a `checked on` date, rendered as a real `<time>`. A side column on wide screens, inline on narrow ones, by CSS alone — no JavaScript media-query listener, so the layout is correct before hydration.",
-    snippet: `<MarginNote sourceHref={benchmarkUrl} sourceLabel="Benchmark" checkedOn="2026-09-01">
-  Cold start under 50ms on a shared vCPU.
-</MarginNote>`,
+      "A short aside with an optional source link or a `checked on` date, rendered as a real `<time>`. It floats beside its paragraph in a column at least 30rem wide and sits inline in a narrower one, whatever the screen size — a CSS container query, so the column carries Tailwind's `@container` class. This card is narrower than 30rem, so the note is inline here.",
+    snippet: `<div class="@container flow-root">
+  <MarginNote sourceHref={benchmarkUrl} sourceLabel="Benchmark" checkedOn="2026-09-01">
+    Cold start under 50ms on a shared vCPU.
+  </MarginNote>
+  <p>The paragraph the note sits beside.</p>
+</div>`,
     render: () => <MarginNoteDemo />,
   },
   InstallBox: {
