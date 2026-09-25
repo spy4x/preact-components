@@ -277,10 +277,10 @@ And in wave six:
 
 And in wave seven:
 
-- `verify` serves `pages/dist` as it finds it and never checks that it was built from the current
-  source (#280). Run `deno task --cwd pages build` right before every `verify`, and always after a
-  rebase or a branch switch. A bundle left over from before a rebase made six checks fail on
-  correct code, and a change that fixed nothing looked like the fix.
+- A bundle left over from before a rebase made six checks fail on correct code, and a change that
+  fixed nothing looked like the fix (#280). Since #289, `verify` refuses a `pages/dist` that was
+  not built from the current source (`pages/README.md` says what it hashes), so run
+  `deno task --cwd pages build` before every `verify`.
 - Loading the machine with `stress-ng` reproduced none of the checks that failed under load;
   slowing the page itself with `verify --cpu-throttle=<rate>` did. `pages/README.md` says how.
 - A page that has never had a real click or key press does not have focus, and Chromium sends no
@@ -294,6 +294,20 @@ And in wave seven:
   `MoneyInput` does; a new input component that keeps its own state has to as well.
 - Prove a mutation in its own throwaway worktree with a path no other run uses, and never rebuild
   a worktree while a `verify` is still running against it.
+
+And in wave eight:
+
+- `verify` does not notice when the server and the browser render different text. Preact 10.29.8
+  replaces mismatched text during hydration and logs nothing, so the "no console errors" check
+  stays green (#303). Until a check exists, compare the built HTML with the hydrated page by hand
+  when a change could render differently in the two.
+- A signal read during a render subscribes the component that rendered it. An example card whose
+  code read a signal and then wrote one re-rendered itself forever, and the page never finished
+  loading; `verify` reports it only as a load timeout. A server-render test cannot reproduce it,
+  so the proof is the browser's load. `ui-guide/example.tsx` now runs every example untracked.
+- A check that locates an element by `elementFromPoint` must decide whether a child of the element
+  counts as the element. The Tooltip check counted a trigger's own hint as the trigger and passed
+  with every trigger hidden.
 
 `verify` bounds itself: each browser launch attempt has its own deadline and is retried once, the
 browser phase has a five-minute deadline, a dead browser fails the run naming the last check that
