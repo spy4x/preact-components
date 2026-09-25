@@ -31,9 +31,9 @@ narrows candidates, it does not replace reading each match.
 
 ## When to run it
 
-Before every release tag is pushed (the tag is what publishes), against the names file described above. A clean run — zero matches
-for every package — is what "safe to publish" means here; it is not part of `deno task check`
-because that task has to pass with no such file present.
+Before every release tag is pushed (the tag is what publishes), against the names file described
+above. A clean run — zero matches for every package — is what "safe to publish" means here; it is
+not part of `deno task check` because that task has to pass with no such file present.
 
 ## If it finds something
 

@@ -28,7 +28,7 @@ steps:
     commands:
       - deno task publish:dry
 
-  # Publishes every named workspace member to JSR (`jsr:@preact-components/*`), only on a `v*` tag
+  # Publishes every named workspace member to JSR (`jsr:@spy4x/preact-*`), only on a `v*` tag
   # and only after both steps above passed. `docs/publishing.md` has the release steps. JSR never
   # deletes a version, and a version already on JSR is skipped, so re-running a tag build that
   # failed part-way publishes only what is missing. `$$` stops Woodpecker substituting the variable

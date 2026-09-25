@@ -79,8 +79,11 @@ A new package added later is created on jsr.io the same way before the tag that 
 
 ## When a tag build fails
 
-- **Before any step runs** (`secret "jsr_token" not found`): the secret is missing or not allowed
-  for tags. Add it, then restart the pipeline.
+- **Before any step runs** (`secret "jsr_token" not found`, or `secret "jsr_token" is not allowed
+  to be used with pipeline event "tag"`): the secret is missing or not allowed for tags. Add it or
+  allow it, then restart the pipeline.
+- **The tag has the wrong name** (`release-tag.ts` refuses it): nothing was published. Delete it
+  (`git push origin :refs/tags/<tag>`, `git tag -d <tag>`) and push the right one.
 - **In `check` or `publish-dry`**, or when `release-tag.ts` refuses the tag: nothing was
   published. Fix the cause in a pull request, then move the tag to the merge commit
   (`git tag -f v<version> <commit>`, `git push -f origin v<version>`).
@@ -90,4 +93,5 @@ A new package added later is created on jsr.io the same way before the tag that 
   A temporary failure (network, registry) is fixed by restarting the pipeline, and JSR skips what it
   already has. A failure in a package's own files is fixed in a pull request, and the tag moves to
   the fix as above; the published packages are skipped and the rest go out at the same version. The
-  fix must not change a package that already published, or the same version would mean two things.
+  fix must not change a package that already published, or the same version would mean two things;
+  when it has to, bump every package to the next version and release that instead.

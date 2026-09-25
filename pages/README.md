@@ -216,8 +216,8 @@ is the number to trust, not one typed here.
 
 `.github/workflows/pages.yml` — a GitHub workflow for two reasons. Pages cannot be deployed by
 Woodpecker, and Woodpecker's image (`denoland/deno:2.9.7`) carries no browser, so it cannot run the
-browser phase of `verify`. Woodpecker still runs `deno task check` on the same pull-request and `main` events, and on a
-`v*` tag it also publishes to JSR (`docs/publishing.md`).
+browser phase of `verify`. Woodpecker still runs `deno task check` on the same pull-request and
+`main` events, and on a `v*` tag it also publishes to JSR (`docs/publishing.md`).
 
 The workflow triggers on pull requests into `main`, on pushes to `main`, and on manual dispatch.
 
