@@ -182,6 +182,18 @@ export function UIGuide(
   }
   const closeNav = () => dialog.current?.close()
 
+  // The server sends the `all` document and the first read swaps in one shorter page, so a reload's
+  // browser scroll restoration would land somewhere unrelated, and late (#292's third review). The
+  // guide scrolls on purpose instead, while it is mounted, and gives the setting back on unmount.
+  useEffect(() => {
+    if (hash === undefined) return
+    const previous = history.scrollRestoration
+    history.scrollRestoration = "manual"
+    return () => {
+      history.scrollRestoration = previous
+    }
+  }, [hash === undefined])
+
   useEffect(() => {
     if (hash === undefined) return
     closeNav()
@@ -192,7 +204,7 @@ export function UIGuide(
     onRouteChange?.({ route, page })
 
     // The first route read replaces the `all` document with one page, which is not a page change a
-    // reader made: a fresh load keeps whatever scroll the browser restored.
+    // reader made; with restoration manual, it starts where the address points, or at the top.
     const firstRead = scrolledPage.current === undefined
     const pageChanged = !firstRead && scrolledPage.current !== page.id
     scrolledPage.current = page.id
@@ -219,15 +231,15 @@ export function UIGuide(
       if (element && (firstRead || pageChanged)) element.scrollIntoView({ block: "start" })
       // A fragment that names a page with no element of that id (`#ui`, `#theme`) opened the page
       // itself, which starts at its top like the page's own route.
-      if (!element && !firstRead && pageOfFragment(hash) !== undefined) {
+      if (!element && pageOfFragment(hash) !== undefined) {
         globalThis.scrollTo({ top: 0, behavior: pageChanged ? "instant" : "auto" })
       }
       return
     }
     // A page's route starts it at its top: at once for a new page, since animating down a page that
     // was just replaced shows nothing but the wrong content moving, and by the page's own scroll
-    // for the page already showing. A fresh load keeps the scroll the browser restored.
-    if (!firstRead) globalThis.scrollTo({ top: 0, behavior: pageChanged ? "instant" : "auto" })
+    // for the page already showing. A fresh load starts at the top.
+    globalThis.scrollTo({ top: 0, behavior: pageChanged || firstRead ? "instant" : "auto" })
   }, [hash])
 
   const follow = (href: string, event: JSX.TargetedMouseEvent<HTMLAnchorElement>) => {

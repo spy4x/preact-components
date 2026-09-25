@@ -2,9 +2,10 @@
  * The demo's host page — the app shell this library deliberately does not ship.
  *
  * A sticky header, the guide, a footer. The guide — `uiGuideRoute.component`, which is `UIGuide`
- * routed by the address's hash — owns everything between: its side navigation, one page at a time, and the deep links that mark and scroll to a card. What the host
- * adds is what only it knows — the address, read from `location.hash` and handed in as a prop, and
- * the document's title, set from the route the guide reports.
+ * routed by the address's hash — owns everything between: its side navigation, one page at a time,
+ * the deep links that mark and scroll to a card, and reading the address. What the host adds is what
+ * only it knows: the hash to render before hydration, and the document's title, set from the route
+ * the guide reports.
  *
  * The signals page carries two demos that are not cards, because each needs a page that owns an
  * address: {@link UrlFilterDemo}, `useUrlFilters` bound directly to filter signals, and
