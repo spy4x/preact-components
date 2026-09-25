@@ -4,8 +4,8 @@
  * One static directory, no server. `index.html` carries the whole catalogue prerendered, plus the
  * href and src of two content-hashed assets, so a redeploy can never serve a new document against a
  * cached island or stylesheet. It also carries the **route echo** — every hash route the navigation
- * links to — which the build reads back and holds against the resolver, since under hash routing the
- * one document is the whole site and a link the resolver would not accept must fail here.
+ * links to — which the build reads back and holds against the resolver, since under hash routing
+ * the one document is the whole site and a link the resolver would not accept must fail here.
  *
  * **Why Deno-only.** `template` and another app bundle with Vite, and Vite would work here — but it
  * would need a `package.json`, a `node_modules` tree and a second lockfile in CI, plus hand-written
@@ -23,7 +23,8 @@
  *    and the catalogue does not show it.
  * 2. Tailwind compiles `styles.css` over the sources its `@source` rules name (`ui/`, `ui-guide/`,
  *    `icons/`, the host page).
- * 3. `deno bundle` produces the island.
+ * 3. `deno bundle` produces the island, split at every dynamic `import()` into chunks written
+ *    beside it.
  * 4. `App` prerenders, `renderDocument` frames it, and the artefact is written.
  * 5. The route echo is read out of the rendered document and round-tripped through the resolver.
  */
@@ -65,9 +66,9 @@ const SW_DEMO_DIRECTORY = "sw-demo"
  * `ContactForm` cards: one static page that stands in for "a server answered" when no script has
  * run. `pages/serve.ts`, which `deno task verify` runs against, never looks at `request.method`, so
  * it answers a POST with this same file; the published GitHub Pages copy is served by a static host
- * that answers a POST with `405 Method Not Allowed` instead — nothing here claims the published site
- * accepts one, and `pages/checks/ui.ts`'s no-JavaScript check reads the method and the body off the
- * recorded network request rather than assuming either.
+ * that answers a POST with `405 Method Not Allowed` instead — nothing here claims the published
+ * site accepts one, and `pages/checks/ui.ts`'s no-JavaScript check reads the method and the body
+ * off the recorded network request rather than assuming either.
  */
 const FORM_DEMO_DIRECTORY = "form-demo"
 /**
@@ -90,8 +91,8 @@ const CHECKED_ENTRIES = [
 /**
  * Run a command in this directory and fail the build when it does.
  *
- * Output is inherited rather than captured: a type error names the file and the line that caused it,
- * and that is the whole value of the message.
+ * Output is inherited rather than captured: a type error names the file and the line that caused
+ * it, and that is the whole value of the message.
  *
  * @param command Executable to run.
  * @param args Arguments, in order.
@@ -151,8 +152,8 @@ function resolveStylesheet(id: string, base: string): URL {
  * `@apply` resolution, and simply concatenating it is what `../map/leaflet-css.ts` exists for (see
  * that module's own doc and `map/README.md` → "Leaflet's stylesheet"). That file is not published —
  * `import.meta.resolve` on an npm subpath carries no dependency record a consumer's own resolver
- * could follow, so it would throw for anyone outside this workspace — which is why this reads it by a
- * relative import rather than as `@spy4x/preact-map`'s own subpath. A real consuming app has no
+ * could follow, so it would throw for anyone outside this workspace — which is why this reads it by
+ * a relative import rather than as `@spy4x/preact-map`'s own subpath. A real consuming app has no
  * equivalent shortcut; `map/README.md` → "Leaflet's stylesheet" documents the route that works for
  * one: add `leaflet` as its own dependency and include the stylesheet in its own build.
  *
@@ -190,12 +191,36 @@ async function compileStylesheet(): Promise<Uint8Array> {
   return css
 }
 
+/** The island as `deno bundle` splits it: the entry file and the chunks it loads. */
+interface Island {
+  /** The entry: what the document's `<script type="module">` loads. */
+  entry: Uint8Array
+  /**
+   * Every other file the bundler wrote, under the name it gave it. The entry and the chunks import
+   * these by relative path (`./chunk-….js`), so they are written beside the entry under exactly
+   * these names. The bundler puts a content hash in each name, so a changed chunk is a new URL.
+   */
+  chunks: { name: string; bytes: Uint8Array }[]
+}
+
+/** The file `deno bundle` names after the entry point, `src/+main.tsx`. */
+const ENTRY_OUTPUT = "+main.js"
+
 /**
- * Bundle the island for the browser.
+ * Bundle the island for the browser, split at every dynamic `import()`.
  *
- * @returns The bundle's bytes; the caller names and writes the file.
+ * Splitting is what lets the guide's charts page load d3 only when it opens: the charts section
+ * reaches its d3 islands through a dynamic import (`ui-guide/sections/charts-d3.tsx`), and without
+ * `--code-splitting` the bundler would inline that import into the one file every page loads.
+ * `Map`'s `import("leaflet")` gets its own file the same way.
+ *
+ * @returns The entry's bytes, which the caller names by fingerprint, and the chunks, which keep the
+ * names the bundler gave them.
+ * @throws When the bundler wrote no entry, wrote a file that is not JavaScript (a CSS chunk, say,
+ * which nothing would serve), or a chunk imports the entry by its original name — the entry is
+ * renamed on the way into `dist/`, so such an import would point nowhere.
  */
-async function bundleIsland(): Promise<Uint8Array> {
+async function bundleIsland(): Promise<Island> {
   const outputDirectory = await Deno.makeTempDir({ prefix: "pages-island-" })
   try {
     await run("deno", [
@@ -205,18 +230,33 @@ async function bundleIsland(): Promise<Uint8Array> {
       "--packages",
       "bundle",
       "--minify",
+      "--code-splitting",
       "--outdir",
       outputDirectory,
       "src/+main.tsx",
     ])
 
     const produced = [...Deno.readDirSync(outputDirectory)].filter((entry) => entry.isFile)
-    const bundle = produced.find((entry) => entry.name.endsWith(".js"))
-    if (!bundle) {
-      throw new Error(`deno bundle wrote no JavaScript: ${produced.map((e) => e.name).join(", ")}`)
+    if (!produced.some((entry) => entry.name === ENTRY_OUTPUT)) {
+      throw new Error(
+        `deno bundle wrote no ${ENTRY_OUTPUT}: ${produced.map((e) => e.name).join(", ")}`,
+      )
     }
 
-    return await Deno.readFile(join(outputDirectory, bundle.name))
+    const chunks: Island["chunks"] = []
+    for (const { name } of produced) {
+      if (name === ENTRY_OUTPUT) continue
+      if (!name.endsWith(".js")) {
+        throw new Error(`deno bundle wrote ${name}, and the build writes only .js files to dist/`)
+      }
+      const bytes = await Deno.readFile(join(outputDirectory, name))
+      if (new TextDecoder().decode(bytes).includes(ENTRY_OUTPUT)) {
+        throw new Error(`${name} imports ${ENTRY_OUTPUT}, which is renamed in dist/`)
+      }
+      chunks.push({ name, bytes })
+    }
+
+    return { entry: await Deno.readFile(join(outputDirectory, ENTRY_OUTPUT)), chunks }
   } finally {
     await Deno.remove(outputDirectory, { recursive: true })
   }
@@ -291,7 +331,7 @@ async function main(): Promise<void> {
 
   const assetNames = {
     css: `main.${await fingerprint(stylesheet)}.css`,
-    js: `main.${await fingerprint(island)}.js`,
+    js: `main.${await fingerprint(island.entry)}.js`,
   }
 
   const html = renderDocument({
@@ -322,7 +362,10 @@ async function main(): Promise<void> {
   await Deno.mkdir(join(DIST_DIRECTORY, "assets"), { recursive: true })
 
   await Deno.writeFile(join(DIST_DIRECTORY, "assets", assetNames.css), stylesheet)
-  await Deno.writeFile(join(DIST_DIRECTORY, "assets", assetNames.js), island)
+  await Deno.writeFile(join(DIST_DIRECTORY, "assets", assetNames.js), island.entry)
+  for (const chunk of island.chunks) {
+    await Deno.writeFile(join(DIST_DIRECTORY, "assets", chunk.name), chunk.bytes)
+  }
 
   await Deno.writeFile(join(DIST_DIRECTORY, "index.html"), new TextEncoder().encode(html))
   const swDemo = await copyDemoDirectory(
@@ -352,7 +395,9 @@ async function main(): Promise<void> {
     `  index.html ${kilobytes(html.length)} · prerendered ${catalogueNames.length} components\n` +
       `  routes ${routes.sections.length} sections, ${routes.demos.length} demos, all resolved\n` +
       `  assets/${assetNames.css} ${kilobytes(stylesheet.length)}\n` +
-      `  assets/${assetNames.js} ${kilobytes(island.length)}\n` +
+      `  assets/${assetNames.js} ${kilobytes(island.entry.length)}\n` +
+      island.chunks.map((chunk) => `  assets/${chunk.name} ${kilobytes(chunk.bytes.length)}\n`)
+        .join("") +
       `  ${SW_DEMO_DIRECTORY}/ ${swDemo.join(", ")} — registered only when a visitor asks\n` +
       `  ${FORM_DEMO_DIRECTORY}/ ${formDemo.join(", ")} — the no-JavaScript forms post here\n` +
       `  ${MAP_DEMO_DIRECTORY}/ ${
