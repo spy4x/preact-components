@@ -182,18 +182,6 @@ export function UIGuide(
   }
   const closeNav = () => dialog.current?.close()
 
-  // The server sends the `all` document and the first read swaps in one shorter page, so a reload's
-  // browser scroll restoration would land somewhere unrelated, and late (#292's third review). The
-  // guide scrolls on purpose instead, while it is mounted, and gives the setting back on unmount.
-  useEffect(() => {
-    if (hash === undefined) return
-    const previous = history.scrollRestoration
-    history.scrollRestoration = "manual"
-    return () => {
-      history.scrollRestoration = previous
-    }
-  }, [hash === undefined])
-
   useEffect(() => {
     if (hash === undefined) return
     closeNav()
@@ -204,7 +192,8 @@ export function UIGuide(
     onRouteChange?.({ route, page })
 
     // The first route read replaces the `all` document with one page, which is not a page change a
-    // reader made; with restoration manual, it starts where the address points, or at the top.
+    // reader made. It starts where the address points, or at the top: the server sent the longer
+    // `all` document, so a position the browser restored would land somewhere unrelated.
     const firstRead = scrolledPage.current === undefined
     const pageChanged = !firstRead && scrolledPage.current !== page.id
     scrolledPage.current = page.id

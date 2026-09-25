@@ -3,9 +3,10 @@
  *
  * A sticky header, the guide, a footer. The guide — `uiGuideRoute.component`, which is `UIGuide`
  * routed by the address's hash — owns everything between: its side navigation, one page at a time,
- * the deep links that mark and scroll to a card, and reading the address. What the host adds is what
- * only it knows: the hash to render before hydration, and the document's title, set from the route
- * the guide reports.
+ * the deep links that mark and scroll to a card, and reading the address. What the host adds is
+ * what only it knows: the hash to render before hydration, the document's title, set from the route
+ * the guide reports, and manual scroll restoration, because this page is the whole app and the
+ * guide scrolls on its first read itself.
  *
  * The signals page carries two demos that are not cards, because each needs a page that owns an
  * address: {@link UrlFilterDemo}, `useUrlFilters` bound directly to filter signals, and
@@ -55,6 +56,7 @@ export function App({ initialHash }: AppProps) {
     // The island's boot marker. `verify.ts` asserts it, which is how the check tells "hydrated" from
     // "the script was fetched and threw".
     document.documentElement.dataset.hydrated = "true"
+    history.scrollRestoration = "manual"
   }, [])
 
   return (

@@ -29,6 +29,7 @@ export async function uiGuideChecks(devtools: Devtools): Promise<void> {
   await withViewport(devtools, 375, 812, () => overflowChecks(devtools))
   await coldDeepLinkCheck(devtools)
   await coldFragmentCheck(devtools)
+  await reloadAtTopCheck(devtools)
 }
 
 /**
@@ -616,5 +617,30 @@ async function coldFragmentCheck(devtools: Devtools): Promise<void> {
     "a fragment naming a page opens that page at its top",
     from > 0 && theme.page === "theme" && theme.top === 0,
     `#theme from scrollY ${from} → page "${theme.page}" at scrollY ${theme.top}`,
+  )
+}
+
+/**
+ * A page reloaded far down opens at its top. The server sends the longer `all` document, so a
+ * position the browser restored would land somewhere unrelated, and late enough to override a later
+ * scroll (#292's third review); the guide's first read scrolls on purpose instead.
+ */
+async function reloadAtTopCheck(devtools: Devtools): Promise<void> {
+  await openGuidePage(devtools, "system")
+  await devtools.evaluate(`(scrollTo({ top: 8600, behavior: "instant" }), null)`)
+  await settledScroll(devtools)
+  const before = await devtools.evaluate<number>("scrollY")
+  await devtools.send("Page.reload", { ignoreCache: true })
+  await devtools.next("Page.loadEventFired")
+  const hydrated = await poll(
+    () => devtools.evaluate<boolean>("document.documentElement.dataset.hydrated === 'true'"),
+    10_000,
+  )
+  await devtools.evaluate(`new Promise((done) => setTimeout(done, 1200))`)
+  const after = await devtools.evaluate<number>("scrollY")
+  check(
+    "a page reloaded far down opens at its top, and stays there",
+    hydrated && before > 1000 && after === 0,
+    `#/system at scrollY ${before} → reloaded, 1.2s after hydration scrollY ${after}`,
   )
 }
