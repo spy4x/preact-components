@@ -304,10 +304,11 @@ And in wave eight:
 - A signal read during a render subscribes the component that rendered it. An example card whose
   code read a signal and then wrote one re-rendered itself forever, and the page never finished
   loading; `verify` reports it only as a load timeout. A server-render test cannot reproduce it,
-  so the proof is the browser's load. `ui-guide/example.tsx` now runs every example untracked.
+  so the proof is the browser's load (#300). `ui-guide/example.tsx` now runs every example
+  untracked (#304).
 - A check that locates an element by `elementFromPoint` must decide whether a child of the element
   counts as the element. The Tooltip check counted a trigger's own hint as the trigger and passed
-  with every trigger hidden.
+  with every trigger hidden (#301).
 
 `verify` bounds itself: each browser launch attempt has its own deadline and is retried once, the
 browser phase has a five-minute deadline, a dead browser fails the run naming the last check that
