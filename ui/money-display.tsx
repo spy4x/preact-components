@@ -1,6 +1,6 @@
 import { cn } from "@preact-components/cn"
+import { formatMoney } from "@spy4x/platform/universal/money"
 import type { JSX } from "preact"
-import { formatMoney } from "./money.ts"
 
 export interface MoneyDisplayProps {
   /** Amount in `currency`'s smallest unit — `12345` is `€123.45` for `EUR`, `¥12,345` for `JPY`. */

@@ -1,8 +1,13 @@
 import { cn } from "@preact-components/cn"
 import { useSignal } from "@preact/signals"
+import {
+  currencyDecimals,
+  formatMoney,
+  moneyDecimalString,
+  parseMoney,
+} from "@spy4x/platform/universal/money"
 import type { JSX } from "preact"
 import { useEffect, useId, useRef } from "preact/hooks"
-import { currencyDecimals, formatMoney, moneyDecimalString, parseMoney } from "./money.ts"
 
 export interface MoneyInputBounds {
   /** Smallest-unit lower bound, when one is set. */
@@ -110,7 +115,8 @@ export function resolveMoneyInputEdit(
  * symbol and no grouping — grouping separators would have to be re-parsed back out on every
  * keystroke for no benefit, since {@link parseMoney} already understands them being absent. Built
  * from {@link moneyDecimalString}'s exact decimal string, not a division by a power of ten: that
- * division is not exact for a `value` near `Number.MAX_SAFE_INTEGER` — see `money.ts`'s module doc.
+ * division is not exact for a `value` near `Number.MAX_SAFE_INTEGER` — see
+ * `@spy4x/platform/universal/money`'s module doc.
  */
 export function editableText(value: number | null, currency: string, locale: string): string {
   if (value === null) return ""

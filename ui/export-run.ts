@@ -2,13 +2,12 @@
  * `ExportButton`'s download logic, split out for unit-testing without a browser.
  *
  * Package-private on purpose: not in `ui/deno.json`'s `exports`, not re-exported from
- * `ui/+index.ts`. `export-button.tsx` imports it by relative path, the same way it imports
- * `./csv.ts`, and so does this module's own test file — a helper written to make a component
- * testable is not, by itself, a reason to publish it as API a caller might build on.
+ * `ui/+index.ts`. `export-button.tsx` imports it by relative path — a helper written to make a
+ * component testable is not, by itself, a reason to publish it as API a caller might build on.
  */
 
 import { downloadResponseAsFile } from "@spy4x/platform/browser/download"
-import { type CsvColumn, toCsvBytes } from "./csv.ts"
+import { type CsvColumn, toCsvBytes } from "@spy4x/platform/universal/csv"
 
 /**
  * What {@link runExport} needs from `ExportButton`'s own props.
