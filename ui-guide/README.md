@@ -267,12 +267,18 @@ dynamic import and the `import type` of the islands' props both name those modul
 splits code at dynamic imports ships d3 in a file of its own, and the demo site's build does
 (`pages/build.ts`).
 
-Until the module arrives the cards show a placeholder, and the examples that need it print a loading
-line — on the server, and in the browser's first render, so hydration matches. The load starts one
-task after the effect: hydration mounts every page, because the served document carries them all,
-and the host's first read of the address unmounts the pages it does not show before that task runs.
-`pages/checks/charts.ts` proves the behaviour in a browser: a fresh load of the overview fetches no
-script that carries d3, and opening the charts page fetches one and draws the charts.
+Until the module arrives the cards show a placeholder, and the examples that need it print a line
+saying the output is computed in the browser — on the server, and in the browser's first render, so
+hydration matches. The load starts one task after the effect: hydration mounts every page, because
+the served document carries them all, and the host's first read of the address unmounts the pages it
+does not show before that task runs. That ordering is an assumption about the host: it holds for
+`useLocationHash`, which reads the address in the same effect flush, with Preact's default microtask
+re-render. A host that reads its route later (after an `await`), or sets `options.debounceRendering`
+to a timer, would load d3 on the overview too. `pages/checks/charts.ts` proves the behaviour in a
+browser: a fresh load of the overview fetches no script that carries d3, and opening the charts page
+fetches one and draws the charts. `pages/checks/ui-guide.ts`, which compares every card's served
+text with the browser's, lists these cards' chart slots and example outputs as drawn in the browser,
+and waits for the placeholders to be replaced before it reads the charts page.
 
 ## Heading levels are the outline
 
