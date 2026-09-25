@@ -214,6 +214,13 @@ export function MoneyInput(
       rangeMessage,
     )
     message.value = edit.message
+    // Both set here rather than left to their own paths. The field may already hold focus from
+    // before hydration, when no focus handler existed to record it; without this, every later
+    // keystroke that changes the amount would re-format the text under the cursor. And validity is
+    // set before the hidden input is enabled below, so no render exists in which the hidden input
+    // posts while the browser still thinks refused text is valid.
+    focused.current = document.activeElement === inputRef.current
+    inputRef.current?.setCustomValidity(edit.message ?? "")
     if ("value" in edit) {
       const resolved = edit.value as number | null
       synced.current = { value: resolved, currency, locale }

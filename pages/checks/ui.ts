@@ -8800,6 +8800,7 @@ async function moneyInputPreHydrationChecks(devtools: Devtools): Promise<void> {
   let hiddenDisabledWhileTyping: boolean | null = null
   let rehydrated = false
   let submitResult = "(not read)"
+  let continuedValue = "(not read)"
 
   try {
     await devtools.send("Fetch.enable", {
@@ -8831,7 +8832,7 @@ async function moneyInputPreHydrationChecks(devtools: Devtools): Promise<void> {
           document.querySelector('${MONEY_INPUT_CARD} #guide-money-input').select()
           return null
         })()`)
-        await typeInto(devtools, "20,00")
+        await typeInto(devtools, "12")
       }
 
       typedValue = await devtools.evaluate<string>(
@@ -8855,6 +8856,13 @@ async function moneyInputPreHydrationChecks(devtools: Devtools): Promise<void> {
     )
 
     if (rehydrated) {
+      // The visitor keeps typing after the bundle has run, focus still where they put it before
+      // hydration. The component must treat the field as focused and leave the text alone. One
+      // character at a time, as a person types: sent as one insertion, "3,45" re-formats to itself.
+      for (const character of "3,45") await typeInto(devtools, character)
+      continuedValue = await devtools.evaluate<string>(
+        `document.querySelector('${MONEY_INPUT_CARD} #guide-money-input').value`,
+      ).catch(() => "(unreadable)")
       const submitPoint = await elementCenter(
         devtools,
         `${MONEY_INPUT_CARD} [data-e2e="money-input-submit"]`,
@@ -8900,7 +8908,7 @@ async function moneyInputPreHydrationChecks(devtools: Devtools): Promise<void> {
 
   check(
     "text typed before the bundle has even loaded sits in the field unparsed, and the hidden amount stays disabled",
-    fieldReady && unhydratedWhileTyping && typedValue === "20,00" &&
+    fieldReady && unhydratedWhileTyping && typedValue === "12" &&
       hiddenDisabledWhileTyping === true,
     `field ready: ${fieldReady}, unhydrated while typing: ${unhydratedWhileTyping}, ` +
       `field value "${typedValue}", hidden input disabled: ${hiddenDisabledWhileTyping}`,
@@ -8911,8 +8919,13 @@ async function moneyInputPreHydrationChecks(devtools: Devtools): Promise<void> {
     rehydrated ? "data-hydrated set" : "never hydrated after the bundle was released",
   )
   check(
-    "a real submit right after hydration posts what was typed before the bundle loaded, never the stale server amount",
-    submitResult === "submits: 1, posted: 2000",
+    "typing that starts before hydration and continues after it is left as typed, not re-formatted",
+    continuedValue === "123,45",
+    `"12" typed before hydration, "3,45" after: field shows "${continuedValue}"`,
+  )
+  check(
+    "a real submit after hydration posts what was typed before and after the bundle loaded, never the stale server amount",
+    submitResult === "submits: 1, posted: 12345",
     `after a real click on Save: "${submitResult}"`,
   )
 }
