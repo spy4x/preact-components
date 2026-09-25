@@ -686,7 +686,7 @@ export const crudDemos = {
   },
   DeletionValidation: {
     summary:
-      'The list of entities blocking a soft delete. A row can only be archived once everything pointing at it has been archived, and the store hands back what still points at it. An empty list renders nothing visible, which is why the healthy path looks empty — the button below switches between the two. The block scrolls itself into view when the list changes to a new, non-empty content, which also covers a second blocked attempt replacing the first; a re-render with the same content never moves the page. The `role="alert"` region itself is always present, empty until there is something to say.',
+      'The list of entities blocking a soft delete. A row can only be archived once everything pointing at it has been archived, and the store hands back what still points at it. An empty list renders nothing visible, which is why the healthy path looks empty — the button below switches between the two. The block scrolls itself into view on a first non-empty list, and again on a later one only once the list has gone empty in between (a second blocked archive attempt, after `CrudEditor`\'s archive checkbox is unchecked and rechecked); a re-render that replaces one non-empty list with an equal one, without emptying in between, never moves the page. The `role="alert"` region itself is always present, empty until there is something to say.',
     snippet: `<DeletionValidation
   dependencies={[
     { kind: "Zones", values: [{ title: "Zone A", url: "/zones/1/edit" }] },

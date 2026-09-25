@@ -235,13 +235,19 @@ Four behaviours the copies got wrong, now in one place:
 
 `DeletionValidation` renders the entities that block an archive. It lives here rather than in `ui/`
 because only the CRUD scaffold produces a `DeletionDependency`. Its `role="alert"` region is on the
-page on every render, empty until `dependencies` is non-empty — the pattern `ui/`'s toasts and
-combobox use, so a screen reader reliably announces the text rather than meeting a region already
-holding it. It scrolls itself into view, but only when `dependencies` changes to a new, non-empty
-list: a re-render with the same content — including a caller that rebuilds the array from scratch —
-never moves the page, and a second blocked archive attempt, whose list replaces the first, does.
-Scrolling stays inside the component rather than becoming a caller-controlled port, because every
-caller wants the same outcome and a port would only make each one write the same call back in.
+page on every render — even with an empty list, which is now a zero-height node rather than nothing
+at all, so a parent that spaces its last child differently (`CrudEditor`'s own `page-layout` section
+does, #279) can pick up a bottom margin it did not have before — empty until `dependencies` is
+non-empty, the pattern `ui/`'s toasts and combobox use, so a screen reader reliably announces the
+text rather than meeting a region already holding it. A first render with a non-empty list scrolls
+the block into view; a later render that replaces one non-empty list with an _equal_ one, without the
+list ever going empty in between (a caller that rebuilds the array from scratch on every render, a
+keystroke elsewhere, a timer), does not move the page; a render that replaces an _empty_ list with a
+non-empty one scrolls again, which is what a second blocked archive attempt does for `CrudEditor` —
+unchecking its archive checkbox empties `dependencies` before rechecking it repopulates it, even when
+the entities blocking the archive are the same both times. Scrolling stays inside the component
+rather than becoming a caller-controlled port, because every caller wants the same outcome and a
+port would only make each one write the same call back in.
 `RowActions`/`RowAction` are the per-row menu: a link when given an `href`, a button when given an
 `onClick`, red when `danger`. `timeAgo` and `formatTimestamp` format the archive line.
 

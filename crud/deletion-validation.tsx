@@ -21,16 +21,24 @@ export interface DeletionValidationProps {
  * a new, non-empty dependency list — and every caller wants the same outcome: bring the reason an
  * archive was refused in front of the person who just tried it. A port would only make every caller
  * write the same `scrollIntoView` call back in, for no caller-specific behaviour to control. The
- * effect is keyed on the list's content, not its identity or a plain render, so a caller that
- * rebuilds the same dependencies on every render (a keystroke elsewhere, a timer) never moves the
- * page — only a dependency list whose content actually changed does, which also covers a second
- * archive attempt that replaces one non-empty list with another.
+ * effect is keyed on the list's content, not its identity or a plain render, so a re-render that
+ * rebuilds an equal, still non-empty list (a keystroke elsewhere, a timer) never moves the page.
+ * Three cases, precisely: a first render with a non-empty list scrolls; a later render that
+ * replaces one non-empty list with an *equal* one, without the list ever going empty in between,
+ * does not; and a render that replaces an *empty* list with a non-empty one scrolls again, however
+ * many times that happens — which is what makes a second blocked archive attempt scroll for
+ * `CrudEditor` below, since it empties `dependencies` while the archive is retried and only
+ * repopulates it once the store answers again.
  *
  * **The `role="alert"` region is rendered on every render, empty until there is something to say** —
  * the pattern `ui/`'s toasts and combobox use, and `system/`'s `AuthForm` for its own assertive
  * region. A region created already holding its text is not reliably announced by assistive
  * technology; a region that starts empty and is later filled is. Empty, this element carries no
- * class, so it is an ordinary, zero-pixel in-flow node until a dependency list gives it content.
+ * class and no visible box of its own, but it is now always rendered — where the whole component
+ * used to render nothing at all, it is on the page as a zero-height node even with an empty list.
+ * A parent that gives its *last* child different spacing than the others (`crud/crud-editor.tsx`'s
+ * own `page-layout` section does, through Tailwind's `space-y-*`) now treats this region as that
+ * last child instead of whatever used to be last — see #279 for `CrudEditor`'s own follow-up.
  */
 export function DeletionValidation(
   { dependencies, model }: DeletionValidationProps,
