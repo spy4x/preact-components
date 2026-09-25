@@ -3,7 +3,7 @@
 A JSR version cannot be changed or deleted once it is published — a name that should not have gone
 out stays out there forever. [Issue #237](https://github.com/spy4x/preact-components/issues/237)
 removed every private application name, path and file list from the files each package publishes,
-and this page is its second box: a check the owner re-runs before every `deno publish`, rather than
+and this page is its second box: a check re-run before every release tag is pushed, rather than
 a one-time cleanup that could silently regress. It is step 3 of the release steps in
 [`publishing.md`](./publishing.md).
 
@@ -31,9 +31,9 @@ narrows candidates, it does not replace reading each match.
 
 ## When to run it
 
-Before every `deno publish`, against the names file described above. A clean run — zero matches
-for every package — is what "safe to publish" means here; it is not part of `deno task check`
-because that task has to pass with no such file present.
+Before every release tag is pushed (the tag is what publishes), against the names file described
+above. A clean run — zero matches for every package — is what "safe to publish" means here; it is
+not part of `deno task check` because that task has to pass with no such file present.
 
 ## If it finds something
 

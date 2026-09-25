@@ -4,12 +4,15 @@
 #
 # `branch` is checked against the *target* branch of a pull request, so this
 # still runs on every PR into `main` — from a fork or a feature branch — and on
-# a push to `main` itself. Tags, releases and PR-metadata edits are excluded:
-# nothing publishes from a tag in this repo, and `pull_request_metadata` fires
+# a push to `main` itself. A `v*` tag gets its own entry, because a tag build has
+# no branch to match `main` against: it runs the same checks and then publishes to
+# JSR. Releases and PR-metadata edits are excluded: `pull_request_metadata` fires
 # on a title or label edit, which cannot change a check result.
 when:
   - event: [push, pull_request]
     branch: main
+  - event: tag
+    ref: refs/tags/v*
 
 steps:
   check:
@@ -24,3 +27,23 @@ steps:
     image: denoland/deno:2.9.7
     commands:
       - deno task publish:dry
+
+  # Publishes every named workspace member to JSR (`jsr:@spy4x/preact-*`), only on a `v*` tag
+  # and only after both steps above passed. `docs/publishing.md` has the release steps. JSR never
+  # deletes a version, and a version already on JSR is skipped, so re-running a tag build that
+  # failed part-way publishes only what is missing. `$$` stops Woodpecker substituting the variable
+  # itself; the shell reads the secret.
+  publish:
+    image: denoland/deno:2.9.7
+    when:
+      event: tag
+      ref: refs/tags/v*
+    environment:
+      JSR_TOKEN:
+        from_secret: JSR_TOKEN
+    commands:
+      # `deno publish` exits 0 when every version is already on JSR, so a tag pushed without the
+      # version bump would go green and publish nothing; this refuses any tag that is not `v` plus
+      # the one version every package declares.
+      - deno run --allow-read --allow-env=CI_COMMIT_TAG infra/scripts/release-tag.ts
+      - deno publish --token "$${JSR_TOKEN}"
