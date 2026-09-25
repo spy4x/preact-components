@@ -24,14 +24,23 @@
  * declares the real `d3` and the workspace member that would publish it, is not copied, so nothing
  * under `scratch/charts` is a workspace member of anything. The check runs with `--config` pointed
  * at the real root `deno.jsonc` — not a rebuilt one — so the JSX/`lib` `compilerOptions` never drift
- * from the repo's, and, just as important, so Deno finds the repo's own `deno.lock` next to it the
- * normal way: a config with no matching `deno.lock` beside it makes every `jsr:`/`npm:` specifier a
- * fresh resolution, which a package published inside Deno's 24-hour minimum-dependency-age window
+ * from the repo's own settings.
+ *
+ * **What actually keeps this read-only is `--frozen`, not just where `--config` points.** Deno finds
+ * `deno.lock` next to any config at the repo root, real or not, but a config only satisfies `--frozen`
+ * against that lock when every dependency it resolves — including the ones `--import-map` layers on
+ * top — matches what the lock already recorded. `HARNESS_IMPORTS` restates a handful of the root
+ * map's own pins by hand (see below), and the moment one of those copies drifts from the root's, the
+ * merged map resolves a version the lock has never seen; without `--frozen` that would make Deno
+ * write the difference into the repo's own `deno.lock`, silently, rather than fail the probe.
+ * `--frozen` is on every `deno check`/`deno test` call the probe makes, so a drifted pin is a loud
+ * failure instead, with `deno.lock` left byte-identical. The same real-config trick also sidesteps a
+ * dependency published inside Deno's 24-hour minimum-dependency-age window
  * (spy4x/ts-libs#70's `@spy4x/platform` release, the first non-local dependency this package took
- * on) fails outright — `deno.lock` already has that exact version pinned, and passing `--lock`
- * explicitly at a copied lockfile does not restore that, only sitting where the real one already is
- * does. `--import-map` still layers the `d3` remap and the harness specifiers over the real map's
- * `imports`, exactly as before; nothing is written to the repo.
+ * on): a config with no matching lock next to it makes every `jsr:`/`npm:` specifier a fresh
+ * resolution, which such a version fails outright, while the real, already-resolved lock accepts it.
+ * `--import-map` still layers the `d3` remap and the harness specifiers over the real map's
+ * `imports`, exactly as before; with `--frozen`, nothing is ever written to the repo.
  *
  * Run it from anywhere in the worktree — `deno task --cwd charts probe:no-d3`, or
  * `deno run --allow-run --allow-read --allow-write --allow-env charts/probe/no-d3-dependency.ts`.
@@ -235,7 +244,10 @@ async function main(): Promise<void> {
     const chartsRoot = new URL("../", PROBE_DIR).pathname.replace(/\/$/, "")
     await copyCharts(chartsRoot, `${scratch}/charts`)
 
-    const shared = [`--config=${configPath}`, `--import-map=${importMapPath}`]
+    // `--frozen` is what makes "nothing is written to the repo" true: without it, a `HARNESS_IMPORTS`
+    // pin that has drifted from the root map's own would make Deno resolve a version the checked-in
+    // `deno.lock` has never seen and silently write it in, right next to the real config.
+    const shared = [`--config=${configPath}`, `--import-map=${importMapPath}`, "--frozen"]
     const allowEnv = "--allow-env"
     const allowRead = ["--allow-read", "--allow-write"]
 
@@ -313,6 +325,7 @@ async function main(): Promise<void> {
       "check",
       `--config=${configPath}`,
       `--import-map=${bareMapPath}`,
+      "--frozen",
       "charts/d3-line-chart.tsx",
     ], { cwd: scratch })
     record(
