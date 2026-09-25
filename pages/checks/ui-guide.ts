@@ -416,7 +416,8 @@ async function phoneNavigationChecks(devtools: Devtools): Promise<void> {
 /**
  * The Tooltip card shows every placement with its hint forced visible, so a reader can see where
  * each one opens. That only works while no hint covers a trigger: at the given width, the element
- * the browser finds at the middle of each placement trigger is the trigger itself or inside it.
+ * the browser finds at the middle of each placement trigger is the trigger itself or inside it —
+ * and not the trigger's own hint, which is a child of the trigger too.
  *
  * @param devtools The connected session.
  * @param width The viewport width the caller set, for the check's name.
@@ -435,8 +436,12 @@ async function tooltipTriggerCheck(devtools: Devtools, width: number): Promise<v
       const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)
       return {
         name: trigger.getAttribute("aria-label") ?? trigger.textContent.trim(),
-        own: hit !== null && trigger.contains(hit),
-        by: hit === null ? "nothing" : (hit.closest("[role=tooltip]") ? "a hint" : hit.tagName),
+        own: hit !== null && trigger.contains(hit) && hit.closest("[role=tooltip]") === null,
+        by: hit === null
+          ? "nothing"
+          : hit.closest("[role=tooltip]")
+          ? (trigger.contains(hit) ? "its own hint" : "a hint")
+          : hit.tagName,
       }
     })()`)
     if (!inView || !hit.own) covered.push(`${hit.name} (${inView ? hit.by : "not in view"})`)
