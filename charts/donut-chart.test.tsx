@@ -4,8 +4,8 @@ import { render } from "preact-render-to-string"
 import { DonutChart, type DonutDatum, donutGeometry } from "./donut-chart.tsx"
 
 const data: DonutDatum[] = [
-  { label: "fighters", value: 3, color: "#111111" },
-  { label: "bombers", value: 1, color: "#222222" },
+  { label: "subscriptions", value: 3, color: "#111111" },
+  { label: "one-off", value: 1, color: "#222222" },
 ]
 
 describe("donutGeometry", () => {
@@ -74,28 +74,28 @@ describe("donutGeometry", () => {
 
 describe("DonutChart", () => {
   it("paints the ring with the geometry gradient", () => {
-    const html = render(<DonutChart data={data} centerValue="4" centerLabel="matches" />)
+    const html = render(<DonutChart data={data} centerValue="4" centerLabel="orders" />)
 
     expect(html).toContain("conic-gradient(#111111 0% 75%, #222222 75% 100%)")
     expect(html).toContain(">4</strong>")
-    expect(html).toContain(">matches</span>")
+    expect(html).toContain(">orders</span>")
   })
 
   it("lists the legend with one entry per slice", () => {
     const html = render(<DonutChart data={data} />)
 
     expect(html.split("<li").length - 1).toBe(2)
-    expect(html).toContain(">fighters</span>")
+    expect(html).toContain(">subscriptions</span>")
     expect(html).toContain(">75.0%</strong>")
     expect(html).toContain(">25.0%</strong>")
   })
 
   it("links a legend entry when the datum carries an href", () => {
     const html = render(
-      <DonutChart data={[{ label: "planes", value: 1, href: "/planes" }]} />,
+      <DonutChart data={[{ label: "products", value: 1, href: "/products" }]} />,
     )
 
-    expect(html).toContain('href="/planes"')
+    expect(html).toContain('href="/products"')
   })
 
   it("drops the legend on request", () => {
@@ -121,10 +121,10 @@ describe("DonutChart", () => {
   })
 
   it("names the ring for assistive tech", () => {
-    const titled = render(<DonutChart data={data} title="Matches" />)
+    const titled = render(<DonutChart data={data} title="Orders" />)
     const anonymous = render(<DonutChart data={data} />)
 
-    expect(titled).toContain('aria-label="Matches"')
+    expect(titled).toContain('aria-label="Orders"')
     expect(anonymous).toContain('aria-label="Donut chart of 2 slices"')
   })
 

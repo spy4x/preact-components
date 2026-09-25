@@ -9,20 +9,20 @@ function count(html: string, needle: string): number {
 
 describe("Kpi", () => {
   it("renders the label, value and caption", () => {
-    const html = render(<Kpi label="Win rate" value="54.2%" sub="1 240 matches" />)
+    const html = render(<Kpi label="Conversion" value="54.2%" sub="1 240 visits" />)
 
-    expect(html).toContain("Win rate")
+    expect(html).toContain("Conversion")
     expect(html).toContain("54.2%")
-    expect(html).toContain("1 240 matches")
+    expect(html).toContain("1 240 visits")
   })
 
   it("accepts a numeric value", () => {
-    expect(render(<Kpi label="Kills" value={1234} />)).toContain("1234")
+    expect(render(<Kpi label="Orders" value={1234} />)).toContain("1234")
   })
 
   it("omits the caption when there is none", () => {
-    const withSub = render(<Kpi label="Kills" value={1} sub="since the reset" />)
-    const withoutSub = render(<Kpi label="Kills" value={1} />)
+    const withSub = render(<Kpi label="Orders" value={1} sub="since the reset" />)
+    const withoutSub = render(<Kpi label="Orders" value={1} />)
 
     expect(count(withSub, "<div")).toBe(4)
     expect(count(withoutSub, "<div")).toBe(3)

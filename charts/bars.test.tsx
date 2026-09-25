@@ -60,11 +60,11 @@ describe("Bars", () => {
 
   it("links a label when the datum carries an href", () => {
     const html = render(
-      <Bars data={[{ label: "plane", value: 1, href: "/planes/1" }, ...data]} />,
+      <Bars data={[{ label: "product", value: 1, href: "/products/1" }, ...data]} />,
     )
 
-    expect(html).toContain('href="/planes/1"')
-    expect(html).toContain(">plane</a>")
+    expect(html).toContain('href="/products/1"')
+    expect(html).toContain(">product</a>")
   })
 
   it("marks a low-sample row for a stylesheet to dim", () => {
@@ -115,14 +115,14 @@ describe("Bars", () => {
   })
 
   it("names the table for assistive tech", () => {
-    const titled = render(<Bars data={data} title="Top planes" />)
-    const overridden = render(<Bars data={data} ariaLabel="Runs by plane" />)
+    const titled = render(<Bars data={data} title="Top products" />)
+    const overridden = render(<Bars data={data} ariaLabel="Orders by product" />)
 
     expect(titled).toContain(
-      '<caption class="mb-2 text-left text-sm font-medium">Top planes</caption>',
+      '<caption class="mb-2 text-left text-sm font-medium">Top products</caption>',
     )
-    expect(titled).toContain('aria-label="Top planes"')
-    expect(overridden).toContain('aria-label="Runs by plane"')
+    expect(titled).toContain('aria-label="Top products"')
+    expect(overridden).toContain('aria-label="Orders by product"')
   })
 
   it("uses row headers so each bar is labelled", () => {
