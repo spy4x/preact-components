@@ -31,6 +31,7 @@ usage blocks copy, the toasts fire and the deep links scroll.
 | `styles.css`              | The app-order stylesheet an app writes, plus the `@source` rules the scanner reads                        |
 | `verify.ts`               | Asserts the artefact's shape, then drives the built page in headless Chromium                             |
 | `checks/`                 | One browser-check file per workspace package, plus the shared `Devtools`/`check` harness                  |
+| `screenshots.ts`          | Writes the README's screenshots and the social preview to `docs/screenshots/` from the built site         |
 | `serve.ts`                | Static server that mounts `dist/` at the deployed base (`deno task preview`)                              |
 | `src/app.tsx`             | The host page — the app shell this library deliberately does not ship                                     |
 | `src/+main.tsx`           | The island: `hydrate(<App />, #root)`                                                                     |
@@ -48,6 +49,7 @@ usage blocks copy, the toasts fire and the deep links scroll.
 deno task --cwd pages build      # → pages/dist: index.html, assets/main.<hash>.{js,css}
 deno task --cwd pages verify     # static checks, then the browser checks
 deno task --cwd pages preview    # serve the built directory at /preact-components/
+deno task --cwd pages screenshots  # retake docs/screenshots/ from the built directory
 ```
 
 Before anything else, `verify` refuses a `dist/` that was not built from the working tree it is
