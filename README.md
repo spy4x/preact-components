@@ -107,7 +107,8 @@ pages/       demo app (GitHub Pages site and the browser checks under pages/chec
 ## Relationship to other repos
 
 - `spy4x/ts-libs` — framework-agnostic TypeScript, published on JSR as `@spy4x/*`. No workspace
-  coupling: `ui` imports one module of `@spy4x/platform` from JSR at an exact version.
+  coupling: packages import `@spy4x/platform`, `@spy4x/time` and `@spy4x/validation` from JSR at
+  one exact version, pinned in the root `deno.jsonc`.
 - `spy4x/template` — the SaaS app template, imports both.
 
 ## Naming policy

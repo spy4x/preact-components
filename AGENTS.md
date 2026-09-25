@@ -65,12 +65,11 @@ Rules for a package config:
 
 - `name` is `@preact-components/<directory>` — that is how sibling packages import you.
 - `exports` lists exactly the entry points that exist today. Adding a file does not add an export.
-- Do not add an `imports` block unless you need a specifier the root does not provide. Three
-  packages do, each because only it needs the dependency: `charts/deno.json` pins `d3`,
-  `map/deno.json` pins `leaflet` and `@types/leaflet`, and `ui/deno.json` pins the one module of
-  `@spy4x/platform` that `ExportButton` downloads through. Shared deps (preact, signals, arktype,
-  tailwind, `@std/*`, tailwind-merge, wouter-preact) live in the root import map so every package
-  resolves one copy.
+- Do not add an `imports` block unless you need a specifier the root does not provide. Two
+  packages do, each because only it needs the dependency: `charts/deno.json` pins `d3`, and
+  `map/deno.json` pins `leaflet` and `@types/leaflet`. Shared deps (preact, signals, arktype,
+  tailwind, `@std/*`, tailwind-merge, wouter-preact, and `@spy4x/*` from spy4x/ts-libs) live in the
+  root import map so every package resolves one copy.
 - Sibling imports use the member name: `import { cn } from "@preact-components/cn"`.
 
 Type-checking, formatting, linting and tests are discovered by walking the tree, so a new package is
@@ -370,13 +369,14 @@ arktype                          2.2.3
 @std/testing                    1.0.20
 preact-render-to-string          6.7.0
 tailwind-merge                   3.7.0
+@spy4x/platform, time, validation 1.3.0
 tailwindcss                     4.1.12
 ```
 
 Three pins are not in this list, because each is pinned once in the one package that needs it, not
-at the root — see "Adding a package" above: `d3@7.9.0` in `charts/deno.json`, `leaflet@1.9.4` and
-`@types/leaflet@1.9.22` in `map/deno.json`, and `jsr:@spy4x/platform@1.1.0/browser/download` in
-`ui/deno.json`. Everything else here resolves through the root import map.
+at the root — see "Adding a package" above: `d3@7.9.0` in `charts/deno.json`, and `leaflet@1.9.4`
+and `@types/leaflet@1.9.22` in `map/deno.json`. Everything else here resolves through the root
+import map.
 
 **What is mechanically checked, and what is not.** Assume nothing here is. Exact pinning is a
 convention held by review: `deno.lock` is committed and Deno keeps it in sync automatically, but it is
