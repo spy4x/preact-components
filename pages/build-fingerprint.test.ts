@@ -1,53 +1,58 @@
 import { assertEquals, assertNotEquals } from "@std/assert"
-import { join } from "node:path"
-import { computeBuildFingerprint } from "./build-fingerprint.ts"
+import { hashEntries, isCovered } from "./build-fingerprint.ts"
 
-/** A minimal tree shaped like the real workspace: one covered package, one root config file. */
-async function makeTree(root: string): Promise<void> {
-  await Deno.mkdir(join(root, "ui"), { recursive: true })
-  await Deno.writeTextFile(join(root, "ui", "button.tsx"), "export const Button = 1\n")
-  await Deno.writeTextFile(join(root, "deno.jsonc"), "{}\n")
-}
+const encoder = new TextEncoder()
 
-Deno.test("the same tree produces the same fingerprint", async () => {
-  const dir = await Deno.makeTempDir()
-  try {
-    await makeTree(dir)
-    const first = await computeBuildFingerprint(dir)
-    const second = await computeBuildFingerprint(dir)
-    assertEquals(first, second)
-  } finally {
-    await Deno.remove(dir, { recursive: true })
-  }
+Deno.test("the same entries produce the same fingerprint", async () => {
+  const entries = [
+    { path: "ui/badge.tsx", bytes: encoder.encode("export const Badge = 1\n") },
+    { path: "deno.jsonc", bytes: encoder.encode("{}\n") },
+  ]
+
+  const first = await hashEntries(entries)
+  const second = await hashEntries(entries)
+  assertEquals(first, second)
 })
 
-Deno.test("a changed byte in a covered source changes the fingerprint", async () => {
-  const dir = await Deno.makeTempDir()
-  try {
-    await makeTree(dir)
-    const before = await computeBuildFingerprint(dir)
-    await Deno.writeTextFile(join(dir, "ui", "button.tsx"), "export const Button = 2\n")
-    const after = await computeBuildFingerprint(dir)
-    assertNotEquals(before, after)
-  } finally {
-    await Deno.remove(dir, { recursive: true })
-  }
+Deno.test("a changed byte in an entry's content changes the fingerprint", async () => {
+  const before = await hashEntries([
+    { path: "ui/badge.tsx", bytes: encoder.encode("export const Badge = 1\n") },
+  ])
+  const after = await hashEntries([
+    { path: "ui/badge.tsx", bytes: encoder.encode("export const Badge = 2\n") },
+  ])
+  assertNotEquals(before, after)
 })
 
-Deno.test("a file outside the covered set does not change the fingerprint", async () => {
-  const dir = await Deno.makeTempDir()
-  try {
-    await makeTree(dir)
-    const before = await computeBuildFingerprint(dir)
+Deno.test("the order of entries does not change the fingerprint", async () => {
+  const a = { path: "ui/badge.tsx", bytes: encoder.encode("export const Badge = 1\n") }
+  const b = { path: "cn/mod.ts", bytes: encoder.encode("export const cn = 1\n") }
 
-    // dist/ is build output, never a source, and .md is not one of the covered extensions.
-    await Deno.mkdir(join(dir, "pages", "dist"), { recursive: true })
-    await Deno.writeTextFile(join(dir, "pages", "dist", "index.html"), "<html></html>\n")
-    await Deno.writeTextFile(join(dir, "README.md"), "# notes\n")
+  const forward = await hashEntries([a, b])
+  const backward = await hashEntries([b, a])
+  assertEquals(forward, backward)
+})
 
-    const after = await computeBuildFingerprint(dir)
-    assertEquals(before, after)
-  } finally {
-    await Deno.remove(dir, { recursive: true })
-  }
+Deno.test("isCovered accepts a workspace package source", () => {
+  assertEquals(isCovered("ui/badge.tsx"), true)
+})
+
+Deno.test("isCovered accepts the root lockfile", () => {
+  assertEquals(isCovered("deno.lock"), true)
+})
+
+Deno.test("isCovered accepts the static fixture directories build.ts copies verbatim", () => {
+  assertEquals(isCovered("pages/sw-demo/sw.js"), true)
+  assertEquals(isCovered("pages/form-demo/index.html"), true)
+  assertEquals(isCovered("pages/map-demo/tile.png"), true)
+})
+
+Deno.test("isCovered rejects anything under a dist/ directory", () => {
+  assertEquals(isCovered("pages/dist/index.html"), false)
+  assertEquals(isCovered("pages/dist/assets/main.abcdef01.css"), false)
+})
+
+Deno.test("isCovered rejects a Markdown file", () => {
+  assertEquals(isCovered("README.md"), false)
+  assertEquals(isCovered("ui/README.md"), false)
 })

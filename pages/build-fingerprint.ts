@@ -8,23 +8,26 @@
  * `dist/` left over from before a rebase, used to pass every check silently: nothing compared the
  * artefact to the source it claims to be built from.
  *
+ * **Split on purpose.** {@link isCovered} (which paths count) and {@link hashEntries} (how a set of
+ * `{ path, bytes }` entries becomes one digest) are pure — no file system, so `pages/build-
+ * fingerprint.test.ts` exercises them entirely in memory, and the repo-wide `test` task does not
+ * need `--allow-write` for one colocated suite. {@link computeBuildFingerprint} is the thin, untested
+ * reader that walks the tree and hands what {@link isCovered} accepts to {@link hashEntries}; its own
+ * correctness is proven by running `verify` for real (`pages/README.md`'s "Evidence" and this
+ * change's PR body), the same way `build.ts` itself is.
+ *
  * **What is covered, and why a walk rather than the bundler's own input list.** Every workspace
  * package's source the demo can import (`ui/`, `system/`, `charts/`, …), `pages/` itself — which
- * covers `pages/src` and every other file the build or the browser checks read — and the config
- * files that change how a specifier resolves: the root `deno.jsonc`, `deno.lock`, and each
- * package's own `deno.json`, picked up by the walk since it lives inside that package's directory.
- * `deno bundle` does not expose the module graph it built from, only the emitted bundle, so
- * reading it back out would mean re-parsing the output to recover what went in; a walk of the
- * workspace, filtered to the extensions the build actually reads, is direct and does not depend on
- * a bundler internal that the pin in `deno.jsonc` could change out from under it.
- *
- * **What is deliberately left out.** `pages/sw-demo`, `pages/form-demo` and `pages/map-demo` are
- * copied into the artefact verbatim (see `build.ts`'s `copyDemoDirectory`), but their files are
- * `.js`, `.html` and `.png` — outside the extensions this module hashes — so a change to one of
- * them will not by itself mark a build stale. Those directories are fixed demo fixtures that change
- * far less often than a component's source; catching a change there is a narrower win than keeping
- * every hashed run fast, and revisiting it is cheap: add their extensions to
- * {@link INCLUDED_EXTENSIONS} if that trade stops holding.
+ * covers `pages/src` and every other file the build or the browser checks read — the config files
+ * that change how a specifier resolves (the root `deno.jsonc`, `deno.lock`, and each package's own
+ * `deno.json`, picked up by the walk since it lives inside that package's directory), and the three
+ * static fixture directories `build.ts` copies into the artefact verbatim and the browser checks
+ * are served from — `pages/sw-demo`, `pages/form-demo`, `pages/map-demo` — covered whole, regardless
+ * of extension, since a stale copy of a served file is exactly what #280 is about. `deno bundle`
+ * does not expose the module graph it built from, only the emitted bundle, so reading it back out
+ * would mean re-parsing the output to recover what went in; a walk of the workspace, filtered by
+ * {@link isCovered}, is direct and does not depend on a bundler internal that the pin in
+ * `deno.jsonc` could change out from under it.
  */
 
 import { join, relative } from "node:path"
@@ -56,50 +59,111 @@ const WORKSPACE_DIRECTORIES = [
 /** Root files that change how every specifier in the workspace resolves. */
 const ROOT_FILES = ["deno.jsonc", "deno.lock"] as const
 
-/** Directories walked past without descending — build output and caches, never a source. */
-const IGNORED_DIRECTORIES = new Set([".git", ".volumes", "coverage", "dist", "node_modules"])
+/**
+ * Directories copied into the artefact verbatim and served from it (`build.ts`'s
+ * `copyDemoDirectory`) — covered whole, unlike the rest of the tree, since none of their files
+ * carry one of {@link INCLUDED_EXTENSIONS} and a stale copy is exactly the bug #280 is about.
+ */
+const STATIC_FIXTURE_DIRECTORIES = ["pages/sw-demo", "pages/form-demo", "pages/map-demo"] as const
+
+/** Directory names walked past without descending — build output and caches, never a source. */
+const IGNORED_DIRECTORY_NAMES = new Set([".git", ".volumes", "coverage", "dist", "node_modules"])
 
 /**
  * Extensions the build actually reads: code, styles, and every package's own config (`deno.json`).
- * A `.md` file, or anything else outside this list, never changes the fingerprint.
+ * Only checked for a path inside a covered workspace directory — the static fixture directories
+ * above are covered regardless of extension.
  */
 const INCLUDED_EXTENSIONS = [".ts", ".tsx", ".css", ".json", ".jsonc"]
 
-function isIncluded(name: string): boolean {
-  return INCLUDED_EXTENSIONS.some((extension) => name.endsWith(extension))
+/**
+ * Whether a path counts toward the fingerprint — pure, so it is the one thing both the reader below
+ * and `pages/build-fingerprint.test.ts` call directly.
+ *
+ * @param relativePath Repository-relative path, `/`-separated (as `node:path`'s `relative` and
+ * `join` produce on the platforms this runs on).
+ */
+export function isCovered(relativePath: string): boolean {
+  const segments = relativePath.split("/")
+  if (segments.some((segment) => IGNORED_DIRECTORY_NAMES.has(segment))) return false
+
+  if ((ROOT_FILES as readonly string[]).includes(relativePath)) return true
+
+  const inStaticFixture = STATIC_FIXTURE_DIRECTORIES.some((directory) =>
+    relativePath === directory || relativePath.startsWith(`${directory}/`)
+  )
+  if (inStaticFixture) return true
+
+  const inWorkspaceDirectory = WORKSPACE_DIRECTORIES.some((directory) =>
+    relativePath === directory || relativePath.startsWith(`${directory}/`)
+  )
+  if (!inWorkspaceDirectory) return false
+
+  return INCLUDED_EXTENSIONS.some((extension) => relativePath.endsWith(extension))
 }
 
 function toHex(bytes: Uint8Array): string {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")
 }
 
-async function collectFiles(directory: string, out: string[]): Promise<void> {
+/**
+ * Hash a set of `{ path, bytes }` entries — pure, so `pages/build-fingerprint.test.ts` exercises it
+ * with in-memory fixtures rather than real files.
+ *
+ * @param entries Each covered file's repo-relative path and content; order does not matter.
+ * @returns A hex SHA-256 digest over each entry's path and content, sorted by path first — same
+ * entries in, same digest out, regardless of the order they were given in.
+ */
+export async function hashEntries(
+  entries: readonly { path: string; bytes: Uint8Array }[],
+): Promise<string> {
+  const sorted = [...entries].sort((a, b) => a.path.localeCompare(b.path))
+
+  const manifestLines: string[] = []
+  for (const entry of sorted) {
+    const digest = await crypto.subtle.digest("SHA-256", Uint8Array.from(entry.bytes))
+    manifestLines.push(`${entry.path}:${toHex(new Uint8Array(digest))}`)
+  }
+
+  const manifestDigest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(manifestLines.join("\n")),
+  )
+  return toHex(new Uint8Array(manifestDigest))
+}
+
+/** List every file under `directory`, as paths relative to `repoRoot`, pruning ignored directories. */
+async function collectRelativePaths(
+  directory: string,
+  repoRoot: string,
+  out: string[],
+): Promise<void> {
   for await (const entry of Deno.readDir(directory)) {
     const path = join(directory, entry.name)
     if (entry.isDirectory) {
-      if (IGNORED_DIRECTORIES.has(entry.name)) continue
-      await collectFiles(path, out)
-    } else if (entry.isFile && isIncluded(entry.name)) {
-      out.push(path)
+      if (IGNORED_DIRECTORY_NAMES.has(entry.name)) continue
+      await collectRelativePaths(path, repoRoot, out)
+    } else if (entry.isFile) {
+      out.push(relative(repoRoot, path))
     }
   }
 }
 
 /**
- * Hash every source the pages build depends on, deterministically.
+ * Hash every source the pages build depends on, deterministically. The thin, untested reader —
+ * see this module's own doc for why {@link isCovered} and {@link hashEntries} carry the logic that
+ * is actually unit-tested.
  *
  * @param repoRoot Absolute path to the repository root (the directory holding the root
  * `deno.jsonc`).
- * @returns A hex SHA-256 digest over each covered file's repo-relative path and content, sorted by
- * path so the result does not depend on directory-walk order — same tree in, same digest out, on
- * any machine.
+ * @returns {@link hashEntries} over every file {@link isCovered} accepts.
  */
 export async function computeBuildFingerprint(repoRoot: string): Promise<string> {
-  const files: string[] = []
+  const candidates: string[] = []
 
   for (const directory of WORKSPACE_DIRECTORIES) {
     try {
-      await collectFiles(join(repoRoot, directory), files)
+      await collectRelativePaths(join(repoRoot, directory), repoRoot, candidates)
     } catch (error) {
       if (!(error instanceof Deno.errors.NotFound)) throw error
       // A workspace member listed in `deno.jsonc` but not yet created (see that file's own
@@ -108,27 +172,19 @@ export async function computeBuildFingerprint(repoRoot: string): Promise<string>
   }
 
   for (const name of ROOT_FILES) {
-    const path = join(repoRoot, name)
     try {
-      await Deno.stat(path)
-      files.push(path)
+      await Deno.stat(join(repoRoot, name))
+      candidates.push(name)
     } catch (error) {
       if (!(error instanceof Deno.errors.NotFound)) throw error
     }
   }
 
-  files.sort()
+  const covered = candidates.filter(isCovered)
+  const entries = await Promise.all(covered.map(async (path) => ({
+    path,
+    bytes: await Deno.readFile(join(repoRoot, path)),
+  })))
 
-  const manifestLines: string[] = []
-  for (const path of files) {
-    const bytes = await Deno.readFile(path)
-    const digest = await crypto.subtle.digest("SHA-256", Uint8Array.from(bytes))
-    manifestLines.push(`${relative(repoRoot, path)}:${toHex(new Uint8Array(digest))}`)
-  }
-
-  const manifestDigest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(manifestLines.join("\n")),
-  )
-  return toHex(new Uint8Array(manifestDigest))
+  return hashEntries(entries)
 }
