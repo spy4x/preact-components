@@ -14,7 +14,7 @@
 import { IconGitHub } from "@preact-components/icons"
 import { buttonClasses } from "@preact-components/ui/button"
 import { copyToClipboard } from "@preact-components/ui/copy-button"
-import { type GuideRouteChange, UIGuide } from "@preact-components/ui-guide"
+import { type GuideRouteChange, UIGuide, useLocationHash } from "@preact-components/ui-guide"
 import { useEffect, useState } from "preact/hooks"
 import { DataTableSortDemo } from "./data-table-sort.tsx"
 import { PAGE_TITLE, REPOSITORY } from "./site.ts"
@@ -50,7 +50,7 @@ export interface AppProps {
  * @param props See {@link AppProps}.
  */
 export function App({ initialHash }: AppProps) {
-  const hash = useHash(initialHash)
+  const hash = useLocationHash(initialHash)
 
   useEffect(() => {
     // The island's boot marker. `verify.ts` asserts it, which is how the check tells "hydrated" from
@@ -94,29 +94,6 @@ function titleDocument({ route, page }: GuideRouteChange): void {
     : page.id === "overview"
     ? PAGE_TITLE
     : `${page.title} — ${PAGE_TITLE}`
-}
-
-/**
- * `location.hash`, re-read on every `hashchange`.
- *
- * `undefined` until the first effect runs, which is what makes the prerendered markup and the
- * island's first render the same tree: the server has no `location`, so both render the overview,
- * and the effect then hands the guide the route the URL actually names.
- *
- * @param initialHash What to answer before the first read; see {@link AppProps.initialHash}.
- * @returns The current hash, or `undefined` before the first read.
- */
-function useHash(initialHash?: string): string | undefined {
-  const [hash, setHash] = useState<string | undefined>(initialHash)
-
-  useEffect(() => {
-    const read = () => setHash(location.hash)
-    read()
-    globalThis.addEventListener("hashchange", read)
-    return () => globalThis.removeEventListener("hashchange", read)
-  }, [])
-
-  return hash
 }
 
 /**

@@ -23,9 +23,10 @@ import type { RouteTable } from "@preact-components/ui-guide/routes"
 /** `id` of the echo element. The one string both halves have to agree on. */
 export const ROUTE_TABLE_ID = "ui-guide-routes"
 
-/** Shape of one echoed section route. */
+/** Shape of one echoed page route. */
 const pageEntrySchema = type({ pageId: "string", href: "string" })
 
+/** Shape of one echoed section route. */
 const sectionEntrySchema = type({ sectionId: "string", slug: "string", href: "string" })
 
 /** Shape of one echoed demo route. */
@@ -37,7 +38,7 @@ const demoEntrySchema = type({
   href: "string",
 })
 
-/** Shape of the whole payload: two arrays of what {@link RouteTable} declares. */
+/** Shape of the whole payload: the three arrays {@link RouteTable} declares. */
 export const routeTableSchema = type({
   pages: pageEntrySchema.array(),
   sections: sectionEntrySchema.array(),

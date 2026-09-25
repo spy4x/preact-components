@@ -28,6 +28,7 @@ export async function uiGuideChecks(devtools: Devtools): Promise<void> {
   await withViewport(devtools, 375, 812, () => phoneNavigationChecks(devtools))
   await withViewport(devtools, 375, 812, () => overflowChecks(devtools))
   await coldDeepLinkCheck(devtools)
+  await coldFragmentCheck(devtools)
 }
 
 /**
@@ -56,12 +57,19 @@ async function withViewport(
 /**
  * Press and release the left button on the middle of an element, once it is in view: centred in
  * the page for an element of the page, scrolled into its dialog's own box for one inside a modal
- * dialog, which the page's scroll does not move.
+ * dialog, which the page's scroll does not move, and left where it is with `inPlace`.
  */
-async function clickElement(devtools: Devtools, selector: string): Promise<boolean> {
+async function clickElement(
+  devtools: Devtools,
+  selector: string,
+  { inPlace = false }: { inPlace?: boolean } = {},
+): Promise<boolean> {
   const aim = `document.querySelector(${JSON.stringify(selector)})`
   const inDialog = await devtools.evaluate<boolean>(`${aim}?.closest("dialog") != null`)
-  if (inDialog) {
+  if (inPlace) {
+    // Aimed where it is: a link in the sticky column is on screen at any scroll, and centring it
+    // would scroll the page the check is about to read.
+  } else if (inDialog) {
     await devtools.evaluate(`${aim}.scrollIntoView({ block: "nearest", behavior: "instant" })`)
   } else if (!await centreInView(devtools, aim)) return false
   const point = await devtools.evaluate<{ x: number; y: number } | null>(`(() => {
@@ -203,8 +211,8 @@ function readShown(devtools: Devtools, nav: string): Promise<Shown> {
 
 /**
  * At desktop width the navigation is a column beside the page: a real click on another page's link
- * shows that page, marks its link current, renders its cards and no one else's, and titles the
- * document after it.
+ * shows that page from its title, marks its link current, renders its cards and no one else's, and
+ * titles the document after it.
  */
 async function navigationChecks(devtools: Devtools): Promise<void> {
   await openGuidePage(devtools, "overview")
@@ -212,23 +220,54 @@ async function navigationChecks(devtools: Devtools): Promise<void> {
   const crudCards = (crud?.sections ?? []).flatMap((section) => section.names)
     .map((name) => `demo-${name}`)
 
-  const clicked = await clickElement(devtools, `${ASIDE_NAV} a[data-guide-page-link="crud"]`)
+  // Clicked a screen down the overview, so a page that kept the old scroll, or scrolled to the
+  // section that shares its id, lands below its own title. Not from the very bottom: there the
+  // footer pushes the sticky column, and the link with it, off the screen.
+  await devtools.evaluate(`(scrollTo({ top: innerHeight, behavior: "instant" }), null)`)
+  await settledScroll(devtools)
+  const scrolledFrom = await devtools.evaluate<number>("Math.round(scrollY)")
+  const clicked = await clickElement(devtools, `${ASIDE_NAV} a[data-guide-page-link="crud"]`, {
+    inPlace: true,
+  })
   await poll(
     () => devtools.evaluate<boolean>(`document.querySelector('[data-guide-page="crud"]') !== null`),
     3_000,
   )
   await settledScroll(devtools)
   const shown = await readShown(devtools, ASIDE_NAV)
+  // The heading is in view when the point at its middle is the heading, not the sticky header.
+  const titleInView = await devtools.evaluate<boolean>(`(() => {
+    const heading = document.querySelector("[data-guide-page] h1")
+    const box = heading?.getBoundingClientRect()
+    if (!box) return false
+    const hit = document.elementFromPoint(box.left + 4, box.top + box.height / 2)
+    return hit !== null && heading.contains(hit)
+  })()`)
 
   check(
-    "a click in the side navigation shows that page, and only that page's cards",
-    clicked && shown.page === "crud" && shown.current.join() === "CRUD" &&
+    "a click in the side navigation shows that page from its title, and only that page's cards",
+    clicked && scrolledFrom > 0 && titleInView && shown.page === "crud" &&
+      shown.current.join() === "CRUD" &&
       shown.cards.length === crudCards.length &&
       shown.cards.every((card) => crudCards.includes(card)) &&
       shown.title === `CRUD — ${PAGE_TITLE}`,
-    `${clicked ? "clicked" : "could not click"} → page "${shown.page}", current ` +
+    `${clicked ? "clicked" : "could not click"} from scrollY ${scrolledFrom} → page ` +
+      `"${shown.page}", h1 ${titleInView ? "in view" : "not in view"}, current ` +
       `${JSON.stringify(shown.current)}, ${shown.cards.length}/${crudCards.length} cards, ` +
       `title "${shown.title}"`,
+  )
+
+  // The skip link is the guide's first link: a real Enter on it moves focus past the navigation.
+  await devtools.evaluate(`document.querySelector('[data-e2e="ui-guide-skip"]').focus()`)
+  await pressKey(devtools, "Enter")
+  const skipped = await devtools.evaluate<{ onContent: boolean }>(`(() => {
+    const skip = document.querySelector('[data-e2e="ui-guide-skip"]')
+    return { onContent: document.activeElement?.id === skip.getAttribute("href").slice(1) }
+  })()`)
+  check(
+    "a real Enter on the skip link moves focus from the navigation to the page",
+    skipped.onContent,
+    `focus on the page column: ${skipped.onContent}`,
   )
 
   // Within the page showing, the navigation lists its cards; a click on one lands on it.
@@ -374,6 +413,7 @@ const SHELL_TEXT = [
  */
 async function overflowChecks(devtools: Devtools): Promise<void> {
   const wide: string[] = []
+  const clipped = new Map<string, number>()
   let measured = 0
   const wasDark = await devtools.evaluate<boolean>(
     `document.documentElement.classList.contains("dark")`,
@@ -396,6 +436,9 @@ async function overflowChecks(devtools: Devtools): Promise<void> {
           }
         })()`)
         measured += width.texts
+        for (const [owner, px] of Object.entries(await clippedContent(devtools))) {
+          clipped.set(owner, Math.max(clipped.get(owner) ?? 0, px))
+        }
         const palette = dark ? "dark" : "light"
         if (width.scroll > width.client) {
           wide.push(`${page.id} (${palette}) scrolls to ${width.scroll}px`)
@@ -414,12 +457,71 @@ async function overflowChecks(devtools: Devtools): Promise<void> {
         `and blurbs wrap inside their boxes`
       : wide.join(", "),
   )
+
+  const unlisted = [...clipped].filter(([owner]) => !(owner in CLIPPED_AT_PHONE_WIDTH))
+  const fixed = Object.keys(CLIPPED_AT_PHONE_WIDTH).filter((owner) => !clipped.has(owner))
+  check(
+    "at 375px exactly the listed cards run past the page column, and nothing else does",
+    unlisted.length === 0 && fixed.length === 0,
+    [
+      unlisted.length > 0
+        ? `cut off and not listed: ${
+          unlisted.map(([owner, px]) => `${owner} by ${px}px`).join(", ")
+        }`
+        : "",
+      fixed.length > 0 ? `listed but now fits, so drop it from the list: ${fixed.join(", ")}` : "",
+      `known: ${[...clipped].map(([owner, px]) => `${owner} ${px}px`).join(", ")}`,
+    ].filter(Boolean).join("; "),
+  )
+}
+
+/**
+ * The cards whose live example is wider than a 375px page column, which the column clips. Each is
+ * the card body's own markup, owned by the card, and waiting for a fix there; a card that starts
+ * overflowing, or one of these that stops, fails the check above, so the list cannot drift.
+ */
+const CLIPPED_AT_PHONE_WIDTH: Record<string, string> = {
+  "demo-Tabs": "the tab row does not wrap or scroll",
+  "demo-Pagination": "Previous and Next run past the row",
+  "demo-Tooltip": "the hint bubbles are positioned past the edge",
+  "demo-Map": "the `tileUrl` example does not wrap",
+}
+
+/**
+ * How far past the page column the content showing runs, per card (`demo-<Name>`) or `host extra`
+ * for the host's own content, in whole pixels. Content inside something that scrolls or clips on
+ * its own is its container's business and is left out, as is anything 1px wide or less
+ * (`sr-only`).
+ */
+function clippedContent(devtools: Devtools): Promise<Record<string, number>> {
+  return devtools.evaluate<Record<string, number>>(`(() => {
+    const column = document.getElementById(
+      document.querySelector('[data-e2e="ui-guide-skip"]').getAttribute("href").slice(1),
+    )
+    const edge = column.getBoundingClientRect()
+    const contained = (element) => {
+      for (let node = element.parentElement; node && node !== column; node = node.parentElement) {
+        if (getComputedStyle(node).overflowX !== "visible") return true
+      }
+      return false
+    }
+    const past = {}
+    for (const element of column.querySelectorAll("*")) {
+      const box = element.getBoundingClientRect()
+      if (box.width <= 1 || box.height <= 1) continue
+      const by = Math.round(Math.max(box.right - edge.right, edge.left - box.left))
+      if (by <= 1 || contained(element)) continue
+      const owner = element.closest('article[id^="demo-"]')?.id ?? "host extra"
+      past[owner] = Math.max(past[owner] ?? 0, by)
+    }
+    return past
+  })()`)
 }
 
 /**
  * A deep link opened cold — the address typed or pasted, the page loaded fresh — lands on a card on
- * a page other than the overview: the island hydrates the overview the server sent, reads the
- * address, shows the card's page, and marks and scrolls to the card.
+ * one package's page: the island hydrates the `all` page the server sent, reads the address, shows
+ * the card's page, and marks and scrolls to the card.
  */
 async function coldDeepLinkCheck(devtools: Devtools): Promise<void> {
   const HREF = "#/crud/crud-editor"
@@ -452,5 +554,38 @@ async function coldDeepLinkCheck(devtools: Devtools): Promise<void> {
       landed ? "marked and in view" : "not marked in view"
     }, ` +
       `title "${shown.title}"`,
+  )
+}
+
+/**
+ * A bare fragment opened cold, `#icons`, names an element of one page: the guide opens that page
+ * and the element is in view, rather than the overview with the element gone.
+ */
+async function coldFragmentCheck(devtools: Devtools): Promise<void> {
+  const HREF = "#icons"
+  await devtools.evaluate(`(history.replaceState(null, "", ${JSON.stringify(HREF)}), null)`)
+  await devtools.send("Page.reload", { ignoreCache: true })
+  await devtools.next("Page.loadEventFired")
+  const hydrated = await poll(
+    () => devtools.evaluate<boolean>("document.documentElement.dataset.hydrated === 'true'"),
+    10_000,
+  )
+  const landed = await poll(
+    () =>
+      devtools.evaluate<boolean>(`(() => {
+        if (document.querySelector("[data-guide-page]")?.dataset.guidePage !== "icons") return false
+        const top = document.getElementById("icons")?.getBoundingClientRect().top
+        return top !== undefined && top >= 0 && top < innerHeight / 2
+      })()`),
+    5_000,
+  )
+  await settledScroll(devtools)
+  const page = await devtools.evaluate<string>(
+    `document.querySelector("[data-guide-page]")?.dataset.guidePage ?? ""`,
+  )
+  check(
+    "a bare fragment loaded cold opens the page that holds its element, in view",
+    hydrated && landed,
+    `${HREF} → page "${page}", #icons ${landed ? "in view" : "not in view"}`,
   )
 }

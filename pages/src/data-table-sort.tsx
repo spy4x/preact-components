@@ -102,7 +102,9 @@ function LiveSort() {
   }
 
   return (
-    <div data-e2e="data-table-sort-url-live" class="mt-3">
+    // `Table` bleeds 16px past its container below `md`, to reach a phone's edge from a page's own
+    // padding; the guide's page column clips at its own edge, so the padding is given back here.
+    <div data-e2e="data-table-sort-url-live" class="mt-3 px-4 md:px-0">
       <DataTable
         caption="Orders"
         columns={[
