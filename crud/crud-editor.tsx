@@ -5,6 +5,7 @@ import { type ReadonlySignal, type Signal, useSignal, useSignalEffect } from "@p
 import type { Type } from "arktype"
 import type { ComponentChildren, JSX } from "preact"
 import { useId } from "preact/hooks"
+import { formatTime } from "@spy4x/platform/universal/time"
 import {
   type FieldIssue,
   FORM_FIELD,
@@ -16,7 +17,7 @@ import {
 import { DeletionValidation } from "./deletion-validation.tsx"
 import { setField } from "./field.tsx"
 import type { CrudEditorStore } from "./store.ts"
-import { formatTimestamp, timeAgo } from "./time-ago.ts"
+import { timeAgo } from "./time.ts"
 import type { CrudRow, DeletionDependency, StoreErrorLike } from "./types.ts"
 
 /**
@@ -468,7 +469,7 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
                     {archive.label ?? "Is Archived?"} {vm.value.deletedAt
                       ? (
                         <span
-                          title={formatTimestamp(vm.value.deletedAt, { full: true })}
+                          title={formatTime(vm.value.deletedAt, { full: true })}
                           class="text-red-500"
                         >
                           ({timeAgo(vm.value.deletedAt)})

@@ -5,7 +5,7 @@ import type { ComponentChildren, JSX } from "preact"
 import { setFieldIssue, type ValidationModel } from "@spy4x/validation/model"
 import { CrudEditor, type CrudEditorMode, type CrudEditorSlot } from "./crud-editor.tsx"
 import type { CrudEditorStore } from "./store.ts"
-import { timeAgo } from "./time-ago.ts"
+import { timeAgo } from "./time.ts"
 import type { CrudRow, OperationResult, OperationState } from "./types.ts"
 
 /**

@@ -64,7 +64,13 @@ export {
   isRestorable,
 } from "./association-editor.tsx"
 export type { CrudEditorStore, CrudListStore } from "./store.ts"
-export { formatTimestamp, type FormatTimestampOptions, timeAgo, type TimeLike } from "./time-ago.ts"
+// `formatTimestamp` is ts-libs' `formatTime` under the name this barrel has always exported; it
+// decides "Today" in `options.timeZone`, the zone it prints in (#306).
+export {
+  formatTime as formatTimestamp,
+  type FormatTimeOptions as FormatTimestampOptions,
+} from "@spy4x/platform/universal/time"
+export { timeAgo } from "./time.ts"
 export type {
   CrudModel,
   CrudRow,
