@@ -622,19 +622,38 @@ async function browserPhase(): Promise<void> {
           // scroll moved the page under it before the first click arrived, 170–540px in the runs
           // measured. `#255` fixed the demo to start with an empty dependency list, and fixed the
           // component itself to scroll only when its dependency list changes to a new, non-empty
-          // one, so hydration no longer starts a scroll at all: `settledScroll` is called with
-          // neither `target` nor `from`, the plain two-reads-agree wait, and the page is asserted to
-          // still be at the top once it settles. A run where it is not — one of `DeletionValidation`
-          // or the demo scrolling on mount again — fails loudly here instead of leaving whichever
-          // block runs next to blame a stale coordinate on itself.
+          // one, so hydration no longer starts a scroll at all.
+          //
+          // `settledScroll` alone is not enough to prove that: it is one read after two agree 100ms
+          // apart, so a scroll whose first frame has not run yet — one `#255`'s own review measured
+          // starting a full second after load — reads as a quiet page at 0 and passes right through
+          // it. HOLD_MS below is how long this check keeps reading `scrollY` every
+          // `HOLD_INTERVAL_MS` after the plain settle, requiring 0 on every read, wide enough (2s) to
+          // run out a late-starting scroll instead of merely reducing the chance of missing one, the
+          // same reasoning `pages/checks/system.ts`'s `waitForScrollSettle` applies to its own
+          // full-second hold. A run where the page moves at any point in that window — one of
+          // `DeletionValidation` or the demo scrolling on mount, early or late — fails loudly here
+          // instead of leaving whichever block runs next to blame a stale coordinate on itself.
+          const HOLD_MS = 2_000
+          const HOLD_INTERVAL_MS = 100
+
           const settled = await settledScroll(devtools, { timeoutMs: 10_000 })
-          const landedAt = await devtools.evaluate<number>("Math.round(globalThis.scrollY)")
+          let landedAt = await devtools.evaluate<number>("Math.round(globalThis.scrollY)")
+          let heldAtTop = landedAt === 0
+          const holdDeadline = Date.now() + HOLD_MS
+          while (heldAtTop && Date.now() < holdDeadline) {
+            await new Promise((done) => setTimeout(done, HOLD_INTERVAL_MS))
+            landedAt = await devtools.evaluate<number>("Math.round(globalThis.scrollY)")
+            heldAtTop = landedAt === 0
+          }
           check(
-            "the catalogue stays at the top of the page after hydration and a settle",
-            settled && landedAt === 0,
-            settled
-              ? `scrollY held still at ${landedAt} after hydration`
-              : `scrollY was at ${landedAt} and still changing 10s after hydration`,
+            `the catalogue holds at the top of the page for ${HOLD_MS}ms after hydration and a settle`,
+            settled && heldAtTop,
+            !settled
+              ? `scrollY was at ${landedAt} and still changing 10s after hydration`
+              : heldAtTop
+              ? `scrollY held at 0 for ${HOLD_MS}ms, read every ${HOLD_INTERVAL_MS}ms`
+              : `scrollY moved to ${landedAt} during the ${HOLD_MS}ms hold after hydration`,
           )
           await runBlocks(activeBlocks, devtools, resetAfterThrow)
         }

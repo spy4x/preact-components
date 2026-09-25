@@ -238,9 +238,12 @@ And in wave six:
 
 - The catalogue no longer scrolls itself on load (#255): `DeletionValidation` scrolls only when its
   dependency list changes to a new, non-empty one, and its catalogue demo starts with an empty
-  list. `verify` still has a named check right after hydration, before the first block runs — it
-  now just waits for the page to settle and asserts `scrollY` is 0, so a block that scrolls the
-  page on its own is caught at the source instead of being blamed on a stale coordinate.
+  list. `verify` still has a named check right after hydration, before the first block runs — a
+  plain `settledScroll` alone would miss a scroll whose first frame has not run yet (one review
+  measured starting a full second after load, which still read as a quiet page at 0), so the check
+  reads `scrollY` again every 100ms for 2s after the plain settle and requires 0 on every read. A
+  block that scrolls the page on its own, at any point in that 2s window, is caught at the source
+  instead of being blamed on a stale coordinate.
 - A check that clicks a link should read `defaultPrevented` from a `document` listener that then
   cancels the event, rather than let the page really navigate: a real navigation leaves the page
   moving after the check's own wait returns, and a later check pays for it.
