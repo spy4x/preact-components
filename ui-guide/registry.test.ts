@@ -8,8 +8,6 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import {
-  catalogueGroupIds,
-  catalogueGroupsWithHeadings,
   catalogueNames,
   catalogueSections,
   CLASS_PACKAGE,
@@ -94,18 +92,6 @@ describe("the catalogue", () => {
     for (const [name, demo] of Object.entries(classDemos)) {
       expect(demo.title.length, name).toBeGreaterThan(0)
       expect(demo.classes.length, `${name} claims no class`).toBeGreaterThan(0)
-    }
-  })
-
-  it("heads every group with a title and a blurb, in the order the group ids declare", () => {
-    // The group's blurb is the sentence above its sections, and it is the one piece of the grouping
-    // nothing else asserts: `catalogue.test.tsx` reads the rendered headings and the section order,
-    // so a group left with an empty blurb renders a blank paragraph and stays green everywhere else.
-    expect(catalogueGroupsWithHeadings.map((group) => group.id)).toEqual([...catalogueGroupIds])
-
-    for (const group of catalogueGroupsWithHeadings) {
-      expect(group.title.length, group.id).toBeGreaterThan(0)
-      expect(group.blurb.length, `${group.id} has no blurb`).toBeGreaterThan(40)
     }
   })
 

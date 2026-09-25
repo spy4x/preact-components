@@ -68,10 +68,7 @@ export {
   type SectionRouteMatch,
 } from "./routes.ts"
 export {
-  type CatalogueGroup,
   catalogueGroupIds,
-  catalogueGroups,
-  catalogueGroupsWithHeadings,
   catalogueNames,
   type CatalogueSection,
   catalogueSections,

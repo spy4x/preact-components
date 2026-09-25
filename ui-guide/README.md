@@ -81,8 +81,8 @@ A host that keeps sticky chrome above the guide sets `--ui-guide-top` to its hei
 navigation column and the phone menu bar stick below it. The page column clips what overflows it
 sideways, so a demo that runs past a phone's edge is cut there rather than scrolling the page.
 
-The groups in `registry.ts` (`catalogueGroups`) are still exported, and nothing draws them any more:
-a package's page replaced the group heading as the unit a reader navigates by.
+A section still names a group in `registry.ts`, but the group only orders the sections: a package's
+page replaced the group heading as the unit a reader navigates by, so no heading is drawn for it.
 
 ## Routes
 

@@ -3,7 +3,7 @@
  *
  * The sections live in `sections/*.tsx` and hand their cards over here. A section states the package
  * its keys belong to and the group it is read in, and everything the page and the route model need —
- * {@link catalogueSections}, {@link catalogueNames}, {@link catalogueGroups} — is derived from that
+ * {@link catalogueSections}, {@link catalogueNames}, {@link sectionIds} — is derived from that
  * one record, so there is no second list to keep in step.
  *
  * Nothing in this file checks itself. `coverage.ts` is the check: it reads every covered package's
@@ -125,8 +125,9 @@ export type SectionKind = "component" | "class"
  * The group a section belongs to, as the reader's reason for looking rather than as a package
  * boundary.
  *
- * The five ids are the one hand-kept list in the grouping: reading order for the groups themselves,
- * because a group is a heading and headings do not fall out of a record the way an array order does.
+ * The five ids are the one hand-kept list in the grouping: reading order for the groups themselves.
+ * The guide no longer draws a group as a heading — a package's page is what a reader navigates by —
+ * so a group now only decides where its sections fall in that page's order.
  * Everything else derives. `foundations` carries the two cards whose whole content is a mark — the
  * palette and the button surface. `surfaces` is what a page is made of: the things it shows, the
  * feedback it shows when there is nothing to show, and the two sections that document
@@ -147,66 +148,6 @@ export const catalogueGroupIds = [
 
 /** Identifier of a top-level group, e.g. `"inputs"`. */
 export type GroupId = (typeof catalogueGroupIds)[number]
-
-/**
- * One group as a reader sees it: an id with the heading and the sentence above its sections.
- *
- * The headings are hand-written for the same reason the ids are: a heading is prose, and prose
- * cannot be derived from a key without reading worse than the key. What *is* derived is the
- * membership, in {@link catalogueGroups} — so the expensive half (which sections are in it) cannot
- * go stale, and the cheap half is a line of copy.
- */
-export interface CatalogueGroup {
-  /** The group, e.g. `"inputs"`. */
-  id: GroupId
-  /** Heading shown above the group, e.g. `"Inputs"`. */
-  title: string
-  /** One sentence on what the group collects, and why those sections are read together. */
-  blurb: string
-}
-
-/**
- * The five groups' headings, in {@link catalogueGroupIds} order.
- *
- * Annotated over `Record<GroupId, …>`, so a group added to {@link catalogueGroupIds} without a
- * heading is a missing property and a heading for a group that does not exist is excess — the same
- * two-way tie the module doc's guard 7 describes, one level up. Nothing here names a section: the
- * members come from the specs, so this record cannot lose one.
- */
-const groupHeadings: Record<GroupId, { title: string; blurb: string }> = {
-  foundations: {
-    title: "Foundations",
-    blurb:
-      "The two cards that are a surface before they are anything else: the palette, and the button.",
-  },
-  surfaces: {
-    title: "Surfaces and page furniture",
-    blurb:
-      "What a page shows and the feedback it shows instead: headings, meters and tables; the loading, error and toast states; and the two sections that document `preset.css`'s own controls and utilities, which is what an app applies to markup the library does not own.",
-  },
-  inputs: {
-    title: "Inputs",
-    blurb:
-      "One story in two halves: `ui/`'s controlled primitives, and the same controls written as the preset's class on a native element.",
-  },
-  data: {
-    title: "Data and resources",
-    blurb:
-      "The packages that only matter once there is a resource behind the page: the server-rendered charts, the CRUD scaffolding a resource page is rebuilt from, and the map that plots one on a tile layer.",
-  },
-  application: {
-    title: "App shell",
-    blurb:
-      "The chrome an adopter wires first: the heads a page needs, the service-worker prompt, the dual-mode calendar and the blog image enhancer. The state layer these are assembled through is `signals/`, which has nothing to render and so has no section here — read its own README instead.",
-  },
-}
-
-/** The groups with their headings, in render order: what the page and its navigation iterate. */
-export const catalogueGroupsWithHeadings: CatalogueGroup[] = catalogueGroupIds.map((id) => ({
-  id,
-  title: groupHeadings[id].title,
-  blurb: groupHeadings[id].blurb,
-}))
 
 /** Heading, blurb, group and demos of one catalogue section, before it is resolved for rendering. */
 interface SectionSpec {
@@ -374,7 +315,7 @@ const catalogue = {
  * {@link catalogue}'s declaration order, which is the reading order within a group (badges before
  * buttons, a class section after the `ui/` sections it mirrors).
  */
-export const catalogueGroups: Record<GroupId, readonly SectionId[]> = (() => {
+const catalogueGroups: Record<GroupId, readonly SectionId[]> = (() => {
   const grouped: Record<GroupId, SectionId[]> = {
     foundations: [],
     surfaces: [],
@@ -393,11 +334,9 @@ export const catalogueGroups: Record<GroupId, readonly SectionId[]> = (() => {
 })()
 
 /**
- * The groups' sections as one array, in group order then declaration order.
- *
- * The flattening {@link catalogueSections} is built from, and the reason the page can draw group
- * headings without a second order to keep in step: it is the groups read back, so the flat render
- * order and the grouped view are the same list.
+ * The groups' sections as one array, in group order then declaration order: the reading order
+ * {@link catalogueSections} is built from, and so the order each page lists its sections in. The
+ * groups are no longer drawn as headings; they only order the sections.
  */
 export const sectionIds: SectionId[] = catalogueGroupIds.flatMap((groupId) => [
   ...catalogueGroups[groupId],
