@@ -12,6 +12,7 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { CopyButton, copyToClipboard } from "@preact-components/ui/copy-button"
+import { options } from "preact"
 import { render } from "preact-render-to-string"
 import { DemoCard, type DemoCardProps, UIGuide } from "./+index.tsx"
 import { catalogueNames, classDemos, demoRegistry } from "./registry.ts"
@@ -42,8 +43,8 @@ function propsOf<T>(element: Element): T {
  * Every element in a vnode tree, depth-first, without rendering anything.
  *
  * A component element's own children exist only once that component runs, so the walk stops at each
- * card and the card is invoked explicitly — which is what makes this an assertion about what
- * `ui-guide` passes down rather than a render of the whole page.
+ * component; {@link wiredCopies} invokes a card explicitly, which is what makes this an assertion
+ * about what the card passes down rather than about its markup.
  *
  * @param node A vnode, or an array of them, as a component returns.
  * @returns The elements found, parents before children.
@@ -81,12 +82,26 @@ interface WiredCopy {
 /**
  * The copy control of every card the catalogue renders, read off the element tree.
  *
- * @param copy Clipboard port to hand the guide, as a host app would.
+ * @param copy Clipboard port to hand the guide, as a host app would. The guide is rendered with no
+ * `hash`, so it renders its `all` page: every card.
  * @returns One entry per card, in render order.
  */
 function wiredCopies(copy?: CopyPort): WiredCopy[] {
-  return elementsIn(UIGuide({ copy }))
-    .filter((element) => element.type === DemoCard)
+  // The guide is a shell with hooks, so it cannot be called as a plain function: it is rendered,
+  // and every `DemoCard` element it creates on the way is recorded as it is created.
+  const cards: Element[] = []
+  const previous = options.vnode
+  options.vnode = (vnode) => {
+    if (vnode.type === DemoCard) cards.push({ type: vnode.type, props: vnode.props })
+    previous?.(vnode)
+  }
+  try {
+    render(<UIGuide copy={copy} />)
+  } finally {
+    options.vnode = previous
+  }
+
+  return cards
     .flatMap((card) => {
       const props = propsOf<DemoCardProps>(card)
       const control = elementsIn(DemoCard(props)).find((element) => element.type === CopyButton)
@@ -111,7 +126,8 @@ describe("usage block copy controls", () => {
     const wired = wiredCopies(() => {})
 
     expect(catalogueNames.length).toBeGreaterThan(30)
-    expect(wired.map((entry) => entry.name)).toEqual(catalogueNames)
+    // Sorted: the `all` page reads package by package, not in the catalogue's section order.
+    expect(wired.map((entry) => entry.name).sort()).toEqual([...catalogueNames].sort())
   })
 
   it("hands each control its own card's block text", () => {
