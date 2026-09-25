@@ -61,9 +61,10 @@ const compiler = await compile(entry, {
 ```
 
 This is the whole recipe — no `node_modules`, no network access and no read permission beyond
-what resolving `tailwindcss` itself already needs. It has been run, verbatim, against this package
-served from a local JSR-compatible registry and imported as `jsr:@spy4x/preact-theme`: the compiled output
-contained both `.btn` and `--color-primary`. That was a one-off run by hand; no check repeats it.
+what resolving `tailwindcss` itself already needs. It has been run against this package served
+from a local JSR-compatible registry, under its earlier name `@preact-components/theme` (the
+package is now `jsr:@spy4x/preact-theme`): the compiled output contained both `.btn` and
+`--color-primary`. That was a one-off run by hand; no check repeats it.
 `compiler.build([...candidates])` (Tailwind's own scanner output, as `pages/build.ts` drives it) is
 the compiled stylesheet with the design system in it.
 

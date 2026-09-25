@@ -33,7 +33,9 @@ export enum RemoteEvent {
   DELETED = "deleted",
 }
 
-/** Kind of a toast, selecting its colour and glyph. Matches `ToastVariant` in `@spy4x/preact-ui`. */
+/**
+ * Kind of a toast, selecting its colour and glyph. Matches `ToastVariant` in `@spy4x/preact-ui`.
+ */
 export type ToastVariant = "success" | "error" | "info" | "warning"
 
 /** Notification content the store hands to its toast port. */
