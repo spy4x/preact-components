@@ -881,11 +881,17 @@ function CopyableTextDemo() {
  */
 function TooltipDemo() {
   return (
-    <div class="grid grid-cols-2 gap-6 sm:grid-cols-4">
+    <div class="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-4">
       {entries(tooltipPlacements).map(([placement, label]) => (
-        <div key={placement} class="space-y-2 text-center">
+        // One placement per row on a phone. Each cell keeps room above and below its trigger for
+        // a top or bottom hint, and the hint is one short word, so no hint covers a trigger.
+        <div
+          key={placement}
+          class="flex flex-col items-center pt-10 text-center"
+          data-e2e="tooltip-placement"
+        >
           <Tooltip
-            content="Supplementary, never the trigger's only name"
+            content="Hint"
             label={label}
             placement={placement}
             class="bg-gray-100 px-2 py-1 dark:bg-gray-700"
@@ -893,38 +899,43 @@ function TooltipDemo() {
           >
             <span class="text-sm">{placement}</span>
           </Tooltip>
-          <p class="text-xs text-gray-500 dark:text-gray-400">{label}</p>
+          <p class="mt-10 text-xs text-gray-500 dark:text-gray-400">{label}</p>
         </div>
       ))}
-      <div class="col-span-2 space-y-2 sm:col-span-4">
-        <Tooltip
-          content="An interactive trigger keeps its own tab stop, so the wrapper drops its own"
-          label="Archive the invoice"
-          focusable={false}
-          contentClass="visible opacity-100"
-        >
-          <button
-            type="button"
-            class="rounded-md border border-gray-300 px-2 py-1 text-sm hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700"
+      <div class="col-span-full space-y-2">
+        <div class="pt-20 text-center">
+          <Tooltip
+            content="An interactive trigger keeps its own tab stop, so the wrapper drops its own"
+            label="Archive the invoice"
+            focusable={false}
+            contentClass="visible max-w-48 opacity-100"
           >
-            <IconTrashBin class="size-4" />
-            Archive
-          </button>
-        </Tooltip>
+            <button
+              type="button"
+              class="rounded-md border border-gray-300 px-2 py-1 text-sm hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700"
+            >
+              <IconTrashBin class="size-4" />
+              Archive
+            </button>
+          </Tooltip>
+        </div>
         <p class="text-xs text-gray-500 dark:text-gray-400">
-          `focusable={false}` — with a {`<button>`}{" "}
+          {"`focusable={false}`"} — with a {`<button>`}{" "}
           inside, a second tab stop for one control is a keyboard trap rather than a convenience.
         </p>
       </div>
-      <div class="col-span-2 space-y-2 sm:col-span-4" data-e2e="tooltip-live">
-        <Tooltip
-          content="Escape hides this hint, and the pointer may rest on it while it is read"
-          label="Delivery estimate"
-          placement="bottom"
-          class="bg-gray-100 px-2 py-1 dark:bg-gray-700"
-        >
-          <span class="text-sm">Hover me, or tab to me</span>
-        </Tooltip>
+      <div class="col-span-full space-y-2" data-e2e="tooltip-live">
+        <div class="text-center">
+          <Tooltip
+            content="Escape hides this hint, and the pointer may rest on it while it is read"
+            label="Delivery estimate"
+            placement="bottom"
+            class="bg-gray-100 px-2 py-1 dark:bg-gray-700"
+            contentClass="max-w-48"
+          >
+            <span class="text-sm">Hover me, or tab to me</span>
+          </Tooltip>
+        </div>
         <p class="text-xs text-gray-500 dark:text-gray-400">
           The one hint here that reveals itself. Point at it and it stays up while the pointer is on
           it, because the gap to it is the surface's own padding rather than dead space; press

@@ -3,7 +3,7 @@
  *
  * All eleven of the package's undemoed components are here, plus the ones already demonstrated. The
  * section is unusual because almost everything in it is *scaffolding for a store*, so the honest
- * question is what a store is. This file answers it with a real one: {@link makeRegionStore} is a
+ * question is what a store is. This file answers it with a real one: {@link makeTeamStore} is a
  * small in-memory implementation of the structural interfaces in `crud/store.ts`
  * (`CrudListStore`, `CrudEditorStore`) and `crud/types.ts`, built from `@preact/signals` and
  * nothing else.
@@ -47,10 +47,10 @@ import { useMemo } from "preact/hooks"
 import type { DemoFragment } from "../registry.ts"
 
 /** The row every editor in this section edits. */
-interface Region extends CrudRow {
+interface Team extends CrudRow {
   id: number
   name: string
-  zones: number
+  members: number
   notes: string
   archived: boolean
   parentId: number
@@ -63,11 +63,11 @@ function settled(result: unknown, error: string | null = null): OperationState {
 }
 
 /** The blank a `mode="add"` editor starts from, server-owned columns included. */
-function blankRegion(): Region {
+function blankTeam(): Team {
   return {
     id: 0,
     name: "",
-    zones: 0,
+    members: 0,
     notes: "",
     archived: false,
     parentId: 0,
@@ -76,16 +76,23 @@ function blankRegion(): Region {
 }
 
 /** The seed rows: three live and one archived, so both status slices have something in them. */
-function seedRegions(): Region[] {
+function seedTeams(): Team[] {
   return [
-    { ...blankRegion(), id: 1, name: "North", zones: 4, notes: "Coldest region." },
-    { ...blankRegion(), id: 2, name: "South", zones: 0, parentId: 1 },
-    { ...blankRegion(), id: 3, name: "Midlands", zones: 7, parentId: 1, notes: "Per-zone." },
+    { ...blankTeam(), id: 1, name: "Design", members: 4, notes: "Owns the design system." },
+    { ...blankTeam(), id: 2, name: "Support", members: 0, parentId: 1 },
     {
-      ...blankRegion(),
+      ...blankTeam(),
+      id: 3,
+      name: "Platform",
+      members: 7,
+      parentId: 1,
+      notes: "Split by product.",
+    },
+    {
+      ...blankTeam(),
       id: 4,
-      name: "Old coast",
-      zones: 2,
+      name: "Research",
+      members: 2,
       archived: true,
       deletedAt: new Date("2026-01-15T09:00:00.000Z"),
     },
@@ -93,20 +100,20 @@ function seedRegions(): Region[] {
 }
 
 /**
- * An in-memory region store: both slices, the two writes, and a log of what the form submitted.
+ * An in-memory team store: both slices, the two writes, and a log of what the form submitted.
  *
  * `writes` records what reached the port so a card can show that the port was reached without
  * pretending a server answered. Every write settles synchronously with the row it would have
  * created, patched or ended.
  */
-function makeRegionStore() {
-  const rows = signal<Region[]>(seedRegions())
+function makeTeamStore() {
+  const rows = signal<Team[]>(seedTeams())
   const writes = signal<string[]>([])
   const settledOp = signal<OperationState>(settled(null))
   const inProgress: ReadonlySignal<OperationState | undefined> = computed(() => undefined)
   let nextId = 100
 
-  const store: CrudListStore<Region> & CrudEditorStore<Region> = {
+  const store: CrudListStore<Team> & CrudEditorStore<Team> = {
     list: {
       nonDeleted: computed(() => rows.value.filter((row) => !row.deletedAt)),
       deleted: computed(() => rows.value.filter((row) => Boolean(row.deletedAt))),
@@ -120,14 +127,14 @@ function makeRegionStore() {
       update: () => inProgress,
     },
     create: (data) => {
-      const created: Region = { ...blankRegion(), ...data, id: nextId++ }
+      const created: Team = { ...blankTeam(), ...data, id: nextId++ }
       rows.value = [...rows.value, created]
       writes.value = [...writes.value, `create #${created.id} "${created.name}"`]
       return Promise.resolve({ error: null, result: created })
     },
     update: (id, data) => {
       const before = rows.value.find((row) => row.id === id)
-      const updated: Region = { ...blankRegion(), ...data, id }
+      const updated: Team = { ...blankTeam(), ...data, id }
       rows.value = rows.value.map((row) => (row.id === id ? updated : row))
       writes.value = [
         ...writes.value,
@@ -147,20 +154,20 @@ function makeRegionStore() {
  * tell the user about is usually a row removed earlier that can be restored instead of re-created.
  */
 function makeAssociationStore() {
-  const rows = signal<Region[]>([
-    { ...blankRegion(), id: 101, name: "South supplier" },
-    { ...blankRegion(), id: 102, name: "Midlands supplier" },
+  const rows = signal<Team[]>([
+    { ...blankTeam(), id: 101, name: "Paper supplier" },
+    { ...blankTeam(), id: 102, name: "Print supplier" },
     {
-      ...blankRegion(),
+      ...blankTeam(),
       id: 103,
-      name: "North supplier",
+      name: "Ink supplier",
       deletedAt: new Date("2026-02-01T00:00:00.000Z"),
     },
   ])
   const settledOp = signal<OperationState>(settled(null))
   const idle: ReadonlySignal<OperationState | undefined> = computed(() => undefined)
 
-  const store: CrudAssociationStore<Region> = {
+  const store: CrudAssociationStore<Team> = {
     list: {
       all: rows,
     },
@@ -172,12 +179,12 @@ function makeAssociationStore() {
       undelete: () => idle,
     },
     create: (data) => {
-      const created: Region = { ...blankRegion(), ...data, id: 200 + rows.value.length }
+      const created: Team = { ...blankTeam(), ...data, id: 200 + rows.value.length }
       rows.value = [...rows.value, created]
       return Promise.resolve({ error: null, result: created })
     },
     update: (id, data) => {
-      const updated: Region = { ...blankRegion(), ...data, id }
+      const updated: Team = { ...blankTeam(), ...data, id }
       rows.value = rows.value.map((row) => (row.id === id ? updated : row))
       return Promise.resolve({ error: null, result: updated })
     },
@@ -186,7 +193,7 @@ function makeAssociationStore() {
       if (row === undefined) {
         return Promise.resolve({ error: { message: `no row ${id}` }, result: null })
       }
-      const ended: Region = { ...row, deletedAt: new Date("2026-03-01T00:00:00.000Z") }
+      const ended: Team = { ...row, deletedAt: new Date("2026-03-01T00:00:00.000Z") }
       rows.value = rows.value.map((entry) => (entry.id === id ? ended : entry))
       return Promise.resolve({ error: null, result: ended })
     },
@@ -195,7 +202,7 @@ function makeAssociationStore() {
       if (row === undefined) {
         return Promise.resolve({ error: { message: `no row ${id}` }, result: null })
       }
-      const restored: Region = { ...row, deletedAt: null }
+      const restored: Team = { ...row, deletedAt: null }
       rows.value = rows.value.map((entry) => (entry.id === id ? restored : entry))
       return Promise.resolve({ error: null, result: restored })
     },
@@ -204,11 +211,11 @@ function makeAssociationStore() {
   return { store, rows }
 }
 
-/** Zones a region can be attached to — the option list of the select row. */
-const zoneOptions = [
+/** Teams a team can sit under — the option list of the select row. */
+const parentOptions = [
   { value: 0, label: "— none —" },
-  { value: 1, label: "Zone A" },
-  { value: 2, label: "Zone B" },
+  { value: 1, label: "Design" },
+  { value: 2, label: "Support" },
 ]
 
 /**
@@ -226,7 +233,7 @@ const zoneOptions = [
  * ones that touch Name or Notes. `ctx.reject` gives the message in full instead, which is what the label
  * policy already asks a caller to do for any string this library shows.
  */
-const regionCrossFieldSchema = type({
+const teamCrossFieldSchema = type({
   name: "string",
   notes: "string",
 }).narrow((row, ctx) =>
@@ -234,9 +241,9 @@ const regionCrossFieldSchema = type({
 )
 
 /** One editor's own model and validation signals. Local to a demo, never module-level. */
-function useRegionForm(initial: Region = blankRegion()) {
-  const vm = useSignal<Region>(initial)
-  const vl = useSignal<ValidationModel<Region>>({})
+function useTeamForm(initial: Team = blankTeam()) {
+  const vm = useSignal<Team>(initial)
+  const vl = useSignal<ValidationModel<Team>>({})
   return { vm, vl }
 }
 
@@ -247,33 +254,33 @@ function useRegionForm(initial: Region = blankRegion()) {
  * the browser cannot parse; `SelectField` falls back to its empty option when the model holds a
  * foreign key no option carries; `CheckboxField` writes a boolean.
  */
-function RegionFieldsDemo() {
-  const { vm, vl } = useRegionForm({ ...blankRegion(), name: "North", zones: 4, parentId: 1 })
+function TeamFieldsDemo() {
+  const { vm, vl } = useTeamForm({ ...blankTeam(), name: "Design", members: 4, parentId: 1 })
 
   return (
     <div class="space-y-4">
       <div class="grid grid-cols-1 gap-x-6 gap-y-6 sm:grid-cols-6">
-        <TextField vm={vm} vl={vl} name="name" label="Name" placeholder="North" />
+        <TextField vm={vm} vl={vl} name="name" label="Name" placeholder="Design" />
         <NumberField
           vm={vm}
           vl={vl}
-          name="zones"
-          label="Zones"
+          name="members"
+          label="Members"
           hint="Commits 0 for an empty box"
         />
         <SelectField
           vm={vm}
           vl={vl}
           name="parentId"
-          label="Parent region"
-          options={zoneOptions}
+          label="Parent team"
+          options={parentOptions}
           placeholder="— none —"
         />
         <CheckboxField vm={vm} vl={vl} name="archived" label="Is archived?" />
         <TextareaField vm={vm} vl={vl} name="notes" label="Notes" rows={3} />
       </div>
       <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="model">
-        name: {fieldText(vm.value.name)} · zones: {fieldText(vm.value.zones)} · parentId:{" "}
+        name: {fieldText(vm.value.name)} · members: {fieldText(vm.value.members)} · parentId:{" "}
         {fieldText(vm.value.parentId)} · archived: {vm.value.archived ? "on" : "off"} · notes:{" "}
         {fieldText(vm.value.notes) || "(empty)"}
       </p>
@@ -289,7 +296,7 @@ function RegionFieldsDemo() {
  * `renderIssue` is where an app that links to the row a value collides with puts its button.
  */
 function FieldIssueDemo() {
-  const { vm, vl } = useRegionForm()
+  const { vm, vl } = useTeamForm()
 
   const addIssue = (type: string) => {
     vl.value = {
@@ -343,12 +350,12 @@ function FieldIssueDemo() {
 function CrudEditorDemo() {
   // `useMemo` rather than a bare call: a successful save writes the `created` signal below, which
   // this component reads in its own JSX, so a save re-renders the card — and a fresh
-  // `makeRegionStore()` on every render would reset `writes`/`rows` to their seed state right after,
+  // `makeTeamStore()` on every render would reset `writes`/`rows` to their seed state right after,
   // so a save the reader just watched happen would read as if it never had. Committing a field does
   // not itself re-render this component (`CrudEditor` revalidates in its own effect, not here); the
   // guard is about the save, not the field. `created` needs no such guard: a `useSignal` is already
   // stable across re-renders by construction.
-  const { store, writes, rows } = useMemo(() => makeRegionStore(), [])
+  const { store, writes, rows } = useMemo(() => makeTeamStore(), [])
   const created = useSignal("nothing created yet")
 
   return (
@@ -356,10 +363,10 @@ function CrudEditorDemo() {
       <CrudEditor
         store={store}
         mode="add"
-        blank={blankRegion()}
-        schema={regionCrossFieldSchema}
-        entity="Region"
-        title="Add a region"
+        blank={blankTeam()}
+        schema={teamCrossFieldSchema}
+        entity="Team"
+        title="Add a team"
         cancelHref="#crud"
         canChange={() => true}
         onCreated={(row) => created.value = `#${row.id} "${row.name}"`}
@@ -384,7 +391,7 @@ function CrudEditorDemo() {
               label="Notes"
               hint="The schema's own rule: must differ from Name"
             />
-            <NumberField vm={vm} vl={vl} name="zones" label="Zones" />
+            <NumberField vm={vm} vl={vl} name="members" label="Members" />
           </>
         )}
       </CrudEditor>
@@ -415,7 +422,7 @@ function AssociationEditorDemo() {
       <AssociationEditor
         store={store}
         mode="add"
-        blank={blankRegion()}
+        blank={blankTeam()}
         entity="Supplier association"
         title="Add a supplier association"
         cancelHref="#crud"
@@ -429,8 +436,8 @@ function AssociationEditorDemo() {
       <p class="text-xs text-gray-500 dark:text-gray-400">
         rows the conflict port scans: {rows.value.length}, of which{" "}
         {rows.value.filter((row) => row.deletedAt).length} were removed — so typing{" "}
-        <code>North supplier</code> reaches the "restore it instead" branch, and{" "}
-        <code>South supplier</code> the live-conflict branch.
+        <code>Ink supplier</code> reaches the "restore it instead" branch, and{" "}
+        <code>Paper supplier</code> the live-conflict branch.
       </p>
     </div>
   )
@@ -447,13 +454,13 @@ function DeletionValidationDemo() {
   const renders = useSignal(0)
   const dependencies = [
     {
-      kind: "Zones",
+      kind: "Projects",
       values: [
-        { title: "Zone A", url: "#crud" },
-        { title: "Zone B", url: "#crud" },
+        { title: "Launch plan", url: "#crud" },
+        { title: "Help centre", url: "#crud" },
       ],
     },
-    { kind: "Schedules", values: [{ title: "Weekly sweep", url: "#crud" }] },
+    { kind: "Schedules", values: [{ title: "Weekly summary", url: "#crud" }] },
   ]
 
   return (
@@ -466,7 +473,7 @@ function DeletionValidationDemo() {
           Re-render for an unrelated reason
         </Button>
       </div>
-      <DeletionValidation dependencies={blocked.value ? dependencies : []} model="Region" />
+      <DeletionValidation dependencies={blocked.value ? dependencies : []} model="Team" />
       <p class="text-xs text-gray-500 dark:text-gray-400">
         {blocked.value
           ? "A non-empty list is the block above."
@@ -480,13 +487,13 @@ function DeletionValidationDemo() {
 
 /** The list, its search box, the status filter and the per-row actions menu. */
 function CrudListDemo() {
-  const { store } = makeRegionStore()
+  const { store } = makeTeamStore()
   const query = useSignal("")
 
   return (
     <CrudList
       store={store}
-      title="Regions"
+      title="Teams"
       match={(row, word) => search(row.name, word)}
       query={query}
       addHref="#crud"
@@ -494,13 +501,13 @@ function CrudListDemo() {
       header={
         <>
           <th scope="col" class="text-left">Name</th>
-          <th scope="col" class="text-left">Zones</th>
+          <th scope="col" class="text-left">Members</th>
         </>
       }
       row={(row) => (
         <>
           <td class="text-gray-900 dark:text-gray-100">{row.name}</td>
-          <td class="tabular-nums">{row.zones}</td>
+          <td class="tabular-nums">{row.members}</td>
         </>
       )}
       actions={(row) => (
@@ -520,18 +527,18 @@ function CrudListDemo() {
  * The hint says what to do: clear the box or type `1e`, click away, and the model shows `0`.
  */
 function NumberFieldDemo() {
-  const { vm, vl } = useRegionForm({ ...blankRegion(), zones: 4 })
+  const { vm, vl } = useTeamForm({ ...blankTeam(), members: 4 })
   return (
     <div class="max-w-sm space-y-2">
       <NumberField
         vm={vm}
         vl={vl}
-        name="zones"
-        label="Zones"
+        name="members"
+        label="Members"
         hint="Clear the box or type 1e, then click away"
       />
       <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="model">
-        zones in the model: {fieldText(vm.value.zones)}
+        members in the model: {fieldText(vm.value.members)}
       </p>
     </div>
   )
@@ -539,15 +546,15 @@ function NumberFieldDemo() {
 
 /** The select row, seeded with a foreign key one of its options really carries. */
 function SelectFieldDemo() {
-  const { vm, vl } = useRegionForm({ ...blankRegion(), parentId: 2 })
+  const { vm, vl } = useTeamForm({ ...blankTeam(), parentId: 2 })
   return (
     <div class="max-w-sm space-y-2">
       <SelectField
         vm={vm}
         vl={vl}
         name="parentId"
-        label="Parent region"
-        options={zoneOptions}
+        label="Parent team"
+        options={parentOptions}
         placeholder="— none —"
       />
       <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="model">
@@ -562,7 +569,7 @@ function SelectFieldDemo() {
 
 /** The checkbox row, on a model whose field is already true. */
 function CheckboxFieldDemo() {
-  const { vm, vl } = useRegionForm({ ...blankRegion(), archived: true })
+  const { vm, vl } = useTeamForm({ ...blankTeam(), archived: true })
   return (
     <div class="max-w-sm space-y-2">
       <CheckboxField
@@ -581,7 +588,7 @@ function CheckboxFieldDemo() {
 
 /** The multi-line row, on a model with a note in it. */
 function TextareaFieldDemo() {
-  const { vm, vl } = useRegionForm({ ...blankRegion(), notes: "Runs the night shift." })
+  const { vm, vl } = useTeamForm({ ...blankTeam(), notes: "Runs the night shift." })
   return (
     <div class="max-w-sm space-y-2">
       <TextareaField vm={vm} vl={vl} name="notes" label="Notes" rows={3} />
@@ -597,15 +604,15 @@ export const crudDemos = {
     summary:
       "A resource list from a store: title, count badge, search box, Active/Archived filter, an add link and a table whose header, cells and actions column are slots. `store` is the structural `CrudListStore` — two status slices plus a load state — so any model store satisfies it; this card drives a small in-memory one built from signals. `rows` is the other source: a plain signal, for a nested list or a collection with no soft-delete column. `match` decides what one search word matches, and words are ANDed.",
     snippet: `<CrudList
-  title="Regions"
-  store={regionStore}
+  title="Teams"
+  store={teamStore}
   match={(row, word) => search(row.name, word)}
   query={query}
   header={<th scope="col">Name</th>}
   row={(row) => <td>{row.name}</td>}
   actions={(row) => (
     <RowActions>
-      <RowAction href={\`/regions/\${row.id}/edit\`}>Edit</RowAction>
+      <RowAction href={\`/teams/\${row.id}/edit\`}>Edit</RowAction>
       <RowAction danger onClick={() => archive(row.id)}>Archive</RowAction>
     </RowActions>
   )}
@@ -615,7 +622,7 @@ export const crudDemos = {
   RowAction: {
     summary:
       'One item of a row\'s action menu. With `href` it is a link and without one a `<button>`, which is how one component covers a navigation and an operation without the caller branching. `danger` renders it red; `disabled` disables the button, and the menu\'s arrow keys skip it. The element itself is a `DropdownItem`, so it carries `role="menuitem"` and the menu around it can move focus to it; the spacing row it sits in is `role="none"`, which keeps it a direct child of the menu for assistive tech. `RowActions` still supplies the popup and the trigger.',
-    snippet: `<RowAction href={\`/regions/\${row.id}/edit\`}>Edit</RowAction>
+    snippet: `<RowAction href={\`/teams/\${row.id}/edit\`}>Edit</RowAction>
 <RowAction danger onClick={() => archive(row.id)}>Archive</RowAction>`,
     render: () => (
       // A menu item belongs to a menu, so the card renders one rather than leaving four of them
@@ -637,12 +644,12 @@ export const crudDemos = {
   RowActions: {
     summary:
       'The per-row actions menu: a vertical-ellipsis `Dropdown` trigger over `RowAction` items, with the label defaulting to `Actions` and naming both the trigger and the menu. It is the piece that knows it is a popup, so the trigger, the menu label and the keyboard contract live here — opening it moves focus to the first action, the arrow keys walk them, and Escape closes it and returns focus to the trigger. The item supplies its own `role="menuitem"`, because that role cannot be applied to a child from outside.',
-    snippet: `<RowActions label="Region actions">
-  <RowAction href="/regions/1/edit">Edit</RowAction>
+    snippet: `<RowActions label="Team actions">
+  <RowAction href="/teams/1/edit">Edit</RowAction>
   <RowAction onClick={archive}>Archive</RowAction>
 </RowActions>`,
     render: () => (
-      <RowActions label="Region actions">
+      <RowActions label="Team actions">
         <RowAction href="#crud">Edit</RowAction>
         <RowAction onClick={() => {}}>Duplicate</RowAction>
         <RowAction danger onClick={() => {}}>Archive</RowAction>
@@ -653,13 +660,13 @@ export const crudDemos = {
     summary:
       "The add/edit form harness: it loads the row out of the store once, validates the model on every change, owns the archive toggle and the blocked-archive cascade, and renders chrome around a body the caller supplies. `children`, `notice` and `footerSlot` are functions rather than children so the caller's rows receive the model and validation signals directly — the same contract every field row in `field.tsx` takes. Save is enabled only once the form has initialised, the validation model is clean and nothing blocks the archive. `schema` is an arktype schema run through `validateSchema`; `validate` is the domain-check port that runs after it, reading signals so a check against a not-yet-loaded collection fixes itself. A rule with no field of its own — this card's schema adds one, Name must differ from Notes — is filed under the reserved `FORM_FIELD` key and shown as a live region above Save, named at all times by Save's `aria-describedby`.",
     snippet: `<CrudEditor
-  store={regionStore}
-  blank={blankRegion}
-  schema={regionBaseSchema}
-  entity="Region"
-  cancelHref="/regions"
+  store={teamStore}
+  blank={blankTeam}
+  schema={teamBaseSchema}
+  entity="Team"
+  cancelHref="/teams"
   archive={{}}
-  onCreated={(row) => navigate(\`/regions/\${row.id}/edit\`)}
+  onCreated={(row) => navigate(\`/teams/\${row.id}/edit\`)}
 >
   {({ vm, vl }) => <TextField vm={vm} vl={vl} name="name" label="Name" />}
 </CrudEditor>`,
@@ -688,9 +695,9 @@ export const crudDemos = {
       'The list of entities blocking a soft delete. A row can only be archived once everything pointing at it has been archived, and the store hands back what still points at it. An empty list renders nothing visible, which is why the healthy path looks empty — the button below switches between the two. The block scrolls itself into view on a first non-empty list, on a later list with different content, and on a list that follows an empty one (a second blocked archive attempt, after `CrudEditor`\'s archive checkbox is unchecked and rechecked); a re-render that replaces one non-empty list with an equal one, without emptying in between, never moves the page. The `role="alert"` region itself is always present, empty until there is something to say.',
     snippet: `<DeletionValidation
   dependencies={[
-    { kind: "Zones", values: [{ title: "Zone A", url: "/zones/1/edit" }] },
+    { kind: "Projects", values: [{ title: "Launch plan", url: "/projects/1/edit" }] },
   ]}
-  model="Region"
+  model="Team"
 />`,
     render: () => <DeletionValidationDemo />,
   },
@@ -698,14 +705,14 @@ export const crudDemos = {
     summary:
       'One labelled text input that reads and writes one field of a model signal. It commits on **blur**, trimmed, so a keystroke is not a store write. The row generates its own control id with `useId`, which is what stops two editors — or two rows — on one page sharing `id="name"` and stealing each other\'s label. `span` sets the grid cell, `hint` the helper text, and `renderIssue` replaces the default red paragraph.',
     snippet:
-      `<TextField vm={vm} vl={vl} name="name" label="Name" placeholder="North" span="sm:col-span-2" />`,
-    render: () => <RegionFieldsDemo />,
+      `<TextField vm={vm} vl={vl} name="name" label="Name" placeholder="Design" span="sm:col-span-2" />`,
+    render: () => <TeamFieldsDemo />,
   },
   NumberField: {
     summary:
       'The same row with a numeric control. A number input reports `""` for anything the browser cannot parse — an empty box, a lone `-`, the intermediate states of `1e` — so an empty or unparsable box commits `0` rather than `NaN`, which is what would otherwise make an arktype schema reject the model on every keystroke. `commitNumber` is exported and pure for exactly that rule.',
     snippet:
-      `<NumberField vm={vm} vl={vl} name="zones" label="Zones" hint="Commits 0 for an empty box" />`,
+      `<NumberField vm={vm} vl={vl} name="members" label="Members" hint="Commits 0 for an empty box" />`,
     render: () => <NumberFieldDemo />,
   },
   SelectField: {
@@ -715,8 +722,8 @@ export const crudDemos = {
   vm={vm}
   vl={vl}
   name="parentId"
-  label="Parent region"
-  options={[{ value: 1, label: "Zone A" }, { value: 2, label: "Zone B" }]}
+  label="Parent team"
+  options={[{ value: 1, label: "Design" }, { value: 2, label: "Support" }]}
   placeholder="— none —"
 />`,
     render: () => <SelectFieldDemo />,

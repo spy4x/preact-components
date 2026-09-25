@@ -55,7 +55,7 @@ function MapInteractiveDemo() {
         or Space press while it has focus — updates the id above. The list below is a plain,
         non-interactive overview of the same places, not a second set of controls. A public tile
         provider needs a real internet connection and its own required credit line, e.g.{" "}
-        <code>
+        <code class="break-all">
           tileUrl="https://tile.openstreetmap.org/{"{z}"}/{"{x}"}/{"{y}"}.png"
         </code>{" "}
         with <code>attribution="© OpenStreetMap contributors"</code>{" "}

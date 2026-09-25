@@ -149,6 +149,12 @@ function windowAround(current: number, pageCount: number): { from: number; to: n
 const ariaDisabledClasses = "aria-disabled:pointer-events-none aria-disabled:opacity-50"
 
 /**
+ * `flex-wrap`: on a phone the page numbers wrap between Previous and Next rather than running past
+ * the page edge; the two controls keep their places on either side.
+ */
+const pageListClasses = "flex flex-wrap items-center justify-center gap-1"
+
+/**
  * Page numbers with the long runs collapsed, plus previous/next.
  *
  * Controlled: `page` is rendered as given (clamped) and every request leaves through `onChange`,
@@ -208,7 +214,7 @@ export function Pagination(
           {previousLabel}
         </Button>
       )}
-      <ul class="flex items-center gap-1">
+      <ul class={pageListClasses}>
         {pageRange(current, pageCount).map((item, index) =>
           !("page" in item)
             ? (

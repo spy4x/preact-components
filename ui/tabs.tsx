@@ -51,7 +51,12 @@ export interface TabsProps {
 }
 
 const listBase = "flex gap-1"
-const listHorizontal = "border-b border-gray-200 dark:border-gray-600"
+/**
+ * `flex-wrap`: a row of tabs wider than its container, on a phone, wraps onto a second row rather
+ * than running past the page edge. Wrapping, not scrolling, so every tab stays in view and a
+ * scroll container cannot clip the focus ring or the active tab's underline.
+ */
+const listHorizontal = "flex-wrap border-b border-gray-200 dark:border-gray-600"
 const listVertical = "flex-col border-l border-gray-200 dark:border-gray-600"
 
 const tabBase =

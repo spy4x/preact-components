@@ -133,10 +133,10 @@ import type { DemoFragment } from "../registry.ts"
  * `#` rather than two.
  */
 const pageHead: PageHead = {
-  title: "Zone availability — Acme",
-  description: "Live slot availability for every zone, refreshed every minute.",
-  canonical: "https://example.com/bookings/zones/12#reviews",
-  ogImage: "https://example.com/og/zones.png",
+  title: "Blue widget — Acme",
+  description: "Specifications, prices and reviews for the blue widget.",
+  canonical: "https://example.com/products/widgets/12#reviews",
+  ogImage: "https://example.com/og/widgets.png",
   ogType: "article",
   siteName: "Acme",
   twitterSite: "@acme",
@@ -144,8 +144,8 @@ const pageHead: PageHead = {
   jsonLd: [{ "@type": "Organization", name: "Acme" }],
   crumbs: [
     { name: "Home", href: "/" },
-    { name: "Zones", href: "/bookings/zones" },
-    { name: "Zone availability" },
+    { name: "Widgets", href: "/products/widgets" },
+    { name: "Blue widget" },
   ],
 }
 
@@ -1065,7 +1065,7 @@ function AuthFormInteractiveDemo() {
  * into — resize the browser window itself (the breakpoint reads the viewport, not this card's own
  * width) to open it, or see `pages/checks/system.ts` for the same thing driven at phone width. The
  * panel overlays the page instead of pushing the bar down, so the card below has no `overflow-hidden`
- * of its own to clip it. The "Book a call" button stays exactly where it is at every width. `Docs`
+ * of its own to clip it. The "Get started" button stays exactly where it is at every width. `Docs`
  * carries an icon and `Pricing` is marked as `currentPath`, so both of the optional pieces
  * `SiteHeader` renders are on screen at once.
  */
@@ -1089,7 +1089,7 @@ function SiteHeaderDemo() {
         ]}
         actions={
           <Button size="sm" data-e2e="site-header-cta">
-            Book a call
+            Get started
           </Button>
         }
       />
@@ -1278,18 +1278,18 @@ export const systemDemos = {
   },
   SEOHead: {
     summary:
-      "The page-head tag set as a fragment, plus the JSON-LD `@graph` that mirrors it: title, description, canonical and robots first, then the Twitter card, then Open Graph, then a `BreadcrumbList` built from the crumbs the caller stated. Optional tags are omitted rather than emitted empty, and `<` is escaped in the script body so a description containing `</script>` cannot close the element it is embedded in. **The canonical address is cleaned before it is published**: this card is built from an address ending in `#reviews`, and the tag set below carries that address without it, because a fragment names a position inside a page rather than a page — and because `…#reviews#breadcrumb` is an identifier nothing can match. The usage block above is written the way a route should write it, which is why it carries no fragment to begin with. A user name and password are dropped the same way, and an address that is not an `http`/`https` page — `javascript:alert(1)`, or a relative path — throws rather than being printed, the way an impossible month anchor does: a canonical address is the route's own arithmetic. **Crumbs are a prop, never a guess.** Reading them out of the path assumed every segment is a page, so `/bookings/zones/12` used to publish a crumb named `12`. **This card shows `seoHeadTags`, the exported data the component maps over, not the component itself**: rendering `<SEOHead />` here would splice a second `<title>` into this document's body, and a browser reads the first `<title>` anywhere in a document as `document.title` — which would rename every deep link in the host app. The tag set below is real and complete; where it goes is the host's head pipeline, and this guide has none.",
+      "The page-head tag set as a fragment, plus the JSON-LD `@graph` that mirrors it: title, description, canonical and robots first, then the Twitter card, then Open Graph, then a `BreadcrumbList` built from the crumbs the caller stated. Optional tags are omitted rather than emitted empty, and `<` is escaped in the script body so a description containing `</script>` cannot close the element it is embedded in. **The canonical address is cleaned before it is published**: this card is built from an address ending in `#reviews`, and the tag set below carries that address without it, because a fragment names a position inside a page rather than a page — and because `…#reviews#breadcrumb` is an identifier nothing can match. The usage block above is written the way a route should write it, which is why it carries no fragment to begin with. A user name and password are dropped the same way, and an address that is not an `http`/`https` page — `javascript:alert(1)`, or a relative path — throws rather than being printed, the way an impossible month anchor does: a canonical address is the route's own arithmetic. **Crumbs are a prop, never a guess.** Reading them out of the path assumed every segment is a page, so `/products/widgets/12` used to publish a crumb named `12`. **This card shows `seoHeadTags`, the exported data the component maps over, not the component itself**: rendering `<SEOHead />` here would splice a second `<title>` into this document's body, and a browser reads the first `<title>` anywhere in a document as `document.title` — which would rename every deep link in the host app. The tag set below is real and complete; where it goes is the host's head pipeline, and this guide has none.",
     snippet: `<SEOHead
-  title="Zone availability — Acme"
-  description="Live slot availability for every zone."
-  canonical="https://example.com/bookings/zones/12"
-  ogImage="https://example.com/og/zones.png"
+  title="Blue widget — Acme"
+  description="Specifications, prices and reviews for the blue widget."
+  canonical="https://example.com/products/widgets/12"
+  ogImage="https://example.com/og/widgets.png"
   siteName="Acme"
   jsonLd={[{ "@type": "Organization", name: "Acme" }]}
   crumbs={[
     { name: "Home", href: "/" },
-    { name: "Zones", href: "/bookings/zones" },
-    { name: "Zone availability" },
+    { name: "Widgets", href: "/products/widgets" },
+    { name: "Blue widget" },
   ]}
 />
 
@@ -1333,7 +1333,7 @@ const tags = seoHeadTags(head)`,
     { label: "Pricing", href: "/pricing" },
     { label: "Docs", href: "/docs", Icon: IconBookOpen },
   ]}
-  actions={<Button size="sm" onClick={() => navigate("/book-a-call")}>Book a call</Button>}
+  actions={<Button size="sm" onClick={() => navigate("/get-started")}>Get started</Button>}
 />`,
     render: () => <SiteHeaderDemo />,
   },

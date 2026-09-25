@@ -132,6 +132,17 @@ describe("Tabs", () => {
     expect(html).not.toContain("border-b-2")
   })
 
+  it("lets a horizontal tab row wrap onto a second row, and leaves a vertical one alone", () => {
+    const tablist = (html: string) => html.match(/<div[^>]*role="tablist"[^>]*>/)?.[0] ?? ""
+    const horizontal = render(<Tabs tabs={twoTabs} active="overview" onChange={() => {}} />)
+    const vertical = render(
+      <Tabs tabs={twoTabs} active="overview" onChange={() => {}} orientation="vertical" />,
+    )
+
+    expect(tablist(horizontal)).toContain("flex-wrap")
+    expect(tablist(vertical)).not.toContain("flex-wrap")
+  })
+
   it("underlines the active tab when horizontal", () => {
     const html = render(<Tabs tabs={twoTabs} active="overview" onChange={() => {}} />)
 

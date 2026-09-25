@@ -287,6 +287,13 @@ describe("Pagination", () => {
       .toContain('aria-label="Invoice pages"')
   })
 
+  it("lets the page numbers wrap between Previous and Next", () => {
+    const html = render(<Pagination page={12} pageCount={24} onChange={() => {}} />)
+    const list = html.match(/<ul[^>]*>/)?.[0] ?? ""
+
+    expect(list).toContain("flex-wrap")
+  })
+
   it("marks exactly one page as current", () => {
     const html = render(<Pagination page={2} pageCount={3} onChange={() => {}} />)
 
