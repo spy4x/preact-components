@@ -322,7 +322,7 @@ async function deletionValidationChecks(devtools: Devtools): Promise<void> {
     "a new non-empty list brings the block into view, and the message arrives as a change to it",
     clickedRestore && settledOnShow && shown.inViewport && parkedBeforeShow &&
       identity.found && identity.same && identity.connected &&
-      identity.text.startsWith("To archive this Region") && identity.mutations >= 1,
+      identity.text.startsWith("To archive this Team") && identity.mutations >= 1,
     !parkedBeforeShow
       ? "there was no region to park before the list went from empty to non-empty"
       : `clicked=${clickedRestore} settled=${settledOnShow} inViewport=${shown.inViewport} ` +
