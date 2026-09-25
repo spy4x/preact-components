@@ -27,43 +27,45 @@ Preact + Tailwind primitives extracted from earlier source applications.
 
 ## Components
 
-| Component         | Subpath             | Ports / key props                                                                                                              |
-| ----------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `Avatar`          | `avatar`            | `name`, `src`, `alt`, `size`                                                                                                   |
-| `AvatarGroup`     | `avatar`            | `items`, `max`, `label`, `size` (a `role="group"`, not a list)                                                                 |
-| `Badge`           | `badge`             | `text`, `color`, `type`                                                                                                        |
-| `Button`          | `button`            | `variant`, `size`, native button attrs                                                                                         |
-| `ConfidenceMeter` | `confidence-meter`  | `value` (optional; clamped 0–100, unknown renders no reading), `label`                                                         |
-| `ContactForm`     | `contact-form`      | `action?`, `onSubmit?` (`{ name, email, message }`), `honeypot?`, `labels?`, built on `EnhancedForm`                           |
-| `CopyButton`      | `copy-button`       | `textToCopy`, `copy?` (clipboard port)                                                                                         |
-| `Combobox`        | `combobox`          | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `ariaLabel?`, `aria-labelledby?`, `id?`                                  |
-| `DataTable`       | `data-table`        | `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `captionHidden?`, `empty?`, `paging?`, `rowDataE2E?`, `class?` |
-| `DateRangePicker` | `date-range-picker` | `range`, `onChange`, `timeZone`, `presets` or `withTime`, `labels?` (every key optional)                                       |
-| `Dropdown`        | `dropdown`          | `trigger`, `triggerLabel` or `triggerNamedByContent` (one is required), `menuLabel`, `vertical`, `horizontal`                  |
-| `DropdownItem`    | `dropdown`          | `href`, `onClick`, `disabled`, `class` — a `role="menuitem"`, out of the tab order                                             |
-| `EnhancedForm`    | `enhanced-form`     | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?` — posts natively before hydration             |
-| `ErrorState`      | `error-state`       | `message` (renders nothing when empty)                                                                                         |
-| `ExportButton`    | `export-button`     | `columns`, `rows` or `getRows`, `fileName`, `label?`, `resultLabel?`, `errorLabel?`, `onError?`                                |
-| `GeoButton`       | `geo-button`        | `onLocation`, `onError?`                                                                                                       |
-| `ImageGallery`    | `image-gallery`     | `images` (`{ src, alt, thumbSrc? }[]`), `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`               |
-| `Lightbox`        | `lightbox`          | `images`, `index`, `open`, `onClose`, `onIndexChange`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`          |
-| `LoadingScreen`   | `loading-screen`    | `message`, `description`                                                                                                       |
-| `LoadingSkeleton` | `loading-skeleton`  | `rows`                                                                                                                         |
-| `LoadingSpinner`  | `loading-spinner`   | `label`, `size`                                                                                                                |
-| `NewsletterForm`  | `newsletter-form`   | `action?`, `onSubmit?` (`email`), `honeypot?`, `labels?`, built on `EnhancedForm`                                              |
-| `OnOffButtons`    | `on-off-buttons`    | `value`, `amount`, `onSwitch`                                                                                                  |
-| `PageTitle`       | `page-title`        | `children`, `class`                                                                                                            |
-| `Pagination`      | `pagination`        | `page`, `pageCount`, `onChange`, `label`, `previousLabel`, `nextLabel`, `pageLabel`                                            |
-| `Progress`        | `progress`          | `value`, `max`, `label`, `id` (a caption needs an `id`)                                                                        |
-| `SkeletonCards`   | `skeletons`         | `columns`, `rows`, `lines`                                                                                                     |
-| `SkeletonStatus`  | `skeletons`         | `label` (the loading announcement)                                                                                             |
-| `SkeletonTable`   | `skeletons`         | `rows`, `columns`, `widths`, `reserveHeight`                                                                                   |
-| `SkeletonText`    | `skeletons`         | `lines`, `widths`                                                                                                              |
-| `Table`           | `table`             | `headerSlot`, `bodySlots`, `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`                                             |
-| `Tabs`            | `tabs`              | `tabs`, `active`, `onChange`, `orientation`, `lazy`                                                                            |
-| `Toastr`          | `toastr`            | `toasts`, `onDismiss`, `label`, `dismissLabel`, `dataE2E`                                                                      |
-| `ToggleSwitch`    | `toggle-switch`     | `value`, `onToggle`, `disabled`, `label`                                                                                       |
-| `Tooltip`         | `tooltip`           | `content`, `label`, `placement`, `focusable`                                                                                   |
+| Component         | Subpath             | Ports / key props                                                                                                                        |
+| ----------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `Avatar`          | `avatar`            | `name`, `src`, `alt`, `size`                                                                                                             |
+| `AvatarGroup`     | `avatar`            | `items`, `max`, `label`, `size` (a `role="group"`, not a list)                                                                           |
+| `Badge`           | `badge`             | `text`, `color`, `type`                                                                                                                  |
+| `Button`          | `button`            | `variant`, `size`, native button attrs                                                                                                   |
+| `ConfidenceMeter` | `confidence-meter`  | `value` (optional; clamped 0–100, unknown renders no reading), `label`                                                                   |
+| `ContactForm`     | `contact-form`      | `action?`, `onSubmit?` (`{ name, email, message }`), `honeypot?`, `labels?`, built on `EnhancedForm`                                     |
+| `CopyButton`      | `copy-button`       | `textToCopy`, `copy?` (clipboard port)                                                                                                   |
+| `Combobox`        | `combobox`          | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `ariaLabel?`, `aria-labelledby?`, `id?`                                            |
+| `DataTable`       | `data-table`        | `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `captionHidden?`, `empty?`, `paging?`, `rowDataE2E?`, `class?`           |
+| `DateRangePicker` | `date-range-picker` | `range`, `onChange`, `timeZone`, `presets` or `withTime`, `labels?` (every key optional)                                                 |
+| `Dropdown`        | `dropdown`          | `trigger`, `triggerLabel` or `triggerNamedByContent` (one is required), `menuLabel`, `vertical`, `horizontal`                            |
+| `DropdownItem`    | `dropdown`          | `href`, `onClick`, `disabled`, `class` — a `role="menuitem"`, out of the tab order                                                       |
+| `EnhancedForm`    | `enhanced-form`     | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?` — posts natively before hydration                       |
+| `ErrorState`      | `error-state`       | `message` (renders nothing when empty)                                                                                                   |
+| `ExportButton`    | `export-button`     | `columns`, `rows` or `getRows`, `fileName`, `label?`, `resultLabel?`, `errorLabel?`, `onError?`                                          |
+| `GeoButton`       | `geo-button`        | `onLocation`, `onError?`                                                                                                                 |
+| `ImageGallery`    | `image-gallery`     | `images` (`{ src, alt, thumbSrc? }[]`), `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`                         |
+| `Lightbox`        | `lightbox`          | `images`, `index`, `open`, `onClose`, `onIndexChange`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`                    |
+| `LoadingScreen`   | `loading-screen`    | `message`, `description`                                                                                                                 |
+| `LoadingSkeleton` | `loading-skeleton`  | `rows`                                                                                                                                   |
+| `LoadingSpinner`  | `loading-spinner`   | `label`, `size`                                                                                                                          |
+| `MoneyDisplay`    | `money-display`     | `amount` (smallest unit), `currency`, `locale?`, `colorNegative?`, `class?`                                                              |
+| `MoneyInput`      | `money-input`       | `value` (smallest unit or `null`), `onChange`, `currency`, `locale?`, `min?`, `max?`, `name?`, `id?`, `invalidMessage?`, `rangeMessage?` |
+| `NewsletterForm`  | `newsletter-form`   | `action?`, `onSubmit?` (`email`), `honeypot?`, `labels?`, built on `EnhancedForm`                                                        |
+| `OnOffButtons`    | `on-off-buttons`    | `value`, `amount`, `onSwitch`                                                                                                            |
+| `PageTitle`       | `page-title`        | `children`, `class`                                                                                                                      |
+| `Pagination`      | `pagination`        | `page`, `pageCount`, `onChange`, `label`, `previousLabel`, `nextLabel`, `pageLabel`                                                      |
+| `Progress`        | `progress`          | `value`, `max`, `label`, `id` (a caption needs an `id`)                                                                                  |
+| `SkeletonCards`   | `skeletons`         | `columns`, `rows`, `lines`                                                                                                               |
+| `SkeletonStatus`  | `skeletons`         | `label` (the loading announcement)                                                                                                       |
+| `SkeletonTable`   | `skeletons`         | `rows`, `columns`, `widths`, `reserveHeight`                                                                                             |
+| `SkeletonText`    | `skeletons`         | `lines`, `widths`                                                                                                                        |
+| `Table`           | `table`             | `headerSlot`, `bodySlots`, `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`                                                       |
+| `Tabs`            | `tabs`              | `tabs`, `active`, `onChange`, `orientation`, `lazy`                                                                                      |
+| `Toastr`          | `toastr`            | `toasts`, `onDismiss`, `label`, `dismissLabel`, `dataE2E`                                                                                |
+| `ToggleSwitch`    | `toggle-switch`     | `value`, `onToggle`, `disabled`, `label`                                                                                                 |
+| `Tooltip`         | `tooltip`           | `content`, `label`, `placement`, `focusable`                                                                                             |
 
 ## Usage
 
@@ -824,6 +826,57 @@ download that itself fails, both end the same way: nothing downloads, the live r
 Excel (`.xlsx`) is not supported, and staying CSV-only was the point of starting here: `xlsx` would
 be a new, large dependency for formatting, formulas and multiple sheets this button does not need,
 and nothing here forecloses adding it later behind its own prop if a caller needs a real workbook.
+
+## MoneyDisplay and MoneyInput
+
+Money in this convention is a whole number in a currency's smallest unit — `1250` means `€12.50`.
+`MoneyDisplay` renders one as text; `MoneyInput` is a text field that turns typed text back into
+one. Both go through `ui/money.ts` (package-private, not in this package's `exports` or
+`+index.ts`), whose two rules matter for any caller that formats or parses money by hand: never
+assume two decimal places — the yen (`JPY`) has none, the Kuwaiti dinar (`KWD`) has three, both
+read from `Intl` rather than a hard-coded table — and never round a typed amount that has more
+fraction digits than the currency allows; it is refused, the same way `"1.005"` for a two-decimal
+currency is refused rather than guessed at as `100` or `101` cents. A grouping mark is accepted only
+where `Intl` itself would place one for that locale, or not at all — never stripped wherever it
+stands, which is what let `"12.50"` typed in a German field (where `.` is the grouping mark, not
+the decimal mark) silently become €1,250.00. `ui/money.ts` is a temporary, byte-identical-in-
+behaviour copy of `spy4x/ts-libs#189`'s `platform/universal/money.ts`, kept here until that PR ships
+in a release; `#275` tracks importing it instead and deleting this copy.
+
+`MoneyDisplay` is a bare `<span>` — this is text, not a control, so it carries no role or label of
+its own. `colorNegative` colours a negative amount red; every other style is the caller's `class`.
+
+`MoneyInput` keeps the typed text as local, purely visual state — the same allowance `Input`'s own
+draft state has — synced from `value`/`currency`/`locale` only while the field is not focused, so a
+value the caller pushes in from outside is reflected but a keystroke never races a stale render.
+Text that does not parse (a letter, a second decimal mark, more fraction digits than the currency
+allows) or a parsed amount outside `min`/`max` leaves `value` exactly where it was and shows a
+message — `invalidMessage` or `rangeMessage` — in a `role="status"` live region that is rendered,
+empty, from the very first render, the same shape `Combobox`'s own status region uses and for the
+same reason: a region that arrives with its message already inside it is commonly not announced at
+all, only a _change_ to a region already being watched is. `inputmode="decimal"` brings up the
+numeric keyboard on a phone.
+
+While that message stands, the visible control's own `setCustomValidity` is set to it, so a real
+form submit is refused by the browser and the message is what the browser shows — the same way a
+missing `required` value is. The typed text and the message both stay exactly as they are when the
+field loses focus with a message standing: blur does not silently revert to the last committed
+amount and drop the message, which would otherwise let someone tab past a rejected entry and never
+learn it was thrown away. Blur only reformats the shown text, to `locale`'s canonical form, when the
+last edit resolved cleanly.
+
+The visible `<input>` has no `name`, so it never posts anything of its own. Pass `name` for a
+second, `type="hidden"` input that carries the smallest-unit integer instead (empty string for a
+`null` value), which is what a server reads back — the same shape `ui/honeypot.tsx`'s field uses
+for a plain HTML form's own posted data. That hidden input starts out `disabled`, so it is left out
+of `FormData` entirely, until a mount effect has resolved whatever text is already sitting in the
+visible field: Preact does not overwrite an input's `value` while hydrating, so text typed before
+the bundle ran survives untouched in the DOM, and without this step a form submitted in that gap
+would post the server-rendered amount rather than what the visitor actually typed. Once that effect
+has run — value, message and validity all applied the same way a real keystroke would resolve them
+— the hidden input re-enables. A form submitted before the effect runs posts no amount at all,
+never a stale one; a form submitted right after posts what was actually typed, or is blocked by
+`setCustomValidity` if that text did not parse.
 
 ## Tests
 

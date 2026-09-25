@@ -33,6 +33,8 @@
     "./loading-skeleton": "./loading-skeleton.tsx",
     "./loading-spinner": "./loading-spinner.tsx",
     "./modal": "./modal.tsx",
+    "./money-display": "./money-display.tsx",
+    "./money-input": "./money-input.tsx",
     "./newsletter-form": "./newsletter-form.tsx",
     "./on-off-buttons": "./on-off-buttons.tsx",
     "./page-title": "./page-title.tsx",
