@@ -17,10 +17,10 @@
  * than duplicated into the sidebar as well.
  */
 
-import { cn } from "@preact-components/cn"
-import { IconBars3, type IconProps, IconXMark } from "@preact-components/icons"
-import { Avatar } from "@preact-components/ui/avatar"
-import { Dropdown, DropdownItem } from "@preact-components/ui/dropdown"
+import { cn } from "@spy4x/preact-cn"
+import { IconBars3, type IconProps, IconXMark } from "@spy4x/preact-icons"
+import { Avatar } from "@spy4x/preact-ui/avatar"
+import { Dropdown, DropdownItem } from "@spy4x/preact-ui/dropdown"
 import type { ComponentChildren, ComponentType, JSX } from "preact"
 import { useId } from "preact/hooks"
 import { isCurrentLink } from "./site-header.tsx"

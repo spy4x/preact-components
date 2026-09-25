@@ -1,5 +1,5 @@
 /**
- * `@preact-components/map` — `Map`, a Leaflet tile layer with markers. Each pin is a real Tab stop,
+ * `@spy4x/preact-map` — `Map`, a Leaflet tile layer with markers. Each pin is a real Tab stop,
  * named by its `label`, and a real Enter or Space press on a focused pin calls `onMarkerClick` — the
  * pins are the keyboard and screen-reader path. `Map` also renders a plain, non-interactive list of
  * the same places beside the tile layer, as an always-visible overview rather than a second control

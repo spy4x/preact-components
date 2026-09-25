@@ -10,7 +10,7 @@
  * block of text, with nothing behind an interaction a map alone would require.
  */
 
-import { cn } from "@preact-components/cn"
+import { cn } from "@spy4x/preact-cn"
 import type { JSX } from "preact"
 import { MARKER_DOT_CLASSES, STATUS_WRAPPER_CLASS } from "./leaflet-map.ts"
 import type { MapMarker } from "./types.ts"

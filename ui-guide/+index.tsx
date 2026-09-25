@@ -1,5 +1,5 @@
 /**
- * `@preact-components/ui-guide` — the live component catalogue, shipped as a component.
+ * `@spy4x/preact-ui-guide` — the live component catalogue, shipped as a component.
  *
  * Frameworks are the app's business, so this package exports a component and a plain route
  * descriptor instead of a file-based route: any app that imports the library can render the guide
@@ -34,7 +34,7 @@ export interface UiGuideRoute {
  * consume it; nothing here knows about a router.
  *
  * ```tsx
- * import { uiGuideRoute } from "@preact-components/ui-guide"
+ * import { uiGuideRoute } from "@spy4x/preact-ui-guide"
  *
  * const navLinks = [...appLinks, { href: uiGuideRoute.path, label: uiGuideRoute.label }]
  * // and at the route, one line — the component reads the address's hash itself:

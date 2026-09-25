@@ -1,12 +1,12 @@
 /**
- * `@preact-components/signals` — the signals state layer.
+ * `@spy4x/preact-signals` — the signals state layer.
  *
  * Everything here is either a pure function or a factory that takes its outside world through a
  * port. Nothing imports an application's state singleton, and nothing reads `window`, `document` or
  * `localStorage` before a caller asks for it — {@link createThemeStore} does not touch the DOM until
  * `attach()`.
  *
- * Import one module from its own subpath (`@preact-components/signals/build-model-store`) when the
+ * Import one module from its own subpath (`@spy4x/preact-signals/build-model-store`) when the
  * barrel would pull in more than you need. Importing it changes nothing globally: this package
  * renders nothing, augments no prototype and registers no listener.
  */

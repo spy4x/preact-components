@@ -13,10 +13,10 @@
  * {@link DataTableSortDemo}, the same hook underneath `DataTable`'s own `sort` prop.
  */
 
-import { IconGitHub } from "@preact-components/icons"
-import { buttonClasses } from "@preact-components/ui/button"
-import { copyToClipboard } from "@preact-components/ui/copy-button"
-import { type GuideRouteChange, uiGuideRoute } from "@preact-components/ui-guide"
+import { IconGitHub } from "@spy4x/preact-icons"
+import { buttonClasses } from "@spy4x/preact-ui/button"
+import { copyToClipboard } from "@spy4x/preact-ui/copy-button"
+import { type GuideRouteChange, uiGuideRoute } from "@spy4x/preact-ui-guide"
 import { useEffect, useState } from "preact/hooks"
 import { DataTableSortDemo } from "./data-table-sort.tsx"
 import { PAGE_TITLE, REPOSITORY } from "./site.ts"

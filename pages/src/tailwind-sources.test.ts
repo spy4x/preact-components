@@ -9,7 +9,7 @@
 
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
-import { packageIds } from "@preact-components/ui-guide/registry"
+import { packageIds } from "@spy4x/preact-ui-guide/registry"
 import { normalizeSource, normalizeSources } from "./tailwind-sources.ts"
 
 describe("normalizeSource", () => {

@@ -1,13 +1,13 @@
 /*
- * @preact-components/theme — design-system layer.
+ * @spy4x/preact-theme — design-system layer.
  *
  * Tailwind 4, CSS-first. Every class the library's components style against is
  * declared here, coloured from the tokens in `./tokens.css`, so an app restyles
  * the whole library by overriding custom properties.
  *
  * This file is not an importable specifier once the package is installed — JSR does not export a
- * CSS file as a module, so `@import "@preact-components/theme/preset.css"` resolves nowhere for a
- * consumer. `@preact-components/theme`'s `README.md` → "Install" has the recipe that actually
+ * CSS file as a module, so `@import "@spy4x/preact-theme/preset.css"` resolves nowhere for a
+ * consumer. `@spy4x/preact-theme`'s `README.md` → "Install" has the recipe that actually
  * compiles: it splices this file's text, exported as `PRESET_CSS`, into a Tailwind build, after
  * `tokens.css`'s and before an optional `@plugin "@tailwindcss/forms";`.
  *

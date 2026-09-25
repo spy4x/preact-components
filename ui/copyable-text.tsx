@@ -1,4 +1,4 @@
-import { cn } from "@preact-components/cn"
+import { cn } from "@spy4x/preact-cn"
 import type { JSX } from "preact"
 import { CopyButton, copyToClipboard } from "./copy-button.tsx"
 import { useEffect, useState } from "preact/hooks"

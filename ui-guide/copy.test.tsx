@@ -11,7 +11,7 @@
 
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
-import { CopyButton, copyToClipboard } from "@preact-components/ui/copy-button"
+import { CopyButton, copyToClipboard } from "@spy4x/preact-ui/copy-button"
 import { options } from "preact"
 import { render } from "preact-render-to-string"
 import { DemoCard, type DemoCardProps, UIGuide } from "./+index.tsx"

@@ -1,5 +1,5 @@
 /**
- * `@preact-components/charts` — server-rendered SVG charts and interactive d3 wrappers.
+ * `@spy4x/preact-charts` — server-rendered SVG charts and interactive d3 wrappers.
  *
  * Two approaches live here side by side, and the split is load-bearing. `LineChart`, `Bars`,
  * `DonutChart`, `Kpi` and `MetricPanel` render plain markup server-side with no JavaScript at all
@@ -11,7 +11,7 @@
  *
  * This barrel does re-export the d3 islands, so importing it makes `d3` a resolvable specifier for
  * the importing package, and Deno has to type-check the island either way. Subpath imports
- * (`@preact-components/charts/bars`) avoid even that. They are not needed for bundle size: these are
+ * (`@spy4x/preact-charts/bars`) avoid even that. They are not needed for bundle size: these are
  * side-effect-free ES modules, and Rollup eliminates a re-export nothing uses — issue #25 measured a
  * barrel consumer that renders only `Bars` at 42 bytes with no d3 marker, from a Vite build outside
  * this repo. Subpath imports are the robust choice, because they hold that guarantee with tree-shaking

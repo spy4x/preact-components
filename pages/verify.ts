@@ -52,8 +52,8 @@ import {
   catalogueSections,
   type GuidePageId,
   guidePages,
-} from "@preact-components/ui-guide/registry"
-import { pageHref, routeTableDrift } from "@preact-components/ui-guide/routes"
+} from "@spy4x/preact-ui-guide/registry"
+import { pageHref, routeTableDrift } from "@spy4x/preact-ui-guide/routes"
 import { BUILD_HASH_FILE, computeBuildFingerprint } from "./build-fingerprint.ts"
 import { chartsChecks } from "./checks/charts.ts"
 import { crudChecks } from "./checks/crud.ts"

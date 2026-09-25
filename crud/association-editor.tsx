@@ -1,4 +1,4 @@
-import { IconLoading } from "@preact-components/icons"
+import { IconLoading } from "@spy4x/preact-icons"
 import type { ReadonlySignal, Signal } from "@preact/signals"
 import type { Type } from "arktype"
 import type { ComponentChildren, JSX } from "preact"

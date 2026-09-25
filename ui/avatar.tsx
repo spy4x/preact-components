@@ -1,5 +1,5 @@
-import { IconUser } from "@preact-components/icons"
-import { cn } from "@preact-components/cn"
+import { IconUser } from "@spy4x/preact-icons"
+import { cn } from "@spy4x/preact-cn"
 import type { JSX } from "preact"
 import { useState } from "preact/hooks"
 

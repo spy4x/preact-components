@@ -1,5 +1,5 @@
 /**
- * `@preact-components/signals/table-state` — framework-free multi-column sort state.
+ * `@spy4x/preact-signals/table-state` — framework-free multi-column sort state.
  *
  * Ported from a source application's own table-state module. Nothing here touches
  * signals,

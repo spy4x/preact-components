@@ -8,14 +8,14 @@
  * box, the status select, the table shell, the validation loop, the archive toggle, the dependency
  * block, the save button's enabled rule) is the scaffold's.
  *
- * The store is the real one — `buildModelStore` from `@preact-components/signals`. This package
+ * The store is the real one — `buildModelStore` from `@spy4x/preact-signals`. This package
  * only ever reads it through the structural interfaces in `store.ts`, which is what lets the two
  * components below be typed by the row and nothing else.
  */
 
-import { CrudEditor, CrudList, RowAction, RowActions, TextField } from "@preact-components/crud"
-import { buildModelStore } from "@preact-components/signals/build-model-store"
-import { createToastStore } from "@preact-components/signals/toast"
+import { CrudEditor, CrudList, RowAction, RowActions, TextField } from "@spy4x/preact-crud"
+import { buildModelStore } from "@spy4x/preact-signals/build-model-store"
+import { createToastStore } from "@spy4x/preact-signals/toast"
 import { signal } from "@preact/signals"
 import { search } from "@spy4x/platform/universal/text"
 import { type } from "arktype"

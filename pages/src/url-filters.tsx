@@ -1,5 +1,5 @@
 /**
- * The host page's demo of `useUrlFilters` — the one piece of `@preact-components/signals` that
+ * The host page's demo of `useUrlFilters` — the one piece of `@spy4x/preact-signals` that
  * cannot be shown as a card in the catalogue.
  *
  * The catalogue demonstrates components, and this is a hook: it has no markup of its own, and what
@@ -22,8 +22,8 @@
  */
 
 import { useSignal } from "@preact/signals"
-import { type FilterField, useUrlFilters } from "@preact-components/signals/use-url-filters"
-import { buttonClasses } from "@preact-components/ui/button"
+import { type FilterField, useUrlFilters } from "@spy4x/preact-signals/use-url-filters"
+import { buttonClasses } from "@spy4x/preact-ui/button"
 import { useState } from "preact/hooks"
 import { Link, Router } from "wouter-preact"
 
@@ -78,7 +78,7 @@ export function UrlFilterDemo() {
         Filters in the address bar
       </h2>
       <p class="measure mt-2 text-sm text-gray-600 dark:text-gray-300">
-        <code>useUrlFilters</code> from <code>@preact-components/signals</code>{" "}
+        <code>useUrlFilters</code> from <code>@spy4x/preact-signals</code>{" "}
         binds a set of signals to the query string both ways: the links below change the address and
         the filters follow, the buttons change the filters and the address follows. It is a hook
         rather than a component, so it has no card in the catalogue.

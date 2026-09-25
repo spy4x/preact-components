@@ -10,7 +10,7 @@ import type {
 /**
  * The store slices the scaffold reads, as structural interfaces.
  *
- * `@preact-components/signals` is built in a parallel pull request, so this package does not
+ * `@spy4x/preact-signals` is built in a parallel pull request, so this package does not
  * import it: a real `ModelStore` from `buildModelStore` satisfies both interfaces as written,
  * because TypeScript compares shapes rather than declared names. A follow-up that lands after
  * `signals/` should replace these with `ModelStore`-derived types and delete the duplication —

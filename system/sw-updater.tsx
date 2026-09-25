@@ -19,7 +19,7 @@
  * Every string the bar shows has an English default and a prop that overrides it.
  */
 
-import { cn } from "@preact-components/cn"
+import { cn } from "@spy4x/preact-cn"
 import type { JSX } from "preact"
 import { useEffect, useRef, useState } from "preact/hooks"
 

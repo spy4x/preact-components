@@ -1,4 +1,4 @@
-import { createToastStore, type ToastEntry } from "@preact-components/signals/toast"
+import { createToastStore, type ToastEntry } from "@spy4x/preact-signals/toast"
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { FakeTime } from "@std/testing/time"

@@ -23,10 +23,10 @@ import {
   RadioGroup,
   Select,
   Textarea,
-} from "@preact-components/ui"
+} from "@spy4x/preact-ui"
 import { useSignal } from "@preact/signals"
 import { useRef } from "preact/hooks"
-import { IconSearch } from "@preact-components/icons"
+import { IconSearch } from "@spy4x/preact-icons"
 import type { DemoFragment } from "../registry.ts"
 
 /** One profile form: a labelled field per control, plus the two that carry their own label. */

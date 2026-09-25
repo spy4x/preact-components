@@ -93,23 +93,23 @@ import {
   timeRangePresets,
   typingState,
   wrapIndex,
-} from "@preact-components/ui"
-import { failedAfterSrcChange } from "@preact-components/ui/avatar"
-import { copyToClipboard } from "@preact-components/ui/copy-button"
-import { enhancedFormMessage } from "@preact-components/ui/enhanced-form"
-import { labelTarget } from "@preact-components/ui/field"
-import { classifyFiles, resolveLabels } from "@preact-components/ui/file-input"
-import { requestGeolocation } from "@preact-components/ui/geo-button"
-import { thumbnailKey } from "@preact-components/ui/image-gallery"
+} from "@spy4x/preact-ui"
+import { failedAfterSrcChange } from "@spy4x/preact-ui/avatar"
+import { copyToClipboard } from "@spy4x/preact-ui/copy-button"
+import { enhancedFormMessage } from "@spy4x/preact-ui/enhanced-form"
+import { labelTarget } from "@spy4x/preact-ui/field"
+import { classifyFiles, resolveLabels } from "@spy4x/preact-ui/file-input"
+import { requestGeolocation } from "@spy4x/preact-ui/geo-button"
+import { thumbnailKey } from "@spy4x/preact-ui/image-gallery"
 import {
   backdropDismissesByDefault,
   bindEscapeClose,
   escapeCloseStrategy,
   platformCloseHandler,
   supportsClosedBy,
-} from "@preact-components/ui/modal"
-import { editableText } from "@preact-components/ui/money-input"
-import { barHeightRem, lineBoxRem } from "@preact-components/ui/skeletons"
+} from "@spy4x/preact-ui/modal"
+import { editableText } from "@spy4x/preact-ui/money-input"
+import { barHeightRem, lineBoxRem } from "@spy4x/preact-ui/skeletons"
 import type { ExampleFragment } from "../example.tsx"
 import { toExampleDemos } from "../example.tsx"
 
@@ -121,7 +121,7 @@ const examples: ExampleFragment = {
     title: "formatBytes()",
     summary:
       "A byte count as a short size label, in binary units, with one decimal only when it is not whole.",
-    snippet: `import { formatBytes } from "@preact-components/ui"
+    snippet: `import { formatBytes } from "@spy4x/preact-ui"
 
 [formatBytes(512), formatBytes(1536), formatBytes(5 * 1024 ** 2)]`,
     covers: ["formatBytes"],
@@ -132,7 +132,7 @@ const examples: ExampleFragment = {
     title: "buttonClasses()",
     summary:
       "The classes a `Button` wears, for a link or any other element that has to look like one.",
-    snippet: `import { buttonClasses } from "@preact-components/ui/button"
+    snippet: `import { buttonClasses } from "@spy4x/preact-ui/button"
 
 buttonClasses("outline", "sm", "w-full")`,
     covers: ["buttonClasses"],
@@ -146,7 +146,7 @@ buttonClasses("outline", "sm", "w-full")`,
     summary:
       "Day and month steps on `YYYY-MM-DD` strings in fixed UTC days, so no step drifts across a daylight-saving change and an impossible date throws; a month step lands on the 1st of the target month.",
     snippet:
-      `import { addDays, formatIsoDate, isSameDay, parseIsoDate, shiftMonth } from "@preact-components/ui"
+      `import { addDays, formatIsoDate, isSameDay, parseIsoDate, shiftMonth } from "@spy4x/preact-ui"
 
 const ms = parseIsoDate("2026-03-31")
 ;({
@@ -172,7 +172,7 @@ const ms = parseIsoDate("2026-03-31")
     summary: "The first and last day of the month, quarter and year a date falls in.",
     snippet: `import {
   endOfMonth, endOfQuarter, endOfYear, startOfMonth, startOfQuarter, startOfYear,
-} from "@preact-components/ui"
+} from "@spy4x/preact-ui"
 
 const day = "2028-02-10"
 ;({
@@ -204,7 +204,7 @@ const day = "2028-02-10"
       "Resolves a preset such as `last-7-days` into an inclusive date range from an injected `now` and zone, and finds the preset a range matches.",
     snippet: `import {
   calendarDateInZone, dateRangePresets, isValidDateRange, presetForRange, rangeForPreset,
-} from "@preact-components/ui"
+} from "@spy4x/preact-ui"
 
 const now = new Date("${NOW}")
 const timeZone = "Europe/Paris"
@@ -243,7 +243,7 @@ const week = rangeForPreset("last-7-days", { now, timeZone })
       "The sub-day counterpart of the date presets: the last hour or the last 24 hours as wall-clock times in a zone.",
     snippet: `import {
   isValidDateTimeRange, presetForTimeRange, rangeForTimePreset, timeRangePresets,
-} from "@preact-components/ui"
+} from "@spy4x/preact-ui"
 
 const now = new Date("${NOW}")
 const timeZone = "Europe/Paris"
@@ -279,8 +279,7 @@ const hour = rangeForTimePreset("last-hour", { now, timeZone })
     title: "Combobox search",
     summary:
       "How a combobox matches what was typed: accents and case are folded away before a substring test.",
-    snippet:
-      `import { defaultGetLabel, filterItems, fold, matchesQuery } from "@preact-components/ui"
+    snippet: `import { defaultGetLabel, filterItems, fold, matchesQuery } from "@spy4x/preact-ui"
 
 const cities = ["São Paulo", "Sapporo", "Zürich"]
 ;({
@@ -305,8 +304,7 @@ const cities = ["São Paulo", "Sapporo", "Zürich"]
     title: "Combobox keys",
     summary:
       "Turns a key press into the combobox's next state: which option is active, whether the list is open, and what Enter selects.",
-    snippet:
-      `import { comboboxKey, comboboxKeyAction, nextComboboxState } from "@preact-components/ui"
+    snippet: `import { comboboxKey, comboboxKeyAction, nextComboboxState } from "@spy4x/preact-ui"
 
 const key = comboboxKey({ key: "ArrowDown", altKey: false })
 const open = { activeIndex: 1, isOpen: true }
@@ -335,7 +333,7 @@ const open = { activeIndex: 1, isOpen: true }
       "The ids that tie a combobox's input to its list and its active option, and which attribute gives it an accessible name.",
     snippet: `import {
   activeDescendant, comboboxListboxId, comboboxOptionId, naming,
-} from "@preact-components/ui"
+} from "@spy4x/preact-ui"
 
 ;({
   listbox: comboboxListboxId("city"),
@@ -362,7 +360,7 @@ const open = { activeIndex: 1, isOpen: true }
       "The state a combobox opens in, which option it lands on when some are disabled, what the list shows when nothing matches, and when focus has left it.",
     snippet: `import {
   leavesCombobox, listboxContent, openingState, selectableIndex, typingState,
-} from "@preact-components/ui"
+} from "@spy4x/preact-ui"
 
 const sizes = ["Small", "Medium", "Large"]
 const soldOut = (size: string) => size === "Small"
@@ -401,7 +399,7 @@ const input = { isSameNode: (node: unknown) => node === input }
     title: "nextMenuIndex()",
     summary:
       "The menu item a `Dropdown` moves to on an arrow, Home or End key, wrapping at both ends; `undefined` for any other key.",
-    snippet: `import { nextMenuIndex } from "@preact-components/ui"
+    snippet: `import { nextMenuIndex } from "@spy4x/preact-ui"
 
 [nextMenuIndex("ArrowDown", 2, 3), nextMenuIndex("ArrowUp", 0, 3), nextMenuIndex("End", 0, 3), nextMenuIndex("x", 0, 3)]`,
     covers: ["nextMenuIndex"],
@@ -417,7 +415,7 @@ const input = { isSameNode: (node: unknown) => node === input }
     title: "nextTabIndex()",
     summary:
       "The tab an arrow key moves to, following the tab list's orientation and skipping disabled tabs.",
-    snippet: `import { nextTabIndex } from "@preact-components/ui"
+    snippet: `import { nextTabIndex } from "@spy4x/preact-ui"
 
 const disabled = [false, true, false]
 ;({
@@ -442,8 +440,8 @@ const disabled = [false, true, false]
     title: "Backdrop clicks",
     summary:
       "Whether a click landed on a dialog's dimmed backdrop rather than its content, and whether that click should close it.",
-    snippet: `import { backdropClickDismisses, isBackdropClick } from "@preact-components/ui"
-import { backdropDismissesByDefault } from "@preact-components/ui/modal"
+    snippet: `import { backdropClickDismisses, isBackdropClick } from "@spy4x/preact-ui"
+import { backdropDismissesByDefault } from "@spy4x/preact-ui/modal"
 
 const dialog = {}
 const rect = { left: 100, top: 100, right: 500, bottom: 400 }
@@ -474,7 +472,7 @@ const click = { target: dialog, clientX: 20, clientY: 20 } as MouseEvent
       "Stops the page scrolling behind an open dialog and pads the body by the scrollbar's width, so nothing slides sideways; shown on plain objects standing in for the document.",
     snippet: `import {
   applyScrollLock, clientWidthWithoutScrollbar, scrollLockPadding,
-} from "@preact-components/ui"
+} from "@spy4x/preact-ui"
 
 const html = {
   style: { overflow: "" },
@@ -506,7 +504,7 @@ lock.release()
   isDismissKey: {
     title: "Escape closes a dialog",
     summary: "The key that asks a `Modal` to close, and the check its key handler makes.",
-    snippet: `import { DISMISS_KEY, isDismissKey } from "@preact-components/ui"
+    snippet: `import { DISMISS_KEY, isDismissKey } from "@spy4x/preact-ui"
 
 ;({
   key: DISMISS_KEY,
@@ -529,7 +527,7 @@ lock.release()
       "Where the browser honours `closedby`, a `Modal` asks its close port before closing on Escape; where it does not, the browser closes the dialog and the port is only told. These helpers pick and wire that plan.",
     snippet: `import {
   bindEscapeClose, escapeCloseStrategy, platformCloseHandler, supportsClosedBy,
-} from "@preact-components/ui/modal"
+} from "@spy4x/preact-ui/modal"
 
 // A browser's dialog prototype: one that knows \`closedby\` has a \`closedBy\` property.
 function plan(dialogPrototype: object) {
@@ -575,8 +573,7 @@ function plan(dialogPrototype: object) {
     title: "Focus after a dialog closes",
     summary:
       "Whether focus goes back to the element that opened a dialog, and the move itself; `dialogHeldFocus` reports where focus was, for a caller to log.",
-    snippet:
-      `import { dialogHeldFocus, restoreFocus, shouldRetargetFocus } from "@preact-components/ui"
+    snippet: `import { dialogHeldFocus, restoreFocus, shouldRetargetFocus } from "@spy4x/preact-ui"
 
 const log: string[] = []
 const trigger = { focus: () => log.push("trigger focused") }
@@ -609,7 +606,7 @@ const dialog = { contains: (element: unknown) => element === field }
     title: "dialogTitleId()",
     summary:
       "The id of a dialog's title element, which the dialog names itself by through `aria-labelledby`.",
-    snippet: `import { dialogTitleId } from "@preact-components/ui"
+    snippet: `import { dialogTitleId } from "@spy4x/preact-ui"
 
 dialogTitleId("P0-1")`,
     covers: ["dialogTitleId"],
@@ -622,7 +619,7 @@ dialogTitleId("P0-1")`,
     title: "Confirm dialog labels",
     summary:
       "The English button labels a `ConfirmDialog` falls back to, and the rule that a blank label falls back too.",
-    snippet: `import { CANCEL_LABEL, CONFIRM_LABEL, labelOr } from "@preact-components/ui"
+    snippet: `import { CANCEL_LABEL, CONFIRM_LABEL, labelOr } from "@spy4x/preact-ui"
 
 [labelOr("Delete", CONFIRM_LABEL), labelOr("   ", CONFIRM_LABEL), labelOr(undefined, CANCEL_LABEL)]`,
     covers: ["labelOr", "CONFIRM_LABEL", "CANCEL_LABEL"],
@@ -637,7 +634,7 @@ dialogTitleId("P0-1")`,
     title: "Confirm dialog body and tone",
     summary:
       "Whether a dialog body says anything a screen reader can announce, and which button variant a tone asks for.",
-    snippet: `import { confirmVariant, hasQuestion } from "@preact-components/ui"
+    snippet: `import { confirmVariant, hasQuestion } from "@spy4x/preact-ui"
 
 ;({
   blank: hasQuestion(["", "  "]),
@@ -660,8 +657,8 @@ dialogTitleId("P0-1")`,
     title: "Avatar faces",
     summary:
       "An avatar shows its image, else the name's initials, else a generic icon; a failed image stays failed until its address changes.",
-    snippet: `import { avatarFace, initials } from "@preact-components/ui"
-import { failedAfterSrcChange } from "@preact-components/ui/avatar"
+    snippet: `import { avatarFace, initials } from "@spy4x/preact-ui"
+import { failedAfterSrcChange } from "@spy4x/preact-ui/avatar"
 
 ;({
   initials: [initials("Ada Lovelace"), initials("John Paul Smith"), initials("王小明")],
@@ -685,7 +682,7 @@ import { failedAfterSrcChange } from "@preact-components/ui/avatar"
   groupSplit: {
     title: "Avatar groups",
     summary: "How many avatars a group shows before a `+N` badge, and the group's accessible name.",
-    snippet: `import { groupLabel, groupSplit } from "@preact-components/ui"
+    snippet: `import { groupLabel, groupSplit } from "@spy4x/preact-ui"
 
 ;({ split: groupSplit(7, 3), label: groupLabel("Reviewers", 7), fallback: groupLabel(null, 7) })`,
     covers: ["groupSplit", "groupLabel"],
@@ -703,7 +700,7 @@ import { failedAfterSrcChange } from "@preact-components/ui/avatar"
     summary:
       "Clamps a progress value into its range, then turns the fraction into a bar width and a whole-percent label that never rounds up to 100% early.",
     snippet:
-      `import { clampProgress, formatProgressPercent, progressWidthPercent } from "@preact-components/ui"
+      `import { clampProgress, formatProgressPercent, progressWidthPercent } from "@spy4x/preact-ui"
 
 const { fraction } = clampProgress(59.96, 60)
 ;({
@@ -728,7 +725,7 @@ const { fraction } = clampProgress(59.96, 60)
     title: "clampConfidence()",
     summary:
       "A confidence score clamped to 0–100 and sorted into the low, medium or high tier the meter colours by.",
-    snippet: `import { clampConfidence } from "@preact-components/ui"
+    snippet: `import { clampConfidence } from "@spy4x/preact-ui"
 
 [clampConfidence(42), clampConfidence(80), clampConfidence(140), clampConfidence(null)]`,
     covers: ["clampConfidence"],
@@ -743,7 +740,7 @@ const { fraction } = clampProgress(59.96, 60)
   normalizeCiStatus: {
     title: "normalizeCiStatus()",
     summary: "Reads a build status from any source into one of the four states the pill shows.",
-    snippet: `import { normalizeCiStatus } from "@preact-components/ui"
+    snippet: `import { normalizeCiStatus } from "@spy4x/preact-ui"
 
 [normalizeCiStatus(" Passing "), normalizeCiStatus("RUNNING"), normalizeCiStatus("cancelled")]`,
     covers: ["normalizeCiStatus"],
@@ -762,8 +759,8 @@ const { fraction } = clampProgress(59.96, 60)
       "The sizes, in rem, a loading skeleton copies from the real text and table it stands in for, so the page does not jump when the content arrives.",
     snippet: `import {
   SKELETON_METRICS, tableHeaderHeightRem, tableRowHeightRem,
-} from "@preact-components/ui"
-import { barHeightRem, lineBoxRem } from "@preact-components/ui/skeletons"
+} from "@spy4x/preact-ui"
+import { barHeightRem, lineBoxRem } from "@spy4x/preact-ui/skeletons"
 
 ;({
   lineHeight: SKELETON_METRICS.lineHeightRem,
@@ -794,7 +791,7 @@ import { barHeightRem, lineBoxRem } from "@preact-components/ui/skeletons"
       "How many placeholder lines, rows and cells a skeleton draws, and how wide each one is.",
     snippet: `import {
   columnWidthPercents, skeletonCount, tableGeometry, textGeometry,
-} from "@preact-components/ui"
+} from "@spy4x/preact-ui"
 
 ;({
   count: [skeletonCount(undefined, 3), skeletonCount(2.7, 3), skeletonCount(-1, 3)],
@@ -815,7 +812,7 @@ import { barHeightRem, lineBoxRem } from "@preact-components/ui/skeletons"
     title: "skeletonStatusRole()",
     summary:
       "The ARIA role a skeleton carries, so a screen reader hears that something is loading.",
-    snippet: `import { skeletonStatusRole } from "@preact-components/ui"
+    snippet: `import { skeletonStatusRole } from "@spy4x/preact-ui"
 
 skeletonStatusRole()`,
     covers: ["skeletonStatusRole"],
@@ -828,8 +825,8 @@ skeletonStatusRole()`,
     title: "Accepting files",
     summary:
       "Splits the files a person chose into the ones a `FileInput` keeps and the ones it refuses, with the reason for each refusal.",
-    snippet: `import { matchesAccept } from "@preact-components/ui"
-import { classifyFiles } from "@preact-components/ui/file-input"
+    snippet: `import { matchesAccept } from "@spy4x/preact-ui"
+import { classifyFiles } from "@spy4x/preact-ui/file-input"
 
 const photo = new File(["12345"], "photo.png", { type: "image/png" })
 const notes = new File(["1"], "notes.txt", { type: "text/plain" })
@@ -864,7 +861,7 @@ const { accepted, rejected } = classifyFiles([photo, notes, poster], {
     title: "File input labels",
     summary:
       "Fills in the English default for every file input message the caller did not override.",
-    snippet: `import { resolveLabels } from "@preact-components/ui/file-input"
+    snippet: `import { resolveLabels } from "@spy4x/preact-ui/file-input"
 
 const labels = resolveLabels({ wrongType: (name) => name + " is not an image" })
 ;[labels.wrongType("notes.txt"), labels.tooLarge("poster.png", 1024), labels.removeFile("photo.png")]`,
@@ -883,8 +880,7 @@ const labels = resolveLabels({ wrongType: (name) => name + " is not an image" })
     title: "Honeypot field",
     summary:
       "A hidden field people never see and bots fill in; the server drops a submission whose field is not empty.",
-    snippet:
-      `import { HONEYPOT_FIELD_NAME, honeypotField, honeypotFilled } from "@preact-components/ui"
+    snippet: `import { HONEYPOT_FIELD_NAME, honeypotField, honeypotFilled } from "@spy4x/preact-ui"
 
 const field = honeypotField(HONEYPOT_FIELD_NAME, "Leave this empty")
 const person = new FormData()
@@ -915,7 +911,7 @@ bot.set(HONEYPOT_FIELD_NAME, "https://example.com")
     title: "enhancedFormMessage()",
     summary:
       "The status line an `EnhancedForm` announces while it sends, after it succeeds and after it fails.",
-    snippet: `import { enhancedFormMessage } from "@preact-components/ui/enhanced-form"
+    snippet: `import { enhancedFormMessage } from "@spy4x/preact-ui/enhanced-form"
 
 const labels = { sending: "Sending…", done: "Thanks, we got it.", failed: "Please try again." }
 ;(["idle", "sending", "done", "failed"] as const).map((status) => enhancedFormMessage(status, labels))`,
@@ -936,7 +932,7 @@ const labels = { sending: "Sending…", done: "Thanks, we got it.", failed: "Ple
     title: "labelTarget()",
     summary:
       "Which element a `Field`'s label points at: its own control, another id, or none when the control names itself.",
-    snippet: `import { labelTarget } from "@preact-components/ui/field"
+    snippet: `import { labelTarget } from "@spy4x/preact-ui/field"
 
 [labelTarget(undefined, "email"), labelTarget("email-input", "email"), labelTarget(false, "email")]`,
     covers: ["labelTarget"],
@@ -951,8 +947,8 @@ const labels = { sending: "Sending…", done: "Thanks, we got it.", failed: "Ple
     title: "Money input",
     summary:
       "What a `MoneyInput` shows for an amount in minor units, and what it makes of the text a person types: a value, or a message.",
-    snippet: `import { resolveMoneyInputEdit } from "@preact-components/ui"
-import { editableText } from "@preact-components/ui/money-input"
+    snippet: `import { resolveMoneyInputEdit } from "@spy4x/preact-ui"
+import { editableText } from "@spy4x/preact-ui/money-input"
 
 const bounds = { min: 0, max: 100000 }
 ;({
@@ -977,7 +973,7 @@ const bounds = { min: 0, max: 100000 }
     title: "copyToClipboard()",
     summary:
       "Copies text through the caller's port when one is given, else through the browser clipboard; here a port records what it was handed.",
-    snippet: `import { copyToClipboard } from "@preact-components/ui/copy-button"
+    snippet: `import { copyToClipboard } from "@spy4x/preact-ui/copy-button"
 
 const copied: string[] = []
 copyToClipboard("deno add jsr:@std/path", (text) => {
@@ -998,7 +994,7 @@ copied`,
     title: "requestGeolocation()",
     summary:
       "Asks for the device's position and hands back plain coordinates or an error message; here a stand-in answers instead of the browser.",
-    snippet: `import { requestGeolocation } from "@preact-components/ui/geo-button"
+    snippet: `import { requestGeolocation } from "@spy4x/preact-ui/geo-button"
 
 const results: unknown[] = []
 const stub = {
@@ -1030,7 +1026,7 @@ results`,
     title: "pageRange()",
     summary:
       "The page numbers a `Pagination` shows around the current page, with gaps where pages are left out.",
-    snippet: `import { pageRange } from "@preact-components/ui"
+    snippet: `import { pageRange } from "@spy4x/preact-ui"
 
 pageRange(6, 20).map((item) => "page" in item ? item.page : "…")`,
     covers: ["pageRange"],
@@ -1041,7 +1037,7 @@ pageRange(6, 20).map((item) => "page" in item ? item.page : "…")`,
     title: "rowKeyAttribute",
     summary:
       "The attribute a `DataTable` writes each row's key into, so a script or a test can find one row.",
-    snippet: `import { rowKeyAttribute } from "@preact-components/ui"
+    snippet: `import { rowKeyAttribute } from "@spy4x/preact-ui"
 
 "tr[" + rowKeyAttribute + '="42"]'`,
     covers: ["rowKeyAttribute"],
@@ -1052,7 +1048,7 @@ pageRange(6, 20).map((item) => "page" in item ? item.page : "…")`,
     title: "thumbnailKey()",
     summary:
       "A stable key for each gallery thumbnail, which stays unique when the same image appears twice.",
-    snippet: `import { thumbnailKey } from "@preact-components/ui/image-gallery"
+    snippet: `import { thumbnailKey } from "@spy4x/preact-ui/image-gallery"
 
 const images = [{ src: "/a.jpg" }, { src: "/b.jpg" }, { src: "/a.jpg" }]
 images.map((_, index) => thumbnailKey(images, index))`,
@@ -1067,7 +1063,7 @@ images.map((_, index) => thumbnailKey(images, index))`,
     title: "Lightbox navigation",
     summary:
       "Which image a lightbox moves to, wrapping at both ends, the counter it reads out, and the images it shows at all — only those with a description.",
-    snippet: `import { counterText, describedImages, wrapIndex } from "@preact-components/ui"
+    snippet: `import { counterText, describedImages, wrapIndex } from "@spy4x/preact-ui"
 
 const images = [
   { src: "/1.jpg", alt: "Harbour at dawn" },
@@ -1100,7 +1096,7 @@ const shown = describedImages(images)
     title: "Toast duration",
     summary:
       "How long a toast stays before it dismisses itself: its own duration, else the default; `0` keeps it until closed.",
-    snippet: `import { defaultToastDuration, resolveDuration } from "@preact-components/ui"
+    snippet: `import { defaultToastDuration, resolveDuration } from "@spy4x/preact-ui"
 
 ;({
   defaultToastDuration,

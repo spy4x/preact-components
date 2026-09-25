@@ -15,7 +15,7 @@ import { deleteMapEntry, setMapEntry } from "./map-entry.ts"
 import { type Model, RemoteEvent, type ToastPort } from "./types.ts"
 
 /**
- * `@preact-components/signals/build-model-store` — a signals CRUD store for one REST collection.
+ * `@spy4x/preact-signals/build-model-store` — a signals CRUD store for one REST collection.
  *
  * Ported from a source application's shared helpers module, with these changes, none of them
  * cosmetic:

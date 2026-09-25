@@ -1,5 +1,5 @@
 {
-  "name": "@preact-components/icons",
+  "name": "@spy4x/preact-icons",
   "version": "0.1.0",
   "exports": {
     ".": "./+index.tsx"

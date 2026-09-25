@@ -61,8 +61,8 @@
  * dropped — unless that substitution is itself turned off with `fallbackAlt=""`.
  */
 
-import { cn } from "@preact-components/cn"
-import { IconChevronLeft, IconChevronRight, IconXMark } from "@preact-components/icons"
+import { cn } from "@spy4x/preact-cn"
+import { IconChevronLeft, IconChevronRight, IconXMark } from "@spy4x/preact-icons"
 import type { JSX } from "preact"
 import { useEffect, useRef } from "preact/hooks"
 import { type FocusableElement, restoreFocus, shouldRetargetFocus } from "./modal.tsx"

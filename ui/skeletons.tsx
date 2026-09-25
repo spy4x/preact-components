@@ -1,4 +1,4 @@
-import { cn } from "@preact-components/cn"
+import { cn } from "@spy4x/preact-cn"
 import type { JSX } from "preact"
 
 /**

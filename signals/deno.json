@@ -1,5 +1,5 @@
 {
-  "name": "@preact-components/signals",
+  "name": "@spy4x/preact-signals",
   "version": "0.1.0",
   "exports": {
     ".": "./+index.ts",

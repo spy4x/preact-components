@@ -1,5 +1,5 @@
 /*
- * Design tokens for @preact-components/theme.
+ * Design tokens for @spy4x/preact-theme.
  *
  * Every colour, radius and font the preset styles against is a custom property,
  * so an app restyles the whole library by setting variables instead of forking
@@ -7,8 +7,8 @@
  * purple is the primary colour.
  *
  * This file is not an importable specifier once the package is installed — JSR does not export a
- * CSS file as a module, so `@import "@preact-components/theme/tokens.css"` resolves nowhere for a
- * consumer. `@preact-components/theme`'s `README.md` → "Install" has the recipe that actually
+ * CSS file as a module, so `@import "@spy4x/preact-theme/tokens.css"` resolves nowhere for a
+ * consumer. `@spy4x/preact-theme`'s `README.md` → "Install" has the recipe that actually
  * compiles: it splices this file's text, exported as `TOKENS_CSS`, into a Tailwind build. An app
  * that keeps its own copy of this file (vendored, not installed) can still `@import` it directly,
  * with an override written after it so it wins the cascade:

@@ -75,9 +75,9 @@ export const coveredPackageIds = [...packageIds, ...examplePackageIds] as const
 /** Identifier of a catalogued package: its directory, and the last segment of its specifier. */
 export type PackageId = (typeof coveredPackageIds)[number]
 
-/** `@preact-components/<id>` — the specifier a reader copies out of the guide. */
+/** `@spy4x/preact-<id>` — the specifier a reader copies out of the guide. */
 export function packageSpecifier(id: SectionPackage): string {
-  return `@preact-components/${id}`
+  return `@spy4x/preact-${id}`
 }
 
 /** One entry of the catalogue: what the component is, the JSX to copy, and the live example. */
@@ -454,7 +454,7 @@ export interface CatalogueSection {
   blurb: string
   /** Package the section's keys belong to: a component package, or `theme`. */
   package: SectionPackage
-  /** Package specifier, e.g. `@preact-components/ui` or `@preact-components/theme`. */
+  /** Package specifier, e.g. `@spy4x/preact-ui` or `@spy4x/preact-theme`. */
   packageName: string
   /** Names with a demo in this section, in render order. */
   names: string[]
@@ -610,7 +610,7 @@ export interface GuidePage {
   title: string
   /** One or two sentences under the page heading. */
   blurb: string
-  /** The package the page documents, e.g. `@preact-components/ui`; `undefined` for the overview. */
+  /** The package the page documents, e.g. `@spy4x/preact-ui`; `undefined` for the overview. */
   packageName: string | undefined
   /** The sections the page renders, in reading order; empty for a page with no cards. */
   sections: CatalogueSection[]
@@ -684,7 +684,7 @@ export const guidePages: GuidePage[] = guidePageIds.map((id) => ({
   id,
   title: pageCopy[id].title,
   blurb: pageCopy[id].blurb,
-  packageName: id === "overview" || id === "all" ? undefined : `@preact-components/${id}`,
+  packageName: id === "overview" || id === "all" ? undefined : `@spy4x/preact-${id}`,
   sections: id === "all"
     ? catalogueSections
     : catalogueSections.filter((section) => pageOfSection(section) === id),

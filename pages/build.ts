@@ -9,7 +9,7 @@
  *
  * **Why Deno-only.** `template` and another app bundle with Vite, and Vite would work here — but it
  * would need a `package.json`, a `node_modules` tree and a second lockfile in CI, plus hand-written
- * aliases for every `@preact-components/*` member Vite cannot see, only to bundle 37 modules and 60
+ * aliases for every `@spy4x/preact-*` member Vite cannot see, only to bundle 37 modules and 60
  * kB of CSS. `deno bundle --platform browser` and Tailwind's own `compile()` API do both from the
  * workspace's existing pinned dependencies, through the same import map the packages already use.
  *
@@ -38,8 +38,8 @@ import { demoElementId } from "./src/deep-link.ts"
 import { renderDocument } from "./src/document.tsx"
 import { renderApp } from "./src/prerender.tsx"
 import { routeTableFromHtml } from "./src/route-echo.ts"
-import { catalogueNames } from "@preact-components/ui-guide/registry"
-import { routeTable, routeTableDrift } from "@preact-components/ui-guide/routes"
+import { catalogueNames } from "@spy4x/preact-ui-guide/registry"
+import { routeTable, routeTableDrift } from "@spy4x/preact-ui-guide/routes"
 import { DEFAULT_BASE, DEFAULT_ORIGIN, normalizeBase } from "./src/site.ts"
 import { normalizeSources } from "./src/tailwind-sources.ts"
 
@@ -152,7 +152,7 @@ function resolveStylesheet(id: string, base: string): URL {
  * that module's own doc and `map/README.md` → "Leaflet's stylesheet"). That file is not published —
  * `import.meta.resolve` on an npm subpath carries no dependency record a consumer's own resolver
  * could follow, so it would throw for anyone outside this workspace — which is why this reads it by a
- * relative import rather than as `@preact-components/map`'s own subpath. A real consuming app has no
+ * relative import rather than as `@spy4x/preact-map`'s own subpath. A real consuming app has no
  * equivalent shortcut; `map/README.md` → "Leaflet's stylesheet" documents the route that works for
  * one: add `leaflet` as its own dependency and include the stylesheet in its own build.
  *

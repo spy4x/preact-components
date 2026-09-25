@@ -23,7 +23,7 @@ entries below — not effort, and not taste.
 `Map` was parked here until both reopen criteria below were met, and both have been:
 [issue #143](https://github.com/spy4x/preact-components/issues/143) is the real product requirement,
 and the owner's global policy names Leaflet among the "large, well-solved libraries to keep" — the
-explicit dependency decision the entry was waiting on. It is now `@preact-components/map`; see
+explicit dependency decision the entry was waiting on. It is now `@spy4x/preact-map`; see
 `map/README.md`. `docs/no-third-party-components.md`'s allowed-dependency table records Leaflet's own
 entry with the same reasoning.
 

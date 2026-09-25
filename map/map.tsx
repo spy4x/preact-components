@@ -51,7 +51,7 @@
  * than an HTML string.
  */
 
-import { cn } from "@preact-components/cn"
+import { cn } from "@spy4x/preact-cn"
 import type { JSX } from "preact"
 import { useEffect, useRef, useState } from "preact/hooks"
 import { type LeafletMapHandle, mountLeafletMap, type ZoomLabels } from "./leaflet-map.ts"
@@ -110,7 +110,7 @@ export interface MapProps {
 
 /** {@link MapProps.onLoadError}'s default: visible in the console, silent to a visitor. */
 function logLoadError(error: unknown): void {
-  console.error("@preact-components/map: Leaflet failed to load", error)
+  console.error("@spy4x/preact-map: Leaflet failed to load", error)
 }
 
 /** Everything the mount effect passes to `mountLeafletMap` that comes from this component's props,

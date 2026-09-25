@@ -12,8 +12,8 @@
  * caller's own link, if it wants one, is part of what it hands to `brand`.
  */
 
-import { cn } from "@preact-components/cn"
-import { IconBars3, type IconProps, IconXMark } from "@preact-components/icons"
+import { cn } from "@spy4x/preact-cn"
+import { IconBars3, type IconProps, IconXMark } from "@spy4x/preact-icons"
 import type { ComponentChildren, ComponentType, JSX } from "preact"
 import { useId } from "preact/hooks"
 import { useMobilePanel } from "./mobile-panel.ts"

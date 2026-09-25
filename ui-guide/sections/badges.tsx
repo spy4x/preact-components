@@ -5,7 +5,7 @@ import {
   CiStatusPill,
   StatusMark,
   type StatusMarkStatus,
-} from "@preact-components/ui"
+} from "@spy4x/preact-ui"
 import { entries } from "../record.ts"
 import type { DemoFragment } from "../registry.ts"
 

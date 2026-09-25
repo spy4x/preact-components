@@ -17,9 +17,9 @@
  * it, and closing it puts focus back on the button.
  */
 
-import { cn } from "@preact-components/cn"
-import { IconBars3, IconXMark } from "@preact-components/icons"
-import { buttonClasses } from "@preact-components/ui/button"
+import { cn } from "@spy4x/preact-cn"
+import { IconBars3, IconXMark } from "@spy4x/preact-icons"
+import { buttonClasses } from "@spy4x/preact-ui/button"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useRef, useState } from "preact/hooks"
 import { DemoCard, MissingDemoBanner } from "./card.tsx"

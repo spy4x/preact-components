@@ -1,4 +1,4 @@
-import { IconAlertTriangle } from "@preact-components/icons"
+import { IconAlertTriangle } from "@spy4x/preact-icons"
 import type { JSX } from "preact"
 import { useEffect, useRef } from "preact/hooks"
 import type { DeletionDependency } from "./types.ts"

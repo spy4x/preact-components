@@ -6,10 +6,10 @@ import {
   ExportButton,
   type ExportButtonColumn,
   GeoButton,
-} from "@preact-components/ui"
+} from "@spy4x/preact-ui"
 import { useSignal } from "@preact/signals"
 import { useRef } from "preact/hooks"
-import { IconPlus } from "@preact-components/icons"
+import { IconPlus } from "@spy4x/preact-icons"
 import { entries } from "../record.ts"
 import type { DemoFragment } from "../registry.ts"
 

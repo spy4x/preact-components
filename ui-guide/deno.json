@@ -1,5 +1,5 @@
 {
-  "name": "@preact-components/ui-guide",
+  "name": "@spy4x/preact-ui-guide",
   "version": "0.1.0",
   "exports": {
     ".": "./+index.tsx",

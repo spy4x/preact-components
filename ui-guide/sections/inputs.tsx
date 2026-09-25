@@ -31,7 +31,7 @@ import {
   rangeForPreset,
   ToggleField,
   ToggleSwitch,
-} from "@preact-components/ui"
+} from "@spy4x/preact-ui"
 import { useSignal } from "@preact/signals"
 import {
   IconChevronDown,
@@ -39,7 +39,7 @@ import {
   IconEllipsisVertical,
   IconTrashBin,
   IconUser,
-} from "@preact-components/icons"
+} from "@spy4x/preact-icons"
 import type { DemoFragment } from "../registry.ts"
 
 /** Controlled: the switch renders `value` and reports the intended value through `onToggle`. */

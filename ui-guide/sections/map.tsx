@@ -15,7 +15,7 @@
  * #143's security requirement.
  */
 
-import { Map, type MapMarker } from "@preact-components/map"
+import { Map, type MapMarker } from "@spy4x/preact-map"
 import { useSignal } from "@preact/signals"
 import type { DemoFragment } from "../registry.ts"
 

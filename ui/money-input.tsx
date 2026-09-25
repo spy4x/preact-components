@@ -1,4 +1,4 @@
-import { cn } from "@preact-components/cn"
+import { cn } from "@spy4x/preact-cn"
 import { useSignal } from "@preact/signals"
 import {
   currencyDecimals,

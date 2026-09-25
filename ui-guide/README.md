@@ -1,4 +1,4 @@
-# `@preact-components/ui-guide`
+# `@spy4x/preact-ui-guide`
 
 The live component catalogue, shipped as a component so every app that imports the library gets it
 free. It shows one page at a time: an overview, then one page per package, picked from a side
@@ -8,13 +8,13 @@ per helper (`signals`, `theme` and `cn` have only helpers), one card per group o
 `theme/preset.css` classes, the icon gallery, and the design-system rules components are meant to
 be assembled in. An app mounts it in one line, `<uiGuideRoute.component />` (see "Usage").
 
-Covering `map/` (#143) is what makes `@preact-components/ui-guide` resolve Leaflet: `map/`'s exact
+Covering `map/` (#143) is what makes `@spy4x/preact-ui-guide` resolve Leaflet: `map/`'s exact
 `leaflet`/`@types/leaflet` pins reach an app's dependency graph the moment it imports this package's
 `registry.ts`, which imports every section unconditionally, `sections/map.tsx` included — the same
 way covering `charts/` already put an optional `d3` in reach of anything that imports this package.
 This is a build-time fact about the module graph, not a run-time one: `UIGuide`'s own `registry` prop
 (below) can be handed a partial registry that never _renders_ a `Map` card, but the app that built
-that partial registry already resolved and bundled `@preact-components/map` — and therefore
+that partial registry already resolved and bundled `@spy4x/preact-map` — and therefore
 Leaflet — to get the value it left out. There is no documented way around that.
 
 Ported from one source application's own modular route-per-section guide (the better structure of
@@ -26,7 +26,7 @@ verbatim in spirit.
 An app renders the component at whatever path its router wants, and hands it the address:
 
 ```tsx
-import { UIGuide, useLocationHash } from "@preact-components/ui-guide"
+import { UIGuide, useLocationHash } from "@spy4x/preact-ui-guide"
 
 <UIGuide hash={useLocationHash()} onRouteChange={({ page }) => document.title = page.title} />
 ```
@@ -43,7 +43,7 @@ Or registers the route descriptor, which is the fix for one source guide being a
 only by typing its URL:
 
 ```tsx
-import { uiGuideRoute } from "@preact-components/ui-guide"
+import { uiGuideRoute } from "@spy4x/preact-ui-guide"
 
 const nav = [...appLinks, { href: uiGuideRoute.path, label: uiGuideRoute.label }]
 
@@ -97,7 +97,7 @@ page replaced the group heading as the unit a reader navigates by, so no heading
 ## Routes
 
 `routes.ts` is the catalogue's URL grammar, exported as its own subpath
-(`@preact-components/ui-guide/routes`) and from the barrel. It is pure — no DOM, no `window`, no
+(`@spy4x/preact-ui-guide/routes`) and from the barrel. It is pure — no DOM, no `window`, no
 `location` — so the decision it makes is unit-testable, and the shell owns the effects.
 
 | Hash                     | Match                                                                   | Page               |
@@ -318,13 +318,13 @@ positioned box (the package merges classes through `cn`, where a later position 
 
 ## The icon gallery
 
-`icons.tsx` reads the whole `@preact-components/icons` namespace — no list, no count, no registry
+`icons.tsx` reads the whole `@spy4x/preact-icons` namespace — no list, no count, no registry
 entry — and renders every glyph with a live name filter and click-to-copy of `<IconName />`. A new
 icon is in the catalogue the moment it is exported. `icons.test.tsx` matches the rendered
 `data-icon` attributes against the icon module's own exports, so the gallery cannot fall behind it.
 
 The clipboard goes through the `copy` port, which falls back to `copyToClipboard` from
-`@preact-components/ui/copy-button` so the legacy `execCommand` path is not reimplemented here.
+`@spy4x/preact-ui/copy-button` so the legacy `execCommand` path is not reimplemented here.
 
 ## Copying a snippet
 

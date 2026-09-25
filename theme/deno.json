@@ -1,5 +1,5 @@
 {
-  "name": "@preact-components/theme",
+  "name": "@spy4x/preact-theme",
   "version": "0.1.0",
   "exports": {
     // JSR refuses a CSS file as an export ("Expected a JavaScript or TypeScript module, but

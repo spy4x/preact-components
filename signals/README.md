@@ -1,12 +1,12 @@
-# `@preact-components/signals`
+# `@spy4x/preact-signals`
 
 Signals state layer: a CRUD store factory, table sort state, and the small stores around them.
 No Preact component, no Tailwind class, no application singleton.
 
 ```ts
-import { buildModelStore } from "@preact-components/signals/build-model-store"
+import { buildModelStore } from "@spy4x/preact-signals/build-model-store"
 // or
-import { buildModelStore, createToastStore } from "@preact-components/signals"
+import { buildModelStore, createToastStore } from "@spy4x/preact-signals"
 ```
 
 ## Why it exists
@@ -79,8 +79,8 @@ pin. The two are not drop-in identical, and one of the differences is silent:
 
 ```ts
 import { type } from "arktype"
-import { buildModelStore } from "@preact-components/signals/build-model-store"
-import { createToastStore } from "@preact-components/signals/toast"
+import { buildModelStore } from "@spy4x/preact-signals/build-model-store"
+import { createToastStore } from "@spy4x/preact-signals/toast"
 
 const toast = createToastStore()
 const dateSchema = type("Date | string.date.iso.parse")
@@ -312,8 +312,8 @@ The delay is one field, `duration`, spelled the same in both packages, so a stor
 straight into the component with no adapter:
 
 ```tsx
-import { createToastStore } from "@preact-components/signals/toast"
-import { Toastr } from "@preact-components/ui"
+import { createToastStore } from "@spy4x/preact-signals/toast"
+import { Toastr } from "@spy4x/preact-ui"
 
 const toast = createToastStore()
 

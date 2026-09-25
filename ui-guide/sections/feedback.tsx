@@ -30,11 +30,11 @@ import {
   textGeometry,
   Toastr,
   type ToastVariant,
-} from "@preact-components/ui"
-import { createToastStore } from "@preact-components/signals/toast"
+} from "@spy4x/preact-ui"
+import { createToastStore } from "@spy4x/preact-signals/toast"
 import { useSignal } from "@preact/signals"
 import { useMemo, useState } from "preact/hooks"
-import { IconFolder, IconPlus, IconTrashBin } from "@preact-components/icons"
+import { IconFolder, IconPlus, IconTrashBin } from "@spy4x/preact-icons"
 import { entries } from "../record.ts"
 import type { DemoFragment } from "../registry.ts"
 

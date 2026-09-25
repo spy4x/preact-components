@@ -1,4 +1,4 @@
-import { cn } from "@preact-components/cn"
+import { cn } from "@spy4x/preact-cn"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useRef, useState } from "preact/hooks"
 
@@ -14,7 +14,7 @@ export interface ToastItem {
    * Auto-dismiss delay in milliseconds. `0` keeps the toast until it is dismissed. Defaults to
    * {@link defaultToastDuration}, which is 5000.
    *
-   * `createToastStore` in `@preact-components/signals` writes this same field, under this same
+   * `createToastStore` in `@spy4x/preact-signals` writes this same field, under this same
    * name, so a store entry can be handed straight to this component.
    *
    * Changing it for a toast that is already on screen restarts that toast's budget at the new
@@ -75,7 +75,7 @@ const variantClasses: Record<ToastVariant, string> = {
  * How long a toast that names no duration of its own stays, in milliseconds.
  *
  * The only auto-dismiss default in the library. `createToastStore` in
- * `@preact-components/signals` deliberately has none: it holds the list and this side runs the
+ * `@spy4x/preact-signals` deliberately has none: it holds the list and this side runs the
  * timers, so a store toast with no delay arrives here with `duration` absent and gets this.
  */
 export const defaultToastDuration = 5000
@@ -148,7 +148,7 @@ export function resolveDuration(toast: Pick<ToastItem, "duration">): number {
  * toast's body — is a race against a five-second timer.
  *
  * **This component owns every dismiss timer, including for toasts that came out of a store.**
- * `createToastStore` in `@preact-components/signals` holds the list and schedules nothing; the
+ * `createToastStore` in `@spy4x/preact-signals` holds the list and schedules nothing; the
  * timer lives here because this is the side that can see a pointer resting on a toast. So the
  * pause reaches a store-fed stack exactly as it reaches a hand-held one, which it did not until
  * #175, and the delay a caller set on the store is the delay that runs, which it was not until

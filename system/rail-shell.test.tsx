@@ -1,7 +1,7 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
-import { IconHome } from "@preact-components/icons"
+import { IconHome } from "@spy4x/preact-icons"
 import { RailShell, type RailShellItem, tabBarSlots } from "./rail-shell.tsx"
 
 /** `count` items keyed `i1`…, each a link to `/i1`…. */

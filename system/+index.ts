@@ -1,10 +1,10 @@
 /**
- * `@preact-components/system` — application chrome and platform integration.
+ * `@spy4x/preact-system` — application chrome and platform integration.
  *
  * Everything here is props-and-ports: no component imports an app's state singleton, and the few
  * pieces that do touch the browser (`SWUpdater`) expose their logic as pure functions so it can be
  * tested and replaced. Import a single component from its own subpath
- * (`@preact-components/system/calendar`) when the barrel would pull in more than you need.
+ * (`@spy4x/preact-system/calendar`) when the barrel would pull in more than you need.
  */
 
 export {

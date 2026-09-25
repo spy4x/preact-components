@@ -1,4 +1,4 @@
-# `@preact-components/map`
+# `@spy4x/preact-map`
 
 `Map` — markers on a Leaflet tile layer, plotted from plain data, plus the plain-text list of the
 same places next to it. The map's own pins are the keyboard and screen-reader interface; the list is
@@ -22,7 +22,7 @@ runs.
 ## Install
 
 ```tsx
-import { Map } from "@preact-components/map"
+import { Map } from "@spy4x/preact-map"
 ```
 
 Leaflet's stylesheet also has to reach the page — see "Leaflet's stylesheet" below, which is a
@@ -163,7 +163,7 @@ own reasons:
 and a lockfile that has actually resolved it — run any task that imports `leaflet` once, or
 `deno install`, before the first build that reads the stylesheet this way — plus `--allow-read` on
 whatever reads the file (Deno's own npm cache, unless you vendor `node_modules` with
-`"nodeModulesDir": "auto"`). None of this is `@preact-components/map`'s to provide: it is exactly
+`"nodeModulesDir": "auto"`). None of this is `@spy4x/preact-map`'s to provide: it is exactly
 what installing Leaflet yourself, for your own build, requires — this package neither re-exports
 Leaflet's CSS nor gives you a shortcut around declaring the dependency you are, in substance, already
 taking on the moment you render tiles.
@@ -243,7 +243,7 @@ does.
 
 ## Do I need Leaflet?
 
-Only if you import `@preact-components/map`. `leaflet`/`leaflet/` and `@types/leaflet` are pinned in
+Only if you import `@spy4x/preact-map`. `leaflet`/`leaflet/` and `@types/leaflet` are pinned in
 `map/deno.json` alone, the same isolation `charts/deno.json` gives `d3` — see
 [`charts/README.md`](../charts/README.md) → "Do I need d3?" for the identical reasoning applied here.
 Neither `ui/` nor `charts/` imports `map/`, and the root import map carries no Leaflet entry, so

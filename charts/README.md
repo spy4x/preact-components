@@ -1,4 +1,4 @@
-# `@preact-components/charts`
+# `@spy4x/preact-charts`
 
 Chart components extracted from earlier source applications.
 
@@ -53,20 +53,13 @@ Hooks and helpers, all d3-free: `useInView` (`use-in-view`), `useMetricSeries` /
 
 ```tsx
 // The SVG half, through a barrel that imports nothing d3-backed.
-import {
-  Bars,
-  DonutChart,
-  Kpi,
-  KpiGrid,
-  LineChart,
-  MetricPanel,
-} from "@preact-components/charts/svg"
+import { Bars, DonutChart, Kpi, KpiGrid, LineChart, MetricPanel } from "@spy4x/preact-charts/svg"
 // or one chart at a time
-import { LineChart } from "@preact-components/charts/line-chart"
+import { LineChart } from "@spy4x/preact-charts/line-chart"
 
 // The interactive half, which needs d3 (see below).
-import { D3LineChart } from "@preact-components/charts/d3-line-chart"
-import { CompareChart } from "@preact-components/charts/compare-chart"
+import { D3LineChart } from "@spy4x/preact-charts/d3-line-chart"
+import { CompareChart } from "@spy4x/preact-charts/compare-chart"
 ```
 
 A zero-JS chart — this renders on the server and never hydrates:
@@ -128,7 +121,7 @@ too: `payload.ts` and `metric-panel.tsx` used to take `TimeFrame` / `TimeSeriesP
 `d3-line-chart.tsx`, which the resolver follows even though TypeScript erases it, so both would have
 needed d3 declared to be type-checked. They take it from `time-series.ts` now.
 
-**If you only draw SVG charts, do nothing.** Import `@preact-components/charts/svg` (or any single
+**If you only draw SVG charts, do nothing.** Import `@spy4x/preact-charts/svg` (or any single
 subpath above) and there is no `d3` in your dependency graph, your type check or your bundle. `d3` is
 not in the root import map of this repo either — the specifier lives in `charts/deno.json`, next to
 the one module that uses it, which is the closest thing Deno has to an optional peer dependency.

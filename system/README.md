@@ -1,4 +1,4 @@
-# `@preact-components/system`
+# `@spy4x/preact-system`
 
 Application chrome and platform integration: SEO, PWA updates, and the progressive-enhancement
 components that have to render without JavaScript.
@@ -21,7 +21,7 @@ Extracted from earlier source applications.
   than duplicating SVG.
 - **`ui/` is a sibling dependency.** `Shell` and `AuthForm` already import individual `ui/`
   components (`Avatar`, `Dropdown`; `Button`, `Field`, `Input`); `ImageLightbox` now does too,
-  opening `@preact-components/ui`'s shared `Lightbox` instead of rendering its own dialog. `crud/`
+  opening `@spy4x/preact-ui`'s shared `Lightbox` instead of rendering its own dialog. `crud/`
   imports `ui/` the same way.
 
 ## Components
@@ -45,7 +45,7 @@ one of the pure ones — see below. `date.ts`'s ISO day and month arithmetic is 
 package — `Calendar`'s own dependency, kept out of the barrel and out of `exports`.
 
 ```tsx
-import { SEOHead } from "@preact-components/system"
+import { SEOHead } from "@spy4x/preact-system"
 
 <SEOHead
   title="Widgets — Acme"
@@ -293,7 +293,7 @@ The day labels are the locale's too: a screen reader is read `9 February 2026` r
 
 ## Progressive enhancement
 
-`ImageLightbox` makes the images inside a container zoomable, opening `@preact-components/ui`'s
+`ImageLightbox` makes the images inside a container zoomable, opening `@spy4x/preact-ui`'s
 shared `Lightbox` — the same dialog `ImageGallery` opens on a thumbnail (`ui/README.md`'s
 `Lightbox` section). It renders nothing but that empty dialog, so a reader without JavaScript loses
 only the zoom. The layer is delegated to the container: one listener instead of one per image,

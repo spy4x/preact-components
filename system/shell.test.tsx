@@ -1,7 +1,7 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
-import { IconBars3 } from "@preact-components/icons"
+import { IconBars3 } from "@spy4x/preact-icons"
 import { Shell, type ShellNavItem, type ShellUser } from "./shell.tsx"
 
 const navItems: ShellNavItem[] = [

@@ -59,7 +59,7 @@ describe("the catalogue", () => {
 
     for (const section of catalogueSections) {
       expect(coveredPackageIds, section.id).toContain(section.package)
-      expect(section.packageName, section.id).toBe(`@preact-components/${section.package}`)
+      expect(section.packageName, section.id).toBe(`@spy4x/preact-${section.package}`)
       expect(section.title.length, section.id).toBeGreaterThan(0)
       expect(section.blurb.length, section.id).toBeGreaterThan(10)
       expect(section.names.length, section.id).toBeGreaterThan(0)
@@ -151,7 +151,7 @@ describe("guidePages", () => {
       expect(page.blurb.length, page.id).toBeGreaterThan(20)
     }
     for (const page of packagePages) {
-      expect(page.packageName, page.id).toBe(`@preact-components/${page.id}`)
+      expect(page.packageName, page.id).toBe(`@spy4x/preact-${page.id}`)
     }
     expect(packagePages.map((page) => page.id)).not.toContain("overview")
     expect(packagePages.map((page) => page.id)).not.toContain("all")

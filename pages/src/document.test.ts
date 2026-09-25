@@ -1,12 +1,12 @@
 /**
- * `renderDocument`'s head: it now comes from `@preact-components/system`'s `SEOHead` rather than
+ * `renderDocument`'s head: it now comes from `@spy4x/preact-system`'s `SEOHead` rather than
  * hand-written strings (issue #179), so what is worth proving here is the same thing that
  * component's own tests prove of it — that the canonical address is parsed, not concatenated.
  */
 
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
-import type { RouteTable } from "@preact-components/ui-guide/routes"
+import type { RouteTable } from "@spy4x/preact-ui-guide/routes"
 import { PAGE_DESCRIPTION, PAGE_TITLE } from "./site.ts"
 import { renderDocument } from "./document.tsx"
 

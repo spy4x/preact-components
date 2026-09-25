@@ -1,6 +1,6 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
-import type { SortRule } from "@preact-components/signals/table-state"
+import type { SortRule } from "@spy4x/preact-signals/table-state"
 import type { ComponentChild, VNode } from "preact"
 import { render } from "preact-render-to-string"
 import { DataTable, type DataTableColumn, rowKeyAttribute } from "./data-table.tsx"

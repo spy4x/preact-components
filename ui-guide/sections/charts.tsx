@@ -22,17 +22,17 @@
  * consumer who only draws SVG charts then reaches no `d3` specifier at all.
  */
 
-import { type BarDatum, Bars } from "@preact-components/charts/bars"
-import { CompareChart } from "@preact-components/charts/compare-chart"
-import { D3LineChart } from "@preact-components/charts/d3-line-chart"
-import { DonutChart } from "@preact-components/charts/donut-chart"
-import { Kpi, type KpiTone } from "@preact-components/charts/kpi"
-import { KpiGrid } from "@preact-components/charts/kpi"
-import { LineChart } from "@preact-components/charts/line-chart"
-import { MetricPanel } from "@preact-components/charts/metric-panel"
-import type { ChartPayload, DateRange } from "@preact-components/charts/payload"
-import type { TimeSeriesPoint } from "@preact-components/charts/time-series"
-import { Button } from "@preact-components/ui"
+import { type BarDatum, Bars } from "@spy4x/preact-charts/bars"
+import { CompareChart } from "@spy4x/preact-charts/compare-chart"
+import { D3LineChart } from "@spy4x/preact-charts/d3-line-chart"
+import { DonutChart } from "@spy4x/preact-charts/donut-chart"
+import { Kpi, type KpiTone } from "@spy4x/preact-charts/kpi"
+import { KpiGrid } from "@spy4x/preact-charts/kpi"
+import { LineChart } from "@spy4x/preact-charts/line-chart"
+import { MetricPanel } from "@spy4x/preact-charts/metric-panel"
+import type { ChartPayload, DateRange } from "@spy4x/preact-charts/payload"
+import type { TimeSeriesPoint } from "@spy4x/preact-charts/time-series"
+import { Button } from "@spy4x/preact-ui"
 import { entries } from "../record.ts"
 import type { DemoFragment } from "../registry.ts"
 
