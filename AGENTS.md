@@ -166,6 +166,11 @@ step, after `check`, against its own clean checkout — `.github/workflows/pages
 keeps outside the repository, and it exists for the owner to run before every `deno publish`.
 [`docs/pre-publish-checks.md`](./docs/pre-publish-checks.md) says how.
 
+Every package is published at the same version, every time, together (owner decision,
+2026-09-25, #230): sibling imports publish as caret ranges, and one version for all is what keeps
+`^0.1.N` resolving to the set published with it. [`docs/publishing.md`](./docs/publishing.md) has
+the release steps.
+
 Behaviour needs a second pair, in this order:
 
 | Task                           | Does                                   |

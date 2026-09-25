@@ -20,7 +20,10 @@ see [`docs/pre-publish-checks.md`](./docs/pre-publish-checks.md).
 
 ## Install
 
-Once published, each package below installs on its own:
+Every package is published at the same version every time, so the caret range a package puts on
+its siblings (`^0.1.N`) always resolves to the set published with it — see
+[`docs/publishing.md`](./docs/publishing.md). Once published, each package below installs on its
+own:
 
 ```bash
 deno add jsr:@preact-components/cn        # class-name join + Tailwind conflict resolution
