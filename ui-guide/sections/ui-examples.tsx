@@ -144,7 +144,7 @@ buttonClasses("outline", "sm", "w-full")`,
   parseIsoDate: {
     title: "Calendar date arithmetic",
     summary:
-      "Day and month steps on `YYYY-MM-DD` strings in fixed UTC days, so no step drifts across a daylight-saving change and an impossible date throws.",
+      "Day and month steps on `YYYY-MM-DD` strings in fixed UTC days, so no step drifts across a daylight-saving change and an impossible date throws; a month step lands on the 1st of the target month.",
     snippet:
       `import { addDays, formatIsoDate, isSameDay, parseIsoDate, shiftMonth } from "@preact-components/ui"
 
@@ -373,7 +373,7 @@ const input = { isSameNode: (node: unknown) => node === input }
   firstUsable: selectableIndex(sizes, 0, soldOut),
   empty: listboxContent([], "xl"),
   left: leavesCombobox(input, {} as Node),
-  stayed: leavesCombobox(input, null),
+  focusWentNowhere: leavesCombobox(input, null),
 })`,
     covers: ["openingState", "typingState", "selectableIndex", "listboxContent", "leavesCombobox"],
     run: () => {
@@ -386,7 +386,7 @@ const input = { isSameNode: (node: unknown) => node === input }
         firstUsable: selectableIndex(sizes, 0, soldOut),
         empty: listboxContent([], "xl"),
         left: leavesCombobox(input, {} as Node),
-        stayed: leavesCombobox(input, null),
+        focusWentNowhere: leavesCombobox(input, null),
       }
     },
   },
@@ -527,36 +527,43 @@ lock.release()
   bindEscapeClose, escapeCloseStrategy, platformCloseHandler, supportsClosedBy,
 } from "@preact-components/ui/modal"
 
-const log: string[] = []
-const dialog = {
-  addEventListener: (type: string) => log.push("add " + type),
-  removeEventListener: (type: string) => log.push("remove " + type),
+// A browser's dialog prototype: one that knows \`closedby\` has a \`closedBy\` property.
+function plan(dialogPrototype: object) {
+  const log: string[] = []
+  const dialog = {
+    addEventListener: (type: string) => log.push("add " + type),
+    removeEventListener: (type: string) => log.push("remove " + type),
+  }
+  const strategy = escapeCloseStrategy(supportsClosedBy(dialogPrototype))
+  const unbind = bindEscapeClose(dialog, strategy, { keydown: () => {}, cancel: () => {} })
+  unbind()
+  platformCloseHandler({
+    refusalHolds: strategy.refusalHolds,
+    onClose: () => false,
+    settleOpen: (open) => log.push("open " + open),
+  })()
+  return { strategy, log }
 }
-const strategy = escapeCloseStrategy(supportsClosedBy({}))
-const unbind = bindEscapeClose(dialog, strategy, { keydown: () => {}, cancel: () => {} })
-unbind()
-platformCloseHandler({
-  refusalHolds: strategy.refusalHolds,
-  onClose: () => false,
-  settleOpen: (open) => log.push("open " + open),
-})()
-;({ modern: supportsClosedBy({ closedBy: "none" }), strategy, log })`,
+;({ withClosedBy: plan({ closedBy: "none" }), withoutClosedBy: plan({}) })`,
     covers: ["escapeCloseStrategy", "supportsClosedBy", "bindEscapeClose", "platformCloseHandler"],
     run: () => {
-      const log: string[] = []
-      const dialog = {
-        addEventListener: (type: string) => log.push("add " + type),
-        removeEventListener: (type: string) => log.push("remove " + type),
+      function plan(dialogPrototype: object) {
+        const log: string[] = []
+        const dialog = {
+          addEventListener: (type: string) => log.push("add " + type),
+          removeEventListener: (type: string) => log.push("remove " + type),
+        }
+        const strategy = escapeCloseStrategy(supportsClosedBy(dialogPrototype))
+        const unbind = bindEscapeClose(dialog, strategy, { keydown: () => {}, cancel: () => {} })
+        unbind()
+        platformCloseHandler({
+          refusalHolds: strategy.refusalHolds,
+          onClose: () => false,
+          settleOpen: (open) => log.push("open " + open),
+        })()
+        return { strategy, log }
       }
-      const strategy = escapeCloseStrategy(supportsClosedBy({}))
-      const unbind = bindEscapeClose(dialog, strategy, { keydown: () => {}, cancel: () => {} })
-      unbind()
-      platformCloseHandler({
-        refusalHolds: strategy.refusalHolds,
-        onClose: () => false,
-        settleOpen: (open) => log.push("open " + open),
-      })()
-      return { modern: supportsClosedBy({ closedBy: "none" }), strategy, log }
+      return { withClosedBy: plan({ closedBy: "none" }), withoutClosedBy: plan({}) }
     },
   },
 
