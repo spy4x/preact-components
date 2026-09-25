@@ -10,6 +10,25 @@ import { CrudEditor, CrudList, RowAction, RowActions, TextField } from "@preact-
 import { search } from "@spy4x/platform/universal/text"
 ```
 
+## Components
+
+| Component            | Subpath               | Ports / key props                                                               |
+| -------------------- | --------------------- | ------------------------------------------------------------------------------- |
+| `AssociationEditor`  | `association-editor`  | a junction-row editor: `CrudEditor` with a `conflict` port instead of a schema  |
+| `CheckboxField`      | `field`               | `vm`, `vl`, `name`, `label`, `hint?`, `span?`, `renderIssue?`                   |
+| `CrudEditor`         | `crud-editor`         | `mode`, `store`, `editId?`, `validate?`, `archive?`, `canChange?`, `onCreated?` |
+| `CrudList`           | `crud-list`           | `store` or `rows`, `title`, `match`, `header`, `row`, `actions?`, `addHref?`    |
+| `DeletionValidation` | `deletion-validation` | `dependencies`, `model` — the entities that block an archive                    |
+| `FieldIssues`        | `field`               | `vl`, `name`, `renderIssue?` — one field's issues                               |
+| `NumberField`        | `field`               | as `TextField`; commits `0` for an empty box                                    |
+| `RowAction`          | `crud-list`           | `href` or `onClick`, `danger?`, `disabled?`, `children`                         |
+| `RowActions`         | `crud-list`           | `children`, `label?` — the per-row actions menu                                 |
+| `SelectField`        | `field`               | as `TextField`, plus `options`                                                  |
+| `TextField`          | `field`               | `vm`, `vl`, `name`, `label`, `hint?`, `placeholder?`, `span?`, `renderIssue?`   |
+| `TextareaField`      | `field`               | as `TextField`                                                                  |
+
+The sections below give each one's full contract.
+
 ## Why it exists
 
 That source application carries sixteen `List.tsx` (2,948 lines) and eleven `Editor.tsx` (3,785 lines). Nine of the
@@ -199,7 +218,7 @@ The harness is the six parts, once:
 
 ```tsx
 <TextField vm={vm} vl={vl} name="name" label="Name" />
-<NumberField vm={vm} vl={vl} name="powerW" label="Power, W" span="sm:col-span-2" />
+<NumberField vm={vm} vl={vl} name="quantity" label="Quantity" span="sm:col-span-2" />
 <SelectField
   vm={vm} vl={vl} name="zoneId" label="Zone" placeholder="Select zone"
   options={zones.value.map((zone) => ({ value: zone.id, label: zone.name }))}

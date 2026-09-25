@@ -13,6 +13,12 @@ this package alone, and the component finds out it is in a browser the same way 
 DOM-touching component in this library does: by rendering nothing browser-specific until an effect
 runs.
 
+## Components
+
+| Component | Subpath | Ports / key props                                            |
+| --------- | ------- | ------------------------------------------------------------ |
+| `Map`     | (root)  | `center`, `zoom`, `markers`, and the labels in "Props" below |
+
 ## Install
 
 ```tsx

@@ -8,19 +8,24 @@ its own PR, each owning exactly one top-level directory.
 
 ## Package layout
 
-| Directory   | Contents                                                                                             |
-| ----------- | ---------------------------------------------------------------------------------------------------- |
-| `theme/`    | design-system CSS + tailwind preset                                                                  |
-| `icons/`    | merged icon set, `+index.tsx`                                                                        |
-| `ui/`       | Badge, Button, Table, DataTable, Dropdown, Combobox, Modal, Tooltip, Toastr — and the rest           |
-| `system/`   | AuthForm, Calendar, ImageLightbox, SEOHead + head store, Shell, SiteHeader, StateInit, SWUpdater     |
-| `charts/`   | server-rendered SVG kit (scales) + d3 wrappers                                                       |
-| `cn/`       | `cn()` — class-name join + Tailwind conflict resolution                                              |
-| `signals/`  | buildModelStore, useUrlFilters, table-state, theme, toast, patchSignal — and the rest; no components |
-| `crud/`     | CrudList, CrudEditor, AssociationEditor                                                              |
-| `map/`      | `Map` on Leaflet — its own package, so only an app that imports it resolves Leaflet                  |
-| `ui-guide/` | live component catalogue route                                                                       |
-| `pages/`    | demo app (GitHub Pages site and the browser checks under `pages/checks/`), not published             |
+| Directory   | Contents                                                                                                                                 |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `theme/`    | design-system CSS + Tailwind preset, also as strings (`TOKENS_CSS`, `PRESET_CSS`)                                                        |
+| `icons/`    | merged icon set: one component per glyph, all listed by the guide's icon gallery                                                         |
+| `ui/`       | `Badge`, `Button`, `Table`, `DataTable`, `Dropdown`, `Combobox`, `Modal`, `Tooltip`, `Toastr` — and the rest                             |
+| `system/`   | `AuthForm`, `Calendar`, `ImageLightbox`, `RailShell`, `SEOHead` + `head` store, `Shell`, `SiteHeader`, `StateInit`, `SWUpdater`          |
+| `charts/`   | server-rendered SVG charts (`LineChart`, `Bars`, `DonutChart`, `Kpi`), axis maths (`scales`), d3 islands (`D3LineChart`, `CompareChart`) |
+| `cn/`       | `cn()` — class-name join + Tailwind conflict resolution                                                                                  |
+| `signals/`  | `buildModelStore`, `useUrlFilters`, `table-state`, `createThemeStore`, `createToastStore`, `patchSignal` — and the rest; no components   |
+| `crud/`     | `CrudList`, `CrudEditor`, `AssociationEditor`, `DeletionValidation`, field rows                                                          |
+| `map/`      | `Map` on Leaflet — its own package, so only an app that imports it resolves Leaflet                                                      |
+| `ui-guide/` | live component catalogue (`UIGuide`) and its route descriptor (`uiGuideRoute`)                                                           |
+| `pages/`    | demo app (GitHub Pages site and the browser checks under `pages/checks/`), not published                                                 |
+
+A name in backticks in this table must be an export or a subpath of that package, and each
+catalogued package's README lists every component it exports in a "Components" table.
+`infra/scripts/export-lists.test.ts` holds both against the packages' real exports, and it runs in
+`deno task test`.
 
 ## What belongs in this library
 
