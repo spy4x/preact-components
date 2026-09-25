@@ -15,9 +15,10 @@
  * Props and ports only: items, the current key or path, the primary action and every label arrive
  * from the caller; a button item reaches the app's router through the `navigate` port. The rail and
  * the tab bar switch at Tailwind's `md` breakpoint in CSS, so the server render already carries both
- * and nothing reads the window while rendering. Colours come from the theme's token utilities
- * (`bg-surface`, `bg-canvas`, `border-subtle`, `text-muted`, `btn-primary`), so the component follows
- * whichever palette the page has set.
+ * and nothing reads the window while rendering. Every colour is a theme token read through `var()`
+ * with the default palette's value as its fallback — the same pattern `theme/preset.css` uses — so
+ * the shell follows whichever palette the page sets and still draws without the preset, keeping
+ * this package free of a `theme/` dependency.
  */
 
 import { cn } from "@preact-components/cn"
@@ -130,9 +131,13 @@ const entryPlace: Record<Place, string> = {
   tab: "h-full w-full flex-col justify-center gap-1 px-1 py-2 text-center",
   sheet: "w-full gap-3 px-3 py-3 text-sm",
 }
-const entryIdle = "text-muted hover:bg-canvas"
-const entryCurrent = "bg-canvas font-semibold"
-const entryPrimary = "btn-primary hover:opacity-90"
+const surface = "bg-[var(--color-surface,oklch(1_0_0))]"
+const rule = "border-[color:var(--color-border-subtle,oklch(0.928_0.006_264.531))]"
+const entryIdle =
+  "text-[color:var(--color-muted-foreground,oklch(0.551_0.027_264.364))] hover:bg-[var(--color-canvas,oklch(0.985_0.002_247.839))]"
+const entryCurrent = "bg-[var(--color-canvas,oklch(0.985_0.002_247.839))] font-semibold"
+const entryPrimary =
+  "bg-[var(--color-primary,oklch(0.38_0.17_293))] text-[color:var(--color-primary-foreground,oklch(0.977_0.014_308.299))] hover:opacity-90"
 
 /** One entry: a link when it has an `href`, a button through `navigate` otherwise. */
 function Entry(
@@ -159,7 +164,9 @@ function Entry(
           <Icon class="size-6" />
         </span>
       )}
-      <span class={cn("min-w-0 max-w-full", place === "sheet" ? "truncate" : "line-clamp-2")}>
+      <span
+        class={cn("min-w-0 max-w-full", place === "rail" ? "line-clamp-2 break-words" : "truncate")}
+      >
         {label}
       </span>
     </>
@@ -255,7 +262,7 @@ export function RailShell(props: RailShellProps): JSX.Element {
     <div class={cn("flex min-h-dvh flex-col md:flex-row", className)}>
       <a
         href={`#${contentId}`}
-        class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-surface focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:shadow-lg"
+        class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-[var(--color-surface,oklch(1_0_0))] focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:shadow-lg"
         data-e2e="rail-shell-skip-link"
       >
         {skipLabel}
@@ -263,7 +270,7 @@ export function RailShell(props: RailShellProps): JSX.Element {
 
       <nav
         aria-label={navLabel}
-        class="hidden shrink-0 border-r border-subtle bg-surface md:block md:w-24"
+        class={cn("hidden shrink-0 border-r md:block md:w-24", rule, surface)}
         data-e2e="rail-shell-rail"
       >
         <div class="sticky top-0 flex max-h-dvh flex-col gap-2 overflow-y-auto p-2">
@@ -303,7 +310,11 @@ export function RailShell(props: RailShellProps): JSX.Element {
 
       <nav
         aria-label={navLabel}
-        class="sticky bottom-0 z-10 shrink-0 border-t border-subtle bg-surface pb-[env(safe-area-inset-bottom)] md:hidden"
+        class={cn(
+          "sticky bottom-0 z-10 shrink-0 border-t pb-[env(safe-area-inset-bottom)] md:hidden",
+          rule,
+          surface,
+        )}
         data-e2e="rail-shell-tabbar"
       >
         <ul class="flex h-16">
@@ -348,7 +359,11 @@ export function RailShell(props: RailShellProps): JSX.Element {
           ref={dialogRef}
           id={dialogId}
           aria-labelledby={headingId}
-          class="m-0 mt-auto max-h-[80dvh] w-full max-w-none rounded-t-lg border-t border-subtle bg-surface p-0 text-[inherit] backdrop:bg-black/40"
+          class={cn(
+            "m-0 mt-auto max-h-[80dvh] w-full max-w-none rounded-t-lg border-t p-0 text-[inherit] backdrop:bg-black/40",
+            rule,
+            surface,
+          )}
           onClick={(event) => {
             if (event.target === dialogRef.current) close()
           }}
@@ -363,7 +378,10 @@ export function RailShell(props: RailShellProps): JSX.Element {
                 aria-label={closeLabel}
                 command="close"
                 commandfor={dialogId}
-                class="flex size-10 cursor-pointer items-center justify-center rounded-md text-muted hover:bg-canvas focus-visible:outline-2 focus-visible:outline-offset-2"
+                class={cn(
+                  "flex size-10 cursor-pointer items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-offset-2",
+                  entryIdle,
+                )}
                 onClick={(event) => {
                   event.preventDefault()
                   close()
