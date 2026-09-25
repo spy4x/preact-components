@@ -50,6 +50,13 @@ deno task --cwd pages verify     # static checks, then the browser checks
 deno task --cwd pages preview    # serve the built directory at /preact-components/
 ```
 
+Before anything else, `verify` refuses a `dist/` that was not built from the working tree it is
+running against: `build.ts` writes a fingerprint of every source the build reads into
+`dist/.build-hash`, and `verify` recomputes it and compares before the static phase or the browser
+touches anything. A missing or mismatched fingerprint fails as one named check and exits — run
+`deno task --cwd pages build` and try again. This is what catches a `dist/` left over from before a
+rebase or a branch switch (#280); `pages/build-fingerprint.ts` documents exactly what is hashed.
+
 `verify` needs a Chromium binary (it looks for `chromium-browser`, `chromium`, `google-chrome`,
 `google-chrome-stable`, `chrome`, or `$CHROME_PATH`). **Not finding one is a failure:** the run
 records a failed check and exits non-zero, because the browser phase carries every assertion about
