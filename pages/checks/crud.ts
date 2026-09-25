@@ -1,4 +1,4 @@
-import { check, type Devtools, poll } from "./harness.ts"
+import { centreInView, check, type Devtools, poll, settledScroll } from "./harness.ts"
 
 /**
  * `crud/`'s browser checks: `CrudEditor`'s form-level message, driven on the `CrudEditor` catalogue
@@ -8,6 +8,11 @@ import { check, type Devtools, poll } from "./harness.ts"
  * (which is what commits a `TextField` — it writes on blur, not on input) and Save through
  * `.click()`, and reads back the live region, Save's `disabled`/`aria-describedby`, and the store
  * port's own log of what it was asked to do.
+ *
+ * Also drives the `DeletionValidation` catalogue demo (`#255`): its alert region is present and
+ * empty on load, a new non-empty dependency list brings it into view and is announced as a change to
+ * the region, a re-render for a reason unrelated to the dependency list does not scroll the page, and
+ * emptying the list clears the region's content without removing the region itself.
  *
  * `CrudList`/`AssociationEditor` keyboard and focus behaviour has no check yet; anything behind a
  * ref, an effect or a key press that a string-rendering test cannot execute belongs here once it is
@@ -131,6 +136,158 @@ export async function crudChecks(devtools: Devtools): Promise<void> {
     fixedAgain.saveDisabled === false && fixedAgain.statusText === "",
     `disabled=${fixedAgain.saveDisabled} message="${fixedAgain.statusText}"`,
   )
+
+  await deletionValidationChecks(devtools)
+}
+
+/** The card {@link deletionValidationChecks} drives: the `DeletionValidation` catalogue demo. */
+const DELETION_CARD = "#demo-DeletionValidation"
+
+/** One reading of the `DeletionValidation` demo's alert region and its place on the page. */
+interface DeletionValidationReading {
+  /** `false` when the card itself was not found; every other field is then noise. */
+  ok: boolean
+  /** Whether the region carries `role="alert"`. */
+  hasAlertRole: boolean
+  /** The region's own `class` attribute, `""` when it has none. */
+  regionClass: string
+  /** The region's text, trimmed — `""` while the dependency list is empty. */
+  regionText: string
+  /** Whether the region's top sits inside the viewport. */
+  inViewport: boolean
+}
+
+/** Read every field {@link DeletionValidationReading} declares, in one round trip. */
+function readDeletionState(devtools: Devtools): Promise<DeletionValidationReading> {
+  return devtools.evaluate<DeletionValidationReading>(`(() => {
+    const card = document.querySelector('${DELETION_CARD}')
+    const region = card ? card.querySelector('[role="alert"]') : null
+    if (!card || !region) {
+      return { ok: false, hasAlertRole: false, regionClass: "", regionText: "", inViewport: false }
+    }
+    const box = region.getBoundingClientRect()
+    const viewport = document.documentElement.clientHeight
+    return {
+      ok: true,
+      hasAlertRole: region.getAttribute("role") === "alert",
+      regionClass: region.getAttribute("class") ?? "",
+      regionText: region.textContent.trim(),
+      inViewport: box.top >= 0 && box.top < viewport,
+    }
+  })()`)
+}
+
+/**
+ * Click a demo card's button by its exact, current visible text — the toggle buttons in the
+ * `DeletionValidation` demo relabel themselves, so a selector fixed on one label would stop
+ * matching after the first click.
+ *
+ * @param devtools The connected session.
+ * @param card The demo card's selector.
+ * @param text The button's exact visible text right now.
+ * @returns Whether a matching button was found and clicked.
+ */
+function clickButtonByText(devtools: Devtools, card: string, text: string): Promise<boolean> {
+  return devtools.evaluate<boolean>(`(() => {
+    const root = document.querySelector('${card}')
+    const button = root && [...root.querySelectorAll("button")]
+      .find((element) => element.textContent.trim() === ${JSON.stringify(text)})
+    if (!button) return false
+    button.click()
+    return true
+  })()`)
+}
+
+/**
+ * `DeletionValidation`'s browser checks, on the catalogue's own demo (`#255`): the alert region is
+ * present and empty on load, a non-empty dependency list brings it into view, a re-render for a
+ * reason unrelated to the dependency list does not move the page, and emptying the list removes the
+ * visible content while the region itself stays on the page.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function deletionValidationChecks(devtools: Devtools): Promise<void> {
+  const initial = await readDeletionState(devtools)
+  check(
+    "the DeletionValidation demo card is on the page",
+    initial.ok,
+    initial.ok ? "found" : "not found",
+  )
+  if (!initial.ok) return
+
+  check(
+    "the region exists before there is anything to say, carrying role=alert and no class",
+    initial.hasAlertRole && initial.regionText === "" && initial.regionClass === "",
+    `role has "alert"=${initial.hasAlertRole} class="${initial.regionClass}" ` +
+      `text="${initial.regionText}"`,
+  )
+
+  const clickedRestore = await clickButtonByText(
+    devtools,
+    DELETION_CARD,
+    "Restore the dependency list",
+  )
+  const settledOnShow = await settledScroll(devtools, { timeoutMs: 5_000 })
+  const shown = await readDeletionState(devtools)
+  check(
+    "a new non-empty list brings the block into view, and the message arrives as a change to it",
+    clickedRestore && settledOnShow && shown.regionText.startsWith("To archive this Region") &&
+      shown.inViewport,
+    `clicked=${clickedRestore} settled=${settledOnShow} inViewport=${shown.inViewport} ` +
+      `text="${shown.regionText}"`,
+  )
+
+  // Scrolled to the top, deliberately away from the block, before the unrelated re-render: the
+  // block is already in view right after the previous check, so a `scrollIntoView` this click
+  // wrongly triggered would be a no-op there and this check would not catch it. Parked away from
+  // the block instead, the same bug pulls the page back toward it, which this check can see.
+  await devtools.evaluate(`globalThis.scrollTo({ top: 0, behavior: "instant" })`)
+  await settledScroll(devtools, { timeoutMs: 2_000 })
+  const clickedRerender = await clickButtonByText(
+    devtools,
+    DELETION_CARD,
+    "Re-render for an unrelated reason",
+  )
+  // No scroll is expected here, so the plain settle — neither `target` nor `from` — answers only
+  // whether anything is moving, and it should already be still.
+  await settledScroll(devtools, { timeoutMs: 2_000 })
+  const scrollAfterRerender = await devtools.evaluate<number>(
+    "Math.round(globalThis.scrollY)",
+  )
+  check(
+    "a re-render for a reason unrelated to the dependency list does not move the page",
+    clickedRerender && scrollAfterRerender === 0,
+    `clicked=${clickedRerender} scrollY after=${scrollAfterRerender} (parked at 0 before the click)`,
+  )
+
+  const clickedEmpty = await clickButtonByText(devtools, DELETION_CARD, "Empty the dependency list")
+  const emptied = await waitForDeletionState(devtools, (reading) => reading.regionText === "")
+  check(
+    "emptying the list clears its content but keeps the alert region on the page",
+    clickedEmpty && emptied.ok && emptied.hasAlertRole && emptied.regionText === "" &&
+      emptied.regionClass === "",
+    `clicked=${clickedEmpty} role has "alert"=${emptied.hasAlertRole} ` +
+      `class="${emptied.regionClass}" text="${emptied.regionText}"`,
+  )
+}
+
+/**
+ * Poll {@link readDeletionState} until `predicate` holds, or 2s pass — whichever comes first — and
+ * return the last reading either way.
+ *
+ * @param devtools The connected session.
+ * @param predicate What the next `check` in this file needs to be true before it reads the state.
+ */
+async function waitForDeletionState(
+  devtools: Devtools,
+  predicate: (reading: DeletionValidationReading) => boolean,
+): Promise<DeletionValidationReading> {
+  let last = await readDeletionState(devtools)
+  await poll(async () => {
+    last = await readDeletionState(devtools)
+    return predicate(last)
+  }, 2_000)
+  return last
 }
 
 /** The card these checks drive: the `CrudEditor` demo, whose schema adds one cross-field rule. */
@@ -271,25 +428,64 @@ function readRegionIdentity(devtools: Devtools): Promise<RegionIdentity> {
 }
 
 /**
- * Commit one field by its visible label — a real focus/blur pair, which is what commits a
+ * Commit one field by its visible label, through a real click followed by a blur — what commits a
  * `TextField`: it writes on blur, not on input, so setting `.value` alone would leave the model
- * untouched. `.focus()`/`.blur()` move the browser's own focus, which is what makes the resulting
- * focus/blur events trusted.
+ * untouched.
+ *
+ * The click is a genuine `Input.dispatchMouseEvent` press-and-release at the input's own
+ * coordinates, not `.focus()` — `#273` traced `verify --only=crud` failing four checks, every time,
+ * to exactly this: a page that has never received one real click or key press through the DevTools
+ * protocol answers `document.hasFocus() === false`, and on such a page `.focus()` updates
+ * `document.activeElement` without Chromium ever dispatching the `focus`/`blur` events `TextField`'s
+ * commit handler listens for. A full run never showed it because some earlier block — `system`'s
+ * `AuthForm` checks send real key presses — had already given the document real focus by the time
+ * `crud` ran, which is what let this block depend on state a run confined to `--only=crud` never
+ * builds. This function no longer borrows that; it gives the document real focus itself, on its
+ * first call, the same way a person's first click into the form would, and every commit after it
+ * benefits from the same focus, in either kind of run.
+ *
+ * The element is centred in the viewport first (`centreInView`) so its coordinates are the ones the
+ * click is sent to are real, on-screen ones — the field may sit anywhere on the page by the time this
+ * runs, including outside the current viewport.
  *
  * @param devtools The connected session.
  * @param label The field's visible label text, exactly as the card renders it.
  * @param value The value to commit.
- * @returns Whether a field with that label was found.
+ * @returns Whether a field with that label was found, centred and clicked.
  */
-function commitField(devtools: Devtools, label: string, value: string): Promise<boolean> {
-  return devtools.evaluate<boolean>(`(() => {
+async function commitField(devtools: Devtools, label: string, value: string): Promise<boolean> {
+  const inputExpr = `(() => {
     const card = document.querySelector('${CARD}')
     const target = card && [...card.querySelectorAll("label")]
       .find((element) => element.textContent.trim() === ${JSON.stringify(label)})
     const id = target ? target.getAttribute("for") : null
-    const input = id ? document.getElementById(id) : null
-    if (!input) return false
-    input.focus()
+    return id ? document.getElementById(id) : null
+  })()`
+
+  const centred = await centreInView(devtools, inputExpr)
+  if (!centred) return false
+
+  const point = await devtools.evaluate<{ x: number; y: number } | null>(`(() => {
+    const input = ${inputExpr}
+    if (!input) return null
+    const box = input.getBoundingClientRect()
+    return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
+  })()`)
+  if (!point) return false
+
+  for (const type of ["mousePressed", "mouseReleased"] as const) {
+    await devtools.send("Input.dispatchMouseEvent", {
+      type,
+      x: point.x,
+      y: point.y,
+      button: "left",
+      clickCount: 1,
+    })
+  }
+
+  return await devtools.evaluate<boolean>(`(() => {
+    const input = ${inputExpr}
+    if (!input || document.activeElement !== input) return false
     input.value = ${JSON.stringify(value)}
     input.blur()
     return true
