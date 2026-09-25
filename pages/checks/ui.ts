@@ -9360,6 +9360,9 @@ async function fileInputFieldNestingCheck(devtools: Devtools): Promise<void> {
 /**
  * Every preview `URL.createObjectURL` creates is revoked exactly twice over: once when its own file
  * leaves the list, and once more, for whatever is still outstanding, when the whole card unmounts.
+ * The same removal also checks the thing a rendered list update cannot prove by itself: that the
+ * removed file is genuinely gone from the native input's own `files`, the property a real `<form>`
+ * post reads — not only out of the component's own rendered `<li>`.
  *
  * The card's own `data-e2e="file-input-toggle-mount"` button is what supplies the second half: this
  * catalogue never unmounts a card on its own, so proving "on unmount" needs a real Preact unmount
@@ -9402,6 +9405,15 @@ async function fileInputPreviewRevokeChecks(
         return count > beforeRemove
       }, 5_000)
       check("removing a file with an image preview revokes its object URL", revokedOnRemove)
+
+      const filesAfterRemove = await devtools.evaluate<string[]>(
+        `Array.from(document.querySelector('${FILE_INPUT_SELECTOR}')?.files ?? []).map((f) => f.name)`,
+      )
+      check(
+        "removing a file also drops it from the native input's own files, not only the rendered list",
+        !filesAfterRemove.includes("ok.png"),
+        `input.files: [${filesAfterRemove.join(", ")}]`,
+      )
     }
 
     const nodeId = await domNodeId(devtools, FILE_INPUT_SELECTOR)
