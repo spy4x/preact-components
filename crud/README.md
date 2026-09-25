@@ -6,14 +6,8 @@ dependency block. The package knows no entity — the store arrives as a prop an
 arrive as slots.
 
 ```ts
-import {
-  CrudEditor,
-  CrudList,
-  RowAction,
-  RowActions,
-  search,
-  TextField,
-} from "@preact-components/crud"
+import { CrudEditor, CrudList, RowAction, RowActions, TextField } from "@preact-components/crud"
+import { search } from "@spy4x/platform/universal/text"
 ```
 
 ## Why it exists
@@ -406,8 +400,6 @@ unreachable. Here the removed duplicate renders a Restore offer beside the confl
 
 Small, deliberate, and each one is why the source files could drift:
 
-- **`search(value, word, condition)` lost its third argument.** Callers write
-  `row.module === Kind.X && search(label, word)` instead of folding the condition into the matcher.
 - **Statuses are `"active" | "archived"`, not numeric enums.** A `DeviceStatus.ACTIVE = 1` is not a
   library's to define, and the wording is a prop (`{ archived: "Banned" }`).
 - **The error banner renders `error.message`.** The source files interpolated the error object into
