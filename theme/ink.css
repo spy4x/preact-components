@@ -17,20 +17,17 @@
  * a bottom tab bar), not for anything in this package, which is why they have no light-mode or
  * default-dark counterpart: nothing here has a use for them outside `ink`.
  *
- * `--color-primary` here is spent on one thing only — the primary action's own background — unlike
- * the default palette's `--color-primary`, whose own doc comment in `tokens.css` names it for
- * "buttons, links, focus rings, active nav" all at once. `--color-nav-active` carries a rail's
+ * Ink takes the accent off focus states and the rail's current-item indicator. The default palette's
+ * `--color-primary` is documented in `tokens.css` for "buttons, links, focus rings, active nav" all
+ * at once; under ink, `--color-nav-active` carries a rail's
  * current-item indicator instead (a foreground/indicator colour — the surface a rail paints behind
- * its current item is `--color-surface-active` above, a separate token), and `.btn`'s own focus
- * ring reads `--color-focus-ring` rather than the accent. Both are the same light neutral, not the
- * accent, so neither competes with a page's one primary button for the same colour. What still does
- * carry the accent, unchanged: links (`btn-link`, `.text-primary`, `.border-primary`), an input or
- * select's own focus ring, checkboxes and radios, `btn-primary-outline`, and `.bar` — all of them
- * read `--color-primary`/`--color-primary-muted` directly, in `preset.css`, and this file repaints
- * those two tokens the same way it repaints every other one. That is by design: an accent-coloured
- * link or a focused input is not competing with anything, it is the accent doing the one job
- * `--color-primary` is for everywhere else in this preset — only a rail's *current-item* indicator
- * and a *button's* focus ring were the two cases #257 asked to split off it.
+ * its current item is `--color-surface-active` above, a separate token), and the focus rings of
+ * `.btn`, `.input`, `.select` and `.textarea` read `--color-focus-ring`. Both are the same light
+ * neutral, not the accent. The accent still colours, under ink: `.btn-primary`'s fill, links
+ * (`.btn-link`, `.text-primary`, `.border-primary`), `bg-primary`, checkboxes and radios,
+ * `.btn-primary-outline` and `.bar`, because they read `--color-primary`/`--color-primary-muted`
+ * directly. That is narrower than #257 asked ("the accent on the primary action alone"): moving those
+ * would change the default palettes too, and is left for a later change.
  *
  * Not an importable specifier once installed, for the same reason as `tokens.css`/`preset.css` —
  * see that file's own header. `@preact-components/theme`'s `+index.ts` exports this file's text as
@@ -57,7 +54,8 @@
      accent elsewhere, unchanged. */
   --color-primary: oklch(0.72 0.15 200);
   --color-primary-foreground: oklch(0.14 0.02 260);
-  --color-primary-muted: oklch(0.62 0.13 200);
+  /* 0.66 so a link clears 4.5:1 on --color-surface-active (0.62 read 4.09:1). */
+  --color-primary-muted: oklch(0.66 0.13 200);
 
   /* Dark surface scale: page, rail, card, active — a finer set of steps than the default
      two-token canvas/surface pair, for a navigation rail and its active row. */
@@ -75,9 +73,9 @@
   --color-text: var(--color-foreground);
   --color-text-muted: var(--color-muted-foreground);
 
-  /* Active-navigation indicator and a button's focus ring, split off --color-primary so the accent
-     stays on the primary action alone — see this file's own header. Both the same light neutral,
-     8.9:1 on every surface above, not the accent. */
+  /* Active-navigation indicator and the focus ring of buttons and form fields, split off
+     --color-primary — see this file's own header. Both the same light neutral, 8.9:1 on every
+     surface above, not the accent. */
   --color-nav-active: oklch(0.86 0.02 260);
   --color-focus-ring: oklch(0.86 0.02 260);
 }

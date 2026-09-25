@@ -278,8 +278,10 @@
    * exactly the build-time coupling the tokens avoid.
    */
   &:focus {
-    border-color: var(--color-primary-muted, oklch(0.558 0.288 302.321));
-    outline: 1px solid var(--color-primary-muted, oklch(0.558 0.288 302.321));
+    /* --color-focus-ring is defined only by ink, so the default palettes keep the accent here. */
+    border-color: var(--color-focus-ring, var(--color-primary-muted, oklch(0.558 0.288 302.321)));
+    outline: 1px solid var(--color-focus-ring, var(--color-primary-muted, oklch(0.558 0.288
+      302.321)));
     outline-offset: -1px;
     box-shadow: none;
   }
@@ -301,8 +303,10 @@
   }
 
   &:focus {
-    border-color: var(--color-primary-muted, oklch(0.558 0.288 302.321));
-    outline: 1px solid var(--color-primary-muted, oklch(0.558 0.288 302.321));
+    /* --color-focus-ring is defined only by ink, so the default palettes keep the accent here. */
+    border-color: var(--color-focus-ring, var(--color-primary-muted, oklch(0.558 0.288 302.321)));
+    outline: 1px solid var(--color-focus-ring, var(--color-primary-muted, oklch(0.558 0.288
+      302.321)));
     outline-offset: -1px;
     box-shadow: none;
   }

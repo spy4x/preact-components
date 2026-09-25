@@ -42,6 +42,8 @@ describe("the generated CSS text constants", () => {
 function parseBlock(css: string, selector: string): Record<string, string> {
   const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, "")
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  const blocks = withoutComments.match(new RegExp(`(^|\\})\\s*${escaped}\\s*\\{`, "g")) ?? []
+  if (blocks.length !== 1) throw new Error(`expected one ${selector} block, found ${blocks.length}`)
   const match = withoutComments.match(new RegExp(`${escaped}\\s*\\{([\\s\\S]*?)\\}`))
   if (!match) throw new Error(`no ${selector} block found`)
   const declarations: Record<string, string> = {}

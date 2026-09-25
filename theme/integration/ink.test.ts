@@ -8,6 +8,7 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { compile } from "tailwindcss"
 import { fileURLToPath } from "node:url"
+import { INK_CSS } from "../ink-css.ts"
 import { stylesheetLoader } from "./load-stylesheet.ts"
 
 /** Must stay in step with the `tailwindcss` pin in the repo root `deno.jsonc`. */
@@ -96,11 +97,23 @@ describe("the ink theme", () => {
     expect(inkRule).toContain("--color-primary: oklch(0.72 0.15 200)")
   })
 
+  it("keeps the focus ring and the nav indicator off the accent", () => {
+    const token = (name: string) => INK_CSS.match(new RegExp(`${name}:\\s*([^;]+);`))?.[1]
+    expect(token("--color-focus-ring")).not.toBe(token("--color-primary"))
+    expect(token("--color-focus-ring")).not.toBe(token("--color-primary-muted"))
+    expect(token("--color-nav-active")).not.toBe(token("--color-primary"))
+  })
+
   it("points .btn's focus-visible outline at --color-focus-ring", async () => {
     const css = await compileInk(["btn", "btn-primary"])
     // `compiler.build()` emits `.btn`'s nested `&:focus-visible` blocks unflattened (as authored
     // in preset.css), so this reads the declaration directly rather than assuming a flattened
     // `.btn:focus-visible { ... }` selector, which never appears in this output.
     expect(css).toContain("outline-color: var(--color-focus-ring, currentColor)")
+  })
+
+  it("points the input, select and textarea focus outline at --color-focus-ring", async () => {
+    const css = await compileInk(["input", "select", "textarea"])
+    expect(css).toContain("outline: 1px solid var(--color-focus-ring, var(--color-primary-muted")
   })
 })

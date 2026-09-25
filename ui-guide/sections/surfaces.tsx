@@ -368,7 +368,7 @@ export const surfaceDemos = {
     title: "Ink palette",
     classes: ["card", "card-body", "text-muted", "rounded-primary", "border-subtle"],
     summary:
-      'The ink theme (#257): an additional, opt-in dark palette, `.dark[data-theme="ink"]`. It repaints the same tokens above — the default Eirene palette is unaffected — and adds a four-step surface scale, a hairline rule colour, two text tones, and `--color-nav-active`/`--color-focus-ring`, split off `--color-primary` so the accent stays on the one primary action.',
+      'The ink theme (#257): an additional, opt-in dark palette, `.dark[data-theme="ink"]`. It repaints the same tokens above — the default Eirene palette is unaffected — and adds a four-step surface scale, a hairline rule colour, two text tones, and `--color-nav-active`/`--color-focus-ring`, split off `--color-primary` so focus rings and the rail indicator do not use the accent. Links, checkboxes, outline buttons and bars still do.',
     snippet: `<html class="dark" data-theme="ink">
   <body class="theme-base">
     <nav style="background: var(--color-surface-rail)">…</nav>

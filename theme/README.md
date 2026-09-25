@@ -224,11 +224,8 @@ const entry = `
 `
 ```
 
-`ink.css`'s own position among the three imports does not matter — a custom property's declaration
-order inside its selector's own cascade layer has no effect on which one a `var()` read elsewhere
-resolves to; what matters is that `.dark[data-theme="ink"]` and `:root`/`.dark` are different
-selectors, so Tailwind never has to choose between two declarations of the same property in the
-same rule. It repaints the same custom properties `tokens.css` declares, so `preset.css`'s rules —
+`ink.css`'s position among the three imports does not matter: `.dark[data-theme="ink"]` is more
+specific than `:root` and `.dark`, so its declarations win wherever both match. It repaints the same custom properties `tokens.css` declares, so `preset.css`'s rules —
 which already read every colour through `var(--token, <default>)` — pick the ink values up with no
 change of their own beyond the one line noted below. An app that skips importing `ink.css` gets the
 default palette only, exactly as before this file existed.
@@ -246,19 +243,18 @@ tokens above, ink adds a handful its own: a four-step surface scale for a naviga
 a hairline rule colour (`--color-hairline`), two named text tones (`--color-text`,
 `--color-text-muted`), and — the reason ink exists as a second selector rather than a copy of the
 default dark palette — `--color-nav-active` and `--color-focus-ring`, split off `--color-primary`
-so a page's one primary action keeps the accent to itself. `--color-nav-active` is a
+so focus states and a rail's current item do not use the accent. `--color-nav-active` is a
 **foreground/indicator** colour: a rail draws its current item's icon or text in it, not its
 background — the background a rail paints behind its current item is `--color-surface-active`
-above, a separate token. `--color-focus-ring` is read by one rule in `preset.css`: `.btn`'s own
-`:focus-visible` outline, which under the default palette still falls back to `currentColor` as
-before, unchanged. The default palette's `--color-primary` stays documented as covering buttons,
-links, focus rings and active nav all at once — ink is the one palette that splits a button's
-focus ring and a rail's active indicator off it, onto their own tokens, so neither competes with
-the one primary action for the same colour. Everything else that reads `--color-primary` or
-`--color-primary-muted` in `preset.css` — links (`.btn-link`, `.text-primary`, `.border-primary`),
-an input or select's own focus ring, checkboxes, radios, `.btn-primary-outline` and `.bar` — still
-carries the accent under ink too, repainted the same way every other token is; only a button's
-focus ring and a rail's current-item indicator were split off.
+above, a separate token. `--color-focus-ring` is read by the focus outlines of `.btn`, `.input`,
+`.select` and `.textarea` in `preset.css`; the default palettes define no such token, so those
+outlines fall back to exactly what they were before. The default palette's `--color-primary` stays documented as covering buttons,
+links, focus rings and active nav all at once — ink is the one palette that splits focus
+rings and a rail's active indicator off it, onto their own tokens. Everything else that reads
+`--color-primary` or `--color-primary-muted` in `preset.css` still carries the accent under ink:
+`.btn-primary`'s fill, links (`.btn-link`, `.text-primary`, `.border-primary`), `bg-primary`,
+checkboxes, radios, `.btn-primary-outline` and `.bar`. That is narrower than #257 asked (the accent
+on the primary action alone); moving those would change the default palettes too.
 
 Two consequences of the design worth knowing:
 
