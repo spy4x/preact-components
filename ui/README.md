@@ -888,7 +888,10 @@ this component renders (from `label`) carries the only explicit `for`, so there 
 accessible name, the same guarantee `Field` documents for its own element-child clone. Clicking
 anywhere in the drop zone forwards to the input through a ref; Tab reaching the input and a real
 Space or Enter press open the file chooser with no extra wiring at all, because the browser already
-does that for a focused, undisabled file input regardless of how small it is drawn.
+does that for a focused, undisabled file input regardless of how small it is drawn. Since the
+`sr-only` input's own `:focus-visible` paints nothing visible, the drop zone reads that state off its
+descendant with `has-[:focus-visible]:ring-*` and rings itself instead, so a sighted keyboard user
+still sees where focus is.
 
 A drop writes its files onto the real input, through a fresh `DataTransfer` — the one documented way
 to set a file input's `FileList` from script — so a plain `<form>` post carries a dropped file the
@@ -922,10 +925,10 @@ own `"aria-describedby"` prop and folds it in alongside its own rejection-region
 `Field`'s cloned `aria-invalid` (a JS boolean, not the string `"true"`) through its own
 `"aria-invalid"` prop, so either source marking the control invalid is enough.
 
-Without `multiple`, offering more than one file — a multi-select in the OS picker, or a drop of
-several files — keeps only the first and refuses the rest with reason `"too-many"`
-(`labels.tooMany`), reported through `onReject` and announced the same way a `maxSize`/`accept`
-refusal is, rather than silently dropped.
+Without `multiple`, the native picker already limits a click-driven choice to one file, so only a
+drop of several at once can offer more than the single slot allows — it keeps only the first and
+refuses the rest with reason `"too-many"` (`labels.tooMany`), reported through `onReject` and
+announced the same way a `maxSize`/`accept` refusal is, rather than silently dropped.
 
 It does not upload — sending the chosen files is the caller's own form post or `fetch` call.
 
