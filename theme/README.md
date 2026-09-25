@@ -190,6 +190,12 @@ were designed against in the source applications they were extracted from; dark
 mode swaps it for near-black chrome. The full list is in `tokens.css`, each with
 the Tailwind palette value it came from.
 
+Focus rings follow the accent. A focused `.input`, `.select` or `.textarea` draws its outline in
+`--color-primary-muted`, and so does a focused `.btn` under `.dark`; in the light palette a `.btn`
+keeps the browser's own ring. To give focus rings a colour of their own, set `--color-focus-ring`:
+every one of those rules reads it first. The tone buttons (`.btn-danger`, `.btn-warning`,
+`.btn-success` and their `-outline` forms) draw their own tone's ring and read neither token.
+
 ### Fonts
 
 `tokens.css` declares `--font-sans`; it does not declare `--font-serif` or `--font-mono`. Both
@@ -228,9 +234,9 @@ const entry = `
 `ink.css`'s position among the three imports does not matter: `.dark[data-theme="ink"]` is more
 specific than `:root` and `.dark`, so its declarations win wherever both match. It repaints the
 same custom properties `tokens.css` declares, so `preset.css`'s rules pick the ink values up
-through their `var(--token, <default>)` reads, including the three focus rules that read
-`--color-focus-ring`, noted below. An app that skips importing `ink.css` gets the default palette
-only, exactly as before this file existed.
+through their `var(--token, <default>)` reads; the three focus rules noted below are the only
+preset changes. An app that skips importing `ink.css` gets the default palette only, exactly as
+before this file existed.
 
 Ink applies to an element carrying **both** `.dark` and `data-theme="ink"` — the selector is
 `.dark[data-theme="ink"]`, because the palette has no light variant:
@@ -244,17 +250,17 @@ tokens above, ink adds a handful its own: a four-step surface scale for a naviga
 (`--color-surface-page`, `--color-surface-rail`, `--color-surface-card`, `--color-surface-active`),
 a hairline rule colour (`--color-hairline`), two named text tones (`--color-text`,
 `--color-text-muted`), and — the reason ink exists as a second selector rather than a copy of the
-default dark palette — `--color-nav-active`, and a `--color-focus-ring` that is not the accent,
-so focus states and a rail's current item do not use it. `--color-nav-active` is a
+default dark palette — `--color-nav-active` and `--color-focus-ring`, split off `--color-primary`
+so focus states and a rail's current item do not use the accent. `--color-nav-active` is a
 **foreground/indicator** colour: a rail draws its current item's icon or text in it, not its
 background — the background a rail paints behind its current item is `--color-surface-active`
 above, a separate token. `--color-focus-ring` is read by three focus rules in `preset.css`:
-`.btn`'s ring under any `.dark`, and the `.input`/`.select`/`.textarea` outline. `tokens.css`
-declares it as well, as the default palettes' accent (purple-600 light, purple-400 dark), so the
-form fields draw the accent they always drew and a focused `.btn` in default dark draws purple-400
-instead of the browser's near-black ring (#297). In the light palette `.btn` keeps the browser's
-own ring. Ink is the one palette that takes focus rings and a rail's active indicator off the
-accent, onto a light neutral. Everything else that reads
+`.btn`'s ring under any `.dark`, and the `.input`/`.select`/`.textarea` outline. Each falls back to
+the accent, `--color-primary-muted`, where the token is not set, which is everywhere but ink. So the
+form fields draw the rings they drew before, and a focused `.btn` in default dark draws purple-400
+instead of the browser's near-black ring (#297). The default palette's `--color-primary` stays
+documented as covering buttons, links, focus rings and active nav all at once — ink is the one
+palette that splits focus rings and a rail's active indicator off it, onto their own tokens. Everything else that reads
 `--color-primary` or `--color-primary-muted` in `preset.css` still carries the accent under ink:
 `.btn-primary`'s fill, links (`.btn-link`, `.text-primary`, `.border-primary`), `bg-primary`,
 checkboxes, radios, `.btn-primary-outline` and `.bar`. That is narrower than #257 asked (the accent

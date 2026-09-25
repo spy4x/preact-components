@@ -6,9 +6,9 @@
  * already read through `var(--token, <default>)`, so every existing preset rule — buttons, cards,
  * forms, tables — picks the ink colours up. `tokens.css`'s `:root`/`.dark` blocks are untouched: a
  * consumer that never applies `data-theme="ink"` renders exactly as before. The focus rings read
- * `--color-focus-ring`: `.btn`'s under any `.dark`, because the browser's own ring is
- * near-invisible on a dark page, and the form fields' everywhere. `tokens.css` sets it to the
- * default palettes' accent (#297); ink repaints it below with a light neutral.
+ * `var(--color-focus-ring, <accent>)`: `.btn`'s under any `.dark`, because the browser's own ring
+ * is near-invisible on a dark page, and the form fields' everywhere. Only ink sets the token, so
+ * the default palettes draw the accent (#297), and ink draws the light neutral below.
  *
  * Ink also ships a handful of tokens no default rule reads today — the surface scale, hairline and
  * text-tone tokens below. They exist for a consuming site's own bespoke markup (a navigation rail,

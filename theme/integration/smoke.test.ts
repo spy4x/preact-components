@@ -1683,6 +1683,11 @@ describe("theme preset", () => {
     expect(declarationsOf(withoutTokens, ".bg-primary")).toContain(
       "var(--color-primary, oklch(0.38 0.17 293))",
     )
+    // `.btn`'s dark focus ring reads a token nothing sets without tokens.css or ink.css; with no
+    // fallback it would draw the button's own text colour, 1.03:1 on the page (#297's review).
+    expect(declarationsOf(withoutTokens, ":where(.dark) &:focus-visible")).toContain(
+      "outline-color: var(--color-focus-ring, var(--color-primary-muted, oklch(0.714 0.203 305.504)))",
+    )
   })
 
   it("ships light tokens in :root and dark tokens on .dark", async () => {

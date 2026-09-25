@@ -160,13 +160,14 @@
   /*
    * Tailwind's `outline-*` utilities set width and offset only and leave the colour alone, so a
    * focused `.btn` draws the browser's own focus colour. That colour is near-black in a dark page,
-   * about 1.07:1 against the default dark canvas (#297) and as faint under ink, so every dark
-   * palette points the ring at `--color-focus-ring` instead. Scoped with `:where()`, so it adds no
-   * specificity, and the light palette keeps the browser's ring. The tone buttons below set their
-   * own ring colour, a lighter shade under `.dark`.
+   * about 1.07:1 against the default dark canvas (#297) and as faint under ink, so under `.dark`
+   * the ring reads the same chain the form fields' focus outline reads: `--color-focus-ring` (ink
+   * sets it), else the accent `--color-primary-muted`, else purple-400, the default dark accent.
+   * Scoped with `:where()`, so it adds no specificity, and the light palette keeps the browser's
+   * ring. The tone buttons below set their own ring colour, a lighter shade under `.dark`.
    */
   :where(.dark) &:focus-visible {
-    outline-color: var(--color-focus-ring);
+    outline-color: var(--color-focus-ring, var(--color-primary-muted, oklch(0.714 0.203 305.504)));
   }
 
   &:disabled,
@@ -282,7 +283,7 @@
    * exactly the build-time coupling the tokens avoid.
    */
   &:focus {
-    /* tokens.css sets --color-focus-ring to this accent; the fallback serves an app without it. */
+    /* --color-focus-ring is defined only by ink, so the default palettes keep the accent here. */
     border-color: var(--color-focus-ring, var(--color-primary-muted, oklch(0.558 0.288 302.321)));
     outline: 1px solid var(--color-focus-ring, var(--color-primary-muted, oklch(0.558 0.288
       302.321)));
@@ -307,7 +308,7 @@
   }
 
   &:focus {
-    /* tokens.css sets --color-focus-ring to this accent; the fallback serves an app without it. */
+    /* --color-focus-ring is defined only by ink, so the default palettes keep the accent here. */
     border-color: var(--color-focus-ring, var(--color-primary-muted, oklch(0.558 0.288 302.321)));
     outline: 1px solid var(--color-focus-ring, var(--color-primary-muted, oklch(0.558 0.288
       302.321)));

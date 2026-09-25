@@ -58,17 +58,16 @@ function parseBlock(css: string, selector: string): Record<string, string> {
 }
 
 /**
- * Every default-palette token `tokens.css` declares, copied here as a property → value map rather
- * than re-derived, so a changed, removed or appended declaration in either block fails this test by
- * name. This was the "every existing token resolves to the same value" half of #257's done-when:
- * ink is additive. The one addition since is `--color-focus-ring` (#297), set to each palette's
- * `--color-primary-muted` so the form fields' focus outline keeps the colour it had.
+ * Every default-palette token `tokens.css` carried before #257 added `INK_CSS`, copied here as a
+ * property → value map rather than re-derived, so a changed, removed or appended declaration in
+ * either block fails this test by name. This is the "every existing token resolves to the same
+ * value" half of #257's done-when: ink is additive, and the default (Eirene) palette renders
+ * exactly as it did before this change.
  */
 const UNCHANGED_ROOT_TOKENS: Record<string, string> = {
   "--color-primary": "oklch(0.38 0.17 293)",
   "--color-primary-foreground": "oklch(0.977 0.014 308.299)",
   "--color-primary-muted": "oklch(0.558 0.288 302.321)",
-  "--color-focus-ring": "oklch(0.558 0.288 302.321)",
   "--color-surface": "oklch(1 0 0)",
   "--color-canvas": "oklch(0.985 0.002 247.839)",
   "--color-border-subtle": "oklch(0.928 0.006 264.531)",
@@ -91,7 +90,6 @@ const UNCHANGED_DARK_TOKENS: Record<string, string> = {
   "--color-primary": "oklch(0.21 0.006 285.885)",
   "--color-primary-foreground": "oklch(0.977 0.014 308.299)",
   "--color-primary-muted": "oklch(0.714 0.203 305.504)",
-  "--color-focus-ring": "oklch(0.714 0.203 305.504)",
   "--color-surface": "oklch(0.278 0.033 256.848)",
   "--color-canvas": "oklch(0.21 0.034 264.665)",
   "--color-border-subtle": "oklch(0.373 0.034 259.733)",
@@ -102,8 +100,8 @@ const UNCHANGED_DARK_TOKENS: Record<string, string> = {
   "--color-danger": "oklch(0.637 0.237 25.331)",
 }
 
-describe("the default token set", () => {
-  it("declares every default token at its expected value, and no more", () => {
+describe("the default token set, after #257", () => {
+  it("still declares every pre-existing token at its pre-existing value, and no more", () => {
     expect(parseBlock(TOKENS_CSS, ":root")).toEqual(UNCHANGED_ROOT_TOKENS)
     expect(parseBlock(TOKENS_CSS, ".dark")).toEqual(UNCHANGED_DARK_TOKENS)
   })

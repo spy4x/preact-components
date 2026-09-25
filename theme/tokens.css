@@ -29,14 +29,11 @@
  */
 
 :root {
-  /* Primary — buttons, links, active nav. */
+  /* Primary — buttons, links, focus rings, active nav. --color-primary-muted is the focus ring of
+     form fields, and of `.btn` under `.dark`; an app sets --color-focus-ring to move both off it. */
   --color-primary: oklch(0.38 0.17 293); /* purple-900 */
   --color-primary-foreground: oklch(0.977 0.014 308.299); /* purple-50 */
   --color-primary-muted: oklch(0.558 0.288 302.321); /* purple-600 */
-  /* Focus ring of buttons and form fields. The same purple as --color-primary-muted, which the
-     form fields drew before this token existed; in this palette `.btn` keeps the browser's own
-     ring, which is already visible on a light page. */
-  --color-focus-ring: oklch(0.558 0.288 302.321); /* purple-600 */
 
   /* Surfaces — page, raised card, form control. */
   --color-surface: oklch(1 0 0); /* white */
@@ -74,10 +71,6 @@
   --color-primary: oklch(0.21 0.006 285.885); /* near-black chrome, not purple */
   --color-primary-foreground: oklch(0.977 0.014 308.299);
   --color-primary-muted: oklch(0.714 0.203 305.504); /* purple-400 */
-  /* The browser's own ring is near-black here, about 1.07:1 on the gray-900 page (#297), so `.btn`
-     reads this instead: purple-400, the form fields' focus colour, above 5:1 on the page and on a
-     gray-800 card. */
-  --color-focus-ring: oklch(0.714 0.203 305.504); /* purple-400 */
 
   --color-surface: oklch(0.278 0.033 256.848); /* gray-800 */
   --color-canvas: oklch(0.21 0.034 264.665); /* gray-900 */
