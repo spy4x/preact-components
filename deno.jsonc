@@ -47,12 +47,12 @@
     "test": "deno test --no-prompt --allow-read --allow-env",
     // Dry-runs the publish for every named workspace member (`pages/` has no `name`, so `deno
     // publish` skips it on its own — nothing here excludes it by hand). Named `publish:dry`
-    // rather than `publish`: this only ever simulates, the owner runs the real `deno publish` by
-    // hand, and a bare `publish` task would read as the thing that ships to JSR. Run as its own
-    // step in both CI systems — `.github/workflows/pages.yml` and `.woodpecker.yml` — rather than
-    // folded into `check`: `deno publish --dry-run` refuses a dirty tree, so adding it to `check`
-    // would fail every local run against uncommitted work. Both CI checkouts are clean, so the
-    // step there runs this task bare, with no `--allow-dirty`.
+    // rather than `publish`: this only ever simulates; the real `deno publish` runs in Woodpecker
+    // on a `v*` tag (docs/publishing.md), and a bare `publish` task would read as the thing that
+    // ships to JSR. Run as its own step in both CI systems — `.github/workflows/pages.yml` and
+    // `.woodpecker.yml` — rather than folded into `check`: `deno publish --dry-run` refuses a
+    // dirty tree, so adding it to `check` would fail every local run against uncommitted work.
+    // Both CI checkouts are clean, so the step there runs this task bare, with no `--allow-dirty`.
     "publish:dry": "deno publish --dry-run",
     // Whole-word search for private application names across every file each published package
     // would upload to JSR. Not part of `check`: it needs a names file the owner keeps outside

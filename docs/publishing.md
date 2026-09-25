@@ -47,15 +47,22 @@ file stays wrong in that version for good.
    deno task private-names /path/to/names.txt
    ```
 
-4. Publish every package at once. From the root, `deno publish` publishes every named workspace
-   member:
+4. Tag that commit `v<version>` and push the tag. Woodpecker's `publish` step (`.woodpecker.yml`)
+   runs `check` and `publish:dry` again, then `deno publish` with the `JSR_TOKEN` secret, which
+   publishes every named workspace member at once:
 
    ```bash
-   deno publish
+   git tag v0.1.0 && git push origin v0.1.0
    ```
 
-5. Tag the published commit `v<version>` and push the tag.
-
-If a step before `deno publish` fails, fix the cause in a pull request and start again from
+If a step before the tag fails, fix the cause in a pull request and start again from
 step 2; the version is not taken until it is published. Never publish a
 subset of the packages: a package published alone at a new version breaks the rule above.
+
+## One-time setup
+
+The `publish` step needs two things that live outside this repository, both set up once by the
+owner: the `preact-components` scope on jsr.io, and a `JSR_TOKEN` secret on this repository in
+Woodpecker (repository id 9), holding a JSR token that may publish to that scope. A tag pushed
+before either exists fails at the `publish` step and publishes nothing; once both exist, restart
+that pipeline.
