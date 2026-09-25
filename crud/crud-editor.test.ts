@@ -136,7 +136,7 @@ describe("submitEditor", () => {
 
 describe("toggleArchiveState", () => {
   const blockers: DeletionDependency[] = [
-    { kind: "Zones", values: [{ title: "North gate", url: "/devices/zones/4/edit" }] },
+    { kind: "Zones", values: [{ title: "North gate", url: "/zones/4/edit" }] },
   ]
 
   it("stamps the archive time and reports what blocks the archive", () => {

@@ -175,12 +175,12 @@ describe("CrudList", () => {
   it("adds a header and a cell per row when actions are given", () => {
     const html = storeList({
       store: fakeStore(),
-      actions: (row: Region) => <a href={`/devices/regions/${row.id}/edit`}>Edit</a>,
+      actions: (row: Region) => <a href={`/regions/${row.id}/edit`}>Edit</a>,
     })
 
     expect(html).toContain(">Actions</th>")
-    expect(html).toContain(`href="/devices/regions/1/edit"`)
-    expect(html).toContain(`href="/devices/regions/2/edit"`)
+    expect(html).toContain(`href="/regions/1/edit"`)
+    expect(html).toContain(`href="/regions/2/edit"`)
   })
 
   it("omits the actions column when there are no actions", () => {
@@ -189,13 +189,13 @@ describe("CrudList", () => {
 
   it("shows the add action only when there is somewhere to go", () => {
     expect(storeList({ store: fakeStore() })).not.toContain("Add new")
-    expect(storeList({ store: fakeStore(), addHref: "/devices/regions/add" })).toContain("Add new")
+    expect(storeList({ store: fakeStore(), addHref: "/regions/add" })).toContain("Add new")
   })
 
   it("hides the add action from a user who may not add", () => {
     const html = storeList({
       store: fakeStore(),
-      addHref: "/devices/regions/add",
+      addHref: "/regions/add",
       canAdd: () => false,
     })
     expect(html).not.toContain("Add new")
@@ -204,10 +204,10 @@ describe("CrudList", () => {
   it("replaces the default title with the caller's slot", () => {
     const html = storeList({
       store: fakeStore(),
-      titleSlot: <span>Regions for lamp box ABC</span>,
+      titleSlot: <span>Regions for site ABC</span>,
     })
 
-    expect(html).toContain("Regions for lamp box ABC")
+    expect(html).toContain("Regions for site ABC")
     expect(html).not.toContain("<span>Regions</span>")
   })
 })
@@ -216,10 +216,10 @@ describe("RowActions", () => {
   it("renders a link item for an href", () => {
     const html = render(
       <RowActions>
-        <RowAction href="/devices/regions/1/edit">Edit</RowAction>
+        <RowAction href="/regions/1/edit">Edit</RowAction>
       </RowActions>,
     )
-    expect(html).toContain(`href="/devices/regions/1/edit"`)
+    expect(html).toContain(`href="/regions/1/edit"`)
   })
 
   it("renders a button item for an onClick, in red when destructive", () => {

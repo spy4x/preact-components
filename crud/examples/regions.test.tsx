@@ -54,17 +54,17 @@ describe("RegionList", () => {
   it("links every row to its editor", () => {
     const html = render(<RegionList />)
 
-    expect(html).toContain(`href="/devices/regions/1/edit"`)
-    expect(html).toContain(`href="/devices/regions/2/edit"`)
+    expect(html).toContain(`href="/regions/1/edit"`)
+    expect(html).toContain(`href="/regions/2/edit"`)
   })
 
   it("offers the add action to a user who may change regions", () => {
-    expect(render(<RegionList />)).toContain(`href="/devices/regions/add"`)
+    expect(render(<RegionList />)).toContain(`href="/regions/add"`)
   })
 
   it("hides the add action from a user who may not", () => {
     canChange.value = false
-    expect(render(<RegionList />)).not.toContain(`href="/devices/regions/add"`)
+    expect(render(<RegionList />)).not.toContain(`href="/regions/add"`)
     canChange.value = true
   })
 })
@@ -78,7 +78,7 @@ describe("RegionEditor", () => {
     const html = render(<RegionEditor mode="edit" editId={1} />)
 
     expect(html).toContain("Edit Region")
-    expect(html).toContain(`href="/devices/regions"`)
+    expect(html).toContain(`href="/regions"`)
   })
 
   it("offers the archive toggle only when a row exists", () => {
