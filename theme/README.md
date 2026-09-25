@@ -225,10 +225,11 @@ const entry = `
 ```
 
 `ink.css`'s position among the three imports does not matter: `.dark[data-theme="ink"]` is more
-specific than `:root` and `.dark`, so its declarations win wherever both match. It repaints the same custom properties `tokens.css` declares, so `preset.css`'s rules —
-which already read every colour through `var(--token, <default>)` — pick the ink values up with no
-change of their own beyond the one line noted below. An app that skips importing `ink.css` gets the
-default palette only, exactly as before this file existed.
+specific than `:root` and `.dark`, so its declarations win wherever both match. It repaints the
+same custom properties `tokens.css` declares, so `preset.css`'s rules pick the ink values up
+through their `var(--token, <default>)` reads; the three focus rules noted below are the only
+preset changes. An app that skips importing `ink.css` gets the default palette only, exactly as
+before this file existed.
 
 Ink applies to an element carrying **both** `.dark` and `data-theme="ink"` — the selector is
 `.dark[data-theme="ink"]`, because the palette has no light variant:
@@ -246,15 +247,17 @@ default dark palette — `--color-nav-active` and `--color-focus-ring`, split of
 so focus states and a rail's current item do not use the accent. `--color-nav-active` is a
 **foreground/indicator** colour: a rail draws its current item's icon or text in it, not its
 background — the background a rail paints behind its current item is `--color-surface-active`
-above, a separate token. `--color-focus-ring` is read by the focus outlines of `.btn`, `.input`,
-`.select` and `.textarea` in `preset.css`; the default palettes define no such token, so those
-outlines fall back to exactly what they were before. The default palette's `--color-primary` stays documented as covering buttons,
-links, focus rings and active nav all at once — ink is the one palette that splits focus
+above, a separate token. `--color-focus-ring` is read by three focus rules in `preset.css`:
+`.btn`'s ring, only under `.dark[data-theme="ink"]`, and the `.input`/`.select`/`.textarea`
+outline, which falls back to the accent it drew before wherever ink is not applied. The default
+palettes therefore draw exactly the focus rings they drew before. The default palette's
+`--color-primary` stays documented as covering buttons, links, focus rings and active nav all at
+once — ink is the one palette that splits focus
 rings and a rail's active indicator off it, onto their own tokens. Everything else that reads
 `--color-primary` or `--color-primary-muted` in `preset.css` still carries the accent under ink:
 `.btn-primary`'s fill, links (`.btn-link`, `.text-primary`, `.border-primary`), `bg-primary`,
 checkboxes, radios, `.btn-primary-outline` and `.bar`. That is narrower than #257 asked (the accent
-on the primary action alone); moving those would change the default palettes too.
+on the primary action alone); moving those is left for a later change.
 
 Two consequences of the design worth knowing:
 

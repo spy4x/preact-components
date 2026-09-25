@@ -5,29 +5,28 @@
  * so it never runs without it). It repaints the same custom properties `tokens.css`/`preset.css`
  * already read through `var(--token, <default>)`, so every existing preset rule — buttons, cards,
  * forms, tables — picks the ink colours up. `tokens.css`'s `:root`/`.dark` blocks are untouched: a
- * consumer that never applies `data-theme="ink"` renders exactly as before. `preset.css` gained one
- * addition for this: `.btn`'s focus ring now reads `var(--color-focus-ring, currentColor)` instead
- * of the browser's default `currentColor`, because `currentColor` on `.btn-primary` is that
- * button's own text colour — on ink's accent that text colour is near-black, so a ring drawn in it
- * sat near-invisible against the page. No default palette defines `--color-focus-ring`, so that
- * change is a no-op there.
+ * consumer that never applies `data-theme="ink"` renders exactly as before. `preset.css` gained two
+ * additions for this: under `.dark[data-theme="ink"]` only, `.btn`'s focus ring reads
+ * `--color-focus-ring`, because the browser's default ring was near-invisible on ink's page; and
+ * the form fields' focus outlines read `var(--color-focus-ring, <accent>)`, which falls back to
+ * exactly the accent they drew before wherever ink is not applied.
  *
  * Ink also ships a handful of tokens no default rule reads today — the surface scale, hairline and
  * text-tone tokens below. They exist for a consuming site's own bespoke markup (a navigation rail,
  * a bottom tab bar), not for anything in this package, which is why they have no light-mode or
  * default-dark counterpart: nothing here has a use for them outside `ink`.
  *
- * Ink takes the accent off focus states and the rail's current-item indicator. The default palette's
- * `--color-primary` is documented in `tokens.css` for "buttons, links, focus rings, active nav" all
- * at once; under ink, `--color-nav-active` carries a rail's
- * current-item indicator instead (a foreground/indicator colour — the surface a rail paints behind
+ * Ink takes the accent off focus states and the rail's current-item indicator. The default
+ * palette's `--color-primary` is documented in `tokens.css` for "buttons, links, focus rings,
+ * active nav" all at once; under ink, `--color-nav-active` carries a rail's current-item indicator
+ * instead (a foreground/indicator colour — the surface a rail paints behind
  * its current item is `--color-surface-active` above, a separate token), and the focus rings of
  * `.btn`, `.input`, `.select` and `.textarea` read `--color-focus-ring`. Both are the same light
  * neutral, not the accent. The accent still colours, under ink: `.btn-primary`'s fill, links
  * (`.btn-link`, `.text-primary`, `.border-primary`), `bg-primary`, checkboxes and radios,
  * `.btn-primary-outline` and `.bar`, because they read `--color-primary`/`--color-primary-muted`
- * directly. That is narrower than #257 asked ("the accent on the primary action alone"): moving those
- * would change the default palettes too, and is left for a later change.
+ * directly. That is narrower than #257 asked ("the accent on the primary action alone"): moving
+ * those is left for a later change.
  *
  * Not an importable specifier once installed, for the same reason as `tokens.css`/`preset.css` —
  * see that file's own header. `@preact-components/theme`'s `+index.ts` exports this file's text as

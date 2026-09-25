@@ -327,155 +327,169 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
   // button and back — both genuine keyboard interactions — so this clicks the button once (an
   // ordinary focus, not yet the one this check reads), tabs forward and Shift+Tabs straight back,
   // and only then reads what the second, keyboard-driven focus actually committed.
-  const rect = await devtools.evaluate<{ x: number; y: number }>(`(() => {
-    const root = document.documentElement
-    window.__inkFocusRingRestore = {
-      wasDark: root.classList.contains("dark"),
-      wasTheme: root.getAttribute("data-theme"),
-    }
-    root.classList.add("dark")
-    root.setAttribute("data-theme", "ink")
-
-    const button = document.createElement("button")
-    button.type = "button"
-    button.className = "btn btn-primary"
-    button.textContent = "Focus ring probe"
-    button.id = "ink-focus-ring-probe"
-    button.style.position = "fixed"
-    button.style.top = "8px"
-    button.style.left = "8px"
-    button.style.zIndex = "99999"
-    document.body.appendChild(button)
-
-    const box = button.getBoundingClientRect()
-    return { x: box.x + box.width / 2, y: box.y + box.height / 2 }
-  })()`)
-  const settle = () => devtools.evaluate(`new Promise((done) => setTimeout(done, 60))`)
-  for (const type of ["mousePressed", "mouseReleased"]) {
-    await devtools.send("Input.dispatchMouseEvent", {
-      type,
-      x: rect.x,
-      y: rect.y,
-      button: "left",
-      buttons: type === "mousePressed" ? 1 : 0,
-      clickCount: 1,
-    })
-  }
-  await settle()
-  await pressKey(devtools, "Tab")
-  await settle()
-  // Shift+Tab, to come straight back to the button — `pressKey`'s table carries no modifier keys,
-  // so this one dispatch is written directly against the same `Input.dispatchKeyEvent` it wraps.
-  // CDP's Shift bit is 8.
-  for (const type of ["keyDown", "keyUp"]) {
-    await devtools.send("Input.dispatchKeyEvent", {
-      type,
-      key: "Tab",
-      code: "Tab",
-      windowsVirtualKeyCode: 9,
-      nativeVirtualKeyCode: 9,
-      modifiers: 8,
-    })
-  }
-  await settle()
-  const focusRing = await devtools.evaluate<{
-    outlineColor: string
-    pageBackground: string
-    ratio: number
-  }>(`(async () => {
-    const root = document.documentElement
-    const { wasDark, wasTheme } = window.__inkFocusRingRestore
-    delete window.__inkFocusRingRestore
-
-    const button = document.getElementById("ink-focus-ring-probe")
-    if (document.activeElement !== button) {
-      button.remove()
-      throw new Error(
-        "the probe button never received focus — document.activeElement is " +
-          (document.activeElement ? document.activeElement.tagName : "nothing") +
-          ", not the probe; this check's own click-then-tab-and-back sequence did not land " +
-          "where it expected",
-      )
-    }
-
-    const outlineStyle = getComputedStyle(button).outlineStyle
-    if (outlineStyle === "none") {
-      button.remove()
-      throw new Error(
-        "the probe button never entered :focus-visible — outline-style is none, so " +
-          "outlineColor below would be the browser's unrelated default rather than anything " +
-          "preset.css set",
-      )
-    }
-    // .btn applies transition-all, which covers outline-color too, so a read taken right after
-    // focus samples the colour mid-transition rather than where it ends up — the same problem
-    // the "Tailwind utilities style the components" probe above hits for a button's
-    // background-color, and the same fix: wait for the element's own running animations before
-    // reading anything off it.
-    await Promise.all(
-      button.getAnimations().map((animation) => animation.finished.catch(() => {})),
-    )
-    const outlineColor = getComputedStyle(button).outlineColor
-    const pageBackground = getComputedStyle(document.body).backgroundColor
-
-    // Chromium's computed-style serialization keeps a colour in whatever colour function it was
-    // authored in rather than always converting to rgb() — this repository's tokens are oklch(),
-    // so getComputedStyle can hand back "oklch(L C H)" as readily as "rgb(r g b)". WCAG's relative
-    // luminance wants linear-light RGB either way, so this parses both forms down to it: rgb()
-    // through the usual sRGB gamma decode, oklch()/oklab() through the linear-sRGB matrix from
-    // the OKLab colour space's own definition (Björn Ottosson's oklab.org write-up), which is
-    // already linear-light and skips the gamma step.
-    function linearRgb(color) {
-      const oklchMatch = color.match(
-        /oklch\\(([\\d.]+)\\s+([\\d.]+)\\s+([\\d.]+)/,
-      )
-      const oklabMatch = color.match(
-        /oklab\\(([\\d.]+)\\s+(-?[\\d.]+)\\s+(-?[\\d.]+)/,
-      )
-      let L, a, b
-      if (oklchMatch) {
-        const [, l, c, h] = oklchMatch.map(Number)
-        L = l
-        a = c * Math.cos(h * Math.PI / 180)
-        b = c * Math.sin(h * Math.PI / 180)
-      } else if (oklabMatch) {
-        ;[, L, a, b] = oklabMatch.map(Number)
-      } else {
-        const [r, g, bl] = color.match(/[\\d.]+/g).slice(0, 3).map(Number).map((channel) => {
-          const s = channel / 255
-          return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
-        })
-        return [r, g, bl]
+  // The same probe runs in the default light palette too: the ink fix must not change the ring
+  // every existing consumer's primary button draws (#291's third review found it had).
+  for (
+    const palette of [{ ink: true, name: "under ink" }, {
+      ink: false,
+      name: "in the default light palette",
+    }]
+  ) {
+    const rect = await devtools.evaluate<{ x: number; y: number }>(`(() => {
+      const root = document.documentElement
+      window.__inkFocusRingRestore = {
+        wasDark: root.classList.contains("dark"),
+        wasTheme: root.getAttribute("data-theme"),
       }
-      const l_ = L + 0.3963377774 * a + 0.2158037573 * b
-      const m_ = L - 0.1055613458 * a - 0.0638541728 * b
-      const s_ = L - 0.0894841775 * a - 1.2914855480 * b
-      const l = l_ ** 3, m = m_ ** 3, s = s_ ** 3
-      return [
-        4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
-        -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
-        -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s,
-      ]
-    }
-    function luminance(color) {
-      const [r, g, b] = linearRgb(color).map((channel) => Math.max(0, Math.min(1, channel)))
-      return 0.2126 * r + 0.7152 * g + 0.0722 * b
-    }
-    const lighter = Math.max(luminance(outlineColor), luminance(pageBackground))
-    const darker = Math.min(luminance(outlineColor), luminance(pageBackground))
-    const ratio = (lighter + 0.05) / (darker + 0.05)
+      if (${palette.ink}) {
+        root.classList.add("dark")
+        root.setAttribute("data-theme", "ink")
+      } else {
+        root.classList.remove("dark")
+        root.removeAttribute("data-theme")
+      }
 
-    button.remove()
-    root.classList.toggle("dark", wasDark)
-    if (wasTheme === null) root.removeAttribute("data-theme")
-    else root.setAttribute("data-theme", wasTheme)
+      const button = document.createElement("button")
+      button.type = "button"
+      button.className = "btn btn-primary"
+      button.textContent = "Focus ring probe"
+      button.id = "ink-focus-ring-probe"
+      button.style.position = "fixed"
+      button.style.top = "8px"
+      button.style.left = "8px"
+      button.style.zIndex = "99999"
+      document.body.appendChild(button)
 
-    return { outlineColor, pageBackground, ratio }
-  })()`)
-  check(
-    "under ink, a focused .btn.btn-primary's outline clears 3:1 contrast against the page",
-    focusRing.ratio >= 3,
-    `outline ${focusRing.outlineColor} vs page ${focusRing.pageBackground}, ratio ` +
-      `${focusRing.ratio.toFixed(2)}:1`,
-  )
+      const box = button.getBoundingClientRect()
+      return { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+    })()`)
+    const settle = () => devtools.evaluate(`new Promise((done) => setTimeout(done, 60))`)
+    for (const type of ["mousePressed", "mouseReleased"]) {
+      await devtools.send("Input.dispatchMouseEvent", {
+        type,
+        x: rect.x,
+        y: rect.y,
+        button: "left",
+        buttons: type === "mousePressed" ? 1 : 0,
+        clickCount: 1,
+      })
+    }
+    await settle()
+    await pressKey(devtools, "Tab")
+    await settle()
+    // Shift+Tab, to come straight back to the button — `pressKey`'s table carries no modifier keys,
+    // so this one dispatch is written directly against the same `Input.dispatchKeyEvent` it wraps.
+    // CDP's Shift bit is 8.
+    for (const type of ["keyDown", "keyUp"]) {
+      await devtools.send("Input.dispatchKeyEvent", {
+        type,
+        key: "Tab",
+        code: "Tab",
+        windowsVirtualKeyCode: 9,
+        nativeVirtualKeyCode: 9,
+        modifiers: 8,
+      })
+    }
+    await settle()
+    const focusRing = await devtools.evaluate<{
+      outlineColor: string
+      pageBackground: string
+      ratio: number
+    }>(`(async () => {
+      const root = document.documentElement
+      const { wasDark, wasTheme } = window.__inkFocusRingRestore
+      delete window.__inkFocusRingRestore
+
+      const button = document.getElementById("ink-focus-ring-probe")
+      if (document.activeElement !== button) {
+        button.remove()
+        throw new Error(
+          "the probe button never received focus — document.activeElement is " +
+            (document.activeElement ? document.activeElement.tagName : "nothing") +
+            ", not the probe; this check's own click-then-tab-and-back sequence did not land " +
+            "where it expected",
+        )
+      }
+
+      const outlineStyle = getComputedStyle(button).outlineStyle
+      if (outlineStyle === "none") {
+        button.remove()
+        throw new Error(
+          "the probe button never entered :focus-visible — outline-style is none, so " +
+            "outlineColor below would be the browser's unrelated default rather than anything " +
+            "preset.css set",
+        )
+      }
+      // .btn applies transition-all, which covers outline-color too, so a read taken right after
+      // focus samples the colour mid-transition rather than where it ends up — the same problem
+      // the "Tailwind utilities style the components" probe above hits for a button's
+      // background-color, and the same fix: wait for the element's own running animations before
+      // reading anything off it.
+      await Promise.all(
+        button.getAnimations().map((animation) => animation.finished.catch(() => {})),
+      )
+      const outlineColor = getComputedStyle(button).outlineColor
+      const pageBackground = getComputedStyle(document.body).backgroundColor
+
+      // Chromium's computed-style serialization keeps a colour in whatever colour function it was
+      // authored in rather than always converting to rgb() — this repository's tokens are oklch(),
+      // so getComputedStyle can hand back "oklch(L C H)" as readily as "rgb(r g b)". WCAG's relative
+      // luminance wants linear-light RGB either way, so this parses both forms down to it: rgb()
+      // through the usual sRGB gamma decode, oklch()/oklab() through the linear-sRGB matrix from
+      // the OKLab colour space's own definition (Björn Ottosson's oklab.org write-up), which is
+      // already linear-light and skips the gamma step.
+      function linearRgb(color) {
+        const oklchMatch = color.match(
+          /oklch\\(([\\d.]+)\\s+([\\d.]+)\\s+([\\d.]+)/,
+        )
+        const oklabMatch = color.match(
+          /oklab\\(([\\d.]+)\\s+(-?[\\d.]+)\\s+(-?[\\d.]+)/,
+        )
+        let L, a, b
+        if (oklchMatch) {
+          const [, l, c, h] = oklchMatch.map(Number)
+          L = l
+          a = c * Math.cos(h * Math.PI / 180)
+          b = c * Math.sin(h * Math.PI / 180)
+        } else if (oklabMatch) {
+          ;[, L, a, b] = oklabMatch.map(Number)
+        } else {
+          const [r, g, bl] = color.match(/[\\d.]+/g).slice(0, 3).map(Number).map((channel) => {
+            const s = channel / 255
+            return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
+          })
+          return [r, g, bl]
+        }
+        const l_ = L + 0.3963377774 * a + 0.2158037573 * b
+        const m_ = L - 0.1055613458 * a - 0.0638541728 * b
+        const s_ = L - 0.0894841775 * a - 1.2914855480 * b
+        const l = l_ ** 3, m = m_ ** 3, s = s_ ** 3
+        return [
+          4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+          -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+          -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s,
+        ]
+      }
+      function luminance(color) {
+        const [r, g, b] = linearRgb(color).map((channel) => Math.max(0, Math.min(1, channel)))
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b
+      }
+      const lighter = Math.max(luminance(outlineColor), luminance(pageBackground))
+      const darker = Math.min(luminance(outlineColor), luminance(pageBackground))
+      const ratio = (lighter + 0.05) / (darker + 0.05)
+
+      button.remove()
+      root.classList.toggle("dark", wasDark)
+      if (wasTheme === null) root.removeAttribute("data-theme")
+      else root.setAttribute("data-theme", wasTheme)
+
+      return { outlineColor, pageBackground, ratio }
+    })()`)
+    check(
+      `${palette.name}, a focused .btn.btn-primary's outline clears 3:1 contrast against the page`,
+      focusRing.ratio >= 3,
+      `outline ${focusRing.outlineColor} vs page ${focusRing.pageBackground}, ratio ` +
+        `${focusRing.ratio.toFixed(2)}:1`,
+    )
+  }
 }
