@@ -44,8 +44,9 @@ const DROPDOWN_STATE = `(() => {
  * `ui/`'s browser checks: Dropdown's pointer and keyboard contract, ToggleSwitch, OnOffButtons,
  * `Field`, Tooltip, Combobox, Toastr, DateRangePicker's focus contract in both its day-only and
  * `withTime` modes, Pagination's end controls, DataTable's sort-by-header and paging contract,
- * `ImageGallery`'s thumbnail strip and the shared `Lightbox` it opens, and — last — Modal's keyboard
- * and focus contract.
+ * `ImageGallery`'s thumbnail strip and the shared `Lightbox` it opens, `ExportButton`'s two demo
+ * instances, `FileInput`'s keyboard, drag-and-drop, refusal, preview-revocation and plain-form-post
+ * contract, and — last — Modal's keyboard and focus contract.
  *
  * This file runs last of every package's, and Modal's checks run last inside it, for the same
  * reason: Modal opens a real modal dialog, and a dialog that refused to close would sit in the top
@@ -175,6 +176,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await exportButtonChecks(devtools)
   await moneyInputChecks(devtools)
   await moneyInputPreHydrationChecks(devtools)
+  await fileInputChecks(devtools)
 
   // Last on purpose: a Modal that refuses to close would sit in the top layer over everything, so a
   // failure here cannot take an unrelated check down with it.
@@ -8928,4 +8930,497 @@ async function moneyInputPreHydrationChecks(devtools: Devtools): Promise<void> {
     submitResult === "submits: 1, posted: 12345",
     `after a real click on Save: "${submitResult}"`,
   )
+}
+
+/** Card and element selectors {@link fileInputChecks} drives. */
+const FILE_INPUT_CARD = "#demo-FileInput"
+const FILE_INPUT_ID = "guide-file-input"
+const FILE_INPUT_SELECTOR = `${FILE_INPUT_CARD} #${FILE_INPUT_ID}`
+const FILE_INPUT_ZONE_SELECTOR = `${FILE_INPUT_CARD} [data-e2e="file-input-zone"]`
+const FILE_INPUT_CHOSEN_SELECTOR = `${FILE_INPUT_CARD} [data-e2e="file-input-chosen"]`
+const FILE_INPUT_REFUSED_SELECTOR = `${FILE_INPUT_CARD} [data-e2e="file-input-refused"]`
+const FILE_INPUT_TOGGLE_SELECTOR = `${FILE_INPUT_CARD} [data-e2e="file-input-toggle-mount"]`
+const FILE_INPUT_FORM_ID = "guide-file-input-form"
+
+/** The real, on-disk files {@link fileInputChecks} feeds through `DOM.setFileInputFiles` or a drop. */
+interface FileInputFixture {
+  /** Small, accepted PNG — the happy path for a click-driven selection and for the plain form post. */
+  ok: string
+  /** A second, distinct accepted PNG, used for the drop so its name proves the drop is what added it. */
+  drop: string
+  /** Larger than the demo's own 2 MB `maxSize`, otherwise accepted by `accept`. */
+  tooLarge: string
+  /** A plain text file, refused by `accept="image/png,image/jpeg"`. */
+  wrongType: string
+}
+
+/**
+ * Write the handful of real files {@link fileInputChecks} needs into a fresh `mktemp` directory.
+ *
+ * `DOM.setFileInputFiles` and a drop's `Input.dispatchDragEvent` both take real, on-disk paths —
+ * neither can be satisfied by a `Blob` built inside the page, the way `armExportInstrumentation`
+ * builds one for a download. Nothing here is a real image: the component never decodes the bytes,
+ * only its extension and size, so arbitrary bytes under a `.png` name exercise exactly what
+ * `matchesAccept` and `maxSize` check. Not committed as binaries — written at check time and
+ * removed by the caller's own `finally`, the same lifetime `pages/verify.ts`'s own Chromium
+ * profile directory has.
+ */
+async function writeFileInputFixtures(): Promise<{ dir: string; files: FileInputFixture }> {
+  const dir = await Deno.makeTempDir({ prefix: "file-input-check-" })
+  const files: FileInputFixture = {
+    ok: `${dir}/ok.png`,
+    drop: `${dir}/dropped.png`,
+    tooLarge: `${dir}/too-large.png`,
+    wrongType: `${dir}/notes.txt`,
+  }
+  await Deno.writeFile(files.ok, new Uint8Array(64))
+  await Deno.writeFile(files.drop, new Uint8Array(64))
+  await Deno.writeFile(files.tooLarge, new Uint8Array(3 * 1024 * 1024))
+  await Deno.writeFile(files.wrongType, new Uint8Array(16))
+  return { dir, files }
+}
+
+/**
+ * `DOM.setFileInputFiles`' own `nodeId`, for one selector — re-read on every call rather than
+ * cached: the input `FileInput` wraps is never replaced across these checks, but re-querying costs
+ * one round trip and avoids ever trusting a `nodeId` a prior DOM mutation elsewhere on this long
+ * page might have invalidated.
+ *
+ * @param devtools The connected session.
+ * @param selector The element to resolve.
+ * @returns Its `nodeId`, or `null` when nothing matches.
+ */
+async function domNodeId(devtools: Devtools, selector: string): Promise<number | null> {
+  await devtools.send("DOM.enable")
+  const { root } = await devtools.send<{ root: { nodeId: number } }>("DOM.getDocument", {
+    depth: 0,
+  })
+  const { nodeId } = await devtools.send<{ nodeId: number }>("DOM.querySelector", {
+    nodeId: root.nodeId,
+    selector,
+  })
+  return nodeId || null
+}
+
+/** What the primary `FileInput` demo's own `onFiles`/`onReject` echo reads, right now. */
+async function fileInputReport(devtools: Devtools): Promise<{ chosen: string; refused: string }> {
+  return await devtools.evaluate<{ chosen: string; refused: string }>(`(() => ({
+    chosen: document.querySelector('${FILE_INPUT_CHOSEN_SELECTOR}')?.textContent ?? "",
+    refused: document.querySelector('${FILE_INPUT_REFUSED_SELECTOR}')?.textContent ?? "",
+  }))()`)
+}
+
+/**
+ * Tab reaches the native input, and a real Space or a real Enter press each open the file chooser —
+ * `Page.setInterceptFileChooserDialog` replaces the native dialog with a `Page.fileChooserOpened`
+ * event rather than a modal the check would otherwise have to dismiss, and the interception is
+ * turned back off in a `finally` so it cannot affect anything that runs after this.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function fileInputKeyboardChecks(devtools: Devtools): Promise<void> {
+  // The element immediately before the input in tab order, computed rather than guessed: the
+  // catalogue's own card chrome (a copy-snippet button, a disclosure) sits ahead of every demo's
+  // markup, so the previous *card's* last control is not necessarily the previous *tab stop* —
+  // measured in review, where guessing `#guide-toggle-error` landed on the FileInput card's own
+  // copy-snippet button instead and failed this check for a reason that had nothing to do with
+  // `FileInput`.
+  const staged = await devtools.evaluate<boolean>(`(() => {
+    const target = document.querySelector('${FILE_INPUT_SELECTOR}')
+    if (!target) return false
+    const focusable = [...document.querySelectorAll(
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), ' +
+      'textarea:not([disabled]), [tabindex]',
+    )].filter((el) => {
+      const tabIndex = el.getAttribute('tabindex')
+      if (tabIndex !== null && parseInt(tabIndex, 10) < 0) return false
+      const style = getComputedStyle(el)
+      return style.display !== 'none' && style.visibility !== 'hidden'
+    })
+    const index = focusable.indexOf(target)
+    if (index <= 0) return false
+    const previous = focusable[index - 1]
+    previous.focus()
+    return document.activeElement === previous
+  })()`)
+  check(
+    "the element immediately before FileInput in tab order can receive focus, so Tab proves something",
+    staged,
+  )
+  if (staged) {
+    await pressKey(devtools, "Tab")
+    const landed = await devtools.evaluate<boolean>(
+      `document.activeElement === document.querySelector('${FILE_INPUT_SELECTOR}')`,
+    )
+    check("the FileInput native input is reachable with Tab", landed)
+  }
+
+  const focused = await devtools.evaluate<boolean>(`(() => {
+    const el = document.querySelector('${FILE_INPUT_SELECTOR}')
+    if (!el) return false
+    el.focus()
+    return document.activeElement === el
+  })()`)
+  check("the FileInput native input can receive focus directly", focused)
+  if (!focused) return
+
+  await devtools.send("Page.setInterceptFileChooserDialog", { enabled: true })
+  try {
+    for (const keyName of ["Enter", "Space"] as const) {
+      await devtools.evaluate<null>(`(() => {
+        document.querySelector('${FILE_INPUT_SELECTOR}')?.focus()
+        return null
+      })()`)
+      const chooserPromise = devtools.once("Page.fileChooserOpened", 5_000)
+      await pressKey(devtools, keyName)
+      const opened = await chooserPromise.then(() => true).catch(() => false)
+      check(`a real ${keyName} press on the focused FileInput opens the file chooser`, opened)
+    }
+  } finally {
+    await devtools.send("Page.setInterceptFileChooserDialog", { enabled: false }).catch(() => {})
+  }
+}
+
+/**
+ * A file set with `DOM.setFileInputFiles` — the CDP-level equivalent of picking one through the
+ * chooser {@link fileInputKeyboardChecks} opened — reaches `onFiles` and is rendered in the
+ * component's own list, with a remove button named after it.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ * @param fixture Real files on disk, from {@link writeFileInputFixtures}.
+ */
+async function fileInputSelectionCheck(
+  devtools: Devtools,
+  fixture: FileInputFixture,
+): Promise<void> {
+  const nodeId = await domNodeId(devtools, FILE_INPUT_SELECTOR)
+  check("the FileInput native input is found for DOM.setFileInputFiles", nodeId !== null)
+  if (nodeId === null) return
+
+  await devtools.send("DOM.setFileInputFiles", { files: [fixture.ok], nodeId })
+  const settled = await poll(
+    async () => (await fileInputReport(devtools)).chosen.includes("ok.png"),
+    5_000,
+  )
+  const report = await fileInputReport(devtools)
+  check(
+    "a file set with DOM.setFileInputFiles reaches onFiles",
+    settled,
+    `chosen: "${report.chosen.trim()}"`,
+  )
+
+  const named = await devtools.evaluate<boolean>(
+    `document.querySelector('${FILE_INPUT_CARD} button[aria-label="Remove ok.png"]') !== null`,
+  )
+  check(
+    "the chosen file is rendered in FileInput's own list, with a remove button naming it",
+    named,
+  )
+}
+
+/**
+ * A drop through `Input.dispatchDragEvent` — real mouse-driven drag events carrying real file paths
+ * in their `data.files`, the one part of a drop `DOM.setFileInputFiles` cannot stand in for — adds
+ * its file the same way a click-driven selection does, and the drop zone marks itself while a drag
+ * is over it and clears the mark once the drop lands.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ * @param fixture Real files on disk, from {@link writeFileInputFixtures}.
+ */
+async function fileInputDropCheck(devtools: Devtools, fixture: FileInputFixture): Promise<void> {
+  const point = await elementCenter(devtools, FILE_INPUT_ZONE_SELECTOR)
+  check("the FileInput drop zone can be aimed at", point.ok, point.reason)
+  if (!point.ok) return
+
+  const dragData = { items: [], files: [fixture.drop], dragOperationsMask: 1 }
+  await devtools.send("Input.dispatchDragEvent", {
+    type: "dragEnter",
+    x: point.x,
+    y: point.y,
+    data: dragData,
+  })
+  const markedWhileDragging = await devtools.evaluate<boolean>(
+    `(document.querySelector('${FILE_INPUT_ZONE_SELECTOR}')?.className ?? "")
+      .includes("border-blue-500")`,
+  )
+  check("the drop zone marks itself while a drag is over it", markedWhileDragging)
+
+  await devtools.send("Input.dispatchDragEvent", {
+    type: "drop",
+    x: point.x,
+    y: point.y,
+    data: dragData,
+  })
+  const settled = await poll(
+    async () => (await fileInputReport(devtools)).chosen.includes("dropped.png"),
+    5_000,
+  )
+  const report = await fileInputReport(devtools)
+  check(
+    "dropping a file through Input.dispatchDragEvent adds it via the input's own DataTransfer",
+    settled,
+    `chosen: "${report.chosen.trim()}"`,
+  )
+
+  const markCleared = await devtools.evaluate<boolean>(
+    `!(document.querySelector('${FILE_INPUT_ZONE_SELECTOR}')?.className ?? "").includes("border-blue-500")`,
+  )
+  check("the drop zone's dragging mark clears once the drop lands", markCleared)
+}
+
+/**
+ * A file over `maxSize` and a file `accept` does not match are both refused: neither reaches
+ * `onFiles`, both are reported through `onReject`, and each refusal's text lands in `FileInput`'s
+ * own `role="status"` live region — the one that is present, empty, before either happens.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ * @param fixture Real files on disk, from {@link writeFileInputFixtures}.
+ */
+async function fileInputRefusalChecks(
+  devtools: Devtools,
+  fixture: FileInputFixture,
+): Promise<void> {
+  const tooLargeNodeId = await domNodeId(devtools, FILE_INPUT_SELECTOR)
+  check("the FileInput native input is found for the too-large refusal", tooLargeNodeId !== null)
+  if (tooLargeNodeId !== null) {
+    await devtools.send("DOM.setFileInputFiles", {
+      files: [fixture.tooLarge],
+      nodeId: tooLargeNodeId,
+    })
+    const settled = await poll(
+      async () => (await fileInputReport(devtools)).refused.includes("too-large"),
+      5_000,
+    )
+    const report = await fileInputReport(devtools)
+    check(
+      "a file over maxSize is refused with reason too-large, reported through onReject",
+      settled,
+      `refused: "${report.refused.trim()}"`,
+    )
+    const region = await devtools.evaluate<string>(
+      `document.querySelector('#${FILE_INPUT_ID}-rejection')?.textContent ?? ""`,
+    )
+    check(
+      "the too-large refusal is announced in FileInput's own live region",
+      region.includes("larger than"),
+      `"${region}"`,
+    )
+  }
+
+  const wrongTypeNodeId = await domNodeId(devtools, FILE_INPUT_SELECTOR)
+  check("the FileInput native input is found for the wrong-type refusal", wrongTypeNodeId !== null)
+  if (wrongTypeNodeId !== null) {
+    await devtools.send("DOM.setFileInputFiles", {
+      files: [fixture.wrongType],
+      nodeId: wrongTypeNodeId,
+    })
+    const settled = await poll(
+      async () => (await fileInputReport(devtools)).refused.includes("wrong-type"),
+      5_000,
+    )
+    const report = await fileInputReport(devtools)
+    check(
+      "a file accept does not match is refused with reason wrong-type, reported through onReject",
+      settled,
+      `refused: "${report.refused.trim()}"`,
+    )
+    const region = await devtools.evaluate<string>(
+      `document.querySelector('#${FILE_INPUT_ID}-rejection')?.textContent ?? ""`,
+    )
+    check(
+      "the wrong-type refusal is announced in FileInput's own live region",
+      region.includes("not an accepted file type"),
+      `"${region}"`,
+    )
+  }
+}
+
+/**
+ * Every preview `URL.createObjectURL` creates is revoked exactly twice over: once when its own file
+ * leaves the list, and once more, for whatever is still outstanding, when the whole card unmounts.
+ *
+ * The card's own `data-e2e="file-input-toggle-mount"` button is what supplies the second half: this
+ * catalogue never unmounts a card on its own, so proving "on unmount" needs a real Preact unmount
+ * somewhere, and clicking that button is the only one this page offers without navigating away and
+ * losing the ability to read the patched counter back — see `ui-guide/sections/inputs.tsx`'s own
+ * doc on `FileInputDemo` for why the button exists at all.
+ *
+ * `URL.revokeObjectURL` is patched in place, counted, and restored in a `finally`, the same shape
+ * `armExportInstrumentation`/`disarmExportInstrumentation` use for `ExportButton`'s own download.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ * @param fixture Real files on disk, from {@link writeFileInputFixtures}.
+ */
+async function fileInputPreviewRevokeChecks(
+  devtools: Devtools,
+  fixture: FileInputFixture,
+): Promise<void> {
+  await devtools.evaluate<null>(`(() => {
+    const original = URL.revokeObjectURL.bind(URL)
+    globalThis.__fileInputCheck = { original, revokeCount: 0 }
+    URL.revokeObjectURL = (url) => {
+      globalThis.__fileInputCheck.revokeCount += 1
+      return original(url)
+    }
+    return null
+  })()`)
+
+  try {
+    const beforeRemove = await devtools.evaluate<number>(`globalThis.__fileInputCheck.revokeCount`)
+    const removed = await devtools.evaluate<boolean>(`(() => {
+      const button = document.querySelector('${FILE_INPUT_CARD} button[aria-label="Remove ok.png"]')
+      if (!button) return false
+      button.click()
+      return true
+    })()`)
+    check("the ok.png remove button is found", removed)
+    if (removed) {
+      const revokedOnRemove = await poll(async () => {
+        const count = await devtools.evaluate<number>(`globalThis.__fileInputCheck.revokeCount`)
+        return count > beforeRemove
+      }, 5_000)
+      check("removing a file with an image preview revokes its object URL", revokedOnRemove)
+    }
+
+    const nodeId = await domNodeId(devtools, FILE_INPUT_SELECTOR)
+    if (nodeId !== null) {
+      await devtools.send("DOM.setFileInputFiles", { files: [fixture.ok], nodeId })
+      await poll(async () => (await fileInputReport(devtools)).chosen.includes("ok.png"), 5_000)
+    }
+
+    const beforeUnmount = await devtools.evaluate<number>(`globalThis.__fileInputCheck.revokeCount`)
+    const toggled = await devtools.evaluate<boolean>(`(() => {
+      const button = document.querySelector('${FILE_INPUT_TOGGLE_SELECTOR}')
+      if (!button) return false
+      button.click()
+      return true
+    })()`)
+    check("the card's unmount toggle is found", toggled)
+    if (toggled) {
+      const revokedOnUnmount = await poll(async () => {
+        const count = await devtools.evaluate<number>(`globalThis.__fileInputCheck.revokeCount`)
+        return count > beforeUnmount
+      }, 5_000)
+      check("unmounting the card revokes every preview still outstanding", revokedOnUnmount)
+    }
+  } finally {
+    await devtools.evaluate<null>(`(() => {
+      const state = globalThis.__fileInputCheck
+      if (state) URL.revokeObjectURL = state.original
+      return null
+    })()`).catch(() => {})
+  }
+}
+
+/**
+ * A plain `<form method="post" enctype="multipart/form-data">` around its own `FileInput` instance
+ * (`ui-guide/sections/inputs.tsx`'s third card, `id="guide-file-input-form"`) posts the chosen file
+ * with no script involved at all — the card's `<form>` carries no `onSubmit`, so a press of its
+ * submit button is a real, unintercepted browser submit whether or not the bundle has hydrated.
+ *
+ * Unlike {@link enhancedFormsNoScriptChecks}, this does not disable script execution first: there is
+ * nothing here for a hydrated handler to intercept, since none was ever wired — proving the post is
+ * plain is exactly what pressing the button with script running and reading the real network request
+ * back does. Both what the browser did (the request's method and its multipart body, read the same
+ * way {@link enhancedFormsNoScriptChecks} reads them) and where it landed (`form-demo/`'s own marker)
+ * are checked, since the second alone would not tell a real POST from a client-side navigation.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ * @param fixture Real files on disk, from {@link writeFileInputFixtures}.
+ */
+async function fileInputFormPostCheck(
+  devtools: Devtools,
+  fixture: FileInputFixture,
+): Promise<void> {
+  const restoreUrl = await devtools.evaluate<string>("location.href").catch(() => "")
+
+  const nodeId = await domNodeId(devtools, `#${FILE_INPUT_FORM_ID}`)
+  check("the plain-form FileInput's native input is found", nodeId !== null)
+  if (nodeId === null) return
+  await devtools.send("DOM.setFileInputFiles", { files: [fixture.ok], nodeId })
+
+  const buttonPoint = await elementCenter(devtools, `${FILE_INPUT_CARD} form button[type="submit"]`)
+  check("the plain form's submit button can be aimed at", buttonPoint.ok, buttonPoint.reason)
+  if (!buttonPoint.ok) return
+
+  const requestPromise = waitForRequest(devtools, "form-demo", 10_000)
+  for (const type of ["mousePressed", "mouseReleased"]) {
+    await devtools.send("Input.dispatchMouseEvent", {
+      type,
+      x: buttonPoint.x,
+      y: buttonPoint.y,
+      button: "left",
+      buttons: type === "mousePressed" ? 1 : 0,
+      clickCount: 1,
+    })
+  }
+
+  const request = await requestPromise
+  const navigated = await waitForNavigation(devtools)
+  const answer = navigated
+    ? await devtools.evaluate<string>(
+      `document.querySelector('[data-e2e="form-demo-answer"]')?.textContent ?? ""`,
+    ).catch(() => "")
+    : ""
+  const body = request ? await requestBody(devtools, request) : ""
+
+  check(
+    "FileInput's plain form posts and lands on the server's own answer, no script involved",
+    navigated && answer.includes("Thanks"),
+    navigated
+      ? `landed on a page whose own marker reads ${JSON.stringify(answer.slice(0, 60))}`
+      : "the submit never navigated anywhere within the timeout",
+  )
+  check(
+    "the post is a real multipart/form-data request carrying the chosen file under its field name",
+    request !== null && request.method === "POST" && body.includes('name="attachment"') &&
+      body.includes('filename="ok.png"'),
+    request === null
+      ? "no network request to form-demo/ was captured"
+      : `method "${request.method}", body ${JSON.stringify(body.slice(0, 200))}`,
+  )
+
+  await devtools.send("Page.navigate", { url: restoreUrl }).catch(() => {})
+  await waitForNavigation(devtools)
+  const rehydrated = await poll(
+    () =>
+      devtools.evaluate<boolean>(`document.documentElement.dataset.hydrated === "true"`)
+        .catch(() => false),
+    10_000,
+  )
+  check("the catalogue rehydrates once FileInput's plain-form post navigates back", rehydrated)
+  await settledScroll(devtools)
+}
+
+/**
+ * `FileInput`'s own mechanics, none of which a render-to-string unit test can see: Tab and a real
+ * Space/Enter press opening the file chooser, a file chosen through `DOM.setFileInputFiles`, one
+ * dropped through `Input.dispatchDragEvent`, the `maxSize`/`accept` refusals and their live region,
+ * an image preview revoked on removal and on a real unmount, and a plain `<form>` post that reaches
+ * a server with no script preventing it.
+ *
+ * Runs after `ExportButton`'s checks and before `modalChecks`, the same place `uiChecks` calls it:
+ * {@link fileInputFormPostCheck} navigates the page away and back, and every check after this one
+ * has to run against a page that has fully rehydrated again, which its own last check confirms.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function fileInputChecks(devtools: Devtools): Promise<void> {
+  const cardPresent = await devtools.evaluate<boolean>(
+    `document.querySelector('${FILE_INPUT_CARD}') !== null`,
+  )
+  check("the FileInput card is on the page", cardPresent)
+  if (!cardPresent) return
+
+  const { dir, files: fixture } = await writeFileInputFixtures()
+  try {
+    await fileInputKeyboardChecks(devtools)
+    await fileInputSelectionCheck(devtools, fixture)
+    await fileInputDropCheck(devtools, fixture)
+    await fileInputRefusalChecks(devtools, fixture)
+    await fileInputPreviewRevokeChecks(devtools, fixture)
+    await fileInputFormPostCheck(devtools, fixture)
+  } finally {
+    await Deno.remove(dir, { recursive: true }).catch(() => {})
+  }
 }

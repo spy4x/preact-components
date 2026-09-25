@@ -298,6 +298,7 @@ export function FileInput(
         </label>
       )}
       <div
+        data-e2e="file-input-zone"
         class={cn(
           dropZoneBase,
           disabled ? dropZoneDisabled : dropZoneInteractive,

@@ -12,6 +12,7 @@
  */
 
 import {
+  Button,
   Combobox,
   type ComboboxOptionState,
   type DateRange,
@@ -728,10 +729,21 @@ function ToggleFieldDemo() {
  * its drop zone, the label wired to it, and an always-present, empty `role="status"` for a refusal
  * that has not happened yet. What a caller actually reads — `onFiles` and `onReject` — is echoed
  * underneath, in place of trusting the component's own live region to speak for its port.
+ *
+ * The third card's `<form>` carries no `onSubmit`: it is the plain post `FileInput`'s own doc
+ * promises, proven by `pages/checks/ui.ts`'s `fileInputFormPostCheck` against the `form-demo/`
+ * static page the `EnhancedForm` cards already post to when no script runs theirs.
+ *
+ * The first card's own toggle button (`data-e2e="file-input-toggle-mount"`) is scaffolding, not a
+ * `FileInput` prop: this catalogue never unmounts a card on its own — every section stays in the
+ * markup once rendered, anchored rather than routed — so proving preview URLs are revoked "on
+ * unmount" needs a real Preact unmount somewhere, and this button is what gives the check one
+ * without navigating the whole page away and losing the ability to read anything back afterward.
  */
 function FileInputDemo() {
   const chosen = useSignal<string[]>([])
   const refused = useSignal<string[]>([])
+  const mounted = useSignal(true)
 
   return (
     <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
@@ -739,16 +751,27 @@ function FileInputDemo() {
         <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">
           Images only, up to 2 MB
         </h4>
-        <FileInput
-          id="guide-file-input"
-          label="Attachments"
-          hint="PNG or JPEG, up to 2 MB each"
-          accept="image/png,image/jpeg"
-          maxSize={2 * 1024 * 1024}
-          multiple
-          onFiles={(files) => chosen.value = files.map((f) => f.name)}
-          onReject={(reasons) => refused.value = reasons.map((r) => `${r.file.name} (${r.reason})`)}
-        />
+        {mounted.value && (
+          <FileInput
+            id="guide-file-input"
+            label="Attachments"
+            hint="PNG or JPEG, up to 2 MB each"
+            accept="image/png,image/jpeg"
+            maxSize={2 * 1024 * 1024}
+            multiple
+            onFiles={(files) => chosen.value = files.map((f) => f.name)}
+            onReject={(reasons) =>
+              refused.value = reasons.map((r) => `${r.file.name} (${r.reason})`)}
+          />
+        )}
+        <button
+          type="button"
+          class="text-xs text-blue-600 underline dark:text-blue-400"
+          data-e2e="file-input-toggle-mount"
+          onClick={() => mounted.value = !mounted.value}
+        >
+          {mounted.value ? "Unmount" : "Remount"} this card
+        </button>
         <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="file-input-chosen">
           chosen: {chosen.value.length === 0 ? "none" : chosen.value.join(", ")}
         </p>
@@ -759,6 +782,17 @@ function FileInputDemo() {
       <div class="space-y-2">
         <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">Disabled</h4>
         <FileInput id="guide-file-input-disabled" label="Attachments" disabled />
+      </div>
+      <div class="space-y-2 sm:col-span-2">
+        <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">A plain form post</h4>
+        <form action="form-demo/" method="post" encType="multipart/form-data" class="space-y-3">
+          <FileInput id="guide-file-input-form" name="attachment" label="Attachment" />
+          <Button type="submit" variant="outline">Send</Button>
+        </form>
+        <p class="text-xs text-gray-500 dark:text-gray-400">
+          No `onSubmit`: whatever this form posts is the browser's own multipart body, built from
+          the native input `FileInput` wraps.
+        </p>
       </div>
     </div>
   )
