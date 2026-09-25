@@ -201,6 +201,8 @@ interface CardText {
   rest: string
   /** The text of those matches alone; empty for a card with nothing listed. */
   drawn: string
+  /** How many elements matched the selector (outermost matches only). */
+  parts: number
 }
 
 /**
@@ -219,15 +221,19 @@ const CARD_TEXTS = `(root, drawnBy) => {
     const selector = drawnBy[card.id]
     const rest = []
     const drawn = []
+    let parts = 0
     const walk = (node, into) => {
       if (node.nodeType === Node.TEXT_NODE) return void into.push(node.data)
       if (node.nodeType !== Node.ELEMENT_NODE) return
-      if (into === rest && selector && node.matches(selector)) into = drawn
+      if (into === rest && selector && node.matches(selector)) {
+        into = drawn
+        parts++
+      }
       if (node.nodeName === "TEXTAREA") return void into.push(" " + node.value + " ")
       for (const child of node.childNodes) walk(child, into)
     }
     walk(card, rest)
-    return { rest: squash(rest.join("")), drawn: squash(drawn.join(" ")) }
+    return { rest: squash(rest.join("")), drawn: squash(drawn.join(" ")), parts }
   }
   return Object.fromEntries(
     [...root.querySelectorAll('article[id^="demo-"]')].map((card) => [card.id, read(card)]),
@@ -240,6 +246,12 @@ interface DrawnInBrowser {
   selector: string
   /** Why this part cannot match the served document. */
   reason: string
+  /**
+   * How many elements the selector matches in the card in the browser. A different count fails the
+   * run, so a second element that happens to match (another status region, another chart) is not
+   * left out silently.
+   */
+  parts: number
 }
 
 /**
@@ -251,19 +263,23 @@ interface DrawnInBrowser {
 const TEXT_DRAWN_IN_BROWSER: Record<string, DrawnInBrowser> = {
   "demo-CrudEditor": {
     selector: `[role="status"][aria-atomic="true"]`,
+    parts: 1,
     reason: "validation runs in an effect, so the cross-field message in the live region above " +
       "Save exists only in the browser",
   },
   "demo-D3LineChart": {
     selector: `svg[role="img"]`,
+    parts: 2,
     reason: "d3 draws the chart's axes and lines into its svg in an effect",
   },
   "demo-CompareChart": {
     selector: `svg[role="img"]`,
+    parts: 1,
     reason: "d3 draws the chart's axes and lines into its svg in an effect",
   },
   "demo-Map": {
     selector: ".leaflet-control-container",
+    parts: 1,
     reason: "Leaflet adds its zoom controls in an effect",
   },
 }
@@ -294,6 +310,7 @@ async function serverTextChecks(devtools: Devtools): Promise<void> {
   const differing = new Map<string, string>()
   const missing: string[] = []
   const stillSame: string[] = []
+  const wrongParts: string[] = []
   const seen = new Set<string>()
   for (const page of guidePages.filter((each) => each.id !== "all" && each.sections.length > 0)) {
     await openGuidePage(devtools, page.id)
@@ -309,6 +326,10 @@ async function serverTextChecks(devtools: Devtools): Promise<void> {
       }
       if (server.rest !== text.rest) differing.set(id, whereTextsDiffer(server.rest, text.rest))
       if (id in TEXT_DRAWN_IN_BROWSER && server.drawn === text.drawn) stillSame.push(id)
+      const listedParts = TEXT_DRAWN_IN_BROWSER[id]?.parts
+      if (listedParts !== undefined && text.parts !== listedParts) {
+        wrongParts.push(`#${id} (${text.parts}, listed ${listedParts})`)
+      }
     }
   }
 
@@ -321,7 +342,8 @@ async function serverTextChecks(devtools: Devtools): Promise<void> {
   check(
     "every card shows the same text in the browser as in the served document",
     seen.size === expected && Object.keys(served).length === expected && missing.length === 0 &&
-      differing.size === 0 && stillSame.length === 0 && unseen.length === 0,
+      differing.size === 0 && stillSame.length === 0 && unseen.length === 0 &&
+      wrongParts.length === 0,
     [
       `${seen.size}/${expected} cards read in the browser, ${Object.keys(served).length} served, ` +
       `${listed.length} with a part drawn in the browser left out`,
@@ -335,6 +357,9 @@ async function serverTextChecks(devtools: Devtools): Promise<void> {
         }`
         : "",
       unseen.length > 0 ? `listed but no such card: ${unseen.join(", ")}` : "",
+      wrongParts.length > 0
+        ? `a listed selector matches a different number of parts: ${wrongParts.join(", ")}`
+        : "",
     ].filter(Boolean).join("; "),
   )
 }
