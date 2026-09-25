@@ -82,6 +82,16 @@
     // Validation — arktype only, never zod
     "arktype": "npm:arktype@2.2.3",
 
+    // spy4x/ts-libs, one exact version for every package that imports it. Shared helpers live
+    // there once and are imported, never copied (spy4x/ts-libs#69, #70, #72). The trailing-slash
+    // entries map every subpath of a package (`@spy4x/platform/universal/csv`) to the same release;
+    // `deno publish` rewrites each import to that exact `jsr:` version, so only a package that
+    // imports one of these gains it as a dependency.
+    "@spy4x/platform/": "jsr:/@spy4x/platform@1.3.0/",
+    "@spy4x/time/": "jsr:/@spy4x/time@1.3.0/",
+    "@spy4x/validation": "jsr:@spy4x/validation@1.3.0",
+    "@spy4x/validation/": "jsr:/@spy4x/validation@1.3.0/",
+
     // Test-only HTML renderer every package's suite imports. One pin here (#133) replaces six
     // identical per-package copies that all resolved the same version. Unlike `d3` below, this is
     // safe to centralise: every import of it is in a `*.test.tsx` file or the unpublished `pages/`
