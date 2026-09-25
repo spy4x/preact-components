@@ -38,10 +38,10 @@ import type { DemoFragment } from "../registry.ts"
 
 /** A handful of rows in the shape `Bars` takes — no helper, no fetch, no scale to compute. */
 const bars: BarDatum[] = [
-  { label: "alpha", value: 41 },
-  { label: "beta", value: 27 },
-  { label: "gamma", value: 12 },
-  { label: "delta", value: 6 },
+  { label: "Starter", value: 41 },
+  { label: "Team", value: 27 },
+  { label: "Business", value: 12 },
+  { label: "Enterprise", value: 6 },
 ]
 
 /** Months, spelled out, so nothing has to parse or localise a date to draw the axis. */
@@ -53,13 +53,13 @@ const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"] as const
  * The values are literals. A chart deriving them from `Date.now()` would render different markup
  * every build, which is the one thing a prerendered guide cannot have.
  */
-const runs = [
+const orders = [
   {
-    name: "Planes",
+    name: "Orders",
     points: months.map((month, index) => ({ x: month, y: [41, 27, 12, 6, 48, 21][index] })),
   },
   {
-    name: "Sorties",
+    name: "Returns",
     points: months.map((month, index) => ({ x: month, y: [28, 19, 9, 4, 33, 14][index] })),
   },
 ]
@@ -103,7 +103,7 @@ const range: DateRange = {
 }
 
 /** Hourly buckets for the primary chart, all on one fixed day. */
-const power: TimeSeriesPoint[] = [
+const revenue: TimeSeriesPoint[] = [
   { timeGroup: "2026-03-01T00:00:00.000Z", value: 6.1 },
   { timeGroup: "2026-03-01T04:00:00.000Z", value: 5.4 },
   { timeGroup: "2026-03-01T08:00:00.000Z", value: 9.8 },
@@ -138,19 +138,25 @@ export const chartsDemos = {
   Bars: {
     summary:
       "A labelled bar chart from `data` alone, rendered as a table of proportions: no d3, no client JavaScript, no width to measure.",
-    snippet: `<Bars data={[{ label: "alpha", value: 41 }]} title="Top planes" />`,
-    render: () => <Bars data={bars} title="Planes shot down" />,
+    snippet: `<Bars data={[{ label: "Starter", value: 41 }]} title="Orders by plan" />`,
+    render: () => <Bars data={bars} title="Orders by plan" />,
   },
   LineChart: {
     summary:
       "Server-rendered SVG line chart over one or more series, taking its X labels from the points themselves. Axis maths lives in `scales.ts`, so a degenerate series — one point, all-equal values, a non-finite `y` — still renders instead of producing NaN coordinates. `showLegend` defaults on for a multi-series chart and off for a single one, and a `yDomain` the caller supplies is honoured exactly, which is what puts two panels on one axis.",
     snippet: `<LineChart
-  title="Runs per month"
-  series={[{ name: "Runs", points: months.map((m) => ({ x: m.label, y: m.runs })) }]}
-  yFormat={(value) => \`\${value} kg\`}
+  title="Orders per month"
+  series={[{ name: "Orders", points: months.map((m) => ({ x: m.label, y: m.orders })) }]}
+  yFormat={(value) => value.toFixed(0)}
   xStride={2}
 />`,
-    render: () => <LineChart series={runs} title="Runs per month" yFormat={(v) => v.toFixed(0)} />,
+    render: () => (
+      <LineChart
+        series={orders}
+        title="Orders per month"
+        yFormat={(v) => v.toFixed(0)}
+      />
+    ),
   },
   DonutChart: {
     summary:
@@ -203,27 +209,27 @@ export const chartsDemos = {
   },
   MetricPanel: {
     summary:
-      "The shell one metric panel is made of: a heading with its unit, an actions slot, an error box and the chart body as children. Presentational only — it loads nothing. The fetching half is the exported `loadMetricSeries` (and the `useMetricSeries` hook), which takes a `loadStats` port and a `scale` multiplier; that pair is what let a source application's two near-identical power and energy panels become one component.",
+      "The shell one metric panel is made of: a heading with its unit, an actions slot, an error box and the chart body as children. Presentational only — it loads nothing. The fetching half is the exported `loadMetricSeries` (and the `useMetricSeries` hook), which takes a `loadStats` port and a `scale` multiplier; that pair is what let a source application's two near-identical metric panels become one component.",
     snippet: `<MetricPanel
-  title="Power"
-  unit="kW"
+  title="Revenue"
+  unit="k€"
   error={error}
   actions={<ExportButtons />}
 >
-  <D3LineChart data={power.data} timeFrame={power.timeFrame} ariaLabel="Power, kW" />
+  <D3LineChart data={revenue.data} timeFrame={revenue.timeFrame} ariaLabel="Revenue, k€" />
 </MetricPanel>`,
     render: () => (
       <div class="space-y-6">
         <MetricPanel
-          title="Power"
-          unit="kW"
+          title="Revenue"
+          unit="k€"
           actions={<Button variant="outline" size="sm">Export CSV</Button>}
         >
-          <LineChart series={runs} height={200} title="Inverter output" />
+          <LineChart series={orders} height={200} title="Orders and returns" />
         </MetricPanel>
         <MetricPanel
-          title="Energy"
-          unit="kWh"
+          title="Sessions"
+          unit="per day"
           error={{
             message: "The stats endpoint returned 502.",
             instruction: "Widen the date range and try again.",
@@ -239,27 +245,27 @@ export const chartsDemos = {
     summary:
       "The interactive island: d3 v7 draws into the svg from an effect, re-renders on resize and shows a tooltip built by `tooltipFormat`. It server-renders as an empty, labelled `<svg>` because nothing touches the DOM before the effect runs — so the card below is genuinely empty in this page's server-rendered markup, and confirming that the axes and the path appear needs a browser. `ignoreZeroes` draws zeroes as a gap with a legend note, and `referenceValue` adds a dashed target marker. Needs `d3`, an optional peer declared in `charts/deno.json` and absent from the root import map.",
     snippet: `<D3LineChart
-  data={power.data}
+  data={revenue.data}
   timeFrame="hours"
   referenceValue={12}
   ignoreZeroes
   tickFormat={(value) => value.toFixed(1)}
-  ariaLabel="Power, kW"
+  ariaLabel="Revenue, k€"
 />`,
     render: () => (
       <div class="space-y-6">
         <D3LineChart
-          data={power}
+          data={revenue}
           timeFrame="hours"
           referenceValue={12}
-          ariaLabel="Power, kW"
+          ariaLabel="Revenue, k€"
           tickFormat={(value) => value.toFixed(1)}
         />
         <D3LineChart
-          data={[...power, { timeGroup: "2026-03-01T22:00:00.000Z", value: 0 }]}
+          data={[...revenue, { timeGroup: "2026-03-01T22:00:00.000Z", value: 0 }]}
           timeFrame="hours"
           ignoreZeroes
-          ariaLabel="Power with a gap for missing values"
+          ariaLabel="Revenue with a gap for missing values"
         />
       </div>
     ),
@@ -269,19 +275,19 @@ export const chartsDemos = {
       "A `D3LineChart` plus a toggle that loads the window before the current one through a `loadStats` port — the fetch stays with the caller, which is what replaced a source application's direct call into its chart store. A failed load becomes a red box beside the second chart instead of a thrown error, and `rangePicker` is a slot for the caller's own date control. It server-renders with the toggle off, so the second chart does not exist until a browser clicks it.",
     snippet: `<CompareChart
   range={range}
-  data={power.data}
+  data={revenue.data}
   timeFrame="hours"
-  loadStats={(window) => api.stats({ ...window, kind: "power" })}
+  loadStats={(window) => api.stats({ ...window, kind: "revenue" })}
   onError={(message) => app.toast.error({ body: message })}
 />`,
     render: () => (
       <CompareChart
         range={range}
-        data={power}
+        data={revenue}
         timeFrame="hours"
         loadStats={loadPreviousWindow}
         compareLabel="Compare with the day before"
-        ariaLabel="Power, kW"
+        ariaLabel="Revenue, k€"
       />
     ),
   },

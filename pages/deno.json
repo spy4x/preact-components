@@ -11,6 +11,7 @@
   "tasks": {
     "build": "deno run -A build.ts",
     "preview": "deno run -A serve.ts",
-    "verify": "deno run -A verify.ts"
+    "verify": "deno run -A verify.ts",
+    "screenshots": "deno run -A screenshots.ts"
   }
 }

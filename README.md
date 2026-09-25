@@ -1,10 +1,23 @@
 # preact-components
 
+[![CI pipeline status](https://ci.antonshubin.com/api/badges/9/status.svg)](https://ci.antonshubin.com/repos/9)
+
 Reusable Preact + Tailwind components, design tokens, icons and signals helpers for Deno apps.
 
 Extracted from real products so the same button, table, chart and CRUD scaffold is written once.
+The design system and the original markup are by [Eirene](https://github.com/Eirene)
+([isorokina.com](https://isorokina.com/)) — see [Credits](#credits).
 
-Demo: https://spy4x.github.io/preact-components
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/guide-overview-dark.png">
+  <img src="docs/screenshots/guide-overview-light.png" width="1280" alt="The live UI guide's overview page: a side navigation listing every package, and one card per package — UI, System, CRUD, Charts, Map, Signals, Theme, Icons and cn — each with its import name, a one-line summary and a count of its live cards or icons, or the words Examples coming for a package that has none yet.">
+</picture>
+
+Live guide: https://spy4x.github.io/preact-components — every component running, with its code.
+
+```bash
+deno add jsr:@preact-components/ui   # once published; see Status below
+```
 
 ## Status
 
@@ -87,6 +100,34 @@ The design system, the component styling and the original markup in this reposit
 Eirene — https://github.com/Eirene, https://isorokina.com/. This repository turned that work into a
 reusable Preact + signals package. See [`CREDITS.md`](./CREDITS.md).
 
+## Screenshots
+
+Taken from a local build of the demo site by `deno task --cwd pages screenshots`, in the headless
+Chromium the browser checks use, at 1280×800 and twice the pixel density.
+
+![The UI package's page in the opt-in ink dark palette: the side navigation lists the UI components by group, the Badge and StatusMark cards show their live examples, and the CiStatusPill card's description starts below them.](docs/screenshots/guide-ui-ink.png)
+
+![The Charts package's page in the light palette: a bar chart of orders by plan, followed by the line and donut chart cards with their descriptions.](docs/screenshots/guide-charts-light.png)
+
+## Where it runs
+
+Every module is a standard ES module, and nothing a package publishes calls a Deno-only API: the
+files that do — build, generation and audit scripts such as `theme/generate.ts`,
+`icons/provenance.ts` and `ui-guide/coverage.ts` — are listed under `publish.exclude` in their
+package's `deno.json`. A component touches `window` or `document` only inside an effect or an event
+handler, so it renders to HTML on a server (`preact-render-to-string`, which is how every test here
+renders it) and hydrates in the browser. The browser APIs the components call are standard ones,
+among them Clipboard, Geolocation, the Service Worker container, `localStorage`, the History API,
+`IntersectionObserver` and `ResizeObserver`. Some are reached through a port the caller can replace,
+with the browser's own as the default; others, such as the observers in `charts/` and the History
+API in `signals/`, are called directly. Every request a component makes goes to an address the app
+supplies: `Avatar`, `ImageGallery`, `Lightbox` and `ImageLightbox` load the image URLs they are
+passed, `Map` loads Leaflet with a dynamic `import()`, which the app's own bundle resolves, and
+fetches map tiles from the `tileUrl` it is given, and `SWUpdater` registers the service-worker
+script it is given, which the browser downloads. No package calls Fetch, Streams or Web Crypto; data
+arrives through props. The tests and the build run under Deno 2; running a published package under
+Node or Bun through JSR's npm compatibility layer has not been tried.
+
 ## Scope
 
 | Directory   | Contents                                                                                                                                 |
@@ -130,3 +171,7 @@ reusable Preact + signals package. See [`CREDITS.md`](./CREDITS.md).
 Three repos, not a monorepo. Third-party dependencies publish at the exact versions pinned here,
 and the lockfile is committed. Sibling packages publish as caret ranges, which is why every package
 is released at one version — see [`docs/publishing.md`](./docs/publishing.md).
+
+---
+
+Made by Anton Shubin · [antonshubin.com/tools](https://antonshubin.com/tools)
