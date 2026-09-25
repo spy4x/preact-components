@@ -6,7 +6,8 @@
  * and a weekday computed in UTC is the same weekday in every zone. That removes the timezone
  * dependency the source version had in its grid maths — see the package README.
  *
- * A timezone only matters to answer "what is today", and that is `isoDateInTz`.
+ * A timezone only matters to answer "what is today", and that is `@spy4x/time/tz`'s
+ * `isoDateInTz`/`todayInTz` — this module has no zone-aware helper of its own.
  *
  * Which day a week starts on, and what its days are called, are the locale's business rather than
  * this module's: `localeFirstWeekday` and `weekdayLabels` read both out of `Intl`, so a grid laid
@@ -16,44 +17,6 @@
 
 /** `YYYY-MM-DD`, the only date shape this module accepts. */
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/
-
-/** `YYYY-MM-DD` for an instant in a zone, via `Intl` — no local-clock assumptions server-side. */
-export function isoDateInTz(instant: Date, timeZone: string): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(instant)
-  const year = parts.find((part) => part.type === "year")?.value
-  const month = parts.find((part) => part.type === "month")?.value
-  const day = parts.find((part) => part.type === "day")?.value
-  if (!year || !month || !day) throw new Error(`could not format a date in ${timeZone}`)
-  return `${year}-${month}-${day}`
-}
-
-/**
- * Whether the platform can resolve this time zone.
- *
- * Which zones exist is a property of the build's `Intl` data and not of the caller's code, and
- * `Intl.DateTimeFormat` answers an unknown one with a `RangeError`. A component that would rather
- * fall back than throw out of its render asks this first.
- *
- * @param timeZone An IANA zone name, e.g. `Europe/Berlin`.
- * @returns `true` when the platform knows it.
- */
-export function isValidTimeZone(timeZone: string): boolean {
-  try {
-    return Boolean(Intl.DateTimeFormat("en-CA", { timeZone }).resolvedOptions().timeZone)
-  } catch {
-    return false
-  }
-}
-
-/** Today in a zone. The only place a clock is read. */
-export function isoToday(timeZone: string): string {
-  return isoDateInTz(new Date(), timeZone)
-}
 
 /**
  * `YYYY-MM-DD` to a UTC timestamp, refusing anything that is not a date the calendar has.

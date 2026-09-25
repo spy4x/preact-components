@@ -5,9 +5,6 @@ import {
   dayInMonth,
   dayLabel,
   daysInMonth,
-  isoDateInTz,
-  isoToday,
-  isValidTimeZone,
   localeFirstWeekday,
   monthFirstWeekday,
   monthLabel,
@@ -162,18 +159,6 @@ describe("dayLabel", () => {
   })
 })
 
-describe("isValidTimeZone", () => {
-  it("accepts a zone the platform carries", () => {
-    expect(isValidTimeZone("UTC")).toBe(true)
-    expect(isValidTimeZone("Asia/Tokyo")).toBe(true)
-  })
-
-  it("refuses a zone that is not one, rather than throwing", () => {
-    expect(isValidTimeZone("Mars/Phobos")).toBe(false)
-    expect(isValidTimeZone("")).toBe(false)
-  })
-})
-
 describe("monthLabel", () => {
   it("formats month and year", () => {
     expect(monthLabel("2026-08-23")).toBe("August 2026")
@@ -209,29 +194,5 @@ describe("weekdayLabels", () => {
       const shorts = weekdayLabels(locale).map((weekday) => weekday.short)
       expect(new Set(shorts).size).toBe(7)
     }
-  })
-})
-
-describe("isoDateInTz", () => {
-  it("formats the calendar date in the given zone", () => {
-    const instant = new Date("2026-08-23T23:30:00Z")
-
-    expect(isoDateInTz(instant, "UTC")).toBe("2026-08-23")
-    expect(isoDateInTz(instant, "Asia/Tokyo")).toBe("2026-08-24")
-    expect(isoDateInTz(instant, "America/Los_Angeles")).toBe("2026-08-23")
-  })
-
-  it("pads single-digit months and days", () => {
-    expect(isoDateInTz(new Date("2026-01-05T12:00:00Z"), "UTC")).toBe("2026-01-05")
-  })
-})
-
-describe("isoToday", () => {
-  it("returns a YYYY-MM-DD string", () => {
-    expect(isoToday("UTC")).toMatch(/^\d{4}-\d{2}-\d{2}$/)
-  })
-
-  it("agrees with isoDateInTz for the same instant", () => {
-    expect(isoToday("Asia/Tokyo")).toBe(isoDateInTz(new Date(), "Asia/Tokyo"))
   })
 })
