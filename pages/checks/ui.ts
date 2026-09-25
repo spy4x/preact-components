@@ -1,4 +1,12 @@
-import { centreInView, check, type Devtools, poll, pressKey, settledScroll } from "./harness.ts"
+import {
+  centreInView,
+  check,
+  type Devtools,
+  openGuidePage,
+  poll,
+  pressKey,
+  settledScroll,
+} from "./harness.ts"
 
 /** One side of a dropdown's open/closed state. */
 interface State {
@@ -671,7 +679,11 @@ async function dropdownChecks(devtools: Devtools): Promise<void> {
   )
 
   await strayClickCheck(devtools)
+  // The table below counts triggers on cards of three packages, so it is read on the guide's `all`
+  // page, where every card is rendered.
+  await openGuidePage(devtools, "all")
   await triggerNameCheck(devtools)
+  await openGuidePage(devtools, "ui")
 }
 
 /** Where a real mouse press actually landed, recorded by the page as the browser dispatched it. */
@@ -6481,7 +6493,10 @@ async function dataTableChecks(devtools: Devtools): Promise<void> {
   await blurActive(devtools)
 
   await dataTablePagingCheck(devtools)
+  // The URL-bound demo is the host's own, and it lives on the guide's signals page.
+  await openGuidePage(devtools, "signals")
   await dataTableUrlSortCheck(devtools)
+  await openGuidePage(devtools, "ui")
 }
 
 /** A real mouse click on the Merchant header button, and where it landed. */

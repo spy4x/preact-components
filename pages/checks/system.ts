@@ -1,4 +1,4 @@
-import { centreInView, check, type Devtools, poll, pressKey } from "./harness.ts"
+import { centreInView, check, type Devtools, openGuidePage, poll, pressKey } from "./harness.ts"
 
 /** The card these checks drive, and the pieces of it they read. */
 const CARD = "#demo-SWUpdater"
@@ -188,6 +188,9 @@ export async function systemChecks(devtools: Devtools): Promise<void> {
   await siteHeaderChecks(devtools)
   await shellChecks(devtools)
   await railShellChecks(devtools)
+  // RailShell's no-script check reloads the page on an address whose hash names no guide page,
+  // so the guide opens its overview; the SWUpdater card lives on the system page.
+  await openGuidePage(devtools, "system")
   await serviceWorkerChecks(devtools)
   check(
     "every reading this file took came back without a page exception",
@@ -1218,7 +1221,7 @@ async function waitForLoad(devtools: Devtools, timeoutMs = 20_000): Promise<bool
 /**
  * Wait until `scrollY` has held the same value for a full second, bounded.
  *
- * Written for `authFormNoScriptChecks`'s restoring reload specifically: `pages/src/app.tsx`'s
+ * Written for `authFormNoScriptChecks`'s restoring reload specifically: the guide shell's
  * route effect re-runs on every load and smoothly scrolls toward whatever card the address
  * currently deep-links to, which can still be moving hundreds of milliseconds after the load
  * event fires. `settleScroll` further down this file polls for two *consecutive* readings a tenth
@@ -1295,7 +1298,7 @@ async function waitForScrollSettle(
  *
  * **The restoring reload does not make this function's `finally` block done, because the
  * catalogue's own route effect is not done with the page yet.** Every load — this reload included —
- * re-runs `pages/src/app.tsx`'s route effect, which smoothly scrolls toward whatever card the
+ * re-runs the guide shell's route effect, which smoothly scrolls toward whatever card the
  * address currently deep-links to, and that address still carries whatever route an earlier block
  * left in it. Measured: several thousand pixels of scroll, still moving several hundred
  * milliseconds after the reload's own load event. Returning while that animation is running hands
@@ -3883,6 +3886,8 @@ async function siteHeaderEscapeRaceCheck(devtools: Devtools): Promise<void> {
  * caller. Forces the panel closed itself first, rather than assuming it already is.
  */
 async function siteHeaderEscapeScopingCheck(devtools: Devtools): Promise<void> {
+  // The Modal is a `ui/` card, so this check runs on the guide's `all` page, where both cards are.
+  await openGuidePage(devtools, "all")
   await ensureSiteHeaderClosed(devtools)
 
   await focusAndClick(devtools, SITE_HEADER_BUTTON)
@@ -3986,6 +3991,7 @@ async function siteHeaderEscapeScopingCheck(devtools: Devtools): Promise<void> {
   )
 
   await ensureSiteHeaderClosed(devtools)
+  await openGuidePage(devtools, "system")
   // The `#demo-Modal` card lives somewhere else on this long catalogue page, and focusing its
   // trigger scrolled there to bring it into view — settling for *that* scroll is not enough, since
   // `siteHeaderLayoutChecks` right after this reads a viewport-relative position off a header that

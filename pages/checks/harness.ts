@@ -15,7 +15,7 @@
  * module-level state.
  *
  * **A standing hazard for any check that reloads or renavigates the one page every block shares**:
- * `pages/src/app.tsx`'s route effect re-runs on every load and smoothly scrolls toward whatever
+ * the guide shell's route effect (`ui-guide/shell.tsx`) re-runs on every load and scrolls toward whatever
  * card the address currently deep-links to, which an earlier block's own routing may have left
  * pointed anywhere — `system/`'s `authFormNoScriptChecks` waits that scroll out before it returns,
  * for exactly this reason. A future check that needs a fresh, unhydrated load has a cleaner option
@@ -24,6 +24,8 @@
  */
 
 import { join } from "node:path"
+import type { GuidePageId } from "@preact-components/ui-guide/registry"
+import { pageHref } from "@preact-components/ui-guide/routes"
 
 /** One assertion's outcome. */
 export interface CheckRecord {
@@ -633,6 +635,40 @@ export async function centreInView(
   })()`)
   if (target === null) return false
   return await settledScroll(page, { target, timeoutMs })
+}
+
+/**
+ * Show one page of the guide, and wait until it is the page showing, at its top, standing still.
+ *
+ * The guide renders one page at a time, so a check can only find a card while that card's page
+ * shows. `verify.ts` opens each package block's page before the block runs; a check that reaches
+ * for a card on another page opens that page first — `all` when it needs cards of two packages at
+ * once. The route is the page's own (`#/ui`), and the page is sent to its top instantly afterwards
+ * so every block starts from the same place whichever page ran before it.
+ *
+ * @param page The connected session.
+ * @param pageId The page to show.
+ * @param timeoutMs How long the guide gets to show it.
+ * @throws When the page is not showing within the budget: every check after this would fail for
+ * a reason none of them names.
+ */
+export async function openGuidePage(
+  page: PageReader,
+  pageId: GuidePageId,
+  timeoutMs = 5_000,
+): Promise<void> {
+  const selector = JSON.stringify(`[data-guide-page="${pageId}"]`)
+  // `replace`, not an assignment to `location.hash`: the same `hashchange`, but no new history
+  // entry. A run opens pages dozens of times, and Chromium keeps at most 50 entries, after which
+  // `history.length` stops counting — which the `signals` checks read to prove a write cost one.
+  await page.evaluate(`(location.replace(${JSON.stringify(pageHref(pageId))}), null)`)
+  const shown = await poll(
+    () => page.evaluate<boolean>(`document.querySelector(${selector}) !== null`),
+    timeoutMs,
+  )
+  if (!shown) throw new Error(`the guide did not show its ${pageId} page within ${timeoutMs}ms`)
+  await page.evaluate(`(globalThis.scrollTo({ top: 0, behavior: "instant" }), null)`)
+  await settledScroll(page, { target: 0 })
 }
 
 /** Wait for Chromium's port file, which appears once the debugging server is up. */
