@@ -437,9 +437,15 @@ function AssociationEditorDemo() {
   )
 }
 
-/** The blocked-archive block, with a dependency list the reader can empty to see the healthy path. */
+/**
+ * The blocked-archive block, with a dependency list the reader can fill in to see it appear, plus a
+ * second button that re-renders this demo for a reason that has nothing to do with the dependency
+ * list — the same kind of re-render a keystroke in another field or a timer would cause in a real
+ * form — so the block visibly does not move when it fires.
+ */
 function DeletionValidationDemo() {
-  const blocked = useSignal(true)
+  const blocked = useSignal(false)
+  const renders = useSignal(0)
   const dependencies = [
     {
       kind: "Zones",
@@ -453,12 +459,21 @@ function DeletionValidationDemo() {
 
   return (
     <div class="space-y-3">
-      <Button variant="outline" size="sm" onClick={() => blocked.value = !blocked.value}>
-        {blocked.value ? "Empty the dependency list" : "Restore the dependency list"}
-      </Button>
+      <div class="flex flex-wrap gap-2">
+        <Button variant="outline" size="sm" onClick={() => blocked.value = !blocked.value}>
+          {blocked.value ? "Empty the dependency list" : "Restore the dependency list"}
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => renders.value++}>
+          Re-render for an unrelated reason
+        </Button>
+      </div>
       <DeletionValidation dependencies={blocked.value ? dependencies : []} model="Region" />
       <p class="text-xs text-gray-500 dark:text-gray-400">
-        {blocked.value ? "A non-empty list is the block above." : "An empty list renders nothing."}
+        {blocked.value
+          ? "A non-empty list is the block above."
+          : "An empty list renders nothing visible."} Re-rendered {renders.value}{" "}
+        time{renders.value === 1 ? "" : "s"}{" "}
+        for a reason unrelated to the dependency list — the block does not move when that happens.
       </p>
     </div>
   )
@@ -671,7 +686,7 @@ export const crudDemos = {
   },
   DeletionValidation: {
     summary:
-      "The list of entities blocking a soft delete. A row can only be archived once everything pointing at it has been archived, and the store hands back what still points at it. An empty list renders nothing, which is why the healthy path is invisible — the button below switches between the two. The block scrolls itself into view whenever the list is non-empty, with no dependency array so a second blocked attempt also scrolls: the checkbox that produced it sits in the form footer and the answer appears below the form.",
+      'The list of entities blocking a soft delete. A row can only be archived once everything pointing at it has been archived, and the store hands back what still points at it. An empty list renders nothing visible, which is why the healthy path looks empty — the button below switches between the two. The block scrolls itself into view when the list changes to a new, non-empty content, which also covers a second blocked attempt replacing the first; a re-render with the same content never moves the page. The `role="alert"` region itself is always present, empty until there is something to say.',
     snippet: `<DeletionValidation
   dependencies={[
     { kind: "Zones", values: [{ title: "Zone A", url: "/zones/1/edit" }] },
