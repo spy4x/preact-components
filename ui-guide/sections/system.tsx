@@ -1,7 +1,7 @@
 /**
  * The System section.
  *
- * All eight of the package's components are here. Six render from props with no reduction needed —
+ * All nine of the package's components are here. Seven render from props with no reduction needed —
  * `Shell` and `StateInit` included, `useMobilePanel`'s effects and `StateInit`'s inert
  * `type="application/json"` script notwithstanding, neither touches anything this guide's own page
  * could not safely hand it — and two are platform integration, handled with an explicit, stated
@@ -89,7 +89,16 @@
  * `pages/checks/system.ts` drives in a real browser at phone width instead.
  */
 
-import { IconBookOpen, IconHome } from "@preact-components/icons"
+import {
+  IconBell,
+  IconBookOpen,
+  IconChartPie,
+  IconCog6Tooth,
+  IconFolder,
+  IconHome,
+  IconPencilSquare,
+  IconSearch,
+} from "@preact-components/icons"
 import {
   AuthForm,
   type AuthFormError,
@@ -100,6 +109,7 @@ import { Calendar } from "@preact-components/system/calendar"
 import type { PageHead } from "@preact-components/system/head"
 import { ImageLightbox } from "@preact-components/system/image-lightbox"
 import { seoHeadTags } from "@preact-components/system/seo-head"
+import { RailShell, type RailShellItem } from "@preact-components/system/rail-shell"
 import { Shell } from "@preact-components/system/shell"
 import { SiteHeader } from "@preact-components/system/site-header"
 import { readStateInit, StateInit } from "@preact-components/system/state-init"
@@ -1164,6 +1174,63 @@ function StateInitDemo() {
   )
 }
 
+/** The rail shell demo's destinations: seven, so the phone bar needs its "More" slot. */
+const railShellItems: RailShellItem[] = [
+  { key: "home", label: "Home", Icon: IconHome },
+  { key: "projects", label: "Projects", Icon: IconFolder },
+  { key: "notes", label: "Notes", Icon: IconBookOpen },
+  { key: "stats", label: "Stats", Icon: IconChartPie },
+  { key: "search", label: "Search", Icon: IconSearch },
+  { key: "alerts", label: "Alerts", Icon: IconBell },
+  { key: "settings", label: "Settings", Icon: IconCog6Tooth },
+]
+
+/**
+ * `RailShell` inside a bounded, scrolling frame, so the card does not take over the guide's page.
+ *
+ * `min-h-full` replaces the component's own `min-h-dvh`, so the frame is the scroll container the
+ * rail's contents and the tab bar stick to. Which of the two shows follows the viewport, not this
+ * frame: the guide at desktop width shows the rail, and a phone-width window shows the tab bar with
+ * "More". Every entry is a button through the `navigate` port, so choosing one moves the current
+ * marker and prints the key it was handed instead of leaving the guide.
+ */
+function RailShellDemo() {
+  const current = useSignal("home")
+  return (
+    <div
+      class="h-[420px] overflow-y-auto rounded-md border border-gray-200 dark:border-gray-700"
+      data-e2e="rail-shell-demo"
+    >
+      <RailShell
+        class="min-h-full"
+        items={railShellItems}
+        currentKey={current.value}
+        primary={{ key: "compose", label: "Write", Icon: IconPencilSquare }}
+        navigate={(key) => {
+          current.value = key
+        }}
+      >
+        <div class="space-y-3 p-4 text-sm">
+          <p>
+            Navigated to: <strong data-e2e="rail-shell-demo-current">{current.value}</strong>
+          </p>
+          {Array.from(
+            { length: 12 },
+            (_, index) => (
+              <p key={index} class="text-gray-600 dark:text-gray-300">
+                Paragraph {index + 1}{" "}
+                of the page. It is here so the frame scrolls and the rail and the tab bar can be
+                seen staying in place while it does.
+              </p>
+            ),
+          )}
+          <p data-e2e="rail-shell-demo-last-line">The last line of the page.</p>
+        </div>
+      </RailShell>
+    </div>
+  )
+}
+
 export const systemDemos = {
   AuthForm: {
     summary:
@@ -1310,5 +1377,21 @@ const state = readStateInit<{ userId: string; features: string[] }>()`,
   onOpen={(image) => analytics.track("lightbox", image.src)}
 />`,
     render: () => <ImageLightboxDemo />,
+  },
+  RailShell: {
+    summary:
+      "A third page frame beside `Shell` and `SiteHeader`: a vertical rail of icon-over-label items with a pinned, visually distinct primary action from `md` up, and below `md` a bottom tab bar of at most five slots whose last slot, **More**, opens a native modal `<dialog>` with the remaining items and the primary action. **The switch is a CSS breakpoint**, so the server render carries both and nothing reads the window while rendering — resize the browser window itself to see the tab bar, since the breakpoint reads the viewport, not this card. **The overlay is a modal `<dialog>`**: More opens it with `showModal()` and focus moves inside; Escape, a backdrop click, the close button and choosing an entry all close it, and focus returns to More. **With no JavaScript** every entry with an `href` is a link, and More and the close button carry `command`/`commandfor`, so a browser that supports invoker commands still opens and closes the overlay. **Nothing covers the page**: the rail is a column in the layout and the tab bar keeps its place in the flow, padded by the bottom safe-area inset. An entry with an `href` is a plain link, so the shell works with no JavaScript; one without calls the `navigate` port with its `key`, which is what every entry in this demo does. Every colour is a theme token read through `var()` with the default palette's value as its fallback, so the shell follows whichever palette the page sets and still draws without the theme preset. Every string — the nav's name, More, the dialog's name, its close button, the skip link — has an English default and a `labels` override.",
+    snippet: `<RailShell
+  items={[
+    { key: "home", label: "Home", href: "/", Icon: IconHome },
+    { key: "projects", label: "Projects", href: "/projects", Icon: IconFolder },
+    // … more than five entries in all, and the phone bar grows a "More" slot
+  ]}
+  currentPath={location.pathname}
+  primary={{ key: "compose", label: "Write", href: "/new", Icon: IconPencilSquare }}
+>
+  <Page />
+</RailShell>`,
+    render: () => <RailShellDemo />,
   },
 } satisfies DemoFragment

@@ -36,6 +36,7 @@ Extracted from earlier source applications.
 | `SiteHeader`    | `site-header`    | `links`, `currentPath?`, `brand`, `actions?`, `labels?`                                                              |
 | `Shell`         | `shell`          | `navItems`, `currentPath?`, `brand`, `user`, `userMenuItems?`, `status?`, `children`, `labels?`, `class?`            |
 | `StateInit`     | `state-init`     | `data`, `id?` — paired with `readStateInit(id?, source?)`                                                            |
+| `RailShell`     | `rail-shell`     | `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `children`, `labels?`, `class?`                     |
 
 Helpers, all pure: `head.ts` (`normalizeCanonical`, `canonicalUrl`, `breadcrumbItems`,
 `breadcrumbListJsonLd`) and `resolveImage` (click target → lightbox image). `head.ts` also exports
@@ -832,3 +833,51 @@ getElementById }` source correctly — including the three ways there is nothing
 `id`, no text content, and text that fails to parse. There is nothing left for `pages/checks/system.ts`
 to prove for this component: it touches no listener, no focus and no timer, so nothing about it is
 unreachable from a string render.
+
+## The `RailShell` contract
+
+`RailShell` (#257) is a third frame beside `Shell` and `SiteHeader`, for a site whose navigation is
+a short list of destinations with one primary action. From `md` up it draws a vertical rail: each
+item an icon above a short label, and the primary action pinned at the top in the primary colour.
+Below `md` the rail gives way to a bottom tab bar of at most five slots. `Shell` is different in
+kind — a header, a sidebar, a user menu and a `<details>` drawer for a signed-in app — and so is
+`SiteHeader`, a public site's top bar that collapses into the same kind of `<details>` panel.
+Neither has a rail or a tab bar, which is why this is a new component rather than a mode of either.
+
+**Which entries become tabs.** Items and the primary action together fill the bar when there are
+five or fewer of them, and then there is no "More". Past five, the first four items are tabs and
+the fifth slot is "More", which holds the primary action first and then every remaining item.
+Counting the primary action is a deliberate step past the plain "five items or fewer" rule: with
+five items and a primary action, a bar that showed all five items would leave the primary action
+unreachable on a phone. `tabBarSlots(items, primary)` is that rule as a pure function.
+
+**"More" opens a modal `<dialog>`,** the pattern `ImageLightbox` already uses through `ui/`'s
+`Lightbox`, rather than the `<details>` disclosure the other two shells share: a modal gets Escape,
+an inert page behind it and the top layer from the browser. `showModal()` moves focus to the first
+control inside, which is the close button. Escape closes it natively, a click on the backdrop closes
+it, and choosing an entry or the close button closes it. Every way of closing ends in the `close`
+event, whose handler returns focus to "More". Chromium also returns focus to "More" by itself when a
+modal dialog closes, so in Chromium no check can prove the component's part; the handler is there
+for engines that do not. With no JavaScript every entry that has an `href` is a plain link, and
+"More" and the close button carry `command`/`commandfor`, so a browser that supports invoker
+commands still opens and closes the overlay — `pages/checks/system.ts` proves that in Chromium with
+script execution disabled.
+
+**Nothing covers the page.** The rail is a column in the layout, and its contents stick to the top
+while the page scrolls. The tab bar sticks to the bottom but keeps its place in the flow, so the
+page's last line always ends above it; it pads itself by the bottom safe-area inset. Inside a
+bounded, scrolling container, pass `class="min-h-full"` in place of the default `min-h-dvh`, and
+that container becomes what both stick to.
+
+**Colours are theme tokens read through `var()`,** each with the default palette's value as its
+fallback — the same pattern `theme/preset.css` uses — so the shell follows whichever palette the
+page sets and draws without the preset too.
+
+**Icons come from the caller** as a component (`Icon`), not an element, because every entry is drawn
+twice — in the rail, and in the tab bar or the overlay — and one element can only be mounted once.
+The "More" glyph is three dots drawn inline, so the package gains no icon.
+
+`rail-shell.test.tsx` proves what a string render can: the split at five, the primary action's
+place in it, `aria-current` from either `currentKey` or `currentPath`, the "More" button pointing at
+the dialog, and every label's English default and override. The breakpoint switch, the layout, the
+dialog's keyboard and pointer behaviour and the focus moves are proven in `pages/checks/system.ts`.

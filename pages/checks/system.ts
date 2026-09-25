@@ -1,4 +1,4 @@
-import { check, type Devtools, poll, pressKey } from "./harness.ts"
+import { centreInView, check, type Devtools, poll, pressKey } from "./harness.ts"
 
 /** The card these checks drive, and the pieces of it they read. */
 const CARD = "#demo-SWUpdater"
@@ -153,8 +153,8 @@ function clickBarButton(devtools: Devtools, label: string, bar = BAR): Promise<b
 
 /**
  * `system/`'s browser checks: `AuthForm`, the calendar's keyboard, the lightbox's, `SiteHeader`'s
- * mobile panel, `Shell`'s drawer and its interaction with `ui/`'s `Dropdown`, and `SWUpdater`
- * against a real service worker.
+ * mobile panel, `Shell`'s drawer and its interaction with `ui/`'s `Dropdown`, `RailShell`'s rail,
+ * tab bar and "More" dialog, and `SWUpdater` against a real service worker.
  *
  * `AuthForm` runs first, and its last step is the reason the calendar and the lightbox come after
  * it rather than around it: proving that a submit survives disabled script execution means
@@ -187,6 +187,7 @@ export async function systemChecks(devtools: Devtools): Promise<void> {
   await imageLightboxChecks(devtools)
   await siteHeaderChecks(devtools)
   await shellChecks(devtools)
+  await railShellChecks(devtools)
   await serviceWorkerChecks(devtools)
   check(
     "every reading this file took came back without a page exception",
@@ -5503,4 +5504,504 @@ async function shellLayoutChecks(devtools: Devtools): Promise<void> {
     deviceScaleFactor: 1,
     mobile: false,
   })
+}
+
+/** The `RailShell` card, and the pieces of it the checks below read. */
+const RAIL_SHELL = "#demo-RailShell"
+const RAIL_SHELL_FRAME = RAIL_SHELL + ' [data-e2e="rail-shell-demo"]'
+const RAIL_SHELL_RAIL = RAIL_SHELL + ' [data-e2e="rail-shell-rail"]'
+const RAIL_SHELL_TABBAR = RAIL_SHELL + ' [data-e2e="rail-shell-tabbar"]'
+const RAIL_SHELL_MORE = RAIL_SHELL + ' [data-e2e="rail-shell-more"]'
+const RAIL_SHELL_DIALOG = RAIL_SHELL + ' [data-e2e="rail-shell-dialog"]'
+const RAIL_SHELL_CLOSE = RAIL_SHELL + ' [data-e2e="rail-shell-close"]'
+const RAIL_SHELL_CONTENT = RAIL_SHELL + ' [data-e2e="rail-shell-content"]'
+const RAIL_SHELL_SKIP_LINK = RAIL_SHELL + ' [data-e2e="rail-shell-skip-link"]'
+const RAIL_SHELL_CURRENT = RAIL_SHELL + ' [data-e2e="rail-shell-demo-current"]'
+const RAIL_SHELL_LAST_LINE = RAIL_SHELL + ' [data-e2e="rail-shell-demo-last-line"]'
+
+/** A desktop-sized viewport, well past the `md` breakpoint the rail appears at. */
+const RAIL_SHELL_VIEWPORT_DESKTOP = { width: 1280, height: 900 }
+/** The phone width the brief names. */
+const RAIL_SHELL_VIEWPORT_PHONE = { width: 375, height: 812 }
+
+/** What one reading of the rail shell's layout reports. */
+interface RailShellLayout {
+  /** Whether the card's frame, rail and tab bar are all in the page. */
+  found: boolean
+  /** Whether the rail is drawn at all (`display` is not `none` and it has a box). */
+  railShown: boolean
+  /** Whether the tab bar is drawn at all. */
+  tabBarShown: boolean
+  /** How far the rail's right edge reaches past `<main>`'s left edge; `<= 0` means no overlap. */
+  railOverlap: number
+  /** How far the frame's content is wider than the frame; `<= 0` means no sideways scroll. */
+  frameOverflowX: number
+  /** How far the widest tab bar entry reaches past the bar's right edge; `<= 0` means none. */
+  tabOverflowX: number
+  /** How many slots the tab bar draws. */
+  tabSlots: number
+  /** How far the whole document is wider than the viewport; `<= 0` means no sideways scroll. */
+  pageOverflowX: number
+}
+
+const RAIL_SHELL_LAYOUT_UNREAD: RailShellLayout = {
+  found: false,
+  railShown: false,
+  tabBarShown: false,
+  railOverlap: Infinity,
+  frameOverflowX: Infinity,
+  tabOverflowX: Infinity,
+  tabSlots: -1,
+  pageOverflowX: Infinity,
+}
+
+function readRailShellLayout(devtools: Devtools): Promise<RailShellLayout> {
+  return read(
+    devtools,
+    `(() => {
+      const frame = document.querySelector('${RAIL_SHELL_FRAME}')
+      const rail = document.querySelector('${RAIL_SHELL_RAIL}')
+      const bar = document.querySelector('${RAIL_SHELL_TABBAR}')
+      const main = document.querySelector('${RAIL_SHELL_CONTENT}')
+      if (!frame || !rail || !bar || !main) return { found: false }
+      const shown = (el) => getComputedStyle(el).display !== "none" && el.getBoundingClientRect().width > 0
+      const barBox = bar.getBoundingClientRect()
+      const slots = [...bar.querySelectorAll("li")]
+      const widest = Math.max(barBox.left, ...slots.map((li) => li.getBoundingClientRect().right))
+      return {
+        found: true,
+        railShown: shown(rail),
+        tabBarShown: shown(bar),
+        railOverlap: rail.getBoundingClientRect().right - main.getBoundingClientRect().left,
+        frameOverflowX: frame.scrollWidth - frame.clientWidth,
+        tabOverflowX: widest - barBox.right,
+        tabSlots: slots.length,
+        pageOverflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      }
+    })()`,
+    RAIL_SHELL_LAYOUT_UNREAD,
+  )
+}
+
+/** Whether the overlay is open, and where focus is relative to it and to "More". */
+interface RailShellDialogState {
+  open: boolean
+  /** Focus is on an element inside the dialog, not the dialog itself. */
+  focusInside: boolean
+  /** Focus is on the "More" button. */
+  focusOnMore: boolean
+}
+
+const RAIL_SHELL_DIALOG_UNREAD: RailShellDialogState = {
+  open: false,
+  focusInside: false,
+  focusOnMore: false,
+}
+
+function readRailShellDialog(devtools: Devtools): Promise<RailShellDialogState> {
+  return read(
+    devtools,
+    `(() => {
+      const dialog = document.querySelector('${RAIL_SHELL_DIALOG}')
+      const more = document.querySelector('${RAIL_SHELL_MORE}')
+      const active = document.activeElement
+      return {
+        open: Boolean(dialog && dialog.open),
+        focusInside: Boolean(dialog && active && active !== dialog && dialog.contains(active)),
+        focusOnMore: Boolean(more && active === more),
+      }
+    })()`,
+    RAIL_SHELL_DIALOG_UNREAD,
+  )
+}
+
+/** Close the overlay without asserting anything, so a sub-check starts from a known state. */
+async function ensureRailShellClosed(devtools: Devtools): Promise<void> {
+  await read(
+    devtools,
+    `(() => {
+      const dialog = document.querySelector('${RAIL_SHELL_DIALOG}')
+      if (dialog && dialog.open) dialog.close()
+      return true
+    })()`,
+    false,
+  )
+  await poll(async () => !(await readRailShellDialog(devtools)).open, 3_000)
+}
+
+/** Focus "More" and open the overlay with one real key press. */
+async function openRailShellByKey(devtools: Devtools, key: "Enter" | "Space"): Promise<boolean> {
+  await ensureRailShellClosed(devtools)
+  await read(devtools, `document.querySelector('${RAIL_SHELL_MORE}')?.focus() ?? false`, false)
+  await pressKey(devtools, key)
+  return await poll(async () => {
+    const state = await readRailShellDialog(devtools)
+    return state.open && state.focusInside
+  }, 3_000)
+}
+
+/**
+ * `RailShell`: the rail at desktop width and the tab bar at phone width, switched by CSS alone; the
+ * "More" overlay opened by real Enter and Space presses with focus moved inside, closed by a real
+ * Escape and by a real backdrop click with focus back on "More", and closed by choosing an entry;
+ * and the skip link reaching `<main>`.
+ *
+ * The viewport is set with `Emulation.setDeviceMetricsOverride` and cleared in `finally`, so every
+ * block after this one sees the run's normal size. The overlay is a modal dialog in the top layer,
+ * which would make the rest of the page inert for every later check, so `finally` also closes it.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function railShellChecks(devtools: Devtools): Promise<void> {
+  try {
+    await devtools.send("Emulation.setDeviceMetricsOverride", {
+      ...RAIL_SHELL_VIEWPORT_DESKTOP,
+      deviceScaleFactor: 1,
+      mobile: false,
+    })
+    const desktop = await readRailShellLayout(devtools)
+    check(
+      "at 1280px RailShell draws its rail beside the page, not over it, and no tab bar",
+      desktop.found && desktop.railShown && !desktop.tabBarShown && desktop.railOverlap <= 0,
+      JSON.stringify(desktop),
+    )
+
+    await railShellSkipLinkCheck(devtools)
+
+    await devtools.send("Emulation.setDeviceMetricsOverride", {
+      ...RAIL_SHELL_VIEWPORT_PHONE,
+      deviceScaleFactor: 1,
+      mobile: false,
+    })
+    const phone = await readRailShellLayout(devtools)
+    check(
+      "at 375px RailShell draws a five-slot tab bar and no rail, and nothing in it scrolls sideways",
+      phone.found && !phone.railShown && phone.tabBarShown && phone.tabSlots === 5 &&
+        phone.frameOverflowX <= 0 && phone.tabOverflowX <= 0.5,
+      JSON.stringify(phone),
+    )
+
+    const lastLine = await read(
+      devtools,
+      `(async () => {
+        const frame = document.querySelector('${RAIL_SHELL_FRAME}')
+        const last = document.querySelector('${RAIL_SHELL_LAST_LINE}')
+        const bar = document.querySelector('${RAIL_SHELL_TABBAR}')
+        if (!frame || !last || !bar) return null
+        frame.scrollTop = frame.scrollHeight
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+        const gap = bar.getBoundingClientRect().top - last.getBoundingClientRect().bottom
+        frame.scrollTop = 0
+        return gap
+      })()`,
+      null as number | null,
+    )
+    check(
+      "scrolled to the end, the page's last line sits above RailShell's tab bar, not under it",
+      lastLine !== null && lastLine >= 0,
+      `tab bar top minus last line bottom: ${lastLine}px`,
+    )
+
+    await centreInView(devtools, `document.querySelector('${RAIL_SHELL_TABBAR}')`)
+
+    const byEnter = await openRailShellByKey(devtools, "Enter")
+    check(
+      "a real Enter press on More opens RailShell's overlay and moves focus inside it",
+      byEnter,
+      JSON.stringify(await readRailShellDialog(devtools)),
+    )
+
+    await pressKey(devtools, "Escape")
+    const escaped = await poll(async () => {
+      const state = await readRailShellDialog(devtools)
+      return !state.open && state.focusOnMore
+    }, 3_000)
+    check(
+      "a real Escape press closes RailShell's overlay and returns focus to More",
+      byEnter && escaped,
+      byEnter
+        ? JSON.stringify(await readRailShellDialog(devtools))
+        : "the overlay never opened, so this proves nothing about Escape",
+    )
+
+    const bySpace = await openRailShellByKey(devtools, "Space")
+    check(
+      "a real Space press on More opens RailShell's overlay and moves focus inside it",
+      bySpace,
+      JSON.stringify(await readRailShellDialog(devtools)),
+    )
+
+    await railShellBackdropCheck(devtools)
+    await railShellChooseCheck(devtools)
+    await railShellCloseButtonCheck(devtools)
+    await railShellNoScriptCheck(devtools)
+  } finally {
+    await ensureRailShellClosed(devtools).catch(() => {})
+    await devtools.send("Emulation.clearDeviceMetricsOverride", {}).catch(() => {})
+  }
+}
+
+/**
+ * A real mouse click on the backdrop, above the bottom-sheet overlay, closes it and puts focus back
+ * on "More". The point is checked with `elementFromPoint` first: a click on the backdrop hit-tests
+ * to the dialog element itself, so anything else there means the click would miss.
+ */
+async function railShellBackdropCheck(devtools: Devtools): Promise<void> {
+  if (!(await readRailShellDialog(devtools)).open) {
+    await openRailShellByKey(devtools, "Space")
+  }
+  const aim = await read(
+    devtools,
+    `(() => {
+      const dialog = document.querySelector('${RAIL_SHELL_DIALOG}')
+      if (!dialog || !dialog.open) return null
+      const box = dialog.getBoundingClientRect()
+      const x = Math.round(box.left + box.width / 2)
+      const y = Math.round(box.top / 2)
+      return { x, y, onBackdrop: document.elementFromPoint(x, y) === dialog }
+    })()`,
+    null as { x: number; y: number; onBackdrop: boolean } | null,
+  )
+  if (aim?.onBackdrop) await clickAt(devtools, aim)
+  const closed = await poll(async () => {
+    const state = await readRailShellDialog(devtools)
+    return !state.open && state.focusOnMore
+  }, 3_000)
+  check(
+    "a real click on the backdrop closes RailShell's overlay and returns focus to More",
+    Boolean(aim?.onBackdrop) && closed,
+    aim === null
+      ? "the overlay was not open to click beside"
+      : !aim.onBackdrop
+      ? `the point ${aim.x},${aim.y} above the sheet does not hit the backdrop`
+      : JSON.stringify(await readRailShellDialog(devtools)),
+  )
+}
+
+/**
+ * Choosing an entry inside the overlay, with a real click, calls `navigate` with its key (the
+ * card prints it) and closes the overlay.
+ */
+async function railShellChooseCheck(devtools: Devtools): Promise<void> {
+  await openRailShellByKey(devtools, "Enter")
+  const aim = await read(
+    devtools,
+    `(() => {
+      const dialog = document.querySelector('${RAIL_SHELL_DIALOG}')
+      if (!dialog || !dialog.open) return null
+      const entry = [...dialog.querySelectorAll('[data-e2e="rail-shell-entry"]')]
+        .find((el) => el.textContent.trim() === "Search")
+      if (!entry) return null
+      const box = entry.getBoundingClientRect()
+      const x = Math.round(box.left + box.width / 2)
+      const y = Math.round(box.top + box.height / 2)
+      return { x, y, onEntry: entry.contains(document.elementFromPoint(x, y)) }
+    })()`,
+    null as { x: number; y: number; onEntry: boolean } | null,
+  )
+  if (aim?.onEntry) await clickAt(devtools, aim)
+  const chosen = await poll(async () => {
+    const state = await readRailShellDialog(devtools)
+    const current = await read(
+      devtools,
+      `document.querySelector('${RAIL_SHELL_CURRENT}')?.textContent ?? ""`,
+      "",
+    )
+    return !state.open && current === "search"
+  }, 3_000)
+  check(
+    "choosing an entry in RailShell's overlay calls navigate with its key and closes the overlay",
+    Boolean(aim?.onEntry) && chosen,
+    aim === null
+      ? "the overlay was not open, or it has no Search entry"
+      : !aim.onEntry
+      ? `the point ${aim.x},${aim.y} does not hit the Search entry`
+      : JSON.stringify(await readRailShellDialog(devtools)),
+  )
+  // Put the demo back on its first entry, so a rerun reads the same card.
+  await read(
+    devtools,
+    `(() => {
+      const home = [...document.querySelectorAll('${RAIL_SHELL_TABBAR} [data-e2e="rail-shell-entry"]')]
+        .find((el) => el.textContent.trim() === "Home")
+      home?.click()
+      return Boolean(home)
+    })()`,
+    false,
+  )
+}
+
+/** The skip link, activated with a real Enter press, moves focus to the shell's `<main>`. */
+async function railShellSkipLinkCheck(devtools: Devtools): Promise<void> {
+  const restoreUrl = await read(devtools, "location.href", "")
+  try {
+    const focused = await read(
+      devtools,
+      `(() => {
+        const link = document.querySelector('${RAIL_SHELL_SKIP_LINK}')
+        link?.focus()
+        return Boolean(link) && document.activeElement === link
+      })()`,
+      false,
+    )
+    if (focused) await pressKey(devtools, "Enter")
+    const reached = await poll(
+      () =>
+        read(
+          devtools,
+          `document.activeElement === document.querySelector('${RAIL_SHELL_CONTENT}')`,
+          false,
+        ),
+      3_000,
+    )
+    check(
+      "a real Enter press on RailShell's skip link moves focus to its main content",
+      focused && reached,
+      focused ? `document.activeElement is main: ${reached}` : "the skip link could not be focused",
+    )
+  } finally {
+    if (restoreUrl) {
+      await read(
+        devtools,
+        `history.replaceState(history.state, "", ${JSON.stringify(restoreUrl)})`,
+        0,
+      )
+    }
+  }
+}
+
+/**
+ * The overlay's close button, activated with a real Enter press, closes it and puts focus back on
+ * "More". `showModal()` puts focus on the close button, the first control in the dialog, so the
+ * check first confirms that is where focus is before pressing.
+ */
+async function railShellCloseButtonCheck(devtools: Devtools): Promise<void> {
+  const opened = await openRailShellByKey(devtools, "Enter")
+  const onClose = opened &&
+    await read(
+      devtools,
+      `document.activeElement === document.querySelector('${RAIL_SHELL_CLOSE}')`,
+      false,
+    )
+  if (onClose) await pressKey(devtools, "Enter")
+  const closed = await poll(async () => {
+    const state = await readRailShellDialog(devtools)
+    return !state.open && state.focusOnMore
+  }, 3_000)
+  check(
+    "a real Enter press on the overlay's close button closes RailShell's overlay and returns focus " +
+      "to More",
+    onClose && closed,
+    !opened
+      ? "the overlay never opened"
+      : !onClose
+      ? "focus was not on the close button after the overlay opened"
+      : JSON.stringify(await readRailShellDialog(devtools)),
+  )
+}
+
+/** Where a real click has to land on an element, and whether that point actually hits it. */
+interface RailShellAim {
+  x: number
+  y: number
+  onTarget: boolean
+}
+
+/** Aim at the middle of an element, checked with `elementFromPoint`, or `null` without one. */
+function aimAt(
+  devtools: Devtools,
+  selector: string,
+  scroll: boolean,
+): Promise<RailShellAim | null> {
+  return read(
+    devtools,
+    `(() => {
+      const element = document.querySelector('${selector}')
+      if (!element) return null
+      if (${scroll}) element.scrollIntoView({ block: "center", behavior: "instant" })
+      const box = element.getBoundingClientRect()
+      const x = Math.round(box.left + box.width / 2)
+      const y = Math.round(box.top + box.height / 2)
+      return { x, y, onTarget: element.contains(document.elementFromPoint(x, y)) }
+    })()`,
+    null as RailShellAim | null,
+  )
+}
+
+/**
+ * With script execution disabled, a real click on "More" opens the overlay and a real click on its
+ * close button shuts it — the browser's own `command`/`commandfor` invokers, with no component code
+ * running. The page is the prerendered, unhydrated catalogue, reloaded with scripts off; the
+ * `finally` re-enables scripts and reloads, and the page must rehydrate before later checks run —
+ * the same shape as `siteHeaderNoScriptCheck`.
+ *
+ * @param devtools The connected session, on a hydrated page, viewport already narrowed by the
+ * caller.
+ */
+async function railShellNoScriptCheck(devtools: Devtools): Promise<void> {
+  const restoreUrl = await read(devtools, "location.href", "")
+  let unhydrated = false
+  let moreAim: RailShellAim | null = null
+  let closeAim: RailShellAim | null = null
+  let opened = false
+  let closed = false
+
+  try {
+    await devtools.send("Emulation.setScriptExecutionDisabled", { value: true })
+    await devtools.send("Page.reload", { ignoreCache: true })
+    const loaded = await waitForLoad(devtools)
+    unhydrated = loaded &&
+      await read(devtools, `document.documentElement.dataset.hydrated !== "true"`, false)
+
+    moreAim = await aimAt(devtools, RAIL_SHELL_MORE, true)
+    if (moreAim?.onTarget) await clickAt(devtools, moreAim)
+    opened = await poll(
+      () => read(devtools, `document.querySelector('${RAIL_SHELL_DIALOG}')?.open === true`, false),
+      3_000,
+    )
+
+    if (opened) closeAim = await aimAt(devtools, RAIL_SHELL_CLOSE, false)
+    if (closeAim?.onTarget) await clickAt(devtools, closeAim)
+    closed = Boolean(closeAim?.onTarget) && await poll(
+      () => read(devtools, `document.querySelector('${RAIL_SHELL_DIALOG}')?.open === false`, false),
+      3_000,
+    )
+  } finally {
+    await devtools.send("Emulation.setScriptExecutionDisabled", { value: false }).catch(() => {})
+    await devtools.send("Page.reload", { ignoreCache: true }).catch(() => {})
+    await waitForLoad(devtools)
+    const strayed = await read(devtools, `location.href !== ${JSON.stringify(restoreUrl)}`, false)
+    if (strayed) {
+      await devtools.send("Page.navigate", { url: restoreUrl }).catch(() => {})
+      await waitForLoad(devtools)
+    }
+    await waitForScrollSettle(devtools)
+  }
+
+  check(
+    "with script execution disabled, a real click on More opens RailShell's overlay and a real " +
+      "click on its close button shuts it",
+    unhydrated && opened && closed,
+    !unhydrated
+      ? "the fresh load still hydrated, so this proves nothing about a visitor without the bundle"
+      : !moreAim?.onTarget
+      ? `More could not be clicked: ${JSON.stringify(moreAim)}`
+      : !opened
+      ? "the dialog never reported open=true after the click on More"
+      : !closeAim?.onTarget
+      ? `the close button could not be clicked: ${JSON.stringify(closeAim)}`
+      : !closed
+      ? "the dialog was still open 3s after the click on the close button"
+      : "the dialog opened on More and closed on the close button with no script running",
+  )
+
+  const rehydrated = await poll(
+    () => read(devtools, `document.documentElement.dataset.hydrated === "true"`, false),
+    10_000,
+  )
+  check(
+    "the page rehydrates after RailShell's no-script check re-enables script execution",
+    rehydrated,
+    rehydrated ? "data-hydrated set again" : "the page never rehydrated",
+  )
 }
