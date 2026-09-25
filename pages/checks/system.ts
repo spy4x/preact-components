@@ -5513,6 +5513,7 @@ const RAIL_SHELL_RAIL = RAIL_SHELL + ' [data-e2e="rail-shell-rail"]'
 const RAIL_SHELL_TABBAR = RAIL_SHELL + ' [data-e2e="rail-shell-tabbar"]'
 const RAIL_SHELL_MORE = RAIL_SHELL + ' [data-e2e="rail-shell-more"]'
 const RAIL_SHELL_DIALOG = RAIL_SHELL + ' [data-e2e="rail-shell-dialog"]'
+const RAIL_SHELL_CLOSE = RAIL_SHELL + ' [data-e2e="rail-shell-close"]'
 const RAIL_SHELL_CONTENT = RAIL_SHELL + ' [data-e2e="rail-shell-content"]'
 const RAIL_SHELL_SKIP_LINK = RAIL_SHELL + ' [data-e2e="rail-shell-skip-link"]'
 const RAIL_SHELL_CURRENT = RAIL_SHELL + ' [data-e2e="rail-shell-demo-current"]'
@@ -5732,6 +5733,8 @@ async function railShellChecks(devtools: Devtools): Promise<void> {
 
     await railShellBackdropCheck(devtools)
     await railShellChooseCheck(devtools)
+    await railShellCloseButtonCheck(devtools)
+    await railShellNoScriptCheck(devtools)
   } finally {
     await ensureRailShellClosed(devtools).catch(() => {})
     await devtools.send("Emulation.clearDeviceMetricsOverride", {}).catch(() => {})
@@ -5865,4 +5868,140 @@ async function railShellSkipLinkCheck(devtools: Devtools): Promise<void> {
       )
     }
   }
+}
+
+/**
+ * The overlay's close button, activated with a real Enter press, closes it and puts focus back on
+ * "More". `showModal()` puts focus on the close button, the first control in the dialog, so the
+ * check first confirms that is where focus is before pressing.
+ */
+async function railShellCloseButtonCheck(devtools: Devtools): Promise<void> {
+  const opened = await openRailShellByKey(devtools, "Enter")
+  const onClose = opened &&
+    await read(
+      devtools,
+      `document.activeElement === document.querySelector('${RAIL_SHELL_CLOSE}')`,
+      false,
+    )
+  if (onClose) await pressKey(devtools, "Enter")
+  const closed = await poll(async () => {
+    const state = await readRailShellDialog(devtools)
+    return !state.open && state.focusOnMore
+  }, 3_000)
+  check(
+    "a real Enter press on the overlay's close button closes RailShell's overlay and returns focus " +
+      "to More",
+    onClose && closed,
+    !opened
+      ? "the overlay never opened"
+      : !onClose
+      ? "focus was not on the close button after the overlay opened"
+      : JSON.stringify(await readRailShellDialog(devtools)),
+  )
+}
+
+/** Where a real click has to land on an element, and whether that point actually hits it. */
+interface RailShellAim {
+  x: number
+  y: number
+  onTarget: boolean
+}
+
+/** Aim at the middle of an element, checked with `elementFromPoint`, or `null` without one. */
+function aimAt(
+  devtools: Devtools,
+  selector: string,
+  scroll: boolean,
+): Promise<RailShellAim | null> {
+  return read(
+    devtools,
+    `(() => {
+      const element = document.querySelector('${selector}')
+      if (!element) return null
+      if (${scroll}) element.scrollIntoView({ block: "center", behavior: "instant" })
+      const box = element.getBoundingClientRect()
+      const x = Math.round(box.left + box.width / 2)
+      const y = Math.round(box.top + box.height / 2)
+      return { x, y, onTarget: element.contains(document.elementFromPoint(x, y)) }
+    })()`,
+    null as RailShellAim | null,
+  )
+}
+
+/**
+ * With script execution disabled, a real click on "More" opens the overlay and a real click on its
+ * close button shuts it — the browser's own `command`/`commandfor` invokers, with no component code
+ * running. The page is the prerendered, unhydrated catalogue, reloaded with scripts off; the
+ * `finally` re-enables scripts and reloads, and the page must rehydrate before later checks run —
+ * the same shape as `siteHeaderNoScriptCheck`.
+ *
+ * @param devtools The connected session, on a hydrated page, viewport already narrowed by the
+ * caller.
+ */
+async function railShellNoScriptCheck(devtools: Devtools): Promise<void> {
+  const restoreUrl = await read(devtools, "location.href", "")
+  let unhydrated = false
+  let moreAim: RailShellAim | null = null
+  let closeAim: RailShellAim | null = null
+  let opened = false
+  let closed = false
+
+  try {
+    await devtools.send("Emulation.setScriptExecutionDisabled", { value: true })
+    await devtools.send("Page.reload", { ignoreCache: true })
+    const loaded = await waitForLoad(devtools)
+    unhydrated = loaded &&
+      await read(devtools, `document.documentElement.dataset.hydrated !== "true"`, false)
+
+    moreAim = await aimAt(devtools, RAIL_SHELL_MORE, true)
+    if (moreAim?.onTarget) await clickAt(devtools, moreAim)
+    opened = await poll(
+      () => read(devtools, `document.querySelector('${RAIL_SHELL_DIALOG}')?.open === true`, false),
+      3_000,
+    )
+
+    if (opened) closeAim = await aimAt(devtools, RAIL_SHELL_CLOSE, false)
+    if (closeAim?.onTarget) await clickAt(devtools, closeAim)
+    closed = Boolean(closeAim?.onTarget) && await poll(
+      () => read(devtools, `document.querySelector('${RAIL_SHELL_DIALOG}')?.open === false`, false),
+      3_000,
+    )
+  } finally {
+    await devtools.send("Emulation.setScriptExecutionDisabled", { value: false }).catch(() => {})
+    await devtools.send("Page.reload", { ignoreCache: true }).catch(() => {})
+    await waitForLoad(devtools)
+    const strayed = await read(devtools, `location.href !== ${JSON.stringify(restoreUrl)}`, false)
+    if (strayed) {
+      await devtools.send("Page.navigate", { url: restoreUrl }).catch(() => {})
+      await waitForLoad(devtools)
+    }
+    await waitForScrollSettle(devtools)
+  }
+
+  check(
+    "with script execution disabled, a real click on More opens RailShell's overlay and a real " +
+      "click on its close button shuts it",
+    unhydrated && opened && closed,
+    !unhydrated
+      ? "the fresh load still hydrated, so this proves nothing about a visitor without the bundle"
+      : !moreAim?.onTarget
+      ? `More could not be clicked: ${JSON.stringify(moreAim)}`
+      : !opened
+      ? "the dialog never reported open=true after the click on More"
+      : !closeAim?.onTarget
+      ? `the close button could not be clicked: ${JSON.stringify(closeAim)}`
+      : !closed
+      ? "the dialog was still open 3s after the click on the close button"
+      : "the dialog opened on More and closed on the close button with no script running",
+  )
+
+  const rehydrated = await poll(
+    () => read(devtools, `document.documentElement.dataset.hydrated === "true"`, false),
+    10_000,
+  )
+  check(
+    "the page rehydrates after RailShell's no-script check re-enables script execution",
+    rehydrated,
+    rehydrated ? "data-hydrated set again" : "the page never rehydrated",
+  )
 }
