@@ -38,8 +38,10 @@ file stays wrong in that version for good.
    ```
 
 3. Search the published files for private application names, with the names file kept outside
-   this repository — [`pre-publish-checks.md`](./pre-publish-checks.md) says how. It must report
-   zero matches:
+   this repository — [`pre-publish-checks.md`](./pre-publish-checks.md) says how. The script
+   narrows the candidates; it does not decide. Read every match it prints: fix each one that names
+   a private application, and publish only when every match left is a word that merely shares a
+   name, such as `GB` as a file-size unit in `ui/file-input.tsx`:
 
    ```bash
    deno task private-names /path/to/names.txt
