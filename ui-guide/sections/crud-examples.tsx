@@ -4,6 +4,10 @@
  * Each card runs the real export when it renders; see `example.tsx`. A helper that reads a store is
  * handed the smallest object with that store's shape, built from `@preact/signals`, and every
  * timestamp is a literal, so each card prints the same output on every render.
+ *
+ * An example that reads a signal and then writes it runs inside `untracked`. `run` is called during
+ * the card's render, and a signal read there subscribes the card to it, so the write that follows
+ * would re-render the card, which runs the example again, forever — the page never finishes loading.
  */
 
 import {
@@ -23,7 +27,7 @@ import {
   timeAgo,
   toggleArchiveState,
 } from "@preact-components/crud"
-import { signal } from "@preact/signals"
+import { signal, untracked } from "@preact/signals"
 import type { ExampleFragment } from "../example.tsx"
 import { toExampleDemos } from "../example.tsx"
 
@@ -89,15 +93,16 @@ const match = (row, word) => row.name.toLowerCase().includes(word.toLowerCase())
 rowsForStatus(store, "archived").map((row) => row.name)
 listRows(store, "active", "launch", match).map((row) => row.name)`,
     covers: ["rowsForStatus", "listRows"],
-    run: () => {
-      const store = listStore()
-      const match = (row: Project, word: string) =>
-        row.name.toLowerCase().includes(word.toLowerCase())
-      return {
-        archived: rowsForStatus(store, "archived").map((row) => row.name),
-        activeLaunch: listRows(store, "active", "launch", match).map((row) => row.name),
-      }
-    },
+    run: () =>
+      untracked(() => {
+        const store = listStore()
+        const match = (row: Project, word: string) =>
+          row.name.toLowerCase().includes(word.toLowerCase())
+        return {
+          archived: rowsForStatus(store, "archived").map((row) => row.name),
+          activeLaunch: listRows(store, "active", "launch", match).map((row) => row.name),
+        }
+      }),
   },
   editorState: {
     title: "editorState()",
@@ -195,7 +200,7 @@ toggleArchiveState({ id: 3, deletedAt: "2026-01-15T09:00:00Z" }, dependents)`,
     summary:
       '`setField` writes one field into a model signal as a fresh object, `fieldText` shows a value in a control (`null` as empty, never `"null"`), and `commitNumber` reads a number box, half-typed input included.',
     snippet: `import { commitNumber, fieldText, setField } from "@preact-components/crud"
-import { signal } from "@preact/signals"
+import { signal, untracked } from "@preact/signals"
 
 const vm = signal({ name: "Launch plan", budget: null })
 setField(vm, "budget", commitNumber(" 1200 "))
@@ -204,14 +209,15 @@ vm.value
 fieldText(null)
 commitNumber("12e")`,
     covers: ["setField", "fieldText", "commitNumber"],
-    run: () => {
-      const vm = signal<{ name: string; budget: number | null }>({
-        name: "Launch plan",
-        budget: null,
-      })
-      setField(vm, "budget", commitNumber(" 1200 "))
-      return { model: vm.value, empty: fieldText(null), halfTyped: commitNumber("12e") }
-    },
+    run: () =>
+      untracked(() => {
+        const vm = signal<{ name: string; budget: number | null }>({
+          name: "Launch plan",
+          budget: null,
+        })
+        setField(vm, "budget", commitNumber(" 1200 "))
+        return { model: vm.value, empty: fieldText(null), halfTyped: commitNumber("12e") }
+      }),
   },
   conflictIssue: {
     title: "A duplicate association as a field issue",
