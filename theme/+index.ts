@@ -8,12 +8,18 @@
  * the registry's own `https:` address, not a location on disk, so there is no path a consumer
  * could resolve a sibling file against even if `exports` allowed pointing at one.
  *
- * The two stylesheets are exported as text instead. `TOKENS_CSS` and `PRESET_CSS` are generated
- * from `tokens.css`/`preset.css` by `generate.ts` (`deno task --cwd theme generate`), so the
- * shipped constant and the file it came from cannot drift apart by hand — `css-text.test.ts`
- * fails if they ever do. `README.md` → "Install" has the Tailwind 4 recipe that turns these two
- * strings into the compiled design system.
+ * The stylesheets are exported as text instead. `TOKENS_CSS`, `PRESET_CSS` and `INK_CSS` are
+ * generated from `tokens.css`/`preset.css`/`ink.css` by `generate.ts`
+ * (`deno task --cwd theme generate`), so a shipped constant and the file it came from cannot drift
+ * apart by hand — `css-text.test.ts` fails if they ever do. `README.md` → "Install" has the
+ * Tailwind 4 recipe that turns these strings into the compiled design system; "Theming" → "Ink"
+ * has the one extra import that adds the optional ink theme.
+ *
+ * `INK_CSS` is an additional, opt-in palette (#257): a second selector, `[data-theme="ink"]`,
+ * applied together with `.dark` — the default Eirene palette in `TOKENS_CSS`/`PRESET_CSS` is
+ * unaffected by importing it.
  */
 
+export { INK_CSS } from "./ink-css.ts"
 export { PRESET_CSS } from "./preset-css.ts"
 export { TOKENS_CSS } from "./tokens-css.ts"

@@ -33,5 +33,6 @@ export const ${exportName}: string = ${JSON.stringify(css)}
 if (import.meta.main) {
   await generate("./tokens.css", "./tokens-css.ts", "TOKENS_CSS")
   await generate("./preset.css", "./preset-css.ts", "PRESET_CSS")
-  console.log("generated tokens-css.ts and preset-css.ts")
+  await generate("./ink.css", "./ink-css.ts", "INK_CSS")
+  console.log("generated tokens-css.ts, preset-css.ts and ink-css.ts")
 }

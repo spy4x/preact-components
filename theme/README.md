@@ -132,6 +132,7 @@ under "Install" instead.
 | ------------ | -------------------------------------------------------------------------- |
 | `tokens.css` | every design token as a custom property: light in `:root`, dark in `.dark` |
 | `preset.css` | base type, colour atoms, buttons, forms, surfaces, data display, map atoms |
+| `ink.css`    | additional, opt-in dark palette (#257): `.dark[data-theme="ink"]`          |
 
 ### Classes
 
@@ -186,6 +187,52 @@ actually resolves them: the entry string a build script hands to `compile()`, ma
 were designed against in the source applications they were extracted from; dark
 mode swaps it for near-black chrome. The full list is in `tokens.css`, each with
 the Tailwind palette value it came from.
+
+### Ink
+
+`INK_CSS` is a second, additional palette (#257) — dark-only, opt-in, and it changes nothing about
+the default Eirene palette above. Importing it is the one extra line past the "Install" recipe:
+
+```ts
+// build.ts
+import { INK_CSS, PRESET_CSS, TOKENS_CSS } from "@preact-components/theme"
+
+const THEME_STYLESHEETS: Record<string, string> = {
+  "@preact-components/theme/tokens.css": TOKENS_CSS,
+  "@preact-components/theme/ink.css": INK_CSS,
+  "@preact-components/theme/preset.css": PRESET_CSS,
+}
+
+const entry = `
+  @import "tailwindcss";
+  @import "@preact-components/theme/tokens.css";
+  @import "@preact-components/theme/ink.css";
+  @import "@preact-components/theme/preset.css";
+`
+```
+
+`ink.css` has to sit between `tokens.css` and `preset.css`: it repaints the same custom properties
+`tokens.css` declares, so `preset.css`'s rules — which already read every colour through
+`var(--token, <default>)` — pick the ink values up with no change of their own. An app that skips
+importing `ink.css` gets the default palette only, exactly as before this file existed.
+
+Ink applies to an element carrying **both** `.dark` and `data-theme="ink"` — the selector is
+`.dark[data-theme="ink"]`, because the palette has no light variant:
+
+```html
+<html class="dark" data-theme="ink">
+```
+
+Beyond repainting `--color-primary`, `--color-surface`, `--color-canvas` and the rest of the
+tokens above, ink adds a handful its own: a four-step surface scale for a navigation rail
+(`--color-surface-page`, `--color-surface-rail`, `--color-surface-card`, `--color-surface-active`),
+a hairline rule colour (`--color-hairline`), two named text tones (`--color-text`,
+`--color-text-muted`), and — the reason ink exists as a second selector rather than a copy of the
+default dark palette — `--color-nav-active` and `--color-focus-ring`, split off `--color-primary`
+so a page's one primary action keeps the accent to itself; the default palette's `--color-primary`
+stays documented as covering buttons, links, focus rings and active nav all at once, unchanged.
+None of these new tokens are read by anything in `preset.css` today — they exist for a consuming
+site's own markup (a rail, a bottom tab bar), the same way `tokens.css` itself is optional.
 
 Two consequences of the design worth knowing:
 

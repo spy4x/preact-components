@@ -34,10 +34,10 @@
     // needs `net`, `run` or `write`, so `-A` was over-broad. `--allow-env`
     // stays only to keep this task the same command CI runs.
     "test": "deno test --no-prompt --allow-read --allow-env .",
-    // Rewrites tokens-css.ts/preset-css.ts from tokens.css/preset.css, then formats the result —
-    // generate.ts writes plain source, and deno fmt is the arbiter of its final shape, the same as
-    // for hand-written code. Run after editing either CSS file; see generate.ts's own JSDoc and
-    // css-text.test.ts.
-    "generate": "deno run --allow-read --allow-write generate.ts && deno fmt tokens-css.ts preset-css.ts"
+    // Rewrites tokens-css.ts/preset-css.ts/ink-css.ts from tokens.css/preset.css/ink.css, then
+    // formats the result — generate.ts writes plain source, and deno fmt is the arbiter of its
+    // final shape, the same as for hand-written code. Run after editing any of the three CSS
+    // files; see generate.ts's own JSDoc and css-text.test.ts.
+    "generate": "deno run --allow-read --allow-write generate.ts && deno fmt tokens-css.ts preset-css.ts ink-css.ts"
   }
 }
