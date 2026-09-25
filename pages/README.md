@@ -283,6 +283,16 @@ as the numerator; and `--static`, which commits no package blocks at all, instea
   tests cannot prove the island wired it up — the palette toggle, computed styles proving `preset.css` is live (`h-12` input, `radius-primary`
   card, `text-2xl` KPI value, `0.375rem` bar), and zero console errors, page exceptions or failed
   requests.
+- **Server and browser text** (`pages/checks/ui-guide.ts`, #303): Preact replaces text that differs
+  from the server's while it hydrates and logs nothing, so the console check above cannot see a
+  card that prints one thing without JavaScript and another with it. This check fetches the served
+  `index.html`, parses it in the page, opens each package page, and compares the text of every card
+  (`article[id^="demo-"]`, component and example cards alike) with the served card of the same id.
+  Whitespace runs count as one space, and a `<textarea>` counts by its value. Only text is compared,
+  not attributes or styles. A card that differs fails the run by id, with a short excerpt of each
+  side. Cards drawn in an effect (the d3 charts, the Leaflet map, `CrudEditor`'s validation message)
+  are listed in `TEXT_DIFFERS_IN_BROWSER` with their reason, and a listed card that stops differing
+  fails too.
 - **Keyboard and focus** (the same browser phase, driven with real key events through
   `Input.dispatchKeyEvent` rather than a synthesised `KeyboardEvent`, which the browser treats as
   untrusted and does not act on): Modal's trigger opens a `:modal` dialog and moves focus into it,
