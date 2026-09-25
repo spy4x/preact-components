@@ -46,7 +46,8 @@ function ChartPending(
       data-e2e="d3-chart-placeholder"
       class="flex min-h-48 items-center justify-center rounded border border-dashed border-gray-300 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400"
     >
-      {label}: drawn in the browser with d3
+      {/* One text node, so the served and the hydrated text read the same while it shows. */}
+      {`${label}: drawn in the browser with d3`}
     </div>
   )
 }
