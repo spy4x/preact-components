@@ -277,4 +277,86 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
     ink.before !== ink.ink && ink.before === ink.after,
     `default dark ${ink.before} → ink ${ink.ink} → default dark again ${ink.after}`,
   )
+
+  // #257's reviewer round: ink applies only together with .dark — data-theme="ink" alone, on a
+  // page that never picked up .dark, must be a no-op. This is the light-mode half of the check
+  // above, which only ever toggled data-theme while .dark stayed on.
+  const inkWithoutDark = await devtools.evaluate<{ before: string; withInk: string }>(
+    `(async () => {
+    const root = document.documentElement
+    const wasDark = root.classList.contains("dark")
+    const wasTheme = root.getAttribute("data-theme")
+    const canvas = () => getComputedStyle(document.body).backgroundColor
+
+    root.classList.remove("dark")
+    root.removeAttribute("data-theme")
+    await new Promise((done) => setTimeout(done, 30))
+    const before = canvas()
+
+    root.setAttribute("data-theme", "ink")
+    await new Promise((done) => setTimeout(done, 30))
+    const withInk = canvas()
+
+    root.classList.toggle("dark", wasDark)
+    if (wasTheme === null) root.removeAttribute("data-theme")
+    else root.setAttribute("data-theme", wasTheme)
+
+    return { before, withInk }
+  })()`,
+  )
+  check(
+    'data-theme="ink" without .dark on <html> is a no-op: the canvas stays the default light one',
+    inkWithoutDark.before === inkWithoutDark.withInk,
+    `light canvas ${inkWithoutDark.before} → with data-theme="ink" alone ${inkWithoutDark.withInk}`,
+  )
+
+  // #257's reviewer round: under ink, .btn's focus-visible outline used to draw in currentColor,
+  // which on .btn-primary is that button's own near-black text — invisible against its own fill.
+  // preset.css now points it at var(--color-focus-ring, currentColor); this focuses the button for
+  // real (Tab, not .focus(), so the browser actually enters :focus-visible) and reads the outline
+  // colour it committed to, then checks it clears WCAG's 3:1 non-text contrast minimum against the
+  // page behind it.
+  const focusRing = await devtools.evaluate<{
+    outlineColor: string
+    pageBackground: string
+    ratio: number
+  }>(`(async () => {
+    const root = document.documentElement
+    const wasDark = root.classList.contains("dark")
+    const wasTheme = root.getAttribute("data-theme")
+    root.classList.add("dark")
+    root.setAttribute("data-theme", "ink")
+    await new Promise((done) => setTimeout(done, 30))
+
+    const button = document.querySelector("#demo-Button button")
+    button.focus()
+    await new Promise((done) => setTimeout(done, 30))
+
+    const outlineColor = getComputedStyle(button).outlineColor
+    const pageBackground = getComputedStyle(document.body).backgroundColor
+
+    function luminance(rgb) {
+      const [r, g, b] = rgb.match(/[\\d.]+/g).slice(0, 3).map(Number).map((channel) => {
+        const s = channel / 255
+        return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
+      })
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b
+    }
+    const lighter = Math.max(luminance(outlineColor), luminance(pageBackground))
+    const darker = Math.min(luminance(outlineColor), luminance(pageBackground))
+    const ratio = (lighter + 0.05) / (darker + 0.05)
+
+    button.blur()
+    root.classList.toggle("dark", wasDark)
+    if (wasTheme === null) root.removeAttribute("data-theme")
+    else root.setAttribute("data-theme", wasTheme)
+
+    return { outlineColor, pageBackground, ratio }
+  })()`)
+  check(
+    "under ink, a focused .btn-primary's outline clears 3:1 contrast against the page",
+    focusRing.ratio >= 3,
+    `outline ${focusRing.outlineColor} vs page ${focusRing.pageBackground}, ratio ` +
+      `${focusRing.ratio.toFixed(2)}:1`,
+  )
 }
