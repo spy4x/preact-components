@@ -6,15 +6,16 @@
  * `niceStep`/`ticks` pair now lives once, in `@spy4x/platform/universal/axis` (spy4x/ts-libs#70,
  * spy4x/preact-components#123), and is re-exported here so `./scales` — this package's own public
  * subpath — keeps both names for its existing importers (`ticks.worker.ts`, `line-chart.tsx`, the
- * package barrels). `niceScale`'s own tick generation below is a different, package-local user of
- * the same step/round primitives and is unaffected.
+ * package barrels). `niceScale` below still keeps its own copy of the tick loop, with the same
+ * iteration cap as ts-libs, until ts-libs exports that loop (spy4x/ts-libs#201).
  */
 import { niceStep, ticks } from "@spy4x/platform/universal/axis"
 export { niceStep, ticks }
 
 /**
- * Hard ceiling on generated ticks. A safety net rather than a tested path: the index-driven loop
- * terminates on its own for every input the tests exercise.
+ * Hard ceiling on the ticks `niceScale` generates. It caps both the output length and the loop's
+ * iterations, so an absurd tick target cannot hang it; the `nice-scale.worker.ts` deadline test
+ * covers this.
  */
 const MAX_TICKS = 1_000
 

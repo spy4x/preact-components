@@ -207,9 +207,9 @@ single SVG subpath does not.
 
 `scales.ts` is pure logic with no renderer, so it is where a real bug would hurt most and it is tested
 hardest. `ticks` and `niceStep` themselves now live once, in `@spy4x/platform/universal/axis`
-(spy4x/ts-libs#70, closing spy4x/preact-components#123's "One tick implementation" box), and are
-re-exported from here so `./scales` keeps both names for its existing importers. The rules that pair
-guarantees:
+(spy4x/ts-libs#70, refs spy4x/preact-components#123), and are re-exported from here so `./scales`
+keeps both names for its existing importers. `niceScale` still keeps its own capped copy of the tick
+loop until ts-libs exports one (spy4x/ts-libs#201). The rules that pair guarantees:
 
 - `ticks(min, max)` expands outward to a nice step (`1, 2, 5, 10 × 10ⁿ`) and returns both ends
   inclusive — about `target + 1` values.
