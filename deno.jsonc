@@ -39,10 +39,12 @@
     // Every test in the workspace reads its own sources; the theme package's
     // compile suites additionally read the Deno npm cache to run the real
     // Tailwind compiler (resolved via `import.meta.resolve`, so `HOME` is no
-    // longer read). Both grants are as narrow as the tests allow, and are
-    // repo-wide only because `deno test` discovers every member's suite in
-    // one process. Nothing here needs `net`, `run` or `write`.
-    "test": "deno test --no-prompt --allow-read --allow-env",
+    // longer read). `pages/build-fingerprint.test.ts` needs `write` too — it proves the build
+    // fingerprint against real files in a `Deno.makeTempDir()` it cleans up (#280), which is the
+    // pattern `AGENTS.md` asks for over a fixture the repo would have to carry and update by hand.
+    // All three grants are as narrow as the tests allow, and are repo-wide only because
+    // `deno test` discovers every member's suite in one process. Nothing here needs `net` or `run`.
+    "test": "deno test --no-prompt --allow-read --allow-write --allow-env",
     // Dry-runs the publish for every named workspace member (`pages/` has no `name`, so `deno
     // publish` skips it on its own — nothing here excludes it by hand). Named `publish:dry`
     // rather than `publish`: this only ever simulates, the owner runs the real `deno publish` by
