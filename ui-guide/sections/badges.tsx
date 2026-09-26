@@ -84,7 +84,7 @@ export const badgeDemos = {
         type: "BadgeColor",
         default: `"purple"`,
         description: "One of the seven palette entries shown here. `purple` and `purpleNav` are " +
-          "the theme's accent: they follow `--color-primary`.",
+          "the theme's accent: they follow `--color-primary` in light and `--color-accent` in both.",
       },
       {
         name: "type",
