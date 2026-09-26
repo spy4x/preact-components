@@ -162,4 +162,10 @@ describe("Bars", () => {
     expect(html).toContain("var(--color-canvas, oklch(0.985 0.002 247.839))")
     expect(html).toContain("var(--color-muted-foreground, oklch(0.551 0.027 264.364))")
   })
+
+  it("puts the palette's custom properties on its table so bar colours follow the theme", () => {
+    const html = render(<Bars data={data} />)
+
+    expect(html).toMatch(/<table class="[^"]*\[--chart-4:#4a3aa7\][^"]*dark:\[--chart-4:#9085e9\]/)
+  })
 })
