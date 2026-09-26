@@ -61,11 +61,16 @@ const statuses: Record<StatusMarkStatus, string> = {
   "known-issue": "known-issue",
 }
 
+/** The six statuses in two rows of three, so no status wraps alone at half width. */
 function StatusMarkRow() {
   return (
-    <Cluster gap="md">
-      {entries(statuses).map(([status]) => <StatusMark key={status} status={status} />)}
-    </Cluster>
+    <Stack gap="sm">
+      {[entries(statuses).slice(0, 3), entries(statuses).slice(3)].map((row) => (
+        <Cluster key={row[0][0]} gap="md">
+          {row.map(([status]) => <StatusMark key={status} status={status} />)}
+        </Cluster>
+      ))}
+    </Stack>
   )
 }
 

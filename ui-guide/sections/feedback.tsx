@@ -34,16 +34,11 @@ import {
 } from "@spy4x/preact-ui"
 import { createToastStore } from "@spy4x/preact-signals/toast"
 import { useSignal } from "@preact/signals"
-import type { ComponentChildren } from "preact"
 import { useMemo, useState } from "preact/hooks"
 import { IconFolder, IconPlus, IconTrashBin } from "@spy4x/preact-icons"
 import { entries } from "../record.ts"
+import { DemoNote } from "./demo-note.tsx"
 import type { DemoFragment } from "../registry.ts"
-
-/** A demo's small grey caption: what the example beside it shows, or a value a port received. */
-function Note({ children, e2e }: { children: ComponentChildren; e2e?: string }) {
-  return <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e={e2e}>{children}</p>
-}
 
 const spinnerSizes: Record<SpinnerSize, string> = {
   sm: "Small",
@@ -102,11 +97,10 @@ export function skeletonWidthReport(widths?: readonly SkeletonLineWidth[]): stri
 
 function SpinnerDemo() {
   return (
-    <Cluster align="start" gap="xl">
+    <Cluster align="end" gap="xl">
       {entries(spinnerSizes).map(([size, label]) => (
         <LoadingSpinner key={size} size={size} label={label} class="py-0" />
       ))}
-      <LoadingSpinner class="py-0" />
     </Cluster>
   )
 }
@@ -232,13 +226,13 @@ function ToastrDemo() {
           clear {toasts.length ? `(${toasts.length})` : ""}
         </Button>
       </Cluster>
-      <Note>
+      <DemoNote>
         In the store:{" "}
         <span data-e2e="toast-store-count">{toasts.length}</span>. A toast with no duration of its
         own stays <span data-e2e="toast-default-duration">{defaultToastDuration}</span>{" "}
         ms. Hover the stack to pause every timer.
-      </Note>
-      {toasts.length === 0 ? <Note>Nothing pushed yet.</Note> : null}
+      </DemoNote>
+      {toasts.length === 0 ? <DemoNote>Nothing pushed yet.</DemoNote> : null}
       <Toastr
         toasts={toasts}
         onDismiss={(id) => store.remove(String(id))}
@@ -275,9 +269,9 @@ function SkeletonTextDemo() {
     <Grid minColumnWidth="sm" gap="lg" class="sm:grid-cols-2 lg:grid-cols-4">
       {lineWidthSets.map(({ label, widths }) => (
         <Stack key={label} gap="sm">
-          <Note>{label}</Note>
+          <DemoNote>{label}</DemoNote>
           <SkeletonText lines={3} widths={widths} />
-          <Note>lines at {skeletonWidthReport(widths)}</Note>
+          <DemoNote>lines at {skeletonWidthReport(widths)}</DemoNote>
         </Stack>
       ))}
     </Grid>
@@ -292,11 +286,11 @@ function SkeletonCardsDemo() {
   return (
     <Stack gap="lg">
       <Stack gap="sm">
-        <Note>columns=2, lines=2</Note>
+        <DemoNote>columns=2, lines=2</DemoNote>
         <SkeletonCards columns={2} lines={2} class="lg:grid-cols-2" />
       </Stack>
       <Stack gap="sm">
-        <Note>columns=3, rows=2, lines=3</Note>
+        <DemoNote>columns=3, rows=2, lines=3</DemoNote>
         <SkeletonCards columns={3} rows={2} lines={3} />
       </Stack>
     </Stack>
@@ -332,13 +326,13 @@ function SkeletonTableDemo() {
   return (
     <Stack gap="lg">
       <Stack gap="sm">
-        <Note>rows=4, columns=3: {skeletonTableNote(4, 3)}</Note>
+        <DemoNote>rows=4, columns=3: {skeletonTableNote(4, 3)}</DemoNote>
         <SkeletonTable rows={4} columns={3} />
       </Stack>
       <Stack gap="sm">
-        <Note>
+        <DemoNote>
           widths={JSON.stringify(weights)}, reserveHeight=false: {skeletonTableNote(2, 3)}
-        </Note>
+        </DemoNote>
         <SkeletonTable widths={weights} rows={2} reserveHeight={false} />
       </Stack>
     </Stack>
@@ -354,7 +348,7 @@ function SkeletonStatusDemo() {
     <Stack gap="sm">
       <SkeletonStatus label="Loading the invoice list…" />
       <SkeletonText lines={3} widths={[100, 85, 60]} />
-      <Note>A screen reader hears "Loading the invoice list…"; nothing else shows.</Note>
+      <DemoNote>A screen reader hears "Loading the invoice list…"; nothing else shows.</DemoNote>
     </Stack>
   )
 }
@@ -496,10 +490,10 @@ function ConfirmDialogDemo() {
         </Button>
         <Button size="sm" onClick={() => target.value = "default"}>Archive invoice</Button>
         <Button variant="outline" size="sm" onClick={() => target.value = "refusing-cancel"}>
-          Leave with unsaved changes
+          Leave page
         </Button>
       </Cluster>
-      <Note e2e="controlled-value">Outcome: {outcome.value}</Note>
+      <DemoNote e2e="controlled-value">Outcome: {outcome.value}</DemoNote>
 
       {target.value === "danger" && (
         <ConfirmDialog
@@ -558,21 +552,9 @@ function ConfirmDialogDemo() {
 }
 
 export const feedbackDemos = {
-  ErrorState: {
-    summary: "An inline error message, which renders nothing when there is no error to show.",
-    wide: false,
-    snippet: `<ErrorState message={error.value} />`,
-    render: () => (
-      <Stack>
-        <ErrorState message="The report could not be generated: no accounts are connected." />
-        <ErrorState message="" />
-        <Note>The second one has an empty message, so nothing shows.</Note>
-      </Stack>
-    ),
-  },
   EmptyState: {
     summary: "What a list, a table or a search shows when it has no rows yet.",
-    wide: false,
+    wide: true,
     props: [
       { name: "title", type: "string", description: "What is missing." },
       { name: "description", type: "string", description: "Why, or what to do next." },
@@ -587,9 +569,28 @@ export const feedbackDemos = {
 />`,
     render: () => <EmptyStateDemo />,
   },
+  ErrorState: {
+    summary: "An inline error message, which renders nothing when there is no error to show.",
+    wide: false,
+    snippet: `<ErrorState message={error.value} />`,
+    render: () => (
+      <Stack>
+        <ErrorState message="The report could not be generated: no accounts are connected." />
+        <ErrorState message="" />
+        <DemoNote>The second one has an empty message, so nothing shows.</DemoNote>
+      </Stack>
+    ),
+  },
+  SkeletonStatus: {
+    summary: "Tells a screen reader that the placeholders around it are loading.",
+    wide: false,
+    snippet: `<SkeletonStatus label="Loading the invoice list…" />
+<SkeletonTable rows={4} columns={3} />`,
+    render: () => <SkeletonStatusDemo />,
+  },
   LoadingSpinner: {
     summary: "A spinning circle for something that is loading, with an optional caption.",
-    wide: false,
+    wide: true,
     snippet: `<LoadingSpinner size="lg" label="Loading transactions…" />`,
     render: () => <SpinnerDemo />,
   },
@@ -602,15 +603,8 @@ export const feedbackDemos = {
   LoadingSkeleton: {
     summary: "Grey placeholder cards that hold a page's shape while its content loads.",
     wide: false,
-    snippet: `<LoadingSkeleton rows={2} />`,
-    render: () => <LoadingSkeleton rows={2} />,
-  },
-  SkeletonStatus: {
-    summary: "Tells a screen reader that the placeholders around it are loading.",
-    wide: false,
-    snippet: `<SkeletonStatus label="Loading the invoice list…" />
-<SkeletonTable rows={4} columns={3} />`,
-    render: () => <SkeletonStatusDemo />,
+    snippet: `<LoadingSkeleton rows={1} />`,
+    render: () => <LoadingSkeleton rows={1} />,
   },
   SkeletonText: {
     summary: "A placeholder shaped like a paragraph, one grey bar per line.",

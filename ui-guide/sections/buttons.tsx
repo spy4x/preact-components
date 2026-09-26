@@ -102,10 +102,10 @@ function CopyButtonDemo() {
     <Stack gap="sm">
       <Cluster>
         <CopyButton textToCopy="INV-0007" />
-        <CopyButton textToCopy="INV-0007" title="Copy the invoice number" />
+        <CopyButton textToCopy="INV-0007" title="Copy number" />
         <CopyButton
           textToCopy="INV-0007"
-          title="Copy through the copy port"
+          title="Copy via port"
           copy={(text) => {
             lastCopy.value = text
           }}
@@ -251,15 +251,6 @@ export const buttonDemos = {
 <CopyButton textToCopy={invoice.id} title="Copy id" copy={app.clipboard.copy} />`,
     render: () => <CopyButtonDemo />,
   },
-  GeoButton: {
-    summary: "Asks the browser where the user is and hands the position to your callback.",
-    wide: false,
-    snippet: `<GeoButton
-  onLocation={(position) => map.center.set(position)}
-  onError={(message) => app.toast.error({ body: message })}
-/>`,
-    render: () => <GeoButtonDemo />,
-  },
   ExportButton: {
     summary:
       "Downloads a list of rows as a CSV file that a spreadsheet opens without running formulas.",
@@ -288,5 +279,14 @@ export const buttonDemos = {
   fileName="attendees.csv"
 />`,
     render: () => <ExportButtonDemo />,
+  },
+  GeoButton: {
+    summary: "Asks the browser where the user is and hands the position to your callback.",
+    wide: true,
+    snippet: `<GeoButton
+  onLocation={(position) => map.center.set(position)}
+  onError={(message) => app.toast.error({ body: message })}
+/>`,
+    render: () => <GeoButtonDemo />,
   },
 } satisfies DemoFragment

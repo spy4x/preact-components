@@ -6,7 +6,7 @@
  * unbordered, so the space between them is what the eye reads and no card shows a box in a box.
  */
 
-import { Button, Card, CardBody, Cluster, Grid, Page, Section, Stack } from "@spy4x/preact-ui"
+import { Badge, Button, Cluster, Grid, Page, Section, Stack } from "@spy4x/preact-ui"
 import type { SpacingGap } from "@spy4x/preact-theme/spacing"
 import type { DemoFragment } from "../registry.ts"
 
@@ -52,7 +52,7 @@ export const layoutDemos = {
   <Field id="email" label="Email"><Input id="email" type="email" /></Field>
 </Stack>`,
     render: () => (
-      <Grid minColumnWidth="sm" gap="xl">
+      <Grid minColumnWidth="sm" gap="xl" class="sm:grid-cols-3">
         {stackGaps.map(({ gap, size, use }) => (
           <Stack key={gap} gap={gap}>
             <Tile>{`gap="${gap}"`}</Tile>
@@ -95,13 +95,24 @@ export const layoutDemos = {
   </Cluster>
 </Cluster>`,
     render: () => (
-      <Cluster justify="between">
-        <h4 class="h3">Invoices</h4>
-        <Cluster>
-          <Button variant="secondary">Export</Button>
-          <Button>New invoice</Button>
+      <Stack gap="xl">
+        <Cluster justify="between">
+          <h4 class="h3">Invoices</h4>
+          <Cluster>
+            <Button variant="secondary">Export</Button>
+            <Button>New invoice</Button>
+          </Cluster>
         </Cluster>
-      </Cluster>
+        <Cluster>
+          {["paid", "overdue", "draft", "refunded", "disputed"].map((tag) => (
+            <Badge key={tag} text={tag} color="gray" />
+          ))}
+        </Cluster>
+        <Cluster justify="end">
+          <Button variant="outline">Cancel</Button>
+          <Button>Save</Button>
+        </Cluster>
+      </Stack>
     ),
   },
   Section: {
@@ -164,9 +175,7 @@ export const layoutDemos = {
     render: () => (
       <Grid minColumnWidth="sm">
         {["Revenue", "Customers", "Refunds", "Churn", "Trials", "Upgrades"].map((name) => (
-          <Card key={name}>
-            <CardBody>{name}</CardBody>
-          </Card>
+          <Tile key={name}>{name}</Tile>
         ))}
       </Grid>
     ),

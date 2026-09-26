@@ -51,12 +51,8 @@ import { useSignal } from "@preact/signals"
 import { type ComponentChildren, Fragment } from "preact"
 import { IconTrashBin } from "@spy4x/preact-icons"
 import { entries } from "../record.ts"
+import { DemoNote } from "./demo-note.tsx"
 import type { DemoFragment } from "../registry.ts"
-
-/** A demo's small grey caption: what the example beside it shows, or a value a port received. */
-function Note({ children, e2e }: { children: ComponentChildren; e2e?: string }) {
-  return <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e={e2e}>{children}</p>
-}
 
 /**
  * A one-square image, inline so the catalogue needs no network and no asset directory.
@@ -108,10 +104,10 @@ function ImageGalleryDemo() {
   return (
     <Stack gap="sm">
       <ImageGallery images={galleryImages} />
-      <Note>
+      <DemoNote>
         {galleryImages.length} images passed in, {shown.length}{" "}
         shown: the one with a blank description is left out.
-      </Note>
+      </DemoNote>
     </Stack>
   )
 }
@@ -177,10 +173,10 @@ function LightboxDemo() {
           onIndexChange={() => {}}
         />
       </div>
-      <Note>
+      <DemoNote>
         The last button opens nothing: its one image has no description, so there is nothing to
         show.
-      </Note>
+      </DemoNote>
     </Stack>
   )
 }
@@ -418,7 +414,7 @@ function DataTableDemo() {
 
   return (
     <Stack gap="sm">
-      <Note e2e="data-table-sort">sort: {serializeSort(sort.value)}</Note>
+      <DemoNote e2e="data-table-sort">sort: {serializeSort(sort.value)}</DemoNote>
       <DataTable
         caption="Invoices"
         columns={[
@@ -474,7 +470,7 @@ function TabsDemo() {
   return (
     <Grid gap="xl">
       <Stack gap="sm">
-        <Note>{tabOrientations.horizontal}</Note>
+        <DemoNote>{tabOrientations.horizontal}</DemoNote>
         <Tabs
           tabs={overviewTabs}
           active={topLevel.value}
@@ -484,7 +480,7 @@ function TabsDemo() {
         />
       </Stack>
       <Stack gap="sm">
-        <Note>{tabOrientations.vertical}</Note>
+        <DemoNote>{tabOrientations.vertical}</DemoNote>
         <Tabs
           tabs={[
             { id: "guide-tab-profile", label: "Profile", content: "Name, email, avatar." },
@@ -536,7 +532,7 @@ function PaginationDemo() {
   return (
     <Stack gap="lg">
       <Stack gap="sm">
-        <Note>5 pages, on page {short.value}</Note>
+        <DemoNote>5 pages, on page {short.value}</DemoNote>
         <Pagination
           page={short.value}
           pageCount={5}
@@ -546,13 +542,13 @@ function PaginationDemo() {
           }}
           label="Five pages"
         />
-        <Note e2e="pagination-requested">
+        <DemoNote e2e="pagination-requested">
           Last page asked for through onChange: {asked.value === 0 ? "none yet" : asked.value}
-        </Note>
+        </DemoNote>
       </Stack>
 
       <Stack gap="sm">
-        <Note>24 pages, on page {long.value}: {paginationNote(long.value, 24)}</Note>
+        <DemoNote>24 pages, on page {long.value}: {paginationNote(long.value, 24)}</DemoNote>
         <Pagination
           page={long.value}
           pageCount={24}
@@ -562,7 +558,7 @@ function PaginationDemo() {
       </Stack>
 
       <Stack gap="sm">
-        <Note>0 pages: {paginationNote(empty.value, 0)}</Note>
+        <DemoNote>0 pages: {paginationNote(empty.value, 0)}</DemoNote>
         <Pagination page={empty.value} pageCount={0} onChange={(page) => empty.value = page} />
       </Stack>
     </Stack>
@@ -574,7 +570,7 @@ function Labelled({ caption, children }: { caption: string; children: ComponentC
   return (
     <Stack gap="sm" class="items-center text-center">
       {children}
-      <Note>{caption}</Note>
+      <DemoNote>{caption}</DemoNote>
     </Stack>
   )
 }
@@ -635,15 +631,15 @@ function AvatarGroupDemo() {
     <Stack>
       <Stack gap="xs">
         <AvatarGroup items={teamMembers.slice(0, 3)} label="Reviewers" />
-        <Note>3 members: nothing overflows, so no count</Note>
+        <DemoNote>3 members: nothing overflows, so no count</DemoNote>
       </Stack>
       <Stack gap="xs">
         <AvatarGroup items={teamMembers} label="Project members" max={4} />
-        <Note>7 members, max 4: the chip counts the other 3</Note>
+        <DemoNote>7 members, max 4: the chip counts the other 3</DemoNote>
       </Stack>
       <Stack gap="xs">
         <AvatarGroup items={teamMembers} size="sm" />
-        <Note>size "sm"</Note>
+        <DemoNote>size "sm"</DemoNote>
       </Stack>
     </Stack>
   )
@@ -669,7 +665,7 @@ function CopyableTextDemo() {
           copiedLabel="Reference copied"
         />
       </div>
-      <Note>copy port received: {copied.value ?? "nothing yet"}</Note>
+      <DemoNote>copy port received: {copied.value ?? "nothing yet"}</DemoNote>
     </Stack>
   )
 }
@@ -687,7 +683,7 @@ function CopyableTextBodyDemo() {
         copyLabel="Copy series key"
       />
       <Cluster>
-        <Note>copied: {copied.value ? "yes" : "no"}</Note>
+        <DemoNote>copied: {copied.value ? "yes" : "no"}</DemoNote>
         <Button variant="outline" size="sm" onClick={() => copied.value = false}>
           Reset
         </Button>
@@ -712,9 +708,10 @@ function TooltipDemo() {
     <Stack gap="xl">
       <div class="grid grid-cols-1 gap-x-6 sm:grid-cols-4">
         {entries(tooltipPlacements).map(([placement, label]) => (
-          <div
+          <Stack
             key={placement}
-            class="flex flex-col items-center gap-12 pt-12 pb-4 text-center"
+            gap="2xl"
+            class="items-center pt-12 text-center"
             data-e2e="tooltip-placement"
           >
             <Tooltip
@@ -726,14 +723,14 @@ function TooltipDemo() {
             >
               <span class="text-sm">{placement}</span>
             </Tooltip>
-            <Note>{label}</Note>
-          </div>
+            <DemoNote>{label}</DemoNote>
+          </Stack>
         ))}
       </div>
       <Grid>
-        <Stack gap="sm" class="items-center pt-16 text-center">
+        <Stack gap="sm" class="items-center pt-12 text-center">
           <Tooltip
-            content="The button keeps its own tab stop"
+            content="Keeps its own tab stop"
             label="Archive the invoice"
             focusable={false}
             contentClass="visible max-w-48 opacity-100"
@@ -743,7 +740,7 @@ function TooltipDemo() {
               Archive
             </Button>
           </Tooltip>
-          <Note>focusable=false, around a button</Note>
+          <DemoNote>focusable=false, around a button</DemoNote>
         </Stack>
         <Stack gap="sm" class="items-center text-center" data-e2e="tooltip-live">
           <Tooltip
@@ -786,14 +783,14 @@ export const displayDemos = {
   },
   ConfidenceMeter: {
     summary: "A bar for a score from 0 to 100 that also says whether it is low, medium or high.",
-    wide: false,
+    wide: true,
     snippet: `<ConfidenceMeter value={88} label="match" />`,
     render: () => <ConfidenceMeterDemo />,
   },
   Progress: {
     summary:
       "A progress bar with an optional caption, which draws a bare track while there is no reading.",
-    wide: false,
+    wide: true,
     props: [
       {
         name: "value",
