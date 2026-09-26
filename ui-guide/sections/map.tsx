@@ -18,6 +18,7 @@
 
 import type { MapMarker } from "@spy4x/preact-map"
 import { useSignal } from "@preact/signals"
+import { Stack } from "@spy4x/preact-ui"
 import type { DemoFragment } from "../registry.ts"
 import { LazyMap } from "./map-leaflet.tsx"
 
@@ -32,15 +33,14 @@ const PLACES: MapMarker[] = [
 const LOCAL_TILE_URL = "map-demo/tile.png"
 
 /**
- * `Map` wired to a signal so `onMarkerClick` — from a pin's pointer click, or a real Enter or Space
- * press while a pin has focus — has something visible to echo, the same shape
- * `CalendarInteractiveDemo` in `system.tsx` uses for `onSelectDate`.
+ * `Map` wired to a signal, so `onMarkerClick` — from a pin's click, or Enter or Space while a pin
+ * has focus — has something visible to echo.
  */
 function MapInteractiveDemo() {
   const lastClicked = useSignal("none yet")
 
   return (
-    <div class="space-y-3" data-e2e="map-interactive">
+    <Stack gap="sm" data-e2e="map-interactive">
       <LazyMap
         center={{ lat: 50, lng: 5 }}
         zoom={4}
@@ -52,25 +52,39 @@ function MapInteractiveDemo() {
       <p class="text-xs text-gray-500 dark:text-gray-400">
         onMarkerClick: <span data-e2e="map-last-clicked">{lastClicked.value}</span>
       </p>
-      <p class="text-xs text-gray-500 dark:text-gray-400">
-        Tab reaches each pin on the map, in marker order; activating one — a click, or a real Enter
-        or Space press while it has focus — updates the id above. The list below the map is a plain,
-        non-interactive overview of the same places, not a second set of controls. A public tile
-        provider needs a real internet connection and its own required credit line, e.g.{" "}
-        <code class="break-all">
-          tileUrl="https://tile.openstreetmap.org/{"{z}"}/{"{x}"}/{"{y}"}.png"
-        </code>{" "}
-        with <code>attribution="© OpenStreetMap contributors"</code>{" "}
-        — this card uses a local tile instead so the guide never depends on one.
-      </p>
-    </div>
+    </Stack>
   )
 }
 
 export const mapDemos = {
   Map: {
     summary:
-      "Markers on a Leaflet tile layer, from plain `{ id, lat, lng, label, status? }` data, plus the plain-text list of the same places beside it — the map's own pins, not the list, are the keyboard and screen-reader path (see `map/README.md`). `tileUrl` and `attribution` are both required: the application picks its own tile provider, and providers require the credit line shown. Server-renders as an empty, sized box.",
+      "Markers on a map, from plain data, with a list of the same places under it; you pick the tile provider and give its credit line.",
+    wide: true,
+    props: [
+      { name: "center", type: "{ lat, lng }", description: "The point the map centres on." },
+      { name: "zoom", type: "number", description: "The starting zoom level." },
+      {
+        name: "markers",
+        type: "MapMarker[]",
+        description: "The places: an `id`, `lat`, `lng`, a `label` and an optional `status`.",
+      },
+      {
+        name: "onMarkerClick",
+        type: "(id: string) => void",
+        description: "Called with a marker's `id` when its pin is clicked or pressed.",
+      },
+      {
+        name: "tileUrl",
+        type: "string",
+        description: "The tile provider's URL template, with `{z}`, `{x}` and `{y}`.",
+      },
+      {
+        name: "attribution",
+        type: "string",
+        description: "The credit line the tile provider requires.",
+      },
+    ],
     snippet: `<Map
   center={{ lat: 50, lng: 5 }}
   zoom={4}
