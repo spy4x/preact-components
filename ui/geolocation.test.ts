@@ -1,40 +1,6 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
-import { render } from "preact-render-to-string"
-import { GeoButton, requestGeolocation } from "./geo-button.tsx"
-
-describe("GeoButton", () => {
-  it("carries the default label", () => {
-    const html = render(<GeoButton onLocation={() => {}} />)
-
-    expect(html).toContain("Use my geolocation")
-    expect(html).toContain('title="Use my geolocation"')
-  })
-
-  it("takes custom content", () => {
-    const html = render(<GeoButton onLocation={() => {}}>Locate me</GeoButton>)
-
-    expect(html).toContain("<span>Locate me</span>")
-    expect(html).not.toContain("<span>Use my geolocation</span>")
-  })
-
-  it("takes a custom tooltip", () => {
-    const html = render(<GeoButton onLocation={() => {}} title="Find me">Locate me</GeoButton>)
-
-    expect(html).toContain('title="Find me"')
-  })
-
-  it("renders an outlined button with a marker glyph", () => {
-    const html = render(<GeoButton onLocation={() => {}} />)
-
-    expect(html).toContain("border-gray-300")
-    expect(html).toContain("<svg")
-  })
-
-  it("appends a caller class", () => {
-    expect(render(<GeoButton onLocation={() => {}} class="w-full" />)).toContain("w-full")
-  })
-})
+import { requestGeolocation } from "./geolocation.ts"
 
 describe("requestGeolocation", () => {
   it("maps a resolved position onto the coordinates port", () => {

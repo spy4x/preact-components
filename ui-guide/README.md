@@ -343,9 +343,8 @@ The catalogue is checked against the packages' own exports, not against this tab
 prose and nothing reads it: `coverage.test.ts` fails when a covered package has an export with no card or
 example, whichever section it should have been in.
 
-Some demos need a `class` override to be renderable inside a page: `LoadingScreen`, for instance,
-is a full-viewport overlay and `Toastr` is pinned to the page corner, so both are shown inside a
-positioned box (the package merges classes through `cn`, where a later position utility wins).
+Some demos need a `class` override to be renderable inside a page: `Toastr`, for instance, is
+pinned to the page corner, so it is shown inside a positioned box (the package merges classes through `cn`, where a later position utility wins).
 
 ## The icon gallery
 

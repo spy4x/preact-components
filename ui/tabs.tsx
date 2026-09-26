@@ -2,9 +2,6 @@ import { cn } from "@spy4x/preact-cn"
 import type { ComponentChildren, JSX } from "preact"
 import { useRef } from "preact/hooks"
 
-/** Axis a tablist is laid out along, which decides which arrow keys it answers. */
-export type TabOrientation = "horizontal" | "vertical"
-
 /** One tab and the panel it controls. */
 export interface TabItem {
   /**
@@ -29,8 +26,6 @@ export interface TabsProps {
   active: string
   /** Called with the `id` of the tab the user asked for; persistence and routing belong to the caller. */
   onChange: (id: string) => void
-  /** Defaults to `"horizontal"`. A horizontal tablist answers Left/Right, a vertical one Up/Down. */
-  orientation?: TabOrientation
   /**
    * `true` renders only the active panel and drops `aria-controls` from the inactive tabs;
    * `false` (default) renders every panel, `hidden`, so each `aria-controls` resolves.
@@ -56,14 +51,12 @@ const listBase = "flex gap-1"
  * than running past the page edge. Wrapping, not scrolling, so every tab stays in view and a
  * scroll container cannot clip the focus ring or the active tab's underline.
  */
-const listHorizontal = "flex-wrap border-b border-gray-200 dark:border-gray-600"
-const listVertical = "flex-col border-l border-gray-200 dark:border-gray-600"
+const listEdge = "flex-wrap border-b border-gray-200 dark:border-gray-600"
 
 const tabBase =
   "inline-flex items-center justify-center gap-2 whitespace-nowrap px-3 py-2 text-sm font-medium transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-purple-900 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
 
-const edgeHorizontal = "border-b-2 -mb-px"
-const edgeVertical = "border-l-2 -ml-px"
+const tabEdge = "border-b-2 -mb-px"
 
 const tabSelected = "border-purple-900 text-purple-900 dark:border-purple-500 dark:text-purple-400"
 
@@ -104,14 +97,12 @@ function rovingIndex(flags: readonly boolean[], activeIndex: number): number {
  *
  * Pure and exported so the keyboard map is unit-testable: the DOM wiring that calls it can only
  * be checked in a real browser, this decision table cannot. Focus wraps around both ends, and a
- * disabled tab is skipped rather than landed on. `Home`/`End` answer first/last *enabled* tab on
- * both axes; arrows answer only the axis the tablist declares, so a horizontal tablist leaves
- * Up/Down to the page and its panels.
+ * disabled tab is skipped rather than landed on. `Home`/`End` answer the first/last *enabled* tab;
+ * only Left/Right step, so Up/Down stay with the page and its panels.
  *
  * @param key Value of `KeyboardEvent.key`.
  * @param current Index of the tab that has focus; out-of-range values wrap.
  * @param count Number of tabs in the tablist.
- * @param orientation Axis of the tablist; defaults to `"horizontal"`.
  * @param disabled One entry per tab: `true` when that tab is disabled.
  * @returns Index to focus, or `undefined` when the key is not one this tablist owns — which
  * includes "the tablist has no tabs" and "every tab is disabled".
@@ -120,7 +111,6 @@ export function nextTabIndex(
   key: string,
   current: number,
   count: number,
-  orientation: TabOrientation = "horizontal",
   disabled: readonly boolean[] = [],
 ): number | undefined {
   if (count <= 0) return undefined
@@ -136,9 +126,7 @@ export function nextTabIndex(
     return lastEnabled === -1 ? undefined : lastEnabled
   }
 
-  const forward = orientation === "horizontal" ? "ArrowRight" : "ArrowDown"
-  const backward = orientation === "horizontal" ? "ArrowLeft" : "ArrowUp"
-  const step = key === forward ? 1 : key === backward ? -1 : 0
+  const step = key === "ArrowRight" ? 1 : key === "ArrowLeft" ? -1 : 0
   if (step === 0) return undefined
 
   // Walk one tab at a time, wrapping past both ends, until an enabled tab comes back around.
@@ -176,7 +164,6 @@ export function Tabs(
     tabs,
     active,
     onChange,
-    orientation = "horizontal",
     lazy = false,
     label,
     class: className,
@@ -210,22 +197,19 @@ export function Tabs(
    * traversal keep working.
    */
   const handleKeyDown = (event: KeyboardEvent, index: number) => {
-    const next = nextTabIndex(event.key, index, tabs.length, orientation, flags)
+    const next = nextTabIndex(event.key, index, tabs.length, flags)
     if (next === undefined) return
     event.preventDefault()
     moveTo(next)
   }
 
-  const isVertical = orientation === "vertical"
-
   return (
     <div class={className}>
       <div
         role="tablist"
-        aria-orientation={orientation}
         aria-label={label}
         ref={listRef}
-        class={cn(listBase, isVertical ? listVertical : listHorizontal, listClass)}
+        class={cn(listBase, listEdge, listClass)}
       >
         {tabs.map((tab, index) => {
           const isActive = tab.id === active
@@ -242,7 +226,7 @@ export function Tabs(
               data-e2e={tabDataE2E}
               class={cn(
                 tabBase,
-                isVertical ? edgeVertical : edgeHorizontal,
+                tabEdge,
                 isActive ? tabSelected : tabIdle,
                 tabClass,
               )}

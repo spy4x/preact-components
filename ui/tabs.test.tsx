@@ -112,38 +112,14 @@ describe("Tabs", () => {
     expect(tabTags(html).filter((tag) => tag.includes('tabindex="0"')).length).toBe(1)
   })
 
-  it("declares the orientation of the tablist", () => {
-    const horizontal = render(<Tabs tabs={twoTabs} active="overview" onChange={() => {}} />)
-    const vertical = render(
-      <Tabs tabs={twoTabs} active="overview" onChange={() => {}} orientation="vertical" />,
-    )
-
-    expect(horizontal).toContain('aria-orientation="horizontal"')
-    expect(vertical).toContain('aria-orientation="vertical"')
-  })
-
-  it("stacks the tabs when vertical", () => {
-    const html = render(
-      <Tabs tabs={twoTabs} active="overview" onChange={() => {}} orientation="vertical" />,
-    )
-
-    expect(html).toContain("flex-col")
-    expect(html).toContain("border-l-2")
-    expect(html).not.toContain("border-b-2")
-  })
-
-  it("lets a horizontal tab row wrap onto a second row, and leaves a vertical one alone", () => {
+  it("lets the tab row wrap onto a second row", () => {
     const tablist = (html: string) => html.match(/<div[^>]*role="tablist"[^>]*>/)?.[0] ?? ""
-    const horizontal = render(<Tabs tabs={twoTabs} active="overview" onChange={() => {}} />)
-    const vertical = render(
-      <Tabs tabs={twoTabs} active="overview" onChange={() => {}} orientation="vertical" />,
-    )
+    const html = render(<Tabs tabs={twoTabs} active="overview" onChange={() => {}} />)
 
-    expect(tablist(horizontal)).toContain("flex-wrap")
-    expect(tablist(vertical)).not.toContain("flex-wrap")
+    expect(tablist(html)).toContain("flex-wrap")
   })
 
-  it("underlines the active tab when horizontal", () => {
+  it("underlines the active tab", () => {
     const html = render(<Tabs tabs={twoTabs} active="overview" onChange={() => {}} />)
 
     expect(html).toContain("border-b-2")
@@ -232,26 +208,14 @@ describe("nextTabIndex", () => {
     expect(nextTabIndex("ArrowLeft", 0, 3)).toBe(2)
   })
 
-  it("leaves up and down to the page in a horizontal tablist", () => {
+  it("leaves up and down to the page", () => {
     expect(nextTabIndex("ArrowUp", 0, 3)).toBeUndefined()
     expect(nextTabIndex("ArrowDown", 0, 3)).toBeUndefined()
-  })
-
-  it("steps down and up in a vertical tablist", () => {
-    expect(nextTabIndex("ArrowDown", 0, 3, "vertical")).toBe(1)
-    expect(nextTabIndex("ArrowUp", 0, 3, "vertical")).toBe(2)
-  })
-
-  it("leaves left and right to the page in a vertical tablist", () => {
-    expect(nextTabIndex("ArrowRight", 0, 3, "vertical")).toBeUndefined()
-    expect(nextTabIndex("ArrowLeft", 0, 3, "vertical")).toBeUndefined()
   })
 
   it("jumps to the first and last tab on Home and End", () => {
     expect(nextTabIndex("Home", 2, 4)).toBe(0)
     expect(nextTabIndex("End", 0, 4)).toBe(3)
-    expect(nextTabIndex("Home", 2, 4, "vertical")).toBe(0)
-    expect(nextTabIndex("End", 0, 4, "vertical")).toBe(3)
   })
 
   it("ignores keys it does not own", () => {
@@ -276,32 +240,32 @@ describe("nextTabIndex", () => {
   it("skips a disabled tab while stepping", () => {
     const disabled = [false, true, false]
 
-    expect(nextTabIndex("ArrowRight", 0, 3, "horizontal", disabled)).toBe(2)
-    expect(nextTabIndex("ArrowLeft", 2, 3, "horizontal", disabled)).toBe(0)
+    expect(nextTabIndex("ArrowRight", 0, 3, disabled)).toBe(2)
+    expect(nextTabIndex("ArrowLeft", 2, 3, disabled)).toBe(0)
   })
 
   it("skips a disabled tab when wrapping", () => {
-    expect(nextTabIndex("ArrowRight", 0, 3, "horizontal", [false, false, true])).toBe(1)
-    expect(nextTabIndex("ArrowLeft", 0, 3, "horizontal", [false, false, true])).toBe(1)
+    expect(nextTabIndex("ArrowRight", 0, 3, [false, false, true])).toBe(1)
+    expect(nextTabIndex("ArrowLeft", 0, 3, [false, false, true])).toBe(1)
   })
 
   it("skips disabled tabs on Home and End", () => {
     const disabled = [true, false, false, true]
 
-    expect(nextTabIndex("Home", 3, 4, "horizontal", disabled)).toBe(1)
-    expect(nextTabIndex("End", 0, 4, "horizontal", disabled)).toBe(2)
+    expect(nextTabIndex("Home", 3, 4, disabled)).toBe(1)
+    expect(nextTabIndex("End", 0, 4, disabled)).toBe(2)
   })
 
   it("answers nothing when every tab is disabled", () => {
     const disabled = [true, true]
 
-    expect(nextTabIndex("ArrowRight", 0, 2, "horizontal", disabled)).toBeUndefined()
-    expect(nextTabIndex("Home", 0, 2, "horizontal", disabled)).toBeUndefined()
-    expect(nextTabIndex("End", 0, 2, "horizontal", disabled)).toBeUndefined()
+    expect(nextTabIndex("ArrowRight", 0, 2, disabled)).toBeUndefined()
+    expect(nextTabIndex("Home", 0, 2, disabled)).toBeUndefined()
+    expect(nextTabIndex("End", 0, 2, disabled)).toBeUndefined()
   })
 
   it("returns the current tab when it is the only enabled one", () => {
-    expect(nextTabIndex("ArrowRight", 1, 3, "horizontal", [true, false, true])).toBe(1)
+    expect(nextTabIndex("ArrowRight", 1, 3, [true, false, true])).toBe(1)
   })
 
   it("wraps an out-of-range current index instead of throwing", () => {

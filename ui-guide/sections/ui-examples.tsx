@@ -16,10 +16,8 @@ import {
   buttonClasses,
   calendarDateInZone,
   CANCEL_LABEL,
-  clampConfidence,
   clampProgress,
   clientWidthWithoutScrollbar,
-  columnWidthPercents,
   comboboxKey,
   comboboxKeyAction,
   comboboxListboxId,
@@ -63,7 +61,6 @@ import {
   nextComboboxState,
   nextMenuIndex,
   nextTabIndex,
-  normalizeCiStatus,
   openingState,
   pageRange,
   parseIsoDate,
@@ -81,16 +78,9 @@ import {
   selectableIndex,
   shiftMonth,
   shouldRetargetFocus,
-  SKELETON_METRICS,
-  skeletonCount,
-  skeletonStatusRole,
   startOfMonth,
   startOfQuarter,
   startOfYear,
-  tableGeometry,
-  tableHeaderHeightRem,
-  tableRowHeightRem,
-  textGeometry,
   timeRangePresets,
   typingState,
   wrapIndex,
@@ -100,7 +90,7 @@ import { copyToClipboard } from "@spy4x/preact-ui/copy-button"
 import { enhancedFormMessage } from "@spy4x/preact-ui/enhanced-form"
 import { labelTarget } from "@spy4x/preact-ui/field"
 import { classifyFiles, resolveLabels } from "@spy4x/preact-ui/file-input"
-import { requestGeolocation } from "@spy4x/preact-ui/geo-button"
+import { requestGeolocation } from "@spy4x/preact-ui/geolocation"
 import { thumbnailKey } from "@spy4x/preact-ui/image-gallery"
 import { collectSequence, zoomableAlt } from "@spy4x/preact-ui/zoomable-images"
 import {
@@ -111,7 +101,6 @@ import {
   supportsClosedBy,
 } from "@spy4x/preact-ui/modal"
 import { editableText } from "@spy4x/preact-ui/money-input"
-import { barHeightRem, lineBoxRem } from "@spy4x/preact-ui/skeletons"
 import type { ExampleFragment } from "../example.tsx"
 import { toExampleDemos } from "../example.tsx"
 
@@ -433,22 +422,22 @@ const input = { isSameNode: (node: unknown) => node === input }
     title: "nextTabIndex()",
     wide: false,
     summary:
-      "The tab an arrow key moves to, following the tab list's orientation and skipping disabled tabs.",
+      "The tab a Left or Right arrow key moves to, skipping disabled tabs and leaving Up and Down to the page.",
     snippet: `import { nextTabIndex } from "@spy4x/preact-ui"
 
 const disabled = [false, true, false]
 ;({
-  right: nextTabIndex("ArrowRight", 0, 3, "horizontal", disabled),
-  down: nextTabIndex("ArrowDown", 0, 3, "vertical", disabled),
-  wrongAxis: nextTabIndex("ArrowDown", 0, 3, "horizontal", disabled),
+  right: nextTabIndex("ArrowRight", 0, 3, disabled),
+  left: nextTabIndex("ArrowLeft", 0, 3, disabled),
+  down: nextTabIndex("ArrowDown", 0, 3, disabled),
 })`,
     covers: ["nextTabIndex"],
     run: () => {
       const disabled = [false, true, false]
       return {
-        right: nextTabIndex("ArrowRight", 0, 3, "horizontal", disabled),
-        down: nextTabIndex("ArrowDown", 0, 3, "vertical", disabled),
-        wrongAxis: nextTabIndex("ArrowDown", 0, 3, "horizontal", disabled),
+        right: nextTabIndex("ArrowRight", 0, 3, disabled),
+        left: nextTabIndex("ArrowLeft", 0, 3, disabled),
+        down: nextTabIndex("ArrowDown", 0, 3, disabled),
       }
     },
   },
@@ -751,109 +740,6 @@ const { fraction } = clampProgress(59.96, 60)
     },
   },
 
-  clampConfidence: {
-    title: "clampConfidence()",
-    wide: false,
-    summary:
-      "A confidence score clamped to 0–100 and sorted into the low, medium or high tier the meter colours by.",
-    snippet: `import { clampConfidence } from "@spy4x/preact-ui"
-
-[clampConfidence(42), clampConfidence(80), clampConfidence(140), clampConfidence(null)]`,
-    covers: ["clampConfidence"],
-    run: () => [
-      clampConfidence(42),
-      clampConfidence(80),
-      clampConfidence(140),
-      clampConfidence(null),
-    ],
-  },
-
-  normalizeCiStatus: {
-    title: "normalizeCiStatus()",
-    wide: false,
-    summary: "Reads a build status from any source into one of the four states the pill shows.",
-    snippet: `import { normalizeCiStatus } from "@spy4x/preact-ui"
-
-[normalizeCiStatus(" Passing "), normalizeCiStatus("RUNNING"), normalizeCiStatus("cancelled")]`,
-    covers: ["normalizeCiStatus"],
-    run: () => [
-      normalizeCiStatus(" Passing "),
-      normalizeCiStatus("RUNNING"),
-      normalizeCiStatus("cancelled"),
-    ],
-  },
-
-  // Skeletons.
-
-  SKELETON_METRICS: {
-    title: "Skeleton metrics",
-    wide: false,
-    summary:
-      "The sizes, in rem, a loading skeleton copies from the real text and table it stands in for, so the page does not jump when the content arrives.",
-    snippet: `import {
-  SKELETON_METRICS, tableHeaderHeightRem, tableRowHeightRem,
-} from "@spy4x/preact-ui"
-import { barHeightRem, lineBoxRem } from "@spy4x/preact-ui/skeletons"
-
-;({
-  lineHeight: SKELETON_METRICS.lineHeightRem,
-  line: lineBoxRem(),
-  bar: barHeightRem(),
-  row: tableRowHeightRem(),
-  header: tableHeaderHeightRem(),
-})`,
-    covers: [
-      "SKELETON_METRICS",
-      "lineBoxRem",
-      "barHeightRem",
-      "tableRowHeightRem",
-      "tableHeaderHeightRem",
-    ],
-    run: () => ({
-      lineHeight: SKELETON_METRICS.lineHeightRem,
-      line: lineBoxRem(),
-      bar: barHeightRem(),
-      row: tableRowHeightRem(),
-      header: tableHeaderHeightRem(),
-    }),
-  },
-
-  tableGeometry: {
-    title: "Skeleton geometry",
-    wide: false,
-    summary:
-      "How many placeholder lines, rows and cells a skeleton draws, and how wide each one is.",
-    snippet: `import {
-  columnWidthPercents, skeletonCount, tableGeometry, textGeometry,
-} from "@spy4x/preact-ui"
-
-;({
-  count: [skeletonCount(undefined, 3), skeletonCount(2.7, 3), skeletonCount(-1, 3)],
-  columns: columnWidthPercents([2, 1, 1]),
-  text: textGeometry(3, ["full", 60]),
-  table: tableGeometry({ rows: 2, widths: [2, 1] }),
-})`,
-    covers: ["tableGeometry", "skeletonCount", "columnWidthPercents", "textGeometry"],
-    run: () => ({
-      count: [skeletonCount(undefined, 3), skeletonCount(2.7, 3), skeletonCount(-1, 3)],
-      columns: columnWidthPercents([2, 1, 1]),
-      text: textGeometry(3, ["full", 60]),
-      table: tableGeometry({ rows: 2, widths: [2, 1] }),
-    }),
-  },
-
-  skeletonStatusRole: {
-    title: "skeletonStatusRole()",
-    wide: false,
-    summary:
-      "The ARIA role a skeleton carries, so a screen reader hears that something is loading.",
-    snippet: `import { skeletonStatusRole } from "@spy4x/preact-ui"
-
-skeletonStatusRole()`,
-    covers: ["skeletonStatusRole"],
-    run: () => skeletonStatusRole(),
-  },
-
   // Files and forms.
 
   classifyFiles: {
@@ -1036,7 +922,7 @@ copied`,
     title: "requestGeolocation()",
     wide: false,
     summary: "Asks for the device's position and hands back plain coordinates or an error message.",
-    snippet: `import { requestGeolocation } from "@spy4x/preact-ui/geo-button"
+    snippet: `import { requestGeolocation } from "@spy4x/preact-ui/geolocation"
 
 const results: unknown[] = []
 const stub = {
