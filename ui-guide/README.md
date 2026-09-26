@@ -68,6 +68,11 @@ guide does not set it itself: it is the host's setting.
 | `registry`      | Registry to render; defaults to the complete one. A partial one raises the banner.                                                 |
 | `copy`          | Clipboard port, forwarded to every copy control — each card's usage block and the icon gallery. Defaults to `navigator.clipboard`. |
 | `class`         | Extra utilities on the guide's root.                                                                                               |
+| `version`       | The version the header shows beside the library's name. Left out, none is shown.                                                   |
+| `repository`    | The repository the header links to. Left out, there is no link.                                                                    |
+| `install`       | The command the overview offers to copy. Defaults to `deno add jsr:@spy4x/preact-ui`.                                              |
+| `actions`       | Host controls at the header's end, such as a colour-scheme switch.                                                                 |
+| `contentAs`     | `"main"` for a host with no `<main>` of its own; the page column is a `div` otherwise.                                             |
 
 Nothing here imports an app's state: what a catalogue needs from its host — the address, where to put
 a copied snippet — arrives as props and ports.
@@ -81,16 +86,19 @@ section belongs to its package's page — `theme` holds the class sections and i
 A package page with no card in the registry says its examples are coming. `all` renders every other page in navigation order: it is
 the served document and a route of its own, for searching the whole library with the browser's find.
 
-The shell is a navigation and a page. At `lg` and up the navigation is a sticky column beside the
-page; below that it is a native modal `<dialog>` behind a menu button, which Enter or Space opens,
-Escape closes, and which puts focus back on the button when it closes. The navigation is a `<nav>`
+The shell is a header, a navigation, a page and, at `xl`, an "On this page" list; `DESIGN.md` is
+the design it follows. The header carries the library's name and version, a search over every page,
+card and helper name, the repository link and the host's `actions`. At `lg` and up the navigation
+is a sticky column beside the page; below that it is a native modal `<dialog>` behind the header's
+menu button, which Enter or Space opens, Escape closes, and which puts focus back on the button when
+it closes. The navigation is a `<nav>`
 named by `labels.nav`; it lists every page, marks the one showing `aria-current="page"`, and under it
 lists that page's sections and cards, marking the one the route names `aria-current="true"`. A skip
 link, the guide's first link, moves focus past the navigation to the page. A page's link opens the
 page at its title, including the pages whose id is also their section's (`#/crud`).
 
 A host that keeps sticky chrome above the guide sets `--ui-guide-top` to its height, and the
-navigation column and the phone menu bar stick below it. The page column clips what overflows it
+guide's header and its columns stick below it. The page column clips what overflows it
 sideways, so a demo that runs past a phone's edge is cut there rather than scrolling the page.
 
 A section still names a group in `registry.ts`, but the group only orders the sections: a package's
@@ -369,7 +377,7 @@ The clipboard goes through the `copy` port, which falls back to `copyToClipboard
 
 ## Copying a snippet
 
-Every card's `Usage` block has a `CopyButton` beside it — the `ui/` component the catalogue already
+Every card's code row has a `CopyButton` pinned to it — the `ui/` component the catalogue already
 demonstrates, not a second one — wired to that card's own snippet and to the `copy` port the guide
 was rendered with. The button sits next to the `<details>` rather than inside its `<summary>`, where a
 click would toggle the disclosure as well as copying. Its accessible name is the card it belongs
