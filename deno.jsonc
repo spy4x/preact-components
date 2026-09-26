@@ -99,7 +99,7 @@
     "@spy4x/validation/": "jsr:/@spy4x/validation@1.4.0/",
 
     // Test-only HTML renderer every package's suite imports. One pin here (#133) replaces six
-    // identical per-package copies that all resolved the same version. Unlike `d3` below, this is
+    // identical per-package copies that all resolved the same version. Unlike `leaflet`, this is
     // safe to centralise: every import of it is in a `*.test.tsx` file or the unpublished `pages/`
     // demo, never in a package's `exports`, so no published package's consumer ever resolves this
     // specifier — moving it here adds nothing to what a consumer's own dependency graph pulls in.
@@ -107,13 +107,6 @@
 
     // Class name helper — see `cn/` for the small function built on it
     "tailwind-merge": "npm:tailwind-merge@3.7.0",
-
-    // No d3 here on purpose. This map is ambient for every consumer of every package, and d3 is
-    // used by exactly one module — `charts/d3-line-chart.tsx` — so the specifier lives in
-    // `charts/deno.json` instead, which is the config Deno resolves that file's own imports
-    // through. No other member declares it: `ui-guide/` renders the d3 charts in its catalogue and
-    // still type-checks and bundles with no d3 entry of its own. A consumer that wants the
-    // interactive charts adds d3 themselves; see `charts/README.md`.
 
     // Tailwind, pinned to the version spy4x/template builds with
     "tailwindcss": "npm:tailwindcss@4.1.12",

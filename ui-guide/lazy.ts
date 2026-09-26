@@ -3,9 +3,9 @@
  * loads.
  *
  * The guide renders one page at a time, so a card whose component pulls a large dependency — the
- * charts page's d3 islands — can reach that dependency through a dynamic `import()` from an effect.
- * An app that mounts the guide then loads d3 only once someone opens the charts page, and a bundler
- * that splits code at dynamic imports ships it as its own file.
+ * map page's Leaflet — can reach that dependency through a dynamic `import()` from an effect. An app
+ * that mounts the guide then loads Leaflet only once someone opens the map page, and a bundler that
+ * splits code at dynamic imports ships it as its own file.
  *
  * Server rendering and hydration see the same thing: the module is never loaded during a render,
  * only from an effect, so the first render on either side is the caller's placeholder. The load
@@ -34,7 +34,7 @@ export interface LazyModule<T> {
 /**
  * Wrap a dynamic import so cards can share one load of it.
  *
- * @param load The dynamic import, e.g. `() => import("@spy4x/preact-charts/d3-line-chart")`.
+ * @param load The dynamic import, e.g. `() => import("@spy4x/preact-map")`.
  * The specifier must be written literally inside it, so a bundler can see it and split it off.
  * @returns A {@link LazyModule} whose `use` hook reports the load.
  */

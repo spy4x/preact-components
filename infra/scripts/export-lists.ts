@@ -69,7 +69,7 @@ export interface Docs {
  * Whether a value export is named the way a component is: the rule `ui-guide/coverage.ts` applies.
  *
  * @param name Value export name.
- * @returns `true` for `D3LineChart` or `Map`; `false` for `cn` or `DEFAULT_AXIS_COLOR`.
+ * @returns `true` for `LineChart` or `Map`; `false` for `cn` or `DEFAULT_AXIS_COLOR`.
  */
 export function isComponentName(name: string): boolean {
   return /^[A-Z]/.test(name) && /[a-z]/.test(name)

@@ -1,40 +1,22 @@
 /**
  * The Charts section.
  *
- * Every component the package exports is live here. The split the package itself makes is the
- * section's structure — the zero-JS half
- * (`Bars`, `LineChart`, `DonutChart`, `Kpi`, `KpiGrid`) renders plain markup and
- * hydrates nothing, and the interactive half (`D3LineChart`, `CompareChart`) draws imperatively
- * with d3 in an effect.
+ * Every chart here renders complete on the server and hydrates with the page: `LineChart` and
+ * `DonutChart` add their tooltips once the browser runs them, and nothing on this page loads a
+ * charting library.
  *
- * Two honesty notes a reader should have before the cards:
- *
- * 1. **The d3 islands are inert in this page's server render, and that is the component's contract,
- *    not a defect.** `D3LineChart` renders an empty, labelled `<svg>` and draws into it from an
- *    effect; this page also loads the component only when it shows, so the prerendered card is a
- *    placeholder. The card says so. Confirming that the axes and the path actually appear needs a
- *    browser, which the `ui-guide/` suite deliberately does not have.
- * 2. **No date comes from the machine clock.** Every time series here is built from explicit ISO
- *    instants in `Z`, and the `CompareChart` range is two fixed `Date`s, so a build on any machine
- *    in any zone renders the same markup.
- *
- * Imports are subpaths rather than the barrel, which is what `charts/README.md` recommends: a
- * consumer who only draws SVG charts then reaches no `d3` specifier at all. The two d3 islands are
- * not imported here at all: `charts-d3.tsx` loads them with a dynamic `import()` when this page
- * shows, so an app that mounts the guide loads d3 only once someone opens the charts page. Until
- * the module arrives — which includes the server render — their cards show a placeholder.
+ * No date comes from the machine clock. Every time series here is built from explicit ISO instants
+ * in `Z`, and the time axis prints in UTC by default, so a build on any machine in any zone renders
+ * the same markup, and the browser prints what the server did.
  */
 
 import { type BarDatum, Bars } from "@spy4x/preact-charts/bars"
 import { DonutChart } from "@spy4x/preact-charts/donut-chart"
 import { Kpi, type KpiTone } from "@spy4x/preact-charts/kpi"
 import { KpiGrid } from "@spy4x/preact-charts/kpi"
-import { LineChart } from "@spy4x/preact-charts/line-chart"
-import type { ChartPayload, DateRange } from "@spy4x/preact-charts/payload"
-import type { TimeSeriesPoint } from "@spy4x/preact-charts/time-series"
+import { LineChart, type LineSeries } from "@spy4x/preact-charts/line-chart"
 import { entries } from "../record.ts"
 import type { DemoFragment } from "../registry.ts"
-import { LazyCompareChart, LazyD3LineChart } from "./charts-d3.tsx"
 
 /** A handful of rows in the shape `Bars` takes — no helper, no fetch, no scale to compute. */
 const bars: BarDatum[] = [
@@ -96,43 +78,25 @@ function KpiToneMatrix() {
   )
 }
 
-/** An explicit window, both ends in `Z`, so the panel's chart and its heading are reproducible. */
-const range: DateRange = {
-  from: new Date("2026-03-01T00:00:00.000Z"),
-  to: new Date("2026-03-02T00:00:00.000Z"),
-}
+/** Hourly revenue on one fixed day, with a reading missing at 14:00. */
+const today = [6.1, 5.4, 7.2, 9.8, 11.6, 12.4, 12.9, null, 10.2, 8.8, 7.3, 6.6]
 
-/** Hourly buckets for the primary chart, all on one fixed day. */
-const revenue: TimeSeriesPoint[] = [
-  { timeGroup: "2026-03-01T00:00:00.000Z", value: 6.1 },
-  { timeGroup: "2026-03-01T04:00:00.000Z", value: 5.4 },
-  { timeGroup: "2026-03-01T08:00:00.000Z", value: 9.8 },
-  { timeGroup: "2026-03-01T12:00:00.000Z", value: 12.4 },
-  { timeGroup: "2026-03-01T16:00:00.000Z", value: 10.2 },
-  { timeGroup: "2026-03-01T20:00:00.000Z", value: 7.3 },
+/** The same hours a week earlier, drawn dashed on the same axis for comparison. */
+const lastWeek = [5.2, 4.9, 6.1, 8.4, 9.9, 11.1, 11.8, 10.9, 9.6, 8.1, 6.8, 6.0]
+
+/** Two-hourly instants from midnight, in `Z`, so every build and every browser agree. */
+const hours = today.map((_, index) => `2026-03-01T${String(index * 2).padStart(2, "0")}:00:00Z`)
+
+/** Today against the week before, on a time axis. */
+const revenue: LineSeries[] = [
+  { name: "Today", points: hours.map((x, index) => ({ x, y: today[index] })) },
+  {
+    name: "A week earlier",
+    dashed: true,
+    showPoints: false,
+    points: hours.map((x, index) => ({ x, y: lastWeek[index] })),
+  },
 ]
-
-/**
- * A `loadStats` port answering the comparison window out of a constant.
- *
- * `CompareChart` only calls it after its toggle is switched on, so the server render never reaches
- * it. The payload is the documented shape rather than a stub, so a browser that does toggle it gets
- * a real second series.
- */
-function loadPreviousWindow(): Promise<unknown> {
-  const payload: ChartPayload = {
-    timeFrame: "hours",
-    data: [
-      { timeGroup: "2026-02-28T00:00:00.000Z", value: 5.2 },
-      { timeGroup: "2026-02-28T04:00:00.000Z", value: 4.9 },
-      { timeGroup: "2026-02-28T08:00:00.000Z", value: 8.4 },
-      { timeGroup: "2026-02-28T12:00:00.000Z", value: 11.1 },
-      { timeGroup: "2026-02-28T16:00:00.000Z", value: 9.6 },
-      { timeGroup: "2026-02-28T20:00:00.000Z", value: 6.8 },
-    ],
-  }
-  return Promise.resolve(payload)
-}
 
 export const chartsDemos = {
   Bars: {
@@ -179,41 +143,62 @@ export const chartsDemos = {
   },
   LineChart: {
     summary:
-      "A server-rendered SVG line chart over one or more series that still draws when a series is one point, flat or has a gap.",
+      "The line chart: drawn complete on the server, with a crosshair and a tooltip that follow the pointer or the arrow keys, over categories or over time.",
     wide: true,
     props: [
       { name: "series", type: "LineSeries[]", description: "Each line: a name and its points." },
       {
-        name: "yDomain",
-        type: "[number, number]",
-        default: "padded from the data",
-        description: "Fixes the Y axis, which is how two panels share one scale.",
+        name: "xAxis",
+        type: `"category" | "time"`,
+        default: `"category"`,
+        description: "Evenly spaced labels, or instants placed by time with round ticks.",
       },
       {
         name: "yFormat",
         type: "(value: number) => string",
-        default: "two decimals",
-        description: "How a Y tick is printed.",
+        default: "at most two decimals",
+        description: "How a Y tick and a tooltip value are printed.",
       },
       {
-        name: "showLegend",
+        name: "referenceValue",
+        type: "number",
+        description: "A dashed target line, always inside the Y axis.",
+      },
+      {
+        name: "ignoreZeroes",
         type: "boolean",
-        default: "true for two or more series",
-        description: "Shows the series names under the chart.",
+        default: "false",
+        description: "Treat a zero as missing: the line breaks and a dashed bridge spans the gap.",
       },
     ],
     snippet: `<LineChart
-  title="Orders per month"
-  series={[{ name: "Orders", points: months.map((m) => ({ x: m.label, y: m.orders })) }]}
-  yFormat={(value) => value.toFixed(0)}
-  xStride={2}
+  title="Revenue, k€"
+  xAxis="time"
+  series={[
+    { name: "Today", points: today.map((p) => ({ x: p.time, y: p.value })) },
+    { name: "A week earlier", dashed: true, points: lastWeek.map((p) => ({ x: p.time, y: p.value })) },
+  ]}
+  referenceValue={12}
+  referenceLabel="Target"
 />`,
     render: () => (
-      <LineChart
-        series={orders}
-        title="Orders per month"
-        yFormat={(v) => v.toFixed(0)}
-      />
+      <div class="flex flex-col gap-6">
+        <LineChart
+          series={revenue}
+          xAxis="time"
+          title="Revenue, k€"
+          referenceValue={12}
+          referenceLabel="Target"
+          yFormat={(value) => value.toFixed(1)}
+        />
+        <LineChart
+          series={orders}
+          title="Orders per month"
+          height={180}
+          yDomain={[0, 60]}
+          yFormat={(value) => value.toFixed(0)}
+        />
+      </div>
     ),
   },
   Kpi: {
@@ -251,58 +236,6 @@ export const chartsDemos = {
           <Kpi label="Latency" value="84 ms" />
         </KpiGrid>
       </div>
-    ),
-  },
-  D3LineChart: {
-    summary:
-      "The interactive line chart: d3 draws it in the browser with tooltips, a target line and gaps for missing values.",
-    wide: true,
-    snippet: `<D3LineChart
-  data={revenue.data}
-  timeFrame="hours"
-  referenceValue={12}
-  ignoreZeroes
-  tickFormat={(value) => value.toFixed(1)}
-  ariaLabel="Revenue, k€"
-/>`,
-    render: () => (
-      <div class="flex flex-col gap-6">
-        <LazyD3LineChart
-          data={revenue}
-          timeFrame="hours"
-          referenceValue={12}
-          ariaLabel="Revenue, k€"
-          tickFormat={(value) => value.toFixed(1)}
-        />
-        <LazyD3LineChart
-          data={[...revenue, { timeGroup: "2026-03-01T22:00:00.000Z", value: 0 }]}
-          timeFrame="hours"
-          ignoreZeroes
-          ariaLabel="Revenue with a gap for missing values"
-        />
-      </div>
-    ),
-  },
-  CompareChart: {
-    summary:
-      "A `D3LineChart` with a toggle that loads the previous window through a `loadStats` port and draws it beside the current one.",
-    wide: true,
-    snippet: `<CompareChart
-  range={range}
-  data={revenue.data}
-  timeFrame="hours"
-  loadStats={(window) => api.stats({ ...window, kind: "revenue" })}
-  onError={(message) => app.toast.error({ body: message })}
-/>`,
-    render: () => (
-      <LazyCompareChart
-        range={range}
-        data={revenue}
-        timeFrame="hours"
-        loadStats={loadPreviousWindow}
-        compareLabel="Compare with the day before"
-        ariaLabel="Revenue, k€"
-      />
     ),
   },
 } satisfies DemoFragment

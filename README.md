@@ -39,7 +39,7 @@ deno add jsr:@spy4x/preact-cn        # class-name join + Tailwind conflict resol
 deno add jsr:@spy4x/preact-icons     # merged icon set
 deno add jsr:@spy4x/preact-signals   # stores and state helpers; no components
 deno add jsr:@spy4x/preact-theme     # design tokens + Tailwind preset
-deno add jsr:@spy4x/preact-charts    # server-rendered SVG charts + d3 islands
+deno add jsr:@spy4x/preact-charts    # server-rendered charts with tooltips
 deno add jsr:@spy4x/preact-system    # app-level pieces: auth form, calendar, shells, SEO head
 deno add jsr:@spy4x/preact-ui        # the component set
 deno add jsr:@spy4x/preact-crud      # list and editor scaffold for one collection
@@ -132,7 +132,7 @@ Node or Bun through JSR's npm compatibility layer has not been tried.
 | `icons/`    | merged icon set: one component per glyph, all listed by the guide's icon gallery                                                                                                                                                                                                                          |
 | `ui/`       | `Stack`, `Cluster`, `Grid`, `Page`, `Section`, `Badge`, `Button`, `Table`, `DataTable`, `Dropdown`, `Combobox`, `Modal`, `Tooltip`, `Toastr` — and the rest                                                                                                                                               |
 | `system/`   | `AuthForm`, `Calendar`, `RailShell`, `SEOHead` + `head` store, `Shell`, `SiteHeader`, `StateInit`, `SWUpdater`                                                                                                                                                                                            |
-| `charts/`   | server-rendered SVG charts (`LineChart`, `Bars`, `DonutChart`, `Kpi`), axis maths (`scales`), d3 islands (`D3LineChart`, `CompareChart`)                                                                                                                                                                  |
+| `charts/`   | server-rendered charts with browser tooltips (`LineChart`, `Bars`, `DonutChart`, `Kpi`), axis maths (`scales`)                                                                                                                                                                                            |
 | `cn/`       | `cn()` — class-name join + Tailwind conflict resolution                                                                                                                                                                                                                                                   |
 | `signals/`  | `buildModelStore`, `useUrlFilters`, `table-state`, `createThemeStore`, `createToastStore`, `patchSignal` — and the rest; no components                                                                                                                                                                    |
 | `crud/`     | `CrudList`, `CrudEditor`, `AssociationEditor`, `DeletionValidation`, field rows                                                                                                                                                                                                                           |

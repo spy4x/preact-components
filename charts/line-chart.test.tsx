@@ -11,229 +11,234 @@ function count(html: string, needle: string): number {
   return html.split(needle).length - 1
 }
 
-describe("LineChart", () => {
-  it("renders one path per series with positions from the scales", () => {
-    const html = render(
-      <LineChart series={twoPoints} yDomain={[0, 10]} title="Runs" />,
-    )
+/** The `d` of every series path, in order, leaving out the dashed bridges over missing values. */
+function linePaths(html: string): string[] {
+  return [...html.matchAll(/<path d="([^"]+)"(?![^>]*data-chart-bridge)[^>]*>/g)].map(([, d]) => d)
+}
 
-    // 800×280 viewBox, 56/16/24/36 padding → 728×220 plot area at (56, 24).
-    expect(html).toContain("M56.0,244.0 L784.0,24.0")
-    expect(count(html, "<path")).toBe(1)
-    expect(html).toContain('viewBox="0 0 800 280"')
+/** The `left` of every X label, with its text. */
+function xLabels(html: string): string[] {
+  const row = html.slice(html.lastIndexOf(`class="absolute inset-y-0 inset-x-3"`))
+  return [...row.matchAll(/style="left:([^;"]+);?">([^<]+)</g)].map(([, left, text]) =>
+    `${left} ${text}`
+  )
+}
+
+describe("LineChart", () => {
+  it("draws each series as a path across the plot, scaled to the Y domain", () => {
+    const html = render(<LineChart series={twoPoints} yDomain={[0, 10]} title="Runs" />)
+
+    expect(linePaths(html)).toEqual(["M0.0,1000.0 L1000.0,0.0"])
+    expect(html).toContain(`preserveAspectRatio="none"`)
   })
 
-  it("draws one dot per point with a hover tooltip", () => {
+  it("draws one dot per point whose native tooltip names the series, the X and the value", () => {
     const html = render(<LineChart series={twoPoints} title="Runs" />)
 
-    expect(count(html, "<circle")).toBe(2)
-    expect(html).toContain("<title>Runs Jan: 0.00</title>")
-    expect(html).toContain("<title>Runs Feb: 10.00</title>")
+    expect(count(html, `title="Runs `)).toBe(2)
+    expect(html).toContain(`title="Runs Jan: 0"`)
+    expect(html).toContain(`title="Runs Feb: 10"`)
   })
 
-  it("renders a grid line and a label per Y tick", () => {
-    const html = render(<LineChart series={twoPoints} yDomain={[0, 10]} />)
+  it("prints a Y label and a grid line per tick", () => {
+    const html = render(<LineChart series={twoPoints} yDomain={[0, 10]} yTicks={2} />)
 
-    // ticks(0, 10) → 0, 2, 4, 6, 8, 10
-    expect(count(html, "<line")).toBe(7)
-    expect(count(html, "<text")).toBe(8)
-    expect(html).toContain(">0.00</text>")
-    expect(html).toContain(">10.00</text>")
+    expect(count(html, "border-t border-dashed")).toBe(3)
+    for (const label of [">0<", ">5<", ">10<"]) expect(html).toContain(label)
   })
 
-  it("thins the X labels to the requested stride and keeps the last one", () => {
-    const points = Array.from({ length: 20 }, (_, index) => ({
-      x: `d${index}`,
-      y: index,
-    }))
-    const html = render(<LineChart series={[{ name: "s", points }]} xStride={5} />)
+  it("labels every n-th category and always the last one", () => {
+    const series: LineSeries[] = [{
+      name: "Load",
+      points: ["a", "b", "c", "d", "e"].map((x, index) => ({ x, y: index })),
+    }]
+    const html = render(<LineChart series={series} xStride={3} />)
 
-    expect(count(html, 'text-anchor="middle"')).toBe(5)
-    expect(html).toContain(">d0</text>")
-    expect(html).toContain(">d19</text>")
-    expect(html).not.toContain(">d1</text>")
+    expect(xLabels(html)).toEqual(["0% a", "75% d", "100% e"])
   })
 
-  it("strides X labels automatically for a dense axis", () => {
-    const points = Array.from({ length: 100 }, (_, index) => ({ x: `d${index}`, y: index }))
-    const html = render(<LineChart series={[{ name: "s", points }]} />)
+  it("thins a dense category axis to about six labels on its own", () => {
+    const series: LineSeries[] = [{
+      name: "Hourly",
+      points: Array.from({ length: 24 }, (_, index) => ({ x: `h${index}`, y: index })),
+    }]
+    const labels = xLabels(render(<LineChart series={series} />))
 
-    // 100 points, budget of 8 labels → every 13th, plus the last one.
-    expect(count(html, 'text-anchor="middle"')).toBe(9)
+    expect(labels.length).toBeLessThanOrEqual(7)
+    expect(labels.at(-1)).toBe("100% h23")
   })
 
-  it("omits the dots when a series asks for a line only", () => {
+  it("leaves the dots out when a series asks for a line only", () => {
+    const html = render(<LineChart series={[{ ...twoPoints[0], showPoints: false }]} />)
+
+    expect(count(html, `title="Runs `)).toBe(0)
+    expect(linePaths(html).length).toBe(1)
+  })
+
+  it("renders the empty label instead of a plot when nothing can be drawn", () => {
     const html = render(
-      <LineChart series={[{ name: "s", points: twoPoints[0].points, showPoints: false }]} />,
+      <LineChart series={[{ name: "Gone", points: [{ x: "a", y: null }] }]} emptyLabel="Nothing" />,
     )
 
-    expect(count(html, "<circle")).toBe(0)
-    expect(count(html, "<path")).toBe(1)
-  })
-
-  it("renders the empty state without a chart", () => {
-    const html = render(<LineChart series={[]} emptyLabel="Nothing here" />)
-
-    expect(html).toContain("Nothing here")
+    expect(html).toContain("Nothing")
     expect(html).not.toContain("<svg")
   })
 
-  it("ignores series whose values cannot be plotted", () => {
+  it("breaks the line at a missing value and bridges the gap with a dashed segment and a note", () => {
+    const series: LineSeries[] = [{
+      name: "Sensor",
+      points: [{ x: "a", y: 1 }, { x: "b", y: 2 }, { x: "c", y: null }, { x: "d", y: 4 }],
+    }]
+    const html = render(<LineChart series={series} yDomain={[0, 4]} />)
+
+    expect(linePaths(html)).toEqual([
+      "M0.0,750.0 L333.3,500.0",
+      "M1000.0,0.0 L1000.0,0.0",
+    ])
+    expect(html).toMatch(/<path d="M333.3,500.0 L1000.0,0.0"[^>]*stroke-dasharray="2 3"/)
+    expect(html).toContain("Dashed grey segments bridge missing values.")
+  })
+
+  it("treats a zero as missing when asked to ignore zeroes", () => {
+    const series: LineSeries[] = [{
+      name: "Meter",
+      points: [{ x: "a", y: 2 }, { x: "b", y: 0 }, { x: "c", y: 2 }],
+    }]
+    const drawn = render(<LineChart series={series} yDomain={[0, 4]} />)
+    const ignored = render(<LineChart series={series} yDomain={[0, 4]} ignoreZeroes />)
+
+    expect(linePaths(drawn)).toEqual(["M0.0,500.0 L500.0,1000.0 L1000.0,500.0"])
+    expect(linePaths(ignored)).toEqual(["M0.0,500.0 L0.0,500.0", "M1000.0,500.0 L1000.0,500.0"])
+    expect(ignored).toContain("data-chart-bridge")
+  })
+
+  it("places points by time on a time axis and labels round instants in UTC", () => {
+    const series: LineSeries[] = [{
+      name: "Revenue",
+      points: [
+        { x: "2026-03-01T00:00:00Z", y: 1 },
+        { x: Date.UTC(2026, 2, 1, 1), y: 2 },
+        { x: new Date("2026-03-01T04:00:00Z"), y: 3 },
+      ],
+    }]
+    const html = render(<LineChart series={series} xAxis="time" yDomain={[0, 4]} />)
+
+    expect(linePaths(html)).toEqual(["M0.0,750.0 L250.0,500.0 L1000.0,250.0"])
+    expect(xLabels(html)).toEqual(["0% 00:00", "25% 01:00", "50% 02:00", "75% 03:00", "100% 04:00"])
+    expect(html).toContain(`title="Revenue 1 Mar 2026, 01:00: 2"`)
+  })
+
+  it("prints time labels in the zone it is given", () => {
+    const series: LineSeries[] = [{
+      name: "Revenue",
+      points: [{ x: "2026-03-01T00:00:00Z", y: 1 }, { x: "2026-03-01T04:00:00Z", y: 3 }],
+    }]
+    const html = render(<LineChart series={series} xAxis="time" timeZone="Asia/Tokyo" />)
+
+    expect(xLabels(html)[0]).toBe("0% 09:00")
+  })
+
+  it("dashes a series marked dashed, in the plot and in the legend", () => {
+    const series: LineSeries[] = [twoPoints[0], {
+      ...twoPoints[0],
+      name: "Last year",
+      dashed: true,
+    }]
+    const html = render(<LineChart series={series} />)
+
+    expect(html).toMatch(/<path d="[^"]+"[^>]*stroke-dasharray="6 4"/)
+    expect(count(html, 'stroke-dasharray="6 4"')).toBe(1)
+    expect(html).toContain("inline-block w-3 border-t-2 border-dashed")
+  })
+
+  it("draws the reference line inside the Y domain even above every value", () => {
     const html = render(
-      <LineChart
-        series={[
-          { name: "broken", points: [{ x: "a", y: NaN }, { x: "b", y: Infinity }] },
-          { name: "good", points: [{ x: "a", y: 1 }] },
-        ]}
-      />,
+      <LineChart series={twoPoints} referenceValue={30} referenceLabel="Target" />,
     )
 
-    expect(count(html, "<path")).toBe(1)
-    expect(html).toContain("good")
-    expect(html).not.toContain(">NaN<")
+    const top = html.match(/style="top:([\d.]+)%;[^"]*" data-chart-reference/)?.[1]
+    // 30 sits in the top half of a domain padded around it, not above the plot at a negative top.
+    expect(Number(top)).toBeGreaterThan(0)
+    expect(Number(top)).toBeLessThan(50)
+    expect(html).toContain(">Target<")
   })
 
-  it("renders a single point without NaN geometry", () => {
-    const html = render(
-      <LineChart series={[{ name: "one", points: [{ x: "only", y: 42 }] }]} />,
-    )
+  it("covers the plot with the loading label and marks the chart busy while loading", () => {
+    const html = render(<LineChart series={[]} isLoading loadingLabel="Fetching" />)
 
-    expect(count(html, "<circle")).toBe(1)
-    expect(html).not.toContain("NaN")
-    // A degenerate X domain centres the point in the plot area.
-    expect(html).toContain('cx="420"')
+    expect(html).toContain(`aria-busy="true"`)
+    expect(html).toContain(">Fetching<")
+    expect(html).not.toContain("No data")
   })
 
-  it("renders an all-equal series on a padded domain", () => {
-    const html = render(
-      <LineChart series={[{ name: "flat", points: [{ x: "a", y: 5 }, { x: "b", y: 5 }] }]} />,
-    )
+  it("colours series from the palette by index unless a series brings its own", () => {
+    const series: LineSeries[] = [
+      twoPoints[0],
+      { ...twoPoints[0], name: "B" },
+      { ...twoPoints[0], name: "C", color: "red" },
+    ]
+    const html = render(<LineChart series={series} colors={["tomato", "teal"]} />)
 
-    expect(html).not.toContain("NaN")
-    expect(html).toContain("4.40")
-    expect(html).toContain("5.60")
+    expect(html).toContain("stroke:tomato")
+    expect(html).toContain("stroke:teal")
+    expect(html).toContain("stroke:red")
   })
 
-  it("uses the palette by series index and honours a per-series colour", () => {
-    const html = render(
-      <LineChart
-        series={[
-          { name: "a", points: [{ x: "x", y: 1 }] },
-          { name: "b", points: [{ x: "x", y: 2 }] },
-          { name: "c", points: [{ x: "x", y: 3 }], color: "#123456" },
-        ]}
-        colors={["#111111", "#222222"]}
-      />,
-    )
+  it("shows a legend for several series, not for one, unless told otherwise", () => {
+    const two = [twoPoints[0], { ...twoPoints[0], name: "Walks" }]
 
-    expect(html).toContain("#111111")
-    expect(html).toContain("#222222")
-    expect(html).toContain("#123456")
+    expect(render(<LineChart series={two} />)).toContain(">Walks</span>")
+    expect(render(<LineChart series={twoPoints} />)).not.toContain(">Runs</span>")
+    expect(render(<LineChart series={twoPoints} showLegend />)).toContain(">Runs</span>")
   })
 
-  it("wraps the palette around more series than colours", () => {
-    const html = render(
-      <LineChart
-        series={[
-          { name: "a", points: [{ x: "x", y: 1 }] },
-          { name: "b", points: [{ x: "x", y: 2 }] },
-          { name: "c", points: [{ x: "x", y: 3 }] },
-        ]}
-        colors={["#111111", "#222222"]}
-      />,
-    )
+  it("names the plot as an image and takes focus only once it runs in a browser", () => {
+    const html = render(<LineChart series={twoPoints} title="Weekly runs" />)
 
-    // a and c share the first palette entry: path, dot and legend swatch each.
-    expect(count(html, "#111111")).toBe(6)
-    expect(count(html, "#222222")).toBe(3)
+    expect(html).toContain(`role="img" aria-label="Weekly runs"`)
+    expect(html).not.toContain("tabindex")
+    expect(render(<LineChart series={twoPoints} ariaLabel="Runs, km" />)).toContain(
+      `aria-label="Runs, km"`,
+    )
   })
 
-  it("shows the legend for multiple series and hides it for one", () => {
-    const single = render(<LineChart series={[{ name: "s", points: twoPoints[0].points }]} />)
-    const multiple = render(
-      <LineChart
-        series={[
-          { name: "first", points: [{ x: "x", y: 1 }] },
-          { name: "second", points: [{ x: "x", y: 2 }] },
-        ]}
-      />,
-    )
-
-    expect(single).not.toContain(">s</span>")
-    expect(multiple).toContain("first")
-    expect(multiple).toContain("second")
-  })
-
-  it("lets the caller force the legend either way", () => {
-    const forced = render(
-      <LineChart series={[{ name: "solo", points: [{ x: "x", y: 1 }] }]} showLegend />,
-    )
-    const hidden = render(
-      <LineChart
-        series={[
-          { name: "a", points: [{ x: "x", y: 1 }] },
-          { name: "b", points: [{ x: "x", y: 2 }] },
-        ]}
-        showLegend={false}
-      />,
-    )
-
-    expect(forced).toContain("solo</span>")
-    expect(hidden).not.toContain("legend-a")
-  })
-
-  it("exposes the chart as a labelled image", () => {
-    const named = render(<LineChart series={twoPoints} title="Runs per month" />)
-    const overridden = render(
-      <LineChart series={twoPoints} title="Runs" ariaLabel="Monthly run totals" />,
-    )
-    const anonymous = render(<LineChart series={twoPoints} />)
-
-    expect(named).toContain('role="img"')
-    expect(named).toContain('aria-label="Runs per month"')
-    expect(overridden).toContain('aria-label="Monthly run totals"')
-    expect(anonymous).toContain('aria-label="Line chart with 1 series"')
-  })
-
-  it("takes axis, grid and text colours as props", () => {
-    const html = render(
-      <LineChart
-        series={twoPoints}
-        axisColor="#010101"
-        gridColor="#020202"
-        textColor="#030303"
-      />,
-    )
-
-    expect(html).toContain("#010101")
-    expect(html).toContain("#020202")
-    expect(html).toContain("#030303")
-  })
-
-  it("defaults the colours to the chart palette and the theme tokens", () => {
+  it("serves an empty, hidden tooltip for the browser to fill", () => {
     const html = render(<LineChart series={twoPoints} />)
 
-    expect(html).toContain("var(--color-chart-1, var(--chart-1, #2a78d6))")
-    expect(html).toContain("var(--color-border-subtle, oklch(0.928 0.006 264.531))")
+    expect(html).toMatch(
+      /class="[^"]*\binvisible\b[^"]*"[^>]*role="status" data-chart-tooltip><\/div>/,
+    )
   })
 
-  it("renders the chart title and a caller class", () => {
-    const html = render(<LineChart series={twoPoints} title="Runs" class="mt-4" />)
-
-    expect(html).toContain(">Runs</h3>")
-    expect(html).toContain("overflow-x-auto mt-4")
-  })
-
-  it("formats Y tick labels through the yFormat port", () => {
+  it("takes its axis, grid and text colours from props", () => {
     const html = render(
-      <LineChart
-        series={twoPoints}
-        yDomain={[0, 10]}
-        yFormat={(value) => `${value} kg`}
-      />,
+      <LineChart series={twoPoints} axisColor="navy" gridColor="silver" textColor="plum" />,
     )
 
-    expect(html).toContain(">0 kg</text>")
-    expect(html).toContain(">10 kg</text>")
+    expect(html).toContain("border-color:navy")
+    expect(html).toContain("border-color:silver")
+    expect(html).toContain("color:plum")
+  })
+
+  it("prints Y values through yFormat, and by default with no trailing zeros", () => {
+    expect(render(<LineChart series={twoPoints} yFormat={(value) => `${value} km`} />))
+      .toContain(`title="Runs Feb: 10 km"`)
+    const html = render(<LineChart series={[{ name: "R", points: [{ x: "a", y: 1 / 3 }] }]} />)
+    expect(html).toContain(`title="R a: 0.33"`)
+  })
+
+  it("draws a single point in the middle without NaN", () => {
+    const html = render(<LineChart series={[{ name: "One", points: [{ x: "a", y: 5 }] }]} />)
+
+    expect(html).not.toContain("NaN")
+    expect(linePaths(html)[0]).toMatch(/^M500.0,[\d.]+ L500.0,[\d.]+$/)
+  })
+
+  it("puts the palette's custom properties on its root so the colours follow the theme", () => {
+    const html = render(<LineChart series={twoPoints} />)
+
+    expect(html).toContain("[--chart-1:#2a78d6]")
+    expect(html).toContain("dark:[--chart-1:#3987e5]")
+    expect(html).toContain("var(--color-chart-1, var(--chart-1, #2a78d6))")
   })
 })

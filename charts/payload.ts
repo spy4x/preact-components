@@ -60,7 +60,7 @@ export function previousPeriod(range: DateRange, steps = 1): DateRange {
  * A rejection and an invalid payload are both reported as an `error` string rather than thrown: a
  * comparison panel should show the reason next to the chart it could not draw. Validation is
  * arktype, so a payload shaped like `{ data: [{ timeGroup, value }], timeFrame }` is the only thing
- * that reaches `d3`.
+ * that reaches a chart.
  */
 export async function loadChartPayload(
   loadStats: (range: DateRange) => Promise<unknown>,

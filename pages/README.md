@@ -142,9 +142,8 @@ waits for that job, so a red check, a red publish dry-run or a red `verify` bloc
    root import map pins. The catalogue demonstrates every component of every package it covers, so
    the bundle carries those packages. The island is split at dynamic imports
    (`deno bundle --code-splitting`): `main.<hash>.js` is the entry, and the chunks beside it keep
-   the bundler's content-hashed names. d3 and Leaflet each land in chunks of their own, fetched
-   only through a dynamic import; d3's is fetched when the charts page opens, and Leaflet's, after
-   the small chunk of `@spy4x/preact-map` itself, when the map page opens. The build prints
+   the bundler's content-hashed names. Leaflet lands in a chunk of its own, fetched only through
+   a dynamic import, after the small chunk of `@spy4x/preact-map` itself, when the map page opens. The build prints
    each file and its byte size; read them there rather than here.
 4. **Prerender**: `renderToString(<App />)` inside Deno, wrapped by `document.tsx`. Before writing
    anything, the build asserts that every name in `catalogueNames` — every card the sections render,
@@ -298,7 +297,7 @@ as the numerator; and `--static`, which commits no package blocks at all, instea
   (`article[id^="demo-"]`, component and example cards alike) with the served card of the same id.
   Whitespace runs count as one space, and a `<textarea>` counts by its value. Only text is compared,
   not attributes or styles. A card that differs fails the run by id, with a short excerpt of each
-  side. Some cards have a part an effect draws only in the browser: the d3 charts' `svg`, the
+  side. Some cards have a part an effect draws only in the browser: the
   Map card's whole map, `CrudEditor`'s form-level message above Save. `TEXT_DRAWN_IN_BROWSER`
   names each such part by a selector inside its card, with its reason; that part is left out on
   both sides and the rest of the card is compared like any other. A listed part whose text stops

@@ -5,8 +5,8 @@
  * print their whole result there, because `run` is synchronous and has to print the same thing on
  * the server and in the browser:
  *
- * - The two loaders return promises. Their cards print what happens synchronously — the stats port
- *   being asked — and the schema verdict the loaders apply, and say in the summary what the promise
+ * - The loader returns a promise. Its card prints what happens synchronously — the stats port being
+ *   asked — and the schema verdict the loader applies, and says in the summary what the promise
  *   resolves to.
  * - The hook is called inside `run`, which the card calls while it renders, so it is a hook of the
  *   card's output component. It prints its first render, which is the same on both sides:
@@ -27,12 +27,6 @@ import {
   DEFAULT_TRACK_COLOR,
   seriesColor,
 } from "@spy4x/preact-charts/colors"
-import {
-  assertD3Available,
-  DEFAULT_D3_LINE_CHART_COLORS,
-  MISSING_D3_LINE_ERROR,
-  yDomainFor,
-} from "@spy4x/preact-charts/d3-line-chart-core"
 import { donutGeometry } from "@spy4x/preact-charts/donut-chart"
 import {
   chartPayloadSchema,
@@ -54,27 +48,6 @@ import { createInViewObserver, useInView } from "@spy4x/preact-charts/use-in-vie
 import { type } from "arktype"
 import type { ExampleFragment } from "../example.tsx"
 import { toExampleDemos } from "../example.tsx"
-import type { LazyModuleState } from "../lazy.ts"
-import { d3LineChartModule } from "./charts-d3.tsx"
-
-/**
- * What an example that needs `charts/d3-line-chart` prints until the charts page has loaded it.
- *
- * That module imports d3, so such an example reaches it through {@link d3LineChartModule} rather
- * than a static import (see `charts-d3.tsx`). Only the time-labels example is one: the helpers that
- * need no d3 come statically from `charts/d3-line-chart-core` and print on the server. The served
- * page and the browser's first render print this line, and the real output replaces it once the
- * module arrives. With scripts off it never changes, so it says where the output is computed
- * rather than promising a load.
- *
- * @param state The module's load state, when it is not loaded.
- * @returns The line the card prints instead of its output.
- */
-function pendingD3Output(state: LazyModuleState<unknown>): string {
-  return state.status === "failed"
-    ? `<charts/d3-line-chart did not load: ${state.message}>`
-    : "<computed in the browser: needs charts/d3-line-chart, which imports d3>"
-}
 
 const examples: ExampleFragment = {
   extent: {
@@ -213,7 +186,6 @@ import { CHART_PALETTE_CLASS } from "@spy4x/preact-charts/colors"
       "The colours every chart uses when the caller passes none: each reads a `theme/` token and falls back to a fixed colour, so a chart renders with or without the theme.",
     snippet: `import {
   DEFAULT_AXIS_COLOR,
-  DEFAULT_D3_LINE_CHART_COLORS,
   DEFAULT_GRID_COLOR,
   DEFAULT_SURFACE_COLOR,
   DEFAULT_TEXT_COLOR,
@@ -226,7 +198,6 @@ import { CHART_PALETTE_CLASS } from "@spy4x/preact-charts/colors"
   text: DEFAULT_TEXT_COLOR,
   surface: DEFAULT_SURFACE_COLOR,
   track: DEFAULT_TRACK_COLOR,
-  d3Line: DEFAULT_D3_LINE_CHART_COLORS.line,
 })`,
     covers: [
       "DEFAULT_AXIS_COLOR",
@@ -234,7 +205,6 @@ import { CHART_PALETTE_CLASS } from "@spy4x/preact-charts/colors"
       "DEFAULT_TEXT_COLOR",
       "DEFAULT_SURFACE_COLOR",
       "DEFAULT_TRACK_COLOR",
-      "DEFAULT_D3_LINE_CHART_COLORS",
     ],
     run: () => ({
       axis: DEFAULT_AXIS_COLOR,
@@ -242,84 +212,7 @@ import { CHART_PALETTE_CLASS } from "@spy4x/preact-charts/colors"
       text: DEFAULT_TEXT_COLOR,
       surface: DEFAULT_SURFACE_COLOR,
       track: DEFAULT_TRACK_COLOR,
-      d3Line: DEFAULT_D3_LINE_CHART_COLORS.line,
     }),
-  },
-  formatTimeTick: {
-    title: "Time labels",
-    wide: false,
-    summary:
-      "The bucket sizes a series can have (`TIME_FRAMES`), and the local-time labels `D3LineChart` prints for a tick and on hover.",
-    snippet:
-      `import { defaultTooltipFormat, formatTimeTick, TIME_FRAMES } from "@spy4x/preact-charts"
-
-const at = new Date(2026, 2, 14, 9, 30)
-console.log({
-  ticks: TIME_FRAMES.map((frame) => \`\${frame}: \${formatTimeTick(at, frame)}\`),
-  tooltip: defaultTooltipFormat({ timeGroup: at, value: 42 }),
-})`,
-    covers: ["TIME_FRAMES", "formatTimeTick", "defaultTooltipFormat"],
-    run: () => {
-      const d3Line = d3LineChartModule.use()
-      if (d3Line.status !== "loaded") return pendingD3Output(d3Line)
-      const { defaultTooltipFormat, formatTimeTick } = d3Line.module
-      const at = new Date(2026, 2, 14, 9, 30)
-      return {
-        ticks: TIME_FRAMES.map((frame) => `${frame}: ${formatTimeTick(at, frame)}`),
-        tooltip: defaultTooltipFormat({ timeGroup: at, value: 42 }),
-      }
-    },
-  },
-  yDomainFor: {
-    title: "yDomainFor()",
-    wide: false,
-    summary:
-      "The Y range `D3LineChart` draws: from 0 (or the smallest non-zero value with `ignoreZeroes`) to the maximum plus 20% headroom, stretched to include a reference line.",
-    snippet: `import { yDomainFor } from "@spy4x/preact-charts"
-
-const points = [0, 8, 20, 14].map((value, hour) => ({ timeGroup: hour * 3_600_000, value }))
-console.log([
-  yDomainFor(points),
-  yDomainFor(points, { ignoreZeroes: true }),
-  yDomainFor(points, { referenceValue: 50 }),
-])`,
-    covers: ["yDomainFor"],
-    run: () => {
-      const points = [0, 8, 20, 14].map((value, hour) => ({ timeGroup: hour * 3_600_000, value }))
-      return [
-        yDomainFor(points),
-        yDomainFor(points, { ignoreZeroes: true }),
-        yDomainFor(points, { referenceValue: 50 }),
-      ]
-    },
-  },
-  assertD3Available: {
-    title: "assertD3Available()",
-    wide: false,
-    summary:
-      "The check `D3LineChart` makes before drawing: a `d3` with no line generator throws `MISSING_D3_LINE_ERROR`, which tells the reader to add the dependency.",
-    snippet:
-      `import { assertD3Available, MISSING_D3_LINE_ERROR } from "@spy4x/preact-charts/d3-line-chart-core"
-
-assertD3Available({ line: () => {} }) // a d3 with a line generator passes
-let message = ""
-try {
-  assertD3Available({})
-} catch (error) {
-  message = (error as Error).message
-}
-console.log({ isTheExportedMessage: message === MISSING_D3_LINE_ERROR, message })`,
-    covers: ["assertD3Available", "MISSING_D3_LINE_ERROR"],
-    run: () => {
-      assertD3Available({ line: () => {} })
-      let message = ""
-      try {
-        assertD3Available({})
-      } catch (error) {
-        message = (error as Error).message
-      }
-      return { isTheExportedMessage: message === MISSING_D3_LINE_ERROR, message }
-    },
   },
   previousPeriod: {
     title: "previousPeriod()",
@@ -340,9 +233,9 @@ console.log([previousPeriod(week), previousPeriod(week, 2)])`,
     title: "Stats payloads and their loaders",
     wide: true,
     summary:
-      "The arktype shape a stats endpoint returns, and a loader that asks your `loadStats` port for a range and resolves to `{ payload, error }`; the card prints the call it makes, since it resolves after the card renders.",
+      "The arktype shape a stats endpoint returns, with the bucket sizes it accepts (`TIME_FRAMES`), and a loader that asks your `loadStats` port for a range and resolves to `{ payload, error }`; the card prints the call it makes, since it resolves after the card renders.",
     snippet:
-      `import { chartPayloadSchema, loadChartPayload, timeSeriesPointSchema } from "@spy4x/preact-charts"
+      `import { chartPayloadSchema, loadChartPayload, TIME_FRAMES, timeSeriesPointSchema } from "@spy4x/preact-charts"
 import { type } from "arktype"
 
 const range = { from: new Date("2026-03-01T00:00:00Z"), to: new Date("2026-03-02T00:00:00Z") }
@@ -355,10 +248,11 @@ void loadChartPayload(loadStats, range) // resolves to { payload, error }
 const rejected = chartPayloadSchema({ data: [], timeFrame: "weeks" })
 console.log({
   asked,
+  timeFrames: TIME_FRAMES,
   point: timeSeriesPointSchema({ timeGroup: "2026-03-01T00:00:00Z", value: 1200 }),
   rejected: rejected instanceof type.errors ? rejected.summary : rejected,
 })`,
-    covers: ["timeSeriesPointSchema", "chartPayloadSchema", "loadChartPayload"],
+    covers: ["timeSeriesPointSchema", "chartPayloadSchema", "loadChartPayload", "TIME_FRAMES"],
     run: () => {
       const range = { from: new Date("2026-03-01T00:00:00Z"), to: new Date("2026-03-02T00:00:00Z") }
       const asked: string[] = []
@@ -373,6 +267,7 @@ console.log({
       const rejected = chartPayloadSchema({ data: [], timeFrame: "weeks" })
       return {
         asked,
+        timeFrames: TIME_FRAMES,
         point: timeSeriesPointSchema({ timeGroup: "2026-03-01T00:00:00Z", value: 1200 }),
         rejected: rejected instanceof type.errors ? rejected.summary : rejected,
       }

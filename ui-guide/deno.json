@@ -15,11 +15,6 @@
     // repository. It stays in the shipped `deno.json` anyway: Deno resolves `coverage.ts`'s import
     // through this file at test time, and `deno.json`'s `imports` block cannot be excluded on its
     // own the way a file can — the manifest ships whole, or not at all.
-    //
-    // There is deliberately no `d3` entry. The charts section renders the d3 islands, but the only
-    // module that imports d3 is `charts/d3-line-chart.tsx`, whose imports Deno resolves through
-    // `charts/deno.json`. `deno task ts:check` and `deno task --cwd pages build` both pass with no
-    // d3 declared here, so an entry would be a pin nothing reads.
     "@std/jsonc": "jsr:@std/jsonc@1.0.2"
   },
   "publish": {

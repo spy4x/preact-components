@@ -1,10 +1,9 @@
 /**
  * The box a card shows where a lazily loaded component goes, and the element that holds it.
  *
- * The charts page's d3 cards and the map page's Map card each reach their component through a
- * `lazyModule` (`./lazy.ts`), so until the module arrives — on the server, and in the browser
- * until the load resolves — the card shows a placeholder instead. Both render it through this one
- * component, so the two cannot drift apart.
+ * The map page's Map card reaches its component through a `lazyModule` (`./lazy.ts`), so until the
+ * module arrives — on the server, and in the browser until the load resolves — the card shows a
+ * placeholder instead, rendered by this component. Another lazily loaded card would use it too.
  */
 
 import type { ComponentChildren, JSX } from "preact"

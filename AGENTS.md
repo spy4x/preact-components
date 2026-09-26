@@ -14,7 +14,7 @@ its own PR, each owning exactly one top-level directory.
 | `icons/`    | merged icon set: one component per glyph, all listed by the guide's icon gallery                                                                                                                                                                                                                          |
 | `ui/`       | `Stack`, `Cluster`, `Grid`, `Page`, `Section`, `Badge`, `Button`, `Table`, `DataTable`, `Dropdown`, `Combobox`, `Modal`, `Tooltip`, `Toastr` — and the rest                                                                                                                                               |
 | `system/`   | `AuthForm`, `Calendar`, `RailShell`, `SEOHead` + `head` store, `Shell`, `SiteHeader`, `StateInit`, `SWUpdater`                                                                                                                                                                                            |
-| `charts/`   | server-rendered SVG charts (`LineChart`, `Bars`, `DonutChart`, `Kpi`), axis maths (`scales`), d3 islands (`D3LineChart`, `CompareChart`)                                                                                                                                                                  |
+| `charts/`   | server-rendered charts with browser tooltips (`LineChart`, `Bars`, `DonutChart`, `Kpi`), axis maths (`scales`)                                                                                                                                                                                            |
 | `cn/`       | `cn()` — class-name join + Tailwind conflict resolution                                                                                                                                                                                                                                                   |
 | `signals/`  | `buildModelStore`, `useUrlFilters`, `table-state`, `createThemeStore`, `createToastStore`, `patchSignal` — and the rest; no components                                                                                                                                                                    |
 | `crud/`     | `CrudList`, `CrudEditor`, `AssociationEditor`, `DeletionValidation`, field rows                                                                                                                                                                                                                           |
@@ -70,9 +70,9 @@ Rules for a package config:
 
 - `name` is `@spy4x/preact-<directory>` — that is how sibling packages import you.
 - `exports` lists exactly the entry points that exist today. Adding a file does not add an export.
-- Do not add an `imports` block unless you need a specifier the root does not provide. Two
-  packages do, each because only it needs the dependency: `charts/deno.json` pins `d3`, and
-  `map/deno.json` pins `leaflet` and `@types/leaflet`. Shared deps (preact, signals, arktype,
+- Do not add an `imports` block unless you need a specifier the root does not provide. One
+  package does, because only it needs the dependency: `map/deno.json` pins `leaflet` and
+  `@types/leaflet`. Shared deps (preact, signals, arktype,
   tailwind, `@std/*`, tailwind-merge, wouter-preact, and `@spy4x/*` from spy4x/ts-libs) live in the
   root import map so every package resolves one copy.
 - Sibling imports use the member name: `import { cn } from "@spy4x/preact-cn"`.
@@ -435,9 +435,9 @@ return nothing. Whether these pins match `spy4x/template` and `spy4x/ts-libs` wh
 overlap is **not** checked by anything here — compare them by hand with
 `grep -oE '"(arktype|preact|@preact/signals)@[0-9][^"_]*' deno.lock` run in each repo.
 
-The root `deno.jsonc` import map is the only list of pins; read it there. Three pins live outside
-it, each in the one package that needs it (see "Adding a package" above): `d3` in
-`charts/deno.json`, and `leaflet` and `@types/leaflet` in `map/deno.json`.
+The root `deno.jsonc` import map is the only list of pins; read it there. Two pins live outside
+it, in the one package that needs them (see "Adding a package" above): `leaflet` and
+`@types/leaflet` in `map/deno.json`.
 
 **What is mechanically checked, and what is not.** Assume nothing here is. Exact pinning is a
 convention held by review: `deno.lock` is committed and Deno keeps it in sync automatically, but it is
