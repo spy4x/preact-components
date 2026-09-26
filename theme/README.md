@@ -89,24 +89,59 @@ const entry = `
 ```
 
 `@source inline` (Tailwind 4.1 and later) takes class names instead of files, so the app's build
-never scans the library. The app's own files are still scanned as usual. An app that builds with
-Vite and `@tailwindcss/vite` has no entry string in TypeScript; it appends the same line to its
-stylesheet from a small plugin placed before Tailwind's:
+never scans the library. The app's own files are still scanned as usual.
+
+An app that builds with Vite and `@tailwindcss/vite` has no entry string in TypeScript. It imports
+the plugins from `@spy4x/preact-theme/vite` instead:
 
 ```ts
 // vite.config.ts
-import { COMPONENT_CLASSES } from "@spy4x/preact-theme"
+import deno from "@deno/vite-plugin"
+import preact from "@preact/preset-vite"
+import tailwindcss from "@tailwindcss/vite"
+import { npmSpecifiers, preactThemeCss, requireComponentCss } from "@spy4x/preact-theme/vite"
+import { defineConfig } from "vite"
 
-const componentClasses = {
-  name: "component-classes",
-  enforce: "pre" as const,
-  transform(code: string, id: string) {
-    // Vite's dev server asks for a linked stylesheet as `app.css?direct`, so drop the query first.
-    if (!id.split("?")[0].endsWith("/src/app.css")) return
-    return `${code}\n@source inline("${COMPONENT_CLASSES}");\n`
-  },
-}
+export default defineConfig({
+  plugins: [
+    npmSpecifiers({ readTextFile: Deno.readTextFile }),
+    deno(),
+    preact(),
+    preactThemeCss(),
+    tailwindcss(),
+    requireComponentCss(),
+  ],
+})
 ```
+
+and its `src/app.css` keeps the `@import` lines of the recipe above:
+
+```css
+@import "tailwindcss";
+@import "@spy4x/preact-theme/tokens.css";
+@import "@spy4x/preact-theme/preset.css";
+```
+
+- `preactThemeCss()` replaces the theme's `@import` lines in `src/app.css` with the text this
+  package exports, and appends the `@source inline` line with `COMPONENT_CLASSES`. The `tokens.css`
+  and `preset.css` lines are required and `ink.css` is optional. Another stylesheet is named with
+  `preactThemeCss({ stylesheet: "/styles/main.css" })`. List it before `tailwindcss()`.
+- `requireComponentCss()` fails `vite build` when the built CSS lacks `.lg\:w-64` or
+  `.focus\:not-sr-only`, two selectors only the library's components render. Tailwind exits 0
+  when the class names never reached it, so without this check an app ships unstyled. `selectors`
+  replaces the two defaults; never pass a plain class such as `.sr-only` there, because Tailwind
+  scans `vite.config.ts` itself and emits it, so the guard could never fail.
+- `npmSpecifiers()` resolves the `npm:` specifiers inside the library's modules, such as
+  `npm:@preact/signals@2.5.1`, to the app's own copy of that package. `@deno/vite-plugin` 1.0.6
+  cuts a scoped name at its first `@` and drops a subpath, so without it the build fails
+  (denoland/deno-vite-plugin#74); it goes away once that is fixed. It throws
+  `NpmVersionMismatchError` when the app's copy is not the version the library pins. It reads the
+  resolved package's `package.json` through the `readTextFile` it is given — `Deno.readTextFile`,
+  or Node's `(path) => readFile(path, "utf8")` — so the module itself calls no Deno-only API. List
+  it before `deno()`.
+
+The plugins are typed structurally, so this package does not depend on `vite`; an object they
+return is accepted by Vite's `plugins` array as it is.
 
 Scanning the installed library does not work for a Deno app. JSR packages are not in
 `node_modules`: Deno keeps them in its own cache under hashed file names. Pointing `@source` at
