@@ -7,6 +7,12 @@
  * rarely share a zone. Labels are formatted with `Intl.DateTimeFormat` in the same zone.
  */
 
+import {
+  ONE_DAY_IN_MILLISECONDS as DAY,
+  ONE_HOUR_IN_MILLISECONDS as HOUR,
+  ONE_MINUTE_IN_MILLISECONDS as MINUTE,
+} from "@spy4x/platform/universal/time-constants"
+
 /** The unit a tick step counts in. */
 export type TimeUnit = "minute" | "hour" | "day" | "month" | "year"
 
@@ -22,9 +28,6 @@ export interface TimeTicks {
   ticks: number[]
 }
 
-const MINUTE = 60_000
-const HOUR = 60 * MINUTE
-const DAY = 24 * HOUR
 /** Average lengths, used only to pick a step, never to place a tick. */
 const MONTH = 30.44 * DAY
 const YEAR = 365.25 * DAY
