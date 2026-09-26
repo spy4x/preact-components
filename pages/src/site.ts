@@ -22,6 +22,14 @@ export const PAGE_DESCRIPTION =
   "Live component demos from @spy4x/preact-* — ui, charts, system and crud — plus the " +
   "whole icon set: dropdowns open, toggles toggle, charts draw, icons are searchable and copyable."
 
+/**
+ * The global `verify` sets in every document it loads, before any script runs, so the page draws
+ * the Map card with the local tile in `map-demo/` instead of OpenStreetMap's: the browser checks
+ * never reach past the preview server. Nothing else sets it, so the published guide draws real
+ * tiles.
+ */
+export const LOCAL_MAP_TILES_FLAG = "__pagesLocalMapTiles"
+
 /** Inline SVG favicon, so the page never requests a file that does not exist. */
 export const FAVICON =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%233c1d95'/%3E%3Ctext x='16' y='23' text-anchor='middle' font-family='system-ui,sans-serif' font-size='20' font-weight='700' fill='%23ffffff'%3Ep%3C/text%3E%3C/svg%3E"
