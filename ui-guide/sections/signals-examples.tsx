@@ -46,7 +46,7 @@ import { toExampleDemos } from "../example.tsx"
 const examples: ExampleFragment = {
   toggleSort: {
     title: "Sort rules in the address",
-    wide: false,
+    wide: true,
     summary:
       "Keeps a table's sort rules in a URL parameter: `parseSort` reads them, `toggleSort` moves one column through ascending, descending and off, and `serializeSort` writes them back.",
     snippet: `import { parseSort, serializeSort, toggleSort } from "@spy4x/preact-signals"
@@ -63,7 +63,7 @@ serializeSort(next)`,
   },
   sortRows: {
     title: "sortRows() and removeSortRule()",
-    wide: false,
+    wide: true,
     summary:
       "`sortRows` orders rows by several rules at once without changing the input, and `removeSortRule` takes one column out of the rules.",
     snippet: `import { removeSortRule, type SortRule, sortRows } from "@spy4x/preact-signals"
@@ -165,7 +165,7 @@ console.log({
   },
   clearFilterFields: {
     title: "clearFilterFields()",
-    wide: false,
+    wide: true,
     summary:
       "Resets every filter to its default in one batch, so the address changes once and one press of Back undoes the clear.",
     snippet: `import { signal } from "@preact/signals"
@@ -193,7 +193,7 @@ console.log({ before, after: { status: status.value, page: page.value } })`,
   },
   patchSignal: {
     title: "patchSignal()",
-    wide: false,
+    wide: true,
     summary:
       "Replaces an object signal's value with a copy that has some fields changed, so everything reading it updates once.",
     snippet: `import { signal } from "@preact/signals"
@@ -211,7 +211,7 @@ settings.value`,
   },
   setMapEntry: {
     title: "setMapEntry() and deleteMapEntry()",
-    wide: false,
+    wide: true,
     summary:
       "Return a new `Map` with one entry set or removed, since a signal holding a `Map` only notices a new value.",
     snippet: `import { deleteMapEntry, setMapEntry } from "@spy4x/preact-signals"
@@ -230,7 +230,7 @@ console.log({ cart, added, removed })`,
   },
   createToastStore: {
     title: "createToastStore()",
-    wide: false,
+    wide: true,
     summary:
       "Holds the toasts `Toastr` shows: each call adds one and returns its id, and `remove` takes one off.",
     snippet: `import { createToastStore } from "@spy4x/preact-signals"
