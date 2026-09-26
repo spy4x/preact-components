@@ -32,6 +32,7 @@
     "./input": "./input.tsx",
     "./input-button": "./input-button.tsx",
     "./install-box": "./install-box.tsx",
+    "./layout": "./layout.tsx",
     "./lightbox": "./lightbox.tsx",
     "./loading-screen": "./loading-screen.tsx",
     "./loading-skeleton": "./loading-skeleton.tsx",
