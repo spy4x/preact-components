@@ -234,11 +234,13 @@ async function serverRenderedMapChecks(devtools: Devtools, frame: string): Promi
     `fetch(new URL(${JSON.stringify(SSR_PAGE)}, location.origin + location.pathname))
       .then((response) => response.text())`,
   )
+  // An element, not the attribute alone: the page's inline script names the same selector.
+  const servedBox = /<div [^>]*data-e2e="map-box"/
   check(
     "the server-rendered Map page serves Map's box and its list of places, with no Leaflet map yet",
-    served.includes(`data-e2e="map-box"`) && !served.includes("leaflet-container") &&
+    servedBox.test(served) && !served.includes("leaflet-container") &&
       labels.every((label) => served.includes(`>${label}<`)),
-    `served ${served.length} characters; box ${served.includes(`data-e2e="map-box"`)}; ` +
+    `served ${served.length} characters; box ${servedBox.test(served)}; ` +
       `places ${labels.filter((label) => served.includes(`>${label}<`)).join(", ") || "none"}`,
   )
 
