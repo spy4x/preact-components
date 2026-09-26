@@ -87,6 +87,7 @@
  */
 
 import { cn } from "@spy4x/preact-cn"
+import { IconEye, IconEyeOff } from "@spy4x/preact-icons"
 import { Button } from "@spy4x/preact-ui/button"
 import { Field } from "@spy4x/preact-ui/field"
 import { Input } from "@spy4x/preact-ui/input"
@@ -134,9 +135,9 @@ export interface AuthFormLabels {
   code: string
   /** Hint shown under the one-time-code field. */
   codeHint: string
-  /** Name of the show-password control while the password is hidden. */
+  /** Accessible name of the eye-icon toggle while the password is hidden. */
   showPassword: string
-  /** Name of the same control while the password is showing. */
+  /** Accessible name of the same toggle while the password is showing. */
   hidePassword: string
   /** Submit button in sign-in mode. */
   signIn: string
@@ -322,14 +323,20 @@ export function AuthForm(
                     type={showPassword ? "text" : "password"}
                     autocomplete={mode === "sign-up" ? "new-password" : "current-password"}
                     required
-                    class="pr-16"
+                    class="pr-12"
                   />
+                  {
+                    /* An icon-only toggle, 32 px square at 4 px from the edge, so the field's
+                      `pr-12` (48 px) keeps a shown password clear of it; a word-sized button
+                      needed more room than any step on the spacing scale. */
+                  }
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="icon"
                     size="sm"
                     aria-pressed={showPassword}
-                    class="absolute inset-y-0 right-1 my-1"
+                    aria-label={showPassword ? copy.hidePassword : copy.showPassword}
+                    class="absolute top-1/2 right-1 -translate-y-1/2"
                     onClick={(event) => {
                       // Keeps the toggle itself the Tab stop after the type swap re-renders it,
                       // rather than leaving the browser's own click-focus behaviour to decide —
@@ -338,7 +345,7 @@ export function AuthForm(
                       setShowPassword((value) => !value)
                     }}
                   >
-                    {showPassword ? copy.hidePassword : copy.showPassword}
+                    {showPassword ? <IconEyeOff class="size-5" /> : <IconEye class="size-5" />}
                   </Button>
                 </div>
               )}

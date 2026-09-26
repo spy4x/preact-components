@@ -487,7 +487,10 @@ here passes `required` to both: to `Field`, for the visible `*`, and to the `Inp
 the native constraint validation a password manager and a browser's own "please fill this in" both
 rely on.
 
-**The show/hide password control is a real, named button.** `type="button"` keeps it from
+**The show/hide password control is a real, named button.** It is an eye icon, not a word: a
+32 px square sits inside the field's on-scale `pr-12`, while a "Show password" label was 105 px
+wide and ran over a shown password. Its accessible name is `labels.showPassword` or
+`labels.hidePassword` (English defaults), `type="button"` keeps it from
 submitting the form, `aria-pressed` reports whether the password is showing, and it moves the focus
 to itself on activation rather than leaving a click's default focus behaviour to decide — that
 behaviour is not the same in every engine.

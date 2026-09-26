@@ -205,6 +205,21 @@ describe("AuthForm", () => {
     expect(ids[0]).not.toBe(ids[1])
   })
 
+  it("renders the show/hide toggle as an eye icon named by its label, inside the field's padding", () => {
+    const html = render(<AuthForm {...base} />)
+    const toggle = /<button[^>]*aria-pressed="false"[^>]*>(.*?)<\/button>/.exec(html)
+    expect(toggle?.[0]).toContain('aria-label="Show password"')
+    expect(toggle?.[1]).toMatch(/^<svg/)
+    expect(toggle?.[1]).not.toContain("Show password")
+    expect(toggle?.[0]).toContain("size-8")
+    expect(inputTag(html, "password")).toContain("pr-12")
+  })
+
+  it("takes the toggle's accessible name from a labels override", () => {
+    const html = render(<AuthForm {...base} labels={{ showPassword: "Passwort zeigen" }} />)
+    expect(html).toContain('aria-label="Passwort zeigen"')
+  })
+
   it("never renders a show/hide toggle that could submit the form", () => {
     const html = render(<AuthForm {...base} />)
     expect(html).toMatch(
