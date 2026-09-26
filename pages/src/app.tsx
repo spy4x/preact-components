@@ -13,10 +13,8 @@
  * {@link DataTableSortDemo}, the same hook underneath `DataTable`'s own `sort` prop.
  */
 
-import { IconMoon, IconSun } from "@spy4x/preact-icons"
-import { buttonClasses } from "@spy4x/preact-ui/button"
 import { copyToClipboard } from "@spy4x/preact-ui/copy-button"
-import { type GuideRouteChange, uiGuideRoute } from "@spy4x/preact-ui-guide"
+import { type ColorSchemePort, type GuideRouteChange, uiGuideRoute } from "@spy4x/preact-ui-guide"
 import { useEffect, useState } from "preact/hooks"
 import { DataTableSortDemo } from "./data-table-sort.tsx"
 import { PAGE_TITLE, REPOSITORY } from "./site.ts"
@@ -54,6 +52,7 @@ export interface AppProps {
  * @param props See {@link AppProps}.
  */
 export function App({ initialHash, version }: AppProps) {
+  const colorScheme = useColorScheme()
   useEffect(() => {
     // The island's boot marker. `verify.ts` asserts it, which is how the check tells "hydrated" from
     // "the script was fetched and threw".
@@ -70,7 +69,7 @@ export function App({ initialHash, version }: AppProps) {
         onRouteChange={titleDocument}
         version={version}
         repository={REPOSITORY}
-        actions={<ThemeToggle />}
+        colorScheme={colorScheme}
         contentAs="main"
         pageExtras={{
           signals: (
@@ -102,12 +101,13 @@ function titleDocument({ route, page }: GuideRouteChange): void {
 }
 
 /**
- * Light/dark switch, handed to the guide's header as its `actions`.
+ * The colour scheme the guide's theme switch reads and changes: the `dark` class on `<html>`,
+ * remembered in storage.
  *
- * The class on `<html>` is set by the inline script in `<head>` before first paint; this reads it
- * back in an effect, so the island's first render still matches the prerendered button.
+ * The class is set by the inline script in `<head>` before first paint; this reads it back in an
+ * effect, so the island's first render still matches the prerendered switch.
  */
-function ThemeToggle() {
+function useColorScheme(): ColorSchemePort {
   const [dark, setDark] = useState(false)
 
   useEffect(() => {
@@ -125,21 +125,7 @@ function ThemeToggle() {
     }
   }
 
-  // The button says what a press does: in the light palette it offers the dark one, and back.
-  const next = dark ? "light" : "dark"
-  return (
-    <button
-      type="button"
-      onClick={toggle}
-      aria-label={`Switch to the ${next} theme`}
-      title={`Switch to the ${next} theme`}
-      class={buttonClasses("ghost", "sm")}
-      data-e2e="theme-toggle"
-    >
-      {dark ? <IconSun class="size-5" /> : <IconMoon class="size-5" />}
-      <span class="hidden md:inline">{dark ? "Light" : "Dark"}</span>
-    </button>
-  )
+  return { dark, toggle }
 }
 
 /** Where the library lives and what the demo is built from. */

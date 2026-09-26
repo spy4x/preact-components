@@ -21,7 +21,7 @@
  */
 
 import { cn } from "@spy4x/preact-cn"
-import { IconBars3, IconGitHub, IconXMark } from "@spy4x/preact-icons"
+import { IconBars3, IconGitHub, IconMoon, IconSun, IconXMark } from "@spy4x/preact-icons"
 import { Button, buttonClasses } from "@spy4x/preact-ui/button"
 import { InstallBox } from "@spy4x/preact-ui/install-box"
 import { Cluster, Grid, Section, Stack } from "@spy4x/preact-ui/layout"
@@ -96,6 +96,14 @@ export interface UIGuideLabels {
   repository?: string
   /** The right-hand list's heading. Defaults to `"On this page"`. */
   onThisPage?: string
+  /** The theme switch's name in the light palette. Defaults to `"Switch to dark mode"`. */
+  switchToDark?: string
+  /** The theme switch's name in the dark palette. Defaults to `"Switch to light mode"`. */
+  switchToLight?: string
+  /** The theme switch's visible word in the light palette, from `md`. Defaults to `"Dark mode"`. */
+  darkMode?: string
+  /** The theme switch's visible word in the dark palette, from `md`. Defaults to `"Light mode"`. */
+  lightMode?: string
   /** The overview's button to the first package page. Defaults to `"Browse components"`. */
   browse?: string
   /** The overview's example heading. Defaults to `"A first example"`. */
@@ -137,6 +145,10 @@ const DEFAULT_LABELS: Required<Omit<UIGuideLabels, "navGroups">> & {
   searchEmpty: "Nothing matches that name.",
   repository: "Source on GitHub",
   onThisPage: "On this page",
+  switchToDark: "Switch to dark mode",
+  switchToLight: "Switch to light mode",
+  darkMode: "Dark mode",
+  lightMode: "Light mode",
   browse: "Browse components",
   exampleHeading: "A first example",
   packagesHeading: "Packages",
@@ -156,6 +168,14 @@ export interface GuideRouteChange {
   route: RouteMatch
   /** The page showing: the route's own, or the one kept for a route that names none. */
   page: GuidePage
+}
+
+/** The host's colour scheme, as the guide's theme switch reads and changes it. */
+export interface ColorSchemePort {
+  /** Whether the dark palette is on. */
+  dark: boolean
+  /** Switch to the other palette. */
+  toggle: () => void
 }
 
 export interface UIGuideProps {
@@ -194,7 +214,12 @@ export interface UIGuideProps {
   repository?: string
   /** The command the overview offers to copy. Defaults to `"deno add jsr:@spy4x/preact-ui"`. */
   install?: string
-  /** Host controls at the header's end — the colour-scheme switch, for instance. */
+  /**
+   * The colour scheme, as a port: whether the dark palette is on, and how to switch it. Given, the
+   * header shows a switch that says what a press does; left out, there is none.
+   */
+  colorScheme?: ColorSchemePort
+  /** Host controls at the header's end, after the theme switch. */
   actions?: ComponentChildren
   /**
    * The element the page column renders. `div` by default; a host with no `<main>` of its own
@@ -221,6 +246,7 @@ export function UIGuide(
     version,
     repository,
     install = "deno add jsr:@spy4x/preact-ui",
+    colorScheme,
     actions,
     contentAs: Content = "div",
     class: className,
@@ -381,7 +407,7 @@ export function UIGuide(
             <span class="truncate">{labels.title}</span>
             {version
               ? (
-                <span class="hidden rounded-full bg-purple-100 px-2 text-xs sm:inline font-medium text-purple-800 dark:bg-purple-950 dark:text-purple-200">
+                <span class="hidden rounded-full bg-gray-100 px-2 text-xs font-medium text-gray-600 sm:inline dark:bg-gray-800 dark:text-gray-300">
                   v{version}
                 </span>
               )
@@ -402,6 +428,7 @@ export function UIGuide(
                 </a>
               )
               : null}
+            {colorScheme ? <ThemeSwitch scheme={colorScheme} labels={labels} /> : null}
             {actions}
           </div>
         </div>
@@ -416,7 +443,7 @@ export function UIGuide(
             route={route}
             registry={registry}
             follow={follow}
-            cardsBelowXl
+            pageListBelowXl
           />
         </aside>
 
@@ -526,6 +553,27 @@ export function UIGuide(
 }
 
 /**
+ * The header's light/dark switch. Its name says what a press does ("Switch to dark mode"), at
+ * every width; from `md` it also shows the mode it switches to, which the name contains.
+ */
+function ThemeSwitch({ scheme, labels }: { scheme: ColorSchemePort; labels: Labels }) {
+  const name = scheme.dark ? labels.switchToLight : labels.switchToDark
+  return (
+    <button
+      type="button"
+      onClick={scheme.toggle}
+      aria-label={name}
+      title={name}
+      class={buttonClasses("ghost", "sm")}
+      data-e2e="theme-toggle"
+    >
+      {scheme.dark ? <IconSun class="size-5" /> : <IconMoon class="size-5" />}
+      <span class="hidden md:inline">{scheme.dark ? labels.lightMode : labels.darkMode}</span>
+    </button>
+  )
+}
+
+/**
  * The name of the first card in view on the page showing, followed as the reader scrolls.
  *
  * Runs once the host has read the address, and again for each page; `undefined` before that and
@@ -566,10 +614,11 @@ interface GuideNavProps {
   /** Called on every link's click, with its href. */
   follow: (href: string, event: JSX.TargetedMouseEvent<HTMLAnchorElement>) => void
   /**
-   * List the current page's cards only below `xl`, where there is no "On this page" column. The
-   * links stay in the document at every width, so a route's current card is marked either way.
+   * List the current page's sections and cards only below `xl`, where there is no "On this page"
+   * column to list them. The links stay in the document at every width, so the section or card a
+   * route names is marked either way.
    */
-  cardsBelowXl?: boolean
+  pageListBelowXl?: boolean
 }
 
 /**
@@ -579,7 +628,9 @@ interface GuideNavProps {
  * the route names, never both, so a reader and a check can each ask for the one current link.
  * Nothing is truncated: a long name wraps.
  */
-function GuideNav({ label, labels, page, route, registry, follow, cardsBelowXl }: GuideNavProps) {
+function GuideNav(
+  { label, labels, page, route, registry, follow, pageListBelowXl }: GuideNavProps,
+) {
   return (
     <nav aria-label={label} class="text-sm">
       <Stack gap="lg" as="ul">
@@ -612,7 +663,12 @@ function GuideNav({ label, labels, page, route, registry, follow, cardsBelowXl }
                     </a>
                     {current && candidate.sections.length > 0
                       ? (
-                        <ul class="flex flex-col gap-2 py-2 pl-3">
+                        <ul
+                          class={cn(
+                            "flex flex-col gap-2 py-2 pl-3",
+                            pageListBelowXl && "xl:hidden",
+                          )}
+                        >
                           {candidate.sections.map((section) => (
                             <NavSection
                               key={section.id}
@@ -621,7 +677,6 @@ function GuideNav({ label, labels, page, route, registry, follow, cardsBelowXl }
                               route={route}
                               registry={registry}
                               follow={follow}
-                              cardsBelowXl={cardsBelowXl}
                             />
                           ))}
                         </ul>
@@ -640,13 +695,12 @@ function GuideNav({ label, labels, page, route, registry, follow, cardsBelowXl }
 
 /** One section in the navigation: its link, when the page has more than one, then its cards. */
 function NavSection(
-  { section, titled, route, registry, follow, cardsBelowXl }: {
+  { section, titled, route, registry, follow }: {
     section: CatalogueSection
     titled: boolean
     route: RouteMatch
     registry: PartialDemoRegistry
     follow: GuideNavProps["follow"]
-    cardsBelowXl?: boolean
   },
 ) {
   const sectionHref = routeHref(section.id)
@@ -666,7 +720,7 @@ function NavSection(
           </a>
         )
         : null}
-      <ul class={cn(cardsBelowXl && "xl:hidden")}>
+      <ul>
         {section.names.filter((name) => name in registry).map((name) => {
           const href = demoHref(section.id, name)
           const current = route.kind === "demo" && route.name === name
@@ -720,7 +774,15 @@ function OnThisPage(
         {sections.map((section) => (
           <li key={section.id}>
             {sections.length > 1
-              ? <p class="pb-1 font-medium text-gray-900 dark:text-gray-100">{section.title}</p>
+              ? (
+                <a
+                  href={routeHref(section.id)}
+                  onClick={(event) => follow(routeHref(section.id), event)}
+                  class="block pb-1 font-medium text-gray-900 hover:text-purple-800 dark:text-gray-100 dark:hover:text-purple-300"
+                >
+                  {section.title}
+                </a>
+              )
               : null}
             <ul class="border-l border-gray-200 dark:border-gray-800">
               {section.names.filter((name) => name in registry).map((name) => {
@@ -847,7 +909,7 @@ function Overview(
                     {page.packageName}
                   </span>
                   <span class="text-sm text-gray-600 dark:text-gray-300">
-                    <InlineMarkdown text={page.blurb} />
+                    <InlineMarkdown text={page.summary} />
                   </span>
                 </a>
               </li>
@@ -928,7 +990,13 @@ function PackagePage(
 
         return (
           <section key={section.id} id={section.id} class="flex scroll-mt-16 flex-col gap-6">
-            <div class={cn("flex flex-col gap-1", single && "sr-only")}>
+            <div
+              class={cn(
+                "flex flex-col gap-1",
+                // Kept for the outline, hidden where it would repeat the page's own heading.
+                (single || section.title === page.title) && "sr-only",
+              )}
+            >
               <SectionHeading class="text-2xl font-semibold tracking-tight text-gray-950 dark:text-gray-50">
                 {section.title}
               </SectionHeading>

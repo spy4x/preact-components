@@ -167,7 +167,11 @@ export function DemoCard(
 function PropsSummary({ props }: { props: readonly DemoProp[] }): JSX.Element {
   return (
     <div class="overflow-x-auto border-b border-gray-200 px-4 py-4 sm:px-6 dark:border-gray-700/80">
-      <table class="w-full text-left text-sm">
+      {
+        /* `bg-transparent`: the preset paints a table in the dark palette with the surface colour
+        (`theme/preset.css`, "Chrome the popup is painted by"), which would box the summary. */
+      }
+      <table class="w-full bg-transparent text-left text-sm">
         <caption class="pb-2 text-left text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">
           Props
         </caption>

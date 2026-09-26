@@ -275,7 +275,7 @@ export function GuideSearch({ entries, labels, go }: GuideSearchProps): JSX.Elem
           id={listbox}
           role="listbox"
           aria-label={labels.search}
-          class="max-h-96 overflow-y-auto p-2"
+          class="max-h-96 overflow-y-auto bg-transparent p-2"
         >
           {results.length === 0
             ? (
