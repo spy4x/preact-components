@@ -26,6 +26,12 @@ import {
   DEFAULT_TRACK_COLOR,
   seriesColor,
 } from "@spy4x/preact-charts/colors"
+import {
+  assertD3Available,
+  DEFAULT_D3_LINE_CHART_COLORS,
+  MISSING_D3_LINE_ERROR,
+  yDomainFor,
+} from "@spy4x/preact-charts/d3-line-chart-core"
 import { donutGeometry } from "@spy4x/preact-charts/donut-chart"
 import { loadMetricSeries, useMetricSeries } from "@spy4x/preact-charts/metric-panel"
 import {
@@ -54,8 +60,9 @@ import { d3LineChartModule } from "./charts-d3.tsx"
 /**
  * What an example that needs `charts/d3-line-chart` prints until the charts page has loaded it.
  *
- * That module imports d3, so these examples reach it through {@link d3LineChartModule} rather
- * than a static import (see `charts-d3.tsx`). The served page and the browser's first render print
+ * That module imports d3, so such an example reaches it through {@link d3LineChartModule} rather
+ * than a static import (see `charts-d3.tsx`). Only the time-labels example is one: the helpers that
+ * need no d3 come statically from `charts/d3-line-chart-core` and print on the server. The served page and the browser's first render print
  * this line, and the real output replaces it once the module arrives. With scripts off it never
  * changes, so it says where the output is computed rather than promising a load.
  *
@@ -222,19 +229,14 @@ console.log({
       "DEFAULT_TRACK_COLOR",
       "DEFAULT_D3_LINE_CHART_COLORS",
     ],
-    run: () => {
-      const d3Line = d3LineChartModule.use()
-      if (d3Line.status !== "loaded") return pendingD3Output(d3Line)
-      const { DEFAULT_D3_LINE_CHART_COLORS } = d3Line.module
-      return {
-        axis: DEFAULT_AXIS_COLOR,
-        grid: DEFAULT_GRID_COLOR,
-        text: DEFAULT_TEXT_COLOR,
-        surface: DEFAULT_SURFACE_COLOR,
-        track: DEFAULT_TRACK_COLOR,
-        d3Line: DEFAULT_D3_LINE_CHART_COLORS.line,
-      }
-    },
+    run: () => ({
+      axis: DEFAULT_AXIS_COLOR,
+      grid: DEFAULT_GRID_COLOR,
+      text: DEFAULT_TEXT_COLOR,
+      surface: DEFAULT_SURFACE_COLOR,
+      track: DEFAULT_TRACK_COLOR,
+      d3Line: DEFAULT_D3_LINE_CHART_COLORS.line,
+    }),
   },
   formatTimeTick: {
     title: "Time labels",
@@ -274,9 +276,6 @@ console.log([
 ])`,
     covers: ["yDomainFor"],
     run: () => {
-      const d3Line = d3LineChartModule.use()
-      if (d3Line.status !== "loaded") return pendingD3Output(d3Line)
-      const { yDomainFor } = d3Line.module
       const points = [0, 8, 20, 14].map((value, hour) => ({ timeGroup: hour * 3_600_000, value }))
       return [
         yDomainFor(points),
@@ -290,7 +289,7 @@ console.log([
     summary:
       "The check `D3LineChart` makes before drawing: a `d3` with no line generator throws `MISSING_D3_LINE_ERROR`, which tells the reader to add the dependency.",
     snippet:
-      `import { assertD3Available, MISSING_D3_LINE_ERROR } from "@spy4x/preact-charts/d3-line-chart"
+      `import { assertD3Available, MISSING_D3_LINE_ERROR } from "@spy4x/preact-charts/d3-line-chart-core"
 
 assertD3Available({ line: () => {} }) // a d3 with a line generator passes
 let message = ""
@@ -302,9 +301,6 @@ try {
 console.log({ isTheExportedMessage: message === MISSING_D3_LINE_ERROR, message })`,
     covers: ["assertD3Available", "MISSING_D3_LINE_ERROR"],
     run: () => {
-      const d3Line = d3LineChartModule.use()
-      if (d3Line.status !== "loaded") return pendingD3Output(d3Line)
-      const { assertD3Available, MISSING_D3_LINE_ERROR } = d3Line.module
       assertD3Available({ line: () => {} })
       let message = ""
       try {

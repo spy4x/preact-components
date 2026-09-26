@@ -279,29 +279,11 @@ const TEXT_DRAWN_IN_BROWSER: Record<string, DrawnInBrowser> = {
     reason: "charts/compare-chart loads when the charts page opens: the served page holds a " +
       "placeholder, and the browser shows the toggle and the chart d3 draws in its place",
   },
-  "demo-DEFAULT_AXIS_COLOR": {
-    selector: `[data-e2e="example-output"]`,
-    parts: 1,
-    reason: "charts/d3-line-chart loads when the charts page opens, and this output reads " +
-      "DEFAULT_D3_LINE_CHART_COLORS from it",
-  },
   "demo-formatTimeTick": {
     selector: `[data-e2e="example-output"]`,
     parts: 1,
     reason: "charts/d3-line-chart loads when the charts page opens, and this output calls " +
       "formatTimeTick and defaultTooltipFormat from it",
-  },
-  "demo-yDomainFor": {
-    selector: `[data-e2e="example-output"]`,
-    parts: 1,
-    reason: "charts/d3-line-chart loads when the charts page opens, and this output calls " +
-      "yDomainFor from it",
-  },
-  "demo-assertD3Available": {
-    selector: `[data-e2e="example-output"]`,
-    parts: 1,
-    reason: "charts/d3-line-chart loads when the charts page opens, and this output calls " +
-      "assertD3Available from it",
   },
   "demo-Map": {
     selector: `[data-e2e="map-slot"]`,
