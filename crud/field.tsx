@@ -119,7 +119,7 @@ function hasIssues<M extends object>(
  * come first in its `aria-describedby`, then `Field`'s hint.
  */
 function FieldCell<M extends object>(
-  { id, label, span, hint, vl, name, renderIssue, labelFor, control }: {
+  { id, label, span, hint, vl, name, renderIssue, control }: {
     id: string
     label?: string
     span: string
@@ -127,7 +127,6 @@ function FieldCell<M extends object>(
     vl: ReadonlySignal<ValidationModel<M>>
     name: keyof M & string
     renderIssue?: (issue: FieldIssue, type: string) => ComponentChildren
-    labelFor?: boolean
     control: (wiring: ControlWiring) => VNode
   },
 ): JSX.Element {
@@ -135,7 +134,7 @@ function FieldCell<M extends object>(
   const issuesId = `${id}-issues`
   return (
     <div class={span}>
-      <Field id={id} label={label} hint={hint} labelFor={labelFor}>
+      <Field id={id} label={label} hint={hint}>
         {(wiring) =>
           control({
             id: wiring.id,
@@ -325,7 +324,7 @@ export function SelectField<M extends object, K extends keyof M & string>(
 /**
  * One labelled checkbox, on `ui`'s {@link Checkbox}: the label is the checkbox's own, after the box.
  *
- * `Field` therefore renders no label of its own (`labelFor={false}`): a second one would name the
+ * `Field` is therefore given no `label`, so it renders none of its own: a second one would name the
  * same `<input>` twice.
  */
 export function CheckboxField<M extends object, K extends keyof M & string>(
@@ -340,7 +339,6 @@ export function CheckboxField<M extends object, K extends keyof M & string>(
       vl={props.vl}
       name={props.name}
       renderIssue={props.renderIssue}
-      labelFor={false}
       control={(wiring) => (
         <Checkbox
           {...wiring}

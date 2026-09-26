@@ -2,6 +2,8 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { signal } from "@preact/signals"
 import { render } from "preact-render-to-string"
+import type { ReadonlySignal } from "@preact/signals"
+import type { JSX } from "preact"
 import type { ValidationModel } from "@spy4x/validation/model"
 import {
   CheckboxField,
@@ -9,6 +11,7 @@ import {
   FieldIssues,
   NumberField,
   SelectField,
+  TextareaField,
   TextField,
 } from "./field.tsx"
 
@@ -201,6 +204,82 @@ describe("CheckboxField", () => {
       ),
     ).toContain(`checked`)
   })
+})
+
+/** The one control element a row renders: its `<input>`, `<textarea>` or `<select>` tag. */
+function controlTag(html: string): string {
+  const match = html.match(/<(input|textarea|select)\b[^>]*>/)
+  if (match === null) throw new Error(`no control in ${html}`)
+  return match[0]
+}
+
+/** Every field row, each rendered with a hint and the validation model it is given. */
+const rows: Array<{
+  row: string
+  field: keyof Form
+  render: (vl: ReadonlySignal<ValidationModel<Form>>) => JSX.Element
+}> = [
+  {
+    row: "TextField",
+    field: "name",
+    render: (vl) => <TextField vm={model()} vl={vl} name="name" label="Name" hint="Hint" />,
+  },
+  {
+    row: "NumberField",
+    field: "zoneId",
+    render: (vl) => <NumberField vm={model()} vl={vl} name="zoneId" label="Zone" hint="Hint" />,
+  },
+  {
+    row: "TextareaField",
+    field: "name",
+    render: (vl) => <TextareaField vm={model()} vl={vl} name="name" label="Name" hint="Hint" />,
+  },
+  {
+    row: "SelectField",
+    field: "zoneId",
+    render: (vl) => (
+      <SelectField
+        vm={model()}
+        vl={vl}
+        name="zoneId"
+        label="Zone"
+        hint="Hint"
+        options={[{ value: 3, label: "Three" }]}
+      />
+    ),
+  },
+  {
+    row: "CheckboxField",
+    field: "isOn",
+    render: (vl) => <CheckboxField vm={model()} vl={vl} name="isOn" label="Is on" hint="Hint" />,
+  },
+]
+
+describe("every field row", () => {
+  for (const { row, field, render: renderRow } of rows) {
+    it(`${row} marks its control invalid and describes it by the issues, then the hint`, () => {
+      const vl = signal<ValidationModel<Form>>({ [field]: { SCHEMA: { message: "is wrong" } } })
+      const html = render(renderRow(vl))
+      const control = controlTag(html)
+      const [id] = attributes(control, "id")
+
+      expect(control).toContain(`aria-invalid="true"`)
+      expect(attributes(control, "aria-describedby")).toEqual([`${id}-issues ${id}-hint`])
+      expect(html).toMatch(new RegExp(`id="${id}-issues"><p[^>]*>is wrong</p>`))
+      expect(html).toContain(`<p id="${id}-hint"`)
+    })
+
+    it(`${row} leaves its control valid when its only issue is undefined`, () => {
+      const vl = signal<ValidationModel<Form>>({ [field]: { SCHEMA: undefined } })
+      const html = render(renderRow(vl))
+      const control = controlTag(html)
+      const [id] = attributes(control, "id")
+
+      expect(control).not.toContain("aria-invalid")
+      expect(attributes(control, "aria-describedby")).toEqual([`${id}-hint`])
+      expect(html).not.toContain(`${id}-issues`)
+    })
+  }
 })
 
 describe("FieldIssues", () => {

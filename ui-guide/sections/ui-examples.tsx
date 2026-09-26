@@ -1094,7 +1094,6 @@ pageRange(6, 20).map((item) => "page" in item ? item.page : "…")`,
     summary:
       "A stable key for each gallery thumbnail, which stays unique when the same image appears twice.",
     snippet: `import { thumbnailKey } from "@spy4x/preact-ui/image-gallery"
-import { collectSequence, zoomableAlt } from "@spy4x/preact-ui/zoomable-images"
 
 const images = [{ src: "/a.jpg" }, { src: "/b.jpg" }, { src: "/a.jpg" }]
 images.map((_, index) => thumbnailKey(images, index))`,
