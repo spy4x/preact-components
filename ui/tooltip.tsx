@@ -36,7 +36,7 @@ export interface TooltipProps {
 }
 
 const triggerBase =
-  "relative inline-flex cursor-help rounded-sm group focus-visible:ring-2 focus-visible:ring-purple-900 focus-visible:ring-offset-2 focus-visible:outline-hidden"
+  "relative inline-flex cursor-help rounded-sm group focus-visible:ring-2 focus-visible:ring-accent-900 focus-visible:ring-offset-2 focus-visible:outline-hidden"
 
 /**
  * The anchored surface: where the hint sits, when it is revealed, and the bridge that reaches it.

@@ -14,18 +14,18 @@ describe("OnOffButtons", () => {
   it("marks the ON half as selected", () => {
     const html = render(<OnOffButtons value onSwitch={() => {}} />)
 
-    expect(countOccurrences(html, "bg-purple-900")).toBe(1)
+    expect(countOccurrences(html, "bg-accent-900")).toBe(1)
     expect(html).toContain("text-white")
   })
 
   it("marks the OFF half as selected", () => {
     const html = render(<OnOffButtons value={false} onSwitch={() => {}} />)
 
-    expect(countOccurrences(html, "bg-purple-900")).toBe(1)
+    expect(countOccurrences(html, "bg-accent-900")).toBe(1)
   })
 
   it("leaves both halves unselected when value is undefined", () => {
-    expect(render(<OnOffButtons onSwitch={() => {}} />)).not.toContain("bg-purple-900")
+    expect(render(<OnOffButtons onSwitch={() => {}} />)).not.toContain("bg-accent-900")
   })
 
   it("renders the amounts under the labels", () => {

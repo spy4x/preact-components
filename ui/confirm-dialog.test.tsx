@@ -169,7 +169,7 @@ describe("ConfirmDialog", () => {
     const html = render(dialog())
     const primary = html.split("<button").find((part) => part.includes(">Delete</button>"))
 
-    expect(primary).toContain("bg-purple-900")
+    expect(primary).toContain("bg-accent-900")
   })
 
   it("confirms with the danger button in the danger register", () => {

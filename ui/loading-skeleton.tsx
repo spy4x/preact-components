@@ -20,7 +20,7 @@ export function LoadingSkeleton({ rows = 3, class: className }: LoadingSkeletonP
   return (
     <div class={cn("space-y-3", className)} aria-hidden="true">
       <div class={cn(card, "flex items-center gap-4")}>
-        <div class="inline-flex size-10 items-center justify-center rounded-xl border border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-800 dark:bg-purple-950 dark:text-purple-300">
+        <div class="inline-flex size-10 items-center justify-center rounded-xl border border-accent-200 bg-accent-50 text-accent-700 dark:border-accent-800 dark:bg-accent-950 dark:text-accent-300">
           <svg
             class="size-5 animate-pulse"
             viewBox="0 0 24 24"

@@ -12,12 +12,12 @@ workspace member only so it can import its sibling packages the way an app does.
 
 ## What runs at that URL
 
-| Piece             | Where it comes from                                                                                          |
-| ----------------- | ------------------------------------------------------------------------------------------------------------ |
-| The catalogue     | `UIGuide` from `@spy4x/preact-ui-guide`, unmodified — its navigation, one page at a time, and the deep links |
-| The host page     | `src/app.tsx` — the colour-scheme switch, and the address, version and tiles handed to the guide             |
-| The styles        | `theme/tokens.css` + `theme/preset.css`, compiled by Tailwind into one stylesheet                            |
-| The interactivity | `src/+main.tsx`, one Preact island that hydrates the prerendered markup                                      |
+| Piece             | Where it comes from                                                                                           |
+| ----------------- | ------------------------------------------------------------------------------------------------------------- |
+| The catalogue     | `UIGuide` from `@spy4x/preact-ui-guide`, unmodified — its navigation, one page at a time, and the deep links  |
+| The host page     | `src/app.tsx` — the colour-scheme and accent switches, and the address, version and tiles handed to the guide |
+| The styles        | `theme/tokens.css` + `theme/preset.css`, compiled by Tailwind into one stylesheet                             |
+| The interactivity | `src/+main.tsx`, one Preact island that hydrates the prerendered markup                                       |
 
 Static files only. `index.html` ships the whole catalogue prerendered, so it reads with JavaScript
 off; the island is what makes the dropdowns open, the switches toggle, the icon filter filter, the
@@ -34,6 +34,7 @@ usage blocks copy, the toasts fire and the deep links scroll.
 | `screenshots.ts`          | Writes the README's screenshots and the social preview to `docs/screenshots/` from the built site         |
 | `serve.ts`                | Static server that mounts `dist/` at the deployed base (`deno task preview`)                              |
 | `src/app.tsx`             | The host page — the app shell this library deliberately does not ship                                     |
+| `src/accent-switch.tsx`   | The header's accent switch: writes `--color-primary`/`--color-accent` on `:root`, as an app would (#380)  |
 | `src/+main.tsx`           | The island: `hydrate(<App />, #root)`                                                                     |
 | `src/prerender.tsx`       | The server half: `renderToString(<App />)`, same component                                                |
 | `src/document.tsx`        | The HTML document template, including the pre-paint colour-scheme script and the route echo               |

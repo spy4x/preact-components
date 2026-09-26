@@ -53,7 +53,7 @@ export interface ImageGalleryProps {
 }
 
 const thumbButtonClass =
-  "block cursor-pointer overflow-hidden rounded-md border border-gray-200 transition-opacity hover:opacity-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-purple-900 focus-visible:ring-offset-2 dark:border-gray-700"
+  "block cursor-pointer overflow-hidden rounded-md border border-gray-200 transition-opacity hover:opacity-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent-900 focus-visible:ring-offset-2 dark:border-gray-700"
 const thumbImageClass = "size-20 object-cover sm:size-24"
 
 /**

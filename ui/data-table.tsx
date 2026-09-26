@@ -176,8 +176,8 @@ function alignClass(align: DataTableColumnAlign = "left"): string {
 }
 
 const sortButtonClasses = "inline-flex w-full items-center gap-1 rounded " +
-  "focus-visible:ring-2 focus-visible:ring-purple-900 focus-visible:ring-offset-2 " +
-  "focus-visible:outline-hidden hover:text-purple-900 dark:hover:text-purple-400"
+  "focus-visible:ring-2 focus-visible:ring-accent-900 focus-visible:ring-offset-2 " +
+  "focus-visible:outline-hidden hover:text-accent-900 dark:hover:text-accent-400"
 
 /**
  * The `aria-sort` value for a column, or `undefined` for a column not currently part of `sort` —

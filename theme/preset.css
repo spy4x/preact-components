@@ -43,12 +43,40 @@
 
 /* #region Colour atoms */
 
+/*
+ * The accent scale as a Tailwind colour: `bg-accent-900`, `text-accent-400`, `ring-accent-900`,
+ * `border-accent-200`, `dark:bg-accent-900/30` and every other colour utility and variant. The
+ * components draw their accent with these instead of `purple-*`, so an app's --color-primary (or
+ * --color-accent) recolours them.
+ *
+ * `inline` makes each utility read the runtime token itself — `var(--color-accent-900, …)` — rather
+ * than a theme variable Tailwind fixes at build time, so the app's cascade wins, the same reason
+ * `tokens.css` is not a `@theme` block. `reference` stops Tailwind from also emitting these
+ * declarations on `:root`: they share their names with the tokens, and an emitted
+ * `--color-accent-900: var(--color-accent-900, …)` would be a cycle. The fallback is Tailwind's
+ * purple step, so without `tokens.css`, or in a browser that lacks the relative colour syntax the
+ * scale is worked out with, the components draw exactly the purple they drew before.
+ */
+@theme inline reference {
+  --color-accent-50: var(--color-accent-50, oklch(0.977 0.014 308.299)); /* purple-50 */
+  --color-accent-100: var(--color-accent-100, oklch(0.946 0.033 307.174)); /* purple-100 */
+  --color-accent-200: var(--color-accent-200, oklch(0.902 0.063 306.703)); /* purple-200 */
+  --color-accent-300: var(--color-accent-300, oklch(0.827 0.119 306.383)); /* purple-300 */
+  --color-accent-400: var(--color-accent-400, oklch(0.714 0.203 305.504)); /* purple-400 */
+  --color-accent-500: var(--color-accent-500, oklch(0.627 0.265 303.9)); /* purple-500 */
+  --color-accent-600: var(--color-accent-600, oklch(0.558 0.288 302.321)); /* purple-600 */
+  --color-accent-700: var(--color-accent-700, oklch(0.496 0.265 301.924)); /* purple-700 */
+  --color-accent-800: var(--color-accent-800, oklch(0.438 0.218 303.724)); /* purple-800 */
+  --color-accent-900: var(--color-accent-900, oklch(0.381 0.176 304.987)); /* purple-900 */
+  --color-accent-950: var(--color-accent-950, oklch(0.291 0.149 302.717)); /* purple-950 */
+}
+
 @utility text-primary {
   color: var(--color-primary-muted, oklch(0.558 0.288 302.321));
 }
 
 @utility bg-primary {
-  background-color: var(--color-primary, oklch(0.38 0.17 293));
+  background-color: var(--color-primary, oklch(0.381 0.176 304.987));
 }
 
 /*
@@ -216,7 +244,7 @@
 }
 
 @utility btn-primary {
-  background-color: var(--color-primary, oklch(0.38 0.17 293));
+  background-color: var(--color-primary, oklch(0.381 0.176 304.987));
   color: var(--color-primary-foreground, oklch(0.977 0.014 308.299));
 }
 
@@ -226,7 +254,7 @@
   color: var(--color-primary-muted, oklch(0.558 0.288 302.321));
 
   &:hover {
-    background-color: var(--color-primary, oklch(0.38 0.17 293));
+    background-color: var(--color-primary, oklch(0.381 0.176 304.987));
     color: var(--color-primary-foreground, oklch(0.977 0.014 308.299));
   }
 }
@@ -522,7 +550,7 @@
   display: inline-block;
   height: 0.375rem;
   border-radius: 0.1875rem;
-  background-color: var(--color-primary, oklch(0.38 0.17 293));
+  background-color: var(--color-primary, oklch(0.381 0.176 304.987));
   vertical-align: middle;
 }
 

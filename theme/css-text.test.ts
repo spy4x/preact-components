@@ -65,9 +65,14 @@ function parseBlock(css: string, selector: string): Record<string, string> {
  * exactly as it did before this change.
  */
 const UNCHANGED_ROOT_TOKENS: Record<string, string> = {
-  "--color-primary": "oklch(0.38 0.17 293)",
+  // #380 moved --color-primary from an approximation 12 degrees of hue off to the purple-900 its
+  // comment always named, so the components that now read it keep drawing Tailwind's purple-900,
+  // and added the accent the components read: --color-primary, and step 900 of its scale.
+  "--color-primary": "oklch(0.381 0.176 304.987)",
   "--color-primary-foreground": "oklch(0.977 0.014 308.299)",
   "--color-primary-muted": "oklch(0.558 0.288 302.321)",
+  "--color-accent": "var(--color-primary)",
+  "--color-accent-900": "var(--color-accent)",
   "--color-surface": "oklch(1 0 0)",
   // #358 moved these two: the canvas a step darker so a card stands off it, and muted text a step
   // darker so it keeps AA contrast on that canvas.
@@ -90,6 +95,8 @@ const UNCHANGED_ROOT_TOKENS: Record<string, string> = {
 
 const UNCHANGED_DARK_TOKENS: Record<string, string> = {
   "--color-primary": "oklch(0.21 0.006 285.885)",
+  // #380: the components' accent stays purple-900 where --color-primary is near-black chrome.
+  "--color-accent": "oklch(0.381 0.176 304.987)",
   "--color-primary-foreground": "oklch(0.977 0.014 308.299)",
   "--color-primary-muted": "oklch(0.714 0.203 305.504)",
   "--color-surface": "oklch(0.278 0.033 256.848)",

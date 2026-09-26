@@ -76,7 +76,10 @@ opts out with `bg-transparent`, and `Bars`, which renders a table, does the same
 (#337). A lane that finds another component boxed this way fixes it in that component's package.
 
 Accent is the purple of the theme: the current page and card in the navigation, the package name,
-and the class chips. The primary button stays the theme's primary.
+and the class chips. The primary button stays the theme's primary. The guide's own chrome writes
+that purple; the components in the cards draw the theme's accent scale (`bg-accent-900`,
+`theme/README.md` → "Accent"), so the demo host's accent switch repaints the cards and leaves the
+chrome purple, which is how a reader tells the two apart.
 
 ## The card
 

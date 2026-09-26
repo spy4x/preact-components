@@ -8,7 +8,7 @@ describe("Button", () => {
     const html = render(<Button>Save</Button>)
 
     expect(html).toContain('type="button"')
-    expect(html).toContain("bg-purple-900")
+    expect(html).toContain("bg-accent-900")
     expect(html).toContain("Save")
   })
 
@@ -50,7 +50,7 @@ describe("Button", () => {
     const html = render(<Button class="w-full">Wide</Button>)
 
     expect(html).toContain("w-full")
-    expect(html).toContain("bg-purple-900")
+    expect(html).toContain("bg-accent-900")
   })
 })
 
