@@ -45,6 +45,19 @@ export function barPercent(value: number, top: number): number {
 }
 
 /**
+ * `bg-transparent`, unless the caller's `class` sets a background of its own.
+ *
+ * A dark `theme-base` page gives every table the surface colour, which would box the chart in
+ * whatever card holds it. A plain class-string join cannot let a caller's `bg-*` win back, because
+ * the stylesheet's rule order decides between two background utilities, so the default steps aside.
+ * Only an unprefixed `bg-*` counts: a `hover:` or `md:` background applies only some of the time, and
+ * the default has to hold the rest of it.
+ */
+function tableBackground(className: string | undefined): string {
+  return className && /(^|\s)bg-/.test(className) ? "" : "bg-transparent"
+}
+
+/**
  * Server-rendered horizontal bar list — the "Top N" chart.
  *
  * HTML rather than SVG, so the labels wrap, the links stay links and the whole list reflows on a
@@ -80,7 +93,7 @@ export function Bars({
 
   return (
     <table
-      class={className ? `w-full text-sm ${className}` : "w-full text-sm"}
+      class={["w-full text-sm", tableBackground(className), className].filter(Boolean).join(" ")}
       aria-label={ariaLabel ?? title}
     >
       {title ? <caption class="mb-2 text-left text-sm font-medium">{title}</caption> : null}
