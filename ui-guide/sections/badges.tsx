@@ -83,7 +83,8 @@ export const badgeDemos = {
         name: "color",
         type: "BadgeColor",
         default: `"purple"`,
-        description: "One of the seven palette entries shown here.",
+        description: "One of the seven palette entries shown here. `purple` and `purpleNav` are " +
+          "the theme's accent: they follow `--color-primary`.",
       },
       {
         name: "type",
