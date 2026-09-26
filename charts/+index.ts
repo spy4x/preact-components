@@ -2,7 +2,7 @@
  * `@spy4x/preact-charts` — server-rendered SVG charts and interactive d3 wrappers.
  *
  * Two approaches live here side by side, and the split is load-bearing. `LineChart`, `Bars`,
- * `DonutChart`, `Kpi` and `MetricPanel` render plain markup server-side with no JavaScript at all
+ * `DonutChart` and `Kpi` render plain markup server-side with no JavaScript at all
  * and reach no `d3` specifier anywhere in their import graph. `D3LineChart` and `CompareChart` are
  * interactive islands that draw with d3 in an effect; they are the only reason this package needs
  * `d3`, which is why it is not in the root import map — a consumer adds it when they want the
@@ -50,15 +50,6 @@ export {
 } from "./donut-chart.tsx"
 export { Kpi, KpiGrid, type KpiGridProps, type KpiProps, type KpiTone } from "./kpi.tsx"
 export { LineChart, type LineChartProps, type LinePoint, type LineSeries } from "./line-chart.tsx"
-export {
-  loadMetricSeries,
-  type MetricError,
-  MetricPanel,
-  type MetricPanelProps,
-  type MetricSeriesOptions,
-  type MetricSeriesState,
-  useMetricSeries,
-} from "./metric-panel.tsx"
 export {
   type ChartPayload,
   chartPayloadSchema,

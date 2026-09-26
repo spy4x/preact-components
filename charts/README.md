@@ -4,7 +4,7 @@ Chart components extracted from earlier source applications.
 
 Two approaches live side by side, and the split is deliberate:
 
-- **Zero-JS SVG, server-rendered** — `LineChart`, `Bars`, `DonutChart`, `Kpi`, `MetricPanel`, plus the
+- **Zero-JS SVG, server-rendered** — `LineChart`, `Bars`, `DonutChart`, `Kpi`, plus the
   shared maths in `scales.ts`, `time-series.ts`, `colors.ts` and the `payload.ts` loader. Plain markup
   with no hydration and no client bundle. These are what an MPA or an SSR route should reach for.
 - **Interactive d3 islands** — `D3LineChart`, `CompareChart`. Imperative d3 v7 render in an effect,
@@ -42,10 +42,8 @@ Everything on the SVG side type-checks, tests and bundles with `d3` absent. See
 | `KpiGrid`      | `kpi`           | zero-JS | no       | `children`, `minWidth`                                                |
 | `D3LineChart`  | `d3-line-chart` | island  | **yes**  | `data`, `timeFrame`, `referenceValue`, `ignoreZeroes`, `colors`       |
 | `CompareChart` | `compare-chart` | island  | **yes**  | `range`, `data`, `loadStats` (port), `rangePicker` (slot)             |
-| `MetricPanel`  | `metric-panel`  | shell   | no       | `title`, `unit`, `error`, `actions`, `children`                       |
 
-Hooks and helpers, all d3-free: `useInView` (`use-in-view`), `useMetricSeries` / `loadMetricSeries`
-(`metric-panel`), `previousPeriod` / `loadChartPayload` / `chartPayloadSchema` (`payload`), the
+Hooks and helpers, all d3-free: `useInView` (`use-in-view`), `previousPeriod` / `loadChartPayload` / `chartPayloadSchema` (`payload`), the
 `TIME_FRAMES` / `TimeFrame` / `TimeSeriesPoint` vocabulary (`time-series`), and the axis maths in
 `scales` — `niceStep`, `ticks`, `niceScale`, `paddedDomain`, `linearScale`, `extent`, `xLabelStride`.
 `D3LineChart`'s own d3-free parts live in `d3-line-chart-core` — `DEFAULT_D3_LINE_CHART_COLORS`,
@@ -56,7 +54,7 @@ barrel re-export them.
 
 ```tsx
 // The SVG half, through a barrel that imports nothing d3-backed.
-import { Bars, DonutChart, Kpi, KpiGrid, LineChart, MetricPanel } from "@spy4x/preact-charts/svg"
+import { Bars, DonutChart, Kpi, KpiGrid, LineChart } from "@spy4x/preact-charts/svg"
 // or one chart at a time
 import { LineChart } from "@spy4x/preact-charts/line-chart"
 
@@ -98,26 +96,17 @@ function LazyChart() {
 }
 ```
 
-One metric panel, which is what a source application's chart route duplicated for power and energy — the two panels
-differed only in their heading and a `/1000` conversion, so the conversion is the `scale` option:
-
-```tsx
-<MetricPanel title="Power" unit="kW" error={error} actions={<ExportButtons />}>
-  <D3LineChart data={power.data} timeFrame={power.timeFrame} ariaLabel="Power, kW" />
-</MetricPanel>
-```
-
 ## Do I need d3?
 
 No, unless you render `D3LineChart` or `CompareChart`. This is the full list:
 
-| Needs `d3`                                      | Does not                                                              |
-| ----------------------------------------------- | --------------------------------------------------------------------- |
-| `d3-line-chart` (`D3LineChart`)                 | `scales`, `colors`, `time-series`, `payload`                          |
-| `compare-chart` (`CompareChart`)                | `line-chart`, `bars`, `donut-chart`, `kpi`                            |
-| the package barrel `.` (re-exports both halves) | `metric-panel`, `use-in-view`, `d3-line-chart-core`, the `svg` barrel |
-| `ui-guide`'s charts sections (load it lazily)   | every suite here except `d3-line-chart.test.tsx`                      |
-| `compare-chart.test.tsx`                        | —                                                                     |
+| Needs `d3`                                      | Does not                                              |
+| ----------------------------------------------- | ----------------------------------------------------- |
+| `d3-line-chart` (`D3LineChart`)                 | `scales`, `colors`, `time-series`, `payload`          |
+| `compare-chart` (`CompareChart`)                | `line-chart`, `bars`, `donut-chart`, `kpi`            |
+| the package barrel `.` (re-exports both halves) | `use-in-view`, `d3-line-chart-core`, the `svg` barrel |
+| `ui-guide`'s charts sections (load it lazily)   | every suite here except `d3-line-chart.test.tsx`      |
+| `compare-chart.test.tsx`                        | —                                                     |
 
 `CompareChart` imports `D3LineChart`, so it needs d3 for that reason alone. Type-only imports count
 too: `payload.ts` and `metric-panel.tsx` used to take `TimeFrame` / `TimeSeriesPoint` from
@@ -137,8 +126,7 @@ deno add npm:d3@7.9.0
 ```
 
 `D3LineChart` and `CompareChart` draw inside an effect with d3 v7 only — they are the reason the
-package depends on it at all. `MetricPanel` is a shell around whatever chart you put in it, so it
-stays on the SVG side, as does the `payload` loader that validates what a stats endpoint returns
+package depends on it at all. The `payload` loader that validates what a stats endpoint returns stays on the SVG side
 (`TIME_FRAMES`, `TimeFrame` and `TimeSeriesPoint` live in `time-series.ts` and are re-exported from
 `payload`-side modules, never from a d3-backed one).
 

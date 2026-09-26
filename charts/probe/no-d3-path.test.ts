@@ -23,8 +23,6 @@ import {
   Kpi,
   KpiGrid,
   LineChart,
-  loadMetricSeries,
-  MetricPanel,
   MISSING_D3_LINE_ERROR,
   seriesColor,
   useInView,
@@ -51,8 +49,6 @@ describe("the d3-free import graph", () => {
     assertReachable("KpiGrid", KpiGrid)
     assertReachable("KpiGrid (subpath)", KpiGridDirect)
     assertReachable("LineChart", LineChart)
-    assertReachable("loadMetricSeries", loadMetricSeries)
-    assertReachable("MetricPanel", MetricPanel)
     assertReachable("seriesColor", seriesColor)
     assertReachable("useInView", useInView)
     assertReachable("previousPeriod", previousPeriod)

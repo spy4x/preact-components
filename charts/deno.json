@@ -12,7 +12,6 @@
     "./donut-chart": "./donut-chart.tsx",
     "./kpi": "./kpi.tsx",
     "./line-chart": "./line-chart.tsx",
-    "./metric-panel": "./metric-panel.tsx",
     "./payload": "./payload.ts",
     "./scales": "./scales.ts",
     "./time-series": "./time-series.ts",

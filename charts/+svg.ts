@@ -44,15 +44,6 @@ export {
 export { Kpi, KpiGrid, type KpiGridProps, type KpiProps, type KpiTone } from "./kpi.tsx"
 export { LineChart, type LineChartProps, type LinePoint, type LineSeries } from "./line-chart.tsx"
 export {
-  loadMetricSeries,
-  type MetricError,
-  MetricPanel,
-  type MetricPanelProps,
-  type MetricSeriesOptions,
-  type MetricSeriesState,
-  useMetricSeries,
-} from "./metric-panel.tsx"
-export {
   type ChartPayload,
   chartPayloadSchema,
   type DateRange,

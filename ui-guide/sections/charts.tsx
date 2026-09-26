@@ -3,7 +3,7 @@
  *
  * Every component the package exports is live here. The split the package itself makes is the
  * section's structure — the zero-JS half
- * (`Bars`, `LineChart`, `DonutChart`, `Kpi`, `KpiGrid`, `MetricPanel`) renders plain markup and
+ * (`Bars`, `LineChart`, `DonutChart`, `Kpi`, `KpiGrid`) renders plain markup and
  * hydrates nothing, and the interactive half (`D3LineChart`, `CompareChart`) draws imperatively
  * with d3 in an effect.
  *
@@ -30,10 +30,8 @@ import { DonutChart } from "@spy4x/preact-charts/donut-chart"
 import { Kpi, type KpiTone } from "@spy4x/preact-charts/kpi"
 import { KpiGrid } from "@spy4x/preact-charts/kpi"
 import { LineChart } from "@spy4x/preact-charts/line-chart"
-import { MetricPanel } from "@spy4x/preact-charts/metric-panel"
 import type { ChartPayload, DateRange } from "@spy4x/preact-charts/payload"
 import type { TimeSeriesPoint } from "@spy4x/preact-charts/time-series"
-import { Button } from "@spy4x/preact-ui"
 import { entries } from "../record.ts"
 import type { DemoFragment } from "../registry.ts"
 import { LazyCompareChart, LazyD3LineChart } from "./charts-d3.tsx"
@@ -252,41 +250,6 @@ export const chartsDemos = {
           <Kpi label="Users" value={1204} />
           <Kpi label="Latency" value="84 ms" />
         </KpiGrid>
-      </div>
-    ),
-  },
-  MetricPanel: {
-    summary:
-      "The frame one metric is shown in — heading with unit, actions, an error box and the chart — which loads nothing itself.",
-    wide: true,
-    snippet: `<MetricPanel
-  title="Revenue"
-  unit="k€"
-  error={error}
-  actions={<ExportButtons />}
->
-  <D3LineChart data={revenue.data} timeFrame={revenue.timeFrame} ariaLabel="Revenue, k€" />
-</MetricPanel>`,
-    render: () => (
-      <div class="flex flex-col gap-6">
-        <MetricPanel
-          title="Revenue"
-          unit="k€"
-          actions={<Button variant="outline" size="sm">Export CSV</Button>}
-        >
-          <LineChart series={orders} height={200} title="Orders and returns" />
-        </MetricPanel>
-        <MetricPanel
-          title="Sessions"
-          unit="per day"
-          error={{
-            message: "The stats endpoint returned 502.",
-            instruction: "Widen the date range and try again.",
-          }}
-          actions={<Button variant="outline" size="sm">Export CSV</Button>}
-        >
-          <LineChart series={[]} height={200} title="No series" />
-        </MetricPanel>
       </div>
     ),
   },

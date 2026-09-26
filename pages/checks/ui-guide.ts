@@ -1195,7 +1195,7 @@ async function onThisPageCheck(devtools: Devtools): Promise<void> {
   const atTop = await poll(async () => (await marked()) === first, 3_000)
   const topMark = await marked()
 
-  const target = "MetricPanel"
+  const target = "KpiGrid"
   const top = await devtools.evaluate<number>(`(() => {
     const card = document.getElementById("demo-${target}")
     const y = Math.round(card.getBoundingClientRect().top + scrollY - 72)

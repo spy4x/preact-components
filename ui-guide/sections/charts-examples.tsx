@@ -8,9 +8,9 @@
  * - The two loaders return promises. Their cards print what happens synchronously — the stats port
  *   being asked — and the schema verdict the loaders apply, and say in the summary what the promise
  *   resolves to.
- * - The two hooks are called inside `run`, which the card calls while it renders, so they are hooks
- *   of the card's output component. They print their first render, which is the same on both sides:
- *   `useInView` has no element to watch and `useMetricSeries` is given `enabled: false`.
+ * - The hook is called inside `run`, which the card calls while it renders, so it is a hook of the
+ *   card's output component. It prints its first render, which is the same on both sides:
+ *   `useInView` has no element to watch.
  * - `createInViewObserver` needs `IntersectionObserver`, which the server render does not have. Its
  *   card installs a recording stand-in for the length of the call and puts the original back, so both
  *   renders print what the helper asked the observer for.
@@ -33,7 +33,6 @@ import {
   yDomainFor,
 } from "@spy4x/preact-charts/d3-line-chart-core"
 import { donutGeometry } from "@spy4x/preact-charts/donut-chart"
-import { loadMetricSeries, useMetricSeries } from "@spy4x/preact-charts/metric-panel"
 import {
   chartPayloadSchema,
   loadChartPayload,
@@ -75,12 +74,6 @@ function pendingD3Output(state: LazyModuleState<unknown>): string {
     ? `<charts/d3-line-chart did not load: ${state.message}>`
     : "<computed in the browser: needs charts/d3-line-chart, which imports d3>"
 }
-
-/**
- * The stats port of the `useMetricSeries` card. It lives outside the card because the hook reloads
- * whenever its `loadStats` changes, so a new function on every render would reload on every render.
- */
-const loadEmptyStats = () => Promise.resolve({ data: [], timeFrame: "hours" })
 
 const examples: ExampleFragment = {
   extent: {
@@ -343,9 +336,9 @@ console.log([previousPeriod(week), previousPeriod(week, 2)])`,
     title: "Stats payloads and their loaders",
     wide: true,
     summary:
-      "The arktype shape a stats endpoint returns, and two loaders that ask your `loadStats` port for a range and resolve to `{ payload, error }`; the card prints the calls they make, since they resolve after it renders.",
+      "The arktype shape a stats endpoint returns, and a loader that asks your `loadStats` port for a range and resolves to `{ payload, error }`; the card prints the call it makes, since it resolves after the card renders.",
     snippet:
-      `import { chartPayloadSchema, loadChartPayload, loadMetricSeries, timeSeriesPointSchema } from "@spy4x/preact-charts"
+      `import { chartPayloadSchema, loadChartPayload, timeSeriesPointSchema } from "@spy4x/preact-charts"
 import { type } from "arktype"
 
 const range = { from: new Date("2026-03-01T00:00:00Z"), to: new Date("2026-03-02T00:00:00Z") }
@@ -355,14 +348,13 @@ const loadStats = (period: typeof range) => {
   return Promise.resolve({ data: [{ timeGroup: "2026-03-01T00:00:00Z", value: 1200 }], timeFrame: "hours" })
 }
 void loadChartPayload(loadStats, range) // resolves to { payload, error }
-void loadMetricSeries({ loadStats, range, scale: 0.001 }) // resolves to { data, timeFrame, error }
 const rejected = chartPayloadSchema({ data: [], timeFrame: "weeks" })
 console.log({
   asked,
   point: timeSeriesPointSchema({ timeGroup: "2026-03-01T00:00:00Z", value: 1200 }),
   rejected: rejected instanceof type.errors ? rejected.summary : rejected,
 })`,
-    covers: ["timeSeriesPointSchema", "chartPayloadSchema", "loadChartPayload", "loadMetricSeries"],
+    covers: ["timeSeriesPointSchema", "chartPayloadSchema", "loadChartPayload"],
     run: () => {
       const range = { from: new Date("2026-03-01T00:00:00Z"), to: new Date("2026-03-02T00:00:00Z") }
       const asked: string[] = []
@@ -374,40 +366,12 @@ console.log({
         })
       }
       void loadChartPayload(loadStats, range)
-      void loadMetricSeries({ loadStats, range, scale: 0.001 })
       const rejected = chartPayloadSchema({ data: [], timeFrame: "weeks" })
       return {
         asked,
         point: timeSeriesPointSchema({ timeGroup: "2026-03-01T00:00:00Z", value: 1200 }),
         rejected: rejected instanceof type.errors ? rejected.summary : rejected,
       }
-    },
-  },
-  useMetricSeries: {
-    title: "useMetricSeries()",
-    wide: false,
-    summary:
-      "`loadMetricSeries` as a hook that loads when `enabled` is true and returns the series with `isLoading` and `reload`; called here with `enabled: false`, it prints the state before the first load.",
-    snippet: `import { useMetricSeries } from "@spy4x/preact-charts"
-
-// Outside the component: a new function on every render would reload on every render.
-const loadStats = () => Promise.resolve({ data: [], timeFrame: "hours" })
-
-// Inside a component:
-const { data, timeFrame, error, isLoading } = useMetricSeries({
-  loadStats,
-  range: { from: new Date("2026-03-01T00:00:00Z"), to: new Date("2026-03-02T00:00:00Z") },
-  enabled: false,
-})
-console.log({ data, timeFrame, error, isLoading })`,
-    covers: ["useMetricSeries"],
-    run: () => {
-      const { data, timeFrame, error, isLoading } = useMetricSeries({
-        loadStats: loadEmptyStats,
-        range: { from: new Date("2026-03-01T00:00:00Z"), to: new Date("2026-03-02T00:00:00Z") },
-        enabled: false,
-      })
-      return { data, timeFrame, error, isLoading }
     },
   },
   useInView: {
