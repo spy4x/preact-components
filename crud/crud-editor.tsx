@@ -1,5 +1,6 @@
 import { IconLoading } from "@spy4x/preact-icons"
 import { cn } from "@spy4x/preact-cn"
+import { Stack } from "@spy4x/preact-ui/layout"
 import { PageTitle } from "@spy4x/preact-ui/page-title"
 import { type ReadonlySignal, type Signal, useSignal, useSignalEffect } from "@preact/signals"
 import type { Type } from "arktype"
@@ -423,7 +424,7 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
   }
 
   return (
-    <section class={cn("page-layout", className)}>
+    <Stack as="section" gap="lg" class={cn("mx-auto max-w-6xl", className)}>
       <PageTitle>
         {title ?? (props.mode === "add" ? `Add ${entity}` : `Edit ${entity}`)}
       </PageTitle>
@@ -495,6 +496,6 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
       </form>
 
       <DeletionValidation dependencies={blocked.value} model={entity} />
-    </section>
+    </Stack>
   )
 }
