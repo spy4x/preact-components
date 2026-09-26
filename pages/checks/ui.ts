@@ -5405,9 +5405,12 @@ const PICKER_TIME_SETUP = `(() => {
     panel,
     // The paragraph the card renders next to the picker, printing whatever the caller's onChange
     // last received — read back rather than reaching into Preact state, the same way every other
-    // check in this file learns what a controlled demo is holding.
-    controlled: trigger?.closest("div.space-y-3")?.querySelector('[data-e2e="controlled-value"]') ??
-      null,
+    // check in this file learns what a controlled demo is holding. It is found as a direct child of
+    // the nearest ancestor of the trigger that has one, so the card's layout classes can change:
+    // the card holds several pickers, each with its own readout beside it.
+    controlled: trigger
+      ?.closest(':has(> [data-e2e="controlled-value"])')
+      ?.querySelector(':scope > [data-e2e="controlled-value"]') ?? null,
     // A focusable control on the same card, outside this picker's own root — for the two checks
     // driven from outside it. Reuses the day-mode empty card's trigger; nothing here depends on
     // what that picker does with a click, only on it being able to hold focus.
