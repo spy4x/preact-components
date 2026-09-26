@@ -25,6 +25,13 @@ export {
   seriesColor,
 } from "./colors.ts"
 export {
+  assertD3Available,
+  type D3LineChartColors,
+  DEFAULT_D3_LINE_CHART_COLORS,
+  MISSING_D3_LINE_ERROR,
+  yDomainFor,
+} from "./d3-line-chart-core.ts"
+export {
   DonutChart,
   type DonutChartProps,
   type DonutDatum,

@@ -48,6 +48,9 @@ Hooks and helpers, all d3-free: `useInView` (`use-in-view`), `useMetricSeries` /
 (`metric-panel`), `previousPeriod` / `loadChartPayload` / `chartPayloadSchema` (`payload`), the
 `TIME_FRAMES` / `TimeFrame` / `TimeSeriesPoint` vocabulary (`time-series`), and the axis maths in
 `scales` — `niceStep`, `ticks`, `niceScale`, `paddedDomain`, `linearScale`, `extent`, `xLabelStride`.
+`D3LineChart`'s own d3-free parts live in `d3-line-chart-core` — `DEFAULT_D3_LINE_CHART_COLORS`,
+`yDomainFor`, `assertD3Available` and `MISSING_D3_LINE_ERROR` — and `d3-line-chart` and the `svg`
+barrel re-export them.
 
 ## Usage
 
@@ -108,13 +111,13 @@ differed only in their heading and a `/1000` conversion, so the conversion is th
 
 No, unless you render `D3LineChart` or `CompareChart`. This is the full list:
 
-| Needs `d3`                                      | Does not                                         |
-| ----------------------------------------------- | ------------------------------------------------ |
-| `d3-line-chart` (`D3LineChart`)                 | `scales`, `colors`, `time-series`, `payload`     |
-| `compare-chart` (`CompareChart`)                | `line-chart`, `bars`, `donut-chart`, `kpi`       |
-| the package barrel `.` (re-exports both halves) | `metric-panel`, `use-in-view`, the `svg` barrel  |
-| `ui-guide`'s charts sections (load it lazily)   | every suite here except `d3-line-chart.test.tsx` |
-| `compare-chart.test.tsx`                        | —                                                |
+| Needs `d3`                                      | Does not                                                              |
+| ----------------------------------------------- | --------------------------------------------------------------------- |
+| `d3-line-chart` (`D3LineChart`)                 | `scales`, `colors`, `time-series`, `payload`                          |
+| `compare-chart` (`CompareChart`)                | `line-chart`, `bars`, `donut-chart`, `kpi`                            |
+| the package barrel `.` (re-exports both halves) | `metric-panel`, `use-in-view`, `d3-line-chart-core`, the `svg` barrel |
+| `ui-guide`'s charts sections (load it lazily)   | every suite here except `d3-line-chart.test.tsx`                      |
+| `compare-chart.test.tsx`                        | —                                                                     |
 
 `CompareChart` imports `D3LineChart`, so it needs d3 for that reason alone. Type-only imports count
 too: `payload.ts` and `metric-panel.tsx` used to take `TimeFrame` / `TimeSeriesPoint` from
@@ -249,7 +252,9 @@ tested once, in `@spy4x/platform`'s own `axis.test.ts`. The chart suites render 
 `preact-render-to-string` and assert on real markup — tick counts, path geometry for a known dataset,
 legend rows, percent widths, gradient stops and empty states. `d3-line-chart.test.tsx` additionally
 covers the pure helpers behind the island (`yDomainFor`, `formatTimeTick`), the missing-d3 guard
-(`assertD3Available`) and its server-rendered shell, since d3 itself needs a DOM.
+(`assertD3Available`) and its server-rendered shell, since d3 itself needs a DOM. It imports them
+through `d3-line-chart.tsx`, which re-exports the ones `d3-line-chart-core.ts` defines, so the same
+suite proves that import path still works.
 `preact-render-to-string` comes from the root import map, which pins it for every package's tests.
 
 `charts/probe/no-d3-dependency.ts` is the dependency-boundary suite: it is a task, not a test, because
