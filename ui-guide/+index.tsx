@@ -109,13 +109,12 @@ export {
   type DemoFragment,
   type DemoRegistry,
   demoRegistry,
-  exampleDemos,
-  examplePackageIds,
   type GroupId,
   type GuidePage,
   type GuidePageId,
   guidePageIds,
   guidePages,
+  helperPackageIds,
   missingDemos,
   type PackageId,
   packageIds,
@@ -127,10 +126,3 @@ export {
   type SectionKind,
   type SectionPackage,
 } from "./registry.ts"
-export {
-  type Example,
-  type ExampleDemo,
-  type ExampleFragment,
-  formatOutput,
-  toExampleDemos,
-} from "./example.tsx"

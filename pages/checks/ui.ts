@@ -1,3 +1,4 @@
+import { guidePages } from "@spy4x/preact-ui-guide/registry"
 import {
   centreInView,
   check,
@@ -739,9 +740,7 @@ async function dropdownChecks(devtools: Devtools): Promise<void> {
   )
 
   await strayClickCheck(devtools)
-  // The table below counts triggers on cards of three packages, so it is read on the guide's `all`
-  // page, where every card is rendered.
-  await openGuidePage(devtools, "all")
+  // The table below counts triggers on cards of three packages, so it reads every page in turn.
   await triggerNameCheck(devtools)
   await openGuidePage(devtools, "ui")
 }
@@ -935,31 +934,39 @@ async function triggerNameCheck(devtools: Devtools): Promise<void> {
   await devtools.send("DOM.enable")
   await devtools.send("Accessibility.enable")
 
-  const { root } = await devtools.send<{ root: { nodeId: number } }>("DOM.getDocument", {
-    depth: 1,
-  })
-  const { nodeIds } = await devtools.send<{ nodeIds: number[] }>("DOM.querySelectorAll", {
-    nodeId: root.nodeId,
-    selector,
-  })
-  const cards = await devtools.evaluate<string[]>(
-    `[...document.querySelectorAll('${selector}')]
-      .map((trigger) => trigger.closest("[id^=demo-]")?.id ?? "outside any card")`,
-  )
-
+  // The triggers sit on cards of three packages, and the guide shows one package's page at a
+  // time, so every page is read in turn.
+  const cards: string[] = []
   const unnamed: string[] = []
   const named: string[] = []
-  for (const [index, nodeId] of nodeIds.entries()) {
-    const { nodes } = await devtools.send<{ nodes: Array<{ name?: { value?: string } }> }>(
-      "Accessibility.getPartialAXTree",
-      { nodeId, fetchRelatives: false },
+  let triggers = 0
+  for (const page of guidePages) {
+    await openGuidePage(devtools, page.id)
+    const { root } = await devtools.send<{ root: { nodeId: number } }>("DOM.getDocument", {
+      depth: 1,
+    })
+    const { nodeIds } = await devtools.send<{ nodeIds: number[] }>("DOM.querySelectorAll", {
+      nodeId: root.nodeId,
+      selector,
+    })
+    const onPage = await devtools.evaluate<string[]>(
+      `[...document.querySelectorAll('${selector}')]
+        .map((trigger) => trigger.closest("[id^=demo-]")?.id ?? "outside any card")`,
     )
-    const name = (nodes[0]?.name?.value ?? "").trim()
-    const where = cards[index] ?? `trigger ${index + 1}`
-    if (name === "") unnamed.push(where)
-    else named.push(`${where}: "${name}"`)
-  }
+    cards.push(...onPage)
+    triggers += nodeIds.length
 
+    for (const [index, nodeId] of nodeIds.entries()) {
+      const { nodes } = await devtools.send<{ nodes: Array<{ name?: { value?: string } }> }>(
+        "Accessibility.getPartialAXTree",
+        { nodeId, fetchRelatives: false },
+      )
+      const name = (nodes[0]?.name?.value ?? "").trim()
+      const where = onPage[index] ?? `${page.id} trigger ${index + 1}`
+      if (name === "") unnamed.push(where)
+      else named.push(`${where}: "${name}"`)
+    }
+  }
   const counted = new Map<string, number>()
   for (const card of cards) counted.set(card, (counted.get(card) ?? 0) + 1)
   const expected = Object.entries(DROPDOWN_TRIGGERS_PER_CARD)
@@ -975,16 +982,14 @@ async function triggerNameCheck(devtools: Devtools): Promise<void> {
 
   check(
     "every Dropdown trigger in the catalogue has an accessible name",
-    miscounted.length === 0 && nodeIds.length === expectedTotal &&
-      nodeIds.length === cards.length && unnamed.length === 0,
-    miscounted.length > 0 || nodeIds.length !== expectedTotal
-      ? `the catalogue renders ${nodeIds.length} dropdown triggers, not the ${expectedTotal} it ` +
+    miscounted.length === 0 && triggers === expectedTotal &&
+      triggers === cards.length && unnamed.length === 0,
+    miscounted.length > 0 || triggers !== expectedTotal
+      ? `the catalogue renders ${triggers} dropdown triggers, not the ${expectedTotal} it ` +
         `should — ${miscounted.join("; ")}`
       : unnamed.length > 0
-      ? `${unnamed.length} of ${nodeIds.length} announce as an unnamed button: ${
-        unnamed.join(", ")
-      }`
-      : `all ${nodeIds.length} expected triggers named by Chromium — ${named.join(", ")}`,
+      ? `${unnamed.length} of ${triggers} announce as an unnamed button: ${unnamed.join(", ")}`
+      : `all ${triggers} expected triggers named by Chromium — ${named.join(", ")}`,
   )
 }
 
@@ -6555,8 +6560,9 @@ async function dataTableChecks(devtools: Devtools): Promise<void> {
   await blurActive(devtools)
 
   await dataTablePagingCheck(devtools)
-  // The URL-bound demo is the host's own, and it lives on the guide's signals page.
-  await openGuidePage(devtools, "signals")
+  // The URL-bound demo is the host's own, at the end of the guide's UI page; opening the page again
+  // starts it at its top.
+  await openGuidePage(devtools, "ui")
   await dataTableUrlSortCheck(devtools)
   await openGuidePage(devtools, "ui")
 }

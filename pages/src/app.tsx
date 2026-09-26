@@ -8,9 +8,11 @@
  * the guide reports, and manual scroll restoration, because this page is the whole app and the
  * guide scrolls on its first read itself.
  *
- * The signals page carries two demos that are not cards, because each needs a page that owns an
+ * The UI page ends with two demos that are not cards, because each needs a page that owns an
  * address: {@link UrlFilterDemo}, `useUrlFilters` bound directly to filter signals, and
  * {@link DataTableSortDemo}, the same hook underneath `DataTable`'s own `sort` prop.
+ * They were on the Signals page until the guide stopped showing helpers (#357); the browser checks
+ * in `pages/checks/signals.ts` and `pages/checks/ui.ts` drive them there.
  */
 
 import { copyToClipboard } from "@spy4x/preact-ui/copy-button"
@@ -72,7 +74,7 @@ export function App({ initialHash, version }: AppProps) {
         colorScheme={colorScheme}
         contentAs="main"
         pageExtras={{
-          signals: (
+          ui: (
             <div class="flex flex-col gap-12">
               <UrlFilterDemo />
               <DataTableSortDemo />

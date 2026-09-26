@@ -246,14 +246,20 @@ async function staticPhase(): Promise<void> {
     ".theme-base and .btn rules found",
   )
 
-  // The served document is the guide's `all` page — every page at once, which is what a reader
-  // without JavaScript gets and what the island hydrates before it reads the address. Each page on
-  // its own is rendered here from the same `App`, and has to carry its own cards and no others:
-  // that is the page a reader with JavaScript sees once the address is read.
+  // The served document is every page of the guide at once, which is what a reader without
+  // JavaScript gets and what the island hydrates before it reads the address. It is not a page of
+  // its own: nothing links to it. Each page on its own is rendered here from the same `App`, and has
+  // to carry its own cards and no others: that is the page a reader with JavaScript sees once the
+  // address is read.
   check(
-    "index.html prerenders the guide's all-pages document",
+    "index.html prerenders every page of the guide at once",
     html.includes(`data-guide-page="all"`),
     `data-guide-page="all"`,
+  )
+  check(
+    "index.html links no Everything page",
+    !html.includes(`href="#/all"`) && !html.includes(`data-guide-page-link="all"`),
+    "no #/all link, no page link for it",
   )
   const wrongPages = guidePages.flatMap((page) => {
     const markup = renderApp(pageHref(page.id))
@@ -939,7 +945,7 @@ function onPage(
  * that package's file under `pages/checks/`, never this list. `cn` is the one workspace member
  * missing on purpose: it is a single class-name function with nothing a browser could drive.
  * `signals` has no catalogue section any more and still has a file: its checks drive the demo the
- * host page renders.
+ * host page renders at the end of the UI page.
  *
  * `ui` runs last on purpose: its Modal checks (kept last within `ui.ts` for the same reason) open a
  * real modal dialog, and a dialog that refused to close would sit in the top layer above every check
@@ -959,7 +965,7 @@ const PACKAGE_BLOCKS: readonly CheckBlock<Devtools>[] = [
   { name: "icons", run: onPage("icons", iconsChecks) },
   { name: "ui-guide", run: uiGuideChecks },
   { name: "pages", run: onPage("overview", pagesChecks) },
-  { name: "signals", run: onPage("signals", signalsChecks) },
+  { name: "signals", run: onPage("ui", signalsChecks) },
   { name: "system", run: onPage("system", systemChecks) },
   { name: "crud", run: onPage("crud", crudChecks) },
   { name: "charts", run: onPage("charts", chartsChecks) },

@@ -2,14 +2,14 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { catalogueSections, demoRegistry } from "../registry.ts"
 
-/** The UI page's second half: the input sections and the helper examples. */
-const SECTIONS = ["inputs", "fields", "enhanced-forms", "ui-examples"]
+/** The UI page's second half: the input sections. */
+const SECTIONS = ["inputs", "fields", "enhanced-forms"]
 
 const names = catalogueSections
   .filter((section) => SECTIONS.includes(section.id))
   .flatMap((section) => section.names)
 
-describe("the UI page's input and helper sections", () => {
+describe("the UI page's input sections", () => {
   it("are all found", () => {
     const found = catalogueSections.filter((section) => SECTIONS.includes(section.id))
     expect(found.map((section) => section.id)).toEqual(SECTIONS)

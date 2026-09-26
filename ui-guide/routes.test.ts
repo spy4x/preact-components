@@ -494,10 +494,10 @@ describe("routeTableDrift", () => {
 
   it("names a page the table left out entirely", () => {
     const drifted = table((copy) => {
-      copy.pages = copy.pages.filter((page) => page.pageId !== "cn")
+      copy.pages = copy.pages.filter((page) => page.pageId !== "icons")
     })
 
-    expect(routeTableDrift(drifted)).toEqual(['page "cn": no route emitted'])
+    expect(routeTableDrift(drifted)).toEqual(['page "icons": no route emitted'])
   })
 })
 
@@ -508,9 +508,9 @@ describe("guide pages", () => {
     { hash: "#/ui", page: "ui" },
     { hash: "#/UI", page: "ui" },
     { hash: "#/icons", page: "icons" },
-    { hash: "#/all", page: "all" },
-    { hash: "#/cn", page: "cn" },
-    { hash: "#/signals", page: "signals" },
+    { hash: "#/all", page: undefined },
+    { hash: "#/cn", page: undefined },
+    { hash: "#/signals", page: undefined },
     { hash: "#/inputs", page: "ui" },
     { hash: "#/inputs/toggle-switch", page: "ui" },
     { hash: "#toggle-switch", page: "ui" },

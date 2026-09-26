@@ -83,7 +83,7 @@ interface WiredCopy {
  * The copy control of every card the catalogue renders, read off the element tree.
  *
  * @param copy Clipboard port to hand the guide, as a host app would. The guide is rendered with no
- * `hash`, so it renders its `all` page: every card.
+ * `hash`, so it renders every page at once: every card.
  * @returns One entry per card, in render order.
  */
 function wiredCopies(copy?: CopyPort): WiredCopy[] {
@@ -129,7 +129,7 @@ describe("usage block copy controls", () => {
     const wired = wiredCopies(() => {})
 
     expect(catalogueNames.length).toBeGreaterThan(30)
-    // Sorted: the `all` page reads package by package, not in the catalogue's section order.
+    // Sorted: the served document reads package by package, not in the catalogue's section order.
     expect(wired.map((entry) => entry.name).sort()).toEqual([...catalogueNames].sort())
   })
 

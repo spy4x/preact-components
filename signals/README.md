@@ -18,16 +18,20 @@ another's sort codec.
 
 ## What is in the box
 
-| Module              | Exports                                                                                                                                                      |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `build-model-store` | `buildModelStore` — CRUD over one REST collection, arktype-validated                                                                                         |
-| `table-state`       | `SortRule`, `toggleSort`, `sortRows`, `parseSort`, `serializeSort`                                                                                           |
-| `theme`             | `createThemeStore` — light/dark/system, persistence, `matchMedia`; `themeBootstrapScript` — the inline `<head>` script that paints it before the first paint |
-| `toast`             | `createToastStore` — the list behind `Toastr`; runs no timers                                                                                                |
-| `clipboard`         | `createClipboard` — `navigator.clipboard` plus a feedback port                                                                                               |
-| `map-entry`         | `setMapEntry` / `deleteMapEntry` — immutable `Map` writes                                                                                                    |
-| `patch-signal`      | `patchSignal` — merge a partial object into a signal's value                                                                                                 |
-| `use-url-filters`   | `useUrlFilters` — two-way binding between URL params and signals                                                                                             |
+| Module              | Exports                                                                                                                                                                                |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `build-model-store` | `buildModelStore` — CRUD over one REST collection, arktype-validated                                                                                                                   |
+| `table-state`       | `SortRule`, `toggleSort`, `removeSortRule`, `sortRows`, `parseSort`, `serializeSort`                                                                                                   |
+| `theme`             | `createThemeStore` — light/dark/system, persistence, `matchMedia`; `ThemeValue`, the choice; `themeBootstrapScript` — the inline `<head>` script that paints it before the first paint |
+| `toast`             | `createToastStore` — the list behind `Toastr`; runs no timers                                                                                                                          |
+| `clipboard`         | `createClipboard` — `navigator.clipboard` plus a feedback port; `CLIPBOARD_UNAVAILABLE`                                                                                                |
+| `map-entry`         | `setMapEntry` / `deleteMapEntry` — immutable `Map` writes                                                                                                                              |
+| `patch-signal`      | `patchSignal` — merge a partial object into a signal's value                                                                                                                           |
+| `use-url-filters`   | `useUrlFilters` — two-way binding between URL params and signals                                                                                                                       |
+
+`removeSortRule` drops one key's rule and keeps the others' priorities. `ThemeValue` is what the
+user picked: `LIGHT`, `DARK` or `SYSTEM`. `CLIPBOARD_UNAVAILABLE` is the reason `copy` reports
+when the runtime has no clipboard at all, on an insecure origin or during a server render.
 
 `types.ts` holds the shapes this package owns (`Model`, `RemoteEvent`, `ToastMessage`, `ToastPort`)
 and is re-exported from the barrel. The store's error envelope and operation state come from

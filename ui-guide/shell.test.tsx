@@ -25,11 +25,27 @@ function cardsIn(html: string): string[] {
 }
 
 describe("UIGuide's pages", () => {
-  it("renders every card on the all page when the host has not read the address yet", () => {
+  it("renders every card at once when the host has not read the address yet", () => {
     const html = render(<UIGuide />)
 
     expect(html).toContain(`data-guide-page="all"`)
     expect(cardsIn(html).sort()).toEqual([...catalogueNames].sort())
+  })
+
+  it("marks no page current, and links no Everything page, while it renders every card", () => {
+    const html = render(<UIGuide />)
+
+    expect(html).not.toContain(`aria-current="page" data-guide-page-link`)
+    expect(html).not.toContain(`data-guide-page-link="all"`)
+    expect(html).not.toContain(`href="#/all"`)
+    expect(html).not.toContain(">Everything<")
+  })
+
+  it("renders the overview, not every card, for the old Everything route", () => {
+    const html = render(<UIGuide hash="#/all" />)
+
+    expect(html).toContain(`data-guide-page="overview"`)
+    expect(cardsIn(html)).toEqual([])
   })
 
   it("renders the overview, and no card, for an empty hash", () => {
@@ -71,14 +87,14 @@ describe("UIGuide's pages", () => {
   })
 
   it("says a package with no card in the registry has examples coming", () => {
-    expect(render(<UIGuide hash="#/cn" />)).not.toContain("Runnable examples for this package")
+    expect(render(<UIGuide hash="#/map" />)).not.toContain("Runnable examples for this package")
 
-    const registry = withoutPage("cn")
-    const html = render(<UIGuide hash="#/cn" registry={registry} />)
+    const registry = withoutPage("map")
+    const html = render(<UIGuide hash="#/map" registry={registry} />)
 
-    expect(html).toContain(`data-guide-page="cn"`)
+    expect(html).toContain(`data-guide-page="map"`)
     expect(html).toContain("Runnable examples for this package are coming.")
-    expect(render(<UIGuide hash="#/cn" registry={registry} labels={{ comingSoon: "Bientôt." }} />))
+    expect(render(<UIGuide hash="#/map" registry={registry} labels={{ comingSoon: "Bientôt." }} />))
       .toContain(
         "Bientôt.",
       )
@@ -92,10 +108,10 @@ describe("UIGuide's pages", () => {
   })
 
   it("appends a host's page extra to that page only", () => {
-    const extras = { signals: <p data-host-extra="">host demo</p> }
+    const extras = { ui: <p data-host-extra="">host demo</p> }
 
-    expect(render(<UIGuide hash="#/signals" pageExtras={extras} />)).toContain("data-host-extra")
-    expect(render(<UIGuide hash="#/ui" pageExtras={extras} />)).not.toContain("data-host-extra")
+    expect(render(<UIGuide hash="#/ui" pageExtras={extras} />)).toContain("data-host-extra")
+    expect(render(<UIGuide hash="#/crud" pageExtras={extras} />)).not.toContain("data-host-extra")
   })
 })
 
@@ -214,7 +230,7 @@ describe("UIGuide's navigate port", () => {
 
 describe("UIGuide's own copy", () => {
   it("prints the overview's counts in English, or through the labels when given", () => {
-    const english = render(<UIGuide hash="" registry={withoutPage("cn")} />)
+    const english = render(<UIGuide hash="" registry={withoutPage("map")} />)
     expect(english).toMatch(/\d+ live cards · \d+ icons · \d+ packages/)
     expect(english).toMatch(/>\d+ cards</)
     expect(english).toContain(">Examples coming<")
@@ -222,7 +238,7 @@ describe("UIGuide's own copy", () => {
     const french = render(
       <UIGuide
         hash=""
-        registry={withoutPage("cn")}
+        registry={withoutPage("map")}
         labels={{
           stats: ({ cards }) => `${cards} fiches`,
           cardCount: (count) => `${count} fiches`,
@@ -282,11 +298,20 @@ describe("the navigation's groups", () => {
   })
 
   it("draw each group's title, overridable through the labels", () => {
-    const html = render(<UIGuide hash="#/ui" labels={{ navGroups: { helpers: "Outils" } }} />)
+    const html = render(<UIGuide hash="#/ui" labels={{ navGroups: { packages: "Paquets" } }} />)
 
-    expect(html).toContain(">Components<")
-    expect(html).toContain(">Outils<")
-    expect(html).not.toContain(">Helpers</p>")
+    expect(html).toContain(">Start here<")
+    expect(html).toContain(">Paquets<")
+    expect(html).not.toContain(">Packages</p>")
+  })
+
+  it("list the pages as Overview, UI, Icons, Theme, Charts, Map, System, CRUD", () => {
+    const html = render(<UIGuide hash="#/ui" />)
+    const nav = html.slice(html.indexOf("<nav"), html.indexOf("</nav>"))
+    const linked = [...nav.matchAll(/data-guide-page-link="([^"]+)"[^>]*>([^<]+)</g)]
+      .map((match) => match[2])
+
+    expect(linked).toEqual(["Overview", "UI", "Icons", "Theme", "Charts", "Map", "System", "CRUD"])
   })
 })
 
@@ -325,7 +350,9 @@ describe("section headings", () => {
       new RegExp(`<section id="${id}"[^>]*><div class="([^"]*)"`).exec(html)?.[1] ?? ""
 
     expect(header("charts")).toContain("sr-only")
-    expect(header("charts-examples")).not.toContain("sr-only")
+    expect(render(<UIGuide hash="#/ui" />)).toMatch(
+      /<section id="badges"[^>]*><div class="flex flex-col gap-1"/,
+    )
   })
 })
 
@@ -391,7 +418,7 @@ describe("the shell's other words", () => {
 })
 
 describe("the card grid", () => {
-  it("gives example cards and component cards in one row the same height", () => {
+  it("gives the cards of one row the same height", () => {
     const html = render(<UIGuide hash="#/charts" />)
     const gridBefore = (card: string) => {
       const at = html.indexOf(`<article id="demo-${card}"`)
@@ -399,7 +426,7 @@ describe("the card grid", () => {
       return html.slice(open, html.indexOf(`">`, open))
     }
 
-    expect(gridBefore("extent")).not.toContain("items-start")
+    expect(gridBefore("LineChart")).not.toContain("items-start")
     expect(gridBefore("Bars")).not.toContain("items-start")
   })
 })

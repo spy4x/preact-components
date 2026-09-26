@@ -15,7 +15,7 @@ import {
   classDemos,
   coveredPackageIds,
   demoRegistry,
-  exampleDemos,
+  guidePageIds,
   guidePages,
   missingDemos,
   type PackageId,
@@ -39,8 +39,8 @@ describe("the catalogue", () => {
   it("gives every demo a summary, a snippet and a render function", () => {
     for (const [name, demo] of Object.entries(demoRegistry)) {
       expect(demo.summary.length, name).toBeGreaterThan(10)
-      // A component or class snippet is JSX; an example's is the code it runs.
-      if (!(name in exampleDemos)) expect(demo.snippet, name).toContain("<")
+      // A component or class snippet is JSX.
+      expect(demo.snippet, name).toContain("<")
       expect(typeof demo.render, name).toBe("function")
     }
   })
@@ -136,13 +136,29 @@ describe("guidePages", () => {
     }
   })
 
-  it("gives the all page every section, and the overview none", () => {
-    const all = guidePages.find((page) => page.id === "all")
+  it("gives the overview no section, and every section to some page", () => {
     const overview = guidePages.find((page) => page.id === "overview")
-    expect(all?.sections.map((section) => section.id)).toEqual(
-      catalogueSections.map((section) => section.id),
-    )
     expect(overview?.sections).toEqual([])
+    expect(guidePages.flatMap((page) => page.sections).length).toBe(catalogueSections.length)
+  })
+
+  it("reads UI, Icons, Theme, Charts, Map, System, CRUD after the overview, with no Everything page", () => {
+    expect(guidePageIds).toEqual([
+      "overview",
+      "ui",
+      "icons",
+      "theme",
+      "charts",
+      "map",
+      "system",
+      "crud",
+    ])
+    expect(guidePages.map((page) => page.title)).not.toContain("Everything")
+  })
+
+  it("gives a package that exports no component no page", () => {
+    const pageIds: readonly string[] = guidePageIds
+    for (const id of ["signals", "cn"]) expect(pageIds, id).not.toContain(id)
   })
 
   it("names every package page's package, and gives every page a title and a blurb", () => {
@@ -154,6 +170,5 @@ describe("guidePages", () => {
       expect(page.packageName, page.id).toBe(`@spy4x/preact-${page.id}`)
     }
     expect(packagePages.map((page) => page.id)).not.toContain("overview")
-    expect(packagePages.map((page) => page.id)).not.toContain("all")
   })
 })

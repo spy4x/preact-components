@@ -59,10 +59,8 @@ import { GuideSearch, searchIndex, type SearchKindWords } from "./search.tsx"
 
 /** The navigation's groups, in order. Every page is in exactly one (`shell.test.tsx`). */
 export const navGroups = [
-  { id: "start", pages: ["overview", "all"] },
-  { id: "components", pages: ["ui", "system", "crud", "charts", "map"] },
-  { id: "helpers", pages: ["signals", "cn"] },
-  { id: "foundations", pages: ["theme", "icons"] },
+  { id: "start", pages: ["overview"] },
+  { id: "packages", pages: ["ui", "icons", "theme", "charts", "map", "system", "crud"] },
 ] as const satisfies readonly { id: string; pages: readonly GuidePageId[] }[]
 
 /** Identifier of one navigation group. */
@@ -152,15 +150,13 @@ const DEFAULT_LABELS: Required<Omit<UIGuideLabels, "navGroups" | "searchKinds" |
 } = {
   title: "preact-components",
   tagline:
-    "Preact components, Tailwind styles, icons and signal helpers for Deno apps — every one running live in this guide, with the code next to it.",
+    "Preact components, Tailwind styles and icons for Deno apps — every one running live in this guide, with the code next to it.",
   nav: "Guide",
   openNav: "Menu",
   closeNav: "Close the guide navigation",
   navGroups: {
     start: "Start here",
-    components: "Components",
-    helpers: "Helpers",
-    foundations: "Foundations",
+    packages: "Packages",
   },
   comingSoon: "Runnable examples for this package are coming. Its README documents it until then.",
   skipToContent: "Skip to content",
@@ -168,7 +164,7 @@ const DEFAULT_LABELS: Required<Omit<UIGuideLabels, "navGroups" | "searchKinds" |
   searchPlaceholder: "Search components…",
   searchEmpty: "Nothing matches that name.",
   closeSearch: "Close the search",
-  searchKinds: { page: "Page", component: "Component", helper: "Helper", classes: "Classes" },
+  searchKinds: { page: "Page", component: "Component", classes: "Classes" },
   searchGuidePlace: "Guide",
   card: DEFAULT_CARD_LABELS,
   repository: "Source on GitHub",
@@ -296,15 +292,14 @@ export function UIGuide(
 
   // A route that names no page keeps the one showing. Held in a ref rather than state: it is
   // derived during render from the route and its own last value, and never re-renders anything.
-  // Before the host has read the address, the page is `all`: the served document carries every
-  // page, for a reader without JavaScript and for hydration to match. That is not a page the reader
-  // chose, so it is not kept: a first route that names none opens the overview.
+  // Before the host has read the address, the guide renders every page at once: the served
+  // document, for a reader without JavaScript and for hydration to match. That is no page — it has
+  // no route and no navigation entry — so nothing is kept: a first route that names none opens the
+  // overview.
+  const served = hash === undefined
   const shownPage = useRef<GuidePageId>("overview")
-  const pageId = hash === undefined
-    ? "all"
-    : pageOfRoute(route) ?? pageOfFragment(hash) ?? shownPage.current
-  if (hash !== undefined) shownPage.current = pageId
-  const page = guidePages.find((candidate) => candidate.id === pageId) ?? guidePages[0]
+  if (!served) shownPage.current = pageOfRoute(route) ?? pageOfFragment(hash) ?? shownPage.current
+  const page = guidePages.find((candidate) => candidate.id === shownPage.current) ?? guidePages[0]
 
   const [navOpen, setNavOpen] = useState(false)
   const dialog = useRef<HTMLDialogElement>(null)
@@ -313,7 +308,7 @@ export function UIGuide(
   const contentId = useId()
   const content = useRef<HTMLElement>(null)
   const scrolledPage = useRef<GuidePageId | undefined>(undefined)
-  const inView = useCardInView(hash !== undefined, page.id)
+  const inView = useCardInView(!served, page.id)
   const entries = useMemo(
     () => searchIndex(registry, labels.searchGuidePlace),
     [registry, labels.searchGuidePlace],
@@ -337,9 +332,9 @@ export function UIGuide(
     }
     onRouteChange?.({ route, page })
 
-    // The first route read replaces the `all` document with one page, which is not a page change a
-    // reader made. It starts where the address points, or at the top: the server sent the longer
-    // `all` document, so a position the browser restored would land somewhere unrelated.
+    // The first route read replaces the served document with one page, which is not a page change
+    // a reader made. It starts where the address points, or at the top: the server sent the longer
+    // document of every page, so a position the browser restored would land somewhere unrelated.
     const firstRead = scrolledPage.current === undefined
     const pageChanged = !firstRead && scrolledPage.current !== page.id
     scrolledPage.current = page.id
@@ -359,7 +354,7 @@ export function UIGuide(
     }
     if (route.kind === "index" && route.reason === "unknown") {
       // A bare fragment: the browser scrolled to its element when the address changed, unless the
-      // element was not on the page yet — a page switched to hold it, or a fresh load whose `all`
+      // element was not on the page yet — a page switched to hold it, or a fresh load whose served
       // document was just replaced. Only then does the shell scroll there itself.
       const target = /^#([^/]+)$/.exec(hash)?.[1]
       const element = target === undefined ? null : document.getElementById(target)
@@ -391,12 +386,12 @@ export function UIGuide(
   }
 
   const missing = missingDemos(registry)
-  // The overview and the all-pages document have no "On this page" column: their content takes
-  // its place.
-  const listed = page.id !== "all" && page.id !== "overview"
+  // The overview and the served document have no "On this page" column: their content takes its
+  // place.
+  const listed = !served && page.id !== "overview"
 
   return (
-    <div class={cn("ui-guide w-full", className)} data-guide-page={page.id}>
+    <div class={cn("ui-guide w-full", className)} data-guide-page={served ? "all" : page.id}>
       {
         /* First in the guide, ahead of every navigation link. It moves focus itself rather than
         leaving it to the fragment, so it works under a host that routes by something else, and the
@@ -477,7 +472,7 @@ export function UIGuide(
           <GuideNav
             label={labels.nav}
             labels={labels}
-            page={page}
+            page={served ? undefined : page}
             route={route}
             registry={registry}
             follow={follow}
@@ -542,10 +537,10 @@ export function UIGuide(
             !listed && "xl:col-span-2",
           )}
         >
-          <p class="sr-only" aria-live="polite">{page.title}</p>
+          <p class="sr-only" aria-live="polite">{served ? labels.title : page.title}</p>
           <Stack gap="2xl">
             {missing.length > 0 ? <MissingDemoBanner names={missing} /> : null}
-            {(page.id === "all" ? [guidePages[0], ...packagePages] : [page]).map((shown) =>
+            {(served ? guidePages : [page]).map((shown) =>
               shown.id === "overview"
                 ? (
                   <Overview
@@ -561,7 +556,7 @@ export function UIGuide(
                   <PackagePage
                     key={shown.id}
                     page={shown}
-                    nested={page.id === "all"}
+                    nested={served}
                     registry={registry}
                     copy={copy}
                     labels={labels}
@@ -624,7 +619,7 @@ function useCardInView(active: boolean, pageId: GuidePageId): string | undefined
   const [inView, setInView] = useState<string | undefined>(undefined)
   useEffect(() => {
     setInView(undefined)
-    if (!active || pageId === "all" || !("IntersectionObserver" in globalThis)) return
+    if (!active || !("IntersectionObserver" in globalThis)) return
     const cards = [...document.querySelectorAll<HTMLElement>(`article[id^="demo-"]`)]
     const visible = new Set<string>()
     // The band a card counts as "in view" in: below the sticky header, above the lower half.
@@ -646,7 +641,8 @@ function useCardInView(active: boolean, pageId: GuidePageId): string | undefined
 interface GuideNavProps {
   label: string
   labels: Labels
-  page: GuidePage
+  /** The page showing; `undefined` in the served document, which marks none. */
+  page: GuidePage | undefined
   route: RouteMatch
   registry: PartialDemoRegistry
   /** Called on every link's click, with its href. */
@@ -681,7 +677,7 @@ function GuideNav(
               {group.pages.map((id) => {
                 const candidate = guidePages.find((each) => each.id === id)
                 if (!candidate) return null
-                const current = candidate.id === page.id
+                const current = candidate.id === page?.id
                 const href = pageHref(candidate.id)
                 return (
                   <li key={candidate.id}>
@@ -787,7 +783,7 @@ function NavSection(
 
 /**
  * A card's visible name: the component's own name for a component card, the card's title for a
- * class or an example card.
+ * class card.
  */
 function cardTitle(section: Pick<CatalogueSection, "kind">, name: string): string {
   return section.kind === "component" ? name : cardLabel(name)
@@ -989,7 +985,7 @@ export function cardSpans(demos: readonly Pick<Demo, "wide">[]): ("full" | "half
 function PackagePage(
   { page, nested, registry, copy, labels, extra }: {
     page: GuidePage
-    /** Rendered inside the `all` page, under its overview: the page heading is an `h2` there. */
+    /** Rendered in the served document, under the overview: the page heading is an `h2` there. */
     nested: boolean
     registry: PartialDemoRegistry
     copy?: (text: string) => void | Promise<void>
@@ -1049,9 +1045,8 @@ function PackagePage(
               )}
             >
               {demos.map(([name, demo], index) => {
-                // A class card is headed by its own title and lists the classes it applies, an
-                // example card by its title with its code open; a component card is headed by the
-                // component.
+                // A class card is headed by its own title and lists the classes it applies; a
+                // component card is headed by the component.
                 const classDemo = section.kind === "class" ? classDemos[name] : undefined
                 return (
                   <DemoCard
@@ -1063,8 +1058,7 @@ function PackagePage(
                     description={demo.description}
                     snippet={demo.snippet}
                     classes={classDemo?.classes}
-                    usageOpen={section.kind === "example"}
-                    wide={demo.wide ?? (section.kind === "example" ? false : undefined)}
+                    wide={demo.wide}
                     props={demo.props}
                     labels={labels.card}
                     copy={copy}

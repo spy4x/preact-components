@@ -1,17 +1,17 @@
 /**
- * The catalogue's coverage rule: every value a catalogued package exports is shown somewhere.
+ * The guide's coverage rule: the guide shows components, and a package's README names its helpers.
  *
- * A **component** — {@link isComponent} — needs a card in a component section. Anything else — a
- * function, a constant, an enum, a label map — needs a card or an example card that names it in
- * its `covers` (`example.tsx`). An export with neither must be named by {@link allowedExports},
- * with a reason.
+ * A **component** — {@link isComponent} — needs a card in a component section, or an entry in
+ * {@link COMPONENTS_WITHOUT_CARD} with a reason. Anything else — a function, a constant, an enum, a
+ * label map — is a **helper**: the guide shows none, and the package's `README.md` has to name it
+ * in code ({@link readmeNames}), unless {@link README_PENDING} still lists it.
  *
  * The exports are read from the package rather than from a list, and from the barrel *and* every
  * subpath module the package publishes, so an export reachable only through its own subpath is
  * still seen. `coverage.test.ts` runs {@link coverageProblems} over that read and fails with the
- * offender's name when the rule is broken: an export with no card or example, an allow-list entry
- * the package does not export or that is covered after all, and a card or example naming a name
- * its package does not export.
+ * offender's name when the rule is broken: a component with no card, a helper its README does not
+ * name, an allow-list or pending entry the package does not export or that is covered after all,
+ * and a card naming a name its package does not export.
  */
 
 import * as charts from "@spy4x/preact-charts"
@@ -23,10 +23,12 @@ import * as system from "@spy4x/preact-system"
 import * as theme from "@spy4x/preact-theme"
 import * as ui from "@spy4x/preact-ui"
 import { parse } from "@std/jsonc"
-import { EXAMPLES_PENDING } from "./examples-pending.ts"
-import { catalogueSections, coveredPackageIds, exampleDemos, type PackageId } from "./registry.ts"
+import { README_PENDING } from "./readme-pending.ts"
+import { catalogueSections, coveredPackageIds, type PackageId } from "./registry.ts"
 
-/** Barrel namespace of every catalogued package, keyed the way the catalogue keys it. */
+export { README_PENDING }
+
+/** Barrel namespace of every covered package, keyed the way the catalogue keys it. */
 const BARRELS: Record<PackageId, object> = { ui, charts, system, crud, map, signals, theme, cn }
 
 /** One package's value exports: each name, and the value it is bound to. */
@@ -35,59 +37,31 @@ export type PackageNamespace = Readonly<Record<string, unknown>>
 /** The repository root: the parent of every package directory. */
 const ROOT = new URL("../", import.meta.url)
 
-/** One export the catalogue does not show, and why it does not. */
+/** One component the guide does not show, and why it does not. */
 export interface AllowedExport {
-  /** Value export name, exactly as its package exports it. */
+  /** Component export name, exactly as its package exports it. */
   name: string
-  /** Why there is no card or example. */
+  /** Why there is no card. */
   reason: string
 }
 
-/** Why the Vite plugins in `@spy4x/preact-theme/vite`, and the error one throws, have no card. */
-const VITE_PLUGIN_REASON =
-  'A Vite plugin runs inside the app\'s build, not in a page: an example card could only call its hooks by hand with a faked plugin context, which is code no app writes. `theme/README.md`, under "Install", shows the lines an app puts in its `vite.config.ts`, and `theme/vite.test.ts` drives every hook.'
-
 /**
- * Exports with no card and no example, each with a reason — the allow-list for anything other
- * than a pending example, which {@link EXAMPLES_PENDING} lists instead.
+ * Components with no card, each with a reason.
  *
  * The reason is required because an entry with no argument is how a list rots. An entry the
- * package no longer exports, and an entry covered since, are both failures.
+ * package no longer exports, one that is not a component, and one with a card since are all
+ * failures.
  */
-export const EXPORTS_WITHOUT_DEMO: Record<PackageId, readonly AllowedExport[]> = {
+export const COMPONENTS_WITHOUT_CARD: Record<PackageId, readonly AllowedExport[]> = {
   ui: [],
   charts: [],
-  system: [],
   map: [],
+  system: [],
   crud: [],
-  signals: [
-    {
-      name: "useUrlFilters",
-      reason:
-        "It binds filters to the page's own address: it reads the parameters of whichever application hosts the catalogue, and writes that application's address as soon as a filter changes. Its pure parts have example cards; the hook is demonstrated by the demo app (`pages/src/url-filters.tsx`) and driven in a browser by `pages/checks/signals.ts`.",
-    },
-  ],
-  theme: [
-    ...["preactThemeCss", "requireComponentCss", "npmSpecifiers", "NpmVersionMismatchError"].map(
-      (name) => ({ name, reason: VITE_PLUGIN_REASON }),
-    ),
-  ],
+  theme: [],
+  signals: [],
   cn: [],
 }
-
-/** The reason every {@link EXAMPLES_PENDING} name carries in {@link allowedExports}. */
-export const PENDING_REASON = "example pending (#215)"
-
-/**
- * The whole allow-list: {@link EXPORTS_WITHOUT_DEMO}, plus every {@link EXAMPLES_PENDING} name with
- * {@link PENDING_REASON}.
- */
-export const allowedExports = Object.fromEntries(
-  coveredPackageIds.map((id) => [id, [
-    ...EXPORTS_WITHOUT_DEMO[id],
-    ...EXAMPLES_PENDING[id].map((name) => ({ name, reason: PENDING_REASON })),
-  ]]),
-) as unknown as Record<PackageId, readonly AllowedExport[]>
 
 /**
  * Packages that carry a `deno.json` and are deliberately not covered. `coverage.test.ts` fails when
@@ -120,13 +94,14 @@ export function isComponentName(name: string): boolean {
 
 /**
  * Whether an export is a component: a function named like one. A PascalCase object — an enum such
- * as `ThemeValue` — is not, so an example can cover it.
+ * as `ThemeValue` — is not, and neither is a class (`NpmVersionMismatchError`): both are helpers.
  *
  * @param name Value export name.
  * @param value The value it is bound to.
  */
 export function isComponent(name: string, value: unknown): boolean {
-  return isComponentName(name) && typeof value === "function"
+  return isComponentName(name) && typeof value === "function" &&
+    !/^class\b/.test(Function.prototype.toString.call(value))
 }
 
 /** Names one package's component sections demonstrate, in render order. */
@@ -134,13 +109,6 @@ export function demoedNamesOf(id: PackageId): string[] {
   return catalogueSections
     .filter((section) => section.package === id && section.kind === "component")
     .flatMap((section) => section.names)
-}
-
-/** Names one package's example cards cover, in render order. */
-export function exampledNamesOf(id: PackageId): string[] {
-  return catalogueSections
-    .filter((section) => section.package === id && section.kind === "example")
-    .flatMap((section) => section.names.flatMap((key) => exampleDemos[key].covers))
 }
 
 /**
@@ -199,63 +167,97 @@ export async function packageExports(): Promise<Record<PackageId, PackageNamespa
 }
 
 /**
- * Every way the catalogue and the packages it covers disagree, one message per problem.
+ * Whether a README names an export in code: a code span that starts with the name, as a whole word
+ * — `` `clampProgress` `` or `` `clampProgress(value, max)` ``. A mention in prose does not count,
+ * and neither does a longer name that starts with it (`` `clampProgressBar` ``).
  *
- * Both inputs are parameters so a test can drive the rule with exports or an allow-list the shipped
- * tree cannot produce: in a healthy tree every list agrees, and a check that can only be run against
- * agreement proves nothing.
+ * @param readme The README's text.
+ * @param name Export name.
+ */
+export function readmeNames(readme: string, name: string): boolean {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  return new RegExp(`\`${escaped}(?![\\w$])[^\`\\n]*\``).test(readme)
+}
+
+/** Every covered package's `README.md`, keyed by package. */
+export async function packageReadmes(): Promise<Record<PackageId, string>> {
+  const read = await Promise.all(
+    coveredPackageIds.map(async (id) => [
+      id,
+      await Deno.readTextFile(new URL(`./${id}/README.md`, ROOT)),
+    ]),
+  )
+  return Object.fromEntries(read) as Record<PackageId, string>
+}
+
+/**
+ * Every way the guide, the READMEs and the packages disagree, one message per problem.
+ *
+ * Every input is a parameter so a test can drive the rule with exports, READMEs or lists the
+ * shipped tree cannot produce: in a healthy tree every list agrees, and a check that can only be
+ * run against agreement proves nothing.
  *
  * @param exports Each package's value exports; normally {@link packageExports}'.
- * @param allowed Exports excused from having a card or example; defaults to {@link allowedExports}.
- * @param examplesOf Names a package's examples cover; defaults to {@link exampledNamesOf}.
- * @returns One message per problem, package by package; empty when the catalogue is complete.
+ * @param readmes Each package's README text; normally {@link packageReadmes}'.
+ * @param allowed Components excused from a card; defaults to {@link COMPONENTS_WITHOUT_CARD}.
+ * @param pending Helpers still waiting for a README line; defaults to {@link README_PENDING}.
+ * @returns One message per problem, package by package; empty when the rule holds.
  */
 export function coverageProblems(
   exports: Record<PackageId, PackageNamespace>,
-  allowed: Record<PackageId, readonly AllowedExport[]> = allowedExports,
-  examplesOf: (id: PackageId) => readonly string[] = exampledNamesOf,
+  readmes: Record<PackageId, string>,
+  allowed: Record<PackageId, readonly AllowedExport[]> = COMPONENTS_WITHOUT_CARD,
+  pending: Record<PackageId, readonly string[]> = README_PENDING,
 ): string[] {
   const problems: string[] = []
 
   for (const id of coveredPackageIds) {
     const exported = new Set(Object.keys(exports[id]))
     const demoed = new Set(demoedNamesOf(id))
-    const exampled = new Set(examplesOf(id))
     const excused = new Set(allowed[id].map((entry) => entry.name))
+    const waiting = new Set(pending[id])
+    const component = (name: string) => isComponent(name, exports[id][name])
 
-    for (const [name, value] of Object.entries(exports[id])) {
-      if (demoed.has(name) || excused.has(name)) continue
-      if (isComponent(name, value)) {
+    for (const name of exported) {
+      if (component(name)) {
+        if (demoed.has(name) || excused.has(name)) continue
         problems.push(
-          `${id} exports the component ${name} and no section demonstrates it — write a demo ` +
-            `card (an example does not count), or add an EXPORTS_WITHOUT_DEMO entry saying why`,
+          `${id} exports the component ${name} and no section demonstrates it — write a card, ` +
+            `or add a COMPONENTS_WITHOUT_CARD entry saying why`,
         )
-      } else if (!exampled.has(name)) {
+      } else if (!readmeNames(readmes[id], name) && !waiting.has(name)) {
         problems.push(
-          `${id} exports ${name} and no card or example covers it — write an example, or add ` +
-            `an EXPORTS_WITHOUT_DEMO entry saying why there is none`,
+          `${id} exports the helper ${name} and ${id}/README.md does not name it — add a line ` +
+            `that names it in code, \`${name}\``,
         )
       }
     }
 
     for (const { name } of allowed[id]) {
       if (!exported.has(name)) {
-        problems.push(`${id} does not export ${name}, which the allow-list names`)
-      } else if (
-        demoed.has(name) || (exampled.has(name) && !isComponent(name, exports[id][name]))
-      ) {
-        problems.push(`${id}'s ${name} has a card or an example, so its allow-list entry is stale`)
+        problems.push(`${id} does not export ${name}, which COMPONENTS_WITHOUT_CARD names`)
+      } else if (!component(name)) {
+        problems.push(
+          `${id}'s ${name} is not a component, so COMPONENTS_WITHOUT_CARD cannot excuse it`,
+        )
+      } else if (demoed.has(name)) {
+        problems.push(`${id}'s ${name} has a card, so its COMPONENTS_WITHOUT_CARD entry is stale`)
+      }
+    }
+
+    for (const name of waiting) {
+      if (!exported.has(name)) {
+        problems.push(`${id} does not export ${name}, which README_PENDING names`)
+      } else if (component(name)) {
+        problems.push(`${id}'s ${name} is a component, so README_PENDING cannot excuse it`)
+      } else if (readmeNames(readmes[id], name)) {
+        problems.push(`${id}/README.md names ${name}, so its README_PENDING entry is stale`)
       }
     }
 
     for (const name of demoed) {
       if (!exported.has(name)) {
         problems.push(`the ${id} sections demo ${name}, which ${id} does not export`)
-      }
-    }
-    for (const name of exampled) {
-      if (!exported.has(name)) {
-        problems.push(`the ${id} examples cover ${name}, which ${id} does not export`)
       }
     }
   }

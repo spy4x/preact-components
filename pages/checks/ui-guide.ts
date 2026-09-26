@@ -311,7 +311,7 @@ async function lazyContentShown(devtools: Devtools): Promise<void> {
  * Preact replaces text that differs from the server's while it hydrates, and logs nothing, so a card
  * whose output depends on the clock, the time zone, the locale or a browser-only API passes the
  * console check while a reader without JavaScript sees something else. The served `index.html` is
- * fetched from the page's own address and parsed there; it is the guide's `all` page, so it holds
+ * fetched from the page's own address and parsed there; it renders every page at once, so it holds
  * every card. Each package page is then opened, and every card's text, read the same way, is
  * compared with the served card of the same id. Text only: attributes and styles are not compared.
  */
@@ -333,7 +333,7 @@ async function serverTextChecks(devtools: Devtools): Promise<void> {
   const stillSame: string[] = []
   const wrongParts: string[] = []
   const seen = new Set<string>()
-  for (const page of guidePages.filter((each) => each.id !== "all" && each.sections.length > 0)) {
+  for (const page of guidePages.filter((each) => each.sections.length > 0)) {
     await openGuidePage(devtools, page.id)
     await lazyContentShown(devtools)
     const live = await devtools.evaluate<Record<string, CardText>>(
@@ -355,7 +355,7 @@ async function serverTextChecks(devtools: Devtools): Promise<void> {
     }
   }
 
-  const expected = guidePages.filter((page) => page.id !== "all").reduce(
+  const expected = guidePages.reduce(
     (total, page) => total + page.sections.reduce((sum, section) => sum + section.names.length, 0),
     0,
   )
@@ -429,8 +429,7 @@ async function navigationChecks(devtools: Devtools): Promise<void> {
     .map((name) => `demo-${name}`)
 
   // Clicked a screen down the overview, so a page that kept the old scroll, or scrolled to the
-  // section that shares its id, lands below its own title. Not from the very bottom: there the
-  // footer pushes the sticky column, and the link with it, off the screen.
+  // section that shares its id, lands below its own title.
   await devtools.evaluate(`(scrollTo({ top: innerHeight, behavior: "instant" }), null)`)
   await settledScroll(devtools)
   const scrolledFrom = await devtools.evaluate<number>("Math.round(scrollY)")
@@ -850,8 +849,8 @@ function clippedContent(devtools: Devtools): Promise<Record<string, number>> {
 
 /**
  * A deep link opened cold — the address typed or pasted, the page loaded fresh — lands on a card on
- * one package's page: the island hydrates the `all` page the server sent, reads the address, shows
- * the card's page, and marks and scrolls to the card.
+ * one package's page: the island hydrates the document of every page the server sent, reads the
+ * address, shows the card's page, and marks and scrolls to the card.
  */
 async function coldDeepLinkCheck(devtools: Devtools): Promise<void> {
   const HREF = "#/crud/crud-editor"
@@ -943,8 +942,8 @@ async function coldFragmentCheck(devtools: Devtools): Promise<void> {
 }
 
 /**
- * A page reloaded far down opens at its top. The server sends the longer `all` document, so a
- * position the browser restored would land somewhere unrelated, and late enough to override a later
+ * A page reloaded far down opens at its top. The server sends the longer document of every page, so
+ * a position the browser restored would land somewhere unrelated, and late enough to override a later
  * scroll (#292's third review). Two things hold it, and either alone keeps this check green: the
  * host sets `history.scrollRestoration = "manual"`, and the guide scrolls on its first read.
  */
@@ -1109,7 +1108,8 @@ async function themeSwitchCheck(devtools: Devtools, width: number): Promise<void
  * button closes it, putting focus back on the menu button.
  */
 async function drawerContentCheck(devtools: Devtools): Promise<void> {
-  await openGuidePage(devtools, "charts")
+  // The theme page: a page of two sections, so the drawer lists both sections and their cards.
+  await openGuidePage(devtools, "theme")
   await clickElement(devtools, `[data-guide-page] h1`)
   await clickElement(devtools, MENU_BUTTON, { inPlace: true })
   const opened = await poll(
@@ -1122,9 +1122,9 @@ async function drawerContentCheck(devtools: Devtools): Promise<void> {
   const listed = await devtools.evaluate<{ sections: number; cards: number; visible: boolean }>(
     `(() => {
       const dialog = document.querySelector(${JSON.stringify(MENU_DIALOG)})
-      const cards = [...dialog.querySelectorAll('a[href^="#/charts/"], a[href^="#/charts-examples/"]')]
+      const cards = [...dialog.querySelectorAll('a[href^="#/forms/"], a[href^="#/surfaces/"]')]
       return {
-        sections: new Set([...dialog.querySelectorAll('a[href="#/charts"], a[href="#/charts-examples"]')]
+        sections: new Set([...dialog.querySelectorAll('a[href="#/forms"], a[href="#/surfaces"]')]
           .map((link) => link.getAttribute("href"))).size,
         cards: cards.length,
         visible: cards.every((link) => link.checkVisibility()),
@@ -1143,7 +1143,7 @@ async function drawerContentCheck(devtools: Devtools): Promise<void> {
   if (!closed) {
     await devtools.evaluate(`document.querySelector(${JSON.stringify(MENU_DIALOG)}).close()`)
   }
-  const expected = guidePages.find((page) => page.id === "charts")?.sections
+  const expected = guidePages.find((page) => page.id === "theme")?.sections
     .flatMap((section) => section.names).length ?? 0
   check(
     "the phone drawer lists the page's sections and cards, and its close button closes it",
