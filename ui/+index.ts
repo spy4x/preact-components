@@ -49,13 +49,8 @@ export {
   hasQuestion,
   labelOr,
 } from "./confirm-dialog.tsx"
+export { CopyBlock, type CopyBlockProps } from "./copy-block.tsx"
 export { CopyButton, type CopyButtonProps } from "./copy-button.tsx"
-export {
-  CopyableText,
-  CopyableTextBody,
-  type CopyableTextBodyProps,
-  type CopyableTextProps,
-} from "./copyable-text.tsx"
 export {
   activeDescendant,
   Combobox,
@@ -166,7 +161,6 @@ export {
 export { type GeoCoordinates } from "./geolocation.ts"
 export { HONEYPOT_FIELD_NAME, honeypotField, honeypotFilled } from "./honeypot.tsx"
 export { ImageGallery, type ImageGalleryImage, type ImageGalleryProps } from "./image-gallery.tsx"
-export { InstallBox, type InstallBoxProps } from "./install-box.tsx"
 export {
   Input,
   type InputProps,
