@@ -34,6 +34,7 @@ export async function uiGuideChecks(devtools: Devtools): Promise<void> {
     await withViewport(devtools, width, 812, () => tooltipTriggerCheck(devtools, width))
   }
   await withViewport(devtools, 1280, 800, () => searchChecks(devtools))
+  await withViewport(devtools, 1280, 800, () => searchShortcutChecks(devtools))
   for (const width of [375, 1280]) {
     await withViewport(devtools, width, 812, () => themeSwitchCheck(devtools, width))
   }
@@ -1145,5 +1146,120 @@ async function onThisPageCheck(devtools: Devtools): Promise<void> {
     visible && atTop && followed,
     `list visible ${visible}; at the top "${topMark}" (expected ${first}), ` +
       `scrolled to ${target} → "${scrolledMark}"`,
+  )
+}
+
+/**
+ * The search's other ways in and out: `/` typed into a text field stays in that field, Ctrl+K opens
+ * the search from anywhere, its close button closes it, and so does a click on the backdrop.
+ */
+async function searchShortcutChecks(devtools: Devtools): Promise<void> {
+  const FIELD = `input[name="icon-search"]`
+  const isOpen = () =>
+    devtools.evaluate<boolean>(
+      `document.querySelector(${JSON.stringify(SEARCH_DIALOG)})?.open === true`,
+    )
+  const closeIfOpen = async () => {
+    if (await isOpen()) {
+      await devtools.evaluate(`document.querySelector(${JSON.stringify(SEARCH_DIALOG)}).close()`)
+    }
+  }
+
+  await openGuidePage(devtools, "icons")
+  const aimed = await clickElement(devtools, FIELD)
+  await pressKey(devtools, "Slash")
+  // A wrong open would move focus into the dialog; give it the frame it would take.
+  await devtools.evaluate(
+    `new Promise((done) => requestAnimationFrame(() => setTimeout(done, 50)))`,
+  )
+  const inField = await devtools.evaluate<{ value: string; focused: boolean }>(`(() => {
+    const field = document.querySelector(${JSON.stringify(FIELD)})
+    return { value: field?.value ?? "", focused: document.activeElement === field }
+  })()`)
+  const openedFromField = await isOpen()
+  await closeIfOpen()
+  await devtools.evaluate(`(() => {
+    const field = document.querySelector(${JSON.stringify(FIELD)})
+    field.value = ""
+    field.dispatchEvent(new Event("input", { bubbles: true }))
+  })()`)
+  check(
+    "/ typed into a text field stays in the field and does not open the search",
+    aimed && inField.value === "/" && inField.focused && !openedFromField,
+    `clicked the icon search ${aimed}; its value "${inField.value}", focused ${inField.focused}; ` +
+      `search opened ${openedFromField}`,
+  )
+
+  await clickElement(devtools, `[data-guide-page] h1`)
+  for (const type of ["keyDown", "keyUp"]) {
+    await devtools.send("Input.dispatchKeyEvent", {
+      type,
+      key: "k",
+      code: "KeyK",
+      windowsVirtualKeyCode: 75,
+      nativeVirtualKeyCode: 75,
+      modifiers: 2,
+    })
+  }
+  const byShortcut = await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `document.activeElement === document.querySelector(${
+          JSON.stringify(`${SEARCH_DIALOG} [role="combobox"]`)
+        })`,
+      ),
+    2_000,
+  )
+  const closer = await clickElement(devtools, `[data-e2e="ui-guide-search-close"]`, {
+    inPlace: true,
+  })
+  const closedByButton = await poll(async () => !(await isOpen()), 2_000)
+  await closeIfOpen()
+  check(
+    "Ctrl+K opens the search with focus in its field, and its close button closes it",
+    byShortcut && closer && closedByButton,
+    `opened by Ctrl+K ${byShortcut}; close button clicked ${closer}, closed ${closedByButton}`,
+  )
+
+  // ⌘K, the same shortcut on a Mac: the Meta modifier (4) instead of Control (2).
+  await clickElement(devtools, `[data-guide-page] h1`)
+  for (const type of ["keyDown", "keyUp"]) {
+    await devtools.send("Input.dispatchKeyEvent", {
+      type,
+      key: "k",
+      code: "KeyK",
+      windowsVirtualKeyCode: 75,
+      nativeVirtualKeyCode: 75,
+      modifiers: 4,
+    })
+  }
+  const byMeta = await poll(isOpen, 2_000)
+  await closeIfOpen()
+  check("⌘K opens the search as well", byMeta, `opened by ⌘K ${byMeta}`)
+
+  await clickElement(devtools, SEARCH_BUTTON, { inPlace: true })
+  const reopened = await poll(isOpen, 2_000)
+  // Outside the dialog's box: its left margin, near the bottom of the viewport.
+  const point = await devtools.evaluate<{ x: number; y: number; outside: boolean }>(`(() => {
+    const box = document.querySelector(${JSON.stringify(SEARCH_DIALOG)}).getBoundingClientRect()
+    const x = 8, y = innerHeight - 8
+    return { x, y, outside: x < box.left || y > box.bottom }
+  })()`)
+  for (const type of ["mousePressed", "mouseReleased"]) {
+    await devtools.send("Input.dispatchMouseEvent", {
+      type,
+      x: point.x,
+      y: point.y,
+      button: "left",
+      clickCount: 1,
+    })
+  }
+  const closedByBackdrop = await poll(async () => !(await isOpen()), 2_000)
+  await closeIfOpen()
+  check(
+    "a click on the backdrop closes the search",
+    reopened && point.outside && closedByBackdrop,
+    `opened ${reopened}; clicked (${point.x}, ${point.y}), outside the dialog ${point.outside}; ` +
+      `closed ${closedByBackdrop}`,
   )
 }
