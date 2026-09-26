@@ -43,6 +43,10 @@ export interface AllowedExport {
   reason: string
 }
 
+/** Why the Vite plugins in `@spy4x/preact-theme/vite`, and the error one of them throws, have no card. */
+const VITE_PLUGIN_REASON =
+  'A Vite plugin runs inside the app\'s build, not in a page: an example card could only call its hooks by hand with a faked plugin context, which is code no app writes. `theme/README.md`, under "Install", shows the lines an app puts in its `vite.config.ts`, and `theme/vite.test.ts` drives every hook.'
+
 /**
  * Exports with no card and no example, each with a reason — the allow-list for anything other
  * than a pending example, which {@link EXAMPLES_PENDING} lists instead.
@@ -63,7 +67,11 @@ export const EXPORTS_WITHOUT_DEMO: Record<PackageId, readonly AllowedExport[]> =
         "It binds filters to the page's own address: it reads the parameters of whichever application hosts the catalogue, and writes that application's address as soon as a filter changes. Its pure parts have example cards; the hook is demonstrated by the demo app (`pages/src/url-filters.tsx`) and driven in a browser by `pages/checks/signals.ts`.",
     },
   ],
-  theme: [],
+  theme: [
+    ...["preactThemeCss", "requireComponentCss", "npmSpecifiers", "NpmVersionMismatchError"].map(
+      (name) => ({ name, reason: VITE_PLUGIN_REASON }),
+    ),
+  ],
   cn: [],
 }
 
