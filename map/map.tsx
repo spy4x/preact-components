@@ -255,7 +255,7 @@ export function Map(
       <div class={cn(BOX_BASE, DEFAULT_SIZE, className)} data-e2e="map-box">
         <div ref={containerRef} class="absolute inset-0" role="group" aria-label={label} />
         <p
-          class="absolute right-0 bottom-0 z-[1000] rounded-tl bg-white/80 px-1.5 py-0.5 text-xs text-gray-700 dark:bg-gray-900/80 dark:text-gray-300"
+          class="absolute right-0 bottom-0 z-[1000] rounded-tl bg-white/80 px-1 py-px text-xs text-gray-700 dark:bg-gray-900/80 dark:text-gray-300"
           data-e2e="map-attribution"
         >
           {attribution}
