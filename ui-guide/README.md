@@ -338,7 +338,7 @@ icon is in the catalogue the moment it is exported. `icons.test.tsx` matches the
 `data-icon` attributes against the icon module's own exports, so the gallery cannot fall behind it.
 
 The clipboard goes through the `copy` port, which falls back to `copyToClipboard` from
-`@spy4x/preact-ui/copy-button` so the legacy `execCommand` path is not reimplemented here.
+`@spy4x/platform/browser/clipboard` so the legacy `execCommand` path is not reimplemented here.
 
 ## Copying a snippet
 

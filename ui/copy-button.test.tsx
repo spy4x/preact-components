@@ -1,7 +1,7 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
-import { CopyButton, copyToClipboard } from "./copy-button.tsx"
+import { CopyButton } from "./copy-button.tsx"
 
 describe("CopyButton", () => {
   it("renders an icon-only button when no label is given", () => {
@@ -36,28 +36,5 @@ describe("CopyButton", () => {
 
   it("appends a caller class", () => {
     expect(render(<CopyButton textToCopy="abc" class="ml-2" />)).toContain("ml-2")
-  })
-})
-
-describe("copyToClipboard", () => {
-  it("routes the text through the injected port", () => {
-    const copied: string[] = []
-
-    copyToClipboard("invoice-42", (text) => {
-      copied.push(text)
-    })
-
-    expect(copied).toEqual(["invoice-42"])
-  })
-
-  it("awaits nothing when the port is async", () => {
-    const copied: string[] = []
-
-    copyToClipboard("async-value", (text) => {
-      copied.push(text)
-      return Promise.resolve()
-    })
-
-    expect(copied).toEqual(["async-value"])
   })
 })

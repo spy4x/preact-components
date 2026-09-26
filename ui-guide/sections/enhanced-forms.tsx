@@ -16,13 +16,12 @@ import {
   EnhancedForm,
   Field,
   Grid,
-  HONEYPOT_FIELD_NAME,
   honeypotField,
-  honeypotFilled,
   Input,
   Stack,
   Textarea,
 } from "@spy4x/preact-ui"
+import { HONEYPOT_FIELD_NAME, honeypotFilled } from "@spy4x/platform/universal/honeypot"
 import type { ComponentChildren } from "preact"
 import { useSignal } from "@preact/signals"
 import { DemoNote } from "./demo-note.tsx"

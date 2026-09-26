@@ -1,6 +1,7 @@
 import type { JSX } from "preact"
 import { Button } from "./button.tsx"
 import { useEffect, useState } from "preact/hooks"
+import { copyToClipboard } from "@spy4x/platform/browser/clipboard"
 
 export interface CopyButtonProps {
   textToCopy: string
@@ -45,7 +46,7 @@ export function CopyButton(
   }, [copied, copiedForMs])
 
   const handleCopy = () => {
-    copyToClipboard(textToCopy, copy)
+    void (copy ? copy(textToCopy) : copyToClipboard(textToCopy))
     setCopied(true)
   }
 
@@ -90,51 +91,4 @@ export function CopyButton(
       {title ?? null}
     </Button>
   )
-}
-
-/**
- * Write text to the clipboard.
- *
- * The injected port wins when present, so a host app can route copies through its own clipboard
- * service (and its own toast). Otherwise the browser API is used, falling back to
- * `document.execCommand("copy")` on an off-screen textarea for insecure origins.
- *
- * @param text Text to place on the clipboard.
- * @param copy Optional injected port.
- */
-export function copyToClipboard(
-  text: string,
-  copy?: (text: string) => void | Promise<void>,
-): void {
-  if (copy) {
-    void copy(text)
-    return
-  }
-  void writeToClipboard(text)
-}
-
-/** Browser clipboard write, with the legacy path for insecure origins. */
-async function writeToClipboard(text: string): Promise<void> {
-  if (navigator.clipboard?.writeText) {
-    try {
-      await navigator.clipboard.writeText(text)
-      return
-    } catch {
-      // Permission denied or insecure origin — fall through to the textarea path.
-    }
-  }
-  legacyCopy(text)
-}
-
-/** `document.execCommand("copy")` on an off-screen textarea. */
-function legacyCopy(text: string): void {
-  const textarea = document.createElement("textarea")
-  textarea.value = text
-  textarea.setAttribute("readonly", "")
-  textarea.style.position = "fixed"
-  textarea.style.left = "-9999px"
-  document.body.appendChild(textarea)
-  textarea.select()
-  document.execCommand("copy")
-  document.body.removeChild(textarea)
 }

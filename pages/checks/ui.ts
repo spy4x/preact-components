@@ -7596,7 +7596,7 @@ async function signUpFormBlurWhileSendingCheck(devtools: Devtools): Promise<void
   )
 }
 
-/** `name` of the honeypot field `ui/honeypot.tsx` exports as `HONEYPOT_FIELD_NAME`. */
+/** `name` of the honeypot field, `HONEYPOT_FIELD_NAME` in `@spy4x/platform/universal/honeypot`. */
 const HONEYPOT_INPUT_SELECTOR = 'input[name="hp-field"]'
 
 /**

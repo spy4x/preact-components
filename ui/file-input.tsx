@@ -1,6 +1,7 @@
 import { cn } from "@spy4x/preact-cn"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useRef, useState } from "preact/hooks"
+import { formatBytes } from "@spy4x/platform/universal/format-number"
 
 /**
  * One file a {@link FileInput} refused, and why.
@@ -561,20 +562,6 @@ export function matchesAccept(file: File, accept: string | undefined): boolean {
     if (pattern.endsWith("/*")) return type.startsWith(pattern.slice(0, -1))
     return type === pattern
   })
-}
-
-/** A byte count as `"12.3 MB"` — whole units with no decimal, everything else to one. */
-export function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  const units = ["KB", "MB", "GB", "TB"]
-  let value = bytes / 1024
-  let unitIndex = 0
-  while (value >= 1024 && unitIndex < units.length - 1) {
-    value /= 1024
-    unitIndex++
-  }
-  const rounded = Math.round(value * 10) / 10
-  return `${rounded % 1 === 0 ? rounded.toFixed(0) : rounded.toFixed(1)} ${units[unitIndex]}`
 }
 
 function UploadIcon(): JSX.Element {

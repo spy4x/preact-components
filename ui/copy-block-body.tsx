@@ -1,6 +1,7 @@
 import { cn } from "@spy4x/preact-cn"
 import type { JSX } from "preact"
-import { CopyButton, copyToClipboard } from "./copy-button.tsx"
+import { copyToClipboard } from "@spy4x/platform/browser/clipboard"
+import { CopyButton } from "./copy-button.tsx"
 
 /** Props of `CopyBlock`, the one block of copyable text this package ships. */
 export interface CopyBlockProps {
@@ -71,7 +72,7 @@ export function CopyBlockBody(
 ): JSX.Element {
   const port = (value: string) => {
     onCopy()
-    copyToClipboard(value, copy)
+    void (copy ? copy(value) : copyToClipboard(value))
   }
 
   return (

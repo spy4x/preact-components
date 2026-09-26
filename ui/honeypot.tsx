@@ -1,18 +1,12 @@
-import type { JSX } from "preact"
-
 /**
- * Default `name` of the honeypot field {@link honeypotField} renders and {@link honeypotFilled}
- * reads back.
+ * The page half of a honeypot form field. The server half — the default field name
+ * `HONEYPOT_FIELD_NAME` and the check `honeypotFilled` — lives in spy4x/ts-libs, in
+ * `@spy4x/platform/universal/honeypot`, so a handler that receives a no-JavaScript post can run it.
  *
- * Exported because a server checking the no-JavaScript path — the one path a client-side check can
- * never run on, since there is no client-side code left to run it — has to read the same field a
- * plain HTML form posted it under.
- *
- * Deliberately not a word a browser's own autofill heuristics reach for — `"company"`, `"website"`,
- * `"url"` and similar strongly signal a category to Chrome's autofill even with `autocomplete="off"`
- * on the input, and an autofilled honeypot rejects a real visitor's genuine submission.
+ * @module
  */
-export const HONEYPOT_FIELD_NAME = "hp-field"
+
+import type { JSX } from "preact"
 
 /**
  * A field simple bots fill in and people never see: off-screen rather than `display: none` or
@@ -21,7 +15,8 @@ export const HONEYPOT_FIELD_NAME = "hp-field"
  * it out of the tab order on top of being off-screen, and `aria-hidden` keeps a screen reader from
  * ever announcing it.
  *
- * @param name Field name a submit handler reads back with {@link honeypotFilled}.
+ * @param name Field name a submit handler reads back with `honeypotFilled` from
+ * `@spy4x/platform/universal/honeypot`; pass its `HONEYPOT_FIELD_NAME` unless you need another.
  * @param label Off-screen text for the one assistive technology that does not honour
  * `aria-hidden` on a field it is autofilling — kept short and plain rather than skipped, because
  * "why is there a field with no label" is a worse trap than one extra sentence nobody sees.
@@ -35,16 +30,4 @@ export function honeypotField(name: string, label: string): JSX.Element {
       </label>
     </div>
   )
-}
-
-/**
- * Whether a submitted honeypot field carries a value — a person never types into a field they
- * cannot see, so any value here means whatever posted the form was not one.
- *
- * @param data The submitted form data.
- * @param name Field name, matching what {@link honeypotField} rendered. Defaults to
- * {@link HONEYPOT_FIELD_NAME}.
- */
-export function honeypotFilled(data: FormData, name: string = HONEYPOT_FIELD_NAME): boolean {
-  return String(data.get(name) ?? "").length > 0
 }

@@ -19,7 +19,6 @@ export {
   groupLabel,
   type GroupSplit,
   groupSplit,
-  initials,
 } from "./avatar.tsx"
 export { Badge, type BadgeColor, type BadgeProps, type BadgeType } from "./badge.tsx"
 export {
@@ -97,20 +96,10 @@ export {
   type DateRangePresetOption,
 } from "./date-range-picker.tsx"
 export {
-  addDays,
-  calendarDateInZone,
-  type DateRange,
   type DateRangePreset,
   dateRangePresets,
   type DateTimeRange,
-  endOfMonth,
-  endOfQuarter,
-  endOfYear,
-  formatIsoDate,
-  isSameDay,
-  isValidDateRange,
   isValidDateTimeRange,
-  parseIsoDate,
   presetForRange,
   type PresetForRangeOptions,
   presetForTimeRange,
@@ -119,10 +108,6 @@ export {
   type RangeForPresetOptions,
   rangeForTimePreset,
   type RangeForTimePresetOptions,
-  shiftMonth,
-  startOfMonth,
-  startOfQuarter,
-  startOfYear,
   type TimeRangePreset,
   timeRangePresets,
 } from "./date-range.ts"
@@ -155,11 +140,9 @@ export {
   type FileInputLabels,
   type FileInputProps,
   type FileRejection,
-  formatBytes,
   matchesAccept,
 } from "./file-input.tsx"
-export { type GeoCoordinates } from "./geolocation.ts"
-export { HONEYPOT_FIELD_NAME, honeypotField, honeypotFilled } from "./honeypot.tsx"
+export { honeypotField } from "./honeypot.tsx"
 export { ImageGallery, type ImageGalleryImage, type ImageGalleryProps } from "./image-gallery.tsx"
 export {
   Input,

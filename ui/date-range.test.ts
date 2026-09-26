@@ -1,28 +1,16 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
+import { type DateRange, parseIsoDate } from "@spy4x/time/date"
+import { isoDateInTz } from "@spy4x/time/tz"
 import {
-  addDays,
-  calendarDateInZone,
-  type DateRange,
   type DateRangePreset,
   dateRangePresets,
   type DateTimeRange,
-  endOfMonth,
-  endOfQuarter,
-  endOfYear,
-  formatIsoDate,
-  isSameDay,
-  isValidDateRange,
   isValidDateTimeRange,
-  parseIsoDate,
   presetForRange,
   presetForTimeRange,
   rangeForPreset,
   rangeForTimePreset,
-  shiftMonth,
-  startOfMonth,
-  startOfQuarter,
-  startOfYear,
   timeRangePresets,
 } from "./date-range.ts"
 
@@ -72,330 +60,6 @@ function roundTripHours(range: { from: string; to: string }, timeZone: string): 
 function dayCount(range: DateRange): number {
   return (parseIsoDate(range.to) - parseIsoDate(range.from)) / 86_400_000 + 1
 }
-
-describe("parseIsoDate", () => {
-  it("reads midnight UTC of the date", () => {
-    expect(parseIsoDate("2026-08-23")).toBe(Date.parse("2026-08-23T00:00:00Z"))
-  })
-
-  it("rejects a value that is not YYYY-MM-DD", () => {
-    expect(() => parseIsoDate("23/08/2026")).toThrow("expected a YYYY-MM-DD date")
-    expect(() => parseIsoDate("2026-8-23")).toThrow("expected a YYYY-MM-DD date")
-    expect(() => parseIsoDate("")).toThrow("expected a YYYY-MM-DD date")
-  })
-
-  it("rejects a month the calendar does not have", () => {
-    expect(() => parseIsoDate("2026-13-01")).toThrow("expected a YYYY-MM-DD date")
-  })
-
-  it("rejects a day the month does not have instead of rolling into the next month", () => {
-    expect(() => parseIsoDate("2026-04-31")).toThrow("expected a YYYY-MM-DD date")
-    expect(() => parseIsoDate("2026-02-29")).toThrow("expected a YYYY-MM-DD date")
-  })
-
-  it("accepts the leap day of a leap year", () => {
-    expect(parseIsoDate("2028-02-29")).toBe(Date.parse("2028-02-29T00:00:00Z"))
-  })
-})
-
-describe("formatIsoDate", () => {
-  it("round-trips through parseIsoDate", () => {
-    expect(formatIsoDate(parseIsoDate("2028-02-29"))).toBe("2028-02-29")
-  })
-
-  it("rejects an instant past the 9999 edge instead of returning a truncated expanded year", () => {
-    // `toISOString` reports `+010000-01-01T00:00:00.000Z` there, and the bare slice this used to be
-    // returned `+010000-01` — a string that is not a date at all. Ordinary route to it: one day
-    // after the last supported day. The message names the truncated output, not the full instant.
-    const after9999 = parseIsoDate("9999-12-31") + 86_400_000
-
-    expect(() => formatIsoDate(after9999))
-      .toThrow("expected a date in the 0001-9999 window, received: +010000-01")
-  })
-
-  it("rejects an instant in 1 BC, which toISOString writes with a signed six-digit year", () => {
-    // 1 BC is the first instant below the window and `Date` writes it `-000001-06-15T00:00:00.000Z`;
-    // the bare slice this used to be claimed `-000001-06`. `parseIsoDate` cannot reach this branch —
-    // its four-digit pattern rejects the input first — so `addDays` and `endOfMonth` are the paths.
-    const before0001 = Date.parse("-000001-06-15T00:00:00Z")
-
-    expect(new Date(before0001).toISOString()).toBe("-000001-06-15T00:00:00.000Z")
-    expect(() => formatIsoDate(before0001))
-      .toThrow("expected a date in the 0001-9999 window, received: -000001-06")
-  })
-
-  it("passes year 0 through, the one year Date and Intl disagree about", () => {
-    // `0000-06-15` is also 1 BC, but `Date` gives it a plain four-digit year, so it satisfies the
-    // check and round-trips. `calendarDateInZone` is the half that disagrees, reporting `0001-06-15`.
-    expect(new Date(Date.parse("0000-06-15T00:00:00Z")).toISOString())
-      .toBe("0000-06-15T00:00:00.000Z")
-    expect(formatIsoDate(Date.parse("0000-06-15T00:00:00Z"))).toBe("0000-06-15")
-    expect(parseIsoDate("0000-12-31")).toBe(Date.parse("0000-12-31T00:00:00Z"))
-  })
-})
-
-describe("addDays", () => {
-  it("adds days within a month", () => {
-    expect(addDays("2026-08-10", 5)).toBe("2026-08-15")
-  })
-
-  it("crosses a month boundary in both directions", () => {
-    expect(addDays("2026-08-31", 1)).toBe("2026-09-01")
-    expect(addDays("2026-09-01", -1)).toBe("2026-08-31")
-  })
-
-  it("crosses a year boundary in both directions", () => {
-    expect(addDays("2026-12-31", 1)).toBe("2027-01-01")
-    expect(addDays("2027-01-01", -1)).toBe("2026-12-31")
-  })
-
-  it("handles a leap day", () => {
-    expect(addDays("2028-02-28", 1)).toBe("2028-02-29")
-    expect(addDays("2028-02-29", 1)).toBe("2028-03-01")
-    expect(addDays("2026-02-28", 1)).toBe("2026-03-01")
-  })
-
-  it("adds zero days unchanged", () => {
-    expect(addDays("2026-08-10", 0)).toBe("2026-08-10")
-  })
-
-  it("is not drifting across the Paris DST weekends", () => {
-    // 2026-03-29 is spring-forward (23h) and 2026-10-25 fall-back (25h) in Europe/Paris. A naive
-    // local-clock walk loses or gains an hour on exactly these days.
-    expect(addDays("2026-03-28", 1)).toBe("2026-03-29")
-    expect(addDays("2026-03-29", 1)).toBe("2026-03-30")
-    expect(addDays("2026-10-24", 1)).toBe("2026-10-25")
-    expect(addDays("2026-10-25", 1)).toBe("2026-10-26")
-  })
-
-  it("does not clamp: the day after 9999-12-31 is an error, not 9999-12-31", () => {
-    // A clamp would return a date the caller did not ask for — the plausible-wrong-date failure
-    // this module exists to prevent — and would absorb their off-by-N instead of surfacing it.
-    expect(() => addDays("9999-12-31", 5))
-      .toThrow("expected a date in the 0001-9999 window, received: +010000-01")
-  })
-
-  it("still resolves the last days of 9999 that stay inside the window", () => {
-    expect(addDays("9999-12-30", 1)).toBe("9999-12-31")
-    expect(addDays("9999-12-31", 0)).toBe("9999-12-31")
-    expect(addDays("9999-12-31", -1)).toBe("9999-12-30")
-  })
-
-  it("steps back out of 0001 into the year 0 the module calls unsupported", () => {
-    // Pinned as current behaviour. `"0000-12-31"` looks like a date, parses like one, and is not
-    // one: `Date` keeps year 0000 as written, so nothing here can flag it. Only `Intl`, in
-    // `calendarDateInZone`, treats that year as 1 BC and calls it 0001.
-    expect(addDays("0001-01-01", -1)).toBe("0000-12-31")
-    expect(addDays("0000-12-31", 0)).toBe("0000-12-31")
-  })
-})
-
-describe("shiftMonth", () => {
-  it("moves forward and back a month", () => {
-    expect(shiftMonth("2026-08-01", 1)).toBe("2026-09-01")
-    expect(shiftMonth("2026-08-01", -1)).toBe("2026-07-01")
-  })
-
-  it("lands on the first of the target month, never a clipped day", () => {
-    expect(shiftMonth("2026-03-31", -1)).toBe("2026-02-01")
-    expect(shiftMonth("2026-01-31", 1)).toBe("2026-02-01")
-  })
-
-  it("crosses a year boundary in both directions", () => {
-    expect(shiftMonth("2026-12-15", 1)).toBe("2027-01-01")
-    expect(shiftMonth("2026-01-15", -1)).toBe("2025-12-01")
-  })
-
-  it("handles a multi-year step", () => {
-    expect(shiftMonth("2026-08-01", 25)).toBe("2028-09-01")
-    expect(shiftMonth("2026-08-01", -20)).toBe("2024-12-01")
-  })
-
-  it("does not clamp: a month past 9999-12 is an error, not 9999-12-01", () => {
-    // This export built its answer directly and never passed through `formatIsoDate`, so it handed
-    // back `10000-01-01` — five digits, not a date — while `addDays` and every other step rejected
-    // the equivalent instant. Same convention as `addDays`: throw, and name the same window.
-    expect(() => shiftMonth("9999-12-01", 1))
-      .toThrow("expected a date in the 0001-9999 window, received: +010000-01")
-    expect(() => shiftMonth("9999-11-01", 3))
-      .toThrow("expected a date in the 0001-9999 window, received: +010000-02")
-    expect(() => shiftMonth("9999-12-31", 12))
-      .toThrow("expected a date in the 0001-9999 window, received: +010000-12")
-  })
-
-  it("still resolves the months of 9999 that stay inside the window", () => {
-    // The boundary is the month result, not the year: 9999 itself is supported, and so is the step
-    // that lands on its own first day.
-    expect(shiftMonth("9999-12-01", 0)).toBe("9999-12-01")
-    expect(shiftMonth("9999-11-15", 1)).toBe("9999-12-01")
-    expect(shiftMonth("9999-12-15", -1)).toBe("9999-11-01")
-  })
-
-  it("steps back out of 0001 into the year 0 the window excludes", () => {
-    // Pinned, not fixed: year 0000 is a four-digit year `Date` keeps and `parseIsoDate` accepts, so
-    // the window's lower edge is not a throw — it is a value the doc calls unsupported. Same
-    // behaviour `addDays("0001-01-01", -1)` has, and the one the module docs name.
-    expect(shiftMonth("0001-01-01", -1)).toBe("0000-12-01")
-    expect(shiftMonth("0001-02-01", -1)).toBe("0001-01-01")
-  })
-})
-
-describe("startOfMonth and endOfMonth", () => {
-  it("bracket a 31-day month", () => {
-    expect(startOfMonth("2026-08-23")).toBe("2026-08-01")
-    expect(endOfMonth("2026-08-23")).toBe("2026-08-31")
-  })
-
-  it("bracket a 30-day month", () => {
-    expect(endOfMonth("2026-04-15")).toBe("2026-04-30")
-  })
-
-  it("bracket February in a non-leap year", () => {
-    expect(endOfMonth("2026-02-10")).toBe("2026-02-28")
-  })
-
-  it("bracket February in a leap year", () => {
-    expect(endOfMonth("2028-02-10")).toBe("2028-02-29")
-  })
-
-  it("are idempotent on the first of the month", () => {
-    expect(startOfMonth("2026-08-01")).toBe("2026-08-01")
-  })
-})
-
-describe("startOfQuarter and endOfQuarter", () => {
-  it("bracket Q1", () => {
-    expect(startOfQuarter("2026-01-05")).toBe("2026-01-01")
-    expect(endOfQuarter("2026-01-05")).toBe("2026-03-31")
-  })
-
-  it("bracket Q2", () => {
-    expect(startOfQuarter("2026-05-31")).toBe("2026-04-01")
-    expect(endOfQuarter("2026-05-31")).toBe("2026-06-30")
-  })
-
-  it("bracket Q3", () => {
-    expect(startOfQuarter("2026-08-23")).toBe("2026-07-01")
-    expect(endOfQuarter("2026-08-23")).toBe("2026-09-30")
-  })
-
-  it("bracket Q4", () => {
-    expect(startOfQuarter("2026-11-30")).toBe("2026-10-01")
-    expect(endOfQuarter("2026-11-30")).toBe("2026-12-31")
-  })
-
-  it("are stable on the first day of a quarter", () => {
-    expect(startOfQuarter("2026-10-01")).toBe("2026-10-01")
-  })
-})
-
-describe("startOfYear and endOfYear", () => {
-  it("bracket the year", () => {
-    expect(startOfYear("2026-08-23")).toBe("2026-01-01")
-    expect(endOfYear("2026-08-23")).toBe("2026-12-31")
-  })
-
-  it("bracket a leap year", () => {
-    expect(endOfYear("2028-06-01")).toBe("2028-12-31")
-  })
-})
-
-describe("isSameDay", () => {
-  it("matches identical dates", () => {
-    expect(isSameDay("2026-08-23", "2026-08-23")).toBe(true)
-  })
-
-  it("separates neighbouring days", () => {
-    expect(isSameDay("2026-08-23", "2026-08-24")).toBe(false)
-    expect(isSameDay("2026-08-23", "2025-08-23")).toBe(false)
-  })
-
-  it("throws on a value that is not a date", () => {
-    expect(() => isSameDay("2026-08-23", "yesterday")).toThrow("expected a YYYY-MM-DD date")
-  })
-})
-
-describe("isValidDateRange", () => {
-  it("accepts an ordered range and a single day", () => {
-    expect(isValidDateRange({ from: "2026-08-01", to: "2026-08-23" })).toBe(true)
-    expect(isValidDateRange({ from: "2026-08-23", to: "2026-08-23" })).toBe(true)
-  })
-
-  it("rejects a reversed range", () => {
-    expect(isValidDateRange({ from: "2026-08-23", to: "2026-08-01" })).toBe(false)
-  })
-
-  it("rejects a half-typed or impossible range without throwing", () => {
-    expect(isValidDateRange({ from: "", to: "" })).toBe(false)
-    expect(isValidDateRange({ from: "2026-08-01", to: "" })).toBe(false)
-    expect(isValidDateRange({ from: "2026-02-31", to: "2026-03-01" })).toBe(false)
-  })
-})
-
-describe("calendarDateInZone", () => {
-  it("formats the calendar date in each zone", () => {
-    const instant = new Date("2026-08-23T23:30:00Z")
-
-    expect(calendarDateInZone(instant, "UTC")).toBe("2026-08-23")
-    expect(calendarDateInZone(instant, "Asia/Tokyo")).toBe("2026-08-24")
-    expect(calendarDateInZone(instant, "America/Los_Angeles")).toBe("2026-08-23")
-  })
-
-  it("pads single-digit months and days", () => {
-    expect(calendarDateInZone(new Date("2026-01-05T12:00:00Z"), "UTC")).toBe("2026-01-05")
-  })
-
-  it("pads a year below 1000 to the four-digit ISO form", () => {
-    // `Intl` reports year 999 as "999"; unpadded, every date in it would be unparsable and every
-    // calendar preset would throw.
-    expect(calendarDateInZone(new Date("0999-01-01T00:00:00Z"), "UTC")).toBe("0999-01-01")
-    expect(calendarDateInZone(new Date("0001-06-01T00:00:00Z"), "UTC")).toBe("0001-06-01")
-  })
-
-  it("reads the spring-forward day in Europe/Paris, not the UTC day", () => {
-    // 23:30Z on 28 March is already 00:30 on 29 March in Paris (CET+1, the last hour before the
-    // clocks jump). Computing in UTC would claim the day before the transition.
-    const instant = new Date("2026-03-28T23:30:00Z")
-
-    expect(calendarDateInZone(instant, "Europe/Paris")).toBe("2026-03-29")
-    expect(calendarDateInZone(instant, "UTC")).toBe("2026-03-28")
-  })
-
-  it("reads the fall-back day in Europe/Paris", () => {
-    // 22:30Z on 24 October is 00:30 on 25 October in Paris, still CEST+2. The 25th is 25 hours long.
-    const instant = new Date("2026-10-24T22:30:00Z")
-
-    expect(calendarDateInZone(instant, "Europe/Paris")).toBe("2026-10-25")
-    expect(calendarDateInZone(instant, "UTC")).toBe("2026-10-24")
-  })
-
-  it("throws on a zone Intl does not know", () => {
-    expect(() => calendarDateInZone(new Date("2026-08-23T12:00:00Z"), "not/a-zone")).toThrow()
-  })
-
-  it("reports a year past 9999 with five digits, on the one preset that does not reject it", () => {
-    // The documented escape at the top: `Intl` reports year 10000 in full and the padding does not
-    // truncate it. Nothing in the module fixes this — an instant that far out is not a UI clock —
-    // so the string is pinned here to keep the doc and the code from drifting apart.
-    const instant = new Date("+010000-01-01T00:00:00Z")
-
-    expect(calendarDateInZone(instant, "UTC")).toBe("10000-01-01")
-    expect(rangeForPreset("today", { now: instant, timeZone: "UTC" }))
-      .toEqual({ from: "10000-01-01", to: "10000-01-01" })
-  })
-
-  it("shifts an instant in 1 BC forward by a year", () => {
-    // 0000-06-15 is 1 BC and `Intl` reports that era's year as `"1"`, so padding yields the
-    // *different* day 0001-06-15. Pinned as current behaviour, and worse than the year-10000
-    // escape: the shifted string is a real four-digit year, so it parses and reaches a range.
-    // Nothing here can see the era, and no arithmetic in the module can notice the shift.
-    const instant = new Date("0000-06-15T00:00:00Z")
-
-    expect(calendarDateInZone(instant, "UTC")).toBe("0001-06-15")
-    expect(calendarDateInZone(instant, "UTC")).not.toBe("0000-06-15")
-    expect(parseIsoDate(calendarDateInZone(instant, "UTC"))).toBe(parseIsoDate("0001-06-15"))
-  })
-})
 
 describe("rangeForPreset", () => {
   it("returns the documented range for every preset", () => {
@@ -587,7 +251,7 @@ describe("rangeForPreset", () => {
 
   it("fails every arithmetic preset for a year-10000 instant, but echoes it from today", () => {
     // The documented escape: `today` is a pass-through and returns the five-digit string
-    // `calendarDateInZone` produced, while the presets that do arithmetic reject it.
+    // `isoDateInTz` produced, while the presets that do arithmetic reject it.
     const options = { now: new Date("+010000-01-01T00:00:00Z"), timeZone: "UTC" }
 
     expect(rangeForPreset("today", options)).toEqual({ from: "10000-01-01", to: "10000-01-01" })
@@ -615,7 +279,7 @@ describe("rangeForPreset", () => {
   })
 
   it("shifts a preset's date for an instant in 1 BC, where Intl reports year 1", () => {
-    // The wrong date the module's doc calls out: 0000-06-15 is 1 BC, `calendarDateInZone` pads the
+    // The wrong date the module's doc calls out: 0000-06-15 is 1 BC, `isoDateInTz` pads the
     // era's year to "0001-06-15", and `last-year` then answers with the nonexistent year 0000.
     // Both are pinned as current behaviour — unreachable from a UI clock, and fixing them needs an
     // era-aware date model, which this module does not have.
@@ -660,7 +324,7 @@ describe("rangeForPreset", () => {
           const range = rangeForPreset(preset, { now, timeZone })
 
           expect(dayCount(range)).toBe(days)
-          expect(range.to).toBe(calendarDateInZone(now, timeZone))
+          expect(range.to).toBe(isoDateInTz(now, timeZone))
         }
       }
     }

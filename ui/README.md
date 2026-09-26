@@ -330,7 +330,9 @@ takes is clamped; the position itself is kept, because a list that comes back is
 
 A preset list and a custom from/to panel, controlled: `range` in, `onChange` out. `timeZone` is
 required because the server's zone is not the visitor's, and the clock is either injected through
-`now` or read inside a click handler, never during render.
+`now` or read inside a click handler, never during render. The `DateRange` type and the calendar
+arithmetic behind the presets (`parseIsoDate`, `addDays`, `startOfMonth` and the rest) come from
+`@spy4x/time` in spy4x/ts-libs; import them from there.
 
 **Every string the panel shows has an English default, so `labels` and every key in it are
 optional.** A caller who says nothing gets `"Date range"`, `"Any dates"`, `"From"`, `"To"`,
@@ -665,8 +667,10 @@ same submit later reaches `done` or `failed`. A submit nobody focused, or a visi
 focus somewhere specific of their own accord, is never pulled back at all.
 
 A form built on this can carry a honeypot from `honeypot`: `honeypotField` renders an off-screen
-field simple bots fill in, `hp-field` by name (`HONEYPOT_FIELD_NAME`) and deliberately not a word a
-browser's own autofill heuristics reach for, and `honeypotFilled(formData)` reads it back. A submit
+field simple bots fill in. Its server half comes from `@spy4x/platform/universal/honeypot`:
+`HONEYPOT_FIELD_NAME` (`hp-field`, deliberately not a word a browser's own autofill heuristics reach
+for) names the field, and `honeypotFilled(formData)` reads it back, in the page or in the handler a
+no-JavaScript post reaches. A submit
 whose honeypot carries a value should resolve as if it had succeeded, because telling a bot it was
 caught only teaches it which field to leave alone next time.
 
@@ -899,7 +903,8 @@ extracted here.
 
 Removed in #352 because another component already covers each one: `CiStatusPill` (a `Badge` with a
 colour per status), `ConfidenceMeter` (`Progress`), `FactCard` (`Card` around a `<dl>`),
-`GeoButton` (a `Button` whose `onClick` calls `requestGeolocation` from `./geolocation`),
+`GeoButton` (a `Button` whose `onClick` calls `requestGeolocation` from
+`@spy4x/platform/browser/geolocation`),
 `ExportButton` (a `Button` that calls `@spy4x/platform`'s CSV writer and download helper),
 `NewsletterForm` and `ContactForm` (`EnhancedForm` with `Field`, `Input` and `Button`),
 `SkeletonText`, `SkeletonTable`, `SkeletonCards` and `SkeletonStatus` (`LoadingSkeleton`),

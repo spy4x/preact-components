@@ -15,7 +15,6 @@ import {
   Cluster,
   Combobox,
   type ComboboxOptionState,
-  type DateRange,
   DateRangePicker,
   type DateRangePickerLabels,
   type DateRangePreset,
@@ -26,7 +25,6 @@ import {
   Field,
   FileInput,
   Grid,
-  isValidDateRange,
   isValidDateTimeRange,
   OnOffButtons,
   rangeForPreset,
@@ -34,6 +32,7 @@ import {
   ToggleField,
   ToggleSwitch,
 } from "@spy4x/preact-ui"
+import { type DateRange, isValidDateRange } from "@spy4x/time/date"
 import type { ComponentChildren } from "preact"
 import { useSignal } from "@preact/signals"
 import {

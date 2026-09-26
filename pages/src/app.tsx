@@ -15,7 +15,7 @@
  * in `pages/checks/signals.ts` and `pages/checks/ui.ts` drive them there.
  */
 
-import { copyToClipboard } from "@spy4x/preact-ui/copy-button"
+import { copyToClipboard } from "@spy4x/platform/browser/clipboard"
 import {
   type ColorSchemePort,
   type GuideRouteChange,
@@ -33,11 +33,11 @@ const THEME_KEY = "pc-theme"
 /**
  * Clipboard port handed to the catalogue.
  *
- * The library's own helper, so the legacy `execCommand` path is not reimplemented here.
+ * The shared helper from spy4x/ts-libs, so the legacy `execCommand` path is not reimplemented here.
  *
  * @param text Text to place on the clipboard.
  */
-const copyText = (text: string): void => copyToClipboard(text)
+const copyText = (text: string): void => void copyToClipboard(text)
 
 /**
  * The Map card's tiles during `verify`'s browser checks: one tiny local image, requested unchanged

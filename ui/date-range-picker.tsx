@@ -3,11 +3,10 @@ import { useSignal } from "@preact/signals"
 import type { JSX } from "preact"
 import { useEffect, useId, useRef } from "preact/hooks"
 import { Button, buttonClasses } from "./button.tsx"
+import { type DateRange, isValidDateRange } from "@spy4x/time/date"
 import {
-  type DateRange,
   type DateRangePreset,
   type DateTimeRange,
-  isValidDateRange,
   isValidDateTimeRange,
   rangeForPreset,
   rangeForTimePreset,
