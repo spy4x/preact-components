@@ -422,7 +422,7 @@ export function UIGuide(
         {labels.skipToContent}
       </a>
 
-      <header class="sticky top-[var(--ui-guide-top,0px)] z-30 h-14 border-b border-gray-200 bg-white/85 backdrop-blur dark:border-gray-800 dark:bg-gray-900/85">
+      <header class="sticky top-0 z-30 h-14 border-b border-gray-200 bg-white/85 backdrop-blur dark:border-gray-800 dark:bg-gray-900/85">
         <div class="mx-auto flex h-full max-w-screen-2xl items-center gap-2 px-4 sm:gap-4 sm:px-6 lg:px-8">
           <button
             ref={trigger}
@@ -473,7 +473,7 @@ export function UIGuide(
       </header>
 
       <div class="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-8 lg:px-8 xl:grid-cols-[15rem_minmax(0,1fr)_13rem]">
-        <aside class="hidden lg:sticky lg:top-[calc(var(--ui-guide-top,0px)+3.5rem)] lg:block lg:max-h-[calc(100dvh-3.5rem-var(--ui-guide-top,0px))] lg:overflow-y-auto lg:py-8">
+        <aside class="hidden lg:sticky lg:top-14 lg:block lg:max-h-[calc(100dvh-3.5rem)] lg:overflow-y-auto lg:py-8">
           <GuideNav
             label={labels.nav}
             labels={labels}
@@ -574,7 +574,7 @@ export function UIGuide(
 
         {listed
           ? (
-            <div class="hidden xl:sticky xl:top-[calc(var(--ui-guide-top,0px)+3.5rem)] xl:block xl:max-h-[calc(100dvh-3.5rem-var(--ui-guide-top,0px))] xl:overflow-y-auto xl:py-12">
+            <div class="hidden xl:sticky xl:top-14 xl:block xl:max-h-[calc(100dvh-3.5rem)] xl:overflow-y-auto xl:py-12">
               <OnThisPage
                 label={labels.onThisPage}
                 page={page}

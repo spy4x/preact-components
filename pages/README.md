@@ -179,8 +179,8 @@ The served `index.html` is the guide's `all` page — every page at once — bec
 the address in an effect: before it has, the guide renders everything, which is also what a reader
 without JavaScript gets and what the no-script checks under `checks/` submit forms on.
 
-`styles.css` carries only the host's prose measure: the guide draws its own sticky header, so this
-page sets no `--ui-guide-top`. The header, the card grid and the navigation are the guide's own.
+`styles.css` carries only the host's prose measure. The header, the card grid and the navigation
+are the guide's own.
 
 Why hash rather than per-route prerendered files:
 

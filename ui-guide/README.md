@@ -98,9 +98,11 @@ lists that page's sections and cards, marking the one the route names `aria-curr
 link, the guide's first link, moves focus past the navigation to the page. A page's link opens the
 page at its title, including the pages whose id is also their section's (`#/crud`).
 
-A host that keeps sticky chrome above the guide sets `--ui-guide-top` to its height, and the
-guide's header and its columns stick below it. The page column clips what overflows it
-sideways, so a demo that runs past a phone's edge is cut there rather than scrolling the page.
+The guide's header sticks to the top of the viewport, and deep-linked cards and sections scroll to
+just below it. A host keeps no sticky chrome of its own above the guide: the guide draws the
+header, and anything the host wants there goes in through `actions`. The page column clips what
+overflows it sideways, so a demo that runs past a phone's edge is cut there rather than scrolling
+the page.
 
 A section still names a group in `registry.ts`, but the group only orders the sections: a package's
 page replaced the group heading as the unit a reader navigates by, so no heading is drawn for it.
