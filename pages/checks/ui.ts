@@ -1319,6 +1319,8 @@ interface ToastCornerReading {
  *
  * The slide is read from the toast's computed `translate` two frames after the push, while the
  * 300ms entry transition is still running: positive in a right corner, negative in a left one.
+ * With `prefers-reduced-motion: reduce` emulated, the same read in a left and a right corner must
+ * be 0, because the slide is `motion-safe` only.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -1401,7 +1403,45 @@ async function toastrCornerChecks(devtools: Devtools): Promise<void> {
         )
       }
     }
+    await devtools.send("Emulation.clearDeviceMetricsOverride")
+
+    // A reader who asks for reduced motion gets no slide: the toast starts where it ends.
+    await devtools.send("Emulation.setEmulatedMedia", {
+      features: [{ name: "prefers-reduced-motion", value: "reduce" }],
+    })
+    for (const corner of ["top-left", "top-right"] as const) {
+      await clear()
+      const picked = await pick(corner)
+      const still = await devtools.evaluate<{ reduced: boolean; found: boolean; x: string }>(
+        `(async () => {
+          const frame = () => new Promise((done) => requestAnimationFrame(done))
+          const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches
+          document.querySelector('#demo-Toastr [data-e2e="toast-info"]')?.click()
+          await frame()
+          await frame()
+          const toast = document.querySelector(
+            '#demo-Toastr [data-e2e="guide-toastr"] [role="status"], ' +
+              '#demo-Toastr [data-e2e="guide-toastr"] [role="alert"]',
+          )
+          if (!toast) return { reduced, found: false, x: "" }
+          return { reduced, found: true, x: getComputedStyle(toast).translate }
+        })()`,
+      )
+      const x = parseFloat(still.x.split(" ")[0]) || 0
+      check(
+        `with reduced motion requested, a toast in the ${corner} corner does not slide in`,
+        picked && still.reduced && still.found && x === 0,
+        !picked
+          ? `the card has no ${corner} choice to pick`
+          : !still.reduced
+          ? "the browser did not report prefers-reduced-motion: reduce"
+          : !still.found
+          ? "no toast arrived in the stack"
+          : `translate was "${still.x}" two frames after the push`,
+      )
+    }
   } finally {
+    await devtools.send("Emulation.setEmulatedMedia", { features: [] })
     await devtools.send("Emulation.clearDeviceMetricsOverride")
     await clear()
     await pick("card")
