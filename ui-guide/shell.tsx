@@ -32,6 +32,7 @@ import { DEFAULT_CARD_LABELS, DemoCard, type DemoCardLabels, MissingDemoBanner }
 import { IconGallery, iconNames } from "./icons.tsx"
 import { CatalogInstructions } from "./instructions.tsx"
 import { InlineMarkdown } from "./markdown.tsx"
+import { type MapTiles, MapTilesContext, OPENSTREETMAP_TILES } from "./map-tiles.ts"
 import {
   cardLabel,
   catalogueNames,
@@ -255,6 +256,11 @@ export interface UIGuideProps {
    * passes `"main"`, so the document has exactly one.
    */
   contentAs?: "main" | "div"
+  /**
+   * The tile provider the Map card draws with. Defaults to OpenStreetMap's standard tiles and their
+   * credit line (`OPENSTREETMAP_TILES`).
+   */
+  mapTiles?: MapTiles
   class?: string
 }
 
@@ -278,6 +284,7 @@ export function UIGuide(
     colorScheme,
     actions,
     contentAs: Content = "div",
+    mapTiles = OPENSTREETMAP_TILES,
     class: className,
   }: UIGuideProps,
 ): JSX.Element {
@@ -391,197 +398,201 @@ export function UIGuide(
   const listed = !served && page.id !== "overview"
 
   return (
-    <div class={cn("ui-guide w-full", className)} data-guide-page={served ? "all" : page.id}>
-      {
-        /* First in the guide, ahead of every navigation link. It moves focus itself rather than
+    <MapTilesContext.Provider value={mapTiles}>
+      <div class={cn("ui-guide w-full", className)} data-guide-page={served ? "all" : page.id}>
+        {
+          /* First in the guide, ahead of every navigation link. It moves focus itself rather than
         leaving it to the fragment, so it works under a host that routes by something else, and the
         fragment stays for a reader without JavaScript. */
-      }
-      <a
-        href={`#${contentId}`}
-        onClick={(event) => {
-          event.preventDefault()
-          const target = content.current
-          if (!target) return
-          // Focusable only while the skip link has put focus there: a column that stayed focusable
-          // would take the focus of every click on a non-focusable spot inside it, which a menu
-          // reads as focus leaving it, and closes.
-          target.tabIndex = -1
-          target.addEventListener("blur", () => target.removeAttribute("tabindex"), { once: true })
-          target.focus()
-          target.scrollIntoView({ block: "start" })
-        }}
-        class="sr-only rounded-md bg-white px-3 py-2 text-sm font-medium text-purple-900 shadow focus:not-sr-only focus:absolute focus:z-50 focus:px-3 focus:py-2 dark:bg-gray-900 dark:text-purple-200"
-        data-e2e="ui-guide-skip"
-      >
-        {labels.skipToContent}
-      </a>
-
-      <header class="sticky top-0 z-30 h-14 border-b border-gray-200 bg-white/85 backdrop-blur dark:border-gray-800 dark:bg-gray-900/85">
-        <div class="mx-auto flex h-full max-w-screen-2xl items-center gap-2 px-4 sm:gap-4 sm:px-6 lg:px-8">
-          <button
-            ref={trigger}
-            type="button"
-            aria-haspopup="dialog"
-            aria-expanded={navOpen}
-            aria-controls={dialogId}
-            onClick={openNav}
-            class={buttonClasses("ghost", "sm", "lg:hidden")}
-            data-e2e="ui-guide-nav-open"
-          >
-            <IconBars3 class="size-5" />
-            <span class="sr-only">{labels.openNav}</span>
-          </button>
-          <a
-            href={pageHref("overview")}
-            onClick={(event) => follow(pageHref("overview"), event)}
-            class="flex min-w-0 items-center gap-2 font-semibold text-gray-950 dark:text-gray-50"
-          >
-            <span class="truncate">{labels.title}</span>
-            {version
-              ? (
-                <span class="hidden rounded-full bg-gray-100 px-2 text-xs font-medium text-gray-600 sm:inline dark:bg-gray-800 dark:text-gray-300">
-                  v{version}
-                </span>
-              )
-              : null}
-          </a>
-          <div class="ml-auto flex items-center gap-2">
-            <GuideSearch entries={entries} labels={labels} go={go} />
-            {repository
-              ? (
-                <a
-                  href={repository}
-                  rel="noreferrer"
-                  aria-label={labels.repository}
-                  title={labels.repository}
-                  class={buttonClasses("ghost", "sm")}
-                >
-                  <IconGitHub class="size-5" />
-                </a>
-              )
-              : null}
-            {colorScheme ? <ThemeSwitch scheme={colorScheme} labels={labels} /> : null}
-            {actions}
-          </div>
-        </div>
-      </header>
-
-      <div class="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-8 lg:px-8 xl:grid-cols-[15rem_minmax(0,1fr)_13rem]">
-        <aside class="hidden lg:sticky lg:top-14 lg:block lg:max-h-[calc(100dvh-3.5rem)] lg:overflow-y-auto lg:py-8">
-          <GuideNav
-            label={labels.nav}
-            labels={labels}
-            page={served ? undefined : page}
-            route={route}
-            registry={registry}
-            follow={follow}
-            pageListBelowXl
-          />
-        </aside>
-
-        <dialog
-          ref={dialog}
-          id={dialogId}
-          aria-label={labels.nav}
-          data-e2e="ui-guide-nav-dialog"
-          onClose={() => {
-            // The `close` event is a queued task, so a reopen can land before it; that event is
-            // stale, and acting on it would empty a dialog that is open again.
-            if (dialog.current?.open) return
-            setNavOpen(false)
-            // Chromium already returns focus to the button that opened a modal dialog, so the
-            // browser check passes with or without this line; it is here for engines that do not.
-            trigger.current?.focus()
+        }
+        <a
+          href={`#${contentId}`}
+          onClick={(event) => {
+            event.preventDefault()
+            const target = content.current
+            if (!target) return
+            // Focusable only while the skip link has put focus there: a column that stayed focusable
+            // would take the focus of every click on a non-focusable spot inside it, which a menu
+            // reads as focus leaving it, and closes.
+            target.tabIndex = -1
+            target.addEventListener("blur", () => target.removeAttribute("tabindex"), {
+              once: true,
+            })
+            target.focus()
+            target.scrollIntoView({ block: "start" })
           }}
-          class="m-0 h-dvh max-h-none w-[min(20rem,85vw)] max-w-none overflow-y-auto border-r border-gray-200 bg-white p-0 text-gray-900 shadow-xl backdrop:bg-gray-950/50 backdrop:backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100"
+          class="sr-only rounded-md bg-white px-3 py-2 text-sm font-medium text-purple-900 shadow focus:not-sr-only focus:absolute focus:z-50 focus:px-3 focus:py-2 dark:bg-gray-900 dark:text-purple-200"
+          data-e2e="ui-guide-skip"
         >
-          <div class="sticky top-0 z-10 flex h-14 items-center justify-between gap-2 border-b border-gray-200 bg-white px-4 dark:border-gray-800 dark:bg-gray-900">
-            <span class="font-semibold">{labels.title}</span>
-            <button
-              type="button"
-              aria-label={labels.closeNav}
-              onClick={closeNav}
-              class={buttonClasses("ghost", "sm")}
-            >
-              <IconXMark class="size-5" />
-            </button>
-          </div>
-          <div class="p-4">
-            {navOpen
-              ? (
-                <GuideNav
-                  label={labels.nav}
-                  labels={labels}
-                  page={page}
-                  route={route}
-                  registry={registry}
-                  follow={follow}
-                />
-              )
-              : null}
-          </div>
-        </dialog>
+          {labels.skipToContent}
+        </a>
 
-        {
-          /* `overflow-x: clip`, not `hidden`: a demo whose tooltip or code runs past a phone's
+        <header class="sticky top-0 z-30 h-14 border-b border-gray-200 bg-white/85 backdrop-blur dark:border-gray-800 dark:bg-gray-900/85">
+          <div class="mx-auto flex h-full max-w-screen-2xl items-center gap-2 px-4 sm:gap-4 sm:px-6 lg:px-8">
+            <button
+              ref={trigger}
+              type="button"
+              aria-haspopup="dialog"
+              aria-expanded={navOpen}
+              aria-controls={dialogId}
+              onClick={openNav}
+              class={buttonClasses("ghost", "sm", "lg:hidden")}
+              data-e2e="ui-guide-nav-open"
+            >
+              <IconBars3 class="size-5" />
+              <span class="sr-only">{labels.openNav}</span>
+            </button>
+            <a
+              href={pageHref("overview")}
+              onClick={(event) => follow(pageHref("overview"), event)}
+              class="flex min-w-0 items-center gap-2 font-semibold text-gray-950 dark:text-gray-50"
+            >
+              <span class="truncate">{labels.title}</span>
+              {version
+                ? (
+                  <span class="hidden rounded-full bg-gray-100 px-2 text-xs font-medium text-gray-600 sm:inline dark:bg-gray-800 dark:text-gray-300">
+                    v{version}
+                  </span>
+                )
+                : null}
+            </a>
+            <div class="ml-auto flex items-center gap-2">
+              <GuideSearch entries={entries} labels={labels} go={go} />
+              {repository
+                ? (
+                  <a
+                    href={repository}
+                    rel="noreferrer"
+                    aria-label={labels.repository}
+                    title={labels.repository}
+                    class={buttonClasses("ghost", "sm")}
+                  >
+                    <IconGitHub class="size-5" />
+                  </a>
+                )
+                : null}
+              {colorScheme ? <ThemeSwitch scheme={colorScheme} labels={labels} /> : null}
+              {actions}
+            </div>
+          </div>
+        </header>
+
+        <div class="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-8 lg:px-8 xl:grid-cols-[15rem_minmax(0,1fr)_13rem]">
+          <aside class="hidden lg:sticky lg:top-14 lg:block lg:max-h-[calc(100dvh-3.5rem)] lg:overflow-y-auto lg:py-8">
+            <GuideNav
+              label={labels.nav}
+              labels={labels}
+              page={served ? undefined : page}
+              route={route}
+              registry={registry}
+              follow={follow}
+              pageListBelowXl
+            />
+          </aside>
+
+          <dialog
+            ref={dialog}
+            id={dialogId}
+            aria-label={labels.nav}
+            data-e2e="ui-guide-nav-dialog"
+            onClose={() => {
+              // The `close` event is a queued task, so a reopen can land before it; that event is
+              // stale, and acting on it would empty a dialog that is open again.
+              if (dialog.current?.open) return
+              setNavOpen(false)
+              // Chromium already returns focus to the button that opened a modal dialog, so the
+              // browser check passes with or without this line; it is here for engines that do not.
+              trigger.current?.focus()
+            }}
+            class="m-0 h-dvh max-h-none w-[min(20rem,85vw)] max-w-none overflow-y-auto border-r border-gray-200 bg-white p-0 text-gray-900 shadow-xl backdrop:bg-gray-950/50 backdrop:backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100"
+          >
+            <div class="sticky top-0 z-10 flex h-14 items-center justify-between gap-2 border-b border-gray-200 bg-white px-4 dark:border-gray-800 dark:bg-gray-900">
+              <span class="font-semibold">{labels.title}</span>
+              <button
+                type="button"
+                aria-label={labels.closeNav}
+                onClick={closeNav}
+                class={buttonClasses("ghost", "sm")}
+              >
+                <IconXMark class="size-5" />
+              </button>
+            </div>
+            <div class="p-4">
+              {navOpen
+                ? (
+                  <GuideNav
+                    label={labels.nav}
+                    labels={labels}
+                    page={page}
+                    route={route}
+                    registry={registry}
+                    follow={follow}
+                  />
+                )
+                : null}
+            </div>
+          </dialog>
+
+          {
+            /* `overflow-x: clip`, not `hidden`: a demo whose tooltip or code runs past a phone's
           edge is cut there instead of scrolling the whole page sideways, and a clip is no scroll
           container, so nothing inside loses its sticky or its vertical overflow. `@container`: the
           card grid lays out by the column's width, not the window's. */
-        }
-        <Content
-          ref={content as never}
-          id={contentId}
-          class={cn(
-            "@container min-w-0 overflow-x-clip py-8 outline-none lg:py-12",
-            !listed && "xl:col-span-2",
-          )}
-        >
-          <p class="sr-only" aria-live="polite">{served ? labels.title : page.title}</p>
-          <Stack gap="2xl">
-            {missing.length > 0 ? <MissingDemoBanner names={missing} /> : null}
-            {(served ? guidePages : [page]).map((shown) =>
-              shown.id === "overview"
-                ? (
-                  <Overview
-                    key={shown.id}
-                    labels={labels}
-                    registry={registry}
-                    follow={follow}
-                    install={install}
-                    copy={copy}
-                  />
-                )
-                : (
-                  <PackagePage
-                    key={shown.id}
-                    page={shown}
-                    nested={served}
-                    registry={registry}
-                    copy={copy}
-                    labels={labels}
-                    extra={pageExtras?.[shown.id]}
-                  />
-                )
+          }
+          <Content
+            ref={content as never}
+            id={contentId}
+            class={cn(
+              "@container min-w-0 overflow-x-clip py-8 outline-none lg:py-12",
+              !listed && "xl:col-span-2",
             )}
-          </Stack>
-        </Content>
+          >
+            <p class="sr-only" aria-live="polite">{served ? labels.title : page.title}</p>
+            <Stack gap="2xl">
+              {missing.length > 0 ? <MissingDemoBanner names={missing} /> : null}
+              {(served ? guidePages : [page]).map((shown) =>
+                shown.id === "overview"
+                  ? (
+                    <Overview
+                      key={shown.id}
+                      labels={labels}
+                      registry={registry}
+                      follow={follow}
+                      install={install}
+                      copy={copy}
+                    />
+                  )
+                  : (
+                    <PackagePage
+                      key={shown.id}
+                      page={shown}
+                      nested={served}
+                      registry={registry}
+                      copy={copy}
+                      labels={labels}
+                      extra={pageExtras?.[shown.id]}
+                    />
+                  )
+              )}
+            </Stack>
+          </Content>
 
-        {listed
-          ? (
-            <div class="hidden xl:sticky xl:top-14 xl:block xl:max-h-[calc(100dvh-3.5rem)] xl:overflow-y-auto xl:py-12">
-              <OnThisPage
-                label={labels.onThisPage}
-                page={page}
-                registry={registry}
-                inView={inView}
-                follow={follow}
-              />
-            </div>
-          )
-          : null}
+          {listed
+            ? (
+              <div class="hidden xl:sticky xl:top-14 xl:block xl:max-h-[calc(100dvh-3.5rem)] xl:overflow-y-auto xl:py-12">
+                <OnThisPage
+                  label={labels.onThisPage}
+                  page={page}
+                  registry={registry}
+                  inView={inView}
+                  follow={follow}
+                />
+              </div>
+            )
+            : null}
+        </div>
       </div>
-    </div>
+    </MapTilesContext.Provider>
   )
 }
 

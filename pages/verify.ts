@@ -96,7 +96,7 @@ import { demoElementId } from "./src/deep-link.ts"
 import { renderApp } from "./src/prerender.tsx"
 import { routeTableFromHtml } from "./src/route-echo.ts"
 import { type PreviewServer, serveDist } from "./serve.ts"
-import { DEFAULT_BASE, normalizeBase } from "./src/site.ts"
+import { DEFAULT_BASE, LOCAL_MAP_TILES_FLAG, normalizeBase } from "./src/site.ts"
 
 /** This file's directory: the demo's root, `pages/`. */
 const PAGES_DIRECTORY = dirname(fileURLToPath(import.meta.url))
@@ -678,6 +678,11 @@ async function browserPhase(): Promise<void> {
         await devtools.send("Network.enable", {})
         await devtools.send("Page.enable", {})
         await denyDownloads(devtools)
+        // Every document this run loads, frames included, draws the Map card with the local tile,
+        // so the checks never depend on the network (`pages/src/site.ts`).
+        await devtools.send("Page.addScriptToEvaluateOnNewDocument", {
+          source: `globalThis.${LOCAL_MAP_TILES_FLAG} = true`,
+        })
         if (CPU_THROTTLE > 1) {
           await devtools.send("Emulation.setCPUThrottlingRate", { rate: CPU_THROTTLE })
         }

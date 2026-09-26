@@ -16,10 +16,15 @@
  */
 
 import { copyToClipboard } from "@spy4x/preact-ui/copy-button"
-import { type ColorSchemePort, type GuideRouteChange, uiGuideRoute } from "@spy4x/preact-ui-guide"
+import {
+  type ColorSchemePort,
+  type GuideRouteChange,
+  type MapTiles,
+  uiGuideRoute,
+} from "@spy4x/preact-ui-guide"
 import { useEffect, useState } from "preact/hooks"
 import { DataTableSortDemo } from "./data-table-sort.tsx"
-import { PAGE_TITLE, REPOSITORY } from "./site.ts"
+import { LOCAL_MAP_TILES_FLAG, PAGE_TITLE, REPOSITORY } from "./site.ts"
 import { UrlFilterDemo } from "./url-filters.tsx"
 
 /** Storage key shared with the bootstrap script in `<head>` (`document.tsx`). */
@@ -33,6 +38,27 @@ const THEME_KEY = "pc-theme"
  * @param text Text to place on the clipboard.
  */
 const copyText = (text: string): void => copyToClipboard(text)
+
+/**
+ * The Map card's tiles during `verify`'s browser checks: one tiny local image, requested unchanged
+ * for every tile Leaflet asks for, relative so it resolves against whatever base the page is served
+ * at. Everywhere else the guide draws OpenStreetMap's tiles.
+ */
+const LOCAL_MAP_TILES: MapTiles = {
+  url: "map-demo/tile.png",
+  attribution: "© Example tile provider",
+}
+
+/**
+ * The tiles to hand the guide: the local ones when `verify` set {@link LOCAL_MAP_TILES_FLAG}, and
+ * the guide's own default otherwise. Read during render, which is safe for hydration: the Map card
+ * draws its map only in the browser, after its module loads, and its served form names no tile.
+ */
+function mapTiles(): MapTiles | undefined {
+  return (globalThis as Record<string, unknown>)[LOCAL_MAP_TILES_FLAG] === true
+    ? LOCAL_MAP_TILES
+    : undefined
+}
 
 /** Props of {@link App}. */
 export interface AppProps {
@@ -73,6 +99,7 @@ export function App({ initialHash, version }: AppProps) {
         repository={REPOSITORY}
         colorScheme={colorScheme}
         contentAs="main"
+        mapTiles={mapTiles()}
         pageExtras={{
           ui: (
             <div class="flex flex-col gap-12">
