@@ -147,7 +147,7 @@ describe("no outer margin on a component's root", () => {
     expect([...new Set(found)]).toEqual([])
   })
 
-  it("sees every card's own component render, except the ones the server cannot render", async () => {
+  it("sees each card's own component render, bar the listed server-only ones", async () => {
     const components = await libraryComponents()
     const unseen = catalogueSections.filter((section) => section.kind === "component")
       .flatMap((section) =>

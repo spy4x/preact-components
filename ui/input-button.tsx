@@ -26,7 +26,9 @@ export interface InputButtonProps
   icon: ComponentChildren
   /** Accessible name of the button. Required: an icon-only button has no other name. */
   iconLabel: string
-  /** Replaces the input's right padding when the button is wider than one icon. Defaults to `pr-12`. */
+  /**
+   * Replaces the input's right padding when the button is wider than one icon. Defaults to `pr-12`.
+   */
   iconMarginClass?: string
   /** Click handler of the trailing button — the input keeps its own events from `rest`. */
   onClick?: JSX.MouseEventHandler<HTMLButtonElement>

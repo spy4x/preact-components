@@ -15,9 +15,9 @@ export interface EmptyStateProps {
 
 /*
  * Container geometry is deliberately identical to `ErrorState` — same max width, radius and
- * padding, and no outer margin: the space around it is the parent's gap — so a page can swap one state for the other without a layout jump. The dashed
- * border and the muted palette are the only difference, and `LoadingSkeleton`'s card utilities
- * supply most of them.
+ * padding, and no outer margin: the space around it is the parent's gap — so a page can swap one
+ * state for the other without a layout jump. The dashed border and the muted palette are the only
+ * difference, and `LoadingSkeleton`'s card utilities supply most of them.
  */
 const box =
   "mx-auto max-w-[650px] rounded-lg border border-dashed border-gray-200 bg-white p-4 text-center dark:border-gray-700 dark:bg-gray-800"

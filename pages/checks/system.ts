@@ -1151,7 +1151,8 @@ async function authFormToggleChecks(devtools: Devtools): Promise<void> {
     input.value = "a-long-password-that-fills-the-whole-field-and-then-some-0123456789"
     const box = input.getBoundingClientRect()
     const style = getComputedStyle(input)
-    const textRight = box.right - parseFloat(style.paddingRight) - parseFloat(style.borderRightWidth)
+    const textRight = box.right - parseFloat(style.paddingRight) -
+      parseFloat(style.borderRightWidth)
     const overflows = input.scrollWidth > input.clientWidth
     input.value = previous
     return {
