@@ -203,14 +203,16 @@ function InputDemo() {
       <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
         {email.value || "(empty)"}
       </p>
-      <Button
-        variant="outline"
-        size="sm"
-        data-e2e="ref-focus"
-        onClick={() => emailRef.current?.focus()}
-      >
-        Focus via ref
-      </Button>
+      <Cluster>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="ref-focus"
+          onClick={() => emailRef.current?.focus()}
+        >
+          Focus via ref
+        </Button>
+      </Cluster>
     </Stack>
   )
 }
@@ -282,14 +284,16 @@ function CheckboxDemo() {
       <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
         archived: {archived.value ? "on" : "off"}
       </p>
-      <Button
-        variant="outline"
-        size="sm"
-        data-e2e="ref-focus"
-        onClick={() => archivedRef.current?.focus()}
-      >
-        Focus via ref
-      </Button>
+      <Cluster>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="ref-focus"
+          onClick={() => archivedRef.current?.focus()}
+        >
+          Focus via ref
+        </Button>
+      </Cluster>
     </Stack>
   )
 }
@@ -329,14 +333,16 @@ function RadioDemo() {
           Disabled
         </Radio>
       </Cluster>
-      <Button
-        variant="outline"
-        size="sm"
-        data-e2e="ref-focus"
-        onClick={() => selectedRef.current?.focus()}
-      >
-        Focus via ref
-      </Button>
+      <Cluster>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="ref-focus"
+          onClick={() => selectedRef.current?.focus()}
+        >
+          Focus via ref
+        </Button>
+      </Cluster>
     </Stack>
   )
 }
@@ -512,6 +518,16 @@ export const fieldDemos = {
     summary:
       "A text field with a button inside its right edge, such as a search box's search button.",
     wide: false,
+    props: [
+      { name: "icon", type: "ComponentChildren", description: "What the button shows." },
+      { name: "iconLabel", type: "string", description: "The button's accessible name." },
+      { name: "onClick", type: "() => void", description: "What the button does." },
+      {
+        name: "value / onInput",
+        type: "string / (event) => void",
+        description: "The field's text, as on `Input`; every other input attribute passes through.",
+      },
+    ],
     snippet: `<InputButton
   type="search"
   icon={<IconSearch class="size-4" />}
