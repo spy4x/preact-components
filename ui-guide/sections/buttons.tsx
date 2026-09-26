@@ -2,15 +2,18 @@ import {
   Button,
   type ButtonSize,
   type ButtonVariant,
+  Cluster,
   CopyButton,
   ExportButton,
   type ExportButtonColumn,
   GeoButton,
+  Stack,
 } from "@spy4x/preact-ui"
 import { useSignal } from "@preact/signals"
 import { useRef } from "preact/hooks"
 import { IconPlus } from "@spy4x/preact-icons"
 import { entries } from "../record.ts"
+import { DemoNote } from "./demo-note.tsx"
 import type { DemoFragment } from "../registry.ts"
 
 /** One label per variant — a variant with no label does not compile. */
@@ -29,28 +32,30 @@ const sizes: Record<ButtonSize, string> = {
   lg: "lg",
 }
 
-const JOKE = "Why did the developer go broke? Because he used up all his cache!"
-
+/** One row per size, every variant in it, with the size named in a fixed-width first column. */
 function ButtonMatrix() {
   return (
-    <div class="space-y-3">
+    <Stack gap="sm">
       {entries(sizes).map(([size, sizeLabel]) => (
-        <div key={size} class="flex flex-wrap items-center gap-2">
-          <span class="w-10 text-xs text-gray-500 dark:text-gray-400">{sizeLabel}</span>
-          {entries(variants).map(([variant, label]) => (
-            <Button key={variant} variant={variant} size={size} title={`${variant} ${size}`}>
-              {variant === "icon" ? <IconPlus class="size-4" /> : label}
-            </Button>
-          ))}
-        </div>
+        <Cluster key={size} align="baseline" class="flex-nowrap">
+          <span class="w-16 shrink-0 text-xs text-gray-500 dark:text-gray-400">{sizeLabel}</span>
+          <Cluster>
+            {entries(variants).map(([variant, label]) => (
+              <Button key={variant} variant={variant} size={size} title={`${variant} ${size}`}>
+                {variant === "icon" ? <IconPlus class="size-4" /> : label}
+              </Button>
+            ))}
+          </Cluster>
+        </Cluster>
       ))}
-      <div class="flex flex-wrap items-center gap-2 pt-1">
-        <Button disabled>Disabled</Button>
-        <Button variant="danger" disabled>
-          Disabled danger
-        </Button>
-      </div>
-    </div>
+      <Cluster align="baseline" class="flex-nowrap">
+        <span class="w-16 shrink-0 text-xs text-gray-500 dark:text-gray-400">disabled</span>
+        <Cluster>
+          <Button disabled>Disabled</Button>
+          <Button variant="danger" disabled>Disabled danger</Button>
+        </Cluster>
+      </Cluster>
+    </Stack>
   )
 }
 
@@ -67,7 +72,7 @@ function ButtonClickDemo() {
   const clicks = useSignal(0)
   const clickMeRef = useRef<HTMLButtonElement>(null)
   return (
-    <div class="flex flex-wrap items-center gap-3">
+    <Cluster>
       <Button ref={clickMeRef} onClick={() => clicks.value += 1} data-e2e="ref-target">
         Click me
       </Button>
@@ -84,31 +89,33 @@ function ButtonClickDemo() {
       <span class="text-sm text-gray-600 dark:text-gray-300">
         clicked {clicks.value} {clicks.value === 1 ? "time" : "times"}
       </span>
-    </div>
+    </Cluster>
   )
 }
 
 /**
- * The clipboard is a port: the first button copies through the browser API, the second through
+ * The clipboard is a port: the first two buttons copy through the browser API, the third through
  * the injected callback, so the host app can route copies through its own clipboard service.
  */
 function CopyButtonDemo() {
   const lastCopy = useSignal("nothing yet")
   return (
-    <div class="space-y-2">
-      <div class="flex flex-wrap items-center gap-3">
-        <CopyButton textToCopy={JOKE} />
-        <CopyButton textToCopy={JOKE} title="Copy the joke" />
+    <Stack>
+      <Cluster>
+        <CopyButton textToCopy="INV-0007" />
+        <CopyButton textToCopy="INV-0007" title="Copy number" />
+      </Cluster>
+      <Cluster>
         <CopyButton
-          textToCopy="resource/00000000-0000-0000-0000-000000000000"
-          title="Copy through the injected port"
+          textToCopy="INV-0007"
+          title="Copy via port"
           copy={(text) => {
             lastCopy.value = text
           }}
         />
-      </div>
-      <p class="text-xs text-gray-500 dark:text-gray-400">port received: {lastCopy.value}</p>
-    </div>
+        <DemoNote>port received: {lastCopy.value}</DemoNote>
+      </Cluster>
+    </Stack>
   )
 }
 
@@ -116,8 +123,8 @@ function CopyButtonDemo() {
 function GeoButtonDemo() {
   const result = useSignal("not asked yet")
   return (
-    <div class="space-y-2">
-      <div class="flex flex-wrap items-center gap-3">
+    <Stack gap="sm">
+      <Cluster>
         <GeoButton
           onLocation={(position) =>
             result.value = `${position.latitude.toFixed(4)}, ${position.longitude.toFixed(4)}`}
@@ -130,11 +137,11 @@ function GeoButtonDemo() {
         >
           Locate
         </GeoButton>
-      </div>
+      </Cluster>
       <p class="text-xs text-gray-500 dark:text-gray-400">
-        onLocation / onError: {result.value}
+        onLocation or onError: {result.value}
       </p>
-    </div>
+    </Stack>
   )
 }
 
@@ -165,7 +172,7 @@ const attendeeColumns: ExportButtonColumn<AttendeeRow>[] = [
  */
 function ExportButtonDemo() {
   return (
-    <div class="flex flex-wrap items-center gap-3">
+    <Cluster>
       <ExportButton
         columns={attendeeColumns}
         rows={attendeeRows}
@@ -183,47 +190,106 @@ function ExportButtonDemo() {
         label="Export (fetched)"
         class="js-export-async"
       />
-    </div>
+    </Cluster>
   )
 }
 
 export const buttonDemos = {
   Button: {
     summary:
-      "Native button with the library's variant and size vocabulary. All other button attributes pass through; `type` defaults to `button`.",
+      "A native button in the library's variants and sizes; every other button attribute passes through.",
+    wide: true,
+    props: [
+      {
+        name: "variant",
+        type: "ButtonVariant",
+        default: `"primary"`,
+        description: "One of the six looks in the rows above.",
+      },
+      {
+        name: "size",
+        type: `"sm" | "md" | "lg"`,
+        default: `"md"`,
+        description: "The button's height and padding.",
+      },
+      {
+        name: "type",
+        type: `"button" | "submit" | "reset"`,
+        default: `"button"`,
+        description: "A button submits a form only when you say so.",
+      },
+      {
+        name: "ref",
+        type: "Ref<HTMLButtonElement>",
+        description: "Reaches the native `<button>`, so it can be focused.",
+      },
+    ],
     snippet: `<Button variant="primary" size="md" onClick={save}>Save</Button>
 <Button variant="danger" disabled>Delete</Button>`,
     render: () => (
-      <div class="space-y-4">
+      <Stack gap="lg">
         <ButtonMatrix />
         <ButtonClickDemo />
-      </div>
+      </Stack>
     ),
   },
   CopyButton: {
-    summary:
-      "Copies `textToCopy`, icon-only without `title`. The optional `copy` port replaces the browser clipboard.",
+    summary: "Copies a piece of text to the clipboard, as an icon alone or with a title.",
+    wide: false,
+    props: [
+      { name: "textToCopy", type: "string", description: "What lands on the clipboard." },
+      {
+        name: "title",
+        type: "string",
+        description: "A visible label; without it the button shows only the icon.",
+      },
+      {
+        name: "copy",
+        type: "(text) => void",
+        default: "the clipboard",
+        description: "Replaces the clipboard, to route copies through your own service.",
+      },
+    ],
     snippet: `<CopyButton textToCopy={invoice.id} />
 <CopyButton textToCopy={invoice.id} title="Copy id" copy={app.clipboard.copy} />`,
     render: () => <CopyButtonDemo />,
   },
-  GeoButton: {
-    summary:
-      "Asks the browser for the current position and routes it to `onLocation`; failures become an `onError` message.",
-    snippet: `<GeoButton
-  onLocation={(position) => map.center.set(position)}
-  onError={(message) => app.toast.error({ body: message })}
-/>`,
-    render: () => <GeoButtonDemo />,
-  },
   ExportButton: {
     summary:
-      "Downloads `rows` — or the result of `getRows`, called on click — as an RFC 4180 CSV file, UTF-8 with a byte-order mark. A cell that reads like a spreadsheet formula is guarded with a leading `'`.",
+      "Downloads a list of rows as a CSV file that a spreadsheet opens without running formulas.",
+    wide: false,
+    props: [
+      {
+        name: "columns",
+        type: "ExportButtonColumn<T>[]",
+        description: "Each column's row key and header.",
+      },
+      {
+        name: "rows",
+        type: "T[]",
+        description: "Rows already in hand; or pass `getRows` instead.",
+      },
+      {
+        name: "getRows",
+        type: "() => T[] | Promise<T[]>",
+        description: "Fetches the rows only when the button is pressed.",
+      },
+      { name: "fileName", type: "string", description: "The downloaded file's name." },
+    ],
     snippet: `<ExportButton
   columns={[{ key: "id", header: "ID" }, { key: "name", header: "Name" }]}
   getRows={() => api.attendees.list()}
   fileName="attendees.csv"
 />`,
     render: () => <ExportButtonDemo />,
+  },
+  GeoButton: {
+    summary: "Asks the browser where the user is and hands the position to your callback.",
+    wide: true,
+    snippet: `<GeoButton
+  onLocation={(position) => map.center.set(position)}
+  onError={(message) => app.toast.error({ body: message })}
+/>`,
+    render: () => <GeoButtonDemo />,
   },
 } satisfies DemoFragment
