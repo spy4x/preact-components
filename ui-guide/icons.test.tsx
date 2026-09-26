@@ -79,3 +79,24 @@ describe("iconSnippet", () => {
     expect(iconSnippet("IconSearch")).toBe("<IconSearch />")
   })
 })
+
+describe("IconGallery's card", () => {
+  it("is one wide guide card addressed as #icons", () => {
+    const html = render(<IconGallery />)
+
+    expect(html).toMatch(/^<article id="icons" data-card-size="wide"/)
+    expect(html).toContain('data-card-part="demo"')
+    expect(html).toContain('data-e2e="usage"')
+  })
+
+  it("takes its words from the labels", () => {
+    const html = render(
+      <IconGallery
+        labels={{ search: "Glyphen suchen", status: (shown, total) => `${shown}/${total}` }}
+      />,
+    )
+
+    expect(html).toContain('aria-label="Glyphen suchen"')
+    expect(html).toContain(`>${iconNames.length}/${iconNames.length}</p>`)
+  })
+})
