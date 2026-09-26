@@ -97,9 +97,9 @@ room. `wide: false` says it shares a row. A section that has not been moved to t
 An example card (`Example` in `example.tsx`) takes the same `wide?`, `props?` and `description?`.
 Every migrated card says `wide: true` or `wide: false`; the Charts page is the model.
 
-In a component section the two cards of a row share its height, so the pair reads as one row. In
-an example section each card keeps its own height (`items-start`): an output is often three lines,
-and stretching it to its neighbour's would leave a tall empty canvas.
+The two cards of a row share its height, in component and example sections alike, so the pair
+reads as one row and no hole opens beside the taller card. A short output sits on a taller canvas
+instead; when that canvas would be mostly empty, pair the card with a similar one or make it wide.
 
 **No holes.** Normal cards fill the row two at a time. The last card of an odd run of normal cards
 (before a wide card, or at the end of the section) takes the whole row (`cardSpans` in `shell.tsx`).
