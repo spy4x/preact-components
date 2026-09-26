@@ -37,7 +37,7 @@
 
   /* Surfaces — page, raised card, form control. */
   --color-surface: oklch(1 0 0); /* white */
-  --color-canvas: oklch(0.985 0.002 247.839); /* gray-50 */
+  --color-canvas: oklch(0.967 0.003 264.542); /* gray-100, a step below white: cards stand off it */
 
   /* Borders — subtle chrome, control border. */
   --color-border-subtle: oklch(0.928 0.006 264.531); /* gray-200 */
@@ -45,7 +45,7 @@
 
   /* Text — base, secondary, placeholder. */
   --color-foreground: oklch(0.13 0.028 261.692); /* gray-950 */
-  --color-muted-foreground: oklch(0.551 0.027 264.364); /* gray-500 */
+  --color-muted-foreground: oklch(0.446 0.03 256.802); /* gray-600: AA on the canvas too */
   --color-placeholder: oklch(0.551 0.027 264.364); /* gray-500 */
 
   /* Status — button tones, map markers, metric readouts. */

@@ -125,7 +125,7 @@ export function DemoCard(
       id={anchorId ?? `demo-${name}`}
       data-card-size={wide ? "wide" : wide === false ? "normal" : "auto"}
       class={cn(
-        "flex min-w-0 scroll-mt-16 flex-col rounded-xl border border-gray-200 bg-white shadow-xs",
+        "flex min-w-0 scroll-mt-16 flex-col rounded-xl border border-gray-200 bg-white shadow-sm",
         "dark:border-gray-700/80 dark:bg-gray-800/60",
         // The deep-link mark the shell sets on the card a demo route names. The muted accent, not
         // the primary: in the dark palette the primary is near-black chrome no one can see.

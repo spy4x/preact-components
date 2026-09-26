@@ -61,8 +61,10 @@ One font family everywhere, the theme's sans; monospace only for code, package n
 
 Two, and never a bordered box inside a bordered box:
 
-- **The page**: the host's canvas colour (`theme-base`: gray-50 light, gray-900 dark).
-- **The card**: white, or gray-800 at 60% in the dark palette, a 1px border and a rounded-xl corner.
+- **The page**: the host's canvas colour (`theme-base`: gray-100 light, gray-900 dark).
+- **The card**: white, or gray-800 at 60% in the dark palette, a 1px border, a small shadow and a
+  rounded-xl corner. In light the card is a step brighter than the page, which is what makes it read
+  as a card.
 
 The demo sits on a **canvas band** across the card: the page's colour showing through with a faint
 16 px dot grid, divided from the card's header and footer by hairlines, not boxed. The code block is
