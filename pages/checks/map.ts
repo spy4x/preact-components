@@ -33,10 +33,10 @@ interface MapState {
   /** `false` when the card itself was not found; every other field is then noise. */
   ok: boolean
   /** The box's own size, in CSS pixels, as rendered — read before Leaflet's tile pane is asked
-   * about, so this is the size the server-sent markup gives it, not a size Leaflet computed. */
+   * about, so this is the size `Map`'s own markup gives it, not a size Leaflet computed. */
   box: { width: number; height: number }
   /** Whether the box carries the class this component always renders it with, server or client —
-   * proof its size comes from static markup rather than a script that only runs after hydration. */
+   * proof its size comes from `Map`'s markup rather than from a script Leaflet runs. */
   boxCarriesSizeClass: boolean
   /** Whether a `.leaflet-container` exists inside the box yet. */
   leafletMounted: boolean
@@ -325,7 +325,7 @@ async function mapCardChecks(devtools: Devtools): Promise<void> {
   if (!initial.ok) return
 
   check(
-    "the box carries its size class from render, not from a script that runs after hydration",
+    "the box carries its size class from Map's markup, not from a script Leaflet runs",
     initial.boxCarriesSizeClass && initial.box.height > 100,
     `class includes h-80: ${initial.boxCarriesSizeClass}, rendered height ${initial.box.height}px`,
   )
@@ -333,7 +333,7 @@ async function mapCardChecks(devtools: Devtools): Promise<void> {
   const mounted = await poll(async () => (await readState(devtools)).leafletMounted, 5_000)
   const afterMount = await readState(devtools)
   check(
-    "Leaflet mounts into the box after hydration",
+    "Leaflet mounts into the box once the map page loads the package",
     mounted,
     mounted ? "a .leaflet-container appeared inside the box" : "no .leaflet-container after 5s",
   )

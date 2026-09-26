@@ -54,7 +54,7 @@ function MapInteractiveDemo() {
       </p>
       <p class="text-xs text-gray-500 dark:text-gray-400">
         Tab reaches each pin on the map, in marker order; activating one — a click, or a real Enter
-        or Space press while it has focus — updates the id above. The list below is a plain,
+        or Space press while it has focus — updates the id above. The list below the map is a plain,
         non-interactive overview of the same places, not a second set of controls. A public tile
         provider needs a real internet connection and its own required credit line, e.g.{" "}
         <code class="break-all">

@@ -22,9 +22,10 @@ export const mapModule = lazyModule(() => import("@spy4x/preact-map"))
 /**
  * What the Map card shows until the package has loaded, or instead of it when the load failed.
  *
- * The box has the height `Map` gives its own box by default, so the page does not move when the map
- * replaces it. The wording holds without JavaScript too: with scripts off the served box never
- * changes, so it says where the map is drawn rather than promising a load.
+ * The box has the height `Map` gives its own box by default, so the map keeps the box's place when
+ * it replaces it; the list of places then appears below. The wording holds without JavaScript too:
+ * with scripts off the served box never changes, so it says where the map is drawn rather than
+ * promising a load.
  *
  * @param props.state The module's load state; only `loading` and `failed` reach here.
  * @param props.label The map's accessible name, so the placeholder says which map goes here.

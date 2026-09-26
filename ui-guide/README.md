@@ -292,7 +292,8 @@ browser with Leaflet; with JavaScript off that box, not the map's list of places
 sees. `pages/checks/map.ts` proves the behaviour in a browser: a fresh load of the overview fetches
 no script that carries Leaflet, and opening the map page fetches one and draws the pins.
 `pages/checks/ui-guide.ts` lists the card's slot as drawn in the browser, and waits for its
-placeholder to be replaced before it reads the map page.
+placeholder to be replaced before it reads the map page. Because the card now renders `Map` only in
+the browser, no browser check hydrates a server-rendered `Map` any more.
 
 ## Heading levels are the outline
 
