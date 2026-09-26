@@ -1053,18 +1053,22 @@ export const inputDemos = {
         default: "false",
         description: "Greys it out; the arrow keys skip it.",
       },
-      { name: "class", type: "string", description: "Extra classes, such as a red text colour." },
+      {
+        name: "danger",
+        type: "boolean",
+        default: "false",
+        description: "Colours it red, for an action that destroys or archives something.",
+      },
+      { name: "class", type: "string", description: "Extra classes, merged over its own." },
     ],
     snippet: `<DropdownItem href="/regions/1/edit">Edit</DropdownItem>
-<DropdownItem class="text-red-600" onClick={archive}>Archive</DropdownItem>
+<DropdownItem danger onClick={archive}>Archive</DropdownItem>
 <DropdownItem disabled onClick={archive}>Archive</DropdownItem>`,
     render: () => (
       <div class="w-56" role="menu" aria-orientation="vertical" aria-label="Item shapes">
         <DropdownItem href="#inputs">A link, because it has an href</DropdownItem>
         <DropdownItem onClick={() => {}}>A button, because it has none</DropdownItem>
-        <DropdownItem class="text-red-600 dark:text-red-400" onClick={() => {}}>
-          Destructive, through its class
-        </DropdownItem>
+        <DropdownItem danger onClick={() => {}}>Destructive, through danger</DropdownItem>
         <DropdownItem disabled onClick={() => {}}>Disabled</DropdownItem>
       </div>
     ),

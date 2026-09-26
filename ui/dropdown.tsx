@@ -96,6 +96,8 @@ export function nextMenuIndex(key: string, current: number, count: number): numb
 
 const itemClasses =
   "flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 focus:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700 dark:focus:bg-gray-700"
+/** Text colour of a {@link DropdownItemProps.danger} item, in both themes. */
+const dangerClasses = "text-red-600 dark:text-red-400"
 
 export interface DropdownItemProps {
   /** Target of the item. It is a link when this is set and a `<button>` otherwise. */
@@ -103,6 +105,8 @@ export interface DropdownItemProps {
   onClick?: () => void
   /** Disables the button form. A disabled item is skipped by the arrow keys. */
   disabled?: boolean
+  /** Renders the item in red, for an action that destroys or archives something. */
+  danger?: boolean
   /** Extra utilities, merged over the item's own. */
   class?: string
   /** Sets `data-e2e` on the item. */
@@ -125,9 +129,9 @@ export interface DropdownItemProps {
  * @param props See {@link DropdownItemProps}.
  */
 export function DropdownItem(
-  { href, onClick, disabled, class: className, dataE2E, children }: DropdownItemProps,
+  { href, onClick, disabled, danger, class: className, dataE2E, children }: DropdownItemProps,
 ): JSX.Element {
-  const classes = cn(itemClasses, className)
+  const classes = cn(itemClasses, danger && dangerClasses, className)
 
   return href !== undefined
     ? (
