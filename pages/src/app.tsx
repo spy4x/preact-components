@@ -23,6 +23,7 @@ import {
   uiGuideRoute,
 } from "@spy4x/preact-ui-guide"
 import { useEffect, useState } from "preact/hooks"
+import { AccentSwitch } from "./accent-switch.tsx"
 import { DataTableSortDemo } from "./data-table-sort.tsx"
 import { LOCAL_MAP_TILES_FLAG, PAGE_TITLE, REPOSITORY } from "./site.ts"
 import { UrlFilterDemo } from "./url-filters.tsx"
@@ -98,6 +99,7 @@ export function App({ initialHash, version }: AppProps) {
         version={version}
         repository={REPOSITORY}
         colorScheme={colorScheme}
+        actions={<AccentSwitch />}
         contentAs="main"
         mapTiles={mapTiles()}
         pageExtras={{

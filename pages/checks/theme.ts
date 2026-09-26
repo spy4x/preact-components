@@ -1,4 +1,5 @@
 import { guidePages } from "@spy4x/preact-ui-guide/registry"
+import { ACCENTS } from "../src/accent-switch.tsx"
 import { centreInView, check, type Devtools, openGuidePage, pressKey } from "./harness.ts"
 
 /**
@@ -239,6 +240,8 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
     styled.light !== "rgba(0, 0, 0, 0)" && styled.light !== styled.dark,
     `canvas ${styled.light} light / ${styled.dark} dark`,
   )
+
+  await accentChecks(devtools)
 
   // Ink (#257) is opt-in and applies only together with .dark, on <html> — the same element the
   // light/dark toggle above already owns, per the convention `ui-guide/sections/surfaces.tsx`'s
@@ -773,4 +776,331 @@ async function canvasContrastCheck(devtools: Devtools): Promise<void> {
     lines > 0 && failures.length === 0,
     failures.length > 0 ? failures.slice(0, 12).join(", ") : `${lines} lines checked`,
   )
+}
+
+/**
+ * Tailwind's purple steps as `tokens.css`'s accent scale reproduces them with no token set: the
+ * colours the components drew before they read the scale (#380), copied from Tailwind 4.1.12's
+ * `theme.css` rather than read from the page, so a scale that drifted from them fails by step.
+ */
+const PURPLE: Record<number, string> = {
+  50: "oklch(0.977 0.014 308.299)",
+  100: "oklch(0.946 0.033 307.174)",
+  200: "oklch(0.902 0.063 306.703)",
+  300: "oklch(0.827 0.119 306.383)",
+  400: "oklch(0.714 0.203 305.504)",
+  500: "oklch(0.627 0.265 303.9)",
+  600: "oklch(0.558 0.288 302.321)",
+  700: "oklch(0.496 0.265 301.924)",
+  800: "oklch(0.438 0.218 303.724)",
+  900: "oklch(0.381 0.176 304.987)",
+  950: "oklch(0.291 0.149 302.717)",
+}
+
+/** The accent an app sets in {@link accentChecks}: Tailwind's blue-800, far from any purple. */
+const APP_ACCENT = "oklch(0.424 0.199 265.638)"
+
+/**
+ * Page-side helpers every {@link accentChecks} read shares, as source text to put at the top of an
+ * evaluated function. `resolve` asks the browser what a colour expression computes to on a probe
+ * inside `<body>`, so a `var()` reads the same tokens a component reads; `same` compares two
+ * computed colours by their numbers to the third decimal, because a step worked out by relative
+ * colour syntax computes to floating-point noise around the literal it reproduces; `settle` waits
+ * for the elements' own transitions to finish (`transition-colors` animates a token change), and
+ * only those: the spinner's spin never finishes.
+ */
+const ACCENT_HELPERS = `
+  const resolve = (value) => {
+    const probe = document.createElement("span")
+    probe.style.color = value
+    document.body.append(probe)
+    const color = getComputedStyle(probe).color
+    probe.remove()
+    return color
+  }
+  const numbers = (color) => (color.match(/-?[0-9.]+(?:e-?[0-9]+)?/g) || []).map(Number)
+  const same = (a, b) => {
+    const x = numbers(a)
+    const y = numbers(b)
+    return a.slice(0, a.indexOf("(")) === b.slice(0, b.indexOf("(")) && x.length === y.length &&
+      x.every((value, index) => Math.abs(value - y[index]) < 0.0015)
+  }
+  const frame = () => new Promise((done) => requestAnimationFrame(() => done()))
+  const settle = async (...elements) => {
+    await frame()
+    await frame()
+    // Transitions only: the spinner's own spin is an animation that never finishes.
+    await Promise.all(elements.flatMap((element) => element.getAnimations())
+      .filter((animation) => animation instanceof CSSTransition)
+      .map((animation) => animation.finished.catch(() => {})))
+  }
+`
+
+/**
+ * The accent (#380): the components read `tokens.css`'s accent scale instead of Tailwind's
+ * `purple-*`, so an app that sets no token sees the purple it saw before, in both palettes, and an
+ * app that sets `--color-primary` on `:root` sees a primary `Button`, `LoadingSpinner`, `Calendar`
+ * and the components' focus rings take its colour. The demo host's accent switch does what that app
+ * does, and a reader sees the cards follow it.
+ *
+ * Colours are compared as computed colours, never by eye: each expected value is what the browser
+ * computes for the literal, next to what it computes for the component.
+ *
+ * @param devtools The connected session, on the `ui` page.
+ */
+async function accentChecks(devtools: Devtools): Promise<void> {
+  const defaults = await devtools.evaluate<{
+    steps: { dark: boolean; step: string; token: string; purple: string; ok: boolean }[]
+    button: { light: string; dark: string; lightOk: boolean; darkOk: boolean; hovered: boolean }
+  }>(`(async () => {
+    ${ACCENT_HELPERS}
+    const purple = ${JSON.stringify(PURPLE)}
+    const root = document.documentElement
+    const wasDark = root.classList.contains("dark")
+    const button = document.querySelector("#demo-Button button")
+    const steps = []
+    const fills = {}
+    for (const dark of [false, true]) {
+      root.classList.toggle("dark", dark)
+      await settle(button)
+      for (const [step, literal] of Object.entries(purple)) {
+        const token = resolve("var(--color-accent-" + step + ")")
+        const expected = resolve(literal)
+        steps.push({ dark, step, token, purple: expected, ok: same(token, expected) })
+      }
+      fills[dark ? "dark" : "light"] = getComputedStyle(button).backgroundColor
+    }
+    root.classList.toggle("dark", wasDark)
+    await settle(button)
+    return {
+      steps,
+      button: {
+        ...fills,
+        lightOk: same(fills.light, resolve(purple[900])),
+        darkOk: same(fills.dark, resolve(purple[700])),
+        hovered: button.matches(":hover"),
+      },
+    }
+  })()`)
+  const offScale = defaults.steps.filter((step) => !step.ok)
+  check(
+    "with no token set, every step of the accent scale is Tailwind's purple step, light and dark",
+    defaults.steps.length === 22 && offScale.length === 0,
+    offScale.length === 0
+      ? `${defaults.steps.length} steps read, e.g. 50 → ${defaults.steps[0]?.token}`
+      : offScale.map((step) =>
+        `${step.dark ? "dark" : "light"} ${step.step}: ${step.token}, purple ${step.purple}`
+      ).join("; "),
+  )
+  check(
+    "with no token set, a primary Button is filled purple-900 in light and purple-700 in dark",
+    defaults.button.lightOk && defaults.button.darkOk && !defaults.button.hovered,
+    `light ${defaults.button.light}, dark ${defaults.button.dark}` +
+      (defaults.button.hovered ? ", read with a pointer resting on it" : ""),
+  )
+
+  // An app's own stylesheet, after the theme's: `--color-primary` alone, on `:root`.
+  const primary = await devtools.evaluate<{
+    expected: string
+    button: string
+    spinner: string
+    darkButton: string
+    darkExpected: string
+    ok: { button: boolean; spinner: boolean; dark: boolean }
+  }>(`(async () => {
+    ${ACCENT_HELPERS}
+    const root = document.documentElement
+    const wasDark = root.classList.contains("dark")
+    root.classList.toggle("dark", false)
+    const style = document.createElement("style")
+    style.id = "accent-check-primary"
+    style.textContent = ":root { --color-primary: ${APP_ACCENT}; }"
+    document.head.append(style)
+    const button = document.querySelector("#demo-Button button")
+    const spinner = document.querySelector("#demo-LoadingSpinner svg")
+    await settle(button, spinner)
+    const expected = resolve("${APP_ACCENT}")
+    const result = {
+      expected,
+      button: getComputedStyle(button).backgroundColor,
+      spinner: getComputedStyle(spinner).color,
+    }
+    // In the dark palette --color-primary is near-black chrome, so .dark keeps the components'
+    // accent on its own token: --color-primary alone leaves the dark Button purple-700.
+    root.classList.toggle("dark", true)
+    await settle(button)
+    result.darkButton = getComputedStyle(button).backgroundColor
+    result.darkExpected = resolve("${PURPLE[700]}")
+    style.remove()
+    root.classList.toggle("dark", wasDark)
+    await settle(button, spinner)
+    result.ok = {
+      button: same(result.button, expected),
+      spinner: same(result.spinner, expected),
+      dark: same(result.darkButton, result.darkExpected),
+    }
+    return result
+  })()`)
+  check(
+    "--color-primary on :root recolours a primary Button and LoadingSpinner with that colour",
+    primary.ok.button && primary.ok.spinner,
+    `expected ${primary.expected}: Button ${primary.button}, LoadingSpinner ${primary.spinner}`,
+  )
+  check(
+    "--color-primary alone leaves the dark palette's accent on its own token, as documented",
+    primary.ok.dark,
+    `dark Button ${primary.darkButton}, purple-700 ${primary.darkExpected}`,
+  )
+
+  // The focus ring: a real keyboard interaction first, so the scripted focus that follows counts as
+  // keyboard focus and the Button enters :focus-visible, where `ring-accent-900` applies.
+  await devtools.evaluate(`(() => {
+    const style = document.createElement("style")
+    style.id = "accent-check-ring"
+    style.textContent = ":root { --color-primary: ${APP_ACCENT}; }"
+    document.head.append(style)
+    document.documentElement.classList.toggle("dark", false)
+  })()`)
+  await pressKey(devtools, "Tab")
+  const ring = await devtools.evaluate<{
+    focusVisible: boolean
+    ringColor: string
+    expected: string
+    ok: boolean
+  }>(`(async () => {
+    ${ACCENT_HELPERS}
+    const button = document.querySelector("#demo-Button button")
+    button.focus({ preventScroll: true })
+    await settle(button)
+    const focusVisible = button.matches(":focus-visible")
+    const ringColor = resolve(getComputedStyle(button).getPropertyValue("--tw-ring-color"))
+    const expected = resolve("${APP_ACCENT}")
+    button.blur()
+    document.getElementById("accent-check-ring").remove()
+    await settle(button)
+    return { focusVisible, ringColor, expected, ok: same(ringColor, expected) }
+  })()`)
+  check(
+    "--color-primary on :root recolours a focused Button's focus ring",
+    ring.focusVisible && ring.ok,
+    ring.focusVisible
+      ? `ring ${ring.ringColor}, expected ${ring.expected}`
+      : "the Button never entered :focus-visible, so its ring was not drawn",
+  )
+
+  // The host's accent switch: the control a reader uses, in both palettes, and back.
+  const control = await devtools.evaluate<{
+    light: string
+    dark: string
+    expectedLight: string
+    expectedDark: string
+    reset: string
+    styleLeft: boolean
+    ok: { light: boolean; dark: boolean; reset: boolean }
+  }>(`(async () => {
+    ${ACCENT_HELPERS}
+    const root = document.documentElement
+    const wasDark = root.classList.contains("dark")
+    const select = document.querySelector('[data-e2e="accent-switch"]')
+    const button = document.querySelector("#demo-Button button")
+    const choose = async (value) => {
+      select.value = value
+      select.dispatchEvent(new Event("change", { bubbles: true }))
+      await settle(button)
+    }
+    root.classList.toggle("dark", false)
+    await choose("blue")
+    const light = getComputedStyle(button).backgroundColor
+    root.classList.toggle("dark", true)
+    await settle(button)
+    const dark = getComputedStyle(button).backgroundColor
+    const blue = "${ACCENTS.blue.color}"
+    await choose("purple")
+    const reset = getComputedStyle(button).backgroundColor
+    const styleLeft = document.getElementById("accent-override") !== null
+    root.classList.toggle("dark", wasDark)
+    await settle(button)
+    const expectedLight = resolve(blue)
+    // The dark Button is step 700, worked out from the accent the switch set on :root.
+    const expectedDark = resolve("oklch(from " + blue + " 0.496 calc(c * 0.265 / 0.176) calc(h - 3.063))")
+    const expectedReset = resolve("${PURPLE[700]}")
+    return {
+      light,
+      dark,
+      expectedLight,
+      expectedDark,
+      reset,
+      styleLeft,
+      ok: {
+        light: same(light, expectedLight),
+        dark: same(dark, expectedDark),
+        reset: same(reset, expectedReset) && !styleLeft,
+      },
+    }
+  })()`)
+  check(
+    "the host's accent switch repaints the Button card in light and dark, and Purple puts it back",
+    control.ok.light && control.ok.dark && control.ok.reset,
+    `Blue: light ${control.light} (expected ${control.expectedLight}), dark ${control.dark} ` +
+      `(expected ${control.expectedDark}); Purple in dark: ${control.reset}` +
+      (control.styleLeft ? ", and the switch's stylesheet was left behind" : ""),
+  )
+
+  // Calendar is on the system page. Picking a day there changes only that card's own state, and the
+  // page is left again right after, so the system block meets a fresh card.
+  await openGuidePage(devtools, "system")
+  const calendar = await devtools.evaluate<{
+    before: { selected: string; dot: string }
+    after: { selected: string; dot: string }
+    expected: { selected: string; dot: string }
+    ok: { before: boolean; after: boolean }
+  }>(`(async () => {
+    ${ACCENT_HELPERS}
+    const root = document.documentElement
+    const wasDark = root.classList.contains("dark")
+    root.classList.toggle("dark", false)
+    const card = document.querySelector('#demo-Calendar [data-e2e="calendar-interactive"]')
+    card.querySelector('button[data-calendar-date="2026-03-11"]').click()
+    await frame()
+    const day = card.querySelector('[data-calendar-date="2026-03-11"][aria-current="date"]')
+    const dot = card.querySelector('[data-calendar-date="2026-03-12"] span[aria-hidden="true"]')
+    const read = async () => {
+      await settle(day, dot)
+      return {
+        selected: getComputedStyle(day).backgroundColor,
+        dot: getComputedStyle(dot).backgroundColor,
+      }
+    }
+    const before = await read()
+    const style = document.createElement("style")
+    style.textContent = ":root { --color-primary: ${APP_ACCENT}; }"
+    document.head.append(style)
+    const after = await read()
+    style.remove()
+    root.classList.toggle("dark", wasDark)
+    await settle(day, dot)
+    const expected = {
+      selected: resolve("${APP_ACCENT}"),
+      dot: resolve("oklch(from ${APP_ACCENT} 0.558 calc(c * 0.288 / 0.176) calc(h - 2.666))"),
+    }
+    const purple900 = resolve("${PURPLE[900]}")
+    const purple600 = resolve("${PURPLE[600]}")
+    return {
+      before,
+      after,
+      expected,
+      ok: {
+        before: same(before.selected, purple900) && same(before.dot, purple600),
+        after: same(after.selected, expected.selected) && same(after.dot, expected.dot),
+      },
+    }
+  })()`)
+  check(
+    "Calendar's selected day and scarce-day dot are purple with no token, and follow --color-primary",
+    calendar.ok.before && calendar.ok.after,
+    `no token: selected ${calendar.before.selected}, dot ${calendar.before.dot}; with ` +
+      `--color-primary: selected ${calendar.after.selected} (expected ` +
+      `${calendar.expected.selected}), dot ${calendar.after.dot} (expected ${calendar.expected.dot})`,
+  )
+  await openGuidePage(devtools, "ui")
 }
