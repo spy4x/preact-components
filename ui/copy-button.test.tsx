@@ -1,5 +1,6 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
+import { options } from "preact"
 import { render } from "preact-render-to-string"
 import { CopyButton } from "./copy-button.tsx"
 
@@ -36,5 +37,31 @@ describe("CopyButton", () => {
 
   it("appends a caller class", () => {
     expect(render(<CopyButton textToCopy="abc" class="ml-2" />)).toContain("ml-2")
+  })
+})
+
+describe("CopyButton's copy port", () => {
+  it("hands its text to the caller's port when clicked", () => {
+    // No DOM here: the `<button>`'s click handler is read off the element tree as it is created.
+    const copied: string[] = []
+    let click: (() => void) | undefined
+    const previous = options.vnode
+    options.vnode = (vnode) => {
+      const props = vnode.props as { onClick?: () => void }
+      if (vnode.type === "button" && props.onClick) click = props.onClick
+      previous?.(vnode)
+    }
+    try {
+      render(
+        <CopyButton textToCopy="deno add jsr:@std/path" copy={(text) => void copied.push(text)} />,
+      )
+    } finally {
+      options.vnode = previous
+    }
+
+    click?.()
+
+    expect(click).toBeDefined()
+    expect(copied).toEqual(["deno add jsr:@std/path"])
   })
 })
