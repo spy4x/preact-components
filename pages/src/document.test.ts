@@ -23,6 +23,15 @@ const OPTIONS = {
 }
 
 describe("renderDocument", () => {
+  it("carries the version on the root as an escaped attribute", () => {
+    expect(renderDocument({ ...OPTIONS, version: "0.1.2" })).toContain(
+      `<div id="root" data-version="0.1.2">`,
+    )
+    expect(renderDocument({ ...OPTIONS, version: `1"><script>` })).toContain(
+      `data-version="1&quot;>&lt;script>"`,
+    )
+  })
+
   it("renders the title, description and site name as plain tags", () => {
     const html = renderDocument(OPTIONS)
 

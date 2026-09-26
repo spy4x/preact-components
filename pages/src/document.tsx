@@ -61,6 +61,11 @@ const THEME_BOOTSTRAP = `<script>
       } catch (error) {}
     </script>`
 
+/** `value` escaped for a double-quoted HTML attribute. */
+export function escapeAttribute(value: string): string {
+  return value.replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;")
+}
+
 /**
  * Render the complete HTML document.
  *
@@ -103,7 +108,7 @@ export function renderDocument(
     ${renderRouteTable(routeTable)}
   </head>
   <body class="theme-base">
-    <div id="root"${version ? ` data-version="${version}"` : ""}>${appHtml}</div>
+    <div id="root"${version ? ` data-version="${escapeAttribute(version)}"` : ""}>${appHtml}</div>
     <noscript>
       <p class="mx-auto max-w-5xl p-4 text-sm">
         The catalogue below is prerendered and readable without JavaScript; the demos are not
