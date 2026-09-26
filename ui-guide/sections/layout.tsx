@@ -2,53 +2,90 @@
  * The `ui/` layout components: how a page puts space between its parts.
  *
  * No component in the library carries an outer margin, so every gap on a page comes from one of
- * these five and its named `gap`. The boxes inside each card are plain placeholders, dashed so the
- * gap between them is what the eye reads.
+ * these five and its named `gap`. The tiles inside each card are plain placeholders, tinted and
+ * unbordered, so the space between them is what the eye reads and no card shows a box in a box.
  */
 
 import { Button, Card, CardBody, Cluster, Grid, Page, Section, Stack } from "@spy4x/preact-ui"
+import type { SpacingGap } from "@spy4x/preact-theme/spacing"
 import type { DemoFragment } from "../registry.ts"
 
-/** A dashed placeholder, so the space around it is what the demo shows. */
-function Box({ children }: { children: string }) {
+/** A tinted placeholder, so the space around it is what the demo shows. */
+function Tile({ children }: { children: string }) {
   return (
-    <div class="rounded-md border border-dashed border-gray-300 p-3 text-sm text-gray-600 dark:border-gray-600 dark:text-gray-300">
+    <div class="rounded-md bg-purple-100 px-3 py-2 text-sm text-purple-900 dark:bg-purple-900/40 dark:text-purple-100">
       {children}
     </div>
   )
 }
 
+/** The three gaps the `Stack` card sets side by side, each with what it is for. */
+const stackGaps: readonly { gap: SpacingGap; size: string; use: string }[] = [
+  { gap: "sm", size: "8 px", use: "buttons stacked on a phone" },
+  { gap: "md", size: "16 px", use: "the fields of a form" },
+  { gap: "xl", size: "32 px", use: "the sections of a page" },
+]
+
+/** The named gaps, as the props tables of the three layout components state them. */
+const GAP_TYPE = `"none" | "xs" | "sm" | "md" | "lg" | "xl" | "2xl"`
+
 export const layoutDemos = {
   Stack: {
-    summary:
-      "Children in a column, a named `gap` apart: `none`, `xs` (4 px), `sm` (8 px), `md` (16 px, the default), `lg` (24 px), `xl` (32 px) or `2xl` (48 px). `as` picks the element and `class` adds anything that is not spacing.",
+    summary: "Puts its children in a column, a named gap apart.",
+    wide: true,
+    props: [
+      {
+        name: "gap",
+        type: GAP_TYPE,
+        default: `"md"`,
+        description: "The space between the children, from 0 to 48 px.",
+      },
+      {
+        name: "as",
+        type: `"div" | "section" | "ul" | …`,
+        default: `"div"`,
+        description: "The element it renders.",
+      },
+    ],
     snippet: `<Stack>
   <Field id="name" label="Name"><Input id="name" /></Field>
   <Field id="email" label="Email"><Input id="email" type="email" /></Field>
 </Stack>`,
     render: () => (
-      <Cluster align="start" gap="xl">
-        <Stack gap="sm">
-          <Box>gap="sm"</Box>
-          <Box>8 px apart</Box>
-          <Box>buttons stacked on a phone</Box>
-        </Stack>
-        <Stack>
-          <Box>gap="md"</Box>
-          <Box>16 px apart</Box>
-          <Box>fields of a form, cards in a list</Box>
-        </Stack>
-        <Stack gap="xl">
-          <Box>gap="xl"</Box>
-          <Box>32 px apart</Box>
-          <Box>sections of a page</Box>
-        </Stack>
-      </Cluster>
+      <Grid minColumnWidth="sm" gap="xl">
+        {stackGaps.map(({ gap, size, use }) => (
+          <Stack key={gap} gap={gap}>
+            <Tile>{`gap="${gap}"`}</Tile>
+            <Tile>{`${size} apart`}</Tile>
+            <Tile>{use}</Tile>
+          </Stack>
+        ))}
+      </Grid>
     ),
   },
   Cluster: {
-    summary:
-      "Children in a row that wraps, a named `gap` apart (`sm` by default), for toolbars, button rows and tags. `align` lines them up across the row (`center` by default) and `justify` places them along it (`start`, `center`, `end` or `between`).",
+    summary: "Puts its children in a row that wraps: a toolbar, a row of buttons, a list of tags.",
+    wide: false,
+    props: [
+      {
+        name: "gap",
+        type: GAP_TYPE,
+        default: `"sm"`,
+        description: "The space between the children, across and down.",
+      },
+      {
+        name: "align",
+        type: `"start" | "center" | "end" | "baseline" | "stretch"`,
+        default: `"center"`,
+        description: "How the children line up across the row.",
+      },
+      {
+        name: "justify",
+        type: `"start" | "center" | "end" | "between"`,
+        default: `"start"`,
+        description: "Where the children sit along the row.",
+      },
+    ],
     snippet: `<Cluster justify="between">
   <h4 class="h3">Invoices</h4>
   <Cluster>
@@ -66,9 +103,58 @@ export const layoutDemos = {
       </Cluster>
     ),
   },
+  Section: {
+    summary: "A titled block of a page: a heading, an optional description, then its content.",
+    wide: false,
+    props: [
+      { name: "title", type: "string", description: "The heading, which also names the section." },
+      { name: "description", type: "ComponentChildren", description: "A line under the heading." },
+      {
+        name: "headingLevel",
+        type: "2 | 3 | 4",
+        default: "2",
+        description: "The heading's level, and its size.",
+      },
+      {
+        name: "as",
+        type: `"section" | "article" | "aside" | "div"`,
+        default: `"section"`,
+        description: "The element it renders; a `div` is not a landmark.",
+      },
+    ],
+    snippet: `<Section title="Payment methods" description="Cards we can charge." headingLevel={4}>
+  <Grid>…</Grid>
+</Section>`,
+    render: () => (
+      <Section
+        title="Payment methods"
+        description="Cards we can charge for this workspace."
+        headingLevel={4}
+      >
+        <Grid minColumnWidth="sm">
+          <Tile>Company card</Tile>
+          <Tile>Backup card</Tile>
+        </Grid>
+      </Section>
+    ),
+  },
   Grid: {
-    summary:
-      "Equal columns that fill the width: as many as fit at `minColumnWidth` (`sm` 12 rem, `md` 16 rem by default, `lg` 20 rem), a named `gap` apart. A short last row stretches instead of leaving holes, and one column never overflows a phone.",
+    summary: "Lays its children out in equal columns, as many as fit the width.",
+    wide: true,
+    props: [
+      {
+        name: "minColumnWidth",
+        type: `"sm" | "md" | "lg"`,
+        default: `"md"`,
+        description: "The narrowest a column gets: 12, 16 or 20 rem.",
+      },
+      {
+        name: "gap",
+        type: GAP_TYPE,
+        default: `"md"`,
+        description: "The space between the cells, across and down.",
+      },
+    ],
     snippet: `<Grid minColumnWidth="sm">
   <Card>…</Card>
   <Card>…</Card>
@@ -86,39 +172,19 @@ export const layoutDemos = {
   },
   Page: {
     summary:
-      'The content column of a page: centred, at most `max-w-6xl`, with the page gutter (16 px on a phone, 24 px from `sm`, 32 px from `lg`) and 32 px between its sections. It renders a `div`, because `Shell` and `RailShell` already render the page\'s `<main>`; pass `as="main"` only on a page with no shell. It replaces the deprecated `page-layout` class.',
+      "The content column of a page: centred, with the page's side gutter and room between its sections.",
+    wide: true,
     snippet: `<Page>
   <PageTitle>Billing</PageTitle>
   <Section title="Invoices">…</Section>
   <Section title="Payment methods">…</Section>
 </Page>`,
     render: () => (
-      <div class="rounded-md bg-gray-50 dark:bg-gray-900">
-        <Page>
-          <Box>page title</Box>
-          <Box>first section</Box>
-          <Box>second section</Box>
-        </Page>
-      </div>
-    ),
-  },
-  Section: {
-    summary:
-      "A titled block of a page: an optional heading (`h2` by default, `headingLevel` for `h3` or `h4`) and description, then its children, with fixed gaps — 4 px under the heading, 16 px between the header and each child. `as` is `section` (the default), `article`, `aside` or `div`, and any other element is a type error. A titled `section`, `article` or `aside` is named by its heading, so a screen reader can jump to it; a `div` is not a landmark and gets no name.",
-    snippet: `<Section title="Payment methods" description="Cards we can charge." headingLevel={4}>
-  <Grid>…</Grid>
-</Section>`,
-    render: () => (
-      <Section
-        title="Payment methods"
-        description="Cards we can charge for this workspace."
-        headingLevel={4}
-      >
-        <Grid minColumnWidth="sm">
-          <Box>Company card</Box>
-          <Box>Backup card</Box>
-        </Grid>
-      </Section>
+      <Page>
+        <Tile>page title</Tile>
+        <Tile>first section</Tile>
+        <Tile>second section</Tile>
+      </Page>
     ),
   },
 } satisfies DemoFragment
