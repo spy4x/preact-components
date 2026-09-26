@@ -33,6 +33,12 @@ export async function uiGuideChecks(devtools: Devtools): Promise<void> {
   for (const width of [375, 1280]) {
     await withViewport(devtools, width, 812, () => tooltipTriggerCheck(devtools, width))
   }
+  await withViewport(devtools, 1280, 800, () => searchChecks(devtools))
+  for (const width of [375, 1280]) {
+    await withViewport(devtools, width, 812, () => themeSwitchCheck(devtools, width))
+  }
+  await withViewport(devtools, 375, 812, () => drawerContentCheck(devtools))
+  await withViewport(devtools, 1440, 900, () => onThisPageCheck(devtools))
   await coldDeepLinkCheck(devtools)
   await coldFragmentCheck(devtools)
   await reloadAtTopCheck(devtools)
@@ -917,5 +923,227 @@ async function reloadAtTopCheck(devtools: Devtools): Promise<void> {
     "a page reloaded far down opens at its top, and stays there",
     hydrated && before > 1000 && after === 0,
     `#/system at scrollY ${before} → reloaded, 1.2s after hydration scrollY ${after}`,
+  )
+}
+
+const SEARCH_BUTTON = `[data-e2e="ui-guide-search-open"]`
+const SEARCH_DIALOG = `[data-e2e="ui-guide-search"]`
+
+/**
+ * The header's search: a click opens it with focus in the field, typing filters the results, the
+ * arrow keys move the highlight, Enter opens the highlighted card's route and closes the dialog,
+ * `/` opens it from the page, and Escape closes it with focus back on the button.
+ */
+async function searchChecks(devtools: Devtools): Promise<void> {
+  await openGuidePage(devtools, "overview")
+  const state = () =>
+    devtools.evaluate<
+      { open: boolean; focusInField: boolean; onButton: boolean; results: string[]; active: string }
+    >(`(() => {
+      const dialog = document.querySelector(${JSON.stringify(SEARCH_DIALOG)})
+      const field = dialog?.querySelector('[role="combobox"]')
+      const active = field?.getAttribute("aria-activedescendant")
+      return {
+        open: dialog?.open === true,
+        focusInField: document.activeElement === field,
+        onButton: document.activeElement === document.querySelector(${
+      JSON.stringify(SEARCH_BUTTON)
+    }),
+        results: [...(dialog?.querySelectorAll('[role="option"]') ?? [])]
+          .map((option) => option.querySelector("span span")?.textContent ?? ""),
+        active: active ? document.getElementById(active)?.querySelector("span span")?.textContent ?? "" : "",
+      }
+    })()`)
+
+  const clicked = await clickElement(devtools, SEARCH_BUTTON, { inPlace: true })
+  const opened = await poll(async () => (await state()).focusInField, 2_000)
+  await devtools.send("Input.insertText", { text: "LineChart" })
+  await poll(async () => (await state()).results[0] === "LineChart", 2_000)
+  const filtered = await state()
+  await pressKey(devtools, "ArrowDown")
+  const moved = await state()
+  await pressKey(devtools, "ArrowUp")
+  const back = await state()
+  check(
+    "the header's search opens with focus in its field, filters by name, and moves with the arrows",
+    clicked && opened && filtered.results[0] === "LineChart" &&
+      filtered.results.length > 1 && moved.active === filtered.results[1] &&
+      back.active === "LineChart",
+    `clicked ${clicked}, focus in the field ${opened}; results ${
+      filtered.results.join(", ")
+    }; ArrowDown → "${moved.active}", ArrowUp → "${back.active}"`,
+  )
+
+  await pressKey(devtools, "Enter")
+  const landed = await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `location.hash === "#/charts/line-chart" && ` +
+          `document.getElementById("demo-LineChart")?.hasAttribute("data-deep-link") === true`,
+      ),
+    3_000,
+  )
+  const afterEnter = await state()
+  check(
+    "Enter on a search result opens its card's route and closes the search",
+    landed && !afterEnter.open,
+    `hash ${await devtools.evaluate<string>("location.hash")}, card marked ${landed}, ` +
+      `dialog open ${afterEnter.open}`,
+  )
+
+  // `/` from the page, not from a field: the header's search button has focus after the close.
+  await devtools.evaluate(`document.querySelector(${JSON.stringify(SEARCH_BUTTON)}).focus()`)
+  await pressKey(devtools, "Slash")
+  const slashOpened = await poll(async () => (await state()).focusInField, 2_000)
+  const typed = await devtools.evaluate<string>(
+    `document.querySelector(${JSON.stringify(SEARCH_DIALOG)} + ' [role="combobox"]')?.value ?? "?"`,
+  )
+  await pressKey(devtools, "Escape")
+  await poll(async () => !(await state()).open, 2_000)
+  const closed = await state()
+  if (closed.open) {
+    await devtools.evaluate(`document.querySelector(${JSON.stringify(SEARCH_DIALOG)}).close()`)
+  }
+  check(
+    "/ opens the search from the page with an empty field, and Escape closes it onto its button",
+    slashOpened && typed === "" && !closed.open && closed.onButton,
+    `opened with focus in the field ${slashOpened}, field "${typed}", dialog open after Escape ${closed.open}, ` +
+      `focus on the button ${closed.onButton}`,
+  )
+}
+
+/**
+ * The header's theme switch is named for what a press does, at a phone's width where it is an icon
+ * alone and at a desktop's where it shows its words, and a press switches the palette and the name.
+ * The palette and the stored preference are put back afterwards.
+ */
+async function themeSwitchCheck(devtools: Devtools, width: number): Promise<void> {
+  await openGuidePage(devtools, "overview")
+  const SWITCH = JSON.stringify(`[data-e2e="theme-toggle"]`)
+  const result = await devtools.evaluate<
+    {
+      visible: boolean
+      before: string
+      text: string
+      after: string
+      dark: [boolean, boolean]
+    }
+  >(`(async () => {
+    const root = document.documentElement
+    let stored = null
+    try { stored = localStorage.getItem("pc-theme") } catch {}
+    const wasDark = root.classList.contains("dark")
+    const button = document.querySelector(${SWITCH})
+    const frame = () => new Promise((done) => requestAnimationFrame(() => setTimeout(done, 0)))
+    if (wasDark) { button.click(); await frame() }
+    const before = button.getAttribute("aria-label")
+    const text = button.innerText.trim()
+    const visible = button.checkVisibility()
+    const lightDark = root.classList.contains("dark")
+    button.click()
+    await frame()
+    const after = button.getAttribute("aria-label")
+    const darkDark = root.classList.contains("dark")
+    if (root.classList.contains("dark") !== wasDark) { button.click(); await frame() }
+    try {
+      if (stored === null) localStorage.removeItem("pc-theme")
+      else localStorage.setItem("pc-theme", stored)
+    } catch {}
+    return { visible, before, text, after, dark: [lightDark, darkDark] }
+  })()`)
+  const wordsExpected = width >= 768 ? "Dark mode" : ""
+  check(
+    `at ${width}px the theme switch says what a press does, and a press does it`,
+    result.visible && result.before === "Switch to dark mode" && result.text === wordsExpected &&
+      result.dark[0] === false && result.dark[1] === true &&
+      result.after === "Switch to light mode",
+    `visible ${result.visible}; in light: name "${result.before}", words "${result.text}"; ` +
+      `pressed → dark ${result.dark[1]}, name "${result.after}"`,
+  )
+}
+
+/**
+ * At a phone's width the drawer lists the page showing with its sections and cards, and its close
+ * button closes it, putting focus back on the menu button.
+ */
+async function drawerContentCheck(devtools: Devtools): Promise<void> {
+  await openGuidePage(devtools, "charts")
+  await clickElement(devtools, `[data-guide-page] h1`)
+  await clickElement(devtools, MENU_BUTTON, { inPlace: true })
+  const opened = await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `document.querySelector(${JSON.stringify(MENU_DIALOG)})?.open === true`,
+      ),
+    2_000,
+  )
+  const listed = await devtools.evaluate<{ sections: number; cards: number; visible: boolean }>(
+    `(() => {
+      const dialog = document.querySelector(${JSON.stringify(MENU_DIALOG)})
+      const cards = [...dialog.querySelectorAll('a[href^="#/charts/"], a[href^="#/charts-examples/"]')]
+      return {
+        sections: new Set([...dialog.querySelectorAll('a[href="#/charts"], a[href="#/charts-examples"]')]
+          .map((link) => link.getAttribute("href"))).size,
+        cards: cards.length,
+        visible: cards.every((link) => link.checkVisibility()),
+      }
+    })()`,
+  )
+  await clickElement(devtools, `${MENU_DIALOG} button[aria-label]`)
+  const closed = await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `document.querySelector(${JSON.stringify(MENU_DIALOG)})?.open === false && ` +
+          `document.activeElement === document.querySelector(${JSON.stringify(MENU_BUTTON)})`,
+      ),
+    2_000,
+  )
+  if (!closed) {
+    await devtools.evaluate(`document.querySelector(${JSON.stringify(MENU_DIALOG)}).close()`)
+  }
+  const expected = guidePages.find((page) => page.id === "charts")?.sections
+    .flatMap((section) => section.names).length ?? 0
+  check(
+    "the phone drawer lists the page's sections and cards, and its close button closes it",
+    opened && listed.sections === 2 && listed.cards === expected && listed.visible && closed,
+    `opened ${opened}; ${listed.sections} section links, ${listed.cards}/${expected} card ` +
+      `links, all visible ${listed.visible}; closed with focus on the menu button ${closed}`,
+  )
+}
+
+/**
+ * At `xl` the "On this page" column marks the card in view, and follows the reader: scrolled so a
+ * later card sits under the header, the mark moves to that card.
+ */
+async function onThisPageCheck(devtools: Devtools): Promise<void> {
+  await openGuidePage(devtools, "charts")
+  const LIST = JSON.stringify(`[data-e2e="ui-guide-on-this-page"]`)
+  const marked = () =>
+    devtools.evaluate<string>(
+      `document.querySelector(${LIST})?.querySelector('a[aria-current="location"]')?.textContent ?? ""`,
+    )
+  const visible = await devtools.evaluate<boolean>(
+    `document.querySelector(${LIST})?.checkVisibility() === true`,
+  )
+  const first = guidePages.find((page) => page.id === "charts")?.sections[0].names[0] ?? ""
+  const atTop = await poll(async () => (await marked()) === first, 3_000)
+  const topMark = await marked()
+
+  const target = "MetricPanel"
+  const top = await devtools.evaluate<number>(`(() => {
+    const card = document.getElementById("demo-${target}")
+    const y = Math.round(card.getBoundingClientRect().top + scrollY - 72)
+    scrollTo({ top: y, behavior: "instant" })
+    return Math.round(scrollY)
+  })()`)
+  await settledScroll(devtools, { target: top })
+  const followed = await poll(async () => (await marked()) === target, 3_000)
+  const scrolledMark = await marked()
+  await devtools.evaluate(`(scrollTo({ top: 0, behavior: "instant" }), null)`)
+  check(
+    "at xl the On this page list marks the card in view and follows the scroll",
+    visible && atTop && followed,
+    `list visible ${visible}; at the top "${topMark}" (expected ${first}), ` +
+      `scrolled to ${target} → "${scrolledMark}"`,
   )
 }
