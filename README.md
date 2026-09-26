@@ -21,7 +21,7 @@ deno add jsr:@spy4x/preact-ui
 
 ## Status
 
-Pre-1.0. Every package is published on JSR at `0.1.2` as `jsr:@spy4x/preact-<name>`, released
+Pre-1.0. Every package is published on JSR at `0.1.3` as `jsr:@spy4x/preact-<name>`, released
 together from a `v*` tag by Woodpecker (#150) — see [`docs/publishing.md`](./docs/publishing.md).
 
 No published file names a private application (#237). `deno task private-names <names-file>`
