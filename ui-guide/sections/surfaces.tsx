@@ -80,7 +80,7 @@ function InkPaletteDemo() {
         Dark only: set <code>data-theme="ink"</code> together with <code>.dark</code> on{" "}
         <code>&lt;html&gt;</code>.
       </p>
-      <div class="grid grid-cols-3 gap-4 sm:grid-cols-5">
+      <div class="grid grid-cols-2 gap-4 sm:grid-cols-5">
         {swatches.map((swatch) => (
           <div key={swatch.label} class="flex flex-col items-center gap-1">
             <span
@@ -357,7 +357,7 @@ export const surfaceDemos = {
     ],
     summary:
       "Paints text, fills, borders, the two surfaces and the corner radius from the theme's tokens.",
-    wide: false,
+    wide: true,
     snippet: `<span class="text-danger">text-danger</span>
 <span class="bg-success rounded-primary px-2 py-1 text-xs text-white">bg-success</span>
 <span class="border-control border px-2 py-1 text-xs">border-control</span>
@@ -369,7 +369,7 @@ export const surfaceDemos = {
     classes: ["text-muted", "rounded-primary", "border-subtle"],
     summary:
       "An opt-in dark palette that repaints the same tokens with a quieter surface scale and its own focus colour.",
-    wide: false,
+    wide: true,
     snippet: `<html class="dark" data-theme="ink">
   <body class="theme-base">
     <nav style="background: var(--color-surface-rail)">…</nav>
