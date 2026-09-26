@@ -676,3 +676,172 @@ describe("themeBootstrapScript", () => {
     expect(classes.has("dark")).toBe(false)
   })
 })
+
+/**
+ * Run the real bootstrap script against a controllable media query, so a test can change the OS
+ * setting, and the stored preference, after the first paint.
+ */
+function runFollowing(
+  options: ThemeBootstrapOptions | undefined,
+  stored: Record<string, string>,
+  systemDark: boolean,
+) {
+  const storage = fakeStorage(stored)
+  const media = fakeMedia(systemDark)
+  const classes = new Set<string>()
+  const document = {
+    documentElement: {
+      classList: {
+        toggle: (name: string, on: boolean) => void (on ? classes.add(name) : classes.delete(name)),
+      },
+    },
+  }
+  new Function("localStorage", "matchMedia", "document", themeBootstrapScript(options))(
+    storage,
+    media.source,
+    document,
+  )
+  return { storage, media, dark: () => classes.has("dark") }
+}
+
+describe("themeBootstrapScript followSystem", () => {
+  it("repaints on an OS change while the stored preference is system", () => {
+    const run = runFollowing({ followSystem: true }, { theme: "system" }, false)
+    expect(run.dark()).toBe(false)
+    run.media.emit(true)
+    expect(run.dark()).toBe(true)
+    run.media.emit(false)
+    expect(run.dark()).toBe(false)
+  })
+
+  it("repaints on an OS change when nothing is stored and the default is system", () => {
+    const run = runFollowing({ followSystem: true }, {}, true)
+    run.media.emit(false)
+    expect(run.dark()).toBe(false)
+  })
+
+  it("leaves a stored light preference alone when the OS turns dark", () => {
+    const run = runFollowing({ followSystem: true }, { theme: "light" }, false)
+    run.media.emit(true)
+    expect(run.dark()).toBe(false)
+  })
+
+  it("reads storage again on every change, so a choice stored after the first paint wins", () => {
+    const run = runFollowing({ followSystem: true }, { theme: "system" }, false)
+    run.storage.entries.set("theme", "light")
+    run.media.emit(true)
+    expect(run.dark()).toBe(false)
+    expect(run.storage.reads).toEqual(["theme", "theme"])
+  })
+
+  it("keeps a default dark preference when the OS turns light", () => {
+    const run = runFollowing({ followSystem: true, defaultPreference: ThemeValue.DARK }, {}, true)
+    run.media.emit(false)
+    expect(run.dark()).toBe(true)
+  })
+
+  it("watches the custom storage key and media query", () => {
+    const run = runFollowing(
+      { followSystem: true, storageKey: "app-theme", systemQuery: "(prefers-contrast: more)" },
+      { "app-theme": "system" },
+      false,
+    )
+    run.media.emit(true)
+    expect(run.dark()).toBe(true)
+    expect(run.media.queries.every((query) => query === "(prefers-contrast: more)")).toBe(true)
+    expect(run.storage.reads).toEqual(["app-theme", "app-theme"])
+  })
+
+  it("registers no listener unless followSystem is exactly true", () => {
+    for (const followSystem of [undefined, false, "true" as unknown as boolean]) {
+      const run = runFollowing({ followSystem }, { theme: "system" }, false)
+      expect(run.media.listenerCount()).toBe(0)
+      run.media.emit(true)
+      expect(run.dark()).toBe(false)
+    }
+  })
+
+  it("leaves the script unchanged when followSystem is off", () => {
+    expect(themeBootstrapScript({ followSystem: false })).toBe(themeBootstrapScript())
+  })
+
+  it("falls back to addListener on a media query list without addEventListener", () => {
+    const listeners: Array<() => void> = []
+    const query = {
+      matches: false,
+      addListener: (listener: () => void) => void listeners.push(listener),
+    }
+    const classes = new Set<string>()
+    new Function(
+      "localStorage",
+      "matchMedia",
+      "document",
+      themeBootstrapScript({ followSystem: true }),
+    )(
+      fakeStorage({ theme: "system" }),
+      () => query,
+      {
+        documentElement: {
+          classList: {
+            toggle: (n: string, on: boolean) => void (on ? classes.add(n) : classes.delete(n)),
+          },
+        },
+      },
+    )
+    query.matches = true
+    for (const listener of listeners) listener()
+    expect(classes.has("dark")).toBe(true)
+  })
+
+  it("does nothing and does not throw when the browser has no matchMedia", () => {
+    const classes = new Set<string>()
+    expect(() =>
+      new Function(
+        "localStorage",
+        "matchMedia",
+        "document",
+        themeBootstrapScript({ followSystem: true }),
+      )(
+        fakeStorage({ theme: "system" }),
+        undefined,
+        {
+          documentElement: {
+            classList: {
+              toggle: (n: string, on: boolean) => void (on ? classes.add(n) : classes.delete(n)),
+            },
+          },
+        },
+      )
+    ).not.toThrow()
+    expect(classes.has("dark")).toBe(false)
+  })
+
+  it("writes options as literals in the listener too", () => {
+    const script = themeBootstrapScript({
+      followSystem: true,
+      storageKey: `"+alert(1)+"</script><script>alert(2)//`,
+      systemQuery: `"+alert(4)+"</script><script>alert(5)//`,
+    })
+    expect(script).not.toContain("</script")
+    const run = runFollowing(
+      {
+        followSystem: true,
+        storageKey: `"+globalThis.pwnedFollow=1+"`,
+        systemQuery: `"+globalThis.pwnedFollowQuery=1+"`,
+      },
+      {},
+      true,
+    )
+    run.media.emit(false)
+    expect(run.storage.reads).toEqual([
+      `"+globalThis.pwnedFollow=1+"`,
+      `"+globalThis.pwnedFollow=1+"`,
+    ])
+    expect(run.media.queries).toEqual([
+      `"+globalThis.pwnedFollowQuery=1+"`,
+      `"+globalThis.pwnedFollowQuery=1+"`,
+    ])
+    expect((globalThis as { pwnedFollow?: number }).pwnedFollow).toBeUndefined()
+    expect((globalThis as { pwnedFollowQuery?: number }).pwnedFollowQuery).toBeUndefined()
+  })
+})
