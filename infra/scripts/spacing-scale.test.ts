@@ -37,7 +37,20 @@ export const SPACING_PACKAGES = [
  * the new design. Temporary: a marked file that has become clean fails the test, so a marker only
  * ever goes away, and none may be left when #328 closes.
  */
-export const OFF_SCALE_MARKER = /^\/\/ spacing: off-scale until #328\b/m
+export const OFF_SCALE_MARKER = /^\/\/ spacing: off-scale until #328\b/
+
+/**
+ * The only files allowed to carry {@link OFF_SCALE_MARKER}: the section files #328's later pull
+ * requests rewrite. A lane deletes a file's marker and never edits this list; the list only keeps a
+ * marker from switching the check off anywhere else.
+ */
+const MARKABLE_FILES = [
+  "ui-guide/sections/display.tsx",
+  "ui-guide/sections/feedback.tsx",
+  "ui-guide/sections/forms.tsx",
+  "ui-guide/sections/inputs.tsx",
+  "ui-guide/sections/theme-examples.tsx",
+]
 
 /** Build output under a covered directory: generated, not source. */
 const SKIPPED_DIRECTORIES = ["pages/dist"]
@@ -107,6 +120,12 @@ describe("spacing scale", () => {
     const files = (await Promise.all(SPACING_PACKAGES.map(sourceFiles))).flat()
     const marked = await markedFiles(files)
     expect(await offScale(files.filter((path) => !marked.includes(path)))).toEqual([])
+  })
+
+  it("lets only the files #328 still rewrites carry the marker, on their first line", async () => {
+    const files = (await Promise.all(SPACING_PACKAGES.map(sourceFiles))).flat()
+    const stray = (await markedFiles(files)).filter((path) => !MARKABLE_FILES.includes(path))
+    expect(stray, "only a listed section file may switch the spacing check off").toEqual([])
   })
 
   it("marks only files that still carry an off-scale value until #328 closes", async () => {
