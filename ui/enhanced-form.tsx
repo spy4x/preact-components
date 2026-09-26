@@ -147,14 +147,14 @@ export interface EnhancedFormProps {
  * **The region hides itself from sighted users whenever the current status has a slot of its own on
  * screen at all — not only when that slot's own copy happens to match the region's.** Repeating
  * "Sent." once as the visible replacement for the fields and a second time immediately under it
- * reads as a mistake, not a confirmation, and `NewsletterForm` and `ContactForm` both hand
- * `EnhancedForm` a `done` slot whose copy is the region's own default; a caller whose slot says
+ * reads as a mistake, not a confirmation, and a sign-up form commonly hands `EnhancedForm` a `done`
+ * slot whose copy is the region's own default; a caller whose slot says
  * something entirely different still gets the plainer, cheaper rule, rather than this component
  * comparing rendered text to decide. The always-present element is what makes the announcement
  * reliable, so it never stops rendering — only `sr-only` while a slot is on screen for the same
  * status, which keeps the announcement and removes the duplicate line where one would otherwise
  * appear. A status with no slot of its own (the default disabled-`<fieldset>` behaviour, or
- * `ContactForm`'s un-slotted `"failed"`) still needs the region to carry the message visibly, since
+ * an un-slotted `"failed"`) still needs the region to carry the message visibly, since
  * nothing else on screen does.
  *
  * **Focus moves to the region only when it was inside this form the moment the visitor submitted,

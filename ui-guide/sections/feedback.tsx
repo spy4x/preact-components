@@ -2,8 +2,8 @@
  * The `ui/` feedback surfaces: empty and error states, the loading placeholders, the transient
  * notification stack, and the two dialogs.
  *
- * `LoadingScreen` and `Toastr` are positioned for the whole window, so their cards pin them into
- * the demo with a `class` override. `Modal` and `ConfirmDialog` need no pinning: they are native
+ * `Toastr` is positioned for the whole window, so its card pins it into the demo with a `class`
+ * override. `Modal` and `ConfirmDialog` need no pinning: they are native
  * `<dialog>` elements in the browser's top layer and render nothing until a trigger opens them.
  */
 
@@ -15,20 +15,11 @@ import {
   type DialogTone,
   EmptyState,
   ErrorState,
-  Grid,
-  LoadingScreen,
   LoadingSkeleton,
   LoadingSpinner,
   Modal,
-  SkeletonCards,
-  type SkeletonLineWidth,
-  SkeletonStatus,
-  SkeletonTable,
-  SkeletonText,
   type SpinnerSize,
   Stack,
-  tableGeometry,
-  textGeometry,
   Toastr,
   type ToastVariant,
 } from "@spy4x/preact-ui"
@@ -63,38 +54,6 @@ const dialogTones: Record<DialogTone, string> = {
   danger: "danger dialog",
 }
 
-/**
- * One width list per vocabulary entry the card demonstrates, in render order.
- *
- * `SkeletonLineWidth` is a union of a number, `"full"` and `undefined`, so an omitted list is a case
- * of its own rather than an empty one — and the two must not be conflated, because `[]` is what a
- * caller reaches for when it means "the default".
- */
-const lineWidthSets: Array<{ label: string; widths?: SkeletonLineWidth[] }> = [
-  { label: "no widths" },
-  { label: "widths={[100, 85, 60]}", widths: [100, 85, 60] },
-  { label: "widths={[90, 40]}, cycled", widths: [90, 40] },
-  { label: `widths={["full", 70]}`, widths: ["full", 70] },
-]
-
-/**
- * The three line widths `SkeletonText` resolves from one `widths` list, as its own text.
- *
- * Printed under each paragraph so the cycling rule is readable rather than inferred. The numbers are
- * read back out of `textGeometry` rather than recomputed here: an earlier revision of this helper
- * had the cycling rule of its own, and it printed `full` where the component resolves `100` for a
- * literal `"full"` in a list — a card quoting the wrong number while its own test passed, because
- * the test was measuring the copy. Delegating to the component's function is what makes the card
- * report what the placeholder really renders, and it is the same rule the sibling
- * {@link skeletonTableNote} follows with `tableGeometry`.
- *
- * @param widths The list the card passed, or `undefined` for the no-`widths` case.
- * @returns Three resolved widths, joined for display.
- */
-export function skeletonWidthReport(widths?: readonly SkeletonLineWidth[]): string {
-  return textGeometry(3, widths).linePercents.join(" / ")
-}
-
 function SpinnerDemo() {
   return (
     <Cluster align="end" gap="xl">
@@ -102,20 +61,6 @@ function SpinnerDemo() {
         <LoadingSpinner key={size} size={size} label={label} class="py-0" />
       ))}
     </Cluster>
-  )
-}
-
-/**
- * `LoadingScreen` covers the whole window, so the demo pins it into a positioned area with a
- * `class` override rather than covering the catalogue. The override works because the package
- * merges classes through `cn`, where a later position utility wins. The area draws nothing of its
- * own: the white panel is the component's.
- */
-function LoadingScreenDemo() {
-  return (
-    <div class="relative h-56 overflow-hidden rounded-lg">
-      <LoadingScreen class="absolute" message="Loading…" description="Please wait…" />
-    </div>
   )
 }
 
@@ -259,96 +204,6 @@ function EmptyStateDemo() {
       />
       <EmptyState title="No filters applied" />
       <EmptyState />
-    </Stack>
-  )
-}
-
-/** The four width lists, side by side, with the widths each resolves to printed under it. */
-function SkeletonTextDemo() {
-  return (
-    <Grid minColumnWidth="sm" gap="lg" class="sm:grid-cols-2 lg:grid-cols-4">
-      {lineWidthSets.map(({ label, widths }) => (
-        <Stack key={label} gap="sm">
-          <DemoNote>{label}</DemoNote>
-          <SkeletonText lines={3} widths={widths} />
-          <DemoNote>lines at {skeletonWidthReport(widths)}</DemoNote>
-        </Stack>
-      ))}
-    </Grid>
-  )
-}
-
-/**
- * Card grids at two shapes. The grid is `sm:grid-cols-2 lg:grid-cols-3` as shipped, so the
- * two-column call passes the utility that overrides it.
- */
-function SkeletonCardsDemo() {
-  return (
-    <Stack gap="lg">
-      <Stack gap="sm">
-        <DemoNote>columns=2, lines=2</DemoNote>
-        <SkeletonCards columns={2} lines={2} class="lg:grid-cols-2" />
-      </Stack>
-      <Stack gap="sm">
-        <DemoNote>columns=3, rows=2, lines=3</DemoNote>
-        <SkeletonCards columns={3} rows={2} lines={3} />
-      </Stack>
-    </Stack>
-  )
-}
-
-/**
- * The cells and the row height one `SkeletonTable` reserves, as a sentence.
- *
- * The count is the claim worth making — `rows × columns` placeholder cells is what makes two layouts
- * line up — and it comes from the same `tableGeometry` the component renders from, so the card
- * cannot state a number the markup contradicts. The row height is printed in `px` because that is
- * the unit it was measured in.
- *
- * @param rows Placeholder body rows.
- * @param columns Column count.
- * @returns e.g. `4 × 3 = 12 placeholder cells, each row 53px tall`.
- */
-export function skeletonTableNote(rows: number, columns: number): string {
-  const geometry = tableGeometry({ rows, columns })
-
-  return `${geometry.rows} × ${geometry.columns} = ${geometry.cells} placeholder cells, each row ` +
-    `${Math.round(geometry.rowHeightRem * 16)}px tall`
-}
-
-/**
- * Table placeholders: even columns with the height a real `Table` reserves, and weighted columns
- * without it, which is what a real table showing an empty result renders.
- */
-function SkeletonTableDemo() {
-  const weights = [3, 1, 2]
-
-  return (
-    <Stack gap="lg">
-      <Stack gap="sm">
-        <DemoNote>rows=4, columns=3: {skeletonTableNote(4, 3)}</DemoNote>
-        <SkeletonTable rows={4} columns={3} />
-      </Stack>
-      <Stack gap="sm">
-        <DemoNote>
-          widths={JSON.stringify(weights)}, reserveHeight=false: {skeletonTableNote(2, 3)}
-        </DemoNote>
-        <SkeletonTable widths={weights} rows={2} reserveHeight={false} />
-      </Stack>
-    </Stack>
-  )
-}
-
-/**
- * The announcement that goes with the placeholders. `SkeletonStatus` renders its text `sr-only`,
- * so what a sighted reader sees is the paragraph placeholder beside it.
- */
-function SkeletonStatusDemo() {
-  return (
-    <Stack gap="sm">
-      <SkeletonStatus label="Loading the invoice list…" />
-      <SkeletonText lines={3} widths={[100, 85, 60]} />
-      <DemoNote>A screen reader hears "Loading the invoice list…"; nothing else shows.</DemoNote>
     </Stack>
   )
 }
@@ -581,70 +436,17 @@ export const feedbackDemos = {
       </Stack>
     ),
   },
-  SkeletonStatus: {
-    summary: "Tells a screen reader that the placeholders around it are loading.",
-    wide: false,
-    snippet: `<SkeletonStatus label="Loading the invoice list…" />
-<SkeletonTable rows={4} columns={3} />`,
-    render: () => <SkeletonStatusDemo />,
-  },
   LoadingSpinner: {
     summary: "A spinning circle for something that is loading, with an optional caption.",
     wide: true,
     snippet: `<LoadingSpinner size="lg" label="Loading transactions…" />`,
     render: () => <SpinnerDemo />,
   },
-  LoadingScreen: {
-    summary: "A loading message that covers the whole window while an app starts.",
-    wide: false,
-    snippet: `<LoadingScreen message="Syncing" description="This can take a minute." />`,
-    render: () => <LoadingScreenDemo />,
-  },
   LoadingSkeleton: {
     summary: "Grey placeholder cards that hold a page's shape while its content loads.",
     wide: false,
     snippet: `<LoadingSkeleton rows={1} />`,
     render: () => <LoadingSkeleton rows={1} />,
-  },
-  SkeletonText: {
-    summary: "A placeholder shaped like a paragraph, one grey bar per line.",
-    wide: true,
-    snippet: `<SkeletonText lines={3} widths={[100, 85, 60]} />`,
-    render: () => <SkeletonTextDemo />,
-  },
-  SkeletonTable: {
-    summary: "A placeholder shaped like a `Table`, so the page does not jump when the rows arrive.",
-    wide: true,
-    props: [
-      { name: "rows", type: "number", description: "Placeholder rows." },
-      { name: "columns", type: "number", description: "Placeholder columns." },
-      {
-        name: "widths",
-        type: "number[]",
-        description: "Relative column widths; they also set the column count.",
-      },
-      {
-        name: "reserveHeight",
-        type: "boolean",
-        default: "true",
-        description: "Keeps the real table's minimum height.",
-      },
-    ],
-    snippet: `<SkeletonTable rows={4} columns={3} />
-<SkeletonTable widths={[3, 1, 2]} rows={2} />`,
-    render: () => <SkeletonTableDemo />,
-  },
-  SkeletonCards: {
-    summary: "A placeholder shaped like a grid of cards.",
-    wide: true,
-    props: [
-      { name: "columns", type: "number", default: "3", description: "Cards in a row." },
-      { name: "rows", type: "number", default: "1", description: "Rows of cards." },
-      { name: "lines", type: "number", default: "2", description: "Text bars in each card." },
-    ],
-    snippet: `<SkeletonCards columns={3} rows={2} lines={2} />
-<SkeletonCards columns={2} lines={3} class="lg:grid-cols-2" />`,
-    render: () => <SkeletonCardsDemo />,
   },
   Modal: {
     summary: "A dialog that holds focus until it is closed, on the browser's own `<dialog>`.",

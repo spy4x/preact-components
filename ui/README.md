@@ -14,13 +14,12 @@ Preact + Tailwind primitives extracted from earlier source applications.
 - **One Preact option hook, for four components' refs.** `./forward-ref.ts`'s hook, installed on
   Preact's shared `options` object, is what lets `Input`, `Button`, `Checkbox` and `Radio` forward
   the `ref` each is given to the native element it renders instead of Preact applying it to the
-  component itself. Seventeen of this package's exports load it — counted once, by hand, by walking
+  component itself. Fourteen of this package's exports load it — counted once, by hand, by walking
   each subpath's own module graph for `forward-ref.ts`; no check repeats the count: the four
   components themselves — `./button`'s only other export is `buttonClasses`, so a caller who imports
   that alone still installs the hook; the package root (`.`), which carries every export;
-  `./confirm-dialog`, `./copy-button`, `./date-range-picker`, `./geo-button`, `./modal`,
-  `./on-off-buttons`, `./pagination`, `./contact-form` and `./newsletter-form`, each of which
-  renders a `Button` of its own; `./dropdown`, which uses `buttonClasses` without ever rendering a
+  `./confirm-dialog`, `./copy-button`, `./date-range-picker`, `./modal`, `./on-off-buttons` and
+  `./pagination`, each of which renders a `Button` of its own; `./dropdown`, which uses `buttonClasses` without ever rendering a
   `Button`; and `./copyable-text` and `./data-table`, which load it transitively — through
   `./copy-button` and `./pagination` respectively. `@spy4x/preact-crud` loads it too,
   transitively, through `./dropdown`. It acts only on the four components it forwards refs for;
@@ -40,75 +39,62 @@ one. See #257's own "What I suggest" for the two options this decides between.
 
 ## Components
 
-| Component          | Subpath             | Ports / key props                                                                                                                                                                                    |
-| ------------------ | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Avatar`           | `avatar`            | `name`, `src`, `alt`, `size`                                                                                                                                                                         |
-| `AvatarGroup`      | `avatar`            | `items`, `max`, `label`, `size` (a `role="group"`, not a list)                                                                                                                                       |
-| `Badge`            | `badge`             | `text`, `color`, `type`                                                                                                                                                                              |
-| `Button`           | `button`            | `variant`, `size`, native button attrs                                                                                                                                                               |
-| `Card`             | `card`              | `children`, `class` — a bordered surface                                                                                                                                                             |
-| `CardBody`         | `card`              | `children`, `class`                                                                                                                                                                                  |
-| `CardFooter`       | `card`              | `children`, `class`                                                                                                                                                                                  |
-| `CardHeader`       | `card`              | `title` and `action`, or `children`; `class`                                                                                                                                                         |
-| `Checkbox`         | `checkbox`          | `children` (the label), `labelClass`, native checkbox attrs; forwards `ref`                                                                                                                          |
-| `CiStatusPill`     | `ci-status-pill`    | `status` (any string; unrecognised falls back to a neutral pill), `label?` — extends `Badge`'s palette                                                                                               |
-| `Cluster`          | `layout`            | `gap?` (default `sm`), `align?`, `justify?`, `as?`, `class?` — a wrapping row                                                                                                                        |
-| `Combobox`         | `combobox`          | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `ariaLabel?`, `aria-labelledby?`, `id?`                                                                                                        |
-| `ConfidenceMeter`  | `confidence-meter`  | `value` (optional; clamped 0–100, unknown renders no reading), `label`                                                                                                                               |
-| `ConfirmDialog`    | `confirm-dialog`    | `title`, `message?`, `onConfirm`, `onCancel`, `confirmLabel?`, `cancelLabel?`, `tone?`                                                                                                               |
-| `ContactForm`      | `contact-form`      | `action?`, `onSubmit?` (`{ name, email, message }`), `honeypot?`, `labels?`, built on `EnhancedForm`                                                                                                 |
-| `CopyableText`     | `copyable-text`     | `text`, `truncate?`, `copy?` (clipboard port), `copyLabel?`, `copiedLabel?`                                                                                                                          |
-| `CopyableTextBody` | `copyable-text`     | `copied`, `onCopy` — `CopyableText` with the copied state owned by the caller                                                                                                                        |
-| `CopyButton`       | `copy-button`       | `textToCopy`, `copy?` (clipboard port)                                                                                                                                                               |
-| `DataTable`        | `data-table`        | `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `captionHidden?`, `empty?`, `paging?`, `rowDataE2E?`, `class?`                                                                       |
-| `DateRangePicker`  | `date-range-picker` | `range`, `onChange`, `timeZone`, `presets` or `withTime`, `labels?` (every key optional)                                                                                                             |
-| `Dropdown`         | `dropdown`          | `trigger`, `triggerLabel` or `triggerNamedByContent` (one is required), `menuLabel`, `vertical`, `horizontal`                                                                                        |
-| `DropdownItem`     | `dropdown`          | `href`, `onClick`, `disabled`, `danger`, `class` — a `role="menuitem"`, out of the tab order                                                                                                         |
-| `EmptyState`       | `empty-state`       | `icon?`, `title?`, `description?`, `action?`                                                                                                                                                         |
-| `EnhancedForm`     | `enhanced-form`     | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?` — posts natively before hydration                                                                                   |
-| `ErrorState`       | `error-state`       | `message` (renders nothing when empty)                                                                                                                                                               |
-| `ExportButton`     | `export-button`     | `columns`, `rows` or `getRows`, `fileName`, `label?`, `resultLabel?`, `errorLabel?`, `onError?`                                                                                                      |
-| `FactCard`         | `fact-card`         | `title?`, `action?`, `facts` (`{ key, value }[]`, rendered as a `<dl>`) — composes `Card`/`CardHeader`/`CardBody`                                                                                    |
-| `Field`            | `field`             | `id`, `label?`, `children`, `hint?`, `error?`, `required?`, `suffix?`                                                                                                                                |
-| `FileInput`        | `file-input`        | `id`, `accept?`, `multiple?`, `maxSize?`, `name?`, `onFiles?`, `onReject?`, `label?`, `error?`, `previews?`, `labels?`                                                                               |
-| `GeoButton`        | `geo-button`        | `onLocation`, `onError?`                                                                                                                                                                             |
-| `Grid`             | `layout`            | `gap?` (default `md`), `minColumnWidth?` (`sm`/`md`/`lg`), `as?`, `class?` — equal columns that fill the row                                                                                         |
-| `ImageGallery`     | `image-gallery`     | `images` (`{ src, alt, thumbSrc? }[]`), `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`                                                                                     |
-| `Input`            | `input`             | native input attrs, `class`; forwards `ref`                                                                                                                                                          |
-| `InputButton`      | `input-button`      | `icon`, `iconLabel`, `onClick?`, native input attrs                                                                                                                                                  |
-| `InstallBox`       | `install-box`       | `command`, `copy?`, `copyLabel?` — built on `CopyButton`                                                                                                                                             |
-| `Lightbox`         | `lightbox`          | `images`, `index`, `open`, `onClose`, `onIndexChange`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`                                                                                |
-| `LoadingScreen`    | `loading-screen`    | `message`, `description`                                                                                                                                                                             |
-| `LoadingSkeleton`  | `loading-skeleton`  | `rows`                                                                                                                                                                                               |
-| `LoadingSpinner`   | `loading-spinner`   | `label`, `size`                                                                                                                                                                                      |
-| `MarginNote`       | `margin-note`       | `children`, `sourceHref?`, `sourceLabel?`, `checkedOn?` (ISO date, rendered as `<time>`), `checkedLabel?`, `locale?` (default `"en"`), `label?` (accessible name, default `"Note"`); extends nothing |
-| `Modal`            | `modal`             | `open?` or `defaultOpen?`, `onClose?`, `title?` or `ariaLabel?`, `children`, `footer?`, `cancelLabel?`                                                                                               |
-| `MoneyDisplay`     | `money-display`     | `amount` (smallest unit), `currency`, `locale?`, `colorNegative?`, `class?`                                                                                                                          |
-| `MoneyInput`       | `money-input`       | `value` (smallest unit or `null`), `onChange`, `currency`, `locale?`, `min?`, `max?`, `name?`, `id?`, `invalidMessage?`, `rangeMessage?`                                                             |
-| `NewsletterForm`   | `newsletter-form`   | `action?`, `onSubmit?` (`email`), `honeypot?`, `labels?`, built on `EnhancedForm`                                                                                                                    |
-| `OnOffButtons`     | `on-off-buttons`    | `value`, `amount`, `onSwitch`                                                                                                                                                                        |
-| `Page`             | `layout`            | `as?`, `class?` — the content column: max width, page gutter, `xl` between sections                                                                                                                  |
-| `PageTitle`        | `page-title`        | `children`, `class`                                                                                                                                                                                  |
-| `Pagination`       | `pagination`        | `page`, `pageCount`, `onChange`, `label`, `previousLabel`, `nextLabel`, `pageLabel`                                                                                                                  |
-| `Progress`         | `progress`          | `value`, `max`, `label`, `id` (a caption needs an `id`)                                                                                                                                              |
-| `Radio`            | `radio`             | `children` (the label), `labelClass`, native radio attrs; forwards `ref`                                                                                                                             |
-| `RadioGroup`       | `radio`             | `legend`, `name`, `options`, `value?`, `onChange?`                                                                                                                                                   |
-| `Section`          | `layout`            | `title?`, `description?`, `headingLevel?` (2–4), `as?` (`section`/`article`/`aside`/`div`), `class?`                                                                                                 |
-| `Select`           | `input`             | `options`, `placeholder?`, native select attrs                                                                                                                                                       |
-| `SkeletonCards`    | `skeletons`         | `columns`, `rows`, `lines`                                                                                                                                                                           |
-| `SkeletonStatus`   | `skeletons`         | `label` (the loading announcement)                                                                                                                                                                   |
-| `SkeletonTable`    | `skeletons`         | `rows`, `columns`, `widths`, `reserveHeight`                                                                                                                                                         |
-| `SkeletonText`     | `skeletons`         | `lines`, `widths`                                                                                                                                                                                    |
-| `Stack`            | `layout`            | `gap?` (default `md`), `as?`, `class?` — a column                                                                                                                                                    |
-| `StatusMark`       | `status-mark`       | `status` (`ready`/`beta`/`wip`/`paused`/`archived`/`known-issue`), `label?` — a sibling of `Badge`, not an extension of it: `Badge` is colour-plus-text with no shape                                |
-| `Table`            | `table`             | `headerSlot`, `bodySlots`, `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`                                                                                                                   |
-| `Tabs`             | `tabs`              | `tabs`, `active`, `onChange`, `orientation`, `lazy`                                                                                                                                                  |
-| `Textarea`         | `input`             | native textarea attrs, `class`                                                                                                                                                                       |
-| `Toastr`           | `toastr`            | `toasts`, `onDismiss`, `label`, `dismissLabel`, `dataE2E`                                                                                                                                            |
-| `ToggleField`      | `toggle-field`      | `id`, `label`, `value`, `onToggle`, `description?`, `error?`                                                                                                                                         |
-| `ToggleSwitch`     | `toggle-switch`     | `value`, `onToggle`, `disabled`, `label`                                                                                                                                                             |
-| `Tooltip`          | `tooltip`           | `content`, `label`, `placement`, `focusable`                                                                                                                                                         |
-| `ZoomableImages`   | `zoomable-images`   | `containerSelector?`, `imageSelector?`, `fallbackAlt?`, `zoomLabel?`, `previousLabel?`, `nextLabel?`, `onOpen?`                                                                                      |
+| Component          | Subpath             | Ports / key props                                                                                                                                                     |
+| ------------------ | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Avatar`           | `avatar`            | `name`, `src`, `alt`, `size`                                                                                                                                          |
+| `AvatarGroup`      | `avatar`            | `items`, `max`, `label`, `size` (a `role="group"`, not a list)                                                                                                        |
+| `Badge`            | `badge`             | `text`, `color`, `type`                                                                                                                                               |
+| `Button`           | `button`            | `variant`, `size`, native button attrs                                                                                                                                |
+| `Card`             | `card`              | `children`, `class` — a bordered surface                                                                                                                              |
+| `CardBody`         | `card`              | `children`, `class`                                                                                                                                                   |
+| `CardFooter`       | `card`              | `children`, `class`                                                                                                                                                   |
+| `CardHeader`       | `card`              | `title` and `action`, or `children`; `class`                                                                                                                          |
+| `Checkbox`         | `checkbox`          | `children` (the label), `labelClass`, native checkbox attrs; forwards `ref`                                                                                           |
+| `Cluster`          | `layout`            | `gap?` (default `sm`), `align?`, `justify?`, `as?`, `class?` — a wrapping row                                                                                         |
+| `Combobox`         | `combobox`          | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `ariaLabel?`, `aria-labelledby?`, `id?`                                                                         |
+| `ConfirmDialog`    | `confirm-dialog`    | `title`, `message?`, `onConfirm`, `onCancel`, `confirmLabel?`, `cancelLabel?`, `tone?`                                                                                |
+| `CopyableText`     | `copyable-text`     | `text`, `truncate?`, `copy?` (clipboard port), `copyLabel?`, `copiedLabel?`                                                                                           |
+| `CopyableTextBody` | `copyable-text`     | `copied`, `onCopy` — `CopyableText` with the copied state owned by the caller                                                                                         |
+| `CopyButton`       | `copy-button`       | `textToCopy`, `copy?` (clipboard port)                                                                                                                                |
+| `DataTable`        | `data-table`        | `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `captionHidden?`, `empty?`, `paging?`, `rowDataE2E?`, `class?`                                        |
+| `DateRangePicker`  | `date-range-picker` | `range`, `onChange`, `timeZone`, `presets` or `withTime`, `labels?` (every key optional)                                                                              |
+| `Dropdown`         | `dropdown`          | `trigger`, `triggerLabel` or `triggerNamedByContent` (one is required), `menuLabel`, `vertical`, `horizontal`                                                         |
+| `DropdownItem`     | `dropdown`          | `href`, `onClick`, `disabled`, `danger`, `class` — a `role="menuitem"`, out of the tab order                                                                          |
+| `EmptyState`       | `empty-state`       | `icon?`, `title?`, `description?`, `action?`                                                                                                                          |
+| `EnhancedForm`     | `enhanced-form`     | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?` — posts natively before hydration                                                    |
+| `ErrorState`       | `error-state`       | `message` (renders nothing when empty)                                                                                                                                |
+| `Field`            | `field`             | `id`, `label?`, `children`, `hint?`, `error?`, `required?`, `suffix?`                                                                                                 |
+| `FileInput`        | `file-input`        | `id`, `accept?`, `multiple?`, `maxSize?`, `name?`, `onFiles?`, `onReject?`, `label?`, `error?`, `previews?`, `labels?`                                                |
+| `Grid`             | `layout`            | `gap?` (default `md`), `minColumnWidth?` (`sm`/`md`/`lg`), `as?`, `class?` — equal columns that fill the row                                                          |
+| `ImageGallery`     | `image-gallery`     | `images` (`{ src, alt, thumbSrc? }[]`), `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`                                                      |
+| `Input`            | `input`             | native input attrs, `class`; forwards `ref`                                                                                                                           |
+| `InputButton`      | `input-button`      | `icon`, `iconLabel`, `onClick?`, native input attrs                                                                                                                   |
+| `InstallBox`       | `install-box`       | `command`, `copy?`, `copyLabel?` — built on `CopyButton`                                                                                                              |
+| `Lightbox`         | `lightbox`          | `images`, `index`, `open`, `onClose`, `onIndexChange`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`                                                 |
+| `LoadingSkeleton`  | `loading-skeleton`  | `rows`                                                                                                                                                                |
+| `LoadingSpinner`   | `loading-spinner`   | `label`, `size`                                                                                                                                                       |
+| `Modal`            | `modal`             | `open?` or `defaultOpen?`, `onClose?`, `title?` or `ariaLabel?`, `children`, `footer?`, `cancelLabel?`                                                                |
+| `MoneyDisplay`     | `money-display`     | `amount` (smallest unit), `currency`, `locale?`, `colorNegative?`, `class?`                                                                                           |
+| `MoneyInput`       | `money-input`       | `value` (smallest unit or `null`), `onChange`, `currency`, `locale?`, `min?`, `max?`, `name?`, `id?`, `invalidMessage?`, `rangeMessage?`                              |
+| `OnOffButtons`     | `on-off-buttons`    | `value`, `amount`, `onSwitch`                                                                                                                                         |
+| `Page`             | `layout`            | `as?`, `class?` — the content column: max width, page gutter, `xl` between sections                                                                                   |
+| `PageTitle`        | `page-title`        | `children`, `class`                                                                                                                                                   |
+| `Pagination`       | `pagination`        | `page`, `pageCount`, `onChange`, `label`, `previousLabel`, `nextLabel`, `pageLabel`                                                                                   |
+| `Progress`         | `progress`          | `value`, `max`, `label`, `id` (a caption needs an `id`)                                                                                                               |
+| `Radio`            | `radio`             | `children` (the label), `labelClass`, native radio attrs; forwards `ref`                                                                                              |
+| `RadioGroup`       | `radio`             | `legend`, `name`, `options`, `value?`, `onChange?`                                                                                                                    |
+| `Section`          | `layout`            | `title?`, `description?`, `headingLevel?` (2–4), `as?` (`section`/`article`/`aside`/`div`), `class?`                                                                  |
+| `Select`           | `input`             | `options`, `placeholder?`, native select attrs                                                                                                                        |
+| `Stack`            | `layout`            | `gap?` (default `md`), `as?`, `class?` — a column                                                                                                                     |
+| `StatusMark`       | `status-mark`       | `status` (`ready`/`beta`/`wip`/`paused`/`archived`/`known-issue`), `label?` — a sibling of `Badge`, not an extension of it: `Badge` is colour-plus-text with no shape |
+| `Table`            | `table`             | `headerSlot`, `bodySlots`, `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`                                                                                    |
+| `Tabs`             | `tabs`              | `tabs`, `active`, `onChange`, `lazy`                                                                                                                                  |
+| `Textarea`         | `input`             | native textarea attrs, `class`                                                                                                                                        |
+| `Toastr`           | `toastr`            | `toasts`, `onDismiss`, `label`, `dismissLabel`, `dataE2E`                                                                                                             |
+| `ToggleField`      | `toggle-field`      | `id`, `label`, `value`, `onToggle`, `description?`, `error?`                                                                                                          |
+| `ToggleSwitch`     | `toggle-switch`     | `value`, `onToggle`, `disabled`, `label`                                                                                                                              |
+| `Tooltip`          | `tooltip`           | `content`, `label`, `placement`, `focusable`                                                                                                                          |
+| `ZoomableImages`   | `zoomable-images`   | `containerSelector?`, `imageSelector?`, `fallbackAlt?`, `zoomLabel?`, `previousLabel?`, `nextLabel?`, `onOpen?`                                                       |
 
 ## Usage
 
@@ -124,11 +110,6 @@ Wiring side effects through ports, so the package stays app-agnostic:
 <ToggleSwitch value={archived} onToggle={(next) => settings.archive.set(next)} />
 
 <CopyButton textToCopy={invoice.id} copy={(text) => app.clipboard.copy(text)} />
-
-<GeoButton
-  onLocation={(position) => map.center.set(position)}
-  onError={(message) => app.toast.error({ body: message })}
-/>
 
 <Toastr toasts={app.toast.list.value} onDismiss={(id) => app.toast.remove(String(id))} />
 
@@ -147,8 +128,8 @@ router, so the caller wires it to whatever state it uses. By default every panel
 inactive ones are `hidden` (attribute plus utility), which keeps each `aria-controls` resolving and
 every panel in the accessibility tree; `lazy` renders only the active panel and drops `aria-controls`
 from the tabs whose panel it omitted. Ids are derived from each `TabItem.id` (`${id}-tab`,
-`${id}-panel`) and never generated, so keep them unique per document. Arrow keys follow `orientation`
-— Left/Right horizontal, Up/Down vertical — plus Home/End; the decision table is the exported
+`${id}-panel`) and never generated, so keep them unique per document. Left/Right move between tabs
+and Home/End jump to the ends; Up/Down stay with the page. The decision table is the exported
 `nextTabIndex`.
 
 `Toastr` auto-dismisses each toast after `toast.duration` milliseconds (default
@@ -644,52 +625,6 @@ What the types do not, and cannot, check is that every column's own `id` or `key
 _value_ from every other column's — that is documented, the ordinary "give a list of keyed things
 distinct keys" rule, and nothing enforces it.
 
-## Skeletons
-
-`LoadingSkeleton` is the generic placeholder. The `skeletons` subpath adds variants whose boxes come
-from the counts the real component takes: `SkeletonText`, `SkeletonTable`, `SkeletonCards`.
-
-Every subtree is `aria-hidden="true"` and none of them announces anything. The announcement is a
-sibling live region, `SkeletonStatus` (`role="status"`, `aria-live="polite"`, `sr-only` text), so one
-region can cover a table, a grid and a paragraph that load together, and the caller owns the copy:
-
-```tsx
-{
-  loading.value
-    ? (
-      <>
-        <SkeletonStatus label="Loading invoices" />
-        <SkeletonTable rows={5} columns={4} widths={[3, 3, 2, 1]} />
-      </>
-    )
-    : <Table headerSlot={…} bodySlots={…} />
-}
-```
-
-`SkeletonTable` mirrors the real `Table`'s wrapper, header row and one-line body row. The heights are
-measurements, not arithmetic: Chromium renders a body row at **53px** and the header at **44.5px** on
-both sides, so a row sits at the same offset whether the caller renders the skeleton or the table. The
-wrapper costs **0.5px** at a full 12-row table — `681px` against `681.5px`. The residual is the last
-skeleton body row, which a one-row `tbody` measures at `52.5px` like the real table's; pinning that row
-to `3.28125rem` closes the wrapper to `681px` with `0.00px` drift on every row. `tableRowHeightRem()` returns
-the body value and `tableHeaderHeightRem()` the header value, both pinned by tests that assert the
-literal rather than restating the implementation.
-
-**A cell must fit one line.** The skeleton reserves one line per body row, so a cell that wraps is
-taller than its placeholder: measured, a cell wrapping to four lines at a 560px viewport pushed its row
-to `73px`, `20px` past what was reserved, and the drift accumulates down the table. Keep cell content to
-one line, or reach for `SkeletonCards` and `SkeletonText` where the content is prose.
-
-**Column widths are an approximation, not a mirror.** `widths` splits the grid by weight, while the
-real `Table` is `table-auto` and sizes columns from cell content: for one four-column table the real
-split measured `24.8 / 23.0 / 27.2 / 25.0 %` against the grid's `31.6 / 31.6 / 21.0 / 10.5 %`. Close
-enough that the skeleton does not jump between column boundaries, not close enough to call equal —
-and making them equal needs a `Table` API change plus `table-layout: fixed`, which `Table` does not
-offer today. `columnWidthPercents(widths)` is what reports the split, and `tableGeometry({ rows,
-columns, widths })` the rest of the geometry; both are assertable without a DOM. The checklist a
-caller can satisfy, and the one case no props-only component can cover, are on `SkeletonTable`'s
-JSDoc.
-
 ## EnhancedForm
 
 A real `<form action method>` that posts on its own before hydration, or whenever `onSubmit` is
@@ -701,8 +636,7 @@ bar; `action` is never defaulted, since an endpoint is always the caller's to na
 While a background submit is outstanding, `children` sits inside a disabled `<fieldset>` (or the
 `sending` slot replaces it, when given); `done`/`failed` replace it once the promise settles.
 Omitting `done`/`failed` keeps `children` on screen, re-enabled, so a caller that wants a retry
-gets one without any extra wiring — `NewsletterForm` and `ContactForm` both take this default for
-`failed`. A second click, or a `form.requestSubmit()`, while a submit is outstanding does nothing:
+gets one without any extra wiring. A second click, or a `form.requestSubmit()`, while a submit is outstanding does nothing:
 a ref checked synchronously, before either branch of the submit handler runs, catches what the
 disabled fieldset has not repainted yet. The sending state always ends — on success, on a
 rejection, on a synchronous throw from `onSubmit`, and on a `pageshow` with `persisted: true`,
@@ -720,7 +654,7 @@ message — exactly what an always-present region exists to avoid. The region hi
 (`sr-only`) from sighted users whenever the current status has a slot of its own on screen at all,
 whatever that slot's own copy says, so a caller whose `done` copy repeats the region's own default
 is not shown the same sentence twice; a status with no slot of its own — the default disabled
-`<fieldset>`, or `ContactForm`'s un-slotted `"failed"` — still shows the region, since nothing else
+`<fieldset>`, or an un-slotted `"failed"` — still shows the region, since nothing else
 on screen carries the message then. Focus moves to the region only when both hold, and only once per
 submit: focus was inside this form the moment the visitor submitted — a real click or keypress on
 the submit button leaves it there, a `form.requestSubmit()` called from outside the form, or a
@@ -731,11 +665,11 @@ happens, the first condition is cleared, so a visitor who then clicks on plain t
 same submit later reaches `done` or `failed`. A submit nobody focused, or a visitor who has moved
 focus somewhere specific of their own accord, is never pulled back at all.
 
-`NewsletterForm` (one email field) and `ContactForm` (name, email, message) are built on this, each
-with an optional `honeypot` prop: an off-screen field simple bots fill in, `hp-field` by name and
-deliberately not a word a browser's own autofill heuristics reach for. A submit whose honeypot
-carries a value never reaches the caller's `onSubmit`; it resolves as if it had succeeded, because
-telling a bot it was caught only teaches it which field to leave alone next time.
+A form built on this can carry a honeypot from `honeypot`: `honeypotField` renders an off-screen
+field simple bots fill in, `hp-field` by name (`HONEYPOT_FIELD_NAME`) and deliberately not a word a
+browser's own autofill heuristics reach for, and `honeypotFilled(formData)` reads it back. A submit
+whose honeypot carries a value should resolve as if it had succeeded, because telling a bot it was
+caught only teaches it which field to leave alone next time.
 
 ## Lightbox
 
@@ -847,75 +781,6 @@ same image inside the dialog — the two never run the filter separately over tw
 arrays, which is what let them disagree in `ZoomableImages`'s own version of this bug before it was
 fixed there (see the `Lightbox` section above).
 
-## ExportButton
-
-Downloads `rows` — or the result of `getRows`, called only once the button is pressed — as a CSV
-file: a native `<button>`, so Space and Enter activate it with no extra wiring, and a `role="status"`
-live region, present and empty from the first render, that announces `resultLabel(rowCount)` once
-the download has been handed to the browser. A second export with the same row count still
-announces: the region is cleared, then set, because writing the same text twice is a no-op as far as
-the DOM is concerned and would otherwise reach no screen reader. `rows` and `getRows` are mutually
-exclusive at the type level — passing both, or neither, is a compile error — and `getRows` may
-return its array directly or a `Promise` of one, since "export everything the current filter
-matches" is usually a fetch and `await`ing a value that is already an array resolves immediately
-either way. While an export is pending — `getRows` is exactly the case likely to take long enough to
-notice — the button is `aria-disabled`, not natively `disabled`: setting the native attribute on a
-focused button drops focus to `<body>` and leaves it there once the export finishes, measured in the
-headless Chromium this repository drives. `aria-disabled` leaves focus alone; the click handler
-itself ignores a second press while one export is already running.
-
-The download itself goes through `@spy4x/platform/browser/download`'s `downloadResponseAsFile`,
-handed a `Response` wrapping the written bytes — `ui` depends on `@spy4x/platform` for that one
-module alone, pinned in `ui/deno.json`'s own `imports` rather than the root import map, the same way
-`charts/deno.json` pins `d3`. It attaches a temporary anchor, clicks it and detaches it in the same
-task, then revokes the object URL from a timer about five seconds later, because revoking in the
-click's own task has historically cancelled a download that was still starting.
-
-The writer (`@spy4x/platform/universal/csv`) is RFC 4180 CSV: commas, double quotes and line breaks
-inside a cell are quoted, with an embedded quote doubled; the file is UTF-8 with a leading
-byte-order mark, which is what makes Excel open non-English text correctly instead of guessing the
-system codepage; and lines are `\r\n`-terminated, the ending the RFC itself specifies rather than the
-bare `\n` some tools merely tolerate.
-
-A `string` cell whose text starts with `=`, `+`, `-` or `@` — or that has one of those right after a
-comma, semicolon, tab, carriage return or line feed _inside_ it — is prefixed with a single quote at
-that point, because a spreadsheet reads that character as the start of a formula. Guarding only the
-first character of the string this writer wrote is not enough: this file is comma-separated, but
-nothing forces the spreadsheet that opens it to read it that way — Excel's own default list
-separator is a semicolon in most European locales, and a `.csv` opened by double-click is split on
-whatever that locale setting is. Measured in LibreOffice 26.2: `x;=cmd|' /C calc'!A0`, opened with
-`;` as the separator, split into two cells, and the second became a formula cell — a DDE payload,
-the known vector for launching a program from a formula, though LibreOffice itself showed an error
-(`Err:509`) rather than running it — unless the character right after the `;` was guarded too, not
-only the first character of the whole string. A bare leading tab or carriage return is also guarded,
-even with nothing after it, per the same guidance this follows. `@spy4x/platform/universal/csv`
-(1.3.0) guards four cases further than that: a bare leading line feed, alongside the tab and
-carriage return; the full-width Unicode formula-lead characters `＝＋－＠`, not only their ASCII
-forms; a leading run of whitespace before a formula character, whether at the very start of a cell
-or right after a separator; and a `format` callback's return value when it is not a string, a
-`number` or a `bigint` — that value is now guarded and quoted like a string instead of being
-written out with an unguarded `String()`.
-
-The guard has no exception for a `string` that merely looks safe: one reading `-5` is guarded
-exactly like `-2+3+cmd|' /C calc'!A1`, which starts the same way, because content alone cannot tell
-a real negative number from a payload shaped like one. That guard is visible, not hidden: LibreOffice
-(26.2, measured) shows the leading `'` on screen rather than dropping it, so a string cell such as
-`a;-5` reads as `a;'-5` in the opened file — this repository has not verified whether Excel shows the
-mark too. A caller whose numeric column needs to stay a live, unguarded number does not fight the
-guard through `format`'s string output; `format` (and an unformatted field) may return a `number` or
-a `bigint` directly, and either is written with a plain `String()` conversion and no guard at all,
-because neither type can hold a separator or a formula body in the first place.
-
-Zero rows still downloads a file: the header row alone, a real, openable CSV rather than nothing
-happening for a filter that currently matches nothing. A `getRows` that throws or rejects, or a
-download that itself fails, both end the same way: nothing downloads, the live region announces
-`errorLabel` ("Could not export the file." by default) instead of a row count, the optional
-`onError` port is called with the error either way, and the button re-enables for another try.
-
-Excel (`.xlsx`) is not supported, and staying CSV-only was the point of starting here: `xlsx` would
-be a new, large dependency for formatting, formulas and multiple sheets this button does not need,
-and nothing here forecloses adding it later behind its own prop if a caller needs a real workbook.
-
 ## MoneyDisplay and MoneyInput
 
 Money in this convention is a whole number in a currency's smallest unit — `1250` means `€12.50`.
@@ -984,7 +849,7 @@ same way it carries one chosen through the native picker. `accept` is matched th
 matches it: an extension (`.png`), a MIME type (`image/png`) or a MIME wildcard (`image/*`), any one
 of a comma-separated list. `maxSize` is a byte comparison. Either refusal is reported through
 `onReject` and rendered into a `role="status"` paragraph that is present, empty, on every render —
-`ExportButton`'s own shape — so a screen reader has something to listen to before the first refusal
+the same shape `EnhancedForm`'s status region has — so a screen reader has something to listen to before the first refusal
 happens, and cleared-then-set so a second identical refusal still reaches it.
 
 Chosen files are listed, each with a remove button named after the file it removes
@@ -1017,38 +882,6 @@ announced the same way a `maxSize`/`accept` refusal is, rather than silently dro
 
 It does not upload — sending the chosen files is the caller's own form post or `fetch` call.
 
-## MarginNote
-
-`MarginNote` floats beside its paragraph by the width of the column it sits in, not by the
-viewport's: in a column at least 30rem (480px) wide it floats right, 12rem wide, beside the text
-that follows it; in a narrower column it renders inline, in reading order, whatever the screen size.
-A note in a sidebar or a narrow card on a desktop therefore no longer squeezes its paragraph into a
-sliver beside it.
-
-That is a CSS container query, and a container query measures an ancestor, never the element
-itself. So the caller marks the column as the container with Tailwind's `@container` class, which
-sets `container-type: inline-size`, and puts the note before the paragraph it annotates:
-
-```tsx
-<div class="@container flow-root max-w-prose">
-  <MarginNote sourceHref={benchmarkUrl} sourceLabel="Benchmark">
-    Cold start under 50ms on a shared vCPU.
-  </MarginNote>
-  <p>The paragraph the note sits beside.</p>
-</div>
-```
-
-The query measures the nearest ancestor marked `@container`, which is not necessarily the column the
-note sits in: a narrow column without the class, inside a wider ancestor that has it, floats the
-note. So put `@container` on the column itself. With no container above it at all, the note never
-floats, which is the safe reading: inline is correct in a column of any width, while a float is
-correct only in a wide one.
-
-`container-type: inline-size` stops an element from taking its width from its content. A column
-marked `@container` therefore needs its width from its parent — a block in normal flow, a grid
-track, or an explicit width. A flex item with no width of its own collapses to 0px. `flow-root` keeps the floated note
-inside the column when the paragraph is shorter than the note.
-
 ## Tests
 
 `deno task test` from the repo root. Tests render each component with
@@ -1062,5 +895,13 @@ in this package's `deno.json` because the root import map has no renderer.
 `AccountSelector`) stay app-side for now — `MetricsList` is theme-coupled and belongs with the
 charts work. `DeletionValidation` belongs with the CRUD package. `DateTimeFilter`'s time-of-day
 mode is `DateRangePicker`'s `withTime` option (#142); nothing app-side answering to that name is
-extracted here. `Export` is extracted as `ExportButton`, CSV only — see its own section above for
-why Excel stayed out.
+extracted here.
+
+Removed in #352 because another component already covers each one: `CiStatusPill` (a `Badge` with a
+colour per status), `ConfidenceMeter` (`Progress`), `FactCard` (`Card` around a `<dl>`),
+`GeoButton` (a `Button` whose `onClick` calls `requestGeolocation` from `./geolocation`),
+`ExportButton` (a `Button` that calls `@spy4x/platform`'s CSV writer and download helper),
+`NewsletterForm` and `ContactForm` (`EnhancedForm` with `Field`, `Input` and `Button`),
+`SkeletonText`, `SkeletonTable`, `SkeletonCards` and `SkeletonStatus` (`LoadingSkeleton`),
+`LoadingScreen` (`LoadingSpinner` with its `label`, centred), and vertical `Tabs`. `MarginNote` went
+because only one site's articles used it.

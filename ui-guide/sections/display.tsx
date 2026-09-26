@@ -18,20 +18,16 @@ import {
   CardFooter,
   CardHeader,
   Cluster,
-  ConfidenceMeter,
   CopyableText,
   CopyableTextBody,
   DataTable,
   describedImages,
-  type Fact,
-  FactCard,
   Grid,
   ImageGallery,
   type ImageGalleryImage,
   InstallBox,
   Lightbox,
   type LightboxImage,
-  MarginNote,
   MoneyDisplay,
   pageRange,
   PageTitle,
@@ -41,7 +37,6 @@ import {
   Stack,
   type TabItem,
   Table,
-  type TabOrientation,
   Tabs,
   Tooltip,
   type TooltipPlacement,
@@ -239,41 +234,6 @@ function CardDemo() {
   )
 }
 
-/** `FactCard` with three facts. */
-function FactCardDemo() {
-  const facts: Fact[] = [
-    { key: "Stack", value: "Deno + Hono + Fresh" },
-    { key: "Hosting", value: "One Compose stack" },
-    { key: "Status", value: "In production" },
-  ]
-  return <FactCard title="example.com" facts={facts} class="max-w-md" />
-}
-
-/**
- * `MarginNote` before a paragraph in a column marked `@container`, so the note's container query
- * has a column to measure. At most window widths this card's column is narrower than 30rem, so the
- * note sits inline; `pages/checks/ui.ts` sets the column's width itself to see it float, and reads
- * the column as the note's parent, with the paragraph a direct child of it.
- */
-function MarginNoteDemo() {
-  return (
-    <div class="@container flow-root max-w-prose text-sm text-gray-600 dark:text-gray-300">
-      <MarginNote
-        sourceHref="https://example.com/benchmark"
-        sourceLabel="Benchmark"
-        checkedOn="2026-09-01"
-      >
-        Cold start under 50ms on a shared vCPU.
-      </MarginNote>
-      <p>
-        The server answers from a single small process, so a cold start is cheap and a request that
-        arrives after a quiet hour is served as quickly as the one before it. The note beside this
-        paragraph says where that number comes from and when it was last checked.
-      </p>
-    </div>
-  )
-}
-
 /**
  * `Progress` in every tone, then the two readings worth knowing: one past `max`, which fills the
  * track rather than overflowing it, and none at all, which draws a bare track.
@@ -286,25 +246,6 @@ function ProgressDemo() {
       ))}
       <Progress id="guide-progress-clamped" label="Past the maximum (140 of 100)" value={140} />
       <Progress id="guide-progress-indeterminate" label="No reading yet" value={null} />
-    </Stack>
-  )
-}
-
-/** Scores in each band, and one past each end of the range. */
-const scores: Record<string, { value: number; label: string }> = {
-  low: { value: 12, label: "12, low" },
-  medium: { value: 55, label: "55, medium" },
-  high: { value: 88, label: "88, high" },
-  "above range": { value: 140, label: "140, shown as 100" },
-}
-
-/** One meter per band, and one clamped. */
-function ConfidenceMeterDemo() {
-  return (
-    <Stack gap="sm">
-      {entries(scores).map(([key, score]) => (
-        <ConfidenceMeter key={key} value={score.value} label={score.label} />
-      ))}
     </Stack>
   )
 }
@@ -457,44 +398,23 @@ const overviewTabs: readonly TabItem[] = [
   { id: "guide-tab-activity", label: "Activity", content: "Who changed what, and when." },
 ]
 
-/** Every orientation the tablist accepts — the record is the coverage guard for `TabOrientation`. */
-const tabOrientations: Record<TabOrientation, string> = {
-  horizontal: "Horizontal: the left and right arrows move between tabs.",
-  vertical: "Vertical: the up and down arrows move between tabs.",
-}
-
-/** Controlled tabs, `active` in and `onChange` out, in both orientations side by side. */
+/** Controlled tabs, `active` in and `onChange` out. */
 function TabsDemo() {
   const topLevel = useSignal<string>(overviewTabs[0].id)
-  const settings = useSignal("guide-tab-profile")
 
   return (
-    <Grid gap="xl">
-      <Stack gap="sm">
-        <DemoNote>{tabOrientations.horizontal}</DemoNote>
-        <Tabs
-          tabs={overviewTabs}
-          active={topLevel.value}
-          onChange={(id) => topLevel.value = id}
-          label="Report views"
-          tabDataE2E="guide-tab"
-        />
-      </Stack>
-      <Stack gap="sm">
-        <DemoNote>{tabOrientations.vertical}</DemoNote>
-        <Tabs
-          tabs={[
-            { id: "guide-tab-profile", label: "Profile", content: "Name, email, avatar." },
-            { id: "guide-tab-security", label: "Security", content: "Password and sessions." },
-            { id: "guide-tab-billing", label: "Billing", content: "Plan and invoices." },
-          ]}
-          active={settings.value}
-          onChange={(id) => settings.value = id}
-          orientation="vertical"
-          label="Account settings"
-        />
-      </Stack>
-    </Grid>
+    <Stack gap="sm">
+      <DemoNote>
+        The left and right arrows move between tabs; Home and End jump to the ends.
+      </DemoNote>
+      <Tabs
+        tabs={overviewTabs}
+        active={topLevel.value}
+        onChange={(id) => topLevel.value = id}
+        label="Report views"
+        tabDataE2E="guide-tab"
+      />
+    </Stack>
   )
 }
 
@@ -847,12 +767,6 @@ export const displayDemos = {
 <MoneyDisplay amount={-4599} currency="EUR" colorNegative />`,
     render: () => <MoneyDisplayDemo />,
   },
-  ConfidenceMeter: {
-    summary: "A bar for a score from 0 to 100 that also says whether it is low, medium or high.",
-    wide: true,
-    snippet: `<ConfidenceMeter value={88} label="match" />`,
-    render: () => <ConfidenceMeterDemo />,
-  },
   Progress: {
     summary:
       "A progress bar with an optional caption, which draws a bare track while there is no reading.",
@@ -1016,39 +930,6 @@ export const displayDemos = {
       </Card>
     ),
   },
-  FactCard: {
-    summary: "A card that lists facts as pairs of a label and a value.",
-    wide: false,
-    snippet: `<FactCard
-  title="example.com"
-  facts={[
-    { key: "Stack", value: "Deno + Hono + Fresh" },
-    { key: "Status", value: <StatusMark status="ready" /> },
-  ]}
-/>`,
-    render: () => <FactCardDemo />,
-  },
-  MarginNote: {
-    summary:
-      "A short aside next to a paragraph, with an optional source link and the date it was checked.",
-    wide: false,
-    props: [
-      { name: "sourceHref", type: "string", description: "Where the claim comes from." },
-      { name: "sourceLabel", type: "string", description: "The source link's text." },
-      {
-        name: "checkedOn",
-        type: "string",
-        description: "The date the claim was checked, as `YYYY-MM-DD`.",
-      },
-    ],
-    snippet: `<div class="@container flow-root">
-  <MarginNote sourceHref={benchmarkUrl} sourceLabel="Benchmark" checkedOn="2026-09-01">
-    Cold start under 50ms on a shared vCPU.
-  </MarginNote>
-  <p>The paragraph the note sits beside.</p>
-</div>`,
-    render: () => <MarginNoteDemo />,
-  },
   CopyableText: {
     summary:
       "A value in monospace with a copy button, which also tells a screen reader it was copied.",
@@ -1149,7 +1030,7 @@ export const displayDemos = {
     render: () => <AvatarDemo />,
   },
   Tabs: {
-    summary: "Tabs that switch between panels, in a row or a column, with the arrow keys.",
+    summary: "Tabs that switch between panels, in a row, with the arrow keys.",
     wide: true,
     props: [
       {
@@ -1161,12 +1042,6 @@ export const displayDemos = {
         name: "active",
         type: "string",
         description: "The selected tab's id, with `onChange` to change it.",
-      },
-      {
-        name: "orientation",
-        type: `"horizontal" | "vertical"`,
-        default: `"horizontal"`,
-        description: "A row of tabs, or a column.",
       },
       { name: "label", type: "string", description: "The tab list's accessible name." },
     ],
