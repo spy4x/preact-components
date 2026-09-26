@@ -10,7 +10,10 @@
     // is `+index.ts`, which exports their text as generated string constants. `README.md` →
     // "Install" says how a consumer turns those into a compiled stylesheet, and "Theming" → "Ink"
     // the one extra line for `ink.css`.
-    ".": "./+index.ts"
+    ".": "./+index.ts",
+    // The spacing scale and the checker that holds a file's classes to it: plain TypeScript, no
+    // Deno API, so an app runs it from its own test on its own sources (README → "Spacing").
+    "./spacing": "./spacing.ts"
   },
   "imports": {
     // Tailwind's Rust class scanner, at the version the root `tailwindcss` pin resolves to, and the
