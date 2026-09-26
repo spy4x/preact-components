@@ -33,15 +33,6 @@ export {
 export { deleteMapEntry, setMapEntry } from "./map-entry.ts"
 export { patchSignal } from "./patch-signal.ts"
 export {
-  parseSort,
-  removeSortRule,
-  serializeSort,
-  type SortDirection,
-  sortRows,
-  type SortRule,
-  toggleSort,
-} from "./table-state.ts"
-export {
   createThemeStore,
   type Theme,
   type ThemeBootstrapOptions,

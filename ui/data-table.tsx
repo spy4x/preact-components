@@ -4,7 +4,7 @@ import {
   sortRows,
   type SortRule,
   toggleSort,
-} from "@spy4x/preact-signals/table-state"
+} from "@spy4x/platform/universal/sort"
 import type { ComponentChildren, JSX } from "preact"
 import { EmptyState } from "./empty-state.tsx"
 import { Pagination } from "./pagination.tsx"
@@ -313,7 +313,7 @@ function bodyCell<T, K extends Extract<keyof T, string>>(
 export const rowKeyAttribute = "data-row-key"
 
 /**
- * A sortable, optionally paged table: `Table`'s markup, `table-state`'s sort rules, one component
+ * A sortable, optionally paged table: `Table`'s markup, `@spy4x/platform/universal/sort`'s sort rules, one component
  * joining them.
  *
  * `DataTable` sorts and pages `rows` itself — with `sortRows` and a plain slice — because it is

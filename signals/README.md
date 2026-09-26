@@ -1,6 +1,6 @@
 # `@spy4x/preact-signals`
 
-Signals state layer: a CRUD store factory, table sort state, and the small stores around them.
+Signals state layer: a CRUD store factory and the small stores around them.
 No Preact component, no Tailwind class, no application singleton.
 
 ```ts
@@ -13,15 +13,17 @@ import { buildModelStore, createToastStore } from "@spy4x/preact-signals"
 
 `buildModelStore` is one factory that replaced eleven hand-rolled CRUD stores, and
 `build-model-store` here is that factory rewritten for arktype. The other modules each collapse a
-per-app copy of the same idea: one source application's `theme`/`toast`/`clipboard` singletons,
-another's sort codec.
+per-app copy of the same idea: one source application's `theme`/`toast`/`clipboard` singletons.
+
+Table sort rules (`SortRule`, `toggleSort`, `sortRows`, `parseSort`, `serializeSort`) used to live
+here as `table-state`. They are framework-free, and an API has to read the same `?sort=` a page
+writes, so they now live in spy4x/ts-libs: import them from `@spy4x/platform/universal/sort`.
 
 ## What is in the box
 
 | Module              | Exports                                                                                                                                                                                |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `build-model-store` | `buildModelStore` — CRUD over one REST collection, arktype-validated                                                                                                                   |
-| `table-state`       | `SortRule`, `toggleSort`, `removeSortRule`, `sortRows`, `parseSort`, `serializeSort`                                                                                                   |
 | `theme`             | `createThemeStore` — light/dark/system, persistence, `matchMedia`; `ThemeValue`, the choice; `themeBootstrapScript` — the inline `<head>` script that paints it before the first paint |
 | `toast`             | `createToastStore` — the list behind `Toastr`; runs no timers                                                                                                                          |
 | `clipboard`         | `createClipboard` — `navigator.clipboard` plus a feedback port; `CLIPBOARD_UNAVAILABLE`                                                                                                |
@@ -29,9 +31,9 @@ another's sort codec.
 | `patch-signal`      | `patchSignal` — merge a partial object into a signal's value                                                                                                                           |
 | `use-url-filters`   | `useUrlFilters` — two-way binding between URL params and signals                                                                                                                       |
 
-`removeSortRule` drops one key's rule and keeps the others' priorities. `ThemeValue` is what the
-user picked: `LIGHT`, `DARK` or `SYSTEM`. `CLIPBOARD_UNAVAILABLE` is the reason `copy` reports
-when the runtime has no clipboard at all, on an insecure origin or during a server render.
+`ThemeValue` is what the user picked: `LIGHT`, `DARK` or `SYSTEM`. `CLIPBOARD_UNAVAILABLE` is the
+reason `copy` reports when the runtime has no clipboard at all, on an insecure origin or during a
+server render.
 
 `types.ts` holds the shapes this package owns (`Model`, `RemoteEvent`, `ToastMessage`, `ToastPort`)
 and is re-exported from the barrel. The store's error envelope and operation state come from
@@ -371,41 +373,6 @@ reached the component under its old name, both clocks ran, and a toast lived whi
   and registers no listener, and `+index.test.ts` is the guard on that. `<For>` and `<Show>` used to
   live here and the module patched `Signal.prototype.map` as a side effect of being imported, which
   reached every consumer of every package that imported this one.
-- **`sortRows` reads a cell as one of three kinds, and the kind decides first.** Empty is `null`,
-  `undefined`, `""` and `NaN` — "this column says nothing about this row" — and **it sorts last
-  ascending and descending**, which is where a reader looks for those rows whichever way the column
-  points; two empty cells tie, so the next rule decides. Of the rest, **every numeric cell sorts
-  before every textual one**: a number, a boolean, a `bigint` and a `Date` are ordered by their
-  number, and everything else by the text it prints.
-
-  **A numeric string is textual.** `"9"` is text, so it sorts after `1000`, and a column that mixes
-  the two shows every real number first and every quoted one after. This is the first thing a real
-  column hits, because values arriving from a form, a query string or a CSV are strings however
-  numeric they look: coerce the column where you load it — `Number(cell)` — rather than expecting
-  the sort to guess.
-
-  **Why a `NaN` from the comparator did nothing rather than something loud:** `Array.prototype.sort`
-  is specified to read a `NaN` result as `+0`, which is the answer for "these two are equal". The
-  original bug follows from that one sentence. `Number(undefined)` is `NaN`, every subtraction
-  against the blank cell was `NaN`, every pair reported equal, and a stable sort asked to order a
-  column of equals hands back the order it was given. Nothing threw, nothing warned, and the column
-  simply did not move — so a comparator that can return `NaN` does not fail, it goes quiet, which is
-  the part worth remembering when writing the next one.
-
-  Deciding by kind first is what makes the order a real one. The first version of this fix chose its
-  method per pair — two strings as text, anything else numerically — and that is not transitive: `5`
-  beats `"1e3"` numerically, `"1e3"` beats `"2"` as text, and `"2"` beats `5` numerically, so those
-  three cells sort into three different tables depending on the order the rows arrive in, and
-  `Array.prototype.sort` is entitled to return anything when its comparator contradicts itself.
-  `sortRows is a consistent order` in the test file is the guard: it checks transitivity over every
-  triple of a set holding one cell of each kind, and sorts all 720 orderings of a mixed column to
-  assert they come out as one table. Three caveats the rule does carry: a `bigint` past
-  `Number.MAX_SAFE_INTEGER` can tie with its neighbour; a `Date` with no valid time sorts with the
-  text, as `Invalid Date`; and a cell whose string conversion throws — an object made with
-  `Object.create(null)`, or one with a throwing `toString` — throws out of `sortRows` when it meets
-  a textual cell. That last one predates this rule and is not defended against here: a table cell
-  holds something a table can show, and swallowing the throw would hide the real problem one layer
-  further from where it was created.
 - **`useUrlFilters` re-reads the address every time it changes.** A link, a router push, back or
   forward: each one re-reads every parameter into its signal, and a parameter that has left the
   address takes its field back to `initialValue`. It did not always. The URL-to-signals effect was a
@@ -486,8 +453,7 @@ reached the component under its old name, both clocks ran, and a toast lived whi
 - **`as` assertions.** The package uses a handful, and only one is unavoidable: the spread of
   `extraOps`/`selectors` onto the base store in `build-model-store.ts`, where TypeScript cannot verify
   a spread of `Extra | undefined` against a generic `Extra`. The rest are local narrowing inside one
-  function, each next to the check that justifies it — `parseSort` after its allow-list and direction
-  tests, `resolveFilterValue` and the `filters` map in `useUrlFilters` where a generic `T` loses its
+  function, each next to the check that justifies it — `resolveFilterValue` and the `filters` map in `useUrlFilters` where a generic `T` loses its
   key mapping. To audit them:
 
   ```bash

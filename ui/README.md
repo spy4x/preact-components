@@ -512,12 +512,12 @@ and where it falls in the sentence is the translator's business.
 
 ## DataTable
 
-`Table`'s markup joined to `@spy4x/preact-signals/table-state`'s sort rules: a sortable,
+`Table`'s markup joined to `@spy4x/platform/universal/sort`'s sort rules: a sortable,
 optionally paged table with no sort state of its own.
 
 ```tsx
 import { DataTable } from "@spy4x/preact-ui/data-table"
-import type { SortRule } from "@spy4x/preact-signals/table-state"
+import type { SortRule } from "@spy4x/platform/universal/sort"
 
 const sort = useSignal<SortRule<"date" | "merchant" | "amount">[]>([])
 
