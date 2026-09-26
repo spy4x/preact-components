@@ -391,7 +391,7 @@ describe("the shell's other words", () => {
 })
 
 describe("the card grid", () => {
-  it("keeps an example card at its own height, and pairs component cards at one", () => {
+  it("gives example cards and component cards in one row the same height", () => {
     const html = render(<UIGuide hash="#/charts" />)
     const gridBefore = (card: string) => {
       const at = html.indexOf(`<article id="demo-${card}"`)
@@ -399,7 +399,7 @@ describe("the card grid", () => {
       return html.slice(open, html.indexOf(`">`, open))
     }
 
-    expect(gridBefore("extent")).toContain("items-start")
+    expect(gridBefore("extent")).not.toContain("items-start")
     expect(gridBefore("Bars")).not.toContain("items-start")
   })
 })

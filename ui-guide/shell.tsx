@@ -1046,9 +1046,6 @@ function PackagePage(
             <div
               class={cn(
                 "grid grid-cols-1 gap-4 @2xl:grid-cols-2 @2xl:[&>article[data-card-size=auto]:has([data-card-part=demo]_:is(table,[role=menu]))]:col-span-2",
-                // An output is often three lines: stretched to its neighbour's height it would sit
-                // on a tall empty canvas, so an example card keeps its own height.
-                section.kind === "example" && "items-start",
               )}
             >
               {demos.map(([name, demo], index) => {
