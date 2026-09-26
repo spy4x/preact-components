@@ -80,7 +80,9 @@ export function Bars({
 
   return (
     <table
-      class={className ? `w-full text-sm ${className}` : "w-full text-sm"}
+      class={className
+        ? `w-full bg-transparent text-sm ${className}`
+        : "w-full bg-transparent text-sm"}
       aria-label={ariaLabel ?? title}
     >
       {title ? <caption class="mb-2 text-left text-sm font-medium">{title}</caption> : null}

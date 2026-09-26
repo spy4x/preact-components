@@ -44,6 +44,12 @@ describe("Bars", () => {
     expect(html).toContain("beta")
   })
 
+  it("keeps the table transparent, so a dark page's table surface does not box the chart", () => {
+    const html = render(<Bars data={data} />)
+
+    expect(html).toMatch(/<table[^>]*class="[^"]*\bbg-transparent\b/)
+  })
+
   it("honours a fixed maximum for cross-list comparison", () => {
     const html = render(<Bars data={data} max={8} />)
 
