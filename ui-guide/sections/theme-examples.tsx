@@ -1,3 +1,4 @@
+// spacing: off-scale until #328 (the lane that moves this file to the scale deletes this line)
 /**
  * Examples of the helpers `theme/` exports: its stylesheets as text, the class names the
  * components render, and the spacing scale with its checker.

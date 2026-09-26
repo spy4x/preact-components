@@ -10,9 +10,10 @@
  * off-scale class the component no longer renders.
  *
  * `ui-guide/` and `pages/` joined with #328, which redesigns the guide. The section files the
- * redesign's later pull requests rewrite still carry off-scale values; they are listed in
- * {@link OFF_SCALE_UNTIL_328}, one line per file, and each of those pull requests deletes its own
- * line. The list must be empty before #328 closes.
+ * redesign's later pull requests rewrite still carry off-scale values; each says so in its own
+ * first line, {@link OFF_SCALE_MARKER}, and the pull request that moves the file to the scale
+ * deletes that line. The marker lives in the file rather than in a list here, so two pull requests
+ * that each clear one file never edit the same lines. No file may carry it once #328 closes.
  */
 
 import { expect } from "@std/expect"
@@ -32,18 +33,11 @@ export const SPACING_PACKAGES = [
 ] as const
 
 /**
- * Files that still carry off-scale spacing while #328 moves the guide's sections to the new design,
- * one per line so each section's pull request deletes only its own. Temporary: it must be empty
- * before #328 closes, and a listed file that has become clean fails the test, so the list only
- * shrinks.
+ * The line a file carries while it still has off-scale spacing and waits for #328 to move it to
+ * the new design. Temporary: a marked file that has become clean fails the test, so a marker only
+ * ever goes away, and none may be left when #328 closes.
  */
-export const OFF_SCALE_UNTIL_328: readonly string[] = [
-  "ui-guide/sections/display.tsx",
-  "ui-guide/sections/feedback.tsx",
-  "ui-guide/sections/forms.tsx",
-  "ui-guide/sections/inputs.tsx",
-  "ui-guide/sections/theme-examples.tsx",
-]
+export const OFF_SCALE_MARKER = /^\/\/ spacing: off-scale until #328\b/m
 
 /** Build output under a covered directory: generated, not source. */
 const SKIPPED_DIRECTORIES = ["pages/dist"]
@@ -99,19 +93,29 @@ async function offScale(
   return found
 }
 
+/** The covered files that carry {@link OFF_SCALE_MARKER}. */
+async function markedFiles(files: string[]): Promise<string[]> {
+  const marked: string[] = []
+  for (const path of files) {
+    if (OFF_SCALE_MARKER.test(await readSource(path))) marked.push(path)
+  }
+  return marked
+}
+
 describe("spacing scale", () => {
   it("finds no spacing class off the scale in the covered packages", async () => {
     const files = (await Promise.all(SPACING_PACKAGES.map(sourceFiles))).flat()
-      .filter((path) => !OFF_SCALE_UNTIL_328.includes(path))
-    expect(await offScale(files)).toEqual([])
+    const marked = await markedFiles(files)
+    expect(await offScale(files.filter((path) => !marked.includes(path)))).toEqual([])
   })
 
-  it("lists only files that still carry an off-scale value until #328 closes", async () => {
+  it("marks only files that still carry an off-scale value until #328 closes", async () => {
+    const files = (await Promise.all(SPACING_PACKAGES.map(sourceFiles))).flat()
     const clean: string[] = []
-    for (const path of OFF_SCALE_UNTIL_328) {
+    for (const path of await markedFiles(files)) {
       if ((await offScale([path])).length === 0) clean.push(path)
     }
-    expect(clean, "these files are on the scale now: delete their lines").toEqual([])
+    expect(clean, "these files are on the scale now: delete their marker line").toEqual([])
   })
 
   it("reads the components and the preset, and skips test files and generated files", async () => {

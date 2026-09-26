@@ -1,3 +1,4 @@
+// spacing: off-scale until #328 (the lane that moves this file to the scale deletes this line)
 /**
  * The `ui/` controls that are not plain form fields: the two switches, the dropdown, the searchable
  * select, the labelled switch row, and the preset-plus-custom date range, day-only and `withTime`.

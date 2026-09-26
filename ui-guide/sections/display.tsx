@@ -1,3 +1,4 @@
+// spacing: off-scale until #328 (the lane that moves this file to the scale deletes this line)
 /**
  * The `ui/` display primitives: the card anatomy, the meters, the tabbed and paged navigation, and
  * the identity widgets.
