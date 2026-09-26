@@ -24,7 +24,7 @@ export interface ToggleSwitchProps {
 }
 
 const track =
-  "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus-visible:ring-2 focus-visible:ring-purple-900 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
+  "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus-visible:ring-2 focus-visible:ring-accent-900 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
 
 const knob =
   "pointer-events-none inline-block size-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out dark:bg-gray-200"
@@ -64,7 +64,7 @@ export function ToggleSwitch(
       id={id}
       class={cn(
         track,
-        value ? "bg-purple-900 dark:bg-purple-700" : "bg-gray-200 dark:bg-gray-600",
+        value ? "bg-accent-900 dark:bg-accent-700" : "bg-gray-200 dark:bg-gray-600",
         className,
       )}
       role="switch"

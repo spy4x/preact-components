@@ -54,11 +54,11 @@ const listBase = "flex gap-1"
 const listEdge = "flex-wrap border-b border-gray-200 dark:border-gray-600"
 
 const tabBase =
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap px-3 py-2 text-sm font-medium transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-purple-900 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap px-3 py-2 text-sm font-medium transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-accent-900 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
 
 const tabEdge = "border-b-2 -mb-px"
 
-const tabSelected = "border-purple-900 text-purple-900 dark:border-purple-500 dark:text-purple-400"
+const tabSelected = "border-accent-900 text-accent-900 dark:border-accent-500 dark:text-accent-400"
 
 const tabIdle =
   "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"

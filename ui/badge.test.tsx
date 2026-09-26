@@ -7,8 +7,8 @@ describe("Badge", () => {
   it("fills with the purple palette by default", () => {
     const html = render(<Badge text="paid" />)
 
-    expect(html).toContain("bg-purple-900")
-    expect(html).toContain("text-purple-50")
+    expect(html).toContain("bg-accent-900")
+    expect(html).toContain("text-accent-50")
     expect(html).toContain("paid")
   })
 
@@ -31,7 +31,7 @@ describe("Badge", () => {
     const html = render(<Badge text="vip" class="uppercase tracking-wide" />)
 
     expect(html).toContain("uppercase tracking-wide")
-    expect(html).toContain("bg-purple-900")
+    expect(html).toContain("bg-accent-900")
   })
 
   it("lets the caller's class win over a conflicting default", () => {

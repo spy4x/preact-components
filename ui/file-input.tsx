@@ -122,8 +122,8 @@ const dropZoneBase = cn(
   // sighted keyboard user can see. `has-[:focus-visible]` reads that state off the descendant input
   // and rings the visible zone instead — the same ring every other focusable control in this
   // package uses, moved from the (invisible) input onto the box that stands in for it.
-  "has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-purple-900",
-  "has-[:focus-visible]:ring-offset-2 dark:has-[:focus-visible]:ring-purple-400",
+  "has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent-900",
+  "has-[:focus-visible]:ring-offset-2 dark:has-[:focus-visible]:ring-accent-400",
 )
 const dropZoneInteractive = "cursor-pointer hover:border-gray-400 dark:hover:border-gray-500"
 const dropZoneDragging = "border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950/30"

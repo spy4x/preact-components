@@ -17,11 +17,11 @@ export interface ButtonProps extends Omit<JSX.ButtonHTMLAttributes<HTMLButtonEle
 }
 
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-purple-900 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
+  "inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-accent-900 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "bg-purple-900 text-white hover:bg-purple-800 dark:bg-purple-700 dark:hover:bg-purple-600",
+    "bg-accent-900 text-white hover:bg-accent-800 dark:bg-accent-700 dark:hover:bg-accent-600",
   secondary:
     "bg-gray-100 text-gray-900 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600",
   outline:

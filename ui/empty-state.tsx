@@ -24,7 +24,7 @@ const box =
 
 /* The same icon box `LoadingSkeleton` uses for its placeholder glyph. */
 const iconBox =
-  "mx-auto mb-3 inline-flex size-10 items-center justify-center rounded-xl border border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-800 dark:bg-purple-950 dark:text-purple-300"
+  "mx-auto mb-3 inline-flex size-10 items-center justify-center rounded-xl border border-accent-200 bg-accent-50 text-accent-700 dark:border-accent-800 dark:bg-accent-950 dark:text-accent-300"
 
 /**
  * "Nothing here" placeholder for a list, table or search that produced no rows.

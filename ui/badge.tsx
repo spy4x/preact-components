@@ -1,7 +1,10 @@
 import { cn } from "@spy4x/preact-cn"
 import type { JSX } from "preact"
 
-/** Palette entries a {@link Badge} can use. */
+/**
+ * Palette entries a {@link Badge} can use. `purple` and `purpleNav` are the theme's accent: they
+ * draw purple by default and follow `--color-primary` when an app sets it.
+ */
 export type BadgeColor = "red" | "orange" | "green" | "gray" | "blue" | "purple" | "purpleNav"
 
 /** Whether a {@link Badge} is tinted (`filled`, the default) or only outlined. */
@@ -9,7 +12,7 @@ export type BadgeType = "filled" | "outline"
 
 export interface BadgeProps {
   text: string
-  /** Defaults to `"purple"`. */
+  /** Defaults to `"purple"`, the accent. */
   color?: BadgeColor
   /** Defaults to `"filled"`. */
   type?: BadgeType
@@ -22,8 +25,8 @@ const outlineClasses: Record<BadgeColor, string> = {
   green: "border-green-600 text-green-600",
   gray: "border-gray-300 text-gray-600",
   blue: "border-blue-600 text-blue-600",
-  purple: "border-purple-600 text-purple-600",
-  purpleNav: "border-purple-700 bg-purple-900 text-purple-100",
+  purple: "border-accent-600 text-accent-600",
+  purpleNav: "border-accent-700 bg-accent-900 text-accent-100",
 }
 
 const filledClasses: Record<BadgeColor, string> = {
@@ -32,8 +35,8 @@ const filledClasses: Record<BadgeColor, string> = {
   green: "border-green-600 bg-green-600 text-green-50",
   gray: "border-gray-200 bg-gray-200 text-gray-600",
   blue: "border-blue-600 bg-blue-600 text-blue-50",
-  purple: "border-purple-900 bg-purple-900 text-purple-50",
-  purpleNav: "border-purple-700 bg-purple-900 text-purple-100",
+  purple: "border-accent-900 bg-accent-900 text-accent-50",
+  purpleNav: "border-accent-700 bg-accent-900 text-accent-100",
 }
 
 const base =
