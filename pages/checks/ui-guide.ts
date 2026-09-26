@@ -751,7 +751,7 @@ async function propsSummaryCheck(devtools: Devtools, width: number): Promise<voi
     for (const entry of found.wide) wide.push(`${page.id}: ${entry}`)
   }
   check(
-    `every props summary fits its card at ${width}px, a narrow one with each sentence at full width`,
+    `every props summary fits its card at ${width}px, a narrow one with each sentence at full width and a long name's type at 40% or more`,
     wide.length === 0 && measured > 0 && stacked > 0,
     wide.length === 0
       ? `${measured} summaries measured across ${guidePages.length} pages, ${stacked} of them narrow`

@@ -209,7 +209,8 @@ function PropsSummary(
       {
         /* Below 28rem of card width (a phone, or a half-width card at 1024 px) a row turns into a
         two-column grid: name and type on the first line, the sentence under them at full width, so
-        the sentence never shrinks to a word per line. Long names and types wrap anywhere.
+        the sentence never shrinks to a word per line. The name takes at most half the row, so a long
+        one wraps rather than leaving its type no room; names and types wrap anywhere.
         `bg-transparent`: the preset paints a table in the dark palette with the surface colour
         (`theme/preset.css`, "Chrome the popup is painted by"), which would box the summary. */
       }
