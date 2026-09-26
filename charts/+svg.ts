@@ -5,7 +5,8 @@
  * MPA or an SSR bundle imports this subpath and cannot accidentally take on the interactive islands,
  * because nothing this module re-exports imports `d3` (directly or through types). `D3LineChart` and
  * `CompareChart` stay on their own subpaths, and `@spy4x/preact-charts` keeps re-exporting both
- * halves for callers who already carry the dependency.
+ * halves for callers who already carry the dependency — except `assertD3Available` and
+ * `MISSING_D3_LINE_ERROR`, which only this subpath and the `d3-line-chart` ones export.
  *
  * The probe in `charts/probe/no-d3-dependency.ts` is meant to prove this: it type-checks and tests
  * this graph with the `d3` specifier remapped so it cannot resolve. It is not yet a proof. Neither

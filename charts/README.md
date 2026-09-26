@@ -186,7 +186,7 @@ deno task --cwd charts probe:no-d3
 It copies `charts/` to a scratch directory, builds an import map from the root map with the `d3`
 specifier pointed at a file that does not exist, and then
 
-1. type-checks the eleven zero-dependency entry points and runs the eight suites plus
+1. type-checks the twelve zero-dependency entry points and runs the eight suites plus
    `charts/probe/no-d3-path.test.ts` — which imports the whole SVG graph, so an import is not enough
    to pass — with `d3` unresolvable;
 2. repeats the exercise for the three d3-backed entry points and the two suites that import them,

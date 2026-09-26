@@ -62,8 +62,9 @@ import { d3LineChartModule } from "./charts-d3.tsx"
  *
  * That module imports d3, so such an example reaches it through {@link d3LineChartModule} rather
  * than a static import (see `charts-d3.tsx`). Only the time-labels example is one: the helpers that
- * need no d3 come statically from `charts/d3-line-chart-core` and print on the server. The served page and the browser's first render print
- * this line, and the real output replaces it once the module arrives. With scripts off it never
+ * need no d3 come statically from `charts/d3-line-chart-core` and print on the server. The served
+ * page and the browser's first render print this line, and the real output replaces it once the
+ * module arrives. With scripts off it never
  * changes, so it says where the output is computed rather than promising a load.
  *
  * @param state The module's load state, when it is not loaded.
