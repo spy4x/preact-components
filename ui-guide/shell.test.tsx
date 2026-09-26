@@ -8,6 +8,7 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { options } from "preact"
 import { render } from "preact-render-to-string"
+import { DemoCard } from "./card.tsx"
 import { cardSpans, navGroups, UIGuide, type UIGuideProps } from "./shell.tsx"
 import { catalogueNames, demoRegistry, guidePages } from "./registry.ts"
 
@@ -400,5 +401,44 @@ describe("the card grid", () => {
 
     expect(gridBefore("extent")).toContain("items-start")
     expect(gridBefore("Bars")).not.toContain("items-start")
+  })
+})
+
+describe("a card", () => {
+  it("holds a JSX description in a div, so it may carry a list", () => {
+    const html = render(
+      <DemoCard
+        name="Listed"
+        label="Listed"
+        summary=""
+        snippet=""
+        description={
+          <ul>
+            <li>one</li>
+          </ul>
+        }
+      >
+        <span />
+      </DemoCard>,
+    )
+
+    expect(html).toMatch(/<div class="text-sm[^"]*"><ul><li>one<\/li><\/ul><\/div>/)
+  })
+
+  it("reads a prop's sentence as inline Markdown", () => {
+    const html = render(
+      <DemoCard
+        name="Propped"
+        label="Propped"
+        summary=""
+        snippet=""
+        props={[{ name: "tone", type: "string", description: "Passed to `Badge`." }]}
+      >
+        <span />
+      </DemoCard>,
+    )
+
+    expect(html).toContain(">Badge</code>.")
+    expect(html).not.toContain("`Badge`")
   })
 })
