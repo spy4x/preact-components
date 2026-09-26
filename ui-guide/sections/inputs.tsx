@@ -123,6 +123,18 @@ function OnOffButtonsDemo() {
   )
 }
 
+/** One dropdown variant on a line: its caption on the left, its trigger on the right. */
+function DropdownRow(
+  { title, children }: { title: ComponentChildren; children: ComponentChildren },
+) {
+  return (
+    <Cluster justify="between">
+      <span class="text-sm text-gray-700 dark:text-gray-300">{title}</span>
+      {children}
+    </Cluster>
+  )
+}
+
 /**
  * The four anchorings, every item a `DropdownItem`.
  *
@@ -136,100 +148,80 @@ function DropdownDemo() {
   const selected = useSignal("Select action…")
 
   return (
-    <Grid minColumnWidth="sm" gap="lg">
-      <Variant title="Icon trigger">
-        <div>
-          <Dropdown
-            trigger={<IconEllipsisVertical class="size-5" />}
-            triggerLabel="Row actions"
-            menuLabel="Row actions"
-          >
-            <div class="py-1" role="none">
-              <DropdownItem href="#inputs">
-                <IconUser class="size-4" />
-                View profile
-              </DropdownItem>
-              <DropdownItem href="#inputs">
-                <IconCog6Tooth class="size-4" />
-                Settings
-              </DropdownItem>
-              <DropdownItem class="text-red-600 dark:text-red-400" onClick={() => {}}>
-                <IconTrashBin class="size-4" />
-                Delete
-              </DropdownItem>
-            </div>
-          </Dropdown>
-        </div>
-      </Variant>
+    <Stack gap="md">
+      <DropdownRow title="Icon trigger">
+        <Dropdown
+          trigger={<IconEllipsisVertical class="size-5" />}
+          triggerLabel="Row actions"
+          menuLabel="Row actions"
+        >
+          <div class="py-1" role="none">
+            <DropdownItem href="#inputs">
+              <IconUser class="size-4" />
+              View profile
+            </DropdownItem>
+            <DropdownItem href="#inputs">
+              <IconCog6Tooth class="size-4" />
+              Settings
+            </DropdownItem>
+            <DropdownItem class="text-red-600 dark:text-red-400" onClick={() => {}}>
+              <IconTrashBin class="size-4" />
+              Delete
+            </DropdownItem>
+          </div>
+        </Dropdown>
+      </DropdownRow>
 
-      <Variant title="Text trigger">
-        <div>
-          <Dropdown
-            trigger={
-              <span class="flex items-center gap-2 px-3 py-2 text-sm">
-                {selected.value}
-                <IconChevronDown class="size-4" />
-              </span>
-            }
-            triggerNamedByContent
-            triggerClasses="w-48 justify-between border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
-            panelClasses="min-w-[200px]"
-            menuLabel="Bulk actions"
-          >
-            <div class="py-1" role="none">
-              {["Create new item", "Import data", "Export data", "Archive items"].map((action) => (
-                <DropdownItem key={action} onClick={() => selected.value = action}>
-                  {action}
-                </DropdownItem>
-              ))}
-            </div>
-          </Dropdown>
-        </div>
-      </Variant>
+      <DropdownRow title="Text trigger">
+        <Dropdown
+          trigger={
+            <span class="flex items-center gap-2 px-3 py-2 text-sm">
+              {selected.value}
+              <IconChevronDown class="size-4" />
+            </span>
+          }
+          triggerNamedByContent
+          triggerClasses="w-48 justify-between border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+          panelClasses="min-w-[200px]"
+          menuLabel="Bulk actions"
+        >
+          <div class="py-1" role="none">
+            {["Create new item", "Import data", "Export data", "Archive items"].map((action) => (
+              <DropdownItem key={action} onClick={() => selected.value = action}>
+                {action}
+              </DropdownItem>
+            ))}
+          </div>
+        </Dropdown>
+      </DropdownRow>
 
-      <Variant
-        title={
-          <>
-            Opens upward: <code>vertical="up"</code>
-          </>
-        }
-      >
-        <div>
-          <Dropdown
-            trigger={<IconEllipsisVertical class="size-5" />}
-            triggerLabel="Last row actions"
-            menuLabel="Last row actions"
-            vertical="up"
-          >
-            <div class="py-1" role="none">
-              <DropdownItem href="#inputs">Edit item</DropdownItem>
-              <DropdownItem onClick={() => {}}>Duplicate</DropdownItem>
-            </div>
-          </Dropdown>
-        </div>
-      </Variant>
+      <DropdownRow title="Opens up">
+        <Dropdown
+          trigger={<IconEllipsisVertical class="size-5" />}
+          triggerLabel="Last row actions"
+          menuLabel="Last row actions"
+          vertical="up"
+        >
+          <div class="py-1" role="none">
+            <DropdownItem href="#inputs">Edit item</DropdownItem>
+            <DropdownItem onClick={() => {}}>Duplicate</DropdownItem>
+          </div>
+        </Dropdown>
+      </DropdownRow>
 
-      <Variant
-        title={
-          <>
-            Opens leftward: <code>horizontal="left"</code>
-          </>
-        }
-      >
-        <div>
-          <Dropdown
-            trigger={<IconEllipsisVertical class="size-5" />}
-            triggerLabel="Left-anchored actions"
-            menuLabel="Left-anchored actions"
-            horizontal="left"
-          >
-            <div class="py-1" role="none">
-              <DropdownItem onClick={() => {}}>Left action</DropdownItem>
-            </div>
-          </Dropdown>
-        </div>
-      </Variant>
-    </Grid>
+      <DropdownRow title="Lines up on the left">
+        <Dropdown
+          trigger={<IconEllipsisVertical class="size-5" />}
+          triggerLabel="Left-anchored actions"
+          menuLabel="Left-anchored actions"
+          horizontal="left"
+        >
+          <div class="py-1" role="none">
+            <DropdownItem onClick={() => {}}>Left action</DropdownItem>
+          </div>
+        </Dropdown>
+      </DropdownRow>
+    </Stack>
   )
 }
 
@@ -382,7 +374,7 @@ function presetNote(preset: DateRangePreset): string {
     ? rangeForPreset("custom", { now: fixedNow, timeZone: fixedZone, custom: fixedToday })
     : rangeForPreset(preset, { now: fixedNow, timeZone: fixedZone })
 
-  return `${preset} → ${range.from} … ${range.to}`
+  return `${range.from} … ${range.to}`
 }
 
 /**
@@ -719,69 +711,71 @@ function FileInputDemo() {
   const singleRefused = useSignal<string[]>([])
 
   return (
-    <Grid minColumnWidth="md" gap="lg">
-      <Variant title="Images only, up to 2 MB">
-        {mounted.value && (
+    <Stack gap="lg">
+      <Grid minColumnWidth="md" gap="lg">
+        <Variant title="Images only, up to 2 MB">
+          {mounted.value && (
+            <FileInput
+              id="guide-file-input"
+              label="Attachments"
+              hint="PNG or JPEG, up to 2 MB each"
+              accept="image/png,image/jpeg"
+              maxSize={2 * 1024 * 1024}
+              multiple
+              onFiles={(files) => chosen.value = files.map((f) => f.name)}
+              onReject={(reasons) =>
+                refused.value = reasons.map((r) => `${r.file.name} (${r.reason})`)}
+            />
+          )}
+          <Note e2e="file-input-chosen">
+            chosen: {chosen.value.length === 0 ? "none" : chosen.value.join(", ")}
+          </Note>
+          <Note e2e="file-input-refused">
+            refused: {refused.value.length === 0 ? "none" : refused.value.join(", ")}
+          </Note>
+          <Cluster>
+            <Button
+              variant="outline"
+              size="sm"
+              data-e2e="file-input-toggle-mount"
+              onClick={() => mounted.value = !mounted.value}
+            >
+              {mounted.value ? "Unmount" : "Remount"} this picker
+            </Button>
+          </Cluster>
+        </Variant>
+        <Variant title="One file, PNG only">
           <FileInput
-            id="guide-file-input"
-            label="Attachments"
-            hint="PNG or JPEG, up to 2 MB each"
-            accept="image/png,image/jpeg"
-            maxSize={2 * 1024 * 1024}
-            multiple
-            onFiles={(files) => chosen.value = files.map((f) => f.name)}
+            id="guide-file-input-single"
+            label="Attachment"
+            accept="image/png"
+            labels={{ tooMany: (name) => `${name}: un seul fichier est autorisé` }}
             onReject={(reasons) =>
-              refused.value = reasons.map((r) => `${r.file.name} (${r.reason})`)}
+              singleRefused.value = reasons.map((r) => `${r.file.name} (${r.reason})`)}
           />
-        )}
-        <Note e2e="file-input-chosen">
-          chosen: {chosen.value.length === 0 ? "none" : chosen.value.join(", ")}
-        </Note>
-        <Note e2e="file-input-refused">
-          refused: {refused.value.length === 0 ? "none" : refused.value.join(", ")}
-        </Note>
-        <Cluster>
-          <Button
-            variant="outline"
-            size="sm"
-            data-e2e="file-input-toggle-mount"
-            onClick={() => mounted.value = !mounted.value}
-          >
-            {mounted.value ? "Unmount" : "Remount"} this picker
-          </Button>
-        </Cluster>
-      </Variant>
-      <Variant title="One file, PNG only">
-        <FileInput
-          id="guide-file-input-single"
-          label="Attachment"
-          accept="image/png"
-          labels={{ tooMany: (name) => `${name}: un seul fichier est autorisé` }}
-          onReject={(reasons) =>
-            singleRefused.value = reasons.map((r) => `${r.file.name} (${r.reason})`)}
-        />
-        <Note e2e="file-input-single-refused">
-          refused: {singleRefused.value.length === 0 ? "none" : singleRefused.value.join(", ")}
-        </Note>
-      </Variant>
-      <Variant
-        title={
-          <>
-            Inside a <code>Field</code>
-          </>
-        }
-      >
-        <Field
-          id="guide-file-input-field"
-          label="Attachments"
-          hint="Up to 2 MB each"
+          <Note e2e="file-input-single-refused">
+            refused: {singleRefused.value.length === 0 ? "none" : singleRefused.value.join(", ")}
+          </Note>
+        </Variant>
+        <Variant
+          title={
+            <>
+              Inside a <code>Field</code>
+            </>
+          }
         >
-          <FileInput id="guide-file-input-field" />
-        </Field>
-      </Variant>
-      <Variant title="Disabled">
-        <FileInput id="guide-file-input-disabled" label="Attachments" disabled />
-      </Variant>
+          <Field
+            id="guide-file-input-field"
+            label="Attachments"
+            hint="Up to 2 MB each"
+          >
+            <FileInput id="guide-file-input-field" />
+          </Field>
+        </Variant>
+        <Variant title="Disabled">
+          <FileInput id="guide-file-input-disabled" label="Attachments" disabled />
+        </Variant>
+      </Grid>
       <Variant title="A plain form post">
         <form action="form-demo/" method="post" encType="multipart/form-data">
           <Stack gap="sm">
@@ -792,7 +786,7 @@ function FileInputDemo() {
           </Stack>
         </form>
       </Variant>
-    </Grid>
+    </Stack>
   )
 }
 
@@ -888,7 +882,7 @@ function DateRangePickerWithTimeDemo() {
 /** The three pickers side by side: a chosen range, nothing chosen, and `withTime`. */
 function DateRangePickersDemo() {
   return (
-    <Grid minColumnWidth="md" gap="lg">
+    <Grid minColumnWidth="sm" gap="lg">
       <Variant title="Presets, labels spelled out">
         <DateRangePickerDemo />
       </Variant>
@@ -1003,21 +997,14 @@ export const inputDemos = {
       {
         name: "triggerLabel",
         type: "string",
-        description:
-          "The button's name when it shows only an icon; a text trigger passes `triggerNamedByContent` instead.",
+        description: "Names a trigger that shows only an icon.",
       },
       { name: "menuLabel", type: "string", description: "The menu's accessible name." },
       {
-        name: "vertical",
-        type: `"up" | "down"`,
-        default: `"down"`,
-        description: "Which way the menu opens.",
-      },
-      {
-        name: "horizontal",
-        type: `"left" | "right"`,
-        default: `"right"`,
-        description: "Which edge of the button the menu lines up with.",
+        name: "vertical / horizontal",
+        type: `"up" | "down" / "left" | "right"`,
+        default: `"down" / "right"`,
+        description: "Which way the menu opens and which edge it lines up with.",
       },
     ],
     snippet: `<Dropdown
@@ -1035,6 +1022,17 @@ export const inputDemos = {
     summary:
       "One entry of a `Dropdown` menu: a link when it has an `href`, a button when it does not.",
     wide: false,
+    props: [
+      { name: "href", type: "string", description: "Makes the item a link to this address." },
+      { name: "onClick", type: "() => void", description: "What a button item does." },
+      {
+        name: "disabled",
+        type: "boolean",
+        default: "false",
+        description: "Greys it out; the arrow keys skip it.",
+      },
+      { name: "class", type: "string", description: "Extra classes, such as a red text colour." },
+    ],
     snippet: `<DropdownItem href="/regions/1/edit">Edit</DropdownItem>
 <DropdownItem class="text-red-600" onClick={archive}>Archive</DropdownItem>
 <DropdownItem disabled onClick={archive}>Archive</DropdownItem>`,
