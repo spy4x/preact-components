@@ -851,6 +851,7 @@ const GAMUT_ACCENTS = {
  * Page-side OKLab helpers, as source text. `oklabOfComputed` converts a computed `oklch(L C H)`
  * string; `oklabOfPixel` draws the colour on a 1x1 sRGB canvas, reads the pixel back and converts
  * that, so the difference between the two is what clipping to the screen's gamut cost.
+ * `whiteContrastOfPixel` is white text's WCAG contrast on that drawn pixel.
  */
 const OKLAB_HELPERS = `
   const oklabOfComputed = (color) => {
@@ -880,6 +881,16 @@ const OKLAB_HELPERS = `
     ]
   }
   const oklabDistance = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2])
+  const whiteContrastOfPixel = (color) => {
+    pixelContext.clearRect(0, 0, 1, 1)
+    pixelContext.fillStyle = color
+    pixelContext.fillRect(0, 0, 1, 1)
+    const [r, g, b] = [...pixelContext.getImageData(0, 0, 1, 1).data].slice(0, 3).map((v) => {
+      const x = v / 255
+      return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4
+    })
+    return 1.05 / (0.2126 * r + 0.7152 * g + 0.0722 * b + 0.05)
+  }
 `
 
 /**
@@ -1103,16 +1114,16 @@ async function accentChecks(devtools: Devtools): Promise<void> {
   )
 
   // A warm accent (#387's review): the scale's chroma is capped to what sRGB can show, so every step
-  // renders as the colour it names instead of being clipped channel by channel into pure red, and a
-  // dark primary Button stays apart from the dark danger Button. Read as rendered pixels: each
+  // renders as the colour it names instead of being clipped channel by channel into pure red, and
+  // every fill that carries the primary Button's white label keeps it at 4.5:1 (#387's second
+  // review: lightening the dark steps had dropped it to 3:1). Read as rendered pixels: each
   // computed colour is drawn on a 1x1 canvas and read back, because a computed colour string says
   // nothing about clipping.
   const gamut = await devtools.evaluate<{
     offGamut: string[]
     worst: string
-    primary: string
-    danger: string
-    distance: number
+    lowContrast: string[]
+    lowest: string
   }>(`(async () => {
     ${ACCENT_HELPERS}
     ${OKLAB_HELPERS}
@@ -1133,19 +1144,34 @@ async function accentChecks(devtools: Devtools): Promise<void> {
         if (!(distance < 0.02)) offGamut.push(label)
       }
     }
-    style.textContent = ":root { --color-primary: " + accents.orange800 + "; --color-accent: " +
-      accents.orange800 + "; }"
-    root.classList.toggle("dark", true)
-    const primary = document.querySelector("#demo-Button button")
-    const danger = document.querySelector('#demo-Button button[class*="bg-red-600"]')
-    await settle(primary, danger)
-    const primaryFill = getComputedStyle(primary).backgroundColor
-    const dangerFill = getComputedStyle(danger).backgroundColor
-    const distance = oklabDistance(oklabOfPixel(primaryFill), oklabOfPixel(dangerFill))
+    // The primary Button's white label sits on step 900 (light fill), 800 (light hover), 700
+    // (dark fill) and 600 (dark hover). The fills are read off the Button card itself.
+    const button = document.querySelector("#demo-Button button")
+    const lowContrast = []
+    let lowest = { ratio: Infinity, label: "" }
+    for (const [name, color] of Object.entries(accents)) {
+      style.textContent = ":root { --color-primary: " + color + "; --color-accent: " + color + "; }"
+      for (const dark of [false, true]) {
+        root.classList.toggle("dark", dark)
+        await settle(button)
+        const fills = {
+          [dark ? "dark fill" : "light fill"]: getComputedStyle(button).backgroundColor,
+          [dark ? "dark hover" : "light hover"]: resolve(
+            "var(--color-accent-" + (dark ? 600 : 800) + ")",
+          ),
+        }
+        for (const [where, fill] of Object.entries(fills)) {
+          const ratio = whiteContrastOfPixel(fill)
+          const label = name + " " + where + " " + fill + " → " + ratio.toFixed(2) + ":1"
+          if (ratio < lowest.ratio) lowest = { ratio, label }
+          if (!(ratio >= 4.5)) lowContrast.push(label)
+        }
+      }
+    }
     style.remove()
     root.classList.toggle("dark", wasDark)
-    await settle(primary, danger)
-    return { offGamut, worst: worst.label, primary: primaryFill, danger: dangerFill, distance }
+    await settle(button)
+    return { offGamut, worst: worst.label, lowContrast, lowest: lowest.label }
   })()`)
   check(
     "a warm, a rose, a blue and a green accent render every derived step as the colour it names",
@@ -1155,10 +1181,12 @@ async function accentChecks(devtools: Devtools): Promise<void> {
       : `clipped by more than 0.02 OKLab: ${gamut.offGamut.join("; ")}`,
   )
   check(
-    "with an orange-800 accent, the dark primary Button is well apart from the dark danger Button",
-    gamut.distance >= 0.1,
-    `primary ${gamut.primary}, danger ${gamut.danger}: ${gamut.distance.toFixed(3)} OKLab apart ` +
-      "as rendered (at least 0.1)",
+    "with those accents, the primary Button's white label clears 4.5:1 on its fill and hover, " +
+      "light and dark",
+    gamut.lowContrast.length === 0,
+    gamut.lowContrast.length === 0
+      ? `lowest ${gamut.lowest} (drawn and read back)`
+      : `below 4.5:1: ${gamut.lowContrast.join("; ")}`,
   )
 
   // Calendar is on the system page. Picking a day there changes only that card's own state, and the
