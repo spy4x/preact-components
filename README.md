@@ -10,7 +10,7 @@ The design system and the original markup are by [Eirene](https://github.com/Eir
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/guide-overview-dark.png">
-  <img src="docs/screenshots/guide-overview-light.png" width="1280" alt="The live UI guide's overview page: a side navigation listing every package, and one card per package — UI, System, CRUD, Charts, Map, Signals, Theme, Icons and cn — each with its import name, a one-line summary and a count of its live cards or icons, or the words Examples coming for a package that has none yet.">
+  <img src="docs/screenshots/guide-overview-light.png" width="1280" alt="The live UI guide's overview page: a header with the library's name and version, a search box, a GitHub link and a dark-mode switch; a side navigation grouped into Start here, Components, Helpers and Foundations; and the page itself, with the install command, a Browse components button beside the counts of live cards, icons and packages, and a first example card showing two buttons and a badge above its code toggle.">
 </picture>
 
 Live guide: https://spy4x.github.io/preact-components — every component running, with its code.
@@ -101,9 +101,9 @@ reusable Preact + signals package. See [`CREDITS.md`](./CREDITS.md).
 Taken from a local build of the demo site by `deno task --cwd pages screenshots`, in the headless
 Chromium the browser checks use, at 1280×800 and twice the pixel density.
 
-![The UI package's page in the opt-in ink dark palette: the side navigation lists the UI components by group, the Badge and StatusMark cards show their live examples, and the CiStatusPill card's description starts below them.](docs/screenshots/guide-ui-ink.png)
+![The UI package's page in the opt-in ink dark palette: the side navigation on the left, an On this page list of the page's sections and components on the right, and in the middle the Badge card, with its one-sentence description, its filled and outlined badges in every colour, and a props table below them.](docs/screenshots/guide-ui-ink.png)
 
-![The Charts package's page in the light palette: a bar chart of orders by plan, followed by the line and donut chart cards with their descriptions.](docs/screenshots/guide-charts-light.png)
+![The Charts package's page in the light palette: the Bars and DonutChart cards side by side, a bar chart of orders by plan and a donut of traffic sources, each with its description above and the Bars card's props table below, and an On this page list of the charts and their helpers on the right.](docs/screenshots/guide-charts-light.png)
 
 ## Where it runs
 
