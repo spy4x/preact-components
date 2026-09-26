@@ -142,7 +142,7 @@ const entryIdle =
   "text-[color:var(--color-muted-foreground,oklch(0.551_0.027_264.364))] hover:bg-[var(--color-canvas,oklch(0.985_0.002_247.839))]"
 const entryCurrent = "bg-[var(--color-canvas,oklch(0.985_0.002_247.839))] font-semibold"
 const entryPrimary =
-  "bg-[var(--color-primary,oklch(0.38_0.17_293))] text-[color:var(--color-primary-foreground,oklch(0.977_0.014_308.299))] hover:opacity-90"
+  "bg-[var(--color-primary,oklch(0.381_0.176_304.987))] text-[color:var(--color-primary-foreground,oklch(0.977_0.014_308.299))] hover:opacity-90"
 
 /** One entry: a link when it has an `href`, a button through `navigate` otherwise. */
 function Entry(
