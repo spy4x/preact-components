@@ -908,4 +908,12 @@ because only one site's articles used it.
 
 `InstallBox`, `CopyableText` and `CopyableTextBody` became one component, `CopyBlock`, in #353: each
 was a box of text with a `CopyButton` beside it. `CopyBlock` never clips its text: it wraps inside
-the box, or, with `singleLine`, scrolls sideways inside it.
+the box, or, with `singleLine`, scrolls sideways inside it. This is a breaking change:
+
+- `InstallBox`'s `command` is `CopyBlock`'s `text`. Its button label defaulted to "Copy command";
+  `CopyBlock`'s defaults to "Copy", so pass `copyLabel="Copy command"` to keep it.
+- `CopyableText`'s `text`, `copy`, `copyLabel`, `copiedLabel`, `copiedForMs` and `class` keep their
+  names. `truncate` and `title` are gone: the text is never cut off, so there is nothing to reveal.
+- `CopyableText` sat inline; `CopyBlock` is a block. For a value inside a sentence, use
+  `singleLine` or a plain `CopyButton`.
+- The `./install-box` and `./copyable-text` subpaths are gone; import from `./copy-block`.
