@@ -550,6 +550,13 @@ describe("rangeForTimePreset", () => {
       .toEqual({ from: "2026-08-23T14:45", to: "2026-08-23T15:45" })
   })
 
+  it("reads midnight as 00:00 of the new day, never as 24:00", () => {
+    const now = new Date("2026-08-23T22:00:00Z") // 00:00 CEST on the 24th
+
+    expect(rangeForTimePreset("last-hour", { now, timeZone: "Europe/Berlin" }))
+      .toEqual({ from: "2026-08-23T23:00", to: "2026-08-24T00:00" })
+  })
+
   it("keeps last-24-hours a real 24 hours across the Berlin spring-forward day, not 24 wall hours", () => {
     // 2026-03-29 is spring-forward in Europe/Berlin: the day itself is 23 wall-clock hours long
     // (02:00–03:00 does not happen), so 24 *real* hours back lands 25 wall-clock hours earlier.

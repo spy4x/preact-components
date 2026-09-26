@@ -59,7 +59,8 @@ import {
   startOfQuarter,
   startOfYear,
 } from "@spy4x/time/date"
-import { addDays, isoDateInTz } from "@spy4x/time/tz"
+import { ONE_HOUR_IN_MILLISECONDS } from "@spy4x/platform/universal/time-constants"
+import { addDays, hhmmInTz, isoDateInTz } from "@spy4x/time/tz"
 
 /**
  * Every preset the maths knows.
@@ -242,8 +243,6 @@ export function presetForRange(
   )
 }
 
-const MS_PER_HOUR = 3_600_000
-
 /**
  * Every sub-day preset the maths knows.
  *
@@ -291,33 +290,13 @@ export interface RangeForTimePresetOptions {
 }
 
 /**
- * The wall-clock date and time an instant reads as in a zone, minute precision.
+ * The wall-clock date and time an instant reads as in a zone, minute precision: `YYYY-MM-DDTHH:mm`.
  *
- * `hourCycle: "h23"` rather than `hour12: false`: some `Intl`
- * implementations answer midnight as `"24:00"` under `hour12: false`, an hour
- * {@link isValidDateTimeRange} would then have to reject as invalid input rather than a formatting
- * quirk. Asking for `h23` outright keeps the hour field inside `00`–`23` at the source instead.
+ * Both halves come from `@spy4x/time/tz`, whose `hhmmInTz` asks `Intl` for `hourCycle: "h23"`, so
+ * midnight reads `00:00` and never `24:00`, an hour {@link isValidDateTimeRange} would reject.
  */
 function calendarDateTimeInZone(instant: Date, timeZone: string): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(instant)
-  const field = (type: string) => parts.find((part) => part.type === type)?.value
-  const year = field("year")
-  const month = field("month")
-  const day = field("day")
-  const hour = field("hour")
-  const minute = field("minute")
-  if (!year || !month || !day || !hour || !minute) {
-    throw new Error(`could not read a calendar date and time in ${timeZone}`)
-  }
-  return `${year.padStart(4, "0")}-${month}-${day}T${hour}:${minute}`
+  return `${isoDateInTz(instant, timeZone)}T${hhmmInTz(instant, timeZone)}`
 }
 
 /**
@@ -370,7 +349,7 @@ export function rangeForTimePreset(
 ): DateTimeRange {
   const { now, timeZone } = options
   const hours = preset === "last-hour" ? 1 : 24
-  const from = new Date(now.getTime() - hours * MS_PER_HOUR)
+  const from = new Date(now.getTime() - hours * ONE_HOUR_IN_MILLISECONDS)
   return {
     from: calendarDateTimeInZone(from, timeZone),
     to: calendarDateTimeInZone(now, timeZone),

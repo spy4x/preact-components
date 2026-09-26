@@ -1,5 +1,5 @@
 import { computed, effect, type ReadonlySignal, signal } from "@preact/signals"
-import { Type, type } from "arktype"
+import type { Type } from "arktype"
 import {
   connectionError,
   ErrType,
@@ -10,7 +10,13 @@ import {
   responseError,
   type ValidationError,
 } from "@spy4x/platform/universal/errors"
-import { firstIssueMessage, type SchemaInput, type SchemaOutput, validate } from "@spy4x/validation"
+import {
+  firstIssueMessage,
+  isArkErrors,
+  type SchemaInput,
+  type SchemaOutput,
+  validate,
+} from "@spy4x/validation"
 import { deleteMapEntry, setMapEntry } from "./map-entry.ts"
 import { type Model, RemoteEvent, type ToastPort } from "./types.ts"
 
@@ -854,7 +860,7 @@ function createRequest(model: string, fetchImpl: typeof fetch): ModelStoreReques
     }
 
     const parsed = schema(body)
-    if (parsed instanceof type.errors) {
+    if (isArkErrors(parsed)) {
       return { error: malformed(model, parsed.summary), result: null }
     }
     return { error: null, result: parsed }

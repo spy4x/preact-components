@@ -293,6 +293,37 @@ describe("buildModelStore create", () => {
     expect(result.error?.message).toContain("Malformed zone response")
     expect(store.state.value.list).toEqual([])
   })
+
+  it("reports a payload error when the rejection comes from another copy of arktype", async () => {
+    // An app that loads its own arktype hands the store schemas whose rejections are not instances
+    // of this package's `type.errors`. Built by hand here: an array with `summary` and `throw`, the
+    // shape every arktype copy returns, and not an instance of the one imported above.
+    const foreignRejection = Object.assign([{ message: "id must be a number" }], {
+      summary: "id must be a number (was string)",
+      throw: () => {
+        throw new Error("id must be a number (was string)")
+      },
+    })
+    const foreignSchema = Object.assign((_: unknown) => foreignRejection, {
+      infer: undefined as unknown as Row,
+    }) as unknown as typeof rowSchema
+    expect(foreignRejection instanceof type.errors).toBe(false)
+
+    const { impl } = queueFetch(Response.json({ id: "three", name: "North" }, { status: 201 }))
+    const store = buildModelStore({
+      model: "zone",
+      endpoint: "/api/zones",
+      schemas: { full: foreignSchema, create: createSchema, update: updateSchema },
+      fetch: impl,
+    })
+    const result = await store.create({ name: "North" })
+
+    expect(result.error?.type).toBe(ErrType.Payload)
+    expect(result.error?.message).toBe(
+      "Malformed zone response: id must be a number (was string)",
+    )
+    expect(store.state.value.list).toEqual([])
+  })
 })
 
 describe("buildModelStore update", () => {
