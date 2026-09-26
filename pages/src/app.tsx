@@ -1,8 +1,8 @@
 /**
  * The demo's host page — the app shell this library deliberately does not ship.
  *
- * A sticky header, the guide, a footer. The guide — `uiGuideRoute.component`, which is `UIGuide`
- * routed by the address's hash — owns everything between: its side navigation, one page at a time,
+ * The guide and a footer. The guide — `uiGuideRoute.component`, which is `UIGuide` routed by the
+ * address's hash — owns the rest: its header, its side navigation, one page at a time,
  * the deep links that mark and scroll to a card, and reading the address. What the host adds is
  * what only it knows: the hash to render before hydration, the document's title, set from the route
  * the guide reports, and manual scroll restoration, because this page is the whole app and the
@@ -13,7 +13,7 @@
  * {@link DataTableSortDemo}, the same hook underneath `DataTable`'s own `sort` prop.
  */
 
-import { IconGitHub } from "@spy4x/preact-icons"
+import { IconMoon, IconSun } from "@spy4x/preact-icons"
 import { buttonClasses } from "@spy4x/preact-ui/button"
 import { copyToClipboard } from "@spy4x/preact-ui/copy-button"
 import { type GuideRouteChange, uiGuideRoute } from "@spy4x/preact-ui-guide"
@@ -41,6 +41,8 @@ export interface AppProps {
    * and `verify`'s static renders of every page; the island leaves it out and reads `location`.
    */
   initialHash?: string
+  /** The library version the guide's header shows; `build.ts` reads it from the packages. */
+  version?: string
 }
 
 /**
@@ -51,7 +53,7 @@ export interface AppProps {
  *
  * @param props See {@link AppProps}.
  */
-export function App({ initialHash }: AppProps) {
+export function App({ initialHash, version }: AppProps) {
   useEffect(() => {
     // The island's boot marker. `verify.ts` asserts it, which is how the check tells "hydrated" from
     // "the script was fetched and threw".
@@ -61,23 +63,24 @@ export function App({ initialHash }: AppProps) {
 
   return (
     <div id="top" class="min-h-dvh">
-      <SiteHeader />
-      <main class="mx-auto max-w-7xl px-4 sm:px-6">
-        {/* The one-line mount an app uses: the route's component reads the hash itself. */}
-        <uiGuideRoute.component
-          hash={initialHash}
-          copy={copyText}
-          onRouteChange={titleDocument}
-          pageExtras={{
-            signals: (
-              <div class="space-y-10">
-                <UrlFilterDemo />
-                <DataTableSortDemo />
-              </div>
-            ),
-          }}
-        />
-      </main>
+      {/* The one-line mount an app uses: the route's component reads the hash itself. */}
+      <uiGuideRoute.component
+        hash={initialHash}
+        copy={copyText}
+        onRouteChange={titleDocument}
+        version={version}
+        repository={REPOSITORY}
+        actions={<ThemeToggle />}
+        contentAs="main"
+        pageExtras={{
+          signals: (
+            <div class="flex flex-col gap-12">
+              <UrlFilterDemo />
+              <DataTableSortDemo />
+            </div>
+          ),
+        }}
+      />
       <SiteFooter />
     </div>
   )
@@ -99,44 +102,7 @@ function titleDocument({ route, page }: GuideRouteChange): void {
 }
 
 /**
- * Title, links and the colour-scheme switch.
- *
- * One fixed-height row — `h-14` — because the guide's own sticky rows stick under it at
- * `--ui-guide-top` (`styles.css`): a header that grew a second row at narrow widths (the tagline
- * wrapping) would leave them sliding under it. The tagline is dropped below `sm` instead, which is
- * what keeps the row to one line at 375px.
- */
-function SiteHeader() {
-  return (
-    <header class="sticky top-0 z-30 h-14 border-b border-gray-200 bg-white/90 backdrop-blur dark:border-gray-700 dark:bg-gray-900/90">
-      <div class="mx-auto flex h-full max-w-7xl items-center gap-3 px-4 sm:px-6">
-        <a
-          href="#/"
-          class="font-mono text-sm font-semibold text-purple-900 dark:text-purple-300"
-        >
-          preact-components
-        </a>
-        <span class="hidden text-sm text-gray-500 sm:inline dark:text-gray-400">
-          live UI guide
-        </span>
-        <div class="ml-auto flex items-center gap-2">
-          <a
-            href={REPOSITORY}
-            class={buttonClasses("outline", "sm")}
-            rel="noreferrer"
-          >
-            <IconGitHub class="size-4" />
-            <span class="hidden sm:inline">Source</span>
-          </a>
-          <ThemeToggle />
-        </div>
-      </div>
-    </header>
-  )
-}
-
-/**
- * Light/dark switch.
+ * Light/dark switch, handed to the guide's header as its `actions`.
  *
  * The class on `<html>` is set by the inline script in `<head>` before first paint; this reads it
  * back in an effect, so the island's first render still matches the prerendered button.
@@ -159,15 +125,19 @@ function ThemeToggle() {
     }
   }
 
+  // The button says what a press does: in the light palette it offers the dark one, and back.
+  const next = dark ? "light" : "dark"
   return (
     <button
       type="button"
       onClick={toggle}
-      aria-pressed={dark}
-      title={dark ? "Switch to the light palette" : "Switch to the dark palette"}
-      class={buttonClasses("outline", "sm")}
+      aria-label={`Switch to the ${next} theme`}
+      title={`Switch to the ${next} theme`}
+      class={buttonClasses("ghost", "sm")}
+      data-e2e="theme-toggle"
     >
-      {dark ? "Light" : "Dark"}
+      {dark ? <IconSun class="size-5" /> : <IconMoon class="size-5" />}
+      <span class="hidden md:inline">{dark ? "Light" : "Dark"}</span>
     </button>
   )
 }
@@ -175,8 +145,8 @@ function ThemeToggle() {
 /** Where the library lives and what the demo is built from. */
 function SiteFooter() {
   return (
-    <footer class="border-t border-gray-200 py-8 dark:border-gray-700">
-      <div class="mx-auto max-w-7xl space-y-2 px-4 text-xs text-gray-500 sm:px-6 dark:text-gray-400">
+    <footer class="border-t border-gray-200 py-8 dark:border-gray-800">
+      <div class="mx-auto flex max-w-screen-2xl flex-col gap-2 px-4 text-xs text-gray-500 sm:px-6 lg:px-8 dark:text-gray-400">
         <p class="measure">
           Prerendered with <code>preact-render-to-string</code>{" "}
           and hydrated with one Preact island. Styled with{" "}

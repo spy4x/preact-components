@@ -297,7 +297,7 @@ async function staticPhase(): Promise<void> {
     match[0]
   )
   const withoutSnippet = cards.filter((card) =>
-    !/data-e2e="usage"><details[^>]*><summary[^>]*>Usage<\/summary><pre[^>]*><code>/.test(card)
+    !/data-e2e="usage"><details[^>]*><summary[^>]*>[\s\S]*?Code<\/summary><pre[^>]*><code>/.test(card)
   )
   const withoutCopy = cards.filter((card) =>
     !/data-e2e="usage"[\s\S]*?aria-label="Copy the [^"]+ snippet"/.test(card)

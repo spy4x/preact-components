@@ -30,26 +30,12 @@
 @source "./src";
 
 /*
- * The host page's own geometry.
- *
- * `--ui-guide-top` is the guide's own knob: the height of the chrome above it that stays on screen,
- * which is this page's sticky header (`h-14`). The guide's side navigation and its phone menu bar
- * stick below it. `--sticky-stack` is what an anchored card or section has to clear: the header,
- * plus the guide's menu bar below `lg`.
+ * The host page's own geometry. The guide draws its own sticky header now, so this page has no
+ * chrome above it and leaves `--ui-guide-top` unset; anchored cards and sections clear the guide's
+ * header with the guide's own scroll margin.
  */
 :root {
-  --ui-guide-top: 3.5rem;
-  --sticky-stack: 7rem;
   --prose-measure: 65ch;
-}
-
-/*
- * Anchors clear the sticky chrome, so a marked card and a section's own `<section id>` land below
- * it instead of under it.
- */
-article[id^="demo-"],
-section[id] {
-  scroll-margin-top: var(--sticky-stack);
 }
 
 /* The host's own prose. */

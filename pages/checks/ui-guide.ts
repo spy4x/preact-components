@@ -568,9 +568,9 @@ async function phoneNavigationChecks(devtools: Devtools): Promise<void> {
 
   const results: string[] = []
   let ok = visible.button && !visible.aside
-  // A real click on the bar's page title first: a page that has had no real input has no focus,
-  // and then no focus or blur event fires for anything below (AGENTS.md, wave seven).
-  await clickElement(devtools, `${MENU_BUTTON} + span`)
+  // A real click on the page's title first: a page that has had no real input has no focus, and
+  // then no focus or blur event fires for anything below (AGENTS.md, wave seven).
+  await clickElement(devtools, `[data-guide-page] h1`)
   for (const key of ["Enter", "Space"] as const) {
     await devtools.evaluate(`document.querySelector(${JSON.stringify(MENU_BUTTON)}).focus()`)
     await pressKey(devtools, key)
@@ -680,8 +680,7 @@ async function tooltipTriggerCheck(devtools: Devtools, width: number): Promise<v
  * markup, not the shell's.
  */
 const SHELL_TEXT = [
-  `article[id^="demo-"] > h3`,
-  `article[id^="demo-"] > p`,
+  `article[id^="demo-"] > header > *`,
   `[data-guide-page] header > *`,
   `section[id] > div:first-child:not(.sr-only) > *`,
 ].join(", ")

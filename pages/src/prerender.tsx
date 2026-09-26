@@ -16,8 +16,9 @@ import { App } from "./app.tsx"
  * page, every package at once — what `index.html` ships inside `#root` and the browser half
  * hydrates; given, it is one page's
  * markup, which the build and `verify` read to prove every page renders its cards.
+ * @param version The library version the header shows.
  * @returns The markup.
  */
-export function renderApp(hash?: string): string {
-  return renderToString(<App initialHash={hash} />)
+export function renderApp(hash?: string, version?: string): string {
+  return renderToString(<App initialHash={hash} version={version} />)
 }
