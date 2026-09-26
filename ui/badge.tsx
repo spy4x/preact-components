@@ -37,7 +37,7 @@ const filledClasses: Record<BadgeColor, string> = {
 }
 
 const base =
-  "inline-flex items-center border rounded-md px-2.5 py-1 text-xs whitespace-nowrap font-medium capitalize"
+  "inline-flex items-center border rounded-md px-2 py-1 text-xs whitespace-nowrap font-medium capitalize"
 
 /** Small status pill. Static — takes text, renders a `span`. */
 export function Badge(

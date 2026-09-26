@@ -28,7 +28,7 @@ export interface TableProps {
 }
 
 const wrapper =
-  "-mx-4 md:mx-0 bg-white dark:bg-gray-800 ring-1 ring-gray-200 dark:ring-gray-600 sm:rounded-lg pb-px overflow-x-auto min-h-[300px]"
+  "bg-white dark:bg-gray-800 ring-1 ring-gray-200 dark:ring-gray-600 rounded-lg pb-px overflow-x-auto min-h-[300px]"
 
 /**
  * Whether `caption` means "render one", as opposed to one of the three values a conditional

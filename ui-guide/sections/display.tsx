@@ -37,6 +37,7 @@ import {
   Pagination,
   Progress,
   type ProgressTone,
+  Stack,
   type TabItem,
   Table,
   type TabOrientation,
@@ -955,14 +956,16 @@ function TooltipDemo() {
 export const displayDemos = {
   PageTitle: {
     summary:
-      "Page heading carrying the library's `h1` typography. `class` replaces the default utilities entirely, so spacing is the caller's call.",
-    snippet: `<PageTitle>Transactions</PageTitle>
-<PageTitle class="mb-2 text-xl">Nested detail</PageTitle>`,
+      "Page heading carrying the library's `h1` typography. It has no outer margin: the space under it is the parent's gap, from `Stack`, `Section` or `Page`. `class` is merged after the defaults and replaces a default only in the same group at the same breakpoint: `text-xl` alone changes the phone size and `sm:text-3xl` still applies from `sm`, so the demo passes both.",
+    snippet: `<Stack>
+  <PageTitle>Transactions</PageTitle>
+  <PageTitle class="text-xl sm:text-xl">Nested detail</PageTitle>
+</Stack>`,
     render: () => (
-      <div class="space-y-4">
+      <Stack>
         <PageTitle>Transactions</PageTitle>
-        <PageTitle class="mb-0 text-xl">Nested detail with an overridden scale</PageTitle>
-      </div>
+        <PageTitle class="text-xl sm:text-xl">Nested detail with an overridden scale</PageTitle>
+      </Stack>
     ),
   },
   ConfidenceMeter: {

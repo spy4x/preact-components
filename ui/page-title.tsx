@@ -4,16 +4,16 @@ import type { ComponentChildren, JSX } from "preact"
 export interface PageTitleProps {
   children: ComponentChildren
   /**
-   * Replaces the default heading utilities entirely.
+   * Utilities merged after the defaults; a later utility in the same group wins.
    *
-   * Layout (`mb-6`, the flex row) used to be hardcoded in the source component, so every
-   * page that wanted different spacing had to fight it. It is the caller's call now.
+   * The heading carries no outer margin: the space under it is the parent's gap (`Stack`,
+   * `Section`, `Page` in `./layout`), as for every component in this library.
    */
   class?: string
 }
 
 const defaultClasses =
-  "mb-6 flex items-center gap-3 leading-none text-2xl font-bold text-gray-900 sm:text-3xl dark:text-gray-100"
+  "flex items-center gap-3 leading-none text-2xl font-bold text-gray-900 sm:text-3xl dark:text-gray-100"
 
 /**
  * Page heading with the library's `h1` typography inlined.

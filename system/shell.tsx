@@ -105,7 +105,7 @@ function ShellNavContent(
       {Icon && <Icon class="size-5 shrink-0" />}
       <span class="min-w-0 flex-1 truncate">{name}</span>
       {typeof counter === "number" && counter > 0 && (
-        <span class="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+        <span class="rounded-full bg-gray-100 px-2 py-px text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
           {counter}
         </span>
       )}

@@ -97,7 +97,7 @@ export function ConfidenceMeter(
           )}
         </div>
       </div>
-      <div class="flex shrink-0 items-center gap-1.5">
+      <div class="flex shrink-0 items-center gap-1">
         {known && (
           <span class={cn("text-xs font-semibold tabular-nums", tierTextClasses[tier])}>
             {Math.round(clamped)}%

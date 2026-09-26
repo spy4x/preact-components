@@ -26,6 +26,7 @@ import {
   SkeletonTable,
   SkeletonText,
   type SpinnerSize,
+  Stack,
   tableGeometry,
   textGeometry,
   Toastr,
@@ -269,7 +270,7 @@ function ToastrDemo() {
 /** Absent slots render nothing, and an instance with no slot at all renders `null`. */
 function EmptyStateDemo() {
   return (
-    <div class="space-y-2">
+    <Stack>
       <div class="max-w-[650px]">
         <EmptyState
           icon={<IconFolder class="size-5" />}
@@ -292,7 +293,7 @@ function EmptyStateDemo() {
         The third instance passes no slot at all and renders nothing — an empty state cannot invent
         copy, and the guide ships no product sentence to fall back on.
       </p>
-    </div>
+    </Stack>
   )
 }
 
@@ -660,13 +661,13 @@ export const feedbackDemos = {
       "Inline error banner. Renders nothing for an empty, `null` or `undefined` message, so a possibly-empty value can be passed straight through.",
     snippet: `<ErrorState message={error.value} />`,
     render: () => (
-      <div class="space-y-3">
+      <Stack>
         <ErrorState message="The report could not be generated: no accounts are connected." />
         <ErrorState message="" />
         <p class="text-sm text-gray-500 dark:text-gray-400">
           The block above is empty on purpose — <code>message=""</code> returns <code>null</code>.
         </p>
-      </div>
+      </Stack>
     ),
   },
   EmptyState: {
@@ -691,10 +692,10 @@ export const feedbackDemos = {
       "Placeholder layout shown while a result loads. The whole tree is `aria-hidden`, so a screen reader hears the caller's status message instead of empty boxes.",
     snippet: `<LoadingSkeleton rows={2} />`,
     render: () => (
-      <div class="space-y-6">
-        <LoadingSkeleton rows={1} class="mt-0" />
-        <LoadingSkeleton rows={3} class="mt-0" />
-      </div>
+      <Stack gap="lg">
+        <LoadingSkeleton rows={1} />
+        <LoadingSkeleton rows={3} />
+      </Stack>
     ),
   },
   SkeletonText: {

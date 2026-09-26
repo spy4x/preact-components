@@ -182,7 +182,8 @@ under "Install" instead.
   `rounded-primary`, `text-muted`, `bg-canvas`, `bg-surface`, `border-subtle`,
   `border-control`, `bg-danger`, `bg-warning`, `bg-success` and the `text-*`
   status tones.
-- **Type** — `h1`–`h5`, `link`, `page-layout`, `list-ul`, plus `theme-base` for
+- **Type** — `h1`–`h5`, `link`, `page-layout` (deprecated: use `Page` from
+  `@spy4x/preact-ui/layout`), `list-ul`, plus `theme-base` for
   the document-level font, colour and canvas. Nothing is applied to the host
   page by importing the preset; `theme-base` is put on `<body>` when wanted, and
   every rule that would otherwise restyle the host is gated behind it — the
@@ -202,6 +203,54 @@ under "Install" instead.
 - **Data display** — `num`, `kpi`, `kpi-label`, `kpi-value`, `bar`.
 - **Map** — `map-marker` inside a `status-on` / `status-off` / `status-unknown` container, used by
   `@spy4x/preact-map`'s `Map` component and its plain-text list of markers.
+- **Spacing** — `pb-safe` (bottom padding that clears a phone's home indicator) and `pb-safe-3`
+  (step 3 plus that inset). The inset is the device's, not a step, so it gets a name here instead
+  of an arbitrary value in a component.
+
+## Spacing
+
+Padding, margin, gap, `space-x`/`space-y` and scroll margin/padding use one fixed scale, which the
+`@spy4x/preact-theme/spacing` subpath exports together with a checker. The rule itself — the steps,
+the named gaps, the no-outer-margin rule and a page built from the layout components — is in
+[`docs/spacing.md`](../docs/spacing.md).
+
+| Export                        | What it is                                                                                                |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `SPACING_STEPS`               | `0 px 1 2 3 4 6 8 12 16`: every step a spacing class may use                                              |
+| `SPACING_GAPS`                | the named gaps of the layout components: `none xs sm md lg xl 2xl` → `0 1 2 4 6 8 12`                     |
+| `findOffScaleSpacing(source)` | every off-scale or arbitrary spacing class, spacing arbitrary property and `--spacing()` call in `source` |
+
+`findOffScaleSpacing` returns one `{ line, column, className, reason }` per finding, with the
+variant prefix and any `-` kept in `className` (`sm:-mt-4`). Besides spacing classes it reports an
+arbitrary property that sets padding, margin or a gap (`[padding:…]`) and a `--spacing()` call whose
+argument is not a numeric step. It cannot see a raw CSS declaration (`padding: 10px`), an inline
+`style`, a class name built at run time or Tailwind's legacy `theme()` function, so it is a floor
+that review builds on, not a proof. It reads any file's text — TypeScript, TSX,
+CSS with `@apply`, HTML — and uses no Deno API, so an app can call it from its own test. This is
+the whole test an app built from `spy4x/template` needs, run with `--allow-read`:
+
+```ts
+// spacing.test.ts
+import { findOffScaleSpacing } from "@spy4x/preact-theme/spacing"
+import { expect } from "@std/expect"
+import { walk } from "@std/fs/walk"
+
+Deno.test("every spacing class is on the scale", async () => {
+  const found: string[] = []
+  for (const root of ["apps", "libs"]) {
+    for await (const file of walk(root, { exts: [".ts", ".tsx", ".css"], skip: [/\.test\./] })) {
+      for (const v of findOffScaleSpacing(await Deno.readTextFile(file.path))) {
+        found.push(`${file.path}:${v.line}:${v.column} ${v.className} — ${v.reason}`)
+      }
+    }
+  }
+  expect(found).toEqual([])
+})
+```
+
+Leave test files out: they spell out classes to assert on. Comments are read, because Tailwind's
+own scanner reads them and emits CSS for a class it finds there; a word counts only when it has the
+exact shape of a spacing class, so "a gap-free layout" or "top-5 results" is never reported.
 
 ## Theming
 

@@ -36,7 +36,7 @@ export function LoadingSpinner(
 ): JSX.Element {
   return (
     <div
-      class={cn("flex flex-col items-center justify-center gap-3 py-10", className)}
+      class={cn("flex flex-col items-center justify-center gap-3 py-8", className)}
       role="status"
       aria-live="polite"
     >

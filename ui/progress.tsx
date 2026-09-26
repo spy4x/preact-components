@@ -151,7 +151,7 @@ export function Progress({
   const showHeader = label !== undefined || (showValue && fraction !== null)
 
   return (
-    <div class={cn("flex min-w-0 flex-col gap-1.5", className)}>
+    <div class={cn("flex min-w-0 flex-col gap-1", className)}>
       {showHeader && (
         <div class="flex min-w-0 items-baseline justify-between gap-2">
           {label !== undefined && (

@@ -51,7 +51,16 @@ function atFault(expected: string[], index: number): string {
  * copy, so the expectation breaks when the data does.
  */
 const SECTIONS_ON_PAGES: Record<string, string[]> = {
-  "page-ui": ["badges", "buttons", "display", "feedback", "inputs", "fields", "enhanced-forms"],
+  "page-ui": [
+    "badges",
+    "buttons",
+    "layout",
+    "display",
+    "feedback",
+    "inputs",
+    "fields",
+    "enhanced-forms",
+  ],
   "page-system": ["system"],
   "page-crud": ["crud"],
   "page-charts": ["charts"],

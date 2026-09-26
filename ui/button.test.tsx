@@ -68,6 +68,6 @@ describe("buttonClasses", () => {
     const classes = buttonClasses("primary", "sm", "mt-2")
 
     expect(classes).toContain("mt-2")
-    expect(classes).toContain("px-2.5")
+    expect(classes).toContain("px-2")
   })
 })

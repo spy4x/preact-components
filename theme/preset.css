@@ -138,6 +138,10 @@
   color: var(--color-muted-foreground, oklch(0.551 0.027 264.364));
 }
 
+/*
+ * Deprecated: use `Page` from `@spy4x/preact-ui/layout`, which adds the page gutter and puts its
+ * sections a named gap apart. Kept unchanged for one release so an app that uses it keeps its look.
+ */
 @utility page-layout {
   @apply mx-auto max-w-6xl space-y-4 lg:space-y-8;
 }
@@ -148,10 +152,27 @@
 
 /* #endregion Typography */
 
+/* #region Spacing */
+
+/*
+ * Bottom padding that clears a phone's home indicator. The inset is the device's, not a step on
+ * the spacing scale, so it lives here as a named utility rather than as an arbitrary value in a
+ * component: `pb-safe` is the inset alone, `pb-safe-3` is step 3 (12 px) plus the inset.
+ */
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@utility pb-safe-3 {
+  padding-bottom: calc(--spacing(3) + env(safe-area-inset-bottom, 0px));
+}
+
+/* #endregion Spacing */
+
 /* #region Buttons */
 
 @utility btn {
-  @apply cursor-pointer flex items-center justify-center gap-x-2.5;
+  @apply cursor-pointer flex items-center justify-center gap-x-2;
   @apply px-6 h-12 whitespace-nowrap text-white;
   @apply hover:opacity-90 transition-all duration-75 ease-in;
   @apply focus-visible:outline-2 focus-visible:outline-offset-2;
@@ -249,7 +270,7 @@
 }
 
 @utility btn-link {
-  @apply hover:underline inline-flex items-center gap-x-1.5;
+  @apply hover:underline inline-flex items-center gap-x-1;
   color: var(--color-primary-muted, oklch(0.558 0.288 302.321));
 }
 

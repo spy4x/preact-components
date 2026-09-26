@@ -1138,6 +1138,40 @@ async function authFormToggleChecks(devtools: Devtools): Promise<void> {
       : "the button did not keep the focus after Space, so Enter had nothing to press",
   )
 
+  // The toggle sits over the field's right edge, so the field's own right padding is all that
+  // keeps a shown password from running under it (#331). A long value is set directly, read back
+  // as geometry, and the field's previous value put back, so later checks see the page unchanged.
+  const clearance = await devtools.evaluate<
+    { textRight: number; toggleLeft: number; overflows: boolean; name: string } | null
+  >(`(() => {
+    const input = document.querySelector('${AUTH_PASSWORD}')
+    const toggle = document.querySelector('${AUTH_TOGGLE}')
+    if (!input || !toggle) return null
+    const previous = input.value
+    input.value = "a-long-password-that-fills-the-whole-field-and-then-some-0123456789"
+    const box = input.getBoundingClientRect()
+    const style = getComputedStyle(input)
+    const textRight = box.right - parseFloat(style.paddingRight) -
+      parseFloat(style.borderRightWidth)
+    const overflows = input.scrollWidth > input.clientWidth
+    input.value = previous
+    return {
+      textRight,
+      toggleLeft: toggle.getBoundingClientRect().left,
+      overflows,
+      name: toggle.getAttribute("aria-label") || "",
+    }
+  })()`)
+  check(
+    "a long shown password ends before the show/hide toggle, which is named by its label",
+    clearance !== null && afterEnter.passwordType === "text" && clearance.overflows &&
+      clearance.textRight <= clearance.toggleLeft && clearance.name === "Hide password",
+    clearance === null
+      ? "no password field or toggle to measure"
+      : `text area ends at ${clearance.textRight}px, toggle starts at ${clearance.toggleLeft}px, ` +
+        `value overflows the field: ${clearance.overflows}, name "${clearance.name}"`,
+  )
+
   check(
     "no press on the show/hide button submitted the form",
     before.signIns === afterClick.signIns && afterClick.signIns === afterSpace.signIns &&

@@ -46,6 +46,7 @@ import { feedbackDemos } from "./sections/feedback.tsx"
 import { fieldDemos } from "./sections/fields.tsx"
 import { formDemos } from "./sections/forms.tsx"
 import { inputDemos } from "./sections/inputs.tsx"
+import { layoutDemos } from "./sections/layout.tsx"
 import { mapDemos } from "./sections/map.tsx"
 import { surfaceDemos } from "./sections/surfaces.tsx"
 import { systemDemos } from "./sections/system.tsx"
@@ -214,6 +215,7 @@ interface SectionSpec {
 export type SectionId =
   | "badges"
   | "buttons"
+  | "layout"
   | "display"
   | "enhanced-forms"
   | "feedback"
@@ -248,6 +250,14 @@ const catalogue = {
     blurb:
       "Variants × sizes, plus the components that wrap a button around a side effect (clipboard, geolocation, a CSV download).",
     demos: buttonDemos,
+  },
+  layout: {
+    group: "surfaces",
+    package: "ui",
+    title: "Layout",
+    blurb:
+      "How a page puts space between its parts: `Page`, `Section`, `Stack`, `Cluster` and `Grid`, each with a named gap from the theme's spacing scale. No component carries an outer margin, so these are the only source of space between siblings.",
+    demos: layoutDemos,
   },
   display: {
     group: "surfaces",
@@ -504,6 +514,7 @@ export type PartialDemoRegistry = Partial<DemoRegistry>
 export const demoRegistry: DemoRegistry = {
   ...badgeDemos,
   ...buttonDemos,
+  ...layoutDemos,
   ...displayDemos,
   ...enhancedFormDemos,
   ...feedbackDemos,

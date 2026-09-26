@@ -8,20 +8,19 @@ describe("PageTitle", () => {
     expect(render(<PageTitle>Reports</PageTitle>)).toContain("Reports")
   })
 
-  it("uses an h1 with the default typography", () => {
+  it("uses an h1 with the default typography and no outer margin", () => {
     const html = render(<PageTitle>Reports</PageTitle>)
 
     expect(html).toMatch(/^<h1/)
     expect(html).toContain("text-2xl")
-    expect(html).toContain("mb-6")
+    expect(html).not.toMatch(/class="[^"]*\bm[trblxy]?-/)
   })
 
-  it("lets the caller replace the layout utilities", () => {
-    const html = render(<PageTitle class="mb-0 ml-12">Reports</PageTitle>)
+  it("lets the caller replace a default utility", () => {
+    const html = render(<PageTitle class="text-xl">Reports</PageTitle>)
 
-    expect(html).toContain("mb-0")
-    expect(html).toContain("ml-12")
-    expect(html).not.toContain("mb-6")
+    expect(html).toContain("text-xl")
+    expect(html).not.toContain(" text-2xl ")
   })
 
   it("renders child elements alongside the text", () => {

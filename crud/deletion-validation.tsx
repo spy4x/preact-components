@@ -80,11 +80,11 @@ export function DeletionValidation(
               To archive this {model}, please first archive:
             </h3>
             <div class="mt-2 text-sm text-red-600 max-w-xl">
-              <ul role="list" class="list-disc space-y-1 pl-5">
+              <ul role="list" class="list-disc space-y-1 pl-4">
                 {dependencies.map((dependency) => (
                   <li key={dependency.kind}>
                     <div>{dependency.kind}:</div>
-                    <div class="my-2 ml-5 space-x-2">
+                    <div class="my-2 ml-4 space-x-2">
                       {dependency.values.map((item) => (
                         <div key={item.url} class="inline-block">
                           <a class="link text-primary" href={item.url}>{item.title}</a>

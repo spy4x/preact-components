@@ -177,7 +177,7 @@ export function DonutChart({
 
       {showLegend
         ? (
-          <ul class="flex min-w-48 flex-1 flex-col gap-1.5 text-sm">
+          <ul class="flex min-w-48 flex-1 flex-col gap-1 text-sm">
             {geometry.segments.map((segment, index) => {
               const body = (
                 <>

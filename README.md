@@ -126,19 +126,19 @@ Node or Bun through JSR's npm compatibility layer has not been tried.
 
 ## Scope
 
-| Directory   | Contents                                                                                                                                 |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `theme/`    | CSS text (`TOKENS_CSS`, `PRESET_CSS`, opt-in dark `INK_CSS`) and every class the components render (`COMPONENT_CLASSES`)                 |
-| `icons/`    | merged icon set: one component per glyph, all listed by the guide's icon gallery                                                         |
-| `ui/`       | `Badge`, `Button`, `Table`, `DataTable`, `Dropdown`, `Combobox`, `Modal`, `Tooltip`, `Toastr` — and the rest                             |
-| `system/`   | `AuthForm`, `Calendar`, `ImageLightbox`, `RailShell`, `SEOHead` + `head` store, `Shell`, `SiteHeader`, `StateInit`, `SWUpdater`          |
-| `charts/`   | server-rendered SVG charts (`LineChart`, `Bars`, `DonutChart`, `Kpi`), axis maths (`scales`), d3 islands (`D3LineChart`, `CompareChart`) |
-| `cn/`       | `cn()` — class-name join + Tailwind conflict resolution                                                                                  |
-| `signals/`  | `buildModelStore`, `useUrlFilters`, `table-state`, `createThemeStore`, `createToastStore`, `patchSignal` — and the rest; no components   |
-| `crud/`     | `CrudList`, `CrudEditor`, `AssociationEditor`, `DeletionValidation`, field rows                                                          |
-| `map/`      | `Map` on Leaflet — its own package, so only an app that imports it resolves Leaflet                                                      |
-| `ui-guide/` | live component catalogue: an overview and one page per package behind a side navigation (`UIGuide`, `uiGuideRoute`)                      |
-| `pages/`    | demo app (GitHub Pages site and the browser checks under `pages/checks/`), not published                                                 |
+| Directory   | Contents                                                                                                                                                                                              |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `theme/`    | CSS text (`TOKENS_CSS`, `PRESET_CSS`, opt-in dark `INK_CSS`), every class the components render (`COMPONENT_CLASSES`), and the spacing scale (`SPACING_STEPS`, `SPACING_GAPS`, `findOffScaleSpacing`) |
+| `icons/`    | merged icon set: one component per glyph, all listed by the guide's icon gallery                                                                                                                      |
+| `ui/`       | `Stack`, `Cluster`, `Grid`, `Page`, `Section`, `Badge`, `Button`, `Table`, `DataTable`, `Dropdown`, `Combobox`, `Modal`, `Tooltip`, `Toastr` — and the rest                                           |
+| `system/`   | `AuthForm`, `Calendar`, `ImageLightbox`, `RailShell`, `SEOHead` + `head` store, `Shell`, `SiteHeader`, `StateInit`, `SWUpdater`                                                                       |
+| `charts/`   | server-rendered SVG charts (`LineChart`, `Bars`, `DonutChart`, `Kpi`), axis maths (`scales`), d3 islands (`D3LineChart`, `CompareChart`)                                                              |
+| `cn/`       | `cn()` — class-name join + Tailwind conflict resolution                                                                                                                                               |
+| `signals/`  | `buildModelStore`, `useUrlFilters`, `table-state`, `createThemeStore`, `createToastStore`, `patchSignal` — and the rest; no components                                                                |
+| `crud/`     | `CrudList`, `CrudEditor`, `AssociationEditor`, `DeletionValidation`, field rows                                                                                                                       |
+| `map/`      | `Map` on Leaflet — its own package, so only an app that imports it resolves Leaflet                                                                                                                   |
+| `ui-guide/` | live component catalogue: an overview and one page per package behind a side navigation (`UIGuide`, `uiGuideRoute`)                                                                                   |
+| `pages/`    | demo app (GitHub Pages site and the browser checks under `pages/checks/`), not published                                                                                                              |
 
 ## Rules
 
@@ -151,6 +151,9 @@ Node or Bun through JSR's npm compatibility layer has not been tried.
   out and why: [`docs/not-building.md`](./docs/not-building.md).
 - **Props and ports, not global stores.** Components take what they need; they do not import an
   app's state singleton.
+- **One spacing scale.** Padding, margin and gap use only the steps `0 px 1 2 3 4 6 8 12 16`, no
+  component carries an outer margin, and a page is laid out with `Page`, `Section`, `Stack`,
+  `Cluster` and `Grid` and their named gaps: [`docs/spacing.md`](./docs/spacing.md).
 - **The icon gallery is the self-documenting piece** — a new icon appears in the catalogue with no
   maintenance.
 - **MIT.**

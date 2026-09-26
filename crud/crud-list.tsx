@@ -4,6 +4,7 @@ import { Badge } from "@spy4x/preact-ui/badge"
 import { Dropdown, DropdownItem } from "@spy4x/preact-ui/dropdown"
 import { ErrorState } from "@spy4x/preact-ui/error-state"
 import { PageTitle } from "@spy4x/preact-ui/page-title"
+import { Stack } from "@spy4x/preact-ui/layout"
 import { Table } from "@spy4x/preact-ui/table"
 import { type ReadonlySignal, type Signal, useSignal } from "@preact/signals"
 import type { ComponentChildren, JSX } from "preact"
@@ -136,16 +137,16 @@ export function CrudList<M extends CrudModel>(props: CrudListProps<M>): JSX.Elem
   const showAdd = props.addHref !== undefined && canAdd
 
   return (
-    <div class={cn("page-layout", props.class)}>
+    <Stack gap="lg" class={cn("mx-auto max-w-6xl", props.class)}>
       <PageTitle>
         {props.titleSlot ?? <span>{props.title}</span>}
         {props.badge !== false &&
           (props.badge ?? <Badge color="gray" class="translate-y-0.5" text={String(count)} />)}
       </PageTitle>
 
-      <ErrorState message={error?.message ?? null} class="mx-0 my-4 max-w-none text-left" />
+      <ErrorState message={error?.message ?? null} class="mx-0 max-w-none text-left" />
 
-      <div class="flex gap-2 items-center mb-4 md:mb-6">
+      <div class="flex gap-2 items-center">
         <SearchBox value={query} placeholder={props.searchPlaceholder} delay={props.searchDelay} />
         {showStatus && <StatusSelect status={status} labels={props.statusFilter} />}
         {showAdd && (
@@ -176,7 +177,7 @@ export function CrudList<M extends CrudModel>(props: CrudListProps<M>): JSX.Elem
           </>
         ))}
       />
-    </div>
+    </Stack>
   )
 }
 
@@ -211,7 +212,7 @@ function SearchBox(
       <input
         type="text"
         placeholder={placeholder ?? "Search"}
-        class="input pr-11"
+        class="input pr-12"
         value={draft.value}
         onInput={(event) => draft.value = event.currentTarget.value}
       />
@@ -231,12 +232,12 @@ function StatusSelect(
   const id = useId()
   const wording = labels === undefined || labels === false ? {} : labels
   return (
-    <div class="-mt-7">
+    <div class="-mt-6">
       <label class="label" for={id}>{wording.label ?? "Status"}</label>
       <div>
         <select
           id={id}
-          class="input mt-2"
+          class="input mt-1"
           value={status.value}
           // The two options below are the only values this select can report.
           onChange={(event) => status.value = event.currentTarget.value as CrudStatus}
