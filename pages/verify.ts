@@ -360,8 +360,8 @@ async function staticPhase(): Promise<void> {
   )
 
   // A route no link points at would be a page nobody can reach; a link pointing at a route the
-  // resolver refuses would be a dead link. Both directions, over the whole catalogue: the `all`
-  // page's navigation lists every page, section and card.
+  // resolver refuses would be a dead link. Both directions, over the whole catalogue: the served
+  // document's navigation lists every page, section and card.
   const routeEntries = [
     ...(routes?.pages ?? []),
     ...(routes?.sections ?? []),
