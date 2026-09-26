@@ -192,14 +192,14 @@ function ClassChip({ name }: { name: string }) {
  * ported from a source application's guide. It sits on the overview as one card: the rules as
  * prose, then every documented class by group, then the classes that were removed.
  */
-export function CatalogInstructions({ headingLevel = 2 }: { headingLevel?: 2 | 3 }) {
+export function CatalogInstructions() {
   return (
     <Section
       as="section"
       id="instructions"
       class="scroll-mt-16"
       title="Design rules"
-      headingLevel={headingLevel}
+      headingLevel={2}
       description={
         <>
           What <code class="font-mono">@spy4x/preact-theme</code>{" "}
