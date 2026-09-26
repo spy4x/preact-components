@@ -36,11 +36,13 @@ A component belongs here when a future project can reuse it, even if only one ap
 a calendar stays, a booking slot picker goes. What disqualifies a component: business wording, one
 app's data model, or a renamed copy of something generic that already exists.
 
-The flow runs one way: an existing app feeds `spy4x/ts-libs` and this library, and this library
-feeds `spy4x/template`, which future projects start from. An existing app is never refactored to
-call into this library, and "remove" means delete from this library only — the app that had the
-copy keeps its own. A project that was deleted before its components were extracted is not a
-source for anything here; do not name it.
+Code flows both ways. An app feeds `spy4x/ts-libs` and this library with anything a future project
+could reuse, and every app, old or new, imports from them instead of keeping its own copy. Each app
+tracks that switch in an issue of its own. This library also feeds `spy4x/template`, which future
+projects start from. Because apps import from here, removing an export breaks them: move every app
+that imports it onto a replacement, or back onto its own copy, before the export goes.
+A project that was deleted before its components were extracted is not a source for anything here;
+do not name it.
 
 This is a public repository. Do not put a private application's code, file paths, file lists or
 business vocabulary into anything that lands here — components, docs, PRs or issues. Existing
