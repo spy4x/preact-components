@@ -1,19 +1,18 @@
-// spacing: off-scale until #328 (the lane that moves this file to the scale deletes this line)
 /**
  * The `ui/` controls that are not plain form fields: the two switches, the dropdown, the searchable
- * select, the labelled switch row, and the preset-plus-custom date range, day-only and `withTime`.
+ * select, the labelled switch row, the file picker, and the date range picker, day-only and
+ * `withTime`.
  *
- * Each of these is a small state machine whose keyboard and pointer halves only run in a browser.
- * This repository has no DOM harness, so a card shows the closed-state markup the server render
- * produces, and the three decisions the demonstrably interactive halves turn on are exported from
- * this module as pure functions and asserted in `sections/demo-decisions.test.ts`:
- * {@link comboboxStatusLabel}, {@link dateRangeTouched} and {@link dateTimeRangeTouched}. Everything
- * after the first keystroke, hover or click remains browser-only and is described as such on the
- * card.
+ * A card shows the markup the server render produces. The three decisions a card's status line
+ * turns on are exported from this module as pure functions and asserted in
+ * `sections/demo-decisions.test.ts`: {@link comboboxStatusLabel}, {@link dateRangeTouched} and
+ * {@link dateTimeRangeTouched}. Everything after the first keystroke, hover or click is proven in a
+ * browser, by `pages/checks/ui.ts`.
  */
 
 import {
   Button,
+  Cluster,
   Combobox,
   type ComboboxOptionState,
   type DateRange,
@@ -26,13 +25,16 @@ import {
   DropdownItem,
   Field,
   FileInput,
+  Grid,
   isValidDateRange,
   isValidDateTimeRange,
   OnOffButtons,
   rangeForPreset,
+  Stack,
   ToggleField,
   ToggleSwitch,
 } from "@spy4x/preact-ui"
+import type { ComponentChildren } from "preact"
 import { useSignal } from "@preact/signals"
 import {
   IconChevronDown,
@@ -43,14 +45,31 @@ import {
 } from "@spy4x/preact-icons"
 import type { DemoFragment } from "../registry.ts"
 
+/** The small caption over one variant inside a card that shows several. */
+function Variant({ title, children }: { title: ComponentChildren; children: ComponentChildren }) {
+  return (
+    <Stack gap="sm">
+      <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">{title}</h4>
+      {children}
+    </Stack>
+  )
+}
+
+/** A quiet line under a control: what the caller now holds, or a short note on the variant. */
+function Note(
+  { children, e2e }: { children: ComponentChildren; e2e?: string },
+) {
+  return <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e={e2e}>{children}</p>
+}
+
 /** Controlled: the switch renders `value` and reports the intended value through `onToggle`. */
 function ToggleSwitchDemo() {
   const archived = useSignal(false)
   const notifications = useSignal(true)
 
   return (
-    <div class="space-y-3">
-      <div class="flex items-center gap-3">
+    <Stack gap="sm">
+      <Cluster gap="sm">
         <ToggleSwitch
           value={archived.value}
           onToggle={(next) => archived.value = next}
@@ -59,8 +78,8 @@ function ToggleSwitchDemo() {
         <span class="text-sm text-gray-600 dark:text-gray-300">
           archived: {archived.value ? "on" : "off"}
         </span>
-      </div>
-      <div class="flex items-center gap-3">
+      </Cluster>
+      <Cluster gap="sm">
         <ToggleSwitch
           value={notifications.value}
           onToggle={(next) => notifications.value = next}
@@ -69,12 +88,12 @@ function ToggleSwitchDemo() {
         <span class="text-sm text-gray-600 dark:text-gray-300">
           notifications: {notifications.value ? "on" : "off"}
         </span>
-      </div>
-      <div class="flex items-center gap-3">
+      </Cluster>
+      <Cluster gap="sm">
         <ToggleSwitch value={false} onToggle={() => {}} disabled label="Disabled" />
         <span class="text-sm text-gray-500 dark:text-gray-400">disabled</span>
-      </div>
-    </div>
+      </Cluster>
+    </Stack>
   )
 }
 
@@ -83,14 +102,14 @@ function OnOffButtonsDemo() {
   const value = useSignal<boolean | undefined>(undefined)
 
   return (
-    <div class="space-y-3">
-      <div class="flex flex-wrap items-center gap-3">
+    <Stack gap="md">
+      <Cluster gap="sm">
         <OnOffButtons value={value.value} onSwitch={(on) => value.value = on} />
         <span class="text-sm text-gray-600 dark:text-gray-300">
           value: {value.value === undefined ? "undefined" : String(value.value)}
         </span>
-      </div>
-      <div class="flex flex-wrap items-center gap-3">
+      </Cluster>
+      <Cluster gap="sm">
         <OnOffButtons
           value={value.value}
           onSwitch={(on) => value.value = on}
@@ -99,8 +118,8 @@ function OnOffButtonsDemo() {
           offLabel="Archived"
         />
         <span class="text-sm text-gray-500 dark:text-gray-400">with counts and custom labels</span>
-      </div>
-    </div>
+      </Cluster>
+    </Stack>
   )
 }
 
@@ -110,16 +129,16 @@ function OnOffButtonsDemo() {
  * The icon triggers pass `triggerLabel`, because they render no text a screen reader could read;
  * the text trigger passes `triggerNamedByContent` instead, so its own words stay its name. The
  * links point at `#inputs`, this section's own route: a menu item is either a real link or a real
- * button, never an anchor with a script URL in its `href`.
+ * button, never an anchor with a script URL in its `href`. `pages/checks/ui.ts` drives the first
+ * dropdown on the card, so the icon trigger stays first.
  */
 function DropdownDemo() {
   const selected = useSignal("Select action…")
 
   return (
-    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-      <div class="space-y-2">
-        <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">Default icon trigger</h4>
-        <div class="flex justify-center rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+    <Grid minColumnWidth="sm" gap="lg">
+      <Variant title="Icon trigger">
+        <div>
           <Dropdown
             trigger={<IconEllipsisVertical class="size-5" />}
             triggerLabel="Row actions"
@@ -141,11 +160,10 @@ function DropdownDemo() {
             </div>
           </Dropdown>
         </div>
-      </div>
+      </Variant>
 
-      <div class="space-y-2">
-        <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">Custom trigger</h4>
-        <div class="flex justify-center rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+      <Variant title="Text trigger">
+        <div>
           <Dropdown
             trigger={
               <span class="flex items-center gap-2 px-3 py-2 text-sm">
@@ -154,7 +172,7 @@ function DropdownDemo() {
               </span>
             }
             triggerNamedByContent
-            triggerClasses="w-56 justify-between border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+            triggerClasses="w-48 justify-between border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
             panelClasses="min-w-[200px]"
             menuLabel="Bulk actions"
           >
@@ -167,13 +185,16 @@ function DropdownDemo() {
             </div>
           </Dropdown>
         </div>
-      </div>
+      </Variant>
 
-      <div class="space-y-2">
-        <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">
-          `vertical="up"` — last table rows
-        </h4>
-        <div class="flex justify-center rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+      <Variant
+        title={
+          <>
+            Opens upward: <code>vertical="up"</code>
+          </>
+        }
+      >
+        <div>
           <Dropdown
             trigger={<IconEllipsisVertical class="size-5" />}
             triggerLabel="Last row actions"
@@ -186,13 +207,16 @@ function DropdownDemo() {
             </div>
           </Dropdown>
         </div>
-      </div>
+      </Variant>
 
-      <div class="space-y-2">
-        <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">
-          `horizontal="left"`
-        </h4>
-        <div class="flex justify-center rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+      <Variant
+        title={
+          <>
+            Opens leftward: <code>horizontal="left"</code>
+          </>
+        }
+      >
+        <div>
           <Dropdown
             trigger={<IconEllipsisVertical class="size-5" />}
             triggerLabel="Left-anchored actions"
@@ -204,8 +228,8 @@ function DropdownDemo() {
             </div>
           </Dropdown>
         </div>
-      </div>
-    </div>
+      </Variant>
+    </Grid>
   )
 }
 
@@ -374,7 +398,7 @@ function CoinCombobox() {
   const query = useSignal("")
 
   return (
-    <div class="space-y-2">
+    <Stack gap="sm">
       <Combobox
         items={coins}
         value={coin.value}
@@ -385,10 +409,8 @@ function CoinCombobox() {
         placeholder="Select a coin…"
         emptyMessage={(text) => `No coin matches “${text}”`}
       />
-      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
-        {comboboxStatusLabel(coin.value, query.value)}
-      </p>
-    </div>
+      <Note e2e="controlled-value">{comboboxStatusLabel(coin.value, query.value)}</Note>
+    </Stack>
   )
 }
 
@@ -414,7 +436,7 @@ function CityCombobox() {
   )
 
   return (
-    <div class="space-y-2">
+    <Stack gap="sm">
       <Combobox
         items={cities}
         value={city.value}
@@ -429,14 +451,10 @@ function CityCombobox() {
         clearLabel="Clear the city"
         listboxClass="max-h-48"
       />
-      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
+      <Note e2e="controlled-value">
         {comboboxStatusLabel(city.value?.code ?? null, query.value)}
-      </p>
-      <p class="text-xs text-gray-500 dark:text-gray-400">
-        `renderOption` replaces the option's content, not its{" "}
-        {`<li>`}: the `role="option"`, `aria-selected` and the highlight stay the component's.
-      </p>
-    </div>
+      </Note>
+    </Stack>
   )
 }
 
@@ -452,7 +470,7 @@ function ServerSearchCombobox() {
   const coin = useSignal<string | null>(null)
 
   return (
-    <div class="space-y-2">
+    <Stack gap="sm">
       <Combobox
         items={coins}
         value={coin.value}
@@ -465,15 +483,11 @@ function ServerSearchCombobox() {
         placeholder="Type a ticker prefix…"
         emptyMessage="No ticker starts with that"
       />
-      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
+      <Note e2e="controlled-value">
         controlled query: {query.value === "" ? "(empty)" : `"${query.value}"`} ·{" "}
         {comboboxStatusLabel(coin.value, "")}
-      </p>
-      <p class="text-xs text-gray-500 dark:text-gray-400">
-        `filter` replaces the built-in substring match: this one is a prefix match, the kind a
-        server-side search would write.
-      </p>
-    </div>
+      </Note>
+    </Stack>
   )
 }
 
@@ -489,7 +503,7 @@ function UtcOffsetCombobox() {
   const offset = useSignal<string | null>(null)
 
   return (
-    <div class="space-y-2">
+    <Stack gap="sm">
       <Combobox
         items={utcOffsets}
         value={offset.value}
@@ -498,10 +512,8 @@ function UtcOffsetCombobox() {
         ariaLabel="UTC offset"
         placeholder="Select an offset…"
       />
-      <p class="text-xs text-gray-500 dark:text-gray-400">
-        {comboboxStatusLabel(offset.value, "")}
-      </p>
-    </div>
+      <Note>{comboboxStatusLabel(offset.value, "")}</Note>
+    </Stack>
   )
 }
 
@@ -509,15 +521,13 @@ function UtcOffsetCombobox() {
  * An empty list, and the moment its options turn up.
  *
  * Untouched, this field says nothing at all — no message on screen, and an empty live region for a
- * screen reader to find nothing in. "No matches" is an answer, and nobody has asked it anything
- * yet. Open it, or type in it, and the message arrives inside that region as the answer it is.
+ * screen reader to find nothing in. Open it, or type in it, and "no matches" arrives inside that
+ * region as an answer.
  *
- * The button is the other half of the same story, and the reason it waits rather than loading on
- * the spot: a press that filled the list immediately could only be made with the popup closed,
- * because pressing anything outside a combobox closes it. Arming a delay lets the options land
- * while the popup is open and empty, which is exactly what a slow network does, and it is what
- * `pages/checks/ui.ts` drives. `data-delay` carries the wait so the check waits the same amount
- * rather than keeping its own copy of the number.
+ * The button waits rather than loading on the spot: pressing anything outside a combobox closes
+ * it, so a delay is what lets the options land while the popup is open and empty, which is what a
+ * slow network does and what `pages/checks/ui.ts` drives. `data-delay` carries the wait so the
+ * check waits the same amount rather than keeping its own copy of the number.
  */
 function LoadingCombobox() {
   const currency = useSignal<string | null>(null)
@@ -529,7 +539,7 @@ function LoadingCombobox() {
   }
 
   return (
-    <div class="space-y-2">
+    <Stack gap="sm">
       <Combobox
         items={options.value}
         value={currency.value}
@@ -538,27 +548,23 @@ function LoadingCombobox() {
         ariaLabel="Currency, options still loading"
         placeholder="Select a currency…"
       />
-      <button
-        type="button"
-        class="rounded-md border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700"
-        data-e2e="combobox-load"
-        data-delay={arrivalDelay}
-        onClick={load}
-      >
-        Let the options arrive in {arrivalDelay}ms
-      </button>
-      <p class="text-xs text-gray-500 dark:text-gray-400">
-        {options.value.length === 0
-          ? "no options yet"
-          : `${options.value.length} options · ${comboboxStatusLabel(currency.value, "")}`}
-      </p>
-      <p class="text-xs text-gray-500 dark:text-gray-400">
-        An empty `items` list. Closed and untouched its live region is there and empty; open it and
-        the empty message answers the question that opening it asked. Arm the button, open the
-        field, and watch the options land underneath it: the message goes, and the first row is
-        highlighted, so `Enter` picks something without an arrow key first.
-      </p>
-    </div>
+      <Cluster gap="sm">
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="combobox-load"
+          data-delay={arrivalDelay}
+          onClick={load}
+        >
+          Load options in {arrivalDelay / 1000} s
+        </Button>
+        <Note>
+          {options.value.length === 0
+            ? "no options yet"
+            : `${options.value.length} options · ${comboboxStatusLabel(currency.value, "")}`}
+        </Note>
+      </Cluster>
+    </Stack>
   )
 }
 
@@ -566,20 +572,19 @@ function LoadingCombobox() {
  * The live region, and what typing puts into it.
  *
  * Every other field on this card is driven by a check that opens it, so none of them is still
- * untouched by the time the region is worth looking at — and "the region was there before anybody
- * touched the field" is exactly what has to be observed. This one exists to be read first and then
+ * untouched by the time the region is worth looking at. This one exists to be read first and then
  * typed in, and `pages/checks/ui.ts` drives nothing else on it.
  *
  * Both strings are the caller's rather than the component's defaults, so a check that found the
  * English wording would be reading a hard-coded string somewhere instead of the prop it is about.
- * The count is `sr-only`, so the only visible sign of it on the card is the report below the field.
+ * The count is visually hidden, so the only visible sign of it is the report below the field.
  */
 function AnnouncingCombobox() {
   const coin = useSignal<string | null>(null)
   const query = useSignal("")
 
   return (
-    <div class="space-y-2">
+    <Stack gap="sm">
       <Combobox
         items={coins}
         value={coin.value}
@@ -591,72 +596,44 @@ function AnnouncingCombobox() {
         emptyMessage="No coin left"
         countMessage={(count) => count === 1 ? "1 coin left" : `${count} coins left`}
       />
-      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
-        {comboboxStatusLabel(coin.value, query.value)}
-      </p>
-      <p class="text-xs text-gray-500 dark:text-gray-400">
-        The `role="status"` region under this field is in the page from the first render, empty.
-        Type, and the count of what is left arrives inside that same element — visually hidden,
-        because the rows themselves are the sighted answer. Type something that matches nothing and
-        the empty message takes its place. Clear the field and it goes quiet again.
-      </p>
-    </div>
+      <Note e2e="controlled-value">{comboboxStatusLabel(coin.value, query.value)}</Note>
+    </Stack>
   )
 }
 
 /**
  * Every combobox on the card: strings, objects, a controlled query, a long list, an empty one, and
- * the one that shows what the live region holds at each moment.
+ * one whose screen-reader count uses the caller's own words.
  */
 function ComboboxDemo() {
   return (
-    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-      <div class="space-y-2">
-        <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">String items</h4>
+    <Grid minColumnWidth="md" gap="lg">
+      <Variant title="Strings">
         <CoinCombobox />
-      </div>
-      <div class="space-y-2">
-        <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">Object items</h4>
+      </Variant>
+      <Variant title="Objects, one disabled">
         <CityCombobox />
-      </div>
-      <div class="space-y-2 sm:col-span-2">
-        <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">Controlled query</h4>
+      </Variant>
+      <Variant title="Your own search">
         <ServerSearchCombobox />
-      </div>
-      <div class="space-y-2">
-        <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">
-          Longer than the popup
-        </h4>
+      </Variant>
+      <Variant title="A long list">
         <UtcOffsetCombobox />
-      </div>
-      <div class="space-y-2">
-        <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">Nothing to offer yet</h4>
+      </Variant>
+      <Variant title="Options still loading">
         <LoadingCombobox />
-      </div>
-      <div class="space-y-2 sm:col-span-2">
-        <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">
-          What is announced, and when
-        </h4>
+      </Variant>
+      <Variant title="A spoken count in your words">
         <AnnouncingCombobox />
-      </div>
-      <p class="text-xs text-gray-500 dark:text-gray-400 sm:col-span-2">
-        The popup is in the markup at all times and marked `hidden` while closed, so what is
-        rendered here is the closed state: `role="combobox"` with `aria-expanded="false"`,
-        `aria-controls` pointing at the `role="listbox"`, and every option already present. Opening
-        it, the `aria-activedescendant` highlight and the key map are browser-only — the key map's
-        decision table is exported from the component and unit-tested there.
-      </p>
-    </div>
+      </Variant>
+    </Grid>
   )
 }
 
 /**
- * Five labelled switch rows: plain, described and required, and the three failure-ish shapes.
- *
- * The card's report is the caller's own state after `onToggle`, which is the entire contract. The
- * binding is the part that differs from every other row in the catalogue: a switch is a `<button>`,
- * `<button>` is not a labelable element, so there is no `for` — `aria-labelledby` names the switch
- * and the label's own click handler performs the activation the browser will not.
+ * Six labelled switch rows: plain, described and required, and the read-only, disabled and failing
+ * shapes. The card's report is the caller's own state after `onToggle`, which is the whole
+ * contract.
  */
 function ToggleFieldDemo() {
   const archived = useSignal(false)
@@ -664,62 +641,58 @@ function ToggleFieldDemo() {
   const notifications = useSignal(true)
 
   return (
-    <div class="space-y-5">
-      <ToggleField
-        id="guide-toggle-archived"
-        label="Show archived"
-        value={archived.value}
-        onToggle={(next) => archived.value = next}
-      />
-      <ToggleField
-        id="guide-toggle-admin"
-        label="Administrators only"
-        value={adminOnly.value}
-        onToggle={(next) => adminOnly.value = next}
-        description="Hides the row from everyone without the administrator role."
-        required
-      />
-      <ToggleField
-        id="guide-toggle-notifications"
-        label="Notifications"
-        value={notifications.value}
-        onToggle={(next) => notifications.value = next}
-        description="Send an email when a run fails."
-      />
-      <ToggleField
-        id="guide-toggle-readonly"
-        label="Read-only setting"
-        value={false}
-        onToggle={() => {}}
-        description="This caller discards the value, which is what a read-only setting looks like: the row stays live in the markup."
-      />
-      <ToggleField
-        id="guide-toggle-locked"
-        label="Locked setting"
-        value={false}
-        onToggle={() => {}}
-        description="The control itself is disabled, and the label is dimmed with it."
-        disabled
-      />
-      <ToggleField
-        id="guide-toggle-error"
-        label="Two-factor authentication"
-        value={false}
-        onToggle={() => {}}
-        error="Your role cannot change this setting."
-      />
-      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
+    <Stack gap="lg">
+      <Grid minColumnWidth="md" gap="lg">
+        <ToggleField
+          id="guide-toggle-archived"
+          label="Show archived"
+          value={archived.value}
+          onToggle={(next) => archived.value = next}
+        />
+        <ToggleField
+          id="guide-toggle-admin"
+          label="Administrators only"
+          value={adminOnly.value}
+          onToggle={(next) => adminOnly.value = next}
+          description="Hides the row from everyone without the administrator role."
+          required
+        />
+        <ToggleField
+          id="guide-toggle-notifications"
+          label="Notifications"
+          value={notifications.value}
+          onToggle={(next) => notifications.value = next}
+          description="Send an email when a run fails."
+        />
+        <ToggleField
+          id="guide-toggle-readonly"
+          label="Read-only setting"
+          value={false}
+          onToggle={() => {}}
+          description="The caller ignores the change, so the switch stays off."
+        />
+        <ToggleField
+          id="guide-toggle-locked"
+          label="Locked setting"
+          value={false}
+          onToggle={() => {}}
+          description="Disabled: the label dims with the switch."
+          disabled
+        />
+        <ToggleField
+          id="guide-toggle-error"
+          label="Two-factor authentication"
+          value={false}
+          onToggle={() => {}}
+          error="Your role cannot change this setting."
+        />
+      </Grid>
+      <Note e2e="controlled-value">
         archived: {archived.value ? "on" : "off"} · admin only: {adminOnly.value ? "on" : "off"}
         {" "}
         · notifications: {notifications.value ? "on" : "off"}
-      </p>
-      <p class="text-xs text-gray-500 dark:text-gray-400">
-        The last three rows are `aria-describedby` targets: `error` renders a polite live region and
-        `description` a hint, both wired from the same required id — the `-error` and `-hint`
-        suffixes, the ids `Field` would have used. Empty or whitespace-only text renders but is not
-        referred to.
-      </p>
-    </div>
+      </Note>
+    </Stack>
   )
 }
 
@@ -727,31 +700,17 @@ function ToggleFieldDemo() {
  * `FileInput` in five shapes: image-only and size-limited, disabled, nested inside a `Field`, capped
  * at one file, and posting through a plain `<form>`.
  *
- * Selecting, dropping, refusing and removing a file are all browser-only, so what a card can show
- * ahead of the first click is the closed-state markup: the visually hidden native input inside its
- * drop zone, the label wired to it, and an always-present, empty `role="status"` for a refusal that
- * has not happened yet. What a caller actually reads — `onFiles` and `onReject` — is echoed
- * underneath, in place of trusting the component's own live region to speak for its port.
+ * What a caller reads — `onFiles` and `onReject` — is echoed under the first and fourth pickers.
+ * Inside a `Field`, the label and hint go to `Field`, and `FileInput` renders none of its own.
  *
- * The "Inside a Field" card passes `label` and `hint` to `Field`, not to `FileInput`: `FileInput`
- * renders no label of its own there, and `Field`'s own clone is what supplies `FileInput`'s
- * `aria-describedby`.
+ * The single-file picker has no `multiple`, so a second file is refused with reason `"too-many"`;
+ * it also accepts PNG only, which `pages/checks/ui.ts` uses to prove a wrong-type refusal leaves a
+ * file already chosen in place. The last picker's `<form>` has no `onSubmit`: it is the plain
+ * multipart post, which the checks prove against the `form-demo/` static page.
  *
- * The "Single file only" card carries no `multiple`, so a second file dropped or picked alongside
- * the first is refused with reason `"too-many"` rather than silently dropped; the paragraph under it
- * echoes `onReject` the same way the first card does. It also restricts `accept` to PNG, which
- * `pages/checks/ui.ts`'s `fileInputRefusalKeepsPriorFileCheck` uses to prove a wrong-type refusal
- * leaves a file already chosen in place, on a card that only ever holds one.
- *
- * The last card's `<form>` carries no `onSubmit`: it is the plain post `FileInput`'s own doc
- * promises, proven by `pages/checks/ui.ts`'s `fileInputFormPostCheck` against the `form-demo/`
- * static page the `EnhancedForm` cards already post to when no script runs theirs.
- *
- * The first card's own toggle button (`data-e2e="file-input-toggle-mount"`) is scaffolding, not a
- * `FileInput` prop: this catalogue never unmounts a card on its own — every section stays in the
- * markup once rendered, anchored rather than routed — so proving preview URLs are revoked "on
- * unmount" needs a real Preact unmount somewhere, and this button is what gives the check one
- * without navigating the whole page away and losing the ability to read anything back afterward.
+ * The unmount button (`data-e2e="file-input-toggle-mount"`) is scaffolding, not a `FileInput` prop:
+ * the catalogue never unmounts a card on its own, so proving preview URLs are revoked on unmount
+ * needs a real Preact unmount, and this button gives the check one without leaving the page.
  */
 function FileInputDemo() {
   const chosen = useSignal<string[]>([])
@@ -760,11 +719,8 @@ function FileInputDemo() {
   const singleRefused = useSignal<string[]>([])
 
   return (
-    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-      <div class="space-y-2">
-        <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">
-          Images only, up to 2 MB
-        </h4>
+    <Grid minColumnWidth="md" gap="lg">
+      <Variant title="Images only, up to 2 MB">
         {mounted.value && (
           <FileInput
             id="guide-file-input"
@@ -778,43 +734,24 @@ function FileInputDemo() {
               refused.value = reasons.map((r) => `${r.file.name} (${r.reason})`)}
           />
         )}
-        <button
-          type="button"
-          class="text-xs text-blue-600 underline dark:text-blue-400"
-          data-e2e="file-input-toggle-mount"
-          onClick={() => mounted.value = !mounted.value}
-        >
-          {mounted.value ? "Unmount" : "Remount"} this card
-        </button>
-        <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="file-input-chosen">
+        <Note e2e="file-input-chosen">
           chosen: {chosen.value.length === 0 ? "none" : chosen.value.join(", ")}
-        </p>
-        <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="file-input-refused">
+        </Note>
+        <Note e2e="file-input-refused">
           refused: {refused.value.length === 0 ? "none" : refused.value.join(", ")}
-        </p>
-      </div>
-      <div class="space-y-2">
-        <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">Disabled</h4>
-        <FileInput id="guide-file-input-disabled" label="Attachments" disabled />
-      </div>
-      <div class="space-y-2">
-        <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">Inside a Field</h4>
-        <Field
-          id="guide-file-input-field"
-          label="Attachments"
-          hint="Up to 2 MB each"
-        >
-          <FileInput id="guide-file-input-field" />
-        </Field>
-        <p class="text-xs text-gray-500 dark:text-gray-400">
-          `Field` renders the one visible label; `FileInput` itself gets no `label`, `hint` or
-          `error` here, so it renders none of its own.
-        </p>
-      </div>
-      <div class="space-y-2">
-        <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">
-          Single file only (drop or pick more than one)
-        </h4>
+        </Note>
+        <Cluster>
+          <Button
+            variant="outline"
+            size="sm"
+            data-e2e="file-input-toggle-mount"
+            onClick={() => mounted.value = !mounted.value}
+          >
+            {mounted.value ? "Unmount" : "Remount"} this picker
+          </Button>
+        </Cluster>
+      </Variant>
+      <Variant title="One file, PNG only">
         <FileInput
           id="guide-file-input-single"
           label="Attachment"
@@ -823,31 +760,47 @@ function FileInputDemo() {
           onReject={(reasons) =>
             singleRefused.value = reasons.map((r) => `${r.file.name} (${r.reason})`)}
         />
-        <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="file-input-single-refused">
+        <Note e2e="file-input-single-refused">
           refused: {singleRefused.value.length === 0 ? "none" : singleRefused.value.join(", ")}
-        </p>
-      </div>
-      <div class="space-y-2 sm:col-span-2">
-        <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">A plain form post</h4>
-        <form action="form-demo/" method="post" encType="multipart/form-data" class="space-y-3">
-          <FileInput id="guide-file-input-form" name="attachment" label="Attachment" />
-          <Button type="submit" variant="outline">Send</Button>
+        </Note>
+      </Variant>
+      <Variant
+        title={
+          <>
+            Inside a <code>Field</code>
+          </>
+        }
+      >
+        <Field
+          id="guide-file-input-field"
+          label="Attachments"
+          hint="Up to 2 MB each"
+        >
+          <FileInput id="guide-file-input-field" />
+        </Field>
+      </Variant>
+      <Variant title="Disabled">
+        <FileInput id="guide-file-input-disabled" label="Attachments" disabled />
+      </Variant>
+      <Variant title="A plain form post">
+        <form action="form-demo/" method="post" encType="multipart/form-data">
+          <Stack gap="sm">
+            <FileInput id="guide-file-input-form" name="attachment" label="Attachment" />
+            <Cluster>
+              <Button type="submit" variant="outline">Send</Button>
+            </Cluster>
+          </Stack>
         </form>
-        <p class="text-xs text-gray-500 dark:text-gray-400">
-          No `onSubmit`: whatever this form posts is the browser's own multipart body, built from
-          the native input `FileInput` wraps.
-        </p>
-      </div>
-    </div>
+      </Variant>
+    </Grid>
   )
 }
 
 /**
- * The picker with a real range and a highlighted preset.
+ * The picker with a real range and a highlighted preset, every label spelled out.
  *
- * The panel uses `role="group"`, so it can hold the two date inputs that `Dropdown`'s `role="menu"`
- * could not. Opening it, the preset maths, the custom draft and the outside-click close all run in
- * the browser; the trigger's text is `from → to` of whatever the caller's `range` holds.
+ * The wrapper keeps `space-y-3`: `pages/checks/ui.ts` finds a picker's status line through
+ * `closest("div.space-y-3")` (the `withTime` picker's check does), so the three pickers share it.
  */
 function DateRangePickerDemo() {
   const range = useSignal<DateRange | null>(fixedToday)
@@ -864,46 +817,26 @@ function DateRangePickerDemo() {
         selectedPreset="last-7-days"
         dataE2E="guide-date-range"
       />
-      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
+      <Note e2e="controlled-value">
         range: {range.value === null ? "none" : dateRangeTouched(range.value)}
-      </p>
-      <div class="space-y-1 text-xs text-gray-500 dark:text-gray-400">
-        <p>
-          Every preset resolves against an injected instant,{" "}
-          <code>now={fixedNow.toISOString()}</code> in{" "}
-          <code>{fixedZone}</code>, so the numbers below are the same on every build:
-        </p>
-        <ul class="list-disc pl-4">
-          {datePresetOptions.map((option) => (
-            <li key={option.preset}>
-              {option.label}: {presetNote(option.preset)}
-            </li>
-          ))}
-        </ul>
-        <p>
-          Without `now` the component reads the clock inside the click handler, never during render,
-          so an app that wants "today" gets it and the first render stays deterministic.
-        </p>
-      </div>
+      </Note>
+      <ul class="text-xs text-gray-500 dark:text-gray-400">
+        {datePresetOptions.map((option) => (
+          <li key={option.preset}>
+            {option.label}: {presetNote(option.preset)}
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }
 
 /**
- * The picker with nothing chosen, a draft the caller would refuse, and five default labels.
- *
- * Nothing chosen is what a filter bar starts as: the trigger reads `placeholder` and the caller's
- * `range` is `null`. The reversed pair below is the validation case — the panel accepts it as text
- * and cannot commit it.
- *
- * This card is also where the library's own copy is rendered. It passes `placeholder` and nothing
- * else, so the panel's name, both field labels and both buttons are the component's English
- * defaults; the card above passes all six. Between them the catalogue shows both paths, which
- * matters because a default that nothing renders is a default nobody has looked at.
+ * The picker with nothing chosen and only `placeholder` passed, so every other label in its panel
+ * is the component's English default; the card above passes all six, so the two render both paths.
  */
 function DateRangePickerEmptyDemo() {
   const range = useSignal<DateRange | null>(null)
-  const rejected: DateRange = { from: "2026-03-31", to: "2026-03-01" }
 
   return (
     <div class="space-y-3">
@@ -920,23 +853,9 @@ function DateRangePickerEmptyDemo() {
         labels={{ placeholder: "All time" }}
         dataE2E="guide-date-range-empty"
       />
-      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
-        range:{" "}
-        {range.value === null
-          ? "none — the trigger reads “All time”"
-          : dateRangeTouched(range.value)}
-      </p>
-      <p class="text-xs text-gray-500 dark:text-gray-400">
-        A draft the caller would refuse reads {dateRangeTouched(rejected)}{" "}
-        — the same rule the Apply button follows, which is why the reversed pair cannot be
-        committed.
-      </p>
-      <p class="text-xs text-gray-500 dark:text-gray-400">
-        Only <code>placeholder</code>{" "}
-        is passed here. “Date range”, “From”, “To”, “Apply” and “Cancel” inside the panel are the
-        component's own English defaults, so a caller with nothing to translate writes no copy at
-        all.
-      </p>
+      <Note e2e="controlled-value">
+        range: {range.value === null ? "none" : dateRangeTouched(range.value)}
+      </Note>
     </div>
   )
 }
@@ -944,11 +863,7 @@ function DateRangePickerEmptyDemo() {
 /**
  * The picker with `withTime` on: From and To are `datetime-local` fields, and the panel also offers
  * the two presets that only make sense with a time of day, `"last-hour"` and `"last-24-hours"`.
- *
- * No `presets` prop in this mode — see `DateRangePickerTimeProps`'s own doc for why — so the custom
- * fields are always here to type an arbitrary range into, rather than gated behind a `"custom"`
- * entry the caller opts into. `now` is injected, the same way the two day-mode cards above inject
- * it, so the two sub-day presets resolve to the same numbers at every build.
+ * `now` is injected, so the two sub-day presets resolve to the same numbers at every build.
  */
 function DateRangePickerWithTimeDemo() {
   const range = useSignal<DateTimeRange | null>(null)
@@ -963,23 +878,51 @@ function DateRangePickerWithTimeDemo() {
         now={fixedNow}
         dataE2E="guide-date-range-time"
       />
-      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
+      <Note e2e="controlled-value">
         range: {range.value === null ? "none" : dateTimeRangeTouched(range.value)}
-      </p>
-      <p class="text-xs text-gray-500 dark:text-gray-400">
-        <code>Last hour</code> and <code>Last 24 hours</code>{" "}
-        are real elapsed time, not calendar walking: each subtracts exactly one or twenty-four hours
-        from <code>now={fixedNow.toISOString()}</code> before reading the wall clock in{" "}
-        <code>{fixedZone}</code> — the maths that keeps them correct across a clock change.
-      </p>
+      </Note>
     </div>
+  )
+}
+
+/** The three pickers side by side: a chosen range, nothing chosen, and `withTime`. */
+function DateRangePickersDemo() {
+  return (
+    <Grid minColumnWidth="md" gap="lg">
+      <Variant title="Presets, labels spelled out">
+        <DateRangePickerDemo />
+      </Variant>
+      <Variant title="Nothing chosen, default labels">
+        <DateRangePickerEmptyDemo />
+      </Variant>
+      <Variant
+        title={
+          <>
+            Date and time: <code>withTime</code>
+          </>
+        }
+      >
+        <DateRangePickerWithTimeDemo />
+      </Variant>
+    </Grid>
   )
 }
 
 export const inputDemos = {
   ToggleSwitch: {
     summary:
-      "Two-state switch, controlled. Renders `value`, reports the intended value through `onToggle`; persistence belongs to the caller.",
+      "An on/off switch for one setting that applies at once, such as showing archived rows.",
+    wide: false,
+    props: [
+      { name: "value", type: "boolean", description: "Whether the switch is on." },
+      {
+        name: "onToggle",
+        type: "(value: boolean) => void",
+        description: "Called with the value a press asks for; the caller stores it.",
+      },
+      { name: "label", type: "string", description: "The switch's accessible name." },
+      { name: "disabled", type: "boolean", default: "false", description: "Greys it out." },
+    ],
     snippet: `<ToggleSwitch
   value={archived.value}
   onToggle={(next) => archived.value = next}
@@ -989,7 +932,31 @@ export const inputDemos = {
   },
   OnOffButtons: {
     summary:
-      "Segmented ON/OFF pair. `value` of `undefined` leaves both halves unselected; `amount` annotates them with counts.",
+      "A two-button ON/OFF filter that can also start with neither half chosen, with optional counts.",
+    wide: false,
+    props: [
+      {
+        name: "value",
+        type: "boolean | undefined",
+        description: "The chosen half; `undefined` chooses neither.",
+      },
+      {
+        name: "onSwitch",
+        type: "(on: boolean) => void",
+        description: "Called with the half that was pressed.",
+      },
+      {
+        name: "amount",
+        type: "{ on: number; off: number }",
+        description: "A count shown under each half.",
+      },
+      {
+        name: "onLabel / offLabel",
+        type: "string",
+        default: `"ON" / "OFF"`,
+        description: "The halves' text.",
+      },
+    ],
     snippet: `<OnOffButtons
   value={showActive.value}
   amount={{ on: 128, off: 14 }}
@@ -997,9 +964,62 @@ export const inputDemos = {
 />`,
     render: () => <OnOffButtonsDemo />,
   },
+  ToggleField: {
+    summary:
+      "A settings row: a label and a `ToggleSwitch` on one line, with a description or an error under them.",
+    wide: true,
+    props: [
+      {
+        name: "id",
+        type: "string",
+        description: "The switch's id; the messages' ids derive from it.",
+      },
+      { name: "label", type: "ComponentChildren", description: "The row's visible name." },
+      { name: "value", type: "boolean", description: "Whether the switch is on." },
+      {
+        name: "onToggle",
+        type: "(value: boolean) => void",
+        description: "Called with the value a press asks for.",
+      },
+      { name: "description", type: "ComponentChildren", description: "A hint under the row." },
+      { name: "error", type: "string | null", description: "An error under the row, announced." },
+    ],
+    snippet: `<ToggleField
+  id="show-archived"
+  label="Show archived"
+  value={archived.value}
+  onToggle={(next) => archived.value = next}
+  description="Hides the row from the list"
+  required
+/>`,
+    render: () => <ToggleFieldDemo />,
+  },
   Dropdown: {
     summary:
-      "Trigger plus a real menu. Opening it moves focus to the first item; Arrow Down and Arrow Up walk the items with Home and End at the ends; Escape closes it and gives the trigger its focus back; and it closes as soon as focus leaves, which one Tab press does because the items are out of the tab order. Outside-click still dismisses it. The trigger's accessible name is required and comes in two shapes, because one `aria-label` cannot serve both: `triggerLabel` names an icon trigger, and `triggerNamedByContent` declares that a trigger's own visible text is its name so nothing is written over it. Open/closed is local state, so the panel is `hidden` in the server render, and every `document` access sits in an effect or a handler.",
+      "A button that opens a menu of actions, which the arrow keys, Home, End and Escape work through.",
+    wide: false,
+    props: [
+      { name: "trigger", type: "ComponentChildren", description: "What the button shows." },
+      {
+        name: "triggerLabel",
+        type: "string",
+        description:
+          "The button's name when it shows only an icon; a text trigger passes `triggerNamedByContent` instead.",
+      },
+      { name: "menuLabel", type: "string", description: "The menu's accessible name." },
+      {
+        name: "vertical",
+        type: `"up" | "down"`,
+        default: `"down"`,
+        description: "Which way the menu opens.",
+      },
+      {
+        name: "horizontal",
+        type: `"left" | "right"`,
+        default: `"right"`,
+        description: "Which edge of the button the menu lines up with.",
+      },
+    ],
     snippet: `<Dropdown
   trigger={<IconEllipsisVertical />}
   triggerLabel="Row actions"
@@ -1013,57 +1033,58 @@ export const inputDemos = {
   },
   DropdownItem: {
     summary:
-      'One item of a `Dropdown`\'s menu: a link with `href` and a `<button>` without one. It exists because `role="menuitem"` cannot be applied from outside — `Dropdown` receives its children already rendered, and a menu whose children carry no role is, to a screen reader, a menu with nothing in it. The item is out of the tab order, because inside a menu the arrow keys move between items and Tab leaves altogether. A disabled item is skipped by those keys rather than landed on.',
+      "One entry of a `Dropdown` menu: a link when it has an `href`, a button when it does not.",
+    wide: false,
     snippet: `<DropdownItem href="/regions/1/edit">Edit</DropdownItem>
 <DropdownItem class="text-red-600" onClick={archive}>Archive</DropdownItem>
 <DropdownItem disabled onClick={archive}>Archive</DropdownItem>`,
     render: () => (
-      <div
-        class="w-56 rounded-md border border-gray-200 py-1 dark:border-gray-700"
-        role="menu"
-        aria-orientation="vertical"
-        aria-label="Item shapes"
-      >
-        <DropdownItem href="#inputs">A link, because it has one</DropdownItem>
-        <DropdownItem onClick={() => {}}>A button, because it does not</DropdownItem>
+      <div class="w-56" role="menu" aria-orientation="vertical" aria-label="Item shapes">
+        <DropdownItem href="#inputs">A link, because it has an href</DropdownItem>
+        <DropdownItem onClick={() => {}}>A button, because it has none</DropdownItem>
         <DropdownItem class="text-red-600 dark:text-red-400" onClick={() => {}}>
-          Destructive, through `class`
+          Destructive, through its class
         </DropdownItem>
         <DropdownItem disabled onClick={() => {}}>Disabled</DropdownItem>
       </div>
     ),
   },
-  ToggleField: {
-    summary:
-      "Labelled row for a `ToggleSwitch`: label and switch on one line, `description` and `error` under them. It deliberately does not render through `Field` — a switch is a `<button>`, which is not a labelable element, so there is no `for` to write: `aria-labelledby` names the switch and the label carries the click the browser will not perform. The two message ids are the ones `Field` uses, `${id}-error` and `${id}-hint`.",
-    snippet: `<ToggleField
-  id="show-archived"
-  label="Show archived"
-  value={archived.value}
-  onToggle={(next) => archived.value = next}
-  description="Hides the row from the list"
-  required
-/>`,
-    render: () => <ToggleFieldDemo />,
-  },
-  FileInput: {
-    summary:
-      'File picker on a real `<input type="file">`, hidden with `sr-only` so keyboard, screen-reader and plain-form-post behaviour all stay native; the drop zone is a `<div>` around it, not a second label. `accept` and `maxSize` refusals go through `onReject` and an always-present live region; `previews` (default on) shows and revokes an image thumbnail per file. Does not upload.',
-    snippet: `<FileInput
-  id="attachments"
-  label="Attachments"
-  hint="PNG or JPEG, up to 2 MB each"
-  accept="image/png,image/jpeg"
-  maxSize={2 * 1024 * 1024}
-  multiple
-  onFiles={(files) => chosen.value = files}
-  onReject={(reasons) => refused.value = reasons}
-/>`,
-    render: () => <FileInputDemo />,
-  },
   Combobox: {
     summary:
-      'Searchable single-select: the ARIA combobox pattern by hand, with `role="listbox"` options and focus never leaving the input — the highlight is announced through `aria-activedescendant`, moved by the keyboard alone and followed by the list, which scrolls to keep it on screen. Items may be any `T` once `getLabel` says what to render and match; `filter` replaces the built-in substring match, and a controlled `query` with `onQueryChange` is the server-side shape. Every string it shows defaults to English and takes an override: `placeholder`, `emptyMessage`, `countMessage` and `clearLabel`. One `role="status"` region is rendered with the field and never taken away, empty until the field has been used, and the answers arrive inside it: how many options the query left, or the empty message when it left none. The empty message waits until the field is open or has a query in it, so a field nobody has touched — one whose options are still loading, say — never claims there are no matches.',
+      "A text field that filters a list as you type and picks one item from it, by keyboard or pointer.",
+    wide: true,
+    props: [
+      { name: "items", type: "readonly T[]", description: "Everything that can be picked." },
+      { name: "value", type: "T | null", description: "The picked item." },
+      {
+        name: "onChange",
+        type: "(value: T | null) => void",
+        description: "Called with the new pick, or `null` when cleared.",
+      },
+      {
+        name: "getLabel",
+        type: "(item: T) => string",
+        default: "String",
+        description: "The text shown and searched for an item; pass it for objects.",
+      },
+      {
+        name: "filter",
+        type: "(items, query) => T[]",
+        default: "folded substring match",
+        description: "Replaces the built-in search.",
+      },
+      {
+        name: "query / onQueryChange",
+        type: "string / (query: string) => void",
+        description: "Hands the typed text to the caller, as a server-side search needs.",
+      },
+      {
+        name: "emptyMessage",
+        type: "string | ((query: string) => ComponentChildren)",
+        default: `"No matches"`,
+        description: "What the list says when nothing matches.",
+      },
+    ],
     snippet: `<Combobox
   items={cities}
   value={city.value}
@@ -1077,7 +1098,43 @@ export const inputDemos = {
   },
   DateRangePicker: {
     summary:
-      'Preset menu plus a custom from/to panel over `rangeForPreset`. The value is controlled, every string in the panel defaults to English and can be overridden one key at a time, and `timeZone` is required because the server\'s zone is not the visitor\'s. The clock is either injected through `now` or read inside a click handler, never during render, so the first render is deterministic. The panel is a `role="group"` rather than a menu, because it contains form controls. Focus follows the panel: opening moves it to the pressed preset, and Escape, a preset, Apply and Cancel all hand it back to the trigger. `withTime` swaps the two date fields for `datetime-local` ones, carries a timed `DateTimeRange` instead of a `DateRange`, and adds two presets built for a time of day — `"last-hour"` and `"last-24-hours"`, both computed over `rangeForTimePreset`.',
+      "A filter-bar control that picks a date range from presets such as Last 7 days, or from two date fields.",
+    wide: true,
+    props: [
+      {
+        name: "range / onChange",
+        type: "DateRange | null / (range) => void",
+        description: "The chosen range, held by the caller.",
+      },
+      {
+        name: "timeZone",
+        type: "string",
+        description: "The zone presets resolve in, because the server's is not the visitor's.",
+      },
+      {
+        name: "presets",
+        type: "DateRangePresetOption[]",
+        description: "The preset buttons, in order; a `custom` entry opens the date fields.",
+      },
+      {
+        name: "now",
+        type: "Date",
+        default: "the clock, read on a press",
+        description: "The instant presets resolve against.",
+      },
+      {
+        name: "withTime",
+        type: "boolean",
+        default: "false",
+        description: "Date and time fields, a timed range, and last-hour presets.",
+      },
+      {
+        name: "labels",
+        type: "DateRangePickerLabels",
+        default: "English",
+        description: "Every word in the panel, one key at a time.",
+      },
+    ],
     snippet: `<DateRangePicker
   range={range.value}
   onChange={(next) => range.value = next}
@@ -1099,12 +1156,43 @@ export const inputDemos = {
   onChange={(next) => timedRange.value = next}
   timeZone="Europe/Paris"
 />`,
-    render: () => (
-      <div class="space-y-6">
-        <DateRangePickerDemo />
-        <DateRangePickerEmptyDemo />
-        <DateRangePickerWithTimeDemo />
-      </div>
-    ),
+    render: () => <DateRangePickersDemo />,
+  },
+  FileInput: {
+    summary:
+      "A file picker with a drop zone that refuses the wrong type or size and previews images; it does not upload.",
+    wide: true,
+    props: [
+      { name: "id", type: "string", description: "The native input's id." },
+      {
+        name: "accept / maxSize",
+        type: "string / number",
+        description: "What it keeps: file types, and the largest size in bytes.",
+      },
+      { name: "multiple", type: "boolean", default: "false", description: "Allows several files." },
+      { name: "onFiles", type: "(files: File[]) => void", description: "The files it kept." },
+      {
+        name: "onReject",
+        type: "(reasons: FileRejection[]) => void",
+        description: "The files it refused, each with its reason.",
+      },
+      {
+        name: "previews",
+        type: "boolean",
+        default: "true",
+        description: "Shows a thumbnail beside each image.",
+      },
+    ],
+    snippet: `<FileInput
+  id="attachments"
+  label="Attachments"
+  hint="PNG or JPEG, up to 2 MB each"
+  accept="image/png,image/jpeg"
+  maxSize={2 * 1024 * 1024}
+  multiple
+  onFiles={(files) => chosen.value = files}
+  onReject={(reasons) => refused.value = reasons}
+/>`,
+    render: () => <FileInputDemo />,
   },
 } satisfies DemoFragment
