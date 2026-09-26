@@ -16,27 +16,23 @@ The design system and the original markup are by [Eirene](https://github.com/Eir
 Live guide: https://spy4x.github.io/preact-components — every component running, with its code.
 
 ```bash
-deno add jsr:@spy4x/preact-ui   # once published; see Status below
+deno add jsr:@spy4x/preact-ui
 ```
 
 ## Status
 
-Pre-1.0, not yet published to JSR. `deno task publish:dry` runs `deno publish --dry-run` for
-every package that ships, and it passes for all ten — the publishability sweep in #223 is done.
-"Published" will mean each package below resolves as
-`jsr:@spy4x/preact-<name>` and installs with `deno add`. Until then there is nothing on JSR
-for `deno add` to find.
+Pre-1.0. Every package is published on JSR at `0.1.0` as `jsr:@spy4x/preact-<name>`, released
+together from a `v*` tag by Woodpecker (#150) — see [`docs/publishing.md`](./docs/publishing.md).
 
 No published file names a private application (#237). `deno task private-names <names-file>`
-re-checks that against every package's dry-run file list; the owner runs it before each publish —
-see [`docs/pre-publish-checks.md`](./docs/pre-publish-checks.md).
+re-checks that against every package's dry-run file list, before each release tag is pushed — see
+[`docs/pre-publish-checks.md`](./docs/pre-publish-checks.md).
 
 ## Install
 
 Every package is published at the same version every time, so the caret range a package puts on
 its siblings (`^0.1.N`) always resolves to the set published with it — see
-[`docs/publishing.md`](./docs/publishing.md). Once published, each package below installs on its
-own:
+[`docs/publishing.md`](./docs/publishing.md). Each package below installs on its own:
 
 ```bash
 deno add jsr:@spy4x/preact-cn        # class-name join + Tailwind conflict resolution
