@@ -1,6 +1,6 @@
 {
   "name": "@spy4x/preact-signals",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "exports": {
     ".": "./+index.ts",
     "./build-model-store": "./build-model-store.ts",
