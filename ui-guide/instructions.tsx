@@ -107,6 +107,15 @@ const BUTTON_CLASSES_REASON =
   'Demonstrated through `ui/Button` (`variant` × `size`), which inlines its own utilities, and consumed in class form by `crud/`. A `.btn-danger` card next to `<Button variant="danger">` would document two APIs for one control.'
 
 /**
+ * The Map card's classes: `map/` applies them to its pins and its list of places, and the guide
+ * loads `map/` only when the map page opens (`sections/map-leaflet.tsx`, #315), so the server-rendered
+ * catalogue `classes.test.tsx` measures holds the card's placeholder instead. `pages/checks/map.ts`
+ * sees them in the browser.
+ */
+const MAP_CLASSES_REASON =
+  "Applied by `map/Map` to its pins and its list of places. The guide loads `map/` only when the map page opens, so the server-rendered catalogue shows a placeholder in its place; the map page shows them in the browser."
+
+/**
  * Classes `preset.css` defines that the catalogue deliberately does not apply, with the reason.
  *
  * The exclusion half of the class guard: `classes.test.tsx` fails when a class is neither
@@ -132,6 +141,10 @@ export const UNDEMONSTRATED_CLASSES: Record<string, string> = {
   "btn-success-outline": BUTTON_CLASSES_REASON,
   "btn-icon": BUTTON_CLASSES_REASON,
   "btn-disabled": BUTTON_CLASSES_REASON,
+  "map-marker": MAP_CLASSES_REASON,
+  "status-on": MAP_CLASSES_REASON,
+  "status-off": MAP_CLASSES_REASON,
+  "status-unknown": MAP_CLASSES_REASON,
 }
 
 /**

@@ -1,11 +1,12 @@
 /**
  * The Map section.
  *
- * One card, one component. Leaflet draws in an effect, so this card's server-rendered form is
- * genuinely an empty, sized box plus the plain-text list below it — the same honesty note
- * `charts.tsx`'s d3 islands carry. Confirming the tiles load and the markers become live pins needs a
- * browser, which `pages/checks/map.ts` is; `deno task test` only proves the box, the list and the
- * escaping of caller data.
+ * One card, one component. The card reaches `Map` only through `LazyMap` (`map-leaflet.tsx`), so the
+ * package, and Leaflet with it, loads only when the map page is shown (#315); the card's
+ * server-rendered form is a sized placeholder box, the same honesty note `charts.tsx`'s d3 islands
+ * carry. Confirming the map loads, the tiles draw and the markers become live pins needs a browser,
+ * which `pages/checks/map.ts` is; `map/map.test.tsx` proves the box, the list and the escaping of
+ * caller data.
  *
  * The tile URL is a **relative** path with no `{z}/{x}/{y}` placeholders — `map-demo/tile.png`, one
  * tiny local image `pages/build.ts` copies into the artefact, requested unchanged for every tile
@@ -15,9 +16,10 @@
  * #143's security requirement.
  */
 
-import { Map, type MapMarker } from "@spy4x/preact-map"
+import type { MapMarker } from "@spy4x/preact-map"
 import { useSignal } from "@preact/signals"
 import type { DemoFragment } from "../registry.ts"
+import { LazyMap } from "./map-leaflet.tsx"
 
 /** Three places, one of each status, so every `status-*` colour the theme defines has a marker. */
 const PLACES: MapMarker[] = [
@@ -39,7 +41,7 @@ function MapInteractiveDemo() {
 
   return (
     <div class="space-y-3" data-e2e="map-interactive">
-      <Map
+      <LazyMap
         center={{ lat: 50, lng: 5 }}
         zoom={4}
         markers={PLACES}
