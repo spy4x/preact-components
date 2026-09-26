@@ -36,7 +36,7 @@
     font-size: 1rem;
     line-height: 1.5rem;
     color: var(--color-foreground, oklch(0.13 0.028 261.692));
-    background-color: var(--color-canvas, oklch(0.985 0.002 247.839));
+    background-color: var(--color-canvas, oklch(0.967 0.003 264.542));
     -webkit-font-smoothing: antialiased;
   }
 }
@@ -51,6 +51,14 @@
   background-color: var(--color-primary, oklch(0.38 0.17 293));
 }
 
+/*
+ * The accent as a fill. `bg-primary` is chrome: near-black under `.dark`, where it all but vanishes
+ * on a dark track. A fill that has to be seen in both palettes, such as a progress bar, reads this.
+ */
+@utility bg-primary-muted {
+  background-color: var(--color-primary-muted, oklch(0.558 0.288 302.321));
+}
+
 @utility border-primary {
   border-color: var(--color-primary-muted, oklch(0.558 0.288 302.321));
 }
@@ -60,11 +68,11 @@
 }
 
 @utility text-muted {
-  color: var(--color-muted-foreground, oklch(0.551 0.027 264.364));
+  color: var(--color-muted-foreground, oklch(0.446 0.03 256.802));
 }
 
 @utility bg-canvas {
-  background-color: var(--color-canvas, oklch(0.985 0.002 247.839));
+  background-color: var(--color-canvas, oklch(0.967 0.003 264.542));
 }
 
 @utility bg-surface {
@@ -135,7 +143,7 @@
 @utility link {
   @apply underline decoration-gray-300 hover:text-primary hover:no-underline
     dark:decoration-gray-600;
-  color: var(--color-muted-foreground, oklch(0.551 0.027 264.364));
+  color: var(--color-muted-foreground, oklch(0.446 0.03 256.802));
 }
 
 /*
@@ -298,6 +306,11 @@
     color: var(--color-placeholder, oklch(0.551 0.027 264.364));
   }
 
+  /* A native control draws itself in the page's colour scheme, not from the tokens. */
+  :where(.dark) & {
+    color-scheme: dark;
+  }
+
   /*
    * `focus:ring-transparent` in the original, kept as a real rule rather than an
    * `@apply`: the ring colour utilities read `--color-*` theme entries, which is
@@ -328,6 +341,11 @@
     color: var(--color-placeholder, oklch(0.551 0.027 264.364));
   }
 
+  /* A native control draws itself in the page's colour scheme, not from the tokens. */
+  :where(.dark) & {
+    color-scheme: dark;
+  }
+
   &:focus {
     /* --color-focus-ring is defined only by ink, so the default palettes keep the accent here. */
     border-color: var(--color-focus-ring, var(--color-primary-muted, oklch(0.558 0.288 302.321)));
@@ -346,12 +364,21 @@
 @utility checkbox {
   @apply size-5 rounded-sm border-gray-400 focus:ring-transparent;
   color: var(--color-primary-muted, oklch(0.558 0.288 302.321));
+
+  /* Without it Chromium draws a white box on a dark page (#347). */
+  :where(.dark) & {
+    color-scheme: dark;
+  }
 }
 
 @utility radio {
   @apply size-4;
   border-color: var(--color-border-control, oklch(0.872 0.01 258.338));
   color: var(--color-primary-muted, oklch(0.558 0.288 302.321));
+
+  :where(.dark) & {
+    color-scheme: dark;
+  }
 }
 
 /*
@@ -483,7 +510,7 @@
 
 @utility kpi-label {
   @apply text-xs uppercase tracking-wide;
-  color: var(--color-muted-foreground, oklch(0.551 0.027 264.364));
+  color: var(--color-muted-foreground, oklch(0.446 0.03 256.802));
 }
 
 @utility kpi-value {

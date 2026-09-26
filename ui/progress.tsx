@@ -42,7 +42,7 @@ export type ProgressProps =
   )
 
 const toneClasses: Record<ProgressTone, string> = {
-  primary: "bg-primary",
+  primary: "bg-primary dark:bg-primary-muted",
   success: "bg-success",
   warning: "bg-warning",
   danger: "bg-danger",

@@ -213,7 +213,8 @@ under "Install" instead.
 
 ### Classes
 
-- **Colour atoms** — `text-primary`, `bg-primary`, `border-primary`,
+- **Colour atoms** — `text-primary`, `bg-primary`, `bg-primary-muted` (the accent as a fill,
+  which stays visible in dark where `bg-primary` is near-black chrome), `border-primary`,
   `rounded-primary`, `text-muted`, `bg-canvas`, `bg-surface`, `border-subtle`,
   `border-control`, `bg-danger`, `bg-warning`, `bg-success` and the `text-*`
   status tones.
@@ -236,6 +237,10 @@ under "Install" instead.
   covers the parts a class cannot reach. The preset does not style
   `[aria-invalid]`: a field marked invalid keeps its normal border, so the
   error's colour and text come from the component (`Field` draws both).
+  Under `.dark` the five control classes also set `color-scheme: dark`, so the
+  browser draws a checkbox, a radio, a date picker's icon and a field's
+  scrollbar dark instead of as a white box. The page's own scrollbar follows the
+  root element's `color-scheme`, which the preset leaves to the app.
 - **Surfaces** — `card`, `card-header`, `card-body`, `card-footer`, `scrollbar`.
 - **Data display** — `num`, `kpi`, `kpi-label`, `kpi-value`, `bar`.
 - **Map** — `map-marker` inside a `status-on` / `status-off` / `status-unknown` container, used by
@@ -315,6 +320,11 @@ actually resolves them: the entry string a build script hands to `compile()`, ma
 were designed against in the source applications they were extracted from; dark
 mode swaps it for near-black chrome. The full list is in `tokens.css`, each with
 the Tailwind palette value it came from.
+
+The light canvas is `gray-100`, one step below the white surface, so a card
+stands off the page without a heavy border. Muted text is `gray-600`, which
+keeps WCAG AA contrast (4.5:1) on that canvas as well as on a card; `gray-500`
+does not (4.4:1).
 
 Focus rings follow the accent. A focused `.input`, `.select` or `.textarea` draws its outline in
 `--color-primary-muted`, and so does a focused `.btn` under `.dark`; in the light palette a `.btn`

@@ -97,7 +97,7 @@ export function UrlFilterDemo() {
       </Router>
 
       <div class="mt-3 flex flex-wrap items-center gap-2">
-        <span class="text-xs text-gray-500 dark:text-gray-400">Card</span>
+        <span class="text-xs text-gray-600 dark:text-gray-400">Card</span>
         <button
           type="button"
           data-e2e="url-filters-remount"
@@ -106,7 +106,7 @@ export function UrlFilterDemo() {
         >
           remount
         </button>
-        <span class="text-xs text-gray-500 dark:text-gray-400">
+        <span class="text-xs text-gray-600 dark:text-gray-400">
           a fresh card starts from whatever the address says
         </span>
       </div>
@@ -133,19 +133,19 @@ function LiveFilters() {
     <div data-e2e="url-filters-live" class="mt-3 space-y-3">
       <dl class="flex flex-wrap items-baseline gap-x-6 gap-y-1 font-mono text-sm">
         <div class="flex items-baseline gap-2">
-          <dt class="text-gray-500 dark:text-gray-400">status</dt>
+          <dt class="text-gray-600 dark:text-gray-400">status</dt>
           <dd data-e2e="url-filters-status" class="text-gray-900 dark:text-gray-100">
             {filters.status.value || "(any)"}
           </dd>
         </div>
         <div class="flex items-baseline gap-2">
-          <dt class="text-gray-500 dark:text-gray-400">page</dt>
+          <dt class="text-gray-600 dark:text-gray-400">page</dt>
           <dd data-e2e="url-filters-page" class="text-gray-900 dark:text-gray-100">
             {filters.page.value}
           </dd>
         </div>
         <div class="flex items-baseline gap-2">
-          <dt class="text-gray-500 dark:text-gray-400">size</dt>
+          <dt class="text-gray-600 dark:text-gray-400">size</dt>
           <dd data-e2e="url-filters-size" class="text-gray-900 dark:text-gray-100">
             {filters.size.value}
           </dd>
@@ -153,7 +153,7 @@ function LiveFilters() {
       </dl>
 
       <div class="flex flex-wrap items-center gap-2">
-        <span class="text-xs text-gray-500 dark:text-gray-400">Address → filters</span>
+        <span class="text-xs text-gray-600 dark:text-gray-400">Address → filters</span>
         <Link href="?status=open" data-e2e="url-filters-link-open" class={CONTROL}>
           ?status=open
         </Link>
@@ -172,7 +172,7 @@ function LiveFilters() {
       </div>
 
       <div class="flex flex-wrap items-center gap-2">
-        <span class="text-xs text-gray-500 dark:text-gray-400">Filters → address</span>
+        <span class="text-xs text-gray-600 dark:text-gray-400">Filters → address</span>
         <button
           type="button"
           data-e2e="url-filters-set-closed"

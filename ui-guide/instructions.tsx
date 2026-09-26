@@ -22,6 +22,7 @@ export const documentedClasses: Record<string, string[]> = {
   "Colour atoms": [
     "text-primary",
     "bg-primary",
+    "bg-primary-muted",
     "border-primary",
     "rounded-primary",
     "text-muted",

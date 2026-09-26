@@ -236,7 +236,7 @@ function ColourAtomsDemo() {
       </Stack>
 
       <Cluster>
-        {["bg-primary", "bg-danger", "bg-warning", "bg-success"].map((name) => (
+        {["bg-primary", "bg-primary-muted", "bg-danger", "bg-warning", "bg-success"].map((name) => (
           <span key={name} class={`${name} rounded-primary px-2 py-1 text-xs text-white`}>
             {name}
           </span>
@@ -345,6 +345,7 @@ export const surfaceDemos = {
       "text-warning",
       "text-success",
       "bg-primary",
+      "bg-primary-muted",
       "bg-danger",
       "bg-warning",
       "bg-success",

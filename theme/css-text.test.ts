@@ -69,11 +69,13 @@ const UNCHANGED_ROOT_TOKENS: Record<string, string> = {
   "--color-primary-foreground": "oklch(0.977 0.014 308.299)",
   "--color-primary-muted": "oklch(0.558 0.288 302.321)",
   "--color-surface": "oklch(1 0 0)",
-  "--color-canvas": "oklch(0.985 0.002 247.839)",
+  // #358 moved these two: the canvas a step darker so a card stands off it, and muted text a step
+  // darker so it keeps AA contrast on that canvas.
+  "--color-canvas": "oklch(0.967 0.003 264.542)",
   "--color-border-subtle": "oklch(0.928 0.006 264.531)",
   "--color-border-control": "oklch(0.872 0.01 258.338)",
   "--color-foreground": "oklch(0.13 0.028 261.692)",
-  "--color-muted-foreground": "oklch(0.551 0.027 264.364)",
+  "--color-muted-foreground": "oklch(0.446 0.03 256.802)",
   "--color-placeholder": "oklch(0.551 0.027 264.364)",
   "--color-danger": "oklch(0.577 0.245 27.325)",
   "--color-danger-foreground": "oklch(0.971 0.013 17.38)",

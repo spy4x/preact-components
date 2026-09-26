@@ -1,4 +1,5 @@
-import { check, type Devtools, openGuidePage, pressKey } from "./harness.ts"
+import { guidePages } from "@spy4x/preact-ui-guide/registry"
+import { centreInView, check, type Devtools, openGuidePage, pressKey } from "./harness.ts"
 
 /**
  * `theme/`'s browser checks: the form controls and surfaces of the class chapter as native events
@@ -531,4 +532,245 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
       )
     }
   }
+
+  await darkControlsChecks(devtools)
+  await canvasContrastCheck(devtools)
+}
+
+/**
+ * The luminance of the pixel at a viewport point, read from a real screenshot. A native checkbox or
+ * radio is drawn by the browser from `color-scheme`, not from any style a computed-style read can
+ * see, so the pixels are the only proof of what a reader gets.
+ *
+ * @param devtools The connected session.
+ * @param element A JavaScript expression for the element; its centre is sampled.
+ * @returns The WCAG relative luminance there, 0 (black) to 1 (white).
+ */
+async function luminanceAtCentre(devtools: Devtools, element: string): Promise<number> {
+  if (!await centreInView(devtools, element)) throw new Error(`${element} is not on the page`)
+  const point = await devtools.evaluate<{ x: number; y: number; width: number }>(`(() => {
+    const box = (${element}).getBoundingClientRect()
+    return { x: box.left + box.width / 2, y: box.top + box.height / 2, width: innerWidth }
+  })()`)
+  const { data } = await devtools.send<{ data: string }>("Page.captureScreenshot", {
+    format: "png",
+  })
+  return await devtools.evaluate<number>(`(async () => {
+    const blob = await (await fetch("data:image/png;base64,${data}")).blob()
+    const bitmap = await createImageBitmap(blob)
+    const scale = bitmap.width / ${point.width}
+    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height)
+    const context = canvas.getContext("2d")
+    context.drawImage(bitmap, 0, 0)
+    const [r, g, b] = context.getImageData(
+      Math.round(${point.x} * scale),
+      Math.round(${point.y} * scale),
+      1,
+      1,
+    ).data
+    const linear = (channel) => {
+      const s = channel / 255
+      return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
+    }
+    return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b)
+  })()`)
+}
+
+/**
+ * The dark palette's native controls and accent fill (#347, #358), and how Checkbox and Radio sit
+ * beside their labels. Runs after {@link themeChecks}, on the UI page, and leaves the palette as it
+ * found it.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+export async function darkControlsChecks(devtools: Devtools): Promise<void> {
+  await openGuidePage(devtools, "ui")
+  const wasDark = await devtools.evaluate<boolean>(`(() => {
+    const was = document.documentElement.classList.contains("dark")
+    document.documentElement.classList.add("dark")
+    // An unchecked box shows its own fill; a ticked one shows the accent over it.
+    for (const control of document.querySelectorAll(
+      "#demo-Checkbox input.checkbox",
+    )) control.checked = false
+    return was
+  })()`)
+  try {
+    const checkbox = await luminanceAtCentre(
+      devtools,
+      `document.querySelector("#demo-Checkbox input.checkbox")`,
+    )
+    check(
+      "in the dark palette an unticked Checkbox is drawn dark, not as a white box",
+      checkbox < 0.2,
+      `luminance at the box's centre ${checkbox.toFixed(3)} (white is 1)`,
+    )
+    const radio = await luminanceAtCentre(
+      devtools,
+      `[...document.querySelectorAll("#demo-Radio input.radio")].find((radio) => !radio.checked)`,
+    )
+    check(
+      "in the dark palette an unpicked Radio is drawn dark, not as a white disc",
+      radio < 0.2,
+      `luminance at the disc's centre ${radio.toFixed(3)} (white is 1)`,
+    )
+
+    const progress = await devtools.evaluate<{ fill: string; track: string; ratio: number }>(
+      `(() => {
+      const fill = document.querySelector("#demo-Progress [role=progressbar] .bg-primary")
+      const track = fill.parentElement
+      const channels = (element) => {
+        const probe = document.createElement("canvas").getContext("2d")
+        probe.fillStyle = getComputedStyle(element).backgroundColor
+        probe.fillRect(0, 0, 1, 1)
+        return [...probe.getImageData(0, 0, 1, 1).data.slice(0, 3)]
+      }
+      const luminance = (rgb) => {
+        const [r, g, b] = rgb.map((channel) => {
+          const s = channel / 255
+          return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
+        })
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b
+      }
+      const a = luminance(channels(fill))
+      const b = luminance(channels(track))
+      return {
+        fill: getComputedStyle(fill).backgroundColor,
+        track: getComputedStyle(track).backgroundColor,
+        ratio: (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05),
+      }
+    })()`,
+    )
+    check(
+      "in the dark palette the default Progress bar clears 3:1 against its track",
+      progress.ratio >= 3,
+      `fill ${progress.fill} on track ${progress.track}, ${progress.ratio.toFixed(2)}:1`,
+    )
+  } finally {
+    await devtools.evaluate(
+      `document.documentElement.classList.toggle("dark", ${wasDark})`,
+    )
+  }
+
+  const layout = await devtools.evaluate<{ rows: string[]; bad: string[]; group: string }>(`(() => {
+    const rows = []
+    const bad = []
+    for (const label of document.querySelectorAll(
+      "#demo-Checkbox label, #demo-Radio label, #demo-RadioGroup label",
+    )) {
+      const control = label.querySelector("input.checkbox, input.radio")
+      if (!control) continue
+      const range = document.createRange()
+      range.setStartAfter(control)
+      range.setEndAfter(label.lastChild)
+      const text = range.getBoundingClientRect()
+      const box = control.getBoundingClientRect()
+      const offCentre = (text.top + text.height / 2) - (box.top + box.height / 2)
+      const gap = text.left - box.right
+      const row = label.closest("[id^=demo-]").id + " " + label.textContent.trim() + ": " +
+        "centre " + offCentre.toFixed(1) + "px, gap " + gap.toFixed(1) + "px"
+      rows.push(row)
+      if (Math.abs(offCentre) > 1 || Math.abs(gap - 8) > 0.5) bad.push(row)
+    }
+    const fieldset = document.querySelector("#demo-RadioGroup fieldset")
+    const legend = fieldset.querySelector("legend").getBoundingClientRect()
+    const options = [...fieldset.querySelectorAll("label")].map((label) =>
+      label.getBoundingClientRect()
+    )
+    const gaps = [options[0].top - legend.bottom].concat(
+      options.slice(1).map((option, index) => option.top - options[index].bottom),
+    )
+    const group = "legend to first option, then between options: " +
+      gaps.map((gap) => gap.toFixed(1)).join(", ") + "px"
+    if (gaps.some((gap) => Math.abs(gap - 8) > 0.5)) bad.push(group)
+    return { rows, bad, group }
+  })()`)
+  check(
+    "Checkbox and Radio centre their label on the control, 8px (the sm gap) from it, and a " +
+      "RadioGroup spaces its legend and options by the same gap",
+    layout.rows.length >= 4 && layout.bad.length === 0,
+    layout.bad.length > 0 ? layout.bad.join("; ") : `${layout.rows.join("; ")}; ${layout.group}`,
+  )
+}
+
+/**
+ * In the light palette, every line of the guide's own text clears WCAG AA against what sits behind
+ * it (#358). The canvas went a step darker so a card stands off it, and grey text that cleared AA
+ * on the old canvas does not always clear it on the new one. Demos are left out: what a component
+ * draws is that component's business, and its own checks hold it.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function canvasContrastCheck(devtools: Devtools): Promise<void> {
+  const failures: string[] = []
+  let lines = 0
+  // Wide enough for both side columns, the navigation and "On this page": at the browser's own
+  // 800px they are hidden, and their grey labels would go unread.
+  await devtools.send("Emulation.setDeviceMetricsOverride", {
+    width: 1440,
+    height: 900,
+    deviceScaleFactor: 1,
+    mobile: false,
+  })
+  try {
+    for (const page of guidePages) {
+      await openGuidePage(devtools, page.id)
+      const read = await devtools.evaluate<{ lines: number; failures: string[] }>(`(async () => {
+      // Put back afterwards: the header's theme switch reads the store, not the class, and a later
+      // check expects the two to agree.
+      const wasDark = document.documentElement.classList.contains("dark")
+      document.documentElement.classList.remove("dark")
+      // A spinner or a skeleton pulse runs forever; only a finite transition can be waited out.
+      const finite = document.getAnimations()
+        .filter((animation) => animation.effect?.getTiming().iterations !== Infinity)
+      await Promise.all(finite.map((animation) => animation.finished.catch(() => {})))
+      const context = document.createElement("canvas").getContext("2d", { willReadFrequently: true })
+      const rgba = (color) => {
+        context.clearRect(0, 0, 1, 1)
+        context.fillStyle = "#000"
+        context.fillStyle = color
+        context.fillRect(0, 0, 1, 1)
+        return [...context.getImageData(0, 0, 1, 1).data]
+      }
+      const luminance = ([r, g, b]) => {
+        const linear = (channel) => {
+          const s = channel / 255
+          return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
+        }
+        return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b)
+      }
+      const behind = (element) => {
+        for (let at = element; at; at = at.parentElement) {
+          const colour = rgba(getComputedStyle(at).backgroundColor)
+          if (colour[3] === 255) return colour
+        }
+        return rgba(getComputedStyle(document.body).backgroundColor)
+      }
+      const failures = []
+      let lines = 0
+      for (const element of document.querySelectorAll(".ui-guide *")) {
+        const own = [...element.childNodes].some((node) => node.nodeType === 3 && node.textContent.trim())
+        if (!own || !element.checkVisibility()) continue
+        if (element.closest('[data-card-part="demo"], pre, .sr-only')) continue
+        lines++
+        const a = luminance(rgba(getComputedStyle(element).color))
+        const b = luminance(behind(element))
+        const ratio = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)
+        if (ratio < 4.5) {
+          failures.push('"' + element.textContent.trim().slice(0, 30) + '" ' + ratio.toFixed(2) + ":1")
+        }
+      }
+      document.documentElement.classList.toggle("dark", wasDark)
+      return { lines, failures }
+    })()`)
+      lines += read.lines
+      failures.push(...read.failures.map((failure) => `${page.id}: ${failure}`))
+    }
+  } finally {
+    await devtools.send("Emulation.clearDeviceMetricsOverride")
+  }
+  check(
+    "in the light palette every line of the guide's own text clears 4.5:1 against its background",
+    lines > 0 && failures.length === 0,
+    failures.length > 0 ? failures.slice(0, 12).join(", ") : `${lines} lines checked`,
+  )
 }

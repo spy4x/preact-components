@@ -682,7 +682,7 @@ function GuideNav(
       <Stack gap="lg" as="ul">
         {navGroups.map((group) => (
           <li key={group.id}>
-            <p class="px-3 pb-1 text-xs font-semibold text-gray-500 dark:text-gray-400">
+            <p class="px-3 pb-1 text-xs font-semibold text-gray-600 dark:text-gray-400">
               {labels.navGroups[group.id]}
             </p>
             <ul>
@@ -818,7 +818,7 @@ function OnThisPage(
   if (sections.length === 0) return null
   return (
     <nav aria-label={label} class="text-sm" data-e2e="ui-guide-on-this-page">
-      <p class="pb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">{label}</p>
+      <p class="pb-2 text-xs font-semibold text-gray-600 dark:text-gray-400">{label}</p>
       <ul class="flex flex-col gap-4">
         {sections.map((section) => (
           <li key={section.id}>
@@ -901,7 +901,7 @@ function Overview(
           >
             {labels.browse}
           </a>
-          <p class="text-sm text-gray-500 dark:text-gray-400">
+          <p class="text-sm text-gray-600 dark:text-gray-400">
             {labels.stats({ cards, icons: iconNames.length, packages: packagePages.length })}
           </p>
         </Cluster>
