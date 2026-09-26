@@ -14,6 +14,9 @@
  * and {@link demonstratedClasses}.
  */
 
+import { Cluster, Grid, Section, Stack } from "@spy4x/preact-ui/layout"
+import { InlineMarkdown } from "./markdown.tsx"
+
 /** Classes documented by {@link CatalogInstructions}, grouped by what they are for. */
 export const documentedClasses: Record<string, string[]> = {
   "Colour atoms": [
@@ -176,7 +179,7 @@ export function demonstratedClasses(html: string): Set<string> {
 /** One documented class, rendered as code text rather than applied. */
 function ClassChip({ name }: { name: string }) {
   return (
-    <code class="rounded-md border border-purple-600 px-1.5 py-0.5 font-mono text-xs text-purple-600 dark:text-purple-400">
+    <code class="rounded-md bg-purple-50 px-1 font-mono text-xs text-purple-800 dark:bg-purple-950/60 dark:text-purple-200">
       .{name}
     </code>
   )
@@ -186,64 +189,76 @@ function ClassChip({ name }: { name: string }) {
  * Design-system rules for the pages built out of `theme/`.
  *
  * Not a demo of a `ui/` component — it is the context the components are meant to be assembled in,
- * ported from a source application's guide.
+ * ported from a source application's guide. It sits on the overview as one card: the rules as
+ * prose, then every documented class by group, then the classes that were removed.
  */
-export function CatalogInstructions() {
+export function CatalogInstructions({ headingLevel = 2 }: { headingLevel?: 2 | 3 }) {
   return (
-    <section id="instructions" class="scroll-mt-8">
-      <div class="mb-4 border-b border-gray-200 pb-2 dark:border-gray-700">
-        <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">General instructions</h2>
-        <p class="text-sm text-gray-500 dark:text-gray-400">
-          What <code>@spy4x/preact-theme</code>{" "}
+    <Section
+      as="section"
+      id="instructions"
+      class="scroll-mt-16"
+      title="Design rules"
+      headingLevel={headingLevel}
+      description={
+        <>
+          What <code class="font-mono">@spy4x/preact-theme</code>{" "}
           provides, and the page conventions the components assume.
-        </p>
-      </div>
+        </>
+      }
+    >
+      <div class="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-700 shadow-xs sm:p-6 dark:border-gray-700/80 dark:bg-gray-800/60 dark:text-gray-300">
+        <Stack gap="lg">
+          <Stack gap="sm" class="max-w-prose">
+            <p>
+              Every class below is a Tailwind 4 utility emitted by{" "}
+              <InlineMarkdown text="`preset.css`. Import `tokens.css`" />{" "}
+              before it to get the palette these utilities read; the presets fall back to the
+              library's own values if you skip it.
+            </p>
+            <p>
+              Put <ClassChip name="theme-base" /> on <InlineMarkdown text="`<body>`" />{" "}
+              to opt into the document-level font, colour and canvas — nothing is applied to the
+              host page by importing the preset. Lay a page out with{" "}
+              <InlineMarkdown text="`Page`, `Section`, `Stack` and `Grid` from `@spy4x/preact-ui/layout`" />;
+              {" "}
+              <ClassChip name="page-layout" />{" "}
+              still gives the standard page width, and is deprecated in their favour.
+            </p>
+            <p>
+              The <InlineMarkdown text="`ui/`" />{" "}
+              primitives in this catalogue deliberately do not use these classes: they inline their
+              own utilities so they render without the token layer. Reach for a component first and
+              a class second.
+            </p>
+          </Stack>
 
-      <div class="space-y-4 text-sm text-gray-700 dark:text-gray-300">
-        <p>
-          Every class below is a Tailwind 4 utility emitted by <code>preset.css</code>. Import{" "}
-          <code>tokens.css</code>{" "}
-          before it to get the palette these utilities read; the presets fall back to the library's
-          own values if you skip it.
-        </p>
-        <p>
-          Put <ClassChip name="theme-base" /> on <code>{"<body>"}</code>{" "}
-          to opt into the document-level font, colour and canvas — nothing is applied to the host
-          page by importing the preset. Lay a page out with <code>Page</code>, <code>Section</code>,
-          {" "}
-          <code>Stack</code> and <code>Grid</code> from <code>@spy4x/preact-ui/layout</code>;{" "}
-          <ClassChip name="page-layout" />{" "}
-          still gives the standard page width, and is deprecated in their favour.
-        </p>
-        <p>
-          The <code>ui/</code>{" "}
-          primitives in this catalogue deliberately do not use these classes: they inline their own
-          utilities so they render without the token layer. Reach for a component first and a class
-          second.
-        </p>
-
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {Object.entries(documentedClasses).map(([group, names]) => (
-            <div key={group}>
-              <h3 class="mb-2 font-medium text-gray-900 dark:text-gray-100">{group}</h3>
-              <div class="flex flex-wrap gap-1.5">
-                {names.map((name) => <ClassChip key={name} name={name} />)}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div class="rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-yellow-900 dark:border-yellow-700 dark:bg-yellow-950 dark:text-yellow-100">
-          <p class="font-medium">Removed, and not coming back</p>
-          <ul class="mt-1 list-disc pl-5">
-            {Object.entries(removedClasses).map(([name, replacement]) => (
-              <li key={name}>
-                <code>.{name}</code> — {replacement}
-              </li>
+          <Grid minColumnWidth="md">
+            {Object.entries(documentedClasses).map(([group, names]) => (
+              <Stack key={group} gap="sm">
+                <h3 class="font-medium text-gray-900 dark:text-gray-100">{group}</h3>
+                <Cluster gap="xs">
+                  {names.map((name) => <ClassChip key={name} name={name} />)}
+                </Cluster>
+              </Stack>
             ))}
-          </ul>
-        </div>
+          </Grid>
+
+          <Stack
+            gap="xs"
+            class="border-t border-gray-200 pt-4 dark:border-gray-700/80"
+          >
+            <p class="font-medium text-gray-900 dark:text-gray-100">Removed, and not coming back</p>
+            <ul class="list-disc pl-6">
+              {Object.entries(removedClasses).map(([name, replacement]) => (
+                <li key={name}>
+                  <ClassChip name={name} /> — <InlineMarkdown text={replacement} />
+                </li>
+              ))}
+            </ul>
+          </Stack>
+        </Stack>
       </div>
-    </section>
+    </Section>
   )
 }

@@ -86,7 +86,7 @@ export function IconGallery({ copy, class: className }: IconGalleryProps): JSX.E
           <input
             type="search"
             name="icon-search"
-            class="w-full rounded-md border border-gray-300 bg-white py-2 pr-10 pl-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 focus:outline-hidden dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+            class="w-full rounded-md border border-gray-300 bg-white py-2 pr-12 pl-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 focus:outline-hidden dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
             placeholder="Search icons"
             aria-label="Search icons"
             value={query.value}
