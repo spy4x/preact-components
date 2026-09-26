@@ -54,8 +54,8 @@ function listStore() {
 const examples: ExampleFragment = {
   timeAgo: {
     title: "timeAgo()",
-    summary:
-      "How long ago a timestamp was, in words, measured from the clock; two and a half hours ago always reads the same.",
+    wide: false,
+    summary: "How long ago a timestamp was, in words, for a list's updated column.",
     snippet: `import { timeAgo } from "@spy4x/preact-crud"
 
 timeAgo(Date.now() - 150 * 60_000)`,
@@ -64,6 +64,7 @@ timeAgo(Date.now() - 150 * 60_000)`,
   },
   formatTimestamp: {
     title: "formatTimestamp()",
+    wide: false,
     summary:
       "An absolute timestamp for a `title` attribute: the date and a 24-hour time, the time alone, or `-` for an unset column.",
     snippet: `import { formatTimestamp } from "@spy4x/preact-crud"
@@ -80,6 +81,7 @@ formatTimestamp(null)`,
   },
   listRows: {
     title: "The rows a list shows",
+    wide: false,
     summary:
       "`rowsForStatus` picks the Active or Archived slice of a store, and `listRows` filters that slice by the search box, one word at a time.",
     snippet: `import { listRows, rowsForStatus } from "@spy4x/preact-crud"
@@ -101,6 +103,7 @@ listRows(store, "active", "launch", match).map((row) => row.name)`,
   },
   editorState: {
     title: "editorState()",
+    wide: false,
     summary:
       "Whether the editor's form is valid, busy, and savable: Save is live only once the row has loaded, nothing is invalid, nothing is in flight and nothing blocks the archive.",
     snippet: `import { editorState } from "@spy4x/preact-crud"
@@ -128,8 +131,9 @@ editorState({ ...ready, blocked: 2 })`,
   },
   submitEditor: {
     title: "submitEditor()",
+    wide: false,
     summary:
-      "Routes a save to the store write its mode implies: an add creates, an edit updates, and an edit whose archive is blocked writes nothing. The card prints which store methods each submit reached.",
+      "Routes a save to the store write its mode implies: an add creates, an edit updates, and an edit whose archive is blocked writes nothing; the output lists the store methods each call reached.",
     snippet: `import { submitEditor } from "@spy4x/preact-crud"
 
 const calls = []
@@ -165,6 +169,7 @@ submitEditor({ mode: "edit", id: 1, store, value: row, blocked: 2 })`,
   },
   toggleArchiveState: {
     title: "toggleArchiveState()",
+    wide: false,
     summary:
       "The archive checkbox's next state: archiving stamps `deletedAt` with the current time and asks what still points at the row; un-archiving clears both.",
     snippet: `import { toggleArchiveState } from "@spy4x/preact-crud"
@@ -192,6 +197,7 @@ toggleArchiveState({ id: 3, deletedAt: "2026-01-15T09:00:00Z" }, dependents)`,
   },
   setField: {
     title: "Field values in and out",
+    wide: false,
     summary:
       '`setField` writes one field into a model signal as a fresh object, `fieldText` shows a value in a control (`null` as empty, never `"null"`), and `commitNumber` reads a number box, half-typed input included.',
     snippet: `import { commitNumber, fieldText, setField } from "@spy4x/preact-crud"
@@ -215,6 +221,7 @@ commitNumber("12e")`,
   },
   conflictIssue: {
     title: "A duplicate association as a field issue",
+    wide: false,
     summary:
       "`conflictIssue` files a duplicate under `CONFLICT` on the field the user has to change, with the duplicate's id as payload; `isRestorable` says whether that duplicate was removed and can be brought back instead.",
     snippet: `import { CONFLICT, conflictIssue, isRestorable } from "@spy4x/preact-crud"
@@ -252,8 +259,9 @@ isRestorable(rows[1])`,
   },
   associationActions: {
     title: "associationActions()",
+    wide: true,
     summary:
-      "Binds an association editor's Delete and Restore buttons to the store's `delete` and `undelete`. The card prints which store method each button reached.",
+      "Binds an association editor's Delete and Restore buttons to the store's `delete` and `undelete`; the output lists the calls they made.",
     snippet: `import { associationActions } from "@spy4x/preact-crud"
 
 const calls = []
