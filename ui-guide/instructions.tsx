@@ -53,6 +53,7 @@ export const documentedClasses: Record<string, string[]> = {
   Surfaces: ["card", "card-header", "card-body", "card-footer", "scrollbar"],
   "Data display": ["num", "kpi", "kpi-label", "kpi-value", "bar"],
   Map: ["map-marker", "status-on", "status-off", "status-unknown"],
+  Spacing: ["pb-safe", "pb-safe-3"],
 }
 
 /**
@@ -208,8 +209,11 @@ export function CatalogInstructions() {
         <p>
           Put <ClassChip name="theme-base" /> on <code>{"<body>"}</code>{" "}
           to opt into the document-level font, colour and canvas — nothing is applied to the host
-          page by importing the preset. Use <ClassChip name="page-layout" />{" "}
-          for the standard page width.
+          page by importing the preset. Lay a page out with <code>Page</code>, <code>Section</code>,
+          {" "}
+          <code>Stack</code> and <code>Grid</code> from <code>@spy4x/preact-ui/layout</code>;{" "}
+          <ClassChip name="page-layout" />{" "}
+          still gives the standard page width, and is deprecated in their favour.
         </p>
         <p>
           The <code>ui/</code>{" "}
