@@ -40,11 +40,13 @@ Decisions already taken with that test, as worked examples:
 
 - Kept: `Calendar`, the image lightbox, `SWUpdater`, `SEOHead` with its `head` store, and the theme
   logic in `signals/`.
-- Removed: `TimeSlots` and `BookingSubmit`, which belong to one app's booking flow; `flattenRoutes`
-  and `Breadcrumb`.
+- Removed as tied to one app: `TimeSlots` and `BookingSubmit` (its booking flow), `flattenRoutes`
+  (its route table), and `Breadcrumb` (the breadcrumb data stayed in the `head` store; nothing
+  generic was left in the visible component).
 - Removed as a renamed copy of a generic component: `ConfidenceMeter`, which duplicated `Progress`.
 - Removed because its implementation was not good enough to share: `CompareChart`.
-- Not shipped: a theme toggle button. Each app draws its own on top of `createThemeStore`.
+- Removed while its logic stayed: the `ThemeToggle` button. The theme state lives in
+  `createThemeStore` in `signals/`, and each app draws its own button on top of it.
 
 Code flows both ways. An app feeds `spy4x/ts-libs` and this library with anything a future project
 could reuse, and every app, old or new, imports from them instead of keeping its own copy. Each app
