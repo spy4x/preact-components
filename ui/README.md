@@ -20,7 +20,7 @@ Preact + Tailwind primitives extracted from earlier source applications.
   that alone still installs the hook; the package root (`.`), which carries every export;
   `./confirm-dialog`, `./copy-button`, `./date-range-picker`, `./modal`, `./on-off-buttons` and
   `./pagination`, each of which renders a `Button` of its own; `./dropdown`, which uses
-  `buttonClasses` without ever rendering a `Button`; and `./copyable-text` and `./data-table`, which
+  `buttonClasses` without ever rendering a `Button`; and `./copy-block` and `./data-table`, which
   load it transitively — through `./copy-button` and `./pagination` respectively.
   `@spy4x/preact-crud` loads it too, transitively, through `./dropdown`. It acts only on the four
   components it forwards refs for; nothing else in this package or a caller's own markup is
@@ -40,62 +40,60 @@ one. See #257's own "What I suggest" for the two options this decides between.
 
 ## Components
 
-| Component          | Subpath             | Ports / key props                                                                                                                                                     |
-| ------------------ | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Avatar`           | `avatar`            | `name`, `src`, `alt`, `size`                                                                                                                                          |
-| `AvatarGroup`      | `avatar`            | `items`, `max`, `label`, `size` (a `role="group"`, not a list)                                                                                                        |
-| `Badge`            | `badge`             | `text`, `color`, `type`                                                                                                                                               |
-| `Button`           | `button`            | `variant`, `size`, native button attrs                                                                                                                                |
-| `Card`             | `card`              | `children`, `class` — a bordered surface                                                                                                                              |
-| `CardBody`         | `card`              | `children`, `class`                                                                                                                                                   |
-| `CardFooter`       | `card`              | `children`, `class`                                                                                                                                                   |
-| `CardHeader`       | `card`              | `title` and `action`, or `children`; `class`                                                                                                                          |
-| `Checkbox`         | `checkbox`          | `children` (the label), `labelClass`, native checkbox attrs; forwards `ref`                                                                                           |
-| `Cluster`          | `layout`            | `gap?` (default `sm`), `align?`, `justify?`, `as?`, `class?` — a wrapping row                                                                                         |
-| `Combobox`         | `combobox`          | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `ariaLabel?`, `aria-labelledby?`, `id?`                                                                         |
-| `ConfirmDialog`    | `confirm-dialog`    | `title`, `message?`, `onConfirm`, `onCancel`, `confirmLabel?`, `cancelLabel?`, `tone?`                                                                                |
-| `CopyableText`     | `copyable-text`     | `text`, `truncate?`, `copy?` (clipboard port), `copyLabel?`, `copiedLabel?`                                                                                           |
-| `CopyableTextBody` | `copyable-text`     | `copied`, `onCopy` — `CopyableText` with the copied state owned by the caller                                                                                         |
-| `CopyButton`       | `copy-button`       | `textToCopy`, `copy?` (clipboard port)                                                                                                                                |
-| `DataTable`        | `data-table`        | `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `captionHidden?`, `empty?`, `paging?`, `rowDataE2E?`, `class?`                                        |
-| `DateRangePicker`  | `date-range-picker` | `range`, `onChange`, `timeZone`, `presets` or `withTime`, `labels?` (every key optional)                                                                              |
-| `Dropdown`         | `dropdown`          | `trigger`, `triggerLabel` or `triggerNamedByContent` (one is required), `menuLabel`, `vertical`, `horizontal`                                                         |
-| `DropdownItem`     | `dropdown`          | `href`, `onClick`, `disabled`, `danger`, `class` — a `role="menuitem"`, out of the tab order                                                                          |
-| `EmptyState`       | `empty-state`       | `icon?`, `title?`, `description?`, `action?`                                                                                                                          |
-| `EnhancedForm`     | `enhanced-form`     | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?` — posts natively before hydration                                                    |
-| `ErrorState`       | `error-state`       | `message` (renders nothing when empty)                                                                                                                                |
-| `Field`            | `field`             | `id`, `label?`, `children`, `hint?`, `error?`, `required?`, `suffix?`                                                                                                 |
-| `FileInput`        | `file-input`        | `id`, `accept?`, `multiple?`, `maxSize?`, `name?`, `onFiles?`, `onReject?`, `label?`, `error?`, `previews?`, `labels?`                                                |
-| `Grid`             | `layout`            | `gap?` (default `md`), `minColumnWidth?` (`sm`/`md`/`lg`), `as?`, `class?` — equal columns that fill the row                                                          |
-| `ImageGallery`     | `image-gallery`     | `images` (`{ src, alt, thumbSrc? }[]`), `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`                                                      |
-| `Input`            | `input`             | native input attrs, `class`; forwards `ref`                                                                                                                           |
-| `InputButton`      | `input-button`      | `icon`, `iconLabel`, `onClick?`, native input attrs                                                                                                                   |
-| `InstallBox`       | `install-box`       | `command`, `copy?`, `copyLabel?` — built on `CopyButton`                                                                                                              |
-| `Lightbox`         | `lightbox`          | `images`, `index`, `open`, `onClose`, `onIndexChange`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`                                                 |
-| `LoadingSkeleton`  | `loading-skeleton`  | `rows`                                                                                                                                                                |
-| `LoadingSpinner`   | `loading-spinner`   | `label`, `size`                                                                                                                                                       |
-| `Modal`            | `modal`             | `open?` or `defaultOpen?`, `onClose?`, `title?` or `ariaLabel?`, `children`, `footer?`, `cancelLabel?`                                                                |
-| `MoneyDisplay`     | `money-display`     | `amount` (smallest unit), `currency`, `locale?`, `colorNegative?`, `class?`                                                                                           |
-| `MoneyInput`       | `money-input`       | `value` (smallest unit or `null`), `onChange`, `currency`, `locale?`, `min?`, `max?`, `name?`, `id?`, `invalidMessage?`, `rangeMessage?`                              |
-| `OnOffButtons`     | `on-off-buttons`    | `value`, `amount`, `onSwitch`                                                                                                                                         |
-| `Page`             | `layout`            | `as?`, `class?` — the content column: max width, page gutter, `xl` between sections                                                                                   |
-| `PageTitle`        | `page-title`        | `children`, `class`                                                                                                                                                   |
-| `Pagination`       | `pagination`        | `page`, `pageCount`, `onChange`, `label`, `previousLabel`, `nextLabel`, `pageLabel`                                                                                   |
-| `Progress`         | `progress`          | `value`, `max`, `label`, `id` (a caption needs an `id`)                                                                                                               |
-| `Radio`            | `radio`             | `children` (the label), `labelClass`, native radio attrs; forwards `ref`                                                                                              |
-| `RadioGroup`       | `radio`             | `legend`, `name`, `options`, `value?`, `onChange?`                                                                                                                    |
-| `Section`          | `layout`            | `title?`, `description?`, `headingLevel?` (2–4), `as?` (`section`/`article`/`aside`/`div`), `class?`                                                                  |
-| `Select`           | `input`             | `options`, `placeholder?`, native select attrs                                                                                                                        |
-| `Stack`            | `layout`            | `gap?` (default `md`), `as?`, `class?` — a column                                                                                                                     |
-| `StatusMark`       | `status-mark`       | `status` (`ready`/`beta`/`wip`/`paused`/`archived`/`known-issue`), `label?` — a sibling of `Badge`, not an extension of it: `Badge` is colour-plus-text with no shape |
-| `Table`            | `table`             | `headerSlot`, `bodySlots`, `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`                                                                                    |
-| `Tabs`             | `tabs`              | `tabs`, `active`, `onChange`, `lazy`                                                                                                                                  |
-| `Textarea`         | `input`             | native textarea attrs, `class`                                                                                                                                        |
-| `Toastr`           | `toastr`            | `toasts`, `onDismiss`, `label`, `dismissLabel`, `dataE2E`                                                                                                             |
-| `ToggleField`      | `toggle-field`      | `id`, `label`, `value`, `onToggle`, `description?`, `error?`                                                                                                          |
-| `ToggleSwitch`     | `toggle-switch`     | `value`, `onToggle`, `disabled`, `label`                                                                                                                              |
-| `Tooltip`          | `tooltip`           | `content`, `label`, `placement`, `focusable`                                                                                                                          |
-| `ZoomableImages`   | `zoomable-images`   | `containerSelector?`, `imageSelector?`, `fallbackAlt?`, `zoomLabel?`, `previousLabel?`, `nextLabel?`, `onOpen?`                                                       |
+| Component         | Subpath             | Ports / key props                                                                                                                                                     |
+| ----------------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Avatar`          | `avatar`            | `name`, `src`, `alt`, `size`                                                                                                                                          |
+| `AvatarGroup`     | `avatar`            | `items`, `max`, `label`, `size` (a `role="group"`, not a list)                                                                                                        |
+| `Badge`           | `badge`             | `text`, `color`, `type`                                                                                                                                               |
+| `Button`          | `button`            | `variant`, `size`, native button attrs                                                                                                                                |
+| `Card`            | `card`              | `children`, `class` — a bordered surface                                                                                                                              |
+| `CardBody`        | `card`              | `children`, `class`                                                                                                                                                   |
+| `CardFooter`      | `card`              | `children`, `class`                                                                                                                                                   |
+| `CardHeader`      | `card`              | `title` and `action`, or `children`; `class`                                                                                                                          |
+| `Checkbox`        | `checkbox`          | `children` (the label), `labelClass`, native checkbox attrs; forwards `ref`                                                                                           |
+| `Cluster`         | `layout`            | `gap?` (default `sm`), `align?`, `justify?`, `as?`, `class?` — a wrapping row                                                                                         |
+| `Combobox`        | `combobox`          | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `ariaLabel?`, `aria-labelledby?`, `id?`                                                                         |
+| `ConfirmDialog`   | `confirm-dialog`    | `title`, `message?`, `onConfirm`, `onCancel`, `confirmLabel?`, `cancelLabel?`, `tone?`                                                                                |
+| `CopyBlock`       | `copy-block`        | `text`, `singleLine?`, `copy?` (clipboard port), `copyLabel?`, `copiedLabel?` — built on `CopyButton`                                                                 |
+| `CopyButton`      | `copy-button`       | `textToCopy`, `copy?` (clipboard port)                                                                                                                                |
+| `DataTable`       | `data-table`        | `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `captionHidden?`, `empty?`, `paging?`, `rowDataE2E?`, `class?`                                        |
+| `DateRangePicker` | `date-range-picker` | `range`, `onChange`, `timeZone`, `presets` or `withTime`, `labels?` (every key optional)                                                                              |
+| `Dropdown`        | `dropdown`          | `trigger`, `triggerLabel` or `triggerNamedByContent` (one is required), `menuLabel`, `vertical`, `horizontal`                                                         |
+| `DropdownItem`    | `dropdown`          | `href`, `onClick`, `disabled`, `danger`, `class` — a `role="menuitem"`, out of the tab order                                                                          |
+| `EmptyState`      | `empty-state`       | `icon?`, `title?`, `description?`, `action?`                                                                                                                          |
+| `EnhancedForm`    | `enhanced-form`     | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?` — posts natively before hydration                                                    |
+| `ErrorState`      | `error-state`       | `message` (renders nothing when empty)                                                                                                                                |
+| `Field`           | `field`             | `id`, `label?`, `children`, `hint?`, `error?`, `required?`, `suffix?`                                                                                                 |
+| `FileInput`       | `file-input`        | `id`, `accept?`, `multiple?`, `maxSize?`, `name?`, `onFiles?`, `onReject?`, `label?`, `error?`, `previews?`, `labels?`                                                |
+| `Grid`            | `layout`            | `gap?` (default `md`), `minColumnWidth?` (`sm`/`md`/`lg`), `as?`, `class?` — equal columns that fill the row                                                          |
+| `ImageGallery`    | `image-gallery`     | `images` (`{ src, alt, thumbSrc? }[]`), `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`                                                      |
+| `Input`           | `input`             | native input attrs, `class`; forwards `ref`                                                                                                                           |
+| `InputButton`     | `input-button`      | `icon`, `iconLabel`, `onClick?`, native input attrs                                                                                                                   |
+| `Lightbox`        | `lightbox`          | `images`, `index`, `open`, `onClose`, `onIndexChange`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`                                                 |
+| `LoadingSkeleton` | `loading-skeleton`  | `rows`                                                                                                                                                                |
+| `LoadingSpinner`  | `loading-spinner`   | `label`, `size`                                                                                                                                                       |
+| `Modal`           | `modal`             | `open?` or `defaultOpen?`, `onClose?`, `title?` or `ariaLabel?`, `children`, `footer?`, `cancelLabel?`                                                                |
+| `MoneyDisplay`    | `money-display`     | `amount` (smallest unit), `currency`, `locale?`, `colorNegative?`, `class?`                                                                                           |
+| `MoneyInput`      | `money-input`       | `value` (smallest unit or `null`), `onChange`, `currency`, `locale?`, `min?`, `max?`, `name?`, `id?`, `invalidMessage?`, `rangeMessage?`                              |
+| `OnOffButtons`    | `on-off-buttons`    | `value`, `amount`, `onSwitch`                                                                                                                                         |
+| `Page`            | `layout`            | `as?`, `class?` — the content column: max width, page gutter, `xl` between sections                                                                                   |
+| `PageTitle`       | `page-title`        | `children`, `class`                                                                                                                                                   |
+| `Pagination`      | `pagination`        | `page`, `pageCount`, `onChange`, `label`, `previousLabel`, `nextLabel`, `pageLabel`                                                                                   |
+| `Progress`        | `progress`          | `value`, `max`, `label`, `id` (a caption needs an `id`)                                                                                                               |
+| `Radio`           | `radio`             | `children` (the label), `labelClass`, native radio attrs; forwards `ref`                                                                                              |
+| `RadioGroup`      | `radio`             | `legend`, `name`, `options`, `value?`, `onChange?`                                                                                                                    |
+| `Section`         | `layout`            | `title?`, `description?`, `headingLevel?` (2–4), `as?` (`section`/`article`/`aside`/`div`), `class?`                                                                  |
+| `Select`          | `input`             | `options`, `placeholder?`, native select attrs                                                                                                                        |
+| `Stack`           | `layout`            | `gap?` (default `md`), `as?`, `class?` — a column                                                                                                                     |
+| `StatusMark`      | `status-mark`       | `status` (`ready`/`beta`/`wip`/`paused`/`archived`/`known-issue`), `label?` — a sibling of `Badge`, not an extension of it: `Badge` is colour-plus-text with no shape |
+| `Table`           | `table`             | `headerSlot`, `bodySlots`, `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`                                                                                    |
+| `Tabs`            | `tabs`              | `tabs`, `active`, `onChange`, `lazy`                                                                                                                                  |
+| `Textarea`        | `input`             | native textarea attrs, `class`                                                                                                                                        |
+| `Toastr`          | `toastr`            | `toasts`, `onDismiss`, `label`, `dismissLabel`, `dataE2E`                                                                                                             |
+| `ToggleField`     | `toggle-field`      | `id`, `label`, `value`, `onToggle`, `description?`, `error?`                                                                                                          |
+| `ToggleSwitch`    | `toggle-switch`     | `value`, `onToggle`, `disabled`, `label`                                                                                                                              |
+| `Tooltip`         | `tooltip`           | `content`, `label`, `placement`, `focusable`                                                                                                                          |
+| `ZoomableImages`  | `zoomable-images`   | `containerSelector?`, `imageSelector?`, `fallbackAlt?`, `zoomLabel?`, `previousLabel?`, `nextLabel?`, `onOpen?`                                                       |
 
 ## Usage
 
@@ -907,3 +905,7 @@ colour per status), `ConfidenceMeter` (`Progress`), `FactCard` (`Card` around a 
 `SkeletonText`, `SkeletonTable`, `SkeletonCards` and `SkeletonStatus` (`LoadingSkeleton`),
 `LoadingScreen` (`LoadingSpinner` with its `label`, centred), and vertical `Tabs`. `MarginNote` went
 because only one site's articles used it.
+
+`InstallBox`, `CopyableText` and `CopyableTextBody` became one component, `CopyBlock`, in #353: each
+was a box of text with a `CopyButton` beside it. `CopyBlock` never clips its text: it wraps inside
+the box, or, with `singleLine`, scrolls sideways inside it.
