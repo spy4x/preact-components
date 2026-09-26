@@ -268,15 +268,14 @@ const catalogue = {
     group: "foundations",
     package: "ui",
     title: "Badges",
-    blurb: "Every palette entry, filled and outlined.",
+    blurb: "Small labels for a status or a category.",
     demos: badgeDemos,
   },
   buttons: {
     group: "foundations",
     package: "ui",
     title: "Buttons",
-    blurb:
-      "Variants × sizes, plus the components that wrap a button around a side effect (clipboard, geolocation, a CSV download).",
+    blurb: "Buttons in every look and size, and the buttons that copy, locate or export.",
     demos: buttonDemos,
   },
   layout: {
@@ -284,7 +283,7 @@ const catalogue = {
     package: "ui",
     title: "Layout",
     blurb:
-      "How a page puts space between its parts: `Page`, `Section`, `Stack`, `Cluster` and `Grid`, each with a named gap from the theme's spacing scale. No component carries an outer margin, so these are the only source of space between siblings.",
+      "The five components that put space between a page's parts, each with a named gap from the spacing scale.",
     demos: layoutDemos,
   },
   display: {
@@ -292,7 +291,7 @@ const catalogue = {
     package: "ui",
     title: "Display",
     blurb:
-      "Everything that presents rather than collects: the page title, headings, the table shell, the meters, the card parts, tabs, pagination and the avatar family.",
+      "What shows content rather than collects it: headings, tables, meters, cards, tabs, pages of results and avatars.",
     demos: displayDemos,
   },
   feedback: {
@@ -300,7 +299,7 @@ const catalogue = {
     package: "ui",
     title: "Feedback",
     blurb:
-      "What a page shows while it is busy, empty or broken: spinners and skeletons, the error and empty states, the toast, and the two dialogs. The overlay-style ones are pinned inside a box here.",
+      "What a page shows while it is busy, empty or broken, and the dialogs and notifications that speak to the user.",
     demos: feedbackDemos,
   },
   inputs: {
