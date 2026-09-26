@@ -435,14 +435,14 @@ function DeletionValidationDemo() {
 
   return (
     <Stack>
-      <Cluster>
+      <Stack gap="sm" class="items-start">
         <Button variant="outline" size="sm" onClick={() => blocked.value = !blocked.value}>
           {blocked.value ? "Empty the dependency list" : "Restore the dependency list"}
         </Button>
         <Button variant="outline" size="sm" onClick={() => renders.value++}>
           Re-render for an unrelated reason
         </Button>
-      </Cluster>
+      </Stack>
       <DeletionValidation dependencies={blocked.value ? dependencies : []} model="Team" />
       <Caption>
         {blocked.value ? "" : "An empty list shows nothing. "}Re-rendered {renders.value}{" "}
@@ -698,7 +698,7 @@ export const crudDemos = {
   AssociationEditor: {
     summary:
       "The editor for a row that joins two others, which blocks Save when the new row would duplicate one that exists or was removed.",
-    wide: false,
+    wide: true,
     props: [
       {
         name: "store",
@@ -718,7 +718,7 @@ export const crudDemos = {
       {
         name: "conflictRemovedMessage",
         type: "string",
-        default: "English",
+        default: "an English sentence",
         description: "What to say when the duplicate was removed and can be restored.",
       },
     ],
@@ -736,18 +736,6 @@ export const crudDemos = {
   {({ vm, vl }) => <SelectField vm={vm} vl={vl} name="supplierId" label="Supplier" options={…} />}
 </AssociationEditor>`,
     render: () => <AssociationEditorDemo />,
-  },
-  DeletionValidation: {
-    summary:
-      "The rows that still point at a row and so stop it being archived; with none, it shows nothing.",
-    wide: false,
-    snippet: `<DeletionValidation
-  dependencies={[
-    { kind: "Projects", values: [{ title: "Launch plan", url: "/projects/1/edit" }] },
-  ]}
-  model="Team"
-/>`,
-    render: () => <DeletionValidationDemo />,
   },
   TextField: {
     summary:
@@ -795,7 +783,7 @@ export const crudDemos = {
   FieldIssues: {
     summary:
       "The messages of one field, one per issue type, so your own checks show beside the schema's.",
-    wide: true,
+    wide: false,
     snippet: `<FieldIssues vl={vl} name="name" />
 
 // Or with your own rendering, and the payload the issue carries:
@@ -805,5 +793,17 @@ export const crudDemos = {
   renderIssue={(issue, type) => <p>{type}: {issue.message}</p>}
 />`,
     render: () => <FieldIssueDemo />,
+  },
+  DeletionValidation: {
+    summary:
+      "The rows that still point at a row and so stop it being archived; with none, it shows nothing.",
+    wide: false,
+    snippet: `<DeletionValidation
+  dependencies={[
+    { kind: "Projects", values: [{ title: "Launch plan", url: "/projects/1/edit" }] },
+  ]}
+  model="Team"
+/>`,
+    render: () => <DeletionValidationDemo />,
   },
 } satisfies DemoFragment
