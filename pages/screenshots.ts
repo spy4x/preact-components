@@ -1,5 +1,6 @@
 /**
- * Takes the README's screenshots of the UI guide from a local build, with the browser the checks use.
+ * Takes the screenshots of the UI guide from a local build, with the browser the checks use: the
+ * README's hero and the two pictures under `docs/maintaining.md` → "Screenshots".
  *
  * Serves `pages/dist` the way `verify.ts` does, launches headless Chromium once, and writes PNGs to
  * `docs/screenshots/`: the guide at 1280×800 CSS pixels and a device pixel ratio of 2 (2560×1600,

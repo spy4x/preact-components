@@ -1,7 +1,8 @@
 # AGENTS.md — preact-components
 
 Reusable Preact + Tailwind components, design tokens, icons and signals helpers for Deno apps.
-Read `README.md` for scope and `LICENSE` for terms (MIT).
+Read `README.md` for what the library is, `docs/maintaining.md` for its scope and rules, and
+`LICENSE` for terms (MIT).
 
 This repo is a Deno workspace. Several packages are built in parallel by different agents, each in
 its own PR, each owning exactly one top-level directory.
@@ -26,6 +27,8 @@ A name in backticks in this table must be an export or a subpath of that package
 catalogued package's README lists every component it exports in a "Components" table.
 `infra/scripts/export-lists.test.ts` holds both against the packages' real exports, and it runs in
 `deno task test`.
+The same test holds the "Scope" table in `docs/maintaining.md`, the `deno add` lines in
+`docs/usage.md` and the links in the README's "Packages" table: a new package needs all three.
 
 ## What belongs in this library
 
