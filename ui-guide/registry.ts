@@ -364,7 +364,7 @@ const catalogue = {
     package: "crud",
     title: "CRUD",
     blurb:
-      "The list and editor scaffolding a resource page is rebuilt from — props and slots, no entity and no store assumed. Every card drives a small in-memory store built from the structural interfaces the package declares.",
+      "The list page and the add and edit forms of a resource, built from props and slots over your own store. Every card here runs on a small in-memory store.",
     demos: crudDemos,
   },
   map: {
@@ -372,7 +372,7 @@ const catalogue = {
     package: "map",
     title: "Map",
     blurb:
-      "Markers on a Leaflet tile layer, plotted from plain data — each pin is the component's real keyboard and screen-reader interface — with a plain, non-interactive list of the same places beside it. The card is its own server render — a labelled empty box — until a browser mounts Leaflet into it.",
+      "Markers on a Leaflet map, plotted from plain data, with a list of the same places. The page loads Leaflet only when it opens, so until then the card shows a placeholder.",
     demos: mapDemos,
   },
   "ui-examples": {

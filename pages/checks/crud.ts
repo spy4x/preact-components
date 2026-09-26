@@ -179,13 +179,16 @@ function readDeletionState(devtools: Devtools): Promise<DeletionValidationReadin
     if (!region) return { ok: true, ...notFound }
     const box = region.getBoundingClientRect()
     const viewport = document.documentElement.clientHeight
+    // A block scrolled to the top can land half a pixel above it when the layout above it has a
+    // fractional height (-0.5 measured at 800x600), so the top edge is rounded to the pixel first.
+    const top = Math.round(box.top)
     return {
       ok: true,
       regionFound: true,
       hasAlertRole: region.getAttribute("role") === "alert",
       regionClass: region.getAttribute("class") ?? "",
       regionText: region.textContent.trim(),
-      inViewport: box.top >= 0 && box.top < viewport,
+      inViewport: top >= 0 && top < viewport,
     }
   })()`)
 }
