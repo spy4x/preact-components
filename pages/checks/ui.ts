@@ -7263,7 +7263,7 @@ async function signUpFormRequestSubmitGuardCheck(devtools: Devtools): Promise<vo
 /**
  * The sign-up form: a real click on the submit button — focus genuinely lands
  * there, unlike {@link signUpFormRequestSubmitGuardCheck}'s `requestSubmit()` calls — and then,
- * while the 150ms submit is still outstanding, focus is moved to an unrelated element elsewhere on
+ * while the 300ms submit is still outstanding, focus is moved to an unrelated element elsewhere on
  * the page, standing in for a visitor who submitted and then clicked or tabbed to read something
  * else entirely before the result came back.
  *
