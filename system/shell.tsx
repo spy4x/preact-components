@@ -57,6 +57,8 @@ export interface ShellUserMenuItem {
   /** Rendered as a link when given; a button otherwise. */
   href?: string
   onClick?: () => void
+  /** `data-e2e` on the rendered menu item, for an app's end-to-end tests. */
+  dataE2E?: string
 }
 
 /** Every user-visible or accessible string `Shell` prints that is not data the caller supplied. */
@@ -291,6 +293,7 @@ export function Shell(props: ShellProps): JSX.Element {
                   key={`${index}-${item.label}`}
                   href={item.href}
                   onClick={item.onClick}
+                  dataE2E={item.dataE2E}
                 >
                   {item.label}
                 </DropdownItem>

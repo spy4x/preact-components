@@ -822,7 +822,7 @@ item's icon and counter badge rendered in each copy and the badge omitted for ze
 number or no counter at all, an item with no `href` rendered as a heading with its `children` beneath
 it, `brand` and `status` each rendered exactly once with no anchor of the component's own, no user
 menu when `user` is `null`, the user menu named from the user's own name and every `userMenuItems`
-entry rendered as a link or a button, the skip link positioned before any other link and wired to a
+entry rendered as a link or a button carrying its `dataE2E`, the skip link positioned before any other link and wired to a
 focusable `#`-targeted `<main>`, a `labels` override replacing every default, and a caller's `class`
 merged onto the root without losing its own — checked, as `site-header.test.tsx` is, against the full
 set of visible words the render produces. Opening the drawer with a real click, a real Escape closing
