@@ -50,6 +50,19 @@ describe("Bars", () => {
     expect(html).toMatch(/<table[^>]*class="[^"]*\bbg-transparent\b/)
   })
 
+  it("leaves the background to a caller whose class sets one", () => {
+    const html = render(<Bars data={data} class="bg-surface mt-2" />)
+
+    expect(html).toMatch(/<table[^>]*class="[^"]*\bbg-surface\b/)
+    expect(html).not.toContain("bg-transparent")
+  })
+
+  it("stays transparent when the caller's class sets no background", () => {
+    const html = render(<Bars data={data} class="mt-2" />)
+
+    expect(html).toMatch(/<table[^>]*class="[^"]*\bbg-transparent\b/)
+  })
+
   it("honours a fixed maximum for cross-list comparison", () => {
     const html = render(<Bars data={data} max={8} />)
 
