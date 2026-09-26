@@ -37,7 +37,7 @@ import type { CrudAssociationStore } from "@spy4x/preact-crud/association-editor
 import type { CrudListStore } from "@spy4x/preact-crud/store"
 import type { CrudEditorStore } from "@spy4x/preact-crud/store"
 import type { OperationState } from "@spy4x/preact-crud"
-import { Button, Cluster, Stack } from "@spy4x/preact-ui"
+import { Button, Stack } from "@spy4x/preact-ui"
 import { computed, type ReadonlySignal, signal, useSignal } from "@preact/signals"
 import { search } from "@spy4x/platform/universal/text"
 import type { FieldIssue, ValidationModel } from "@spy4x/validation/model"
@@ -300,7 +300,7 @@ function FieldIssueDemo() {
   return (
     <Stack>
       <TextField vm={vm} vl={vl} name="name" label="Name" />
-      <Cluster>
+      <Stack gap="sm" class="items-start">
         <Button variant="outline" size="sm" onClick={() => addIssue("SCHEMA")}>
           Add a SCHEMA issue
         </Button>
@@ -308,7 +308,7 @@ function FieldIssueDemo() {
           Add a NOT_UNIQUE issue
         </Button>
         <Button variant="ghost" size="sm" onClick={() => vl.value = {}}>Clear</Button>
-      </Cluster>
+      </Stack>
       <Stack gap="xs">
         <Caption>The same issues through a custom renderIssue:</Caption>
         <FieldIssues
@@ -572,6 +572,7 @@ export const crudDemos = {
       "A resource list read from a store: title, count, search box, Active and Archived filter, an add link, and a table whose header, cells and row actions you supply.",
     wide: true,
     props: [
+      { name: "title", type: "string", description: "The list's heading." },
       {
         name: "store",
         type: "CrudListStore<M>",
@@ -657,6 +658,17 @@ export const crudDemos = {
         type: "CrudEditorStore<M>",
         description: "Where the row is read from and where `create` and `update` go.",
       },
+      {
+        name: "mode",
+        type: `"add" | "edit"`,
+        description: "Whether the form creates a row or edits the one `editId` names.",
+      },
+      {
+        name: "entity",
+        type: "string",
+        description: "The row's kind, used in the default title and messages.",
+      },
+      { name: "cancelHref", type: "string", description: "Where Cancel leads." },
       { name: "blank", type: "M", description: "The row an add form starts from." },
       {
         name: "schema",
@@ -684,6 +696,7 @@ export const crudDemos = {
     ],
     snippet: `<CrudEditor
   store={teamStore}
+  mode="add"
   blank={blankTeam}
   schema={teamBaseSchema}
   entity="Team"
@@ -703,7 +716,25 @@ export const crudDemos = {
       {
         name: "store",
         type: "CrudAssociationStore<M>",
-        description: "The editor's store plus every row, removed ones included, and `delete`.",
+        description:
+          "The editor's store plus every row, removed ones included, and `delete` and `undelete`.",
+      },
+      { name: "blank", type: "M", description: "The row an add form starts from." },
+      {
+        name: "mode",
+        type: `"add" | "edit"`,
+        description: "Whether the form creates a row or edits the one `editId` names.",
+      },
+      {
+        name: "entity",
+        type: "string",
+        description: "The row's kind, used in the default title and messages.",
+      },
+      { name: "cancelHref", type: "string", description: "Where Cancel leads." },
+      {
+        name: "children",
+        type: "({ vm, vl }) => ComponentChildren",
+        description: "The field rows, given the model and validation signals.",
       },
       {
         name: "conflict",
