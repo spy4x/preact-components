@@ -7,7 +7,7 @@ export interface LoadingSkeletonProps {
   class?: string
 }
 
-const card = "rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800"
+const card = "rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
 const bar = "animate-pulse rounded bg-gray-200 dark:bg-gray-700"
 
 /**
@@ -18,7 +18,7 @@ const bar = "animate-pulse rounded bg-gray-200 dark:bg-gray-700"
  */
 export function LoadingSkeleton({ rows = 3, class: className }: LoadingSkeletonProps): JSX.Element {
   return (
-    <div class={cn("mt-8 space-y-3", className)} aria-hidden="true">
+    <div class={cn("space-y-3", className)} aria-hidden="true">
       <div class={cn(card, "flex items-center gap-4")}>
         <div class="inline-flex size-10 items-center justify-center rounded-xl border border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-800 dark:bg-purple-950 dark:text-purple-300">
           <svg
@@ -44,7 +44,7 @@ export function LoadingSkeleton({ rows = 3, class: className }: LoadingSkeletonP
               <div class={cn(bar, "size-8 shrink-0 rounded-lg")} />
               <div class={cn(bar, "h-4 w-32")} />
             </div>
-            <div class="space-y-2.5">
+            <div class="space-y-2">
               <div class={cn(bar, "h-4 w-full")} />
               <div class={cn(bar, "h-4 w-5/6")} />
               <div class={cn(bar, "h-4 w-2/3")} />

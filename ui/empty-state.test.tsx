@@ -31,7 +31,7 @@ describe("EmptyState", () => {
 
   it("renders the minimal title-only markup", () => {
     expect(render(<EmptyState title="No invoices yet" />)).toBe(
-      '<div role="status" class="mx-auto my-4 max-w-[650px] rounded-lg border border-dashed ' +
+      '<div role="status" class="mx-auto max-w-[650px] rounded-lg border border-dashed ' +
         'border-gray-200 bg-white p-4 text-center dark:border-gray-700 dark:bg-gray-800">' +
         '<h3 class="text-base font-medium text-gray-900 dark:text-gray-100">No invoices yet</h3>' +
         "</div>",
@@ -49,7 +49,7 @@ describe("EmptyState", () => {
         />,
       ),
     ).toBe(
-      '<div role="status" class="mx-auto my-4 max-w-[650px] rounded-lg border border-dashed ' +
+      '<div role="status" class="mx-auto max-w-[650px] rounded-lg border border-dashed ' +
         'border-gray-200 bg-white p-4 text-center dark:border-gray-700 dark:bg-gray-800">' +
         '<span aria-hidden="true" class="mx-auto mb-3 inline-flex size-10 items-center ' +
         "justify-center rounded-xl border border-purple-200 bg-purple-50 text-purple-700 " +
@@ -120,7 +120,7 @@ describe("EmptyState copy slots", () => {
   it("keeps the ErrorState container geometry so the two can be swapped", () => {
     const html = render(<EmptyState title="No invoices yet" />)
 
-    expect(html).toContain("mx-auto my-4 max-w-[650px] rounded-lg")
+    expect(html).toContain("mx-auto max-w-[650px] rounded-lg")
     expect(html).toContain("p-4 text-center")
   })
 })

@@ -72,7 +72,7 @@ export function MarginNote(
     <aside
       aria-label={label}
       class={cn(
-        "border-subtle text-muted block border-l-2 pl-3 text-sm @min-[30rem]:float-right @min-[30rem]:ml-6 @min-[30rem]:w-48 @min-[30rem]:border-l-0 @min-[30rem]:pl-0",
+        "border-subtle text-muted block border-l-2 pl-3 text-sm @min-[30rem]:float-right @min-[30rem]:w-54 @min-[30rem]:border-l-0 @min-[30rem]:pl-6",
         className,
       )}
     >

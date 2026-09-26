@@ -117,8 +117,8 @@ export const SKELETON_METRICS = {
   headerPaddingYRem: 0.75,
   /** `gap-4` between the cards of a card grid. */
   cardGapRem: 1,
-  /** `p-5` inside a `Card`. */
-  cardPaddingRem: 1.25,
+  /** `p-4` inside a `Card`. */
+  cardPaddingRem: 1,
   /**
    * `height` a skeleton body row declares on itself: `3.3125rem` = `53px`, the same border-box
    * height a real `Table` body row occupies once the `tbody`'s 1px `divide-y` rule is counted.
@@ -404,8 +404,8 @@ const textLineRem = barHeightRem()
 const tableCell = "px-6"
 
 /**
- * Box of the real `Table`'s wrapper: same ring, radius, background, `min-h-[300px]` reservation and
- * `-mx-4 md:mx-0` bleed, so the box around the rows is the same one. The rows inside it are what the
+ * Box of the real `Table`'s wrapper: same ring, radius, background and `min-h-[300px]`
+ * reservation, so the box around the rows is the same one. The rows inside it are what the
  * heights on {@link tableRowHeightRem} pin, and the wrapper measures `681px` against `681.5px` at a
  * full 12-row table — see {@link tableRowHeightRem} for why that half pixel is spent on the last
  * body row rather than on the header.
@@ -414,7 +414,7 @@ const tableCell = "px-6"
  * consumed; the two are kept in step by the contract documented on {@link SkeletonTable}.
  */
 const tableBox =
-  "-mx-4 md:mx-0 bg-white dark:bg-gray-800 ring-1 ring-gray-200 dark:ring-gray-600 sm:rounded-lg pb-px overflow-x-auto"
+  "bg-white dark:bg-gray-800 ring-1 ring-gray-200 dark:ring-gray-600 rounded-lg pb-px overflow-x-auto"
 
 /** The height reservation `Table` ships, kept separate so `reserveHeight={false}` can drop it. */
 const tableMinHeight = "min-h-[300px]"
@@ -431,7 +431,7 @@ const cardGrid = "grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
 
 /** Surface and padding of the real `Card`, so a grid of these lines up with a grid of cards. */
 const cardSurface =
-  "rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800"
+  "rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
 
 /**
  * Paragraph-shaped placeholder: `lines` bars, each at its own width.
