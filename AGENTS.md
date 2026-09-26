@@ -183,6 +183,14 @@ Every package is published at the same version, every time, together (owner deci
 `^0.1.N` resolving to the set published with it. [`docs/publishing.md`](./docs/publishing.md) has
 the release steps.
 
+**Development is rapid: new versions are merged, deployed and published every few hours** (owner
+decision, 2026-09-26). Never hold a reviewed merge or deploy — here or in a repository that
+consumes these packages — for Deno's 24-hour minimum dependency age, and never add a temporary
+flag or wording to hide a version that is not installable yet. A version too young to resolve
+today will resolve tomorrow, and a later release supersedes it anyway. A consumer's CI still
+resolves a young version once its committed `deno.lock` records it; write that lockfile once with
+`deno install --minimum-dependency-age=0` (a one-off command-line flag, not a change to any file).
+
 Behaviour needs a second pair, in this order:
 
 | Task                           | Does                                   |
