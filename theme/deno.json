@@ -37,6 +37,7 @@
       "**/*.test.tsx",
       "generate.ts",
       "generate-classes.ts",
+      "accent-scale.ts",
       "integration/"
     ]
   },
@@ -56,9 +57,12 @@
     // final shape, the same as for hand-written code. Run after editing any of the three CSS
     // files; see generate.ts's own JSDoc and css-text.test.ts.
     //
+    // It first writes the accent scale into tokens.css with accent-scale.ts; see
+    // accent-scale.test.ts.
+    //
     // It also rewrites component-classes.ts from every published package's sources with
     // generate-classes.ts (`--allow-ffi` loads Tailwind's native class scanner). Run after changing
     // a class in any package; see component-classes.test.ts.
-    "generate": "deno run --allow-read --allow-write generate.ts && deno run --allow-read --allow-write --allow-env --allow-ffi generate-classes.ts && deno fmt tokens-css.ts preset-css.ts ink-css.ts component-classes.ts"
+    "generate": "deno run --allow-read --allow-write accent-scale.ts && deno fmt tokens.css && deno run --allow-read --allow-write generate.ts && deno run --allow-read --allow-write --allow-env --allow-ffi generate-classes.ts && deno fmt tokens-css.ts preset-css.ts ink-css.ts component-classes.ts"
   }
 }
