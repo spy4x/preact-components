@@ -58,21 +58,22 @@ scrolls to what the address names on its first read, but the browser's own resto
 can still win now and then, because the server sends the longer all-pages document first. The
 guide does not set it itself: it is the host's setting.
 
-| Prop            | Meaning                                                                                                                            |
-| --------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `hash`          | The address's fragment. `undefined` renders every page; a string renders the page its route names.                                 |
-| `navigate`      | Called with a link's `#/…` href instead of following it, for a host that routes by something other than the fragment.              |
-| `onRouteChange` | Called after a route is shown, with the route and the page showing, so the host can title the document.                            |
-| `pageExtras`    | Host content appended to one page, after its cards — a demo that needs a page of its own.                                          |
-| `labels`        | Overrides for the shell's own strings, each with an English default: titles, button and skip-link names, the overview's counts.    |
-| `registry`      | Registry to render; defaults to the complete one. A partial one raises the banner.                                                 |
-| `copy`          | Clipboard port, forwarded to every copy control — each card's usage block and the icon gallery. Defaults to `navigator.clipboard`. |
-| `class`         | Extra utilities on the guide's root.                                                                                               |
-| `version`       | The version the header shows beside the library's name. Left out, none is shown.                                                   |
-| `repository`    | The repository the header links to. Left out, there is no link.                                                                    |
-| `install`       | The command the overview offers to copy. Defaults to `deno add jsr:@spy4x/preact-ui`.                                              |
-| `actions`       | Host controls at the header's end, such as a colour-scheme switch.                                                                 |
-| `contentAs`     | `"main"` for a host with no `<main>` of its own; the page column is a `div` otherwise.                                             |
+| Prop            | Meaning                                                                                                                             |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `hash`          | The address's fragment. `undefined` renders every page; a string renders the page its route names.                                  |
+| `navigate`      | Called with a link's `#/…` href instead of following it, for a host that routes by something other than the fragment.               |
+| `onRouteChange` | Called after a route is shown, with the route and the page showing, so the host can title the document.                             |
+| `pageExtras`    | Host content appended to one page, after its cards — a demo that needs a page of its own.                                           |
+| `labels`        | Overrides for the shell's own strings, each with an English default: titles, button and skip-link names, the overview's counts.     |
+| `registry`      | Registry to render; defaults to the complete one. A partial one raises the banner.                                                  |
+| `copy`          | Clipboard port, forwarded to every copy control — each card's usage block and the icon gallery. Defaults to `navigator.clipboard`.  |
+| `class`         | Extra utilities on the guide's root.                                                                                                |
+| `version`       | The version the header shows beside the library's name. Left out, none is shown.                                                    |
+| `repository`    | The repository the header links to. Left out, there is no link.                                                                     |
+| `install`       | The command the overview offers to copy. Defaults to `deno add jsr:@spy4x/preact-ui`.                                               |
+| `colorScheme`   | `{ dark, toggle }`: the host's colour scheme. Given, the header shows a switch named for what a press does ("Switch to dark mode"). |
+| `actions`       | Host controls at the header's end, after the theme switch.                                                                          |
+| `contentAs`     | `"main"` for a host with no `<main>` of its own; the page column is a `div` otherwise.                                              |
 
 Nothing here imports an app's state: what a catalogue needs from its host — the address, where to put
 a copied snippet — arrives as props and ports.
@@ -88,7 +89,7 @@ the served document and a route of its own, for searching the whole library with
 
 The shell is a header, a navigation, a page and, at `xl`, an "On this page" list; `DESIGN.md` is
 the design it follows. The header carries the library's name and version, a search over every page,
-card and helper name, the repository link and the host's `actions`. At `lg` and up the navigation
+card and helper name, the repository link, the theme switch and the host's `actions`. At `lg` and up the navigation
 is a sticky column beside the page; below that it is a native modal `<dialog>` behind the header's
 menu button, which Enter or Space opens, Escape closes, and which puts focus back on the button when
 it closes. The navigation is a `<nav>`

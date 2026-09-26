@@ -68,6 +68,11 @@ The demo sits on a **canvas band** across the card: the page's colour showing th
 16 px dot grid, divided from the card's header and footer by hairlines, not boxed. The code block is
 the one dark surface, and it is code, not a container.
 
+A table inside a demo is painted with the surface colour in the dark palette by the preset itself
+(`theme/preset.css`, "Chrome the popup is painted by"), which is why `Bars` shows a darker box
+there. That is the theme's chrome for a table on a `theme-base` page, not the guide's, and the guide
+leaves it alone; the guide's own props table opts out with `bg-transparent`.
+
 Accent is the purple of the theme: the current page and card in the navigation, the package name,
 and the class chips. The primary button stays the theme's primary.
 
@@ -100,15 +105,22 @@ Grouped, in this order: **Start here** (Overview, Everything), **Components** (U
 Charts, Map), **Helpers** (Signals, cn), **Foundations** (Theme, Icons). Group titles are small and
 muted; links are one font and one size, and a long name wraps rather than being cut.
 
-Under the page showing: its sections, when it has more than one, and below `xl` its cards. The
-current page has a tinted background; the current section or card a purple left rule.
+Under the page showing, below `xl` only: its sections, when it has more than one, and its cards.
+From `xl` the "On this page" column lists both, so the side navigation lists pages alone. The links
+stay in the document, hidden, so the section or card a route names is still marked. The current page
+has a tinted background; the current section or card a purple left rule.
+
+A page's section heading is kept for the outline but hidden when it would repeat the page's own
+heading: on a page of one section, and on a section named like its page (Charts → Charts).
 
 ## Header
 
 Sticky, 56 px (`h-14`), translucent over the page. Left: the menu button (below `lg`), the library's
-name, and its version (from `sm`). Right: search, the repository link, and the host's own controls
-(`actions`) — in the demo site the colour-scheme switch. The switch says what a press does: its
-name is "Switch to the dark theme" (or light), with a moon or sun and, from `md`, the word.
+name, and its version in a quiet grey pill (from `sm`). Right: search, the repository link, the theme
+switch when the host passes its `colorScheme`, and the host's own `actions`. The switch says what a
+press does: its name is "Switch to dark mode" (or light) at every width, with a moon or sun, and
+from `md` the words "Dark mode" (or "Light mode"), which the name contains. Every word is a label
+with an English default.
 
 **Search** is a field-shaped button from `sm` (an icon button on a phone) that opens a modal dialog.
 It searches page titles, component names, example and class card titles, and every helper an
@@ -117,8 +129,8 @@ library's combobox keys; Escape or a click outside closes it. `/` and Ctrl+K (�
 
 ## "On this page"
 
-At `xl`, a sticky right-hand column lists the page's cards, grouped by section when there are more
-than one. The first card in view (below the header, in the top half of the window) is marked with
+At `xl`, a sticky right-hand column lists the page's cards, grouped under links to their sections
+when there are more than one. The first card in view (below the header, in the top half of the window) is marked with
 `aria-current="location"` and a purple rule. Clicking a card follows the card's own route, which
 marks the card and scrolls to it.
 
@@ -137,5 +149,6 @@ A landing page, not a list:
    (`deno add jsr:@spy4x/preact-ui`) with its copy button.
 2. **Browse components**, and the totals: live cards, icons, packages.
 3. **A first example**: one wide card with a live `Cluster` of buttons and a badge and its code.
-4. **Packages**: a grid of every package page, with its specifier, one line and its card count.
+4. **Packages**: a grid of every package page, with its specifier, one plain sentence (`summary` in
+   `registry.ts`, not the page's longer lead) and its card count. The tiles in a row share a height.
 5. **Design rules**: the theme's classes and page conventions, in one card.
