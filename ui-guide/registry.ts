@@ -81,10 +81,38 @@ export function packageSpecifier(id: SectionPackage): string {
   return `@spy4x/preact-${id}`
 }
 
+/** One row of a card's props summary: a prop, its type, its default and what it does. */
+export interface DemoProp {
+  /** The prop's name, e.g. `"title"`. */
+  name: string
+  /** Its type as a reader writes it, e.g. `"string"` or `"(value: number) => string"`. */
+  type: string
+  /** Its default, as code, when it has one. */
+  default?: string
+  /** One plain sentence on what it does. */
+  description: string
+}
+
 /** One entry of the catalogue: what the component is, the JSX to copy, and the live example. */
 export interface Demo {
-  /** One or two sentences on the component's contract and its defaults. */
+  /**
+   * One plain sentence on what the component is for, as text. Inline Markdown code spans
+   * (`` `name` ``) render as code, so no literal backtick reaches the page. It is also what the
+   * search reads when {@link Demo.description} is JSX.
+   */
   summary: string
+  /**
+   * The card's description as JSX, shown instead of {@link Demo.summary} when given — for a
+   * sentence that needs a link or markup the Markdown subset does not cover.
+   */
+  description?: ComponentChildren
+  /**
+   * Give the card the content column's full width: for a demo that needs room (a table, a chart, a
+   * form). Left out, the card shares a row with its neighbour at the widths that fit two.
+   */
+  wide?: boolean
+  /** The props summary under the demo: the props a reader reaches for first. Optional. */
+  props?: readonly DemoProp[]
   /** The JSX a consumer copies out of the guide. */
   snippet: string
   /**
@@ -320,7 +348,7 @@ const catalogue = {
     package: "charts",
     title: "Charts",
     blurb:
-      "Server-rendered charts and the d3 islands. The zero-JS SVGs are live and need nothing but their data; the two islands draw in an effect, so their cards are their real server render and a browser is where the drawing happens.",
+      "The server-rendered charts need nothing but their data; the two d3 charts draw in the browser, so until then their cards show a placeholder.",
     demos: chartsDemos,
   },
   system: {
@@ -648,7 +676,8 @@ const pageCopy: Record<GuidePageId, { title: string; blurb: string }> = {
   },
   charts: {
     title: "Charts",
-    blurb: catalogue.charts.blurb,
+    blurb:
+      "Charts that render on the server as plain SVG and HTML, two d3 charts that draw in the browser, and the scale and loading helpers behind them.",
   },
   map: {
     title: "Map",
