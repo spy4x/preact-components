@@ -6,7 +6,8 @@
  * the name is removed from here. Adding a new export here to skip its README line is what review
  * refuses.
  *
- * Seeded with every helper no README named when the guide stopped showing helpers (#357).
+ * Seeded with every helper no README named when the guide stopped showing helpers (#357); #373
+ * tracks emptying it.
  */
 
 import type { PackageId } from "./registry.ts"
