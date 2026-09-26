@@ -31,12 +31,12 @@ describe("Kpi", () => {
   it("defaults to the accent tone", () => {
     const html = render(<Kpi label="a" value={1} />)
 
-    expect(html).toContain("text-purple-900")
+    expect(html).toContain("text-accent-900")
   })
 
   it("maps every tone to its own colour", () => {
     const tones = {
-      accent: "text-purple-900",
+      accent: "text-accent-900",
       positive: "text-green-700",
       warning: "text-orange-600",
       negative: "text-red-600",
