@@ -1205,7 +1205,9 @@ async function drawerContentCheck(devtools: Devtools): Promise<void> {
  * later card sits under the header, the mark moves to that card.
  */
 async function onThisPageCheck(devtools: Devtools): Promise<void> {
-  await openGuidePage(devtools, "charts")
+  // The UI page, because it is long enough to scroll any of its cards under the header: the charts
+  // page lost its example cards (#357), and its last cards now sit too near the end to get there.
+  await openGuidePage(devtools, "ui")
   const LIST = JSON.stringify(`[data-e2e="ui-guide-on-this-page"]`)
   const marked = () =>
     devtools.evaluate<string>(
@@ -1214,11 +1216,11 @@ async function onThisPageCheck(devtools: Devtools): Promise<void> {
   const visible = await devtools.evaluate<boolean>(
     `document.querySelector(${LIST})?.checkVisibility() === true`,
   )
-  const first = guidePages.find((page) => page.id === "charts")?.sections[0].names[0] ?? ""
+  const first = guidePages.find((page) => page.id === "ui")?.sections[0].names[0] ?? ""
   const atTop = await poll(async () => (await marked()) === first, 3_000)
   const topMark = await marked()
 
-  const target = "KpiGrid"
+  const target = "Table"
   const top = await devtools.evaluate<number>(`(() => {
     const card = document.getElementById("demo-${target}")
     const y = Math.round(card.getBoundingClientRect().top + scrollY - 72)
