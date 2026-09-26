@@ -73,12 +73,51 @@ its own tree — can still `@import` those files by a relative path instead; tha
 filesystem resolution and never goes through this package's `exports` at all. The exact line is
 further down, past the cascade-layer notes below.
 
-Then tell Tailwind where the library's components live, so the classes they use
-are emitted:
+Then tell Tailwind which classes the library's components render, so it emits them. The package
+exports them as `COMPONENT_CLASSES`, one string of class names separated by spaces, and the app adds
+one line to the entry above:
 
-```css
-@source "../node_modules/@spy4x";
+```ts
+import { COMPONENT_CLASSES, PRESET_CSS, TOKENS_CSS } from "@spy4x/preact-theme"
+
+const entry = `
+  @import "tailwindcss";
+  @import "@spy4x/preact-theme/tokens.css";
+  @import "@spy4x/preact-theme/preset.css";
+  @source inline("${COMPONENT_CLASSES}");
+`
 ```
+
+`@source inline` (Tailwind 4.1 and later) takes class names instead of files, so the app's build
+never scans the library. The app's own files are still scanned as usual. An app that builds with
+Vite and `@tailwindcss/vite` has no entry string in TypeScript; it appends the same line to its
+stylesheet from a small plugin placed before Tailwind's:
+
+```ts
+// vite.config.ts
+import { COMPONENT_CLASSES } from "@spy4x/preact-theme"
+
+const componentClasses = {
+  name: "component-classes",
+  enforce: "pre" as const,
+  transform(code: string, id: string) {
+    if (!id.endsWith("/src/app.css")) return
+    return `${code}\n@source inline("${COMPONENT_CLASSES}");\n`
+  },
+}
+```
+
+Scanning the installed library does not work for a Deno app. JSR packages are not in
+`node_modules`: Deno keeps them in its own cache under hashed file names. Pointing `@source` at
+those cached files works on a glibc system but emits nothing inside the `denoland/deno:alpine-*`
+images: there, Deno is a glibc program, while Tailwind's scanner loads the build it made for musl,
+because it reads `/usr/bin/ldd` to decide. That build scans none of the named files, and the CSS
+ships without the components' classes while the build still exits 0 (#323).
+
+`COMPONENT_CLASSES` is generated from every published package's sources and lists only names that
+compile to CSS against `tailwindcss` and this preset; `component-classes.test.ts` fails when it
+falls out of date. It carries every package's classes, used or not, so an app that renders only
+some of the components still gets CSS for all of them.
 
 `@tailwindcss/forms` is optional: the preset's own form rules render without it,
 so nothing in this package loads it, imports it or pins it. An app that wants
@@ -307,9 +346,14 @@ after the preset, and the preset still works when `tokens.css` is skipped. The
 Deno-side `@import` reader the compile needs is covered there too.
 
 That compile reads `HOME`, the preset and the Deno npm cache, so the root `test`
-task grants `--allow-read --allow-env`. Those are repo-wide only because
-`deno test` discovers every member's suite in one process; nothing in the
-workspace needs `net`, `run` or `write` to test.
+task grants `--allow-read --allow-env`. It also grants `--allow-ffi`, because
+`component-classes.test.ts` runs Tailwind's class scanner, a native addon. Those
+are repo-wide only because `deno test` discovers every member's suite in one
+process; nothing in the workspace needs `net`, `run` or `write` to test.
+
+`component-classes.test.ts` holds `COMPONENT_CLASSES` to the packages' sources: it fails when a
+component gains or loses a class and `component-classes.ts` was not regenerated. The same
+`deno task --cwd theme generate` below rewrites it.
 
 `css-text.test.ts` guards the other half: that `TOKENS_CSS`/`PRESET_CSS` — what `+index.ts`
 actually exports — match `tokens.css`/`preset.css` byte for byte. Both constants are generated
