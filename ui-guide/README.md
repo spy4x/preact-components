@@ -2,11 +2,11 @@
 
 The live component catalogue, shipped as a component so every app that imports the library gets it
 free. It shows one page at a time: an overview, then one page per package, picked from a side
-navigation that becomes a modal dialog behind a menu button on a phone. The pages hold one demo per
-component of every package it covers (`ui`, `charts`, `system`, `crud` and `map`), an example card
-per helper (`signals`, `theme` and `cn` have only helpers), one card per group of
-`theme/preset.css` classes, the icon gallery, and the design-system rules components are meant to
-be assembled in. An app mounts it in one line, `<uiGuideRoute.component />` (see "Usage").
+navigation that becomes a modal dialog behind a menu button on a phone. The guide shows components
+only: one demo per component of every package that has them (`ui`, `charts`, `map`, `system` and
+`crud`), one card per group of `theme/preset.css` classes, the icon gallery, and the design-system
+rules components are meant to be assembled in. Helpers — functions, constants, enums — have no card;
+each package's README names them. An app mounts it in one line, `<uiGuideRoute.component />` (see "Usage").
 
 Covering `map/` (#143) is what makes `@spy4x/preact-ui-guide` resolve Leaflet: `map/`'s exact
 `leaflet`/`@types/leaflet` pins reach an app's dependency graph the moment it imports this package's
@@ -34,9 +34,10 @@ import { UIGuide, useLocationHash } from "@spy4x/preact-ui-guide"
 `hash` is `location.hash` for a hash-routed host, re-read on every `hashchange` — which is what
 `useLocationHash()` returns; the guide itself reads nothing from `location`. While `hash` is
 `undefined` — on the server and in the first client render, before the host has read the address —
-the guide renders its `all` page: every page at once, which is the markup a reader without
-JavaScript gets and the tree hydration has to match, and its links change the address and nothing
-else. Once it is a string, the guide renders that route's page and, in an effect, marks and scrolls
+the guide renders every page at once, which is the markup a reader without JavaScript gets and the
+tree hydration has to match, and its links change the address and nothing else. That document is not
+a page: it has no route and no navigation entry, and its navigation lists every page's sections and
+cards. Once it is a string, the guide renders that route's page and, in an effect, marks and scrolls
 to the card or section the route names.
 
 Or registers the route descriptor, which is the fix for one source guide being an orphan reachable
@@ -53,7 +54,7 @@ const nav = [...appLinks, { href: uiGuideRoute.path, label: uiGuideRoute.label }
 
 Set `history.scrollRestoration = "manual"` in the host, as `pages/src/app.tsx` does. The guide
 scrolls to what the address names on its first read, but the browser's own restore after a reload
-can still win now and then, because the server sends the longer all-pages document first. The
+can still win now and then, because the server sends the longer document of every page first. The
 guide does not set it itself: it is the host's setting.
 
 | Prop            | Meaning                                                                                                                             |
@@ -72,22 +73,23 @@ guide does not set it itself: it is the host's setting.
 | `colorScheme`   | `{ dark, toggle }`: the host's colour scheme. Given, the header shows a switch named for what a press does ("Switch to dark mode"). |
 | `actions`       | Host controls at the header's end, after the theme switch.                                                                          |
 | `contentAs`     | `"main"` for a host with no `<main>` of its own; the page column is a `div` otherwise.                                              |
+| `mapTiles`      | `{ url, attribution }`: the tile provider the Map card draws with. Defaults to OpenStreetMap's tiles and credit line.               |
 
 Nothing here imports an app's state: what a catalogue needs from its host — the address, where to put
 a copied snippet — arrives as props and ports.
 
 ## Pages
 
-`registry.ts`'s `guidePages` is what the guide renders at one time: the overview, one page per
-package (`ui`, `system`, `crud`, `charts`, `map`, `signals`, `theme`, `icons`, `cn`), and `all`. A
-section belongs to its package's page — `theme` holds the class sections and its examples — so
-`ui/`'s sections are one page read top to bottom and a package with one section is a page of one.
-A package page with no card in the registry says its examples are coming. `all` renders every other page in navigation order: it is
-the served document and a route of its own, for searching the whole library with the browser's find.
+`registry.ts`'s `guidePages` is what the guide renders at one time: the overview, then one page per
+package, in the navigation's order — `ui`, `icons`, `theme`, `charts`, `map`, `system`, `crud`. A
+package that exports helpers alone (`signals`, `cn`) has no page. A section belongs to its package's
+page — `theme` holds the class sections — so `ui/`'s sections are one page read top to bottom and a
+package with one section is a page of one. A package page with no card in the registry says its
+examples are coming. There is no page of every page: search finds any card by name.
 
 The shell is a header, a navigation, a page and, at `xl`, an "On this page" list; `DESIGN.md` is the
-design it follows. The header carries the library's name and version, a search over every page, card
-and helper name, the repository link, the theme switch and the host's `actions`. At `lg` and up the
+design it follows. The header carries the library's name and version, a search over every page and card
+name, the repository link, the theme switch and the host's `actions`. At `lg` and up the
 navigation is a sticky column beside the page; below that it is a native modal `<dialog>` behind the
 header's menu button, which Enter or Space opens, Escape closes, and which puts focus back on the
 button when it closes. The navigation is a `<nav>` named by `labels.nav`; it lists every page, marks
@@ -159,59 +161,41 @@ Both of the source guides documented **class names** rather than component APIs,
 of them ended up documenting `.btn-sm` and `.h6` — classes with zero usages that only its own
 ui-guide kept alive.
 
-### One rule: every export has a card or an example
+### One rule: a component has a card, a helper has a README line
 
 `coverage.ts` reads every covered package's value exports — from its barrel, and from every subpath
 module its `deno.json` publishes, so an export reachable only through its own subpath is seen too.
 A **component** is a function named in PascalCase (`Badge`, `EmptyState`, `LineChart`), and it
-needs a card in a component section; an example does not count as its card. Anything else — a
-function (`clampProgress`), a constant (`DEFAULT_AXIS_COLOR`), an enum (`ThemeValue`) — needs a
-card or an example card that names it in its `covers`. An export with neither needs a line in the
-allow-list below.
+needs a card in a component section. Anything else — a function (`clampProgress`), a constant
+(`DEFAULT_AXIS_COLOR`), an enum (`ThemeValue`), a class (`NpmVersionMismatchError`) — is a
+**helper**: the guide shows none, and the package's `README.md` has to name it in code, as a code
+span that starts with the name (`` `clampProgress` `` or `` `clampProgress(value, max)` ``). A
+mention in prose does not count, and neither does a longer name that starts with it.
 
 Each kind of drift fails `deno task test`, naming the export and its package:
 
-| Drift                                                 | Message                                                                         |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------- |
-| a component with no card and no allow-list entry      | `crud exports the component CrudList and no section demonstrates it — …`        |
-| anything else with no card, no example, no entry      | `ui exports clampProgress and no card or example covers it — …`                 |
-| a card or an example naming a name the package lacks  | `the ui sections demo Badge, which ui does not export`                          |
-| an allow-list entry the package does not export       | `ui does not export FakeHelper, which the allow-list names`                     |
-| an allow-list entry whose export is covered after all | `ui's clampProgress has a card or an example, so its allow-list entry is stale` |
+| Drift                                                | Message                                                                   |
+| ---------------------------------------------------- | ------------------------------------------------------------------------- |
+| a component with no card and no allow-list entry     | `crud exports the component CrudList and no section demonstrates it — …`  |
+| a helper its README does not name, and not pending   | `ui exports the helper clampProgress and ui/README.md does not name it …` |
+| a card naming a name the package lacks               | `the ui sections demo Badge, which ui does not export`                    |
+| an allow-list or pending entry the package lacks     | `ui does not export FakeHelper, which README_PENDING names`               |
+| an allow-list entry whose component has a card       | `ui's Badge has a card, so its COMPONENTS_WITHOUT_CARD entry is stale`    |
+| a pending entry the README names after all           | `ui/README.md names clampProgress, so its README_PENDING entry is stale`  |
+| an allow-list entry that is a helper, or the reverse | `signals's ThemeValue is not a component, so …`                           |
 
 Prop vocabulary is guarded one level down: demos iterate a `Record<Union, …>` keyed by a prop's own
 union type (`ButtonVariant`, `BadgeColor`, `SpinnerSize`, `BadgeType`, `ToastVariant`), so adding a
 variant to a component fails `deno check` until the catalogue shows it.
 
-### The allow-list carries a reason, and it only shrinks
+### The lists carry a reason, and they only shrink
 
-Lists feed it. `EXPORTS_WITHOUT_DEMO` in `coverage.ts` holds an export with a sentence saying
-why it has no card or example — `useUrlFilters`, for instance, whose card would read and write
-the host application's own address. `examples-pending.ts` holds, per package and one
-name per line, every export that had neither when example cards were added; each carries the reason
-"example pending (#215)". An entry the package no longer exports fails, and so does one that
-has a card or an example since — so adding an example fails the tests until its names leave the
-list. Adding a new export to the pending list to skip its example is what review refuses.
-
-### Adding an example
-
-1. Open the package's example section, `sections/<package>-examples.tsx`. Every package with
-   helpers has one, so adding an example never touches `registry.ts`. A new section is a file
-   exporting `toExampleDemos({...})` plus a `catalogue` entry in `registry.ts` with
-   `kind: "example"`.
-2. Add an entry keyed by the card id, usually the main export's name, so the card is
-   `#demo-<key>`: a `title`, a one-sentence `summary`, the `snippet` a reader copies, the names it
-   `covers`, and `run`, which makes the same calls as the snippet and returns what the card prints.
-   One example may cover several related exports.
-3. Remove every covered name from `examples-pending.ts`.
-
-Every name in `covers` has to appear as a whole word in both the `snippet` and `run`, and the
-snippet cannot be empty; `example.test.tsx` fails otherwise. `run` is called when the card
-renders, so the output on the page is the real export's, never a copy. Being inside a render, `run`
-may call a hook. The card calls it inside `untracked`, so `run` may read and write signals freely:
-a tracked read would subscribe the card, and the write after it would render the card again and
-again until the page stopped loading. Keep it deterministic — no clock, no random, no network —
-since the server render and the browser render have to match.
+`COMPONENTS_WITHOUT_CARD` in `coverage.ts` holds a component with a sentence saying why it has no
+card; it is empty today. `readme-pending.ts` holds, per package and one name per line, every helper
+no README named when the guide stopped showing helpers (#357). An entry the package no longer
+exports fails, and so does one covered since — so adding a README line fails the tests until its
+name leaves the list. Adding a new export to the pending list to skip its README line is what
+review refuses.
 
 ### A component without a card is visible, not absent
 
@@ -228,10 +212,10 @@ and it is tested rather than assumed.
 
 `coverage.test.ts` walks the top-level directories for a `deno.json` and fails when one is neither a
 `coveredPackageIds` entry nor an `EXCLUDED_PACKAGES` entry with a reason. `coveredPackageIds` is
-`packageIds` — the packages whose markup the guide renders, which the host's stylesheet scans — then
-`examplePackageIds` (`signals`, `theme`, `cn`), which export nothing that renders. Covering a
-package and excluding it are both one line, and both are visible in review. That is how `icons/`
-(the gallery reads the barrel itself), `pages/` (the demo's host app, not a package) and
+`packageIds` — the packages with components, whose markup the guide renders and the host's
+stylesheet scans — then `helperPackageIds` (`theme`, `signals`, `cn`), which export helpers alone.
+Covering a package and excluding it are both one line, and both are visible in review. That is how
+`icons/` (the gallery reads the barrel itself), `pages/` (the demo's host app, not a package) and
 `ui-guide/` itself are written down.
 
 ### The theme's class names are checked against the theme, in both directions
@@ -285,10 +269,15 @@ no script that carries Leaflet, and opening the map page fetches one and draws t
 placeholder to be replaced before it reads the map page. Because the card now renders `Map` only in
 the browser, no browser check hydrates a server-rendered `Map` any more.
 
+The card draws OpenStreetMap's tiles with their credit line (`map-tiles.ts`), so the published
+guide shows a real map. A host passes another provider as `mapTiles`; the demo site does so only
+while `verify` runs, with one local tile, so the browser checks never reach the network
+(`pages/src/site.ts`, `LOCAL_MAP_TILES_FLAG`).
+
 ## Heading levels are the outline
 
-On one page: `h1` the page → `h2` a section → `h3` a card. On the `all` page the overview's `h1` is
-the only one, a package's page is an `h2` and its sections `h3`, beside their cards. A package with
+On one page: `h1` the page → `h2` a section → `h3` a card. In the served document of every page the
+overview's `h1` is the only one, a package's page is an `h2` and its sections `h3`, beside their cards. A package with
 one section keeps its section heading for the outline and hides it visually, since it would repeat
 the page's. No test pins a level, so treat this as a stated decision rather than a guarded one.
 
@@ -299,32 +288,26 @@ and a list in this file was wrong more often than it was right. The guide's own 
 card, the overview prints the counts from the registry, and `pages/build.ts` asserts a prerendered card
 per entry of `catalogueNames` against the emitted HTML.
 
-| Section                    | Package   | Page      |
-| -------------------------- | --------- | --------- |
-| **Badges**                 | `ui`      | `ui`      |
-| **Buttons**                | `ui`      | `ui`      |
-| **Display**                | `ui`      | `ui`      |
-| **Feedback**               | `ui`      | `ui`      |
-| **Inputs**                 | `ui`      | `ui`      |
-| **Fields**                 | `ui`      | `ui`      |
-| **Enhanced forms**         | `ui`      | `ui`      |
-| **Forms**                  | `theme`   | `theme`   |
-| **Surfaces and utilities** | `theme`   | `theme`   |
-| **Charts**                 | `charts`  | `charts`  |
-| **System**                 | `system`  | `system`  |
-| **CRUD**                   | `crud`    | `crud`    |
-| **Map**                    | `map`     | `map`     |
-| **Helpers** (examples)     | `ui`      | `ui`      |
-| **Signals** (examples)     | `signals` | `signals` |
-| **Helpers** (examples)     | `charts`  | `charts`  |
-| **Helpers** (examples)     | `system`  | `system`  |
-| **Helpers** (examples)     | `crud`    | `crud`    |
-| **Helpers** (examples)     | `theme`   | `theme`   |
-| **cn** (examples)          | `cn`      | `cn`      |
+| Section                    | Package  | Page     |
+| -------------------------- | -------- | -------- |
+| **Badges**                 | `ui`     | `ui`     |
+| **Buttons**                | `ui`     | `ui`     |
+| **Layout**                 | `ui`     | `ui`     |
+| **Display**                | `ui`     | `ui`     |
+| **Feedback**               | `ui`     | `ui`     |
+| **Inputs**                 | `ui`     | `ui`     |
+| **Fields**                 | `ui`     | `ui`     |
+| **Enhanced forms**         | `ui`     | `ui`     |
+| **Forms**                  | `theme`  | `theme`  |
+| **Surfaces and utilities** | `theme`  | `theme`  |
+| **Charts**                 | `charts` | `charts` |
+| **Map**                    | `map`    | `map`    |
+| **System**                 | `system` | `system` |
+| **CRUD**                   | `crud`   | `crud`   |
 
 Nothing here states how many components are _missing_ a card, on purpose: that number moves with
-every component PR. Read `examples-pending.ts` and `EXPORTS_WITHOUT_DEMO` in `coverage.ts`, which is
-where a card or an example somebody still owes is declared. A count in this file went wrong more
+every component PR. Read `COMPONENTS_WITHOUT_CARD` in `coverage.ts` and `readme-pending.ts`, which
+is where a card or a README line somebody still owes is declared. A count in this file went wrong more
 than once while this section was being written, which is the argument against writing one.
 
 `Fields` is the `ui/` half of the form story — the controlled primitives, each with the demo an app
@@ -340,8 +323,8 @@ section was being written. Their other contract — a heading, and a class list 
 by `classes.test.tsx`.
 
 The catalogue is checked against the packages' own exports, not against this table, so the table is
-prose and nothing reads it: `coverage.test.ts` fails when a covered package has an export with no card or
-example, whichever section it should have been in.
+prose and nothing reads it: `coverage.test.ts` fails when a covered package has a component with no
+card, whichever section it should have been in.
 
 Some demos need a `class` override to be renderable inside a page: `LoadingScreen`, for instance,
 is a full-viewport overlay and `Toastr` is pinned to the page corner, so both are shown inside a
@@ -408,13 +391,12 @@ apart from the components, and the missing-card report), `routes.test.ts` (the r
 builders, a route for every section driven from `catalogueSections`, and the drift check that
 `pages/build.ts` runs over the emitted route echo, and the page each route opens),
 `catalogue.test.tsx` (every demo renders, the banner, the route descriptor, a usage block and copy
-control per card, and the `all` page's order), `shell.test.tsx` (the page a hash renders, the
-navigation's marks and names, a host's page extra), `icons.test.tsx` (gallery exhaustiveness,
+control per card, and the order of the served document of every page), `shell.test.tsx` (the page a hash renders, the
+navigation's marks, names and order, a host's page extra), `icons.test.tsx` (gallery exhaustiveness,
 filter), `instructions.test.ts` (a documented class is defined), `classes.test.tsx` (a defined class
 is demonstrated, or excluded with a reason), `copy.test.tsx` (every card's copy control is wired to
-its own snippet and to the injected port), `example.test.tsx` (an example runs when its card
-renders, on its package's page, uses every export it covers, and how its output is printed),
-`lazy.test.tsx` (a lazy module renders its loading state on the server without starting the load),
+its own snippet and to the injected port), `map-tiles.test.tsx` (the Map card's default tiles, and
+a host's), `lazy.test.tsx` (a lazy module renders its loading state on the server without starting the load)
 and `sections/demo-decisions.test.ts` (the pure decisions behind the interactive
 demos, such as what a caller holds after a port fires). Tests render real markup with
 `preact-render-to-string` and assert on it; no DOM, no browser.
