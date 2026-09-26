@@ -672,6 +672,129 @@ export async function openGuidePage(
   await settledScroll(page, { target: 0 })
 }
 
+/** Where {@link inFreshFrame} loads its frame, and what its checks call it. */
+export interface FreshFrame {
+  /** The frame element's id, unique to the check, so every expression finds the same one. */
+  id: string
+  /** The address to load, resolved against the shared page's own directory: a guide route such as
+   * `#/`, or a path such as `map-demo/`. */
+  src: string
+  /** What the check proves with it, for the check about the shared page's scroll: `d3`. */
+  label: string
+}
+
+/**
+ * Load the site again in a hidden same-origin `<iframe>`, run `body` against it, then remove it.
+ *
+ * A check that must see a page load from nothing — which scripts it fetches, what its server-rendered
+ * markup turns into — cannot use the shared page: earlier blocks have already loaded everything on
+ * it. A frame is a fresh document with its own module map. A second tab would do the same, but
+ * `connect` needs the debugging port, which a block does not get; the frame needs nothing but the
+ * page. It is fixed over the viewport, invisible and click-through, so what it lays out measures a
+ * real width and nothing the pointer does reaches it. The shared page's scroll position is read
+ * before and after, and a check fails if the frame moved it.
+ *
+ * @param devtools The connected session.
+ * @param frame Where to load the frame and what to call it.
+ * @param body The checks, handed a page expression for the frame element.
+ */
+export async function inFreshFrame(
+  devtools: Devtools,
+  frame: FreshFrame,
+  body: (frame: string) => Promise<void>,
+): Promise<void> {
+  const element = `document.getElementById(${JSON.stringify(frame.id)})`
+  const scrollBefore = await devtools.evaluate<number>("scrollY")
+  try {
+    await devtools.evaluate(`(() => {
+      const frame = document.createElement("iframe")
+      frame.id = ${JSON.stringify(frame.id)}
+      frame.setAttribute("aria-hidden", "true")
+      frame.tabIndex = -1
+      frame.style.cssText =
+        "position:fixed;inset:0;width:100vw;height:100vh;border:0;opacity:0;pointer-events:none"
+      frame.src = new URL(${JSON.stringify(frame.src)}, location.origin + location.pathname).href
+      document.body.append(frame)
+      return null
+    })()`)
+    await body(element)
+  } finally {
+    await devtools.evaluate(`(${element}?.remove(), null)`)
+  }
+  const scrollAfter = await devtools.evaluate<number>("scrollY")
+  check(
+    `the frame the ${frame.label} check loads leaves the shared page where it was`,
+    scrollAfter === scrollBefore,
+    `scrollY ${scrollBefore} → ${scrollAfter}`,
+  )
+}
+
+/**
+ * Wait until a frame {@link inFreshFrame} loaded at the guide's overview has hydrated and shows it,
+ * then give anything that would start a load after hydration a moment to show up.
+ *
+ * @param devtools The connected session.
+ * @param frame A page expression for the frame element.
+ * @returns Whether the overview hydrated within 15 seconds; when it did not, a failed check says so.
+ */
+export async function frameOverviewHydrates(devtools: Devtools, frame: string): Promise<boolean> {
+  const ready = await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `${frame}?.contentDocument?.documentElement.dataset.hydrated === "true" &&
+          ${frame}.contentDocument.querySelector('[data-guide-page="overview"]') !== null`,
+      ),
+    15_000,
+  )
+  if (!ready) {
+    check("the guide's overview, loaded fresh in a frame, hydrates", false, "not within 15s")
+    return false
+  }
+  // Nothing on the overview should start a load after hydration; give anything that would a moment
+  // to show up in the list before reading it.
+  await new Promise((resolve) => setTimeout(resolve, 1_000))
+  return true
+}
+
+/** What {@link readFrameScripts} reports about the scripts a frame's document fetched. */
+export interface ScriptReport {
+  /** Path of every `.js` file the frame's document fetched, in the order it fetched them. */
+  scripts: string[]
+  /** The subset whose body carries one of the markers asked about. */
+  matching: string[]
+}
+
+/**
+ * List the `.js` files a frame's document fetched, and which of them carry a library's code.
+ *
+ * Each body is fetched again from the shared page: same origin, same URL, so the browser's cache
+ * answers, and the text read is what the frame ran. `pages/build.ts` minifies the bundle, which
+ * renames identifiers but leaves string literals and property names alone, so a marker is one of
+ * those.
+ *
+ * @param devtools The connected session.
+ * @param frame A page expression for the frame element.
+ * @param markers Strings only the library's code carries; a script holding any of them matches.
+ */
+export async function readFrameScripts(
+  devtools: Devtools,
+  frame: string,
+  markers: readonly string[],
+): Promise<ScriptReport> {
+  return await devtools.evaluate<ScriptReport>(`(async () => {
+    const entries = ${frame}.contentWindow.performance.getEntriesByType("resource")
+    const scripts = entries.map((entry) => new URL(entry.name))
+      .filter((url) => url.origin === location.origin && url.pathname.endsWith(".js"))
+      .map((url) => url.pathname)
+    const matching = []
+    for (const path of scripts) {
+      const text = await (await fetch(path)).text()
+      if (${JSON.stringify(markers)}.some((marker) => text.includes(marker))) matching.push(path)
+    }
+    return { scripts, matching }
+  })()`)
+}
+
 /** Wait for Chromium's port file, which appears once the debugging server is up. */
 export async function debuggingPort(profile: string, timeoutMs = 20_000): Promise<number> {
   const portFile = join(profile, "DevToolsActivePort")

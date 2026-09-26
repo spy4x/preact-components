@@ -1,5 +1,15 @@
 import { pageHref } from "@spy4x/preact-ui-guide/routes"
-import { centreInView, check, type Devtools, poll, pressKey } from "./harness.ts"
+import { MAP_PAGE_MARKERS, SERVED_BOX_GLOBAL } from "../src/map-page/page.tsx"
+import {
+  centreInView,
+  check,
+  type Devtools,
+  frameOverviewHydrates,
+  inFreshFrame,
+  poll,
+  pressKey,
+  readFrameScripts,
+} from "./harness.ts"
 
 /**
  * Strings only Leaflet's code carries; a script that holds either counts as carrying Leaflet. The
@@ -12,12 +22,26 @@ const LEAFLET_MARKERS = ["A JavaScript library for interactive maps", "leaflet-z
 /** The id the frame gets, so every expression below finds the same one. */
 const FRAME_ID = "map-lazy-leaflet-frame"
 
-/** What {@link readScripts} reports about the scripts a document has fetched. */
-interface ScriptReport {
-  /** Path of every `.js` file the frame's document fetched, in the order it fetched them. */
-  scripts: string[]
-  /** The subset whose body carries one of {@link LEAFLET_MARKERS}. */
-  withLeaflet: string[]
+/** The id of the frame {@link serverRenderedMapChecks} loads the server-rendered map page into. */
+const SSR_FRAME_ID = "map-server-rendered-frame"
+
+/** The page `pages/build.ts` writes from `src/map-page/page.tsx`, relative to the site's root. */
+const SSR_PAGE = "map-demo/"
+
+/** What {@link serverRenderedMapChecks} reads off the hydrated server-rendered page. */
+interface HydratedMapState {
+  /** Whether the page's island set its boot marker. */
+  hydrated: boolean
+  /** How many `Map` boxes the page holds — one, unless hydration built a second. */
+  boxes: number
+  /** Whether the box the served markup carried is still in the document. */
+  servedBoxConnected: boolean
+  /** Whether Leaflet's container is inside that same box. */
+  leafletInServedBox: boolean
+  /** How many Leaflet pins are inside that same box. */
+  pins: number
+  /** Text of the plain list's rows. */
+  listNames: string[]
 }
 
 /** The card these checks drive, and the pieces of it they read. */
@@ -176,73 +200,104 @@ function readState(devtools: Devtools): Promise<MapState> {
  * @param devtools The connected session, on a hydrated page.
  */
 export async function mapChecks(devtools: Devtools): Promise<void> {
-  const scrollBefore = await devtools.evaluate<number>("scrollY")
-  try {
-    await lazyLeafletChecks(devtools)
-  } finally {
-    await devtools.evaluate(
-      `(document.getElementById(${JSON.stringify(FRAME_ID)})?.remove(), null)`,
-    )
-  }
-  const scrollAfter = await devtools.evaluate<number>("scrollY")
-  check(
-    "the frame the Leaflet check loads leaves the shared page where it was",
-    scrollAfter === scrollBefore,
-    `scrollY ${scrollBefore} → ${scrollAfter}`,
+  await inFreshFrame(
+    devtools,
+    { id: FRAME_ID, src: pageHref("overview"), label: "Leaflet" },
+    (frame) => lazyLeafletChecks(devtools, frame),
+  )
+
+  await inFreshFrame(
+    devtools,
+    { id: SSR_FRAME_ID, src: SSR_PAGE, label: "server-rendered Map" },
+    (frame) => serverRenderedMapChecks(devtools, frame),
   )
 
   await mapCardChecks(devtools)
 }
 
 /**
+ * A `Map` rendered on the server hydrates, and Leaflet mounts into the box the server rendered.
+ *
+ * The catalogue reaches `Map` through a lazy loader, so it renders only a placeholder on the server,
+ * and no check there hydrates `Map`'s own server markup. `map-demo/index.html` does
+ * (`src/map-page/page.tsx`): the served HTML carries the box and the list of places, an inline
+ * script keeps a reference to that box before the island runs, and the island hydrates the same
+ * component. If hydration replaced the box instead of taking it over, the kept box would be detached
+ * and would hold no map.
+ *
+ * @param devtools The connected session.
+ * @param frame A page expression for the frame, loaded at the server-rendered page.
+ */
+async function serverRenderedMapChecks(devtools: Devtools, frame: string): Promise<void> {
+  const labels = MAP_PAGE_MARKERS.map((marker) => marker.label)
+  const served = await devtools.evaluate<string>(
+    `fetch(new URL(${JSON.stringify(SSR_PAGE)}, location.origin + location.pathname))
+      .then((response) => response.text())`,
+  )
+  // An element, not the attribute alone: the page's inline script names the same selector.
+  const servedBox = /<div [^>]*data-e2e="map-box"/
+  check(
+    "the server-rendered Map page serves Map's box and its list of places, with no Leaflet map yet",
+    servedBox.test(served) && !served.includes("leaflet-container") &&
+      labels.every((label) => served.includes(`>${label}<`)),
+    `served ${served.length} characters; box ${servedBox.test(served)}; ` +
+      `places ${labels.filter((label) => served.includes(`>${label}<`)).join(", ") || "none"}`,
+  )
+
+  let state: HydratedMapState | undefined
+  const mounted = await poll(async () => {
+    state = await devtools.evaluate<HydratedMapState>(`(() => {
+      const doc = ${frame}?.contentDocument
+      const box = ${frame}?.contentWindow?.${SERVED_BOX_GLOBAL}
+      const list = doc?.querySelector('[data-e2e="map-marker-list"]')
+      return {
+        hydrated: doc?.documentElement.dataset.hydrated === "true",
+        boxes: doc ? doc.querySelectorAll('[data-e2e="map-box"]').length : 0,
+        servedBoxConnected: Boolean(box?.isConnected),
+        leafletInServedBox: Boolean(box?.querySelector(".leaflet-container")),
+        pins: box ? box.querySelectorAll(".leaflet-marker-icon").length : 0,
+        listNames: list ? [...list.querySelectorAll("li")].map((row) => row.textContent.trim()) : [],
+      }
+    })()`)
+    return state.hydrated && state.leafletInServedBox && state.pins === labels.length
+  }, 15_000)
+  check(
+    "a server-rendered Map hydrates: Leaflet mounts into the box the server rendered, one pin per place",
+    mounted && state !== undefined && state.servedBoxConnected && state.boxes === 1,
+    state
+      ? `hydrated ${state.hydrated}; ${state.boxes} box(es); served box connected ` +
+        `${state.servedBoxConnected}; Leaflet in it ${state.leafletInServedBox}; ` +
+        `${state.pins} of ${labels.length} pins`
+      : "the frame was never read",
+  )
+  check(
+    "the hydrated server-rendered Map lists the same places the server rendered",
+    state !== undefined && JSON.stringify(state.listNames) === JSON.stringify(labels),
+    state ? state.listNames.join(", ") || "no rows" : "",
+  )
+}
+
+/**
  * The guide loads Leaflet only when its map page opens (#315).
  *
  * The shared page cannot show that: earlier blocks have opened the map page already, and this block
- * runs on it. So, like `charts.ts`'s d3 check, this loads the site again in a same-origin `<iframe>`,
- * a fresh document with its own module map: it opens at the overview, lists every script the frame
- * fetched and reads each one for Leaflet's code, then opens the frame's map page, waits for the map
- * to draw its pins, and reads again. The frame is fixed over the viewport, invisible and
- * click-through, and the caller removes it before the card checks run.
+ * runs on it. So, like `charts.ts`'s d3 check, this loads the site again in a fresh frame
+ * (`inFreshFrame` in `harness.ts`): it opens at the overview, lists every script the frame fetched
+ * and reads each one for Leaflet's code, then opens the frame's map page, waits for the map to draw
+ * its pins, and reads again. The frame is removed before the card checks run.
  *
  * @param devtools The connected session.
+ * @param frame A page expression for the frame, loaded at the overview.
  */
-async function lazyLeafletChecks(devtools: Devtools): Promise<void> {
-  const frame = `document.getElementById(${JSON.stringify(FRAME_ID)})`
+async function lazyLeafletChecks(devtools: Devtools, frame: string): Promise<void> {
+  if (!await frameOverviewHydrates(devtools, frame)) return
 
-  await devtools.evaluate(`(() => {
-    const frame = document.createElement("iframe")
-    frame.id = ${JSON.stringify(FRAME_ID)}
-    frame.setAttribute("aria-hidden", "true")
-    frame.tabIndex = -1
-    frame.style.cssText =
-      "position:fixed;inset:0;width:100vw;height:100vh;border:0;opacity:0;pointer-events:none"
-    frame.src = location.origin + location.pathname + ${JSON.stringify(pageHref("overview"))}
-    document.body.append(frame)
-    return null
-  })()`)
-
-  const overviewReady = await poll(
-    () =>
-      devtools.evaluate<boolean>(
-        `${frame}?.contentDocument?.documentElement.dataset.hydrated === "true" &&
-          ${frame}.contentDocument.querySelector('[data-guide-page="overview"]') !== null`,
-      ),
-    15_000,
-  )
-  if (!overviewReady) {
-    check("the guide's overview, loaded fresh in a frame, hydrates", false, "not within 15s")
-    return
-  }
-  // Nothing on the overview should start a load after hydration; give anything that would a moment
-  // to show up in the list before reading it.
-  await new Promise((resolve) => setTimeout(resolve, 1_000))
-
-  const overview = await readScripts(devtools, frame)
+  const overview = await readFrameScripts(devtools, frame, LEAFLET_MARKERS)
   check(
     "the guide's overview loads no Leaflet: no script the page fetched carries Leaflet's code",
-    overview.scripts.length > 0 && overview.withLeaflet.length === 0,
+    overview.scripts.length > 0 && overview.matching.length === 0,
     `${overview.scripts.length} scripts: ${overview.scripts.join(", ")}` +
-      (overview.withLeaflet.length > 0 ? ` — Leaflet in ${overview.withLeaflet.join(", ")}` : ""),
+      (overview.matching.length > 0 ? ` — Leaflet in ${overview.matching.join(", ")}` : ""),
   )
 
   await devtools.evaluate(
@@ -258,13 +313,13 @@ async function lazyLeafletChecks(devtools: Devtools): Promise<void> {
     return pins === PLACE_IDS.length
   }, 15_000)
 
-  const opened = await readScripts(devtools, frame)
+  const opened = await readFrameScripts(devtools, frame, LEAFLET_MARKERS)
   const newScripts = opened.scripts.filter((path) => !overview.scripts.includes(path))
   check(
     "opening the map page loads Leaflet, in a script the overview never fetched",
-    opened.withLeaflet.length > 0 && opened.withLeaflet.every((path) => newScripts.includes(path)),
+    opened.matching.length > 0 && opened.matching.every((path) => newScripts.includes(path)),
     `new scripts: ${newScripts.join(", ") || "none"} — Leaflet in ${
-      opened.withLeaflet.join(", ") || "none"
+      opened.matching.join(", ") || "none"
     }`,
   )
   check(
@@ -272,32 +327,6 @@ async function lazyLeafletChecks(devtools: Devtools): Promise<void> {
     drawn,
     `${pins} .leaflet-marker-icon element(s) in a .leaflet-container, expected ${PLACE_IDS.length}`,
   )
-}
-
-/**
- * List the `.js` files the frame's document fetched, and which of them carry Leaflet.
- *
- * Each body is fetched again from the shared page: same origin, same URL, so the browser's cache
- * answers, and the text read is what the frame ran.
- *
- * @param devtools The connected session.
- * @param frame An expression for the frame element.
- */
-async function readScripts(devtools: Devtools, frame: string): Promise<ScriptReport> {
-  return await devtools.evaluate<ScriptReport>(`(async () => {
-    const entries = ${frame}.contentWindow.performance.getEntriesByType("resource")
-    const scripts = entries.map((entry) => new URL(entry.name))
-      .filter((url) => url.origin === location.origin && url.pathname.endsWith(".js"))
-      .map((url) => url.pathname)
-    const withLeaflet = []
-    for (const path of scripts) {
-      const text = await (await fetch(path)).text()
-      if (${JSON.stringify(LEAFLET_MARKERS)}.some((marker) => text.includes(marker))) {
-        withLeaflet.push(path)
-      }
-    }
-    return { scripts, withLeaflet }
-  })()`)
 }
 
 /**

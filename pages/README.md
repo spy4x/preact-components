@@ -40,6 +40,7 @@ usage blocks copy, the toasts fire and the deep links scroll.
 | `src/deep-link.ts`        | Fragment ⇄ component mapping (`#toggle-switch` ⇄ `ToggleSwitch`); the slug rule is `ui-guide/routes.ts`'s |
 | `src/route-echo.ts`       | Emits the route table into the document and reads it back out, validated with `arktype`                   |
 | `src/tailwind-sources.ts` | Rewrites the `@source` entries Tailwind hands back into what its scanner resolves                         |
+| `src/map-page/`           | `map-demo/index.html`: `Map` rendered on the server, and the island that hydrates it                      |
 | `src/site.ts`             | Base path, origin, title, description, favicon                                                            |
 | `dist/`                   | The artefact. Gitignored, and excluded from the repo's fmt/lint/type-check walk                           |
 
@@ -150,6 +151,11 @@ waits for that job, so a red check, a red publish dry-run or a red `verify` bloc
    across all covered packages — has a `demo-<Name>` card in the markup it is about to publish,
    because deep links are the one thing this page adds to the catalogue and a rename in `ui-guide`
    must fail the build rather than ship dead links.
+5. **The server-rendered `Map` page**: the catalogue reaches `Map` through a lazy loader, so it
+   serves only a placeholder for it. `src/map-page/` renders `Map` itself into
+   `map-demo/index.html`, bundled on its own from `src/map-page/+main.tsx` into `map-demo/` so the
+   catalogue's files stay as they were. `checks/map.ts` opens it in a hidden frame and checks that
+   Leaflet mounts into the box the server sent.
 
 Both assets are content-hashed (`main.2e09c12c.css`), so a redeploy cannot pair a new document with
 a cached island.
