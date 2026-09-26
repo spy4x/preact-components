@@ -171,7 +171,7 @@ export interface CalendarProps {
 const cellBase =
   "relative flex size-full items-center justify-center rounded-lg text-sm tabular-nums transition-colors select-none"
 const focusRing =
-  "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-purple-900 focus-visible:ring-offset-2 dark:focus-visible:ring-purple-400 dark:focus-visible:ring-offset-gray-800"
+  "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent-900 focus-visible:ring-offset-2 dark:focus-visible:ring-accent-400 dark:focus-visible:ring-offset-gray-800"
 const arrowBase =
   "inline-flex size-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition-colors dark:border-gray-700 dark:text-gray-400"
 const arrowEnabled =
@@ -649,7 +649,7 @@ export function Calendar(
         {scarce && (
           <span
             aria-hidden="true"
-            class="absolute bottom-1 left-1/2 size-1 -translate-x-1/2 rounded-full bg-purple-600 dark:bg-purple-400"
+            class="absolute bottom-1 left-1/2 size-1 -translate-x-1/2 rounded-full bg-accent-600 dark:bg-accent-400"
           />
         )}
       </>
@@ -764,9 +764,9 @@ export function Calendar(
 const outOfMonthClass = "text-gray-300 dark:text-gray-600"
 const disabledClass = "text-gray-400 cursor-not-allowed dark:text-gray-500"
 const noneLeftClass = "line-through decoration-gray-300 dark:decoration-gray-600"
-const selectedClass = "bg-purple-900 font-semibold text-white hover:bg-purple-800"
+const selectedClass = "bg-accent-900 font-semibold text-white hover:bg-accent-800"
 const todayClass =
-  "bg-purple-50 font-semibold text-purple-800 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-200 dark:hover:bg-purple-900/50"
+  "bg-accent-50 font-semibold text-accent-800 hover:bg-accent-100 dark:bg-accent-900/30 dark:text-accent-200 dark:hover:bg-accent-900/50"
 const selectableClass = "text-gray-900 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-700"
 
 /**
