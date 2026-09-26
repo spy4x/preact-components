@@ -1,4 +1,5 @@
 import { computed, effect, type ReadonlySignal, type Signal, signal } from "@preact/signals"
+import { jsonLdText } from "@spy4x/platform/universal/seo"
 
 /**
  * `@spy4x/preact-signals/theme` — light/dark/system preference on signals.
@@ -259,10 +260,11 @@ export interface ThemeBootstrapOptions {
   followSystem?: boolean
 }
 
-/** A value as a JavaScript literal that is also safe inside an inline `<script>` element. */
-function scriptLiteral(value: string): string {
-  return JSON.stringify(value).replace(/</g, "\\u003c")
-}
+/**
+ * A value as a JavaScript literal that is also safe inside an inline `<script>` element: the
+ * JSON-LD escape from ts-libs, which turns `<` into `\u003c`, is exactly that.
+ */
+const scriptLiteral = jsonLdText
 
 /**
  * The source of an inline `<head>` script that paints the stored theme before the first paint.
