@@ -1,12 +1,10 @@
-// spacing: off-scale until #328 (the lane that moves this file to the scale deletes this line)
 /**
  * The `ui/` display primitives: the card anatomy, the meters, the tabbed and paged navigation, and
  * the identity widgets.
  *
- * Every card here renders its real markup. The components whose interesting half only happens in a
- * browser — `Tabs`' keyboard map, `Pagination`'s next click, a copy through the clipboard — say so
- * on the card and are demonstrated through the one thing the catalogue can honestly show: the state
- * after the decision, driven by the same port an app would pass.
+ * Every card here renders its real markup. What only happens in a browser — `Tabs`' arrow keys,
+ * `Pagination`'s next click, a copy through the clipboard — is driven by `pages/checks/ui.ts`; the
+ * card shows the state after the decision, through the same port an app would pass.
  */
 
 import {
@@ -19,6 +17,7 @@ import {
   CardBody,
   CardFooter,
   CardHeader,
+  Cluster,
   ConfidenceMeter,
   CopyableText,
   CopyableTextBody,
@@ -26,6 +25,7 @@ import {
   describedImages,
   type Fact,
   FactCard,
+  Grid,
   ImageGallery,
   type ImageGalleryImage,
   InstallBox,
@@ -48,17 +48,22 @@ import {
 } from "@spy4x/preact-ui"
 import { serializeSort, type SortRule } from "@spy4x/preact-signals/table-state"
 import { useSignal } from "@preact/signals"
+import { type ComponentChildren, Fragment } from "preact"
 import { IconTrashBin } from "@spy4x/preact-icons"
 import { entries } from "../record.ts"
 import type { DemoFragment } from "../registry.ts"
+
+/** A demo's small grey caption: what the example beside it shows, or a value a port received. */
+function Note({ children, e2e }: { children: ComponentChildren; e2e?: string }) {
+  return <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e={e2e}>{children}</p>
+}
 
 /**
  * A one-square image, inline so the catalogue needs no network and no asset directory.
  *
  * The `src` face of `Avatar` can only be exercised with something that loads, and a data URI is one
  * document with no request behind it. The glyph is a purple disc, which is visible at every avatar
- * size and is *not* the initials face — the point of demoing the image path is that the picture
- * shows.
+ * size and is *not* the initials face.
  */
 const inlineAvatar = `data:image/svg+xml,${
   encodeURIComponent(
@@ -68,8 +73,7 @@ const inlineAvatar = `data:image/svg+xml,${
 
 /**
  * A flat placeholder rectangle, as a data URI, so `ImageGallery` and `Lightbox`'s cards need no
- * image asset and no network — the same reason `pages/checks/system.ts`'s `ImageLightbox` card
- * uses one.
+ * image asset and no network.
  */
 function placeholder(fill: string, width = 320, height = 200): string {
   return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='${width}' height='${height}'%3E%3Crect width='${width}' height='${height}' fill='%23${fill}'/%3E%3C/svg%3E`
@@ -77,10 +81,8 @@ function placeholder(fill: string, width = 320, height = 200): string {
 
 /**
  * Four described images and one without a description in the middle of them, so the card shows
- * both halves of the contract with the harder case exercised rather than the easy one: the strip
- * and the lightbox page through the four described images in order, skipping straight from the
- * second to what would otherwise be the fourth — the middle one, passed in like any other, is what
- * {@link describedImages} drops before render.
+ * both halves of the contract: the strip and the lightbox page through the four described images,
+ * and the middle one is what {@link describedImages} drops before render.
  */
 const galleryImages: ImageGalleryImage[] = [
   { src: placeholder("9333ea"), alt: "A purple rectangle" },
@@ -97,23 +99,20 @@ const galleryImages: ImageGalleryImage[] = [
 /**
  * The thumbnail strip, opening `Lightbox` on the one pressed.
  *
- * The third image, whose `alt` is whitespace, is passed in exactly like the other four — the card
- * shows the count `describedImages` keeps, rather than trusting a claim about what a reader cannot
- * otherwise see: a fifth thumbnail would be the tell that the rule had quietly stopped holding.
+ * The third image, whose `alt` is whitespace, is passed in like the other four; the caption prints
+ * the count `describedImages` keeps, so a fifth thumbnail would show the rule had stopped holding.
  */
 function ImageGalleryDemo() {
   const shown = describedImages(galleryImages)
 
   return (
-    <div class="space-y-2">
+    <Stack gap="sm">
       <ImageGallery images={galleryImages} />
-      <p class="text-xs text-gray-500 dark:text-gray-400">
-        {galleryImages.length} images passed in, {shown.length} shown — the one whose{" "}
-        <code>alt</code>{" "}
-        is blank after trimming is dropped from the strip and from the lightbox's sequence, not
-        rendered with a placeholder name.
-      </p>
-    </div>
+      <Note>
+        {galleryImages.length} images passed in, {shown.length}{" "}
+        shown: the one with a blank description is left out.
+      </Note>
+    </Stack>
   )
 }
 
@@ -124,20 +123,18 @@ const lightboxImages: LightboxImage[] = galleryImages.slice(0, 3)
 const undescribedLightboxImage: LightboxImage = { src: placeholder("6b7280"), alt: "  " }
 
 /**
- * `Lightbox` on its own, outside `ImageGallery` — the building block `system/image-lightbox.tsx`'s
- * content mode is the other caller of. Nothing here draws thumbnails: the three buttons stand in
- * for whatever trigger a caller already has, each opening the dialog on a different position, so
- * the card also shows that `index` and `open` are the caller's own state rather than the
- * component's. The fourth button tries to open a second, separate `Lightbox` fed one undescribed
- * image, so the card also shows the refusal `canOpen` makes when there is nothing to show.
+ * `Lightbox` on its own, outside `ImageGallery`. The three buttons stand in for whatever trigger a
+ * caller already has, each opening the dialog on a different position, so `index` and `open` are
+ * visibly the caller's own state. The fourth button tries to open a second, separate `Lightbox` fed
+ * one undescribed image, which refuses to open.
  */
 function LightboxDemo() {
   const openIndex = useSignal<number | null>(null)
   const emptyOpen = useSignal(false)
 
   return (
-    <div class="space-y-2">
-      <div class="flex flex-wrap gap-2">
+    <Stack gap="sm">
+      <Cluster>
         {lightboxImages.map((image, index) => (
           <Button
             key={image.src}
@@ -156,7 +153,7 @@ function LightboxDemo() {
         >
           Open with no description
         </Button>
-      </div>
+      </Cluster>
       <Lightbox
         images={lightboxImages}
         index={openIndex.value ?? 0}
@@ -166,19 +163,9 @@ function LightboxDemo() {
       />
       {
         /*
-          A second, separate `Lightbox` fed one image with no description, so the fourth button
-          can try to open a sequence `describedImages` leaves empty — proving `canOpen`'s refusal
-          needs a real dialog to ask `showModal()` whether it ran, which no server-rendered markup
-          can show: the closed and the refused-open states render identically. Wrapped in its own
-          `data-e2e` so `pages/checks/ui.ts` can tell its `<dialog>` apart from the one above.
-        */
-      }
-      {
-        /*
-          data-requested tracks whether the button was actually pressed, on the wrapper rather than
-          the dialog: a check that reads only ":modal never became true" cannot tell "canOpen
-          correctly refused" from "the button did nothing at all" apart, and the second is not this
-          card's claim.
+          `data-requested` records whether the fourth button was pressed, so the browser check can
+          tell "the lightbox refused to open" from "the button did nothing"; both leave the dialog
+          closed. `pages/checks/ui.ts` finds this dialog by the wrapper's `data-e2e`.
         */
       }
       <div data-e2e="lightbox-empty" data-requested={emptyOpen.value}>
@@ -190,13 +177,11 @@ function LightboxDemo() {
           onIndexChange={() => {}}
         />
       </div>
-      <p class="text-xs text-gray-500 dark:text-gray-400">
-        Left and Right page through the three images while the dialog is open; Escape closes it and
-        returns focus to whichever button opened it. The fourth button opens a lightbox whose one
-        image has no description — nothing happens, because <code>describedImages</code>{" "}
-        leaves it nothing to show.
-      </p>
-    </div>
+      <Note>
+        The last button opens nothing: its one image has no description, so there is nothing to
+        show.
+      </Note>
+    </Stack>
   )
 }
 
@@ -204,16 +189,16 @@ function LightboxDemo() {
 const avatarSizes: Record<AvatarSize, string> = {
   xs: "xs",
   sm: "sm",
-  md: "md (default)",
+  md: "md",
   lg: "lg",
 }
 
 /** Every progress tone — the record is the coverage guard for `ProgressTone`. */
 const progressTones: Record<ProgressTone, string> = {
-  primary: "primary (default)",
-  success: "success",
-  warning: "warning",
-  danger: "danger",
+  primary: "Primary",
+  success: "Success",
+  warning: "Warning",
+  danger: "Danger",
 }
 
 /** Every placement — the record is the coverage guard for `TooltipPlacement`. */
@@ -224,95 +209,56 @@ const tooltipPlacements: Record<TooltipPlacement, string> = {
   left: "left",
 }
 
-/** One example user per card, so the anatomy cards are about layout rather than about lorem. */
-const cardUser = { name: "Ada Lovelace", email: "ada@example.com", role: "Administrator" }
-
-/** Three rows, so the card below has something to be a summary of. */
-const recentInvoices = [
-  { id: "INV-0007", amount: "1 250.00", status: "paid" as const },
-  { id: "INV-0006", amount: "89.90", status: "pending" as const },
-  { id: "INV-0005", amount: "4 320.00", status: "paid" as const },
-]
-
-/**
- * The card anatomy, both header modes.
- *
- * `CardHeader` takes `title`/`action` or raw `children`, and the union is worth showing side by
- * side: the first mode is the everyday one, the second is for a header that needs markup. The third
- * card drops the body and the footer, which are optional children like any other.
- */
-function CardDemo() {
+/** One card per mode of `CardHeader`: a title with an action, and the header's own markup. */
+function CardHeaderDemo() {
   return (
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <Stack>
       <Card>
-        <CardHeader title="Card" action={<Badge text="default" color="gray" />} />
-        <CardBody>
-          <p class="text-sm text-gray-600 dark:text-gray-300">
-            Header, body and footer are each optional.
-          </p>
-        </CardBody>
-        <CardFooter>
-          <div class="flex justify-end gap-2">
-            <Button variant="outline" size="sm">Dismiss</Button>
-            <Button size="sm">Open</Button>
-          </div>
-        </CardFooter>
+        <CardHeader title="Invoices" action={<Badge text="3 open" color="gray" />} />
       </Card>
-
       <Card>
         <CardHeader>
-          <h4 class="text-lg font-semibold">Raw header markup</h4>
-          <span class="text-xs text-gray-500 dark:text-gray-400">children win</span>
+          <h4 class="text-lg font-semibold">Your own header</h4>
+          <span class="text-xs text-gray-500 dark:text-gray-400">children</span>
         </CardHeader>
-        <CardBody>
-          <p class="text-sm text-gray-600 dark:text-gray-300">
-            A header with no <code>title</code> or <code>action</code> renders its children instead.
-          </p>
-        </CardBody>
       </Card>
-
-      <Card class="sm:col-span-2">
-        <CardHeader
-          title={cardUser.name}
-          action={<Button variant="ghost" size="sm">Edit</Button>}
-        />
-        <CardBody>
-          <dl class="grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
-            <div>
-              <dt class="kpi-label">Email</dt>
-              <dd>{cardUser.email}</dd>
-            </div>
-            <div>
-              <dt class="kpi-label">Role</dt>
-              <dd>{cardUser.role}</dd>
-            </div>
-            <div>
-              <dt class="kpi-label">Invoices</dt>
-              <dd>{recentInvoices.length}</dd>
-            </div>
-          </dl>
-        </CardBody>
-      </Card>
-    </div>
+    </Stack>
   )
 }
 
-/** `Card`/`CardHeader`/`CardBody` composed with a `<dl>` of facts (#257) — not a fourth card primitive. */
+/** A card with all three parts, the way most cards are written. */
+function CardDemo() {
+  return (
+    <Card>
+      <CardHeader title="Ada Lovelace" action={<Button variant="ghost" size="sm">Edit</Button>} />
+      <CardBody>
+        <p class="text-sm text-gray-600 dark:text-gray-300">Administrator, since March 2026.</p>
+      </CardBody>
+      <CardFooter>
+        <Cluster justify="end">
+          <Button variant="outline" size="sm">Dismiss</Button>
+          <Button size="sm">Open</Button>
+        </Cluster>
+      </CardFooter>
+    </Card>
+  )
+}
+
+/** `FactCard` with three facts. */
 function FactCardDemo() {
   const facts: Fact[] = [
     { key: "Stack", value: "Deno + Hono + Fresh" },
-    { key: "Hosting", value: "Hetzner, one Compose stack" },
+    { key: "Hosting", value: "One Compose stack" },
     { key: "Status", value: "In production" },
   ]
-  return <FactCard title="Antonshubin.com" facts={facts} class="max-w-md" />
+  return <FactCard title="example.com" facts={facts} class="max-w-md" />
 }
 
 /**
  * `MarginNote` before a paragraph in a column marked `@container`, so the note's container query
  * has a column to measure. At most window widths this card's column is narrower than 30rem, so the
- * note sits inline; in a window about 600 to 720px wide the column is wider than 30rem and the note
- * floats beside the paragraph. The browser check sets the column's width itself, so it does not
- * depend on which of these the run's window gives.
+ * note sits inline; `pages/checks/ui.ts` sets the column's width itself to see it float, and reads
+ * the column as the note's parent, with the paragraph a direct child of it.
  */
 function MarginNoteDemo() {
   return (
@@ -325,102 +271,73 @@ function MarginNoteDemo() {
         Cold start under 50ms on a shared vCPU.
       </MarginNote>
       <p>
-        The library ships a component-testing harness that drives a real browser over the DevTools
-        protocol, so behaviour behind an effect, a key press or a timer is proven in the browser
-        rather than assumed from a string render. Every claim in the catalogue that depends on a
-        real event is backed by one of those checks.
+        The server answers from a single small process, so a cold start is cheap and a request that
+        arrives after a quiet hour is served as quickly as the one before it. The note beside this
+        paragraph says where that number comes from and when it was last checked.
       </p>
     </div>
   )
 }
 
-/** `InstallBox` with the library's own install command. */
-function InstallBoxDemo() {
-  return <InstallBox command="deno add jsr:@spy4x/preact-ui" class="max-w-sm" />
-}
-
 /**
- * `Progress` at either end of its range, plus the indeterminate state.
- *
- * The card proves three claims of the contract at once: the fill is an inline width, so the
- * server-rendered markup is already correct; a reading past `max` is clamped by `clampProgress`
- * rather than overflowing the track; and no reading renders no fill at all, with `aria-valuenow`
- * left off instead of published as `0`.
+ * `Progress` in every tone, then the two readings worth knowing: one past `max`, which fills the
+ * track rather than overflowing it, and none at all, which draws a bare track.
  */
 function ProgressDemo() {
-  const rows: Array<{ label: string; value: number | null; max?: number; note: string }> = [
-    { label: "Determinate", value: 42, note: "42 of 100 — 42%" },
-    { label: "Clamped", value: 140, note: "140 of 100 → the track is full, not overflowing" },
-    { label: "Out of range", value: -20, note: "-20 of 100 → 0%, still measurable" },
-    { label: "Fractional", value: 1, max: 3, note: "1 of 3 — floored to 33%, never 34%" },
-    { label: "Indeterminate", value: null, note: "no aria-valuenow, no fill" },
-  ]
-
   return (
-    <div class="space-y-4">
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {entries(progressTones).map(([tone, label]) => (
-          <Progress key={tone} id={`guide-progress-${tone}`} label={label} value={68} tone={tone} />
-        ))}
-      </div>
-      <div class="space-y-3 rounded-lg border border-gray-200 p-4 dark:border-gray-700">
-        {rows.map((row) => (
-          <div key={row.label} class="space-y-1">
-            <Progress
-              id={`guide-progress-${row.label.toLowerCase().replace(/\s+/g, "-")}`}
-              label={row.label}
-              value={row.value}
-              max={row.max}
-            />
-            <p class="text-xs text-gray-500 dark:text-gray-400">{row.note}</p>
-          </div>
-        ))}
-      </div>
-    </div>
+    <Stack>
+      {entries(progressTones).map(([tone, label]) => (
+        <Progress key={tone} id={`guide-progress-${tone}`} label={label} value={68} tone={tone} />
+      ))}
+      <Progress id="guide-progress-clamped" label="Past the maximum (140 of 100)" value={140} />
+      <Progress id="guide-progress-indeterminate" label="No reading yet" value={null} />
+    </Stack>
   )
 }
 
-/**
- * Sample scores, one per tier plus the out-of-range ends.
- *
- * `ConfidenceTier` is the banding `clampConfidence` computes rather than a prop, so the record
- * documents which value lands in which band instead of guarding an API.
- */
+/** Scores in each band, and one past each end of the range. */
 const scores: Record<string, { value: number; label: string }> = {
-  low: { value: 12, label: "12 — low" },
-  medium: { value: 55, label: "55 — medium" },
-  high: { value: 88, label: "88 — high" },
-  "below range": { value: -20, label: "-20 → 0" },
-  "above range": { value: 140, label: "140 → 100" },
+  low: { value: 12, label: "12, low" },
+  medium: { value: 55, label: "55, medium" },
+  high: { value: 88, label: "88, high" },
+  "above range": { value: 140, label: "140, shown as 100" },
 }
 
-/** One meter per band, including both clamped ends. */
+/** One meter per band, and one clamped. */
 function ConfidenceMeterDemo() {
   return (
-    <div class="space-y-3">
+    <Stack gap="sm">
       {entries(scores).map(([key, score]) => (
         <ConfidenceMeter key={key} value={score.value} label={score.label} />
       ))}
-    </div>
+    </Stack>
   )
 }
 
 /** Three currencies with a different decimal count each, plus one negative amount coloured. */
+const moneyRows: { amount: number; currency: string; note: string; negative?: boolean }[] = [
+  { amount: 12345, currency: "EUR", note: "two decimals" },
+  { amount: 12345, currency: "JPY", note: "no decimals" },
+  { amount: 12345, currency: "KWD", note: "three decimals" },
+  { amount: -4599, currency: "EUR", note: "colorNegative", negative: true },
+]
+
+/** Each amount beside what it shows, in two aligned columns. */
 function MoneyDisplayDemo() {
   return (
-    <div class="space-y-1">
-      <p>
-        <MoneyDisplay amount={12345} currency="EUR" /> — two decimals
-      </p>
-      <p>
-        <MoneyDisplay amount={12345} currency="JPY" /> — none, the yen has no minor unit
-      </p>
-      <p>
-        <MoneyDisplay amount={12345} currency="KWD" /> — three, the Kuwaiti dinar's own count
-      </p>
-      <p>
-        <MoneyDisplay amount={-4599} currency="EUR" colorNegative /> — colorNegative
-      </p>
+    <div class="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-2 text-sm">
+      {moneyRows.map((row) => (
+        <Fragment key={`${row.currency}${row.amount}`}>
+          <span class="text-right tabular-nums">
+            <MoneyDisplay
+              amount={row.amount}
+              currency={row.currency}
+              colorNegative={row.negative}
+            />
+          </span>
+          <span class="text-xs text-gray-500 dark:text-gray-400">{row.note}</span>
+        </Fragment>
+      ))}
     </div>
   )
 }
@@ -470,7 +387,7 @@ function TableDemo() {
   )
 }
 
-/** One row `amount` is `null`, so the demo also shows the #120 fix: a blank cell still sorts. */
+/** One row's `amount` is `null`, so the demo also shows that a blank cell still sorts. */
 const dataTableRows: DataTableInvoice[] = [
   { id: "inv-1", date: "2026-02-01", merchant: "Coffee & Co", amount: -450 },
   { id: "inv-2", date: "2026-02-02", merchant: "Salary transfer", amount: 450000 },
@@ -490,26 +407,20 @@ type DataTableSortKey = "date" | "merchant" | "amount"
 
 /**
  * A sortable, paged `DataTable`: `sort` and `page` are the card's own signals, standing in for the
- * URL parameter or the store field an application would keep them in — `DataTable` holds neither
- * itself.
+ * URL parameter or the store field an application would keep them in.
  *
- * The sort state is *not* round-tripped through this card's address bar; a plain signal stands in
- * for it here. A catalogue card writing to `location` would be writing to whatever host
- * application embeds the catalogue, not to a page this library owns, which is the same reason
- * `useUrlFilters` itself is demonstrated in `pages/src/url-filters.tsx` rather than as a card. The
- * URL round trip this component actually supports is demonstrated the same way, next to that demo:
- * `pages/src/data-table-sort.tsx` binds `?sort=` through `useUrlFilters`, and `pages/checks/ui.ts`
- * drives it in a browser.
+ * The sort is not written to the address bar here: a catalogue card writing to `location` would
+ * write to whatever host embeds the catalogue. `pages/src/data-table-sort.tsx` binds `?sort=`
+ * through `useUrlFilters`, and `pages/checks/ui.ts` drives both. That check reads the readout's
+ * text as `sort: <rules>`.
  */
 function DataTableDemo() {
   const sort = useSignal<SortRule<DataTableSortKey>[]>([])
   const page = useSignal(1)
 
   return (
-    <div class="space-y-2">
-      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="data-table-sort">
-        sort: {serializeSort(sort.value)}
-      </p>
+    <Stack gap="sm">
+      <Note e2e="data-table-sort">sort: {serializeSort(sort.value)}</Note>
       <DataTable
         caption="Invoices"
         columns={[
@@ -534,7 +445,7 @@ function DataTableDemo() {
           label: "Invoice pages",
         }}
       />
-    </div>
+    </Stack>
   )
 }
 
@@ -553,30 +464,19 @@ const overviewTabs: readonly TabItem[] = [
 
 /** Every orientation the tablist accepts — the record is the coverage guard for `TabOrientation`. */
 const tabOrientations: Record<TabOrientation, string> = {
-  horizontal: "horizontal (default) — ArrowLeft / ArrowRight",
-  vertical: "vertical — ArrowUp / ArrowDown",
+  horizontal: "Horizontal: the left and right arrows move between tabs.",
+  vertical: "Vertical: the up and down arrows move between tabs.",
 }
 
-/**
- * Controlled tabs: `active` in, `onChange` out.
- *
- * The panel of a tab is only visible once the browser applies `hidden`, and on a wide tablist the
- * panel sits below the row, so the card carries the ids and the state in text as well: the markup
- * shows every panel and the disabled tab, while which one is *selected* is the caller's signal.
- *
- * The keyboard half is browser-only. The decision table it runs is `nextTabIndex`, exported from the
- * component and unit-tested there; nothing in this repository presses an arrow key on a tablist.
- */
+/** Controlled tabs, `active` in and `onChange` out, in both orientations side by side. */
 function TabsDemo() {
   const topLevel = useSignal<string>(overviewTabs[0].id)
   const settings = useSignal("guide-tab-profile")
 
   return (
-    <div class="space-y-6">
-      <div>
-        <p class="mb-2 text-xs text-gray-500 dark:text-gray-400">
-          {tabOrientations.horizontal} · active: {topLevel.value}
-        </p>
+    <Grid gap="xl">
+      <Stack gap="sm">
+        <Note>{tabOrientations.horizontal}</Note>
         <Tabs
           tabs={overviewTabs}
           active={topLevel.value}
@@ -584,26 +484,9 @@ function TabsDemo() {
           label="Report views"
           tabDataE2E="guide-tab"
         />
-        <div class="mt-2 flex flex-wrap gap-2">
-          {overviewTabs.map((tab) => (
-            <Button
-              key={tab.id}
-              variant={tab.id === topLevel.value ? "secondary" : "outline"}
-              size="sm"
-              disabled={tab.disabled}
-              onClick={() => topLevel.value = tab.id}
-            >
-              {tab.label}
-            </Button>
-          ))}
-          <span class="self-center text-xs text-gray-500 dark:text-gray-400">
-            the buttons drive the same `onChange`, which is what a click on a tab does
-          </span>
-        </div>
-      </div>
-
-      <div class="max-w-xs">
-        <p class="mb-2 text-xs text-gray-500 dark:text-gray-400">{tabOrientations.vertical}</p>
+      </Stack>
+      <Stack gap="sm">
+        <Note>{tabOrientations.vertical}</Note>
         <Tabs
           tabs={[
             { id: "guide-tab-profile", label: "Profile", content: "Name, email, avatar." },
@@ -615,8 +498,8 @@ function TabsDemo() {
           orientation="vertical"
           label="Account settings"
         />
-      </div>
-    </div>
+      </Stack>
+    </Grid>
   )
 }
 
@@ -641,13 +524,10 @@ export function paginationNote(page: number, pageCount: number): string {
 }
 
 /**
- * Two page ranges: one short enough to list whole, one long enough to collapse.
+ * Three page counts: one short enough to list whole, one long enough to collapse, and none.
  *
- * The current page is the caller's state, so the card is a real pagination control: press a page
- * number, Previous or Next and the highlight moves. What the card also shows is the control that
- * *cannot* act staying where it is and going dim — page 1 keeps its Previous button, disabled, so
- * that paging to an end with the keyboard does not destroy the button under the user's finger —
- * and a `pageCount` of `0` rendering nothing at all, which the pair at the bottom demonstrates.
+ * The first pager's readout is what `pages/checks/ui.ts` reads: it matches `onChange: <n>` there, so
+ * a disabled control, which asks for nothing, is told apart from one that asked for its own page.
  */
 function PaginationDemo() {
   const short = useSignal(1)
@@ -656,13 +536,9 @@ function PaginationDemo() {
   const empty = useSignal(1)
 
   return (
-    <div class="space-y-6">
-      <div class="space-y-2">
-        <p class="text-xs text-gray-500 dark:text-gray-400">
-          pageCount=5 · page {short.value}{" "}
-          — Previous is disabled on page 1 and Next on the last page, and neither leaves the page,
-          so a keyboard user keeps the control they were pressing: {paginationNote(short.value, 5)}
-        </p>
+    <Stack gap="lg">
+      <Stack gap="sm">
+        <Note>5 pages, on page {short.value}</Note>
         <Pagination
           page={short.value}
           pageCount={5}
@@ -672,98 +548,72 @@ function PaginationDemo() {
           }}
           label="Five pages"
         />
-        <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="pagination-requested">
-          last page asked for through onChange: {asked.value === 0 ? "none yet" : asked.value}{" "}
-          — a disabled control asks for nothing at all, which is the only way to tell it from one
-          whose request the component clamped back to the page it was already on.
-        </p>
-      </div>
+        <Note e2e="pagination-requested">
+          Last page asked for through onChange: {asked.value === 0 ? "none yet" : asked.value}
+        </Note>
+      </Stack>
 
-      <div class="space-y-2">
-        <p class="text-xs text-gray-500 dark:text-gray-400">
-          pageCount=24 · page {long.value}{" "}
-          — the ends are always shown, the current page keeps two neighbours on each side, and a run
-          nobody needs becomes an ellipsis, which never hides a single page:{" "}
-          {paginationNote(long.value, 24)}
-        </p>
+      <Stack gap="sm">
+        <Note>24 pages, on page {long.value}: {paginationNote(long.value, 24)}</Note>
         <Pagination
           page={long.value}
           pageCount={24}
           onChange={(page) => long.value = page}
           label="Twenty-four pages"
         />
-      </div>
+      </Stack>
 
-      <div class="space-y-2">
-        <p class="text-xs text-gray-500 dark:text-gray-400">
-          pageCount=0 · page {empty.value} — an empty result set renders {paginationNote(
-            empty.value,
-            0,
-          )}
-        </p>
+      <Stack gap="sm">
+        <Note>0 pages: {paginationNote(empty.value, 0)}</Note>
         <Pagination page={empty.value} pageCount={0} onChange={(page) => empty.value = page} />
-        <p class="text-xs text-gray-500 dark:text-gray-400">
-          Nothing above this line: `pageCount={0}` returns `null`, so a list that found no rows
-          needs no special case at the call site.
-        </p>
-      </div>
-    </div>
+      </Stack>
+    </Stack>
+  )
+}
+
+/** One avatar and the caption under it, centred on each other. */
+function Labelled({ caption, children }: { caption: string; children: ComponentChildren }) {
+  return (
+    <Stack gap="sm" class="items-center text-center">
+      {children}
+      <Note>{caption}</Note>
+    </Stack>
   )
 }
 
 /**
- * The three faces an avatar can take, at every size.
- *
- * `src` is the image face, a name alone is the initials face, and a name with no usable initial —
- * here the emoji, which `initials` strips to nothing — is the generic-icon face. Which one a given
- * pair of props selects is `avatarFace`, a pure function the component calls; what the card adds is
- * the picture.
+ * Every size, then the faces an avatar can take: the image, the initials, and the icon when the
+ * name gives no usable initial. Which face a pair of props selects is `avatarFace`, a pure function
+ * the component calls; what the card adds is the picture.
  */
 function AvatarDemo() {
   return (
-    <div class="space-y-6">
-      <div class="flex flex-wrap items-end gap-6">
+    <Stack gap="lg">
+      <Cluster align="end" gap="lg">
         {entries(avatarSizes).map(([size, label]) => (
-          <div key={size} class="space-y-2 text-center">
+          <Labelled key={size} caption={label}>
             <Avatar name="Ada Lovelace" size={size} />
-            <p class="text-xs text-gray-500 dark:text-gray-400">{label}</p>
-          </div>
+          </Labelled>
         ))}
-      </div>
-
-      <div class="flex flex-wrap items-center gap-6">
-        <div class="space-y-2 text-center">
+      </Cluster>
+      <Cluster align="start" gap="lg">
+        <Labelled caption="image">
           <Avatar name="Ada Lovelace" src={inlineAvatar} size="lg" />
-          <p class="text-xs text-gray-500 dark:text-gray-400">
-            image — `src` set and not failed
-          </p>
-        </div>
-        <div class="space-y-2 text-center">
+        </Labelled>
+        <Labelled caption="initials">
           <Avatar name="Grace Hopper" size="lg" />
-          <p class="text-xs text-gray-500 dark:text-gray-400">
-            initials — from `name`, two at most
-          </p>
-        </div>
-        <div class="space-y-2 text-center">
+        </Labelled>
+        <Labelled caption="CJK initials">
+          <Avatar name="王小明" size="lg" />
+        </Labelled>
+        <Labelled caption="no initial: icon">
           <Avatar name="😀" size="lg" />
-          <p class="text-xs text-gray-500 dark:text-gray-400">
-            icon — no usable initial in the name
-          </p>
-        </div>
-        <div class="space-y-2 text-center">
-          <Avatar name="Wang Xiaoming" size="lg" />
-          <p class="text-xs text-gray-500 dark:text-gray-400">
-            initials — one per CJK character
-          </p>
-        </div>
-        <div class="space-y-2 text-center">
+        </Labelled>
+        <Labelled caption={`alt="": decorative`}>
           <Avatar src={inlineAvatar} alt="" size="lg" />
-          <p class="text-xs text-gray-500 dark:text-gray-400">
-            `alt=""` — decorative, hidden from assistive tech
-          </p>
-        </div>
-      </div>
-    </div>
+        </Labelled>
+      </Cluster>
+    </Stack>
   )
 }
 
@@ -779,161 +629,125 @@ const teamMembers = [
 ]
 
 /**
- * The stack, at both ends of `max`.
- *
- * No overflow is the case worth having on the card as well as the overflowing one: the whole
- * `+N` chip is absent when nothing is behind it, rather than a hoverable `+0`. With seven members
- * and `max={4}` the chip reads `+3`, and the group's accessible name carries the total.
+ * The stack with nothing to overflow, and with the rest counted: with seven members and `max={4}`
+ * the chip reads `+3`, and the group's accessible name carries the total.
  */
 function AvatarGroupDemo() {
   return (
-    <div class="space-y-4">
-      <div class="space-y-1">
+    <Stack>
+      <Stack gap="xs">
         <AvatarGroup items={teamMembers.slice(0, 3)} label="Reviewers" />
-        <p class="text-xs text-gray-500 dark:text-gray-400">
-          `label="Reviewers"` · 3 members — no chip, because nothing overflows
-        </p>
-      </div>
-      <div class="space-y-1">
+        <Note>3 members: nothing overflows, so no count</Note>
+      </Stack>
+      <Stack gap="xs">
         <AvatarGroup items={teamMembers} label="Project members" max={4} />
-        <p class="text-xs text-gray-500 dark:text-gray-400">
-          `max={4}` · 7 members — the chip counts the rest, and the group is named “Project members
-          (7)”
-        </p>
-      </div>
-      <div class="space-y-1">
+        <Note>7 members, max 4: the chip counts the other 3</Note>
+      </Stack>
+      <Stack gap="xs">
         <AvatarGroup items={teamMembers} size="sm" />
-        <p class="text-xs text-gray-500 dark:text-gray-400">
-          `size="sm"` · no `label` — the accessible name falls back to “Avatars (7)”
-        </p>
-      </div>
-    </div>
+        <Note>size "sm"</Note>
+      </Stack>
+    </Stack>
   )
 }
 
-/**
- * The value, the copy control and the live region.
- *
- * `CopyableTextBody` is the half that holds no state, so the demo drives it directly: `copied` is
- * false here, which is what an untouched card looks like, and the region is empty. `CopyableText`
- * owns that flag itself for `copiedForMs` and clears it, which is the only state either of them has.
- *
- * The clipboard itself is a port. Both the port and the click that fires it are browser-only — no
- * committed test clicks a copy control — so what the card asserts is the markup: one copy control
- * per value, the full value as its text, and the live region beside it.
- */
+/** A plain value copied through a port the card watches, and a long one truncated. */
 function CopyableTextDemo() {
   const copied = useSignal<string | null>(null)
 
   return (
-    <div class="space-y-4">
-      <div class="space-y-2">
-        <CopyableText
-          text="0192f7c1-4d5e-7a8b-9c0d-1e2f3a4b5c6d"
-          copy={(text) => {
-            copied.value = text
-          }}
-        />
-        <p class="text-xs text-gray-500 dark:text-gray-400">
-          the port received: {copied.value ?? "nothing yet — copying needs a click"}
-        </p>
-      </div>
-
-      <div class="max-w-64 space-y-2">
+    <Stack>
+      <CopyableText
+        text="0192f7c1-4d5e-7a8b-9c0d-1e2f3a4b5c6d"
+        copy={(text) => {
+          copied.value = text
+        }}
+      />
+      <div class="max-w-64">
         <CopyableText
           text="a-very-long-identifier-that-does-not-fit-in-the-column-it-lives-in"
           truncate
           copyLabel="Copy reference"
           copiedLabel="Reference copied"
         />
-        <p class="text-xs text-gray-500 dark:text-gray-400">
-          `truncate` clips the line only: the element keeps the whole value as its text, so its
-          accessible name is the full string, and the title tooltip shows what the ellipsis ate.
-        </p>
       </div>
+      <Note>copy port received: {copied.value ?? "nothing yet"}</Note>
+    </Stack>
+  )
+}
 
-      <div class="space-y-2">
-        <CopyableTextBody
-          text="BTC-USD-4h-2026-02"
-          copied={false}
-          onCopy={() => {}}
-          copyLabel="Copy series key"
-        />
-        <p class="text-xs text-gray-500 dark:text-gray-400">
-          `CopyableTextBody` with `copied={false}` — the stateless half, whose props are assertable
-          without a click.
-        </p>
-      </div>
-    </div>
+/** `CopyableTextBody` with its copied flag held by the card instead of by the component. */
+function CopyableTextBodyDemo() {
+  const copied = useSignal(false)
+
+  return (
+    <Stack>
+      <CopyableTextBody
+        text="BTC-USD-4h-2026-02"
+        copied={copied.value}
+        onCopy={() => copied.value = true}
+        copyLabel="Copy series key"
+      />
+      <Cluster>
+        <Note>copied: {copied.value ? "yes" : "no"}</Note>
+        <Button variant="outline" size="sm" onClick={() => copied.value = false}>
+          Reset
+        </Button>
+      </Cluster>
+    </Stack>
   )
 }
 
 /**
- * Supplementary hints.
+ * Every placement with its hint pinned open, then an interactive trigger, then one hint left to
+ * reveal itself.
  *
- * Every placement is rendered, because the anchor classes are the whole of the positioning: the
- * surface is `absolute` inside a `relative` wrapper and moves with one utility set. On the card the
- * hints are visible (`contentClass="opacity-100 visible"`), since a reveal needs a hover the
- * catalogue cannot perform on a reader's behalf; the class names printed on each row are what a
- * consumer gets without it.
+ * The pinned hints use `contentClass="opacity-100 visible"`, since a reveal needs a hover the
+ * catalogue cannot perform for a reader. Each placement cell keeps room above and below its trigger
+ * for a top or bottom hint, and `pages/checks/ui-guide.ts` asserts that no hint covers a trigger.
  *
- * The two accessibility rules the component enforces are both visible here: `label` is on the
- * wrapper and is the trigger's name, while the tooltip text is only ever the description — and
- * `focusable={false}` swaps the `<button>` wrapper for a `role="group"` one, so an interactive
- * trigger keeps its own single tab stop.
- *
- * The last row is the exception, and the reason it exists: one hint left to reveal itself, so a
- * reader can hover it, keep the pointer on it and press Escape over it. `pages/checks/ui.ts`
- * drives that row, which is why it is wrapped in `data-e2e="tooltip-live"` — a forced-visible hint
- * could not tell a working reveal from a broken one.
+ * The last row, `data-e2e="tooltip-live"`, is the one `pages/checks/ui.ts` hovers, keeps the pointer
+ * on and presses Escape over: a hint pinned open could not tell a working reveal from a broken one.
  */
 function TooltipDemo() {
   return (
-    <div class="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-4">
-      {entries(tooltipPlacements).map(([placement, label]) => (
-        // One placement per row on a phone. Each cell keeps room above and below its trigger for
-        // a top or bottom hint, and the hint is one short word, so no hint covers a trigger.
-        <div
-          key={placement}
-          class="flex flex-col items-center pt-10 text-center"
-          data-e2e="tooltip-placement"
-        >
-          <Tooltip
-            content="Hint"
-            label={label}
-            placement={placement}
-            class="bg-gray-100 px-2 py-1 dark:bg-gray-700"
-            contentClass="visible opacity-100"
+    <Stack gap="xl">
+      <div class="grid grid-cols-1 gap-x-6 sm:grid-cols-4">
+        {entries(tooltipPlacements).map(([placement, label]) => (
+          <div
+            key={placement}
+            class="flex flex-col items-center gap-12 pt-12 pb-4 text-center"
+            data-e2e="tooltip-placement"
           >
-            <span class="text-sm">{placement}</span>
-          </Tooltip>
-          <p class="mt-10 text-xs text-gray-500 dark:text-gray-400">{label}</p>
-        </div>
-      ))}
-      <div class="col-span-full space-y-2">
-        <div class="pt-20 text-center">
+            <Tooltip
+              content="Hint"
+              label={label}
+              placement={placement}
+              class="bg-gray-100 px-2 py-1 dark:bg-gray-700"
+              contentClass="visible opacity-100"
+            >
+              <span class="text-sm">{placement}</span>
+            </Tooltip>
+            <Note>{label}</Note>
+          </div>
+        ))}
+      </div>
+      <Grid>
+        <Stack gap="sm" class="items-center pt-16 text-center">
           <Tooltip
-            content="An interactive trigger keeps its own tab stop, so the wrapper drops its own"
+            content="The button keeps its own tab stop"
             label="Archive the invoice"
             focusable={false}
             contentClass="visible max-w-48 opacity-100"
           >
-            <button
-              type="button"
-              class="rounded-md border border-gray-300 px-2 py-1 text-sm hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700"
-            >
+            <Button variant="outline" size="sm">
               <IconTrashBin class="size-4" />
               Archive
-            </button>
+            </Button>
           </Tooltip>
-        </div>
-        <p class="text-xs text-gray-500 dark:text-gray-400">
-          {"`focusable={false}`"} — with a {`<button>`}{" "}
-          inside, a second tab stop for one control is a keyboard trap rather than a convenience.
-        </p>
-      </div>
-      <div class="col-span-full space-y-2" data-e2e="tooltip-live">
-        <div class="text-center">
+          <Note>focusable=false, around a button</Note>
+        </Stack>
+        <Stack gap="sm" class="items-center text-center" data-e2e="tooltip-live">
           <Tooltip
             content="Escape hides this hint, and the pointer may rest on it while it is read"
             label="Delivery estimate"
@@ -943,21 +757,16 @@ function TooltipDemo() {
           >
             <span class="text-sm">Hover me, or tab to me</span>
           </Tooltip>
-        </div>
-        <p class="text-xs text-gray-500 dark:text-gray-400">
-          The one hint here that reveals itself. Point at it and it stays up while the pointer is on
-          it, because the gap to it is the surface's own padding rather than dead space; press
-          Escape and it goes without your focus moving, and comes back on the next hover or focus.
-        </p>
-      </div>
-    </div>
+        </Stack>
+      </Grid>
+    </Stack>
   )
 }
 
 export const displayDemos = {
   PageTitle: {
-    summary:
-      "Page heading carrying the library's `h1` typography. It has no outer margin: the space under it is the parent's gap, from `Stack`, `Section` or `Page`. `class` is merged after the defaults and replaces a default only in the same group at the same breakpoint: `text-xl` alone changes the phone size and `sm:text-3xl` still applies from `sm`, so the demo passes both.",
+    summary: "The page's main heading, in the library's `h1` style and with no margin of its own.",
+    wide: false,
     snippet: `<Stack>
   <PageTitle>Transactions</PageTitle>
   <PageTitle class="text-xl sm:text-xl">Nested detail</PageTitle>
@@ -965,26 +774,77 @@ export const displayDemos = {
     render: () => (
       <Stack>
         <PageTitle>Transactions</PageTitle>
-        <PageTitle class="text-xl sm:text-xl">Nested detail with an overridden scale</PageTitle>
+        <PageTitle class="text-xl sm:text-xl">Nested detail, at a smaller size</PageTitle>
       </Stack>
     ),
   },
-  ConfidenceMeter: {
-    summary:
-      "Horizontal meter for a `0…100` score, banded into low / medium / high. Width is inline, so it is correct before hydration.",
-    snippet: `<ConfidenceMeter value={88} label="match" />`,
-    render: () => <ConfidenceMeterDemo />,
-  },
   MoneyDisplay: {
     summary:
-      "Renders an amount in a currency's smallest unit through `Intl.NumberFormat` — `amount={12345}` is €123.45 for `EUR`, ¥12,345 for `JPY` (no minor unit), and three decimals for `KWD`, each asked from `Intl` rather than assumed. `colorNegative` colours a negative amount red; every other style is the caller's own `class`.",
+      "Shows an amount kept in a currency's smallest unit, with that currency's own decimals.",
+    wide: false,
     snippet: `<MoneyDisplay amount={12345} currency="EUR" />
 <MoneyDisplay amount={-4599} currency="EUR" colorNegative />`,
     render: () => <MoneyDisplayDemo />,
   },
+  ConfidenceMeter: {
+    summary: "A bar for a score from 0 to 100 that also says whether it is low, medium or high.",
+    wide: false,
+    snippet: `<ConfidenceMeter value={88} label="match" />`,
+    render: () => <ConfidenceMeterDemo />,
+  },
+  Progress: {
+    summary:
+      "A progress bar with an optional caption, which draws a bare track while there is no reading.",
+    wide: false,
+    props: [
+      {
+        name: "value",
+        type: "number | null",
+        description: "The reading; kept between 0 and `max`, and none draws a bare track.",
+      },
+      { name: "max", type: "number", default: "100", description: "The value of a full bar." },
+      {
+        name: "tone",
+        type: `"primary" | "success" | "warning" | "danger"`,
+        default: `"primary"`,
+        description: "The bar's colour.",
+      },
+      {
+        name: "label",
+        type: "string",
+        description: "A caption above the bar; it needs an `id` beside it.",
+      },
+    ],
+    snippet: `<Progress id="upload" label="Upload" value={42} tone="success" />
+<Progress value={null} />`,
+    render: () => <ProgressDemo />,
+  },
   Table: {
     summary:
-      "Table shell with header, body and optional footer slots. The primitive owns dividers, hover and horizontal scroll; the caller owns every cell.",
+      "The frame of a data table: you write the cells, it draws the dividers, the hover and the scroll.",
+    wide: true,
+    props: [
+      {
+        name: "headerSlot",
+        type: "ComponentChildren",
+        description: "The header row's cells.",
+      },
+      {
+        name: "bodySlots",
+        type: "ComponentChildren[]",
+        description: "One entry per row, each that row's cells.",
+      },
+      {
+        name: "footerSlot",
+        type: "ComponentChildren",
+        description: "Whole footer rows, such as a total.",
+      },
+      {
+        name: "caption",
+        type: "ComponentChildren",
+        description: "The table's name.",
+      },
+    ],
     snippet: `<Table
   headerSlot={<th scope="col">Merchant</th>}
   bodySlots={rows.map((row) => <td>{row.merchant}</td>)}
@@ -994,7 +854,35 @@ export const displayDemos = {
   },
   DataTable: {
     summary:
-      "`Table`'s markup joined to `table-state`'s sort rules: a sortable, optionally paged table with no sort or page state of its own — the caller owns `sort` and `paging.page`, so either can live in a signal or a URL parameter. Every sortable header is a real button; `aria-sort` carries the state, the chevron beside it is decorative. `caption` is required — it is the table's name, and only the caller knows it.",
+      "A table whose columns sort and whose rows page, while you keep the sort and the page.",
+    wide: true,
+    props: [
+      {
+        name: "caption",
+        type: "string",
+        description: "The table's name, which only you know, so it is required.",
+      },
+      {
+        name: "columns",
+        type: "DataTableColumn[]",
+        description: "Each column's key, header, alignment and whether it sorts.",
+      },
+      {
+        name: "sort",
+        type: "SortRule[]",
+        description: "The current sort, with `onSortChange` to change it.",
+      },
+      {
+        name: "paging",
+        type: "{ page, pageSize, onChange }",
+        description: "Pages the rows when given; left out, every row shows.",
+      },
+      {
+        name: "rowKey",
+        type: "(row) => string | number",
+        description: "A stable key for each row.",
+      },
+    ],
     snippet: `<DataTable
   caption="Invoices"
   columns={[
@@ -1011,8 +899,8 @@ export const displayDemos = {
     render: () => <DataTableDemo />,
   },
   Card: {
-    summary:
-      "Card surface carrying the preset's `card` utility and nothing else — no padding or width opinion of its own. Header, body and footer are optional children, and a caller's `class` is merged after the preset's, so a later utility wins.",
+    summary: "A surface that groups related content, with an optional header, body and footer.",
+    wide: false,
     snippet: `<Card>
   <CardHeader title="Invoices" action={<Button size="sm">New</Button>} />
   <CardBody>…</CardBody>
@@ -1021,40 +909,61 @@ export const displayDemos = {
     render: () => <CardDemo />,
   },
   CardHeader: {
-    summary:
-      "Card header in one of two mutually exclusive modes: `title` plus an optional right-aligned `action` slot, or raw `children`, which replace both. Mixing them is a type error rather than markup that silently drops half the header.",
-    snippet: `<CardHeader title="Invoices" action={<Button size="sm">New</Button>} />
+    summary: "A card's top row: a title with an optional action, or your own markup instead.",
+    wide: false,
+    snippet: `<CardHeader title="Invoices" action={<Badge text="3 open" />} />
 
 <CardHeader>
-  <h4>Raw header markup</h4>
-  <span>children win over title/action</span>
+  <h4>Your own header</h4>
 </CardHeader>`,
-    render: () => <CardDemo />,
+    render: () => <CardHeaderDemo />,
   },
   CardBody: {
-    summary:
-      "The content region of a card: the `card-body` utility and a slot, nothing more. There is no padding prop — a caller that wants different geometry passes utilities through `class`.",
-    snippet: `<CardBody>
-  <p>Header, body and footer are each optional.</p>
-</CardBody>`,
-    render: () => <CardDemo />,
+    summary: "The padded content area of a card.",
+    wide: false,
+    snippet: `<Card>
+  <CardBody>
+    <p>Header, body and footer are each optional.</p>
+  </CardBody>
+</Card>`,
+    render: () => (
+      <Card>
+        <CardBody>
+          <p class="text-sm text-gray-600 dark:text-gray-300">
+            Header, body and footer are each optional.
+          </p>
+        </CardBody>
+      </Card>
+    ),
   },
   CardFooter: {
-    summary:
-      "Divider-separated action row at the bottom of a card, normally holding a row of buttons. Like the header it is a slot, so a table footer or a caption goes in it just as well.",
+    summary: "A row under a card's content, divided from it by a line, usually for its buttons.",
+    wide: false,
     snippet: `<CardFooter>
-  <div class="flex justify-end gap-2">
+  <Cluster justify="end">
     <Button variant="outline" size="sm">Dismiss</Button>
     <Button size="sm">Open</Button>
-  </div>
+  </Cluster>
 </CardFooter>`,
-    render: () => <CardDemo />,
+    render: () => (
+      <Card>
+        <CardBody>
+          <p class="text-sm text-gray-600 dark:text-gray-300">Save the draft before you leave?</p>
+        </CardBody>
+        <CardFooter>
+          <Cluster justify="end">
+            <Button variant="outline" size="sm">Dismiss</Button>
+            <Button size="sm">Save</Button>
+          </Cluster>
+        </CardFooter>
+      </Card>
+    ),
   },
   FactCard: {
-    summary:
-      "Key/value facts as a real `<dl>`, composed from `Card`/`CardHeader`/`CardBody` (#257) rather than a fourth card primitive. `title`/`action` are optional — omitting `title` leaves the header out entirely.",
+    summary: "A card that lists facts as pairs of a label and a value.",
+    wide: false,
     snippet: `<FactCard
-  title="Antonshubin.com"
+  title="example.com"
   facts={[
     { key: "Stack", value: "Deno + Hono + Fresh" },
     { key: "Status", value: <StatusMark status="ready" /> },
@@ -1064,7 +973,17 @@ export const displayDemos = {
   },
   MarginNote: {
     summary:
-      "A short aside with an optional source link or a `checked on` date, rendered as a real `<time>`. It floats beside its paragraph in a column at least 30rem wide and sits inline in a narrower one, whatever the screen size — a CSS container query, so the column carries Tailwind's `@container` class. At most window widths this card's column is narrower than 30rem, so the note sits inline; in a window about 600 to 720px wide the column is wider than 30rem and the note floats.",
+      "A short aside next to a paragraph, with an optional source link and the date it was checked.",
+    wide: false,
+    props: [
+      { name: "sourceHref", type: "string", description: "Where the claim comes from." },
+      { name: "sourceLabel", type: "string", description: "The source link's text." },
+      {
+        name: "checkedOn",
+        type: "string",
+        description: "The date the claim was checked, as `YYYY-MM-DD`.",
+      },
+    ],
     snippet: `<div class="@container flow-root">
   <MarginNote sourceHref={benchmarkUrl} sourceLabel="Benchmark" checkedOn="2026-09-01">
     Cold start under 50ms on a shared vCPU.
@@ -1074,23 +993,126 @@ export const displayDemos = {
     render: () => <MarginNoteDemo />,
   },
   InstallBox: {
-    summary:
-      "A code snippet box with a copy button, built on `CopyButton` rather than a second clipboard implementation. The command is real, selectable text — not a background image.",
+    summary: "A one-line command with a copy button, for install instructions.",
+    wide: false,
     snippet: `<InstallBox command="deno add jsr:@spy4x/preact-ui" />`,
-    render: () => <InstallBoxDemo />,
+    render: () => <InstallBox command="deno add jsr:@spy4x/preact-ui" class="max-w-sm" />,
   },
-  Progress: {
+  CopyableText: {
     summary:
-      "Determinate progress bar, captioned or not; with no reading it renders a bare track and omits `aria-valuenow` rather than claiming `0`. Width is inline so the server render is already correct, and a reading outside `0…max` is clamped by `clampProgress`.",
-    snippet: `<Progress id="upload" label="Upload" value={42} tone="success" />
-
-// No reading yet: the honest indeterminate DOM, not a bar at zero.
-<Progress value={undefined} />`,
-    render: () => <ProgressDemo />,
+      "A value in monospace with a copy button, which also tells a screen reader it was copied.",
+    wide: false,
+    props: [
+      { name: "text", type: "string", description: "The value shown and copied." },
+      {
+        name: "truncate",
+        type: "boolean",
+        default: "false",
+        description: "Cuts a long value to one line; the whole value is still copied.",
+      },
+      {
+        name: "copy",
+        type: "(text: string) => void",
+        default: "the browser clipboard",
+        description: "Replaces the clipboard.",
+      },
+      {
+        name: "copyLabel",
+        type: "string",
+        default: `"Copy"`,
+        description: "The copy button's name.",
+      },
+    ],
+    snippet: `<CopyableText text={invoice.id} />
+<CopyableText text={reference} truncate copyLabel="Copy reference" />`,
+    render: () => <CopyableTextDemo />,
+  },
+  CopyableTextBody: {
+    summary: "`CopyableText` without its own state, for when you keep the copied flag yourself.",
+    wide: false,
+    snippet: `<CopyableTextBody
+  text={seriesKey}
+  copied={copied.value}
+  onCopy={() => copied.value = true}
+  copyLabel="Copy series key"
+/>`,
+    render: () => <CopyableTextBodyDemo />,
+  },
+  AvatarGroup: {
+    summary: "Overlapping avatars of a group, with a count for the ones that do not fit.",
+    wide: false,
+    props: [
+      { name: "items", type: "{ name, src? }[]", description: "The members." },
+      {
+        name: "max",
+        type: "number",
+        default: "4",
+        description: "How many avatars show before the count.",
+      },
+      {
+        name: "label",
+        type: "string",
+        default: `"Avatars"`,
+        description: "The group's name; the member count is added to it.",
+      },
+    ],
+    snippet: `<AvatarGroup items={members} label="Project members" max={4} size="sm" />`,
+    render: () => <AvatarGroupDemo />,
+  },
+  Avatar: {
+    summary: "A round picture of a person that falls back to their initials, then to an icon.",
+    wide: true,
+    props: [
+      {
+        name: "name",
+        type: "string",
+        description: "Whose avatar it is; the initials come from it.",
+      },
+      {
+        name: "src",
+        type: "string",
+        description: "The picture; a failed load shows the initials.",
+      },
+      {
+        name: "size",
+        type: `"xs" | "sm" | "md" | "lg"`,
+        default: `"md"`,
+        description: "The avatar's diameter.",
+      },
+      {
+        name: "alt",
+        type: "string",
+        default: "`name`",
+        description: "Its accessible name; an empty string hides it from screen readers.",
+      },
+    ],
+    snippet: `<Avatar name="Ada Lovelace" size="lg" />
+<Avatar name="Ada Lovelace" src={user.avatarUrl} />
+<Avatar src={user.avatarUrl} alt="" />`,
+    render: () => <AvatarDemo />,
   },
   Tabs: {
-    summary:
-      "Controlled tablist and panels: `active` in, `onChange` out, no state of its own. Every panel is rendered with the inactive ones `hidden` by default, so each `aria-controls` resolves; ids are derived from `TabItem.id` rather than generated. Arrow-key navigation is browser-only — its decision table is `nextTabIndex`, unit-tested in the component.",
+    summary: "Tabs that switch between panels, in a row or a column, with the arrow keys.",
+    wide: true,
+    props: [
+      {
+        name: "tabs",
+        type: "TabItem[]",
+        description: "Each tab's id, label, panel content and whether it is disabled.",
+      },
+      {
+        name: "active",
+        type: "string",
+        description: "The selected tab's id, with `onChange` to change it.",
+      },
+      {
+        name: "orientation",
+        type: `"horizontal" | "vertical"`,
+        default: `"horizontal"`,
+        description: "A row of tabs, or a column.",
+      },
+      { name: "label", type: "string", description: "The tab list's accessible name." },
+    ],
     snippet: `<Tabs
   tabs={[
     { id: "overview", label: "Overview", content: <Overview /> },
@@ -1098,75 +1120,64 @@ export const displayDemos = {
   ]}
   active={view.value}
   onChange={(id) => view.value = id}
-  orientation="vertical"
   label="Report views"
 />`,
     render: () => <TabsDemo />,
   },
   Pagination: {
     summary:
-      "Page numbers with the long runs collapsed, plus previous/next. Controlled: `page` is rendered (clamped) and every request leaves through `onChange`. From two pages up, a control that cannot act stays where it is and carries `aria-disabled` — unmounting it, or disabling it natively, would take focus off the button a keyboard user is pressing. `pageCount={0}` renders nothing and `pageCount={1}` renders the one page with no controls, since neither can lose anybody their place. Every page number's name comes from `pageLabel`, which defaults to `Page N`.",
-    snippet: `<Pagination page={page.value} pageCount={24} onChange={(page) => page.value = page} />
-
-// An empty result set needs no special case at the call site.
-<Pagination page={1} pageCount={0} onChange={() => {}} />`,
+      "Page numbers with previous and next buttons, a long run of pages shortened to an ellipsis.",
+    wide: true,
+    props: [
+      { name: "page", type: "number", description: "The current page, counted from 1." },
+      { name: "pageCount", type: "number", description: "How many pages; 0 renders nothing." },
+      {
+        name: "onChange",
+        type: "(page: number) => void",
+        description: "Called with the page a reader asks for.",
+      },
+      {
+        name: "label",
+        type: "string",
+        default: `"Pagination"`,
+        description: "The navigation's accessible name.",
+      },
+    ],
+    snippet:
+      `<Pagination page={page.value} pageCount={24} onChange={(next) => page.value = next} />`,
     render: () => <PaginationDemo />,
   },
-  Avatar: {
-    summary:
-      'Round image with two fallbacks: the initials of `name`, then `IconUser` when the name yields no initial. `src` is used while it is set and has not errored, and a failure is remembered per URL — changing `src` clears it, so a dead URL can be replaced with a live one. `alt=""` makes the box decorative.',
-    snippet: `<Avatar name="Ada Lovelace" size="lg" />
-<Avatar name="Ada Lovelace" src={user.avatarUrl} />
-<Avatar name="😀" />                        {/* no usable initial → the icon face */}
-<Avatar src={user.avatarUrl} alt="" />       {/* named elsewhere in the row */}`,
-    render: () => <AvatarDemo />,
-  },
-  AvatarGroup: {
-    summary:
-      'Overlapping stack of avatars with a `+N` chip for the rest. `max` decides how many fit and the chip counts the remainder, and it is absent when nothing overflows. The group is one labelled object — `role="group"`, members decorative — whose name from `label` carries the total.',
-    snippet: `<AvatarGroup items={members} label="Project members" max={4} size="sm" />`,
-    render: () => <AvatarGroupDemo />,
-  },
-  CopyableText: {
-    summary:
-      "Monospace value with an integrated copy control, plus a polite live region that announces the copy — `CopyButton` confirms by swapping its glyph, which reaches neither a screen reader nor an `aria-label`. `copiedForMs` (1500 default) is the only state it holds; the clipboard write is the `copy` port.",
-    snippet: `<CopyableText text={invoice.id} />
-<CopyableText
-  text={reference}
-  truncate
-  copyLabel="Copy reference"
-  copiedLabel="Reference copied"
-  copy={app.clipboard.copy}
-/>`,
-    render: () => <CopyableTextDemo />,
-  },
-  CopyableTextBody: {
-    summary:
-      "The stateless body of `CopyableText`: the same value, copy control and live region with `copied` in and `onCopy` out, which is what makes the props it hands down — the copy port above all — assertable without a render that holds state.",
-    snippet: `<CopyableTextBody
-  text={seriesKey}
-  copied={copied.value}
-  onCopy={() => copied.value = true}
-  copyLabel="Copy series key"
-/>`,
-    render: () => <CopyableTextDemo />,
-  },
   Tooltip: {
-    summary:
-      "Supplementary hint revealed by hover and by keyboard focus, anchored with CSS only — no measurement, no scroll or resize listener. Escape dismisses a hint without moving focus, and the pointer can travel onto the hint and rest there, so it can be read under magnification. `label` is the trigger's own accessible name, carried by a `<button>` wrapper that may actually hold one, and the tooltip text is only ever its description; `focusable={false}` makes the wrapper a `role=\"group\"` instead, leaving the single tab stop to the caller's own control.",
+    summary: "A short hint that appears when its trigger is hovered or focused.",
+    wide: true,
+    props: [
+      { name: "content", type: "ComponentChildren", description: "The hint." },
+      { name: "label", type: "string", description: "The trigger's accessible name." },
+      {
+        name: "placement",
+        type: `"top" | "right" | "bottom" | "left"`,
+        default: `"top"`,
+        description: "Which side of the trigger the hint appears on.",
+      },
+      {
+        name: "focusable",
+        type: "boolean",
+        default: "true",
+        description: "Pass `false` when the trigger is already a button or a link.",
+      },
+    ],
     snippet: `<Tooltip content="Supplements the trigger" label="Total revenue" placement="right">
   <span>Revenue</span>
 </Tooltip>
 
-// Interactive children own the tab stop already:
 <Tooltip content="Archive the invoice" label="Archive" focusable={false}>
   <button type="button">Archive</button>
 </Tooltip>`,
     render: () => <TooltipDemo />,
   },
   ImageGallery: {
-    summary:
-      "A strip of thumbnails — real `<button>` elements, named by each image's `alt` — that opens `Lightbox` on the one pressed. `images` is `{ src, alt, thumbSrc? }`; `thumbSrc` is the thumbnail's own source and defaults to `src` when left out. An image whose `alt` is empty after trimming is dropped before render, not in the strip and not in the lightbox's sequence, and this is silent — `alt` is already required by the type, so an empty one only reaches this component through a caller that bypassed it.",
+    summary: "A row of thumbnails that opens each image full size in a lightbox.",
+    wide: false,
     snippet: `<ImageGallery
   images={[
     { src: hero, alt: "A hero shot" },
@@ -1176,8 +1187,22 @@ export const displayDemos = {
     render: () => <ImageGalleryDemo />,
   },
   Lightbox: {
-    summary:
-      "The dialog `ImageGallery` and `system/image-lightbox.tsx`'s content mode both open: the current image, its `alt` as a caption, labelled previous/next, a \"3 of 8\" counter announced through a live region that is present whether the dialog is open or not. `images`, `index`, `open`, `onClose` and `onIndexChange` are all the caller's own state — built on a native `<dialog>` rather than `ui/Modal`, so a listener can be attached to the dialog itself for Left and Right; see the component's own doc for what about `Modal` did not fit. Escape and a backdrop click close it natively, and focus returns to whatever had it before the dialog opened.",
+    summary: "A dialog that shows one image of a set at a time, with previous and next.",
+    wide: false,
+    props: [
+      { name: "images", type: "LightboxImage[]", description: "The set, each with its `alt`." },
+      { name: "index", type: "number", description: "The image showing." },
+      {
+        name: "open",
+        type: "boolean",
+        description: "Whether the dialog is open, with `onClose` to close it.",
+      },
+      {
+        name: "onIndexChange",
+        type: "(index: number) => void",
+        description: "Called when the reader moves to another image.",
+      },
+    ],
     snippet: `<Lightbox
   images={images}
   index={index}
