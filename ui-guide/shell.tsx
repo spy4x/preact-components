@@ -1043,7 +1043,14 @@ function PackagePage(
                 <InlineMarkdown text={section.blurb} />
               </p>
             </div>
-            <div class="grid grid-cols-1 gap-4 @2xl:grid-cols-2 @2xl:[&>article[data-card-size=auto]:has([data-card-part=demo]_:is(table,[role=menu]))]:col-span-2">
+            <div
+              class={cn(
+                "grid grid-cols-1 gap-4 @2xl:grid-cols-2 @2xl:[&>article[data-card-size=auto]:has([data-card-part=demo]_:is(table,[role=menu]))]:col-span-2",
+                // An output is often three lines: stretched to its neighbour's height it would sit
+                // on a tall empty canvas, so an example card keeps its own height.
+                section.kind === "example" && "items-start",
+              )}
+            >
               {demos.map(([name, demo], index) => {
                 // A class card is headed by its own title and lists the classes it applies, an
                 // example card by its title with its code open; a component card is headed by the

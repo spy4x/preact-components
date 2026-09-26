@@ -388,3 +388,17 @@ describe("the shell's other words", () => {
     expect(html).toContain('aria-label="Befehl kopieren"')
   })
 })
+
+describe("the card grid", () => {
+  it("keeps an example card at its own height, and pairs component cards at one", () => {
+    const html = render(<UIGuide hash="#/charts" />)
+    const gridBefore = (card: string) => {
+      const at = html.indexOf(`<article id="demo-${card}"`)
+      const open = html.lastIndexOf('<div class="grid ', at)
+      return html.slice(open, html.indexOf(`">`, open))
+    }
+
+    expect(gridBefore("extent")).toContain("items-start")
+    expect(gridBefore("Bars")).not.toContain("items-start")
+  })
+})
