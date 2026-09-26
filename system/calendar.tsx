@@ -20,26 +20,18 @@
  * rendered with, which is the only way through them when nothing is listening for a key.
  *
  * **The week is the locale's.** Both the column order and the header text come from `Intl` (see
- * `date.ts`), so the grid starts on Monday in London, on Sunday in New York and on Saturday in
- * Cairo, and an Arabic header reads a weekday rather than the two characters all seven share.
+ * `@spy4x/time/locale`), so the grid starts on Monday in London, on Sunday in New York and on
+ * Saturday in Cairo, and an Arabic header reads a weekday rather than the two characters all seven
+ * share.
  */
 
 import { cn } from "@spy4x/preact-cn"
 import { IconChevronLeft, IconChevronRight } from "@spy4x/preact-icons"
 import type { JSX } from "preact"
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "preact/hooks"
-import {
-  addDaysIso,
-  dayInMonth,
-  dayLabel,
-  localeFirstWeekday,
-  monthFirstWeekday,
-  monthLabel,
-  shiftMonth,
-  startOfMonth,
-  weekdayLabels,
-} from "./date.ts"
-import { todayInTz, validTimeZoneOr } from "@spy4x/time/tz"
+import { dayInMonth, monthFirstWeekday, shiftMonth, startOfMonth } from "@spy4x/time/date"
+import { dayLabel, localeFirstWeekday, monthLabel, weekdayLabels } from "@spy4x/time/locale"
+import { addDays, todayInTz, validTimeZoneOr } from "@spy4x/time/tz"
 
 /** Why a day cannot be picked. */
 export type CalendarDayReason = "past" | "after" | "none-left" | "unavailable"
@@ -227,12 +219,12 @@ export function Calendar(
   // are appended until the grid is full.
   const cells: { date: string; inMonth: boolean }[] = []
   for (let back = monthFirstWeekday(firstOfMonth, firstWeekday); back > 0; back--) {
-    cells.push({ date: addDaysIso(firstOfMonth, -back), inMonth: false })
+    cells.push({ date: addDays(firstOfMonth, -back), inMonth: false })
   }
   let cursor = firstOfMonth
   while (cells.length < WEEK * WEEKS) {
     cells.push({ date: cursor, inMonth: cursor.slice(0, 7) === monthKey })
-    cursor = addDaysIso(cursor, 1)
+    cursor = addDays(cursor, 1)
   }
 
   const days: CalendarDay[] = cells.map(({ date, inMonth }) => {
@@ -538,16 +530,16 @@ export function Calendar(
 
     switch (event.key) {
       case "ArrowLeft":
-        moveTo(addDaysIso(from, -1))
+        moveTo(addDays(from, -1))
         break
       case "ArrowRight":
-        moveTo(addDaysIso(from, 1))
+        moveTo(addDays(from, 1))
         break
       case "ArrowUp":
-        moveTo(addDaysIso(from, -WEEK))
+        moveTo(addDays(from, -WEEK))
         break
       case "ArrowDown":
-        moveTo(addDaysIso(from, WEEK))
+        moveTo(addDays(from, WEEK))
         break
       case "Home":
         moveTo(weekEnds(from, firstWeekday).first)

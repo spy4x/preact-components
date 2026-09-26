@@ -3,9 +3,10 @@
  *
  * Every range is a pair of inclusive `YYYY-MM-DD` calendar dates. An ISO date carries no zone, so
  * day, month, quarter and year arithmetic is fixed-step UTC maths that cannot drift across a DST
- * boundary — the exact bug class both source implementations had. A zone is needed for one
- * question only: which calendar date the injected `now` falls on, answered by
- * {@link calendarDateInZone}, this module's single `Intl` call.
+ * boundary — the exact bug class both source implementations had. That arithmetic comes from
+ * spy4x/ts-libs (`@spy4x/time/date`, and `addDays` from `@spy4x/time/tz`); this module holds only
+ * the presets built on it. A zone is needed for one question only: which calendar date the injected
+ * `now` falls on, answered by `@spy4x/time/tz`'s {@link isoDateInTz}.
  *
  * Sub-day frames (`"last-hour"`, `"last-24-hours"`) are no longer absent: {@link DateTimeRange}
  * keeps {@link DateRange}'s own `from`/`to` shape and adds a wall-clock time, and
@@ -19,23 +20,23 @@
  *
  * Supported window: the four-digit ISO years 0001–9999, e.g. every instant a UI clock can hold.
  * The window is four digits wide, not 0001 upward: year 0000 **is** a representable year — ISO 8601
- * calls it 1 BC, `Date` keeps it, and {@link parseIsoDate} and {@link formatIsoDate} both accept it,
+ * calls it 1 BC, `Date` keeps it, and {@link parseIsoDate} and `formatIsoDate` both accept it,
  * so {@link shiftMonth} answers `0000-12-01` for the month before `0001-01-01` rather than
  * rejecting it. 0000 is outside the window because a UI clock cannot hold it, and what makes it an
  * escape is that `Intl` disagrees with `Date` about the era, not that the year does not exist.
  * Nothing here leaves the window on purpose, and the escapes that remain are named rather than
  * implied:
  *
- * - An instant at or above year 10000 is outside the window twice over. {@link calendarDateInZone}
+ * - An instant at or above year 10000 is outside the window twice over. {@link isoDateInTz}
  *   still pads and reports the year with five digits (`"10000-01-01"`), so `today` echoes that
  *   string; every arithmetic preset, and {@link parseIsoDate} itself, reject it as
  *   `expected a YYYY-MM-DD date, received: 10000-01-01`.
  * - An instant at or below year 0 is outside it too, and no era is read. `Intl` calls `0000-06-15`
- *   year `"1"` — that date is 1 BC — so {@link calendarDateInZone} pads it to `"0001-06-15"`, a
+ *   year `"1"` — that date is 1 BC — so {@link isoDateInTz} pads it to `"0001-06-15"`, a
  *   plausible wrong date one year ahead, and `today` echoes it. `last-year` from 0001, whose maths
  *   is string arithmetic on the padded year, answers with the nonexistent range
  *   `0000-01-01 … 0000-12-31`. Everything that goes through `Date` instead — `addDays`,
- *   {@link formatIsoDate}, {@link parseIsoDate} — keeps year 0000 as `Date` writes it, so the two
+ *   `formatIsoDate`, {@link parseIsoDate} — keeps year 0000 as `Date` writes it, so the two
  *   halves of the module disagree about that one year and nothing detects it. Unfixable without an
  *   era-aware date model; documented, not fixed.
  * - December 9999 throws for `this-month`, `this-quarter` and `last-12-months`: each asks for the
@@ -46,17 +47,19 @@
  *   step later, when {@link parseIsoDate} rejected it.
  */
 
-const MS_PER_DAY = 86_400_000
-
-const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
-
-/** Inclusive calendar range; both ends are `YYYY-MM-DD`, read in the caller's zone. */
-export interface DateRange {
-  /** First day of the range, inclusive. */
-  from: string
-  /** Last day of the range, inclusive. */
-  to: string
-}
+import {
+  type DateRange,
+  endOfMonth,
+  endOfQuarter,
+  endOfYear,
+  isValidDateRange,
+  parseIsoDate,
+  shiftMonth,
+  startOfMonth,
+  startOfQuarter,
+  startOfYear,
+} from "@spy4x/time/date"
+import { addDays, isoDateInTz } from "@spy4x/time/tz"
 
 /**
  * Every preset the maths knows.
@@ -132,207 +135,8 @@ export interface PresetForRangeOptions {
   presets?: readonly DateRangePreset[]
 }
 
-function pad2(value: number): string {
-  return String(value).padStart(2, "0")
-}
-
-/**
- * A year as `Date` writes it into an ISO string, four digits inside the window.
- *
- * `toISOString` keeps plain four-digit years and switches to a signed six-digit expanded year
- * outside them — `+010000` for year 10000, `-000001` for 1 BC — which is the difference
- * {@link formatIsoDate} reads to tell a date from half of one. Reproduced on the number here so a
- * month step can be checked against the same rule without building the instant it would have to
- * write: the string comparison against {@link ISO_DATE_PATTERN} is then what rejects the step.
- *
- * @param year The arithmetic year, which may be negative or five digits wide.
- * @returns Four digits inside `0000…9999`; outside it, six digits with the matching sign.
- */
-function paddedYear(year: number): string {
-  if (year >= 10000) return `+${String(year).padStart(6, "0")}`
-  if (year < 0) return `-${String(-year).padStart(6, "0")}`
-  return String(year).padStart(4, "0")
-}
-
 function isSameRange(a: DateRange, b: DateRange): boolean {
   return a.from === b.from && a.to === b.to
-}
-
-/**
- * Midnight UTC of a calendar date, in milliseconds.
- *
- * Rejects anything a calendar would reject, so a bad value fails at the boundary instead of
- * producing a plausible wrong day. `Date.parse` alone is not enough: it returns `NaN` for
- * `2026-13-01` but silently rolls `2026-02-31` into March and `2026-02-29` into 1 March of a
- * non-leap year. The round trip through {@link formatIsoDate} is what makes the day real.
- */
-export function parseIsoDate(date: string): number {
-  if (!ISO_DATE_PATTERN.test(date)) {
-    throw new Error(`expected a YYYY-MM-DD date, received: ${date}`)
-  }
-  const ms = Date.parse(`${date}T00:00:00Z`)
-  if (Number.isNaN(ms) || formatIsoDate(ms) !== date) {
-    throw new Error(`expected a YYYY-MM-DD date, received: ${date}`)
-  }
-  return ms
-}
-
-/**
- * The `YYYY-MM-DD` calendar date of midnight-UTC milliseconds.
- *
- * Returns a `YYYY-MM-DD` string, or throws rather than returning half of one. `toISOString`
- * switches to a signed six-digit expanded year outside the four-digit window — `+010000-01-01`
- * past 9999, `-000001-06-15` in 1 BC — and the bare `slice(0, 10)` this used to be returned
- * `+010000-01` instead. Adding a day to 9999-12-31 is the ordinary way to reach it.
- *
- * Known residual: `Date` treats `0000` as a year, so `0000-06-15` — 1 BC — keeps a plain
- * four-digit year, passes this check, and round-trips through {@link parseIsoDate} unchanged. Only
- * {@link calendarDateInZone} disagrees, reporting the era's year `"1"`; see its own note.
- *
- * @param ms Milliseconds since the Unix epoch, in UTC.
- * @throws When `ms` is an invalid instant, or `Date` writes its year with a sign.
- */
-export function formatIsoDate(ms: number): string {
-  const iso = new Date(ms).toISOString()
-  if (!/^\d{4}-\d{2}-/.test(iso)) {
-    throw new Error(`expected a date in the 0001-9999 window, received: ${iso.slice(0, 10)}`)
-  }
-  return iso.slice(0, 10)
-}
-
-/**
- * The date `days` after `date` (negative goes back). DST-proof: fixed UTC day steps.
- *
- * Fails loudly past either edge of the supported window rather than clamping: a clamp would return
- * 9999-12-31 for a question the caller did not ask — a plausible wrong date, the failure this
- * module exists to prevent — and would hide their off-by-N. Throwing also matches the convention
- * already here, where {@link parseIsoDate} rejects `2026-02-31` instead of rolling it into March.
- *
- * @throws On a `date` that is not a `YYYY-MM-DD` date, and on an answer `toISOString` writes with
- * a signed year. One day back from `0001-01-01` lands in 1 BC, which `addDays("0001-01-01", -1)`
- * reaches only because string arithmetic cannot see that `"0000"` is not a year.
- */
-export function addDays(date: string, days: number): string {
-  return formatIsoDate(parseIsoDate(date) + days * MS_PER_DAY)
-}
-
-/**
- * The first day of the month `months` away from `date`.
- *
- * Month arithmetic, not day arithmetic: "one month before 31 March" has to land on 1 February,
- * which adding 28, 30 or 31 days cannot guarantee.
- *
- * The result is checked against the supported window before it is returned, for the same reason
- * {@link addDays} checks its own: a month step is ordinary arithmetic, and one step past the window
- * produces `10000-01-01` — a string that looks like a date, is five digits wide, and is not a date.
- * The check is the same one `toISOString` would make, expressed on the string this builds, so the
- * message is the module's existing one rather than a new convention, and the answer throws instead
- * of clamping to 9999-12-01. Consumers that feed the result back into {@link parseIsoDate} — the
- * presets do — already rejected the escaped value; this makes the export itself reject it.
- *
- * @param date An existing `YYYY-MM-DD` date.
- * @param months Months to step, negative to go back.
- * @returns The first day of the target month, `YYYY-MM-DD`.
- * @throws On a `date` that is not a `YYYY-MM-DD` date, and on a target month whose year `Date`
- * writes with a sign — one month past `9999-12-01` is year 10000, one month before `0001-01-01` is
- * year 0, and only the second is a four-digit year this module carries on purpose.
- */
-export function shiftMonth(date: string, months: number): string {
-  const iso = formatIsoDate(parseIsoDate(date))
-  const total = Number(iso.slice(0, 4)) * 12 + (Number(iso.slice(5, 7)) - 1) + months
-  const year = Math.floor(total / 12)
-  const result = `${paddedYear(year)}-${pad2(total - year * 12 + 1)}-01`
-  // `Date` writes year 10000 as `+010000`, so the rejection shares `formatIsoDate`'s shape without
-  // building the instant: a target month that does not fit a four-digit year is one `Date` would
-  // spell with a sign, and `ISO_DATE_PATTERN` is what says so.
-  if (!ISO_DATE_PATTERN.test(result)) {
-    throw new Error(`expected a date in the 0001-9999 window, received: ${result.slice(0, 10)}`)
-  }
-  return result
-}
-
-/** First day of the month `date` falls in. */
-export function startOfMonth(date: string): string {
-  return `${formatIsoDate(parseIsoDate(date)).slice(0, 7)}-01`
-}
-
-/** Last day of the month `date` falls in — 28, 29, 30 or 31, leap year included. */
-export function endOfMonth(date: string): string {
-  return formatIsoDate(parseIsoDate(shiftMonth(date, 1)) - MS_PER_DAY)
-}
-
-/** First day of the calendar quarter `date` falls in. */
-export function startOfQuarter(date: string): string {
-  const month = Number(formatIsoDate(parseIsoDate(date)).slice(5, 7))
-  return shiftMonth(date, -((month - 1) % 3))
-}
-
-/** Last day of the calendar quarter `date` falls in. */
-export function endOfQuarter(date: string): string {
-  return formatIsoDate(parseIsoDate(shiftMonth(startOfQuarter(date), 3)) - MS_PER_DAY)
-}
-
-/** First day of the calendar year `date` falls in. */
-export function startOfYear(date: string): string {
-  return `${formatIsoDate(parseIsoDate(date)).slice(0, 4)}-01-01`
-}
-
-/** Last day of the calendar year `date` falls in. */
-export function endOfYear(date: string): string {
-  return `${formatIsoDate(parseIsoDate(date)).slice(0, 4)}-12-31`
-}
-
-/** Whether two values name the same calendar day. Throws on a value that is not a date. */
-export function isSameDay(a: string, b: string): boolean {
-  return parseIsoDate(a) === parseIsoDate(b)
-}
-
-/**
- * Whether a range is two real dates in order.
- *
- * One day is a valid range; a reversed or unparsable one is not. Returns `false` rather than
- * throwing, because the caller uses it to gate a button on half-typed input.
- */
-export function isValidDateRange(range: DateRange): boolean {
-  try {
-    return parseIsoDate(range.from) <= parseIsoDate(range.to)
-  } catch {
-    return false
-  }
-}
-
-/**
- * The calendar date an instant falls on in a zone.
- *
- * The only zone-aware step in the module: every other preset is arithmetic on the date this
- * returns. `formatToParts` is used instead of parsing a formatted string, so a locale's field
- * order or separators cannot leak into the result, and the parts are assembled from the zone's own
- * calendar rather than from the host clock.
- *
- * The year is padded to four digits because `Intl` does not: `year: "numeric"` reports year 999 as
- * `"999"`, and an unpadded year would leave every date in it unparsable by {@link parseIsoDate}.
- * Two consequences of that padding are documented rather than fixed, because both need an instant a
- * UI clock cannot hold. A year-10000 instant comes back with five digits (`"10000-01-01"`), which
- * {@link parseIsoDate} rejects. A 1 BC instant, `0000-06-15`, comes back as `"0001-06-15"`: no era
- * is formatted, and without one the era's year is `"1"`, so the padding invents a year. Reading the
- * era would mean formatting for it, and every date here is deliberately era-less — `Date` itself
- * keeps year 0000 and agrees with the rest of the module, not with this function.
- */
-export function calendarDateInZone(instant: Date, timeZone: string): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(instant)
-  const field = (type: string) => parts.find((part) => part.type === type)?.value
-  const year = field("year")
-  const month = field("month")
-  const day = field("day")
-  if (!year || !month || !day) {
-    throw new Error(`could not read a calendar date in ${timeZone}`)
-  }
-  return `${year.padStart(4, "0")}-${month}-${day}`
 }
 
 /**
@@ -406,7 +210,7 @@ export function rangeForPreset(preset: DateRangePreset, options: RangeForPresetO
     return { from: custom.from, to: custom.to }
   }
 
-  return rangeFromToday(preset, calendarDateInZone(now, timeZone))
+  return rangeFromToday(preset, isoDateInTz(now, timeZone))
 }
 
 /**
@@ -431,7 +235,7 @@ export function presetForRange(
   const { now, timeZone, presets = dateRangePresets } = options
   // One zone lookup for the whole candidate list: every candidate is resolved against the same
   // instant, so rebuilding that date per candidate is the same answer at 14 times the cost.
-  const today = calendarDateInZone(now, timeZone)
+  const today = isoDateInTz(now, timeZone)
 
   return presets.find((preset) =>
     preset !== "custom" && isSameRange(rangeFromToday(preset, today), range)
@@ -489,7 +293,7 @@ export interface RangeForTimePresetOptions {
 /**
  * The wall-clock date and time an instant reads as in a zone, minute precision.
  *
- * `hourCycle: "h23"` rather than the `hour12: false` {@link calendarDateInZone} uses: some `Intl`
+ * `hourCycle: "h23"` rather than `hour12: false`: some `Intl`
  * implementations answer midnight as `"24:00"` under `hour12: false`, an hour
  * {@link isValidDateTimeRange} would then have to reject as invalid input rather than a formatting
  * quirk. Asking for `h23` outright keeps the hour field inside `00`–`23` at the source instead.

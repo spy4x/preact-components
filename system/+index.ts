@@ -25,19 +25,7 @@ export {
   type CalendarProps,
   describeCalendarDay,
 } from "./calendar.tsx"
-export {
-  breadcrumbItems,
-  type BreadcrumbListItem,
-  type BreadcrumbListJsonLd,
-  breadcrumbListJsonLd,
-  canonicalUrl,
-  createHeadStore,
-  type Crumb,
-  type HeadStore,
-  normalizeCanonical,
-  type OgType,
-  type PageHead,
-} from "./head.ts"
+export { createHeadStore, type HeadStore, type OgType, type PageHead } from "./head.ts"
 export {
   RailShell,
   type RailShellItem,
@@ -55,14 +43,7 @@ export {
   type ShellUser,
   type ShellUserMenuItem,
 } from "./shell.tsx"
-export {
-  type HeadTag,
-  type HeadTagName,
-  jsonLdText,
-  SEOHead,
-  seoHeadJsonLd,
-  seoHeadTags,
-} from "./seo-head.tsx"
+export { type HeadTag, type HeadTagName, SEOHead, seoHeadJsonLd, seoHeadTags } from "./seo-head.tsx"
 export {
   isCurrentLink,
   SiteHeader,

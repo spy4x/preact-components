@@ -21,7 +21,6 @@
     "./error-state": "./error-state.tsx",
     "./field": "./field.tsx",
     "./file-input": "./file-input.tsx",
-    "./geolocation": "./geolocation.ts",
     "./honeypot": "./honeypot.tsx",
     "./image-gallery": "./image-gallery.tsx",
     "./input": "./input.tsx",

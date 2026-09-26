@@ -8,7 +8,7 @@
  */
 
 import * as icons from "@spy4x/preact-icons"
-import { copyToClipboard } from "@spy4x/preact-ui/copy-button"
+import { copyToClipboard } from "@spy4x/platform/browser/clipboard"
 import { Input } from "@spy4x/preact-ui/input"
 import { Cluster, Grid, Stack } from "@spy4x/preact-ui/layout"
 import { useSignal } from "@preact/signals"
@@ -97,8 +97,8 @@ const GALLERY_SNIPPET = `import { IconSearch } from "@spy4x/preact-icons"
 
 export interface IconGalleryProps {
   /**
-   * Clipboard port. Left out, the `ui` package's `copyToClipboard` is used, which prefers
-   * `navigator.clipboard` and falls back to `document.execCommand`.
+   * Clipboard port. Left out, `copyToClipboard` from `@spy4x/platform/browser/clipboard` is used,
+   * which prefers `navigator.clipboard` and falls back to `document.execCommand`.
    */
   copy?: (text: string) => void | Promise<void>
   /** Overrides for the gallery's own words. */
@@ -121,7 +121,7 @@ export function IconGallery(
   const matches = filterIconNames(iconNames, query.value)
 
   const handleCopy = (name: string) => {
-    copyToClipboard(iconSnippet(name), copy)
+    void (copy ? copy(iconSnippet(name)) : copyToClipboard(iconSnippet(name)))
     copied.value = name
   }
 

@@ -2,13 +2,7 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import { Field } from "./field.tsx"
-import {
-  classifyFiles,
-  FileInput,
-  formatBytes,
-  matchesAccept,
-  resolveLabels,
-} from "./file-input.tsx"
+import { classifyFiles, FileInput, matchesAccept, resolveLabels } from "./file-input.tsx"
 
 /** A minimal real `File`, the same platform primitive the browser hands the component. */
 function file(name: string, size: number, type = ""): File {
@@ -51,20 +45,6 @@ describe("matchesAccept", () => {
 
     expect(matchesAccept(f, ".png,image/*,application/pdf")).toBe(true)
     expect(matchesAccept(f, ".png,image/*")).toBe(false)
-  })
-})
-
-describe("formatBytes", () => {
-  it("renders a byte count under 1024 as whole bytes", () => {
-    expect(formatBytes(512)).toBe("512 B")
-  })
-
-  it("renders a whole unit with no decimal", () => {
-    expect(formatBytes(2 * 1024 * 1024)).toBe("2 MB")
-  })
-
-  it("renders a fractional unit to one decimal place", () => {
-    expect(formatBytes(1.5 * 1024)).toBe("1.5 KB")
   })
 })
 

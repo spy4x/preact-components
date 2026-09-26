@@ -37,11 +37,12 @@ Extracted from earlier source applications.
 | `StateInit`  | `state-init`  | `data`, `id?` — paired with `readStateInit(id?, source?)`                                                            |
 | `RailShell`  | `rail-shell`  | `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `children`, `labels?`, `class?`                     |
 
-Helpers, all pure: `head.ts` (`normalizeCanonical`, `canonicalUrl`, `breadcrumbItems`,
-`breadcrumbListJsonLd`). `head.ts` also exports
-`createHeadStore`, a factory that builds a fresh signal-backed store on every call, so it is not
-one of the pure ones — see below. `date.ts`'s ISO day and month arithmetic is private to this
-package — `Calendar`'s own dependency, kept out of the barrel and out of `exports`.
+`head.ts` exports `createHeadStore`, a factory that builds a fresh signal-backed store on every
+call — see below. The pure address and breadcrumb helpers `SEOHead` runs (`normalizeCanonical`,
+`canonicalUrl`, `breadcrumbItems`, `breadcrumbListJsonLd`, `jsonLdText`) and the `Crumb` type come
+from `@spy4x/platform/universal/seo` in spy4x/ts-libs; import them from there. `Calendar`'s day and
+month arithmetic and its `Intl` labels come from spy4x/ts-libs too: `@spy4x/time/date`,
+`@spy4x/time/locale` and `addDays` from `@spy4x/time/tz`.
 
 ```tsx
 import { SEOHead } from "@spy4x/preact-system"
@@ -670,8 +671,9 @@ makes it portable where the source applications' own versions were not: each of 
 that app's own environment keys directly into the component.
 
 **The escaping is `SEOHead`'s own, reused rather than reimplemented.** `stateInitText` calls
-`seo-head.tsx`'s `jsonLdText`, the same function that already protects `SEOHead`'s own JSON-LD
-script tag: `<` becomes the six characters `\u003c`, which keeps a value containing the literal text
+`jsonLdText` from `@spy4x/platform/universal/seo`, the same function that already protects
+`SEOHead`'s own JSON-LD script tag: `<` becomes the six characters `\u003c`, which keeps a value
+containing the literal text
 `</script>` (or `<!--`) from ending the element early — the HTML parser watches for that sequence
 case-insensitively to close _any_ `<script>`, regardless of its `type`, before either JSON or
 JavaScript ever parses the content. U+2028 and U+2029 need nothing extra here: `StateInit` renders

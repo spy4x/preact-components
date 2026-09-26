@@ -12,7 +12,8 @@
  */
 
 import type { JSX } from "preact"
-import { breadcrumbListJsonLd, normalizeCanonical, type PageHead } from "./head.ts"
+import type { PageHead } from "./head.ts"
+import { breadcrumbListJsonLd, jsonLdText, normalizeCanonical } from "@spy4x/platform/universal/seo"
 
 /** Which `<head>` element a {@link HeadTag} describes. */
 export type HeadTagName = "title" | "meta" | "link" | "script"
@@ -23,16 +24,6 @@ export interface HeadTag {
   attrs: Record<string, string>
   /** Text content: the document title, or the JSON-LD body. */
   text?: string
-}
-
-/**
- * Serialise JSON-LD for a `<script>` body.
- *
- * `<` is escaped to `\u003c` (valid JSON, same string) so a description containing `</script>`
- * cannot close the element it is embedded in.
- */
-export function jsonLdText(value: unknown): string {
-  return JSON.stringify(value).replace(/</g, "\\u003c")
 }
 
 /**

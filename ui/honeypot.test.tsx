@@ -1,7 +1,8 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
-import { HONEYPOT_FIELD_NAME, honeypotField, honeypotFilled } from "./honeypot.tsx"
+import { HONEYPOT_FIELD_NAME } from "@spy4x/platform/universal/honeypot"
+import { honeypotField } from "./honeypot.tsx"
 
 describe("honeypotField", () => {
   it("renders off-screen, out of the tab order and hidden from assistive technology", () => {
@@ -41,31 +42,5 @@ describe("honeypotField", () => {
     const html = render(honeypotField(HONEYPOT_FIELD_NAME, "Leave this field blank"))
 
     expect(html).toContain('autocomplete="off"')
-  })
-})
-
-describe("honeypotFilled", () => {
-  it("is false when the field was never filled in", () => {
-    const data = new FormData()
-    expect(honeypotFilled(data)).toBe(false)
-  })
-
-  it("is false when the field is present but empty", () => {
-    const data = new FormData()
-    data.set(HONEYPOT_FIELD_NAME, "")
-    expect(honeypotFilled(data)).toBe(false)
-  })
-
-  it("is true once something filled it in", () => {
-    const data = new FormData()
-    data.set(HONEYPOT_FIELD_NAME, "http://spam.example")
-    expect(honeypotFilled(data)).toBe(true)
-  })
-
-  it("reads a caller-chosen field name instead of the default", () => {
-    const data = new FormData()
-    data.set("company-site", "http://spam.example")
-    expect(honeypotFilled(data)).toBe(false)
-    expect(honeypotFilled(data, "company-site")).toBe(true)
   })
 })

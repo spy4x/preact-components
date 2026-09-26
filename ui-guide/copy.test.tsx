@@ -11,7 +11,7 @@
 
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
-import { CopyButton, copyToClipboard } from "@spy4x/preact-ui/copy-button"
+import { CopyButton } from "@spy4x/preact-ui/copy-button"
 import { options } from "preact"
 import { render } from "preact-render-to-string"
 import { DemoCard, type DemoCardProps, UIGuide } from "./+index.tsx"
@@ -159,14 +159,15 @@ describe("usage block copy controls", () => {
   })
 
   it("routes a card's block text through the port unchanged", () => {
-    // The pairing a click makes: `CopyButton` calls `copyToClipboard(textToCopy, copy)`. Driving it
-    // with the two values read off the element tree is what turns those props into a clipboard call.
+    // The pairing a click makes: `CopyButton` calls `copy(textToCopy)` when a port is wired.
+    // Driving it with the two values read off the element tree is what turns those props into a
+    // clipboard call.
     const copied: string[] = []
     const port: CopyPort = (text) => void copied.push(text)
 
-    for (const { name, textToCopy } of wiredCopies(port)) {
+    for (const { name, copy, textToCopy } of wiredCopies(port)) {
       copied.length = 0
-      copyToClipboard(textToCopy, port)
+      void (copy as CopyPort)(textToCopy)
       expect(copied, name).toEqual([demoRegistry[name].snippet])
     }
   })

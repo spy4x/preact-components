@@ -39,7 +39,7 @@ import {
   Tooltip,
   type TooltipPlacement,
 } from "@spy4x/preact-ui"
-import { serializeSort, type SortRule } from "@spy4x/preact-signals/table-state"
+import { serializeSort, type SortRule } from "@spy4x/platform/universal/sort"
 import { useSignal } from "@preact/signals"
 import { type ComponentChildren, Fragment } from "preact"
 import { IconTrashBin } from "@spy4x/preact-icons"

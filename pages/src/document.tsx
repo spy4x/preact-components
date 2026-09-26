@@ -76,7 +76,7 @@ export function renderDocument(
   { base, origin, cssHref, islandSrc, appHtml, routeTable, version }: DocumentOptions,
 ): string {
   // `SEOHead` parses this before it publishes it — see `normalizeCanonical` in
-  // `@spy4x/preact-system/head` — so a stray query string or fragment on either input is
+  // `@spy4x/platform/universal/seo` — so a stray query string or fragment on either input is
   // resolved and cleaned rather than concatenated straight into the tag set.
   const canonical = `${origin}${base}`
 

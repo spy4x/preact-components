@@ -1,5 +1,6 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
+import { options } from "preact"
 import { render } from "preact-render-to-string"
 import * as icons from "@spy4x/preact-icons"
 import { filterIconNames, IconGallery, iconNames, iconSnippet } from "./icons.tsx"
@@ -14,7 +15,44 @@ function renderedIconNames(html: string): string[] {
   return [...html.matchAll(/data-icon="([^"]+)"/g)].map((match) => match[1])
 }
 
+/**
+ * Render the gallery and return each glyph button's click handler, keyed by icon name.
+ *
+ * There is no DOM here, so the handlers are read off the element tree as it is created, the same
+ * way `copy.test.tsx` reads a card's copy control.
+ *
+ * @param copy Clipboard port handed to the gallery.
+ */
+function glyphClicks(copy: (text: string) => void): Map<string, () => void> {
+  const clicks = new Map<string, () => void>()
+  const previous = options.vnode
+  options.vnode = (vnode) => {
+    const props = vnode.props as { "data-icon"?: string; onClick?: () => void }
+    if (vnode.type === "button" && props["data-icon"] && props.onClick) {
+      clicks.set(props["data-icon"], props.onClick)
+    }
+    previous?.(vnode)
+  }
+  try {
+    render(<IconGallery copy={copy} />)
+  } finally {
+    options.vnode = previous
+  }
+  return clicks
+}
+
 describe("IconGallery", () => {
+  it("hands a clicked glyph's snippet to the caller's copy port", () => {
+    const copied: string[] = []
+    const clicks = glyphClicks((text) => void copied.push(text))
+    const name = iconNames[0]
+
+    clicks.get(name)?.()
+
+    expect(clicks.size).toBe(iconNames.length)
+    expect(copied).toEqual([iconSnippet(name)])
+  })
+
   it("exposes every function the icon package exports", () => {
     expect(iconNames.length).toBeGreaterThan(0)
     expect(iconNames).toEqual(exportedIcons)
