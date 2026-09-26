@@ -648,7 +648,7 @@ export const feedbackDemos = {
   },
   Modal: {
     summary: "A dialog that holds focus until it is closed, on the browser's own `<dialog>`.",
-    wide: false,
+    wide: true,
     props: [
       {
         name: "open",
@@ -688,7 +688,7 @@ export const feedbackDemos = {
   },
   ConfirmDialog: {
     summary: "Asks the user to confirm an action before it happens, with two labelled buttons.",
-    wide: false,
+    wide: true,
     props: [
       { name: "title", type: "ComponentChildren", description: "The question." },
       { name: "message", type: "ComponentChildren", description: "What will happen." },
