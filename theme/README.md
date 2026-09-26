@@ -321,6 +321,52 @@ were designed against in the source applications they were extracted from; dark
 mode swaps it for near-black chrome. The full list is in `tokens.css`, each with
 the Tailwind palette value it came from.
 
+### Accent
+
+The components draw their accent — a primary `Button`'s fill, `LoadingSpinner`, `Calendar`'s
+selected day, `Tabs`' current tab, `ToggleSwitch`, the accent `Badge`, `EmptyState`'s icon, the
+accent `Kpi` and the components' focus rings — from an accent scale, not from Tailwind's
+`purple-*`. So setting `--color-primary` on `:root` recolours them with the preset's own rules:
+
+| Token                      | Light (`:root`)                  | Dark (`.dark`) |
+| -------------------------- | -------------------------------- | -------------- |
+| `--color-accent`           | `var(--color-primary)`           | purple-900     |
+| `--color-accent-900`       | `var(--color-accent)`            | the same       |
+| `--color-accent-50`…`-950` | worked out from `--color-accent` | the same       |
+
+- `preset.css` maps the scale onto a Tailwind colour, `accent`, with `@theme inline reference`: a
+  component writes `bg-accent-900`, `dark:text-accent-400`, `ring-accent-900` or
+  `dark:bg-accent-900/30`, and the utility reads `var(--color-accent-900, <purple-900>)` at run
+  time, so the app's cascade still wins. An app's own markup can use the same classes.
+- Step 900 is the accent itself. Every other step keeps the lightness of Tailwind's purple step with
+  the same number and takes hue and chroma from the accent, through CSS relative colour syntax
+  (`oklch(from var(--color-accent) …)`): relative colour rather than `color-mix()`, because it
+  reproduces each purple step exactly when the accent is purple-900, so an app that sets nothing
+  renders the same colours as before, and it follows any accent's hue while keeping the step's
+  lightness, so a tint stays a tint. Choose an accent about as dark as purple-900: white text sits
+  on it.
+- In the dark palette `--color-primary` is near-black chrome, so `.dark` sets `--color-accent` to
+  purple-900 itself, and the components keep their purple there. An app with a dark palette sets
+  `--color-accent` as well — on `:root` after `tokens.css`, which covers both palettes, or in its
+  own `.dark` rule.
+- The scale is worked out once, on `:root`, and inherited as colours: set the tokens on `:root`,
+  not on a subtree. A browser without relative colour syntax skips the scale's `@supports` block
+  and draws the literal purple steps `preset.css` carries as fallbacks — which is also what an app
+  that skips `tokens.css` gets.
+- The components' focus rings read `ring-accent-*`, not `--color-focus-ring`: that token moves the
+  preset's own rings (below), and under ink the components' rings keep the accent.
+- Ink sets no accent token, so under ink the components keep the default dark accent, as before.
+
+```css
+/* After tokens.css. */
+:root {
+  --color-primary: oklch(0.424 0.199 265.638); /* blue-800 */
+  --color-accent: oklch(0.424 0.199 265.638); /* the same, for the dark palette */
+}
+```
+
+The catalogue's header has an accent switch that does exactly this.
+
 The light canvas is `gray-100`, one step below the white surface, so a card
 stands off the page without a heavy border. Muted text is `gray-600`, which
 keeps WCAG AA contrast (4.5:1) on that canvas as well as on a card; `gray-500`

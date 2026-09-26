@@ -31,9 +31,15 @@
 :root {
   /* Primary — buttons, links, focus rings, active nav. --color-primary-muted is the focus ring of
      form fields, and of `.btn` under `.dark`; an app sets --color-focus-ring to move both off it. */
-  --color-primary: oklch(0.38 0.17 293); /* purple-900 */
+  --color-primary: oklch(0.381 0.176 304.987); /* purple-900 */
   --color-primary-foreground: oklch(0.977 0.014 308.299); /* purple-50 */
   --color-primary-muted: oklch(0.558 0.288 302.321); /* purple-600 */
+
+  /* Accent — the colour the components draw their fills, marks and focus rings in. Step 900 of the
+     scale below is this colour, and in the light palette it is --color-primary: setting
+     --color-primary recolours the components with it. */
+  --color-accent: var(--color-primary);
+  --color-accent-900: var(--color-accent); /* the rest of the scale is at the end of this file */
 
   /* Surfaces — page, raised card, form control. */
   --color-surface: oklch(1 0 0); /* white */
@@ -69,6 +75,9 @@
 
 .dark {
   --color-primary: oklch(0.21 0.006 285.885); /* near-black chrome, not purple */
+  /* The components keep the purple accent in dark, where --color-primary is chrome. An app that
+     recolours the dark palette sets --color-accent here, or on `:root` for both palettes. */
+  --color-accent: oklch(0.381 0.176 304.987); /* purple-900 */
   --color-primary-foreground: oklch(0.977 0.014 308.299);
   --color-primary-muted: oklch(0.714 0.203 305.504); /* purple-400 */
 
@@ -83,4 +92,37 @@
   --color-placeholder: oklch(0.707 0.022 261.325); /* gray-400 */
 
   --color-danger: oklch(0.637 0.237 25.331); /* red-500 */
+}
+
+/*
+ * The accent scale — eleven steps named like Tailwind's palette, the steps the components used to
+ * take from `purple-*`. `preset.css` maps each onto a Tailwind colour (`bg-accent-900`,
+ * `dark:text-accent-400`, `ring-accent-900`, `bg-accent-900/30`).
+ *
+ * Step 900 is --color-accent itself, declared with the other tokens above. Every other step keeps the lightness of Tailwind's purple step
+ * with the same number, and takes its hue and chroma from --color-accent through relative colour
+ * syntax: chroma scaled by the purple step's chroma over purple-900's, hue moved by the purple
+ * step's hue minus purple-900's. With no token set, --color-accent is purple-900, so every step is
+ * Tailwind's own purple step to the third decimal; a grey accent gives a grey scale, a blue one a
+ * blue scale. Lightness is fixed rather than relative, so a tint stays a tint whatever the accent's
+ * own lightness: pick an accent about as dark as purple-900, since white text sits on it.
+ *
+ * Declared on `:root` only, so the scale is worked out once from the root's --color-accent and
+ * inherited as colours: set --color-primary or --color-accent on `:root`, not on a subtree. A
+ * browser without relative colour syntax skips this block, and `preset.css`'s fallbacks — the
+ * literal purple steps — apply instead.
+ */
+@supports (color: oklch(from red l c h)) {
+  :root {
+    --color-accent-50: oklch(from var(--color-accent) 0.977 calc(c * 0.014 / 0.176) calc(h + 3.312));
+    --color-accent-100: oklch(from var(--color-accent) 0.946 calc(c * 0.033 / 0.176) calc(h + 2.187));
+    --color-accent-200: oklch(from var(--color-accent) 0.902 calc(c * 0.063 / 0.176) calc(h + 1.716));
+    --color-accent-300: oklch(from var(--color-accent) 0.827 calc(c * 0.119 / 0.176) calc(h + 1.396));
+    --color-accent-400: oklch(from var(--color-accent) 0.714 calc(c * 0.203 / 0.176) calc(h + 0.517));
+    --color-accent-500: oklch(from var(--color-accent) 0.627 calc(c * 0.265 / 0.176) calc(h - 1.087));
+    --color-accent-600: oklch(from var(--color-accent) 0.558 calc(c * 0.288 / 0.176) calc(h - 2.666));
+    --color-accent-700: oklch(from var(--color-accent) 0.496 calc(c * 0.265 / 0.176) calc(h - 3.063));
+    --color-accent-800: oklch(from var(--color-accent) 0.438 calc(c * 0.218 / 0.176) calc(h - 1.263));
+    --color-accent-950: oklch(from var(--color-accent) 0.291 calc(c * 0.149 / 0.176) calc(h - 2.27));
+  }
 }

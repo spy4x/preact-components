@@ -1248,7 +1248,7 @@ describe("theme preset", () => {
   it("colours atoms from tokens instead of literal palette values", async () => {
     const css = await preset()
     expect(declarationsOf(css, ".bg-primary")).toContain(
-      "var(--color-primary, oklch(0.38 0.17 293))",
+      "var(--color-primary, oklch(0.381 0.176 304.987))",
     )
     expect(declarationsOf(css, ".text-primary")).toContain("var(--color-primary-muted, ")
     expect(declarationsOf(css, ".card")).toContain("var(--color-surface, oklch(1 0 0))")
@@ -1669,7 +1669,7 @@ describe("theme preset", () => {
     // resolves through the variable, so the new value reaches it.
     expect(overridden).toContain("--color-primary: oklch(0.55 0.18 255)")
     expect(declarationsOf(overridden, ".bg-primary")).toContain(
-      "var(--color-primary, oklch(0.38 0.17 293))",
+      "var(--color-primary, oklch(0.381 0.176 304.987))",
     )
   })
 
@@ -1681,12 +1681,59 @@ describe("theme preset", () => {
       ["preset.css"],
     )
     expect(declarationsOf(withoutTokens, ".bg-primary")).toContain(
-      "var(--color-primary, oklch(0.38 0.17 293))",
+      "var(--color-primary, oklch(0.381 0.176 304.987))",
     )
     // `.btn`'s dark focus ring reads a token nothing sets without tokens.css or ink.css; with no
     // fallback it would draw the button's own text colour, 1.03:1 on the page (#297's review).
     expect(declarationsOf(withoutTokens, ":where(.dark) &:focus-visible")).toContain(
       "outline-color: var(--color-focus-ring, var(--color-primary-muted, oklch(0.714 0.203 305.504)))",
+    )
+  })
+
+  it("draws the accent utilities from the runtime scale, with the purple step as fallback", async () => {
+    const css = await compilePreset(entrypointCss(), [
+      "bg-accent-900",
+      "dark:bg-accent-700",
+      "focus-visible:ring-accent-900",
+      "dark:bg-accent-900/30",
+    ])
+    expect(declarationsOf(css, ".bg-accent-900")).toContain(
+      "background-color: var(--color-accent-900, oklch(0.381 0.176 304.987))",
+    )
+    expect(css).toContain("var(--color-accent-700, oklch(0.496 0.265 301.924))")
+    expect(css).toContain("--tw-ring-color: var(--color-accent-900, oklch(0.381 0.176 304.987))")
+    expect(css).toContain(
+      "color-mix(in oklab, var(--color-accent-900, oklch(0.381 0.176 304.987)) 30%, transparent)",
+    )
+    // `@theme inline reference`: Tailwind emits no theme variable of its own for the scale. One
+    // named like the token and reading it would be a cycle, and the token would never resolve.
+    expect(css).not.toMatch(/--color-accent-\d+: var\(--color-accent-\d+/)
+  })
+
+  it("works the accent scale out from --color-accent, and step 900 is the accent", async () => {
+    const css = await preset()
+    const scale = css.slice(css.indexOf("@supports (color: oklch(from red l c h))"))
+    for (const step of [50, 100, 200, 300, 400, 500, 600, 700, 800, 950]) {
+      expect(scale).toMatch(
+        new RegExp(`--color-accent-${step}: oklch\\(from var\\(--color-accent\\) `),
+      )
+    }
+    expect(css).toContain("--color-accent-900: var(--color-accent)")
+    expect(css).toContain("--color-accent: var(--color-primary)")
+  })
+
+  it("draws the purple steps when an app skips tokens.css", async () => {
+    const withoutTokens = await compilePreset(
+      `@import "tailwindcss/theme.css";\n@import "tailwindcss/preflight.css";\n` +
+        `@import "./preset.css";\n@import "tailwindcss/utilities.css";\n`,
+      ["bg-accent-50", "text-accent-400"],
+      ["preset.css"],
+    )
+    expect(declarationsOf(withoutTokens, ".bg-accent-50")).toContain(
+      "var(--color-accent-50, oklch(0.977 0.014 308.299))",
+    )
+    expect(declarationsOf(withoutTokens, ".text-accent-400")).toContain(
+      "var(--color-accent-400, oklch(0.714 0.203 305.504))",
     )
   })
 
