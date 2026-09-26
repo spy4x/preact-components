@@ -10,7 +10,7 @@ its own PR, each owning exactly one top-level directory.
 
 | Directory   | Contents                                                                                                                                 |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `theme/`    | design-system CSS + Tailwind preset, and the opt-in dark ink palette, as strings (`TOKENS_CSS`, `PRESET_CSS`, `INK_CSS`)                 |
+| `theme/`    | CSS text (`TOKENS_CSS`, `PRESET_CSS`, opt-in dark `INK_CSS`) and every class the components render (`COMPONENT_CLASSES`)                 |
 | `icons/`    | merged icon set: one component per glyph, all listed by the guide's icon gallery                                                         |
 | `ui/`       | `Badge`, `Button`, `Table`, `DataTable`, `Dropdown`, `Combobox`, `Modal`, `Tooltip`, `Toastr` — and the rest                             |
 | `system/`   | `AuthForm`, `Calendar`, `ImageLightbox`, `RailShell`, `SEOHead` + `head` store, `Shell`, `SiteHeader`, `StateInit`, `SWUpdater`          |
