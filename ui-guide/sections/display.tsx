@@ -18,14 +18,12 @@ import {
   CardFooter,
   CardHeader,
   Cluster,
-  CopyableText,
-  CopyableTextBody,
+  CopyBlock,
   DataTable,
   describedImages,
   Grid,
   ImageGallery,
   type ImageGalleryImage,
-  InstallBox,
   Lightbox,
   type LightboxImage,
   MoneyDisplay,
@@ -566,49 +564,31 @@ function AvatarGroupDemo() {
   )
 }
 
-/** A plain value copied through a port the card watches, and a long one truncated. */
-function CopyableTextDemo() {
+/** The install command in a narrow column, the same command on one line, and a copy port. */
+function CopyBlockDemo() {
   const copied = useSignal<string | null>(null)
+  const install = "deno add jsr:@spy4x/preact-ui jsr:@spy4x/preact-icons jsr:@spy4x/preact-theme"
 
   return (
     <Stack>
-      <CopyableText
-        text="0192f7c1-4d5e-7a8b-9c0d-1e2f3a4b5c6d"
-        copy={(text) => {
-          copied.value = text
-        }}
-      />
-      <div class="max-w-64">
-        <CopyableText
-          text="a-very-long-identifier-that-does-not-fit-in-the-column-it-lives-in"
-          truncate
-          copyLabel="Copy reference"
-          copiedLabel="Reference copied"
+      <Stack gap="sm" class="max-w-xs">
+        <DemoNote>Wraps inside its box by default.</DemoNote>
+        <CopyBlock text={install} copyLabel="Copy command" copiedLabel="Command copied" />
+      </Stack>
+      <Stack gap="sm" class="max-w-xs">
+        <DemoNote>With singleLine, scrolls sideways inside its box.</DemoNote>
+        <CopyBlock text={install} singleLine copyLabel="Copy the one-line command" />
+      </Stack>
+      <Stack gap="sm">
+        <CopyBlock
+          text="0192f7c1-4d5e-7a8b-9c0d-1e2f3a4b5c6d"
+          copyLabel="Copy id"
+          copy={(text) => {
+            copied.value = text
+          }}
         />
-      </div>
-      <DemoNote>copy port received: {copied.value ?? "nothing yet"}</DemoNote>
-    </Stack>
-  )
-}
-
-/** `CopyableTextBody` with its copied flag held by the card instead of by the component. */
-function CopyableTextBodyDemo() {
-  const copied = useSignal(false)
-
-  return (
-    <Stack>
-      <CopyableTextBody
-        text="BTC-USD-4h-2026-02"
-        copied={copied.value}
-        onCopy={() => copied.value = true}
-        copyLabel="Copy series key"
-      />
-      <Cluster>
-        <DemoNote>copied: {copied.value ? "yes" : "no"}</DemoNote>
-        <Button variant="outline" size="sm" onClick={() => copied.value = false}>
-          Reset
-        </Button>
-      </Cluster>
+        <DemoNote>copy port received: {copied.value ?? "nothing yet"}</DemoNote>
+      </Stack>
     </Stack>
   )
 }
@@ -930,17 +910,17 @@ export const displayDemos = {
       </Card>
     ),
   },
-  CopyableText: {
+  CopyBlock: {
     summary:
-      "A value in monospace with a copy button, which also tells a screen reader it was copied.",
+      "Monospace text in a box with a copy button, never clipped, and a screen-reader announcement.",
     wide: false,
     props: [
-      { name: "text", type: "string", description: "The value shown and copied." },
+      { name: "text", type: "string", description: "The text shown and copied." },
       {
-        name: "truncate",
+        name: "singleLine",
         type: "boolean",
         default: "false",
-        description: "Cuts a long value to one line; the whole value is still copied.",
+        description: "Keeps the text on one line, scrolling inside the box instead of wrapping.",
       },
       {
         name: "copy",
@@ -954,10 +934,16 @@ export const displayDemos = {
         default: `"Copy"`,
         description: "The copy button's name.",
       },
+      {
+        name: "copiedLabel",
+        type: "string",
+        default: `"Copied"`,
+        description: "What a screen reader hears after a copy.",
+      },
     ],
-    snippet: `<CopyableText text={invoice.id} />
-<CopyableText text={reference} truncate copyLabel="Copy reference" />`,
-    render: () => <CopyableTextDemo />,
+    snippet: `<CopyBlock text="deno add jsr:@spy4x/preact-ui" copyLabel="Copy command" />
+<CopyBlock text={apiKey} singleLine copyLabel="Copy API key" />`,
+    render: () => <CopyBlockDemo />,
   },
   AvatarGroup: {
     summary: "Overlapping avatars of a group, with a count for the ones that do not fit.",
@@ -979,23 +965,6 @@ export const displayDemos = {
     ],
     snippet: `<AvatarGroup items={members} label="Project members" max={4} size="sm" />`,
     render: () => <AvatarGroupDemo />,
-  },
-  CopyableTextBody: {
-    summary: "`CopyableText` without its own state, for when you keep the copied flag yourself.",
-    wide: false,
-    snippet: `<CopyableTextBody
-  text={seriesKey}
-  copied={copied.value}
-  onCopy={() => copied.value = true}
-  copyLabel="Copy series key"
-/>`,
-    render: () => <CopyableTextBodyDemo />,
-  },
-  InstallBox: {
-    summary: "A one-line command with a copy button, for install instructions.",
-    wide: false,
-    snippet: `<InstallBox command="deno add jsr:@spy4x/preact-ui" />`,
-    render: () => <InstallBox command="deno add jsr:@spy4x/preact-ui" class="max-w-sm" />,
   },
   Avatar: {
     summary: "A round picture of a person that falls back to their initials, then to an icon.",
