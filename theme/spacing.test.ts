@@ -121,6 +121,48 @@ describe("findOffScaleSpacing", () => {
     )
   })
 
+  it("reports an arbitrary property that sets spacing, with its variants", () => {
+    const source = `class="[padding:13px] md:[margin-top:calc(1rem+2px)]! [gap:4px] ` +
+      `[padding-inline-start:1px] [row-gap:2px] [scroll-padding-top:3rem] hover:[margin:0]"`
+    expect(flagged(source)).toEqual([
+      "[padding:13px]",
+      "md:[margin-top:calc(1rem+2px)]!",
+      "[gap:4px]",
+      "[padding-inline-start:1px]",
+      "[row-gap:2px]",
+      "[scroll-padding-top:3rem]",
+      "hover:[margin:0]",
+    ])
+    expect(findOffScaleSpacing(`[padding:13px]`)[0].reason).toBe(
+      "arbitrary spacing property padding; use a spacing utility with a step",
+    )
+  })
+
+  it("leaves an arbitrary property that is not spacing alone", () => {
+    expect(flagged(`class="[top:5px] [height:13px] [mask-type:luminance] [inset:2px]"`))
+      .toEqual([])
+  })
+
+  it("reports the spacing function with an argument that is not a step", () => {
+    const css = `.a {\n  padding: calc(--spacing(5) + 1px);\n  margin: --spacing(4);\n` +
+      `  gap: --spacing( 12 );\n  top: --spacing(px);\n}`
+    expect(findOffScaleSpacing(css).map(({ line, className }) => `${line} ${className}`)).toEqual([
+      "2 --spacing(5)",
+      "5 --spacing(px)",
+    ])
+    expect(findOffScaleSpacing(`--spacing(7)`)[0].reason).toBe(
+      "--spacing(7) is not a step on the scale (0 1 2 3 4 6 8 12 16)",
+    )
+  })
+
+  it("reports the spacing function inside an @apply arbitrary value too", () => {
+    expect(flagged(`@apply p-[--spacing(3)] mt-[--spacing(5)];`)).toEqual([
+      "p-[--spacing(3)]",
+      "mt-[--spacing(5)]",
+      "--spacing(5)",
+    ])
+  })
+
   it("leaves sizes, positions and other utilities that end in a number alone", () => {
     const source =
       `class="h-12 w-5 size-9 top-5 left-2.5 inset-2 -inset-x-7 max-w-6xl grid-cols-5 ` +

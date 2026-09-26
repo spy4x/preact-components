@@ -47,15 +47,19 @@ COMPONENT_CLASSES.split(" ").filter((name) => name.startsWith("lg:w-"))`,
   "theme-find-off-scale-spacing": {
     title: "Checking a file against the scale",
     summary:
-      "`findOffScaleSpacing` reads a file's text and returns every spacing class off the scale or with an arbitrary value, with its line, column and reason. It uses no Deno API, so an app runs it from its own test over its own sources.",
+      "`findOffScaleSpacing` reads a file's text and returns every spacing class off the scale or with an arbitrary value, every arbitrary property that sets spacing and every off-scale `--spacing()` call, with its line, column and reason. It uses no Deno API, so an app runs it from its own test over its own sources.",
     snippet: `import { findOffScaleSpacing } from "@spy4x/preact-theme/spacing"
 
-findOffScaleSpacing(\`<div class="p-4 sm:mt-7 h-12">\`)
+// Built from two parts, so Tailwind's scanner does not read this sample as a class to emit.
+const offScale = "sm:mt-" + 7
+findOffScaleSpacing(\`<div class="p-4 \${offScale} h-12">\`)
   .map((found) => \`\${found.line}:\${found.column} \${found.className}\`)`,
     covers: ["findOffScaleSpacing"],
-    run: () =>
-      findOffScaleSpacing(`<div class="p-4 sm:mt-7 h-12">`)
-        .map((found) => `${found.line}:${found.column} ${found.className}`),
+    run: () => {
+      const offScale = "sm:mt-" + 7
+      return findOffScaleSpacing(`<div class="p-4 ${offScale} h-12">`)
+        .map((found) => `${found.line}:${found.column} ${found.className}`)
+    },
   },
 }
 
