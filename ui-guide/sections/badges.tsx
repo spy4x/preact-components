@@ -38,7 +38,7 @@ function BadgeMatrix() {
   return (
     <Stack gap="sm">
       {entries(types).map(([type, typeLabel]) => (
-        <Cluster key={type} class="flex-nowrap">
+        <Cluster key={type} align="baseline" class="flex-nowrap">
           <span class="w-16 shrink-0 text-xs text-gray-500 dark:text-gray-400">{typeLabel}</span>
           <Cluster>
             {entries(colors).map(([color, label]) => (

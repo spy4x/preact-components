@@ -36,7 +36,7 @@ function ButtonMatrix() {
   return (
     <Stack gap="sm">
       {entries(sizes).map(([size, sizeLabel]) => (
-        <Cluster key={size} class="flex-nowrap">
+        <Cluster key={size} align="baseline" class="flex-nowrap">
           <span class="w-16 shrink-0 text-xs text-gray-500 dark:text-gray-400">{sizeLabel}</span>
           <Cluster>
             {entries(variants).map(([variant, label]) => (
@@ -47,7 +47,7 @@ function ButtonMatrix() {
           </Cluster>
         </Cluster>
       ))}
-      <Cluster class="flex-nowrap">
+      <Cluster align="baseline" class="flex-nowrap">
         <span class="w-16 shrink-0 text-xs text-gray-500 dark:text-gray-400">disabled</span>
         <Cluster>
           <Button disabled>Disabled</Button>
@@ -242,8 +242,8 @@ export const buttonDemos = {
       },
       {
         name: "copy",
-        type: "(text: string) => void",
-        default: "the browser clipboard",
+        type: "(text) => void",
+        default: "the clipboard",
         description: "Replaces the clipboard, to route copies through your own service.",
       },
     ],

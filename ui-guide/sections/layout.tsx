@@ -26,8 +26,8 @@ const stackGaps: readonly { gap: SpacingGap; size: string; use: string }[] = [
   { gap: "xl", size: "32 px", use: "the sections of a page" },
 ]
 
-/** The named gaps, as the props tables of the three layout components state them. */
-const GAP_TYPE = `"none" | "xs" | "sm" | "md" | "lg" | "xl" | "2xl"`
+/** The named gaps' type, as the props tables of the three layout components name it. */
+const GAP_TYPE = "SpacingGap"
 
 export const layoutDemos = {
   Stack: {
@@ -38,13 +38,13 @@ export const layoutDemos = {
         name: "gap",
         type: GAP_TYPE,
         default: `"md"`,
-        description: "The space between the children, from 0 to 48 px.",
+        description: "`none`, `xs`, `sm`, `md`, `lg`, `xl` or `2xl`: from 0 to 48 px.",
       },
       {
         name: "as",
-        type: `"div" | "section" | "ul" | …`,
+        type: "LayoutElement",
         default: `"div"`,
-        description: "The element it renders.",
+        description: "The element it renders, such as `section`, `ul` or `form`.",
       },
     ],
     snippet: `<Stack>
@@ -75,15 +75,16 @@ export const layoutDemos = {
       },
       {
         name: "align",
-        type: `"start" | "center" | "end" | "baseline" | "stretch"`,
+        type: "ClusterAlign",
         default: `"center"`,
-        description: "How the children line up across the row.",
+        description:
+          "Lines the children up across the row: `start`, `center`, `end`, `baseline` or `stretch`.",
       },
       {
         name: "justify",
-        type: `"start" | "center" | "end" | "between"`,
+        type: "ClusterJustify",
         default: `"start"`,
-        description: "Where the children sit along the row.",
+        description: "Places the children along the row: `start`, `center`, `end` or `between`.",
       },
     ],
     snippet: `<Cluster justify="between">
@@ -117,9 +118,9 @@ export const layoutDemos = {
       },
       {
         name: "as",
-        type: `"section" | "article" | "aside" | "div"`,
+        type: "SectionElement",
         default: `"section"`,
-        description: "The element it renders; a `div` is not a landmark.",
+        description: "`section`, `article`, `aside` or `div`, which is not a landmark.",
       },
     ],
     snippet: `<Section title="Payment methods" description="Cards we can charge." headingLevel={4}>
@@ -162,7 +163,7 @@ export const layoutDemos = {
 </Grid>`,
     render: () => (
       <Grid minColumnWidth="sm">
-        {["Revenue", "Customers", "Refunds", "Churn", "Trials"].map((name) => (
+        {["Revenue", "Customers", "Refunds", "Churn", "Trials", "Upgrades"].map((name) => (
           <Card key={name}>
             <CardBody>{name}</CardBody>
           </Card>

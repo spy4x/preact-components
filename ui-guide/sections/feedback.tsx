@@ -272,7 +272,7 @@ function EmptyStateDemo() {
 /** The four width lists, side by side, with the widths each resolves to printed under it. */
 function SkeletonTextDemo() {
   return (
-    <Grid minColumnWidth="sm" gap="lg">
+    <Grid minColumnWidth="sm" gap="lg" class="sm:grid-cols-2 lg:grid-cols-4">
       {lineWidthSets.map(({ label, widths }) => (
         <Stack key={label} gap="sm">
           <Note>{label}</Note>
@@ -323,8 +323,8 @@ export function skeletonTableNote(rows: number, columns: number): string {
 }
 
 /**
- * Table placeholders: even columns, weighted columns, and a table without the height reservation it
- * ships with, which is what a real table showing an empty result renders.
+ * Table placeholders: even columns with the height a real `Table` reserves, and weighted columns
+ * without it, which is what a real table showing an empty result renders.
  */
 function SkeletonTableDemo() {
   const weights = [3, 1, 2]
@@ -336,12 +336,10 @@ function SkeletonTableDemo() {
         <SkeletonTable rows={4} columns={3} />
       </Stack>
       <Stack gap="sm">
-        <Note>widths={JSON.stringify(weights)}: {skeletonTableNote(2, 3)}</Note>
-        <SkeletonTable widths={weights} rows={2} />
-      </Stack>
-      <Stack gap="sm">
-        <Note>reserveHeight=false</Note>
-        <SkeletonTable rows={2} columns={4} reserveHeight={false} />
+        <Note>
+          widths={JSON.stringify(weights)}, reserveHeight=false: {skeletonTableNote(2, 3)}
+        </Note>
+        <SkeletonTable widths={weights} rows={2} reserveHeight={false} />
       </Stack>
     </Stack>
   )

@@ -234,11 +234,9 @@ function CardDemo() {
       <CardBody>
         <p class="text-sm text-gray-600 dark:text-gray-300">Administrator, since March 2026.</p>
       </CardBody>
-      <CardFooter>
-        <Cluster justify="end">
-          <Button variant="outline" size="sm">Dismiss</Button>
-          <Button size="sm">Open</Button>
-        </Cluster>
+      <CardFooter class="justify-end">
+        <Button variant="outline" size="sm">Dismiss</Button>
+        <Button size="sm">Open</Button>
       </CardFooter>
     </Card>
   )
@@ -939,22 +937,18 @@ export const displayDemos = {
   CardFooter: {
     summary: "A row under a card's content, divided from it by a line, usually for its buttons.",
     wide: false,
-    snippet: `<CardFooter>
-  <Cluster justify="end">
-    <Button variant="outline" size="sm">Dismiss</Button>
-    <Button size="sm">Open</Button>
-  </Cluster>
+    snippet: `<CardFooter class="justify-end">
+  <Button variant="outline" size="sm">Dismiss</Button>
+  <Button size="sm">Open</Button>
 </CardFooter>`,
     render: () => (
       <Card>
         <CardBody>
           <p class="text-sm text-gray-600 dark:text-gray-300">Save the draft before you leave?</p>
         </CardBody>
-        <CardFooter>
-          <Cluster justify="end">
-            <Button variant="outline" size="sm">Dismiss</Button>
-            <Button size="sm">Save</Button>
-          </Cluster>
+        <CardFooter class="justify-end">
+          <Button variant="outline" size="sm">Dismiss</Button>
+          <Button size="sm">Save</Button>
         </CardFooter>
       </Card>
     ),
@@ -992,12 +986,6 @@ export const displayDemos = {
 </div>`,
     render: () => <MarginNoteDemo />,
   },
-  InstallBox: {
-    summary: "A one-line command with a copy button, for install instructions.",
-    wide: false,
-    snippet: `<InstallBox command="deno add jsr:@spy4x/preact-ui" />`,
-    render: () => <InstallBox command="deno add jsr:@spy4x/preact-ui" class="max-w-sm" />,
-  },
   CopyableText: {
     summary:
       "A value in monospace with a copy button, which also tells a screen reader it was copied.",
@@ -1012,8 +1000,8 @@ export const displayDemos = {
       },
       {
         name: "copy",
-        type: "(text: string) => void",
-        default: "the browser clipboard",
+        type: "(text) => void",
+        default: "the clipboard",
         description: "Replaces the clipboard.",
       },
       {
@@ -1026,17 +1014,6 @@ export const displayDemos = {
     snippet: `<CopyableText text={invoice.id} />
 <CopyableText text={reference} truncate copyLabel="Copy reference" />`,
     render: () => <CopyableTextDemo />,
-  },
-  CopyableTextBody: {
-    summary: "`CopyableText` without its own state, for when you keep the copied flag yourself.",
-    wide: false,
-    snippet: `<CopyableTextBody
-  text={seriesKey}
-  copied={copied.value}
-  onCopy={() => copied.value = true}
-  copyLabel="Copy series key"
-/>`,
-    render: () => <CopyableTextBodyDemo />,
   },
   AvatarGroup: {
     summary: "Overlapping avatars of a group, with a count for the ones that do not fit.",
@@ -1058,6 +1035,23 @@ export const displayDemos = {
     ],
     snippet: `<AvatarGroup items={members} label="Project members" max={4} size="sm" />`,
     render: () => <AvatarGroupDemo />,
+  },
+  CopyableTextBody: {
+    summary: "`CopyableText` without its own state, for when you keep the copied flag yourself.",
+    wide: false,
+    snippet: `<CopyableTextBody
+  text={seriesKey}
+  copied={copied.value}
+  onCopy={() => copied.value = true}
+  copyLabel="Copy series key"
+/>`,
+    render: () => <CopyableTextBodyDemo />,
+  },
+  InstallBox: {
+    summary: "A one-line command with a copy button, for install instructions.",
+    wide: false,
+    snippet: `<InstallBox command="deno add jsr:@spy4x/preact-ui" />`,
+    render: () => <InstallBox command="deno add jsr:@spy4x/preact-ui" class="max-w-sm" />,
   },
   Avatar: {
     summary: "A round picture of a person that falls back to their initials, then to an icon.",
@@ -1082,7 +1076,7 @@ export const displayDemos = {
       {
         name: "alt",
         type: "string",
-        default: "`name`",
+        default: "name",
         description: "Its accessible name; an empty string hides it from screen readers.",
       },
     ],
@@ -1177,7 +1171,7 @@ export const displayDemos = {
   },
   ImageGallery: {
     summary: "A row of thumbnails that opens each image full size in a lightbox.",
-    wide: false,
+    wide: true,
     snippet: `<ImageGallery
   images={[
     { src: hero, alt: "A hero shot" },
@@ -1188,7 +1182,7 @@ export const displayDemos = {
   },
   Lightbox: {
     summary: "A dialog that shows one image of a set at a time, with previous and next.",
-    wide: false,
+    wide: true,
     props: [
       { name: "images", type: "LightboxImage[]", description: "The set, each with its `alt`." },
       { name: "index", type: "number", description: "The image showing." },
