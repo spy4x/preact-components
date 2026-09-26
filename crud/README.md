@@ -216,6 +216,13 @@ The harness is the six parts, once:
 `TextareaField`, `SelectField`, `CheckboxField`. Each takes `{ vm, vl, name, label }` plus `span`,
 `hint`, `placeholder`, `inputClass` and `renderIssue`.
 
+A row is `@spy4x/preact-ui`'s `Field` around `ui`'s own control — `Input`, `Textarea`, `Select` or
+`Checkbox` — so the label, the hint and their id wiring are `Field`'s, and a fix there reaches every
+editor. What a row adds is the validation model: it binds the control to one field of `vm`, commits
+on blur, and renders that field's issues under `Field`, where the control's `aria-describedby`
+points at them and `aria-invalid` is set while there are any. `CheckboxField`'s label is the
+`Checkbox`'s own, after the box, so `Field` renders none of its own there.
+
 ```tsx
 <TextField vm={vm} vl={vl} name="name" label="Name" />
 <NumberField vm={vm} vl={vl} name="quantity" label="Quantity" span="sm:col-span-2" />

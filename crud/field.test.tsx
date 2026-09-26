@@ -67,6 +67,29 @@ describe("TextField", () => {
     expect([...new Set(attributes(html, "for"))]).toHaveLength(2)
   })
 
+  it("describes the input by its hint, through ui's Field", () => {
+    const html = render(
+      <TextField vm={model()} vl={noIssues} name="name" label="Name" hint="As on the sign" />,
+    )
+    const [inputId] = attributes(html, "id")
+
+    expect(html).toContain(`<p id="${inputId}-hint"`)
+    expect(attributes(html, "aria-describedby")).toEqual([`${inputId}-hint`])
+    expect(html).not.toContain("aria-invalid")
+  })
+
+  it("marks the input invalid and describes it by the field's issues", () => {
+    const vl = signal<ValidationModel<Form>>({
+      name: { SCHEMA: { message: "name must be non-empty" } },
+    })
+    const html = render(<TextField vm={model()} vl={vl} name="name" label="Name" hint="Hint" />)
+    const [inputId] = attributes(html, "id")
+
+    expect(html).toContain(`aria-invalid="true"`)
+    expect(attributes(html, "aria-describedby")).toEqual([`${inputId}-issues ${inputId}-hint`])
+    expect(html).toMatch(new RegExp(`id="${inputId}-issues"><p[^>]*>name must be non-empty</p>`))
+  })
+
   it("spans the grid cell the caller asks for", () => {
     const html = render(
       <TextField vm={model()} vl={noIssues} name="name" label="Name" span="sm:col-span-6" />,
@@ -163,6 +186,14 @@ describe("SelectField", () => {
 })
 
 describe("CheckboxField", () => {
+  it("names the box with one label that wraps it, and no dangling `for`", () => {
+    const html = render(<CheckboxField vm={model()} vl={noIssues} name="isOn" label="Is on" />)
+
+    expect(html.split("<label").length - 1).toBe(1)
+    expect(attributes(html, "for")).toEqual([])
+    expect(html).toMatch(/<label[^>]*><input[^>]*type="checkbox"[^>]*>Is on<\/label>/)
+  })
+
   it("reflects the model's boolean", () => {
     expect(
       render(
