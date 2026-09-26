@@ -43,9 +43,9 @@
     // needs `net`, `run` or `write`, so `-A` was over-broad. `--allow-env`
     // stays only to keep this task the same command CI runs.
     //
-    // `--allow-ffi` is for `component-classes.test.ts`: it runs Tailwind's class scanner, a native
+    // `--allow-ffi` is for `component-classes.test.ts` alone, run on its own: it runs Tailwind's class scanner, a native
     // Node-API addon, which Deno loads only with that grant.
-    "test": "deno test --no-prompt --allow-read --allow-env --allow-ffi .",
+    "test": "deno test --no-prompt --allow-read --allow-env --ignore=component-classes.test.ts . && deno test --no-prompt --allow-read --allow-env --allow-ffi component-classes.test.ts",
     // Rewrites tokens-css.ts/preset-css.ts/ink-css.ts from tokens.css/preset.css/ink.css, then
     // formats the result — generate.ts writes plain source, and deno fmt is the arbiter of its
     // final shape, the same as for hand-written code. Run after editing any of the three CSS

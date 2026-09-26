@@ -44,10 +44,11 @@
     // one process. Nothing here needs `net`, `run` or `write` — see
     // `pages/build-fingerprint.ts`'s own doc for why its build-fingerprint logic is split into
     // pure functions the colocated test exercises with in-memory fixtures instead.
-    // `--allow-ffi` is for `theme/component-classes.test.ts` alone: it runs Tailwind's class
-    // scanner (`@tailwindcss/oxide`), a native Node-API addon Deno loads only with that grant, to
-    // prove the committed class list matches the packages' sources (#323).
-    "test": "deno test --no-prompt --allow-read --allow-env --allow-ffi",
+    // `theme/component-classes.test.ts` runs on its own, with `--allow-ffi` added: it runs
+    // Tailwind's class scanner (`@tailwindcss/oxide`), a native Node-API addon Deno loads only with
+    // that grant, to prove the committed class list matches the packages' sources (#323). No other
+    // test gets the grant.
+    "test": "deno test --no-prompt --allow-read --allow-env --ignore=theme/component-classes.test.ts && deno test --no-prompt --allow-read --allow-env --allow-ffi theme/component-classes.test.ts",
     // Dry-runs the publish for every named workspace member (`pages/` has no `name`, so `deno
     // publish` skips it on its own — nothing here excludes it by hand). Named `publish:dry`
     // rather than `publish`: this only ever simulates; the real `deno publish` runs in Woodpecker

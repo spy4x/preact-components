@@ -78,7 +78,7 @@ exports them as `COMPONENT_CLASSES`, one string of class names separated by spac
 one line to the entry above:
 
 ```ts
-import { COMPONENT_CLASSES, PRESET_CSS, TOKENS_CSS } from "@spy4x/preact-theme"
+import { COMPONENT_CLASSES } from "@spy4x/preact-theme"
 
 const entry = `
   @import "tailwindcss";
@@ -101,7 +101,8 @@ const componentClasses = {
   name: "component-classes",
   enforce: "pre" as const,
   transform(code: string, id: string) {
-    if (!id.endsWith("/src/app.css")) return
+    // Vite's dev server asks for a linked stylesheet as `app.css?direct`, so drop the query first.
+    if (!id.split("?")[0].endsWith("/src/app.css")) return
     return `${code}\n@source inline("${COMPONENT_CLASSES}");\n`
   },
 }
@@ -346,10 +347,11 @@ after the preset, and the preset still works when `tokens.css` is skipped. The
 Deno-side `@import` reader the compile needs is covered there too.
 
 That compile reads `HOME`, the preset and the Deno npm cache, so the root `test`
-task grants `--allow-read --allow-env`. It also grants `--allow-ffi`, because
-`component-classes.test.ts` runs Tailwind's class scanner, a native addon. Those
-are repo-wide only because `deno test` discovers every member's suite in one
-process; nothing in the workspace needs `net`, `run` or `write` to test.
+task grants `--allow-read --allow-env`. Those are repo-wide only because
+`deno test` discovers every member's suite in one process; nothing in the
+workspace needs `net`, `run` or `write` to test. `component-classes.test.ts` runs
+in a second process with `--allow-ffi` added, because it runs Tailwind's class
+scanner, a native addon; no other test gets that grant.
 
 `component-classes.test.ts` holds `COMPONENT_CLASSES` to the packages' sources: it fails when a
 component gains or loses a class and `component-classes.ts` was not regenerated. The same
