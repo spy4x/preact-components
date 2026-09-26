@@ -126,7 +126,7 @@ describe("Page", () => {
 })
 
 describe("Section", () => {
-  it("renders a section named by its h2 heading, the description under it, then the children", () => {
+  it("renders a section named by its h2, then its description and children", () => {
     const html = render(
       <Section title="Billing" description="Where invoices go.">
         <p>body</p>
@@ -157,8 +157,30 @@ describe("Section", () => {
   })
 
   it("renders the element as names and keeps a caller's own label when it has no title", () => {
-    const html = render(<Section as="div" aria-labelledby="outer" />)
-    expect(html).toBe(`<div aria-labelledby="outer" class="flex flex-col gap-4"></div>`)
+    const html = render(<Section as="article" aria-labelledby="outer" />)
+    expect(html).toBe(`<article aria-labelledby="outer" class="flex flex-col gap-4"></article>`)
+  })
+
+  it("names an article or an aside by its heading, and never a div", () => {
+    expect(render(<Section as="article" title="T" />)).toMatch(/^<article aria-labelledby="[^"]+"/)
+    expect(render(<Section as="aside" title="T" />)).toMatch(/^<aside aria-labelledby="[^"]+"/)
+    const div = render(<Section as="div" title="T" />)
+    expect(div).toMatch(/^<div class="flex flex-col gap-4"><header/)
+    expect(div).not.toContain("aria-labelledby")
+  })
+
+  it("refuses, as a type error, an element that cannot hold the section's header", () => {
+    // Each line fails `deno check` without its directive; an unused directive fails it too.
+    // @ts-expect-error a list cannot hold a <header>
+    render(<Section as="ul" />)
+    // @ts-expect-error a list cannot hold a <header>
+    render(<Section as="ol" />)
+    // @ts-expect-error a list item is not a section
+    render(<Section as="li" />)
+    // @ts-expect-error a header cannot hold a header
+    render(<Section as="header" />)
+    // @ts-expect-error a footer cannot hold a header
+    render(<Section as="footer" />)
   })
 
   it("gives two sections on one page different heading ids", () => {

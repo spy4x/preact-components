@@ -209,6 +209,7 @@ export {
   Page,
   type PageProps,
   Section,
+  type SectionElement,
   type SectionHeadingLevel,
   type SectionProps,
   Stack,

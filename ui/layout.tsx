@@ -187,7 +187,21 @@ export type SectionHeadingLevel = 2 | 3 | 4
 /** The theme's heading class for each level, written out so Tailwind's scanner sees it. */
 const HEADING_CLASSES: Record<SectionHeadingLevel, string> = { 2: "h2", 3: "h3", 4: "h4" }
 
-export interface SectionProps extends LayoutProps {
+/**
+ * The elements a {@link Section} may render as: ones that can hold its `<header>`. A list or a
+ * header would put the header where HTML does not allow it, so those are type errors.
+ */
+export type SectionElement = "section" | "article" | "aside" | "div"
+
+/** The elements whose role takes a name from their heading; a `div` has no role to name. */
+const NAMED_BY_HEADING: ReadonlySet<SectionElement> = new Set(["section", "article", "aside"])
+
+export interface SectionProps extends Omit<LayoutProps, "as"> {
+  /**
+   * The element to render, `section` by default. A `section`, `article` or `aside` with a title is
+   * named by its heading; a `div` is not, because ARIA gives a plain `div` no name.
+   */
+  as?: SectionElement
   /** Heading text. Without it the section renders no header and has no accessible name. */
   title?: string
   /** One or two sentences under the heading. */
@@ -200,8 +214,8 @@ export interface SectionProps extends LayoutProps {
  * A titled block of a page: an optional heading and description, then the children.
  *
  * The gaps are fixed so every section on every page reads the same: `xs` (4 px) between the heading
- * and the description, `md` (16 px) between the header and each child. A titled section is named
- * by its heading, so it is a landmark a screen reader can jump to.
+ * and the description, `md` (16 px) between the header and each child. A titled `section`,
+ * `article` or `aside` is named by its heading, so it is a landmark a screen reader can jump to.
  *
  * @param props See {@link SectionProps}.
  */
@@ -223,7 +237,7 @@ export function Section(
     <Box
       {...rest}
       as={as}
-      aria-labelledby={title ? headingId : rest["aria-labelledby"]}
+      aria-labelledby={title && NAMED_BY_HEADING.has(as) ? headingId : rest["aria-labelledby"]}
       className={cn("flex flex-col gap-4", className)}
     >
       {hasHeader && (
