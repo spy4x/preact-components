@@ -101,7 +101,7 @@ export function RadioGroup(
   const id = rest.id === undefined ? undefined : String(rest.id)
 
   return (
-    <fieldset {...rest} class={cn("space-y-3", className)}>
+    <fieldset {...rest} class={cn(className)}>
       <legend class="label mb-2">{legend}</legend>
       <div class="flex flex-col gap-2">
         {options.map((option, index) => (
