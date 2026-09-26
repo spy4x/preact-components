@@ -908,80 +908,82 @@ function AuthFormInteractiveDemo() {
   const container = useRef<HTMLDivElement>(null)
 
   return (
-    <div class="flex flex-col gap-4" data-e2e="auth-form-interactive" ref={container}>
-      <Cluster>
-        <Button
-          variant="outline"
-          size="sm"
-          data-e2e="auth-form-set-form-error"
-          onClick={() => error.value = FORM_ERROR}
-        >
-          Set a form-level error
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          data-e2e="auth-form-set-field-error"
-          onClick={() => error.value = FIELD_ERROR}
-        >
-          Set a field-level error
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          data-e2e="auth-form-clear-error"
-          onClick={() => error.value = null}
-        >
-          Clear the error
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          data-e2e="auth-form-step-code"
-          onClick={() => step.value = "one-time-code"}
-        >
-          Go to the code step
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          data-e2e="auth-form-step-credentials"
-          onClick={() => step.value = "credentials"}
-        >
-          Back to credentials
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          data-e2e="auth-form-toggle-busy"
-          onClick={() => busy.value = !busy.value}
-        >
-          Toggle busy ({busy.value ? "on" : "off"})
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          data-e2e="auth-form-request-submit"
-          onClick={() => fillAndRequestSubmit(container.current)}
-        >
-          Fill fields and form.requestSubmit()
-        </Button>
-      </Cluster>
-      <p class={NOTE}>
-        sign-ins: <span data-e2e="auth-form-signins">{signIns.value}</span>, sign-ups:{" "}
-        <span data-e2e="auth-form-signups">{signUps.value}</span>, codes:{" "}
-        <span data-e2e="auth-form-codes">{codes.value}</span>
-      </p>
-      <AuthForm
-        mode={mode.value}
-        onModeChange={(next) => mode.value = next}
-        step={step.value}
-        busy={busy.value}
-        error={error.value}
-        onSignIn={() => signIns.value++}
-        onSignUp={() => signUps.value++}
-        onOneTimeCode={() => codes.value++}
-      />
+    <div data-e2e="auth-form-interactive" ref={container}>
+      <Grid minColumnWidth="md" gap="xl">
+        <Stack gap="sm" class="items-start">
+          <Button
+            variant="outline"
+            size="sm"
+            data-e2e="auth-form-set-form-error"
+            onClick={() => error.value = FORM_ERROR}
+          >
+            Set a form-level error
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            data-e2e="auth-form-set-field-error"
+            onClick={() => error.value = FIELD_ERROR}
+          >
+            Set a field-level error
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            data-e2e="auth-form-clear-error"
+            onClick={() => error.value = null}
+          >
+            Clear the error
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            data-e2e="auth-form-step-code"
+            onClick={() => step.value = "one-time-code"}
+          >
+            Go to the code step
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            data-e2e="auth-form-step-credentials"
+            onClick={() => step.value = "credentials"}
+          >
+            Back to credentials
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            data-e2e="auth-form-toggle-busy"
+            onClick={() => busy.value = !busy.value}
+          >
+            Toggle busy ({busy.value ? "on" : "off"})
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            data-e2e="auth-form-request-submit"
+            onClick={() => fillAndRequestSubmit(container.current)}
+          >
+            Fill fields and form.requestSubmit()
+          </Button>
+          <p class={NOTE}>
+            sign-ins: <span data-e2e="auth-form-signins">{signIns.value}</span>, sign-ups:{" "}
+            <span data-e2e="auth-form-signups">{signUps.value}</span>, codes:{" "}
+            <span data-e2e="auth-form-codes">{codes.value}</span>
+          </p>
+        </Stack>
+        <AuthForm
+          mode={mode.value}
+          onModeChange={(next) => mode.value = next}
+          step={step.value}
+          busy={busy.value}
+          error={error.value}
+          onSignIn={() => signIns.value++}
+          onSignUp={() => signUps.value++}
+          onOneTimeCode={() => codes.value++}
+        />
+      </Grid>
     </div>
   )
 }
@@ -1082,6 +1084,10 @@ function StateInitDemo() {
   return (
     <Stack gap="sm" data-e2e="state-init-demo">
       <StateInit id="state-init-demo" data={sampleData} />
+      <p class={NOTE}>Written into the page by the server render:</p>
+      <pre class="overflow-auto font-mono text-xs whitespace-pre-wrap text-gray-900 dark:text-gray-100">
+        <code>{JSON.stringify(sampleData, null, 2)}</code>
+      </pre>
       <Cluster>
         <Button
           variant="outline"
@@ -1398,7 +1404,7 @@ export const systemDemos = {
   onSelectDate={(date) => picked.value = date}
 />`,
     render: () => (
-      <Grid minColumnWidth="lg" gap="xl">
+      <Grid minColumnWidth="md" gap="lg" class="sm:grid-cols-2">
         <Part title="Links, in three locales">
           <CalendarLocaleDemo />
         </Part>
@@ -1429,25 +1435,6 @@ const state = readStateInit<{ userId: string; features: string[] }>()`,
     summary:
       "Lets a reader open any image inside a container at full size, by click or keyboard, and page through the others.",
     wide: false,
-    props: [
-      {
-        name: "containerSelector",
-        type: "string",
-        default: '"[data-lightbox]"',
-        description: "The element whose images open the lightbox.",
-      },
-      {
-        name: "fallbackAlt",
-        type: "string",
-        default: '"Image"',
-        description: 'The name of an image with no `alt`; `""` leaves such images alone.',
-      },
-      {
-        name: "onOpen",
-        type: "(image: LightboxImage) => void",
-        description: "Called with the image that was opened.",
-      },
-    ],
     snippet: `<ImageLightbox
   containerSelector="[data-lightbox]"
   fallbackAlt="Figure"
@@ -1539,14 +1526,12 @@ const tags = seoHeadTags(head)`,
 <SWUpdater scriptUrl="/sw.js" updateMessage={{ type: "SKIP_WAITING" }} />`,
     render: () => (
       <Stack gap="xl">
-        <Grid minColumnWidth="lg" gap="xl">
-          <Part title="Mounted with nothing waiting">
-            <SwUpdaterQuietDemo />
-          </Part>
-          <Part title="The function underneath, on a fake registration">
-            <SwUpdaterDemo />
-          </Part>
-        </Grid>
+        <Part title="Mounted with nothing waiting">
+          <SwUpdaterQuietDemo />
+        </Part>
+        <Part title="The function underneath, on a fake registration">
+          <SwUpdaterDemo />
+        </Part>
         <Part title="Against a real service worker">
           <SwUpdaterLiveDemo />
         </Part>
