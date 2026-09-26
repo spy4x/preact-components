@@ -19,11 +19,12 @@ Preact + Tailwind primitives extracted from earlier source applications.
   components themselves — `./button`'s only other export is `buttonClasses`, so a caller who imports
   that alone still installs the hook; the package root (`.`), which carries every export;
   `./confirm-dialog`, `./copy-button`, `./date-range-picker`, `./modal`, `./on-off-buttons` and
-  `./pagination`, each of which renders a `Button` of its own; `./dropdown`, which uses `buttonClasses` without ever rendering a
-  `Button`; and `./copyable-text` and `./data-table`, which load it transitively — through
-  `./copy-button` and `./pagination` respectively. `@spy4x/preact-crud` loads it too,
-  transitively, through `./dropdown`. It acts only on the four components it forwards refs for;
-  nothing else in this package or a caller's own markup is affected.
+  `./pagination`, each of which renders a `Button` of its own; `./dropdown`, which uses
+  `buttonClasses` without ever rendering a `Button`; and `./copyable-text` and `./data-table`, which
+  load it transitively — through `./copy-button` and `./pagination` respectively.
+  `@spy4x/preact-crud` loads it too, transitively, through `./dropdown`. It acts only on the four
+  components it forwards refs for; nothing else in this package or a caller's own markup is
+  affected.
 
 ## Ledger rows (#257)
 
@@ -635,15 +636,15 @@ bar; `action` is never defaulted, since an endpoint is always the caller's to na
 
 While a background submit is outstanding, `children` sits inside a disabled `<fieldset>` (or the
 `sending` slot replaces it, when given); `done`/`failed` replace it once the promise settles.
-Omitting `done`/`failed` keeps `children` on screen, re-enabled, so a caller that wants a retry
-gets one without any extra wiring. A second click, or a `form.requestSubmit()`, while a submit is outstanding does nothing:
-a ref checked synchronously, before either branch of the submit handler runs, catches what the
-disabled fieldset has not repainted yet. The sending state always ends — on success, on a
-rejection, on a synchronous throw from `onSubmit`, and on a `pageshow` with `persisted: true`,
-which is what a promise abandoned in the back/forward cache would otherwise leave stuck forever. A
-submit's own id is bumped on that reset too, so if the abandoned promise settles later anyway, the
-stale `.then`/`.catch` finds its id no longer current and does nothing rather than overwriting a
-newer submit already in progress.
+Omitting `done`/`failed` keeps `children` on screen, re-enabled, so a caller that wants a retry gets
+one without any extra wiring. A second click, or a `form.requestSubmit()`, while a submit is
+outstanding does nothing: a ref checked synchronously, before either branch of the submit handler
+runs, catches what the disabled fieldset has not repainted yet. The sending state always ends — on
+success, on a rejection, on a synchronous throw from `onSubmit`, and on a `pageshow` with
+`persisted: true`, which is what a promise abandoned in the back/forward cache would otherwise leave
+stuck forever. A submit's own id is bumped on that reset too, so if the abandoned promise settles
+later anyway, the stale `.then`/`.catch` finds its id no longer current and does nothing rather than
+overwriting a newer submit already in progress.
 
 The result is announced through one `role="status"` region, present and empty from the first
 render — the same rule `Toastr` and `AuthForm` follow. The slot sits in a wrapper of its own:
@@ -849,8 +850,9 @@ same way it carries one chosen through the native picker. `accept` is matched th
 matches it: an extension (`.png`), a MIME type (`image/png`) or a MIME wildcard (`image/*`), any one
 of a comma-separated list. `maxSize` is a byte comparison. Either refusal is reported through
 `onReject` and rendered into a `role="status"` paragraph that is present, empty, on every render —
-the same shape `EnhancedForm`'s status region has — so a screen reader has something to listen to before the first refusal
-happens, and cleared-then-set so a second identical refusal still reaches it.
+the same shape `EnhancedForm`'s status region has — so a screen reader has something to listen to
+before the first refusal happens, and cleared-then-set so a second identical refusal still reaches
+it.
 
 Chosen files are listed, each with a remove button named after the file it removes
 (`labels.removeFile`, defaulting to `` `Remove ${name}` ``); removing one rewrites the input's

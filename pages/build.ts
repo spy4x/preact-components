@@ -66,10 +66,11 @@ const SW_DEMO_DIRECTORY = "sw-demo"
 /**
  * Directory copied verbatim into the artefact for the `EnhancedForm` card's forms: one static page
  * that stands in for "a server answered" when no script has run. `pages/serve.ts`, which
- * `deno task verify` runs against, never looks at `request.method`, so it answers a POST with this same file; the published GitHub Pages copy is served by a static host
- * that answers a POST with `405 Method Not Allowed` instead — nothing here claims the published
- * site accepts one, and `pages/checks/ui.ts`'s no-JavaScript check reads the method and the body
- * off the recorded network request rather than assuming either.
+ * `deno task verify` runs against, never looks at `request.method`, so it answers a POST with this
+ * same file; the published GitHub Pages copy is served by a static host that answers a POST with
+ * `405 Method Not Allowed` instead — nothing here claims the published site accepts one, and
+ * `pages/checks/ui.ts`'s no-JavaScript check reads the method and the body off the recorded network
+ * request rather than assuming either.
  */
 const FORM_DEMO_DIRECTORY = "form-demo"
 /**

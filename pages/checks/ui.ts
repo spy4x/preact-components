@@ -6676,30 +6676,27 @@ async function dataTableUrlSortCheck(devtools: Devtools): Promise<void> {
 }
 
 /**
- * `EnhancedForm`, and the sign-up and contact forms its card builds from it: progressive-enhancement
- * forms proven twice — once hydrated, in the functions below, and once with no script running at all, in
- * {@link enhancedFormsNoScriptChecks}.
+ * `EnhancedForm`, and the sign-up and contact forms its card builds from it:
+ * progressive-enhancement forms proven twice — once hydrated, in the functions below, and once with
+ * no script running at all, in {@link enhancedFormsNoScriptChecks}.
  *
- * Every form lives in the `EnhancedForm` card, `ui-guide/sections/enhanced-forms.tsx`, and posts to `form-demo/`, a static
- * page `pages/build.ts` copies into the artefact verbatim. With scripts on, `onSubmit` intercepts
- * every submit below and the page never navigates there — that page only matters to the
- * no-JavaScript check, which reads the method and the body off the recorded network request rather
- * than assuming either: **only the local preview server this file's own `verify` run drives answers
- * a POST there.** The published GitHub Pages copy is a static host and answers one with `405`.
+ * Every form lives in the `EnhancedForm` card, `ui-guide/sections/enhanced-forms.tsx`, and posts to
+ * `form-demo/`, a static page `pages/build.ts` copies into the artefact verbatim. With scripts on,
+ * `onSubmit` intercepts every submit below and the page never navigates there — that page only
+ * matters to the no-JavaScript check, which reads the method and the body off the recorded network
+ * request rather than assuming either: **only the local preview server this file's own `verify` run
+ * drives answers a POST there.** The published GitHub Pages copy is a static host and answers one
+ * with `405`.
  *
- * **Card lifetimes matter to the order below.** A submit that reaches `"done"` replaces a card's
- * fields with a thank-you message for good — none of the demo forms offers a way back from it — so every check that still needs to submit on a given card runs before the one that
- * finally lets it succeed:
+ * **Card lifetimes.** A submit that reaches `"done"` replaces a form's fields with a thank-you
+ * message for good.
  *
- * - The primary `EnhancedForm` demo takes its two failure proofs first
+ * - The primary `EnhancedForm` demo has no way back, so it takes its two failure proofs first
  *   ({@link enhancedFormAsyncFailureCheck}, {@link enhancedFormSynchronousThrowCheck}, both of
  *   which land back on `"idle"`) and its success proof last ({@link enhancedFormResultChecks}).
- * - The sign-up form's primary instance takes {@link signUpFormDoubleClickCheck}, which is
- *   terminal, so {@link enhancedFormsHoneypotChecks} gets a second instance of its own — see that
- *   card's doc in `ui-guide/sections/enhanced-forms.tsx`.
- * - The contact form's primary instance takes {@link contactFormStaleSubmitCheck} and
- *   {@link enhancedFormBackForwardCacheCheck} first, both of which land back on `"idle"`, and
- *   {@link contactFormFailureRetryChecks} last, since that is the one that finally succeeds.
+ * - The sign-up and contact cards hold one form each and a "Start over" button that remounts it.
+ *   Every check that submits one of them starts with {@link startOver}, so the order among them
+ *   does not matter.
  */
 
 /** One read of a card's live region and its `<fieldset>`. */
@@ -6806,6 +6803,42 @@ async function cardCanSubmit(devtools: Devtools, card: string): Promise<CardRead
     if (fieldset && fieldset.disabled) return { ok: false, reason: "the card's fieldset is disabled" }
     return { ok: true, reason: "" }
   })()`).catch(() => ({ ok: false, reason: "the card could not be read at all" }))
+}
+
+/**
+ * Press a sign-up or contact card's "Start over" button and wait for the fresh form it mounts, then
+ * report whether that form is ready to submit, as {@link cardCanSubmit} does.
+ *
+ * Each of those cards holds one form, and a sent form stays sent, so every check that submits one
+ * starts here. The press is a scripted `.click()` on purpose: a real click would move focus to the
+ * button, and several checks below are about where focus is, and is not, when a submit lands. The
+ * fresh form is recognised by its counter reading 0 and its live region being empty, which is what
+ * a remount through `key` and the reset counter leave behind.
+ *
+ * @param devtools The connected session.
+ * @param card The card's own selector, holding a `[data-e2e$="-start-over"]` button.
+ */
+async function startOver(devtools: Devtools, card: string): Promise<CardReadiness> {
+  const pressed = await devtools.evaluate<boolean>(`(() => {
+    const button = document.querySelector('${card} [data-e2e$="-start-over"]')
+    if (!button) return false
+    button.click()
+    return true
+  })()`)
+  if (!pressed) return { ok: false, reason: "the card has no Start over button" }
+
+  const fresh = await poll(
+    () =>
+      devtools.evaluate<boolean>(`(() => {
+        const root = document.querySelector('${card}')
+        const count = root?.querySelector('[data-e2e$="-subscribes"], [data-e2e$="-leads"]')
+        const region = root?.querySelector('[role="status"]')
+        return /: 0$/.test(count?.textContent.trim() ?? "") && (region?.textContent ?? "") === ""
+      })()`),
+    2_000,
+  )
+  if (!fresh) return { ok: false, reason: "Start over did not bring back a fresh, empty form" }
+  return await cardCanSubmit(devtools, card)
 }
 
 /**
@@ -7066,7 +7099,7 @@ async function doubleClickAt(devtools: Devtools, point: { x: number; y: number }
 }
 
 /**
- * The sign-up form's primary card: a real double click on the submit button, dispatched through
+ * The sign-up form: a real double click on the submit button, dispatched through
  * `Input.dispatchMouseEvent` rather than two scripted `.click()` calls, still calls `onSubmit`
  * once.
  *
@@ -7086,7 +7119,7 @@ async function signUpFormDoubleClickCheck(devtools: Devtools): Promise<void> {
   const card = '#demo-EnhancedForm [data-e2e="signup-form"]'
   const counter = `${card} [data-e2e="signup-form-subscribes"]`
 
-  const ready = await cardCanSubmit(devtools, card)
+  const ready = await startOver(devtools, card)
   check(
     "the sign-up form's primary card is ready to submit before the double click",
     ready.ok,
@@ -7137,7 +7170,7 @@ async function signUpFormDoubleClickCheck(devtools: Devtools): Promise<void> {
 }
 
 /**
- * The sign-up form's third instance: two `form.requestSubmit()` calls made in the same script turn,
+ * The sign-up form: two `form.requestSubmit()` calls made in the same script turn,
  * with no real click and so no focus ever placed anywhere in the form.
  *
  * This is what isolates `EnhancedForm`'s synchronous busy guard from the disabled `<fieldset>` a
@@ -7155,10 +7188,10 @@ async function signUpFormDoubleClickCheck(devtools: Devtools): Promise<void> {
  * @param devtools The connected session, on a hydrated page.
  */
 async function signUpFormRequestSubmitGuardCheck(devtools: Devtools): Promise<void> {
-  const card = '#demo-EnhancedForm [data-e2e="signup-form-request-submit"]'
-  const counter = `${card} [data-e2e="signup-form-request-submit-subscribes"]`
+  const card = '#demo-EnhancedForm [data-e2e="signup-form"]'
+  const counter = `${card} [data-e2e="signup-form-subscribes"]`
 
-  const ready = await cardCanSubmit(devtools, card)
+  const ready = await startOver(devtools, card)
   check(
     "the sign-up form's request-submit card is ready to submit before this check begins",
     ready.ok,
@@ -7228,7 +7261,7 @@ async function signUpFormRequestSubmitGuardCheck(devtools: Devtools): Promise<vo
 }
 
 /**
- * The sign-up form's fourth instance: a real click on the submit button — focus genuinely lands
+ * The sign-up form: a real click on the submit button — focus genuinely lands
  * there, unlike {@link signUpFormRequestSubmitGuardCheck}'s `requestSubmit()` calls — and then,
  * while the 150ms submit is still outstanding, focus is moved to an unrelated element elsewhere on
  * the page, standing in for a visitor who submitted and then clicked or tabbed to read something
@@ -7244,10 +7277,10 @@ async function signUpFormRequestSubmitGuardCheck(devtools: Devtools): Promise<vo
  * @param devtools The connected session, on a hydrated page.
  */
 async function signUpFormFocusElsewhereCheck(devtools: Devtools): Promise<void> {
-  const card = '#demo-EnhancedForm [data-e2e="signup-form-focus-elsewhere"]'
+  const card = '#demo-EnhancedForm [data-e2e="signup-form"]'
   const dummyId = "verify-focus-elsewhere-dummy"
 
-  const ready = await cardCanSubmit(devtools, card)
+  const ready = await startOver(devtools, card)
   check(
     "the sign-up form's focus-elsewhere card is ready to submit before this check begins",
     ready.ok,
@@ -7323,7 +7356,7 @@ async function signUpFormFocusElsewhereCheck(devtools: Devtools): Promise<void> 
 }
 
 /**
- * The sign-up form's fifth instance: a real click on the submit button, then a blur to `<body>` —
+ * The sign-up form: a real click on the submit button, then a blur to `<body>` —
  * not to a specific other control, {@link signUpFormFocusElsewhereCheck}'s own case — while the
  * submit is still outstanding, together with a scroll back to the top of the page.
  *
@@ -7353,10 +7386,10 @@ async function signUpFormFocusElsewhereCheck(devtools: Devtools): Promise<void> 
  * @param devtools The connected session, on a hydrated page.
  */
 async function signUpFormBlurWhileSendingCheck(devtools: Devtools): Promise<void> {
-  const card = '#demo-EnhancedForm [data-e2e="signup-form-blur-while-sending"]'
+  const card = '#demo-EnhancedForm [data-e2e="signup-form"]'
   const region = `${card} [role="status"]`
 
-  const ready = await cardCanSubmit(devtools, card)
+  const ready = await startOver(devtools, card)
   check(
     "the sign-up form's blur-while-sending card is ready to submit before this check begins",
     ready.ok,
@@ -7441,8 +7474,7 @@ async function signUpFormBlurWhileSendingCheck(devtools: Devtools): Promise<void
 const HONEYPOT_INPUT_SELECTOR = 'input[name="hp-field"]'
 
 /**
- * The sign-up form's second instance — see its own doc in `ui-guide/sections/enhanced-forms.tsx`
- * for why a dedicated one exists. Two things, both about the same off-screen field:
+ * The sign-up form, whose honeypot is on. Two things, both about the same off-screen field:
  *
  * 1. Its computed style, not the literal absence of `display:none` in the markup (a render-to-string
  *    unit test can only show that much, and `ui/honeypot.test.tsx` says so): a real `getComputedStyle`
@@ -7455,8 +7487,10 @@ const HONEYPOT_INPUT_SELECTOR = 'input[name="hp-field"]'
  * @param devtools The connected session, on a hydrated page.
  */
 async function enhancedFormsHoneypotChecks(devtools: Devtools): Promise<void> {
-  const card = '#demo-EnhancedForm [data-e2e="signup-form-honeypot"]'
-  const counter = `${card} [data-e2e="signup-form-honeypot-subscribes"]`
+  const card = '#demo-EnhancedForm [data-e2e="signup-form"]'
+  const counter = `${card} [data-e2e="signup-form-subscribes"]`
+
+  const ready = await startOver(devtools, card)
 
   const style = await devtools.evaluate<
     { display: string; wrapperDisplay: string; width: number; height: number } | null
@@ -7485,7 +7519,6 @@ async function enhancedFormsHoneypotChecks(devtools: Devtools): Promise<void> {
         `wrapper size ${style.width}×${style.height}px`,
   )
 
-  const ready = await cardCanSubmit(devtools, card)
   check("the sign-up form's honeypot card is ready to submit", ready.ok, ready.reason)
   if (!ready.ok) return
 
@@ -7522,17 +7555,17 @@ async function enhancedFormsHoneypotChecks(devtools: Devtools): Promise<void> {
 }
 
 /**
- * The contact form's dedicated honeypot instance — the same proof {@link enhancedFormsHoneypotChecks}
+ * The contact form — the same proof {@link enhancedFormsHoneypotChecks}
  * runs against the sign-up form, on the three-field form instead: a filled honeypot resolves as a
  * success without ever calling `onSubmit`.
  *
  * @param devtools The connected session, on a hydrated page.
  */
 async function contactFormHoneypotCheck(devtools: Devtools): Promise<void> {
-  const card = '#demo-EnhancedForm [data-e2e="contact-form-honeypot"]'
-  const counter = `${card} [data-e2e="contact-form-honeypot-leads"]`
+  const card = '#demo-EnhancedForm [data-e2e="contact-form"]'
+  const counter = `${card} [data-e2e="contact-form-leads"]`
 
-  const ready = await cardCanSubmit(devtools, card)
+  const ready = await startOver(devtools, card)
   check("the contact form's honeypot card is ready to submit", ready.ok, ready.reason)
   if (!ready.ok) return
 
@@ -7602,7 +7635,7 @@ async function fillContact(devtools: Devtools, card: string): Promise<void> {
 async function contactFormStaleSubmitCheck(devtools: Devtools): Promise<void> {
   const card = '#demo-EnhancedForm [data-e2e="contact-form"]'
 
-  const ready = await cardCanSubmit(devtools, card)
+  const ready = await startOver(devtools, card)
   check(
     "the contact form's card is ready to submit before the stale-submit check",
     ready.ok,
@@ -7677,7 +7710,7 @@ async function enhancedFormBackForwardCacheCheck(devtools: Devtools): Promise<vo
 
   // Standalone: this check fills the card itself rather than assuming an earlier one in the same
   // run left it filled, and confirms it is actually ready before touching anything.
-  const ready = await cardCanSubmit(devtools, card)
+  const ready = await startOver(devtools, card)
   check(
     "the contact form's card is ready to submit before the back/forward-cache check",
     ready.ok,
@@ -7827,12 +7860,11 @@ async function enhancedFormBackForwardCacheCheck(devtools: Devtools): Promise<vo
 }
 
 /**
- * The contact form's card, last of its four checks because this is the one that finally succeeds and
- * replaces its fields for good (see this section's own module doc): a rejected submit ends the
- * sending state and leaves every field on screen, still holding what the visitor typed, and then an
- * actual second submit — the failure toggle turned off, the same fields resubmitted rather than
- * refilled — proves "leaves the fields for a retry" is true of a real retry, not only of what
- * happens to still be on screen a moment after the first submit failed.
+ * The contact form's card: a rejected submit ends the sending state and leaves every field on
+ * screen, still holding what the visitor typed, and then an actual second submit — the failure
+ * toggle turned off, the same fields resubmitted rather than refilled — proves "leaves the fields
+ * for a retry" is true of a real retry, not only of what happens to still be on screen a moment
+ * after the first submit failed.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -7840,7 +7872,7 @@ async function contactFormFailureRetryChecks(devtools: Devtools): Promise<void> 
   const card = '#demo-EnhancedForm [data-e2e="contact-form"]'
   const toggle = `${card} [data-e2e="contact-form-fail-toggle"]`
 
-  const ready = await cardCanSubmit(devtools, card)
+  const ready = await startOver(devtools, card)
   check(
     "the contact form's card is ready to submit before the failure-retry check",
     ready.ok,
@@ -8672,11 +8704,11 @@ interface FileInputFixture {
  * Write the handful of real files {@link fileInputChecks} needs into a fresh `mktemp` directory.
  *
  * `DOM.setFileInputFiles` and a drop's `Input.dispatchDragEvent` both take real, on-disk paths —
- * neither can be satisfied by a `Blob` built inside the page. Nothing here is a real image: the component never decodes the bytes,
- * only its extension and size, so arbitrary bytes under a `.png` name exercise exactly what
- * `matchesAccept` and `maxSize` check. Not committed as binaries — written at check time and
- * removed by the caller's own `finally`, the same lifetime `pages/verify.ts`'s own Chromium
- * profile directory has.
+ * neither can be satisfied by a `Blob` built inside the page. Nothing here is a real image: the
+ * component never decodes the bytes, only its extension and size, so arbitrary bytes under a `.png`
+ * name exercise exactly what `matchesAccept` and `maxSize` check. Not committed as binaries —
+ * written at check time and removed by the caller's own `finally`, the same lifetime
+ * `pages/verify.ts`'s own Chromium profile directory has.
  */
 async function writeFileInputFixtures(): Promise<{ dir: string; files: FileInputFixture }> {
   const dir = await Deno.makeTempDir({ prefix: "file-input-check-" })
@@ -9269,10 +9301,10 @@ async function fileInputPreviewRevokeChecks(
  * (`ui-guide/sections/inputs.tsx`'s fifth card, `id="guide-file-input-form"`) posts the chosen file
  * with no script running at all — not merely no hydrated `onSubmit` to intercept it, but the whole
  * bundle disabled the way {@link enhancedFormsNoScriptChecks} disables it for the sign-up form and
- * the contact form, via `Emulation.setScriptExecutionDisabled` before a reload. That is what "without
- * JavaScript doing anything" in #145's own done-when box means: a hydrated hander that happens not
- * to call `preventDefault` still proves nothing about a visitor whose script never ran in the first
- * place, and only a page that genuinely never executed the bundle does.
+ * the contact form, via `Emulation.setScriptExecutionDisabled` before a reload. That is what
+ * "without JavaScript doing anything" in #145's own done-when box means: a hydrated hander that
+ * happens not to call `preventDefault` still proves nothing about a visitor whose script never ran
+ * in the first place, and only a page that genuinely never executed the bundle does.
  *
  * Three things are checked against that unhydrated page, in order: the native input is still found
  * by `DOM.setFileInputFiles`, and its computed `display` is still not `none` — the one property this
