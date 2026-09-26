@@ -74,10 +74,11 @@ const SW_DEMO_DIRECTORY = "sw-demo"
  */
 const FORM_DEMO_DIRECTORY = "form-demo"
 /**
- * Directory copied verbatim into the artefact for the `Map` card's tile layer: one tiny PNG, reused
- * for every `{z}/{x}/{y}` Leaflet asks for, so `deno task verify`'s browser phase never makes a
- * request past the local preview server — see issue #143's security requirement and
- * `pages/checks/map.ts`, which asserts the tiles it loads come from here.
+ * Directory copied verbatim into the artefact for the `Map` card's tile layer during `deno task
+ * verify`: one tiny PNG, reused for every `{z}/{x}/{y}` Leaflet asks for, so the browser phase never
+ * makes a request past the local preview server — see issue #143's security requirement and
+ * `pages/checks/map.ts`, which asserts the tiles it loads come from here. The published guide draws
+ * OpenStreetMap's tiles instead (`LOCAL_MAP_TILES_FLAG` in `src/site.ts`).
  */
 const MAP_DEMO_DIRECTORY = "map-demo"
 

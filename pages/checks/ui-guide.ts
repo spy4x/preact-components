@@ -30,6 +30,7 @@ export async function uiGuideChecks(devtools: Devtools): Promise<void> {
   await withViewport(devtools, 1152, 800, () => navigationChecks(devtools))
   await withViewport(devtools, 375, 812, () => phoneNavigationChecks(devtools))
   await withViewport(devtools, 375, 812, () => overflowChecks(devtools))
+  await withViewport(devtools, 375, 812, () => codeBlockCheck(devtools))
   for (const width of [375, 1024]) {
     await withViewport(devtools, width, 812, () => propsSummaryCheck(devtools, width))
   }
@@ -311,7 +312,7 @@ async function lazyContentShown(devtools: Devtools): Promise<void> {
  * Preact replaces text that differs from the server's while it hydrates, and logs nothing, so a card
  * whose output depends on the clock, the time zone, the locale or a browser-only API passes the
  * console check while a reader without JavaScript sees something else. The served `index.html` is
- * fetched from the page's own address and parsed there; it is the guide's `all` page, so it holds
+ * fetched from the page's own address and parsed there; it renders every page at once, so it holds
  * every card. Each package page is then opened, and every card's text, read the same way, is
  * compared with the served card of the same id. Text only: attributes and styles are not compared.
  */
@@ -333,7 +334,7 @@ async function serverTextChecks(devtools: Devtools): Promise<void> {
   const stillSame: string[] = []
   const wrongParts: string[] = []
   const seen = new Set<string>()
-  for (const page of guidePages.filter((each) => each.id !== "all" && each.sections.length > 0)) {
+  for (const page of guidePages.filter((each) => each.sections.length > 0)) {
     await openGuidePage(devtools, page.id)
     await lazyContentShown(devtools)
     const live = await devtools.evaluate<Record<string, CardText>>(
@@ -355,7 +356,7 @@ async function serverTextChecks(devtools: Devtools): Promise<void> {
     }
   }
 
-  const expected = guidePages.filter((page) => page.id !== "all").reduce(
+  const expected = guidePages.reduce(
     (total, page) => total + page.sections.reduce((sum, section) => sum + section.names.length, 0),
     0,
   )
@@ -429,8 +430,7 @@ async function navigationChecks(devtools: Devtools): Promise<void> {
     .map((name) => `demo-${name}`)
 
   // Clicked a screen down the overview, so a page that kept the old scroll, or scrolled to the
-  // section that shares its id, lands below its own title. Not from the very bottom: there the
-  // footer pushes the sticky column, and the link with it, off the screen.
+  // section that shares its id, lands below its own title.
   await devtools.evaluate(`(scrollTo({ top: innerHeight, behavior: "instant" }), null)`)
   await settledScroll(devtools)
   const scrolledFrom = await devtools.evaluate<number>("Math.round(scrollY)")
@@ -736,6 +736,52 @@ async function propsSummaryCheck(devtools: Devtools, width: number): Promise<voi
 }
 
 /**
+ * At 375px wide no card cuts off its code: every card's code block, opened, stays inside its card,
+ * and a line longer than the card scrolls inside the block rather than being clipped (#357, #348).
+ */
+async function codeBlockCheck(devtools: Devtools): Promise<void> {
+  const clipped: string[] = []
+  let blocks = 0
+  for (const page of guidePages.filter((each) => each.sections.length > 0)) {
+    await openGuidePage(devtools, page.id)
+    const read = await devtools.evaluate<{ blocks: number; clipped: string[] }>(`(() => {
+      const cards = [...document.querySelectorAll('article[id^="demo-"]')]
+      const clipped = []
+      let blocks = 0
+      for (const card of cards) {
+        const details = card.querySelector('[data-e2e="usage"] details')
+        const pre = details?.querySelector("pre")
+        if (!details || !pre) continue
+        const wasOpen = details.open
+        details.open = true
+        blocks++
+        const box = card.getBoundingClientRect()
+        const code = pre.getBoundingClientRect()
+        const inside = code.left >= box.left - 0.5 && code.right <= box.right + 0.5
+        const scrolls = pre.scrollWidth <= pre.clientWidth + 1 ||
+          ["auto", "scroll"].includes(getComputedStyle(pre).overflowX)
+        if (!inside || !scrolls) {
+          clipped.push(card.id + (inside ? " (no scroll)" : " (" + Math.round(code.right - box.right) + "px out)"))
+        }
+        details.open = wasOpen
+      }
+      return { blocks, clipped }
+    })()`)
+    blocks += read.blocks
+    clipped.push(...read.clipped.map((card) => `${page.id}: ${card}`))
+  }
+  const expected = guidePages.reduce(
+    (total, page) => total + page.sections.reduce((sum, section) => sum + section.names.length, 0),
+    0,
+  )
+  check(
+    "at 375px every card's code stays inside its card and scrolls rather than being clipped",
+    clipped.length === 0 && blocks === expected,
+    clipped.length > 0 ? clipped.join(", ") : `${blocks}/${expected} code blocks fit their cards`,
+  )
+}
+
+/**
  * At 375px wide no page scrolls sideways and none of the shell's own text runs past its box, in
  * the light palette or the dark one.
  *
@@ -850,8 +896,8 @@ function clippedContent(devtools: Devtools): Promise<Record<string, number>> {
 
 /**
  * A deep link opened cold — the address typed or pasted, the page loaded fresh — lands on a card on
- * one package's page: the island hydrates the `all` page the server sent, reads the address, shows
- * the card's page, and marks and scrolls to the card.
+ * one package's page: the island hydrates the document of every page the server sent, reads the
+ * address, shows the card's page, and marks and scrolls to the card.
  */
 async function coldDeepLinkCheck(devtools: Devtools): Promise<void> {
   const HREF = "#/crud/crud-editor"
@@ -943,8 +989,8 @@ async function coldFragmentCheck(devtools: Devtools): Promise<void> {
 }
 
 /**
- * A page reloaded far down opens at its top. The server sends the longer `all` document, so a
- * position the browser restored would land somewhere unrelated, and late enough to override a later
+ * A page reloaded far down opens at its top. The server sends the longer document of every page, so
+ * a position the browser restored would land somewhere unrelated, and late enough to override a later
  * scroll (#292's third review). Two things hold it, and either alone keeps this check green: the
  * host sets `history.scrollRestoration = "manual"`, and the guide scrolls on its first read.
  */
@@ -1109,7 +1155,8 @@ async function themeSwitchCheck(devtools: Devtools, width: number): Promise<void
  * button closes it, putting focus back on the menu button.
  */
 async function drawerContentCheck(devtools: Devtools): Promise<void> {
-  await openGuidePage(devtools, "charts")
+  // The theme page: a page of two sections, so the drawer lists both sections and their cards.
+  await openGuidePage(devtools, "theme")
   await clickElement(devtools, `[data-guide-page] h1`)
   await clickElement(devtools, MENU_BUTTON, { inPlace: true })
   const opened = await poll(
@@ -1122,9 +1169,9 @@ async function drawerContentCheck(devtools: Devtools): Promise<void> {
   const listed = await devtools.evaluate<{ sections: number; cards: number; visible: boolean }>(
     `(() => {
       const dialog = document.querySelector(${JSON.stringify(MENU_DIALOG)})
-      const cards = [...dialog.querySelectorAll('a[href^="#/charts/"], a[href^="#/charts-examples/"]')]
+      const cards = [...dialog.querySelectorAll('a[href^="#/forms/"], a[href^="#/surfaces/"]')]
       return {
-        sections: new Set([...dialog.querySelectorAll('a[href="#/charts"], a[href="#/charts-examples"]')]
+        sections: new Set([...dialog.querySelectorAll('a[href="#/forms"], a[href="#/surfaces"]')]
           .map((link) => link.getAttribute("href"))).size,
         cards: cards.length,
         visible: cards.every((link) => link.checkVisibility()),
@@ -1143,7 +1190,7 @@ async function drawerContentCheck(devtools: Devtools): Promise<void> {
   if (!closed) {
     await devtools.evaluate(`document.querySelector(${JSON.stringify(MENU_DIALOG)}).close()`)
   }
-  const expected = guidePages.find((page) => page.id === "charts")?.sections
+  const expected = guidePages.find((page) => page.id === "theme")?.sections
     .flatMap((section) => section.names).length ?? 0
   check(
     "the phone drawer lists the page's sections and cards, and its close button closes it",
@@ -1158,7 +1205,9 @@ async function drawerContentCheck(devtools: Devtools): Promise<void> {
  * later card sits under the header, the mark moves to that card.
  */
 async function onThisPageCheck(devtools: Devtools): Promise<void> {
-  await openGuidePage(devtools, "charts")
+  // The UI page, because it is long enough to scroll any of its cards under the header: the charts
+  // page lost its example cards (#357), and its last cards now sit too near the end to get there.
+  await openGuidePage(devtools, "ui")
   const LIST = JSON.stringify(`[data-e2e="ui-guide-on-this-page"]`)
   const marked = () =>
     devtools.evaluate<string>(
@@ -1167,11 +1216,11 @@ async function onThisPageCheck(devtools: Devtools): Promise<void> {
   const visible = await devtools.evaluate<boolean>(
     `document.querySelector(${LIST})?.checkVisibility() === true`,
   )
-  const first = guidePages.find((page) => page.id === "charts")?.sections[0].names[0] ?? ""
+  const first = guidePages.find((page) => page.id === "ui")?.sections[0].names[0] ?? ""
   const atTop = await poll(async () => (await marked()) === first, 3_000)
   const topMark = await marked()
 
-  const target = "KpiGrid"
+  const target = "Table"
   const top = await devtools.evaluate<number>(`(() => {
     const card = document.getElementById("demo-${target}")
     const y = Math.round(card.getBoundingClientRect().top + scrollY - 72)

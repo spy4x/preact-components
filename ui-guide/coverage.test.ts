@@ -16,27 +16,30 @@ import * as theme from "@spy4x/preact-theme"
 import * as ui from "@spy4x/preact-ui"
 import {
   type AllowedExport,
-  allowedExports,
+  COMPONENTS_WITHOUT_CARD,
   coverageProblems,
   demoedNamesOf,
-  exampledNamesOf,
   EXCLUDED_PACKAGES,
   isComponent,
   isComponentName,
   packageExports,
   type PackageNamespace,
-  PENDING_REASON,
+  packageReadmes,
+  README_PENDING,
+  readmeNames,
   subpathModulesOf,
   valueExportsOf,
 } from "./coverage.ts"
-import { EXAMPLES_PENDING } from "./examples-pending.ts"
 import { coveredPackageIds, type PackageId, packageIds } from "./registry.ts"
 
 /** The repository root: the parent of every package directory, same as `coverage.ts`'s own. */
 const ROOT = new URL("../", import.meta.url)
 
-/** Every catalogued package's value exports, read once for the whole file. */
+/** Every covered package's value exports, read once for the whole file. */
 const EXPORTS = await packageExports()
+
+/** Every covered package's README, read once for the whole file. */
+const READMES = await packageReadmes()
 
 /** Every barrel imported directly: ground truth for the read, independent of `coverage.ts`. */
 const BARRELS: Record<PackageId, object> = { ui, charts, system, crud, map, signals, theme, cn }
@@ -44,7 +47,7 @@ const BARRELS: Record<PackageId, object> = { ui, charts, system, crud, map, sign
 /** A component name no package exports and no section demonstrates. */
 const GHOST = "GhostWidget"
 
-/** A helper name no package exports and no card or example covers. */
+/** A helper name no package exports and no README names. */
 const GHOST_HELPER = "ghostHelper"
 
 /** The shipped `ui` exports, plus one invented export. */
@@ -103,7 +106,7 @@ async function declaredSubpaths(id: PackageId): Promise<string[]> {
  * injection alone and one real gap does not fail every fixture.
  */
 function injectedBy(problems: string[]): string[] {
-  const shipped = new Set(coverageProblems(EXPORTS))
+  const shipped = new Set(coverageProblems(EXPORTS, READMES))
   return problems.filter((problem) => !shipped.has(problem))
 }
 
@@ -112,8 +115,24 @@ function allowing(
   id: PackageId,
   entries: AllowedExport[],
 ): Record<PackageId, readonly AllowedExport[]> {
-  return { ...allowedExports, [id]: entries }
+  return { ...COMPONENTS_WITHOUT_CARD, [id]: entries }
 }
+
+/** The shipped pending list with one package's names replaced. */
+function pendingWith(id: PackageId, names: string[]): Record<PackageId, readonly string[]> {
+  return { ...README_PENDING, [id]: names }
+}
+
+/** The shipped READMEs with one package's text extended. */
+function readmesWith(id: PackageId, extra: string): Record<PackageId, string> {
+  return { ...READMES, [id]: `${READMES[id]}\n${extra}\n` }
+}
+
+/** A helper the `signals` README names, read from the tree rather than picked. */
+const NAMED_HELPER = Object.entries(EXPORTS.signals)
+  .map(([name, value]) => ({ name, value }))
+  .find(({ name, value }) => !isComponent(name, value) && readmeNames(READMES.signals, name))
+  ?.name ?? ""
 
 /** Top-level directories that carry a `deno.json`, read from the tree, not the workspace list. */
 async function packageDirectories(): Promise<string[]> {
@@ -135,7 +154,7 @@ async function packageDirectories(): Promise<string[]> {
 
 describe("the coverage rule", () => {
   it("accounts for every value every catalogued package exports", () => {
-    expect(coverageProblems(EXPORTS)).toEqual([])
+    expect(coverageProblems(EXPORTS, READMES)).toEqual([])
 
     // A floor under the read itself, derived from `BARRELS` rather than picked: whatever a
     // package's real barrel exports, `packageExports()`'s read of that package must contain too.
@@ -190,60 +209,66 @@ describe("the coverage rule", () => {
   })
 
   it("names a component that no section demonstrates", () => {
-    const problems = injectedBy(coverageProblems(uiWith(GHOST, () => null)))
+    const problems = injectedBy(coverageProblems(uiWith(GHOST, () => null), READMES))
 
     expect(problems.length, problems.join(" | ")).toBe(1)
     expect(problems[0]).toContain(GHOST)
     expect(problems[0]).toContain("no section demonstrates it")
   })
 
-  it("names a helper that no card or example covers", () => {
-    const problems = injectedBy(coverageProblems(uiWith(GHOST_HELPER, () => null)))
+  it("names a helper its package's README does not name", () => {
+    const problems = injectedBy(coverageProblems(uiWith(GHOST_HELPER, () => null), READMES))
 
     expect(problems.length, problems.join(" | ")).toBe(1)
     expect(problems[0]).toContain(GHOST_HELPER)
-    expect(problems[0]).toContain("no card or example covers it")
+    expect(problems[0]).toContain("ui/README.md does not name it")
   })
 
-  it("names a PascalCase object with no example as a helper, not a component", () => {
-    const problems = injectedBy(coverageProblems(uiWith(GHOST, { A: 1 })))
+  it("counts a helper the README names in code", () => {
+    const problems = injectedBy(
+      coverageProblems(
+        uiWith(GHOST_HELPER, () => null),
+        readmesWith("ui", `- \`${GHOST_HELPER}(value)\` does a thing.`),
+      ),
+    )
+
+    expect(problems).toEqual([])
+  })
+
+  it("does not count a helper named only in prose", () => {
+    const problems = injectedBy(
+      coverageProblems(
+        uiWith(GHOST_HELPER, () => null),
+        readmesWith("ui", `Call ${GHOST_HELPER} before rendering, or \`${GHOST_HELPER}s\`.`),
+      ),
+    )
 
     expect(problems.length, problems.join(" | ")).toBe(1)
-    expect(problems[0]).toContain("no card or example covers it")
+    expect(problems[0]).toContain(GHOST_HELPER)
   })
 
-  it("counts a helper an example covers", () => {
-    const exampled = exampledNamesOf("ui")[0]
-    expect(exampled, "ui ships an example").toBeDefined()
-    expect(allowedExports.ui.map((entry) => entry.name)).not.toContain(exampled)
-    expect(coverageProblems(EXPORTS).filter((problem) => problem.includes(` ${exampled} `)))
-      .toEqual([])
+  it("names a PascalCase object with no README line as a helper, not a component", () => {
+    const problems = injectedBy(coverageProblems(uiWith(GHOST, { A: 1 }), READMES))
+
+    expect(problems.length, problems.join(" | ")).toBe(1)
+    expect(problems[0]).toContain(`the helper ${GHOST}`)
   })
 
-  it("does not count an example as a component's card", () => {
-    const withGhost = (id: PackageId) => [...exampledNamesOf(id), ...(id === "ui" ? [GHOST] : [])]
+  it("does not count a README line as a component's card", () => {
     const problems = injectedBy(
-      coverageProblems(uiWith(GHOST, () => null), allowedExports, withGhost),
+      coverageProblems(uiWith(GHOST, () => null), readmesWith("ui", `\`${GHOST}\``)),
     )
 
     expect(problems.length, problems.join(" | ")).toBe(1)
     expect(problems[0]).toContain(`component ${GHOST}`)
   })
 
-  it("names an example covering a name its package does not export", () => {
-    const exampled = exampledNamesOf("signals")[0]
-    const problems = injectedBy(coverageProblems(without("signals", exampled)))
-
-    expect(problems.length, problems.join(" | ")).toBe(1)
-    expect(problems[0]).toContain(exampled)
-    expect(problems[0]).toContain("examples cover")
-  })
-
   it("names an allow-list entry the package does not export", () => {
     const problems = injectedBy(
       coverageProblems(
         EXPORTS,
-        allowing("ui", [...allowedExports.ui, { name: GHOST, reason: "Invented for this test." }]),
+        READMES,
+        allowing("ui", [{ name: GHOST, reason: "Invented for this test." }]),
       ),
     )
 
@@ -252,12 +277,13 @@ describe("the coverage rule", () => {
     expect(problems[0]).toContain("does not export")
   })
 
-  it("names an allow-list entry whose component has a demo after all", () => {
+  it("names an allow-list entry whose component has a card after all", () => {
     const demoed = demoedNamesOf("ui")[0]
     const problems = injectedBy(
       coverageProblems(
         EXPORTS,
-        allowing("ui", [...allowedExports.ui, { name: demoed, reason: PENDING_REASON }]),
+        READMES,
+        allowing("ui", [{ name: demoed, reason: "Invented for this test." }]),
       ),
     )
 
@@ -266,38 +292,98 @@ describe("the coverage rule", () => {
     expect(problems[0]).toContain("stale")
   })
 
-  it("names a pending entry whose helper has an example after all", () => {
-    const exampled = exampledNamesOf("signals")[0]
+  it("names an allow-list entry that is not a component", () => {
     const problems = injectedBy(
       coverageProblems(
         EXPORTS,
-        allowing("signals", [...allowedExports.signals, {
-          name: exampled,
-          reason: PENDING_REASON,
-        }]),
+        READMES,
+        allowing("signals", [{ name: NAMED_HELPER, reason: "Invented for this test." }]),
       ),
     )
 
     expect(problems.length, problems.join(" | ")).toBe(1)
-    expect(problems[0]).toContain(exampled)
+    expect(problems[0]).toContain(`${NAMED_HELPER} is not a component`)
+  })
+
+  it("names a pending entry whose helper the README names after all", () => {
+    expect(NAMED_HELPER, "the signals README names a helper").not.toBe("")
+    const problems = injectedBy(
+      coverageProblems(
+        EXPORTS,
+        READMES,
+        COMPONENTS_WITHOUT_CARD,
+        pendingWith("signals", [
+          NAMED_HELPER,
+        ]),
+      ),
+    )
+
+    expect(problems.length, problems.join(" | ")).toBe(1)
+    expect(problems[0]).toContain(NAMED_HELPER)
     expect(problems[0]).toContain("stale")
   })
 
-  it("names a demo keyed to a name its package does not export", () => {
+  it("names a pending entry the package does not export", () => {
+    const problems = injectedBy(
+      coverageProblems(
+        EXPORTS,
+        READMES,
+        COMPONENTS_WITHOUT_CARD,
+        pendingWith("ui", [
+          ...README_PENDING.ui,
+          GHOST_HELPER,
+        ]),
+      ),
+    )
+
+    expect(problems.length, problems.join(" | ")).toBe(1)
+    expect(problems[0]).toContain(GHOST_HELPER)
+    expect(problems[0]).toContain("does not export")
+  })
+
+  it("names a pending entry that is a component", () => {
     const demoed = demoedNamesOf("ui")[0]
-    const problems = injectedBy(coverageProblems(without("ui", demoed)))
+    const problems = injectedBy(
+      coverageProblems(
+        EXPORTS,
+        READMES,
+        COMPONENTS_WITHOUT_CARD,
+        pendingWith("ui", [
+          ...README_PENDING.ui,
+          demoed,
+        ]),
+      ),
+    )
+
+    expect(problems.length, problems.join(" | ")).toBe(1)
+    expect(problems[0]).toContain(`${demoed} is a component`)
+  })
+
+  it("excuses a helper the pending list still names", () => {
+    const pending = README_PENDING.ui[0]
+    expect(pending, "ui has a pending helper").toBeDefined()
+    const problems = injectedBy(
+      coverageProblems(EXPORTS, READMES, COMPONENTS_WITHOUT_CARD, pendingWith("ui", [])),
+    )
+
+    expect(problems.some((problem) => problem.includes(`helper ${pending} `))).toBe(true)
+  })
+
+  it("names a card keyed to a name its package does not export", () => {
+    const demoed = demoedNamesOf("ui")[0]
+    const problems = injectedBy(coverageProblems(without("ui", demoed), READMES))
 
     expect(problems.length, problems.join(" | ")).toBe(1)
     expect(problems[0]).toContain(demoed)
     expect(problems[0]).toContain("does not export")
   })
 
-  it("gives every allow-list entry a reason, and names each pending export once", () => {
+  it("gives every allow-list entry a reason, and names each pending helper once", () => {
     for (const id of coveredPackageIds) {
-      for (const entry of allowedExports[id]) {
+      for (const entry of COMPONENTS_WITHOUT_CARD[id]) {
         expect(entry.reason.length, `${id}: ${entry.name}`).toBeGreaterThan(20)
       }
-      const pending = EXAMPLES_PENDING[id]
+      const pending = README_PENDING[id]
       expect(new Set(pending).size, `${id}: a pending name listed twice`).toBe(pending.length)
     }
   })
@@ -308,6 +394,8 @@ describe("the coverage rule", () => {
     }
     expect(isComponent("Badge", () => null), "a PascalCase function").toBe(true)
     expect(isComponent("ThemeValue", { Light: 1 }), "a PascalCase object").toBe(false)
+    expect(isComponent("MismatchError", class MismatchError extends Error {}), "a class")
+      .toBe(false)
     for (
       const name of ["clampProgress", "cn", "DEFAULT_AXIS_COLOR", "CONFLICT", "SKELETON_METRICS"]
     ) {

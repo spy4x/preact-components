@@ -15,7 +15,7 @@ workspace member only so it can import its sibling packages the way an app does.
 | Piece             | Where it comes from                                                                                          |
 | ----------------- | ------------------------------------------------------------------------------------------------------------ |
 | The catalogue     | `UIGuide` from `@spy4x/preact-ui-guide`, unmodified — its navigation, one page at a time, and the deep links |
-| The host page     | `src/app.tsx` — the colour-scheme switch, the footer, and the address and version handed to the guide        |
+| The host page     | `src/app.tsx` — the colour-scheme switch, and the address, version and tiles handed to the guide             |
 | The styles        | `theme/tokens.css` + `theme/preset.css`, compiled by Tailwind into one stylesheet                            |
 | The interactivity | `src/+main.tsx`, one Preact island that hydrates the prerendered markup                                      |
 
@@ -168,7 +168,6 @@ https://spy4x.github.io/preact-components/#/ui                     a package's p
 https://spy4x.github.io/preact-components/#/inputs                 a section, on its package's page
 https://spy4x.github.io/preact-components/#/inputs/toggle-switch   a demo card, on its package's page
 https://spy4x.github.io/preact-components/#toggle-switch           the legacy deep link, still resolved
-https://spy4x.github.io/preact-components/#/all                    every page at once
 ```
 
 The grammar and the shell both live in the library — `@spy4x/preact-ui-guide`, described in
@@ -178,10 +177,13 @@ on load and on every `hashchange` and passes it to `UIGuide` as `hash`. The guid
 route's page, marks a demo's card with `data-deep-link` and scrolls it into view, scrolls a section
 route to its section, and keeps the page showing for a hash that names no route, so the browser's own
 anchors keep working. The host titles the document from the `onRouteChange` port, and hands the
-signals page its two address-bound demos through `pageExtras`.
+UI page its two address-bound demos through `pageExtras`. It passes `mapTiles` only while `verify`
+runs: `verify` sets `LOCAL_MAP_TILES_FLAG` (`src/site.ts`) in every document it loads, and the Map
+card then draws the local tile in `map-demo/` instead of OpenStreetMap's, so no check reaches the
+network.
 
-The served `index.html` is the guide's `all` page — every page at once — because the island reads
-the address in an effect: before it has, the guide renders everything, which is also what a reader
+The served `index.html` holds every page of the guide at once — not a page of its own, since no route
+or link names it — because the island reads the address in an effect: before it has, the guide renders everything, which is also what a reader
 without JavaScript gets and what the no-script checks under `checks/` submit forms on.
 
 `styles.css` carries only the host's prose measure. The header, the card grid and the navigation
@@ -294,7 +296,7 @@ as the numerator; and `--static`, which commits no package blocks at all, instea
   from the server's while it hydrates and logs nothing, so the console check above cannot see a
   card that prints one thing without JavaScript and another with it. This check fetches the served
   `index.html`, parses it in the page, opens each package page, and compares the text of every card
-  (`article[id^="demo-"]`, component and example cards alike) with the served card of the same id.
+  (`article[id^="demo-"]`, every card) with the served card of the same id.
   Whitespace runs count as one space, and a `<textarea>` counts by its value. Only text is compared,
   not attributes or styles. A card that differs fails the run by id, with a short excerpt of each
   side. Some cards have a part an effect draws only in the browser: the
@@ -322,10 +324,10 @@ classes get cards of their own in the catalogue's
 `forms` and `surfaces` sections rather than component cards; `icons/` is the gallery rather than demo
 cards; and the sections that were placeholders when this page was first deployed — `charts/`,
 `system/`, `crud/` — now have a card per component, with any card still to be written up declared
-in `ui-guide/coverage.ts`'s `EXPORTS_WITHOUT_DEMO` with its reason. `signals/` has no section at
-all any more: it exports no component, so it is an excluded package with its reason recorded
-beside the others, and the one piece of it this page shows — the filter hook — is demonstrated by
-the host page rather than by a card.
+in `ui-guide/coverage.ts`'s `COMPONENTS_WITHOUT_CARD` with its reason. `signals/` and `cn/` have no
+page: they export helpers alone, which their READMEs name instead of a card, and the one piece of
+`signals/` this page shows — the filter hook — is demonstrated by the host page at the end of the UI
+page rather than by a card.
 
 Adding a card to a `ui-guide` section is still all a new component needs to appear here: the
 coverage rule and the stylesheet's `@source` list are the only two things to touch, and both fail

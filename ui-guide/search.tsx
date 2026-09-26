@@ -1,5 +1,5 @@
 /**
- * The guide's search: every page, card and helper name, filtered as you type, in a modal dialog.
+ * The guide's search: every page and card name, filtered as you type, in a modal dialog.
  *
  * The index is built from the registry, so a card added to a section is searchable with no second
  * edit. The keyboard follows the library's own combobox (`comboboxKey`, `comboboxKeyAction` from
@@ -16,7 +16,6 @@ import { useEffect, useId, useRef, useState } from "preact/hooks"
 import {
   cardLabel,
   catalogueSections,
-  exampleDemos,
   type GuidePage,
   guidePages,
   pageOfSection,
@@ -28,13 +27,12 @@ import { demoHref, pageHref } from "./routes.ts"
 export enum SearchKind {
   PAGE = 1,
   COMPONENT = 2,
-  HELPER = 3,
   CLASSES = 4,
 }
 
 /** One searchable name and where it leads. */
 export interface SearchEntry {
-  /** The name a reader types, e.g. `"Badge"` or `"clampProgress"`. */
+  /** The name a reader types, e.g. `"Badge"` or `"Colour atoms"`. */
   label: string
   /** Where it lives, e.g. `"UI · Badges"`. */
   detail: string
@@ -44,11 +42,9 @@ export interface SearchEntry {
 }
 
 /**
- * Every page, card and helper the registry carries, in navigation order.
+ * Every page and card the registry carries, in navigation order.
  *
- * A component card is found by its component's name, a class card and an example card by their
- * titles, and every export an example covers by its own name as well, so a helper with no card of
- * its own (`clampProgress`) still leads to the example that runs it.
+ * A component card is found by its component's name, a class card by its title.
  *
  * @param registry The registry the guide renders; cards it does not carry are left out.
  * @returns The index, one entry per name.
@@ -56,7 +52,6 @@ export interface SearchEntry {
 export function searchIndex(registry: PartialDemoRegistry, guidePlace = "Guide"): SearchEntry[] {
   const titles = new Map<string, string>(guidePages.map((page) => [page.id, page.title]))
   const entries: SearchEntry[] = guidePages
-    .filter((page) => page.id !== "all")
     .map((page: GuidePage) => ({
       label: page.title,
       detail: page.packageName ?? guidePlace,
@@ -75,15 +70,11 @@ export function searchIndex(registry: PartialDemoRegistry, guidePlace = "Guide")
     for (const name of section.names) {
       if (!(name in registry)) continue
       const href = demoHref(section.id, name)
-      if (section.kind === "component") {
-        add({ label: name, detail: where, href, kind: SearchKind.COMPONENT })
-        continue
-      }
-      const kind = section.kind === "class" ? SearchKind.CLASSES : SearchKind.HELPER
-      add({ label: cardLabel(name), detail: where, href, kind })
-      for (const covered of exampleDemos[name]?.covers ?? []) {
-        add({ label: covered, detail: where, href, kind: SearchKind.HELPER })
-      }
+      add(
+        section.kind === "component"
+          ? { label: name, detail: where, href, kind: SearchKind.COMPONENT }
+          : { label: cardLabel(name), detail: where, href, kind: SearchKind.CLASSES },
+      )
     }
   }
   return entries
@@ -129,7 +120,6 @@ export function searchEntries(
 export interface SearchKindWords {
   page: string
   component: string
-  helper: string
   classes: string
 }
 
@@ -162,7 +152,6 @@ export interface GuideSearchProps {
 const KIND_WORD: Record<SearchKind, keyof SearchKindWords> = {
   [SearchKind.PAGE]: "page",
   [SearchKind.COMPONENT]: "component",
-  [SearchKind.HELPER]: "helper",
   [SearchKind.CLASSES]: "classes",
 }
 

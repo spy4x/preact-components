@@ -96,7 +96,7 @@ import { demoElementId } from "./src/deep-link.ts"
 import { renderApp } from "./src/prerender.tsx"
 import { routeTableFromHtml } from "./src/route-echo.ts"
 import { type PreviewServer, serveDist } from "./serve.ts"
-import { DEFAULT_BASE, normalizeBase } from "./src/site.ts"
+import { DEFAULT_BASE, LOCAL_MAP_TILES_FLAG, normalizeBase } from "./src/site.ts"
 
 /** This file's directory: the demo's root, `pages/`. */
 const PAGES_DIRECTORY = dirname(fileURLToPath(import.meta.url))
@@ -246,14 +246,21 @@ async function staticPhase(): Promise<void> {
     ".theme-base and .btn rules found",
   )
 
-  // The served document is the guide's `all` page — every page at once, which is what a reader
-  // without JavaScript gets and what the island hydrates before it reads the address. Each page on
-  // its own is rendered here from the same `App`, and has to carry its own cards and no others:
-  // that is the page a reader with JavaScript sees once the address is read.
+  // The served document is every page of the guide at once, which is what a reader without
+  // JavaScript gets and what the island hydrates before it reads the address. It is not a page of
+  // its own: nothing links to it. Each page on its own is rendered here from the same `App`, and has
+  // to carry its own cards and no others: that is the page a reader with JavaScript sees once the
+  // address is read.
   check(
-    "index.html prerenders the guide's all-pages document",
+    "index.html prerenders every page of the guide at once",
     html.includes(`data-guide-page="all"`),
     `data-guide-page="all"`,
+  )
+  check(
+    "index.html links no Everything page and carries no footer",
+    !html.includes(`href="#/all"`) && !html.includes(`data-guide-page-link="all"`) &&
+      !/<footer[\s>]/.test(html),
+    "no #/all link, no page link for it, no <footer>",
   )
   const wrongPages = guidePages.flatMap((page) => {
     const markup = renderApp(pageHref(page.id))
@@ -353,8 +360,8 @@ async function staticPhase(): Promise<void> {
   )
 
   // A route no link points at would be a page nobody can reach; a link pointing at a route the
-  // resolver refuses would be a dead link. Both directions, over the whole catalogue: the `all`
-  // page's navigation lists every page, section and card.
+  // resolver refuses would be a dead link. Both directions, over the whole catalogue: the served
+  // document's navigation lists every page, section and card.
   const routeEntries = [
     ...(routes?.pages ?? []),
     ...(routes?.sections ?? []),
@@ -671,6 +678,11 @@ async function browserPhase(): Promise<void> {
         await devtools.send("Network.enable", {})
         await devtools.send("Page.enable", {})
         await denyDownloads(devtools)
+        // Every document this run loads, frames included, draws the Map card with the local tile,
+        // so the checks never depend on the network (`pages/src/site.ts`).
+        await devtools.send("Page.addScriptToEvaluateOnNewDocument", {
+          source: `globalThis.${LOCAL_MAP_TILES_FLAG} = true`,
+        })
         if (CPU_THROTTLE > 1) {
           await devtools.send("Emulation.setCPUThrottlingRate", { rate: CPU_THROTTLE })
         }
@@ -939,7 +951,7 @@ function onPage(
  * that package's file under `pages/checks/`, never this list. `cn` is the one workspace member
  * missing on purpose: it is a single class-name function with nothing a browser could drive.
  * `signals` has no catalogue section any more and still has a file: its checks drive the demo the
- * host page renders.
+ * host page renders at the end of the UI page.
  *
  * `ui` runs last on purpose: its Modal checks (kept last within `ui.ts` for the same reason) open a
  * real modal dialog, and a dialog that refused to close would sit in the top layer above every check
@@ -959,7 +971,7 @@ const PACKAGE_BLOCKS: readonly CheckBlock<Devtools>[] = [
   { name: "icons", run: onPage("icons", iconsChecks) },
   { name: "ui-guide", run: uiGuideChecks },
   { name: "pages", run: onPage("overview", pagesChecks) },
-  { name: "signals", run: onPage("signals", signalsChecks) },
+  { name: "signals", run: onPage("ui", signalsChecks) },
   { name: "system", run: onPage("system", systemChecks) },
   { name: "crud", run: onPage("crud", crudChecks) },
   { name: "charts", run: onPage("charts", chartsChecks) },

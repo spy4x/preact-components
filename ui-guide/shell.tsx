@@ -32,6 +32,7 @@ import { DEFAULT_CARD_LABELS, DemoCard, type DemoCardLabels, MissingDemoBanner }
 import { IconGallery, iconNames } from "./icons.tsx"
 import { CatalogInstructions } from "./instructions.tsx"
 import { InlineMarkdown } from "./markdown.tsx"
+import { type MapTiles, MapTilesContext, OPENSTREETMAP_TILES } from "./map-tiles.ts"
 import {
   cardLabel,
   catalogueNames,
@@ -59,10 +60,8 @@ import { GuideSearch, searchIndex, type SearchKindWords } from "./search.tsx"
 
 /** The navigation's groups, in order. Every page is in exactly one (`shell.test.tsx`). */
 export const navGroups = [
-  { id: "start", pages: ["overview", "all"] },
-  { id: "components", pages: ["ui", "system", "crud", "charts", "map"] },
-  { id: "helpers", pages: ["signals", "cn"] },
-  { id: "foundations", pages: ["theme", "icons"] },
+  { id: "start", pages: ["overview"] },
+  { id: "packages", pages: ["ui", "icons", "theme", "charts", "map", "system", "crud"] },
 ] as const satisfies readonly { id: string; pages: readonly GuidePageId[] }[]
 
 /** Identifier of one navigation group. */
@@ -152,15 +151,13 @@ const DEFAULT_LABELS: Required<Omit<UIGuideLabels, "navGroups" | "searchKinds" |
 } = {
   title: "preact-components",
   tagline:
-    "Preact components, Tailwind styles, icons and signal helpers for Deno apps — every one running live in this guide, with the code next to it.",
+    "Preact components, Tailwind styles and icons for Deno apps — every one running live in this guide, with the code next to it.",
   nav: "Guide",
   openNav: "Menu",
   closeNav: "Close the guide navigation",
   navGroups: {
     start: "Start here",
-    components: "Components",
-    helpers: "Helpers",
-    foundations: "Foundations",
+    packages: "Packages",
   },
   comingSoon: "Runnable examples for this package are coming. Its README documents it until then.",
   skipToContent: "Skip to content",
@@ -168,7 +165,7 @@ const DEFAULT_LABELS: Required<Omit<UIGuideLabels, "navGroups" | "searchKinds" |
   searchPlaceholder: "Search components…",
   searchEmpty: "Nothing matches that name.",
   closeSearch: "Close the search",
-  searchKinds: { page: "Page", component: "Component", helper: "Helper", classes: "Classes" },
+  searchKinds: { page: "Page", component: "Component", classes: "Classes" },
   searchGuidePlace: "Guide",
   card: DEFAULT_CARD_LABELS,
   repository: "Source on GitHub",
@@ -259,6 +256,11 @@ export interface UIGuideProps {
    * passes `"main"`, so the document has exactly one.
    */
   contentAs?: "main" | "div"
+  /**
+   * The tile provider the Map card draws with. Defaults to OpenStreetMap's standard tiles and their
+   * credit line (`OPENSTREETMAP_TILES`).
+   */
+  mapTiles?: MapTiles
   class?: string
 }
 
@@ -282,6 +284,7 @@ export function UIGuide(
     colorScheme,
     actions,
     contentAs: Content = "div",
+    mapTiles = OPENSTREETMAP_TILES,
     class: className,
   }: UIGuideProps,
 ): JSX.Element {
@@ -296,15 +299,14 @@ export function UIGuide(
 
   // A route that names no page keeps the one showing. Held in a ref rather than state: it is
   // derived during render from the route and its own last value, and never re-renders anything.
-  // Before the host has read the address, the page is `all`: the served document carries every
-  // page, for a reader without JavaScript and for hydration to match. That is not a page the reader
-  // chose, so it is not kept: a first route that names none opens the overview.
+  // Before the host has read the address, the guide renders every page at once: the served
+  // document, for a reader without JavaScript and for hydration to match. That is no page — it has
+  // no route and no navigation entry — so nothing is kept: a first route that names none opens the
+  // overview.
+  const served = hash === undefined
   const shownPage = useRef<GuidePageId>("overview")
-  const pageId = hash === undefined
-    ? "all"
-    : pageOfRoute(route) ?? pageOfFragment(hash) ?? shownPage.current
-  if (hash !== undefined) shownPage.current = pageId
-  const page = guidePages.find((candidate) => candidate.id === pageId) ?? guidePages[0]
+  if (!served) shownPage.current = pageOfRoute(route) ?? pageOfFragment(hash) ?? shownPage.current
+  const page = guidePages.find((candidate) => candidate.id === shownPage.current) ?? guidePages[0]
 
   const [navOpen, setNavOpen] = useState(false)
   const dialog = useRef<HTMLDialogElement>(null)
@@ -313,7 +315,7 @@ export function UIGuide(
   const contentId = useId()
   const content = useRef<HTMLElement>(null)
   const scrolledPage = useRef<GuidePageId | undefined>(undefined)
-  const inView = useCardInView(hash !== undefined, page.id)
+  const inView = useCardInView(!served, page.id)
   const entries = useMemo(
     () => searchIndex(registry, labels.searchGuidePlace),
     [registry, labels.searchGuidePlace],
@@ -337,9 +339,9 @@ export function UIGuide(
     }
     onRouteChange?.({ route, page })
 
-    // The first route read replaces the `all` document with one page, which is not a page change a
-    // reader made. It starts where the address points, or at the top: the server sent the longer
-    // `all` document, so a position the browser restored would land somewhere unrelated.
+    // The first route read replaces the served document with one page, which is not a page change
+    // a reader made. It starts where the address points, or at the top: the server sent the longer
+    // document of every page, so a position the browser restored would land somewhere unrelated.
     const firstRead = scrolledPage.current === undefined
     const pageChanged = !firstRead && scrolledPage.current !== page.id
     scrolledPage.current = page.id
@@ -359,7 +361,7 @@ export function UIGuide(
     }
     if (route.kind === "index" && route.reason === "unknown") {
       // A bare fragment: the browser scrolled to its element when the address changed, unless the
-      // element was not on the page yet — a page switched to hold it, or a fresh load whose `all`
+      // element was not on the page yet — a page switched to hold it, or a fresh load whose served
       // document was just replaced. Only then does the shell scroll there itself.
       const target = /^#([^/]+)$/.exec(hash)?.[1]
       const element = target === undefined ? null : document.getElementById(target)
@@ -391,202 +393,206 @@ export function UIGuide(
   }
 
   const missing = missingDemos(registry)
-  // The overview and the all-pages document have no "On this page" column: their content takes
-  // its place.
-  const listed = page.id !== "all" && page.id !== "overview"
+  // The overview and the served document have no "On this page" column: their content takes its
+  // place.
+  const listed = !served && page.id !== "overview"
 
   return (
-    <div class={cn("ui-guide w-full", className)} data-guide-page={page.id}>
-      {
-        /* First in the guide, ahead of every navigation link. It moves focus itself rather than
+    <MapTilesContext.Provider value={mapTiles}>
+      <div class={cn("ui-guide w-full", className)} data-guide-page={served ? "all" : page.id}>
+        {
+          /* First in the guide, ahead of every navigation link. It moves focus itself rather than
         leaving it to the fragment, so it works under a host that routes by something else, and the
         fragment stays for a reader without JavaScript. */
-      }
-      <a
-        href={`#${contentId}`}
-        onClick={(event) => {
-          event.preventDefault()
-          const target = content.current
-          if (!target) return
-          // Focusable only while the skip link has put focus there: a column that stayed focusable
-          // would take the focus of every click on a non-focusable spot inside it, which a menu
-          // reads as focus leaving it, and closes.
-          target.tabIndex = -1
-          target.addEventListener("blur", () => target.removeAttribute("tabindex"), { once: true })
-          target.focus()
-          target.scrollIntoView({ block: "start" })
-        }}
-        class="sr-only rounded-md bg-white px-3 py-2 text-sm font-medium text-purple-900 shadow focus:not-sr-only focus:absolute focus:z-50 focus:px-3 focus:py-2 dark:bg-gray-900 dark:text-purple-200"
-        data-e2e="ui-guide-skip"
-      >
-        {labels.skipToContent}
-      </a>
-
-      <header class="sticky top-0 z-30 h-14 border-b border-gray-200 bg-white/85 backdrop-blur dark:border-gray-800 dark:bg-gray-900/85">
-        <div class="mx-auto flex h-full max-w-screen-2xl items-center gap-2 px-4 sm:gap-4 sm:px-6 lg:px-8">
-          <button
-            ref={trigger}
-            type="button"
-            aria-haspopup="dialog"
-            aria-expanded={navOpen}
-            aria-controls={dialogId}
-            onClick={openNav}
-            class={buttonClasses("ghost", "sm", "lg:hidden")}
-            data-e2e="ui-guide-nav-open"
-          >
-            <IconBars3 class="size-5" />
-            <span class="sr-only">{labels.openNav}</span>
-          </button>
-          <a
-            href={pageHref("overview")}
-            onClick={(event) => follow(pageHref("overview"), event)}
-            class="flex min-w-0 items-center gap-2 font-semibold text-gray-950 dark:text-gray-50"
-          >
-            <span class="truncate">{labels.title}</span>
-            {version
-              ? (
-                <span class="hidden rounded-full bg-gray-100 px-2 text-xs font-medium text-gray-600 sm:inline dark:bg-gray-800 dark:text-gray-300">
-                  v{version}
-                </span>
-              )
-              : null}
-          </a>
-          <div class="ml-auto flex items-center gap-2">
-            <GuideSearch entries={entries} labels={labels} go={go} />
-            {repository
-              ? (
-                <a
-                  href={repository}
-                  rel="noreferrer"
-                  aria-label={labels.repository}
-                  title={labels.repository}
-                  class={buttonClasses("ghost", "sm")}
-                >
-                  <IconGitHub class="size-5" />
-                </a>
-              )
-              : null}
-            {colorScheme ? <ThemeSwitch scheme={colorScheme} labels={labels} /> : null}
-            {actions}
-          </div>
-        </div>
-      </header>
-
-      <div class="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-8 lg:px-8 xl:grid-cols-[15rem_minmax(0,1fr)_13rem]">
-        <aside class="hidden lg:sticky lg:top-14 lg:block lg:max-h-[calc(100dvh-3.5rem)] lg:overflow-y-auto lg:py-8">
-          <GuideNav
-            label={labels.nav}
-            labels={labels}
-            page={page}
-            route={route}
-            registry={registry}
-            follow={follow}
-            pageListBelowXl
-          />
-        </aside>
-
-        <dialog
-          ref={dialog}
-          id={dialogId}
-          aria-label={labels.nav}
-          data-e2e="ui-guide-nav-dialog"
-          onClose={() => {
-            // The `close` event is a queued task, so a reopen can land before it; that event is
-            // stale, and acting on it would empty a dialog that is open again.
-            if (dialog.current?.open) return
-            setNavOpen(false)
-            // Chromium already returns focus to the button that opened a modal dialog, so the
-            // browser check passes with or without this line; it is here for engines that do not.
-            trigger.current?.focus()
+        }
+        <a
+          href={`#${contentId}`}
+          onClick={(event) => {
+            event.preventDefault()
+            const target = content.current
+            if (!target) return
+            // Focusable only while the skip link has put focus there: a column that stayed focusable
+            // would take the focus of every click on a non-focusable spot inside it, which a menu
+            // reads as focus leaving it, and closes.
+            target.tabIndex = -1
+            target.addEventListener("blur", () => target.removeAttribute("tabindex"), {
+              once: true,
+            })
+            target.focus()
+            target.scrollIntoView({ block: "start" })
           }}
-          class="m-0 h-dvh max-h-none w-[min(20rem,85vw)] max-w-none overflow-y-auto border-r border-gray-200 bg-white p-0 text-gray-900 shadow-xl backdrop:bg-gray-950/50 backdrop:backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100"
+          class="sr-only rounded-md bg-white px-3 py-2 text-sm font-medium text-purple-900 shadow focus:not-sr-only focus:absolute focus:z-50 focus:px-3 focus:py-2 dark:bg-gray-900 dark:text-purple-200"
+          data-e2e="ui-guide-skip"
         >
-          <div class="sticky top-0 z-10 flex h-14 items-center justify-between gap-2 border-b border-gray-200 bg-white px-4 dark:border-gray-800 dark:bg-gray-900">
-            <span class="font-semibold">{labels.title}</span>
-            <button
-              type="button"
-              aria-label={labels.closeNav}
-              onClick={closeNav}
-              class={buttonClasses("ghost", "sm")}
-            >
-              <IconXMark class="size-5" />
-            </button>
-          </div>
-          <div class="p-4">
-            {navOpen
-              ? (
-                <GuideNav
-                  label={labels.nav}
-                  labels={labels}
-                  page={page}
-                  route={route}
-                  registry={registry}
-                  follow={follow}
-                />
-              )
-              : null}
-          </div>
-        </dialog>
+          {labels.skipToContent}
+        </a>
 
-        {
-          /* `overflow-x: clip`, not `hidden`: a demo whose tooltip or code runs past a phone's
+        <header class="sticky top-0 z-30 h-14 border-b border-gray-200 bg-white/85 backdrop-blur dark:border-gray-800 dark:bg-gray-900/85">
+          <div class="mx-auto flex h-full max-w-screen-2xl items-center gap-2 px-4 sm:gap-4 sm:px-6 lg:px-8">
+            <button
+              ref={trigger}
+              type="button"
+              aria-haspopup="dialog"
+              aria-expanded={navOpen}
+              aria-controls={dialogId}
+              onClick={openNav}
+              class={buttonClasses("ghost", "sm", "lg:hidden")}
+              data-e2e="ui-guide-nav-open"
+            >
+              <IconBars3 class="size-5" />
+              <span class="sr-only">{labels.openNav}</span>
+            </button>
+            <a
+              href={pageHref("overview")}
+              onClick={(event) => follow(pageHref("overview"), event)}
+              class="flex min-w-0 items-center gap-2 font-semibold text-gray-950 dark:text-gray-50"
+            >
+              <span class="truncate">{labels.title}</span>
+              {version
+                ? (
+                  <span class="hidden rounded-full bg-gray-100 px-2 text-xs font-medium text-gray-600 sm:inline dark:bg-gray-800 dark:text-gray-300">
+                    v{version}
+                  </span>
+                )
+                : null}
+            </a>
+            <div class="ml-auto flex items-center gap-2">
+              <GuideSearch entries={entries} labels={labels} go={go} />
+              {repository
+                ? (
+                  <a
+                    href={repository}
+                    rel="noreferrer"
+                    aria-label={labels.repository}
+                    title={labels.repository}
+                    class={buttonClasses("ghost", "sm")}
+                  >
+                    <IconGitHub class="size-5" />
+                  </a>
+                )
+                : null}
+              {colorScheme ? <ThemeSwitch scheme={colorScheme} labels={labels} /> : null}
+              {actions}
+            </div>
+          </div>
+        </header>
+
+        <div class="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-8 lg:px-8 xl:grid-cols-[15rem_minmax(0,1fr)_13rem]">
+          <aside class="hidden lg:sticky lg:top-14 lg:block lg:max-h-[calc(100dvh-3.5rem)] lg:overflow-y-auto lg:py-8">
+            <GuideNav
+              label={labels.nav}
+              labels={labels}
+              page={served ? undefined : page}
+              route={route}
+              registry={registry}
+              follow={follow}
+              pageListBelowXl
+            />
+          </aside>
+
+          <dialog
+            ref={dialog}
+            id={dialogId}
+            aria-label={labels.nav}
+            data-e2e="ui-guide-nav-dialog"
+            onClose={() => {
+              // The `close` event is a queued task, so a reopen can land before it; that event is
+              // stale, and acting on it would empty a dialog that is open again.
+              if (dialog.current?.open) return
+              setNavOpen(false)
+              // Chromium already returns focus to the button that opened a modal dialog, so the
+              // browser check passes with or without this line; it is here for engines that do not.
+              trigger.current?.focus()
+            }}
+            class="m-0 h-dvh max-h-none w-[min(20rem,85vw)] max-w-none overflow-y-auto border-r border-gray-200 bg-white p-0 text-gray-900 shadow-xl backdrop:bg-gray-950/50 backdrop:backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100"
+          >
+            <div class="sticky top-0 z-10 flex h-14 items-center justify-between gap-2 border-b border-gray-200 bg-white px-4 dark:border-gray-800 dark:bg-gray-900">
+              <span class="font-semibold">{labels.title}</span>
+              <button
+                type="button"
+                aria-label={labels.closeNav}
+                onClick={closeNav}
+                class={buttonClasses("ghost", "sm")}
+              >
+                <IconXMark class="size-5" />
+              </button>
+            </div>
+            <div class="p-4">
+              {navOpen
+                ? (
+                  <GuideNav
+                    label={labels.nav}
+                    labels={labels}
+                    page={page}
+                    route={route}
+                    registry={registry}
+                    follow={follow}
+                  />
+                )
+                : null}
+            </div>
+          </dialog>
+
+          {
+            /* `overflow-x: clip`, not `hidden`: a demo whose tooltip or code runs past a phone's
           edge is cut there instead of scrolling the whole page sideways, and a clip is no scroll
           container, so nothing inside loses its sticky or its vertical overflow. `@container`: the
           card grid lays out by the column's width, not the window's. */
-        }
-        <Content
-          ref={content as never}
-          id={contentId}
-          class={cn(
-            "@container min-w-0 overflow-x-clip py-8 outline-none lg:py-12",
-            !listed && "xl:col-span-2",
-          )}
-        >
-          <p class="sr-only" aria-live="polite">{page.title}</p>
-          <Stack gap="2xl">
-            {missing.length > 0 ? <MissingDemoBanner names={missing} /> : null}
-            {(page.id === "all" ? [guidePages[0], ...packagePages] : [page]).map((shown) =>
-              shown.id === "overview"
-                ? (
-                  <Overview
-                    key={shown.id}
-                    labels={labels}
-                    registry={registry}
-                    follow={follow}
-                    install={install}
-                    copy={copy}
-                  />
-                )
-                : (
-                  <PackagePage
-                    key={shown.id}
-                    page={shown}
-                    nested={page.id === "all"}
-                    registry={registry}
-                    copy={copy}
-                    labels={labels}
-                    extra={pageExtras?.[shown.id]}
-                  />
-                )
+          }
+          <Content
+            ref={content as never}
+            id={contentId}
+            class={cn(
+              "@container min-w-0 overflow-x-clip py-8 outline-none lg:py-12",
+              !listed && "xl:col-span-2",
             )}
-          </Stack>
-        </Content>
+          >
+            <p class="sr-only" aria-live="polite">{served ? labels.title : page.title}</p>
+            <Stack gap="2xl">
+              {missing.length > 0 ? <MissingDemoBanner names={missing} /> : null}
+              {(served ? guidePages : [page]).map((shown) =>
+                shown.id === "overview"
+                  ? (
+                    <Overview
+                      key={shown.id}
+                      labels={labels}
+                      registry={registry}
+                      follow={follow}
+                      install={install}
+                      copy={copy}
+                    />
+                  )
+                  : (
+                    <PackagePage
+                      key={shown.id}
+                      page={shown}
+                      nested={served}
+                      registry={registry}
+                      copy={copy}
+                      labels={labels}
+                      extra={pageExtras?.[shown.id]}
+                    />
+                  )
+              )}
+            </Stack>
+          </Content>
 
-        {listed
-          ? (
-            <div class="hidden xl:sticky xl:top-14 xl:block xl:max-h-[calc(100dvh-3.5rem)] xl:overflow-y-auto xl:py-12">
-              <OnThisPage
-                label={labels.onThisPage}
-                page={page}
-                registry={registry}
-                inView={inView}
-                follow={follow}
-              />
-            </div>
-          )
-          : null}
+          {listed
+            ? (
+              <div class="hidden xl:sticky xl:top-14 xl:block xl:max-h-[calc(100dvh-3.5rem)] xl:overflow-y-auto xl:py-12">
+                <OnThisPage
+                  label={labels.onThisPage}
+                  page={page}
+                  registry={registry}
+                  inView={inView}
+                  follow={follow}
+                />
+              </div>
+            )
+            : null}
+        </div>
       </div>
-    </div>
+    </MapTilesContext.Provider>
   )
 }
 
@@ -624,7 +630,7 @@ function useCardInView(active: boolean, pageId: GuidePageId): string | undefined
   const [inView, setInView] = useState<string | undefined>(undefined)
   useEffect(() => {
     setInView(undefined)
-    if (!active || pageId === "all" || !("IntersectionObserver" in globalThis)) return
+    if (!active || !("IntersectionObserver" in globalThis)) return
     const cards = [...document.querySelectorAll<HTMLElement>(`article[id^="demo-"]`)]
     const visible = new Set<string>()
     // The band a card counts as "in view" in: below the sticky header, above the lower half.
@@ -646,7 +652,8 @@ function useCardInView(active: boolean, pageId: GuidePageId): string | undefined
 interface GuideNavProps {
   label: string
   labels: Labels
-  page: GuidePage
+  /** The page showing; `undefined` in the served document, which marks none. */
+  page: GuidePage | undefined
   route: RouteMatch
   registry: PartialDemoRegistry
   /** Called on every link's click, with its href. */
@@ -660,7 +667,8 @@ interface GuideNavProps {
 }
 
 /**
- * Every page, in its group, and under the one showing, its sections and cards.
+ * Every page, in its group, and under the one showing, its sections and cards — under every page
+ * in the served document, which shows them all.
  *
  * `aria-current="page"` marks the page showing; `aria-current="true"` marks the section or the card
  * the route names, never both, so a reader and a check can each ask for the one current link.
@@ -681,7 +689,10 @@ function GuideNav(
               {group.pages.map((id) => {
                 const candidate = guidePages.find((each) => each.id === id)
                 if (!candidate) return null
-                const current = candidate.id === page.id
+                const current = candidate.id === page?.id
+                // The served document shows every page, so its navigation lists every page's
+                // sections and cards: the links a reader without JavaScript has.
+                const expanded = current || page === undefined
                 const href = pageHref(candidate.id)
                 return (
                   <li key={candidate.id}>
@@ -699,7 +710,7 @@ function GuideNav(
                     >
                       {candidate.title}
                     </a>
-                    {current && candidate.sections.length > 0
+                    {expanded && candidate.sections.length > 0
                       ? (
                         <ul
                           class={cn(
@@ -787,7 +798,7 @@ function NavSection(
 
 /**
  * A card's visible name: the component's own name for a component card, the card's title for a
- * class or an example card.
+ * class card.
  */
 function cardTitle(section: Pick<CatalogueSection, "kind">, name: string): string {
   return section.kind === "component" ? name : cardLabel(name)
@@ -989,7 +1000,7 @@ export function cardSpans(demos: readonly Pick<Demo, "wide">[]): ("full" | "half
 function PackagePage(
   { page, nested, registry, copy, labels, extra }: {
     page: GuidePage
-    /** Rendered inside the `all` page, under its overview: the page heading is an `h2` there. */
+    /** Rendered in the served document, under the overview: the page heading is an `h2` there. */
     nested: boolean
     registry: PartialDemoRegistry
     copy?: (text: string) => void | Promise<void>
@@ -1049,9 +1060,8 @@ function PackagePage(
               )}
             >
               {demos.map(([name, demo], index) => {
-                // A class card is headed by its own title and lists the classes it applies, an
-                // example card by its title with its code open; a component card is headed by the
-                // component.
+                // A class card is headed by its own title and lists the classes it applies; a
+                // component card is headed by the component.
                 const classDemo = section.kind === "class" ? classDemos[name] : undefined
                 return (
                   <DemoCard
@@ -1063,8 +1073,7 @@ function PackagePage(
                     description={demo.description}
                     snippet={demo.snippet}
                     classes={classDemo?.classes}
-                    usageOpen={section.kind === "example"}
-                    wide={demo.wide ?? (section.kind === "example" ? false : undefined)}
+                    wide={demo.wide}
                     props={demo.props}
                     labels={labels.card}
                     copy={copy}

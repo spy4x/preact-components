@@ -19,7 +19,7 @@ its own PR, each owning exactly one top-level directory.
 | `signals/`  | `buildModelStore`, `useUrlFilters`, `table-state`, `createThemeStore`, `createToastStore`, `patchSignal` — and the rest; no components                                                                                                                                                                    |
 | `crud/`     | `CrudList`, `CrudEditor`, `AssociationEditor`, `DeletionValidation`, field rows                                                                                                                                                                                                                           |
 | `map/`      | `Map` on Leaflet — its own package, so only an app that imports it resolves Leaflet                                                                                                                                                                                                                       |
-| `ui-guide/` | live component catalogue: an overview and one page per package behind a side navigation (`UIGuide`, `uiGuideRoute`)                                                                                                                                                                                       |
+| `ui-guide/` | live component catalogue: an overview and one page per package with components behind a side navigation (`UIGuide`, `uiGuideRoute`)                                                                                                                                                                       |
 | `pages/`    | demo app (GitHub Pages site and the browser checks under `pages/checks/`), not published                                                                                                                                                                                                                  |
 
 A name in backticks in this table must be an export or a subpath of that package, and each
@@ -80,18 +80,21 @@ Rules for a package config:
 Type-checking, formatting, linting and tests are discovered by walking the tree, so a new package is
 covered without touching root config or `infra/scripts/type-check.ts`.
 
-The catalogue has to be told about the package: add its directory to `packageIds` in
-`ui-guide/registry.ts` (or to `examplePackageIds` when it exports nothing that renders) and give
-every value it exports a card or an example, or add it to `EXCLUDED_PACKAGES` in
+The guide shows components only (#357). The coverage rule has to be told about the package: add
+its directory to `packageIds` in `ui-guide/registry.ts` when it exports a component, or to
+`helperPackageIds` when it exports helpers alone, or add it to `EXCLUDED_PACKAGES` in
 `ui-guide/coverage.ts` with a reason. A package directory with none of these fails
-`deno task test`. Adding an export to a catalogued package means adding its card or example to that
-package's section in `ui-guide/sections/` — a component gets a card in the section file that holds
-its kind (`ui/` spreads its cards over several files; the other packages have `<package>.tsx`),
-anything else an example in `<package>-examples.tsx` (`ui-guide/README.md`, "Adding an example");
-`deno task test` fails without one. The one way out is an entry in `EXPORTS_WITHOUT_DEMO` in
-`ui-guide/coverage.ts` with a sentence saying why no card or example is possible, which review
-challenges. The test cannot see a changed export, so that rests on the rule in "Every change updates
-the UI guide" below.
+`deno task test`. From then on every export needs one of two things, by kind. A **component** (a
+function named in PascalCase) needs a card in its package's section in `ui-guide/sections/`, in the
+section file that holds its kind (`ui/` spreads its cards over several files; the other packages
+have `<package>.tsx`); the one way out is an entry in `COMPONENTS_WITHOUT_CARD` in
+`ui-guide/coverage.ts` with a sentence saying why no card is possible, which review challenges. A
+**helper** (anything else: a function, a constant, an enum, a class) gets no card; the package's
+`README.md` names it in code instead — `` `clampProgress` `` or `` `clampProgress(value, max)` ``
+— with a line on what it does. `ui-guide/readme-pending.ts` lists the helpers no README named when
+the rule changed; it only shrinks. `deno task test` fails on a component with no card and on a
+helper its README does not name. The test cannot see a changed export, so that rests on the rule
+in "Every change updates the UI guide" below.
 
 ## Branches
 
@@ -308,8 +311,8 @@ And in wave eight:
 - A signal read during a render subscribes the component that rendered it. An example card whose
   code read a signal and then wrote one re-rendered itself forever, and the page never finished
   loading; `verify` reports it only as a load timeout. A server-render test cannot reproduce it,
-  so the proof is the browser's load (#300). `ui-guide/example.tsx` now runs every example
-  untracked (#304).
+  so the proof is the browser's load (#300). A card's demo that reads and writes a signal in its
+  own render meets the same loop.
 - A check that locates an element by `elementFromPoint` must decide whether a child of the element
   counts as the element. The Tooltip check counted a trigger's own hint as the trigger and passed
   with every trigger hidden (#301).
@@ -404,15 +407,16 @@ type error rather than a warning at runtime.
 
 ## Every change updates the UI guide
 
-**A new or changed component, helper or hook updates its card or example in `ui-guide/` in the same
-pull request.** Owner rule, 2026-09-25. The guide is how a reader finds out what the library does,
-so a change it does not show is a change nobody sees: a new prop gets a demo, a changed default
-changes the demo's snippet, and a helper or hook a component card does not already exercise gets
-an example of its own.
+**A new or changed component updates its card in `ui-guide/` in the same pull request, and a new
+or changed helper or hook updates its line in the package's README.** Owner rule, 2026-09-25,
+narrowed to components on 2026-09-26 (#357): the guide shows components only. The guide is how a
+reader finds out what the components do, so a change it does not show is a change nobody sees: a
+new prop gets a demo, and a changed default changes the demo's snippet.
 
-`deno task test` enforces only part of this: every value a catalogued package exports needs a card
-or an example, or an entry in `EXPORTS_WITHOUT_DEMO` with its reason (`ui-guide/coverage.ts`). That
-a card or an example still matches what it shows is held by review.
+`deno task test` enforces only part of this: every component a covered package exports needs a
+card, or an entry in `COMPONENTS_WITHOUT_CARD` with its reason, and every helper needs its
+package's README to name it (`ui-guide/coverage.ts`). That a card still matches what it shows, and
+a README line what the helper does, is held by review.
 
 ## Validation
 

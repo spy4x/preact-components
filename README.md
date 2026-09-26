@@ -10,7 +10,7 @@ The design system and the original markup are by [Eirene](https://github.com/Eir
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/guide-overview-dark.png">
-  <img src="docs/screenshots/guide-overview-light.png" width="1280" alt="The live UI guide's overview page: a header with the library's name and version, a search box, a GitHub link and a dark-mode switch; a side navigation grouped into Start here, Components, Helpers and Foundations; and the page itself, with the install command, a Browse components button beside the counts of live cards, icons and packages, and a first example card showing two buttons and a badge above its code toggle.">
+  <img src="docs/screenshots/guide-overview-light.png" width="1280" alt="The live UI guide's overview page: a header with the library's name and version, a search box, a GitHub link and a dark-mode switch; a side navigation grouped into Start here and Packages; and the page itself, with the install command, a Browse components button beside the counts of live cards, icons and packages, and a first example card showing two buttons and a badge above its code toggle.">
 </picture>
 
 Live guide: https://spy4x.github.io/preact-components — every component running, with its code.

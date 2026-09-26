@@ -1,23 +1,30 @@
 /**
  * The demo's host page — the app shell this library deliberately does not ship.
  *
- * The guide and a footer. The guide — `uiGuideRoute.component`, which is `UIGuide` routed by the
- * address's hash — owns the rest: its header, its side navigation, one page at a time,
+ * The guide — `uiGuideRoute.component`, which is `UIGuide` routed by the address's hash — owns
+ * the page: its header, its side navigation, one page at a time,
  * the deep links that mark and scroll to a card, and reading the address. What the host adds is
  * what only it knows: the hash to render before hydration, the document's title, set from the route
  * the guide reports, and manual scroll restoration, because this page is the whole app and the
  * guide scrolls on its first read itself.
  *
- * The signals page carries two demos that are not cards, because each needs a page that owns an
+ * The UI page ends with two demos that are not cards, because each needs a page that owns an
  * address: {@link UrlFilterDemo}, `useUrlFilters` bound directly to filter signals, and
  * {@link DataTableSortDemo}, the same hook underneath `DataTable`'s own `sort` prop.
+ * They were on the Signals page until the guide stopped showing helpers (#357); the browser checks
+ * in `pages/checks/signals.ts` and `pages/checks/ui.ts` drive them there.
  */
 
 import { copyToClipboard } from "@spy4x/preact-ui/copy-button"
-import { type ColorSchemePort, type GuideRouteChange, uiGuideRoute } from "@spy4x/preact-ui-guide"
+import {
+  type ColorSchemePort,
+  type GuideRouteChange,
+  type MapTiles,
+  uiGuideRoute,
+} from "@spy4x/preact-ui-guide"
 import { useEffect, useState } from "preact/hooks"
 import { DataTableSortDemo } from "./data-table-sort.tsx"
-import { PAGE_TITLE, REPOSITORY } from "./site.ts"
+import { LOCAL_MAP_TILES_FLAG, PAGE_TITLE, REPOSITORY } from "./site.ts"
 import { UrlFilterDemo } from "./url-filters.tsx"
 
 /** Storage key shared with the bootstrap script in `<head>` (`document.tsx`). */
@@ -31,6 +38,27 @@ const THEME_KEY = "pc-theme"
  * @param text Text to place on the clipboard.
  */
 const copyText = (text: string): void => copyToClipboard(text)
+
+/**
+ * The Map card's tiles during `verify`'s browser checks: one tiny local image, requested unchanged
+ * for every tile Leaflet asks for, relative so it resolves against whatever base the page is served
+ * at. Everywhere else the guide draws OpenStreetMap's tiles.
+ */
+const LOCAL_MAP_TILES: MapTiles = {
+  url: "map-demo/tile.png",
+  attribution: "© Example tile provider",
+}
+
+/**
+ * The tiles to hand the guide: the local ones when `verify` set {@link LOCAL_MAP_TILES_FLAG}, and
+ * the guide's own default otherwise. Read during render, which is safe for hydration: the Map card
+ * draws its map only in the browser, after its module loads, and its served form names no tile.
+ */
+function mapTiles(): MapTiles | undefined {
+  return (globalThis as Record<string, unknown>)[LOCAL_MAP_TILES_FLAG] === true
+    ? LOCAL_MAP_TILES
+    : undefined
+}
 
 /** Props of {@link App}. */
 export interface AppProps {
@@ -71,8 +99,9 @@ export function App({ initialHash, version }: AppProps) {
         repository={REPOSITORY}
         colorScheme={colorScheme}
         contentAs="main"
+        mapTiles={mapTiles()}
         pageExtras={{
-          signals: (
+          ui: (
             <div class="flex flex-col gap-12">
               <UrlFilterDemo />
               <DataTableSortDemo />
@@ -80,7 +109,6 @@ export function App({ initialHash, version }: AppProps) {
           ),
         }}
       />
-      <SiteFooter />
     </div>
   )
 }
@@ -126,28 +154,4 @@ function useColorScheme(): ColorSchemePort {
   }
 
   return { dark, toggle }
-}
-
-/** Where the library lives and what the demo is built from. */
-function SiteFooter() {
-  return (
-    <footer class="border-t border-gray-200 py-8 dark:border-gray-800">
-      <div class="mx-auto flex max-w-screen-2xl flex-col gap-2 px-4 text-xs text-gray-500 sm:px-6 lg:px-8 dark:text-gray-400">
-        <p class="measure">
-          Prerendered with <code>preact-render-to-string</code>{" "}
-          and hydrated with one Preact island. Styled with{" "}
-          <code>theme/preset.css</code>, the same stylesheet an app imports.
-        </p>
-        <p class="measure">
-          <a class="link" href={REPOSITORY} rel="noreferrer">github.com/spy4x/preact-components</a>
-        </p>
-        <p class="measure">
-          Design, original markup, CSS and Tailwind by{" "}
-          <a class="link" href="https://github.com/Eirene" rel="noreferrer">Eirene</a>{" "}
-          (<a class="link" href="https://isorokina.com/" rel="noreferrer">isorokina.com</a>) — the
-          extraction into a Preact + signals package is this repository's work.
-        </p>
-      </div>
-    </footer>
-  )
 }

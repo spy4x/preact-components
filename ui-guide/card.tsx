@@ -47,7 +47,7 @@ export interface DemoCardProps {
   name: string
   /**
    * The card's name as the copy control reads it: `<Name />` for a component card, the card's own
-   * title for a class or an example card.
+   * title for a class card.
    */
   label: string
   /** The copy control's name. Defaults to `labels.copySnippet(label)`. */
@@ -64,8 +64,6 @@ export interface DemoCardProps {
   snippet: string
   /** Classes the card applies; a class card renders them as chips. */
   classes?: string[]
-  /** Show the code open: an example card's code is its content, not a detail. */
-  usageOpen?: boolean
   /**
    * `true` for a card that takes the content column's full width, `false` for one that shares a
    * row, left out for a card whose section has not said (the grid then widens it when its demo
@@ -113,7 +111,6 @@ export function DemoCard(
     description,
     snippet,
     classes,
-    usageOpen,
     wide,
     props,
     anchorId,
@@ -180,7 +177,7 @@ export function DemoCard(
       </div>
       {props && props.length > 0 ? <PropsSummary props={props} labels={labels} /> : null}
       <div class="relative" data-e2e="usage">
-        <details class="group/code min-w-0" open={usageOpen}>
+        <details class="group/code min-w-0">
           <summary class="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium text-gray-600 select-none hover:text-gray-950 sm:px-6 dark:text-gray-400 dark:hover:text-gray-50 [&::-webkit-details-marker]:hidden">
             <IconChevronRight class="size-4 shrink-0 transition-transform group-open/code:rotate-90" />
             {labels.code}
