@@ -8,7 +8,7 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { options } from "preact"
 import { render } from "preact-render-to-string"
-import { UIGuide, type UIGuideProps } from "./shell.tsx"
+import { cardSpans, navGroups, UIGuide, type UIGuideProps } from "./shell.tsx"
 import { catalogueNames, demoRegistry, guidePages } from "./registry.ts"
 
 /** The complete registry without the cards of one package's page. */
@@ -243,5 +243,87 @@ describe("UIGuide's own copy", () => {
     expect(skip, "the skip link is rendered with its label").not.toBeNull()
     expect(html.indexOf("ui-guide-skip")).toBeLessThan(html.indexOf("data-guide-page-link"))
     expect(html, "the link's target is on the page").toContain(`id="${skip?.[1]}"`)
+  })
+})
+
+describe("cardSpans", () => {
+  it("gives a wide card the whole row and pairs the normal cards around it", () => {
+    expect(cardSpans([{}, {}, { wide: true }, {}, {}])).toEqual([
+      "half",
+      "half",
+      "full",
+      "half",
+      "half",
+    ])
+  })
+
+  it("widens the last card of an odd run, so the grid has no hole", () => {
+    expect(cardSpans([{}, {}, {}, { wide: true }, { wide: false }])).toEqual([
+      "half",
+      "half",
+      "full",
+      "full",
+      "full",
+    ])
+  })
+
+  it("keeps a lone normal card between two wide ones on its own row", () => {
+    expect(cardSpans([{ wide: true }, {}, { wide: true }])).toEqual(["full", "full", "full"])
+  })
+})
+
+describe("the navigation's groups", () => {
+  it("hold every page exactly once", () => {
+    const grouped = navGroups.flatMap((group) => [...group.pages])
+
+    expect([...grouped].sort()).toEqual(guidePages.map((page) => page.id).sort())
+    expect(new Set(grouped).size).toBe(grouped.length)
+  })
+
+  it("draw each group's title, overridable through the labels", () => {
+    const html = render(<UIGuide hash="#/ui" labels={{ navGroups: { helpers: "Outils" } }} />)
+
+    expect(html).toContain(">Components<")
+    expect(html).toContain(">Outils<")
+    expect(html).not.toContain(">Helpers</p>")
+  })
+})
+
+describe("the theme switch", () => {
+  const scheme = (dark: boolean) => ({ dark, toggle: () => {} })
+
+  it("is named for what a press does, in either palette", () => {
+    expect(render(<UIGuide hash="#/ui" colorScheme={scheme(false)} />))
+      .toContain('aria-label="Switch to dark mode"')
+    expect(render(<UIGuide hash="#/ui" colorScheme={scheme(true)} />))
+      .toContain('aria-label="Switch to light mode"')
+  })
+
+  it("takes its name and its words from the labels", () => {
+    const html = render(
+      <UIGuide
+        hash="#/ui"
+        colorScheme={scheme(false)}
+        labels={{ switchToDark: "Passer en mode sombre", darkMode: "Mode sombre" }}
+      />,
+    )
+
+    expect(html).toContain('aria-label="Passer en mode sombre"')
+    expect(html).toContain(">Mode sombre<")
+  })
+
+  it("is left out when the host passes no colour scheme", () => {
+    expect(render(<UIGuide hash="#/ui" />)).not.toContain('data-e2e="theme-toggle"')
+  })
+})
+
+describe("section headings", () => {
+  it("hides a section heading that would repeat its page's own", () => {
+    const html = render(<UIGuide hash="#/charts" />)
+    const header = (id: string) =>
+      new RegExp(`<section id="${id}"[^>]*><div class="([^"]*)"`).exec(html)?.[1] ?? ""
+
+    expect(header("charts")).toContain("sr-only")
+    expect(header("charts-examples")).not.toContain("sr-only")
   })
 })
