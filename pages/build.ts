@@ -217,10 +217,10 @@ const MAP_PAGE_ENTRY = "src/map-page/+main.tsx"
 /**
  * Bundle the island for the browser, split at every dynamic `import()`.
  *
- * Splitting is what lets the guide's charts page load d3 only when it opens: the charts section
- * reaches its d3 islands through a dynamic import (`ui-guide/sections/charts-d3.tsx`), and without
+ * Splitting is what lets the guide's map page load Leaflet only when it opens: the map section
+ * reaches `Map` through a dynamic import (`ui-guide/sections/map-leaflet.tsx`), and without
  * `--code-splitting` the bundler would inline that import into the one file every page loads.
- * `Map`'s `import("leaflet")` gets its own file the same way.
+ * `Map`'s own `import("leaflet")` gets its own file the same way.
  *
  * @param entry The entry point, relative to `pages/`: {@link CATALOGUE_ENTRY} or
  * {@link MAP_PAGE_ENTRY}. Each is bundled on its own, so the catalogue's files are the same as

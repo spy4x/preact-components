@@ -5,8 +5,7 @@
     ".": "./+index.ts"
   },
   "imports": {
-    // Leaflet is pinned here and nowhere else in the workspace, the same isolation `charts/deno.json`
-    // gives `d3`: a map is one product's need, not every package's, and a component that never
+    // Leaflet is pinned here and nowhere else in the workspace: a map is one product's need, not every package's, and a component that never
     // imports `map/` must never carry Leaflet in its graph. `map/README.md` → "Do I need Leaflet?"
     // has the proof. 1.9.4 is the latest stable release on npm; 2.0.0-alpha.1 is a pre-release and is
     // not used. `@types/leaflet` is a separate, community-maintained package (Leaflet itself ships no

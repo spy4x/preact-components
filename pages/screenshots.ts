@@ -183,7 +183,7 @@ async function take(devtools: Devtools, url: string, shot: Shot): Promise<void> 
     mobile: false,
   })
   await open(devtools, url, shot)
-  // A lazy card (the d3 charts, the map) draws after its module arrives; the longer wait of a full
+  // A lazy card (the map) draws after its module arrives; the longer wait of a full
   // page is for those.
   const length = await devtools.evaluate<number>(`(async () => {
     await document.fonts.ready

@@ -3,8 +3,7 @@
  *
  * One card, one component. The card reaches `Map` only through `LazyMap` (`map-leaflet.tsx`), so the
  * package, and Leaflet with it, loads only when the map page is shown (#315); the card's
- * server-rendered form is a sized placeholder box, the same honesty note `charts.tsx`'s d3 islands
- * carry. Confirming the map loads, the tiles draw and the markers become live pins needs a browser,
+ * server-rendered form is a sized placeholder box. Confirming the map loads, the tiles draw and the markers become live pins needs a browser,
  * which `pages/checks/map.ts` is; `map/map.test.tsx` proves the box, the list and the escaping of
  * caller data.
  *

@@ -1,14 +1,9 @@
 /**
- * The vocabulary every time-series module shares, kept free of `d3` on purpose.
+ * The vocabulary of a time series as a stats endpoint returns it: bucket timestamps and values,
+ * and the granularity they were bucketed at. `payload.ts` validates it; a `LineChart` with
+ * `xAxis="time"` draws it once each point is mapped to `{ x: timeGroup, y: value }`.
  *
- * `D3LineChart` owns `TIME_FRAMES`, `TimeFrame` and `TimeSeriesPoint`, but `payload.ts` and
- * `metric-panel.tsx` only need the vocabulary: a validated payload and a panel around the chart.
- * While those two imported the d3-backed module — even for types alone — type-checking a
- * zero-dependency consumer still had to resolve `d3`. They import from here instead, so the
- * `scales` / `bars` / `donut-chart` / `kpi` / `line-chart` / `colors` / `payload` / `metric-panel`
- * side of the package reaches no `d3` specifier at all.
- *
- * This module imports nothing. Anything added here must stay that way.
+ * This module imports nothing.
  */
 
 /** The bucket granularities a series can be aggregated at. */

@@ -1,205 +1,122 @@
 # `@spy4x/preact-charts`
 
-Chart components extracted from earlier source applications.
+Charts for Preact that render complete on the server and become interactive in the browser, plus
+the axis and loading helpers behind them.
 
-Two approaches live side by side, and the split is deliberate:
-
-- **Zero-JS SVG, server-rendered** — `LineChart`, `Bars`, `DonutChart`, `Kpi`, `MetricPanel`, plus the
-  shared maths in `scales.ts`, `time-series.ts`, `colors.ts` and the `payload.ts` loader. Plain markup
-  with no hydration and no client bundle. These are what an MPA or an SSR route should reach for.
-- **Interactive d3 islands** — `D3LineChart`, `CompareChart`. Imperative d3 v7 render in an effect,
-  resize-aware, with a tooltip. Use these only where the interaction earns the JavaScript.
-
-The split is also a dependency boundary: **only the islands need `d3`**, and only they import it.
-Everything on the SVG side type-checks, tests and bundles with `d3` absent. See
-[Do I need d3?](#do-i-need-d3).
+- **Server-rendered, finished without JavaScript** — `LineChart`, `Bars`, `DonutChart`, `Kpi`,
+  `KpiGrid`. The markup a server sends is the whole chart: axes, lines, bars, legend, a native
+  tooltip on every point.
+- **Interactive once hydrated** — `LineChart` adds a crosshair and a tooltip that follow the pointer,
+  and steps through its points with the arrow keys, Home and End; `DonutChart` gives every slice a
+  tooltip with its label, value and share, by pointer and by keyboard. Both tooltips stay inside the
+  chart and the viewport, flipping to the other side of the point near an edge.
+- **No charting library.** Nothing here imports d3 or any other: the axis maths is `scales.ts`, the
+  time ticks are `time-ticks.ts`, and the hover layer is plain Preact.
 
 ## Rules this package follows
 
 - **Props and ports, never a global store.** No component imports an app's state singleton and no
   module-level signal holds app data. Data arrives as props; loading arrives as a `loadStats`
   callback; colours arrive as props.
-- **Colours are props, with theme tokens as the default.** The defaults are CSS custom properties of
-  the form `var(--color-primary-muted, oklch(…))`, so a chart picks up `theme/` when it is loaded and
-  still renders standalone. They are applied through `style`, because `var()` does not resolve inside
-  SVG presentation attributes such as `fill="…"`. The sources' hardcoded `#2a3556`/`#97a3bf` are gone.
+- **Colours are props, with theme tokens as the default.** The defaults are CSS custom properties
+  with an inline fallback, so a chart picks up `theme/` when it is loaded and still renders
+  standalone. They are applied through `style`, because `var()` does not resolve inside SVG
+  presentation attributes such as `fill="…"`.
+- **A series palette for both themes.** `DEFAULT_CHART_PALETTE` is five colours — blue, orange,
+  green, violet, magenta — with a light and a dark step each. A chart's root sets them as `--chart-1`
+  … `--chart-5`, switching to the dark steps under a `.dark` ancestor. Every step reaches 3:1
+  against its page (white and gray-50 light; gray-800, gray-900 and the ink palette's card and page
+  dark), and neighbours stay apart for colour-blind readers. An app recolours a slot with
+  `--color-chart-1` … `--color-chart-5`, or passes `colors`.
 - **Server-renderable.** `document`, `window`, `IntersectionObserver` and `ResizeObserver` are touched
-  inside effects, behind feature checks, only.
-- **No sibling package imports.** `charts/` depends on `preact`, `arktype`, `d3` for the islands only,
-  and nothing else in the workspace, so it stays independent of `ui/` and `signals/`.
-- **d3 is optional, and it is not in the root import map.** One module needs it, so the specifier is
-  declared next to that module instead of being ambient for every consumer of every package. See
-  [Do I need d3?](#do-i-need-d3).
+  inside effects and event handlers only. What the server prints, the browser prints too: the time
+  axis lays its ticks on the wall clock of `UTC` and prints them in `en-GB` unless told otherwise
+  (`timeZone`, `locale`), so hydration never has to replace text.
+- **No sibling package imports.** `charts/` depends on `preact`, `arktype` and `@spy4x/platform`'s
+  axis maths, and nothing else in the workspace, so it stays independent of `ui/` and `signals/`.
 
 ## Components
 
-| Component      | Subpath         | Kind    | Needs d3 | Key props / ports                                                     |
-| -------------- | --------------- | ------- | -------- | --------------------------------------------------------------------- |
-| `LineChart`    | `line-chart`    | zero-JS | no       | `series`, `width`, `height`, `yFormat`, `yDomain`, `xStride`, colours |
-| `Bars`         | `bars`          | zero-JS | no       | `data`, `max`, `format`, `labelWidth`, `colors`                       |
-| `DonutChart`   | `donut-chart`   | zero-JS | no       | `data`, `centerValue`, `centerLabel`, `showLegend`, `colors`          |
-| `Kpi`          | `kpi`           | zero-JS | no       | `label`, `value`, `sub`, `tone`                                       |
-| `KpiGrid`      | `kpi`           | zero-JS | no       | `children`, `minWidth`                                                |
-| `D3LineChart`  | `d3-line-chart` | island  | **yes**  | `data`, `timeFrame`, `referenceValue`, `ignoreZeroes`, `colors`       |
-| `CompareChart` | `compare-chart` | island  | **yes**  | `range`, `data`, `loadStats` (port), `rangePicker` (slot)             |
-| `MetricPanel`  | `metric-panel`  | shell   | no       | `title`, `unit`, `error`, `actions`, `children`                       |
+| Component    | Subpath       | Interactive in a browser               | Key props / ports                                                                              |
+| ------------ | ------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `LineChart`  | `line-chart`  | crosshair, tooltip, arrow-key stepping | `series`, `xAxis`, `height`, `yFormat`, `xFormat`, `yDomain`, `referenceValue`, `ignoreZeroes` |
+| `Bars`       | `bars`        | no                                     | `data`, `max`, `format`, `labelWidth`, `colors`                                                |
+| `DonutChart` | `donut-chart` | slice tooltip, arrow-key stepping      | `data`, `centerValue`, `centerLabel`, `valueFormat`, `showLegend`, `colors`                    |
+| `Kpi`        | `kpi`         | no                                     | `label`, `value`, `sub`, `tone`                                                                |
+| `KpiGrid`    | `kpi`         | no                                     | `children`, `minWidth`                                                                         |
 
-Hooks and helpers, all d3-free: `useInView` (`use-in-view`), `useMetricSeries` / `loadMetricSeries`
-(`metric-panel`), `previousPeriod` / `loadChartPayload` / `chartPayloadSchema` (`payload`), the
-`TIME_FRAMES` / `TimeFrame` / `TimeSeriesPoint` vocabulary (`time-series`), and the axis maths in
-`scales` — `niceStep`, `ticks`, `niceScale`, `paddedDomain`, `linearScale`, `extent`, `xLabelStride`.
-`D3LineChart`'s own d3-free parts live in `d3-line-chart-core` — `DEFAULT_D3_LINE_CHART_COLORS`,
-`yDomainFor`, `assertD3Available` and `MISSING_D3_LINE_ERROR` — and `d3-line-chart` and the `svg`
-barrel re-export them.
+Hooks and helpers: `useInView` (`use-in-view`), `previousPeriod` / `loadChartPayload` /
+`chartPayloadSchema` (`payload`), the `TIME_FRAMES` / `TimeFrame` / `TimeSeriesPoint` vocabulary
+(`time-series`), and the axis maths in `scales` — `niceStep`, `ticks`, `niceScale`, `paddedDomain`,
+`linearScale`, `extent`, `xLabelStride`.
 
 ## Usage
 
 ```tsx
-// The SVG half, through a barrel that imports nothing d3-backed.
-import { Bars, DonutChart, Kpi, KpiGrid, LineChart, MetricPanel } from "@spy4x/preact-charts/svg"
-// or one chart at a time
-import { LineChart } from "@spy4x/preact-charts/line-chart"
-
-// The interactive half, which needs d3 (see below).
-import { D3LineChart } from "@spy4x/preact-charts/d3-line-chart"
-import { CompareChart } from "@spy4x/preact-charts/compare-chart"
+import { Bars, DonutChart, Kpi, KpiGrid, LineChart } from "@spy4x/preact-charts"
 ```
 
-A zero-JS chart — this renders on the server and never hydrates:
+Series over categories:
 
 ```tsx
 <LineChart
   title="Runs per month"
   series={[{ name: "Runs", points: months.map((m) => ({ x: m.label, y: m.runs })) }]}
-  yFormat={(value) => `${value} kg`}
-  colors={app.chartPalette}
+  yFormat={(value) => `${value} km`}
 />
 ```
 
-An interactive one, with data loading injected rather than imported:
+A time series against the period before it, with a target line. `x` takes an ISO string, epoch
+milliseconds or a `Date`; ticks land on round hours, days or months; a `null` value breaks the line
+and a dashed grey segment bridges the gap:
 
 ```tsx
-<CompareChart
-  range={range}
-  data={power.data}
-  timeFrame="hours"
-  loadStats={(window) => api.stats({ ...window, kind: "power" })}
-  onError={(message) => app.toast.error({ body: message })}
+const shifted = previous.data.map((p) => ({ x: +new Date(p.timeGroup) + span, y: p.value }))
+
+<LineChart
+  xAxis="time"
+  title="Power, kW"
+  series={[
+    { name: "This week", points: current.data.map((p) => ({ x: p.timeGroup, y: p.value })) },
+    { name: "Last week", dashed: true, showPoints: false, points: shifted },
+  ]}
   referenceValue={42}
+  referenceLabel="Contracted"
 />
 ```
 
-Deferring an expensive island until it is nearly on screen:
+A comparison is the caller's data: load the earlier window with `loadChartPayload` and
+`previousPeriod`, move its instants forward by the window's length, and pass it as a dashed series.
 
-```tsx
-function LazyChart() {
-  const { ref, inView } = useInView<HTMLDivElement>()
-  return <div ref={ref}>{inView ? <CompareChart … /> : null}</div>
-}
-```
+### Moving from `D3LineChart` and `CompareChart`
 
-One metric panel, which is what a source application's chart route duplicated for power and energy — the two panels
-differed only in their heading and a `/1000` conversion, so the conversion is the `scale` option:
+Both were removed in favour of the one `LineChart` (#356), and `MetricPanel` with them.
 
-```tsx
-<MetricPanel title="Power" unit="kW" error={error} actions={<ExportButtons />}>
-  <D3LineChart data={power.data} timeFrame={power.timeFrame} ariaLabel="Power, kW" />
-</MetricPanel>
-```
+| Before                                             | Now                                                                                                                 |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `<D3LineChart data timeFrame />`                   | `<LineChart xAxis="time" series={[{ name, points }]} />`, `points` mapped from `{ timeGroup, value }` to `{ x, y }` |
+| `ticks`, `tickFormat`                              | `yTicks`, `yFormat`                                                                                                 |
+| `tickValues` (labels for a numeric index)          | `yFormat={(value) => labels[value]}`                                                                                |
+| `timeTickFormat`, `tooltipFormat`                  | `xFormat` (axis and tooltip heading), `yFormat` (tooltip value)                                                     |
+| `referenceValue`, `ignoreZeroes`, `isLoading`      | the same names                                                                                                      |
+| `missingValuesLabel`, `loadingLabel`, `emptyLabel` | the same names                                                                                                      |
+| `colors.line`, `.axis`, `.text`, `.surface`        | a series' `color`, `axisColor`, `textColor`, `surfaceColor`                                                         |
+| `colors.reference`                                 | `referenceColor`                                                                                                    |
+| `aspectRatio`                                      | `height`, in pixels; the chart takes its parent's width                                                             |
+| `LineChart`'s `width` (the `viewBox` width)        | gone: the chart is as wide as its parent                                                                            |
+| `<CompareChart range data loadStats />`            | a second, `dashed` series; load it with `loadChartPayload(loadStats, previousPeriod(range))`                        |
+| `CompareChart`'s `compareLabel` toggle             | the app's own toggle: add or drop the dashed series when it changes                                                 |
+| `CompareChart`'s `rangePicker` slot                | the app's own picker, rendered beside the chart                                                                     |
+| `CompareChart`'s `onError`                         | `loadChartPayload` returns `{ error }`; show it with `ui/`'s `ErrorState` or a toast                                |
+| `<MetricPanel title unit error actions>`           | the app's own heading, `ui/`'s `ErrorState`, and a `LineChart`                                                      |
+| `@spy4x/preact-charts/svg`                         | `@spy4x/preact-charts`: no module imports d3 any more                                                               |
 
-## Do I need d3?
-
-No, unless you render `D3LineChart` or `CompareChart`. This is the full list:
-
-| Needs `d3`                                      | Does not                                                              |
-| ----------------------------------------------- | --------------------------------------------------------------------- |
-| `d3-line-chart` (`D3LineChart`)                 | `scales`, `colors`, `time-series`, `payload`                          |
-| `compare-chart` (`CompareChart`)                | `line-chart`, `bars`, `donut-chart`, `kpi`                            |
-| the package barrel `.` (re-exports both halves) | `metric-panel`, `use-in-view`, `d3-line-chart-core`, the `svg` barrel |
-| `ui-guide`'s charts sections (load it lazily)   | every suite here except `d3-line-chart.test.tsx`                      |
-| `compare-chart.test.tsx`                        | —                                                                     |
-
-`CompareChart` imports `D3LineChart`, so it needs d3 for that reason alone. Type-only imports count
-too: `payload.ts` and `metric-panel.tsx` used to take `TimeFrame` / `TimeSeriesPoint` from
-`d3-line-chart.tsx`, which the resolver follows even though TypeScript erases it, so both would have
-needed d3 declared to be type-checked. They take it from `time-series.ts` now.
-
-**If you only draw SVG charts, do nothing.** Import `@spy4x/preact-charts/svg` (or any single
-subpath above) and there is no `d3` in your dependency graph, your type check or your bundle. `d3` is
-not in the root import map of this repo either — the specifier lives in `charts/deno.json`, next to
-the one module that uses it, which is the closest thing Deno has to an optional peer dependency.
-
-**If you want the interactive islands, add d3 yourself**, at the version `charts/deno.json` pins:
-
-```bash
-deno add npm:d3@7.9.0
-# or, in a Node project: npm i d3@7.9.0
-```
-
-`D3LineChart` and `CompareChart` draw inside an effect with d3 v7 only — they are the reason the
-package depends on it at all. `MetricPanel` is a shell around whatever chart you put in it, so it
-stays on the SVG side, as does the `payload` loader that validates what a stats endpoint returns
-(`TIME_FRAMES`, `TimeFrame` and `TimeSeriesPoint` live in `time-series.ts` and are re-exported from
-`payload`-side modules, never from a d3-backed one).
-
-### What happens without d3
-
-Two failures, both loud, and neither can be turned into a confusing one:
-
-1. **Importing a d3-backed subpath without the dependency.** `d3-line-chart.tsx` has a static
-   `import * as d3 from "d3"`, so resolution fails at build time, naming the file, the line and the
-   command that fixes it:
-
-   ```
-   TS2307 [ERROR]: Import "d3" not a dependency and not in import map from "…/charts/d3-line-chart.tsx"
-     hint: If you want to use the npm package, try running `deno add npm:d3`
-       at …/charts/d3-line-chart.tsx:1:21
-   ```
-
-   Deno says the same thing for `deno check`, `deno test` and `deno run`. A static import is
-   deliberate: the failure has to happen at build time, not silently at runtime. There is no way to
-   wrap it in a friendlier message — a static import is resolved before module code runs — so the
-   message you get is the resolver's. Deno has no `peerDependenciesMeta`, so this repo cannot express
-   "optional" any better than by pointing the specifier at the module that needs it.
-
-2. **A `d3` that resolves but cannot draw** (a stub, a failed optional install, the wrong package
-   under that name). The effect calls `assertD3Available`, which throws
-   `MISSING_D3_LINE_ERROR` — it names the package, says the dependency is an optional peer, gives the
-   install command and points at the zero-JS charts as the alternative — instead of failing with
-   `d3.line is not a function` in the middle of `render`. `MISSING_D3_LINE_ERROR` is exported for
-   hosts that want to preflight it.
-
-   Honest scope: this repo has no DOM, so the throw is verified through its unit test against the real
-   `d3` namespace and against objects that lack a line generator
-   (`d3-line-chart.test.tsx`), not by driving a browser without d3.
-
-### The probe, and what it shows today
-
-`charts/probe/no-d3-dependency.ts` is a runnable probe. No CI runs it, and on `main` today its
-second step fails ([issue #123](https://github.com/spy4x/preact-components/issues/123) tracks the
-fix), so what follows is what the probe is built to show, not what a passing run shows today:
-
-```bash
-deno task --cwd charts probe:no-d3
-```
-
-It copies `charts/` to a scratch directory, builds an import map from the root map with the `d3`
-specifier pointed at a file that does not exist, and then
-
-1. type-checks the twelve zero-dependency entry points and runs the eight suites plus
-   `charts/probe/no-d3-path.test.ts` — which imports the whole SVG graph, so an import is not enough
-   to pass — with `d3` unresolvable;
-2. repeats the exercise for the three d3-backed entry points and the two suites that import them,
-   which **must** fail; without that control the first step could pass vacuously;
-3. repeats it with no `d3` entry in the map at all — what a consumer who never added the dependency
-   has — and asserts the message names the file and the fix.
-
-It prints each of its five assertions as `ok` or `FAIL`, and exits non-zero if any fails. No bundler
-and no bundle-size tool is added for it, and none is used — the byte figures in issue #25 come from
-a Vite build outside this repo and **are not reproducible from this repo**. What is reproducible
-here is the structural claim: the barrel re-exports the d3 islands (assertion 1 of the control,
-`+index.ts` in the failing set), so a consumer who imports it needs d3 resolvable, while a consumer
-of `svg` or any single SVG subpath does not.
+`defaultTooltipFormat`, `formatTimeTick`, `yDomainFor`, `assertD3Available`,
+`MISSING_D3_LINE_ERROR`, `DEFAULT_D3_LINE_CHART_COLORS`, `useMetricSeries` and `loadMetricSeries`
+went with them, and so did the types `CompareChartProps`, `D3LineChartProps`, `D3LineChartColors`,
+`MetricPanelProps`, `MetricError`, `MetricSeriesOptions` and `MetricSeriesState`. `LineChartProps`
+lost `width`; its series are `LineSeries` (`{ name, points, color?, showPoints?, dashed? }`) of
+`LinePoint` (`{ x, y }`, `x` a `LineX`). `d3` is no longer a dependency of anything in this repository.
 
 ## Axis behaviour
 
@@ -248,23 +165,19 @@ negative, tiny, huge and boundary-tick cases, and runs `niceScale`'s own non-ter
 (`niceScale(1e6, 2e6, { target: 1e25 })`) and a termination check on the re-exported `ticks`
 (`ticks(1e18, 1e18 + 100)`) each in a worker with a deadline — `deno test` has no per-test timeout, so
 an in-process call would hang the suite instead of failing it. `ticks`/`niceStep` themselves are
-tested once, in `@spy4x/platform`'s own `axis.test.ts`. The chart suites render each component with
-`preact-render-to-string` and assert on real markup — tick counts, path geometry for a known dataset,
-legend rows, percent widths, gradient stops and empty states. `d3-line-chart.test.tsx` additionally
-covers the pure helpers behind the island (`yDomainFor`, `formatTimeTick`), the missing-d3 guard
-(`assertD3Available`) and its server-rendered shell, since d3 itself needs a DOM. It imports them
-through `d3-line-chart.tsx`, which re-exports the ones `d3-line-chart-core.ts` defines, so the same
-suite proves that import path still works.
-`preact-render-to-string` comes from the root import map, which pins it for every package's tests.
+tested once, in `@spy4x/platform`'s own `axis.test.ts`. `time-ticks.test.ts` covers the time-axis
+steps and labels, `tooltip.test.ts` the tooltip's placement rules. The chart suites render each
+component with `preact-render-to-string` and assert on real markup — path geometry for a known
+dataset, gaps and bridges, time positions, tick labels, legend rows, percent widths, gradient stops
+and empty states.
 
-`charts/probe/no-d3-dependency.ts` is the dependency-boundary suite: it is a task, not a test, because
-it spawns `deno check`/`deno test` subprocesses. `charts/probe/no-d3-path.test.ts` is picked up by
-`deno task test` too, and passing there shows nothing on its own — it is the scratch-map run in the
-probe that gives it its meaning.
+The tooltips live in effects and event handlers, which a server render never runs, so they are
+proven in a real browser: `pages/checks/charts.ts` hovers the line chart's first and last point and
+every donut slice, steps through both with the keyboard, and checks that each tooltip lies inside
+its chart and the viewport at 375 and 1440 pixels wide.
 
 ## Not in this package
 
 `MetricsList` (domain-coupled to metric catalogs and device ids — the layout idea lives on in
-`Bars`), `DateTimeFilter` (a range picker belongs with the app or `ui/`; `CompareChart` takes a
-`rangePicker` slot instead), `Export` (drags in `xlsx`), and `chooseChartRoute`, which is a
-proposal rather than implemented code.
+`Bars`), `DateTimeFilter` (a range picker belongs with the app or `ui/`), `Export` (drags in
+`xlsx`), and `chooseChartRoute`, which is a proposal rather than implemented code.

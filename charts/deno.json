@@ -3,36 +3,17 @@
   "version": "0.1.5",
   "exports": {
     ".": "./+index.ts",
-    "./svg": "./+svg.ts",
     "./bars": "./bars.tsx",
     "./colors": "./colors.ts",
-    "./compare-chart": "./compare-chart.tsx",
-    "./d3-line-chart": "./d3-line-chart.tsx",
-    "./d3-line-chart-core": "./d3-line-chart-core.ts",
     "./donut-chart": "./donut-chart.tsx",
     "./kpi": "./kpi.tsx",
     "./line-chart": "./line-chart.tsx",
-    "./metric-panel": "./metric-panel.tsx",
     "./payload": "./payload.ts",
     "./scales": "./scales.ts",
     "./time-series": "./time-series.ts",
     "./use-in-view": "./use-in-view.ts"
   },
-  "imports": {
-    // d3 is an optional peer of the d3 path only, so it is declared here and nowhere else: the root
-    // import map used to carry it, which made it resolvable for every consumer of every package,
-    // `Bars` included. Deno has no `peerDependenciesMeta`, so this entry is the whole mechanism —
-    // the nearest config to `d3-line-chart.tsx` owns the specifier, and a consumer that only draws
-    // SVG charts never has it in their graph. Pinned to the same version the root map pinned.
-    "d3": "npm:d3@7.9.0"
-  },
-  "tasks": {
-    // The proof for the issue's headline claim. Kept out of the root `check` task because it spawns
-    // `deno check` and `deno test` subprocesses; `deno task check` covers the modules themselves.
-    "probe:no-d3": "deno run --allow-run --allow-read --allow-write --allow-env probe/no-d3-dependency.ts"
-  },
   "publish": {
-    // `probe/` runs `probe:no-d3` against this repository's own tree and is meaningless outside it;
     // `ticks.worker.ts` and `nice-scale.worker.ts` exist only so `scales.test.ts` can call `ticks`
     // and `niceScale` off the main thread with a deadline (see their own JSDoc) and are loaded by no
     // published module; the rest are this package's own `*.test.*` suites. None of it is reachable
@@ -40,7 +21,6 @@
     "exclude": [
       "**/*.test.ts",
       "**/*.test.tsx",
-      "probe/",
       "ticks.worker.ts",
       "nice-scale.worker.ts"
     ]

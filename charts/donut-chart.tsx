@@ -1,10 +1,14 @@
 import type { JSX } from "preact"
+import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks"
 import {
+  CHART_PALETTE_CLASS,
+  DEFAULT_AXIS_COLOR,
   DEFAULT_SURFACE_COLOR,
   DEFAULT_TEXT_COLOR,
   DEFAULT_TRACK_COLOR,
   seriesColor,
 } from "./colors.ts"
+import { positionTooltip, TOOLTIP_TEXT_COLOR } from "./tooltip.ts"
 
 export interface DonutDatum {
   label: string
@@ -117,14 +121,24 @@ export interface DonutChartProps {
   emptyLabel?: string
   /** Overrides the accessible name. Defaults to `title`. */
   ariaLabel?: string
+  /** How a slice's value is printed in its tooltip. Defaults to `String`. */
+  valueFormat?: (value: number) => string
+  /** Added to the accessible name once the ring responds to keys. */
+  keyboardHint?: string
   class?: string
 }
 
+/** The hole's radius as a share of the ring's: the centre is inset 15% on every side. */
+const HOLE = 0.7
+
 /**
- * Server-rendered donut built from a single CSS `conic-gradient` — zero JavaScript.
+ * Server-rendered donut built from a single CSS `conic-gradient`.
  *
- * The share maths lives in {@link donutGeometry}; this component only lays the ring out next to a
- * legend whose rows link out when a datum carries an `href`.
+ * The share maths lives in {@link donutGeometry}; this component lays the ring out next to a
+ * legend whose rows link out when a datum carries an `href`. With no JavaScript that is the whole
+ * chart. In a browser each slice also has a tooltip — label, value and share — on hover, and by
+ * keyboard: the ring takes focus, the arrow keys, Home and End step through the slices, and Escape
+ * hides it. The tooltip stays inside the chart and the viewport.
  */
 export function DonutChart({
   data,
@@ -138,8 +152,38 @@ export function DonutChart({
   showLegend = true,
   emptyLabel = "No data",
   ariaLabel,
+  valueFormat = String,
+  keyboardHint = "Arrow keys step through the slices.",
   class: className,
 }: DonutChartProps): JSX.Element {
+  const rootRef = useRef<HTMLDivElement>(null)
+  const ringRef = useRef<HTMLDivElement>(null)
+  const tooltipRef = useRef<HTMLDivElement>(null)
+  const [interactive, setInteractive] = useState(false)
+  const [chosen, setActive] = useState<number | null>(null)
+  useEffect(() => setInteractive(true), [])
+
+  const geometry = donutGeometry(data, { colors, emptyColor: trackColor })
+  // Only a slice with a share can be pointed at; an empty ring has none.
+  const slices = geometry.segments.flatMap((segment, index) => segment.share > 0 ? [index] : [])
+  // A slice chosen before the data changed may no longer exist or be drawn; it then counts as none.
+  const active = chosen !== null && slices.includes(chosen) ? chosen : null
+
+  useLayoutEffect(() => {
+    const root = rootRef.current
+    const ring = ringRef.current
+    const tooltip = tooltipRef.current
+    if (active === null || !root || !ring || !tooltip) return
+    const segment = geometry.segments[active]
+    const box = ring.getBoundingClientRect()
+    const turn = ((segment.startPercent + segment.endPercent) / 200) * 2 * Math.PI
+    const radius = (box.width / 2) * (1 + HOLE) / 2
+    positionTooltip(root, tooltip, {
+      x: box.left + box.width / 2 + Math.sin(turn) * radius,
+      y: box.top + box.height / 2 - Math.cos(turn) * radius,
+    })
+  })
+
   if (data.length === 0) {
     return (
       <div class={className}>
@@ -149,23 +193,71 @@ export function DonutChart({
     )
   }
 
-  const geometry = donutGeometry(data, { colors, emptyColor: trackColor })
+  /** The slice under a pointer, or `null` over the hole, outside the ring or on an empty ring. */
+  const sliceAt = (clientX: number, clientY: number): number | null => {
+    const ring = ringRef.current
+    if (!ring) return null
+    const box = ring.getBoundingClientRect()
+    const dx = clientX - (box.left + box.width / 2)
+    const dy = clientY - (box.top + box.height / 2)
+    const distance = Math.hypot(dx, dy) / (box.width / 2)
+    if (distance < HOLE || distance > 1) return null
+    const at = ((Math.atan2(dx, -dy) / (2 * Math.PI) + 1) % 1) * 100
+    return slices.find((index) => {
+      const segment = geometry.segments[index]
+      return at >= segment.startPercent && at < segment.endPercent
+    }) ?? slices[slices.length - 1] ?? null
+  }
+
+  const onKeyDown = (event: KeyboardEvent) => {
+    const order = active === null ? -1 : slices.indexOf(active)
+    const last = slices.length - 1
+    const moves: Record<string, () => number | null> = {
+      ArrowRight: () => slices[Math.min(last, order + 1)],
+      ArrowDown: () => slices[Math.min(last, order + 1)],
+      ArrowLeft: () => slices[order < 0 ? last : Math.max(0, order - 1)],
+      ArrowUp: () => slices[order < 0 ? last : Math.max(0, order - 1)],
+      Home: () => slices[0],
+      End: () => slices[last],
+      Escape: () => null,
+    }
+    const move = moves[event.key]
+    if (!move || last < 0) return
+    event.preventDefault()
+    setActive(move())
+  }
+
+  const label = ariaLabel ?? title ?? `Donut chart of ${data.length} slices`
+  const activeSegment = active === null ? undefined : geometry.segments[active]
 
   return (
     <div
+      ref={rootRef}
       class={className
-        ? `flex flex-wrap items-center gap-6 ${className}`
-        : "flex flex-wrap items-center gap-6"}
+        ? `relative flex flex-wrap items-center gap-6 ${CHART_PALETTE_CLASS} ${className}`
+        : `relative flex flex-wrap items-center gap-6 ${CHART_PALETTE_CLASS}`}
+      data-chart="donut"
     >
       {title ? <h3 class="w-full text-sm font-medium">{title}</h3> : null}
       <div
-        class="relative size-40 shrink-0 rounded-full"
+        ref={ringRef}
+        class="relative size-40 shrink-0 rounded-full outline-offset-4"
         role="img"
-        aria-label={ariaLabel ?? title ?? `Donut chart of ${data.length} slices`}
+        aria-label={interactive && slices.length > 0 ? `${label}. ${keyboardHint}` : label}
+        tabIndex={interactive && slices.length > 0 ? 0 : undefined}
         style={{ background: geometry.gradient }}
+        data-chart-ring=""
+        onPointerMove={(event) => setActive(sliceAt(event.clientX, event.clientY))}
+        onPointerDown={(event) => setActive(sliceAt(event.clientX, event.clientY))}
+        onPointerLeave={(event) => {
+          if (event.pointerType !== "touch") setActive(null)
+        }}
+        onFocus={() => setActive((current) => current ?? slices[0] ?? null)}
+        onBlur={() => setActive(null)}
+        onKeyDown={onKeyDown}
       >
         <div
-          class="absolute inset-[15%] grid place-items-center rounded-full"
+          class="pointer-events-none absolute inset-[15%] grid place-items-center rounded-full"
           style={{ background: surfaceColor }}
         >
           <div class="text-center leading-tight">
@@ -209,6 +301,36 @@ export function DonutChart({
           </ul>
         )
         : null}
+      <div
+        ref={tooltipRef}
+        class={activeSegment
+          ? "pointer-events-none absolute top-0 left-0 z-10 flex max-w-64 flex-col gap-1 rounded-md border px-2 py-1 text-xs shadow-sm"
+          : "pointer-events-none invisible absolute top-0 left-0 z-10 flex max-w-64 flex-col gap-1 rounded-md border px-2 py-1 text-xs shadow-sm"}
+        style={{
+          background: surfaceColor,
+          borderColor: DEFAULT_AXIS_COLOR,
+          color: TOOLTIP_TEXT_COLOR,
+        }}
+        role="status"
+        data-chart-tooltip=""
+      >
+        {activeSegment
+          ? (
+            <>
+              <span class="flex items-center gap-2">
+                <span
+                  class="size-2 shrink-0 rounded-full"
+                  style={{ background: activeSegment.color }}
+                />
+                <strong class="font-medium">{activeSegment.label}</strong>
+              </span>
+              <span class="tabular-nums">
+                {`${valueFormat(activeSegment.value)} · ${activeSegment.percent}`}
+              </span>
+            </>
+          )
+          : null}
+      </div>
     </div>
   )
 }

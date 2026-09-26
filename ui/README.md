@@ -867,7 +867,7 @@ itself ignores a second press while one export is already running.
 The download itself goes through `@spy4x/platform/browser/download`'s `downloadResponseAsFile`,
 handed a `Response` wrapping the written bytes — `ui` depends on `@spy4x/platform` for that one
 module alone, pinned in `ui/deno.json`'s own `imports` rather than the root import map, the same way
-`charts/deno.json` pins `d3`. It attaches a temporary anchor, clicks it and detaches it in the same
+`map/deno.json` pins `leaflet`. It attaches a temporary anchor, clicks it and detaches it in the same
 task, then revokes the object URL from a timer about five seconds later, because revoking in the
 click's own task has historically cancelled a download that was still starting.
 

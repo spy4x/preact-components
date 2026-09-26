@@ -281,7 +281,7 @@ async function serverRenderedMapChecks(devtools: Devtools, frame: string): Promi
  * The guide loads Leaflet only when its map page opens (#315).
  *
  * The shared page cannot show that: earlier blocks have opened the map page already, and this block
- * runs on it. So, like `charts.ts`'s d3 check, this loads the site again in a fresh frame
+ * runs on it. So, like `charts.ts`'s no-d3 check, this loads the site again in a fresh frame
  * (`inFreshFrame` in `harness.ts`): it opens at the overview, lists every script the frame fetched
  * and reads each one for Leaflet's code, then opens the frame's map page, waits for the map to draw
  * its pins, and reads again. The frame is removed before the card checks run.

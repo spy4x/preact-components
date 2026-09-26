@@ -10,14 +10,12 @@ be assembled in. An app mounts it in one line, `<uiGuideRoute.component />` (see
 
 Covering `map/` (#143) is what makes `@spy4x/preact-ui-guide` resolve Leaflet: `map/`'s exact
 `leaflet`/`@types/leaflet` pins reach an app's dependency graph the moment it imports this package's
-`registry.ts`, which imports every section unconditionally, `sections/map.tsx` included — the same
-way covering `charts/` already put an optional `d3` in reach of anything that imports this package.
+`registry.ts`, which imports every section unconditionally, `sections/map.tsx` included.
 This is a build-time fact about the module graph, not a run-time one: `UIGuide`'s own `registry` prop
 (below) can be handed a partial registry that never _renders_ a `Map` card, but the app that built
 that partial registry already resolved and bundled `@spy4x/preact-map` — and therefore
 Leaflet — to get the value it left out. There is no documented way around that. What an app loads
-at run time is smaller: see "d3 loads with the charts page" and "Leaflet loads with the map page"
-below.
+at run time is smaller: see "Leaflet loads with the map page" below.
 
 Ported from one source application's own modular route-per-section guide (the better structure of
 the two source guides) and another's single-file guide component, whose icon gallery is kept
@@ -165,7 +163,7 @@ ui-guide kept alive.
 
 `coverage.ts` reads every covered package's value exports — from its barrel, and from every subpath
 module its `deno.json` publishes, so an export reachable only through its own subpath is seen too.
-A **component** is a function named in PascalCase (`Badge`, `EmptyState`, `D3LineChart`), and it
+A **component** is a function named in PascalCase (`Badge`, `EmptyState`, `LineChart`), and it
 needs a card in a component section; an example does not count as its card. Anything else — a
 function (`clampProgress`), a constant (`DEFAULT_AXIS_COLOR`), an enum (`ThemeValue`) — needs a
 card or an example card that names it in its `covers`. An export with neither needs a line in the
@@ -268,38 +266,18 @@ demonstrated now, through the `Map` card's plain-text list of markers. Each rema
 its reason, and each is checked for staleness — an excluded class the preset no longer defines, or
 that the catalogue demonstrates after all, fails.
 
-## d3 loads with the charts page
-
-An app that mounts the guide does not load d3 until someone opens the charts page. The d3 islands,
-`D3LineChart` and `CompareChart`, and the helpers exported from the same module as `D3LineChart`,
-are reached only through `sections/charts-d3.tsx`, whose dynamic `import()` runs from an effect when
-a card on the charts page mounts (`lazy.ts`). No module the package's exports reach imports
-`charts/d3-line-chart`, `charts/compare-chart` or the `@spy4x/preact-charts` barrel statically;
-the charts sections import the other subpaths directly. A type checker still resolves `d3`: the
-dynamic import and the `import type` of the islands' props both name those modules. A bundler that
-splits code at dynamic imports ships d3 in a file of its own, and the demo site's build does
-(`pages/build.ts`).
-
-Until the module arrives the cards show a placeholder, and the examples that need it print a line
-saying the output is computed in the browser — on the server, and in the browser's first render, so
-hydration matches. The load starts one task after the effect: hydration mounts every page, because
-the served document carries them all, and the host's first read of the address unmounts the pages it
-does not show before that task runs. That ordering is an assumption about the host: it holds for
-`useLocationHash`, which reads the address in the same effect flush, with Preact's default microtask
-re-render. A host that reads its route later (after an `await`), or sets `options.debounceRendering`
-to a timer, would load d3 on the overview too. `pages/checks/charts.ts` proves the behaviour in a
-browser: a fresh load of the overview fetches no script that carries d3, and opening the charts page
-fetches one and draws the charts. `pages/checks/ui-guide.ts`, which compares every card's served
-text with the browser's, lists these cards' chart slots and example outputs as drawn in the browser,
-and waits for the placeholders to be replaced before it reads the charts page.
-
 ## Leaflet loads with the map page
 
 `Map` starts its own dynamic `import("leaflet")` when it mounts, and hydration mounts every page, so
 a statically imported `Map` loaded Leaflet on the overview too (#315). The Map card reaches
 `@spy4x/preact-map` only through `sections/map-leaflet.tsx`, with the same `lazy.ts` loader and the
-same host assumption as the d3 cards above, so `Map` mounts, and loads Leaflet, only once the map
-page is shown. Until then the card shows a box of the map's height that says the map is drawn in the
+host assumption described below, so `Map` mounts, and loads Leaflet, only once the map
+page is shown. The load starts one task after the effect: hydration mounts every page, because the
+served document carries them all, and the host's first read of the address unmounts the pages it
+does not show before that task runs. That ordering is an assumption about the host: it holds for
+`useLocationHash`, which reads the address in the same effect flush, with Preact's default microtask
+re-render. A host that reads its route later (after an `await`), or sets `options.debounceRendering`
+to a timer, would load Leaflet on the overview too. Until then the card shows a box of the map's height that says the map is drawn in the
 browser with Leaflet; with JavaScript off that box, not the map's list of places, is what a reader
 sees. `pages/checks/map.ts` proves the behaviour in a browser: a fresh load of the overview fetches
 no script that carries Leaflet, and opening the map page fetches one and draws the pins.
@@ -437,8 +415,7 @@ is demonstrated, or excluded with a reason), `copy.test.tsx` (every card's copy 
 its own snippet and to the injected port), `example.test.tsx` (an example runs when its card
 renders, on its package's page, uses every export it covers, and how its output is printed),
 `lazy.test.tsx` (a lazy module renders its loading state on the server without starting the load),
-`sections/charts-d3.test.tsx` (the charts page server-renders its d3 cards and examples as
-placeholders) and `sections/demo-decisions.test.ts` (the pure decisions behind the interactive
+and `sections/demo-decisions.test.ts` (the pure decisions behind the interactive
 demos, such as what a caller holds after a port fires). Tests render real markup with
 `preact-render-to-string` and assert on it; no DOM, no browser.
 

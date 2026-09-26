@@ -110,7 +110,7 @@ export const EXCLUDED_PACKAGES = {
 
 /**
  * Whether a value export is named the way a component is: PascalCase, an initial capital and a
- * lower-case letter after it. `D3LineChart` is; `clampProgress` and `DEFAULT_AXIS_COLOR` are not.
+ * lower-case letter after it. `LineChart` is; `clampProgress` and `DEFAULT_AXIS_COLOR` are not.
  *
  * @param name Value export name.
  */

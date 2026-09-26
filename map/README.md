@@ -72,8 +72,7 @@ out so this is testable with no browser) never lets that rejection escape unhand
 
 `onLoadError` is a port, not markup this component renders, because the right way to tell a visitor
 matters to the host page, not to this component: a toast, a logged event, a silent retry, or nothing
-a visitor ever sees — the same reasoning `charts/`'s `CompareChart` already applies to its own
-`onError`. Left unset, it logs the error to the console, so a failure is never silent even for a
+a visitor ever sees. Left unset, it logs the error to the console, so a failure is never silent even for a
 caller that supplies nothing. Either way, the box and the list both stay exactly as usable as they
 already were: the box keeps its size — nothing about it depended on Leaflet having loaded — and the
 list keeps listing every place, since it is plain data this component already had.
@@ -146,8 +145,7 @@ import "leaflet/dist/leaflet.css"
 ```
 
 For a bundler that resolves CSS imports itself (Vite, webpack, and anything Node-based), that single
-import is the whole of it — the same shape [`charts/README.md`](../charts/README.md) documents for
-`d3`. For a Deno build that compiles its own stylesheet the way this repository's `pages/build.ts`
+import is the whole of it. For a Deno build that compiles its own stylesheet the way this repository's `pages/build.ts`
 does — reading a stylesheet's bytes directly with `Deno.readTextFile` rather than handing the import
 to a bundler — you need `import.meta.resolve("leaflet/dist/leaflet.css")` to resolve at all, which
 needs **your own** `deno.json` to declare Leaflet twice, the same way `map/deno.json` does for its
@@ -244,8 +242,8 @@ does.
 ## Do I need Leaflet?
 
 Only if you import `@spy4x/preact-map`. `leaflet`/`leaflet/` and `@types/leaflet` are pinned in
-`map/deno.json` alone, the same isolation `charts/deno.json` gives `d3` — see
-[`charts/README.md`](../charts/README.md) → "Do I need d3?" for the identical reasoning applied here.
+`map/deno.json` alone: the root import map is ambient for every consumer of every package, and
+only this one needs Leaflet.
 Neither `ui/` nor `charts/` imports `map/`, and the root import map carries no Leaflet entry, so
 neither of them can pick it up by accident. Checked with `deno info` against each package's own entry
 point (`ui/+index.ts`, `charts/+index.ts`) rather than by reading their source for a `leaflet` import

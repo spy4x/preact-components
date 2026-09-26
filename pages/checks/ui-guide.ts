@@ -279,24 +279,6 @@ const TEXT_DRAWN_IN_BROWSER: Record<string, DrawnInBrowser> = {
     reason: "validation runs in an effect, so the cross-field message in the live region above " +
       "Save exists only in the browser",
   },
-  "demo-D3LineChart": {
-    selector: `[data-e2e="d3-chart-slot"]`,
-    parts: 2,
-    reason: "charts/d3-line-chart loads when the charts page opens: the served page holds a " +
-      "placeholder, and d3 draws the chart's axes, lines and legend in its place",
-  },
-  "demo-CompareChart": {
-    selector: `[data-e2e="d3-chart-slot"]`,
-    parts: 1,
-    reason: "charts/compare-chart loads when the charts page opens: the served page holds a " +
-      "placeholder, and the browser shows the toggle and the chart d3 draws in its place",
-  },
-  "demo-formatTimeTick": {
-    selector: `[data-e2e="example-output"]`,
-    parts: 1,
-    reason: "charts/d3-line-chart loads when the charts page opens, and this output calls " +
-      "formatTimeTick and defaultTooltipFormat from it",
-  },
   "demo-Map": {
     selector: `[data-e2e="map-slot"]`,
     parts: 1,
@@ -307,9 +289,8 @@ const TEXT_DRAWN_IN_BROWSER: Record<string, DrawnInBrowser> = {
 
 /**
  * Wait until the showing page has replaced every placeholder of a lazily loaded module
- * (`ui-guide/lazy.ts`) with what that module draws: the charts page loads d3 when it opens, and the
- * map page `@spy4x/preact-map`, so their cards and examples read their placeholder text until the
- * module arrives. Reading before then
+ * (`ui-guide/lazy.ts`) with what that module draws: the map page loads `@spy4x/preact-map` when it
+ * opens, so its card reads its placeholder text until the module arrives. Reading before then
  * would find a listed part the same on both sides and fail for the wrong reason. A page with no
  * placeholder returns at once; one still showing a placeholder after 15s is left for the text check
  * to report.
@@ -319,12 +300,7 @@ const TEXT_DRAWN_IN_BROWSER: Record<string, DrawnInBrowser> = {
 async function lazyContentShown(devtools: Devtools): Promise<void> {
   await poll(
     () =>
-      devtools.evaluate<boolean>(`(() => {
-        if (document.querySelector('[data-e2e="d3-chart-placeholder"]') !== null) return false
-        if (document.querySelector('[data-e2e="map-placeholder"]') !== null) return false
-        return ![...document.querySelectorAll('[data-e2e="example-output"]')]
-          .some((output) => output.textContent.includes("needs charts/d3-line-chart"))
-      })()`),
+      devtools.evaluate<boolean>(`document.querySelector('[data-e2e="map-placeholder"]') === null`),
     15_000,
   )
 }
@@ -1023,7 +999,7 @@ async function searchChecks(devtools: Devtools): Promise<void> {
 
   const clicked = await clickElement(devtools, SEARCH_BUTTON, { inPlace: true })
   const opened = await poll(async () => (await state()).focusInField, 2_000)
-  await devtools.send("Input.insertText", { text: "LineChart" })
+  await devtools.send("Input.insertText", { text: "Line" })
   await poll(async () => (await state()).results[0] === "LineChart", 2_000)
   const filtered = await state()
   await pressKey(devtools, "ArrowDown")
@@ -1195,7 +1171,7 @@ async function onThisPageCheck(devtools: Devtools): Promise<void> {
   const atTop = await poll(async () => (await marked()) === first, 3_000)
   const topMark = await marked()
 
-  const target = "MetricPanel"
+  const target = "KpiGrid"
   const top = await devtools.evaluate<number>(`(() => {
     const card = document.getElementById("demo-${target}")
     const y = Math.round(card.getBoundingClientRect().top + scrollY - 72)

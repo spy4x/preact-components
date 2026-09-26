@@ -1,5 +1,10 @@
 import type { JSX } from "preact"
-import { DEFAULT_TEXT_COLOR, DEFAULT_TRACK_COLOR, seriesColor } from "./colors.ts"
+import {
+  CHART_PALETTE_CLASS,
+  DEFAULT_TEXT_COLOR,
+  DEFAULT_TRACK_COLOR,
+  seriesColor,
+} from "./colors.ts"
 
 export interface BarDatum {
   label: string
@@ -93,7 +98,8 @@ export function Bars({
 
   return (
     <table
-      class={["w-full text-sm", tableBackground(className), className].filter(Boolean).join(" ")}
+      class={["w-full text-sm", CHART_PALETTE_CLASS, tableBackground(className), className]
+        .filter(Boolean).join(" ")}
       aria-label={ariaLabel ?? title}
     >
       {title ? <caption class="mb-2 text-left text-sm font-medium">{title}</caption> : null}

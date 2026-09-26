@@ -679,7 +679,7 @@ export interface FreshFrame {
   /** The address to load, resolved against the shared page's own directory: a guide route such as
    * `#/`, or a path such as `map-demo/`. */
   src: string
-  /** What the check proves with it, for the check about the shared page's scroll: `d3`. */
+  /** What the check proves with it, for the check about the shared page's scroll: `Leaflet`. */
   label: string
 }
 

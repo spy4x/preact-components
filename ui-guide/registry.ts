@@ -347,7 +347,7 @@ const catalogue = {
     package: "charts",
     title: "Charts",
     blurb:
-      "The server-rendered charts need nothing but their data; the two d3 charts draw in the browser, so until then their cards show a placeholder.",
+      "Every chart renders complete on the server from its data alone; the line chart and the donut add tooltips once the browser runs them.",
     demos: chartsDemos,
   },
   system: {
@@ -682,8 +682,8 @@ const pageCopy: Record<GuidePageId, { title: string; blurb: string; summary?: st
   charts: {
     title: "Charts",
     blurb:
-      "Charts that render on the server as plain SVG and HTML, two d3 charts that draw in the browser, and the scale and loading helpers behind them.",
-    summary: "Server-rendered SVG charts, two d3 charts and the helpers behind them.",
+      "Charts that render on the server as plain SVG and HTML and add tooltips in the browser, and the scale and loading helpers behind them.",
+    summary: "Server-rendered charts with tooltips, and the helpers behind them.",
   },
   map: {
     title: "Map",
