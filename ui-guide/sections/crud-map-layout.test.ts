@@ -19,11 +19,17 @@ for (const page of ["crud", "map"]) {
       expect(unsaid).toEqual([])
     })
 
-    it("prints no literal backtick in a card's sentence", () => {
+    it("prints no literal backtick in a card's sentence or its props' sentences", () => {
       // Inline Markdown turns a backtick pair into code; an odd count leaves one on the page.
-      const odd = cardsOf(page).filter((name) =>
-        ((demoRegistry[name]?.summary ?? "").match(/`/g)?.length ?? 0) % 2 !== 0
-      )
+      const texts = cardsOf(page).flatMap((name) => [
+        [name, demoRegistry[name]?.summary ?? ""],
+        ...(demoRegistry[name]?.props ?? []).map((
+          prop,
+        ) => [`${name}.${prop.name}`, prop.description]),
+      ])
+      const odd = texts
+        .filter(([, text]) => (text.match(/`/g)?.length ?? 0) % 2 !== 0)
+        .map(([where]) => where)
       expect(odd).toEqual([])
     })
   })
