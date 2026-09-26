@@ -1,4 +1,3 @@
-// spacing: off-scale until #328 (the lane that moves this file to the scale deletes this line)
 /**
  * The form chapter: the classes `theme/preset.css` styles and no component wraps.
  *
@@ -13,6 +12,7 @@
  */
 
 import { IconSearch } from "@spy4x/preact-icons"
+import { Grid, Stack } from "@spy4x/preact-ui"
 import { useSignal } from "@preact/signals"
 import type { ClassDemoFragment } from "../registry.ts"
 
@@ -21,7 +21,7 @@ function InputDemo() {
   const email = useSignal("")
 
   return (
-    <div class="grid max-w-sm gap-3">
+    <Stack gap="sm" class="max-w-sm">
       <label class="label" for="guide-input-email">Email</label>
       <input
         id="guide-input-email"
@@ -42,7 +42,7 @@ function InputDemo() {
       <p class="text-xs text-muted" data-e2e="controlled-value">
         email: {email.value || "(empty)"}
       </p>
-    </div>
+    </Stack>
   )
 }
 
@@ -51,7 +51,7 @@ function SelectDemo() {
   const role = useSignal("editor")
 
   return (
-    <div class="grid max-w-sm gap-3">
+    <Stack gap="sm" class="max-w-sm">
       <label class="label" for="guide-select-role">Role</label>
       <select
         id="guide-select-role"
@@ -68,7 +68,7 @@ function SelectDemo() {
         <option>Disabled</option>
       </select>
       <p class="text-xs text-muted" data-e2e="controlled-value">role: {role.value}</p>
-    </div>
+    </Stack>
   )
 }
 
@@ -77,7 +77,7 @@ function TextareaDemo() {
   const notes = useSignal("Runs the night shift.\nKeeps the pager.")
 
   return (
-    <div class="grid max-w-sm gap-3">
+    <Stack gap="sm" class="max-w-sm">
       <label class="label" for="guide-textarea-notes">Notes</label>
       <textarea
         id="guide-textarea-notes"
@@ -91,7 +91,7 @@ function TextareaDemo() {
       <p class="text-xs text-muted" data-e2e="controlled-value">
         {notes.value.split("\n").length} lines
       </p>
-    </div>
+    </Stack>
   )
 }
 
@@ -109,8 +109,8 @@ function LabelDemo() {
   const invalid = name.value.length > 0 && name.value.trim().length < 3
 
   return (
-    <div class="grid max-w-sm gap-6">
-      <div class="grid gap-1.5">
+    <Grid gap="lg" minColumnWidth="md">
+      <Stack gap="sm">
         <label class="label" for="guide-label-name">
           Name <span class="text-danger" aria-hidden="true">*</span>
         </label>
@@ -134,19 +134,19 @@ function LabelDemo() {
               Full name, as on the contract.
             </p>
           )}
-      </div>
+      </Stack>
 
-      <div class="grid gap-1.5">
+      <Stack gap="sm">
         <input id="guide-label-suffix" class="input" value="Ref 2024-0917" />
         <label class="label" for="guide-label-suffix">Reference, label under the control</label>
-      </div>
+      </Stack>
 
-      <div class="grid gap-1.5">
+      <Stack gap="sm">
         <input id="guide-label-disabled" class="input" value="Locked" disabled />
         <label class="label text-muted" for="guide-label-disabled">Disabled field</label>
-      </div>
+      </Stack>
 
-      <div class="grid gap-1.5">
+      <Stack gap="sm">
         <label class="label" for="guide-label-archived">
           <input
             id="guide-label-archived"
@@ -157,8 +157,8 @@ function LabelDemo() {
           />
           Archived, through a suffix label
         </label>
-      </div>
-    </div>
+      </Stack>
+    </Grid>
   )
 }
 
@@ -168,7 +168,7 @@ function CheckboxDemo() {
   const notify = useSignal(true)
 
   return (
-    <div class="grid max-w-sm gap-3">
+    <Stack gap="sm" class="max-w-sm">
       <label class="label" for="guide-checkbox-archived">
         <input
           id="guide-checkbox-archived"
@@ -198,7 +198,7 @@ function CheckboxDemo() {
       <p class="text-xs text-muted" data-e2e="controlled-value">
         archived: {archived.value ? "on" : "off"} · email: {notify.value ? "on" : "off"}
       </p>
-    </div>
+    </Stack>
   )
 }
 
@@ -207,8 +207,8 @@ function RadioDemo() {
   const channel = useSignal("email")
 
   return (
-    <div class="grid max-w-sm gap-3">
-      <fieldset class="grid gap-2">
+    <Stack gap="sm" class="max-w-sm">
+      <Stack as="fieldset" gap="sm">
         <legend class="label">Notification method</legend>
         {[
           { value: "email", label: "Email" },
@@ -229,9 +229,9 @@ function RadioDemo() {
             {option.label}
           </label>
         ))}
-      </fieldset>
+      </Stack>
       <p class="text-xs text-muted" data-e2e="controlled-value">channel: {channel.value}</p>
-    </div>
+    </Stack>
   )
 }
 
@@ -246,7 +246,7 @@ function InputButtonDemo() {
   const query = useSignal("")
 
   return (
-    <div class="grid max-w-sm gap-3">
+    <Stack gap="sm" class="max-w-sm">
       <div class="relative">
         <input
           class="input pr-12"
@@ -270,7 +270,7 @@ function InputButtonDemo() {
       <p class="text-xs text-muted" data-e2e="controlled-value">
         query: {query.value || "(empty)"}
       </p>
-    </div>
+    </Stack>
   )
 }
 
@@ -278,8 +278,8 @@ export const formDemos = {
   "class-input": {
     title: "Input",
     classes: ["input", "label", "text-muted"],
-    summary:
-      "`.input` on a native `<input>`: full width, 48px tall, radius and border from the tokens, and a focus ring the preset paints itself. Every attribute passes through, `value` in and `onInput` out — no draft state lives in a component.",
+    summary: "Styles a native text field, so a form needs no input component.",
+    wide: false,
     snippet: `<input
   class="input"
   type="email"
@@ -292,8 +292,8 @@ export const formDemos = {
   "class-select": {
     title: "Select",
     classes: ["select", "label", "text-muted"],
-    summary:
-      "`.select` composes `.input`, so the two line up side by side. The selection comes from `value` on the `<select>`; the option list is the platform's, painted by the `.dark option` rule in the preset.",
+    summary: "Styles a native drop-down to match the text field beside it.",
+    wide: false,
     snippet:
       `<select class="select" value={role.value} onChange={(event) => role.value = event.currentTarget.value}>
   <option value="admin">Administrator</option>
@@ -305,7 +305,8 @@ export const formDemos = {
     title: "Textarea",
     classes: ["textarea", "label", "text-muted"],
     summary:
-      "`.textarea` is `.input` with a 6rem floor and inner padding, so a short note and a long one both look intentional. Same contract as `Input`: controlled, no wrapper.",
+      "Styles a native multi-line field, with a floor height so a short note still looks deliberate.",
+    wide: false,
     snippet: `<textarea
   class="textarea"
   rows={3}
@@ -315,27 +316,26 @@ export const formDemos = {
 />`,
     render: () => <TextareaDemo />,
   },
-  "class-label": {
-    title: "Labels and their placement",
-    classes: ["label", "input", "checkbox", "text-muted", "text-danger"],
+  "class-input-button": {
+    title: "Input with an inline button",
+    classes: ["btn-input-icon", "input", "text-muted"],
     summary:
-      "One `.label` class in both placements: above the control for a stacked field, below it when the value matters more than the name. A required marker, a hint and an error are text — `.text-danger` plus `aria-describedby`, since the preset ships no `[aria-invalid]` styling of its own.",
-    snippet: `<div class="grid gap-1.5">
-  <label class="label" for="name">Name <span class="text-danger">*</span></label>
-  <input id="name" class="input" aria-describedby="name-hint" value={name.value} />
-  <p id="name-hint" class="text-xs text-muted">As it appears on the contract.</p>
-</div>
-
-<!-- the suffix placement: the label follows the control -->
-<input id="ref" class="input" value="Ref 2024-0917" />
-<label class="label" for="ref">Reference</label>`,
-    render: () => <LabelDemo />,
+      "Puts a small square button, such as search or clear, inside the right edge of a text field.",
+    wide: false,
+    snippet: `<div class="relative">
+  <input class="input pr-12" type="search" placeholder="Search users" />
+  <button class="btn-input-icon absolute inset-y-0 right-1.5 my-auto" type="button" aria-label="Search">
+    <IconSearch class="size-4" />
+  </button>
+</div>`,
+    render: () => <InputButtonDemo />,
   },
   "class-checkbox": {
     title: "Checkbox",
     classes: ["checkbox", "label", "text-muted"],
     summary:
-      "`.checkbox` sets the size, radius and focus treatment; the glyph is the platform's until an app imports `@tailwindcss/forms`. The label wraps the control, so the text is part of the hit area and `checked` in / `onChange` out is the whole state.",
+      "Styles a native checkbox, with its label wrapped around it so the text is part of the hit area.",
+    wide: false,
     snippet: `<label class="label" for="archived">
   <input
     id="archived"
@@ -352,7 +352,8 @@ export const formDemos = {
     title: "Radio",
     classes: ["radio", "label", "text-muted"],
     summary:
-      "`.radio` in a `fieldset` with a `legend`: the platform keeps the roving tab stop and the arrow keys because the inputs share one `name`, and the legend names the group for a screen reader. No role, no key handler, no `aria-checked`.",
+      "Styles native radio buttons, grouped in a `fieldset` whose `legend` names the choice.",
+    wide: false,
     snippet: `<fieldset>
   <legend class="label">Notification method</legend>
   <label class="label" for="sms">
@@ -364,17 +365,21 @@ export const formDemos = {
 </fieldset>`,
     render: () => <RadioDemo />,
   },
-  "class-input-button": {
-    title: "Input with an inline button",
-    classes: ["btn-input-icon", "input", "text-muted"],
+  "class-label": {
+    title: "Labels and their placement",
+    classes: ["label", "input", "checkbox", "text-muted", "text-danger"],
     summary:
-      "`.btn-input-icon` is the square, borderless button that belongs inside a field: 36px, centred glyph, hover fill in both palettes. It is a class rather than a component — the wrapper is a `relative` box and the input reserves the right padding.",
-    snippet: `<div class="relative">
-  <input class="input pr-12" type="search" placeholder="Search users" />
-  <button class="btn-input-icon absolute inset-y-0 right-1.5 my-auto" type="button" aria-label="Search">
-    <IconSearch class="size-4" />
-  </button>
-</div>`,
-    render: () => <InputButtonDemo />,
+      "Names a field from above it or below it, with a required marker, a hint and an error shown as plain text.",
+    wide: true,
+    snippet: `<div class="grid gap-2">
+  <label class="label" for="name">Name <span class="text-danger">*</span></label>
+  <input id="name" class="input" aria-describedby="name-hint" value={name.value} />
+  <p id="name-hint" class="text-xs text-muted">As it appears on the contract.</p>
+</div>
+
+<!-- the suffix placement: the label follows the control -->
+<input id="ref" class="input" value="Ref 2024-0917" />
+<label class="label" for="ref">Reference</label>`,
+    render: () => <LabelDemo />,
   },
 } satisfies ClassDemoFragment
