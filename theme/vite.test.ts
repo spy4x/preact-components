@@ -39,6 +39,10 @@ const THEME_IMPORTS = `@import "tailwindcss";
 const SOURCE_LINE = `\n@source inline("${COMPONENT_CLASSES}");\n`
 
 describe("preactThemeCss", () => {
+  it("runs before other plugins, so Tailwind never sees the theme's @import lines", () => {
+    expect(preactThemeCss().enforce).toBe("pre")
+  })
+
   it("replaces the tokens and preset imports with the stylesheets' text", () => {
     const css = transform(THEME_IMPORTS, "/work/app/src/app.css")!
     expect(css).toBe(
@@ -277,7 +281,7 @@ describe("npmSpecifiers", () => {
     expect(result).toBeNull()
   })
 
-  it("reads a dev server's pre-bundled copy's version from the optimizer's source file", async () => {
+  it("reads a pre-bundled copy's version from the optimizer's source file", async () => {
     const environment: ViteEnvironment = {
       name: "client",
       depsOptimizer: {

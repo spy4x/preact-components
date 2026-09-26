@@ -127,9 +127,10 @@ and its `src/app.css` keeps the `@import` lines of the recipe above:
   and `preset.css` lines are required and `ink.css` is optional. Another stylesheet is named with
   `preactThemeCss({ stylesheet: "/styles/main.css" })`. List it before `tailwindcss()`.
 - `requireComponentCss()` fails `vite build` when the built CSS lacks `.lg\:w-64` or
-  `.focus\:not-sr-only`, two selectors only the library's `Shell` renders. Tailwind exits 0 when
-  the class names never reached it, so without this check an app ships unstyled. `selectors`
-  replaces the two defaults.
+  `.focus\:not-sr-only`, two selectors only the library's components render. Tailwind exits 0
+  when the class names never reached it, so without this check an app ships unstyled. `selectors`
+  replaces the two defaults; never pass a plain class such as `.sr-only` there, because Tailwind
+  scans `vite.config.ts` itself and emits it, so the guard could never fail.
 - `npmSpecifiers()` resolves the `npm:` specifiers inside the library's modules, such as
   `npm:@preact/signals@2.5.1`, to the app's own copy of that package. `@deno/vite-plugin` 1.0.6
   cuts a scoped name at its first `@` and drops a subpath, so without it the build fails

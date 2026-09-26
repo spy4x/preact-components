@@ -4,8 +4,8 @@
  *
  * Three plugins, each a factory an app lists in its `vite.config.ts`:
  *
- * - {@link preactThemeCss} answers the theme's `@import` lines in the app's stylesheet with the text
- *   this package exports, and appends `@source inline(...)` with {@link COMPONENT_CLASSES}.
+ * - {@link preactThemeCss} answers the theme's `@import` lines in the app's stylesheet with the
+ *   text this package exports, and appends `@source inline(...)` with {@link COMPONENT_CLASSES}.
  * - {@link requireComponentCss} fails a build whose CSS lacks the components' classes.
  * - {@link npmSpecifiers} resolves the `npm:` specifiers inside the library's modules to the app's
  *   own copy, and fails when the versions differ.
@@ -65,7 +65,7 @@ export interface ViteResolveContext {
   environment: ViteEnvironment
 }
 
-/** One file of the bundle `generateBundle` receives: a CSS or other asset, or a JavaScript chunk. */
+/** One file of the bundle `generateBundle` receives: a CSS or other asset, or a JS chunk. */
 export interface ViteOutputFile {
   /** `asset` or `chunk`. */
   type: string
@@ -166,7 +166,9 @@ export function preactThemeCss(options: PreactThemeCssOptions = {}): VitePlugin 
 export interface RequireComponentCssOptions {
   /**
    * Selectors, escaped as they appear in the built CSS, that the build must contain. Default: two
-   * that only the library's `Shell` renders, `.lg\:w-64` and `.focus\:not-sr-only`.
+   * that only the library's components render, `.lg\:w-64` and `.focus\:not-sr-only`. Do not
+   * pass a plain class such as `.sr-only`: Tailwind scans the app's `vite.config.ts` too, finds
+   * the class written there, and emits it, so the guard could never fail.
    */
   selectors?: readonly string[]
 }
