@@ -147,7 +147,7 @@ buttonClasses("outline", "sm", "w-full")`,
     title: "Calendar date arithmetic",
     wide: false,
     summary:
-      "Day and month steps on `YYYY-MM-DD` strings in fixed UTC days, so no step drifts across a daylight-saving change and an impossible date throws; a month step lands on the 1st of the target month.",
+      "Steps a `YYYY-MM-DD` date by days or months without drifting across a daylight-saving change.",
     snippet:
       `import { addDays, formatIsoDate, isSameDay, parseIsoDate, shiftMonth } from "@spy4x/preact-ui"
 
@@ -409,7 +409,7 @@ const input = { isSameNode: (node: unknown) => node === input }
     title: "nextMenuIndex()",
     wide: false,
     summary:
-      "The menu item a `Dropdown` moves to on an arrow, Home or End key, wrapping at both ends; `undefined` for any other key.",
+      "The menu item a `Dropdown` moves to on an arrow, Home or End key, wrapping at both ends.",
     snippet: `import { nextMenuIndex } from "@spy4x/preact-ui"
 
 [nextMenuIndex("ArrowDown", 2, 3), nextMenuIndex("ArrowUp", 0, 3), nextMenuIndex("End", 0, 3), nextMenuIndex("x", 0, 3)]`,
@@ -589,7 +589,7 @@ function plan(dialogPrototype: object) {
     title: "Focus after a dialog closes",
     wide: false,
     summary:
-      "Whether focus goes back to the element that opened a dialog, and the move itself; `dialogHeldFocus` reports where focus was, for a caller to log.",
+      "Decides whether focus goes back to the element that opened a dialog, and moves it there.",
     snippet: `import { dialogHeldFocus, restoreFocus, shouldRetargetFocus } from "@spy4x/preact-ui"
 
 const log: string[] = []
@@ -677,7 +677,7 @@ dialogTitleId("P0-1")`,
     title: "Avatar faces",
     wide: false,
     summary:
-      "An avatar shows its image, else the name's initials, else a generic icon; a failed image stays failed until its address changes.",
+      "Picks what an avatar shows: its image, else the name's initials, else a generic icon.",
     snippet: `import { avatarFace, initials } from "@spy4x/preact-ui"
 import { failedAfterSrcChange } from "@spy4x/preact-ui/avatar"
 
@@ -910,7 +910,7 @@ const labels = resolveLabels({ wrongType: (name) => name + " is not an image" })
     title: "Honeypot field",
     wide: false,
     summary:
-      "A hidden field people never see and bots fill in; the server drops a submission whose field is not empty.",
+      "A hidden field that bots fill in and people never see, so a filled one marks a submission to drop.",
     snippet: `import { HONEYPOT_FIELD_NAME, honeypotField, honeypotFilled } from "@spy4x/preact-ui"
 
 const field = honeypotField(HONEYPOT_FIELD_NAME, "Leave this empty")
@@ -1007,7 +1007,7 @@ const bounds = { min: 0, max: 100000 }
     title: "copyToClipboard()",
     wide: false,
     summary:
-      "Copies text through the caller's port when one is given, else through the browser clipboard; here a port records what it was handed.",
+      "Copies text through the caller's port when one is given, or else through the browser clipboard.",
     snippet: `import { copyToClipboard } from "@spy4x/preact-ui/copy-button"
 
 const copied: string[] = []
@@ -1028,8 +1028,7 @@ copied`,
   requestGeolocation: {
     title: "requestGeolocation()",
     wide: false,
-    summary:
-      "Asks for the device's position and hands back plain coordinates or an error message; here a stand-in answers instead of the browser.",
+    summary: "Asks for the device's position and hands back plain coordinates or an error message.",
     snippet: `import { requestGeolocation } from "@spy4x/preact-ui/geo-button"
 
 const results: unknown[] = []
@@ -1136,7 +1135,7 @@ const shown = describedImages(images)
     title: "Toast duration",
     wide: false,
     summary:
-      "How long a toast stays before it dismisses itself: its own duration, else the default; `0` keeps it until closed.",
+      "How long a toast stays before it closes itself, where a duration of `0` keeps it until closed.",
     snippet: `import { defaultToastDuration, resolveDuration } from "@spy4x/preact-ui"
 
 ;({

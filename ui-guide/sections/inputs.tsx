@@ -123,7 +123,11 @@ function OnOffButtonsDemo() {
   )
 }
 
-/** One dropdown variant on a line: its caption on the left, its trigger on the right. */
+/**
+ * One dropdown variant on a line: its caption on the left, its trigger on the right. The trigger
+ * stays at the right because a menu lines up with its trigger's right edge by default and opens
+ * leftward, so a trigger at the left of the card would push the menu over the page's navigation.
+ */
 function DropdownRow(
   { title, children }: { title: ComponentChildren; children: ComponentChildren },
 ) {
@@ -148,7 +152,7 @@ function DropdownDemo() {
   const selected = useSignal("Select action…")
 
   return (
-    <Stack gap="md">
+    <Grid minColumnWidth="lg" gap="lg">
       <DropdownRow title="Icon trigger">
         <Dropdown
           trigger={<IconEllipsisVertical class="size-5" />}
@@ -221,7 +225,7 @@ function DropdownDemo() {
           </div>
         </Dropdown>
       </DropdownRow>
-    </Stack>
+    </Grid>
   )
 }
 
@@ -793,8 +797,9 @@ function FileInputDemo() {
 /**
  * The picker with a real range and a highlighted preset, every label spelled out.
  *
- * The wrapper keeps `space-y-3`: `pages/checks/ui.ts` finds a picker's status line through
- * `closest("div.space-y-3")` (the `withTime` picker's check does), so the three pickers share it.
+ * The three pickers' wrappers use `space-y-3` rather than `Stack`. Only the `withTime` picker's
+ * check in `pages/checks/ui.ts` needs the class: it finds that picker's status line through
+ * `closest("div.space-y-3")`. The other two keep it so the three columns are spaced alike.
  */
 function DateRangePickerDemo() {
   const range = useSignal<DateRange | null>(fixedToday)
@@ -812,15 +817,11 @@ function DateRangePickerDemo() {
         dataE2E="guide-date-range"
       />
       <Note e2e="controlled-value">
-        range: {range.value === null ? "none" : dateRangeTouched(range.value)}
+        range:{" "}
+        <span class="whitespace-nowrap">
+          {range.value === null ? "none" : dateRangeTouched(range.value)}
+        </span>
       </Note>
-      <ul class="text-xs text-gray-500 dark:text-gray-400">
-        {datePresetOptions.map((option) => (
-          <li key={option.preset}>
-            {option.label}: {presetNote(option.preset)}
-          </li>
-        ))}
-      </ul>
     </div>
   )
 }
@@ -848,7 +849,10 @@ function DateRangePickerEmptyDemo() {
         dataE2E="guide-date-range-empty"
       />
       <Note e2e="controlled-value">
-        range: {range.value === null ? "none" : dateRangeTouched(range.value)}
+        range:{" "}
+        <span class="whitespace-nowrap">
+          {range.value === null ? "none" : dateRangeTouched(range.value)}
+        </span>
       </Note>
     </div>
   )
@@ -873,7 +877,10 @@ function DateRangePickerWithTimeDemo() {
         dataE2E="guide-date-range-time"
       />
       <Note e2e="controlled-value">
-        range: {range.value === null ? "none" : dateTimeRangeTouched(range.value)}
+        range:{" "}
+        <span class="whitespace-nowrap">
+          {range.value === null ? "none" : dateTimeRangeTouched(range.value)}
+        </span>
       </Note>
     </div>
   )
@@ -882,23 +889,38 @@ function DateRangePickerWithTimeDemo() {
 /** The three pickers side by side: a chosen range, nothing chosen, and `withTime`. */
 function DateRangePickersDemo() {
   return (
-    <Grid minColumnWidth="sm" gap="lg">
-      <Variant title="Presets, labels spelled out">
-        <DateRangePickerDemo />
-      </Variant>
-      <Variant title="Nothing chosen, default labels">
-        <DateRangePickerEmptyDemo />
-      </Variant>
-      <Variant
-        title={
-          <>
-            Date and time: <code>withTime</code>
-          </>
-        }
-      >
-        <DateRangePickerWithTimeDemo />
-      </Variant>
-    </Grid>
+    <Stack gap="lg">
+      <Grid minColumnWidth="sm" gap="lg">
+        <Variant title="Presets">
+          <DateRangePickerDemo />
+        </Variant>
+        <Variant title="Nothing chosen">
+          <DateRangePickerEmptyDemo />
+        </Variant>
+        <Variant
+          title={
+            <>
+              <code>withTime</code>
+            </>
+          }
+        >
+          <DateRangePickerWithTimeDemo />
+        </Variant>
+      </Grid>
+      <Stack gap="xs">
+        <Note>
+          The first picker's presets, resolved against a fixed{" "}
+          <code class="whitespace-nowrap">now</code> so every build prints the same dates:
+        </Note>
+        <ul class="text-xs text-gray-500 dark:text-gray-400">
+          {datePresetOptions.map((option) => (
+            <li key={option.preset}>
+              {option.label}: <span class="whitespace-nowrap">{presetNote(option.preset)}</span>
+            </li>
+          ))}
+        </ul>
+      </Stack>
+    </Stack>
   )
 }
 
@@ -991,7 +1013,7 @@ export const inputDemos = {
   Dropdown: {
     summary:
       "A button that opens a menu of actions, which the arrow keys, Home, End and Escape work through.",
-    wide: false,
+    wide: true,
     props: [
       { name: "trigger", type: "ComponentChildren", description: "What the button shows." },
       {
@@ -1021,7 +1043,7 @@ export const inputDemos = {
   DropdownItem: {
     summary:
       "One entry of a `Dropdown` menu: a link when it has an `href`, a button when it does not.",
-    wide: false,
+    wide: true,
     props: [
       { name: "href", type: "string", description: "Makes the item a link to this address." },
       { name: "onClick", type: "() => void", description: "What a button item does." },
@@ -1158,7 +1180,7 @@ export const inputDemos = {
   },
   FileInput: {
     summary:
-      "A file picker with a drop zone that refuses the wrong type or size and previews images; it does not upload.",
+      "A file picker with a drop zone that previews images and refuses the wrong type or size, without uploading anything.",
     wide: true,
     props: [
       { name: "id", type: "string", description: "The native input's id." },

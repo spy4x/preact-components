@@ -80,32 +80,26 @@ function FieldDemo() {
       </Field>
 
       <Grid minColumnWidth="sm" gap="md">
-        <Field
-          id="guide-archived"
-          label="Archived"
-          suffix
-          hint="Hides the row from the list"
-          labelFor={false}
-        >
+        <Field id="guide-archived" hint="Hides the row from the list">
           <Checkbox
             checked={archived.value}
             onChange={(event) => archived.value = event.currentTarget.checked}
-          />
+          >
+            Archived
+          </Checkbox>
         </Field>
 
-        <Field id="guide-channel" label="Notification method" disabled labelFor={false}>
-          <RadioGroup
-            legend="Notification method"
-            name="guide-channel"
-            value={channel.value}
-            onChange={(value) => channel.value = value}
-            options={[
-              { value: "email", label: "Email" },
-              { value: "sms", label: "Phone (SMS)" },
-              { value: "push", label: "Push notification", disabled: true },
-            ]}
-          />
-        </Field>
+        <RadioGroup
+          legend="Notification method"
+          name="guide-channel"
+          value={channel.value}
+          onChange={(value) => channel.value = value}
+          options={[
+            { value: "email", label: "Email" },
+            { value: "sms", label: "Phone (SMS)" },
+            { value: "push", label: "Push notification", disabled: true },
+          ]}
+        />
       </Grid>
 
       <Field id="guide-query" label="Search">
@@ -438,10 +432,9 @@ export const fieldDemos = {
   <Input value={email.value} onInput={(event) => email.value = event.currentTarget.value} />
 </Field>
 
-// The label under the control, and a control that is its own label — the opt-out keeps the label
-// from pointing a for at something that cannot carry one:
-<Field id="archived" label="Archived" suffix labelFor={false}>
-  <Checkbox checked={archived.value} />
+// A checkbox names itself with its own text, so Field adds only the hint and the wiring:
+<Field id="archived" hint="Hides the row from the list">
+  <Checkbox checked={archived.value}>Archived</Checkbox>
 </Field>`,
     render: () => <FieldDemo />,
   },
@@ -492,7 +485,8 @@ export const fieldDemos = {
     render: () => <CheckboxDemo />,
   },
   Radio: {
-    summary: "One radio button and its text; radios that share a `name` make one choice.",
+    summary:
+      "One radio button and its text, which makes one choice with the other radios of its `name`.",
     wide: false,
     snippet:
       `<Radio name="channel" value="email" checked={channel.value === "email"}>Email</Radio>`,

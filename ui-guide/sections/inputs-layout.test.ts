@@ -21,12 +21,14 @@ describe("the UI page's input and helper sections", () => {
     expect(unsaid).toEqual([])
   })
 
-  it("give every card a summary of one sentence", () => {
-    // One sentence: it ends with a full stop and has none before that, so a card's text cannot
-    // grow back into a paragraph of implementation notes.
+  it("give every card a summary of one sentence, with no issue number", () => {
+    // One sentence: it ends with a full stop and has no other full stop or semicolon, so a card's
+    // text cannot grow back into a paragraph of implementation notes; an issue number is a review
+    // note, not something a reader of the guide needs.
     const long = names.filter((name) => {
       const summary = demoRegistry[name]?.summary ?? ""
-      return !summary.endsWith(".") || /[.!?]\s/.test(summary.slice(0, -1))
+      return !summary.endsWith(".") || /[.!?;]\s/.test(summary.slice(0, -1)) ||
+        /#\d/.test(summary)
     })
     expect(long).toEqual([])
   })
