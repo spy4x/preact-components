@@ -6,7 +6,9 @@ dependency block. The package knows no entity — the store arrives as a prop an
 arrive as slots.
 
 ```ts
-import { CrudEditor, CrudList, RowAction, RowActions, TextField } from "@spy4x/preact-crud"
+import { CrudEditor, CrudList, TextField } from "@spy4x/preact-crud"
+import { IconEllipsisVertical } from "@spy4x/preact-icons"
+import { Dropdown, DropdownItem } from "@spy4x/preact-ui/dropdown"
 import { search } from "@spy4x/platform/universal/text"
 ```
 
@@ -21,8 +23,6 @@ import { search } from "@spy4x/platform/universal/text"
 | `DeletionValidation` | `deletion-validation` | `dependencies`, `model` — the entities that block an archive                    |
 | `FieldIssues`        | `field`               | `vl`, `name`, `renderIssue?` — one field's issues                               |
 | `NumberField`        | `field`               | as `TextField`; commits `0` for an empty box                                    |
-| `RowAction`          | `crud-list`           | `href` or `onClick`, `danger?`, `disabled?`, `children`                         |
-| `RowActions`         | `crud-list`           | `children`, `label?` — the per-row actions menu                                 |
 | `SelectField`        | `field`               | as `TextField`, plus `options`                                                  |
 | `TextField`          | `field`               | `vm`, `vl`, `name`, `label`, `hint?`, `placeholder?`, `span?`, `renderIssue?`   |
 | `TextareaField`      | `field`               | as `TextField`                                                                  |
@@ -126,7 +126,7 @@ The interfaces here describe the slice actually consumed, and nothing else.
   canAdd={() => canChange.value}
   header={<th class="text-left" scope="col">Name</th>}
   row={(region) => <td>{region.name}</td>}
-  actions={(region) => <RowActions><RowAction href={…}>Edit</RowAction></RowActions>}
+  actions={(region) => <Dropdown trigger={…} triggerLabel={…} menuLabel={…}>…</Dropdown>}
 />
 ```
 
@@ -251,7 +251,7 @@ Four behaviours the copies got wrong, now in one place:
 - **Numbers.** An empty or half-typed number box commits `0`, not `NaN`, which is what the schema
   would otherwise reject on every keystroke.
 
-## `DeletionValidation`, `RowActions`, `timeAgo`
+## `DeletionValidation`, `timeAgo`
 
 `DeletionValidation` renders the entities that block an archive. It lives here rather than in `ui/`
 because only the CRUD scaffold produces a `DeletionDependency`. Its `role="alert"` region is on the
@@ -269,8 +269,10 @@ unchecking its archive checkbox empties `dependencies` before rechecking it repo
 the entities blocking the archive are the same both times. Scrolling stays inside the component
 rather than becoming a caller-controlled port, because every caller wants the same outcome and a
 port would only make each one write the same call back in.
-`RowActions`/`RowAction` are the per-row menu: a link when given an `href`, a button when given an
-`onClick`, red when `danger`. `timeAgo` and `formatTimestamp` format the archive line; both come from
+A row's actions menu is `@spy4x/preact-ui`'s `Dropdown` with `DropdownItem`s, returned from
+`CrudList`'s `actions` slot: this package once wrapped the two as `RowActions` and `RowAction`, but
+the wrapper only picked the three-dots icon and a label, and an item's red tone is `DropdownItem`'s
+`danger` now. `timeAgo` and `formatTimestamp` format the archive line; both come from
 `@spy4x/platform/universal/time` (#306). `formatTimestamp` is ts-libs' `formatTime` under this
 package's name, and it decides "Today" in `options.timeZone`, the zone it prints in. `timeAgo`
 measures from the host clock.
@@ -314,11 +316,15 @@ export function RegionList() {
         </td>
       )}
       actions={(region) => (
-        <RowActions>
-          <RowAction href={`/regions/${region.id}/edit`}>
+        <Dropdown
+          trigger={<IconEllipsisVertical />}
+          triggerLabel={`Actions for ${region.name}`}
+          menuLabel={`Actions for ${region.name}`}
+        >
+          <DropdownItem href={`/regions/${region.id}/edit`}>
             {canChange.value ? "Edit" : "View"}
-          </RowAction>
-        </RowActions>
+          </DropdownItem>
+        </Dropdown>
       )}
     />
   )

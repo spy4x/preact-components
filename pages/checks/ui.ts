@@ -900,7 +900,7 @@ async function strayClickCheck(devtools: Devtools): Promise<void> {
  * and the check reported seven triggers, all named, and passed. A count is only worth asserting
  * against something that does not come from the thing being counted, so this is the catalogue's
  * own knowledge of what it renders — four anchorings on the `Dropdown` card, one row menu per row
- * of the `CrudList` demo, and the `RowActions` card's own.
+ * of the `CrudList` demo.
  *
  * A card that gains or loses a dropdown turns the check red until this table is updated with it,
  * which is one line and is visible in review. That is the intended cost.
@@ -908,7 +908,6 @@ async function strayClickCheck(devtools: Devtools): Promise<void> {
 const DROPDOWN_TRIGGERS_PER_CARD: Record<string, number> = {
   "demo-Dropdown": 4,
   "demo-CrudList": 3,
-  "demo-RowActions": 1,
   "demo-Shell": 1,
 }
 
