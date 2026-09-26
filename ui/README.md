@@ -108,6 +108,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `ToggleField`      | `toggle-field`      | `id`, `label`, `value`, `onToggle`, `description?`, `error?`                                                                                                                                         |
 | `ToggleSwitch`     | `toggle-switch`     | `value`, `onToggle`, `disabled`, `label`                                                                                                                                                             |
 | `Tooltip`          | `tooltip`           | `content`, `label`, `placement`, `focusable`                                                                                                                                                         |
+| `ZoomableImages`   | `zoomable-images`   | `containerSelector?`, `imageSelector?`, `fallbackAlt?`, `zoomLabel?`, `previousLabel?`, `nextLabel?`, `onOpen?`                                                                                      |
 
 ## Usage
 
@@ -738,8 +739,8 @@ telling a bot it was caught only teaches it which field to leave alone next time
 
 ## Lightbox
 
-`Lightbox` is the one dialog `ImageGallery`'s thumbnail strip and `system/image-lightbox.tsx`'s
-content mode both open — issue #140's "one lightbox, two ways in". `images`, `index`, `open`,
+`Lightbox` is the one dialog `ImageGallery`'s thumbnail strip and `ZoomableImages`
+both open — issue #140's "one lightbox, two ways in". `images`, `index`, `open`,
 `onClose` and `onIndexChange` are the caller's own state; the component owns nothing but the
 dialog's open/close lifecycle and which key or button moved the position.
 
@@ -783,27 +784,68 @@ filter, rather than showing an empty modal with no close control. Silent, not wa
 already required by the type, so an empty one only reaches this component through a caller that
 bypassed the type system to produce it, and nothing else in this package calls `console.warn` for a
 value its own type already disallows. **This is not the same claim as "an image with no `alt`
-attribute is refused everywhere."** `system/image-lightbox.tsx`'s content mode substitutes its own
-`fallbackAlt` (default `"Image"`) for a missing `alt` first, exactly as it did before `Lightbox`
-existed, so a zoomable image with no `alt` attribute still opens there, named `"Image"` — and, new
-here, shown as a visible caption. Only a caller who also sets `fallbackAlt=""` turns that
-substitution off; only then can content mode produce a genuinely empty description, and only then
-does it get the same refusal `ImageGallery` and `Lightbox` apply to their own `images` prop.
+attribute is refused everywhere."** `ZoomableImages` substitutes its own `fallbackAlt` (default
+`"Image"`) for a missing `alt` first, exactly as it did before `Lightbox` existed, so a zoomable
+image with no `alt` attribute still opens there, named `"Image"` — and, new here, shown as a visible
+caption. Only a caller who also sets `fallbackAlt=""` turns that substitution off; only then can
+content mode produce a genuinely empty description, and only then does it get the same refusal
+`ImageGallery` and `Lightbox` apply to their own `images` prop.
+
+## ZoomableImages
+
+`ZoomableImages` makes the images inside a container zoomable, opening the shared `Lightbox` — the
+same dialog `ImageGallery` opens on a thumbnail (see the `Lightbox` section above). It was
+`system/`'s `ImageLightbox` until #355 moved it here, next to the dialog it opens. It renders
+nothing but that empty dialog, so a reader without JavaScript loses only the zoom. The layer is
+delegated to the container: one listener instead of one per image, images that arrive after
+hydration still work, and cleanup is complete. Previous and next page through the container's other
+zoomable images, snapshotted at the moment one opens; an image that arrives afterward becomes
+zoomable but is not spliced into a sequence already being viewed. An image with no `alt` attribute
+is unchanged from before `Lightbox` existed: it still opens, named by `fallbackAlt` (default
+`"Image"`), and is now also shown as a visible caption — new here, since the old dialog had none.
+Only a caller who sets `fallbackAlt=""` turns the substitution off, and only then can an image
+genuinely have no description; that image is then refused the way `ImageGallery`'s own `images` prop
+is, and refused early — never marked a zoom control in the first place, so it keeps no Tab stop and
+no name it cannot act on, and a click on it inside a link still follows the link.
+
+**A zoomable image behaves like a button**, because that is what it has become. The component
+gives every image it marks a tab stop, a button's role and a name saying what activating it does,
+and both Enter and Space open the lightbox. Space is cancelled with them, exactly as a real button
+cancels it, so the page does not scroll away under a reader who has just pressed it. A click and an
+Enter press are cancelled too, which is what lets an image inside a link open the lightbox instead
+of following the link.
+
+The defaults name no particular kind of page: the container is `[data-lightbox]`, an attribute the
+host puts where it wants the zoom layer, and an image with no `alt` is described as `Image`. What
+the component puts on the host's images it takes off again when it unmounts.
+
+- **It uses event delegation, not per-image listeners.** The source attached one
+  listener per image and never removed them; delegation also survives images that appear after
+  hydration. Escape needs no listener of its own: `<dialog>` closes natively and the `close` event
+  clears the state, so the dialog and the state cannot disagree. A `MutationObserver` keeps the tab
+  stops in step with images that arrive later, which delegation alone cannot do — a tab stop is an
+  attribute on the image itself.
+- **The lightbox image is positioned inside the dialog, not stretched across it.** A child that
+  fills the dialog is a backdrop no click can ever land on, which is how the documented
+  "click outside to close" went years without being true.
+
+`resolveImage` (click target → lightbox image), `collectSequence` and `zoomableAlt` are the pure
+decisions behind it, exported for a test to drive with a stub instead of a DOM.
 
 ## ImageGallery
 
-A strip of real `<button>` thumbnails, one per image, that opens `Lightbox` on the one pressed —
-the other way into the shared dialog; `system/image-lightbox.tsx`'s content mode is the first. Each
-thumbnail's accessible name is the image's own `alt`, carried by the button through `aria-label`;
-the `<img>` inside it is `alt=""`, decorative, so a screen reader is not given the same name twice.
-`thumbSrc` is the thumbnail's own image source and defaults to `src` — the full image — when a
-caller has one size for both.
+A strip of real `<button>` thumbnails, one per image, that opens `Lightbox` on the one pressed — the
+other way into the shared dialog; `ZoomableImages` is the first. Each thumbnail's accessible name is
+the image's own `alt`, carried by the button through `aria-label`; the `<img>` inside it is
+`alt=""`, decorative, so a screen reader is not given the same name twice. `thumbSrc` is the
+thumbnail's own image source and defaults to `src` — the full image — when a caller has one size for
+both.
 
 `images` is filtered through `describedImages` once, and the filtered list is what both the strip
 and `Lightbox` receive, so an index computed against the strip's own thumbnails always lands on the
 same image inside the dialog — the two never run the filter separately over two different starting
-arrays, which is what let them disagree in `system/image-lightbox.tsx`'s own version of this bug
-before it was fixed there (see the `Lightbox` section above).
+arrays, which is what let them disagree in `ZoomableImages`'s own version of this bug before it was
+fixed there (see the `Lightbox` section above).
 
 ## ExportButton
 

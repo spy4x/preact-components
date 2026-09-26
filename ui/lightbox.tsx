@@ -2,7 +2,7 @@
  * `Lightbox` — the shared image dialog: one image from a sequence, its description as a caption,
  * labelled previous/next, a "3 of 8" counter, Escape to close, focus back to where it was.
  *
- * `ImageGallery` (`./image-gallery.tsx`) and `system/image-lightbox.tsx`'s content mode are the two
+ * `ImageGallery` (`./image-gallery.tsx`) and `ZoomableImages` are the two
  * ways into this component — a thumbnail strip and a zoomable image inside a container — and both
  * render this dialog rather than their own. One implementation, so focus handling, the Escape path
  * and the live-region announcement are written once.
@@ -24,7 +24,7 @@
  *
  * **Escape stays native.** The image dialog does not need a refusable close — nothing here asks
  * "are you sure" — so `<dialog>`'s own Escape handling and the `close` event it fires are the whole
- * mechanism, the same choice `system/image-lightbox.tsx`'s dialog already made. Left and Right *do*
+ * mechanism, the same choice `ZoomableImages`'s dialog already made. Left and Right *do*
  * need a listener, because the platform has no opinion about them: it is attached once, on mount,
  * directly on the `<dialog>` element through a `ref`, and reads `open`/the current index/the total
  * from a ref updated every render rather than closing over a stale one — the same shape
@@ -54,7 +54,7 @@
  * nothing survives the filter. It does this silently: `alt` is already required by the type, so an
  * empty one only reaches this component through a caller that bypassed the type system to produce
  * it, or supplied no description at all, and nothing else in this library calls `console.warn` for a
- * value its own type already disallows. `system/image-lightbox.tsx`'s content mode is the one caller
+ * value its own type already disallows. `ZoomableImages` is the one caller
  * where `alt` is *not* usually empty even when the source `<img>` has none: it substitutes its own
  * `fallbackAlt` (default `"Image"`) first, unchanged from before this component existed, so a
  * missing description there still opens and is still captioned — named `"Image"` rather than
@@ -84,7 +84,7 @@ export interface LightboxImage {
  *
  * The one rule "an image with no description is not shown" is enforced here, so every caller into
  * this component — {@link Lightbox} itself, `ImageGallery`'s thumbnail strip, and
- * `system/image-lightbox.tsx`'s snapshot of a container's zoomable images — applies exactly the same
+ * `ZoomableImages`'s snapshot of a container's zoomable images — applies exactly the same
  * predicate to the same prop shape rather than three of them slowly drifting apart. Generic over
  * `LightboxImage` so a caller whose images carry extra fields — `ImageGalleryImage.thumbSrc`, for
  * one — gets that field back on the images that survive, rather than the base shape.
@@ -163,7 +163,7 @@ const dialogClass =
   "fixed inset-0 m-0 h-full max-h-none w-full max-w-none bg-black/95 p-0 backdrop:bg-black/80"
 const controlClass =
   "absolute z-10 cursor-pointer rounded-full bg-black/50 p-2 text-white/70 transition-colors hover:text-white focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-white"
-// Positioned rather than stretched, exactly like `system/image-lightbox.tsx`'s own image: a child
+// Positioned rather than stretched, exactly like `ZoomableImages`'s own image: a child
 // that fills the dialog is a backdrop no click can ever land on.
 const imageClass =
   "absolute top-1/2 left-1/2 max-h-[90vh] max-w-[90vw] -translate-x-1/2 -translate-y-1/2 object-contain"

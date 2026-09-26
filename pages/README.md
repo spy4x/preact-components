@@ -309,7 +309,7 @@ as the numerator; and `--static`, which commits no package blocks at all, instea
   an Escape press closes it, and focus lands back on the same trigger element. Dropdown is a real
   menu with arrow keys and Escape; Toastr announces and pauses; Combobox stays quiet until it is
   used and keeps its highlight on screen; Tooltip dismisses on Escape and survives a pointer;
-  Calendar is one tab stop with arrows, Home, End and the page keys; ImageLightbox opens with
+  Calendar is one tab stop with arrows, Home, End and the page keys; ZoomableImages opens with
   Enter and Space; SWUpdater registers and shows its bar; and the filter hook follows the address
   bar. DateRangePicker moves focus into its panel and hands it back to the trigger on every close
   driven from inside it, and leaves focus alone on the two driven from outside; Pagination keeps

@@ -4,10 +4,10 @@ import { render } from "preact-render-to-string"
 import {
   collectSequence,
   type ImageElementLike,
-  ImageLightbox,
   resolveImage,
   zoomableAlt,
-} from "./image-lightbox.tsx"
+  ZoomableImages,
+} from "./zoomable-images.tsx"
 
 /** An element stub with the three properties `resolveImage` reads. */
 function element(overrides: Partial<ImageElementLike> = {}): ImageElementLike {
@@ -212,9 +212,9 @@ describe("collectSequence", () => {
   })
 })
 
-describe("ImageLightbox", () => {
+describe("ZoomableImages", () => {
   it("renders an empty dialog, before anything is opened", () => {
-    const html = render(<ImageLightbox />)
+    const html = render(<ZoomableImages />)
 
     expect(html).toContain("<dialog")
     expect(html).toContain('aria-label="Image viewer"')
@@ -222,20 +222,20 @@ describe("ImageLightbox", () => {
   })
 
   it("adds nothing to the page's markup that needs JavaScript", () => {
-    const html = render(<ImageLightbox />)
+    const html = render(<ZoomableImages />)
 
     expect(html.startsWith("<dialog")).toBe(true)
     expect(html).not.toContain("<script")
   })
 
   it("takes a custom dialog label", () => {
-    const html = render(<ImageLightbox label="Photo" />)
+    const html = render(<ZoomableImages label="Photo" />)
 
     expect(html).toContain('aria-label="Photo"')
   })
 
   it("keeps the caller's utilities alongside the dialog defaults", () => {
-    const html = render(<ImageLightbox class="bg-white" />)
+    const html = render(<ZoomableImages class="bg-white" />)
 
     expect(html).toContain("bg-white")
     expect(html).not.toContain("bg-black/95")
@@ -243,6 +243,6 @@ describe("ImageLightbox", () => {
 
   it("mounts no listeners during server rendering", () => {
     // Nothing to assert beyond surviving a render with no `document`: a throw here is the failure.
-    expect(render(<ImageLightbox containerSelector="#missing" />)).toContain("<dialog")
+    expect(render(<ZoomableImages containerSelector="#missing" />)).toContain("<dialog")
   })
 })

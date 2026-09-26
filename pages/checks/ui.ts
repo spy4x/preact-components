@@ -2036,7 +2036,7 @@ function readGalleryState(devtools: Devtools): Promise<GalleryLightboxState> {
  * was already on the page before anything opened, Escape closes it, and focus returns to the
  * thumbnail that opened it.
  *
- * `system/image-lightbox.tsx`'s `ImageLightbox` opens the same `Lightbox`, and its own checks in
+ * `ZoomableImages` (`ui/zoomable-images.tsx`) opens the same `Lightbox`, and its own checks in
  * `pages/checks/system.ts` already prove the backdrop click and the linked-image case; this file
  * does not repeat them.
  *

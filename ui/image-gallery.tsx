@@ -1,12 +1,12 @@
 /**
  * `ImageGallery` — a strip of thumbnails that opens {@link Lightbox} on the one that was pressed.
  *
- * The second of the two ways into the shared lightbox; `system/image-lightbox.tsx`'s content mode
+ * The second of the two ways into the shared lightbox; `ZoomableImages`
  * is the other. Both render the same `Lightbox`, so what this component owns is only the strip:
  * which image is open, and turning a thumbnail into a real, keyboard-reachable control.
  *
  * **Thumbnails are real `<button>` elements**, not an image carrying `role="button"` the way
- * `system/image-lightbox.tsx`'s zoomable images do — that component marks up somebody else's
+ * `ZoomableImages`'s zoomable images do — that component marks up somebody else's
  * `<img>` after the fact and has no `<button>` to reach for; this one draws its own markup and a
  * native button is simpler and gets Enter and Space for free in every real browser. The thumbnail's
  * own `<img>` is `alt=""`: the button already carries the name, through `aria-label`, and a second

@@ -8,7 +8,7 @@ Extracted from earlier source applications.
 ## Rules this package follows
 
 - **Props and ports, never a global store.** `SEOHead` takes the page head as props,
-  `ImageLightbox` takes an `onOpen` port, `SWUpdater` takes the service-worker container, the
+  `SWUpdater` takes the service-worker container, the
   reload and the error ports. The only state a component owns is the state the browser handed it.
 - **Server-renderable.** `document`, `navigator`, `location` and the clock are touched inside an
   effect, an event handler, or a pure function whose result the caller passes back in.
@@ -20,26 +20,25 @@ Extracted from earlier source applications.
   these components draw (`IconChevronLeft`, `IconChevronRight`, `IconXMark`, `IconBars3`) rather
   than duplicating SVG.
 - **`ui/` is a sibling dependency.** `Shell` and `AuthForm` already import individual `ui/`
-  components (`Avatar`, `Dropdown`; `Button`, `Field`, `Input`); `ImageLightbox` now does too,
-  opening `@spy4x/preact-ui`'s shared `Lightbox` instead of rendering its own dialog. `crud/`
-  imports `ui/` the same way.
+  components (`Avatar`, `Dropdown`; `Button`, `Field`, `Input`). `crud/` imports `ui/` the same
+  way. The zoom layer over a container's images that used to live here as `ImageLightbox` is
+  `ui/`'s `ZoomableImages` now: it is content, not application chrome.
 
 ## Components
 
-| Component       | Subpath          | Ports / key props                                                                                                    |
-| --------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `AuthForm`      | `auth-form`      | `mode`, `step`, `onModeChange?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `action?` |
-| `SEOHead`       | `seo-head`       | `title`, `description`, `canonical`, `crumbs?`, `ogImage?`, `jsonLd?`, `noindex?`, `twitterCard?`                    |
-| `SWUpdater`     | `sw-updater`     | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                 |
-| `Calendar`      | `calendar`       | `monthAnchor`, `minDate`, `maxDate`, `availableByDate`, `onSelectDate?`                                              |
-| `ImageLightbox` | `image-lightbox` | `containerSelector?`, `imageSelector?`, `fallbackAlt?`, `zoomLabel?`, `previousLabel?`, `nextLabel?`, `onOpen?`      |
-| `SiteHeader`    | `site-header`    | `links`, `currentPath?`, `brand`, `actions?`, `labels?`                                                              |
-| `Shell`         | `shell`          | `navItems`, `currentPath?`, `brand`, `user`, `userMenuItems?`, `status?`, `children`, `labels?`, `class?`            |
-| `StateInit`     | `state-init`     | `data`, `id?` — paired with `readStateInit(id?, source?)`                                                            |
-| `RailShell`     | `rail-shell`     | `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `children`, `labels?`, `class?`                     |
+| Component    | Subpath       | Ports / key props                                                                                                    |
+| ------------ | ------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `AuthForm`   | `auth-form`   | `mode`, `step`, `onModeChange?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `action?` |
+| `SEOHead`    | `seo-head`    | `title`, `description`, `canonical`, `crumbs?`, `ogImage?`, `jsonLd?`, `noindex?`, `twitterCard?`                    |
+| `SWUpdater`  | `sw-updater`  | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                 |
+| `Calendar`   | `calendar`    | `monthAnchor`, `minDate`, `maxDate`, `availableByDate`, `onSelectDate?`                                              |
+| `SiteHeader` | `site-header` | `links`, `currentPath?`, `brand`, `actions?`, `labels?`                                                              |
+| `Shell`      | `shell`       | `navItems`, `currentPath?`, `brand`, `user`, `userMenuItems?`, `status?`, `children`, `labels?`, `class?`            |
+| `StateInit`  | `state-init`  | `data`, `id?` — paired with `readStateInit(id?, source?)`                                                            |
+| `RailShell`  | `rail-shell`  | `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `children`, `labels?`, `class?`                     |
 
 Helpers, all pure: `head.ts` (`normalizeCanonical`, `canonicalUrl`, `breadcrumbItems`,
-`breadcrumbListJsonLd`) and `resolveImage` (click target → lightbox image). `head.ts` also exports
+`breadcrumbListJsonLd`). `head.ts` also exports
 `createHeadStore`, a factory that builds a fresh signal-backed store on every call, so it is not
 one of the pure ones — see below. `date.ts`'s ISO day and month arithmetic is private to this
 package — `Calendar`'s own dependency, kept out of the barrel and out of `exports`.
@@ -291,34 +290,6 @@ Two things about a month grid are not the component's to decide, and both come f
 The day labels are the locale's too: a screen reader is read `9 February 2026` rather than
 `2026-02-09`.
 
-## Progressive enhancement
-
-`ImageLightbox` makes the images inside a container zoomable, opening `@spy4x/preact-ui`'s
-shared `Lightbox` — the same dialog `ImageGallery` opens on a thumbnail (`ui/README.md`'s
-`Lightbox` section). It renders nothing but that empty dialog, so a reader without JavaScript loses
-only the zoom. The layer is delegated to the container: one listener instead of one per image,
-images that arrive after hydration still work, and cleanup is complete. Previous and next page
-through the container's other zoomable images, snapshotted at the moment one opens; an image that
-arrives afterward becomes zoomable but is not spliced into a sequence already being viewed. An image
-with no `alt` attribute is unchanged from before `Lightbox` existed: it still opens, named by
-`fallbackAlt` (default `"Image"`), and is now also shown as a visible caption — new here, since the
-old dialog had none. Only a caller who sets `fallbackAlt=""` turns the substitution off, and only
-then can an image genuinely have no description; that image is then refused the way `ImageGallery`'s
-own `images` prop is, and refused early — never marked a zoom control in the first place, so it
-keeps no Tab stop and no name it cannot act on, and a click on it inside a link still follows the
-link.
-
-**A zoomable image behaves like a button**, because that is what it has become. The component
-gives every image it marks a tab stop, a button's role and a name saying what activating it does,
-and both Enter and Space open the lightbox. Space is cancelled with them, exactly as a real button
-cancels it, so the page does not scroll away under a reader who has just pressed it. A click and an
-Enter press are cancelled too, which is what lets an image inside a link open the lightbox instead
-of following the link.
-
-The defaults name no particular kind of page: the container is `[data-lightbox]`, an attribute the
-host puts where it wants the zoom layer, and an image with no `alt` is described as `Image`. What
-the component puts on the host's images it takes off again when it unmounts.
-
 ## A live region is always present and empty
 
 **Every component in this library that announces something renders its live region from the first
@@ -435,8 +406,8 @@ path read the same fields the same way — a browser building its own `FormData`
 sees what the handler would have read.
 
 **`action` is the no-JavaScript path.** Before hydration nothing here has run, so a tap on Submit is
-a native form submission to `action`, the same progressive-enhancement contract `ImageLightbox` and
-`Calendar`'s link mode already use. Once hydrated, the submit handler calls `event.preventDefault()`
+a native form submission to `action`, the same progressive-enhancement contract `Calendar`'s link mode
+already uses. Once hydrated, the submit handler calls `event.preventDefault()`
 and the callback matching the current `mode`/`step` — but only when the caller supplied one, so a
 caller that wants the native post to keep happening even after hydration can simply leave that
 callback out. **`method` is always `"post"`, and there is no `method` prop.** A GET submission puts
@@ -740,15 +711,6 @@ reads the same as one whose `id` was mistyped, rather than throwing either way.
   package's own commit — see their sections above — and are no longer in that table.
   `ImageGallery` was in it too, and is no longer: it is built, in `ui/` rather than here — see
   `ui/README.md`'s `ImageGallery` section.
-- **`ImageLightbox` uses event delegation, not per-image listeners.** The source attached one
-  listener per image and never removed them; delegation also survives images that appear after
-  hydration. Escape needs no listener of its own: `<dialog>` closes natively and the `close` event
-  clears the state, so the dialog and the state cannot disagree. A `MutationObserver` keeps the tab
-  stops in step with images that arrive later, which delegation alone cannot do — a tab stop is an
-  attribute on the image itself.
-- **The lightbox image is positioned inside the dialog, not stretched across it.** A child that
-  fills the dialog is a backdrop no click can ever land on, which is how the documented
-  "click outside to close" went years without being true.
 - **A month anchor the calendar does not have is refused, not clipped.** `Date.parse` rolled
   `2026-02-30` over into 2 March and said nothing, so the grid drew a month its caller never asked
   for. Clipping to 28 February would have been the other defensible answer; refusing is what the
@@ -862,8 +824,7 @@ Counting the primary action is a deliberate step past the plain "five items or f
 five items and a primary action, a bar that showed all five items would leave the primary action
 unreachable on a phone. `tabBarSlots(items, primary)` is that rule as a pure function.
 
-**"More" opens a modal `<dialog>`,** the pattern `ImageLightbox` already uses through `ui/`'s
-`Lightbox`, rather than the `<details>` disclosure the other two shells share: a modal gets Escape,
+**"More" opens a modal `<dialog>`,** the pattern `ui/`'s `Lightbox` already uses, rather than the `<details>` disclosure the other two shells share: a modal gets Escape,
 an inert page behind it and the top layer from the browser. `showModal()` moves focus to the first
 control inside, which is the close button. Escape closes it natively, a click on the backdrop closes
 it, and choosing an entry or the close button closes it. Every way of closing ends in the `close`

@@ -1,10 +1,10 @@
 /**
- * `ImageLightbox` — makes the images inside a container zoomable, opening the shared `Lightbox`.
+ * `ZoomableImages` — the images inside a container open in the shared `Lightbox`.
  *
  * Progressive enhancement in the strict sense: the server renders the page, this adds a zoom layer
  * after hydration, and nothing is added to the markup that a reader without JavaScript would miss.
  * `Lightbox` is the only element this component renders, and its dialog is empty until an image is
- * opened — see `@spy4x/preact-ui/lightbox` for what it is built on and why.
+ * opened — see `./lightbox.tsx` for what it is built on and why.
  *
  * The click layer is delegated to the container rather than attached to each image: one listener
  * instead of N, images that arrive after hydration still work, and cleanup is complete — the
@@ -40,22 +40,9 @@
  * sits between it and the start of the container).
  */
 
-import { describedImages, Lightbox } from "@spy4x/preact-ui/lightbox"
+import { describedImages, Lightbox, type LightboxImage } from "./lightbox.tsx"
 import type { JSX } from "preact"
 import { useEffect, useState } from "preact/hooks"
-
-/** An image the lightbox can show. */
-export interface LightboxImage {
-  /** Absolute URL where the browser resolved one, the raw attribute otherwise. */
-  src: string
-  /**
-   * The image's description. `resolveImage` substitutes the component's `fallbackAlt` (default
-   * `"Image"`) for a missing one, so this is empty only when a caller has set `fallbackAlt` to `""`
-   * too — see {@link collectSequence}, which then drops the image rather than showing one with no
-   * name.
-   */
-  alt: string
-}
 
 /**
  * The view of a clicked element this component needs.
@@ -234,7 +221,7 @@ export function collectSequence(
   return { images, index }
 }
 
-export interface ImageLightboxProps {
+export interface ZoomableImagesProps {
   /**
    * Container whose images become zoomable. Defaults to `"[data-lightbox]"` — an attribute the
    * host puts on the element holding the images, which names no particular kind of page.
@@ -270,7 +257,7 @@ export interface ImageLightboxProps {
  * which is why no global key listener is needed for closing — the source version kept one alive
  * alongside the native close, so state and dialog could disagree.
  */
-export function ImageLightbox(
+export function ZoomableImages(
   {
     containerSelector = "[data-lightbox]",
     imageSelector = "img",
@@ -283,7 +270,7 @@ export function ImageLightbox(
     nextLabel,
     onOpen,
     class: className,
-  }: ImageLightboxProps,
+  }: ZoomableImagesProps,
 ): JSX.Element {
   const [sequence, setSequence] = useState<LightboxImage[]>([])
   const [index, setIndex] = useState(0)

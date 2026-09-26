@@ -19,7 +19,7 @@
  * **`action` is how the form still posts when the bundle has not loaded.** Before hydration
  * nothing here has run, so a visitor's Enter or a tap on Submit is a native form submission to
  * `action` — this is the progressive-enhancement contract `system/README.md` documents for
- * `ImageLightbox` and `Calendar`'s link mode, applied to a form. Once hydrated, the submit handler
+ * `Calendar`'s link mode, applied to a form. Once hydrated, the submit handler
  * calls `event.preventDefault()` and the matching callback instead, *provided the caller supplied
  * one* — a caller that only wants the native post even after hydration can leave the callback out
  * and the browser submits for it. **`method` is always `"post"`, unconditionally, and there is no

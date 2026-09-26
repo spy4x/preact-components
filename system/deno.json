@@ -8,7 +8,6 @@
     "./seo-head": "./seo-head.tsx",
     "./sw-updater": "./sw-updater.tsx",
     "./calendar": "./calendar.tsx",
-    "./image-lightbox": "./image-lightbox.tsx",
     "./site-header": "./site-header.tsx",
     "./shell": "./shell.tsx",
     "./rail-shell": "./rail-shell.tsx",
