@@ -158,9 +158,9 @@ review, so read the check as a floor, not as proof.
 
 It uses no Deno API. In this repository, `infra/scripts/spacing-scale.test.ts` runs it over every
 non-test source file of `theme/`, `ui/`, `system/`, `crud/`, `charts/`, `map/`, `ui-guide/` and
-`pages/`, with no exemption. `ui-guide/root-margin.test.tsx`
-fails when a component the guide demonstrates puts a margin on its root. `theme/README.md` →
-"Spacing" shows how an app runs the same check on its own files.
+`pages/`, with no exemption. `ui-guide/root-margin.test.tsx` fails when a component the guide
+demonstrates puts a margin on its root. `theme/README.md` → "Spacing" shows how an app runs the same
+check on its own files.
 
 The checker reads comments too, because Tailwind's scanner does and emits CSS for a class it finds
 in one. Only a word with the exact shape of a spacing class counts, so prose such as "a gap-free
