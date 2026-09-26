@@ -368,6 +368,13 @@ themeBootstrapScript({ defaultPreference: ThemeValue.DARK })`,
         default: '"system"',
         description: "The choice painted when nothing understood is stored.",
       },
+      {
+        name: "followSystem",
+        type: "boolean",
+        default: "false",
+        description:
+          "Repaint on a live system theme change while the choice is system; for a page that never attaches a store.",
+      },
     ],
     covers: ["themeBootstrapScript"],
     run: () => themeBootstrapScript({ defaultPreference: ThemeValue.DARK }),
