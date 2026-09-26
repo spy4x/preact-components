@@ -257,9 +257,10 @@ async function staticPhase(): Promise<void> {
     `data-guide-page="all"`,
   )
   check(
-    "index.html links no Everything page",
-    !html.includes(`href="#/all"`) && !html.includes(`data-guide-page-link="all"`),
-    "no #/all link, no page link for it",
+    "index.html links no Everything page and carries no footer",
+    !html.includes(`href="#/all"`) && !html.includes(`data-guide-page-link="all"`) &&
+      !/<footer[\s>]/.test(html),
+    "no #/all link, no page link for it, no <footer>",
   )
   const wrongPages = guidePages.flatMap((page) => {
     const markup = renderApp(pageHref(page.id))

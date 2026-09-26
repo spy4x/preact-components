@@ -1,8 +1,8 @@
 /**
  * The demo's host page — the app shell this library deliberately does not ship.
  *
- * The guide and a footer. The guide — `uiGuideRoute.component`, which is `UIGuide` routed by the
- * address's hash — owns the rest: its header, its side navigation, one page at a time,
+ * The guide — `uiGuideRoute.component`, which is `UIGuide` routed by the address's hash — owns
+ * the page: its header, its side navigation, one page at a time,
  * the deep links that mark and scroll to a card, and reading the address. What the host adds is
  * what only it knows: the hash to render before hydration, the document's title, set from the route
  * the guide reports, and manual scroll restoration, because this page is the whole app and the
@@ -82,7 +82,6 @@ export function App({ initialHash, version }: AppProps) {
           ),
         }}
       />
-      <SiteFooter />
     </div>
   )
 }
@@ -128,28 +127,4 @@ function useColorScheme(): ColorSchemePort {
   }
 
   return { dark, toggle }
-}
-
-/** Where the library lives and what the demo is built from. */
-function SiteFooter() {
-  return (
-    <footer class="border-t border-gray-200 py-8 dark:border-gray-800">
-      <div class="mx-auto flex max-w-screen-2xl flex-col gap-2 px-4 text-xs text-gray-500 sm:px-6 lg:px-8 dark:text-gray-400">
-        <p class="measure">
-          Prerendered with <code>preact-render-to-string</code>{" "}
-          and hydrated with one Preact island. Styled with{" "}
-          <code>theme/preset.css</code>, the same stylesheet an app imports.
-        </p>
-        <p class="measure">
-          <a class="link" href={REPOSITORY} rel="noreferrer">github.com/spy4x/preact-components</a>
-        </p>
-        <p class="measure">
-          Design, original markup, CSS and Tailwind by{" "}
-          <a class="link" href="https://github.com/Eirene" rel="noreferrer">Eirene</a>{" "}
-          (<a class="link" href="https://isorokina.com/" rel="noreferrer">isorokina.com</a>) — the
-          extraction into a Preact + signals package is this repository's work.
-        </p>
-      </div>
-    </footer>
-  )
 }
