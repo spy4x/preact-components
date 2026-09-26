@@ -161,8 +161,8 @@ non-test source file of `theme/`, `ui/`, `system/`, `crud/`, `charts/`, `map/`, 
 `pages/`. Its one exemption is a first line, `// spacing: off-scale until #328`, in each guide
 section file still waiting for the #328 redesign. A marked file that is already on the scale fails
 the test, and no file may carry the line once that issue closes. `ui-guide/root-margin.test.tsx`
-fails when a component the guide demonstrates puts a margin on its root. `theme/README.md` → "Spacing" shows how an app runs the same check on its own
-files.
+fails when a component the guide demonstrates puts a margin on its root. `theme/README.md` →
+"Spacing" shows how an app runs the same check on its own files.
 
 The checker reads comments too, because Tailwind's scanner does and emits CSS for a class it finds
 in one. Only a word with the exact shape of a spacing class counts, so prose such as "a gap-free

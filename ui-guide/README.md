@@ -87,16 +87,17 @@ section belongs to its package's page — `theme` holds the class sections and i
 A package page with no card in the registry says its examples are coming. `all` renders every other page in navigation order: it is
 the served document and a route of its own, for searching the whole library with the browser's find.
 
-The shell is a header, a navigation, a page and, at `xl`, an "On this page" list; `DESIGN.md` is
-the design it follows. The header carries the library's name and version, a search over every page,
-card and helper name, the repository link, the theme switch and the host's `actions`. At `lg` and up the navigation
-is a sticky column beside the page; below that it is a native modal `<dialog>` behind the header's
-menu button, which Enter or Space opens, Escape closes, and which puts focus back on the button when
-it closes. The navigation is a `<nav>`
-named by `labels.nav`; it lists every page, marks the one showing `aria-current="page"`, and under it
-lists that page's sections and cards, marking the one the route names `aria-current="true"`. A skip
-link, the guide's first link, moves focus past the navigation to the page. A page's link opens the
-page at its title, including the pages whose id is also their section's (`#/crud`).
+The shell is a header, a navigation, a page and, at `xl`, an "On this page" list; `DESIGN.md` is the
+design it follows. The header carries the library's name and version, a search over every page, card
+and helper name, the repository link, the theme switch and the host's `actions`. At `lg` and up the
+navigation is a sticky column beside the page; below that it is a native modal `<dialog>` behind the
+header's menu button, which Enter or Space opens, Escape closes, and which puts focus back on the
+button when it closes. The navigation is a `<nav>` named by `labels.nav`; it lists every page, marks
+the one showing `aria-current="page"`, and under it lists that page's sections and cards (below
+`xl` only in the side column, where "On this page" takes over), marking the one the route names
+`aria-current="true"`. A skip link, the guide's first link, moves focus past
+the navigation to the page. A page's link opens the page at its title, including the pages whose id
+is also their section's (`#/crud`).
 
 The guide's header sticks to the top of the viewport, and deep-linked cards and sections scroll to
 just below it. A host keeps no sticky chrome of its own above the guide: the guide draws the

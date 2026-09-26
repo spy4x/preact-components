@@ -3,9 +3,9 @@
 The guide is the library's showcase, so it is built from the library: its layout components, its
 named gaps, its buttons, its install box and its combobox keyboard logic. Every gap on the page is a
 named gap or a step of the spacing scale (`docs/spacing.md`); none is picked per element. This file
-is the design the shell (`shell.tsx`), the card (`card.tsx`) and the search (`search.tsx`) implement,
-and what every section's pull request under #328 follows. Inspiration came from the documentation
-sites of shadcn/ui, Radix, Mantine and Tailwind UI; no code came from any of them.
+is the design the shell (`shell.tsx`), the card (`card.tsx`) and the search (`search.tsx`)
+implement, and what every section's pull request under #328 follows. Inspiration came from the
+documentation sites of shadcn/ui, Radix, Mantine and Tailwind UI; no code came from any of them.
 
 ## Layout grid and breakpoints
 
@@ -68,10 +68,10 @@ The demo sits on a **canvas band** across the card: the page's colour showing th
 16 px dot grid, divided from the card's header and footer by hairlines, not boxed. The code block is
 the one dark surface, and it is code, not a container.
 
-A table inside a demo is painted with the surface colour in the dark palette by the preset itself
-(`theme/preset.css`, "Chrome the popup is painted by"), which is why `Bars` shows a darker box
-there. That is the theme's chrome for a table on a `theme-base` page, not the guide's, and the guide
-leaves it alone; the guide's own props table opts out with `bg-transparent`.
+The preset paints a table with the surface colour in the dark palette (`theme/preset.css`, "Chrome
+the popup is painted by"). A demo band must not show that as a box: the guide's own props table
+opts out with `bg-transparent`, and `Bars`, which renders a table, does the same in its own package
+(#337). A lane that finds another component boxed this way fixes it in that component's package.
 
 Accent is the purple of the theme: the current page and card in the navigation, the package name,
 and the class chips. The primary button stays the theme's primary.
@@ -82,8 +82,8 @@ In order, top to bottom:
 
 1. **Name**: the component's own name (`Badge`), or the card's title for a class or example card.
 2. **One plain sentence** on what it is for. Written as inline Markdown (`` `code` `` and
-   `**strong**`, `markdown.tsx`), so no literal backtick reaches the page; a sentence that needs more
-   is JSX in `description`.
+   `**strong**`, `markdown.tsx`), so no literal backtick reaches the page; a sentence that needs
+   more is JSX in `description`.
 3. **The demo** on its canvas.
 4. **Props summary**, optional: the few props a reader reaches for first, with type, default and
    one sentence. The README stays the full reference.
@@ -91,9 +91,15 @@ In order, top to bottom:
    content), with the copy button pinned to the row so the snippet copies without opening it.
 
 The card's API is the registry's `Demo`: `summary`, `description?`, `snippet`, `render`, `wide?` and
-`props?`. `wide: true` gives a card the full row: a table, a chart, a form, anything that needs room.
-`wide: false` says it shares a row. A section that has not been moved to this design leaves `wide`
-out, and the grid then widens a card whose demo holds a table or a menu, as the old grid did.
+`props?`. `wide: true` gives a card the full row: a table, a chart, a form, anything that needs
+room. `wide: false` says it shares a row. A section that has not been moved to this design leaves
+`wide` out, and the grid then widens a card whose demo holds a table or a menu, as the old grid did.
+An example card (`Example` in `example.tsx`) takes the same `wide?`, `props?` and `description?`.
+Every migrated card says `wide: true` or `wide: false`; the Charts page is the model.
+
+In a component section the two cards of a row share its height, so the pair reads as one row. In
+an example section each card keeps its own height (`items-start`): an output is often three lines,
+and stretching it to its neighbour's would leave a tall empty canvas.
 
 **No holes.** Normal cards fill the row two at a time. The last card of an odd run of normal cards
 (before a wide card, or at the end of the section) takes the whole row (`cardSpans` in `shell.tsx`).
@@ -116,11 +122,11 @@ heading: on a page of one section, and on a section named like its page (Charts 
 ## Header
 
 Sticky, 56 px (`h-14`), translucent over the page. Left: the menu button (below `lg`), the library's
-name, and its version in a quiet grey pill (from `sm`). Right: search, the repository link, the theme
-switch when the host passes its `colorScheme`, and the host's own `actions`. The switch says what a
-press does: its name is "Switch to dark mode" (or light) at every width, with a moon or sun, and
-from `md` the words "Dark mode" (or "Light mode"), which the name contains. Every word is a label
-with an English default.
+name, and its version in a quiet grey pill (from `sm`). Right: search, the repository link, the
+theme switch when the host passes its `colorScheme`, and the host's own `actions`. The switch says
+what a press does: its name is "Switch to dark mode" (or light) at every width, with a moon or sun,
+and from `md` the words "Dark mode" (or "Light mode"), which the name contains. Every word is a
+label with an English default.
 
 **Search** is a field-shaped button from `sm` (an icon button on a phone) that opens a modal dialog.
 It searches page titles, component names, example and class card titles, and every helper an
@@ -130,9 +136,9 @@ library's combobox keys; Escape or a click outside closes it. `/` and Ctrl+K (‚å
 ## "On this page"
 
 At `xl`, a sticky right-hand column lists the page's cards, grouped under links to their sections
-when there are more than one. The first card in view (below the header, in the top half of the window) is marked with
-`aria-current="location"` and a purple rule. Clicking a card follows the card's own route, which
-marks the card and scrolls to it.
+when there are more than one. The first card in view (below the header, in the top half of the
+window) is marked with `aria-current="location"` and a purple rule. Clicking a card follows the
+card's own route, which marks the card and scrolls to it.
 
 ## Phone drawer
 
