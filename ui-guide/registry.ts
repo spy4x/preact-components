@@ -356,7 +356,7 @@ const catalogue = {
     package: "system",
     title: "System",
     blurb:
-      "Application chrome and platform integration: heads, the service-worker prompt, the dual-mode calendar. Everything is live; the two platform-integration cards say on the card what they demonstrate and what they leave to a browser.",
+      "The frames an app is built in, its sign-in form and calendar, and the pieces that work with the browser: the page head, state handed over from the server, and the service-worker update prompt.",
     demos: systemDemos,
   },
   crud: {
