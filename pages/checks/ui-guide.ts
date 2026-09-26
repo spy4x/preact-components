@@ -25,7 +25,9 @@ const MENU_DIALOG = `[data-e2e="ui-guide-nav-dialog"]`
 export async function uiGuideChecks(devtools: Devtools): Promise<void> {
   await serverTextChecks(devtools)
   await copyBlockChecks(devtools)
-  await withViewport(devtools, 1280, 800, () => navigationChecks(devtools))
+  // Between `lg` and `xl`: the side navigation is a column and still lists the page's cards, which
+  // move to the "On this page" column from `xl`.
+  await withViewport(devtools, 1152, 800, () => navigationChecks(devtools))
   await withViewport(devtools, 375, 812, () => phoneNavigationChecks(devtools))
   await withViewport(devtools, 375, 812, () => overflowChecks(devtools))
   for (const width of [375, 1280]) {
