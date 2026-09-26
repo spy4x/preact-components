@@ -1,6 +1,6 @@
 {
   "name": "@spy4x/preact-theme",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "exports": {
     // JSR refuses a CSS file as an export ("Expected a JavaScript or TypeScript module, but
     // identified a Css module"), and a JSR-installed module cannot read a sibling file by a
