@@ -288,7 +288,7 @@ console.log({ actual, preference: theme.preference.value, stored: saved.get("the
       },
       {
         name: "media",
-        type: "(query: string) => ThemeMediaQuery",
+        type: "ThemeMediaSource | null",
         default: "matchMedia",
         description: "Answers whether the system asks for dark.",
       },
@@ -302,6 +302,12 @@ console.log({ actual, preference: theme.preference.value, stored: saved.get("the
         type: "string",
         default: '"theme"',
         description: "The storage key the choice is kept under.",
+      },
+      {
+        name: "systemQuery",
+        type: "string",
+        default: '"(prefers-color-scheme: dark)"',
+        description: "The media query watched for a change of the system setting.",
       },
     ],
     covers: ["createThemeStore", "ThemeValue"],
