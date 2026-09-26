@@ -22,7 +22,7 @@ export const layoutDemos = {
   Stack: {
     summary:
       "Children in a column, a named `gap` apart: `none`, `xs` (4 px), `sm` (8 px), `md` (16 px, the default), `lg` (24 px), `xl` (32 px) or `2xl` (48 px). `as` picks the element and `class` adds anything that is not spacing.",
-    snippet: `<Stack gap="sm">
+    snippet: `<Stack>
   <Field id="name" label="Name"><Input id="name" /></Field>
   <Field id="email" label="Email"><Input id="email" type="email" /></Field>
 </Stack>`,
@@ -31,12 +31,12 @@ export const layoutDemos = {
         <Stack gap="sm">
           <Box>gap="sm"</Box>
           <Box>8 px apart</Box>
-          <Box>fields of a form</Box>
+          <Box>buttons stacked on a phone</Box>
         </Stack>
         <Stack>
           <Box>gap="md"</Box>
           <Box>16 px apart</Box>
-          <Box>the default</Box>
+          <Box>fields of a form, cards in a list</Box>
         </Stack>
         <Stack gap="xl">
           <Box>gap="xl"</Box>
@@ -50,7 +50,7 @@ export const layoutDemos = {
     summary:
       "Children in a row that wraps, a named `gap` apart (`sm` by default), for toolbars, button rows and tags. `align` lines them up across the row (`center` by default) and `justify` places them along it (`start`, `center`, `end` or `between`).",
     snippet: `<Cluster justify="between">
-  <h2 class="h3">Invoices</h2>
+  <h4 class="h3">Invoices</h4>
   <Cluster>
     <Button variant="secondary">Export</Button>
     <Button>New invoice</Button>
@@ -86,7 +86,7 @@ export const layoutDemos = {
   },
   Page: {
     summary:
-      "The content column of a page: centred, at most `max-w-6xl`, with the page gutter (16 px on a phone, 24 px from `sm`, 32 px from `lg`) and 32 px between its sections. It renders a `div` unless `as` says otherwise, since the host shell usually owns `<main>`. It replaces the deprecated `page-layout` class.",
+      'The content column of a page: centred, at most `max-w-6xl`, with the page gutter (16 px on a phone, 24 px from `sm`, 32 px from `lg`) and 32 px between its sections. It renders a `div`, because `Shell` and `RailShell` already render the page\'s `<main>`; pass `as="main"` only on a page with no shell. It replaces the deprecated `page-layout` class.',
     snippet: `<Page>
   <PageTitle>Billing</PageTitle>
   <Section title="Invoices">…</Section>
@@ -104,7 +104,7 @@ export const layoutDemos = {
   },
   Section: {
     summary:
-      "A titled block of a page: an optional heading (`h2` by default, `headingLevel` for `h3` or `h4`) and description, then its children, with fixed gaps — 4 px under the heading, 16 px between the header and each child. A titled section is named by its heading, so a screen reader can jump to it.",
+      "A titled block of a page: an optional heading (`h2` by default, `headingLevel` for `h3` or `h4`) and description, then its children, with fixed gaps — 4 px under the heading, 16 px between the header and each child. `as` is `section` (the default), `article`, `aside` or `div`, and any other element is a type error. A titled `section`, `article` or `aside` is named by its heading, so a screen reader can jump to it; a `div` is not a landmark and gets no name.",
     snippet: `<Section title="Payment methods" description="Cards we can charge." headingLevel={4}>
   <Grid>…</Grid>
 </Section>`,

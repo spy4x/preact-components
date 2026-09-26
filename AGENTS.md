@@ -367,8 +367,11 @@ library knowing which app it is running in.
 
 ### Spacing
 
-Padding, margin and gap use only the steps `0 px 1 2 3 4 6 8 12 16`, never an arbitrary value, and
-`infra/scripts/spacing-scale.test.ts` fails on anything else. A component's root element carries no
+Padding, margin and gap use only the steps `0 px 1 2 3 4 6 8 12 16`, never an arbitrary value.
+`infra/scripts/spacing-scale.test.ts` fails on a spacing class off the scale or with an arbitrary
+value, an arbitrary property that sets spacing (`[padding:…]`) and a `--spacing()` call off the
+scale. It cannot see a raw CSS declaration, an inline `style`, a class name built at run time or
+Tailwind's `theme()` function; review holds those. A component's root element carries no
 margin: the space between siblings is the parent's named gap, from `Page`, `Section`, `Stack`,
 `Cluster` or `Grid` in `ui/layout.tsx`. [`docs/spacing.md`](./docs/spacing.md) says which gap goes
 where and shows a whole page built that way.

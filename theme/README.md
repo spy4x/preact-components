@@ -214,14 +214,18 @@ Padding, margin, gap, `space-x`/`space-y` and scroll margin/padding use one fixe
 the named gaps, the no-outer-margin rule and a page built from the layout components — is in
 [`docs/spacing.md`](../docs/spacing.md).
 
-| Export                        | What it is                                                                            |
-| ----------------------------- | ------------------------------------------------------------------------------------- |
-| `SPACING_STEPS`               | `0 px 1 2 3 4 6 8 12 16`: every step a spacing class may use                          |
-| `SPACING_GAPS`                | the named gaps of the layout components: `none xs sm md lg xl 2xl` → `0 1 2 4 6 8 12` |
-| `findOffScaleSpacing(source)` | every spacing class in `source` that is off the scale or arbitrary                    |
+| Export                        | What it is                                                                                                |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `SPACING_STEPS`               | `0 px 1 2 3 4 6 8 12 16`: every step a spacing class may use                                              |
+| `SPACING_GAPS`                | the named gaps of the layout components: `none xs sm md lg xl 2xl` → `0 1 2 4 6 8 12`                     |
+| `findOffScaleSpacing(source)` | every off-scale or arbitrary spacing class, spacing arbitrary property and `--spacing()` call in `source` |
 
-`findOffScaleSpacing` returns one `{ line, column, className, reason }` per class, with the variant
-prefix and any `-` kept in `className` (`sm:-mt-4`). It reads any file's text — TypeScript, TSX,
+`findOffScaleSpacing` returns one `{ line, column, className, reason }` per finding, with the
+variant prefix and any `-` kept in `className` (`sm:-mt-4`). Besides spacing classes it reports an
+arbitrary property that sets padding, margin or a gap (`[padding:…]`) and a `--spacing()` call whose
+argument is not a numeric step. It cannot see a raw CSS declaration (`padding: 10px`), an inline
+`style`, a class name built at run time or Tailwind's legacy `theme()` function, so it is a floor
+that review builds on, not a proof. It reads any file's text — TypeScript, TSX,
 CSS with `@apply`, HTML — and uses no Deno API, so an app can call it from its own test. This is
 the whole test an app built from `spy4x/template` needs, run with `--allow-read`:
 
