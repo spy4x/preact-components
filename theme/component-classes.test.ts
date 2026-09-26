@@ -31,7 +31,14 @@ async function build(css: string, candidates: string[]): Promise<string> {
 
 describe("COMPONENT_CLASSES", () => {
   it("lists exactly the classes the published packages' sources render", async () => {
-    expect(COMPONENT_CLASSES).toBe((await componentClasses()).join(" "))
+    const committed = COMPONENT_CLASSES.split(" ")
+    const current = await componentClasses()
+    // Named differences first, so a failure says which class to regenerate for.
+    expect({
+      missing: current.filter((name) => !committed.includes(name)),
+      stale: committed.filter((name) => !current.includes(name)),
+    }).toEqual({ missing: [], stale: [] })
+    expect(COMPONENT_CLASSES).toBe(current.join(" "))
   })
 
   it("makes @source inline emit every listed class, as a scan of the same classes would", async () => {
