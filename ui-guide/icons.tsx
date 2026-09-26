@@ -151,7 +151,10 @@ export function IconGallery(
             </p>
           )
           : (
-            <Grid gap="sm" class="grid-cols-[repeat(auto-fill,minmax(7rem,1fr))]">
+            <Grid
+              gap="sm"
+              class="grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(7rem,1fr))]"
+            >
               {matches.map((name) => {
                 const Icon = icons[name as keyof typeof icons] as IconComponent
                 return (
