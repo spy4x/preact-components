@@ -112,7 +112,7 @@ export function ToggleField({
 
   return (
     <div class={className}>
-      <div class={cn("flex", !disabled && "justify-between")}>
+      <div class={cn("flex items-center gap-3", !disabled && "justify-between")}>
         <label
           id={labelId}
           class={cn(labelText, disabled && "opacity-50")}

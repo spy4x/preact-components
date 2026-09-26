@@ -166,9 +166,11 @@ describe("ToggleField", () => {
     // The native attribute, read off the button's own tag: a bare `disabled` substring proves
     // nothing, because every switch's class list carries `disabled:cursor-not-allowed`.
     expect(buttonTags(html).some((tag) => /\sdisabled(\s|>|$)/.test(tag))).toBe(true)
-    // A disabled row centres its two halves instead of pushing them apart: a dimmed label flung to
-    // the far side of a dead control is the visual the settings pages asked us to avoid.
+    // A disabled row keeps its two halves together instead of pushing them apart: a dimmed label
+    // flung to the far side of a dead control is the visual the settings pages asked us to avoid.
+    // The gap keeps the switch off the label's last letter.
     expect(wrapperRowClasses(html)).not.toContain("justify-between")
+    expect(wrapperRowClasses(html)).toContain("gap-3")
     // The dimmed label is the visual half and must not be the only half: `aria-disabled` alone
     // leaves the switch focusable and clickable, which is why the attribute is on the control.
     expect(labelClasses(html)).toContain("opacity-50")
