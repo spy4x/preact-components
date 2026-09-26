@@ -30,6 +30,9 @@ export async function uiGuideChecks(devtools: Devtools): Promise<void> {
   await withViewport(devtools, 1152, 800, () => navigationChecks(devtools))
   await withViewport(devtools, 375, 812, () => phoneNavigationChecks(devtools))
   await withViewport(devtools, 375, 812, () => overflowChecks(devtools))
+  for (const width of [375, 1024]) {
+    await withViewport(devtools, width, 812, () => propsSummaryCheck(devtools, width))
+  }
   for (const width of [375, 1280]) {
     await withViewport(devtools, width, 812, () => tooltipTriggerCheck(devtools, width))
   }
@@ -690,6 +693,57 @@ const SHELL_TEXT = [
   `[data-guide-page] header > *`,
   `section[id] > div:first-child:not(.sr-only) > *`,
 ].join(", ")
+
+/**
+ * Every card's props summary fits its card without scrolling sideways, on a phone and in a
+ * half-width card at 1024px, where a row stacks its sentence under the name and type.
+ *
+ * The summary scrolls rather than clips when it is too wide, so the page-level overflow check does
+ * not see it; this measures each summary's own box on every page.
+ */
+async function propsSummaryCheck(devtools: Devtools, width: number): Promise<void> {
+  const wide: string[] = []
+  let measured = 0
+  let stacked = 0
+  for (const page of guidePages) {
+    await openGuidePage(devtools, page.id)
+    const found = await devtools.evaluate<{ count: number; stacked: number; wide: string[] }>(
+      `(() => {
+      const boxes = [...document.querySelectorAll("article table > caption")]
+        .map((caption) => caption.closest("table")?.parentElement)
+        .filter((box) => box && box.classList.contains("@container"))
+      const wide = []
+      let stacked = 0
+      for (const box of boxes) {
+        const card = box.closest("article")?.id ?? "?"
+        if (box.scrollWidth > box.clientWidth + 1) {
+          wide.push(card + " scrolls by " + (box.scrollWidth - box.clientWidth) + "px")
+        }
+        const table = box.querySelector("table").getBoundingClientRect().width
+        // Below 28rem a sentence takes the row's whole width instead of a third of it.
+        if (table < 448) {
+          stacked++
+          for (const cell of box.querySelectorAll("tbody td:last-child")) {
+            const share = cell.getBoundingClientRect().width / table
+            if (share < 0.9) wide.push(card + " squeezes a sentence to " + Math.round(share * 100) + "%")
+          }
+        }
+      }
+      return { count: boxes.length, stacked, wide }
+    })()`,
+    )
+    measured += found.count
+    stacked += found.stacked
+    for (const entry of found.wide) wide.push(`${page.id}: ${entry}`)
+  }
+  check(
+    `every props summary fits its card at ${width}px, a narrow one with each sentence at full width`,
+    wide.length === 0 && measured > 0 && stacked > 0,
+    wide.length === 0
+      ? `${measured} summaries measured across ${guidePages.length} pages, ${stacked} of them narrow`
+      : wide.join(", "),
+  )
+}
 
 /**
  * At 375px wide no page scrolls sideways and none of the shell's own text runs past its box, in

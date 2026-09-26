@@ -205,9 +205,12 @@ function PropsSummary(
   { props, labels }: { props: readonly DemoProp[]; labels: DemoCardLabels },
 ): JSX.Element {
   return (
-    <div class="overflow-x-auto border-b border-gray-200 px-4 py-4 sm:px-6 dark:border-gray-700/80">
+    <div class="@container overflow-x-auto border-b border-gray-200 px-4 py-4 sm:px-6 dark:border-gray-700/80">
       {
-        /* `bg-transparent`: the preset paints a table in the dark palette with the surface colour
+        /* Below 28rem of card width (a phone, or a half-width card at 1024 px) a row turns into a
+        two-column grid: name and type on the first line, the sentence under them at full width, so
+        the sentence never shrinks to a word per line. Long names and types wrap anywhere.
+        `bg-transparent`: the preset paints a table in the dark palette with the surface colour
         (`theme/preset.css`, "Chrome the popup is painted by"), which would box the summary. */
       }
       <table class="w-full bg-transparent text-left text-sm">
@@ -223,20 +226,23 @@ function PropsSummary(
         </thead>
         <tbody class="divide-y divide-gray-200 dark:divide-gray-700/80">
           {props.map((prop) => (
-            <tr key={prop.name} class="align-top">
+            <tr
+              key={prop.name}
+              class="align-top @max-md:grid @max-md:grid-cols-[auto_minmax(0,1fr)]"
+            >
               <th
                 scope="row"
-                class="py-2 pr-4 font-mono text-xs font-semibold text-gray-950 dark:text-gray-50"
+                class="py-2 pr-4 font-mono text-xs font-semibold [overflow-wrap:anywhere] text-gray-950 dark:text-gray-50"
               >
                 {prop.name}
               </th>
-              <td class="py-2 pr-4 font-mono text-xs text-purple-800 dark:text-purple-200">
+              <td class="py-2 pr-4 font-mono text-xs [overflow-wrap:anywhere] text-purple-800 @max-md:pr-0 dark:text-purple-200">
                 {prop.type}
                 {prop.default === undefined
                   ? null
                   : <span class="block text-gray-500 dark:text-gray-400">= {prop.default}</span>}
               </td>
-              <td class="py-2 text-gray-600 dark:text-gray-300">
+              <td class="py-2 text-gray-600 @max-md:col-span-2 @max-md:pt-0 dark:text-gray-300">
                 <InlineMarkdown text={prop.description} />
               </td>
             </tr>
