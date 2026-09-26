@@ -1,22 +1,24 @@
 /**
  * Compares the names the docs list for each package with the names the package really exports.
  *
- * Three places list a package's contents, and each has drifted from the code before (#127): they
+ * Several places list a package's contents, and each has drifted from the code before (#127): they
  * named components that were never built, put a component under the wrong package, and missed
  * whole modules. This script reads the exports from the packages themselves and reports every name
- * a document lists that the package does not export, in three places:
+ * a document lists that the package does not export, in four places:
  *
- * 1. the "Package layout" table in `AGENTS.md` and the "Scope" table in `README.md` — a summary,
+ * 1. the "Package layout" table in `AGENTS.md` and the "Scope" table in `docs/maintaining.md` — a
+ *    summary,
  *    one row per package. Every name written in backticks in a row must be a value export or a
  *    subpath of that package, and every published package needs a row. A summary may stop at
  *    "and the rest", so it is not required to name everything — except for the few small packages
  *    in {@linkcode COMPLETE_SUMMARIES}, whose row must name every value export;
- * 2. the `deno add` lines in `README.md`'s Install section — one line per published package, and
- *    no line for a package that does not exist;
+ * 2. the `deno add` lines in `docs/usage.md`'s Install section — one line per published package,
+ *    and no line for a package that does not exist;
  * 3. the "Components" table of each catalogued package's own README — the complete list. Its
  *    first column must name exactly the package's component-named exports, no more and no fewer —
  *    every backticked name in that column counts, so a row may name several — and where the second
- *    column names a subpath, that subpath must export every component the row names.
+ *    column names a subpath, that subpath must export every component the row names;
+ * 4. the "Packages" table in `README.md` — it must link every published package's own README.
  *
  * "Component-named" is the catalogue's own rule (`ui-guide/coverage.ts`): an initial capital and a
  * lower-case letter somewhere after it. The catalogued packages are the ones the guide gives cards
@@ -60,7 +62,12 @@ export interface PackageSurface {
 /** The documents this script reads, as text. */
 export interface Docs {
   agents: string
+  /** The root `README.md`, whose "Packages" table links each package's README. */
   readme: string
+  /** `docs/usage.md`, whose Install section holds the `deno add` lines. */
+  usage: string
+  /** `docs/maintaining.md`, whose "Scope" table summarises each package. */
+  maintaining: string
   /** Each package's `README.md`, keyed by package directory. */
   packageReadmes: Record<string, string>
 }
@@ -154,7 +161,7 @@ export function exportListProblems(
 
   const summaries = [
     { file: "AGENTS.md", rows: tableRows(docs.agents, "## Package layout") },
-    { file: "README.md", rows: tableRows(docs.readme, "## Scope") },
+    { file: "docs/maintaining.md", rows: tableRows(docs.maintaining, "## Scope") },
   ]
   for (const { file, rows } of summaries) {
     const seen = new Set<string>()
@@ -185,13 +192,22 @@ export function exportListProblems(
   }
 
   const installed = new Set(
-    [...docs.readme.matchAll(/^deno add jsr:@spy4x\/preact-([a-z-]+)/gm)].map((m) => m[1]),
+    [...docs.usage.matchAll(/^deno add jsr:@spy4x\/preact-([a-z-]+)/gm)].map((m) => m[1]),
   )
   for (const id of installed) {
-    if (!(id in packages)) problems.push(`README.md installs ${id}, which is not a package`)
+    if (!(id in packages)) problems.push(`docs/usage.md installs ${id}, which is not a package`)
   }
   for (const id of Object.keys(packages)) {
-    if (!installed.has(id)) problems.push(`README.md has no \`deno add\` line for ${id}`)
+    if (!installed.has(id)) problems.push(`docs/usage.md has no \`deno add\` line for ${id}`)
+  }
+
+  const linked = tableRows(docs.readme, "## Packages").flatMap(([first = ""]) =>
+    [...first.matchAll(/\]\(([a-z-]+)\/README\.md\)/g)].map((m) => m[1])
+  )
+  for (const id of Object.keys(packages)) {
+    if (!linked.includes(id)) {
+      problems.push(`README.md's Packages table does not link ${id}/README.md`)
+    }
   }
 
   for (const id of CATALOGUED) {
@@ -263,7 +279,8 @@ export async function readPackages(): Promise<Record<string, PackageSurface>> {
 }
 
 /**
- * Reads `AGENTS.md`, `README.md` and every published package's `README.md`.
+ * Reads `AGENTS.md`, `README.md`, `docs/usage.md`, `docs/maintaining.md` and every published
+ * package's `README.md`.
  *
  * @param ids Package directories whose README to read.
  * @returns The documents as text; a package with no README reads as empty.
@@ -272,7 +289,13 @@ export async function readDocs(ids: string[]): Promise<Docs> {
   const read = (path: string) => Deno.readTextFile(new URL(path, ROOT)).catch(() => "")
   const packageReadmes: Record<string, string> = {}
   for (const id of ids) packageReadmes[id] = await read(`${id}/README.md`)
-  return { agents: await read("AGENTS.md"), readme: await read("README.md"), packageReadmes }
+  return {
+    agents: await read("AGENTS.md"),
+    readme: await read("README.md"),
+    usage: await read("docs/usage.md"),
+    maintaining: await read("docs/maintaining.md"),
+    packageReadmes,
+  }
 }
 
 if (import.meta.main) {

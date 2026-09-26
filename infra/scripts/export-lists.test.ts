@@ -21,7 +21,10 @@ function packages(): Record<string, PackageSurface> {
   return surfaces
 }
 
-/** Docs that agree with {@link packages}: every row, every install line, every component. */
+/**
+ * Docs that agree with {@link packages}: every row, every install line, every README link, every
+ * component.
+ */
 function docs(): Docs {
   const ids = Object.keys(packages())
   const contents: Record<string, string> = { cn: "`cn()`", map: "`Widget`, `widgetHelper`" }
@@ -40,14 +43,14 @@ function docs(): Docs {
   return {
     agents: `## Package layout\n\n${summary}\n`,
     readme: [
-      "## Install",
+      "## Packages",
       "",
-      ...ids.map((id) => `deno add jsr:@spy4x/preact-${id}`),
-      "",
-      "## Scope",
-      "",
-      summary,
+      "| Package | What it holds |",
+      "| --- | --- |",
+      ...ids.map((id) => `| [\`@spy4x/preact-${id}\`](${id}/README.md) | ${id} |`),
     ].join("\n"),
+    usage: ["## Install", "", ...ids.map((id) => `deno add jsr:@spy4x/preact-${id}`)].join("\n"),
+    maintaining: `## Scope\n\n${summary}\n`,
     packageReadmes,
   }
 }
@@ -75,7 +78,7 @@ describe("export lists", () => {
     surfaces.cn.names.push("cx")
     expect(exportListProblems(docs(), surfaces)).toEqual([
       "AGENTS.md's cn/ row does not name `cx`, which cn exports",
-      "README.md's cn/ row does not name `cx`, which cn exports",
+      "docs/maintaining.md's cn/ row does not name `cx`, which cn exports",
     ])
   })
 
@@ -101,27 +104,47 @@ describe("export lists", () => {
 
   it("accepts a subpath name in a summary row", () => {
     const input = docs()
-    input.readme = input.readme.replace("| `ui/` | `Widget` |", "| `ui/` | `Widget`, `widget` |")
+    input.maintaining = input.maintaining.replace(
+      "| `ui/` | `Widget` |",
+      "| `ui/` | `Widget`, `widget` |",
+    )
     expect(exportListProblems(input, packages())).toEqual([])
   })
 
   it("reports a published package with no summary row", () => {
     const input = docs()
-    input.readme = input.readme.replace("| `system/` | `Widget` |\n", "")
+    input.maintaining = input.maintaining.replace("| `system/` | `Widget` |\n", "")
     expect(exportListProblems(input, packages())).toEqual([
-      "README.md has no row for the published package system/",
+      "docs/maintaining.md has no row for the published package system/",
     ])
   })
 
   it("reports an install line for no package and a package with no install line", () => {
     const input = docs()
-    input.readme = input.readme.replace(
+    input.usage = input.usage.replace(
       "deno add jsr:@spy4x/preact-cn",
       "deno add jsr:@spy4x/preact-nav",
     )
     expect(exportListProblems(input, packages())).toEqual([
-      "README.md installs nav, which is not a package",
-      "README.md has no `deno add` line for cn",
+      "docs/usage.md installs nav, which is not a package",
+      "docs/usage.md has no `deno add` line for cn",
+    ])
+  })
+
+  it("reports a published package the README's Packages table does not link", () => {
+    const input = docs()
+    input.readme = input.readme.replace("](map/README.md)", "](map/)")
+    expect(exportListProblems(input, packages())).toEqual([
+      "README.md's Packages table does not link map/README.md",
+    ])
+  })
+
+  it("does not count a README link outside the Packages table", () => {
+    const input = docs()
+    input.readme = input.readme.replace(/^.*\(crud\/README\.md\).*\n?/m, "") +
+      "\n\n## Development\n\n| [crud](crud/README.md) | |\n"
+    expect(exportListProblems(input, packages())).toEqual([
+      "README.md's Packages table does not link crud/README.md",
     ])
   })
 
