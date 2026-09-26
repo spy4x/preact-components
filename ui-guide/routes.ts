@@ -255,7 +255,7 @@ export function pageOfFragment(
   if (id === undefined) return undefined
   const section = sections.find((candidate) => candidate.id === id)
   if (section) return pageOfSection(section)
-  return guidePageIds.find((pageId) => pageId === id && pageId !== "overview" && pageId !== "all")
+  return guidePageIds.find((pageId) => pageId === id && pageId !== "overview")
 }
 
 /**

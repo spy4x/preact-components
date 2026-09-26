@@ -7,17 +7,17 @@
  * which `pages/checks/map.ts` is; `map/map.test.tsx` proves the box, the list and the escaping of
  * caller data.
  *
- * The tile URL is a **relative** path with no `{z}/{x}/{y}` placeholders — `map-demo/tile.png`, one
- * tiny local image `pages/build.ts` copies into the artefact, requested unchanged for every tile
- * Leaflet asks for. Relative, so it resolves against whatever base the page is served at (a local
- * preview, or the deployed GitHub Pages site) with no signal or effect needed to compute it, and
- * local, so `deno task verify`'s browser phase never reaches past the preview server — see issue
- * #143's security requirement.
+ * The tiles come from the shell (`../map-tiles.ts`): OpenStreetMap's by default, so the published
+ * guide draws a real map, or whatever provider the host passes as `mapTiles`. The demo site's
+ * browser checks pass one tiny local image there, so `deno task verify`'s browser phase never
+ * reaches past the preview server — see issue #143's security requirement.
  */
 
 import type { MapMarker } from "@spy4x/preact-map"
 import { useSignal } from "@preact/signals"
 import { Stack } from "@spy4x/preact-ui"
+import { useContext } from "preact/hooks"
+import { MapTilesContext } from "../map-tiles.ts"
 import type { DemoFragment } from "../registry.ts"
 import { LazyMap } from "./map-leaflet.tsx"
 
@@ -28,15 +28,13 @@ const PLACES: MapMarker[] = [
   { id: "outpost", lat: 52.5200, lng: 13.4050, label: "Berlin outpost" },
 ]
 
-/** A tile with no `{z}/{x}/{y}` in it: Leaflet requests this exact path for every tile it draws. */
-const LOCAL_TILE_URL = "map-demo/tile.png"
-
 /**
  * `Map` wired to a signal, so `onMarkerClick` — from a pin's click, or Enter or Space while a pin
  * has focus — has something visible to echo.
  */
 function MapInteractiveDemo() {
   const lastClicked = useSignal("none yet")
+  const tiles = useContext(MapTilesContext)
 
   return (
     <Stack gap="sm" data-e2e="map-interactive">
@@ -45,8 +43,8 @@ function MapInteractiveDemo() {
         zoom={4}
         markers={PLACES}
         onMarkerClick={(id) => lastClicked.value = id}
-        tileUrl={LOCAL_TILE_URL}
-        attribution="© Example tile provider"
+        tileUrl={tiles.url}
+        attribution={tiles.attribution}
       />
       <p class="text-xs text-gray-500 dark:text-gray-400">
         onMarkerClick: <span data-e2e="map-last-clicked">{lastClicked.value}</span>

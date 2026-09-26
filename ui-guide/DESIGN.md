@@ -17,7 +17,7 @@ documentation sites of shadcn/ui, Radix, Mantine and Tailwind UI; no code came f
 
 The whole frame is at most `max-w-screen-2xl` wide and centred. The side gutter is `Page`'s: 16 px
 on a phone, 24 px from `sm`, 32 px from `lg`. The columns are `xl` (32 px) apart. The overview and
-the all-pages document have no "On this page" list, so their content takes both right-hand columns.
+the served document of every page have no "On this page" list, so their content takes both right-hand columns.
 
 The page column is a container (`@container`), and the card grid lays out by the column's width, not
 the window's: one column below 42rem (`@2xl`), two from there.
@@ -80,25 +80,24 @@ and the class chips. The primary button stays the theme's primary.
 
 In order, top to bottom:
 
-1. **Name**: the component's own name (`Badge`), or the card's title for a class or example card.
+1. **Name**: the component's own name (`Badge`), or the card's title for a class card.
 2. **One plain sentence** on what it is for. Written as inline Markdown (`` `code` `` and
    `**strong**`, `markdown.tsx`), so no literal backtick reaches the page; a sentence that needs
    more is JSX in `description`.
 3. **The demo** on its canvas.
 4. **Props summary**, optional: the few props a reader reaches for first, with type, default and
    one sentence. The README stays the full reference.
-5. **Code**: a disclosure row, closed by default (open on an example card, whose code is its
-   content), with the copy button pinned to the row so the snippet copies without opening it.
+5. **Code**: a disclosure row, closed by default, with the copy button pinned to the row so the
+   snippet copies without opening it. Opened on a phone, the code scrolls inside its block: a long
+   line is never clipped by the card.
 
 The card's API is the registry's `Demo`: `summary`, `description?`, `snippet`, `render`, `wide?` and
 `props?`. `wide: true` gives a card the full row: a table, a chart, a form, anything that needs
 room. `wide: false` says it shares a row. A section that has not been moved to this design leaves
 `wide` out, and the grid then widens a card whose demo holds a table or a menu, as the old grid did.
-An example card (`Example` in `example.tsx`) takes the same `wide?`, `props?` and `description?`.
 Every migrated card says `wide: true` or `wide: false`; the Charts page is the model.
 
-The two cards of a row share its height, in component and example sections alike, so the pair
-reads as one row and no hole opens beside the taller card. A short output sits on a taller canvas
+The two cards of a row share its height, so the pair reads as one row and no hole opens beside the taller card. A short output sits on a taller canvas
 instead; when that canvas would be mostly empty, pair the card with a similar one or make it wide.
 
 **No holes.** Normal cards fill the row two at a time. The last card of an odd run of normal cards
@@ -107,9 +106,9 @@ Cards keep their order: no dense packing, so reading order and visual order agre
 
 ## Navigation
 
-Grouped, in this order: **Start here** (Overview, Everything), **Components** (UI, System, CRUD,
-Charts, Map), **Helpers** (Signals, cn), **Foundations** (Theme, Icons). Group titles are small and
-muted; links are one font and one size, and a long name wraps rather than being cut.
+Grouped, in this order: **Start here** (Overview), then **Packages** (UI, Icons, Theme, Charts, Map,
+System, CRUD). There is no page of every page, and no page for a package of helpers alone: the guide
+shows components. Group titles are small and muted; links are one font and one size, and a long name wraps rather than being cut.
 
 Under the page showing, below `xl` only: its sections, when it has more than one, and its cards.
 From `xl` the "On this page" column lists both, so the side navigation lists pages alone. The links
@@ -129,8 +128,7 @@ and from `md` the words "Dark mode" (or "Light mode"), which the name contains. 
 label with an English default.
 
 **Search** is a field-shaped button from `sm` (an icon button on a phone) that opens a modal dialog.
-It searches page titles, component names, example and class card titles, and every helper an
-example covers, ranked exact, prefix, substring, then place. The arrows, Home, End and Enter are the
+It searches page titles, component names and class card titles, ranked exact, prefix, substring, then place. The arrows, Home, End and Enter are the
 library's combobox keys; Escape or a click outside closes it. `/` and Ctrl+K (⌘K) open it.
 
 ## "On this page"

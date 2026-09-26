@@ -65,19 +65,24 @@ describe("searchIndex", () => {
     expect(badge?.href).toBe("#/badges/badge")
   })
 
-  it("finds a helper an example covers by its own name, leading to that example", () => {
-    const helper = searchIndex(demoRegistry).find((entry) => entry.label === "paddedDomain")
+  it("finds a class card by its title and leads to its card", () => {
+    const atoms = searchIndex(demoRegistry).find((entry) => entry.label === "Colour atoms")
 
-    expect(helper?.kind).toBe(SearchKind.HELPER)
-    expect(helper?.href).toBe("#/charts-examples/nice-scale")
+    expect(atoms?.kind).toBe(SearchKind.CLASSES)
+    expect(atoms?.href).toBe("#/surfaces/class-colour-atoms")
   })
 
-  it("lists every page but the all-pages document", () => {
+  it("lists no helper: the guide shows components", () => {
+    const labels = searchIndex(demoRegistry).map((entry) => entry.label)
+
+    expect(labels).not.toContain("clampProgress")
+    expect(labels).not.toContain("cn")
+  })
+
+  it("lists every page", () => {
     const pages = searchIndex(demoRegistry).filter((entry) => entry.kind === SearchKind.PAGE)
 
-    expect(pages.map((entry) => entry.label)).toEqual(
-      guidePages.filter((page) => page.id !== "all").map((page) => page.title),
-    )
+    expect(pages.map((entry) => entry.label)).toEqual(guidePages.map((page) => page.title))
   })
 
   it("leaves out a card the registry does not carry", () => {
