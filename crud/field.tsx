@@ -1,6 +1,8 @@
-import { cn } from "@spy4x/preact-cn"
+import { Checkbox } from "@spy4x/preact-ui/checkbox"
+import { Field } from "@spy4x/preact-ui/field"
+import { Input, Select, type SelectOption, Textarea } from "@spy4x/preact-ui/input"
 import type { ReadonlySignal, Signal } from "@preact/signals"
-import type { ComponentChildren, JSX } from "preact"
+import type { ComponentChildren, JSX, VNode } from "preact"
 import { Fragment } from "preact"
 import { useId } from "preact/hooks"
 import type { FieldIssue, ValidationModel } from "@spy4x/validation/model"
@@ -89,32 +91,77 @@ export function FieldIssues<M extends object>(
         issue === undefined
           ? null
           : renderIssue === undefined
-          ? <p key={type} class="text-sm text-red-700 mt-2">{issue.message}</p>
+          ? <p key={type} class="mt-2 text-sm text-red-700 dark:text-red-300">{issue.message}</p>
           : <Fragment key={type}>{renderIssue(issue, type)}</Fragment>
       )}
     </>
   )
 }
 
-/** Label, control, hint and issues of one grid cell. The field controls below differ only in control. */
-function FieldCell(
-  { id, label, span, hint, issues, children }: {
+/** Whether the validation model holds at least one issue for this field. */
+function hasIssues<M extends object>(
+  vl: ReadonlySignal<ValidationModel<M>>,
+  name: keyof M & string,
+): boolean {
+  const field = vl.value[name]
+  return field !== undefined && Object.values(field).some((issue) => issue !== undefined)
+}
+
+/**
+ * One grid cell: `ui`'s {@link Field} for the label, the control and the hint, then the issues.
+ *
+ * The label, hint and id wiring are `Field`'s, so a fix there reaches every CRUD editor. What this
+ * cell adds is the part `Field` does not know about: the validation model's issues, rendered below
+ * `Field` by {@link FieldIssues} (so a caller's `renderIssue` can still put a link next to one), and
+ * wired back to the control through `aria-describedby` and `aria-invalid` while there are any.
+ *
+ * `control` receives the {@link ControlWiring} and returns the one element to render; the issues
+ * come first in its `aria-describedby`, then `Field`'s hint.
+ */
+function FieldCell<M extends object>(
+  { id, label, span, hint, vl, name, renderIssue, control }: {
     id: string
-    label: string
+    label?: string
     span: string
     hint?: ComponentChildren
-    issues: ComponentChildren
-    children: ComponentChildren
+    vl: ReadonlySignal<ValidationModel<M>>
+    name: keyof M & string
+    renderIssue?: (issue: FieldIssue, type: string) => ComponentChildren
+    control: (wiring: ControlWiring) => VNode
   },
-) {
+): JSX.Element {
+  const invalid = hasIssues(vl, name)
+  const issuesId = `${id}-issues`
   return (
     <div class={span}>
-      <label for={id} class="label">{label}</label>
-      <div class="mt-2">{children}</div>
-      {hint !== undefined && <p class="mt-2 text-sm text-gray-500">{hint}</p>}
-      {issues}
+      <Field id={id} label={label} hint={hint}>
+        {(wiring) =>
+          control({
+            id: wiring.id,
+            "aria-describedby": [invalid ? issuesId : undefined, wiring["aria-describedby"]]
+              .filter(Boolean).join(" ") || undefined,
+            "aria-invalid": invalid ? true : undefined,
+          })}
+      </Field>
+      {invalid && (
+        <div id={issuesId}>
+          <FieldIssues vl={vl} name={name} renderIssue={renderIssue} />
+        </div>
+      )}
     </div>
   )
+}
+
+/**
+ * The attributes {@link FieldCell} puts on a control: `Field`'s id and hint, plus the issues.
+ *
+ * Built through `Field`'s function child rather than its cloning form, because the clone sets
+ * `aria-invalid` from `Field`'s own `error` and would overwrite the one the issues ask for.
+ */
+interface ControlWiring {
+  id: string
+  "aria-describedby": string | undefined
+  "aria-invalid": true | undefined
 }
 
 /** One labelled text input. Commits on blur, trimmed, so a keystroke is not a store write. */
@@ -128,17 +175,20 @@ export function TextField<M extends object, K extends keyof M & string>(
       label={props.label}
       span={props.span ?? defaultSpan}
       hint={props.hint}
-      issues={<FieldIssues vl={props.vl} name={props.name} renderIssue={props.renderIssue} />}
-    >
-      <input
-        type="text"
-        id={id}
-        class={cn("input", props.inputClass)}
-        placeholder={props.placeholder}
-        value={fieldText(props.vm.value[props.name])}
-        onBlur={(event) => setField(props.vm, props.name, event.currentTarget.value.trim())}
-      />
-    </FieldCell>
+      vl={props.vl}
+      name={props.name}
+      renderIssue={props.renderIssue}
+      control={(wiring) => (
+        <Input
+          {...wiring}
+          type="text"
+          class={props.inputClass}
+          placeholder={props.placeholder}
+          value={fieldText(props.vm.value[props.name])}
+          onBlur={(event) => setField(props.vm, props.name, event.currentTarget.value.trim())}
+        />
+      )}
+    />
   )
 }
 
@@ -159,17 +209,21 @@ export function NumberField<M extends object, K extends keyof M & string>(
       label={props.label}
       span={props.span ?? defaultSpan}
       hint={props.hint}
-      issues={<FieldIssues vl={props.vl} name={props.name} renderIssue={props.renderIssue} />}
-    >
-      <input
-        type="number"
-        id={id}
-        class={cn("input", props.inputClass)}
-        placeholder={props.placeholder}
-        value={fieldText(props.vm.value[props.name])}
-        onBlur={(event) => setField(props.vm, props.name, commitNumber(event.currentTarget.value))}
-      />
-    </FieldCell>
+      vl={props.vl}
+      name={props.name}
+      renderIssue={props.renderIssue}
+      control={(wiring) => (
+        <Input
+          {...wiring}
+          type="number"
+          class={props.inputClass}
+          placeholder={props.placeholder}
+          value={fieldText(props.vm.value[props.name])}
+          onBlur={(event) =>
+            setField(props.vm, props.name, commitNumber(event.currentTarget.value))}
+        />
+      )}
+    />
   )
 }
 
@@ -190,25 +244,25 @@ export function TextareaField<M extends object, K extends keyof M & string>(
       label={props.label}
       span={props.span ?? defaultSpan}
       hint={props.hint}
-      issues={<FieldIssues vl={props.vl} name={props.name} renderIssue={props.renderIssue} />}
-    >
-      <textarea
-        id={id}
-        rows={props.rows ?? 4}
-        class={cn("textarea", props.inputClass)}
-        placeholder={props.placeholder}
-        value={fieldText(props.vm.value[props.name])}
-        onBlur={(event) => setField(props.vm, props.name, event.currentTarget.value.trim())}
-      />
-    </FieldCell>
+      vl={props.vl}
+      name={props.name}
+      renderIssue={props.renderIssue}
+      control={(wiring) => (
+        <Textarea
+          {...wiring}
+          rows={props.rows ?? 4}
+          class={props.inputClass}
+          placeholder={props.placeholder}
+          value={fieldText(props.vm.value[props.name])}
+          onBlur={(event) => setField(props.vm, props.name, event.currentTarget.value.trim())}
+        />
+      )}
+    />
   )
 }
 
-/** One option of a {@link SelectField}. `value` keeps its type, so a numeric foreign key stays numeric. */
-export interface SelectOption {
-  value: number | string
-  label: string
-}
+/** One option of a {@link SelectField}: `ui`'s own, so a numeric foreign key stays numeric. */
+export type { SelectOption }
 
 /** A {@link SelectField} adds its option list and the empty option to {@link FieldProps}. */
 export interface SelectFieldProps<M extends object, K extends keyof M & string>
@@ -219,16 +273,18 @@ export interface SelectFieldProps<M extends object, K extends keyof M & string>
 }
 
 /**
- * One labelled select.
+ * One labelled select, on `ui`'s {@link Select}.
  *
  * The control's value is the model's, not each option's `selected` flag. When the model holds a
  * value no option carries — a foreign key the collection has not loaded yet, or the `0` a blank
  * model starts with — the select falls back to the empty option instead of silently displaying its
  * first entry as if it were chosen.
  *
- * Option values are stringified in the markup on purpose. A browser only ever reports a string, and
- * the server renderer compares an option's value to the select's with `==`: leaving a numeric `0`
- * on an option made it match the empty placeholder (`"" == 0`), so two options rendered selected.
+ * Option values are stringified in the markup on purpose (`Select` does it). A browser only ever
+ * reports a string, and the server renderer compares an option's value to the select's with `==`:
+ * leaving a numeric `0` on an option made it match the empty placeholder (`"" == 0`), so two options
+ * rendered selected. The picked option is looked up again on change, so the model gets the option's
+ * own value back — a numeric foreign key stays numeric.
  */
 export function SelectField<M extends object, K extends keyof M & string>(
   props: SelectFieldProps<M, K>,
@@ -243,47 +299,56 @@ export function SelectField<M extends object, K extends keyof M & string>(
       label={props.label}
       span={props.span ?? defaultSpan}
       hint={props.hint}
-      issues={<FieldIssues vl={props.vl} name={props.name} renderIssue={props.renderIssue} />}
-    >
-      <select
-        id={id}
-        class={cn("select", props.inputClass)}
-        value={selected === undefined ? "" : String(selected.value)}
-        onChange={(event) => {
-          const picked = props.options.find(
-            (option) => String(option.value) === event.currentTarget.value,
-          )
-          setField(props.vm, props.name, picked === undefined ? "" : picked.value)
-        }}
-      >
-        {props.placeholder !== undefined && <option value="">{props.placeholder}</option>}
-        {props.options.map((option) => (
-          <option key={String(option.value)} value={String(option.value)}>{option.label}</option>
-        ))}
-      </select>
-    </FieldCell>
+      vl={props.vl}
+      name={props.name}
+      renderIssue={props.renderIssue}
+      control={(wiring) => (
+        <Select
+          {...wiring}
+          class={props.inputClass}
+          options={props.options}
+          placeholder={props.placeholder}
+          value={selected === undefined ? "" : String(selected.value)}
+          onChange={(event) => {
+            const picked = props.options.find(
+              (option) => String(option.value) === event.currentTarget.value,
+            )
+            setField(props.vm, props.name, picked === undefined ? "" : picked.value)
+          }}
+        />
+      )}
+    />
   )
 }
 
-/** One labelled checkbox, with its label after the box. */
+/**
+ * One labelled checkbox, on `ui`'s {@link Checkbox}: the label is the checkbox's own, after the box.
+ *
+ * `Field` is therefore given no `label`, so it renders none of its own: a second one would name the
+ * same `<input>` twice.
+ */
 export function CheckboxField<M extends object, K extends keyof M & string>(
   props: FieldProps<M, K>,
 ): JSX.Element {
   const id = useId()
   return (
-    <div class={props.span ?? defaultSpan}>
-      <div class="flex gap-2 items-center">
-        <input
-          type="checkbox"
-          id={id}
-          class={cn("checkbox", props.inputClass)}
+    <FieldCell
+      id={id}
+      span={props.span ?? defaultSpan}
+      hint={props.hint}
+      vl={props.vl}
+      name={props.name}
+      renderIssue={props.renderIssue}
+      control={(wiring) => (
+        <Checkbox
+          {...wiring}
+          class={props.inputClass}
           checked={Boolean(props.vm.value[props.name])}
           onChange={(event) => setField(props.vm, props.name, event.currentTarget.checked)}
-        />
-        <label for={id} class="label">{props.label}</label>
-      </div>
-      {props.hint !== undefined && <p class="mt-2 text-sm text-gray-500">{props.hint}</p>}
-      <FieldIssues vl={props.vl} name={props.name} renderIssue={props.renderIssue} />
-    </div>
+        >
+          {props.label}
+        </Checkbox>
+      )}
+    />
   )
 }

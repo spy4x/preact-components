@@ -27,8 +27,6 @@ import {
   FieldIssues,
   fieldText,
   NumberField,
-  RowAction,
-  RowActions,
   SelectField,
   TextareaField,
   TextField,
@@ -37,7 +35,8 @@ import type { CrudAssociationStore } from "@spy4x/preact-crud/association-editor
 import type { CrudListStore } from "@spy4x/preact-crud/store"
 import type { CrudEditorStore } from "@spy4x/preact-crud/store"
 import type { OperationState } from "@spy4x/preact-crud"
-import { Button, Stack } from "@spy4x/preact-ui"
+import { Button, Dropdown, DropdownItem, Stack } from "@spy4x/preact-ui"
+import { IconEllipsisVertical } from "@spy4x/preact-icons"
 import { computed, type ReadonlySignal, signal, useSignal } from "@preact/signals"
 import { search } from "@spy4x/platform/universal/text"
 import type { FieldIssue, ValidationModel } from "@spy4x/validation/model"
@@ -478,11 +477,15 @@ function CrudListDemo() {
         </>
       )}
       actions={(row) => (
-        <RowActions label={`Actions for ${row.name}`}>
-          <RowAction href={`#crud-${row.id}`}>Edit</RowAction>
-          <RowAction onClick={() => {}}>Duplicate</RowAction>
-          <RowAction danger onClick={() => {}}>Archive</RowAction>
-        </RowActions>
+        <Dropdown
+          trigger={<IconEllipsisVertical />}
+          triggerLabel={`Actions for ${row.name}`}
+          menuLabel={`Actions for ${row.name}`}
+        >
+          <DropdownItem href={`#crud-${row.id}`}>Edit</DropdownItem>
+          <DropdownItem onClick={() => {}}>Duplicate</DropdownItem>
+          <DropdownItem danger onClick={() => {}}>Archive</DropdownItem>
+        </Dropdown>
       )}
     />
   )
@@ -590,7 +593,7 @@ export const crudDemos = {
         name: "actions",
         type: "(row: M) => ComponentChildren",
         default: "no actions column",
-        description: "The row's actions, usually a `RowActions` menu.",
+        description: "The row's actions, usually a `Dropdown` menu.",
       },
       {
         name: "addHref",
@@ -607,46 +610,17 @@ export const crudDemos = {
   header={<th scope="col">Name</th>}
   row={(row) => <td>{row.name}</td>}
   actions={(row) => (
-    <RowActions>
-      <RowAction href={\`/teams/\${row.id}/edit\`}>Edit</RowAction>
-      <RowAction danger onClick={() => archive(row.id)}>Archive</RowAction>
-    </RowActions>
+    <Dropdown
+      trigger={<IconEllipsisVertical />}
+      triggerLabel={\`Actions for \${row.name}\`}
+      menuLabel={\`Actions for \${row.name}\`}
+    >
+      <DropdownItem href={\`/teams/\${row.id}/edit\`}>Edit</DropdownItem>
+      <DropdownItem danger onClick={() => archive(row.id)}>Archive</DropdownItem>
+    </Dropdown>
   )}
 />`,
     render: () => <CrudListDemo />,
-  },
-  RowAction: {
-    summary:
-      "One item of a row's actions menu: a link when it has an `href`, a button when it has none, red when it is `danger`.",
-    wide: false,
-    snippet: `<RowAction href={\`/teams/\${row.id}/edit\`}>Edit</RowAction>
-<RowAction danger onClick={() => archive(row.id)}>Archive</RowAction>`,
-    render: () => (
-      // A menu item belongs to a menu, so the card gives the items one; `RowActions` supplies it,
-      // and the popup's box, in real use.
-      <div class="w-56" role="menu" aria-orientation="vertical" aria-label="Item shapes">
-        <RowAction href="#crud">A link, because it has one</RowAction>
-        <RowAction onClick={() => {}}>A button, because it does not</RowAction>
-        <RowAction danger onClick={() => {}}>Danger</RowAction>
-        <RowAction disabled onClick={() => {}}>Disabled</RowAction>
-      </div>
-    ),
-  },
-  RowActions: {
-    summary:
-      "The actions menu of one row, behind a three-dots button, that the keyboard opens and walks.",
-    wide: false,
-    snippet: `<RowActions label="Team actions">
-  <RowAction href="/teams/1/edit">Edit</RowAction>
-  <RowAction onClick={archive}>Archive</RowAction>
-</RowActions>`,
-    render: () => (
-      <RowActions label="Team actions">
-        <RowAction href="#crud">Edit</RowAction>
-        <RowAction onClick={() => {}}>Duplicate</RowAction>
-        <RowAction danger onClick={() => {}}>Archive</RowAction>
-      </RowActions>
-    ),
   },
   CrudEditor: {
     summary:

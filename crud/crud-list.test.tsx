@@ -3,14 +3,7 @@ import { describe, it } from "@std/testing/bdd"
 import { type ReadonlySignal, signal } from "@preact/signals"
 import { render } from "preact-render-to-string"
 import { search } from "@spy4x/platform/universal/text"
-import {
-  CrudList,
-  type CrudListBaseProps,
-  listRows,
-  RowAction,
-  RowActions,
-  rowsForStatus,
-} from "./crud-list.tsx"
+import { CrudList, type CrudListBaseProps, listRows, rowsForStatus } from "./crud-list.tsx"
 import type { CrudListStore } from "./store.ts"
 import type { CrudModel, CrudStatus, StoreErrorLike } from "./types.ts"
 
@@ -209,27 +202,5 @@ describe("CrudList", () => {
 
     expect(html).toContain("Regions for site ABC")
     expect(html).not.toContain("<span>Regions</span>")
-  })
-})
-
-describe("RowActions", () => {
-  it("renders a link item for an href", () => {
-    const html = render(
-      <RowActions>
-        <RowAction href="/regions/1/edit">Edit</RowAction>
-      </RowActions>,
-    )
-    expect(html).toContain(`href="/regions/1/edit"`)
-  })
-
-  it("renders a button item for an onClick, in red when destructive", () => {
-    const html = render(
-      <RowActions>
-        <RowAction danger onClick={() => {}}>Delete</RowAction>
-      </RowActions>,
-    )
-
-    expect(html).toContain("<button")
-    expect(html).toContain("text-red-600")
   })
 })

@@ -19,7 +19,6 @@ import {
   normalizeCanonical,
   readStateInit,
   reloadOnControllerChange,
-  resolveImage,
   seoHeadJsonLd,
   seoHeadTags,
   serviceWorkerContainer,
@@ -31,14 +30,8 @@ import {
   watchForUpdate,
 } from "@spy4x/preact-system"
 import type { CalendarDay, PageHead, RailShellItem } from "@spy4x/preact-system"
-import { collectSequence, zoomableAlt } from "@spy4x/preact-system/image-lightbox"
 import type { ExampleFragment } from "../example.tsx"
 import { toExampleDemos } from "../example.tsx"
-
-/** A stand-in for an `<img>`: the three members `resolveImage` reads. */
-function image(src: string, alt: string | null) {
-  return { matches: (selector: string) => selector === "img", src, alt: alt ?? undefined }
-}
 
 /** The smallest service-worker container: an `EventTarget` whose `register` never settles. */
 function fakeContainer(registered: string[]) {
@@ -236,34 +229,6 @@ isCurrentLink("/docs", undefined)`,
       isCurrentLink("/docs", "/docs/intro"),
       isCurrentLink("/docs", undefined),
     ],
-  },
-  collectSequence: {
-    title: "What the lightbox opens",
-    wide: true,
-    summary:
-      "Works out which image the lightbox opens, what it is called, and which other images it pages through.",
-    snippet: `import { resolveImage } from "@spy4x/preact-system"
-import { collectSequence, zoomableAlt } from "@spy4x/preact-system/image-lightbox"
-
-const image = (src, alt) => ({ matches: (s) => s === "img", src, alt })
-const images = [image("/a.jpg", "Harbour at dawn"), image("/b.jpg", null), image("/c.jpg", " ")]
-
-zoomableAlt("  Harbour at dawn ", "Image")
-resolveImage(images[1])
-collectSequence(images, images[2])`,
-    covers: ["zoomableAlt", "resolveImage", "collectSequence"],
-    run: () => {
-      const images = [
-        image("/a.jpg", "Harbour at dawn"),
-        image("/b.jpg", null),
-        image("/c.jpg", " "),
-      ]
-      return {
-        alt: zoomableAlt("  Harbour at dawn ", "Image"),
-        resolved: resolveImage(images[1]),
-        sequence: collectSequence(images, images[2]),
-      }
-    },
   },
   tabBarSlots: {
     title: "The phone tab bar's split",

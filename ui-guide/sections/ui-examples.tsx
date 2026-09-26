@@ -73,6 +73,7 @@ import {
   rangeForPreset,
   rangeForTimePreset,
   resolveDuration,
+  resolveImage,
   resolveMoneyInputEdit,
   restoreFocus,
   rowKeyAttribute,
@@ -101,6 +102,7 @@ import { labelTarget } from "@spy4x/preact-ui/field"
 import { classifyFiles, resolveLabels } from "@spy4x/preact-ui/file-input"
 import { requestGeolocation } from "@spy4x/preact-ui/geo-button"
 import { thumbnailKey } from "@spy4x/preact-ui/image-gallery"
+import { collectSequence, zoomableAlt } from "@spy4x/preact-ui/zoomable-images"
 import {
   backdropDismissesByDefault,
   bindEscapeClose,
@@ -115,6 +117,11 @@ import { toExampleDemos } from "../example.tsx"
 
 /** The instant every date example resolves against, so its output never follows the clock. */
 const NOW = "2026-03-18T10:30:00Z"
+
+/** A stand-in for an `<img>`: the three members `resolveImage` reads. */
+function image(src: string, alt: string | null) {
+  return { matches: (selector: string) => selector === "img", src, alt: alt ?? undefined }
+}
 
 const examples: ExampleFragment = {
   formatBytes: {
@@ -1094,6 +1101,34 @@ images.map((_, index) => thumbnailKey(images, index))`,
     run: () => {
       const images = [{ src: "/a.jpg" }, { src: "/b.jpg" }, { src: "/a.jpg" }]
       return images.map((_, index) => thumbnailKey(images, index))
+    },
+  },
+  collectSequence: {
+    title: "What the lightbox opens",
+    wide: true,
+    summary:
+      "Works out which image the lightbox opens, what it is called, and which other images it pages through.",
+    snippet: `import { resolveImage } from "@spy4x/preact-ui"
+import { collectSequence, zoomableAlt } from "@spy4x/preact-ui/zoomable-images"
+
+const image = (src, alt) => ({ matches: (s) => s === "img", src, alt })
+const images = [image("/a.jpg", "Harbour at dawn"), image("/b.jpg", null), image("/c.jpg", " ")]
+
+zoomableAlt("  Harbour at dawn ", "Image")
+resolveImage(images[1])
+collectSequence(images, images[2])`,
+    covers: ["zoomableAlt", "resolveImage", "collectSequence"],
+    run: () => {
+      const images = [
+        image("/a.jpg", "Harbour at dawn"),
+        image("/b.jpg", null),
+        image("/c.jpg", " "),
+      ]
+      return {
+        alt: zoomableAlt("  Harbour at dawn ", "Image"),
+        resolved: resolveImage(images[1]),
+        sequence: collectSequence(images, images[2]),
+      }
     },
   },
 

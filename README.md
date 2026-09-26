@@ -117,7 +117,7 @@ among them Clipboard, Geolocation, the Service Worker container, `localStorage`,
 `IntersectionObserver` and `ResizeObserver`. Some are reached through a port the caller can replace,
 with the browser's own as the default; others, such as the observers in `charts/` and the History
 API in `signals/`, are called directly. Every request a component makes goes to an address the app
-supplies: `Avatar`, `ImageGallery`, `Lightbox` and `ImageLightbox` load the image URLs they are
+supplies: `Avatar`, `ImageGallery`, `Lightbox` and `ZoomableImages` load the image URLs they are
 passed, `Map` loads Leaflet with a dynamic `import()`, which the app's own bundle resolves, and
 fetches map tiles from the `tileUrl` it is given, and `SWUpdater` registers the service-worker
 script it is given, which the browser downloads. No package calls Fetch, Streams or Web Crypto; data
@@ -131,7 +131,7 @@ Node or Bun through JSR's npm compatibility layer has not been tried.
 | `theme/`    | CSS text (`TOKENS_CSS`, `PRESET_CSS`, opt-in dark `INK_CSS`), every class the components render (`COMPONENT_CLASSES`), the spacing scale (`SPACING_STEPS`, `SPACING_GAPS`, `findOffScaleSpacing`), and Vite plugins (`preactThemeCss`, `requireComponentCss`, `npmSpecifiers`, `NpmVersionMismatchError`) |
 | `icons/`    | merged icon set: one component per glyph, all listed by the guide's icon gallery                                                                                                                                                                                                                          |
 | `ui/`       | `Stack`, `Cluster`, `Grid`, `Page`, `Section`, `Badge`, `Button`, `Table`, `DataTable`, `Dropdown`, `Combobox`, `Modal`, `Tooltip`, `Toastr` — and the rest                                                                                                                                               |
-| `system/`   | `AuthForm`, `Calendar`, `ImageLightbox`, `RailShell`, `SEOHead` + `head` store, `Shell`, `SiteHeader`, `StateInit`, `SWUpdater`                                                                                                                                                                           |
+| `system/`   | `AuthForm`, `Calendar`, `RailShell`, `SEOHead` + `head` store, `Shell`, `SiteHeader`, `StateInit`, `SWUpdater`                                                                                                                                                                                            |
 | `charts/`   | server-rendered SVG charts (`LineChart`, `Bars`, `DonutChart`, `Kpi`), axis maths (`scales`), d3 islands (`D3LineChart`, `CompareChart`)                                                                                                                                                                  |
 | `cn/`       | `cn()` — class-name join + Tailwind conflict resolution                                                                                                                                                                                                                                                   |
 | `signals/`  | `buildModelStore`, `useUrlFilters`, `table-state`, `createThemeStore`, `createToastStore`, `patchSignal` — and the rest; no components                                                                                                                                                                    |

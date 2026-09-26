@@ -1,7 +1,6 @@
-import { IconEllipsisVertical, IconPlus, IconSearch } from "@spy4x/preact-icons"
+import { IconPlus, IconSearch } from "@spy4x/preact-icons"
 import { cn } from "@spy4x/preact-cn"
 import { Badge } from "@spy4x/preact-ui/badge"
-import { Dropdown, DropdownItem } from "@spy4x/preact-ui/dropdown"
 import { ErrorState } from "@spy4x/preact-ui/error-state"
 import { PageTitle } from "@spy4x/preact-ui/page-title"
 import { Stack } from "@spy4x/preact-ui/layout"
@@ -247,54 +246,5 @@ function StatusSelect(
         </select>
       </div>
     </div>
-  )
-}
-
-export interface RowActionProps {
-  /** Target of the action. A menu item is a link when this is set, a button otherwise. */
-  href?: string
-  onClick?: () => void
-  /** Renders the item in red. */
-  danger?: boolean
-  disabled?: boolean
-  children: ComponentChildren
-}
-
-/**
- * One item of a {@link RowActions} menu.
- *
- * The element itself is a `DropdownItem`, so it carries `role="menuitem"` and the arrow keys of
- * the menu around it can reach it. The spacing row it sits in is `role="none"`, which keeps it a
- * direct child of the menu as far as assistive tech is concerned.
- */
-export function RowAction(
-  { href, onClick, danger, disabled, children }: RowActionProps,
-): JSX.Element {
-  return (
-    <div class="py-1" role="none">
-      <DropdownItem
-        href={href}
-        onClick={onClick}
-        disabled={disabled}
-        class={cn(danger && "text-red-600 dark:text-red-400")}
-      >
-        {children}
-      </DropdownItem>
-    </div>
-  )
-}
-
-/** The per-row actions menu: a vertical ellipsis trigger over {@link RowAction} items. */
-export function RowActions(
-  { children, label }: { children: ComponentChildren; label?: string },
-): JSX.Element {
-  return (
-    <Dropdown
-      trigger={<IconEllipsisVertical />}
-      triggerLabel={label ?? "Actions"}
-      menuLabel={label ?? "Actions"}
-    >
-      <div class="divide-y divide-gray-100 dark:divide-gray-600" role="none">{children}</div>
-    </Dropdown>
   )
 }

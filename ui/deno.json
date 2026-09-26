@@ -54,7 +54,8 @@
     "./toastr": "./toastr.tsx",
     "./toggle-field": "./toggle-field.tsx",
     "./toggle-switch": "./toggle-switch.tsx",
-    "./tooltip": "./tooltip.tsx"
+    "./tooltip": "./tooltip.tsx",
+    "./zoomable-images": "./zoomable-images.tsx"
   },
   "publish": {
     // This package's own `*.test.*` suites, none reachable from `exports`. A glob rather than a

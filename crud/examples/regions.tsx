@@ -13,7 +13,9 @@
  * components below be typed by the row and nothing else.
  */
 
-import { CrudEditor, CrudList, RowAction, RowActions, TextField } from "@spy4x/preact-crud"
+import { CrudEditor, CrudList, TextField } from "@spy4x/preact-crud"
+import { IconEllipsisVertical } from "@spy4x/preact-icons"
+import { Dropdown, DropdownItem } from "@spy4x/preact-ui/dropdown"
 import { buildModelStore } from "@spy4x/preact-signals/build-model-store"
 import { createToastStore } from "@spy4x/preact-signals/toast"
 import { signal } from "@preact/signals"
@@ -91,11 +93,15 @@ export function RegionList() {
         </td>
       )}
       actions={(region) => (
-        <RowActions>
-          <RowAction href={`/regions/${region.id}/edit`}>
+        <Dropdown
+          trigger={<IconEllipsisVertical />}
+          triggerLabel={`Actions for ${region.name}`}
+          menuLabel={`Actions for ${region.name}`}
+        >
+          <DropdownItem href={`/regions/${region.id}/edit`}>
             {canChange.value ? "Edit" : "View"}
-          </RowAction>
-        </RowActions>
+          </DropdownItem>
+        </Dropdown>
       )}
     />
   )

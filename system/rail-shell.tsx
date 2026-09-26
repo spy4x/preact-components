@@ -8,7 +8,7 @@
  * side navigation and `<details>` drawer; `SiteHeader` is a public site's top bar collapsing into
  * the same kind of `<details>` panel. Neither has a rail or a bottom tab bar, so this is a new
  * component rather than a mode of either. The overflow uses a modal `<dialog>` — the pattern
- * `image-lightbox.tsx` (through `ui/lightbox.tsx`) already relies on — because a modal gets Escape,
+ * `ui/lightbox.tsx` already relies on — because a modal gets Escape,
  * inert background content and a top layer from the browser, where the `<details>` disclosure the
  * other two shells share would have to rebuild all three.
  *

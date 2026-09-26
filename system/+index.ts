@@ -39,13 +39,6 @@ export {
   type PageHead,
 } from "./head.ts"
 export {
-  type ImageElementLike,
-  ImageLightbox,
-  type ImageLightboxProps,
-  type LightboxImage,
-  resolveImage,
-} from "./image-lightbox.tsx"
-export {
   RailShell,
   type RailShellItem,
   type RailShellLabels,

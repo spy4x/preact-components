@@ -184,7 +184,11 @@ export async function systemChecks(devtools: Devtools): Promise<void> {
   await authFormChecks(devtools)
   await liveRegionChecks(devtools)
   await calendarChecks(devtools)
-  await imageLightboxChecks(devtools)
+  // `ZoomableImages` moved to `ui/` (#355), so its card is on the ui page. Its checks stay in this
+  // file, unchanged, until they move to `pages/checks/ui.ts` with that file's owner.
+  await openGuidePage(devtools, "ui")
+  await zoomableImagesChecks(devtools)
+  await openGuidePage(devtools, "system")
   await siteHeaderChecks(devtools)
   await shellChecks(devtools)
   await railShellChecks(devtools)
@@ -1716,7 +1720,7 @@ const LATE_GRID = `${LATE} [role="grid"]`
 const LATE_DAY = "2026-03-19"
 
 /** The card the lightbox checks drive. */
-const LIGHTBOX = "#demo-ImageLightbox"
+const LIGHTBOX = "#demo-ZoomableImages"
 const DIALOG = `${LIGHTBOX} dialog`
 const PLAIN_IMAGE = `${LIGHTBOX} [data-e2e="lightbox-image"]`
 const LINKED_IMAGE = `${LIGHTBOX} [data-e2e="lightbox-linked-image"]`
@@ -3316,7 +3320,7 @@ interface AimedClick {
 const MISSED: AimedClick = { onTarget: false, x: 0, y: 0, landedOn: "nothing", reason: "unread" }
 
 /**
- * `ImageLightbox`'s keyboard and its backdrop, driven in the browser that owns them.
+ * `ZoomableImages`' keyboard and its backdrop, driven in the browser that owns them.
  *
  * Enter and Space are real key presses: what opens the lightbox is the component's own `keydown`
  * listener on the image, an element with no native activation of its own, rather than a native
@@ -3327,7 +3331,7 @@ const MISSED: AimedClick = { onTarget: false, x: 0, y: 0, landedOn: "nothing", r
  *
  * @param devtools The connected session, on a hydrated page.
  */
-async function imageLightboxChecks(devtools: Devtools): Promise<void> {
+async function zoomableImagesChecks(devtools: Devtools): Promise<void> {
   const focusedPlain = await focusImage(devtools, PLAIN_IMAGE)
   const marks = await read(
     devtools,

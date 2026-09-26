@@ -318,3 +318,9 @@ export {
 export { ToggleField, type ToggleFieldProps } from "./toggle-field.tsx"
 export { ToggleSwitch, type ToggleSwitchProps } from "./toggle-switch.tsx"
 export { Tooltip, type TooltipPlacement, type TooltipProps } from "./tooltip.tsx"
+export {
+  type ImageElementLike,
+  resolveImage,
+  ZoomableImages,
+  type ZoomableImagesProps,
+} from "./zoomable-images.tsx"

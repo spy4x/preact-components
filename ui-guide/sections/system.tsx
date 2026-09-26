@@ -41,7 +41,6 @@ import {
 } from "@spy4x/preact-system/auth-form"
 import { Calendar } from "@spy4x/preact-system/calendar"
 import type { PageHead } from "@spy4x/preact-system/head"
-import { ImageLightbox } from "@spy4x/preact-system/image-lightbox"
 import { seoHeadTags } from "@spy4x/preact-system/seo-head"
 import { RailShell, type RailShellItem } from "@spy4x/preact-system/rail-shell"
 import { Shell } from "@spy4x/preact-system/shell"
@@ -525,73 +524,6 @@ function SwUpdaterLiveDemo() {
             : "<SWUpdater> is not mounted: it registers a worker, so it waits for the button."}
         </p>
       </div>
-    </Stack>
-  )
-}
-
-/** A flat placeholder rectangle, as a data URI, so the card needs no image asset. */
-function placeholder(fill: string): string {
-  return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='80'%3E%3Crect width='120' height='80' fill='%23${fill}'/%3E%3C/svg%3E`
-}
-
-/**
- * The lightbox as it exists before anything is opened, with two images to open it from.
- *
- * The element it renders is a real `<dialog>`, and it is really closed — no `open` attribute, no
- * `showModal()`. Both images are inside the container the component watches, and the second is
- * wrapped in a link on purpose: the component cancels the event it opens on, so the lightbox opens
- * and the link is not followed. Without JavaScript that link is simply a link, which is the whole
- * progressive-enhancement claim in one element.
- *
- * A second, separate `[data-lightbox-bare]` container and its own `<ImageLightbox fallbackAlt="">`
- * show the opposite case: one image with no `alt` attribute at all, wrapped in a link, and
- * `fallbackAlt` turned off so nothing substitutes a name for it. That image is never marked a zoom
- * control — no Tab stop, no role, no name a reader could act on — and a click on it is left for the
- * browser's own default action, so the link it sits in still works. The other two images above keep
- * the card's default `fallbackAlt`, unaffected by the second instance: each already carries a real
- * `alt`, which `fallbackAlt` never overrides.
- */
-function ImageLightboxDemo() {
-  return (
-    <Stack>
-      <div data-lightbox class="flex flex-wrap items-start gap-2">
-        <p class={`w-full ${NOTE}`}>
-          Click an image, or Tab to it and press Enter. The second sits in a link, which opening the
-          lightbox does not follow.
-        </p>
-        <img
-          data-e2e="lightbox-image"
-          src={placeholder("c4b5fd")}
-          alt="A placeholder image"
-          class="rounded border border-gray-200 dark:border-gray-700"
-        />
-        <a href="https://example.com/" data-e2e="lightbox-link" class="inline-block">
-          <img
-            data-e2e="lightbox-linked-image"
-            src={placeholder("a5b4fc")}
-            alt="A placeholder image inside a link"
-            class="rounded border border-gray-200 dark:border-gray-700"
-          />
-        </a>
-      </div>
-      <ImageLightbox />
-      <div data-e2e="lightbox-bare" data-lightbox-bare class="flex flex-wrap items-start gap-2">
-        <p class={`w-full ${NOTE}`}>
-          With{" "}
-          <code>fallbackAlt=""</code>, an image with no description stays a plain image, and its
-          link still works.
-        </p>
-        <a href="#lightbox-bare-target" data-e2e="lightbox-bare-link" class="inline-block">
-          <img
-            data-e2e="lightbox-bare-image"
-            src={placeholder("9ca3af")}
-          />
-        </a>
-        <span id="lightbox-bare-target" class={NOTE}>
-          (the link's target)
-        </span>
-      </div>
-      <ImageLightbox containerSelector="[data-lightbox-bare]" fallbackAlt="" />
     </Stack>
   )
 }
@@ -1423,25 +1355,14 @@ export const systemDemos = {
   StateInit: {
     summary:
       "Hands data from the server render to the browser as JSON in the page, which `readStateInit` reads back.",
-    wide: false,
+    // Wide: its row partner `ImageLightbox` moved to the ui page as `ZoomableImages` (#355).
+    wide: true,
     snippet: `// Wherever the server renders the page:
 <StateInit data={{ userId: user.id, features: enabledFeatures }} />
 
 // Anywhere on the client:
 const state = readStateInit<{ userId: string; features: string[] }>()`,
     render: () => <StateInitDemo />,
-  },
-  ImageLightbox: {
-    summary:
-      "Lets a reader open any image inside a container at full size, by click or keyboard, and page through the others.",
-    wide: false,
-    snippet: `<ImageLightbox
-  containerSelector="[data-lightbox]"
-  fallbackAlt="Figure"
-  zoomLabel="Zoom"
-  onOpen={(image) => analytics.track("lightbox", image.src)}
-/>`,
-    render: () => <ImageLightboxDemo />,
   },
   SEOHead: {
     summary:
