@@ -304,16 +304,18 @@ const TEXT_DRAWN_IN_BROWSER: Record<string, DrawnInBrowser> = {
       "assertD3Available from it",
   },
   "demo-Map": {
-    selector: ".leaflet-control-container",
+    selector: `[data-e2e="map-slot"]`,
     parts: 1,
-    reason: "Leaflet adds its zoom controls in an effect",
+    reason: "@spy4x/preact-map, and Leaflet with it, loads when the map page opens: the served " +
+      "slot holds a placeholder, and the browser's the map, its credit line and its list of places",
   },
 }
 
 /**
  * Wait until the showing page has replaced every placeholder of a lazily loaded module
- * (`ui-guide/lazy.ts`) with what that module draws: the charts page loads d3 when it opens, so its
- * cards and examples read their placeholder text until the module arrives. Reading before then
+ * (`ui-guide/lazy.ts`) with what that module draws: the charts page loads d3 when it opens, and the
+ * map page `@spy4x/preact-map`, so their cards and examples read their placeholder text until the
+ * module arrives. Reading before then
  * would find a listed part the same on both sides and fail for the wrong reason. A page with no
  * placeholder returns at once; one still showing a placeholder after 15s is left for the text check
  * to report.
@@ -325,6 +327,7 @@ async function lazyContentShown(devtools: Devtools): Promise<void> {
     () =>
       devtools.evaluate<boolean>(`(() => {
         if (document.querySelector('[data-e2e="d3-chart-placeholder"]') !== null) return false
+        if (document.querySelector('[data-e2e="map-placeholder"]') !== null) return false
         return ![...document.querySelectorAll('[data-e2e="example-output"]')]
           .some((output) => output.textContent.includes("needs charts/d3-line-chart"))
       })()`),

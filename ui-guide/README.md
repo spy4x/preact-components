@@ -16,7 +16,8 @@ This is a build-time fact about the module graph, not a run-time one: `UIGuide`'
 (below) can be handed a partial registry that never _renders_ a `Map` card, but the app that built
 that partial registry already resolved and bundled `@spy4x/preact-map` — and therefore
 Leaflet — to get the value it left out. There is no documented way around that. What an app loads
-at run time is smaller: see "d3 loads with the charts page" below.
+at run time is smaller: see "d3 loads with the charts page" and "Leaflet loads with the map page"
+below.
 
 Ported from one source application's own modular route-per-section guide (the better structure of
 the two source guides) and another's single-file guide component, whose icon gallery is kept
@@ -279,6 +280,20 @@ browser: a fresh load of the overview fetches no script that carries d3, and ope
 fetches one and draws the charts. `pages/checks/ui-guide.ts`, which compares every card's served
 text with the browser's, lists these cards' chart slots and example outputs as drawn in the browser,
 and waits for the placeholders to be replaced before it reads the charts page.
+
+## Leaflet loads with the map page
+
+`Map` starts its own dynamic `import("leaflet")` when it mounts, and hydration mounts every page, so
+a statically imported `Map` loaded Leaflet on the overview too (#315). The Map card reaches
+`@spy4x/preact-map` only through `sections/map-leaflet.tsx`, with the same `lazy.ts` loader and the
+same host assumption as the d3 cards above, so `Map` mounts, and loads Leaflet, only once the map
+page is shown. Until then the card shows a box of the map's height that says the map is drawn in the
+browser with Leaflet; with JavaScript off that box, not the map's list of places, is what a reader
+sees. `pages/checks/map.ts` proves the behaviour in a browser: a fresh load of the overview fetches
+no script that carries Leaflet, and opening the map page fetches one and draws the pins.
+`pages/checks/ui-guide.ts` lists the card's slot as drawn in the browser, and waits for its
+placeholder to be replaced before it reads the map page. Because the card now renders `Map` only in
+the browser, no browser check hydrates a server-rendered `Map` any more.
 
 ## Heading levels are the outline
 
