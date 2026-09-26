@@ -18,6 +18,7 @@ describe("importing @spy4x/preact-signals", () => {
     // Referenced so the import is unmistakably evaluated before the assertion, whatever a bundler
     // or a future module-graph optimisation would like to do with an unused namespace import.
     expect(typeof barrel.createThemeStore).toBe("function")
+    expect(typeof barrel.themeBootstrapScript).toBe("function")
 
     expect("map" in Signal.prototype, "Signal.prototype.map").toBe(false)
   })

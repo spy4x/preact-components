@@ -30,6 +30,7 @@ import {
   shouldPersistFilter,
   sortRows,
   type SortRule,
+  themeBootstrapScript,
   ThemeValue,
   toggleSort,
 } from "@spy4x/preact-signals"
@@ -309,6 +310,12 @@ console.log({ actual, preference: theme.preference.value, stored: saved.get("the
         default: '"(prefers-color-scheme: dark)"',
         description: "The media query watched for a change of the system setting.",
       },
+      {
+        name: "defaultPreference",
+        type: "ThemePreference",
+        default: '"system"',
+        description: "The choice used when nothing understood is stored.",
+      },
     ],
     covers: ["createThemeStore", "ThemeValue"],
     run: () => {
@@ -331,6 +338,39 @@ console.log({ actual, preference: theme.preference.value, stored: saved.get("the
       theme.dispose()
       return { actual, preference: theme.preference.value, stored: saved.get("theme") }
     },
+  },
+  themeBootstrapScript: {
+    title: "themeBootstrapScript()",
+    wide: true,
+    summary:
+      "The source of an inline `<head>` script that paints the stored theme before the first paint, reading what `createThemeStore` stores.",
+    snippet: `import { themeBootstrapScript, ThemeValue } from "@spy4x/preact-signals"
+
+// In the page's <head>, before any stylesheet or bundle:
+// <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript({ defaultPreference: ThemeValue.DARK }) }} />
+themeBootstrapScript({ defaultPreference: ThemeValue.DARK })`,
+    props: [
+      {
+        name: "storageKey",
+        type: "string",
+        default: '"theme"',
+        description: "The storage key the choice is read from; pass the store's.",
+      },
+      {
+        name: "systemQuery",
+        type: "string",
+        default: '"(prefers-color-scheme: dark)"',
+        description: "The media query that says the system asks for dark.",
+      },
+      {
+        name: "defaultPreference",
+        type: "ThemePreference",
+        default: '"system"',
+        description: "The choice painted when nothing understood is stored.",
+      },
+    ],
+    covers: ["themeBootstrapScript"],
+    run: () => themeBootstrapScript({ defaultPreference: ThemeValue.DARK }),
   },
   createClipboard: {
     title: "createClipboard()",
