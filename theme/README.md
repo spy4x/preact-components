@@ -338,21 +338,41 @@ accent `Kpi` and the components' focus rings — from an accent scale, not from 
   component writes `bg-accent-900`, `dark:text-accent-400`, `ring-accent-900` or
   `dark:bg-accent-900/30`, and the utility reads `var(--color-accent-900, <purple-900>)` at run
   time, so the app's cascade still wins. An app's own markup can use the same classes.
-- Step 900 is the accent itself. Every other step keeps the lightness of Tailwind's purple step with
-  the same number and takes hue and chroma from the accent, through CSS relative colour syntax
-  (`oklch(from var(--color-accent) …)`): relative colour rather than `color-mix()`, because it
-  reproduces each purple step exactly when the accent is purple-900, so an app that sets nothing
-  renders the same colours as before, and it follows any accent's hue while keeping the step's
-  lightness, so a tint stays a tint. Choose an accent about as dark as purple-900: white text sits
-  on it.
+- Step 900 is the accent itself. Every other step is worked out from it through CSS relative
+  colour syntax (`oklch(from var(--color-accent) …)`), in three parts:
+  - **Lightness.** Tints (50–300) keep the lightness of Tailwind's purple step with the same
+    number, so a tint stays a tint. Steps 400–950 scale the accent's own lightness by the purple
+    step's ratio to purple-900's, capped (400–800 at 0.80/0.76/0.72/0.68/0.64) so the scale keeps
+    its order.
+  - **Chroma.** A step takes the purple step's chroma ratio only near purple's own hue; any other
+    accent keeps its own chroma on steps 400–800, and scales down on the tints and 950. The result
+    is capped at an estimate of the most chroma sRGB can show at that lightness and hue: the
+    triangle through the sRGB cusp, whose lightness and chroma are a 3-harmonic Fourier fit in
+    the hue, scaled by 0.86. The cap matters because Chromium clips an out-of-gamut colour one
+    channel at a time, and an uncapped warm accent rendered pure red.
+  - **Hue.** The purple step's offset from purple-900's hue is added.
+
+  Relative colour was chosen over `color-mix()` because it can reproduce the purple steps: with
+  no token set, every step is Tailwind's own purple step to the third decimal, and an app that
+  sets nothing renders the same colours as before. With any other accent, every step renders
+  within 0.02 OKLab of the colour it names. Scaling lightness rather than fixing it also keeps a
+  warm accent's dark fill (step 700) well apart from the red of a danger button.
+  `pages/checks/theme.ts` measures all three claims in a browser. Choose an accent about as dark
+  as purple-900: white text sits on it.
 - In the dark palette `--color-primary` is near-black chrome, so `.dark` sets `--color-accent` to
   purple-900 itself, and the components keep their purple there. An app with a dark palette sets
   `--color-accent` as well — on `:root` after `tokens.css`, which covers both palettes, or in its
-  own `.dark` rule.
+  own `.dark` rule. An app that sets `--color-primary` on `:root` after `tokens.css` also
+  overrides `.dark`'s near-black `--color-primary`, because the two selectors are equally specific
+  and the later rule wins. So in the dark palette the preset's `.btn-primary` takes the brand
+  colour, while the components follow `--color-accent`.
 - The scale is worked out once, on `:root`, and inherited as colours: set the tokens on `:root`,
-  not on a subtree. A browser without relative colour syntax skips the scale's `@supports` block
-  and draws the literal purple steps `preset.css` carries as fallbacks — which is also what an app
-  that skips `tokens.css` gets.
+  not on a subtree. The scale's `@supports` block tests the maths it uses (`calc()`, `min()`,
+  `max()`, `cos()` and `sin()` on channel keywords). A browser that cannot evaluate them skips
+  the block, and every step except 900 draws the literal purple fallback `preset.css` carries,
+  which is also what an app that skips `tokens.css` gets. Step 900 is declared outside the block,
+  so it still follows the accent. In such a browser a blue-branded app gets a blue fill with a
+  purple hover, a purple dark fill and purple dark rings.
 - The components' focus rings read `ring-accent-*`, not `--color-focus-ring`: that token moves the
   preset's own rings (below), and under ink the components' rings keep the accent.
 - Ink sets no accent token, so under ink the components keep the default dark accent, as before.

@@ -99,30 +99,129 @@
  * take from `purple-*`. `preset.css` maps each onto a Tailwind colour (`bg-accent-900`,
  * `dark:text-accent-400`, `ring-accent-900`, `bg-accent-900/30`).
  *
- * Step 900 is --color-accent itself, declared with the other tokens above. Every other step keeps the lightness of Tailwind's purple step
- * with the same number, and takes its hue and chroma from --color-accent through relative colour
- * syntax: chroma scaled by the purple step's chroma over purple-900's, hue moved by the purple
- * step's hue minus purple-900's. With no token set, --color-accent is purple-900, so every step is
- * Tailwind's own purple step to the third decimal; a grey accent gives a grey scale, a blue one a
- * blue scale. Lightness is fixed rather than relative, so a tint stays a tint whatever the accent's
- * own lightness: pick an accent about as dark as purple-900, since white text sits on it.
+ * Step 900 is --color-accent itself, declared with the other tokens above. Every other step is
+ * worked out from it with relative colour syntax, `oklch(from var(--color-accent) L C H)`:
+ *
+ * - L: steps 50-300 keep the lightness of Tailwind's purple step with the same number, so a tint
+ *   stays a tint. Steps 400-950 scale the accent's own lightness by the purple step's over
+ *   purple-900's, capped at 0.80/0.76/0.72/0.68/0.64 for 400-800, so the scale keeps its order
+ *   and a warm accent's dark fill (700) stays clear of the red of a danger button.
+ * - C: the purple step's chroma ratio applies in full only at purple's own hue. A weight written out
+ *   in each step, `max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)`, is exactly 1 at purple-900's
+ *   hue and 0 more than about 11 degrees from it. Steps whose purple chroma is above purple-900's (400-800) grow by
+ *   the ratio times that weight, so any other accent keeps its own chroma; the tints and 950 scale
+ *   down by the ratio at every hue. The result is then capped at an estimate of the most chroma
+ *   sRGB can show at that lightness and hue: the triangle from black through the gamut's cusp to
+ *   white, with the cusp's lightness and chroma as 3-harmonic Fourier series in the hue, fitted to
+ *   the sRGB cusp and scaled by 0.86 so the triangle stays inside the gamut. Chromium clips an
+ *   out-of-gamut colour channel by channel, which turned a warm accent's steps pure red; the cap
+ *   keeps every step within 0.02 OKLab of what it renders as, whatever the hue. Purple itself sits
+ *   a little outside the cap, so each step adds a small allowance times the same weight.
+ * - H: moved by the purple step's hue minus purple-900's.
+ *
+ * With no token set, --color-accent is purple-900, the weight is 1 and the cap is above every
+ * purple step, so every step is Tailwind's own purple step to the third decimal
+ * (`pages/checks/theme.ts` reads all of them). Pick an accent about as dark as purple-900, since
+ * white text sits on step 900.
  *
  * Declared on `:root` only, so the scale is worked out once from the root's --color-accent and
  * inherited as colours: set --color-primary or --color-accent on `:root`, not on a subtree. A
- * browser without relative colour syntax skips this block, and `preset.css`'s fallbacks — the
- * literal purple steps — apply instead.
+ * browser that cannot evaluate this math inside relative colour syntax skips the block, and
+ * `preset.css`'s fallbacks — the literal purple steps — apply to every step but 900, which is
+ * declared above and still follows the accent.
  */
-@supports (color: oklch(from red l c h)) {
+@supports (color: oklch(from red min(l, 0.9) calc(c * max(0, cos(h * 1deg))) calc(h + sin(h *
+  1deg)))) {
   :root {
-    --color-accent-50: oklch(from var(--color-accent) 0.977 calc(c * 0.014 / 0.176) calc(h + 3.312));
-    --color-accent-100: oklch(from var(--color-accent) 0.946 calc(c * 0.033 / 0.176) calc(h + 2.187));
-    --color-accent-200: oklch(from var(--color-accent) 0.902 calc(c * 0.063 / 0.176) calc(h + 1.716));
-    --color-accent-300: oklch(from var(--color-accent) 0.827 calc(c * 0.119 / 0.176) calc(h + 1.396));
-    --color-accent-400: oklch(from var(--color-accent) 0.714 calc(c * 0.203 / 0.176) calc(h + 0.517));
-    --color-accent-500: oklch(from var(--color-accent) 0.627 calc(c * 0.265 / 0.176) calc(h - 1.087));
-    --color-accent-600: oklch(from var(--color-accent) 0.558 calc(c * 0.288 / 0.176) calc(h - 2.666));
-    --color-accent-700: oklch(from var(--color-accent) 0.496 calc(c * 0.265 / 0.176) calc(h - 3.063));
-    --color-accent-800: oklch(from var(--color-accent) 0.438 calc(c * 0.218 / 0.176) calc(h - 1.263));
-    --color-accent-950: oklch(from var(--color-accent) 0.291 calc(c * 0.149 / 0.176) calc(h - 2.27));
+    --color-accent-50: oklch(
+      from var(--color-accent)
+      0.977
+      min(
+        c * 0.014 / 0.176,
+        (0.193 + 0.0403 * cos(h * 1deg) - 0.02 * sin(h * 1deg) - 0.0001 * cos(h * 2deg) - 0.0435 * sin(h * 2deg) + 0.0037 * cos(h * 3deg) + 0.019 * sin(h * 3deg)) * max(0, min(0.977 / (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg)), (1 - 0.977) / (1 - (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg))))) + 0.004 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)
+      )
+      calc(h + 3.312)
+    );
+    --color-accent-100: oklch(
+      from var(--color-accent)
+      0.946
+      min(
+        c * 0.033 / 0.176,
+        (0.193 + 0.0403 * cos(h * 1deg) - 0.02 * sin(h * 1deg) - 0.0001 * cos(h * 2deg) - 0.0435 * sin(h * 2deg) + 0.0037 * cos(h * 3deg) + 0.019 * sin(h * 3deg)) * max(0, min(0.946 / (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg)), (1 - 0.946) / (1 - (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg))))) + 0.004 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)
+      )
+      calc(h + 2.187)
+    );
+    --color-accent-200: oklch(
+      from var(--color-accent)
+      0.902
+      min(
+        c * 0.063 / 0.176,
+        (0.193 + 0.0403 * cos(h * 1deg) - 0.02 * sin(h * 1deg) - 0.0001 * cos(h * 2deg) - 0.0435 * sin(h * 2deg) + 0.0037 * cos(h * 3deg) + 0.019 * sin(h * 3deg)) * max(0, min(0.902 / (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg)), (1 - 0.902) / (1 - (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg))))) + 0.007 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)
+      )
+      calc(h + 1.716)
+    );
+    --color-accent-300: oklch(
+      from var(--color-accent)
+      0.827
+      min(
+        c * 0.119 / 0.176,
+        (0.193 + 0.0403 * cos(h * 1deg) - 0.02 * sin(h * 1deg) - 0.0001 * cos(h * 2deg) - 0.0435 * sin(h * 2deg) + 0.0037 * cos(h * 3deg) + 0.019 * sin(h * 3deg)) * max(0, min(0.827 / (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg)), (1 - 0.827) / (1 - (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg))))) + 0.017 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)
+      )
+      calc(h + 1.396)
+    );
+    --color-accent-400: oklch(
+      from var(--color-accent)
+      min(0.8, l * 0.714 / 0.381)
+      min(
+        c * (1 + 0.153409 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)),
+        (0.193 + 0.0403 * cos(h * 1deg) - 0.02 * sin(h * 1deg) - 0.0001 * cos(h * 2deg) - 0.0435 * sin(h * 2deg) + 0.0037 * cos(h * 3deg) + 0.019 * sin(h * 3deg)) * max(0, min(min(0.8, l * 0.714 / 0.381) / (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg)), (1 - min(0.8, l * 0.714 / 0.381)) / (1 - (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg))))) + 0.031 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)
+      )
+      calc(h + 0.517)
+    );
+    --color-accent-500: oklch(
+      from var(--color-accent)
+      min(0.76, l * 0.627 / 0.381)
+      min(
+        c * (1 + 0.505682 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)),
+        (0.193 + 0.0403 * cos(h * 1deg) - 0.02 * sin(h * 1deg) - 0.0001 * cos(h * 2deg) - 0.0435 * sin(h * 2deg) + 0.0037 * cos(h * 3deg) + 0.019 * sin(h * 3deg)) * max(0, min(min(0.76, l * 0.627 / 0.381) / (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg)), (1 - min(0.76, l * 0.627 / 0.381)) / (1 - (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg))))) + 0.04 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)
+      )
+      calc(h - 1.087)
+    );
+    --color-accent-600: oklch(
+      from var(--color-accent)
+      min(0.72, l * 0.558 / 0.381)
+      min(
+        c * (1 + 0.636364 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)),
+        (0.193 + 0.0403 * cos(h * 1deg) - 0.02 * sin(h * 1deg) - 0.0001 * cos(h * 2deg) - 0.0435 * sin(h * 2deg) + 0.0037 * cos(h * 3deg) + 0.019 * sin(h * 3deg)) * max(0, min(min(0.72, l * 0.558 / 0.381) / (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg)), (1 - min(0.72, l * 0.558 / 0.381)) / (1 - (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg))))) + 0.032 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)
+      )
+      calc(h - 2.666)
+    );
+    --color-accent-700: oklch(
+      from var(--color-accent)
+      min(0.68, l * 0.496 / 0.381)
+      min(
+        c * (1 + 0.505682 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)),
+        (0.193 + 0.0403 * cos(h * 1deg) - 0.02 * sin(h * 1deg) - 0.0001 * cos(h * 2deg) - 0.0435 * sin(h * 2deg) + 0.0037 * cos(h * 3deg) + 0.019 * sin(h * 3deg)) * max(0, min(min(0.68, l * 0.496 / 0.381) / (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg)), (1 - min(0.68, l * 0.496 / 0.381)) / (1 - (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg))))) + 0.038 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)
+      )
+      calc(h - 3.063)
+    );
+    --color-accent-800: oklch(
+      from var(--color-accent)
+      min(0.64, l * 0.438 / 0.381)
+      min(
+        c * (1 + 0.238636 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)),
+        (0.193 + 0.0403 * cos(h * 1deg) - 0.02 * sin(h * 1deg) - 0.0001 * cos(h * 2deg) - 0.0435 * sin(h * 2deg) + 0.0037 * cos(h * 3deg) + 0.019 * sin(h * 3deg)) * max(0, min(min(0.64, l * 0.438 / 0.381) / (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg)), (1 - min(0.64, l * 0.438 / 0.381)) / (1 - (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg))))) + 0.018 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)
+      )
+      calc(h - 1.263)
+    );
+    --color-accent-950: oklch(
+      from var(--color-accent)
+      calc(l * 0.291 / 0.381)
+      min(
+        c * 0.149 / 0.176,
+        (0.193 + 0.0403 * cos(h * 1deg) - 0.02 * sin(h * 1deg) - 0.0001 * cos(h * 2deg) - 0.0435 * sin(h * 2deg) + 0.0037 * cos(h * 3deg) + 0.019 * sin(h * 3deg)) * max(0, min((l * 0.291 / 0.381) / (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg)), (1 - (l * 0.291 / 0.381)) / (1 - (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg))))) + 0.017 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)
+      )
+      calc(h - 2.27)
+    );
   }
 }

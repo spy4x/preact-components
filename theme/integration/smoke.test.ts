@@ -1712,10 +1712,10 @@ describe("theme preset", () => {
 
   it("works the accent scale out from --color-accent, and step 900 is the accent", async () => {
     const css = await preset()
-    const scale = css.slice(css.indexOf("@supports (color: oklch(from red l c h))"))
+    const scale = css.slice(css.indexOf("@supports (color: oklch(from red min(l, 0.9)"))
     for (const step of [50, 100, 200, 300, 400, 500, 600, 700, 800, 950]) {
       expect(scale).toMatch(
-        new RegExp(`--color-accent-${step}: oklch\\(from var\\(--color-accent\\) `),
+        new RegExp(`--color-accent-${step}: oklch\\(\\s*from var\\(--color-accent\\)\\s`),
       )
     }
     expect(css).toContain("--color-accent-900: var(--color-accent)")
