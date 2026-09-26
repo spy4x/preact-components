@@ -837,6 +837,52 @@ const ACCENT_HELPERS = `
 `
 
 /**
+ * The accents {@link accentChecks} holds to the sRGB gamut: Tailwind's orange-800, the warm colour
+ * the review found clipped into pure red, and the host switch's own Rose, Blue and Green.
+ */
+const GAMUT_ACCENTS = {
+  orange800: "oklch(0.47 0.157 37.304)",
+  rose: ACCENTS.rose.color,
+  blue: ACCENTS.blue.color,
+  green: ACCENTS.green.color,
+}
+
+/**
+ * Page-side OKLab helpers, as source text. `oklabOfComputed` converts a computed `oklch(L C H)`
+ * string; `oklabOfPixel` draws the colour on a 1x1 sRGB canvas, reads the pixel back and converts
+ * that, so the difference between the two is what clipping to the screen's gamut cost.
+ */
+const OKLAB_HELPERS = `
+  const oklabOfComputed = (color) => {
+    const [l, c, h] = numbers(color)
+    if (!color.startsWith("oklch(")) throw new Error("expected an oklch() colour, got " + color)
+    return [l, c * Math.cos(h * Math.PI / 180), c * Math.sin(h * Math.PI / 180)]
+  }
+  const pixelCanvas = document.createElement("canvas")
+  pixelCanvas.width = 1
+  pixelCanvas.height = 1
+  const pixelContext = pixelCanvas.getContext("2d", { willReadFrequently: true })
+  const oklabOfPixel = (color) => {
+    pixelContext.clearRect(0, 0, 1, 1)
+    pixelContext.fillStyle = color
+    pixelContext.fillRect(0, 0, 1, 1)
+    const [r, g, b] = [...pixelContext.getImageData(0, 0, 1, 1).data].slice(0, 3).map((v) => {
+      const x = v / 255
+      return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4
+    })
+    const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b)
+    const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b)
+    const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b)
+    return [
+      0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s,
+      1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s,
+      0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s,
+    ]
+  }
+  const oklabDistance = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2])
+`
+
+/**
  * The accent (#380): the components read `tokens.css`'s accent scale instead of Tailwind's
  * `purple-*`, so an app that sets no token sees the purple it saw before, in both palettes, and an
  * app that sets `--color-primary` on `:root` sees a primary `Button`, `LoadingSpinner`, `Calendar`
@@ -959,6 +1005,9 @@ async function accentChecks(devtools: Devtools): Promise<void> {
     style.id = "accent-check-ring"
     style.textContent = ":root { --color-primary: ${APP_ACCENT}; }"
     document.head.append(style)
+    // Put back in the ring reading below: the palette toggle's check above left the app dark, and a
+    // class left light here would disagree with the toggle for every block after this one.
+    window.__accentRingWasDark = document.documentElement.classList.contains("dark")
     document.documentElement.classList.toggle("dark", false)
   })()`)
   await pressKey(devtools, "Tab")
@@ -977,6 +1026,8 @@ async function accentChecks(devtools: Devtools): Promise<void> {
     const expected = resolve("${APP_ACCENT}")
     button.blur()
     document.getElementById("accent-check-ring").remove()
+    document.documentElement.classList.toggle("dark", window.__accentRingWasDark)
+    delete window.__accentRingWasDark
     await settle(button)
     return { focusVisible, ringColor, expected, ok: same(ringColor, expected) }
   })()`)
@@ -1014,6 +1065,9 @@ async function accentChecks(devtools: Devtools): Promise<void> {
     root.classList.toggle("dark", true)
     await settle(button)
     const dark = getComputedStyle(button).backgroundColor
+    // The dark Button is step 700 of the scale the switch's accent set: whatever tokens.css works
+    // that step out to, it carries the accent's hue moved by purple-700's offset, -3.063.
+    const darkStep = resolve("var(--color-accent-700)")
     const blue = "${ACCENTS.blue.color}"
     await choose("purple")
     const reset = getComputedStyle(button).backgroundColor
@@ -1021,8 +1075,10 @@ async function accentChecks(devtools: Devtools): Promise<void> {
     root.classList.toggle("dark", wasDark)
     await settle(button)
     const expectedLight = resolve(blue)
-    // The dark Button is step 700, worked out from the accent the switch set on :root.
-    const expectedDark = resolve("oklch(from " + blue + " 0.496 calc(c * 0.265 / 0.176) calc(h - 3.063))")
+    const expectedDark = numbers(darkStep)[2].toFixed(3) ===
+        (numbers(resolve(blue))[2] - 3.063).toFixed(3)
+      ? darkStep
+      : "a step 700 with the blue accent's hue, not " + darkStep
     const expectedReset = resolve("${PURPLE[700]}")
     return {
       light,
@@ -1044,6 +1100,65 @@ async function accentChecks(devtools: Devtools): Promise<void> {
     `Blue: light ${control.light} (expected ${control.expectedLight}), dark ${control.dark} ` +
       `(expected ${control.expectedDark}); Purple in dark: ${control.reset}` +
       (control.styleLeft ? ", and the switch's stylesheet was left behind" : ""),
+  )
+
+  // A warm accent (#387's review): the scale's chroma is capped to what sRGB can show, so every step
+  // renders as the colour it names instead of being clipped channel by channel into pure red, and a
+  // dark primary Button stays apart from the dark danger Button. Read as rendered pixels: each
+  // computed colour is drawn on a 1x1 canvas and read back, because a computed colour string says
+  // nothing about clipping.
+  const gamut = await devtools.evaluate<{
+    offGamut: string[]
+    worst: string
+    primary: string
+    danger: string
+    distance: number
+  }>(`(async () => {
+    ${ACCENT_HELPERS}
+    ${OKLAB_HELPERS}
+    const root = document.documentElement
+    const wasDark = root.classList.contains("dark")
+    const accents = ${JSON.stringify(GAMUT_ACCENTS)}
+    const style = document.createElement("style")
+    document.head.append(style)
+    const offGamut = []
+    let worst = { distance: 0, label: "" }
+    for (const [name, color] of Object.entries(accents)) {
+      style.textContent = ":root { --color-primary: " + color + "; --color-accent: " + color + "; }"
+      for (const step of [50, 100, 200, 300, 400, 500, 600, 700, 800, 950]) {
+        const specified = resolve("var(--color-accent-" + step + ")")
+        const distance = oklabDistance(oklabOfComputed(specified), oklabOfPixel(specified))
+        const label = name + " " + step + " " + specified + " → " + distance.toFixed(3)
+        if (distance > worst.distance) worst = { distance, label }
+        if (!(distance < 0.02)) offGamut.push(label)
+      }
+    }
+    style.textContent = ":root { --color-primary: " + accents.orange800 + "; --color-accent: " +
+      accents.orange800 + "; }"
+    root.classList.toggle("dark", true)
+    const primary = document.querySelector("#demo-Button button")
+    const danger = document.querySelector('#demo-Button button[class*="bg-red-600"]')
+    await settle(primary, danger)
+    const primaryFill = getComputedStyle(primary).backgroundColor
+    const dangerFill = getComputedStyle(danger).backgroundColor
+    const distance = oklabDistance(oklabOfPixel(primaryFill), oklabOfPixel(dangerFill))
+    style.remove()
+    root.classList.toggle("dark", wasDark)
+    await settle(primary, danger)
+    return { offGamut, worst: worst.label, primary: primaryFill, danger: dangerFill, distance }
+  })()`)
+  check(
+    "a warm, a rose, a blue and a green accent render every derived step as the colour it names",
+    gamut.offGamut.length === 0,
+    gamut.offGamut.length === 0
+      ? `worst step ${gamut.worst} (OKLab, drawn and read back)`
+      : `clipped by more than 0.02 OKLab: ${gamut.offGamut.join("; ")}`,
+  )
+  check(
+    "with an orange-800 accent, the dark primary Button is well apart from the dark danger Button",
+    gamut.distance >= 0.1,
+    `primary ${gamut.primary}, danger ${gamut.danger}: ${gamut.distance.toFixed(3)} OKLab apart ` +
+      "as rendered (at least 0.1)",
   )
 
   // Calendar is on the system page. Picking a day there changes only that card's own state, and the
@@ -1076,12 +1191,18 @@ async function accentChecks(devtools: Devtools): Promise<void> {
     style.textContent = ":root { --color-primary: ${APP_ACCENT}; }"
     document.head.append(style)
     const after = await read()
+    // The dot is step 600 of the scale this accent sets, so it carries the accent's hue moved by
+    // purple-600's offset, -2.666.
+    const dotStep = resolve("var(--color-accent-600)")
     style.remove()
     root.classList.toggle("dark", wasDark)
     await settle(day, dot)
     const expected = {
       selected: resolve("${APP_ACCENT}"),
-      dot: resolve("oklch(from ${APP_ACCENT} 0.558 calc(c * 0.288 / 0.176) calc(h - 2.666))"),
+      dot: numbers(dotStep)[2].toFixed(3) ===
+          (numbers(resolve("${APP_ACCENT}"))[2] - 2.666).toFixed(3)
+        ? dotStep
+        : "a step 600 with the accent's hue, not " + dotStep,
     }
     const purple900 = resolve("${PURPLE[900]}")
     const purple600 = resolve("${PURPLE[600]}")
@@ -1103,4 +1224,18 @@ async function accentChecks(devtools: Devtools): Promise<void> {
       `${calendar.expected.selected}), dot ${calendar.after.dot} (expected ${calendar.expected.dot})`,
   )
   await openGuidePage(devtools, "ui")
+
+  // Every reading above flips `.dark` and puts it back; one that forgot would leave the page's class
+  // disagreeing with the app's own state, and the next block to press the toggle would land in the
+  // wrong palette (#387's CI failure). The toggle's name says what a press does, so it names the
+  // palette the app believes it is in.
+  const agreement = await devtools.evaluate<{ dark: boolean; toggle: string }>(`(() => ({
+    dark: document.documentElement.classList.contains("dark"),
+    toggle: document.querySelector('[data-e2e="theme-toggle"]').getAttribute("aria-label"),
+  }))()`)
+  check(
+    "after the accent checks, <html>'s dark class still matches the palette toggle",
+    agreement.dark === (agreement.toggle === "Switch to light mode"),
+    `dark class ${agreement.dark}, toggle "${agreement.toggle}"`,
+  )
 }
