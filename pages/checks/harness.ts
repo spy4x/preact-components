@@ -448,6 +448,7 @@ const KEYS = {
   End: { key: "End", code: "End", keyCode: 35 },
   PageUp: { key: "PageUp", code: "PageUp", keyCode: 33 },
   PageDown: { key: "PageDown", code: "PageDown", keyCode: 34 },
+  Slash: { key: "/", code: "Slash", keyCode: 191, text: "/" },
 } as const satisfies Record<string, KeyPress>
 
 /** A key {@link pressKey} knows how to send. */

@@ -154,8 +154,7 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
 
   const theme = await devtools.evaluate<{ before: boolean; after: boolean; pressed: string }>(
     `(async () => {
-      const button = [...document.querySelectorAll("header button")]
-        .find((candidate) => ["Dark", "Light"].includes(candidate.textContent.trim()))
+      const button = document.querySelector('[data-e2e="theme-toggle"]')
       const before = document.documentElement.classList.contains("dark")
       button.click()
       await new Promise((done) => setTimeout(done, 50))

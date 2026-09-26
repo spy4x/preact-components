@@ -81,10 +81,38 @@ export function packageSpecifier(id: SectionPackage): string {
   return `@spy4x/preact-${id}`
 }
 
+/** One row of a card's props summary: a prop, its type, its default and what it does. */
+export interface DemoProp {
+  /** The prop's name, e.g. `"title"`. */
+  name: string
+  /** Its type as a reader writes it, e.g. `"string"` or `"(value: number) => string"`. */
+  type: string
+  /** Its default, as code, when it has one. */
+  default?: string
+  /** One plain sentence on what it does, in inline Markdown (`markdown.tsx`). */
+  description: string
+}
+
 /** One entry of the catalogue: what the component is, the JSX to copy, and the live example. */
 export interface Demo {
-  /** One or two sentences on the component's contract and its defaults. */
+  /**
+   * One plain sentence on what the component is for, as text. Inline Markdown code spans
+   * (`` `name` ``) render as code, so no literal backtick reaches the page. It is also what the
+   * search reads when {@link Demo.description} is JSX.
+   */
   summary: string
+  /**
+   * The card's description as JSX, shown instead of {@link Demo.summary} when given — for a
+   * sentence that needs a link or markup the Markdown subset does not cover.
+   */
+  description?: ComponentChildren
+  /**
+   * Give the card the content column's full width: for a demo that needs room (a table, a chart, a
+   * form). Left out, the card shares a row with its neighbour at the widths that fit two.
+   */
+  wide?: boolean
+  /** The props summary under the demo: the props a reader reaches for first. Optional. */
+  props?: readonly DemoProp[]
   /** The JSX a consumer copies out of the guide. */
   snippet: string
   /**
@@ -320,7 +348,7 @@ const catalogue = {
     package: "charts",
     title: "Charts",
     blurb:
-      "Server-rendered charts and the d3 islands. The zero-JS SVGs are live and need nothing but their data; the two islands draw in an effect, so their cards are their real server render and a browser is where the drawing happens.",
+      "The server-rendered charts need nothing but their data; the two d3 charts draw in the browser, so until then their cards show a placeholder.",
     demos: chartsDemos,
   },
   system: {
@@ -621,6 +649,8 @@ export interface GuidePage {
   title: string
   /** One or two sentences under the page heading. */
   blurb: string
+  /** One plain sentence: what the overview's package card says. */
+  summary: string
   /** The package the page documents, e.g. `@spy4x/preact-ui`; `undefined` for the overview. */
   packageName: string | undefined
   /** The sections the page renders, in reading order; empty for a page with no cards. */
@@ -628,7 +658,7 @@ export interface GuidePage {
 }
 
 /** Title and blurb of every page, hand-written because they are prose. */
-const pageCopy: Record<GuidePageId, { title: string; blurb: string }> = {
+const pageCopy: Record<GuidePageId, { title: string; blurb: string; summary?: string }> = {
   overview: {
     title: "Overview",
     blurb: "What the library holds, one page per package.",
@@ -637,36 +667,47 @@ const pageCopy: Record<GuidePageId, { title: string; blurb: string }> = {
     title: "UI",
     blurb:
       "The controls and surfaces an app is assembled from: buttons and badges, tables and meters, fields and pickers, dialogs, toasts and the empty and error states.",
+    summary:
+      "Buttons, fields, tables, dialogs, toasts and the other controls an app is built from.",
   },
   system: {
     title: "System",
     blurb: catalogue.system.blurb,
+    summary: "App chrome and platform pieces: shells, heads, the sign-in form and the calendar.",
   },
   crud: {
     title: "CRUD",
     blurb: catalogue.crud.blurb,
+    summary: "List and editor scaffolding for a resource page, driven by props and your store.",
   },
   charts: {
     title: "Charts",
-    blurb: catalogue.charts.blurb,
+    blurb:
+      "Charts that render on the server as plain SVG and HTML, two d3 charts that draw in the browser, and the scale and loading helpers behind them.",
+    summary: "Server-rendered SVG charts, two d3 charts and the helpers behind them.",
   },
   map: {
     title: "Map",
     blurb: catalogue.map.blurb,
+    summary: "Markers on a Leaflet map, plotted from plain data.",
   },
   signals: {
     title: "Signals",
     blurb:
       "State helpers built on `@preact/signals`: the model store, filters bound to the address bar, table state, toasts and the theme store. The package renders nothing of its own.",
+    summary:
+      "State helpers on `@preact/signals`: stores, address-bar filters, table state and toasts.",
   },
   theme: {
     title: "Theme",
     blurb:
       "The design tokens and the classes `preset.css` ships: the half of the stylesheet an app applies to markup the library does not own.",
+    summary: "The design tokens, the preset stylesheet and the classes it ships.",
   },
   icons: {
     title: "Icons",
     blurb: "Every glyph the icon package exports. Search by name, click a glyph to copy its JSX.",
+    summary: "Every glyph the icon package exports, searchable and copyable.",
   },
   all: {
     title: "Everything",
@@ -677,6 +718,7 @@ const pageCopy: Record<GuidePageId, { title: string; blurb: string }> = {
     title: "cn",
     blurb:
       "`cn()` joins class names and resolves conflicting Tailwind utilities, so a caller's class wins over a component's default.",
+    summary: "Joins class names and lets a caller's Tailwind class win over a component's.",
   },
 }
 
@@ -695,6 +737,7 @@ export const guidePages: GuidePage[] = guidePageIds.map((id) => ({
   id,
   title: pageCopy[id].title,
   blurb: pageCopy[id].blurb,
+  summary: pageCopy[id].summary ?? pageCopy[id].blurb,
   packageName: id === "overview" || id === "all" ? undefined : `@spy4x/preact-${id}`,
   sections: id === "all"
     ? catalogueSections

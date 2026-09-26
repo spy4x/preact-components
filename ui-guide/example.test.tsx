@@ -36,6 +36,30 @@ describe("example cards", () => {
     expect(card).toMatch(/<details[^>]* open/)
     expect(render(<UIGuide hash="#/ui" />), "not on another page").not.toContain(`demo-${key}"`)
   })
+
+  it("carry their width, props and description to the card", () => {
+    const cards = toExampleDemos({
+      wide: {
+        title: "wide()",
+        summary: "Prints a long output.",
+        description: <em>Long output.</em>,
+        wide: true,
+        props: [{ name: "limit", type: "number", description: "The most it prints." }],
+        snippet: "wide()",
+        covers: ["wide"],
+        run: () => null,
+      },
+    })
+    expect(cards.wide.wide).toBe(true)
+    expect(cards.wide.props?.[0].name).toBe("limit")
+    expect(render(<>{cards.wide.description}</>)).toBe("<em>Long output.</em>")
+
+    const html = render(<UIGuide hash="#/charts" />)
+    const size = (key: string) =>
+      html.match(new RegExp(`<article id="demo-${key}" data-card-size="(\\w+)"`))?.[1]
+    expect(size("createInViewObserver")).toBe("wide")
+    expect(size("extent")).toBe("normal")
+  })
 })
 
 describe("every registered example", () => {

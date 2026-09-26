@@ -8,7 +8,8 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { options } from "preact"
 import { render } from "preact-render-to-string"
-import { UIGuide, type UIGuideProps } from "./shell.tsx"
+import { DemoCard } from "./card.tsx"
+import { cardSpans, navGroups, UIGuide, type UIGuideProps } from "./shell.tsx"
 import { catalogueNames, demoRegistry, guidePages } from "./registry.ts"
 
 /** The complete registry without the cards of one package's page. */
@@ -243,5 +244,201 @@ describe("UIGuide's own copy", () => {
     expect(skip, "the skip link is rendered with its label").not.toBeNull()
     expect(html.indexOf("ui-guide-skip")).toBeLessThan(html.indexOf("data-guide-page-link"))
     expect(html, "the link's target is on the page").toContain(`id="${skip?.[1]}"`)
+  })
+})
+
+describe("cardSpans", () => {
+  it("gives a wide card the whole row and pairs the normal cards around it", () => {
+    expect(cardSpans([{}, {}, { wide: true }, {}, {}])).toEqual([
+      "half",
+      "half",
+      "full",
+      "half",
+      "half",
+    ])
+  })
+
+  it("widens the last card of an odd run, so the grid has no hole", () => {
+    expect(cardSpans([{}, {}, {}, { wide: true }, { wide: false }])).toEqual([
+      "half",
+      "half",
+      "full",
+      "full",
+      "full",
+    ])
+  })
+
+  it("keeps a lone normal card between two wide ones on its own row", () => {
+    expect(cardSpans([{ wide: true }, {}, { wide: true }])).toEqual(["full", "full", "full"])
+  })
+})
+
+describe("the navigation's groups", () => {
+  it("hold every page exactly once", () => {
+    const grouped = navGroups.flatMap((group) => [...group.pages])
+
+    expect([...grouped].sort()).toEqual(guidePages.map((page) => page.id).sort())
+    expect(new Set(grouped).size).toBe(grouped.length)
+  })
+
+  it("draw each group's title, overridable through the labels", () => {
+    const html = render(<UIGuide hash="#/ui" labels={{ navGroups: { helpers: "Outils" } }} />)
+
+    expect(html).toContain(">Components<")
+    expect(html).toContain(">Outils<")
+    expect(html).not.toContain(">Helpers</p>")
+  })
+})
+
+describe("the theme switch", () => {
+  const scheme = (dark: boolean) => ({ dark, toggle: () => {} })
+
+  it("is named for what a press does, in either palette", () => {
+    expect(render(<UIGuide hash="#/ui" colorScheme={scheme(false)} />))
+      .toContain('aria-label="Switch to dark mode"')
+    expect(render(<UIGuide hash="#/ui" colorScheme={scheme(true)} />))
+      .toContain('aria-label="Switch to light mode"')
+  })
+
+  it("takes its name and its words from the labels", () => {
+    const html = render(
+      <UIGuide
+        hash="#/ui"
+        colorScheme={scheme(false)}
+        labels={{ switchToDark: "Passer en mode sombre", darkMode: "Mode sombre" }}
+      />,
+    )
+
+    expect(html).toContain('aria-label="Passer en mode sombre"')
+    expect(html).toContain(">Mode sombre<")
+  })
+
+  it("is left out when the host passes no colour scheme", () => {
+    expect(render(<UIGuide hash="#/ui" />)).not.toContain('data-e2e="theme-toggle"')
+  })
+})
+
+describe("section headings", () => {
+  it("hides a section heading that would repeat its page's own", () => {
+    const html = render(<UIGuide hash="#/charts" />)
+    const header = (id: string) =>
+      new RegExp(`<section id="${id}"[^>]*><div class="([^"]*)"`).exec(html)?.[1] ?? ""
+
+    expect(header("charts")).toContain("sr-only")
+    expect(header("charts-examples")).not.toContain("sr-only")
+  })
+})
+
+describe("the shell's other words", () => {
+  it("take the search's words from the labels", () => {
+    const html = render(
+      <UIGuide
+        hash="#/ui"
+        labels={{
+          searchPlaceholder: "Komponenten suchen…",
+          closeSearch: "Suche schließen",
+          searchKinds: { page: "Seite" },
+        }}
+      />,
+    )
+
+    expect(html).toContain('aria-label="Komponenten suchen…"')
+    expect(html).toContain('aria-label="Suche schließen"')
+    // The empty search lists every page, each marked with the kind word.
+    expect(html.match(/>Seite</g)?.length).toBeGreaterThan(1)
+  })
+
+  it("take every card's words from the labels", () => {
+    const html = render(
+      <UIGuide
+        hash="#/charts"
+        labels={{
+          card: {
+            code: "Quelltext",
+            props: "Eigenschaften",
+            propName: "Name",
+            copySnippet: (label) => `${label} kopieren`,
+          },
+        }}
+      />,
+    )
+
+    expect(html).toContain("Quelltext</summary>")
+    expect(html).not.toContain("Code</summary>")
+    expect(html).toContain(">Eigenschaften</caption>")
+    expect(html).toContain('<th scope="col">Name</th>')
+    expect(html).toContain('aria-label="&lt;Bars /> kopieren"')
+  })
+
+  it("take the overview example's words from the labels", () => {
+    const html = render(
+      <UIGuide
+        hash="#/"
+        labels={{
+          exampleTitle: "Knöpfe und ein Abzeichen",
+          exampleSummary: "Ein `Cluster` voller Knöpfe.",
+          copyExample: "Beispiel kopieren",
+          copyInstall: "Befehl kopieren",
+        }}
+      />,
+    )
+
+    expect(html).toContain(">Knöpfe und ein Abzeichen</h3>")
+    expect(html).toContain(">Cluster</code> voller Knöpfe.")
+    expect(html).toContain('aria-label="Beispiel kopieren"')
+    expect(html).toContain('aria-label="Befehl kopieren"')
+  })
+})
+
+describe("the card grid", () => {
+  it("gives example cards and component cards in one row the same height", () => {
+    const html = render(<UIGuide hash="#/charts" />)
+    const gridBefore = (card: string) => {
+      const at = html.indexOf(`<article id="demo-${card}"`)
+      const open = html.lastIndexOf('<div class="grid ', at)
+      return html.slice(open, html.indexOf(`">`, open))
+    }
+
+    expect(gridBefore("extent")).not.toContain("items-start")
+    expect(gridBefore("Bars")).not.toContain("items-start")
+  })
+})
+
+describe("a card", () => {
+  it("holds a JSX description in a div, so it may carry a list", () => {
+    const html = render(
+      <DemoCard
+        name="Listed"
+        label="Listed"
+        summary=""
+        snippet=""
+        description={
+          <ul>
+            <li>one</li>
+          </ul>
+        }
+      >
+        <span />
+      </DemoCard>,
+    )
+
+    expect(html).toMatch(/<div class="text-sm[^"]*"><ul><li>one<\/li><\/ul><\/div>/)
+  })
+
+  it("reads a prop's sentence as inline Markdown", () => {
+    const html = render(
+      <DemoCard
+        name="Propped"
+        label="Propped"
+        summary=""
+        snippet=""
+        props={[{ name: "tone", type: "string", description: "Passed to `Badge`." }]}
+      >
+        <span />
+      </DemoCard>,
+    )
+
+    expect(html).toContain(">Badge</code>.")
+    expect(html).not.toContain("`Badge`")
   })
 })

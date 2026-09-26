@@ -43,6 +43,7 @@ import { catalogueNames } from "@spy4x/preact-ui-guide/registry"
 import { routeTable, routeTableDrift } from "@spy4x/preact-ui-guide/routes"
 import { DEFAULT_BASE, DEFAULT_ORIGIN, normalizeBase } from "./src/site.ts"
 import { normalizeSources } from "./src/tailwind-sources.ts"
+import { packageVersion } from "./src/version.ts"
 
 /** This file's directory: the demo's root, `pages/`. */
 const PAGES_DIRECTORY = dirname(fileURLToPath(import.meta.url))
@@ -315,7 +316,9 @@ async function main(): Promise<void> {
 
   await run("deno", ["check", ...CHECKED_ENTRIES])
   const [stylesheet, island] = [await compileStylesheet(), await bundleIsland()]
-  const appHtml = renderApp()
+  // The header's version is the one the packages declare; every package publishes at one version.
+  const version = packageVersion(await Deno.readTextFile(join(REPO_ROOT, "ui-guide", "deno.json")))
+  const appHtml = renderApp(undefined, version)
   // Every route the guide can be opened at, derived from the catalogue's registry rather than kept
   // here: the echo further down is this value, read back out of the document that ships it.
   const routes = routeTable()
@@ -341,6 +344,7 @@ async function main(): Promise<void> {
     islandSrc: `${BASE}assets/${assetNames.js}`,
     appHtml,
     routeTable: routes,
+    version,
   })
 
   // Under hash routing the one `index.html` *is* every route, so the emission check is this: read

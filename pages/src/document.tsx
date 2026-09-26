@@ -40,6 +40,8 @@ export interface DocumentOptions {
    * is a few kilobytes of JSON in a document that already ships the whole catalogue.
    */
   routeTable: RouteTable
+  /** The library version, carried on `#root` for the island to read (`src/version.ts`). */
+  version?: string
 }
 
 /**
@@ -59,6 +61,11 @@ const THEME_BOOTSTRAP = `<script>
       } catch (error) {}
     </script>`
 
+/** `value` escaped for a double-quoted HTML attribute. */
+export function escapeAttribute(value: string): string {
+  return value.replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;")
+}
+
 /**
  * Render the complete HTML document.
  *
@@ -66,7 +73,7 @@ const THEME_BOOTSTRAP = `<script>
  * @returns The file written to `dist/index.html`.
  */
 export function renderDocument(
-  { base, origin, cssHref, islandSrc, appHtml, routeTable }: DocumentOptions,
+  { base, origin, cssHref, islandSrc, appHtml, routeTable, version }: DocumentOptions,
 ): string {
   // `SEOHead` parses this before it publishes it — see `normalizeCanonical` in
   // `@spy4x/preact-system/head` — so a stray query string or fragment on either input is
@@ -101,7 +108,7 @@ export function renderDocument(
     ${renderRouteTable(routeTable)}
   </head>
   <body class="theme-base">
-    <div id="root">${appHtml}</div>
+    <div id="root"${version ? ` data-version="${escapeAttribute(version)}"` : ""}>${appHtml}</div>
     <noscript>
       <p class="mx-auto max-w-5xl p-4 text-sm">
         The catalogue below is prerendered and readable without JavaScript; the demos are not

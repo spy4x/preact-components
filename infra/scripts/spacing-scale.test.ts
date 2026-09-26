@@ -7,8 +7,13 @@
  * It reads every `.ts`, `.tsx` and `.css` file of the covered packages, test files excepted: a
  * test asserts on classes, and the checker's own test has to spell out the classes it must
  * report. What a test asserts still has to match the component, so a test file cannot keep an
- * off-scale class the component no longer renders. `ui-guide/` and `pages/` join the list with
- * #328, which rewrites them.
+ * off-scale class the component no longer renders.
+ *
+ * `ui-guide/` and `pages/` joined with #328, which redesigns the guide. The section files the
+ * redesign's later pull requests rewrite still carry off-scale values; each says so in its own
+ * first line, {@link OFF_SCALE_MARKER}, and the pull request that moves the file to the scale
+ * deletes that line. The marker lives in the file rather than in a list here, so two pull requests
+ * that each clear one file never edit the same lines. No file may carry it once #328 closes.
  */
 
 import { expect } from "@std/expect"
@@ -16,14 +21,46 @@ import { describe, it } from "@std/testing/bdd"
 import { findOffScaleSpacing } from "../../theme/spacing.ts"
 
 /** The packages the scale covers today. */
-export const SPACING_PACKAGES = ["theme", "ui", "system", "crud", "charts", "map"] as const
+export const SPACING_PACKAGES = [
+  "theme",
+  "ui",
+  "system",
+  "crud",
+  "charts",
+  "map",
+  "ui-guide",
+  "pages",
+] as const
+
+/**
+ * The line a file carries while it still has off-scale spacing and waits for #328 to move it to
+ * the new design. Temporary: a marked file that has become clean fails the test, so a marker only
+ * ever goes away, and none may be left when #328 closes.
+ */
+export const OFF_SCALE_MARKER = /^\/\/ spacing: off-scale until #328\b/
+
+/**
+ * The only files allowed to carry {@link OFF_SCALE_MARKER}: the section files #328's later pull
+ * requests rewrite. A lane deletes a file's marker and never edits this list; the list only keeps a
+ * marker from switching the check off anywhere else.
+ */
+const MARKABLE_FILES = [
+  "ui-guide/sections/display.tsx",
+  "ui-guide/sections/feedback.tsx",
+  "ui-guide/sections/forms.tsx",
+  "ui-guide/sections/inputs.tsx",
+  "ui-guide/sections/theme-examples.tsx",
+]
+
+/** Build output under a covered directory: generated, not source. */
+const SKIPPED_DIRECTORIES = ["pages/dist"]
 
 const ROOT = new URL("../../", import.meta.url)
 
 /**
  * Files `deno task --cwd theme generate` writes from other files: the CSS mirrors carry the text of
  * the `.css` files this test reads anyway, and `component-classes.ts` lists the classes of every
- * published package, `ui-guide/` included, which the scale does not cover until #328.
+ * published package, which this test reads in their own sources.
  */
 const GENERATED = [
   "theme/tokens-css.ts",
@@ -42,6 +79,7 @@ async function sourceFiles(directory: string): Promise<string[]> {
   const files: string[] = []
   for await (const entry of Deno.readDir(new URL(`${directory}/`, ROOT))) {
     const path = `${directory}/${entry.name}`
+    if (entry.isDirectory && SKIPPED_DIRECTORIES.includes(path)) continue
     if (entry.isDirectory) files.push(...await sourceFiles(path))
     else if (entry.isFile && isChecked(path)) files.push(path)
   }
@@ -68,10 +106,35 @@ async function offScale(
   return found
 }
 
+/** The covered files that carry {@link OFF_SCALE_MARKER}. */
+async function markedFiles(files: string[]): Promise<string[]> {
+  const marked: string[] = []
+  for (const path of files) {
+    if (OFF_SCALE_MARKER.test(await readSource(path))) marked.push(path)
+  }
+  return marked
+}
+
 describe("spacing scale", () => {
   it("finds no spacing class off the scale in the covered packages", async () => {
     const files = (await Promise.all(SPACING_PACKAGES.map(sourceFiles))).flat()
-    expect(await offScale(files)).toEqual([])
+    const marked = await markedFiles(files)
+    expect(await offScale(files.filter((path) => !marked.includes(path)))).toEqual([])
+  })
+
+  it("lets only the files #328 still rewrites carry the marker, on their first line", async () => {
+    const files = (await Promise.all(SPACING_PACKAGES.map(sourceFiles))).flat()
+    const stray = (await markedFiles(files)).filter((path) => !MARKABLE_FILES.includes(path))
+    expect(stray, "only a listed section file may switch the spacing check off").toEqual([])
+  })
+
+  it("marks only files that still carry an off-scale value until #328 closes", async () => {
+    const files = (await Promise.all(SPACING_PACKAGES.map(sourceFiles))).flat()
+    const clean: string[] = []
+    for (const path of await markedFiles(files)) {
+      if ((await offScale([path])).length === 0) clean.push(path)
+    }
+    expect(clean, "these files are on the scale now: delete their marker line").toEqual([])
   })
 
   it("reads the components and the preset, and skips test files and generated files", async () => {
@@ -85,12 +148,16 @@ describe("spacing scale", () => {
         "crud/crud-list.tsx",
         "charts/line-chart.tsx",
         "map/map.tsx",
+        "ui-guide/shell.tsx",
+        "ui-guide/card.tsx",
+        "pages/src/app.tsx",
       ]
     ) {
       expect(files).toContain(path)
     }
     expect(files.filter((path) => path.includes(".test."))).toEqual([])
     expect(files.filter((path) => GENERATED.includes(path))).toEqual([])
+    expect(files.filter((path) => path.startsWith("pages/dist/"))).toEqual([])
   })
 
   it("names the file, line, column, class and reason of each off-scale value", async () => {

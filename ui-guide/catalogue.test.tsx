@@ -106,7 +106,7 @@ describe("UIGuide", () => {
     // would otherwise disappear from both sides of the assertion.
     for (
       const heading of [
-        "General instructions",
+        "Design rules",
         "Badges",
         "Buttons",
         "Display",
@@ -180,9 +180,14 @@ describe("UIGuide", () => {
 
     // The block the copy button belongs to. Counted rather than sampled: a card that shipped
     // without one is the failure this asserts against.
-    expect(html.match(/data-e2e="usage"/g)?.length).toBe(catalogueNames.length)
-    expect(html.match(/aria-label="Copy the /g)?.length).toBe(catalogueNames.length)
-    expect(html).toContain(">Usage<")
+    // Read per catalogue card: the overview's own example is a card too, but not a catalogue entry.
+    const cards = [...html.matchAll(/<article id="demo-[\s\S]*?<\/article>/g)].map((match) =>
+      match[0]
+    )
+    expect(cards.length).toBe(catalogueNames.length)
+    expect(cards.filter((card) => card.includes('data-e2e="usage"')).length).toBe(cards.length)
+    expect(cards.filter((card) => card.includes('aria-label="Copy the ')).length).toBe(cards.length)
+    expect(html).toContain("Code</summary>")
   })
 
   it("heads a class card with its title and chips for the classes it applies", () => {

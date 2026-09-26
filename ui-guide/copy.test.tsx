@@ -92,7 +92,10 @@ function wiredCopies(copy?: CopyPort): WiredCopy[] {
   const cards: Element[] = []
   const previous = options.vnode
   options.vnode = (vnode) => {
-    if (vnode.type === DemoCard) cards.push({ type: vnode.type, props: vnode.props })
+    // A card with its own `anchorId` is the overview's example, not a catalogue entry.
+    const catalogueCard = vnode.type === DemoCard &&
+      (vnode.props as Partial<DemoCardProps>).anchorId === undefined
+    if (catalogueCard) cards.push({ type: vnode.type, props: vnode.props })
     previous?.(vnode)
   }
   try {

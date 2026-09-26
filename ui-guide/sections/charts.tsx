@@ -90,7 +90,7 @@ const tones: Record<KpiTone, string> = {
  */
 function KpiToneMatrix() {
   return (
-    <KpiGrid>
+    <KpiGrid minWidth="8rem">
       {entries(tones).map(([tone, label]) => (
         <Kpi key={tone} label={label} value={42} sub={`tone="${tone}"`} tone={tone} />
       ))}
@@ -139,30 +139,31 @@ function loadPreviousWindow(): Promise<unknown> {
 export const chartsDemos = {
   Bars: {
     summary:
-      "A labelled bar chart from `data` alone, rendered as a table of proportions: no d3, no client JavaScript, no width to measure.",
+      "A labelled bar chart drawn as a table of proportions: no d3, no client JavaScript, no width to measure.",
+    wide: false,
+    props: [
+      { name: "data", type: "BarDatum[]", description: "The rows: a label and a value each." },
+      {
+        name: "max",
+        type: "number",
+        default: "the largest value",
+        description: "The value the longest bar stands for, to compare two lists.",
+      },
+      {
+        name: "format",
+        type: "(value: number) => string",
+        default: "String",
+        description: "How the trailing number is printed.",
+      },
+      { name: "title", type: "string", description: "The heading, and the table's name." },
+    ],
     snippet: `<Bars data={[{ label: "Starter", value: 41 }]} title="Orders by plan" />`,
     render: () => <Bars data={bars} title="Orders by plan" />,
   },
-  LineChart: {
-    summary:
-      "Server-rendered SVG line chart over one or more series, taking its X labels from the points themselves. Axis maths lives in `scales.ts`, so a degenerate series — one point, all-equal values, a non-finite `y` — still renders instead of producing NaN coordinates. `showLegend` defaults on for a multi-series chart and off for a single one, and a `yDomain` the caller supplies is honoured exactly, which is what puts two panels on one axis.",
-    snippet: `<LineChart
-  title="Orders per month"
-  series={[{ name: "Orders", points: months.map((m) => ({ x: m.label, y: m.orders })) }]}
-  yFormat={(value) => value.toFixed(0)}
-  xStride={2}
-/>`,
-    render: () => (
-      <LineChart
-        series={orders}
-        title="Orders per month"
-        yFormat={(v) => v.toFixed(0)}
-      />
-    ),
-  },
   DonutChart: {
     summary:
-      "Server-rendered donut drawn as one CSS `conic-gradient`, with the centre value in a hole cut by an inset circle. The share maths is exported as `donutGeometry` and tested on its own, which is why a dataset with no positive value renders a flat empty ring instead of the invalid gradient an all-zero total would produce. A datum carrying `href` turns its legend row into a link.",
+      "A server-rendered donut drawn with one CSS `conic-gradient`, whose legend rows turn into links when a slice has an `href`.",
+    wide: false,
     snippet: `<DonutChart
   data={[{ label: "Organic", value: 52 }, { label: "Referral", value: 24, href: "/referral" }]}
   centerValue="12.4k"
@@ -178,40 +179,86 @@ export const chartsDemos = {
       />
     ),
   },
+  LineChart: {
+    summary:
+      "A server-rendered SVG line chart over one or more series that still draws when a series is one point, flat or has a gap.",
+    wide: true,
+    props: [
+      { name: "series", type: "LineSeries[]", description: "Each line: a name and its points." },
+      {
+        name: "yDomain",
+        type: "[number, number]",
+        default: "padded from the data",
+        description: "Fixes the Y axis, which is how two panels share one scale.",
+      },
+      {
+        name: "yFormat",
+        type: "(value: number) => string",
+        default: "two decimals",
+        description: "How a Y tick is printed.",
+      },
+      {
+        name: "showLegend",
+        type: "boolean",
+        default: "true for two or more series",
+        description: "Shows the series names under the chart.",
+      },
+    ],
+    snippet: `<LineChart
+  title="Orders per month"
+  series={[{ name: "Orders", points: months.map((m) => ({ x: m.label, y: m.orders })) }]}
+  yFormat={(value) => value.toFixed(0)}
+  xStride={2}
+/>`,
+    render: () => (
+      <LineChart
+        series={orders}
+        title="Orders per month"
+        yFormat={(v) => v.toFixed(0)}
+      />
+    ),
+  },
   Kpi: {
     summary:
-      "One key-performance-indicator card: label, value, optional caption. Values use tabular figures so a row of them does not jitter as they change. `tone` says what the number is for — `accent` by default, plus `positive`, `warning`, `negative` and `neutral` — rather than the source's `good`/`warn`/`bad` vocabulary.",
+      "One key figure with its label and caption, in five tones that say what the number is for.",
+    wide: true,
     snippet: `<Kpi label="Uptime" value="99.95%" sub="last 30 days" tone="positive" />`,
     render: () => <KpiToneMatrix />,
   },
   KpiGrid: {
     summary:
-      "Responsive grid for `Kpi` cards: `repeat(auto-fit, minmax(minWidth, 1fr))`. The column minimum is an inline style rather than a class, because a Tailwind class cannot vary with a prop. `children` may be anything that belongs in the grid, not only `Kpi` — the two grids below differ only in `minWidth`.",
+      "A responsive grid of `Kpi` cards whose column width is the `minWidth` prop; the two grids below differ only in it.",
+    wide: true,
     snippet: `<KpiGrid minWidth="12rem">
   <Kpi label="Uptime" value="99.95%" tone="positive" />
   <Kpi label="Errors" value={3} tone="negative" />
 </KpiGrid>`,
     render: () => (
-      <div class="space-y-3">
+      <div class="flex flex-col gap-3">
         <KpiGrid minWidth="7rem">
           <Kpi label="Uptime" value="99.95%" sub="last 30 days" tone="positive" />
           <Kpi label="Errors" value={3} tone="negative" />
           <Kpi label="Pending" value={18} tone="warning" />
+          <Kpi label="Users" value={1204} />
+          <Kpi label="Latency" value="84 ms" />
         </KpiGrid>
         <p class="text-xs text-gray-500 dark:text-gray-400">
-          the same three cards at minWidth="14rem"
+          the same five cards at minWidth="16rem"
         </p>
-        <KpiGrid minWidth="14rem">
+        <KpiGrid minWidth="16rem">
           <Kpi label="Uptime" value="99.95%" sub="last 30 days" tone="positive" />
           <Kpi label="Errors" value={3} tone="negative" />
           <Kpi label="Pending" value={18} tone="warning" />
+          <Kpi label="Users" value={1204} />
+          <Kpi label="Latency" value="84 ms" />
         </KpiGrid>
       </div>
     ),
   },
   MetricPanel: {
     summary:
-      "The shell one metric panel is made of: a heading with its unit, an actions slot, an error box and the chart body as children. Presentational only — it loads nothing. The fetching half is the exported `loadMetricSeries` (and the `useMetricSeries` hook), which takes a `loadStats` port and a `scale` multiplier; that pair is what let a source application's two near-identical metric panels become one component.",
+      "The frame one metric is shown in — heading with unit, actions, an error box and the chart — which loads nothing itself.",
+    wide: true,
     snippet: `<MetricPanel
   title="Revenue"
   unit="k€"
@@ -221,7 +268,7 @@ export const chartsDemos = {
   <D3LineChart data={revenue.data} timeFrame={revenue.timeFrame} ariaLabel="Revenue, k€" />
 </MetricPanel>`,
     render: () => (
-      <div class="space-y-6">
+      <div class="flex flex-col gap-6">
         <MetricPanel
           title="Revenue"
           unit="k€"
@@ -245,7 +292,8 @@ export const chartsDemos = {
   },
   D3LineChart: {
     summary:
-      "The interactive island: d3 v7 draws into the svg from an effect, re-renders on resize and shows a tooltip built by `tooltipFormat`. It server-renders as an empty, labelled `<svg>` because nothing touches the DOM before the effect runs. This page goes one step further and loads the component itself only when the page opens, so its server-rendered card is a placeholder, and confirming that the axes and the path appear needs a browser. `ignoreZeroes` draws zeroes as a gap with a legend note, and `referenceValue` adds a dashed target marker. Needs `d3`, an optional peer declared in `charts/deno.json` and absent from the root import map.",
+      "The interactive line chart: d3 draws it in the browser with tooltips, a target line and gaps for missing values.",
+    wide: true,
     snippet: `<D3LineChart
   data={revenue.data}
   timeFrame="hours"
@@ -255,7 +303,7 @@ export const chartsDemos = {
   ariaLabel="Revenue, k€"
 />`,
     render: () => (
-      <div class="space-y-6">
+      <div class="flex flex-col gap-6">
         <LazyD3LineChart
           data={revenue}
           timeFrame="hours"
@@ -274,7 +322,8 @@ export const chartsDemos = {
   },
   CompareChart: {
     summary:
-      "A `D3LineChart` plus a toggle that loads the window before the current one through a `loadStats` port — the fetch stays with the caller, which is what replaced a source application's direct call into its chart store. A failed load becomes a red box beside the second chart instead of a thrown error, and `rangePicker` is a slot for the caller's own date control. It server-renders with the toggle off, so the second chart does not exist until a browser clicks it.",
+      "A `D3LineChart` with a toggle that loads the previous window through a `loadStats` port and draws it beside the current one.",
+    wide: true,
     snippet: `<CompareChart
   range={range}
   data={revenue.data}

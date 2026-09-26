@@ -85,6 +85,7 @@ const loadEmptyStats = () => Promise.resolve({ data: [], timeFrame: "hours" })
 const examples: ExampleFragment = {
   extent: {
     title: "extent()",
+    wide: false,
     summary:
       "The smallest and largest finite value of a series, or `null` when it has none: the domain a scale starts from.",
     snippet: `import { extent } from "@spy4x/preact-charts"
@@ -95,6 +96,7 @@ const examples: ExampleFragment = {
   },
   niceScale: {
     title: "paddedDomain() and niceScale()",
+    wide: false,
     summary:
       "`paddedDomain` widens a data range so no point sits on the frame; `niceScale` pads it too, then rounds it outward to round numbers and returns the ticks to draw.",
     snippet: `import { niceScale, paddedDomain } from "@spy4x/preact-charts"
@@ -105,6 +107,7 @@ const examples: ExampleFragment = {
   },
   ticks: {
     title: "niceStep() and ticks()",
+    wide: false,
     summary:
       "`niceStep` picks a round distance between ticks for a span, and `ticks` lists the round values that cover a range.",
     snippet: `import { niceStep, ticks } from "@spy4x/preact-charts"
@@ -115,6 +118,7 @@ const examples: ExampleFragment = {
   },
   linearScale: {
     title: "linearScale()",
+    wide: false,
     summary:
       "Maps a data domain onto a pixel range; a reversed range is how a Y axis puts larger values higher up.",
     snippet: `import { linearScale } from "@spy4x/preact-charts"
@@ -129,6 +133,7 @@ console.log([y(0), y(25), y(100)])`,
   },
   xLabelStride: {
     title: "xLabelStride()",
+    wide: false,
     summary:
       "How many X labels to skip between two drawn ones, so a dense axis stays readable: 5 points draw every label, 30 draw every fourth.",
     snippet: `import { xLabelStride } from "@spy4x/preact-charts"
@@ -139,6 +144,7 @@ console.log([y(0), y(25), y(100)])`,
   },
   barPercent: {
     title: "barPercent()",
+    wide: false,
     summary:
       "A bar's width as a percentage of the longest one, clamped to 0–100, and 0 for a value or maximum that cannot be drawn.",
     snippet: `import { barPercent } from "@spy4x/preact-charts"
@@ -149,6 +155,7 @@ console.log([y(0), y(25), y(100)])`,
   },
   donutGeometry: {
     title: "donutGeometry()",
+    wide: true,
     summary:
       "The slice maths behind `DonutChart`: each slice's share and the `conic-gradient` that paints the ring.",
     snippet: `import { donutGeometry } from "@spy4x/preact-charts"
@@ -185,6 +192,7 @@ console.log({
   },
   seriesColor: {
     title: "Series colours",
+    wide: false,
     summary:
       "`seriesColor` picks the colour for a series by its index, wrapping around the palette; `DEFAULT_CHART_PALETTE` is the palette used when you pass none.",
     snippet: `import { DEFAULT_CHART_PALETTE, seriesColor } from "@spy4x/preact-charts"
@@ -203,6 +211,7 @@ console.log({
   },
   DEFAULT_AXIS_COLOR: {
     title: "Default chart colours",
+    wide: false,
     summary:
       "The colours every chart uses when the caller passes none: each reads a `theme/` token and falls back to a fixed colour, so a chart renders with or without the theme.",
     snippet: `import {
@@ -241,8 +250,9 @@ console.log({
   },
   formatTimeTick: {
     title: "Time labels",
+    wide: false,
     summary:
-      "`TIME_FRAMES` lists the bucket sizes a series can have, `formatTimeTick` labels an X tick to suit the bucket size, and `defaultTooltipFormat` is the text `D3LineChart` shows on hover. Both print local time.",
+      "The bucket sizes a series can have (`TIME_FRAMES`), and the local-time labels `D3LineChart` prints for a tick and on hover.",
     snippet:
       `import { defaultTooltipFormat, formatTimeTick, TIME_FRAMES } from "@spy4x/preact-charts"
 
@@ -265,6 +275,7 @@ console.log({
   },
   yDomainFor: {
     title: "yDomainFor()",
+    wide: false,
     summary:
       "The Y range `D3LineChart` draws: from 0 (or the smallest non-zero value with `ignoreZeroes`) to the maximum plus 20% headroom, stretched to include a reference line.",
     snippet: `import { yDomainFor } from "@spy4x/preact-charts"
@@ -287,6 +298,7 @@ console.log([
   },
   assertD3Available: {
     title: "assertD3Available()",
+    wide: false,
     summary:
       "The check `D3LineChart` makes before drawing: a `d3` with no line generator throws `MISSING_D3_LINE_ERROR`, which tells the reader to add the dependency.",
     snippet:
@@ -314,6 +326,7 @@ console.log({ isTheExportedMessage: message === MISSING_D3_LINE_ERROR, message }
   },
   previousPeriod: {
     title: "previousPeriod()",
+    wide: false,
     summary:
       "The window of the same length that ends where a range starts; `steps` walks further back.",
     snippet: `import { previousPeriod } from "@spy4x/preact-charts"
@@ -328,8 +341,9 @@ console.log([previousPeriod(week), previousPeriod(week, 2)])`,
   },
   loadChartPayload: {
     title: "Stats payloads and their loaders",
+    wide: true,
     summary:
-      "`timeSeriesPointSchema` and `chartPayloadSchema` are the arktype shape a stats endpoint returns. `loadChartPayload` asks your `loadStats` port for a range and resolves to `{ payload, error }`, with a rejected payload as the error; `loadMetricSeries` does the same and multiplies every value by `scale`. The loaders resolve after this card renders, so it prints the calls they made to the port and the verdicts they apply.",
+      "The arktype shape a stats endpoint returns, and two loaders that ask your `loadStats` port for a range and resolve to `{ payload, error }`; the card prints the calls they make, since they resolve after it renders.",
     snippet:
       `import { chartPayloadSchema, loadChartPayload, loadMetricSeries, timeSeriesPointSchema } from "@spy4x/preact-charts"
 import { type } from "arktype"
@@ -371,8 +385,9 @@ console.log({
   },
   useMetricSeries: {
     title: "useMetricSeries()",
+    wide: false,
     summary:
-      "`loadMetricSeries` as a hook, for a panel that loads its own data: it loads when `enabled` is true and the range or port changes, and returns the series with `isLoading` and `reload`. This card calls it with `enabled: false`, so it prints the state a panel renders before its first load.",
+      "`loadMetricSeries` as a hook that loads when `enabled` is true and returns the series with `isLoading` and `reload`; called here with `enabled: false`, it prints the state before the first load.",
     snippet: `import { useMetricSeries } from "@spy4x/preact-charts"
 
 // Outside the component: a new function on every render would reload on every render.
@@ -397,8 +412,9 @@ console.log({ data, timeFrame, error, isLoading })`,
   },
   useInView: {
     title: "useInView()",
+    wide: false,
     summary:
-      "Tells a component when its element has scrolled near the viewport, so a chart can wait to load until then. Attach `ref` to the element; `inView` turns true 200px before it shows. This card attaches the ref to nothing, so it prints the first render: `inView` is false until an element is watched.",
+      "Tells a component when the element its `ref` is on comes within 200px of the viewport, so a chart can wait to load; with no element attached, as here, `inView` stays false.",
     snippet: `import { useInView } from "@spy4x/preact-charts"
 
 // Inside a component, before <div ref={ref}> has mounted:
@@ -412,8 +428,9 @@ console.log({ element: ref.current, inView })`,
   },
   createInViewObserver: {
     title: "createInViewObserver()",
+    wide: true,
     summary:
-      "The observer wiring behind `useInView`: it watches one element and reports each change, and returns `null` where there is no `IntersectionObserver`, as on a server. A recording stand-in replaces `IntersectionObserver` for the length of the call, so the output shows what the helper asked for.",
+      "The observer behind `useInView`, which watches one element and returns `null` where there is no `IntersectionObserver`; the output is what it asked a recording stand-in for.",
     snippet: `import { createInViewObserver } from "@spy4x/preact-charts"
 
 const log: unknown[] = []

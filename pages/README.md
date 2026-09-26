@@ -15,7 +15,7 @@ workspace member only so it can import its sibling packages the way an app does.
 | Piece             | Where it comes from                                                                                          |
 | ----------------- | ------------------------------------------------------------------------------------------------------------ |
 | The catalogue     | `UIGuide` from `@spy4x/preact-ui-guide`, unmodified — its navigation, one page at a time, and the deep links |
-| The host page     | `src/app.tsx` — header, the colour-scheme switch, the footer, and the address handed to the guide            |
+| The host page     | `src/app.tsx` — the colour-scheme switch, the footer, and the address and version handed to the guide        |
 | The styles        | `theme/tokens.css` + `theme/preset.css`, compiled by Tailwind into one stylesheet                            |
 | The interactivity | `src/+main.tsx`, one Preact island that hydrates the prerendered markup                                      |
 
@@ -179,9 +179,8 @@ The served `index.html` is the guide's `all` page — every page at once — bec
 the address in an effect: before it has, the guide renders everything, which is also what a reader
 without JavaScript gets and what the no-script checks under `checks/` submit forms on.
 
-`styles.css` carries the host's side of the layout: `--ui-guide-top`, the height of the sticky header
-the guide's own sticky navigation sits under, and `--sticky-stack`, what an anchored card has to
-clear. The card grid, the prose measure and the navigation are the guide's own.
+`styles.css` carries only the host's prose measure. The header, the card grid and the navigation
+are the guide's own.
 
 Why hash rather than per-route prerendered files:
 

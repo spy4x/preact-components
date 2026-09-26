@@ -15,4 +15,5 @@ if (!root) {
   throw new Error("#root is missing — this bundle is meant to load the built index.html")
 }
 
-hydrate(<App />, root)
+// The version rides on `#root` (`document.tsx`), so the island's first render matches the server's.
+hydrate(<App version={root.dataset.version} />, root)
