@@ -2,7 +2,8 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import { Calendar, type CalendarProps } from "./calendar.tsx"
-import { addDaysIso, weekdayLabels } from "./date.ts"
+import { weekdayLabels } from "@spy4x/time/locale"
+import { addDays } from "@spy4x/time/tz"
 
 const MONTH = "2026-08-01"
 const MIN = "2026-08-03"
@@ -15,7 +16,7 @@ const MAX = "2026-09-30"
  * no availability at all).
  */
 const availableByDate: Record<string, number> = {}
-for (let date = MIN; date <= MAX; date = addDaysIso(date, 1)) availableByDate[date] = 3
+for (let date = MIN; date <= MAX; date = addDays(date, 1)) availableByDate[date] = 3
 availableByDate["2026-08-12"] = 0
 delete availableByDate["2026-08-19"]
 
@@ -352,7 +353,7 @@ describe("Calendar, given input it cannot use", () => {
 
   it("refuses a month anchor that is not a date the calendar has", () => {
     expect(() => render(<Calendar {...base} monthAnchor="2026-02-30" />))
-      .toThrow("expected a date the calendar has")
+      .toThrow("expected a YYYY-MM-DD date, received: 2026-02-30")
   })
 
   it("refuses a month anchor that is not a date at all", () => {

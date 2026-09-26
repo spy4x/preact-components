@@ -40,8 +40,9 @@ Extracted from earlier source applications.
 Helpers, all pure: `head.ts` (`normalizeCanonical`, `canonicalUrl`, `breadcrumbItems`,
 `breadcrumbListJsonLd`). `head.ts` also exports
 `createHeadStore`, a factory that builds a fresh signal-backed store on every call, so it is not
-one of the pure ones — see below. `date.ts`'s ISO day and month arithmetic is private to this
-package — `Calendar`'s own dependency, kept out of the barrel and out of `exports`.
+one of the pure ones — see below. `Calendar`'s day and month arithmetic and its
+`Intl` labels come from spy4x/ts-libs: `@spy4x/time/date`, `@spy4x/time/locale` and `addDays` from
+`@spy4x/time/tz`.
 
 ```tsx
 import { SEOHead } from "@spy4x/preact-system"
