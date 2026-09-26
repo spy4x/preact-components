@@ -800,10 +800,9 @@ async function hoverCapability(devtools: Devtools): Promise<void> {
 }
 
 /**
- * Deny every download for the run, so a real click on a real `<a download>` — `ui/`'s
- * `ExportButton` checks drive exactly that — never saves a file into this machine's own Downloads
- * folder. Nothing in this run ever reads a saved file back; every assertion about a download's
- * bytes is made from inside the page (see `pages/checks/ui.ts`'s `armExportInstrumentation`).
+ * Deny every download for the run, so a real click on a real `<a download>` never saves a file into
+ * this machine's own Downloads folder. Nothing in this run ever reads a saved file back; every
+ * assertion about a download's bytes is made from inside the page.
  * `deny`, not `allow` plus a path inside the run's own profile: there is no legitimate download
  * this run ever needs to land on disk, so refusing every one outright is simpler than routing them
  * into a directory that then has to be trusted to exist and be cleaned up.

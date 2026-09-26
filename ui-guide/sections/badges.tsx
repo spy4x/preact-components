@@ -2,7 +2,6 @@ import {
   Badge,
   type BadgeColor,
   type BadgeType,
-  CiStatusPill,
   Cluster,
   Stack,
   StatusMark,
@@ -74,17 +73,6 @@ function StatusMarkRow() {
   )
 }
 
-function CiStatusPillRow() {
-  return (
-    <Cluster>
-      <CiStatusPill status="passing" />
-      <CiStatusPill status="failing" />
-      <CiStatusPill status="running" />
-      <CiStatusPill status="queued" />
-    </Cluster>
-  )
-}
-
 export const badgeDemos = {
   Badge: {
     summary: "A small coloured label for a status or a category, filled or outlined.",
@@ -115,12 +103,5 @@ export const badgeDemos = {
     snippet: `<StatusMark status="ready" />
 <StatusMark status="known-issue" label="Flaky on Safari" />`,
     render: () => <StatusMarkRow />,
-  },
-  CiStatusPill: {
-    summary: "A CI run's status as a coloured pill; a status it does not know gets a neutral one.",
-    wide: false,
-    snippet: `<CiStatusPill status="passing" />
-<CiStatusPill status="queued" />`,
-    render: () => <CiStatusPillRow />,
   },
 } satisfies DemoFragment

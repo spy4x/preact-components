@@ -122,7 +122,7 @@ const placementClasses: Record<TooltipPlacement, string> = {
  *
  * Limits, accepted on purpose: anchored placement means the surface can overflow the viewport at
  * an edge, and it does not flip or clamp. Nothing in this repository needs that — every anchored
- * popup here (`Dropdown`, `CopyButton`'s `title`, `GeoButton`) uses a static anchor too — and a
+ * popup here (`Dropdown`, `CopyButton`'s `title`) uses a static anchor too — and a
  * collision pass would cost layout reads on every reveal.
  */
 export function Tooltip(

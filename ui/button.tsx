@@ -47,7 +47,7 @@ const iconSizeClasses: Record<ButtonSize, string> = {
 /**
  * Compose the class list of a button without rendering one.
  *
- * Exported so sibling primitives (`CopyButton`, `GeoButton`, `Dropdown`) share one
+ * Exported so sibling primitives (`CopyButton`, `Dropdown`) share one
  * definition of a button instead of copying utility strings. `cn` runs last, so a
  * caller-supplied class wins over the variant's own utility in the same group.
  *

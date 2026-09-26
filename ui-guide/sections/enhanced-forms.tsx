@@ -1,6 +1,6 @@
 /**
- * `EnhancedForm` and the two forms built on it, with checkboxes that make a submit fail, throw or
- * never finish, so a visitor can see every state.
+ * `EnhancedForm`, and a sign-up and a contact form built from it, with checkboxes that make a
+ * submit fail, throw or never finish, so a visitor can see every state.
  *
  * Every card posts to `form-demo/`, the static page `pages/build.ts` copies into the artefact
  * verbatim: with scripts on, `onSubmit` intercepts the post and no card ever navigates there, but
@@ -13,16 +13,19 @@ import {
   Button,
   Checkbox,
   Cluster,
-  ContactForm,
   EnhancedForm,
   Field,
   Grid,
+  HONEYPOT_FIELD_NAME,
+  honeypotField,
+  honeypotFilled,
   Input,
-  NewsletterForm,
   Stack,
+  Textarea,
 } from "@spy4x/preact-ui"
 import type { ComponentChildren } from "preact"
 import { useSignal } from "@preact/signals"
+import { DemoNote } from "./demo-note.tsx"
 import type { DemoFragment } from "../registry.ts"
 
 /** Every card's `action`: the static page that stands in for "a server answered". */
@@ -50,7 +53,7 @@ function EnhancedFormDemo() {
   const throwSync = useSignal(false)
 
   return (
-    <Stack gap="md" class="max-w-md">
+    <Stack gap="md" class="max-w-md" data-e2e="enhanced-form">
       <Cluster gap="lg">
         <Checkbox
           checked={shouldFail.value}
@@ -95,165 +98,212 @@ function EnhancedFormDemo() {
   )
 }
 
+/** Every result a demo form below announces, the copy the browser checks wait for. */
+const signUpLabels = {
+  sending: "Sending…",
+  done: "You're subscribed. Check your inbox to confirm.",
+  failed: "Something went wrong. Please try again.",
+}
+
+const contactLabels = {
+  sending: "Sending…",
+  done: "Thanks — your message is on its way. We'll be in touch.",
+  failed: "Something went wrong. Please try again.",
+}
+
 /**
- * Five instances, because a successful submit replaces the field with a thank-you message, so each
- * copy can be sent once. The first is the one the card's snippet shows; each of the other four is
- * submitted by exactly one check in `pages/checks/ui.ts`, named by its `data-e2e`:
- *
- * - `newsletter-form-honeypot` — `enhancedFormsHoneypotChecks`: a filled honeypot resolves as a
- *   success without calling `onSubmit`.
- * - `newsletter-form-request-submit` — `newsletterFormRequestSubmitGuardCheck`: two
- *   `form.requestSubmit()` calls in one turn prove the synchronous busy guard, and that a submit
- *   nobody focused never steals focus once it resolves.
- * - `newsletter-form-focus-elsewhere` — `newsletterFormFocusElsewhereCheck`: a visitor who moved
- *   focus to another control while sending keeps it there.
- * - `newsletter-form-blur-while-sending` — `newsletterFormBlurWhileSendingCheck`: a visitor who
- *   blurred to the page while sending is not pulled back when the submit lands.
+ * A one-field sign-up form an app writes itself from `EnhancedForm`, `Field`, `Input` and
+ * `Button`. With `honeypot`, a submit whose off-screen trap field carries a value resolves as if it
+ * had succeeded and never reaches `onSubmit`: telling a bot it was caught only teaches it which
+ * field to leave alone next time.
  */
-function NewsletterFormDemo() {
+function SignUpForm(
+  { id, honeypot = false, onSubmit }: {
+    id: string
+    honeypot?: boolean
+    onSubmit: (email: string) => Promise<void>
+  },
+) {
+  return (
+    <EnhancedForm
+      action={FORM_DEMO_ACTION}
+      onSubmit={(data) => {
+        if (honeypot && honeypotFilled(data)) return
+        return onSubmit(String(data.get("email") ?? ""))
+      }}
+      labels={signUpLabels}
+      done={<p class="text-sm text-gray-700 dark:text-gray-300">{signUpLabels.done}</p>}
+    >
+      <Cluster align="end">
+        <Field id={id} label="Email" required class="min-w-0 flex-1">
+          <Input type="email" name="email" autocomplete="email" required />
+        </Field>
+        <Button type="submit">Subscribe</Button>
+      </Cluster>
+      {honeypot && honeypotField(HONEYPOT_FIELD_NAME, "Leave this field blank")}
+    </EnhancedForm>
+  )
+}
+
+/**
+ * A name, email and message form an app writes itself, with the same honeypot as
+ * {@link SignUpForm}.
+ */
+function ContactDemoForm(
+  { id, onSubmit }: { id: string; onSubmit: () => Promise<void> },
+) {
+  return (
+    <EnhancedForm
+      action={FORM_DEMO_ACTION}
+      onSubmit={(data) => honeypotFilled(data) ? undefined : onSubmit()}
+      labels={contactLabels}
+      done={<p class="text-sm text-gray-700 dark:text-gray-300">{contactLabels.done}</p>}
+    >
+      <Grid minColumnWidth="sm" gap="md">
+        <Field id={`${id}-name`} label="Name" required>
+          <Input name="name" autocomplete="name" required />
+        </Field>
+        <Field id={`${id}-email`} label="Email" required>
+          <Input type="email" name="email" autocomplete="email" required />
+        </Field>
+      </Grid>
+      <Field id={`${id}-message`} label="Message" required>
+        <Textarea name="message" rows={4} required />
+      </Field>
+      {honeypotField(HONEYPOT_FIELD_NAME, "Leave this field blank")}
+      <Cluster>
+        <Button type="submit">Send</Button>
+      </Cluster>
+    </EnhancedForm>
+  )
+}
+
+/**
+ * A "Start over" button that remounts the form beside it, so a sent form can be tried again.
+ *
+ * The browser checks in `pages/checks/ui.ts` press it before every submit they make, which is why
+ * one form of each shape is enough for all of them.
+ */
+function StartOver({ e2e, onPress }: { e2e: string; onPress: () => void }) {
+  return (
+    <Button type="button" variant="outline" size="sm" data-e2e={e2e} onClick={onPress}>
+      Start over
+    </Button>
+  )
+}
+
+/**
+ * One sign-up form, with the honeypot on. Every sign-up check in `pages/checks/ui.ts` starts by
+ * pressing "Start over", which remounts the form through `key` and zeroes the counter: a real
+ * double click, two `form.requestSubmit()` calls in one turn, focus moved elsewhere while sending,
+ * a blur to the page while sending, and a filled honeypot.
+ */
+function SignUpDemo() {
   const subscribes = useSignal(0)
-  const honeypotSubscribes = useSignal(0)
-  const requestSubmitCalls = useSignal(0)
-  const focusElsewhereCalls = useSignal(0)
-  const blurWhileSendingCalls = useSignal(0)
+  const mount = useSignal(0)
 
   return (
-    <Stack gap="lg">
-      <Stack gap="sm" class="max-w-md">
-        <NewsletterForm
-          action={FORM_DEMO_ACTION}
-          honeypot
-          onSubmit={async () => {
-            subscribes.value++
-            await delay(300)
+    <Stack gap="sm" class="max-w-md" data-e2e="signup-form">
+      <SignUpForm
+        key={mount.value}
+        id="guide-signup-email"
+        honeypot
+        onSubmit={async () => {
+          subscribes.value++
+          // Long enough that a double click's second press, a focus move or a blur lands mid-send.
+          await delay(300)
+        }}
+      />
+      <Cluster justify="between">
+        <Count e2e="signup-form-subscribes">subscribes: {subscribes.value}</Count>
+        <StartOver
+          e2e="signup-form-start-over"
+          onPress={() => {
+            subscribes.value = 0
+            mount.value++
           }}
         />
-        <Count e2e="newsletter-form-subscribes">subscribes: {subscribes.value}</Count>
-      </Stack>
-      <Stack gap="sm">
-        <p class="text-xs text-gray-500 dark:text-gray-400">
-          Four more copies: a sent form stays sent, so each of these can be tried once.
-        </p>
-        <Grid minColumnWidth="md" gap="lg">
-          <Stack gap="sm" data-e2e="newsletter-form-honeypot">
-            <NewsletterForm
-              action={FORM_DEMO_ACTION}
-              honeypot
-              onSubmit={async () => {
-                honeypotSubscribes.value++
-                await delay(50)
-              }}
-            />
-            <Count e2e="newsletter-form-honeypot-subscribes">
-              subscribes: {honeypotSubscribes.value}
-            </Count>
-          </Stack>
-          <Stack gap="sm" data-e2e="newsletter-form-request-submit">
-            <NewsletterForm
-              action={FORM_DEMO_ACTION}
-              onSubmit={async () => {
-                requestSubmitCalls.value++
-                await delay(150)
-              }}
-            />
-            <Count e2e="newsletter-form-request-submit-subscribes">
-              subscribes: {requestSubmitCalls.value}
-            </Count>
-          </Stack>
-          <Stack gap="sm" data-e2e="newsletter-form-focus-elsewhere">
-            <NewsletterForm
-              action={FORM_DEMO_ACTION}
-              onSubmit={async () => {
-                focusElsewhereCalls.value++
-                await delay(150)
-              }}
-            />
-            <Count e2e="newsletter-form-focus-elsewhere-subscribes">
-              subscribes: {focusElsewhereCalls.value}
-            </Count>
-          </Stack>
-          <Stack gap="sm" data-e2e="newsletter-form-blur-while-sending">
-            <NewsletterForm
-              action={FORM_DEMO_ACTION}
-              onSubmit={async () => {
-                blurWhileSendingCalls.value++
-                await delay(150)
-              }}
-            />
-            <Count e2e="newsletter-form-blur-while-sending-subscribes">
-              subscribes: {blurWhileSendingCalls.value}
-            </Count>
-          </Stack>
-        </Grid>
-      </Stack>
+      </Cluster>
     </Stack>
   )
 }
 
 /**
- * Two instances, for the same reason `NewsletterFormDemo` has more than one: a successful submit
- * replaces the fields for good.
- *
- * The first carries the two checkboxes: one makes the submit reject, the other makes it never
+ * One contact form, with two checkboxes: one makes the submit reject, the other makes it never
  * resolve at all — the shape a promise takes when the visitor's tab is frozen in the back/forward
- * cache before it settles. The second, `data-e2e="contact-form-honeypot"`, exists only for
- * `contactFormHoneypotCheck` in `pages/checks/ui.ts`.
+ * cache before it settles. "Start over" remounts it, as on {@link SignUpDemo}.
  */
-function ContactFormDemo() {
+function ContactDemo() {
   const leads = useSignal(0)
+  const mount = useSignal(0)
   const shouldFail = useSignal(false)
   const hang = useSignal(false)
-  const honeypotLeads = useSignal(0)
 
   return (
-    <Grid minColumnWidth="md" gap="xl">
-      <Stack gap="md">
-        <Cluster gap="lg">
-          <Checkbox
-            checked={shouldFail.value}
-            onChange={(event) => shouldFail.value = event.currentTarget.checked}
-            data-e2e="contact-form-fail-toggle"
-          >
-            Fail the submit
-          </Checkbox>
-          <Checkbox
-            checked={hang.value}
-            onChange={(event) => hang.value = event.currentTarget.checked}
-            data-e2e="contact-form-hang-toggle"
-          >
-            Never finish
-          </Checkbox>
-        </Cluster>
-        <ContactForm
-          action={FORM_DEMO_ACTION}
-          honeypot
-          onSubmit={async () => {
-            leads.value++
-            if (hang.value) {
-              await new Promise<void>(() => {}) // Never settles — see the checkbox's own label.
-              return
-            }
-            await delay(200)
-            if (shouldFail.value) throw new Error("simulated failure")
-          }}
-        />
+    <Stack gap="md" data-e2e="contact-form">
+      <Cluster gap="lg">
+        <Checkbox
+          checked={shouldFail.value}
+          onChange={(event) => shouldFail.value = event.currentTarget.checked}
+          data-e2e="contact-form-fail-toggle"
+        >
+          Fail the submit
+        </Checkbox>
+        <Checkbox
+          checked={hang.value}
+          onChange={(event) => hang.value = event.currentTarget.checked}
+          data-e2e="contact-form-hang-toggle"
+        >
+          Never finish
+        </Checkbox>
+      </Cluster>
+      <ContactDemoForm
+        key={mount.value}
+        id="guide-contact"
+        onSubmit={async () => {
+          leads.value++
+          if (hang.value) {
+            await new Promise<void>(() => {}) // Never settles — see the checkbox's own label.
+            return
+          }
+          await delay(200)
+          if (shouldFail.value) throw new Error("simulated failure")
+        }}
+      />
+      <Cluster justify="between">
         <Count e2e="contact-form-leads">leads: {leads.value}</Count>
-      </Stack>
-      <Stack gap="md" data-e2e="contact-form-honeypot">
-        <p class="text-xs text-gray-500 dark:text-gray-400">
-          A second copy, so the form can be sent twice.
-        </p>
-        <ContactForm
-          action={FORM_DEMO_ACTION}
-          honeypot
-          onSubmit={async () => {
-            honeypotLeads.value++
-            await delay(50)
+        <StartOver
+          e2e="contact-form-start-over"
+          onPress={() => {
+            leads.value = 0
+            mount.value++
           }}
         />
-        <Count e2e="contact-form-honeypot-leads">leads: {honeypotLeads.value}</Count>
-      </Stack>
-    </Grid>
+      </Cluster>
+    </Stack>
+  )
+}
+
+/**
+ * The card: the raw building block first, then the two forms an app most often builds from it — a
+ * sign-up and a contact form — written here from `Field`, `Input` and `Button` rather than shipped
+ * as components.
+ */
+function EnhancedFormCard() {
+  return (
+    <Stack gap="xl">
+      <EnhancedFormDemo />
+      <Grid minColumnWidth="md" gap="xl">
+        <Stack gap="md">
+          <DemoNote>A sign-up form built from Field, Input and Button.</DemoNote>
+          <SignUpDemo />
+        </Stack>
+        <Stack gap="md">
+          <DemoNote>A contact form built the same way.</DemoNote>
+          <ContactDemo />
+        </Stack>
+      </Grid>
+    </Stack>
   )
 }
 
@@ -295,55 +345,6 @@ export const enhancedFormDemos = {
   </Field>
   <Button type="submit">Subscribe</Button>
 </EnhancedForm>`,
-    render: () => <EnhancedFormDemo />,
-  },
-  NewsletterForm: {
-    summary:
-      "A ready-made one-field email sign-up, built on `EnhancedForm`, that thanks the visitor once it is sent.",
-    wide: true,
-    props: [
-      { name: "action", type: "string", description: "Where the form posts while no script runs." },
-      {
-        name: "onSubmit",
-        type: "(email: string) => Promise<void> | void",
-        description: "Receives the address; a rejection lets the visitor retry without retyping.",
-      },
-      {
-        name: "honeypot",
-        type: "boolean",
-        default: "false",
-        description: "Adds a hidden field that quietly drops submits from simple bots.",
-      },
-    ],
-    snippet: `<NewsletterForm
-  action="/api/subscribe"
-  onSubmit={(email) => api.subscribe(email)}
-  honeypot
-/>`,
-    render: () => <NewsletterFormDemo />,
-  },
-  ContactForm: {
-    summary: "A ready-made contact form, with name, email and message, built on `EnhancedForm`.",
-    wide: true,
-    props: [
-      { name: "action", type: "string", description: "Where the form posts while no script runs." },
-      {
-        name: "onSubmit",
-        type: "(message: ContactMessage) => Promise<void> | void",
-        description: "Receives the name, email and message; a rejection lets the visitor retry.",
-      },
-      {
-        name: "honeypot",
-        type: "boolean",
-        default: "false",
-        description: "Adds a hidden field that quietly drops submits from simple bots.",
-      },
-    ],
-    snippet: `<ContactForm
-  action="/api/lead"
-  onSubmit={({ name, email, message }) => api.sendLead({ name, email, message })}
-  honeypot
-/>`,
-    render: () => <ContactFormDemo />,
+    render: () => <EnhancedFormCard />,
   },
 } satisfies DemoFragment

@@ -4,9 +4,6 @@ import {
   type ButtonVariant,
   Cluster,
   CopyButton,
-  ExportButton,
-  type ExportButtonColumn,
-  GeoButton,
   Stack,
 } from "@spy4x/preact-ui"
 import { useSignal } from "@preact/signals"
@@ -119,81 +116,6 @@ function CopyButtonDemo() {
   )
 }
 
-/** Geolocation is a port too: the coordinates land in local state instead of an app store. */
-function GeoButtonDemo() {
-  const result = useSignal("not asked yet")
-  return (
-    <Stack gap="sm">
-      <Cluster>
-        <GeoButton
-          onLocation={(position) =>
-            result.value = `${position.latitude.toFixed(4)}, ${position.longitude.toFixed(4)}`}
-          onError={(message) => result.value = message}
-        />
-        <GeoButton
-          title="Ask for the position"
-          onLocation={() => result.value = "located"}
-          onError={(message) => result.value = message}
-        >
-          Locate
-        </GeoButton>
-      </Cluster>
-      <p class="text-xs text-gray-500 dark:text-gray-400">
-        onLocation or onError: {result.value}
-      </p>
-    </Stack>
-  )
-}
-
-/** A row of the demo table {@link ExportButtonDemo} writes to CSV. */
-interface AttendeeRow {
-  id: number
-  name: string
-  note: string
-}
-
-/** One row's `note` starts with `=`, on purpose — it is what proves the formula guard in the file. */
-const attendeeRows: AttendeeRow[] = [
-  { id: 1, name: "Ada Lovelace", note: "Bringing cake, tea for the room" },
-  { id: 2, name: "Grace Hopper", note: "=SUM(A1:A2)" },
-]
-
-const attendeeColumns: ExportButtonColumn<AttendeeRow>[] = [
-  { key: "id", header: "ID" },
-  { key: "name", header: "Name" },
-  { key: "note", header: "Note" },
-]
-
-/**
- * Two ways to supply rows: `rows` for data already in hand, `getRows` for "export everything the
- * current filter matches," fetched only once the button is pressed. Both write the same two rows
- * here, one of them a note that reads like a spreadsheet formula — opening the downloaded file
- * shows it prefixed with `'` instead of evaluated.
- */
-function ExportButtonDemo() {
-  return (
-    <Cluster>
-      <ExportButton
-        columns={attendeeColumns}
-        rows={attendeeRows}
-        fileName="attendees.csv"
-        class="js-export-rows"
-      />
-      <ExportButton
-        columns={attendeeColumns}
-        // 600ms rather than a near-instant resolve: long enough for a browser check to sample
-        // focus mid-flight (proving it stays on the button while the export is pending, not only
-        // once it settles), short enough not to make the catalogue feel sluggish to a visitor.
-        getRows={() =>
-          new Promise<AttendeeRow[]>((resolve) => setTimeout(() => resolve(attendeeRows), 600))}
-        fileName="attendees-async.csv"
-        label="Export (fetched)"
-        class="js-export-async"
-      />
-    </Cluster>
-  )
-}
-
 export const buttonDemos = {
   Button: {
     summary:
@@ -253,43 +175,5 @@ export const buttonDemos = {
     snippet: `<CopyButton textToCopy={invoice.id} />
 <CopyButton textToCopy={invoice.id} title="Copy id" copy={app.clipboard.copy} />`,
     render: () => <CopyButtonDemo />,
-  },
-  ExportButton: {
-    summary:
-      "Downloads a list of rows as a CSV file that a spreadsheet opens without running formulas.",
-    wide: false,
-    props: [
-      {
-        name: "columns",
-        type: "ExportButtonColumn<T>[]",
-        description: "Each column's row key and header.",
-      },
-      {
-        name: "rows",
-        type: "T[]",
-        description: "Rows already in hand; or pass `getRows` instead.",
-      },
-      {
-        name: "getRows",
-        type: "() => T[] | Promise<T[]>",
-        description: "Fetches the rows only when the button is pressed.",
-      },
-      { name: "fileName", type: "string", description: "The downloaded file's name." },
-    ],
-    snippet: `<ExportButton
-  columns={[{ key: "id", header: "ID" }, { key: "name", header: "Name" }]}
-  getRows={() => api.attendees.list()}
-  fileName="attendees.csv"
-/>`,
-    render: () => <ExportButtonDemo />,
-  },
-  GeoButton: {
-    summary: "Asks the browser where the user is and hands the position to your callback.",
-    wide: true,
-    snippet: `<GeoButton
-  onLocation={(position) => map.center.set(position)}
-  onError={(message) => app.toast.error({ body: message })}
-/>`,
-    render: () => <GeoButtonDemo />,
   },
 } satisfies DemoFragment

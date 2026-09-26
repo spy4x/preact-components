@@ -31,12 +31,6 @@ export {
 } from "./button.tsx"
 export { Checkbox, type CheckboxProps } from "./checkbox.tsx"
 export {
-  type CiStatus,
-  CiStatusPill,
-  type CiStatusPillProps,
-  normalizeCiStatus,
-} from "./ci-status-pill.tsx"
-export {
   Card,
   CardBody,
   type CardBodyProps,
@@ -47,12 +41,6 @@ export {
   type CardProps,
 } from "./card.tsx"
 export {
-  clampConfidence,
-  ConfidenceMeter,
-  type ConfidenceMeterProps,
-  type ConfidenceTier,
-} from "./confidence-meter.tsx"
-export {
   CANCEL_LABEL,
   CONFIRM_LABEL,
   ConfirmDialog,
@@ -61,19 +49,8 @@ export {
   hasQuestion,
   labelOr,
 } from "./confirm-dialog.tsx"
-export {
-  ContactForm,
-  type ContactFormLabels,
-  type ContactFormProps,
-  type ContactMessage,
-} from "./contact-form.tsx"
+export { CopyBlock, type CopyBlockProps } from "./copy-block.tsx"
 export { CopyButton, type CopyButtonProps } from "./copy-button.tsx"
-export {
-  CopyableText,
-  CopyableTextBody,
-  type CopyableTextBodyProps,
-  type CopyableTextProps,
-} from "./copyable-text.tsx"
 export {
   activeDescendant,
   Combobox,
@@ -166,8 +143,6 @@ export {
   type EnhancedFormStatus,
 } from "./enhanced-form.tsx"
 export { ErrorState, type ErrorStateProps } from "./error-state.tsx"
-export { ExportButton, type ExportButtonColumn, type ExportButtonProps } from "./export-button.tsx"
-export { type Fact, FactCard, type FactCardProps } from "./fact-card.tsx"
 export {
   Field,
   type FieldChild,
@@ -183,10 +158,9 @@ export {
   formatBytes,
   matchesAccept,
 } from "./file-input.tsx"
-export { GeoButton, type GeoButtonProps, type GeoCoordinates } from "./geo-button.tsx"
+export { type GeoCoordinates } from "./geolocation.ts"
 export { HONEYPOT_FIELD_NAME, honeypotField, honeypotFilled } from "./honeypot.tsx"
 export { ImageGallery, type ImageGalleryImage, type ImageGalleryProps } from "./image-gallery.tsx"
-export { InstallBox, type InstallBoxProps } from "./install-box.tsx"
 export {
   Input,
   type InputProps,
@@ -223,10 +197,8 @@ export {
   type LightboxProps,
   wrapIndex,
 } from "./lightbox.tsx"
-export { LoadingScreen, type LoadingScreenProps } from "./loading-screen.tsx"
 export { LoadingSkeleton, type LoadingSkeletonProps } from "./loading-skeleton.tsx"
 export { LoadingSpinner, type LoadingSpinnerProps, type SpinnerSize } from "./loading-spinner.tsx"
-export { MarginNote, type MarginNoteProps } from "./margin-note.tsx"
 export {
   applyScrollLock,
   backdropClickDismisses,
@@ -259,11 +231,6 @@ export {
   type MoneyInputRangeMessage,
   resolveMoneyInputEdit,
 } from "./money-input.tsx"
-export {
-  NewsletterForm,
-  type NewsletterFormLabels,
-  type NewsletterFormProps,
-} from "./newsletter-form.tsx"
 export { OnOffButtons, type OnOffButtonsProps } from "./on-off-buttons.tsx"
 export { PageTitle, type PageTitleProps } from "./page-title.tsx"
 export { pageRange, type PageRangeItem, Pagination, type PaginationProps } from "./pagination.tsx"
@@ -284,29 +251,7 @@ export {
 } from "./radio.tsx"
 export { StatusMark, type StatusMarkProps, type StatusMarkStatus } from "./status-mark.tsx"
 export { Table, type TableProps } from "./table.tsx"
-export {
-  columnWidthPercents,
-  SKELETON_METRICS,
-  SkeletonCards,
-  type SkeletonCardsProps,
-  skeletonCount,
-  type SkeletonLineWidth,
-  SkeletonStatus,
-  type SkeletonStatusProps,
-  skeletonStatusRole,
-  SkeletonTable,
-  type SkeletonTableProps,
-  SkeletonText,
-  type SkeletonTextProps,
-  type TableColumnWidth,
-  type TableGeometry,
-  tableGeometry,
-  tableHeaderHeightRem,
-  tableRowHeightRem,
-  type TextGeometry,
-  textGeometry,
-} from "./skeletons.tsx"
-export { nextTabIndex, type TabItem, type TabOrientation, Tabs, type TabsProps } from "./tabs.tsx"
+export { nextTabIndex, type TabItem, Tabs, type TabsProps } from "./tabs.tsx"
 export {
   defaultToastDuration,
   resolveDuration,

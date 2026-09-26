@@ -23,7 +23,7 @@
 import { cn } from "@spy4x/preact-cn"
 import { IconBars3, IconGitHub, IconMoon, IconSun, IconXMark } from "@spy4x/preact-icons"
 import { Button, buttonClasses } from "@spy4x/preact-ui/button"
-import { InstallBox } from "@spy4x/preact-ui/install-box"
+import { CopyBlock } from "@spy4x/preact-ui/copy-block"
 import { Cluster, Grid, Section, Stack } from "@spy4x/preact-ui/layout"
 import { Badge } from "@spy4x/preact-ui/badge"
 import type { ComponentChildren, JSX } from "preact"
@@ -876,8 +876,8 @@ function Overview(
           </h1>
           <p class="max-w-2xl text-lg text-gray-600 dark:text-gray-300">{labels.tagline}</p>
         </Stack>
-        <InstallBox
-          command={install}
+        <CopyBlock
+          text={install}
           copy={copy}
           copyLabel={labels.copyInstall}
           class="max-w-md bg-white dark:bg-gray-800/60"
