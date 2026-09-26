@@ -1911,6 +1911,10 @@ async function calendarChecks(devtools: Devtools): Promise<void> {
       : `nothing to Tab into: ${start.detail}`,
   )
 
+  // The Tab that left the grid landed on the next calendar's month arrow, and the browser scrolled
+  // that into view: with the calendars two to a row it is far enough down to take this grid off
+  // the top of the viewport. So the card is centred again before focus goes back into the grid.
+  await centreInView(devtools, `document.querySelector('${CALENDAR}')`)
   await focusGrid(devtools)
   await settleScroll(devtools)
   const before = await read(devtools, CALENDAR_STATE, NO_CALENDAR)
