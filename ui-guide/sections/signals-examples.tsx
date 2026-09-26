@@ -4,7 +4,7 @@
  * Each card runs the real export when it renders; see `example.tsx`. Every outside world a helper
  * reads — storage, the media query, the clipboard, `fetch` — is handed in as a stand-in, so the card
  * prints the same thing on the server and in the browser. Where a helper answers through a promise,
- * the card prints what it did synchronously and its summary says what the promise resolves to.
+ * the card prints what it did synchronously and a comment in its code says what the promise does.
  *
  * `useUrlFilters` has no card: a card calling it would read the parameters of whichever application
  * hosts the catalogue, and write that application's address as soon as a filter changed. Its pure
@@ -46,8 +46,9 @@ import { toExampleDemos } from "../example.tsx"
 const examples: ExampleFragment = {
   toggleSort: {
     title: "Sort rules in the address",
+    wide: false,
     summary:
-      "`parseSort` reads rules out of a URL parameter, `toggleSort` advances one column through asc, desc and off, and `serializeSort` writes the rules back.",
+      "Keeps a table's sort rules in a URL parameter: `parseSort` reads them, `toggleSort` moves one column through ascending, descending and off, and `serializeSort` writes them back.",
     snippet: `import { parseSort, serializeSort, toggleSort } from "@spy4x/preact-signals"
 
 const rules = parseSort("name:asc", ["name", "size"], [])
@@ -62,8 +63,9 @@ serializeSort(next)`,
   },
   sortRows: {
     title: "sortRows() and removeSortRule()",
+    wide: false,
     summary:
-      "`sortRows` orders rows by several rules at once, numbers as numbers and empty cells last, without changing the input; `removeSortRule` takes one column out of the rules.",
+      "`sortRows` orders rows by several rules at once without changing the input, and `removeSortRule` takes one column out of the rules.",
     snippet: `import { removeSortRule, type SortRule, sortRows } from "@spy4x/preact-signals"
 
 const files = [
@@ -100,8 +102,9 @@ console.log({
   },
   resolveFilterValue: {
     title: "One filter and its URL parameter",
+    wide: true,
     summary:
-      "What `useUrlFilters` does for each field: `resolveFilterValue` turns a parameter into a value, falling back to the default for a missing or unreadable one; `shouldPersistFilter` says whether a value belongs in the address; `filterWrite` says what to do to the parameter.",
+      "Turns one filter's URL parameter into a value and back: `resolveFilterValue` reads it with the default as fallback, `shouldPersistFilter` says whether the value belongs in the address, and `filterWrite` says what to write.",
     snippet: `import { signal } from "@preact/signals"
 import { resolveFilterValue, shouldPersistFilter } from "@spy4x/preact-signals"
 import { filterWrite } from "@spy4x/preact-signals/use-url-filters"
@@ -128,8 +131,9 @@ console.log({
   },
   filterSearch: {
     title: "filterSearch() and restoredAddress()",
+    wide: true,
     summary:
-      "How `useUrlFilters` rewrites the address: `filterSearch` applies the filters' writes and keeps every parameter they do not own; `restoredAddress` puts back a fragment the router dropped, or answers `undefined` when nothing needs fixing.",
+      "`filterSearch` writes the filters into a query string and keeps every parameter they do not own, and `restoredAddress` puts back a fragment the router dropped.",
     snippet: `import { filterSearch, restoredAddress } from "@spy4x/preact-signals/use-url-filters"
 
 const search = filterSearch("?tab=files&page=3", [
@@ -161,8 +165,9 @@ console.log({
   },
   clearFilterFields: {
     title: "clearFilterFields()",
+    wide: false,
     summary:
-      "Resets every filter to its default inside one `batch`, so whatever watches the filters — `useUrlFilters` writing the address — reacts once rather than once per field, and a reader presses Back once to undo the clear.",
+      "Resets every filter to its default in one batch, so the address changes once and one press of Back undoes the clear.",
     snippet: `import { signal } from "@preact/signals"
 import { clearFilterFields } from "@spy4x/preact-signals/use-url-filters"
 
@@ -188,8 +193,9 @@ console.log({ before, after: { status: status.value, page: page.value } })`,
   },
   patchSignal: {
     title: "patchSignal()",
+    wide: false,
     summary:
-      "Replaces an object signal's value with a copy that has some fields changed, so everything reading the signal updates once.",
+      "Replaces an object signal's value with a copy that has some fields changed, so everything reading it updates once.",
     snippet: `import { signal } from "@preact/signals"
 import { patchSignal } from "@spy4x/preact-signals"
 
@@ -205,8 +211,9 @@ settings.value`,
   },
   setMapEntry: {
     title: "setMapEntry() and deleteMapEntry()",
+    wide: false,
     summary:
-      "Return a new `Map` with one entry set or removed, leaving the original alone — what a `Map` held in a signal needs, since the signal only notices a new value.",
+      "Return a new `Map` with one entry set or removed, since a signal holding a `Map` only notices a new value.",
     snippet: `import { deleteMapEntry, setMapEntry } from "@spy4x/preact-signals"
 
 const cart: ReadonlyMap<string, number> = new Map([["apples", 3]])
@@ -223,8 +230,9 @@ console.log({ cart, added, removed })`,
   },
   createToastStore: {
     title: "createToastStore()",
+    wide: false,
     summary:
-      "The list of toasts on screen, which `Toastr` renders: each call adds one and returns its id, and `remove` takes one off. The store runs no timers; whatever renders the toasts removes them.",
+      "Holds the toasts `Toastr` shows: each call adds one and returns its id, and `remove` takes one off.",
     snippet: `import { createToastStore } from "@spy4x/preact-signals"
 
 let count = 0
@@ -233,7 +241,7 @@ toasts.success({ body: "Settings saved" })
 const failed = toasts.error({ title: "Upload failed", body: "The file is over 10 MB", duration: 0 })
 toasts.info({ body: "Two new comments" })
 toasts.remove(failed)
-toasts.list.value`,
+toasts.list.value // the store runs no timers: whatever renders the toasts removes them`,
     covers: ["createToastStore"],
     run: () => {
       let count = 0
@@ -251,8 +259,9 @@ toasts.list.value`,
   },
   createThemeStore: {
     title: "createThemeStore() and ThemeValue",
+    wide: true,
     summary:
-      "The light, dark or system theme preference as signals: `preference` is what the reader chose, `actual` is what gets painted. Storage, the system setting and the painting are ports, so this card hands in stand-ins and paints nothing.",
+      "Holds the reader's light, dark or system choice and the palette that is painted, with storage, the system setting and the painting passed in.",
     snippet: `import { createThemeStore, ThemeValue } from "@spy4x/preact-signals"
 
 const saved = new Map([["theme", ThemeValue.DARK as string]])
@@ -270,6 +279,31 @@ theme.set(ThemeValue.SYSTEM)
 actual.push(theme.actual.value)
 theme.dispose()
 console.log({ actual, preference: theme.preference.value, stored: saved.get("theme") })`,
+    props: [
+      {
+        name: "storage",
+        type: "ThemeStorage | null",
+        default: "localStorage",
+        description: "Where the choice is kept.",
+      },
+      {
+        name: "media",
+        type: "(query: string) => ThemeMediaQuery",
+        default: "matchMedia",
+        description: "Answers whether the system asks for dark.",
+      },
+      {
+        name: "apply",
+        type: "(theme: Theme) => void",
+        description: "Paints a theme; by default it toggles the page's `dark` class.",
+      },
+      {
+        name: "storageKey",
+        type: "string",
+        default: '"theme"',
+        description: "The storage key the choice is kept under.",
+      },
+    ],
     covers: ["createThemeStore", "ThemeValue"],
     run: () => {
       const saved = new Map([["theme", ThemeValue.DARK as string]])
@@ -294,11 +328,13 @@ console.log({ actual, preference: theme.preference.value, stored: saved.get("the
   },
   createClipboard: {
     title: "createClipboard()",
+    wide: true,
     summary:
-      "Copies text and reports the outcome through callbacks instead of throwing. `copy` resolves to `true` or `false`; with no clipboard — an insecure page, a server render — it reports `CLIPBOARD_UNAVAILABLE` at once, which is what this card prints.",
+      "Copies text and reports success or failure through callbacks instead of throwing, with `CLIPBOARD_UNAVAILABLE` when there is no clipboard.",
     snippet: `import { CLIPBOARD_UNAVAILABLE, createClipboard } from "@spy4x/preact-signals"
 
 const reported: string[] = []
+// No clipboard, as on an insecure page or in a server render; \`copy\` then resolves to false.
 const clipboard = createClipboard({ clipboard: null })
 void clipboard.copy("https://example.com/report", {
   onError: (error) => reported.push((error as Error).message),
@@ -316,8 +352,9 @@ console.log({ reported, isTheExportedMessage: reported[0] === CLIPBOARD_UNAVAILA
   },
   buildModelStore: {
     title: "buildModelStore() and RemoteEvent",
+    wide: true,
     summary:
-      "A store for one REST collection, validated with arktype. `onWs` applies a feed event named by `RemoteEvent`; an invalid `create` is refused before any request. This card's `fetch` is never called, so it prints only what the store did without the network.",
+      "A store for one REST collection, validated with arktype, that also applies live updates named by `RemoteEvent`.",
     snippet: `import { buildModelStore, RemoteEvent } from "@spy4x/preact-signals"
 import { type } from "arktype"
 
@@ -329,18 +366,38 @@ const notes = buildModelStore({
     create: type({ title: "string > 0" }),
     update: type({ "title?": "string > 0" }),
   },
-  fetch: () => Promise.reject(new Error("this example sends no requests")),
+  fetch: () => Promise.reject(new Error("this example sends no requests")), // never called
 })
 void notes.onWs([
   { id: 1, title: "Meeting agenda", deletedAt: null },
   { id: 2, title: "Old draft", deletedAt: "2026-01-05" },
 ], RemoteEvent.LIST)
-void notes.create({ title: "" })
+void notes.create({ title: "" }) // refused by the schema before any request
 console.log({
   active: notes.list.nonDeleted.value.map((note) => note.title),
   archived: notes.list.deleted.value.map((note) => note.title),
   createError: notes.op.create.value.error?.message,
 })`,
+    props: [
+      { name: "model", type: "string", description: "The entity's name, used in notifications." },
+      { name: "endpoint", type: "string", description: "The collection's URL." },
+      {
+        name: "schemas",
+        type: "{ full, create, update }",
+        description: "The arktype schemas of a row and of the create and update payloads.",
+      },
+      {
+        name: "fetch",
+        type: "typeof fetch",
+        default: "globalThis.fetch",
+        description: "The request port, so a test never touches the network.",
+      },
+      {
+        name: "toast",
+        type: "ToastPort",
+        description: "Where success and failure notifications go; left out, the store is silent.",
+      },
+    ],
     covers: ["buildModelStore", "RemoteEvent"],
     run: () => {
       const notes = buildModelStore({
