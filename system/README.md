@@ -671,8 +671,9 @@ makes it portable where the source applications' own versions were not: each of 
 that app's own environment keys directly into the component.
 
 **The escaping is `SEOHead`'s own, reused rather than reimplemented.** `stateInitText` calls
-`jsonLdText` from `@spy4x/platform/universal/seo`, the same function that already protects `SEOHead`'s own JSON-LD
-script tag: `<` becomes the six characters `\u003c`, which keeps a value containing the literal text
+`jsonLdText` from `@spy4x/platform/universal/seo`, the same function that already protects
+`SEOHead`'s own JSON-LD script tag: `<` becomes the six characters `\u003c`, which keeps a value
+containing the literal text
 `</script>` (or `<!--`) from ending the element early — the HTML parser watches for that sequence
 case-insensitively to close _any_ `<script>`, regardless of its `type`, before either JSON or
 JavaScript ever parses the content. U+2028 and U+2029 need nothing extra here: `StateInit` renders
