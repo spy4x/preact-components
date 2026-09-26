@@ -320,7 +320,7 @@ export function RailShell(props: RailShellProps): JSX.Element {
       <nav
         aria-label={navLabel}
         class={cn(
-          "sticky bottom-0 z-10 shrink-0 border-t pb-[env(safe-area-inset-bottom)] md:hidden",
+          "sticky bottom-0 z-10 shrink-0 border-t pb-safe md:hidden",
           rule,
           surface,
         )}
@@ -379,7 +379,7 @@ export function RailShell(props: RailShellProps): JSX.Element {
           onClose={() => moreRef.current?.focus()}
           data-e2e="rail-shell-dialog"
         >
-          <div class="flex flex-col gap-2 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+          <div class="flex flex-col gap-2 p-3 pb-safe-3">
             <div class="flex items-center justify-between gap-2">
               <h2 id={headingId} class="px-2 text-sm font-semibold">{dialogLabel}</h2>
               <button

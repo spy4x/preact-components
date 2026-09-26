@@ -322,7 +322,7 @@ export function AuthForm(
                     type={showPassword ? "text" : "password"}
                     autocomplete={mode === "sign-up" ? "new-password" : "current-password"}
                     required
-                    class="pr-20"
+                    class="pr-16"
                   />
                   <Button
                     type="button"
