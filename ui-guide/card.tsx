@@ -12,6 +12,35 @@ import type { ComponentChildren, JSX } from "preact"
 import { InlineMarkdown } from "./markdown.tsx"
 import type { DemoProp } from "./registry.ts"
 
+/** Every word a card prints of its own. Each has an English default ({@link DEFAULT_CARD_LABELS}). */
+export interface DemoCardLabels {
+  /** The code row's disclosure. Defaults to `"Code"`. */
+  code: string
+  /** The props summary's caption. Defaults to `"Props"`. */
+  props: string
+  /** The accessible name of a class card's list of classes. Defaults to `"Classes"`. */
+  classes: string
+  /** The props summary's first column, for a screen reader. Defaults to `"Prop"`. */
+  propName: string
+  /** The props summary's second column. Defaults to `"Type and default"`. */
+  propType: string
+  /** The props summary's third column. Defaults to `"What it does"`. */
+  propDescription: string
+  /** The copy control's name. Defaults to `"Copy the <label> snippet"`. */
+  copySnippet: (label: string) => string
+}
+
+/** The card's English words. */
+export const DEFAULT_CARD_LABELS: DemoCardLabels = {
+  code: "Code",
+  props: "Props",
+  classes: "Classes",
+  propName: "Prop",
+  propType: "Type and default",
+  propDescription: "What it does",
+  copySnippet: (label) => `Copy the ${label} snippet`,
+}
+
 /** Props of one catalogue card: its identity, the port, and the live example as children. */
 export interface DemoCardProps {
   /** Card id, and the name of the component for a component card. */
@@ -21,8 +50,10 @@ export interface DemoCardProps {
    * title for a class or an example card.
    */
   label: string
-  /** The copy control's name. Defaults to `Copy the <label> snippet`. */
+  /** The copy control's name. Defaults to `labels.copySnippet(label)`. */
   copyLabel?: string
+  /** Overrides for the card's own words. */
+  labels?: Partial<DemoCardLabels>
   /** The visible heading. Defaults to {@link DemoCardProps.label}; a component card passes its name. */
   title?: string
   /** One plain sentence on what it is for, in inline Markdown (`markdown.tsx`). */
@@ -76,6 +107,7 @@ export function DemoCard(
     name,
     label,
     copyLabel,
+    labels: labelOverrides,
     title,
     summary,
     description,
@@ -90,6 +122,7 @@ export function DemoCard(
     children,
   }: DemoCardProps,
 ): JSX.Element {
+  const labels = { ...DEFAULT_CARD_LABELS, ...labelOverrides }
   return (
     <article
       id={anchorId ?? `demo-${name}`}
@@ -112,12 +145,16 @@ export function DemoCard(
           /* `anywhere`: a long identifier in a sentence wraps inside the card on a phone rather
           than pushing the card, and the page, wider than the screen. */
         }
-        <p class="text-sm [overflow-wrap:anywhere] text-gray-600 dark:text-gray-300">
+        {
+          /* A `div`, not a `p`: a JSX description may hold a list, and a list inside a paragraph
+          is invalid HTML the browser repairs into a different tree than the one hydration meets. */
+        }
+        <div class="text-sm [overflow-wrap:anywhere] text-gray-600 dark:text-gray-300">
           {description ?? <InlineMarkdown text={summary} />}
-        </p>
+        </div>
         {classes && classes.length > 0
           ? (
-            <ul class="flex flex-wrap gap-1 pt-1" aria-label="Classes">
+            <ul class="flex flex-wrap gap-1 pt-1" aria-label={labels.classes}>
               {classes.map((className) => (
                 <li key={className}>
                   <code class="rounded-md bg-purple-50 px-1 font-mono text-xs text-purple-800 dark:bg-purple-950/60 dark:text-purple-200">
@@ -141,12 +178,12 @@ export function DemoCard(
       >
         {children}
       </div>
-      {props && props.length > 0 ? <PropsSummary props={props} /> : null}
+      {props && props.length > 0 ? <PropsSummary props={props} labels={labels} /> : null}
       <div class="relative" data-e2e="usage">
         <details class="group/code min-w-0" open={usageOpen}>
           <summary class="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium text-gray-600 select-none hover:text-gray-950 sm:px-6 dark:text-gray-400 dark:hover:text-gray-50 [&::-webkit-details-marker]:hidden">
             <IconChevronRight class="size-4 shrink-0 transition-transform group-open/code:rotate-90" />
-            Code
+            {labels.code}
           </summary>
           <pre class="mx-4 mb-4 overflow-x-auto rounded-lg bg-gray-950 p-4 text-xs leading-relaxed text-gray-100 sm:mx-6 sm:mb-6 dark:bg-black/40">
             <code>{snippet}</code>
@@ -155,7 +192,7 @@ export function DemoCard(
         <CopyButton
           textToCopy={snippet}
           copy={copy}
-          copyLabel={copyLabel ?? `Copy the ${label} snippet`}
+          copyLabel={copyLabel ?? labels.copySnippet(label)}
           class="absolute top-1 right-2 sm:right-4"
         />
       </div>
@@ -164,7 +201,9 @@ export function DemoCard(
 }
 
 /** The props summary: one row per prop, its type, its default and one sentence. */
-function PropsSummary({ props }: { props: readonly DemoProp[] }): JSX.Element {
+function PropsSummary(
+  { props, labels }: { props: readonly DemoProp[]; labels: DemoCardLabels },
+): JSX.Element {
   return (
     <div class="overflow-x-auto border-b border-gray-200 px-4 py-4 sm:px-6 dark:border-gray-700/80">
       {
@@ -173,13 +212,13 @@ function PropsSummary({ props }: { props: readonly DemoProp[] }): JSX.Element {
       }
       <table class="w-full bg-transparent text-left text-sm">
         <caption class="pb-2 text-left text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">
-          Props
+          {labels.props}
         </caption>
         <thead class="sr-only">
           <tr>
-            <th scope="col">Prop</th>
-            <th scope="col">Type and default</th>
-            <th scope="col">What it does</th>
+            <th scope="col">{labels.propName}</th>
+            <th scope="col">{labels.propType}</th>
+            <th scope="col">{labels.propDescription}</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-200 dark:divide-gray-700/80">
@@ -197,7 +236,9 @@ function PropsSummary({ props }: { props: readonly DemoProp[] }): JSX.Element {
                   ? null
                   : <span class="block text-gray-500 dark:text-gray-400">= {prop.default}</span>}
               </td>
-              <td class="py-2 text-gray-600 dark:text-gray-300">{prop.description}</td>
+              <td class="py-2 text-gray-600 dark:text-gray-300">
+                <InlineMarkdown text={prop.description} />
+              </td>
             </tr>
           ))}
         </tbody>

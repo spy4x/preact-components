@@ -327,3 +327,64 @@ describe("section headings", () => {
     expect(header("charts-examples")).not.toContain("sr-only")
   })
 })
+
+describe("the shell's other words", () => {
+  it("take the search's words from the labels", () => {
+    const html = render(
+      <UIGuide
+        hash="#/ui"
+        labels={{
+          searchPlaceholder: "Komponenten suchen…",
+          closeSearch: "Suche schließen",
+          searchKinds: { page: "Seite" },
+        }}
+      />,
+    )
+
+    expect(html).toContain('aria-label="Komponenten suchen…"')
+    expect(html).toContain('aria-label="Suche schließen"')
+    // The empty search lists every page, each marked with the kind word.
+    expect(html.match(/>Seite</g)?.length).toBeGreaterThan(1)
+  })
+
+  it("take every card's words from the labels", () => {
+    const html = render(
+      <UIGuide
+        hash="#/charts"
+        labels={{
+          card: {
+            code: "Quelltext",
+            props: "Eigenschaften",
+            propName: "Name",
+            copySnippet: (label) => `${label} kopieren`,
+          },
+        }}
+      />,
+    )
+
+    expect(html).toContain("Quelltext</summary>")
+    expect(html).not.toContain("Code</summary>")
+    expect(html).toContain(">Eigenschaften</caption>")
+    expect(html).toContain('<th scope="col">Name</th>')
+    expect(html).toContain('aria-label="&lt;Bars /> kopieren"')
+  })
+
+  it("take the overview example's words from the labels", () => {
+    const html = render(
+      <UIGuide
+        hash="#/"
+        labels={{
+          exampleTitle: "Knöpfe und ein Abzeichen",
+          exampleSummary: "Ein `Cluster` voller Knöpfe.",
+          copyExample: "Beispiel kopieren",
+          copyInstall: "Befehl kopieren",
+        }}
+      />,
+    )
+
+    expect(html).toContain(">Knöpfe und ein Abzeichen</h3>")
+    expect(html).toContain(">Cluster</code> voller Knöpfe.")
+    expect(html).toContain('aria-label="Beispiel kopieren"')
+    expect(html).toContain('aria-label="Befehl kopieren"')
+  })
+})

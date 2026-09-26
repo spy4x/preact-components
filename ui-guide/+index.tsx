@@ -62,7 +62,7 @@ function HashRoutedGuide(props: UIGuideProps): JSX.Element {
   return <UIGuide {...props} hash={props.hash ?? hash} />
 }
 
-export { DemoCard, type DemoCardProps } from "./card.tsx"
+export { DemoCard, type DemoCardLabels, type DemoCardProps } from "./card.tsx"
 export { useLocationHash } from "./location-hash.ts"
 export {
   type ColorSchemePort,
@@ -72,6 +72,7 @@ export {
   type UIGuideProps,
 } from "./shell.tsx"
 export { IconGallery, type IconGalleryProps, iconNames } from "./icons.tsx"
+export type { SearchKindWords } from "./search.tsx"
 export {
   demoHref,
   type DemoRouteEntry,

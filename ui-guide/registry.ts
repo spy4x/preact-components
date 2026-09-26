@@ -89,7 +89,7 @@ export interface DemoProp {
   type: string
   /** Its default, as code, when it has one. */
   default?: string
-  /** One plain sentence on what it does. */
+  /** One plain sentence on what it does, in inline Markdown (`markdown.tsx`). */
   description: string
 }
 

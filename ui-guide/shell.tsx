@@ -28,7 +28,7 @@ import { Cluster, Grid, Section, Stack } from "@spy4x/preact-ui/layout"
 import { Badge } from "@spy4x/preact-ui/badge"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useMemo, useRef, useState } from "preact/hooks"
-import { DemoCard, MissingDemoBanner } from "./card.tsx"
+import { DEFAULT_CARD_LABELS, DemoCard, type DemoCardLabels, MissingDemoBanner } from "./card.tsx"
 import { IconGallery, iconNames } from "./icons.tsx"
 import { CatalogInstructions } from "./instructions.tsx"
 import { InlineMarkdown } from "./markdown.tsx"
@@ -55,7 +55,7 @@ import {
   routeHref,
   type RouteMatch,
 } from "./routes.ts"
-import { GuideSearch, searchIndex } from "./search.tsx"
+import { GuideSearch, searchIndex, type SearchKindWords } from "./search.tsx"
 
 /** The navigation's groups, in order. Every page is in exactly one (`shell.test.tsx`). */
 export const navGroups = [
@@ -86,10 +86,24 @@ export interface UIGuideLabels {
   comingSoon?: string
   /** The link that jumps past the navigation to the page. Defaults to `"Skip to content"`. */
   skipToContent?: string
-  /** The search button's name and the search dialog's. Defaults to `"Search"`. */
+  /** The search dialog's name, its field's and its list's. Defaults to `"Search"`. */
   search?: string
-  /** The search field's placeholder. Defaults to `"Search components…"`. */
+  /**
+   * The search field's placeholder, and the header's search button's text and name. Defaults to
+   * `"Search components…"`.
+   */
   searchPlaceholder?: string
+  /** The search dialog's close button's name. Defaults to `"Close the search"`. */
+  closeSearch?: string
+  /**
+   * The word beside a search result, by kind. Defaults to `"Page"`, `"Component"`, `"Helper"` and
+   * `"Classes"`.
+   */
+  searchKinds?: Partial<SearchKindWords>
+  /** Where the search says a page outside any package lives. Defaults to `"Guide"`. */
+  searchGuidePlace?: string
+  /** Each card's own words: its code row, props caption and copy control. */
+  card?: Partial<DemoCardLabels>
   /** What the search says when nothing matches. Defaults to `"Nothing matches that name."`. */
   searchEmpty?: string
   /** The repository link's accessible name. Defaults to `"Source on GitHub"`. */
@@ -108,6 +122,14 @@ export interface UIGuideLabels {
   browse?: string
   /** The overview's example heading. Defaults to `"A first example"`. */
   exampleHeading?: string
+  /** The overview example card's title. Defaults to `"Buttons and a badge"`. */
+  exampleTitle?: string
+  /** The overview example card's sentence, in inline Markdown. */
+  exampleSummary?: string
+  /** The overview example's copy control. Defaults to `"Copy the example code"`. */
+  copyExample?: string
+  /** The overview's install command's copy control. Defaults to `"Copy the install command"`. */
+  copyInstall?: string
   /** The overview's package grid heading. Defaults to `"Packages"`. */
   packagesHeading?: string
   /**
@@ -123,8 +145,10 @@ export interface UIGuideLabels {
   examplesComing?: string
 }
 
-const DEFAULT_LABELS: Required<Omit<UIGuideLabels, "navGroups">> & {
+const DEFAULT_LABELS: Required<Omit<UIGuideLabels, "navGroups" | "searchKinds" | "card">> & {
   navGroups: Record<NavGroupId, string>
+  searchKinds: SearchKindWords
+  card: DemoCardLabels
 } = {
   title: "preact-components",
   tagline:
@@ -143,6 +167,10 @@ const DEFAULT_LABELS: Required<Omit<UIGuideLabels, "navGroups">> & {
   search: "Search",
   searchPlaceholder: "Search components…",
   searchEmpty: "Nothing matches that name.",
+  closeSearch: "Close the search",
+  searchKinds: { page: "Page", component: "Component", helper: "Helper", classes: "Classes" },
+  searchGuidePlace: "Guide",
+  card: DEFAULT_CARD_LABELS,
   repository: "Source on GitHub",
   onThisPage: "On this page",
   switchToDark: "Switch to dark mode",
@@ -151,6 +179,11 @@ const DEFAULT_LABELS: Required<Omit<UIGuideLabels, "navGroups">> & {
   lightMode: "Light mode",
   browse: "Browse components",
   exampleHeading: "A first example",
+  exampleTitle: "Buttons and a badge",
+  exampleSummary:
+    "Components take props, render with the library's own classes, and are laid out by `Cluster` with its default gap.",
+  copyExample: "Copy the example code",
+  copyInstall: "Copy the install command",
   packagesHeading: "Packages",
   stats: ({ cards, icons, packages }) =>
     `${cards} live cards · ${icons} icons · ${packages} packages`,
@@ -256,6 +289,8 @@ export function UIGuide(
     ...DEFAULT_LABELS,
     ...labelOverrides,
     navGroups: { ...DEFAULT_LABELS.navGroups, ...labelOverrides?.navGroups },
+    searchKinds: { ...DEFAULT_LABELS.searchKinds, ...labelOverrides?.searchKinds },
+    card: { ...DEFAULT_LABELS.card, ...labelOverrides?.card },
   }
   const route = parseRoute(hash ?? "")
 
@@ -279,7 +314,10 @@ export function UIGuide(
   const content = useRef<HTMLElement>(null)
   const scrolledPage = useRef<GuidePageId | undefined>(undefined)
   const inView = useCardInView(hash !== undefined, page.id)
-  const entries = useMemo(() => searchIndex(registry), [registry])
+  const entries = useMemo(
+    () => searchIndex(registry, labels.searchGuidePlace),
+    [registry, labels.searchGuidePlace],
+  )
 
   // The dialog is opened and closed on the element itself, in the handler, and `navOpen` follows
   // it through the `close` event. Driving the element from state instead loses a reopen that
@@ -841,7 +879,7 @@ function Overview(
         <InstallBox
           command={install}
           copy={copy}
-          copyLabel="Copy the install command"
+          copyLabel={labels.copyInstall}
           class="max-w-md bg-white dark:bg-gray-800/60"
         />
         <Cluster>
@@ -863,9 +901,10 @@ function Overview(
           name="overview-example"
           anchorId="overview-example"
           label="First example"
-          copyLabel="Copy the example code"
-          title="Buttons and a badge"
-          summary="Components take props, render with the library's own classes, and are laid out by `Cluster` with its default gap."
+          copyLabel={labels.copyExample}
+          labels={labels.card}
+          title={labels.exampleTitle}
+          summary={labels.exampleSummary}
           snippet={FIRST_EXAMPLE}
           copy={copy}
           wide
@@ -1023,6 +1062,7 @@ function PackagePage(
                     usageOpen={section.kind === "example"}
                     wide={demo.wide ?? (section.kind === "example" ? false : undefined)}
                     props={demo.props}
+                    labels={labels.card}
                     copy={copy}
                     class={spans[index] === "full" ? "@2xl:col-span-2" : undefined}
                   >

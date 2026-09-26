@@ -9,7 +9,7 @@
  */
 
 import { cn } from "@spy4x/preact-cn"
-import { IconSearch } from "@spy4x/preact-icons"
+import { IconSearch, IconXMark } from "@spy4x/preact-icons"
 import { comboboxKey, comboboxKeyAction, type ComboboxState, fold } from "@spy4x/preact-ui/combobox"
 import type { JSX } from "preact"
 import { useEffect, useId, useRef, useState } from "preact/hooks"
@@ -53,13 +53,13 @@ export interface SearchEntry {
  * @param registry The registry the guide renders; cards it does not carry are left out.
  * @returns The index, one entry per name.
  */
-export function searchIndex(registry: PartialDemoRegistry): SearchEntry[] {
+export function searchIndex(registry: PartialDemoRegistry, guidePlace = "Guide"): SearchEntry[] {
   const titles = new Map<string, string>(guidePages.map((page) => [page.id, page.title]))
   const entries: SearchEntry[] = guidePages
     .filter((page) => page.id !== "all")
     .map((page: GuidePage) => ({
       label: page.title,
-      detail: page.packageName ?? "Guide",
+      detail: page.packageName ?? guidePlace,
       href: pageHref(page.id),
       kind: SearchKind.PAGE,
     }))
@@ -125,11 +125,26 @@ export function searchEntries(
     .map((scored) => scored.entry)
 }
 
+/** The word beside a result for each kind of entry. */
+export interface SearchKindWords {
+  page: string
+  component: string
+  helper: string
+  classes: string
+}
+
 /** The search's own strings. Each has an English default in the shell's labels. */
 export interface GuideSearchLabels {
-  /** The header button's text and the dialog's name. */
+  /** The dialog's, the field's and the result list's name. */
   search: string
-  /** The field's placeholder. */
+  /** The dialog's close button's name. */
+  closeSearch: string
+  /** The word beside each result, by kind. */
+  searchKinds: SearchKindWords
+  /**
+   * The field's placeholder, and the header button's visible text and accessible name: a speech
+   * user says what they see.
+   */
   searchPlaceholder: string
   /** What the list says when nothing matches. */
   searchEmpty: string
@@ -143,12 +158,12 @@ export interface GuideSearchProps {
   go: (href: string) => void
 }
 
-/** The kind of each result, as a short word beside it. */
-const KIND_WORDS: Record<SearchKind, string> = {
-  [SearchKind.PAGE]: "Page",
-  [SearchKind.COMPONENT]: "Component",
-  [SearchKind.HELPER]: "Helper",
-  [SearchKind.CLASSES]: "Classes",
+/** Which of {@link SearchKindWords} names each kind. */
+const KIND_WORD: Record<SearchKind, keyof SearchKindWords> = {
+  [SearchKind.PAGE]: "page",
+  [SearchKind.COMPONENT]: "component",
+  [SearchKind.HELPER]: "helper",
+  [SearchKind.CLASSES]: "classes",
 }
 
 /**
@@ -217,7 +232,7 @@ export function GuideSearch({ entries, labels, go }: GuideSearchProps): JSX.Elem
         type="button"
         onClick={open}
         aria-haspopup="dialog"
-        aria-label={labels.search}
+        aria-label={labels.searchPlaceholder}
         data-e2e="ui-guide-search-open"
         class={cn(
           // An icon button on a phone, like the header's other controls; a field-shaped button
@@ -270,6 +285,19 @@ export function GuideSearch({ entries, labels, go }: GuideSearchProps): JSX.Elem
             onKeyDown={onKeyDown}
             class="h-12 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-gray-500 dark:placeholder:text-gray-400"
           />
+          {
+            /* Escape and a backdrop click close it too, but a phone has neither a key nor much
+            backdrop: the button is the way out a reader can see. */
+          }
+          <button
+            type="button"
+            aria-label={labels.closeSearch}
+            data-e2e="ui-guide-search-close"
+            onClick={() => dialog.current?.close()}
+            class="-mr-2 flex size-9 shrink-0 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-950 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-50"
+          >
+            <IconXMark class="size-5" />
+          </button>
         </div>
         <ul
           id={listbox}
@@ -305,7 +333,7 @@ export function GuideSearch({ entries, labels, go }: GuideSearchProps): JSX.Elem
                   <span class="block text-xs text-gray-500 dark:text-gray-400">{entry.detail}</span>
                 </span>
                 <span class="shrink-0 text-xs text-gray-500 dark:text-gray-400">
-                  {KIND_WORDS[entry.kind]}
+                  {labels.searchKinds[KIND_WORD[entry.kind]]}
                 </span>
               </li>
             ))}

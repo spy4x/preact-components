@@ -53,6 +53,11 @@ describe("searchEntries", () => {
 })
 
 describe("searchIndex", () => {
+  it("names the place of a page outside every package with the word it is given", () => {
+    const overview = searchIndex(demoRegistry, "Anleitung").find((entry) => entry.href === "#/")
+    expect(overview?.detail).toBe("Anleitung")
+  })
+
   it("finds a component by its name and leads to its card", () => {
     const badge = searchIndex(demoRegistry).find((entry) => entry.label === "Badge")
 
