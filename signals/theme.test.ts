@@ -643,11 +643,36 @@ describe("themeBootstrapScript", () => {
     const script = themeBootstrapScript({
       storageKey: `"+alert(1)+"</script><script>alert(2)//`,
       defaultPreference: `"+alert(3)+"` as ThemeValue,
+      systemQuery: `"+alert(4)+"</script><script>alert(5)//`,
     })
     expect(script).not.toContain("</script")
     expect(script).not.toContain("alert(3)")
-    const run = runBootstrap({ storageKey: `"+globalThis.pwned=1+"` }, {}, true)
+    const run = runBootstrap(
+      { storageKey: `"+globalThis.pwned=1+"`, systemQuery: `"+globalThis.pwnedQuery=1+"` },
+      {},
+      true,
+    )
     expect(run.keysRead).toEqual([`"+globalThis.pwned=1+"`])
+    expect(run.queriesAsked).toEqual([`"+globalThis.pwnedQuery=1+"`])
     expect((globalThis as { pwned?: number }).pwned).toBeUndefined()
+    expect((globalThis as { pwnedQuery?: number }).pwnedQuery).toBeUndefined()
+  })
+
+  it("paints light for a system preference when the browser has no matchMedia", () => {
+    const classes = new Set(["dark"])
+    const document = {
+      documentElement: {
+        classList: {
+          toggle: (name: string, on: boolean) =>
+            void (on ? classes.add(name) : classes.delete(name)),
+        },
+      },
+    }
+    new Function("localStorage", "matchMedia", "document", themeBootstrapScript())(
+      fakeStorage({ theme: "system" }),
+      undefined,
+      document,
+    )
+    expect(classes.has("dark")).toBe(false)
   })
 })
