@@ -104,7 +104,7 @@ export const layoutDemos = {
           </Cluster>
         </Cluster>
         <Cluster>
-          {["paid", "overdue", "draft", "refunded", "disputed"].map((tag) => (
+          {["paid", "overdue", "draft", "refunded"].map((tag) => (
             <Badge key={tag} text={tag} color="gray" />
           ))}
         </Cluster>

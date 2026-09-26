@@ -13,6 +13,7 @@ import { useSignal } from "@preact/signals"
 import { useRef } from "preact/hooks"
 import { IconPlus } from "@spy4x/preact-icons"
 import { entries } from "../record.ts"
+import { DemoNote } from "./demo-note.tsx"
 import type { DemoFragment } from "../registry.ts"
 
 /** One label per variant — a variant with no label does not compile. */
@@ -93,16 +94,18 @@ function ButtonClickDemo() {
 }
 
 /**
- * The clipboard is a port: the first button copies through the browser API, the second through
+ * The clipboard is a port: the first two buttons copy through the browser API, the third through
  * the injected callback, so the host app can route copies through its own clipboard service.
  */
 function CopyButtonDemo() {
   const lastCopy = useSignal("nothing yet")
   return (
-    <Stack gap="sm">
+    <Stack>
       <Cluster>
         <CopyButton textToCopy="INV-0007" />
         <CopyButton textToCopy="INV-0007" title="Copy number" />
+      </Cluster>
+      <Cluster>
         <CopyButton
           textToCopy="INV-0007"
           title="Copy via port"
@@ -110,8 +113,8 @@ function CopyButtonDemo() {
             lastCopy.value = text
           }}
         />
+        <DemoNote>port received: {lastCopy.value}</DemoNote>
       </Cluster>
-      <p class="text-xs text-gray-500 dark:text-gray-400">copy port received: {lastCopy.value}</p>
     </Stack>
   )
 }
