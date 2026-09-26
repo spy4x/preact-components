@@ -235,13 +235,14 @@ describe("npmSpecifiers", () => {
     expect(asked[0][0]).toBe("preact/hooks")
   })
 
-  it("reads the version from the nearest package.json that names the package", async () => {
-    // The closer package.json names another package and the next level has none: both skipped.
+  it("skips a package.json that names another package, and a directory with none", async () => {
+    // Walking up from dist/esm: a bundled package's manifest, then no manifest, then the right one.
     const { result } = await resolveId("npm:@preact/signals@2.5.1", {
       resolves: { "@preact/signals": "/app/node_modules/@preact/signals/dist/esm/signals.mjs" },
       files: {
         "/app/node_modules/@preact/signals/dist/esm/package.json": JSON.stringify({
-          type: "module",
+          name: "bundled-helper",
+          version: "9.9.9",
         }),
         "/app/node_modules/@preact/signals/package.json": SIGNALS_MANIFEST,
       },
