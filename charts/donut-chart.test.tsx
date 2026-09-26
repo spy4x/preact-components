@@ -148,4 +148,14 @@ describe("DonutChart", () => {
     expect(html).toContain("#999999 0% 100%")
     expect(html).toContain("background:#888888")
   })
+
+  it("serves an empty, hidden tooltip and no focus stop, which the browser adds", () => {
+    const html = render(<DonutChart data={data} title="Orders" />)
+
+    expect(html).toMatch(
+      /class="[^"]*\binvisible\b[^"]*"[^>]*role="status" data-chart-tooltip><\/div>/,
+    )
+    expect(html).not.toContain("tabindex")
+    expect(html).toContain(`role="img" aria-label="Orders"`)
+  })
 })

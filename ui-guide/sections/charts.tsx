@@ -124,8 +124,22 @@ export const chartsDemos = {
   },
   DonutChart: {
     summary:
-      "A server-rendered donut drawn with one CSS `conic-gradient`, whose legend rows turn into links when a slice has an `href`.",
+      "A donut drawn with one CSS `conic-gradient` whose slices show their value and share on hover or by the arrow keys, and whose legend rows turn into links when a slice has an `href`.",
     wide: false,
+    props: [
+      { name: "data", type: "DonutDatum[]", description: "The slices: a label and a value each." },
+      {
+        name: "valueFormat",
+        type: "(value: number) => string",
+        default: "String",
+        description: "How a slice's value is printed in its tooltip.",
+      },
+      {
+        name: "centerValue",
+        type: "string | number",
+        description: "The figure in the hole, usually the total.",
+      },
+    ],
     snippet: `<DonutChart
   data={[{ label: "Organic", value: 52 }, { label: "Referral", value: 24, href: "/referral" }]}
   centerValue="12.4k"
@@ -138,6 +152,7 @@ export const chartsDemos = {
         centerValue="12.4k"
         centerLabel="sessions"
         title="Traffic sources"
+        valueFormat={(value) => `${value * 124} sessions`}
       />
     ),
   },
