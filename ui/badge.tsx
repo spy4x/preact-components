@@ -3,7 +3,8 @@ import type { JSX } from "preact"
 
 /**
  * Palette entries a {@link Badge} can use. `purple` and `purpleNav` are the theme's accent: they
- * draw purple by default and follow `--color-primary` when an app sets it.
+ * draw purple by default and follow the accent when an app sets it — `--color-primary` in the light
+ * palette, `--color-accent` in both.
  */
 export type BadgeColor = "red" | "orange" | "green" | "gray" | "blue" | "purple" | "purpleNav"
 
