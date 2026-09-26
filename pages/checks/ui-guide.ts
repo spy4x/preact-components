@@ -30,6 +30,7 @@ export async function uiGuideChecks(devtools: Devtools): Promise<void> {
   await withViewport(devtools, 1152, 800, () => navigationChecks(devtools))
   await withViewport(devtools, 375, 812, () => phoneNavigationChecks(devtools))
   await withViewport(devtools, 375, 812, () => overflowChecks(devtools))
+  await withViewport(devtools, 375, 812, () => codeBlockCheck(devtools))
   for (const width of [375, 1024]) {
     await withViewport(devtools, width, 812, () => propsSummaryCheck(devtools, width))
   }
@@ -731,6 +732,52 @@ async function propsSummaryCheck(devtools: Devtools, width: number): Promise<voi
     wide.length === 0
       ? `${measured} summaries measured across ${guidePages.length} pages, ${stacked} of them narrow`
       : wide.join(", "),
+  )
+}
+
+/**
+ * At 375px wide no card cuts off its code: every card's code block, opened, stays inside its card,
+ * and a line longer than the card scrolls inside the block rather than being clipped (#357, #348).
+ */
+async function codeBlockCheck(devtools: Devtools): Promise<void> {
+  const clipped: string[] = []
+  let blocks = 0
+  for (const page of guidePages.filter((each) => each.sections.length > 0)) {
+    await openGuidePage(devtools, page.id)
+    const read = await devtools.evaluate<{ blocks: number; clipped: string[] }>(`(() => {
+      const cards = [...document.querySelectorAll('article[id^="demo-"]')]
+      const clipped = []
+      let blocks = 0
+      for (const card of cards) {
+        const details = card.querySelector('[data-e2e="usage"] details')
+        const pre = details?.querySelector("pre")
+        if (!details || !pre) continue
+        const wasOpen = details.open
+        details.open = true
+        blocks++
+        const box = card.getBoundingClientRect()
+        const code = pre.getBoundingClientRect()
+        const inside = code.left >= box.left - 0.5 && code.right <= box.right + 0.5
+        const scrolls = pre.scrollWidth <= pre.clientWidth + 1 ||
+          ["auto", "scroll"].includes(getComputedStyle(pre).overflowX)
+        if (!inside || !scrolls) {
+          clipped.push(card.id + (inside ? " (no scroll)" : " (" + Math.round(code.right - box.right) + "px out)"))
+        }
+        details.open = wasOpen
+      }
+      return { blocks, clipped }
+    })()`)
+    blocks += read.blocks
+    clipped.push(...read.clipped.map((card) => `${page.id}: ${card}`))
+  }
+  const expected = guidePages.reduce(
+    (total, page) => total + page.sections.reduce((sum, section) => sum + section.names.length, 0),
+    0,
+  )
+  check(
+    "at 375px every card's code stays inside its card and scrolls rather than being clipped",
+    clipped.length === 0 && blocks === expected,
+    clipped.length > 0 ? clipped.join(", ") : `${blocks}/${expected} code blocks fit their cards`,
   )
 }
 
