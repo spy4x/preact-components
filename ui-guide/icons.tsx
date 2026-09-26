@@ -97,8 +97,8 @@ const GALLERY_SNIPPET = `import { IconSearch } from "@spy4x/preact-icons"
 
 export interface IconGalleryProps {
   /**
-   * Clipboard port. Left out, `copyToClipboard` from `@spy4x/platform/browser/clipboard` is used, which prefers
-   * `navigator.clipboard` and falls back to `document.execCommand`.
+   * Clipboard port. Left out, `copyToClipboard` from `@spy4x/platform/browser/clipboard` is used,
+   * which prefers `navigator.clipboard` and falls back to `document.execCommand`.
    */
   copy?: (text: string) => void | Promise<void>
   /** Overrides for the gallery's own words. */

@@ -29,10 +29,10 @@ export interface StateInitProps {
  * Serialise `data` for embedding inside {@link StateInit}'s `<script type="application/json">`.
  *
  * Reuses `jsonLdText` from `@spy4x/platform/universal/seo`, the escape `SEOHead` uses, rather
- * than a second implementation of it: `<` becomes the six characters `\u003c`, which is what keeps a value containing the literal text
- * `</script>` from closing the element it is embedded in — the HTML parser looks for that sequence
- * case-insensitively to end *any* `<script>`, whatever its `type`, before either JSON or JavaScript
- * ever gets a look at the content. `<!--` is a `<` too, so the same escape covers it.
+ * than a second implementation of it: `<` becomes the six characters `\u003c`, which is what keeps
+ * a value containing the literal text `</script>` from closing the element it is embedded in — the
+ * HTML parser looks for that sequence case-insensitively to end *any* `<script>`, whatever its
+ * `type`, before either JSON or JavaScript ever gets a look at the content. `<!--` is a `<` too, so the same escape covers it.
  *
  * U+2028 and U+2029 need no escaping here the way they would if this value were embedded as
  * executable JavaScript (`window.x = {…}`) rather than JSON: `StateInit` renders a

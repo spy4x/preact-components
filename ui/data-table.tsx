@@ -313,8 +313,8 @@ function bodyCell<T, K extends Extract<keyof T, string>>(
 export const rowKeyAttribute = "data-row-key"
 
 /**
- * A sortable, optionally paged table: `Table`'s markup, `@spy4x/platform/universal/sort`'s sort rules, one component
- * joining them.
+ * A sortable, optionally paged table: `Table`'s markup, `@spy4x/platform/universal/sort`'s sort
+ * rules, one component joining them.
  *
  * `DataTable` sorts and pages `rows` itself — with `sortRows` and a plain slice — because it is
  * the one place already holding both the full row set and the rules to apply to it; asking every

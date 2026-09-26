@@ -453,8 +453,8 @@ reached the component under its old name, both clocks ran, and a toast lived whi
 - **`as` assertions.** The package uses a handful, and only one is unavoidable: the spread of
   `extraOps`/`selectors` onto the base store in `build-model-store.ts`, where TypeScript cannot verify
   a spread of `Extra | undefined` against a generic `Extra`. The rest are local narrowing inside one
-  function, each next to the check that justifies it — `resolveFilterValue` and the `filters` map in `useUrlFilters` where a generic `T` loses its
-  key mapping. To audit them:
+  function, each next to the check that justifies it — `resolveFilterValue` and the `filters` map
+  in `useUrlFilters` where a generic `T` loses its key mapping. To audit them:
 
   ```bash
   grep -n " as " signals/*.ts | grep -v "\.test\." | grep -v "as const"

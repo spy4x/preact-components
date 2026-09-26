@@ -21,7 +21,8 @@
  *
  * **The week is the locale's.** Both the column order and the header text come from `Intl` (see
  * `@spy4x/time/locale`), so the grid starts on Monday in London, on Sunday in New York and on
- * Saturday in Cairo, and an Arabic header reads a weekday rather than the two characters all seven share.
+ * Saturday in Cairo, and an Arabic header reads a weekday rather than the two characters all seven
+ * share.
  */
 
 import { cn } from "@spy4x/preact-cn"

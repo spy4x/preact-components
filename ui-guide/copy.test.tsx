@@ -159,8 +159,9 @@ describe("usage block copy controls", () => {
   })
 
   it("routes a card's block text through the port unchanged", () => {
-    // The pairing a click makes: `CopyButton` calls `copy(textToCopy)` when a port is wired. Driving
-    // it with the two values read off the element tree is what turns those props into a clipboard call.
+    // The pairing a click makes: `CopyButton` calls `copy(textToCopy)` when a port is wired.
+    // Driving it with the two values read off the element tree is what turns those props into a
+    // clipboard call.
     const copied: string[] = []
     const port: CopyPort = (text) => void copied.push(text)
 
