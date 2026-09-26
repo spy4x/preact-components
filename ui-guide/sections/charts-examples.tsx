@@ -242,7 +242,7 @@ console.log({
   formatTimeTick: {
     title: "Time labels",
     summary:
-      "`TIME_FRAMES` lists the bucket sizes a series can have, `formatTimeTick` labels an X tick to suit the bucket size, and `defaultTooltipFormat` is the text `D3LineChart` shows on hover. Both print local time.",
+      "The bucket sizes a series can have (`TIME_FRAMES`), and the local-time labels `D3LineChart` prints for a tick and on hover.",
     snippet:
       `import { defaultTooltipFormat, formatTimeTick, TIME_FRAMES } from "@spy4x/preact-charts"
 
@@ -329,7 +329,7 @@ console.log([previousPeriod(week), previousPeriod(week, 2)])`,
   loadChartPayload: {
     title: "Stats payloads and their loaders",
     summary:
-      "`timeSeriesPointSchema` and `chartPayloadSchema` are the arktype shape a stats endpoint returns. `loadChartPayload` asks your `loadStats` port for a range and resolves to `{ payload, error }`, with a rejected payload as the error; `loadMetricSeries` does the same and multiplies every value by `scale`. The loaders resolve after this card renders, so it prints the calls they made to the port and the verdicts they apply.",
+      "The arktype shape a stats endpoint returns, and two loaders that ask your `loadStats` port for a range and resolve to `{ payload, error }`; the card prints the calls they make, since they resolve after it renders.",
     snippet:
       `import { chartPayloadSchema, loadChartPayload, loadMetricSeries, timeSeriesPointSchema } from "@spy4x/preact-charts"
 import { type } from "arktype"
@@ -372,7 +372,7 @@ console.log({
   useMetricSeries: {
     title: "useMetricSeries()",
     summary:
-      "`loadMetricSeries` as a hook, for a panel that loads its own data: it loads when `enabled` is true and the range or port changes, and returns the series with `isLoading` and `reload`. This card calls it with `enabled: false`, so it prints the state a panel renders before its first load.",
+      "`loadMetricSeries` as a hook that loads when `enabled` is true and returns the series with `isLoading` and `reload`; called here with `enabled: false`, it prints the state before the first load.",
     snippet: `import { useMetricSeries } from "@spy4x/preact-charts"
 
 // Outside the component: a new function on every render would reload on every render.
@@ -398,7 +398,7 @@ console.log({ data, timeFrame, error, isLoading })`,
   useInView: {
     title: "useInView()",
     summary:
-      "Tells a component when its element has scrolled near the viewport, so a chart can wait to load until then. Attach `ref` to the element; `inView` turns true 200px before it shows. This card attaches the ref to nothing, so it prints the first render: `inView` is false until an element is watched.",
+      "Tells a component when the element its `ref` is on comes within 200px of the viewport, so a chart can wait to load; with no element attached, as here, `inView` stays false.",
     snippet: `import { useInView } from "@spy4x/preact-charts"
 
 // Inside a component, before <div ref={ref}> has mounted:
@@ -413,7 +413,7 @@ console.log({ element: ref.current, inView })`,
   createInViewObserver: {
     title: "createInViewObserver()",
     summary:
-      "The observer wiring behind `useInView`: it watches one element and reports each change, and returns `null` where there is no `IntersectionObserver`, as on a server. A recording stand-in replaces `IntersectionObserver` for the length of the call, so the output shows what the helper asked for.",
+      "The observer behind `useInView`, which watches one element and returns `null` where there is no `IntersectionObserver`; the output is what it asked a recording stand-in for.",
     snippet: `import { createInViewObserver } from "@spy4x/preact-charts"
 
 const log: unknown[] = []
