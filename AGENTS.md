@@ -137,7 +137,7 @@ opened early under `[WIP]`, before that prefix is dropped.
 The reviewer runs the checks itself — a reported green run is not evidence — and verifies a test by
 breaking the code it is supposed to protect: remove the fix and confirm the test goes red. A test
 that passes either way is rejected. The reviewer never fixes what it finds; a rejection goes back to
-the author with the precise changes required.
+the author with the precise changes required, and rejection is a normal outcome, not a failure.
 
 The verdict and its evidence are posted as a PR comment, so GitHub's own review record stays empty
 by design — an empty review record does not mean a PR went unreviewed.
@@ -334,7 +334,8 @@ version and never passes `--frozen`. Never delete or hand-edit the lockfile.
 ## Code style
 
 - No semicolons. 2-space indent. Double quotes by default, backticks for interpolated or multi-line
-  strings (this overrides the global "backticks for strings" rule). 100 column limit. Trailing commas where legal. `deno fmt` is the arbiter.
+  strings (this overrides the global "backticks for strings" rule). 100 column limit. Trailing
+  commas where legal. `deno fmt` is the arbiter.
 - Files: kebab-case `.ts`, `+main.ts` / `+lib.ts` for entry points, colocated `*.test.ts`.
 - Imports: relative local first, then `jsr:` stdlib, then `npm:` only when unavoidable.
 - `interface` for extensible object shapes, `enum` for finite constants (start at 1), `type` only
