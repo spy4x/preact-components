@@ -475,7 +475,10 @@ reached the component under its old name, both clocks ran, and a toast lived whi
   `"system"` through the same media query and toggles the same `dark` class as an attached
   `createThemeStore`, so a reader who chose dark sees no light flash first. Pass both the same
   `storageKey`, `systemQuery` and `defaultPreference`. The script never writes storage and never
-  throws; its options are written in as escaped string literals.
+  throws; its options are written in as escaped string literals. A page that never attaches a store
+  (a server-rendered embed with no islands) passes `followSystem: true`: the script then also
+  listens for OS changes and repaints while the stored preference, read again on each change, is
+  `"system"`.
 - **`as` assertions.** The package uses a handful, and only one is unavoidable: the spread of
   `extraOps`/`selectors` onto the base store in `build-model-store.ts`, where TypeScript cannot verify
   a spread of `Extra | undefined` against a generic `Extra`. The rest are local narrowing inside one

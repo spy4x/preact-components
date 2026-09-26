@@ -251,6 +251,12 @@ export interface ThemeBootstrapOptions {
   systemQuery?: string
   /** The preference used when nothing understood is stored. Defaults to `"system"`. */
   defaultPreference?: ThemePreference
+  /**
+   * Keep following the OS after the first paint, for a page that never attaches a store. When
+   * `true`, the script also listens for changes to `systemQuery` and repaints while the stored
+   * preference (read again on every change) resolves to `"system"`. Defaults to `false`.
+   */
+  followSystem?: boolean
 }
 
 /** A value as a JavaScript literal that is also safe inside an inline `<script>` element. */
@@ -270,7 +276,12 @@ function scriptLiteral(value: string): string {
  *
  * The options are written into the script as string literals, escaped so that none of them can end
  * the script element or run code; a `defaultPreference` this version does not know becomes
- * `"system"`.
+ * `"system"`, and only `followSystem: true` itself turns the listener on.
+ *
+ * A page that attaches a store needs nothing more: the store follows the OS from then on. A page
+ * that never runs a store (a server-rendered embed without islands) passes `followSystem: true`,
+ * so a reader on `"system"` still sees the theme change when the OS switches. The listener reads
+ * storage again on every change, so a light or dark choice stored meanwhile is never overridden.
  *
  * @example
  * ```tsx
@@ -283,8 +294,17 @@ export function themeBootstrapScript(options: ThemeBootstrapOptions = {}): strin
   const fallback = scriptLiteral(
     isThemePreference(options.defaultPreference) ? options.defaultPreference : ThemeValue.SYSTEM,
   )
-  return `(function(){try{var s=null;try{s=localStorage.getItem(${key})}catch(e){}` +
+  const paint = `(function(){try{var s=null;try{s=localStorage.getItem(${key})}catch(e){}` +
     `var p=s==="light"||s==="dark"||s==="system"?s:${fallback};` +
     `var d=p==="dark"||(p==="system"&&typeof matchMedia==="function"&&matchMedia(${query}).matches);` +
     `document.documentElement.classList.toggle("dark",!!d)}catch(e){}})()`
+  if (options.followSystem !== true) return paint
+  // Older Safari has only `addListener` on a media query list.
+  return paint +
+    `;(function(){try{var m=matchMedia(${query});` +
+    `var f=function(){try{var s=null;try{s=localStorage.getItem(${key})}catch(e){}` +
+    `var p=s==="light"||s==="dark"||s==="system"?s:${fallback};` +
+    `if(p==="system")document.documentElement.classList.toggle("dark",!!m.matches)}catch(e){}};` +
+    `if(m.addEventListener)m.addEventListener("change",f);else if(m.addListener)m.addListener(f)` +
+    `}catch(e){}})()`
 }
