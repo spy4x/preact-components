@@ -1,27 +1,25 @@
 /**
- * The `ui/` field primitives: one demo per component, keyed by the export the package publishes.
+ * The `ui/` field primitives: one card per component, keyed by the export the package publishes.
  *
- * Adapted from the section the `ui/` form-primitive PR wrote and dropped, because `ui-guide/` was
- * outside its scope. The per-component summaries are that PR's own contract notes, kept rather than
- * rewritten; what changed here is the registry shape (a `DemoFragment` of cards), and
- * the demos themselves, which are the controlled form an app writes: a signal per field, `value` in,
- * `onInput`/`onChange` out, and `Field` owning the `id`/`for`/`aria-describedby` wiring.
- *
- * The classes these components apply — `.input`, `.select`, `.checkbox`, `.radio` — are demonstrated
- * without the components in the `forms` chapter below this one: the components are the API, the
- * classes are what a page writes when it styles its own markup.
+ * Every demo is the controlled form an app writes: a signal per field, `value` in,
+ * `onInput`/`onChange` out, and `Field` owning the `id`/`for`/`aria-describedby` wiring. The classes
+ * these components apply — `.input`, `.select`, `.checkbox`, `.radio` — are shown without the
+ * components in the theme's `forms` section.
  */
 
 import {
   Button,
   Checkbox,
+  Cluster,
   Field,
+  Grid,
   Input,
   InputButton,
   MoneyInput,
   Radio,
   RadioGroup,
   Select,
+  Stack,
   Textarea,
 } from "@spy4x/preact-ui"
 import { useSignal } from "@preact/signals"
@@ -42,8 +40,8 @@ function FieldDemo() {
   const emailError = email.value.includes("@") ? undefined : "Enter a valid address"
 
   return (
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-      <Field id="guide-name" label="Name" class="sm:col-span-2">
+    <Stack gap="md">
+      <Field id="guide-name" label="Name">
         <Input
           value={name.value}
           placeholder="Full name"
@@ -51,27 +49,29 @@ function FieldDemo() {
         />
       </Field>
 
-      <Field id="guide-email" label="Email" required error={emailError} hint="Work address only">
-        <Input
-          type="email"
-          value={email.value}
-          onInput={(event) => email.value = event.currentTarget.value}
-        />
-      </Field>
+      <Grid minColumnWidth="sm" gap="md">
+        <Field id="guide-email" label="Email" required error={emailError} hint="Work address only">
+          <Input
+            type="email"
+            value={email.value}
+            onInput={(event) => email.value = event.currentTarget.value}
+          />
+        </Field>
 
-      <Field id="guide-role" label="Role">
-        <Select
-          value={role.value}
-          onChange={(event) => role.value = event.currentTarget.value}
-          options={[
-            { value: "admin", label: "Administrator" },
-            { value: "editor", label: "Editor" },
-            { value: "viewer", label: "Viewer" },
-          ]}
-        />
-      </Field>
+        <Field id="guide-role" label="Role">
+          <Select
+            value={role.value}
+            onChange={(event) => role.value = event.currentTarget.value}
+            options={[
+              { value: "admin", label: "Administrator" },
+              { value: "editor", label: "Editor" },
+              { value: "viewer", label: "Viewer" },
+            ]}
+          />
+        </Field>
+      </Grid>
 
-      <Field id="guide-notes" label="Notes" class="sm:col-span-2">
+      <Field id="guide-notes" label="Notes">
         <Textarea
           rows={3}
           value={notes.value}
@@ -79,20 +79,16 @@ function FieldDemo() {
         />
       </Field>
 
-      <Field
-        id="guide-archived"
-        label="Archived"
-        suffix
-        hint="Hides the row from the list"
-        labelFor={false}
-      >
-        <Checkbox
-          checked={archived.value}
-          onChange={(event) => archived.value = event.currentTarget.checked}
-        />
-      </Field>
+      <Grid minColumnWidth="sm" gap="md">
+        <Field id="guide-archived" hint="Hides the row from the list">
+          <Checkbox
+            checked={archived.value}
+            onChange={(event) => archived.value = event.currentTarget.checked}
+          >
+            Archived
+          </Checkbox>
+        </Field>
 
-      <Field id="guide-channel" label="Notification method" disabled labelFor={false}>
         <RadioGroup
           legend="Notification method"
           name="guide-channel"
@@ -104,9 +100,9 @@ function FieldDemo() {
             { value: "push", label: "Push notification", disabled: true },
           ]}
         />
-      </Field>
+      </Grid>
 
-      <Field id="guide-query" label="Search" class="sm:col-span-2">
+      <Field id="guide-query" label="Search">
         <InputButton
           name="q"
           type="search"
@@ -118,12 +114,12 @@ function FieldDemo() {
         />
       </Field>
 
-      <p class="text-sm text-gray-500 sm:col-span-2 dark:text-gray-400" data-e2e="controlled-value">
+      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
         name: {name.value} · email: {email.value} · role: {role.value} · archived:{" "}
         {archived.value ? "on" : "off"} · channel: {channel.value} · query:{" "}
         {query.value || "(empty)"}
       </p>
-    </div>
+    </Stack>
   )
 }
 
@@ -131,7 +127,7 @@ function FieldDemo() {
 function InputButtonDemo() {
   const query = useSignal("")
   return (
-    <div class="max-w-xs space-y-2">
+    <Stack gap="sm" class="max-w-xs">
       <InputButton
         type="search"
         name="guide-input-button"
@@ -142,10 +138,10 @@ function InputButtonDemo() {
         onInput={(event) => query.value = event.currentTarget.value}
         onClick={() => query.value = ""}
       />
-      <p class="text-sm text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
+      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
         query: {query.value || "(empty)"}
       </p>
-    </div>
+    </Stack>
   )
 }
 
@@ -153,7 +149,7 @@ function InputButtonDemo() {
 function RadioGroupDemo() {
   const channel = useSignal("email")
   return (
-    <div class="max-w-xs space-y-2">
+    <Stack gap="sm" class="max-w-xs">
       <RadioGroup
         legend="Notification method"
         name="guide-radio-group"
@@ -165,10 +161,10 @@ function RadioGroupDemo() {
           { value: "push", label: "Push notification", disabled: true },
         ]}
       />
-      <p class="text-sm text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
+      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
         channel: {channel.value}
       </p>
-    </div>
+    </Stack>
   )
 }
 
@@ -187,7 +183,7 @@ function InputDemo() {
   const email = useSignal("")
   const emailRef = useRef<HTMLInputElement>(null)
   return (
-    <div class="max-w-xs space-y-2">
+    <Stack gap="sm" class="max-w-xs">
       <Input
         ref={emailRef}
         type="email"
@@ -198,18 +194,20 @@ function InputDemo() {
         onInput={(event) => email.value = event.currentTarget.value}
         data-e2e="ref-target"
       />
-      <p class="text-sm text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
+      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
         {email.value || "(empty)"}
       </p>
-      <Button
-        variant="outline"
-        size="sm"
-        data-e2e="ref-focus"
-        onClick={() => emailRef.current?.focus()}
-      >
-        Focus via ref
-      </Button>
-    </div>
+      <Cluster>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="ref-focus"
+          onClick={() => emailRef.current?.focus()}
+        >
+          Focus via ref
+        </Button>
+      </Cluster>
+    </Stack>
   )
 }
 
@@ -217,7 +215,7 @@ function InputDemo() {
 function TextareaDemo() {
   const notes = useSignal("")
   return (
-    <div class="max-w-xs space-y-2">
+    <Stack gap="sm" class="max-w-xs">
       <Textarea
         name="guide-textarea"
         rows={3}
@@ -226,10 +224,10 @@ function TextareaDemo() {
         value={notes.value}
         onInput={(event) => notes.value = event.currentTarget.value}
       />
-      <p class="text-sm text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
+      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
         {notes.value.length} characters
       </p>
-    </div>
+    </Stack>
   )
 }
 
@@ -237,7 +235,7 @@ function TextareaDemo() {
 function SelectDemo() {
   const role = useSignal("editor")
   return (
-    <div class="max-w-xs space-y-2">
+    <Stack gap="sm" class="max-w-xs">
       <Select
         name="guide-select"
         aria-label="Role"
@@ -249,10 +247,10 @@ function SelectDemo() {
           { value: "viewer", label: "Viewer" },
         ]}
       />
-      <p class="text-sm text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
+      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
         role: {role.value}
       </p>
-    </div>
+    </Stack>
   )
 }
 
@@ -267,7 +265,7 @@ function CheckboxDemo() {
   const archived = useSignal(false)
   const archivedRef = useRef<HTMLInputElement>(null)
   return (
-    <div class="space-y-2">
+    <Stack gap="sm">
       <Checkbox
         ref={archivedRef}
         name="guide-checkbox"
@@ -277,18 +275,20 @@ function CheckboxDemo() {
       >
         Show archived rows
       </Checkbox>
-      <p class="text-sm text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
+      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
         archived: {archived.value ? "on" : "off"}
       </p>
-      <Button
-        variant="outline"
-        size="sm"
-        data-e2e="ref-focus"
-        onClick={() => archivedRef.current?.focus()}
-      >
-        Focus via ref
-      </Button>
-    </div>
+      <Cluster>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="ref-focus"
+          onClick={() => archivedRef.current?.focus()}
+        >
+          Focus via ref
+        </Button>
+      </Cluster>
+    </Stack>
   )
 }
 
@@ -303,8 +303,8 @@ function RadioDemo() {
   const choice = useSignal("a")
   const selectedRef = useRef<HTMLInputElement>(null)
   return (
-    <div class="space-y-2">
-      <div class="flex flex-wrap gap-6">
+    <Stack gap="sm">
+      <Cluster gap="lg">
         <Radio
           ref={selectedRef}
           name="guide-radio"
@@ -326,16 +326,18 @@ function RadioDemo() {
         <Radio name="guide-radio" value="c" disabled>
           Disabled
         </Radio>
-      </div>
-      <Button
-        variant="outline"
-        size="sm"
-        data-e2e="ref-focus"
-        onClick={() => selectedRef.current?.focus()}
-      >
-        Focus via ref
-      </Button>
-    </div>
+      </Cluster>
+      <Cluster>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="ref-focus"
+          onClick={() => selectedRef.current?.focus()}
+        >
+          Focus via ref
+        </Button>
+      </Cluster>
+    </Stack>
   )
 }
 
@@ -353,7 +355,7 @@ function MoneyInputDemo() {
   const lastSubmitted = useSignal("")
   return (
     <form
-      class="max-w-xs space-y-2"
+      class="max-w-xs"
       onSubmit={(event) => {
         event.preventDefault()
         submits.value++
@@ -361,33 +363,35 @@ function MoneyInputDemo() {
         lastSubmitted.value = String(data.get("guide-money-amount") ?? "")
       }}
     >
-      <Field id="guide-money-input" label="Price (EUR, German locale)">
-        <MoneyInput
-          value={amount.value}
-          currency="EUR"
-          locale="de"
-          name="guide-money-amount"
-          onChange={(value) => amount.value = value}
-        />
-      </Field>
-      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
-        amount: {amount.value === null ? "(empty)" : amount.value}
-      </p>
-      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="money-input-submits">
-        submits: {submits.value}, posted: {lastSubmitted.value || "(none)"}
-      </p>
-      <div class="flex gap-2">
-        <Button type="submit" size="sm" data-e2e="money-input-submit">Save</Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          data-e2e="money-input-add-five"
-          onClick={() => amount.value = (amount.value ?? 0) + 500}
-        >
-          Add 5.00
-        </Button>
-      </div>
+      <Stack gap="sm">
+        <Field id="guide-money-input" label="Price (EUR, German locale)">
+          <MoneyInput
+            value={amount.value}
+            currency="EUR"
+            locale="de"
+            name="guide-money-amount"
+            onChange={(value) => amount.value = value}
+          />
+        </Field>
+        <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
+          amount: {amount.value === null ? "(empty)" : amount.value}
+        </p>
+        <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="money-input-submits">
+          submits: {submits.value}, posted: {lastSubmitted.value || "(none)"}
+        </p>
+        <Cluster gap="sm">
+          <Button type="submit" size="sm" data-e2e="money-input-submit">Save</Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            data-e2e="money-input-add-five"
+            onClick={() => amount.value = (amount.value ?? 0) + 500}
+          >
+            Add 5.00
+          </Button>
+        </Cluster>
+      </Stack>
     </form>
   )
 }
@@ -395,21 +399,49 @@ function MoneyInputDemo() {
 export const fieldDemos = {
   Field: {
     summary:
-      "Label, control, error and hint of one field row, and the owner of the `id`/`for` wiring. `suffix` puts the label under the control, `error` marks the control `aria-invalid`, and a caller's own `aria-describedby` is kept alongside the messages `Field` adds.",
+      "One form row: a label, its control, and the hint or error under it, all wired to each other.",
+    wide: true,
+    props: [
+      {
+        name: "id",
+        type: "string",
+        description: "The control's id; the label and messages point at it.",
+      },
+      { name: "label", type: "ComponentChildren", description: "The visible label." },
+      { name: "hint", type: "ComponentChildren", description: "Help text under the control." },
+      {
+        name: "error",
+        type: "string | null",
+        description: "An error under the control, which also marks it invalid.",
+      },
+      { name: "required", type: "boolean", default: "false", description: "Marks the label." },
+      {
+        name: "suffix",
+        type: "boolean",
+        default: "false",
+        description: "Puts the label after the control, as a checkbox wants.",
+      },
+      {
+        name: "labelFor",
+        type: "boolean | string",
+        default: "true",
+        description: "What the label points at; `false` for a control that names itself.",
+      },
+    ],
     snippet: `<Field id="email" label="Email" required error={emailError} hint="Work address only">
   <Input value={email.value} onInput={(event) => email.value = event.currentTarget.value} />
 </Field>
 
-// The label under the control, and a control that is its own label — the opt-out keeps the label
-// from pointing a for at something that cannot carry one:
-<Field id="archived" label="Archived" suffix labelFor={false}>
-  <Checkbox checked={archived.value} />
+// A checkbox names itself with its own text, so Field adds only the hint and the wiring:
+<Field id="archived" hint="Hides the row from the list">
+  <Checkbox checked={archived.value}>Archived</Checkbox>
 </Field>`,
     render: () => <FieldDemo />,
   },
   Input: {
     summary:
-      "Native `<input>` with `.input`. Every native attribute passes through; `value` in, `onInput` out, and no draft state inside the component.",
+      "A text field that shows the caller's `value` and reports every keystroke through `onInput`.",
+    wide: false,
     snippet: `<Input
   type="email"
   name="email"
@@ -421,15 +453,15 @@ export const fieldDemos = {
     render: () => <InputDemo />,
   },
   Textarea: {
-    summary:
-      "Native `<textarea>` with `.textarea`. Same contract as `Input`, on the multi-line box.",
+    summary: "A multi-line text field, with the same `value` in and `onInput` out as `Input`.",
+    wide: false,
     snippet:
       `<Textarea rows={4} value={notes.value} onInput={(event) => notes.value = event.currentTarget.value} />`,
     render: () => <TextareaDemo />,
   },
   Select: {
-    summary:
-      "Native `<select>` with `.select`, taking its options as data. The selection comes from `value`, so a value no option carries renders blank instead of mislabelling the first entry.",
+    summary: "A native drop-down list whose options are passed as data.",
+    wide: false,
     snippet: `<Select
   value={role.value}
   onChange={(event) => role.value = event.currentTarget.value}
@@ -442,8 +474,8 @@ export const fieldDemos = {
     render: () => <SelectDemo />,
   },
   Checkbox: {
-    summary:
-      'Native `<input type="checkbox">` with `.checkbox`, wrapped in its own label so the box and the text share one hit area. `checked` in, `onChange` out.',
+    summary: "A checkbox and its text, where clicking either one ticks the box.",
+    wide: false,
     snippet: `<Checkbox
   checked={archived.value}
   onChange={(event) => archived.value = event.currentTarget.checked}
@@ -454,14 +486,15 @@ export const fieldDemos = {
   },
   Radio: {
     summary:
-      'One native `<input type="radio">` with `.radio` inside its label. Give it a `name` — the platform groups on it, including arrow-key navigation.',
+      "One radio button and its text, which makes one choice with the other radios of its `name`.",
+    wide: false,
     snippet:
       `<Radio name="channel" value="email" checked={channel.value === "email"}>Email</Radio>`,
     render: () => <RadioDemo />,
   },
   RadioGroup: {
-    summary:
-      "`<fieldset>` + `<legend>` over radios that share one `name`, so the legend names the group and the browser keeps the roving tab stop and its arrow keys. No role, no key handler, no `aria-checked`. `onChange` receives the picked value first, because a change event fires on the radio rather than on the fieldset.",
+    summary: "A set of radio buttons under one heading, of which one is picked.",
+    wide: false,
     snippet: `<RadioGroup
   legend="Notification method"
   name="channel"
@@ -477,7 +510,18 @@ export const fieldDemos = {
   },
   InputButton: {
     summary:
-      "An input with a trailing `.btn-input-icon` button positioned inside it. Its own export rather than a slot on `Input`: it is a layout with two wrappers and reserved right padding, and `Input` stays a bare native element. The button is a sibling, so clicking it never activates the input.",
+      "A text field with a button inside its right edge, such as a search box's search button.",
+    wide: false,
+    props: [
+      { name: "icon", type: "ComponentChildren", description: "What the button shows." },
+      { name: "iconLabel", type: "string", description: "The button's accessible name." },
+      { name: "onClick", type: "() => void", description: "What the button does." },
+      {
+        name: "value / onInput",
+        type: "string / (event) => void",
+        description: "The field's text, as on `Input`; every other input attribute passes through.",
+      },
+    ],
     snippet: `<InputButton
   type="search"
   icon={<IconSearch class="size-4" />}
@@ -491,7 +535,37 @@ export const fieldDemos = {
   },
   MoneyInput: {
     summary:
-      'Text field for an amount in a currency\'s smallest unit: `value`/`onChange` carry the integer, `inputmode="decimal"` brings up the numeric keypad, and typing understands `locale`\'s own decimal mark — `"12,5"` with `locale="de"` becomes `1250`. Text that will not parse, or a parsed amount outside `min`/`max`, leaves `value` unchanged and announces a message; the typed text itself is never what a plain form post carries — pass `name` for a hidden field that posts the integer instead.',
+      "An amount field that reads what people type in their own number format and hands back the amount in cents.",
+    wide: false,
+    props: [
+      {
+        name: "value",
+        type: "number | null",
+        description: "The amount in the currency's smallest unit, such as cents.",
+      },
+      {
+        name: "onChange",
+        type: "(value: number | null) => void",
+        description: "Called when the typed text reads as a new amount.",
+      },
+      { name: "currency", type: "string", description: "The ISO code, such as `EUR`." },
+      {
+        name: "locale",
+        type: "string",
+        default: `"en"`,
+        description: "How the amount is shown and how typed text is read.",
+      },
+      {
+        name: "min / max",
+        type: "number",
+        description: "The allowed range, in the smallest unit.",
+      },
+      {
+        name: "name",
+        type: "string",
+        description: "Posts that integer in a hidden field of this name.",
+      },
+    ],
     snippet: `<Field id="price" label="Price">
   <MoneyInput
     value={amount.value}
