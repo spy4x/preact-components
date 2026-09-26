@@ -9,15 +9,24 @@
  */
 
 import { untracked } from "@preact/signals"
-import type { JSX } from "preact"
-import type { Demo } from "./registry.ts"
+import type { ComponentChildren, JSX } from "preact"
+import type { Demo, DemoProp } from "./registry.ts"
 
 /** One example, as a section writes it. */
 export interface Example {
   /** Card heading, e.g. `"cn()"`. */
   title: string
-  /** One sentence on what the export is for. */
+  /** One plain sentence on what the export is for, in inline Markdown (`markdown.tsx`). */
   summary: string
+  /** The description as JSX, shown instead of {@link Example.summary}: see `Demo.description`. */
+  description?: ComponentChildren
+  /**
+   * `true` for a card that takes the content column's full width (a long output), `false` for one
+   * that shares a row. Left out, an example card shares a row. See `Demo.wide`.
+   */
+  wide?: boolean
+  /** A props or options summary under the output: see `Demo.props`. */
+  props?: readonly DemoProp[]
   /** The code a reader copies: the same calls {@link Example.run} makes. */
   snippet: string
   /** Every export the example demonstrates, as its package exports it; at least one. */
@@ -81,6 +90,9 @@ export function toExampleDemos(examples: ExampleFragment): Record<string, Exampl
     Object.entries(examples).map(([key, example]) => [key, {
       title: example.title,
       summary: example.summary,
+      description: example.description,
+      wide: example.wide,
+      props: example.props,
       snippet: example.snippet,
       covers: example.covers,
       run: example.run,
