@@ -20,39 +20,76 @@ function assertTickInvariants(values: number[], step: number): void {
   }
 }
 
+/** How long a probe worker may take to load and type-check its module before the test gives up. */
+const STARTUP_TIMEOUT_MS = 60_000
+
+/** How long the call itself may run, counted from the worker's ready message. */
+const CALL_TIMEOUT_MS = 2_000
+
+/** What a probe worker posts: `ready` as the request arrives, then the call's `result`. */
+type ProbeMessage = { kind: "ready" } | { kind: "result"; ticks: number[] }
+
+/** How a probe ended: the call's ticks, or which deadline passed, or the worker's error. */
+type ProbeOutcome =
+  | { kind: "result"; ticks: number[] }
+  | { kind: "not-started" }
+  | { kind: "timeout" }
+  | { kind: "error"; message: string }
+
 /**
- * Call `ticks` in a worker and give up after `timeoutMs`.
+ * Load `workerFile` in a worker, send it `request`, and wait for its answer.
  *
  * A tick loop that cannot advance its cursor never returns, and `deno test` has no per-test timeout,
- * so an in-process call would hang the suite rather than fail it. Returns `"timeout"` when the
- * worker neither answered nor crashed in time.
+ * so an in-process call would hang the suite rather than fail it. Two deadlines keep a slow runner
+ * apart from a hung loop: start-up (module load and type-check) gets `STARTUP_TIMEOUT_MS`, and only
+ * then does the call's own `CALL_TIMEOUT_MS` start. One 2-second deadline that covered both
+ * failed on a loaded CI runner (#326).
  */
-async function probeTicks(
-  request: { min: number; max: number; maxTicks?: number },
-  timeoutMs: number,
-): Promise<number[] | "timeout"> {
-  const worker = new Worker(new URL("./ticks.worker.ts", import.meta.url), { type: "module" })
+async function probe(workerFile: string, request: unknown): Promise<ProbeOutcome> {
+  const worker = new Worker(new URL(workerFile, import.meta.url), { type: "module" })
+  let timer: ReturnType<typeof setTimeout> | undefined
 
   try {
-    return await new Promise<number[] | "timeout">((resolve) => {
-      const timer = setTimeout(() => resolve("timeout"), timeoutMs)
-      worker.onmessage = (event: MessageEvent<number[]>) => {
+    return await new Promise<ProbeOutcome>((resolve) => {
+      timer = setTimeout(() => resolve({ kind: "not-started" }), STARTUP_TIMEOUT_MS)
+      worker.onmessage = (event: MessageEvent<ProbeMessage>) => {
         clearTimeout(timer)
-        resolve(event.data)
+        if (event.data.kind === "ready") {
+          timer = setTimeout(() => resolve({ kind: "timeout" }), CALL_TIMEOUT_MS)
+        } else {
+          resolve(event.data)
+        }
       }
-      worker.onerror = () => {
+      worker.onerror = (event: ErrorEvent) => {
+        event.preventDefault()
         clearTimeout(timer)
-        resolve("timeout")
+        resolve({ kind: "error", message: event.message })
       }
+      // Queued until the worker's module has loaded; its handler then posts `ready` before it calls.
       worker.postMessage(request)
     })
   } finally {
+    clearTimeout(timer)
     worker.terminate()
   }
 }
 
+/** The ticks of a probe that answered; a start-up failure, a missed deadline or a crash throws. */
+function ticksOf(outcome: ProbeOutcome, call: string, hint: string): number[] {
+  switch (outcome.kind) {
+    case "result":
+      return outcome.ticks
+    case "not-started":
+      throw new Error(`worker did not start within ${STARTUP_TIMEOUT_MS}ms, so ${call} never ran`)
+    case "timeout":
+      throw new Error(`${call} did not terminate within ${CALL_TIMEOUT_MS}ms: ${hint}`)
+    case "error":
+      throw new Error(`the worker running ${call} failed: ${outcome.message}`)
+  }
+}
+
 // Sanitizers are disabled because the worker terminates asynchronously; the promise settles via
-// the message handler, the error handler or the deadline, and `terminate()` runs in `finally`.
+// the message handler, the error handler or a deadline, and `terminate()` runs in `finally`.
 Deno.test({
   name: "ticks - terminates when the step is smaller than the float precision",
   sanitizeOps: false,
@@ -63,50 +100,17 @@ Deno.test({
     // forever here. The index-driven loop returns the two representable bounds.
     const min = 1e18
     const max = 1e18 + 100
-    const result = await probeTicks({ min, max }, 2_000)
-
-    if (result === "timeout") {
-      throw new Error(
-        `ticks(${min}, ${max}) did not terminate within 2000ms: the tick loop must not advance its cursor with \`v += step\``,
-      )
-    }
+    const result = ticksOf(
+      await probe("./ticks.worker.ts", { min, max }),
+      `ticks(${min}, ${max})`,
+      "the tick loop must not advance its cursor with `v += step`",
+    )
 
     assertEquals(result.length, 2)
     assertEquals(result[0], min)
     assertEquals(result[1], max)
   },
 })
-
-/**
- * Call `niceScale` in a worker and give up after `timeoutMs`.
- *
- * The tick loop behind `niceScale` (ts-libs' `stepAxis`) could loop as many times as an absurd
- * `target` option asks for before its iteration cap; see the deadline note on `probeTicks` above
- * for why this runs off the main thread.
- */
-async function probeNiceScale(
-  request: { min: number; max: number; options?: { target?: number; padRatio?: number } },
-  timeoutMs: number,
-): Promise<number[] | "timeout"> {
-  const worker = new Worker(new URL("./nice-scale.worker.ts", import.meta.url), { type: "module" })
-
-  try {
-    return await new Promise<number[] | "timeout">((resolve) => {
-      const timer = setTimeout(() => resolve("timeout"), timeoutMs)
-      worker.onmessage = (event: MessageEvent<number[]>) => {
-        clearTimeout(timer)
-        resolve(event.data)
-      }
-      worker.onerror = () => {
-        clearTimeout(timer)
-        resolve("timeout")
-      }
-      worker.postMessage(request)
-    })
-  } finally {
-    worker.terminate()
-  }
-}
 
 // Sanitizers are disabled for the same reason as the `ticks` termination test above.
 Deno.test({
@@ -120,14 +124,11 @@ Deno.test({
     // now lives in `@spy4x/platform/universal/axis`'s `stepAxis`; this guards niceScale's use of it.
     const min = 1e6
     const max = 2e6
-    const result = await probeNiceScale({ min, max, options: { target: 1e25 } }, 2_000)
-
-    if (result === "timeout") {
-      throw new Error(
-        `niceScale(${min}, ${max}, { target: 1e25 }) did not terminate within 2000ms: ` +
-          "the tick loop must cap its iterations at MAX_TICKS, not just its output length",
-      )
-    }
+    const result = ticksOf(
+      await probe("./nice-scale.worker.ts", { min, max, options: { target: 1e25 } }),
+      `niceScale(${min}, ${max}, { target: 1e25 })`,
+      "the tick loop must cap its iterations at MAX_TICKS, not just its output length",
+    )
 
     assert(result.length >= 1, `expected at least one tick, got ${result}`)
   },
