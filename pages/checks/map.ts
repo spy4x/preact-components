@@ -1,5 +1,14 @@
 import { pageHref } from "@spy4x/preact-ui-guide/routes"
-import { centreInView, check, type Devtools, poll, pressKey } from "./harness.ts"
+import {
+  centreInView,
+  check,
+  type Devtools,
+  frameOverviewHydrates,
+  inFreshFrame,
+  poll,
+  pressKey,
+  readFrameScripts,
+} from "./harness.ts"
 
 /**
  * Strings only Leaflet's code carries; a script that holds either counts as carrying Leaflet. The
@@ -11,14 +20,6 @@ const LEAFLET_MARKERS = ["A JavaScript library for interactive maps", "leaflet-z
 
 /** The id the frame gets, so every expression below finds the same one. */
 const FRAME_ID = "map-lazy-leaflet-frame"
-
-/** What {@link readScripts} reports about the scripts a document has fetched. */
-interface ScriptReport {
-  /** Path of every `.js` file the frame's document fetched, in the order it fetched them. */
-  scripts: string[]
-  /** The subset whose body carries one of {@link LEAFLET_MARKERS}. */
-  withLeaflet: string[]
-}
 
 /** The card these checks drive, and the pieces of it they read. */
 const CARD = "#demo-Map"
@@ -176,19 +177,10 @@ function readState(devtools: Devtools): Promise<MapState> {
  * @param devtools The connected session, on a hydrated page.
  */
 export async function mapChecks(devtools: Devtools): Promise<void> {
-  const scrollBefore = await devtools.evaluate<number>("scrollY")
-  try {
-    await lazyLeafletChecks(devtools)
-  } finally {
-    await devtools.evaluate(
-      `(document.getElementById(${JSON.stringify(FRAME_ID)})?.remove(), null)`,
-    )
-  }
-  const scrollAfter = await devtools.evaluate<number>("scrollY")
-  check(
-    "the frame the Leaflet check loads leaves the shared page where it was",
-    scrollAfter === scrollBefore,
-    `scrollY ${scrollBefore} → ${scrollAfter}`,
+  await inFreshFrame(
+    devtools,
+    { id: FRAME_ID, src: pageHref("overview"), label: "Leaflet" },
+    (frame) => lazyLeafletChecks(devtools, frame),
   )
 
   await mapCardChecks(devtools)
@@ -198,51 +190,23 @@ export async function mapChecks(devtools: Devtools): Promise<void> {
  * The guide loads Leaflet only when its map page opens (#315).
  *
  * The shared page cannot show that: earlier blocks have opened the map page already, and this block
- * runs on it. So, like `charts.ts`'s d3 check, this loads the site again in a same-origin `<iframe>`,
- * a fresh document with its own module map: it opens at the overview, lists every script the frame
- * fetched and reads each one for Leaflet's code, then opens the frame's map page, waits for the map
- * to draw its pins, and reads again. The frame is fixed over the viewport, invisible and
- * click-through, and the caller removes it before the card checks run.
+ * runs on it. So, like `charts.ts`'s d3 check, this loads the site again in a fresh frame
+ * (`inFreshFrame` in `harness.ts`): it opens at the overview, lists every script the frame fetched
+ * and reads each one for Leaflet's code, then opens the frame's map page, waits for the map to draw
+ * its pins, and reads again. The frame is removed before the card checks run.
  *
  * @param devtools The connected session.
+ * @param frame A page expression for the frame, loaded at the overview.
  */
-async function lazyLeafletChecks(devtools: Devtools): Promise<void> {
-  const frame = `document.getElementById(${JSON.stringify(FRAME_ID)})`
+async function lazyLeafletChecks(devtools: Devtools, frame: string): Promise<void> {
+  if (!await frameOverviewHydrates(devtools, frame)) return
 
-  await devtools.evaluate(`(() => {
-    const frame = document.createElement("iframe")
-    frame.id = ${JSON.stringify(FRAME_ID)}
-    frame.setAttribute("aria-hidden", "true")
-    frame.tabIndex = -1
-    frame.style.cssText =
-      "position:fixed;inset:0;width:100vw;height:100vh;border:0;opacity:0;pointer-events:none"
-    frame.src = location.origin + location.pathname + ${JSON.stringify(pageHref("overview"))}
-    document.body.append(frame)
-    return null
-  })()`)
-
-  const overviewReady = await poll(
-    () =>
-      devtools.evaluate<boolean>(
-        `${frame}?.contentDocument?.documentElement.dataset.hydrated === "true" &&
-          ${frame}.contentDocument.querySelector('[data-guide-page="overview"]') !== null`,
-      ),
-    15_000,
-  )
-  if (!overviewReady) {
-    check("the guide's overview, loaded fresh in a frame, hydrates", false, "not within 15s")
-    return
-  }
-  // Nothing on the overview should start a load after hydration; give anything that would a moment
-  // to show up in the list before reading it.
-  await new Promise((resolve) => setTimeout(resolve, 1_000))
-
-  const overview = await readScripts(devtools, frame)
+  const overview = await readFrameScripts(devtools, frame, LEAFLET_MARKERS)
   check(
     "the guide's overview loads no Leaflet: no script the page fetched carries Leaflet's code",
-    overview.scripts.length > 0 && overview.withLeaflet.length === 0,
+    overview.scripts.length > 0 && overview.matching.length === 0,
     `${overview.scripts.length} scripts: ${overview.scripts.join(", ")}` +
-      (overview.withLeaflet.length > 0 ? ` — Leaflet in ${overview.withLeaflet.join(", ")}` : ""),
+      (overview.matching.length > 0 ? ` — Leaflet in ${overview.matching.join(", ")}` : ""),
   )
 
   await devtools.evaluate(
@@ -258,13 +222,13 @@ async function lazyLeafletChecks(devtools: Devtools): Promise<void> {
     return pins === PLACE_IDS.length
   }, 15_000)
 
-  const opened = await readScripts(devtools, frame)
+  const opened = await readFrameScripts(devtools, frame, LEAFLET_MARKERS)
   const newScripts = opened.scripts.filter((path) => !overview.scripts.includes(path))
   check(
     "opening the map page loads Leaflet, in a script the overview never fetched",
-    opened.withLeaflet.length > 0 && opened.withLeaflet.every((path) => newScripts.includes(path)),
+    opened.matching.length > 0 && opened.matching.every((path) => newScripts.includes(path)),
     `new scripts: ${newScripts.join(", ") || "none"} — Leaflet in ${
-      opened.withLeaflet.join(", ") || "none"
+      opened.matching.join(", ") || "none"
     }`,
   )
   check(
@@ -272,32 +236,6 @@ async function lazyLeafletChecks(devtools: Devtools): Promise<void> {
     drawn,
     `${pins} .leaflet-marker-icon element(s) in a .leaflet-container, expected ${PLACE_IDS.length}`,
   )
-}
-
-/**
- * List the `.js` files the frame's document fetched, and which of them carry Leaflet.
- *
- * Each body is fetched again from the shared page: same origin, same URL, so the browser's cache
- * answers, and the text read is what the frame ran.
- *
- * @param devtools The connected session.
- * @param frame An expression for the frame element.
- */
-async function readScripts(devtools: Devtools, frame: string): Promise<ScriptReport> {
-  return await devtools.evaluate<ScriptReport>(`(async () => {
-    const entries = ${frame}.contentWindow.performance.getEntriesByType("resource")
-    const scripts = entries.map((entry) => new URL(entry.name))
-      .filter((url) => url.origin === location.origin && url.pathname.endsWith(".js"))
-      .map((url) => url.pathname)
-    const withLeaflet = []
-    for (const path of scripts) {
-      const text = await (await fetch(path)).text()
-      if (${JSON.stringify(LEAFLET_MARKERS)}.some((marker) => text.includes(marker))) {
-        withLeaflet.push(path)
-      }
-    }
-    return { scripts, withLeaflet }
-  })()`)
 }
 
 /**

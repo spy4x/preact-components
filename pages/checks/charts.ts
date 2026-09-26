@@ -1,5 +1,12 @@
 import { pageHref } from "@spy4x/preact-ui-guide/routes"
-import { check, type Devtools, poll } from "./harness.ts"
+import {
+  check,
+  type Devtools,
+  frameOverviewHydrates,
+  inFreshFrame,
+  poll,
+  readFrameScripts,
+} from "./harness.ts"
 
 /**
  * Strings only d3's code carries; a script that holds any of them counts as carrying d3. The first
@@ -12,14 +19,6 @@ const D3_MARKERS = ["%-I:%M:%S %p", "__data__"]
 
 /** The id the frame gets, so every expression below finds the same one. */
 const FRAME_ID = "charts-lazy-d3-frame"
-
-/** What {@link readScripts} reports about the scripts a document has fetched. */
-interface ScriptReport {
-  /** Path of every `.js` file the frame's document fetched, in the order it fetched them. */
-  scripts: string[]
-  /** The subset whose body carries one of {@link D3_MARKERS}. */
-  withD3: string[]
-}
 
 /** What {@link readCharts} reads off the frame's charts page. */
 interface ChartsState {
@@ -39,31 +38,17 @@ interface ChartsState {
  *
  * An app that mounts the guide must not load d3 until someone opens the charts page. The shared
  * page cannot show that — earlier blocks have opened the charts page already, and the block itself
- * runs on it — so the check loads the site again in a same-origin `<iframe>`, which is a fresh
- * document with its own module map: it opens at the overview, lists every script the frame fetched
- * and reads each one for d3's code, then opens the frame's charts page and reads again. A second
- * tab would do the same, but `connect` in `harness.ts` needs the debugging port, which a block does
- * not get; the frame needs nothing but the page. The frame is fixed over the viewport, invisible
- * and click-through, so its charts measure a real width and nothing the pointer does reaches it,
- * and it is removed before the block ends. The shared page's scroll position is read before and
- * after, and the check fails if the frame moved it.
+ * runs on it — so the check loads the site again in a fresh frame (`inFreshFrame` in `harness.ts`):
+ * it opens at the overview, lists every script the frame fetched and reads each one for d3's code,
+ * then opens the frame's charts page and reads again.
  *
  * @param devtools The connected session, on a hydrated page showing the charts page.
  */
 export async function chartsChecks(devtools: Devtools): Promise<void> {
-  const scrollBefore = await devtools.evaluate<number>("scrollY")
-  try {
-    await lazyD3Checks(devtools)
-  } finally {
-    await devtools.evaluate(
-      `(document.getElementById(${JSON.stringify(FRAME_ID)})?.remove(), null)`,
-    )
-  }
-  const scrollAfter = await devtools.evaluate<number>("scrollY")
-  check(
-    "the frame the d3 check loads leaves the shared page where it was",
-    scrollAfter === scrollBefore,
-    `scrollY ${scrollBefore} → ${scrollAfter}`,
+  await inFreshFrame(
+    devtools,
+    { id: FRAME_ID, src: pageHref("overview"), label: "d3" },
+    (frame) => lazyD3Checks(devtools, frame),
   )
 }
 
@@ -71,46 +56,17 @@ export async function chartsChecks(devtools: Devtools): Promise<void> {
  * The checks themselves: overview without d3, then the charts page with it.
  *
  * @param devtools The connected session.
+ * @param frame A page expression for the frame, loaded at the overview.
  */
-async function lazyD3Checks(devtools: Devtools): Promise<void> {
-  const frame = `document.getElementById(${JSON.stringify(FRAME_ID)})`
-  const inFrame = (selector: string) =>
-    `${frame}?.contentDocument?.querySelector(${JSON.stringify(selector)})`
+async function lazyD3Checks(devtools: Devtools, frame: string): Promise<void> {
+  if (!await frameOverviewHydrates(devtools, frame)) return
 
-  await devtools.evaluate(`(() => {
-    const frame = document.createElement("iframe")
-    frame.id = ${JSON.stringify(FRAME_ID)}
-    frame.setAttribute("aria-hidden", "true")
-    frame.tabIndex = -1
-    frame.style.cssText =
-      "position:fixed;inset:0;width:100vw;height:100vh;border:0;opacity:0;pointer-events:none"
-    frame.src = location.origin + location.pathname + ${JSON.stringify(pageHref("overview"))}
-    document.body.append(frame)
-    return null
-  })()`)
-
-  const overviewReady = await poll(
-    () =>
-      devtools.evaluate<boolean>(
-        `${frame}?.contentDocument?.documentElement.dataset.hydrated === "true" &&
-          ${inFrame('[data-guide-page="overview"]')} !== null`,
-      ),
-    15_000,
-  )
-  if (!overviewReady) {
-    check("the guide's overview, loaded fresh in a frame, hydrates", false, "not within 15s")
-    return
-  }
-  // Nothing on the overview should start a load after hydration; give anything that would a moment
-  // to show up in the list before reading it.
-  await new Promise((resolve) => setTimeout(resolve, 1_000))
-
-  const overview = await readScripts(devtools, frame)
+  const overview = await readFrameScripts(devtools, frame, D3_MARKERS)
   check(
     "the guide's overview loads no d3: no script the page fetched carries d3's code",
-    overview.scripts.length > 0 && overview.withD3.length === 0,
+    overview.scripts.length > 0 && overview.matching.length === 0,
     `${overview.scripts.length} scripts: ${overview.scripts.join(", ")}` +
-      (overview.withD3.length > 0 ? ` — d3 in ${overview.withD3.join(", ")}` : ""),
+      (overview.matching.length > 0 ? ` — d3 in ${overview.matching.join(", ")}` : ""),
   )
 
   await devtools.evaluate(
@@ -123,12 +79,14 @@ async function lazyD3Checks(devtools: Devtools): Promise<void> {
       charts.svgs.every((svg) => svg.ticks > 0 && svg.paths > 0) && charts.pendingExamples === 0
   }, 15_000)
 
-  const opened = await readScripts(devtools, frame)
+  const opened = await readFrameScripts(devtools, frame, D3_MARKERS)
   const newScripts = opened.scripts.filter((path) => !overview.scripts.includes(path))
   check(
     "opening the charts page loads d3, in a script the overview never fetched",
-    opened.withD3.length > 0 && opened.withD3.every((path) => newScripts.includes(path)),
-    `new scripts: ${newScripts.join(", ") || "none"} — d3 in ${opened.withD3.join(", ") || "none"}`,
+    opened.matching.length > 0 && opened.matching.every((path) => newScripts.includes(path)),
+    `new scripts: ${newScripts.join(", ") || "none"} — d3 in ${
+      opened.matching.join(", ") || "none"
+    }`,
   )
   check(
     "the charts page's d3 charts draw axes and lines once d3 has loaded",
@@ -144,30 +102,6 @@ async function lazyD3Checks(devtools: Devtools): Promise<void> {
     charts !== undefined && charts.pendingExamples === 0 && charts.timeLabels.includes("hours:"),
     charts ? `${charts.pendingExamples} still loading; time labels: ${charts.timeLabels}` : "",
   )
-}
-
-/**
- * List the `.js` files the frame's document fetched, and which of them carry d3.
- *
- * Each body is fetched again from the shared page: same origin, same URL, so the browser's cache
- * answers, and the text read is what the frame ran.
- *
- * @param devtools The connected session.
- * @param frame An expression for the frame element.
- */
-async function readScripts(devtools: Devtools, frame: string): Promise<ScriptReport> {
-  return await devtools.evaluate<ScriptReport>(`(async () => {
-    const entries = ${frame}.contentWindow.performance.getEntriesByType("resource")
-    const scripts = entries.map((entry) => new URL(entry.name))
-      .filter((url) => url.origin === location.origin && url.pathname.endsWith(".js"))
-      .map((url) => url.pathname)
-    const withD3 = []
-    for (const path of scripts) {
-      const text = await (await fetch(path)).text()
-      if (${JSON.stringify(D3_MARKERS)}.some((marker) => text.includes(marker))) withD3.push(path)
-    }
-    return { scripts, withD3 }
-  })()`)
 }
 
 /**
