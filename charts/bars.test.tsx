@@ -57,6 +57,12 @@ describe("Bars", () => {
     expect(html).not.toContain("bg-transparent")
   })
 
+  it("stays transparent when the caller's background applies only on hover", () => {
+    const html = render(<Bars data={data} class="hover:bg-gray-100" />)
+
+    expect(html).toMatch(/<table[^>]*class="[^"]*\bbg-transparent\b/)
+  })
+
   it("stays transparent when the caller's class sets no background", () => {
     const html = render(<Bars data={data} class="mt-2" />)
 
