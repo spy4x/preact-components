@@ -61,14 +61,12 @@ const SECTIONS_ON_PAGES: Record<string, string[]> = {
     "fields",
     "enhanced-forms",
   ],
-  "page-system": ["system"],
-  "page-crud": ["crud"],
+  "page-icons": ["icons"],
+  "page-theme": ["forms", "surfaces"],
   "page-charts": ["charts"],
   "page-map": ["map"],
-  "page-signals": [],
-  "page-theme": ["forms", "surfaces"],
-  "page-icons": ["icons"],
-  "page-cn": [],
+  "page-system": ["system"],
+  "page-crud": ["crud"],
 }
 
 /** One entry removed from the shipped registry, to reach the banner a partial one produces. */
@@ -139,10 +137,10 @@ describe("UIGuide", () => {
     expect(html).toContain('id="instructions"')
   })
 
-  it("renders every package's page on the all page, in navigation order, each with its sections", () => {
+  it("renders every package's page in the served document, in navigation order, each with its sections", () => {
     const html = render(<UIGuide />)
 
-    // Without a hash the guide renders its `all` page: the overview, then every package's page in
+    // Without a hash the guide renders every page at once: the overview, then every package's page in
     // the navigation's order. The ids are read in document order and compared against the
     // hand-written sequence above, so a section filed on the wrong page, or a page out of order, is
     // red — and the failure names the page whose run stopped matching rather than printing a diff

@@ -28,20 +28,12 @@
  */
 
 import type { ComponentChildren } from "preact"
-import type { ExampleDemo } from "./example.tsx"
 import { badgeDemos } from "./sections/badges.tsx"
 import { buttonDemos } from "./sections/buttons.tsx"
 import { chartsDemos } from "./sections/charts.tsx"
 import { crudDemos } from "./sections/crud.tsx"
 import { displayDemos } from "./sections/display.tsx"
 import { enhancedFormDemos } from "./sections/enhanced-forms.tsx"
-import { uiExamples } from "./sections/ui-examples.tsx"
-import { signalsExamples } from "./sections/signals-examples.tsx"
-import { chartsExamples } from "./sections/charts-examples.tsx"
-import { systemExamples } from "./sections/system-examples.tsx"
-import { crudExamples } from "./sections/crud-examples.tsx"
-import { themeExamples } from "./sections/theme-examples.tsx"
-import { cnExamples } from "./sections/cn-examples.tsx"
 import { feedbackDemos } from "./sections/feedback.tsx"
 import { fieldDemos } from "./sections/fields.tsx"
 import { formDemos } from "./sections/forms.tsx"
@@ -56,22 +48,22 @@ import { systemDemos } from "./sections/system.tsx"
  *
  * Their markup is on the page, so the host's stylesheet has to scan them (`pages/styles.css`).
  */
-export const packageIds = ["ui", "charts", "system", "crud", "map"] as const
+export const packageIds = ["ui", "charts", "map", "system", "crud"] as const
 
 /**
- * Packages the catalogue covers with example cards alone: nothing they export renders markup of its
- * own, so no stylesheet needs to scan them.
+ * Packages that export no component: helpers only, so the guide shows none of their exports and no
+ * stylesheet needs to scan them. `theme` still has a page, for the classes its preset ships.
  */
-export const examplePackageIds = ["signals", "theme", "cn"] as const
+export const helperPackageIds = ["theme", "signals", "cn"] as const
 
 /**
- * Every package the catalogue accounts for: {@link packageIds}, then {@link examplePackageIds}.
+ * Every package the coverage rule accounts for: {@link packageIds}, then {@link helperPackageIds}.
  *
- * Adding one here is what makes its every value export somebody's to account for; `coverage.ts`
- * reads this list and fails when a package directory is neither catalogued nor excluded with a
- * reason.
+ * Adding one here is what makes its every value export somebody's to account for — a component
+ * needs a card, a helper a line in the package's README; `coverage.ts` reads this list and fails
+ * when a package directory is neither covered nor excluded with a reason.
  */
-export const coveredPackageIds = [...packageIds, ...examplePackageIds] as const
+export const coveredPackageIds = [...packageIds, ...helperPackageIds] as const
 
 /** Identifier of a catalogued package: its directory, and the last segment of its specifier. */
 export type PackageId = (typeof coveredPackageIds)[number]
@@ -137,13 +129,13 @@ export type DemoFragment = Record<string, Demo>
  * The package the class sections document.
  *
  * A class section names it to say which package's vocabulary its cards belong to. Its card ids are
- * not exports, and `coverage.ts` reads only component and example sections, so they stay out of
- * the coverage rule.
+ * not exports, and `coverage.ts` reads only component sections, so they stay out of the coverage
+ * rule.
  */
 export const CLASS_PACKAGE = "theme" as const
 
-/** A section's package: any catalogued package. */
-export type SectionPackage = PackageId
+/** A section's package: a package whose components have cards, or the theme for its classes. */
+export type SectionPackage = (typeof packageIds)[number] | typeof CLASS_PACKAGE
 
 /**
  * One card of a class section: the same shape as {@link Demo}, plus what only a class card has.
@@ -168,11 +160,8 @@ export interface ClassDemo extends Demo {
  */
 export type ClassDemoFragment = Record<string, ClassDemo>
 
-/**
- * What a section's cards are: a package's components, the theme's classes, or examples of exports
- * that render nothing (`example.tsx`).
- */
-export type SectionKind = "component" | "class" | "example"
+/** What a section's cards are: a package's components, or the theme's classes. */
+export type SectionKind = "component" | "class"
 
 /**
  * The group a section belongs to, as the reader's reason for looking rather than as a package
@@ -211,8 +200,6 @@ interface SectionSpec {
    * the coverage rule never looks for them among a package's exports.
    */
   package: SectionPackage
-  /** `"example"` for a section of {@link ExampleDemo}s; left out, the package decides the kind. */
-  kind?: "example"
   /**
    * The group the section is read in.
    *
@@ -255,13 +242,6 @@ export type SectionId =
   | "system"
   | "crud"
   | "map"
-  | "ui-examples"
-  | "signals-examples"
-  | "charts-examples"
-  | "system-examples"
-  | "crud-examples"
-  | "theme-examples"
-  | "cn-examples"
 
 const catalogue = {
   badges: {
@@ -374,67 +354,6 @@ const catalogue = {
       "Markers on a Leaflet map, plotted from plain data, with a list of the same places. The page loads Leaflet only when it opens, so until then the card shows a placeholder.",
     demos: mapDemos,
   },
-  "ui-examples": {
-    group: "application",
-    package: "ui",
-    kind: "example",
-    title: "Helpers",
-    blurb:
-      "The functions and constants `ui/` exports beside its components, each run on this page.",
-    demos: uiExamples,
-  },
-  "signals-examples": {
-    group: "application",
-    package: "signals",
-    kind: "example",
-    title: "Signals",
-    blurb: "Each helper run on this page, its output printed under the code.",
-    demos: signalsExamples,
-  },
-  "charts-examples": {
-    group: "application",
-    package: "charts",
-    kind: "example",
-    title: "Helpers",
-    blurb:
-      "The scales, colours and loaders `charts/` exports beside its charts, each run on this page.",
-    demos: chartsExamples,
-  },
-  "system-examples": {
-    group: "application",
-    package: "system",
-    kind: "example",
-    title: "Helpers",
-    blurb:
-      "The functions and constants `system/` exports beside its components, each run on this page.",
-    demos: systemExamples,
-  },
-  "crud-examples": {
-    group: "application",
-    package: "crud",
-    kind: "example",
-    title: "Helpers",
-    blurb:
-      "The functions and constants `crud/` exports beside its components, each run on this page.",
-    demos: crudExamples,
-  },
-  "theme-examples": {
-    group: "application",
-    package: "theme",
-    kind: "example",
-    title: "Helpers",
-    blurb:
-      "The stylesheets, the component classes and the spacing scale, exported for an app's build and tests.",
-    demos: themeExamples,
-  },
-  "cn-examples": {
-    group: "application",
-    package: "cn",
-    kind: "example",
-    title: "cn",
-    blurb: "`cn()` run on this page, its output printed under the code.",
-    demos: cnExamples,
-  },
 } as const satisfies Record<SectionId, SectionSpec>
 
 /**
@@ -510,11 +429,7 @@ export const catalogueSections: CatalogueSection[] = sectionIds.map((id) => {
   return {
     id,
     group: section.group,
-    kind: "kind" in section
-      ? section.kind
-      : section.package === CLASS_PACKAGE
-      ? "class"
-      : "component",
+    kind: section.package === CLASS_PACKAGE ? "class" : "component",
     title: section.title,
     blurb: section.blurb,
     package: section.package,
@@ -553,13 +468,6 @@ export const demoRegistry: DemoRegistry = {
   ...systemDemos,
   ...crudDemos,
   ...mapDemos,
-  ...uiExamples,
-  ...signalsExamples,
-  ...chartsExamples,
-  ...systemExamples,
-  ...crudExamples,
-  ...themeExamples,
-  ...cnExamples,
 }
 
 /**
@@ -576,20 +484,13 @@ export const classDemos: Record<string, ClassDemo> = Object.fromEntries(
     .flatMap((section) => section.names.map((name) => [name, demoRegistry[name]])),
 ) as Record<string, ClassDemo>
 
-/** Every example card the catalogue renders, keyed by card id; derived like {@link classDemos}. */
-export const exampleDemos: Record<string, ExampleDemo> = Object.fromEntries(
-  catalogueSections
-    .filter((section) => section.kind === "example")
-    .flatMap((section) => section.names.map((name) => [name, demoRegistry[name]])),
-) as Record<string, ExampleDemo>
-
 /**
- * A card's heading: a class or example card's own title, and `<Name />` for a component.
+ * A card's heading: a class card's own title, and `<Name />` for a component.
  *
  * @param name Card key.
  */
 export function cardLabel(name: string): string {
-  return classDemos[name]?.title ?? exampleDemos[name]?.title ?? `<${name} />`
+  return classDemos[name]?.title ?? `<${name} />`
 }
 
 /** Card ids of the class sections, in render order: the demos that document classes, not components. */
@@ -612,30 +513,27 @@ export function missingDemos(registry: PartialDemoRegistry): string[] {
 }
 
 /**
- * The guide's pages, in navigation order: the overview, one page per package, then `all`, every
- * page at once.
+ * The guide's pages, in navigation order: the overview, then one page per package.
  *
  * A page is what the guide renders at one time. The sections above are still the unit a card
  * belongs to and a route names; a page is the package they belong to, so `ui/`'s sections are
- * one page read top to bottom, and a package with one section (`map`, `signals`, `cn`) is a page of
- * one. `theme` holds the two class sections and its examples, and `icons` renders the gallery.
+ * one page read top to bottom, and a package with one section (`map`) is a page of one. `theme`
+ * holds the two class sections, and `icons` renders the gallery. A package that exports helpers
+ * alone (`signals`, `cn`) has no page: the guide shows components.
  *
- * `all` is every other page at once. It is what the guide renders before its host has read the
- * address — so it is the served document, the page a reader without JavaScript gets — and a route
- * of its own, for searching the whole library with the browser's find.
+ * Before its host has read the address the guide renders every page at once, for a reader
+ * without JavaScript and for hydration to match (`shell.tsx`). That document is not a page: it has
+ * no route and no navigation entry.
  */
 export const guidePageIds = [
   "overview",
   "ui",
-  "system",
-  "crud",
+  "icons",
+  "theme",
   "charts",
   "map",
-  "signals",
-  "theme",
-  "icons",
-  "cn",
-  "all",
+  "system",
+  "crud",
 ] as const
 
 /** Identifier of one page of the guide, e.g. `"ui"`. */
@@ -669,6 +567,28 @@ const pageCopy: Record<GuidePageId, { title: string; blurb: string; summary?: st
     summary:
       "Buttons, fields, tables, dialogs, toasts and the other controls an app is built from.",
   },
+  icons: {
+    title: "Icons",
+    blurb: "Every glyph the icon package exports. Search by name, click a glyph to copy its JSX.",
+    summary: "Every glyph the icon package exports, searchable and copyable.",
+  },
+  theme: {
+    title: "Theme",
+    blurb:
+      "The design tokens and the classes the preset stylesheet ships, for the markup an app writes itself.",
+    summary: "The design tokens and the classes an app puts on its own markup.",
+  },
+  charts: {
+    title: "Charts",
+    blurb:
+      "Charts that render on the server as plain SVG and HTML and add tooltips in the browser.",
+    summary: "Server-rendered charts with tooltips.",
+  },
+  map: {
+    title: "Map",
+    blurb: catalogue.map.blurb,
+    summary: "Markers on a Leaflet map, plotted from plain data.",
+  },
   system: {
     title: "System",
     blurb: catalogue.system.blurb,
@@ -678,46 +598,6 @@ const pageCopy: Record<GuidePageId, { title: string; blurb: string; summary?: st
     title: "CRUD",
     blurb: catalogue.crud.blurb,
     summary: "List and editor scaffolding for a resource page, driven by props and your store.",
-  },
-  charts: {
-    title: "Charts",
-    blurb:
-      "Charts that render on the server as plain SVG and HTML and add tooltips in the browser, and the scale and loading helpers behind them.",
-    summary: "Server-rendered charts with tooltips, and the helpers behind them.",
-  },
-  map: {
-    title: "Map",
-    blurb: catalogue.map.blurb,
-    summary: "Markers on a Leaflet map, plotted from plain data.",
-  },
-  signals: {
-    title: "Signals",
-    blurb:
-      "State helpers built on `@preact/signals`: the model store, filters bound to the address bar, table state, toasts and the theme store. The package renders nothing of its own.",
-    summary:
-      "State helpers on `@preact/signals`: stores, address-bar filters, table state and toasts.",
-  },
-  theme: {
-    title: "Theme",
-    blurb:
-      "The design tokens and the classes the preset stylesheet ships, for the markup an app writes itself.",
-    summary: "The design tokens and the classes an app puts on its own markup.",
-  },
-  icons: {
-    title: "Icons",
-    blurb: "Every glyph the icon package exports. Search by name, click a glyph to copy its JSX.",
-    summary: "Every glyph the icon package exports, searchable and copyable.",
-  },
-  all: {
-    title: "Everything",
-    blurb:
-      "Every page of the guide on one page: the whole library in one scroll, for the browser's own find.",
-  },
-  cn: {
-    title: "cn",
-    blurb:
-      "`cn()` joins class names and resolves conflicting Tailwind utilities, so a caller's class wins over a component's default.",
-    summary: "Joins class names and lets a caller's Tailwind class win over a component's.",
   },
 }
 
@@ -737,13 +617,9 @@ export const guidePages: GuidePage[] = guidePageIds.map((id) => ({
   title: pageCopy[id].title,
   blurb: pageCopy[id].blurb,
   summary: pageCopy[id].summary ?? pageCopy[id].blurb,
-  packageName: id === "overview" || id === "all" ? undefined : `@spy4x/preact-${id}`,
-  sections: id === "all"
-    ? catalogueSections
-    : catalogueSections.filter((section) => pageOfSection(section) === id),
+  packageName: id === "overview" ? undefined : `@spy4x/preact-${id}`,
+  sections: catalogueSections.filter((section) => pageOfSection(section) === id),
 }))
 
-/** The pages that document one package each: every page but the overview and `all`. */
-export const packagePages: GuidePage[] = guidePages.filter((page) =>
-  page.id !== "overview" && page.id !== "all"
-)
+/** The pages that document one package each: every page but the overview. */
+export const packagePages: GuidePage[] = guidePages.filter((page) => page.id !== "overview")

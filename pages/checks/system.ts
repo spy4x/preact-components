@@ -3918,18 +3918,18 @@ async function siteHeaderEscapeRaceCheck(devtools: Devtools): Promise<void> {
  * acting, and this proves it: the dialog closes, the menu stays open, and focus ends up on the
  * dialog's own trigger, not the menu's.
  *
- * The dialog is `ui/`'s `Modal`, on the catalogue's own `#demo-Modal` card — the same card and
- * trigger `ui.ts`'s own Modal checks drive, found the same way: the first button whose text starts
- * with `"default"`. `system` runs before `ui` in `verify.ts`'s fixed package order, so this check
- * closes the dialog itself and confirms no dialog is left in the top layer before it returns,
- * rather than leaving that for `ui.ts`'s own checks to trip over.
+ * The dialog is a native modal `<dialog>` this check adds to the page for the purpose, the element
+ * `ui/`'s `Modal` renders, opened with `showModal()` from a button of its own. It used to be the
+ * catalogue's `#demo-Modal` card, read on the page that held every card at once; since #357 the
+ * guide shows one package's page at a time, and the system page holds no modal. The check removes
+ * its fixture and confirms no dialog is left in the top layer before it returns, rather than
+ * leaving that for `ui.ts`'s own checks to trip over.
  *
  * @param devtools The connected session, on a hydrated page, viewport already narrowed by the
  * caller. Forces the panel closed itself first, rather than assuming it already is.
  */
 async function siteHeaderEscapeScopingCheck(devtools: Devtools): Promise<void> {
-  // The Modal is a `ui/` card, so this check runs on the guide's `all` page, where both cards are.
-  await openGuidePage(devtools, "all")
+  await openGuidePage(devtools, "system")
   await ensureSiteHeaderClosed(devtools)
 
   await focusAndClick(devtools, SITE_HEADER_BUTTON)
@@ -3941,14 +3941,18 @@ async function siteHeaderEscapeScopingCheck(devtools: Devtools): Promise<void> {
   const armed = await read(
     devtools,
     `(() => {
-      const card = document.querySelector("#demo-Modal")
-      const trigger = card
-        ? [...card.querySelectorAll("button")]
-          .find((candidate) => candidate.textContent.trim().startsWith("default"))
-        : null
-      if (!trigger) return false
+      const fixture = document.createElement("div")
+      fixture.id = "site-header-scope-fixture"
+      const trigger = document.createElement("button")
+      trigger.type = "button"
+      trigger.textContent = "Open a dialog"
+      const dialog = document.createElement("dialog")
+      dialog.textContent = "A modal dialog above the menu"
+      trigger.addEventListener("click", () => dialog.showModal())
+      fixture.append(trigger, dialog)
+      document.body.append(fixture)
       globalThis.__siteHeaderScopeTrigger = trigger
-      // Focused before it is clicked — not because the click needs it, but because Modal's own
+      // Focused before it is clicked — not because the click needs it, but because a modal
       // dialog restores focus to whatever held it at the moment showModal() ran, natively, once
       // the dialog closes. A scripted .click() with no focus() first leaves that "whatever" as the
       // menu button — still focused from opening the panel above — which would make the dialog's
@@ -3964,7 +3968,7 @@ async function siteHeaderEscapeScopingCheck(devtools: Devtools): Promise<void> {
     () =>
       read(
         devtools,
-        `document.querySelector("#demo-Modal dialog")?.matches(":modal") === true`,
+        `document.querySelector("#site-header-scope-fixture dialog")?.matches(":modal") === true`,
         false,
       ),
     3_000,
@@ -3975,7 +3979,7 @@ async function siteHeaderEscapeScopingCheck(devtools: Devtools): Promise<void> {
     () =>
       read(
         devtools,
-        `document.querySelector("#demo-Modal dialog")?.matches(":modal") !== true`,
+        `document.querySelector("#site-header-scope-fixture dialog")?.matches(":modal") !== true`,
         false,
       ),
     3_000,
@@ -3997,9 +4001,9 @@ async function siteHeaderEscapeScopingCheck(devtools: Devtools): Promise<void> {
     !opened
       ? "the menu was never open"
       : !armed
-      ? "the Modal demo's own trigger could not be found"
+      ? "the dialog's own trigger could not be added"
       : !modalOpened
-      ? "the Modal demo's dialog never opened"
+      ? "the dialog never opened"
       : !modalClosed
       ? "the dialog was still :modal after the Escape press"
       : !after.panelStillOpen
@@ -4010,14 +4014,15 @@ async function siteHeaderEscapeScopingCheck(devtools: Devtools): Promise<void> {
       : "the dialog closed, the menu stayed open, and focus stayed on the dialog's own trigger",
   )
 
-  // Force the dialog closed and confirm the top layer is empty, whatever the checks above found —
+  // Remove the dialog and confirm the top layer is empty, whatever the checks above found —
   // `ui.ts`'s own Modal checks, and everything else `verify.ts` runs after this package block,
   // assume no dialog is left open from an earlier one.
   await read(
     devtools,
     `(() => {
-      const dialog = document.querySelector("#demo-Modal dialog")
+      const dialog = document.querySelector("#site-header-scope-fixture dialog")
       if (dialog?.open) dialog.close()
+      document.getElementById("site-header-scope-fixture")?.remove()
       return true
     })()`,
     false,
@@ -4034,8 +4039,8 @@ async function siteHeaderEscapeScopingCheck(devtools: Devtools): Promise<void> {
 
   await ensureSiteHeaderClosed(devtools)
   await openGuidePage(devtools, "system")
-  // The `#demo-Modal` card lives somewhere else on this long catalogue page, and focusing its
-  // trigger scrolled there to bring it into view — settling for *that* scroll is not enough, since
+  // The fixture sat at the end of this long catalogue page, and focusing its trigger scrolled
+  // there to bring it into view — settling for *that* scroll is not enough, since
   // `siteHeaderLayoutChecks` right after this reads a viewport-relative position off a header that
   // is no longer anywhere near the viewport. Scrolled back to this card, not merely settled.
   await read(
