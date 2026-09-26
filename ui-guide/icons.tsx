@@ -12,7 +12,7 @@ import { copyToClipboard } from "@spy4x/preact-ui/copy-button"
 import { Input } from "@spy4x/preact-ui/input"
 import { Cluster, Grid, Stack } from "@spy4x/preact-ui/layout"
 import { useSignal } from "@preact/signals"
-import type { ComponentType, JSX } from "preact"
+import type { ComponentChildren, ComponentType, JSX } from "preact"
 import { DemoCard } from "./card.tsx"
 
 /** One glyph, with the prop surface every icon in the package shares. */
@@ -47,6 +47,19 @@ export function filterIconNames(names: string[], query: string): string[] {
   const needle = query.trim().toLowerCase()
   if (!needle) return names
   return names.filter((name) => name.toLowerCase().includes(needle))
+}
+
+/**
+ * A cell's caption: the glyph's name without its `Icon` prefix, with a line-break opportunity before
+ * each inner capital, so a long name wraps between its words (`ArrowDown` / `Tray`) rather than being
+ * cut off. A single word too long for the cell still wraps, through the caption's `overflow-wrap`.
+ *
+ * @param name Export name of the glyph, e.g. `"IconArrowDownTray"`.
+ * @returns The caption's children: the words, with a `<wbr>` between them.
+ */
+export function glyphLabel(name: string): ComponentChildren[] {
+  const words = name.replace(/^Icon/, "").split(/(?=[A-Z])/)
+  return words.flatMap((word, index) => index === 0 ? [word] : [<wbr key={index} />, word])
 }
 
 /** Every word the gallery prints. Each has an English default ({@link DEFAULT_ICON_GALLERY_LABELS}). */
@@ -167,8 +180,8 @@ export function IconGallery(
                     class="group flex min-w-0 flex-col items-center gap-2 rounded-lg p-3 text-gray-600 hover:bg-white hover:text-purple-700 hover:shadow-xs focus-visible:outline-2 focus-visible:outline-purple-600 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-purple-300"
                   >
                     <Icon class="size-6 transition-transform duration-300 group-hover:scale-125" />
-                    <span class="w-full truncate text-center text-xs" title={name}>
-                      {name.replace(/^Icon/, "")}
+                    <span class="w-full text-center text-xs [overflow-wrap:anywhere]" title={name}>
+                      {glyphLabel(name)}
                     </span>
                   </button>
                 )

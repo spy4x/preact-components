@@ -29,11 +29,20 @@ describe("IconGallery", () => {
   })
 
   it("labels every cell with the name minus the Icon prefix", () => {
-    const html = render(<IconGallery />)
+    // The break opportunities between words are markup, not text: read the caption without them.
+    const html = render(<IconGallery />).replaceAll("<wbr/>", "")
 
     for (const name of ["IconSearch", "IconTrashBin", "IconEllipsisVertical"]) {
       expect(html, name).toContain(`>${name.replace(/^Icon/, "")}</span>`)
     }
+  })
+
+  it("lets a long name wrap between its words instead of cutting it off", () => {
+    const html = render(<IconGallery />)
+
+    expect(html).toContain(">Arrow<wbr/>Down<wbr/>Tray</span>")
+    expect(html).toContain(">Search</span>")
+    expect(html).not.toContain("truncate")
   })
 
   it("reports the visible and total counts", () => {
