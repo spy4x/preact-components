@@ -117,7 +117,6 @@ export const README_PENDING: Record<PackageId, readonly string[]> = {
   ],
   map: [],
   system: [
-    "collectSequence",
     "DEFAULT_UPDATE_MESSAGE",
     "describeCalendarDay",
     "isCurrentLink",
@@ -127,7 +126,6 @@ export const README_PENDING: Record<PackageId, readonly string[]> = {
     "skipWaiting",
     "TAB_BAR_SLOTS",
     "watchForUpdate",
-    "zoomableAlt",
   ],
   crud: [
     "associationActions",
