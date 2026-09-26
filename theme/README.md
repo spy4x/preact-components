@@ -342,8 +342,13 @@ accent `Kpi` and the components' focus rings — from an accent scale, not from 
   colour syntax (`oklch(from var(--color-accent) …)`), in three parts:
   - **Lightness.** Tints (50–300) keep the lightness of Tailwind's purple step with the same
     number, so a tint stays a tint. Steps 400–950 scale the accent's own lightness by the purple
-    step's ratio to purple-900's, capped (400–800 at 0.80/0.76/0.72/0.68/0.64) so the scale keeps
-    its order.
+    step's ratio to purple-900's, with caps:
+    - 400 and 500 are capped at 0.80 and 0.76. That keeps the scale in order for an accent about
+      as dark as purple-900. For an accent lighter than about 0.5, capped steps come out of order;
+      for example, step 700 is no longer lighter than step 900.
+    - 600, 700 and 800 carry the primary Button's white label, as its dark hover, dark fill and
+      light hover. They are capped at 0.545, 0.50 and 0.545, where white text clears 4.5:1 at
+      every hue. Step 600 gets 0.013 more near purple, so purple-600 stays exact.
   - **Chroma.** A step takes the purple step's chroma ratio only near purple's own hue; any other
     accent keeps its own chroma on steps 400–800, and scales down on the tints and 950. The result
     is capped at an estimate of the most chroma sRGB can show at that lightness and hue: the
@@ -355,10 +360,15 @@ accent `Kpi` and the components' focus rings — from an accent scale, not from 
   Relative colour was chosen over `color-mix()` because it can reproduce the purple steps: with
   no token set, every step is Tailwind's own purple step to the third decimal, and an app that
   sets nothing renders the same colours as before. With any other accent, every step renders
-  within 0.02 OKLab of the colour it names. Scaling lightness rather than fixing it also keeps a
-  warm accent's dark fill (step 700) well apart from the red of a danger button.
-  `pages/checks/theme.ts` measures all three claims in a browser. Choose an accent about as dark
-  as purple-900: white text sits on it.
+  within 0.02 OKLab of the colour it names. The one exception is an accent within about 11° of
+  purple: the allowance that keeps purple itself exact lets step 500 overshoot by up to about 0.025
+  OKLab. A warm accent's dark fill (step 700) can sit fairly close to the danger button's red;
+  white text on it comes first. `pages/checks/theme.ts` measures, in a browser, the purple steps,
+  the gamut, and white-label contrast for four accents. Choose an accent about as dark as
+  purple-900: white text sits on it.
+- The scale's block in `tokens.css` is written by `accent-scale.ts`, which holds the purple steps,
+  the caps and the weights, and fits the cusp itself. `accent-scale.test.ts` fails when
+  `tokens.css` differs from its output, and `deno task --cwd theme generate` runs it.
 - In the dark palette `--color-primary` is near-black chrome, so `.dark` sets `--color-accent` to
   purple-900 itself, and the components keep their purple there. An app with a dark palette sets
   `--color-accent` as well — on `:root` after `tokens.css`, which covers both palettes, or in its

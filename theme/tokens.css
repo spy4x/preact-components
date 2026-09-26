@@ -104,19 +104,24 @@
  *
  * - L: steps 50-300 keep the lightness of Tailwind's purple step with the same number, so a tint
  *   stays a tint. Steps 400-950 scale the accent's own lightness by the purple step's over
- *   purple-900's, capped at 0.80/0.76/0.72/0.68/0.64 for 400-800, so the scale keeps its order
- *   and a warm accent's dark fill (700) stays clear of the red of a danger button.
+ *   purple-900's, with caps. 400 and 500 are capped at 0.80 and 0.76, which keeps the scale in
+ *   order for an accent about as dark as purple-900. 600, 700 and 800 carry a white label (the dark
+ *   primary Button's fill and hover, the light hover), so they are capped at 0.545, 0.50 and 0.545,
+ *   where white clears 4.5:1 at every hue. Step 600's cap is 0.013 higher near purple, because
+ *   purple-600 (0.558) has to stay exact.
  * - C: the purple step's chroma ratio applies in full only at purple's own hue. A weight written out
  *   in each step, `max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)`, is exactly 1 at purple-900's
  *   hue and 0 more than about 11 degrees from it. Steps whose purple chroma is above purple-900's
- *   (400-800) grow by the ratio times that weight, so any other accent keeps its own chroma; the tints and 950 scale
- *   down by the ratio at every hue. The result is then capped at an estimate of the most chroma
- *   sRGB can show at that lightness and hue: the triangle from black through the gamut's cusp to
- *   white, with the cusp's lightness and chroma as 3-harmonic Fourier series in the hue, fitted to
- *   the sRGB cusp and scaled by 0.86 so the triangle stays inside the gamut. Chromium clips an
- *   out-of-gamut colour channel by channel, which turned a warm accent's steps pure red; the cap
- *   keeps every step within 0.02 OKLab of what it renders as, whatever the hue. Purple itself sits
- *   a little outside the cap, so each step adds a small allowance times the same weight.
+ *   (400-800) grow by the ratio times that weight, so any other accent keeps its own chroma; the
+ *   tints and 950 scale down by the ratio at every hue. The result is then capped at an estimate of
+ *   the most chroma sRGB can show at that lightness and hue: the triangle from black through the
+ *   gamut's cusp to white, with the cusp's lightness and chroma as 3-harmonic Fourier series in the
+ *   hue, fitted to the sRGB cusp and scaled by 0.86 so the triangle stays inside the gamut.
+ *   Chromium clips an out-of-gamut colour channel by channel, which turned a warm accent's steps
+ *   pure red; the cap keeps every step within 0.02 OKLab of what it renders as, except within about
+ *   11 degrees of purple, where the allowance below lets step 500 overshoot by up to about 0.025.
+ *   Purple itself sits a little outside the cap, so each step adds a small allowance times the same
+ *   weight.
  * - H: moved by the purple step's hue minus purple-900's.
  *
  * The block between the `accent-scale` region markers is written by `accent-scale.ts`, which
@@ -193,28 +198,28 @@
     );
     --color-accent-600: oklch(
       from var(--color-accent)
-      min(0.72, l * 0.558 / 0.381)
+      min(0.545 + 0.013 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50), l * 0.558 / 0.381)
       min(
         c * (1 + 0.636364 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)),
-        (0.193 + 0.0403 * cos(h * 1deg) - 0.02 * sin(h * 1deg) - 0.0001 * cos(h * 2deg) - 0.0435 * sin(h * 2deg) + 0.0037 * cos(h * 3deg) + 0.019 * sin(h * 3deg)) * max(0, min(min(0.72, l * 0.558 / 0.381) / (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg)), (1 - min(0.72, l * 0.558 / 0.381)) / (1 - (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg))))) + 0.032 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)
+        (0.193 + 0.0403 * cos(h * 1deg) - 0.02 * sin(h * 1deg) - 0.0001 * cos(h * 2deg) - 0.0435 * sin(h * 2deg) + 0.0037 * cos(h * 3deg) + 0.019 * sin(h * 3deg)) * max(0, min(min(0.545 + 0.013 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50), l * 0.558 / 0.381) / (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg)), (1 - min(0.545 + 0.013 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50), l * 0.558 / 0.381)) / (1 - (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg))))) + 0.032 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)
       )
       calc(h - 2.666)
     );
     --color-accent-700: oklch(
       from var(--color-accent)
-      min(0.68, l * 0.496 / 0.381)
+      min(0.5, l * 0.496 / 0.381)
       min(
         c * (1 + 0.505682 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)),
-        (0.193 + 0.0403 * cos(h * 1deg) - 0.02 * sin(h * 1deg) - 0.0001 * cos(h * 2deg) - 0.0435 * sin(h * 2deg) + 0.0037 * cos(h * 3deg) + 0.019 * sin(h * 3deg)) * max(0, min(min(0.68, l * 0.496 / 0.381) / (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg)), (1 - min(0.68, l * 0.496 / 0.381)) / (1 - (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg))))) + 0.038 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)
+        (0.193 + 0.0403 * cos(h * 1deg) - 0.02 * sin(h * 1deg) - 0.0001 * cos(h * 2deg) - 0.0435 * sin(h * 2deg) + 0.0037 * cos(h * 3deg) + 0.019 * sin(h * 3deg)) * max(0, min(min(0.5, l * 0.496 / 0.381) / (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg)), (1 - min(0.5, l * 0.496 / 0.381)) / (1 - (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg))))) + 0.038 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)
       )
       calc(h - 3.063)
     );
     --color-accent-800: oklch(
       from var(--color-accent)
-      min(0.64, l * 0.438 / 0.381)
+      min(0.545, l * 0.438 / 0.381)
       min(
         c * (1 + 0.238636 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)),
-        (0.193 + 0.0403 * cos(h * 1deg) - 0.02 * sin(h * 1deg) - 0.0001 * cos(h * 2deg) - 0.0435 * sin(h * 2deg) + 0.0037 * cos(h * 3deg) + 0.019 * sin(h * 3deg)) * max(0, min(min(0.64, l * 0.438 / 0.381) / (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg)), (1 - min(0.64, l * 0.438 / 0.381)) / (1 - (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg))))) + 0.018 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)
+        (0.193 + 0.0403 * cos(h * 1deg) - 0.02 * sin(h * 1deg) - 0.0001 * cos(h * 2deg) - 0.0435 * sin(h * 2deg) + 0.0037 * cos(h * 3deg) + 0.019 * sin(h * 3deg)) * max(0, min(min(0.545, l * 0.438 / 0.381) / (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg)), (1 - min(0.545, l * 0.438 / 0.381)) / (1 - (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg))))) + 0.018 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)
       )
       calc(h - 1.263)
     );

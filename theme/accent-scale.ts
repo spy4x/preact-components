@@ -5,7 +5,11 @@
  * What each step is, in `oklch(from var(--color-accent) L C H)`:
  *
  * - **L.** The tints (50–300) keep Tailwind's purple lightness. Steps 400–950 scale the accent's
- *   lightness by the purple step's ratio to purple-900's, capped by {@link LIGHTNESS_CAPS}.
+ *   lightness by the purple step's ratio to purple-900's, capped by {@link LIGHTNESS_CAPS}. The caps
+ *   on 600, 700 and 800 exist for contrast: those steps carry a white label (the dark primary
+ *   Button's fill and hover, the light hover), and at or below them white clears 4.5:1 at every
+ *   hue. Step 600's cap gets {@link PURPLE_600_ALLOWANCE} times the near-purple weight, because
+ *   purple-600 itself sits just above the cap and has to stay exact.
  * - **C.** The purple step's chroma ratio, grown only near purple's hue (the weight
  *   {@link NEAR_PURPLE}), then capped at the sRGB triangle: black, the gamut's cusp at that hue,
  *   white. The cusp's lightness and chroma are fitted here as {@link HARMONICS}-harmonic Fourier
@@ -43,14 +47,20 @@ export const PURPLE: Record<number, readonly [number, number, number]> = {
 /** The derived steps, in the order they are written. Step 900 is the accent itself. */
 const STEPS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 950]
 
-/** Lightness caps for the steps that scale the accent's lightness. */
+/**
+ * Lightness caps for the steps that scale the accent's lightness. 400 and 500 keep the scale's
+ * order for an accent about as dark as purple-900; 600, 700 and 800 keep a white label at 4.5:1.
+ */
 export const LIGHTNESS_CAPS: Record<number, number> = {
   400: 0.8,
   500: 0.76,
-  600: 0.72,
-  700: 0.68,
-  800: 0.64,
+  600: 0.545,
+  700: 0.5,
+  800: 0.545,
 }
+
+/** Added to step 600's cap times the near-purple weight: purple-600's lightness is 0.558. */
+export const PURPLE_600_ALLOWANCE = 0.013
 
 /** The near-purple weight: exactly 1 at purple-900's hue, 0 beyond about 11 degrees from it. */
 export const NEAR_PURPLE = "max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)"
@@ -162,6 +172,9 @@ const fixed = (value: number, digits: number) => `${Number(value.toFixed(digits)
 function lightness(step: number): string {
   const [l] = PURPLE[step]
   const scaled = `l * ${l} / 0.381`
+  if (step === 600) {
+    return `min(${LIGHTNESS_CAPS[600]} + ${PURPLE_600_ALLOWANCE} * ${NEAR_PURPLE}, ${scaled})`
+  }
   if (step in LIGHTNESS_CAPS) return `min(${LIGHTNESS_CAPS[step]}, ${scaled})`
   if (step === 950) return `calc(${scaled})`
   return `${l}`
