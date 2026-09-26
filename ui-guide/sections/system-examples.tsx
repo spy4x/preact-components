@@ -54,6 +54,7 @@ function fakeContainer(registered: string[]) {
 const examples: ExampleFragment = {
   normalizeCanonical: {
     title: "normalizeCanonical()",
+    wide: false,
     summary:
       "A canonical address in the one spelling a search engine should see: resolved, with dot segments removed.",
     snippet: `import { normalizeCanonical } from "@spy4x/preact-system"
@@ -62,37 +63,11 @@ normalizeCanonical("https://example.com/docs/../guide?page=2")`,
     covers: ["normalizeCanonical"],
     run: () => normalizeCanonical("https://example.com/docs/../guide?page=2"),
   },
-  breadcrumbListJsonLd: {
-    title: "Breadcrumbs as structured data",
-    summary:
-      "`canonicalUrl` parses a page address and refuses anything that is not `http`/`https`; `breadcrumbItems` resolves the crumbs the caller states against it, and `breadcrumbListJsonLd` wraps them in a `BreadcrumbList` anchored to the page.",
-    snippet: `import {
-  breadcrumbItems,
-  breadcrumbListJsonLd,
-  canonicalUrl,
-} from "@spy4x/preact-system"
-
-const page = "https://example.com/docs/setup#install"
-const crumbs = [{ name: "Docs", href: "/docs" }, { name: "Setup" }]
-
-canonicalUrl(page).href
-breadcrumbItems(page, crumbs)
-breadcrumbListJsonLd(page, crumbs)["@id"]`,
-    covers: ["canonicalUrl", "breadcrumbItems", "breadcrumbListJsonLd"],
-    run: () => {
-      const page = "https://example.com/docs/setup#install"
-      const crumbs = [{ name: "Docs", href: "/docs" }, { name: "Setup" }]
-      return {
-        canonical: canonicalUrl(page).href,
-        items: breadcrumbItems(page, crumbs),
-        id: breadcrumbListJsonLd(page, crumbs)["@id"],
-      }
-    },
-  },
   createHeadStore: {
     title: "createHeadStore()",
+    wide: false,
     summary:
-      "One page-head signal per request: `setHead` merges a page's fields over the defaults, and `resetHead` puts the defaults back before the next page.",
+      "Holds one page head per request: `setHead` sets a page's fields over the defaults, and `resetHead` restores them.",
     snippet: `import { createHeadStore } from "@spy4x/preact-system"
 
 const { head, setHead, resetHead } = createHeadStore({
@@ -117,10 +92,39 @@ const afterReset = head.value.title`,
       return { onPricing, afterReset: head.value.title }
     },
   },
+  breadcrumbListJsonLd: {
+    title: "Breadcrumbs as structured data",
+    wide: true,
+    summary:
+      "Builds a page's breadcrumb trail as a schema.org `BreadcrumbList`, from the crumbs the caller states.",
+    snippet: `import {
+  breadcrumbItems,
+  breadcrumbListJsonLd,
+  canonicalUrl,
+} from "@spy4x/preact-system"
+
+const page = "https://example.com/docs/setup#install"
+const crumbs = [{ name: "Docs", href: "/docs" }, { name: "Setup" }]
+
+canonicalUrl(page).href
+breadcrumbItems(page, crumbs)
+breadcrumbListJsonLd(page, crumbs)["@id"]`,
+    covers: ["canonicalUrl", "breadcrumbItems", "breadcrumbListJsonLd"],
+    run: () => {
+      const page = "https://example.com/docs/setup#install"
+      const crumbs = [{ name: "Docs", href: "/docs" }, { name: "Setup" }]
+      return {
+        canonical: canonicalUrl(page).href,
+        items: breadcrumbItems(page, crumbs),
+        id: breadcrumbListJsonLd(page, crumbs)["@id"],
+      }
+    },
+  },
   seoHeadTags: {
     title: "The head tags as data",
+    wide: true,
     summary:
-      "`seoHeadTags` is every tag `SEOHead` renders, in document order, for a head pipeline that is not a component tree; `seoHeadJsonLd` is the JSON-LD graph, and `jsonLdText` serialises it for a `<script>` body with `<` escaped.",
+      "Every tag `SEOHead` renders, as data, for a head that is not built from components, plus the JSON-LD script body.",
     snippet: `import { jsonLdText, seoHeadJsonLd, seoHeadTags } from "@spy4x/preact-system"
 
 const head = {
@@ -152,8 +156,9 @@ jsonLdText(seoHeadJsonLd(head))`,
   },
   stateInitText: {
     title: "Server state into the page and back",
+    wide: true,
     summary:
-      '`stateInitText` is the JSON body `StateInit` writes, with `<` escaped so `</script>` cannot end it; `readStateInit` reads it back, trusting only a `<script type="application/json">` — here from a stand-in for `document`.',
+      "The JSON text `StateInit` writes into the page, safe inside a script element, and `readStateInit` reading it back.",
     snippet: `import { readStateInit, stateInitText } from "@spy4x/preact-system"
 
 const text = stateInitText({ user: "Ada", note: "</script> is safe" })
@@ -180,6 +185,7 @@ readStateInit("state-init", page)`,
   },
   describeCalendarDay: {
     title: "describeCalendarDay()",
+    wide: false,
     summary:
       "The default accessible description of one calendar cell: the date as the locale writes it, then how many are left or why it cannot be picked.",
     snippet: `import { describeCalendarDay } from "@spy4x/preact-system"
@@ -216,8 +222,9 @@ describeCalendarDay({ ...day, disabled: true, reason: "past", availableCount: un
   },
   isCurrentLink: {
     title: "isCurrentLink()",
+    wide: false,
     summary:
-      "Whether a header link is the current page — exact equality, so `/docs` is not current while `/docs/intro` is on screen.",
+      "Whether a link is the current page, by exact match, so `/docs` is not current on `/docs/intro`.",
     snippet: `import { isCurrentLink } from "@spy4x/preact-system"
 
 isCurrentLink("/pricing", "/pricing")
@@ -230,35 +237,11 @@ isCurrentLink("/docs", undefined)`,
       isCurrentLink("/docs", undefined),
     ],
   },
-  tabBarSlots: {
-    title: "The phone tab bar's split",
-    summary:
-      '`tabBarSlots` decides which `RailShell` entries become tabs and which go behind "More": everything fits in `TAB_BAR_SLOTS` or fewer, otherwise four tabs and the primary action leads the overflow.',
-    snippet: `import { TAB_BAR_SLOTS, tabBarSlots } from "@spy4x/preact-system"
-
-const items = ["home", "inbox", "files", "reports", "people", "settings"]
-  .map((key) => ({ key, label: key }))
-const { tabs, more } = tabBarSlots(items, { key: "new", label: "New" })
-
-TAB_BAR_SLOTS
-tabs.map((item) => item.key)
-more.map((item) => item.key)`,
-    covers: ["TAB_BAR_SLOTS", "tabBarSlots"],
-    run: () => {
-      const items: RailShellItem[] = ["home", "inbox", "files", "reports", "people", "settings"]
-        .map((key) => ({ key, label: key }))
-      const { tabs, more } = tabBarSlots(items, { key: "new", label: "New" })
-      return {
-        slots: TAB_BAR_SLOTS,
-        tabs: tabs.map((item) => item.key),
-        more: more.map((item) => item.key),
-      }
-    },
-  },
   collectSequence: {
     title: "What the lightbox opens",
+    wide: true,
     summary:
-      "`zoomableAlt` picks an image's description or the fallback, `resolveImage` turns a clicked element into a lightbox image, and `collectSequence` builds the images the lightbox pages through and where the clicked one sits — here from stand-ins for `<img>` elements.",
+      "Works out which image the lightbox opens, what it is called, and which other images it pages through.",
     snippet: `import { resolveImage } from "@spy4x/preact-system"
 import { collectSequence, zoomableAlt } from "@spy4x/preact-system/image-lightbox"
 
@@ -282,10 +265,35 @@ collectSequence(images, images[2])`,
       }
     },
   },
+  tabBarSlots: {
+    title: "The phone tab bar's split",
+    wide: false,
+    summary: "Decides which `RailShell` items get a tab on a phone and which go behind **More**.",
+    snippet: `import { TAB_BAR_SLOTS, tabBarSlots } from "@spy4x/preact-system"
+
+const items = ["home", "inbox", "files", "reports", "people", "settings"]
+  .map((key) => ({ key, label: key }))
+const { tabs, more } = tabBarSlots(items, { key: "new", label: "New" })
+
+TAB_BAR_SLOTS
+tabs.map((item) => item.key)
+more.map((item) => item.key)`,
+    covers: ["TAB_BAR_SLOTS", "tabBarSlots"],
+    run: () => {
+      const items: RailShellItem[] = ["home", "inbox", "files", "reports", "people", "settings"]
+        .map((key) => ({ key, label: key }))
+      const { tabs, more } = tabBarSlots(items, { key: "new", label: "New" })
+      return {
+        slots: TAB_BAR_SLOTS,
+        tabs: tabs.map((item) => item.key),
+        more: more.map((item) => item.key),
+      }
+    },
+  },
   startUpdates: {
     title: "Finding and registering the service worker",
-    summary:
-      "`serviceWorkerContainer` returns `navigator.serviceWorker`, or nothing off a browser; `startUpdates` registers the worker with it and watches for an update, and the function it returns stops watching.",
+    wide: false,
+    summary: "Registers a service worker and watches it for updates, doing nothing off a browser.",
     snippet: `import { serviceWorkerContainer, startUpdates } from "@spy4x/preact-system"
 
 const registered = []
@@ -312,8 +320,9 @@ stop()`,
   },
   watchForUpdate: {
     title: "Handing over to a waiting worker",
+    wide: false,
     summary:
-      "`watchForUpdate` reports once that a new worker is waiting, and `skipWaiting` tells it to take over by posting `DEFAULT_UPDATE_MESSAGE`, the message the worker has to recognise.",
+      "Reports once that a new worker is waiting, and `skipWaiting` tells that worker to take over.",
     snippet: `import {
   DEFAULT_UPDATE_MESSAGE,
   skipWaiting,
@@ -352,8 +361,9 @@ stop()`,
   },
   reloadOnControllerChange: {
     title: "reloadOnControllerChange()",
+    wide: false,
     summary:
-      "Reloads once the new worker controls the page — armed when the visitor asks for the reload, never at registration, so other tabs are left alone.",
+      "Reloads the page once the new worker is in control, armed only when the visitor asks for it.",
     snippet: `import { reloadOnControllerChange } from "@spy4x/preact-system"
 
 let reloads = 0
