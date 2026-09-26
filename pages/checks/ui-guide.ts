@@ -720,12 +720,26 @@ async function propsSummaryCheck(devtools: Devtools, width: number): Promise<voi
           wide.push(card + " scrolls by " + (box.scrollWidth - box.clientWidth) + "px")
         }
         const table = box.querySelector("table").getBoundingClientRect().width
-        // Below 28rem a sentence takes the row's whole width instead of a third of it.
-        if (table < 448) {
+        // Below the card's md container width (28rem) a sentence takes the row's whole width
+        // instead of a third of it.
+        const md = 28 * parseFloat(getComputedStyle(document.documentElement).fontSize)
+        if (table < md) {
           stacked++
           for (const cell of box.querySelectorAll("tbody td:last-child")) {
             const share = cell.getBoundingClientRect().width / table
             if (share < 0.9) wide.push(card + " squeezes a sentence to " + Math.round(share * 100) + "%")
+          }
+          // No page has a long prop name today, so borrow a row, give it one, and require the
+          // type beside it to keep a readable share of the row.
+          const row = box.querySelector("tbody tr").cloneNode(true)
+          row.querySelector("th").textContent = "onSelectionChangeWithModifiersAndAVeryLongNameIndeed"
+          row.querySelector("td").textContent = "(event: SelectionChangeEvent<RowModel>) => void"
+          box.querySelector("tbody").append(row)
+          const typeShare = row.querySelector("td").getBoundingClientRect().width / table
+          const scrolls = box.scrollWidth > box.clientWidth + 1
+          row.remove()
+          if (typeShare < 0.4 || scrolls) {
+            wide.push(card + " gives a long name's type " + Math.round(typeShare * 100) + "%")
           }
         }
       }

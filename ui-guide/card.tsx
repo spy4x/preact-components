@@ -228,7 +228,7 @@ function PropsSummary(
           {props.map((prop) => (
             <tr
               key={prop.name}
-              class="align-top @max-md:grid @max-md:grid-cols-[auto_minmax(0,1fr)]"
+              class="align-top @max-md:grid @max-md:grid-cols-[fit-content(50%)_minmax(0,1fr)]"
             >
               <th
                 scope="row"
