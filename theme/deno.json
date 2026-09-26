@@ -14,8 +14,8 @@
   },
   "imports": {
     // Tailwind's Rust class scanner, at the version the root `tailwindcss` pin resolves to, and the
-    // same pin `pages/deno.json` holds. Only `generate-classes.ts` and its test import it; neither is
-    // published, so no consumer of this package resolves it.
+    // same pin `pages/deno.json` holds. Only `generate-classes.ts` and its test import it; neither
+    // is published, so no consumer of this package resolves it.
     "@tailwindcss/oxide": "npm:@tailwindcss/oxide@4.1.12"
   },
   "publish": {
@@ -43,8 +43,8 @@
     // needs `net`, `run` or `write`, so `-A` was over-broad. `--allow-env`
     // stays only to keep this task the same command CI runs.
     //
-    // `--allow-ffi` is for `component-classes.test.ts` alone, run on its own: it runs Tailwind's class scanner, a native
-    // Node-API addon, which Deno loads only with that grant.
+    // `--allow-ffi` is for `component-classes.test.ts` alone, run on its own: it runs Tailwind's
+    // class scanner, a native Node-API addon, which Deno loads only with that grant.
     "test": "deno test --no-prompt --allow-read --allow-env --ignore=component-classes.test.ts . && deno test --no-prompt --allow-read --allow-env --allow-ffi component-classes.test.ts",
     // Rewrites tokens-css.ts/preset-css.ts/ink-css.ts from tokens.css/preset.css/ink.css, then
     // formats the result — generate.ts writes plain source, and deno fmt is the arbiter of its
