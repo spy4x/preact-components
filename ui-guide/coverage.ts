@@ -43,7 +43,7 @@ export interface AllowedExport {
   reason: string
 }
 
-/** Why the Vite plugins in `@spy4x/preact-theme/vite`, and the error one of them throws, have no card. */
+/** Why the Vite plugins in `@spy4x/preact-theme/vite`, and the error one throws, have no card. */
 const VITE_PLUGIN_REASON =
   'A Vite plugin runs inside the app\'s build, not in a page: an example card could only call its hooks by hand with a faked plugin context, which is code no app writes. `theme/README.md`, under "Install", shows the lines an app puts in its `vite.config.ts`, and `theme/vite.test.ts` drives every hook.'
 
