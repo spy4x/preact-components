@@ -251,7 +251,7 @@ Four behaviours the copies got wrong, now in one place:
 - **Numbers.** An empty or half-typed number box commits `0`, not `NaN`, which is what the schema
   would otherwise reject on every keystroke.
 
-## `DeletionValidation`, `timeAgo`
+## `DeletionValidation`
 
 `DeletionValidation` renders the entities that block an archive. It lives here rather than in `ui/`
 because only the CRUD scaffold produces a `DeletionDependency`. Its `role="alert"` region is on the
@@ -272,10 +272,9 @@ port would only make each one write the same call back in.
 A row's actions menu is `@spy4x/preact-ui`'s `Dropdown` with `DropdownItem`s, returned from
 `CrudList`'s `actions` slot: this package once wrapped the two as `RowActions` and `RowAction`, but
 the wrapper only picked the three-dots icon and a label, and an item's red tone is `DropdownItem`'s
-`danger` now. `timeAgo` and `formatTimestamp` format the archive line; both come from
-`@spy4x/platform/universal/time` (#306). `formatTimestamp` is ts-libs' `formatTime` under this
-package's name, and it decides "Today" in `options.timeZone`, the zone it prints in. `timeAgo`
-measures from the host clock.
+`danger` now. The archive line is formatted with `timeAgo` and `formatTime` from
+`@spy4x/platform/universal/time` (#306); import them from there. This package no longer re-exports
+them (#359): `formatTimestamp` was `formatTime` under this package's name.
 
 ## Worked example: a source application's regions, end to end
 
