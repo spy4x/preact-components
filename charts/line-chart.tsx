@@ -9,7 +9,13 @@ import {
   seriesColor,
 } from "./colors.ts"
 import { extent, niceScale, ticks, xLabelStride } from "./scales.ts"
-import { formatTimeFull, formatTimeTick, type TimeStep, timeTicks } from "./time-ticks.ts"
+import {
+  formatTimeFull,
+  formatTimeTick,
+  isMidnight,
+  type TimeStep,
+  timeTicks,
+} from "./time-ticks.ts"
 import { positionTooltip, TOOLTIP_TEXT_COLOR } from "./tooltip.ts"
 
 /** A point's place on the X axis: a label, or — on a time axis — an instant. */
@@ -53,7 +59,10 @@ export interface LineChartProps {
   yTicks?: number
   /** Category axis only: label every n-th X value. Defaults to a stride that keeps about six. */
   xStride?: number
-  /** Time axis only: the zone labels are printed in. Defaults to `"UTC"`, so server and browser agree. */
+  /**
+   * Time axis only: the zone whose midnights, hours and months the ticks fall on and the labels
+   * are printed in. Defaults to `"UTC"`, so server and browser agree.
+   */
   timeZone?: string
   /** Time axis only: the locale labels are printed in. Defaults to `"en-GB"`. */
   locale?: string
@@ -152,7 +161,7 @@ export function LineChart({
   const areaRef = useRef<HTMLDivElement>(null)
   const tooltipRef = useRef<HTMLDivElement>(null)
   const [interactive, setInteractive] = useState(false)
-  const [active, setActive] = useState<number | null>(null)
+  const [chosen, setActive] = useState<number | null>(null)
   useEffect(() => setInteractive(true), [])
 
   const isDefined = (value: number | null | undefined): value is number =>
@@ -187,6 +196,9 @@ export function LineChart({
   const bridged = lines.some((line) => bridges(line.values, isDefined).length > 0)
   const legend = showLegend ?? series.length > 1
 
+  // A point chosen before the data shrank may no longer exist; it then counts as none.
+  const active = chosen !== null && chosen < slots.length ? chosen : null
+
   const pick = (clientX: number): number | null => {
     const area = areaRef.current
     if (!area || slots.length === 0) return null
@@ -213,7 +225,7 @@ export function LineChart({
     const move = moves[event.key]
     if (!move || last < 0) return
     event.preventDefault()
-    setActive(move)
+    setActive(move(active))
   }
 
   useLayoutEffect(() => {
@@ -545,7 +557,10 @@ function buildSlots(
   const times = keys.filter((key) => key !== "NaN").map(Number).sort((a, b) => a - b)
   const first = times[0]
   const span = times[times.length - 1] - first
-  const { step } = timeTicks(first, times[times.length - 1])
+  const { step } = timeTicks(first, times[times.length - 1], { timeZone: context.timeZone })
+  // The heading's precision follows the data: a point off midnight needs its clock time, whatever
+  // step the axis took.
+  const withClock = times.some((time) => !isMidnight(time, context.timeZone))
   return {
     step,
     slots: times.map((time) => ({
@@ -553,7 +568,7 @@ function buildSlots(
       position: span > 0 ? (time - first) / span : 0.5,
       label: context.xFormat
         ? context.xFormat(new Date(time))
-        : formatTimeFull(time, step, context),
+        : formatTimeFull(time, withClock, context),
     })),
   }
 }
@@ -573,7 +588,7 @@ function axisLabels(
   const first = Number(slots[0].key)
   const last = Number(slots[slots.length - 1].key)
   if (first === last) return [{ position: 0.5, label: slots[0].label }]
-  return timeTicks(first, last).ticks.map((time) => ({
+  return timeTicks(first, last, { timeZone: context.timeZone }).ticks.map((time) => ({
     position: (time - first) / (last - first),
     label: context.xFormat ? context.xFormat(new Date(time)) : formatTimeTick(time, step, context),
   }))

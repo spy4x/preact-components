@@ -124,7 +124,7 @@ describe("LineChart", () => {
     const html = render(<LineChart series={series} xAxis="time" yDomain={[0, 4]} />)
 
     expect(linePaths(html)).toEqual(["M0.0,750.0 L250.0,500.0 L1000.0,250.0"])
-    expect(xLabels(html)).toEqual(["0% 00:00", "25% 01:00", "50% 02:00", "75% 03:00", "100% 04:00"])
+    expect(xLabels(html)).toEqual(["0% 1 Mar", "25% 01:00", "50% 02:00", "75% 03:00", "100% 04:00"])
     expect(html).toContain(`title="Revenue 1 Mar 2026, 01:00: 2"`)
   })
 
@@ -136,6 +136,29 @@ describe("LineChart", () => {
     const html = render(<LineChart series={series} xAxis="time" timeZone="Asia/Tokyo" />)
 
     expect(xLabels(html)[0]).toBe("0% 09:00")
+  })
+
+  it("keeps the hour in a point's heading when points are hourly, though the axis steps in days", () => {
+    const start = Date.UTC(2026, 2, 1)
+    const series: LineSeries[] = [{
+      name: "Load",
+      points: Array.from({ length: 240 }, (_, hour) => ({ x: start + hour * 3_600_000, y: hour })),
+    }]
+    const html = render(<LineChart series={series} xAxis="time" />)
+
+    expect(html).toContain(`title="Load 1 Mar 2026, 03:00: 3"`)
+    expect(html).toContain(`title="Load 1 Mar 2026, 21:00: 21"`)
+    expect(xLabels(html)[0]).toMatch(/Mar$/)
+  })
+
+  it("leaves the clock out of a point's heading when every point is a midnight", () => {
+    const series: LineSeries[] = [{
+      name: "Sales",
+      points: [1, 2, 3].map((day) => ({ x: Date.UTC(2026, 2, day), y: day })),
+    }]
+    const html = render(<LineChart series={series} xAxis="time" />)
+
+    expect(html).toContain(`title="Sales 2 Mar 2026: 2"`)
   })
 
   it("dashes a series marked dashed, in the plot and in the legend", () => {

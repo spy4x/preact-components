@@ -30,7 +30,8 @@ the axis and loading helpers behind them.
   `--color-chart-1` … `--color-chart-5`, or passes `colors`.
 - **Server-renderable.** `document`, `window`, `IntersectionObserver` and `ResizeObserver` are touched
   inside effects and event handlers only. What the server prints, the browser prints too: the time
-  axis formats in `UTC` and `en-GB` unless told otherwise, so hydration never has to replace text.
+  axis lays its ticks on the wall clock of `UTC` and prints them in `en-GB` unless told otherwise
+  (`timeZone`, `locale`), so hydration never has to replace text.
 - **No sibling package imports.** `charts/` depends on `preact`, `arktype` and `@spy4x/platform`'s
   axis maths, and nothing else in the workspace, so it stays independent of `ui/` and `signals/`.
 
@@ -104,12 +105,18 @@ Both were removed in favour of the one `LineChart` (#356), and `MetricPanel` wit
 | `aspectRatio`                                      | `height`, in pixels; the chart takes its parent's width                                                             |
 | `LineChart`'s `width` (the `viewBox` width)        | gone: the chart is as wide as its parent                                                                            |
 | `<CompareChart range data loadStats />`            | a second, `dashed` series; load it with `loadChartPayload(loadStats, previousPeriod(range))`                        |
+| `CompareChart`'s `compareLabel` toggle             | the app's own toggle: add or drop the dashed series when it changes                                                 |
+| `CompareChart`'s `rangePicker` slot                | the app's own picker, rendered beside the chart                                                                     |
+| `CompareChart`'s `onError`                         | `loadChartPayload` returns `{ error }`; show it with `ui/`'s `ErrorState` or a toast                                |
 | `<MetricPanel title unit error actions>`           | the app's own heading, `ui/`'s `ErrorState`, and a `LineChart`                                                      |
 | `@spy4x/preact-charts/svg`                         | `@spy4x/preact-charts`: no module imports d3 any more                                                               |
 
 `defaultTooltipFormat`, `formatTimeTick`, `yDomainFor`, `assertD3Available`,
 `MISSING_D3_LINE_ERROR`, `DEFAULT_D3_LINE_CHART_COLORS`, `useMetricSeries` and `loadMetricSeries`
-went with them. `d3` is no longer a dependency of anything in this repository.
+went with them, and so did the types `CompareChartProps`, `D3LineChartProps`, `D3LineChartColors`,
+`MetricPanelProps`, `MetricError`, `MetricSeriesOptions` and `MetricSeriesState`. `LineChartProps`
+lost `width`; its series are `LineSeries` (`{ name, points, color?, showPoints?, dashed? }`) of
+`LinePoint` (`{ x, y }`, `x` a `LineX`). `d3` is no longer a dependency of anything in this repository.
 
 ## Axis behaviour
 
