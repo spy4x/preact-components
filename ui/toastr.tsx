@@ -2,6 +2,9 @@ import { cn } from "@spy4x/preact-cn"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useRef, useState } from "preact/hooks"
 
+/** The window corner a {@link Toastr} stack sits in. */
+export type ToastCorner = "top-left" | "top-right" | "bottom-left" | "bottom-right"
+
 /** Kind of a toast, selecting its colour and glyph. */
 export type ToastVariant = "success" | "error" | "info" | "warning"
 
@@ -49,6 +52,14 @@ export interface ToastrProps {
    * `createToastStore` is one — is wired with `onDismiss={(id) => store.remove(String(id))}`.
    */
   onDismiss: (id: string | number) => void
+  /**
+   * The window corner the stack sits in, 2rem from both edges. Defaults to `"top-right"`.
+   *
+   * The toasts keep the order of {@link ToastrProps.toasts} in every corner, top to bottom, and each
+   * one slides in from the corner's side: from the right in a right corner, from the left in a left
+   * one.
+   */
+  corner?: ToastCorner
   /** Accessible name of the stack. Defaults to `"Notifications"`. */
   label?: string
   /**
@@ -62,6 +73,29 @@ export interface ToastrProps {
    */
   dataE2E?: string
   class?: string
+}
+
+/**
+ * Where each corner puts the stack. `top-right` is the placement the stack had before `corner`
+ * existed, so a caller that passes nothing renders exactly as it did.
+ */
+const cornerClasses: Record<ToastCorner, string> = {
+  "top-left": "top-8 left-8",
+  "top-right": "top-8 right-8",
+  "bottom-left": "bottom-8 left-8",
+  "bottom-right": "bottom-8 right-8",
+}
+
+/**
+ * How a new toast enters: from the corner's side, fading in, through `@starting-style`, so there is
+ * no keyframe to ship and a toast already on screen never moves. Skipped under
+ * `prefers-reduced-motion: reduce`.
+ */
+const enterClasses: Record<"left" | "right", string> = {
+  left:
+    "transition-[translate,opacity] duration-300 motion-safe:starting:-translate-x-8 motion-safe:starting:opacity-0",
+  right:
+    "transition-[translate,opacity] duration-300 motion-safe:starting:translate-x-8 motion-safe:starting:opacity-0",
 }
 
 const variantClasses: Record<ToastVariant, string> = {
@@ -122,7 +156,8 @@ export function resolveDuration(toast: Pick<ToastItem, "duration">): number {
 }
 
 /**
- * Stack of transient notifications in the top-right corner.
+ * Stack of transient notifications in a corner of the window — top right unless `corner` says
+ * otherwise.
  *
  * The source component read straight off a global toast store and called its own remove method.
  * Here the stack
@@ -158,6 +193,7 @@ export function Toastr(
   {
     toasts,
     onDismiss,
+    corner = "top-right",
     label = "Notifications",
     dismissLabel = "Dismiss",
     dataE2E,
@@ -169,7 +205,11 @@ export function Toastr(
   return (
     <div
       data-e2e={dataE2E}
-      class={cn("fixed top-8 right-8 z-50 w-full max-w-xs space-y-4 md:max-w-sm", className)}
+      class={cn(
+        "fixed z-50 w-full max-w-xs space-y-4 md:max-w-sm",
+        cornerClasses[corner],
+        className,
+      )}
       role="region"
       aria-label={label}
       aria-live="polite"
@@ -197,6 +237,7 @@ export function Toastr(
           paused={paused}
           onDismiss={onDismiss}
           dismissLabel={toast.dismissLabel ?? dismissLabel}
+          enterFrom={corner.endsWith("left") ? "left" : "right"}
         />
       ))}
     </div>
@@ -211,6 +252,8 @@ interface ToastProps {
   onDismiss: (id: string | number) => void
   /** Accessible name for this toast's dismiss control, already resolved by the stack. */
   dismissLabel: string
+  /** The side this toast slides in from: its stack's corner side. */
+  enterFrom: "left" | "right"
 }
 
 /**
@@ -230,7 +273,7 @@ interface ToastProps {
  * this library ships — so its identity changes on every render of the host, and a dependency on it
  * would tear the timer down and build it again each time the page around the stack re-rendered.
  */
-function Toast({ toast, paused, onDismiss, dismissLabel }: ToastProps) {
+function Toast({ toast, paused, onDismiss, dismissLabel, enterFrom }: ToastProps) {
   const duration = resolveDuration(toast)
   const remaining = useRef(duration)
   const dismiss = useRef(onDismiss)
@@ -263,7 +306,11 @@ function Toast({ toast, paused, onDismiss, dismissLabel }: ToastProps) {
   return (
     <div
       role={variant === "error" ? "alert" : "status"}
-      class={cn("space-y-4 rounded-lg px-6 py-4 text-white", variantClasses[variant])}
+      class={cn(
+        "space-y-4 rounded-lg px-6 py-4 text-white",
+        enterClasses[enterFrom],
+        variantClasses[variant],
+      )}
     >
       <div class="flex justify-between gap-4">
         <p class="flex gap-2 text-sm">

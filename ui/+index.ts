@@ -255,6 +255,7 @@ export { nextTabIndex, type TabItem, Tabs, type TabsProps } from "./tabs.tsx"
 export {
   defaultToastDuration,
   resolveDuration,
+  type ToastCorner,
   type ToastItem,
   Toastr,
   type ToastrProps,
