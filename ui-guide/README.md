@@ -321,28 +321,28 @@ and a list in this file was wrong more often than it was right. The guide's own 
 card, the overview prints the counts from the registry, and `pages/build.ts` asserts a prerendered card
 per entry of `catalogueNames` against the emitted HTML.
 
-| Section                            | Package   | Page      |
-| ---------------------------------- | --------- | --------- |
-| **Badges**                         | `ui`      | `ui`      |
-| **Buttons**                        | `ui`      | `ui`      |
-| **Display**                        | `ui`      | `ui`      |
-| **Feedback**                       | `ui`      | `ui`      |
-| **Inputs**                         | `ui`      | `ui`      |
-| **Fields**                         | `ui`      | `ui`      |
-| **Enhanced forms**                 | `ui`      | `ui`      |
-| **Forms**                          | `theme`   | `theme`   |
-| **Surfaces and utilities**         | `theme`   | `theme`   |
-| **Charts**                         | `charts`  | `charts`  |
-| **System**                         | `system`  | `system`  |
-| **CRUD**                           | `crud`    | `crud`    |
-| **Map**                            | `map`     | `map`     |
-| **Helpers** (examples)             | `ui`      | `ui`      |
-| **Signals** (examples)             | `signals` | `signals` |
-| **Helpers** (examples)             | `charts`  | `charts`  |
-| **Helpers** (examples)             | `system`  | `system`  |
-| **Helpers** (examples)             | `crud`    | `crud`    |
-| **Stylesheets as text** (examples) | `theme`   | `theme`   |
-| **cn** (examples)                  | `cn`      | `cn`      |
+| Section                    | Package   | Page      |
+| -------------------------- | --------- | --------- |
+| **Badges**                 | `ui`      | `ui`      |
+| **Buttons**                | `ui`      | `ui`      |
+| **Display**                | `ui`      | `ui`      |
+| **Feedback**               | `ui`      | `ui`      |
+| **Inputs**                 | `ui`      | `ui`      |
+| **Fields**                 | `ui`      | `ui`      |
+| **Enhanced forms**         | `ui`      | `ui`      |
+| **Forms**                  | `theme`   | `theme`   |
+| **Surfaces and utilities** | `theme`   | `theme`   |
+| **Charts**                 | `charts`  | `charts`  |
+| **System**                 | `system`  | `system`  |
+| **CRUD**                   | `crud`    | `crud`    |
+| **Map**                    | `map`     | `map`     |
+| **Helpers** (examples)     | `ui`      | `ui`      |
+| **Signals** (examples)     | `signals` | `signals` |
+| **Helpers** (examples)     | `charts`  | `charts`  |
+| **Helpers** (examples)     | `system`  | `system`  |
+| **Helpers** (examples)     | `crud`    | `crud`    |
+| **Helpers** (examples)     | `theme`   | `theme`   |
+| **cn** (examples)          | `cn`      | `cn`      |
 
 Nothing here states how many components are _missing_ a card, on purpose: that number moves with
 every component PR. Read `examples-pending.ts` and `EXPORTS_WITHOUT_DEMO` in `coverage.ts`, which is
