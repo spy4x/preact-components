@@ -1,4 +1,6 @@
 import { type Type, type } from "arktype"
+import { ONE_HOUR_IN_MILLISECONDS } from "@spy4x/platform/universal/time-constants"
+import { isArkErrors } from "@spy4x/validation"
 import { TIME_FRAMES, type TimeFrame, type TimeSeriesPoint } from "./time-series.ts"
 
 /**
@@ -47,7 +49,7 @@ export interface LoadPayloadResult {
 export function previousPeriod(range: DateRange, steps = 1): DateRange {
   const from = toTime(range.from)
   const to = toTime(range.to)
-  const span = to > from ? to - from : 60 * 60 * 1000
+  const span = to > from ? to - from : ONE_HOUR_IN_MILLISECONDS
   const count = Number.isFinite(steps) && steps >= 1 ? Math.floor(steps) : 1
 
   const end = from - span * (count - 1)
@@ -69,7 +71,7 @@ export async function loadChartPayload(
   try {
     const raw = await loadStats(range)
     const result = chartPayloadSchema(raw)
-    if (result instanceof type.errors) return { payload: null, error: result.summary }
+    if (isArkErrors(result)) return { payload: null, error: result.summary }
 
     return { payload: { data: result.data, timeFrame: result.timeFrame }, error: null }
   } catch (cause) {
