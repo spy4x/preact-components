@@ -93,14 +93,10 @@ anything else an example in `<package>-examples.tsx` (`ui-guide/README.md`, "Add
 challenges. The test cannot see a changed export, so that rests on the rule in "Every change updates
 the UI guide" below.
 
-## Branch-first workflow
+## Branches
 
-Create the branch before any edit. Never commit to `main`.
-
-```bash
-git fetch origin
-git checkout -b <type>/<short-kebab-slug> origin/main
-```
+Work in a worktree under the sibling `worktrees/preact-components/`, on a branch cut from the latest
+`origin/main` (the global Git Flow command creates both). Never commit to `main`.
 
 Types: `feat/`, `fix/`, `refactor/`, `chore/`, `docs/`, `style/`, `perf/`, `ci/`.
 
@@ -112,7 +108,7 @@ Types: `feat/`, `fix/`, `refactor/`, `chore/`, `docs/`, `style/`, `perf/`, `ci/`
 
 - Types: `feat`, `fix`, `refactor`, `chore`, `docs`, `style`, `perf`, `ci`
 - Scope: the package directory (`ui`, `icons`, `signals`, …) or `deps`; omit when repo-wide
-- Summary: imperative, lowercase, no trailing period, ≤ 72 chars
+- Summary: imperative, lowercase, no trailing period, ≤ 50 chars, hard cap 72
 - Body only when the why is not obvious from the title. No AI attribution.
 
 ```
@@ -141,13 +137,13 @@ opened early under `[WIP]`, before that prefix is dropped.
 The reviewer runs the checks itself — a reported green run is not evidence — and verifies a test by
 breaking the code it is supposed to protect: remove the fix and confirm the test goes red. A test
 that passes either way is rejected. The reviewer never fixes what it finds; a rejection goes back to
-the author with the precise changes required, and rejection is a normal outcome, not a failure.
+the author with the precise changes required.
 
 The verdict and its evidence are posted as a PR comment, so GitHub's own review record stays empty
 by design — an empty review record does not mean a PR went unreviewed.
 
-The repository owner merges. An agent merges only when the owner delegated merge authority for that
-run, and only after the reviewer passed.
+A passing verdict from that reviewer is the merge authority: merge on it without asking. Leave the
+PR open instead, and say so, when the gate fails or when a revert could not undo the change.
 
 ## Pre-commit checklist
 
@@ -338,7 +334,7 @@ version and never passes `--frozen`. Never delete or hand-edit the lockfile.
 ## Code style
 
 - No semicolons. 2-space indent. Double quotes by default, backticks for interpolated or multi-line
-  strings. 100 column limit. Trailing commas where legal. `deno fmt` is the arbiter.
+  strings (this overrides the global "backticks for strings" rule). 100 column limit. Trailing commas where legal. `deno fmt` is the arbiter.
 - Files: kebab-case `.ts`, `+main.ts` / `+lib.ts` for entry points, colocated `*.test.ts`.
 - Imports: relative local first, then `jsr:` stdlib, then `npm:` only when unavoidable.
 - `interface` for extensible object shapes, `enum` for finite constants (start at 1), `type` only
@@ -438,28 +434,9 @@ return nothing. Whether these pins match `spy4x/template` and `spy4x/ts-libs` wh
 overlap is **not** checked by anything here — compare them by hand with
 `grep -oE '"(arktype|preact|@preact/signals)@[0-9][^"_]*' deno.lock` run in each repo.
 
-Current pins (root `deno.jsonc`, the single source of truth):
-
-```
-preact                          10.29.8
-@preact/signals                  2.5.1
-@preact/signals-core            1.12.1
-wouter-preact                    3.9.0
-arktype                          2.2.3
-@std/assert                     1.0.19
-@std/expect                     1.0.20
-@std/path                       1.1.6
-@std/testing                    1.0.20
-preact-render-to-string          6.7.0
-tailwind-merge                   3.7.0
-@spy4x/platform, time, validation 1.4.0
-tailwindcss                     4.1.12
-```
-
-Three pins are not in this list, because each is pinned once in the one package that needs it, not
-at the root — see "Adding a package" above: `d3@7.9.0` in `charts/deno.json`, and `leaflet@1.9.4`
-and `@types/leaflet@1.9.22` in `map/deno.json`. Everything else here resolves through the root
-import map.
+The root `deno.jsonc` import map is the only list of pins; read it there. Three pins live outside
+it, each in the one package that needs it (see "Adding a package" above): `d3` in
+`charts/deno.json`, and `leaflet` and `@types/leaflet` in `map/deno.json`.
 
 **What is mechanically checked, and what is not.** Assume nothing here is. Exact pinning is a
 convention held by review: `deno.lock` is committed and Deno keeps it in sync automatically, but it is
@@ -478,5 +455,5 @@ audit greps a reviewer is expected to run, and the full list of what neither cat
 - Never commit a secret, token, credential, `.env` value or raw production URL.
 - One logical change per commit. Keep commits small.
 - Do not reformat or edit a directory another agent owns.
-- Do not merge without a passing review from a separate reviewer, and only the owner or an agent
-  the owner authorised for that run merges.
+- Never self-review. A separate reviewer's passing verdict is the merge authority, not the author's
+  own read of the diff.
