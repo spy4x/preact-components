@@ -90,7 +90,7 @@ const tones: Record<KpiTone, string> = {
  */
 function KpiToneMatrix() {
   return (
-    <KpiGrid>
+    <KpiGrid minWidth="8rem">
       {entries(tones).map(([tone, label]) => (
         <Kpi key={tone} label={label} value={42} sub={`tone="${tone}"`} tone={tone} />
       ))}
@@ -239,14 +239,18 @@ export const chartsDemos = {
           <Kpi label="Uptime" value="99.95%" sub="last 30 days" tone="positive" />
           <Kpi label="Errors" value={3} tone="negative" />
           <Kpi label="Pending" value={18} tone="warning" />
+          <Kpi label="Users" value={1204} />
+          <Kpi label="Latency" value="84 ms" />
         </KpiGrid>
         <p class="text-xs text-gray-500 dark:text-gray-400">
-          the same three cards at minWidth="14rem"
+          the same five cards at minWidth="16rem"
         </p>
-        <KpiGrid minWidth="14rem">
+        <KpiGrid minWidth="16rem">
           <Kpi label="Uptime" value="99.95%" sub="last 30 days" tone="positive" />
           <Kpi label="Errors" value={3} tone="negative" />
           <Kpi label="Pending" value={18} tone="warning" />
+          <Kpi label="Users" value={1204} />
+          <Kpi label="Latency" value="84 ms" />
         </KpiGrid>
       </div>
     ),
