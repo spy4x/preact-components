@@ -9,6 +9,7 @@ import {
   seriesColor,
 } from "./colors.ts"
 import { positionTooltip, TOOLTIP_TEXT_COLOR } from "./tooltip.ts"
+import { formatDecimal } from "@spy4x/platform/universal/format-number"
 
 export interface DonutDatum {
   label: string
@@ -96,7 +97,7 @@ export function donutGeometry(
       value: values[index],
       color,
       share,
-      percent: `${(share * 100).toFixed(1)}%`,
+      percent: `${formatDecimal(share * 100, 1)}%`,
       startPercent,
       endPercent,
     })

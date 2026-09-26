@@ -34,6 +34,16 @@ describe("donutGeometry", () => {
     expect(geometry.segments[1].endPercent).toBe(66.67)
   })
 
+  it("rounds a share that ends in 5 up, as it reads, not as its binary value rounds", () => {
+    // 1.45 is stored as 1.4499999…, which `toFixed(1)` rounds down to "1.4".
+    const geometry = donutGeometry([
+      { label: "a", value: 1.45, color: "#a" },
+      { label: "b", value: 98.55, color: "#b" },
+    ])
+
+    expect(geometry.segments[0].percent).toBe("1.5%")
+  })
+
   it("falls back to the palette when a datum has no colour", () => {
     const geometry = donutGeometry([{ label: "a", value: 1 }], { colors: ["#abcabc"] })
 
