@@ -1,4 +1,5 @@
 import { pageHref } from "@spy4x/preact-ui-guide/routes"
+import { MAP_PAGE_MARKERS, SERVED_BOX_GLOBAL } from "../src/map-page/page.tsx"
 import {
   centreInView,
   check,
@@ -20,6 +21,28 @@ const LEAFLET_MARKERS = ["A JavaScript library for interactive maps", "leaflet-z
 
 /** The id the frame gets, so every expression below finds the same one. */
 const FRAME_ID = "map-lazy-leaflet-frame"
+
+/** The id of the frame {@link serverRenderedMapChecks} loads the server-rendered map page into. */
+const SSR_FRAME_ID = "map-server-rendered-frame"
+
+/** The page `pages/build.ts` writes from `src/map-page/page.tsx`, relative to the site's root. */
+const SSR_PAGE = "map-demo/"
+
+/** What {@link serverRenderedMapChecks} reads off the hydrated server-rendered page. */
+interface HydratedMapState {
+  /** Whether the page's island set its boot marker. */
+  hydrated: boolean
+  /** How many `Map` boxes the page holds — one, unless hydration built a second. */
+  boxes: number
+  /** Whether the box the served markup carried is still in the document. */
+  servedBoxConnected: boolean
+  /** Whether Leaflet's container is inside that same box. */
+  leafletInServedBox: boolean
+  /** How many Leaflet pins are inside that same box. */
+  pins: number
+  /** Text of the plain list's rows. */
+  listNames: string[]
+}
 
 /** The card these checks drive, and the pieces of it they read. */
 const CARD = "#demo-Map"
@@ -183,7 +206,73 @@ export async function mapChecks(devtools: Devtools): Promise<void> {
     (frame) => lazyLeafletChecks(devtools, frame),
   )
 
+  await inFreshFrame(
+    devtools,
+    { id: SSR_FRAME_ID, src: SSR_PAGE, label: "server-rendered Map" },
+    (frame) => serverRenderedMapChecks(devtools, frame),
+  )
+
   await mapCardChecks(devtools)
+}
+
+/**
+ * A `Map` rendered on the server hydrates, and Leaflet mounts into the box the server rendered.
+ *
+ * The catalogue reaches `Map` through a lazy loader, so it renders only a placeholder on the server,
+ * and no check there hydrates `Map`'s own server markup. `map-demo/index.html` does
+ * (`src/map-page/page.tsx`): the served HTML carries the box and the list of places, an inline
+ * script keeps a reference to that box before the island runs, and the island hydrates the same
+ * component. If hydration replaced the box instead of taking it over, the kept box would be detached
+ * and would hold no map.
+ *
+ * @param devtools The connected session.
+ * @param frame A page expression for the frame, loaded at the server-rendered page.
+ */
+async function serverRenderedMapChecks(devtools: Devtools, frame: string): Promise<void> {
+  const labels = MAP_PAGE_MARKERS.map((marker) => marker.label)
+  const served = await devtools.evaluate<string>(
+    `fetch(new URL(${JSON.stringify(SSR_PAGE)}, location.origin + location.pathname))
+      .then((response) => response.text())`,
+  )
+  check(
+    "the server-rendered Map page serves Map's box and its list of places, with no Leaflet map yet",
+    served.includes(`data-e2e="map-box"`) && !served.includes("leaflet-container") &&
+      labels.every((label) => served.includes(`>${label}<`)),
+    `served ${served.length} characters; box ${served.includes(`data-e2e="map-box"`)}; ` +
+      `places ${labels.filter((label) => served.includes(`>${label}<`)).join(", ") || "none"}`,
+  )
+
+  let state: HydratedMapState | undefined
+  const mounted = await poll(async () => {
+    state = await devtools.evaluate<HydratedMapState>(`(() => {
+      const doc = ${frame}?.contentDocument
+      const box = ${frame}?.contentWindow?.${SERVED_BOX_GLOBAL}
+      const list = doc?.querySelector('[data-e2e="map-marker-list"]')
+      return {
+        hydrated: doc?.documentElement.dataset.hydrated === "true",
+        boxes: doc ? doc.querySelectorAll('[data-e2e="map-box"]').length : 0,
+        servedBoxConnected: Boolean(box?.isConnected),
+        leafletInServedBox: Boolean(box?.querySelector(".leaflet-container")),
+        pins: box ? box.querySelectorAll(".leaflet-marker-icon").length : 0,
+        listNames: list ? [...list.querySelectorAll("li")].map((row) => row.textContent.trim()) : [],
+      }
+    })()`)
+    return state.hydrated && state.leafletInServedBox && state.pins === labels.length
+  }, 15_000)
+  check(
+    "a server-rendered Map hydrates: Leaflet mounts into the box the server rendered, one pin per place",
+    mounted && state !== undefined && state.servedBoxConnected && state.boxes === 1,
+    state
+      ? `hydrated ${state.hydrated}; ${state.boxes} box(es); served box connected ` +
+        `${state.servedBoxConnected}; Leaflet in it ${state.leafletInServedBox}; ` +
+        `${state.pins} of ${labels.length} pins`
+      : "the frame was never read",
+  )
+  check(
+    "the hydrated server-rendered Map lists the same places the server rendered",
+    state !== undefined && JSON.stringify(state.listNames) === JSON.stringify(labels),
+    state ? state.listNames.join(", ") || "no rows" : "",
+  )
 }
 
 /**

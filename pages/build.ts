@@ -37,6 +37,7 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 import { BUILD_HASH_FILE, computeBuildFingerprint } from "./build-fingerprint.ts"
 import { demoElementId } from "./src/deep-link.ts"
 import { renderDocument } from "./src/document.tsx"
+import { renderMapPage } from "./src/map-page/page.tsx"
 import { renderApp } from "./src/prerender.tsx"
 import { routeTableFromHtml } from "./src/route-echo.ts"
 import { catalogueNames } from "@spy4x/preact-ui-guide/registry"
@@ -87,6 +88,7 @@ const CHECKED_ENTRIES = [
   "verify.ts",
   "src/prerender.tsx",
   "src/+main.tsx",
+  "src/map-page/+main.tsx",
 ]
 
 /**
@@ -204,8 +206,13 @@ interface Island {
   chunks: { name: string; bytes: Uint8Array }[]
 }
 
-/** The file `deno bundle` names after the entry point, `src/+main.tsx`. */
+/** The file `deno bundle` names after an entry point called `+main.tsx`, which both entries are. */
 const ENTRY_OUTPUT = "+main.js"
+
+/** The catalogue's island. */
+const CATALOGUE_ENTRY = "src/+main.tsx"
+/** The island of `map-demo/index.html`, the page that hydrates a server-rendered `Map`. */
+const MAP_PAGE_ENTRY = "src/map-page/+main.tsx"
 
 /**
  * Bundle the island for the browser, split at every dynamic `import()`.
@@ -215,13 +222,16 @@ const ENTRY_OUTPUT = "+main.js"
  * `--code-splitting` the bundler would inline that import into the one file every page loads.
  * `Map`'s `import("leaflet")` gets its own file the same way.
  *
+ * @param entry The entry point, relative to `pages/`: {@link CATALOGUE_ENTRY} or
+ * {@link MAP_PAGE_ENTRY}. Each is bundled on its own, so the catalogue's files are the same as
+ * without the map page.
  * @returns The entry's bytes, which the caller names by fingerprint, and the chunks, which keep the
  * names the bundler gave them.
  * @throws When the bundler wrote no entry, wrote a file that is not JavaScript (a CSS chunk, say,
  * which nothing would serve), or a chunk imports the entry by its original name — the entry is
  * renamed on the way into `dist/`, so such an import would point nowhere.
  */
-async function bundleIsland(): Promise<Island> {
+async function bundleIsland(entry: string): Promise<Island> {
   const outputDirectory = await Deno.makeTempDir({ prefix: "pages-island-" })
   try {
     await run("deno", [
@@ -234,7 +244,7 @@ async function bundleIsland(): Promise<Island> {
       "--code-splitting",
       "--outdir",
       outputDirectory,
-      "src/+main.tsx",
+      entry,
     ])
 
     const produced = [...Deno.readDirSync(outputDirectory)].filter((entry) => entry.isFile)
@@ -315,7 +325,8 @@ async function main(): Promise<void> {
   console.log(`pages build → ${DIST_DIRECTORY}`)
 
   await run("deno", ["check", ...CHECKED_ENTRIES])
-  const [stylesheet, island] = [await compileStylesheet(), await bundleIsland()]
+  const [stylesheet, island] = [await compileStylesheet(), await bundleIsland(CATALOGUE_ENTRY)]
+  const mapIsland = await bundleIsland(MAP_PAGE_ENTRY)
   // The header's version is the one the packages declare; every package publishes at one version.
   const version = packageVersion(await Deno.readTextFile(join(REPO_ROOT, "ui-guide", "deno.json")))
   const appHtml = renderApp(undefined, version)
@@ -335,6 +346,7 @@ async function main(): Promise<void> {
   const assetNames = {
     css: `main.${await fingerprint(stylesheet)}.css`,
     js: `main.${await fingerprint(island.entry)}.js`,
+    mapJs: `main.${await fingerprint(mapIsland.entry)}.js`,
   }
 
   const html = renderDocument({
@@ -387,6 +399,18 @@ async function main(): Promise<void> {
     ["tile.png"],
     "the Map card",
   )
+  // The page that hydrates a server-rendered `Map` (`src/map-page/page.tsx`), beside the tile it
+  // requests. Its island and chunks sit in the same directory, so they never mix with the
+  // catalogue's `assets/`.
+  const mapPageHtml = renderMapPage({
+    cssHref: `${BASE}assets/${assetNames.css}`,
+    islandSrc: `${BASE}${MAP_DEMO_DIRECTORY}/${assetNames.mapJs}`,
+  })
+  await Deno.writeTextFile(join(DIST_DIRECTORY, MAP_DEMO_DIRECTORY, "index.html"), mapPageHtml)
+  await Deno.writeFile(join(DIST_DIRECTORY, MAP_DEMO_DIRECTORY, assetNames.mapJs), mapIsland.entry)
+  for (const chunk of mapIsland.chunks) {
+    await Deno.writeFile(join(DIST_DIRECTORY, MAP_DEMO_DIRECTORY, chunk.name), chunk.bytes)
+  }
 
   // Written last, after every other artefact file, so a build that throws partway through never
   // leaves a hash on disk that claims a `dist/` newer than what actually got written — `verify.ts`
@@ -407,6 +431,9 @@ async function main(): Promise<void> {
       `  ${MAP_DEMO_DIRECTORY}/ ${
         mapDemo.join(", ")
       } — the local tile the Map card's layer requests\n` +
+      `  ${MAP_DEMO_DIRECTORY}/index.html ${kilobytes(mapPageHtml.length)}, ${assetNames.mapJs} ${
+        kilobytes(mapIsland.entry.length)
+      } + ${mapIsland.chunks.length} chunks — a server-rendered Map the browser hydrates\n` +
       `  served from ${ORIGIN}${BASE}`,
   )
 }
