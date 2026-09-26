@@ -2,7 +2,7 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import type { PageHead } from "./head.ts"
-import { jsonLdText, SEOHead, seoHeadJsonLd, seoHeadTags } from "./seo-head.tsx"
+import { SEOHead, seoHeadJsonLd, seoHeadTags } from "./seo-head.tsx"
 
 const PAGE: PageHead = {
   title: "Widgets — Acme",
@@ -306,21 +306,6 @@ describe("seoHeadJsonLd", () => {
         crumbs: [{ name: "Trap", href: "javascript:alert(1)" }, { name: "Widgets" }],
       })
     ).toThrow("crumb href must be an http or https URL")
-  })
-})
-
-describe("jsonLdText", () => {
-  it("escapes < so a description cannot close the script element", () => {
-    const text = jsonLdText({ description: "</script><script>alert(1)</script>" })
-
-    expect(text).not.toContain("</script")
-    expect(text).toContain("\\u003c/script")
-  })
-
-  it("still parses back to the original value", () => {
-    const value = { name: "</script>", nested: { list: [1, "<b>"] } }
-
-    expect(JSON.parse(jsonLdText(value))).toEqual(value)
   })
 })
 

@@ -1,9 +1,10 @@
 /**
- * Page-head model, the canonical-address normaliser, and an optional per-request head store.
+ * Page-head model and an optional per-request head store.
  *
- * Everything here is app-agnostic, and everything but the store is pure: {@link createHeadStore}
- * builds a fresh signal on every call and hands back functions that write it. Two rules shape the
- * rest:
+ * Everything here is app-agnostic: {@link createHeadStore} builds a fresh signal on every call and
+ * hands back functions that write it. The canonical-address normaliser, the breadcrumb builders
+ * and the `Crumb` type live in `@spy4x/platform/universal/seo` (spy4x/ts-libs), so a server can
+ * use them without Preact. Two rules shape what they do:
  *
  * - **A canonical address is normalised before it is published.** Search engines and social
  *   networks read what this package emits, so an address is parsed, required to be `http` or
@@ -14,6 +15,7 @@
  */
 
 import { type Signal, signal } from "@preact/signals"
+import type { Crumb } from "@spy4x/platform/universal/seo"
 
 /** Open Graph object type a page declares. */
 export type OgType = "profile" | "article" | "website" | "service"
@@ -28,19 +30,6 @@ export type OgType = "profile" | "article" | "website" | "service"
  */
 export type TwitterCard = "summary" | "summary_large_image"
 
-/** One entry in the breadcrumb trail a page declares. */
-export interface Crumb {
-  /** Visible name of the entry, exactly as it should appear. Never derived from the address. */
-  name: string
-  /**
-   * Where the entry points. Absolute, or relative to the page's canonical address.
-   *
-   * The last entry normally omits it: a trail ends on the current page, whose address is the
-   * canonical one.
-   */
-  href?: string
-}
-
 /** Every field {@link SEOHead} renders, plus the JSON-LD inputs. */
 export interface PageHead {
   /** `<title>`, `og:title` and `twitter:title`. */
@@ -50,7 +39,7 @@ export interface PageHead {
   /**
    * Absolute `http`/`https` address of this page. Drives `<link rel="canonical">` and `og:url`.
    *
-   * It is normalised before it is emitted — see {@link normalizeCanonical} — so the address that
+   * It is normalised before it is emitted — see `normalizeCanonical` — so the address that
    * reaches the page is not necessarily the string handed in.
    */
   canonical: string
@@ -85,125 +74,6 @@ export interface PageHead {
    * two entries emits no `BreadcrumbList` at all: a one-item trail is noise in a rich result.
    */
   crumbs?: readonly Crumb[]
-}
-
-/** A schema.org `ListItem` as it appears inside a `BreadcrumbList`. */
-export interface BreadcrumbListItem {
-  "@type": "ListItem"
-  position: number
-  name: string
-  item: string
-}
-
-/** A schema.org `BreadcrumbList` node. */
-export interface BreadcrumbListJsonLd {
-  "@type": "BreadcrumbList"
-  "@id": string
-  itemListElement: BreadcrumbListItem[]
-}
-
-/**
- * Parse an address that is going to be published, refusing anything that is not a web page.
- *
- * Three things are dropped rather than refused, because each is meaningless on a published
- * address and harmful in one: a user name and a password would print credentials into a page that
- * search engines and social networks read, and a fragment names a position inside a page rather
- * than a page. What survives is the origin, the path and the query, the three parts that identify
- * a page. `URL` normalises the rest for free — the host is lower-cased, a default port is dropped
- * and an origin with no path gains its `/`.
- *
- * @param input The address as the caller wrote it.
- * @param label What the address is, used in the error message.
- * @param base Resolves a relative address; omitted when the address must already be absolute.
- * @throws When the address does not parse, or its scheme is not `http` or `https`.
- */
-function webUrl(input: string, label: string, base?: URL): URL {
-  let url: URL
-  try {
-    url = new URL(input, base)
-  } catch {
-    throw new Error(`${label} must be an absolute URL, received: ${input}`)
-  }
-
-  if (url.protocol !== "http:" && url.protocol !== "https:") {
-    throw new Error(`${label} must be an http or https URL, received: ${input}`)
-  }
-
-  url.username = ""
-  url.password = ""
-  url.hash = ""
-  return url
-}
-
-/**
- * Parse a canonical address into the normalised `URL` that will be published.
- *
- * Refusing rather than falling back is deliberate, and it is the same split the calendar makes
- * between an impossible date and an unknown time zone. A canonical address is the caller's own
- * arithmetic: a route built it out of an origin and a path, and if the result is
- * `javascript:alert(1)` or `/products/widgets` then the route is wrong, not the environment. The
- * alternatives are worse in a way nobody would notice: omitting the tag publishes a page with no
- * canonical address at all, and there is no origin to fall back to that would not be invented.
- *
- * @param canonical Absolute `http`/`https` address of the page.
- * @throws When it is relative, unparsable, or carries any other scheme.
- */
-export function canonicalUrl(canonical: string): URL {
-  return webUrl(canonical, "canonical")
-}
-
-/**
- * The canonical address as it should be published: one clean `http`/`https` address.
- *
- * `https://user:pw@ACME.Example:443/a/b?x=1#frag` becomes `https://acme.example/a/b?x=1`.
- */
-export function normalizeCanonical(canonical: string): string {
-  return canonicalUrl(canonical).href
-}
-
-/**
- * `itemListElement` for a schema.org `BreadcrumbList`, built from the crumbs the caller stated.
- *
- * Positions are 1-based and follow the array. Every `item` is an absolute address, because the
- * structured data has to stand alone in a search result: a crumb's `href` is resolved against the
- * canonical address and normalised the same way it is, and a crumb with no `href` — the last one,
- * the page itself — takes the canonical address.
- *
- * @param canonical Absolute address of the page the trail ends on.
- * @param crumbs The trail, root first, current page last.
- */
-export function breadcrumbItems(
-  canonical: string,
-  crumbs: readonly Crumb[],
-): BreadcrumbListItem[] {
-  const base = canonicalUrl(canonical)
-
-  return crumbs.map((crumb, index) => ({
-    "@type": "ListItem",
-    position: index + 1,
-    name: crumb.name,
-    item: crumb.href === undefined ? base.href : webUrl(crumb.href, "crumb href", base).href,
-  }))
-}
-
-/**
- * The complete `BreadcrumbList` node, `@id`-anchored to the page it describes.
- *
- * The anchor is built from the normalised address, which is why it carries exactly one `#`: a
- * canonical address handed in with a fragment used to produce `…#frag#breadcrumb`, an identifier
- * no other node could ever match.
- */
-export function breadcrumbListJsonLd(
-  canonical: string,
-  crumbs: readonly Crumb[],
-): BreadcrumbListJsonLd {
-  const base = canonicalUrl(canonical)
-
-  return {
-    "@type": "BreadcrumbList",
-    "@id": `${base.href}#breadcrumb`,
-    itemListElement: breadcrumbItems(base.href, crumbs),
-  }
 }
 
 /** A head signal with the defaults it was created from, so `resetHead()` is exact. */

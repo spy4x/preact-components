@@ -9,7 +9,7 @@
  */
 
 import type { JSX } from "preact"
-import { jsonLdText } from "./seo-head.tsx"
+import { jsonLdText } from "@spy4x/platform/universal/seo"
 
 /** `id` {@link StateInit} and {@link readStateInit} agree on when neither is given one. */
 const DEFAULT_ID = "state-init"
@@ -28,8 +28,8 @@ export interface StateInitProps {
 /**
  * Serialise `data` for embedding inside {@link StateInit}'s `<script type="application/json">`.
  *
- * Reuses `seo-head.tsx`'s own `jsonLdText` rather than a second implementation of the same escape:
- * `<` becomes the six characters `\u003c`, which is what keeps a value containing the literal text
+ * Reuses `jsonLdText` from `@spy4x/platform/universal/seo`, the escape `SEOHead` uses, rather
+ * than a second implementation of it: `<` becomes the six characters `\u003c`, which is what keeps a value containing the literal text
  * `</script>` from closing the element it is embedded in — the HTML parser looks for that sequence
  * case-insensitively to end *any* `<script>`, whatever its `type`, before either JSON or JavaScript
  * ever gets a look at the content. `<!--` is a `<` too, so the same escape covers it.
@@ -47,7 +47,7 @@ export interface StateInitProps {
  * `JSON.stringify` answers `undefined` — not a string, and not a thrown error — for `undefined`
  * itself, a function, or a `Symbol`, at the position this is called from (the top level, since
  * `StateInit` passes `data` straight through); calling `.replace` on that `undefined` inside
- * `jsonLdText` used to fail with a bare `TypeError` pointing at `seo-head.tsx`, naming neither
+ * `jsonLdText` used to fail with a bare `TypeError` pointing inside it, naming neither
  * `StateInit` nor which of the three the caller passed. A `BigInt` anywhere in `data`, nested or
  * not, makes `JSON.stringify` throw its own `TypeError` directly, with the same problem: nothing in
  * the message says `StateInit` sent it there. Both are caught here and re-thrown naming this
