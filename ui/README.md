@@ -104,7 +104,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Table`            | `table`             | `headerSlot`, `bodySlots`, `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`                                                                                                                   |
 | `Tabs`             | `tabs`              | `tabs`, `active`, `onChange`, `orientation`, `lazy`                                                                                                                                                  |
 | `Textarea`         | `input`             | native textarea attrs, `class`                                                                                                                                                                       |
-| `Toastr`           | `toastr`            | `toasts`, `onDismiss`, `label`, `dismissLabel`, `dataE2E`                                                                                                                                            |
+| `Toastr`           | `toastr`            | `toasts`, `onDismiss`, `corner`, `label`, `dismissLabel`, `dataE2E`                                                                                                                                  |
 | `ToggleField`      | `toggle-field`      | `id`, `label`, `value`, `onToggle`, `description?`, `error?`                                                                                                                                         |
 | `ToggleSwitch`     | `toggle-switch`     | `value`, `onToggle`, `disabled`, `label`                                                                                                                                                             |
 | `Tooltip`          | `tooltip`           | `content`, `label`, `placement`, `focusable`                                                                                                                                                         |
@@ -156,6 +156,11 @@ from the tabs whose panel it omitted. Ids are derived from each `TabItem.id` (`$
 `onDismiss` — the caller owns the stack. `createToastStore` in `@spy4x/preact-signals` writes
 that same `duration` field, so the wiring above needs no adapter; `String(id)` is there because
 `ToastItem.id` is `string | number` and that store's ids are strings.
+
+`corner` puts the stack in one of the window's four corners, 2rem from both edges: `"top-left"`,
+`"top-right"` (the default), `"bottom-left"` or `"bottom-right"`. The toasts keep the order of
+`toasts` in every corner, and each one slides in from its corner's side unless the reader prefers
+reduced motion.
 
 **The stack is always in the document, an empty one included.** It renders as a named region marked
 `aria-live="polite"` whether or not it holds a toast, which is what lets a screen reader announce a

@@ -20,6 +20,7 @@ import {
   LoadingSkeleton,
   LoadingSpinner,
   Modal,
+  RadioGroup,
   SkeletonCards,
   type SkeletonLineWidth,
   SkeletonStatus,
@@ -29,6 +30,7 @@ import {
   Stack,
   tableGeometry,
   textGeometry,
+  type ToastCorner,
   Toastr,
   type ToastVariant,
 } from "@spy4x/preact-ui"
@@ -154,7 +156,20 @@ const extendMs = 2500
 const longDurationMs = 20_000
 
 /**
- * `Toastr` is positioned for the page corner, so the demo pins it into the card with `static`, and
+ * Where the card puts its stack: inside the card, or in one of the window's corners. The record is
+ * the coverage guard for `ToastCorner` — a corner with no entry does not compile.
+ */
+const toastPlacements: Record<ToastCorner | "card", string> = {
+  card: "In this card",
+  "top-left": "Top left",
+  "top-right": "Top right",
+  "bottom-left": "Bottom left",
+  "bottom-right": "Bottom right",
+}
+
+/**
+ * `Toastr` is positioned for the page corner, so the demo pins it into the card with `static` until
+ * a reader picks a corner, which then shows the stack in that corner of the window. And
  * the stack comes out of a real `createToastStore` — the wiring both READMEs show, so the browser
  * checks drive the documented path. `onDismiss` is `store.remove`, `duration: 0` keeps a toast until
  * somebody dismisses it, one button pushes a toast that dismisses itself, one pushes a toast with a
@@ -169,12 +184,21 @@ function ToastrDemo() {
   // tear down and nothing a re-render could restart.
   const store = useMemo(() => createToastStore(), [])
   const toasts = store.list.value
+  const placement = useSignal<ToastCorner | "card">("card")
 
   const push = (type: ToastVariant, duration: number, body: string) =>
     store.add({ type, duration, body })
 
   return (
     <Stack>
+      <RadioGroup
+        legend="Where the stack sits"
+        name="guide-toastr-corner"
+        options={entries(toastPlacements).map(([value, label]) => ({ value, label }))}
+        value={placement.value}
+        onChange={(value) => placement.value = value as ToastCorner | "card"}
+        data-e2e="toast-corner"
+      />
       <Cluster>
         {entries(toastVariants).map(([variant, label]) => (
           <Button
@@ -237,7 +261,9 @@ function ToastrDemo() {
         toasts={toasts}
         onDismiss={(id) => store.remove(String(id))}
         dataE2E="guide-toastr"
-        class="static max-w-sm"
+        {...(placement.value === "card"
+          ? { class: "static max-w-sm" }
+          : { corner: placement.value })}
       />
     </Stack>
   )
@@ -741,6 +767,12 @@ export const feedbackDemos = {
         description: "Removes a toast, when its timer ends or it is dismissed.",
       },
       {
+        name: "corner",
+        type: `"top-left" | "top-right" | "bottom-left" | "bottom-right"`,
+        default: `"top-right"`,
+        description: "The window corner the stack sits in; toasts slide in from that side.",
+      },
+      {
         name: "label",
         type: "string",
         default: `"Notifications"`,
@@ -756,6 +788,7 @@ export const feedbackDemos = {
     snippet: `<Toastr
   toasts={app.toast.list.value}
   onDismiss={(id) => app.toast.remove(String(id))}
+  corner="bottom-right"
 />`,
     render: () => <ToastrDemo />,
   },

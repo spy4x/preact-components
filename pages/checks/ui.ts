@@ -165,6 +165,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await tooltipChecks(devtools)
   await comboboxChecks(devtools)
   await toastrChecks(devtools)
+  await toastrCornerChecks(devtools)
   await dateRangeChecks(devtools)
   await dateRangeTimeChecks(devtools)
   await paginationChecks(devtools)
@@ -1299,6 +1300,122 @@ async function toastrChecks(devtools: Devtools): Promise<void> {
 
   // Leave the card as it was found, for whatever reads the page next.
   await devtools.evaluate<null>(`(globalThis.__verifyToastr?.clear?.click(), null)`)
+}
+
+/** The widths #354 names for the corner check: a phone and a desktop. */
+const TOAST_CORNER_WIDTHS = [375, 1440] as const
+
+/** What {@link toastrCornerChecks} reads off one toast in one corner. */
+interface ToastCornerReading {
+  /** Whether the corner radio was found and a toast arrived in the stack. */
+  found: boolean
+  /** The toast's box, in viewport pixels. */
+  left: number
+  top: number
+  right: number
+  bottom: number
+  /** The viewport's own size, without scrollbars. */
+  width: number
+  height: number
+  /** The toast's horizontal `translate` two frames after it was pushed, in pixels. */
+  enteringX: number
+}
+
+/**
+ * `Toastr`'s `corner` prop, driven from the card's corner picker: at 375 and 1440 px, a toast pushed
+ * in each corner lands inside the viewport, 2rem from the two edges that corner names, and slides in
+ * from that corner's side. The picker is put back to "In this card" and the store emptied however
+ * the check ends, so the checks after it see the card as `toastrChecks` left it.
+ *
+ * The slide is read from the toast's computed `translate` two frames after the push, while the
+ * 300ms entry transition is still running: positive in a right corner, negative in a left one.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function toastrCornerChecks(devtools: Devtools): Promise<void> {
+  const corners = ["top-left", "top-right", "bottom-left", "bottom-right"] as const
+  const pick = (value: string) =>
+    devtools.evaluate<boolean>(`(async () => {
+      const radio = document.querySelector(
+        '#demo-Toastr [data-e2e="toast-corner"] input[value="${value}"]',
+      )
+      if (!radio) return false
+      radio.click()
+      await new Promise((done) => setTimeout(done, 50))
+      return radio.checked
+    })()`)
+  const clear = () =>
+    devtools.evaluate<null>(`(async () => {
+      document.querySelector('#demo-Toastr [data-e2e="toast-clear"]')?.click()
+      await new Promise((done) => setTimeout(done, 50))
+      return null
+    })()`)
+
+  try {
+    for (const width of TOAST_CORNER_WIDTHS) {
+      await devtools.send("Emulation.setDeviceMetricsOverride", {
+        width,
+        height: 800,
+        deviceScaleFactor: 1,
+        mobile: false,
+      })
+      for (const corner of corners) {
+        await clear()
+        const picked = await pick(corner)
+        const reading = await devtools.evaluate<ToastCornerReading>(`(async () => {
+          const frame = () => new Promise((done) => requestAnimationFrame(done))
+          document.querySelector('#demo-Toastr [data-e2e="toast-info"]')?.click()
+          await frame()
+          await frame()
+          const toast = document.querySelector(
+            '#demo-Toastr [data-e2e="guide-toastr"] [role="status"], ' +
+              '#demo-Toastr [data-e2e="guide-toastr"] [role="alert"]',
+          )
+          const empty = { found: false, left: 0, top: 0, right: 0, bottom: 0, width: 0,
+            height: 0, enteringX: 0 }
+          if (!toast) return empty
+          const enteringX = parseFloat(getComputedStyle(toast).translate.split(" ")[0]) || 0
+          await new Promise((done) => setTimeout(done, 400))
+          const box = toast.getBoundingClientRect()
+          return {
+            found: true,
+            left: Math.round(box.left),
+            top: Math.round(box.top),
+            right: Math.round(box.right),
+            bottom: Math.round(box.bottom),
+            width: document.documentElement.clientWidth,
+            height: document.documentElement.clientHeight,
+            enteringX,
+          }
+        })()`)
+
+        const inside = reading.found && reading.left >= 0 && reading.top >= 0 &&
+          reading.right <= reading.width && reading.bottom <= reading.height
+        const gap = 32
+        const near = (value: number) => Math.abs(value - gap) <= 1
+        const atCorner = reading.found &&
+          (corner.startsWith("top") ? near(reading.top) : near(reading.height - reading.bottom)) &&
+          (corner.endsWith("left") ? near(reading.left) : near(reading.width - reading.right))
+        const fromSide = corner.endsWith("left") ? reading.enteringX < 0 : reading.enteringX > 0
+        check(
+          `a toast in the ${corner} corner sits inside the viewport, 2rem from both of that ` +
+            `corner's edges, and slides in from its side, at ${width}px`,
+          picked && inside && atCorner && fromSide,
+          !picked
+            ? `the card has no ${corner} choice to pick`
+            : !reading.found
+            ? "no toast arrived in the stack"
+            : `toast at left ${reading.left}, top ${reading.top}, right ${reading.right}, bottom ` +
+              `${reading.bottom} in a ${reading.width}×${reading.height} viewport; translate x ` +
+              `${reading.enteringX}px two frames after the push`,
+        )
+      }
+    }
+  } finally {
+    await devtools.send("Emulation.clearDeviceMetricsOverride")
+    await clear()
+    await pick("card")
+  }
 }
 
 /** One reading of the card's store readout next to its live area. */

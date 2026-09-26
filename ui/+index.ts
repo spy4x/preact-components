@@ -310,6 +310,7 @@ export { nextTabIndex, type TabItem, type TabOrientation, Tabs, type TabsProps }
 export {
   defaultToastDuration,
   resolveDuration,
+  type ToastCorner,
   type ToastItem,
   Toastr,
   type ToastrProps,

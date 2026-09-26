@@ -3,7 +3,19 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { FakeTime } from "@std/testing/time"
 import { render } from "preact-render-to-string"
-import { defaultToastDuration, resolveDuration, type ToastItem, Toastr } from "./toastr.tsx"
+import {
+  defaultToastDuration,
+  resolveDuration,
+  type ToastCorner,
+  type ToastItem,
+  Toastr,
+} from "./toastr.tsx"
+
+/** The classes on the stack's own element, one per entry. */
+function stackClasses(html: string): string[] {
+  return html.match(/<div[^>]*role="region"[^>]*>/)?.[0].match(/class="([^"]*)"/)?.[1]
+    .split(/\s+/) ?? []
+}
 
 describe("Toastr", () => {
   it("keeps the live area in the document when the stack is empty", () => {
@@ -71,11 +83,66 @@ describe("Toastr", () => {
     }
   })
 
-  it("pins the stack to the top-right corner", () => {
+  it("pins the stack to the top-right corner by default", () => {
     const html = render(<Toastr toasts={[{ id: 1, body: "note" }]} onDismiss={() => {}} />)
 
-    expect(html).toContain("fixed top-8 right-8")
-    expect(html).toContain("z-50")
+    expect(stackClasses(html)).toEqual(
+      expect.arrayContaining(["fixed", "top-8", "right-8", "z-50"]),
+    )
+    expect(stackClasses(html)).not.toContain("left-8")
+    expect(stackClasses(html)).not.toContain("bottom-8")
+  })
+
+  it("renders the same markup with no corner as with top-right", () => {
+    const toasts = [{ id: 1, body: "note" }, { id: 2, body: "later", type: "error" as const }]
+
+    expect(render(<Toastr toasts={toasts} onDismiss={() => {}} />)).toBe(
+      render(<Toastr toasts={toasts} onDismiss={() => {}} corner="top-right" />),
+    )
+  })
+
+  it("puts the stack in the corner it is asked for", () => {
+    const expected: Record<ToastCorner, [string, string]> = {
+      "top-left": ["top-8", "left-8"],
+      "top-right": ["top-8", "right-8"],
+      "bottom-left": ["bottom-8", "left-8"],
+      "bottom-right": ["bottom-8", "right-8"],
+    }
+    for (const [corner, [vertical, horizontal]] of Object.entries(expected)) {
+      const classes = stackClasses(
+        render(<Toastr toasts={[]} onDismiss={() => {}} corner={corner as ToastCorner} />),
+      )
+      const others = ["top-8", "bottom-8", "left-8", "right-8"]
+        .filter((edge) => edge !== vertical && edge !== horizontal)
+
+      expect(classes, corner).toEqual(expect.arrayContaining(["fixed", vertical, horizontal]))
+      for (const edge of others) expect(classes, `${corner} carries ${edge}`).not.toContain(edge)
+    }
+  })
+
+  it("slides a toast in from the right in a right corner and from the left in a left one", () => {
+    const toastClasses = (corner: ToastCorner) =>
+      render(<Toastr toasts={[{ id: 1, body: "note" }]} onDismiss={() => {}} corner={corner} />)
+        .match(/<div role="status" class="([^"]*)"/)?.[1].split(/\s+/) ?? []
+
+    for (const corner of ["top-right", "bottom-right"] as const) {
+      expect(toastClasses(corner), corner).toContain("motion-safe:starting:translate-x-8")
+      expect(toastClasses(corner), corner).not.toContain("motion-safe:starting:-translate-x-8")
+    }
+    for (const corner of ["top-left", "bottom-left"] as const) {
+      expect(toastClasses(corner), corner).toContain("motion-safe:starting:-translate-x-8")
+      expect(toastClasses(corner), corner).not.toContain("motion-safe:starting:translate-x-8")
+    }
+  })
+
+  it("keeps the caller's order in every corner", () => {
+    const toasts = [{ id: 1, body: "first" }, { id: 2, body: "second" }]
+    for (const corner of ["top-left", "bottom-right"] as const) {
+      const html = render(<Toastr toasts={toasts} onDismiss={() => {}} corner={corner} />)
+
+      expect(html.indexOf("first"), corner).toBeLessThan(html.indexOf("second"))
+      expect(stackClasses(html), corner).not.toContain("flex-col-reverse")
+    }
   })
 
   it("gives every toast a dismiss control", () => {
