@@ -1,92 +1,26 @@
 /**
- * The System section.
+ * The System section: all nine of the package's components, live.
  *
- * All nine of the package's components are here. Seven render from props with no reduction needed —
- * `Shell` and `StateInit` included, `useMobilePanel`'s effects and `StateInit`'s inert
- * `type="application/json"` script notwithstanding, neither touches anything this guide's own page
- * could not safely hand it — and two are platform integration, handled with an explicit, stated
- * reduction rather than a demo that claims behaviour it cannot show. Those two are the interesting
- * part of this file, so here is the reasoning in full:
+ * Two of them are platform integration, and their cards are reduced on purpose:
  *
- * - **`SEOHead` returns `<title>`, `<meta>` and `<link>` tags.** Rendering it inside a catalogue card
- *   would splice a second `<title>` into the document *body*, and the browser reads the first
- *   `<title>` anywhere in the document as `document.title` — which would silently rename every deep
- *   link in the host app and is exactly the class of cross-talk a component library must not cause.
- *   The card therefore shows `seoHeadTags`, the component's own exported source of truth and the
- *   function the component maps over: the tag set is real, complete, and asserted by the card's own
- *   content. What is *not* claimed is that the tags reach a document head — this package has no head
- *   pipeline, and the guide has none to offer.
- * - **`SWUpdater` renders an empty live region and nothing else until a waiting service worker is
- *   detected**, so its server render is that region alone. The card has three parts. The first is
- *   the contract itself: the component mounted against a container that exists only in this page,
- *   so the always-present empty region can be seen with nothing waiting anywhere, and a button that
- *   makes an update ready inside that same element. Nothing is registered with the browser by it,
- *   which is what makes mounting it on page load acceptable here. The second drives the pure
- *   function the component is built on — `watchForUpdate`, on a fake registration, in every branch,
- *   with the outcome printed.
- *   The third is the component itself against a real service worker, and it is deliberately
- *   visitor-triggered: this catalogue is published, so **nothing registers a worker on page load**.
- *   Pressing the card's button installs `sw-demo/sw.js`, a worker with no `fetch` handler, no cache
- *   and no `clients.claim()`, scoped to `sw-demo/` — one directory below this page, which therefore
- *   is never controlled by it. The button then registers the same script under a second version
- *   marker, which is a genuine update: the new worker installs and *waits*, because the first one
- *   still controls the hidden frame the card opened inside the scope. That is the state `SWUpdater`
- *   exists for, so mounting it there shows the real bar. The card's reset control unregisters
- *   everything again, and `pages/checks/system.ts` drives all of it in headless Chromium.
+ * - **`SEOHead` returns `<title>`, `<meta>` and `<link>` tags.** Rendered inside a card it would put
+ *   a second `<title>` into the document body, and the browser reads the first `<title>` anywhere
+ *   as `document.title`, which would rename the host app's page. The card shows `seoHeadTags`, the
+ *   exported data the component maps over, instead.
+ * - **`SWUpdater` renders an empty live region until a waiting worker is found.** Its card has three
+ *   parts: the component mounted against a container that exists only in this page (so the empty
+ *   region is there from page load and nothing is registered with the browser); `watchForUpdate`
+ *   run on a fake registration in each branch; and the component against a real worker, which only
+ *   a visitor's press installs, because this catalogue is published. That worker (`sw-demo/sw.js`)
+ *   has no `fetch` handler, no cache and no `clients.claim()`, and its scope is a directory below
+ *   this page, so this page is never controlled by it.
  *
- * The rest are honest full demos. `Calendar` reads state, so it lives in its own component with its
- * own local state, and every date is injected: it takes `today` and `timeZone` as props precisely so
- * a render can be pinned, and it is pinned to `2026-03-10`/`UTC` here. It has five cards rather
- * than one, because five things about it can only be shown by driving it: the dual-mode swap, the
- * keyboard inside the grid, what changes when the locale does, and then what each of the two
- * answers an owner can give to `onSelectMonth` does to the reader's place in the grid.
+ * Every date is injected: the calendars take `today` and `timeZone` as props and are pinned to
+ * `2026-03-10` in `UTC`. The two calendar owners that refuse or answer late count what they were
+ * asked and what they did, because "the month did not change" is otherwise indistinguishable from a
+ * key press that never arrived.
  *
- * Those last two are the cards whose shape is not obvious, and they are a pair. `onSelectMonth` is
- * a request: a controlled calendar is free to leave the month where it is — an owner clamping to an
- * allowed range does it routinely — and it is equally free to answer later than the render the call
- * is part of, which is what any owner that fetches before it answers does. The calendar cannot tell
- * those two apart at the moment it has to decide, so it treats the second as the first and finishes
- * the press when the month arrives. The fourth card supplies the callback and never acts on it; the
- * fifth draws the month it was asked for on a short timer.
- *
- * Both count what they were asked and what they did about it, because neither answer is visible
- * otherwise: "the month did not change" is equally true of a key press that never reached the
- * calendar at all, and the counts are what tell the two apart, on screen and in
- * `pages/checks/system.ts`.
- *
- * `ImageLightbox` renders its dialog closed, with nothing else to pin, and the images beside it are
- * the demo's own — one plain and one wrapped in a link, because "opens the lightbox instead of
- * following the link" is a claim that needs a link to be a claim at all. Two images is also what
- * makes the card honest about the shared `Lightbox` it now opens: with more than one image in the
- * sequence, Left and Right page between them and the previous/next buttons render. A second,
- * separate `ImageLightbox` instance on the same card, with `fallbackAlt=""`, shows the opposite
- * case: one image with no description at all, inside its own link, that never becomes a zoom
- * control and whose link a click still follows.
- *
- * `AuthForm` gets two cards. The first mounts two instances side by side, sign-in and sign-up,
- * which is the card a password manager or `pages/checks/system.ts` reads: real `<form>`s, real
- * `<label for>`s, the right `autocomplete`/`name`/`type` on every field, and — because there are
- * two instances on the one page — proof that their ids do not collide. The second is one
- * instrumented instance with buttons standing in for what an app's own server round trip would
- * otherwise drive: setting a form-level or a field-level error, moving to the one-time-code step,
- * toggling `busy`, and calling `form.requestSubmit()` directly so a check can prove a busy submit
- * calls nothing even when it bypasses the (disabled) submit button. Every submit callback counts
- * its own calls, because "nothing happened" is otherwise indistinguishable from "the submit never
- * reached the handler". **This second card has callbacks and no `action`, on purpose**: it is the
- * ordinary shape of a hydrated app, and it is also the card `pages/checks/system.ts` disables
- * script execution against and presses Submit on, to prove a visitor who submits before the bundle
- * has run never sends the password into the URL.
- *
- * `SiteHeader`'s one card is honest about what it can and cannot show at the guide's own width: the
- * mobile `<details>` panel only replaces the inline links below `lg` (1024px) — `actions` and the
- * menu button are always in view — so the card renders the desktop row here and says, in its own
- * summary, to resize the browser window itself to see the disclosure (the breakpoint reads the
- * viewport, not the card). What that leaves for a reader to take on faith — the panel opening
- * without moving the bar around it, Escape closing it and returning focus to the button, a
- * client-side navigation closing it without returning focus, its state reaching the accessibility
- * tree natively, catching up correctly for a menu opened before the bundle finishes loading, and
- * every link staying reachable with script execution disabled — is exactly what
- * `pages/checks/system.ts` drives in a real browser at phone width instead.
+ * The `data-e2e` hooks throughout are what `pages/checks/system.ts` drives in a real browser.
  */
 
 import {
@@ -120,10 +54,24 @@ import {
   watchForUpdate,
   type WorkerLike,
 } from "@spy4x/preact-system/sw-updater"
-import { Button } from "@spy4x/preact-ui"
+import { Button, Cluster, Grid, Stack } from "@spy4x/preact-ui"
 import { useSignal } from "@preact/signals"
+import type { ComponentChildren } from "preact"
 import { useRef } from "preact/hooks"
 import type { DemoFragment } from "../registry.ts"
+
+/** One captioned part of a card whose demo shows several things side by side. */
+function Part({ title, children }: { title: string; children: ComponentChildren }) {
+  return (
+    <Stack gap="sm">
+      <h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400">{title}</h4>
+      {children}
+    </Stack>
+  )
+}
+
+/** The muted line of text a demo prints its state or its instructions in. */
+const NOTE = "text-xs text-gray-500 dark:text-gray-400"
 
 /**
  * A page head with every optional tag populated, so the card shows the whole set, not a subset.
@@ -158,15 +106,15 @@ const pageHead: PageHead = {
  */
 function SeoHeadTagList() {
   return (
-    <div class="space-y-2">
-      <p class="text-xs text-gray-500 dark:text-gray-400">
-        {seoHeadTags(pageHead).length} tags, in document order — the exact array{" "}
-        <code>&lt;SEOHead /&gt;</code> maps over
+    <Stack gap="sm">
+      <p class={NOTE}>
+        {seoHeadTags(pageHead).length} tags, in document order: the array{" "}
+        <code>&lt;SEOHead /&gt;</code> renders.
       </p>
-      <pre class="max-h-72 overflow-auto rounded-md bg-gray-900 p-3 text-xs text-gray-100">
+      <pre class="max-h-72 overflow-auto font-mono text-xs text-gray-900 dark:text-gray-100">
         <code>{JSON.stringify(seoHeadTags(pageHead), null, 2)}</code>
       </pre>
-    </div>
+    </Stack>
   )
 }
 
@@ -298,34 +246,36 @@ function SwUpdaterQuietDemo() {
   rig.current ??= quietRig()
 
   return (
-    <div class="space-y-3" data-e2e="sw-quiet">
-      <p class="text-xs text-gray-500 dark:text-gray-400">
-        Mounted right now, with nothing waiting: the only thing it renders is an empty live region,
-        zero pixels tall and painting nothing. Press the button to make an update ready inside that
-        same element.
-      </p>
-      <div class="flex flex-wrap items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          data-e2e="sw-quiet-announce"
-          onClick={() => {
-            rig.current?.announce()
-            announcements.value++
-          }}
-        >
-          Make an update ready
-        </Button>
-        <span class="text-xs text-gray-500 dark:text-gray-400">
-          announced <span data-e2e="sw-quiet-count">{announcements.value}</span>{" "}
-          times, reload port called <span data-e2e="sw-quiet-reloads">{reloads.value}</span> times
-        </span>
-      </div>
+    <div data-e2e="sw-quiet">
+      <Stack gap="sm">
+        <p class={NOTE}>
+          Mounted now with nothing waiting, it renders an empty live region. The button makes an
+          update ready inside that same element.
+        </p>
+        <Cluster>
+          <Button
+            variant="outline"
+            size="sm"
+            data-e2e="sw-quiet-announce"
+            onClick={() => {
+              rig.current?.announce()
+              announcements.value++
+            }}
+          >
+            Make an update ready
+          </Button>
+          <span class={NOTE}>
+            announced <span data-e2e="sw-quiet-count">{announcements.value}</span>{" "}
+            times, reload port called <span data-e2e="sw-quiet-reloads">{reloads.value}</span> times
+          </span>
+        </Cluster>
+      </Stack>
+      {/* Block flow on purpose: in a flex or grid parent the empty region would still cost a gap. */}
       <SWUpdater
         container={rig.current.container}
         message={QUIET_MESSAGE}
         reload={() => reloads.value++}
-        class="static shadow-none"
+        class="static mt-4 shadow-none"
       />
     </div>
   )
@@ -347,8 +297,8 @@ function SwUpdaterDemo() {
   }
 
   return (
-    <div class="space-y-3">
-      <div class="flex flex-wrap gap-2">
+    <Stack gap="sm">
+      <Cluster>
         <Button
           variant="outline"
           size="sm"
@@ -400,7 +350,7 @@ function SwUpdaterDemo() {
         >
           Update while controlled
         </Button>
-      </div>
+      </Cluster>
       {log.value.length > 0
         ? (
           <ul class="space-y-1 text-xs text-gray-600 dark:text-gray-300">
@@ -408,12 +358,11 @@ function SwUpdaterDemo() {
           </ul>
         )
         : (
-          <p class="text-xs text-gray-500 dark:text-gray-400">
-            Nothing has been watched yet. Each button runs the real function against a registration
-            it builds on the spot.
+          <p class={NOTE}>
+            Each button runs the real function against a registration it builds on the spot.
           </p>
         )}
-    </div>
+    </Stack>
   )
 }
 
@@ -543,25 +492,22 @@ function SwUpdaterLiveDemo() {
   }
 
   return (
-    <div class="space-y-3">
-      <div class="flex flex-wrap items-center gap-2">
+    <Stack gap="sm">
+      <Cluster>
         <Button variant="outline" size="sm" data-e2e="sw-install" onClick={stageUpdate}>
           Install a worker and stage an update
         </Button>
         <Button variant="outline" size="sm" data-e2e="sw-reset" onClick={reset}>
           Unregister and reset
         </Button>
-        <span class="text-xs text-gray-500 dark:text-gray-400">
+        <span class={NOTE}>
           reload port called <span data-e2e="sw-reloads">{reloads.value}</span> times
         </span>
-      </div>
+      </Cluster>
       <ul class="space-y-1 text-xs text-gray-600 dark:text-gray-300" data-e2e="sw-log">
         {log.value.map((line, index) => <li key={index}>{line}</li>)}
       </ul>
-      <div
-        class="rounded-md border border-dashed border-gray-300 p-3 dark:border-gray-600"
-        data-e2e="sw-mount"
-      >
+      <div data-e2e="sw-mount">
         {scriptUrl.value
           ? (
             <SWUpdater
@@ -573,13 +519,13 @@ function SwUpdaterLiveDemo() {
             />
           )
           : null}
-        <p class="text-xs text-gray-400 dark:text-gray-500">
+        <p class={NOTE}>
           {scriptUrl.value
             ? "<SWUpdater> is mounted. Its bar is the orange one at the top of the window."
             : "<SWUpdater> is not mounted: it registers a worker, so it waits for the button."}
         </p>
       </div>
-    </div>
+    </Stack>
   )
 }
 
@@ -607,14 +553,11 @@ function placeholder(fill: string): string {
  */
 function ImageLightboxDemo() {
   return (
-    <div class="space-y-3">
-      <div data-lightbox class="flex flex-wrap items-start gap-3">
-        <p class="w-full text-xs text-gray-500 dark:text-gray-400">
-          &lt;ImageLightbox /&gt; renders the dialog below, then watches{" "}
-          <code>[data-lightbox]</code>{" "}
-          for clicks and key presses. Both images below are Tab stops that open it with Enter or
-          Space; the second is wrapped in a link to{" "}
-          <code>example.com</code>, which opening the lightbox does not follow.
+    <Stack>
+      <div data-lightbox class="flex flex-wrap items-start gap-2">
+        <p class={`w-full ${NOTE}`}>
+          Click an image, or Tab to it and press Enter. The second sits in a link, which opening the
+          lightbox does not follow.
         </p>
         <img
           data-e2e="lightbox-image"
@@ -632,11 +575,11 @@ function ImageLightboxDemo() {
         </a>
       </div>
       <ImageLightbox />
-      <div data-e2e="lightbox-bare" data-lightbox-bare class="flex flex-wrap items-start gap-3">
-        <p class="w-full text-xs text-gray-500 dark:text-gray-400">
+      <div data-e2e="lightbox-bare" data-lightbox-bare class="flex flex-wrap items-start gap-2">
+        <p class={`w-full ${NOTE}`}>
           With{" "}
-          <code>fallbackAlt=""</code>, an image with no description at all is not a zoom control —
-          it stays a plain image, and the link below still works.
+          <code>fallbackAlt=""</code>, an image with no description stays a plain image, and its
+          link still works.
         </p>
         <a href="#lightbox-bare-target" data-e2e="lightbox-bare-link" class="inline-block">
           <img
@@ -644,39 +587,12 @@ function ImageLightboxDemo() {
             src={placeholder("9ca3af")}
           />
         </a>
-        <span id="lightbox-bare-target" class="text-xs text-gray-500 dark:text-gray-400">
+        <span id="lightbox-bare-target" class={NOTE}>
           (the link's target)
         </span>
       </div>
       <ImageLightbox containerSelector="[data-lightbox-bare]" fallbackAlt="" />
-    </div>
-  )
-}
-
-/**
- * The grid with every cell kind on screen at once.
- *
- * `today`, `timeZone` and the whole window are props, so this render is identical on every machine
- * in every zone — the component reads the clock only for the `today` this passes in.
- */
-function CalendarDemo() {
-  return (
-    <Calendar
-      monthAnchor="2026-03-01"
-      minDate="2026-03-01"
-      maxDate="2026-04-30"
-      today="2026-03-10"
-      timeZone="UTC"
-      availableByDate={{
-        "2026-03-11": 6,
-        "2026-03-12": 3,
-        "2026-03-13": 0,
-        "2026-03-14": 18,
-        "2026-03-18": 2,
-        "2026-04-02": 9,
-      }}
-      selectedDate="2026-03-12"
-    />
+    </Stack>
   )
 }
 
@@ -693,7 +609,7 @@ function CalendarInteractiveDemo() {
   const month = useSignal("2026-03-01")
 
   return (
-    <div class="space-y-3" data-e2e="calendar-interactive">
+    <Stack gap="sm" data-e2e="calendar-interactive">
       <Calendar
         monthAnchor={month.value}
         minDate="2026-01-01"
@@ -705,15 +621,14 @@ function CalendarInteractiveDemo() {
         onSelectDate={(date) => picked.value = date}
         onSelectMonth={(anchor) => month.value = anchor}
       />
-      <p class="text-xs text-gray-500 dark:text-gray-400">
+      <p class={NOTE}>
         onSelectDate: <span data-e2e="calendar-picked">{picked.value}</span> · onSelectMonth:{" "}
         <span data-e2e="calendar-month">{month.value}</span>
       </p>
-      <p class="text-xs text-gray-500 dark:text-gray-400">
-        Tab once to reach the grid, then the arrow keys, Home, End, Page Up and Page Down move
-        inside it.
+      <p class={NOTE}>
+        Tab once to reach the grid; the arrow keys, Home, End, Page Up and Page Down move inside it.
       </p>
-    </div>
+    </Stack>
   )
 }
 
@@ -738,7 +653,7 @@ function CalendarRefusingDemo() {
   const picked = useSignal<string | null>(null)
 
   return (
-    <div class="space-y-3" data-e2e="calendar-refused">
+    <Stack gap="sm" data-e2e="calendar-refused">
       <Calendar
         monthAnchor="2026-03-01"
         minDate="2026-01-01"
@@ -755,27 +670,29 @@ function CalendarRefusingDemo() {
           refused.value = refused.value + 1
         }}
       />
-      <p class="text-xs text-gray-500 dark:text-gray-400">
-        This owner refuses every month change. Last month asked for:{" "}
+      <p class={NOTE}>
+        Last month asked for:{" "}
         <span data-e2e="calendar-refused-asked">{asked.value}</span>; requests refused:{" "}
         <span data-e2e="calendar-refused-count">{refused.value}</span>.
       </p>
-      <p class="text-xs text-gray-500 dark:text-gray-400">
-        Focus a day, then press Page Down: the count rises, the grid stays on March, and the focus
-        stays on the day you were on.
+      <p class={NOTE}>
+        Focus a day and press Page Down: the count rises, the grid stays on March, and the focus
+        stays on your day.
       </p>
-      <Button
-        variant="outline"
-        size="sm"
-        data-e2e="calendar-refused-reset"
-        onClick={() => {
-          asked.value = "nothing yet"
-          refused.value = 0
-        }}
-      >
-        Reset the count
-      </Button>
-    </div>
+      <Cluster>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="calendar-refused-reset"
+          onClick={() => {
+            asked.value = "nothing yet"
+            refused.value = 0
+          }}
+        >
+          Reset the count
+        </Button>
+      </Cluster>
+    </Stack>
   )
 }
 
@@ -825,8 +742,8 @@ function CalendarLateDemo() {
   const mode = useSignal("timer")
 
   return (
-    <div class="space-y-3" data-e2e="calendar-late" data-answer-ms={LATE_ANSWER_MS}>
-      <div class="flex flex-wrap items-center gap-2">
+    <Stack gap="sm" data-e2e="calendar-late" data-answer-ms={LATE_ANSWER_MS}>
+      <Cluster>
         {LATE_MODES.map(({ id, label }) => (
           <Button
             key={id}
@@ -838,7 +755,7 @@ function CalendarLateDemo() {
             {label}
           </Button>
         ))}
-      </div>
+      </Cluster>
       <Calendar
         monthAnchor={month.value}
         minDate="2026-01-01"
@@ -860,18 +777,18 @@ function CalendarLateDemo() {
           else setTimeout(draw, LATE_ANSWER_MS)
         }}
       />
-      <p class="text-xs text-gray-500 dark:text-gray-400">
-        This owner answers late, by{" "}
-        <span data-e2e="calendar-late-mode">{mode.value}</span>. Last month asked for:{" "}
+      <p class={NOTE}>
+        Answers by <span data-e2e="calendar-late-mode">{mode.value}</span>. Last month asked for:
+        {" "}
         <span data-e2e="calendar-late-asked">{asked.value}</span>; answers drawn:{" "}
         <span data-e2e="calendar-late-answered">{answered.value}</span>; showing:{" "}
         <span data-e2e="calendar-late-month">{month.value}</span>.
       </p>
-      <p class="text-xs text-gray-500 dark:text-gray-400">
+      <p class={NOTE}>
         Focus a day and press Page Down: the month changes a moment later and the focus follows it
-        to the same day number, the way it would if the owner had answered at once.
+        to the same day number.
       </p>
-    </div>
+    </Stack>
   )
 }
 
@@ -885,6 +802,9 @@ const CALENDAR_LOCALES = [
 /**
  * The same month in three locales, because two things about a calendar are the locale's to decide.
  *
+ * It is also the card's link-mode calendar: no `onSelectDate`, so every cell is a link, and its
+ * availability puts every kind of cell on screen at once — selected, low, none left, and closed.
+ *
  * The week starts on Monday in the United Kingdom, on Sunday in the United States and on Saturday
  * in Egypt, so the columns move under the same dates; and the headers are whatever `Intl`
  * abbreviates a weekday to, which is why they are not cut to a fixed number of characters — every
@@ -894,8 +814,8 @@ function CalendarLocaleDemo() {
   const locale = useSignal("en-GB")
 
   return (
-    <div class="space-y-3" data-e2e="calendar-locale">
-      <div class="flex flex-wrap gap-2">
+    <Stack gap="sm" data-e2e="calendar-locale">
+      <Cluster>
         {CALENDAR_LOCALES.map(({ tag, label }) => (
           <Button
             key={tag}
@@ -907,7 +827,7 @@ function CalendarLocaleDemo() {
             {label}
           </Button>
         ))}
-      </div>
+      </Cluster>
       <Calendar
         locale={locale.value}
         monthAnchor="2026-03-01"
@@ -915,12 +835,20 @@ function CalendarLocaleDemo() {
         maxDate="2026-04-30"
         today="2026-03-10"
         timeZone="UTC"
-        availableByDate={{ "2026-03-11": 6, "2026-03-12": 3, "2026-03-18": 2 }}
+        availableByDate={{
+          "2026-03-11": 6,
+          "2026-03-12": 3,
+          "2026-03-13": 0,
+          "2026-03-14": 18,
+          "2026-03-18": 2,
+          "2026-04-02": 9,
+        }}
+        selectedDate="2026-03-12"
       />
-      <p class="text-xs text-gray-500 dark:text-gray-400">
+      <p class={NOTE}>
         locale: <span data-e2e="calendar-locale-tag">{locale.value}</span>
       </p>
-    </div>
+    </Stack>
   )
 }
 
@@ -932,10 +860,10 @@ function CalendarLocaleDemo() {
  */
 function AuthFormAutofillDemo() {
   return (
-    <div class="grid gap-4 sm:grid-cols-2" data-e2e="auth-form-autofill">
+    <Grid minColumnWidth="md" gap="lg" data-e2e="auth-form-autofill">
       <AuthForm mode="sign-in" step="credentials" action="/auth/sign-in" onSignIn={() => {}} />
       <AuthForm mode="sign-up" step="credentials" action="/auth/sign-up" onSignUp={() => {}} />
-    </div>
+    </Grid>
   )
 }
 
@@ -980,8 +908,8 @@ function AuthFormInteractiveDemo() {
   const container = useRef<HTMLDivElement>(null)
 
   return (
-    <div class="space-y-3" data-e2e="auth-form-interactive" ref={container}>
-      <div class="flex flex-wrap gap-2">
+    <div class="flex flex-col gap-4" data-e2e="auth-form-interactive" ref={container}>
+      <Cluster>
         <Button
           variant="outline"
           size="sm"
@@ -1038,8 +966,8 @@ function AuthFormInteractiveDemo() {
         >
           Fill fields and form.requestSubmit()
         </Button>
-      </div>
-      <p class="text-xs text-gray-500 dark:text-gray-400">
+      </Cluster>
+      <p class={NOTE}>
         sign-ins: <span data-e2e="auth-form-signins">{signIns.value}</span>, sign-ups:{" "}
         <span data-e2e="auth-form-signups">{signUps.value}</span>, codes:{" "}
         <span data-e2e="auth-form-codes">{codes.value}</span>
@@ -1071,7 +999,7 @@ function AuthFormInteractiveDemo() {
  */
 function SiteHeaderDemo() {
   return (
-    <div class="rounded-md border border-gray-200 dark:border-gray-700" data-e2e="site-header-demo">
+    <div data-e2e="site-header-demo">
       <SiteHeader
         brand={
           <span
@@ -1106,10 +1034,7 @@ function SiteHeaderDemo() {
  */
 function ShellDemo() {
   return (
-    <div
-      class="overflow-hidden rounded-md border border-gray-200 dark:border-gray-700"
-      data-e2e="shell-demo"
-    >
+    <div class="overflow-hidden" data-e2e="shell-demo">
       <Shell
         class="h-[420px] min-h-0"
         brand={<span class="text-lg font-semibold text-gray-900 dark:text-white">Acme</span>}
@@ -1155,25 +1080,27 @@ function StateInitDemo() {
   }
 
   return (
-    <div class="space-y-3" data-e2e="state-init-demo">
+    <Stack gap="sm" data-e2e="state-init-demo">
       <StateInit id="state-init-demo" data={sampleData} />
-      <Button
-        variant="outline"
-        size="sm"
-        data-e2e="state-init-read"
-        onClick={() => {
-          readBack.value = JSON.stringify(readStateInit("state-init-demo"))
-        }}
-      >
-        Read it back
-      </Button>
+      <Cluster>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="state-init-read"
+          onClick={() => {
+            readBack.value = JSON.stringify(readStateInit("state-init-demo"))
+          }}
+        >
+          Read it back
+        </Button>
+      </Cluster>
       <pre
-        class="max-h-40 overflow-auto rounded-md bg-gray-900 p-3 text-xs text-gray-100"
+        class="max-h-40 overflow-auto font-mono text-xs whitespace-pre-wrap text-gray-900 dark:text-gray-100"
         data-e2e="state-init-readback"
       >
         <code>{readBack.value}</code>
       </pre>
-    </div>
+    </Stack>
   )
 }
 
@@ -1201,7 +1128,7 @@ function RailShellDemo() {
   const current = useSignal("home")
   return (
     <div
-      class="h-[420px] overflow-y-auto rounded-md border border-gray-200 dark:border-gray-700"
+      class="h-[420px] overflow-y-auto"
       data-e2e="rail-shell-demo"
     >
       <RailShell
@@ -1213,7 +1140,7 @@ function RailShellDemo() {
           current.value = key
         }}
       >
-        <div class="space-y-3 p-4 text-sm">
+        <div class="flex flex-col gap-4 p-4 text-sm">
           <p>
             Navigated to: <strong data-e2e="rail-shell-demo-current">{current.value}</strong>
           </p>
@@ -1235,74 +1162,38 @@ function RailShellDemo() {
 }
 
 export const systemDemos = {
-  AuthForm: {
-    summary:
-      'Sign-in, sign-up and a one-time-code step, drawn from `mode`, `step`, `busy` and `error` and reported through `onSignIn`/`onSignUp`/`onOneTimeCode`/`onModeChange` — it makes no network call and stores no credential outside the input it came from. **Submitted values are read from `FormData` inside the submit handler, never from controlled state**, so a password sits nowhere but its own input\'s `value` until the one moment it is needed, and it reaches the callback exactly as typed, untrimmed. **`action` is the no-JavaScript path**: before hydration, or whenever the matching callback is left out, the form posts natively. **`method` is always `"post"`, unconditionally — there is no `method` prop** — because a card with callbacks and no `action`, the ordinary shape of a hydrated app, would otherwise have no `method` attribute at all, and a browser reads that as GET: a submit in the gap before hydration, or with scripts off, would put the password in the address bar. **A busy submit calls no callback**, including one started with `form.requestSubmit()`, which bypasses the disabled submit button the way a person cannot. **The one-time-code step moves the focus to its field**, and no other render does. **`error` is a string or `{ message, field? }`**: every error reaches the always-present `role="alert"` region — present before anything goes wrong, exactly like `SWUpdater`\'s — and a named field also gets the message and `aria-invalid` through its own `Field` (read twice by some screen readers; accepted, see `system/README.md`). The show/hide password control is an eye-icon `type="button"` with `aria-pressed`, named by `labels.showPassword`/`labels.hidePassword`, and small enough that the field\'s padding keeps a shown password clear of it. Every visible string has an English default and a `labels` override.',
-    snippet: `<AuthForm
-  mode={mode}
-  step={step}
-  onModeChange={setMode}
-  onSignIn={({ login, password }) => auth.signIn(login, password)}
-  onSignUp={({ login, password }) => auth.signUp(login, password)}
-  onOneTimeCode={(code) => auth.verify(code)}
-  busy={pending}
-  error={error} // string, or { message, field: "login" | "password" | "code" }
-  action="/auth/sign-in"
-/>`,
-    render: () => (
-      <div class="space-y-4">
-        <AuthFormAutofillDemo />
-        <AuthFormInteractiveDemo />
-      </div>
-    ),
-  },
-  Calendar: {
-    summary:
-      "Six-week month grid. **Dual-mode**: with no `onSelectDate` every cell is an `<a href>` and a month arrow with nothing to show is a `<span>` rather than a dead link; supplying the callback turns the cells into `<button>`. `today` and `timeZone` are props, so a render can be pinned — this card passes `2026-03-10` and `UTC` and reads no clock, and a zone the platform cannot resolve falls back to UTC instead of throwing. A date missing from `availableByDate` has no availability and a `0` has none left: both are greyed out, the none-left day is also struck through, and each carries its own accessible label. Cells also show today, past dates, dates outside the window, and a low-availability dot at or below `lowAvailabilityThreshold`. **The whole grid is one Tab stop** once hydrated: the arrow keys step a day and a week, Home and End go to the ends of the week, Page Up and Page Down ask `onSelectMonth` for the neighbouring month, and why a day cannot be picked is the cell's own accessible name plus the hint under the grid rather than a `title` nobody can hover. **A month is asked for, never taken**, and the reader keeps their place whatever the owner answers: an owner that draws the month lands them on the same day number in it, an owner that leaves `monthAnchor` where it was — clamping to an allowed range, say — leaves them on the day they pressed from rather than on the grid container, and an owner that draws the month a render or more later, as anything that fetches first does, still lands them on that same day number once it arrives. The fourth card below refuses every month change and the fifth answers a second late; both count what they were asked, because \"the month did not change\" is otherwise indistinguishable from a key press that never arrived. **The week is the locale's**: both the column order and the header text come from `Intl`, so the third card below moves the columns under the same dates as it changes language.",
-    snippet: `<Calendar
-  monthAnchor="2026-03-01"
-  minDate="2026-03-01"
-  maxDate="2026-04-30"
-  today="2026-03-10"
-  timeZone="UTC"
-  availableByDate={{ "2026-03-12": 3, "2026-03-13": 0 }}
-  selectedDate="2026-03-12"
-  onSelectDate={(date) => picked.value = date}
-/>`,
-    render: () => (
-      <div class="space-y-4">
-        <CalendarDemo />
-        <CalendarInteractiveDemo />
-        <CalendarLocaleDemo />
-        <CalendarRefusingDemo />
-        <CalendarLateDemo />
-      </div>
-    ),
-  },
-  SEOHead: {
-    summary:
-      "The page-head tag set as a fragment, plus the JSON-LD `@graph` that mirrors it: title, description, canonical and robots first, then the Twitter card, then Open Graph, then a `BreadcrumbList` built from the crumbs the caller stated. Optional tags are omitted rather than emitted empty, and `<` is escaped in the script body so a description containing `</script>` cannot close the element it is embedded in. **The canonical address is cleaned before it is published**: this card is built from an address ending in `#reviews`, and the tag set below carries that address without it, because a fragment names a position inside a page rather than a page — and because `…#reviews#breadcrumb` is an identifier nothing can match. The usage block above is written the way a route should write it, which is why it carries no fragment to begin with. A user name and password are dropped the same way, and an address that is not an `http`/`https` page — `javascript:alert(1)`, or a relative path — throws rather than being printed, the way an impossible month anchor does: a canonical address is the route's own arithmetic. **Crumbs are a prop, never a guess.** Reading them out of the path assumed every segment is a page, so `/products/widgets/12` used to publish a crumb named `12`. **This card shows `seoHeadTags`, the exported data the component maps over, not the component itself**: rendering `<SEOHead />` here would splice a second `<title>` into this document's body, and a browser reads the first `<title>` anywhere in a document as `document.title` — which would rename every deep link in the host app. The tag set below is real and complete; where it goes is the host's head pipeline, and this guide has none.",
-    snippet: `<SEOHead
-  title="Blue widget — Acme"
-  description="Specifications, prices and reviews for the blue widget."
-  canonical="https://example.com/products/widgets/12"
-  ogImage="https://example.com/og/widgets.png"
-  siteName="Acme"
-  jsonLd={[{ "@type": "Organization", name: "Acme" }]}
-  crumbs={[
-    { name: "Home", href: "/" },
-    { name: "Widgets", href: "/products/widgets" },
-    { name: "Blue widget" },
-  ]}
-/>
-
-// The same tag set as data, for an app whose head is not a component tree:
-const tags = seoHeadTags(head)`,
-    render: () => <SeoHeadTagList />,
-  },
   Shell: {
     summary:
-      "The frame every signed-in app built from `spy4x/template` needs: a header that is always in view (menu button, `brand`, `status`, user menu), a sidebar from `lg` up, and the same navigation in a `<details>`-built drawer below it — reusing `useMobilePanel`, the same hook `SiteHeader` (#139) uses, rather than a second implementation. **No router import, no app state, no hard-coded link, brand text or URL** — `navItems`, `brand`, `user` and `children` are exactly what the caller passes in. **The skip link is the first focusable element**, and it targets a `<main>` this component gives `tabindex=\"-1\"`, so activating it moves focus there rather than only changing the address bar's hash. **The active item is decided by exact string equality**, `href === currentPath`, the same rule `SiteHeader`'s `isCurrentLink` already uses — reused here rather than re-implemented. **The user menu is `ui/`'s own `Dropdown`, named from `Avatar`**: `Avatar`'s own accessible name — the user's name — becomes the trigger's name through `triggerNamedByContent`, the same way `DateRangePicker` names its trigger. **The header and the drawer never overlap, and the header stays on top**: the drawer's overlay starts below the header's own height and sits at a lower `z-index`, which is what keeps the menu button and the user menu independently reachable whichever one is open — proved in `pages/checks/system.ts` by opening both at once and pressing Escape, which closes only the one that was actually focused. **`navItems` is redrawn from data for the sidebar and the drawer — `brand` and `status` are rendered exactly once**, in the header, for the same reason `SiteHeader`'s `actions` is: a caller's own element can only ever be mounted in one place.",
+      "The frame of a signed-in app: a header with the brand and a user menu, a sidebar from `lg` up, and the same navigation in a drawer below it.",
+    wide: true,
+    props: [
+      {
+        name: "navItems",
+        type: "ShellNavItem[]",
+        description: "The navigation, drawn in both the sidebar and the drawer.",
+      },
+      {
+        name: "currentPath",
+        type: "string",
+        description: "Marks the item whose `href` equals it as the current page.",
+      },
+      { name: "brand", type: "ComponentChildren", description: "The header's left-hand side." },
+      {
+        name: "user",
+        type: "ShellUser | null",
+        description: "Who is signed in; the user menu opens from their avatar.",
+      },
+      {
+        name: "userMenuItems",
+        type: "ShellUserMenuItem[]",
+        description: "Links and actions in the user menu.",
+      },
+      {
+        name: "status",
+        type: "ComponentChildren",
+        description: "A small slot in the header, such as a connection indicator.",
+      },
+    ],
     snippet: `<Shell
   brand={<Logo />}
   currentPath={url.pathname}
@@ -1325,65 +1216,32 @@ const tags = seoHeadTags(head)`,
 </Shell>`,
     render: () => <ShellDemo />,
   },
-  SiteHeader: {
-    summary:
-      "A public-site top bar: `brand` on the left; `links` on the right from `lg` up, and in a `<details>` disclosure this card's menu button opens below it; an optional `actions` slot and the menu button always in view, beside whichever form `links` is currently taking. **Every link, and every word of `brand`, is a prop** — this component writes no `href`, no label and no brand text of its own, which the card below proves: the only two addresses on the page are `links`' own. **`aria-current=\"page\"` marks the one link whose `href` equals `currentPath`** — exact string equality, so a caller whose routes want prefix matching normalises the comparison itself before handing either one in. **`links` is reachable with no JavaScript at all**: a click on `<summary>` opens and closes the native `<details>` disclosure with nothing running, so every link is there before hydration and with scripts off — proved in `pages/checks/system.ts` by disabling script execution and pressing the button, and by holding the island bundle back so a menu opened before it loads still catches up correctly once it does. **`links` is redrawn from data, not duplicated as markup — `actions` is rendered once, because a caller's own element can only ever be mounted in one place.** **The panel overlays the page instead of pushing the bar down**, positioned against the `<header>` rather than sitting in the row beside the button, so opening it moves nothing else. What JavaScript adds, through the `useMobilePanel` hook `system/README.md` names, is Escape closing the panel and returning focus to the button, a client-side navigation on a panel link closing the panel *without* returning focus (it is moving to the new page, not back to the button), and `aria-expanded` tracking the disclosure's own state — which Chromium already exposes on the accessibility tree natively, `aria-expanded` or not. The menu button keeps one fixed accessible name rather than a pair that swaps with the state, so the state is never announced twice and never goes stale for as long as no script has run. The icon swap between the two glyphs in the button costs no script at all, because `group-open:` is a Tailwind variant compiled from the `<details>` element's own `[open]` attribute. **The desktop row and the mobile panel never coexist in the accessibility tree** — one is always `display:none` — so Tab never reaches a link twice at one viewport width. Every string beyond `links` and `brand` — the menu button's name, the shared `<nav>` label — has an English default and a `labels` override. This hook is shared with the app shell's side navigation (#135), which opens and closes the same way.",
-    snippet: `<SiteHeader
-  brand={<Logo />}
-  currentPath={url.pathname}
-  links={[
-    { label: "Product", href: "/product" },
-    { label: "Pricing", href: "/pricing" },
-    { label: "Docs", href: "/docs", Icon: IconBookOpen },
-  ]}
-  actions={<Button size="sm" onClick={() => navigate("/get-started")}>Get started</Button>}
-/>`,
-    render: () => <SiteHeaderDemo />,
-  },
-  StateInit: {
-    summary:
-      "A generic SSR→client hydration bridge: the server writes one JSON value into the page with `StateInit`, and the browser reads it back with `readStateInit` — which keys the value holds is the app's business, and this component knows none of them. **The escaping is `SEOHead`'s own `jsonLdText`, reused rather than reimplemented**: `<` becomes `\\u003c`, which is what keeps the literal text `</script>` — or `<!--`, itself a `<` — from closing the element it is embedded in, whatever the script's own `type`. **U+2028 and U+2029 need no escaping here**, unlike the classic `window.x = {…}` shape of this pattern: this component renders `type=\"application/json\"`, which the browser never executes, and `readStateInit` reads it back with `JSON.parse`, which has always accepted both characters inside a JSON string. This card's own sample data carries `</script>`, `<!--` and both separators, and the button below reads it back with the real function, not a copy of it — press it to see the exact value survive the round trip.",
-    snippet: `// Wherever the server renders the page:
-<StateInit data={{ userId: user.id, features: enabledFeatures }} />
-
-// Anywhere on the client:
-const state = readStateInit<{ userId: string; features: string[] }>()`,
-    render: () => <StateInitDemo />,
-  },
-  SWUpdater: {
-    summary:
-      'Registers the service worker and offers a reload once a new version is *waiting*. **Its live region is in the page from the first render, empty**, and the bar appears inside it: a region that arrives carrying its first message is commonly not announced at all, because assistive technology announces a *change* to a region it is already watching. Nothing else is always rendered — the region carries no class, no padding and no border, so an empty one paints nothing and is zero pixels tall. It is an ordinary in-flow element rather than a `fixed` one, so a `flex` or `grid` parent charges a full 16px for it whether it spaces its children with `gap-4` or with a `space-y-4` margin — neither collapses between flex or grid items — while block flow costs nothing either way; mount it outside a flex or grid container, and see `system/README.md` for the measurements. The `class` prop goes to the bar rather than the region, so no caller can give the region a box. A dismissal covers one update rather than the component, so a later version puts the message back. The container comes from `navigator.serviceWorker`, read inside the effect so a server render touches nothing but still emits the empty region. Nothing reloads until the visitor presses Reload: `controllerchange` fires in every open tab, so the listener that reloads is armed by the button and not by the registration — otherwise a first install reloads the page mid-visit and one tab\'s Reload reloads the tab with the half-filled form. Pressing Reload posts `{ action: "skipWaiting" }` to the waiting worker, which is a **contract**: a worker that expects a different message ignores it and the button does nothing, so the message is the `updateMessage` prop. The bar can be dismissed, and every string it shows has an English default and a prop. **This card has three parts.** The first is the contract above: the component mounted with nothing waiting, and a button that puts a message into the region already there. The second drives the pure function underneath, `watchForUpdate`, against a fake registration in all three branches. The third is the component itself against a real worker — press the button, because this site is published and nothing registers a worker on its own.',
-    snippet: `<SWUpdater
-  scriptUrl="/sw.js"
-  reload={() => globalThis.location.reload()}
-  onUpdate={() => app.toast.info({ body: "Updating…" })}
-  onError={(error) => app.report(error)}
-/>
-
-// Only when the worker speaks another dialect — the default is { action: "skipWaiting" }:
-<SWUpdater scriptUrl="/sw.js" updateMessage={{ type: "SKIP_WAITING" }} />`,
-    render: () => (
-      <div class="space-y-4">
-        <SwUpdaterQuietDemo />
-        <SwUpdaterDemo />
-        <SwUpdaterLiveDemo />
-      </div>
-    ),
-  },
-  ImageLightbox: {
-    summary:
-      "Makes the images inside a container zoomable, opening `@spy4x/preact-ui`'s shared `Lightbox` — the same dialog `ImageGallery` opens on a thumbnail. Progressive enhancement in the strict sense: the server renders the page and this only adds a zoom layer after hydration, so a reader without JavaScript loses a zoom they never had. The layer is delegated to the container — one listener rather than one per image, and images arriving later still work. **A zoomable image behaves like a button**: it takes a Tab stop, carries a button's role and a name saying what it does, and opens with Enter or Space, with Space cancelled so the page does not scroll away underneath. A click or an Enter press is cancelled too, so the second image below opens the lightbox instead of following the link it sits in. **The dialog is the component's real output and it is really closed** until an image is opened. Escape closes it natively and a click on the backdrop closes it, which is only true because the image is positioned inside the dialog rather than filling it — a child that covers the dialog is a backdrop no click can reach. **Previous and next page through the container's other zoomable images**, snapshotted at the moment one opens — the two images below are what makes that a claim the card can show rather than describe. Every string it shows is a prop with an English default.",
-    snippet: `<ImageLightbox
-  containerSelector="[data-lightbox]"
-  fallbackAlt="Figure"
-  zoomLabel="Zoom"
-  onOpen={(image) => analytics.track("lightbox", image.src)}
-/>`,
-    render: () => <ImageLightboxDemo />,
-  },
   RailShell: {
     summary:
-      "A third page frame beside `Shell` and `SiteHeader`: a vertical rail of icon-over-label items with a pinned, visually distinct primary action from `md` up, and below `md` a bottom tab bar of at most five slots whose last slot, **More**, opens a native modal `<dialog>` with the remaining items and the primary action. **The switch is a CSS breakpoint**, so the server render carries both and nothing reads the window while rendering — resize the browser window itself to see the tab bar, since the breakpoint reads the viewport, not this card. **The overlay is a modal `<dialog>`**: More opens it with `showModal()` and focus moves inside; Escape, a backdrop click, the close button and choosing an entry all close it, and focus returns to More. **With no JavaScript** every entry with an `href` is a link, and More and the close button carry `command`/`commandfor`, so a browser that supports invoker commands still opens and closes the overlay. **Nothing covers the page**: the rail is a column in the layout and the tab bar keeps its place in the flow, padded by the bottom safe-area inset. An entry with an `href` is a plain link, so the shell works with no JavaScript; one without calls the `navigate` port with its `key`, which is what every entry in this demo does. Every colour is a theme token read through `var()` with the default palette's value as its fallback, so the shell follows whichever palette the page sets and still draws without the theme preset. Every string — the nav's name, More, the dialog's name, its close button, the skip link — has an English default and a `labels` override.",
+      "An app frame with a rail of icon buttons from `md` up and a bottom tab bar on a phone, whose **More** slot holds the rest.",
+    wide: true,
+    props: [
+      {
+        name: "items",
+        type: "RailShellItem[]",
+        description: "The destinations; past five, the phone bar grows a **More** slot.",
+      },
+      {
+        name: "primary",
+        type: "RailShellItem",
+        description: "The one action pinned apart from the rest, such as **Write**.",
+      },
+      {
+        name: "currentPath",
+        type: "string",
+        description: "Marks the item whose `href` equals it; `currentKey` does the same by key.",
+      },
+      {
+        name: "navigate",
+        type: "(key: string) => void",
+        description: "Called for an item with no `href`, instead of following a link.",
+      },
+    ],
     snippet: `<RailShell
   items={[
     { key: "home", label: "Home", href: "/", Icon: IconHome },
@@ -1396,5 +1254,303 @@ const state = readStateInit<{ userId: string; features: string[] }>()`,
   <Page />
 </RailShell>`,
     render: () => <RailShellDemo />,
+  },
+  SiteHeader: {
+    summary:
+      "The top bar of a public site: the brand, its links, and a menu that holds the links on a narrow screen and works without JavaScript.",
+    wide: true,
+    props: [
+      {
+        name: "links",
+        type: "SiteHeaderLink[]",
+        description: "The links, each a label, an `href` and an optional icon.",
+      },
+      {
+        name: "currentPath",
+        type: "string",
+        description: "Marks the link whose `href` equals it as the current page.",
+      },
+      { name: "brand", type: "ComponentChildren", description: "The bar's left-hand side." },
+      {
+        name: "actions",
+        type: "ComponentChildren",
+        description: "Buttons that stay in view at every width.",
+      },
+    ],
+    snippet: `<SiteHeader
+  brand={<Logo />}
+  currentPath={url.pathname}
+  links={[
+    { label: "Product", href: "/product" },
+    { label: "Pricing", href: "/pricing" },
+    { label: "Docs", href: "/docs", Icon: IconBookOpen },
+  ]}
+  actions={<Button size="sm" onClick={() => navigate("/get-started")}>Get started</Button>}
+/>`,
+    render: () => <SiteHeaderDemo />,
+  },
+  AuthForm: {
+    summary:
+      "Sign-in, sign-up and one-time-code forms that hand what was typed to your callbacks and post natively before the page's script has loaded.",
+    wide: true,
+    props: [
+      { name: "mode", type: '"sign-in" | "sign-up"', description: "Which form to show." },
+      {
+        name: "step",
+        type: '"credentials" | "one-time-code"',
+        description: "The login and password, or the code sent to the user.",
+      },
+      {
+        name: "onSignIn",
+        type: "({ login, password }) => void",
+        description: "Called on submit; `onSignUp` and `onOneTimeCode` match the other forms.",
+      },
+      {
+        name: "busy",
+        type: "boolean",
+        default: "false",
+        description: "Disables the form while a request is running.",
+      },
+      {
+        name: "error",
+        type: "string | { message, field? }",
+        description: "Shown above the form, and beside the field it names.",
+      },
+      {
+        name: "action",
+        type: "string",
+        description: "Where the form posts when no script is running.",
+      },
+    ],
+    snippet: `<AuthForm
+  mode={mode}
+  step={step}
+  onModeChange={setMode}
+  onSignIn={({ login, password }) => auth.signIn(login, password)}
+  onSignUp={({ login, password }) => auth.signUp(login, password)}
+  onOneTimeCode={(code) => auth.verify(code)}
+  busy={pending}
+  error={error} // string, or { message, field: "login" | "password" | "code" }
+  action="/auth/sign-in"
+/>`,
+    render: () => (
+      <Stack gap="xl">
+        <Part title="Sign in and sign up, side by side">
+          <AuthFormAutofillDemo />
+        </Part>
+        <Part title="Driven by buttons in place of a server">
+          <AuthFormInteractiveDemo />
+        </Part>
+      </Stack>
+    ),
+  },
+  Calendar: {
+    summary:
+      "A month grid of days to pick from, each showing how many places are left, as links or as buttons with full keyboard support.",
+    wide: true,
+    props: [
+      {
+        name: "monthAnchor",
+        type: "string",
+        description: "The first day of the month on screen, as `YYYY-MM-DD`.",
+      },
+      {
+        name: "minDate",
+        type: "string",
+        description: "The first day that can be picked; `maxDate` is the last.",
+      },
+      {
+        name: "availableByDate",
+        type: "Record<string, number>",
+        description: "Places left per day; a day left out or at `0` cannot be picked.",
+      },
+      {
+        name: "onSelectDate",
+        type: "(date: string) => void",
+        description: "Turns the days into buttons; without it they are links.",
+      },
+      {
+        name: "onSelectMonth",
+        type: "(monthAnchor: string) => void",
+        description: "Asked for another month; the owner decides whether to show it.",
+      },
+      {
+        name: "today",
+        type: "string",
+        default: "the clock's date",
+        description: "Pins today, with `timeZone`, so a render does not depend on the clock.",
+      },
+      {
+        name: "locale",
+        type: "string",
+        default: '"en-GB"',
+        description: "Sets the first day of the week and the weekday names.",
+      },
+    ],
+    snippet: `<Calendar
+  monthAnchor="2026-03-01"
+  minDate="2026-03-01"
+  maxDate="2026-04-30"
+  today="2026-03-10"
+  timeZone="UTC"
+  availableByDate={{ "2026-03-12": 3, "2026-03-13": 0 }}
+  selectedDate="2026-03-12"
+  onSelectDate={(date) => picked.value = date}
+/>`,
+    render: () => (
+      <Grid minColumnWidth="lg" gap="xl">
+        <Part title="Links, in three locales">
+          <CalendarLocaleDemo />
+        </Part>
+        <Part title="Buttons and the keyboard">
+          <CalendarInteractiveDemo />
+        </Part>
+        <Part title="An owner that refuses every month">
+          <CalendarRefusingDemo />
+        </Part>
+        <Part title="An owner that answers late">
+          <CalendarLateDemo />
+        </Part>
+      </Grid>
+    ),
+  },
+  StateInit: {
+    summary:
+      "Hands data from the server render to the browser as JSON in the page, which `readStateInit` reads back.",
+    wide: false,
+    snippet: `// Wherever the server renders the page:
+<StateInit data={{ userId: user.id, features: enabledFeatures }} />
+
+// Anywhere on the client:
+const state = readStateInit<{ userId: string; features: string[] }>()`,
+    render: () => <StateInitDemo />,
+  },
+  ImageLightbox: {
+    summary:
+      "Lets a reader open any image inside a container at full size, by click or keyboard, and page through the others.",
+    wide: false,
+    props: [
+      {
+        name: "containerSelector",
+        type: "string",
+        default: '"[data-lightbox]"',
+        description: "The element whose images open the lightbox.",
+      },
+      {
+        name: "fallbackAlt",
+        type: "string",
+        default: '"Image"',
+        description: 'The name of an image with no `alt`; `""` leaves such images alone.',
+      },
+      {
+        name: "onOpen",
+        type: "(image: LightboxImage) => void",
+        description: "Called with the image that was opened.",
+      },
+    ],
+    snippet: `<ImageLightbox
+  containerSelector="[data-lightbox]"
+  fallbackAlt="Figure"
+  zoomLabel="Zoom"
+  onOpen={(image) => analytics.track("lightbox", image.src)}
+/>`,
+    render: () => <ImageLightboxDemo />,
+  },
+  SEOHead: {
+    summary:
+      "The title, description, social-card and structured-data tags a page needs in its head, from one object; this card shows them as `seoHeadTags` returns them.",
+    wide: true,
+    props: [
+      { name: "title", type: "string", description: "The page's title." },
+      { name: "description", type: "string", description: "One or two sentences for results." },
+      {
+        name: "canonical",
+        type: "string",
+        description: "The page's one address; a fragment is dropped.",
+      },
+      {
+        name: "crumbs",
+        type: "Crumb[]",
+        description: "The breadcrumb trail, root first, published as a `BreadcrumbList`.",
+      },
+      { name: "jsonLd", type: "unknown[]", description: "More structured data for the graph." },
+    ],
+    snippet: `<SEOHead
+  title="Blue widget — Acme"
+  description="Specifications, prices and reviews for the blue widget."
+  canonical="https://example.com/products/widgets/12"
+  ogImage="https://example.com/og/widgets.png"
+  siteName="Acme"
+  jsonLd={[{ "@type": "Organization", name: "Acme" }]}
+  crumbs={[
+    { name: "Home", href: "/" },
+    { name: "Widgets", href: "/products/widgets" },
+    { name: "Blue widget" },
+  ]}
+/>
+
+// The same tag set as data, for an app whose head is not a component tree:
+const tags = seoHeadTags(head)`,
+    render: () => <SeoHeadTagList />,
+  },
+  SWUpdater: {
+    summary:
+      "Registers the service worker and, once a new version is waiting, offers the visitor a reload.",
+    wide: true,
+    props: [
+      {
+        name: "scriptUrl",
+        type: "string",
+        default: '"/sw.js"',
+        description: "The worker's script.",
+      },
+      {
+        name: "reload",
+        type: "() => void",
+        default: "reloads the page",
+        description: "Runs once the new version has taken over.",
+      },
+      {
+        name: "message",
+        type: "string",
+        default: '"New version available"',
+        description: "The bar's text.",
+      },
+      {
+        name: "updateMessage",
+        type: "unknown",
+        default: '{ action: "skipWaiting" }',
+        description: "What the button posts to the waiting worker; it must recognise it.",
+      },
+      {
+        name: "onUpdate",
+        type: "() => void",
+        description: "Called when an update is found; `onError` when registering fails.",
+      },
+    ],
+    snippet: `<SWUpdater
+  scriptUrl="/sw.js"
+  reload={() => globalThis.location.reload()}
+  onUpdate={() => app.toast.info({ body: "Updating…" })}
+  onError={(error) => app.report(error)}
+/>
+
+// Only when the worker speaks another dialect — the default is { action: "skipWaiting" }:
+<SWUpdater scriptUrl="/sw.js" updateMessage={{ type: "SKIP_WAITING" }} />`,
+    render: () => (
+      <Stack gap="xl">
+        <Grid minColumnWidth="lg" gap="xl">
+          <Part title="Mounted with nothing waiting">
+            <SwUpdaterQuietDemo />
+          </Part>
+          <Part title="The function underneath, on a fake registration">
+            <SwUpdaterDemo />
+          </Part>
+        </Grid>
+        <Part title="Against a real service worker">
+          <SwUpdaterLiveDemo />
+        </Part>
+      </Stack>
+    ),
   },
 } satisfies DemoFragment
