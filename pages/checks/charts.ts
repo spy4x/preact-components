@@ -8,6 +8,7 @@ import {
   poll,
   pressKey,
   readFrameScripts,
+  settledScroll,
 } from "./harness.ts"
 
 /**
@@ -28,6 +29,12 @@ const LINE = `document.querySelector('#demo-LineChart [data-chart="line"]')`
 /** The `DonutChart` card's chart. */
 const DONUT = `document.querySelector('#demo-DonutChart [data-chart="donut"]')`
 
+/** The `Bars` card's table. */
+const BARS = `document.querySelector('#demo-Bars table')`
+
+/** The gap `placeTooltip` keeps between a tooltip and the point it describes. */
+const TOOLTIP_GAP = 12
+
 /** The widths the tooltip must stay in view at: the narrowest phone the guide designs for, a desktop. */
 const WIDTHS = [375, 1440] as const
 
@@ -42,6 +49,13 @@ interface TooltipState {
   inViewport: boolean
   /** `right` or `left` of the point. */
   side: string
+  /** The tooltip's edges, in viewport pixels. */
+  left: number
+  top: number
+  right: number
+  bottom: number
+  /** Against the left or right edge it may be pushed to: the chart's, or the viewport's margin. */
+  atEdge: boolean
   box: string
 }
 
@@ -58,6 +72,7 @@ export async function chartsChecks(devtools: Devtools): Promise<void> {
     { id: FRAME_ID, src: pageHref("overview"), label: "no-d3" },
     (frame) => noD3Check(devtools, frame),
   )
+  await barsDarkContrastCheck(devtools)
   for (const width of WIDTHS) {
     await devtools.send("Emulation.setDeviceMetricsOverride", {
       width,
@@ -67,12 +82,69 @@ export async function chartsChecks(devtools: Devtools): Promise<void> {
     })
     try {
       await lineTooltipChecks(devtools, width)
+      await lineViewportEdgeCheck(devtools, width)
       await donutTooltipChecks(devtools, width)
     } finally {
       await parkPointer(devtools)
       await devtools.send("Emulation.clearDeviceMetricsOverride")
     }
   }
+}
+
+/**
+ * On the dark theme, every bar of the `Bars` card reaches 3:1 against what it is drawn on: the
+ * table carries the palette's dark steps, as the other charts do.
+ *
+ * @param devtools The connected session, on the charts page.
+ */
+async function barsDarkContrastCheck(devtools: Devtools): Promise<void> {
+  await centreInView(devtools, BARS)
+  const bars = await devtools.evaluate<{ label: string; ratio: number }[]>(`(async () => {
+    const root = document.documentElement
+    const wasDark = root.classList.contains("dark")
+    root.classList.add("dark")
+    try {
+      for (const animation of document.getAnimations()) animation.finish()
+      await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+      const canvas = document.createElement("canvas")
+      canvas.width = canvas.height = 1
+      const paint = canvas.getContext("2d", { willReadFrequently: true })
+      // Any CSS colour, oklch included, as sRGB channels and alpha.
+      const rgba = (css) => {
+        paint.clearRect(0, 0, 1, 1)
+        paint.fillStyle = "#000"
+        paint.fillStyle = css
+        paint.fillRect(0, 0, 1, 1)
+        return [...paint.getImageData(0, 0, 1, 1).data]
+      }
+      const luminance = ([r, g, b]) => {
+        const linear = (c) => (c /= 255) <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+        return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b)
+      }
+      // The first opaque background at or above an element: what it is drawn on.
+      const behind = (element) => {
+        for (let at = element; at; at = at.parentElement) {
+          const colour = rgba(getComputedStyle(at).backgroundColor)
+          if (colour[3] === 255) return colour
+        }
+        return rgba(getComputedStyle(root).backgroundColor)
+      }
+      return [...${BARS}.querySelectorAll("tr")].map((row) => {
+        const bar = row.querySelector("td span span") ?? row.querySelector("td [style*='background'] span")
+        const fill = luminance(rgba(getComputedStyle(bar).backgroundColor))
+        const ground = luminance(behind(bar.parentElement))
+        const ratio = (Math.max(fill, ground) + 0.05) / (Math.min(fill, ground) + 0.05)
+        return { label: row.querySelector("th").textContent.trim(), ratio: Math.round(ratio * 100) / 100 }
+      })
+    } finally {
+      root.classList.toggle("dark", wasDark)
+    }
+  })()`)
+  check(
+    "on the dark theme, every bar in the Bars card reaches 3:1 against its track",
+    bars.length === 4 && bars.every((bar) => bar.ratio >= 3),
+    bars.map((bar) => `${bar.label} ${bar.ratio}:1`).join(", "),
+  )
 }
 
 /**
@@ -172,6 +244,50 @@ async function lineTooltipChecks(devtools: Devtools, width: number): Promise<voi
 }
 
 /**
+ * Scroll the line chart until its lowest point sits just above the viewport's bottom edge, with the
+ * rest of the chart running on below it, then hover that point: the tooltip is pushed up into the
+ * viewport rather than centred on the point and cut off, although the chart's own box has room.
+ *
+ * @param devtools The connected session, at the width being checked.
+ * @param width The viewport width, for the check name.
+ */
+async function lineViewportEdgeCheck(devtools: Devtools, width: number): Promise<void> {
+  await centreInView(devtools, LINE)
+  const target = await devtools.evaluate<number>(`(() => {
+    const dots = [...${LINE}.querySelectorAll("[data-chart-plot] span[title]")]
+    const lowest = Math.max(...dots.map((dot) => dot.getBoundingClientRect().bottom))
+    const top = Math.round(globalThis.scrollY + lowest - (document.documentElement.clientHeight - 14))
+    globalThis.scrollTo({ top, behavior: "instant" })
+    return top
+  })()`)
+  await settledScroll(devtools, { target })
+  const aim = await devtools.evaluate<{ x: number; y: number; chartBottom: number }>(`(() => {
+    const dots = [...${LINE}.querySelectorAll("[data-chart-plot] span[title]")]
+    const lowest = dots.reduce((low, dot) =>
+      dot.getBoundingClientRect().bottom > low.getBoundingClientRect().bottom ? dot : low
+    )
+    const box = lowest.getBoundingClientRect()
+    return {
+      x: Math.round(box.left + box.width / 2),
+      y: Math.round(box.top + box.height / 2),
+      chartBottom: Math.round(${LINE}.getBoundingClientRect().bottom),
+    }
+  })()`)
+  await movePointer(devtools, aim)
+  const tooltip = await readTooltip(devtools, LINE)
+  const viewport = await devtools.evaluate<number>("document.documentElement.clientHeight")
+  check(
+    `at ${width} px, with the line chart running past the viewport's bottom, a point's tooltip stays above that edge`,
+    aim.chartBottom > viewport && tooltip.shown && tooltip.inViewport &&
+      tooltip.bottom <= viewport - 8 + 0.5,
+    `point at ${aim.x},${aim.y}, chart bottom ${aim.chartBottom} of ${viewport}; ${
+      describe(tooltip)
+    }`,
+  )
+  await parkPointer(devtools)
+}
+
+/**
  * Hover every donut slice at the middle of its arc, then step through the slices with the keyboard.
  *
  * @param devtools The connected session, at the width being checked.
@@ -197,6 +313,7 @@ async function donutTooltipChecks(devtools: Devtools, width: number): Promise<vo
   })()`)
 
   const hovered: string[] = []
+  const placed: string[] = []
   for (const slice of slices) {
     await movePointer(devtools, slice)
     const tooltip = await readTooltip(devtools, DONUT)
@@ -205,7 +322,17 @@ async function donutTooltipChecks(devtools: Devtools, width: number): Promise<vo
     ) {
       hovered.push(slice.label)
     } else hovered.push(`MISSED ${slice.label}: ${describe(tooltip)}`)
+    placed.push(
+      isBeside(tooltip, slice)
+        ? slice.label
+        : `AWAY ${slice.label} from ${slice.x},${slice.y}: ${describe(tooltip)}`,
+    )
   }
+  check(
+    `at ${width} px, a donut slice's tooltip sits beside the middle of the slice's arc`,
+    slices.length === 4 && placed.every((entry) => !entry.startsWith("AWAY")),
+    placed.join("; "),
+  )
   check(
     `at ${width} px, hovering each donut slice shows its label, value and share inside the chart and the viewport`,
     slices.length === 4 && hovered.every((entry) => !entry.startsWith("MISSED")),
@@ -254,11 +381,29 @@ async function readTooltip(devtools: Devtools, chart: string): Promise<TooltipSt
         box.top >= chart.top - 0.5 && box.bottom <= chart.bottom + 0.5,
       inViewport: box.left >= 0 && box.right <= width && box.top >= 0 && box.bottom <= height,
       side: tooltip.dataset.side ?? "",
+      left: box.left,
+      top: box.top,
+      right: box.right,
+      bottom: box.bottom,
+      atEdge: Math.abs(box.left - Math.max(chart.left, 8)) <= 1 ||
+        Math.abs(box.right - Math.min(chart.right, width - 8)) <= 1,
       box: [box.left, box.top, box.right, box.bottom].map(Math.round).join(",") + " in " +
         [chart.left, chart.top, chart.right, chart.bottom].map(Math.round).join(",") +
         " of " + width + "×" + height,
     }
   })()`)
+}
+
+/**
+ * Whether a tooltip sits beside a point: level with it, and {@link TOOLTIP_GAP} pixels to the side
+ * its `data-side` names — or pushed against the edge of the chart or the viewport when that side
+ * has no room. A tooltip the chart never placed stays where the stylesheet put it, away from the
+ * point.
+ */
+function isBeside(tooltip: TooltipState, at: { x: number; y: number }): boolean {
+  const level = tooltip.top <= at.y && tooltip.bottom >= at.y
+  const gap = tooltip.side === "right" ? tooltip.left - at.x : at.x - tooltip.right
+  return level && (Math.abs(gap - TOOLTIP_GAP) <= 1.5 || tooltip.atEdge)
 }
 
 /** One line for a failure: what the tooltip said and where it was. */
