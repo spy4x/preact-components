@@ -18,6 +18,7 @@
 
 import { barPercent } from "@spy4x/preact-charts/bars"
 import {
+  CHART_PALETTE_CLASS,
   DEFAULT_AXIS_COLOR,
   DEFAULT_CHART_PALETTE,
   DEFAULT_GRID_COLOR,
@@ -187,19 +188,22 @@ console.log({
     title: "Series colours",
     wide: false,
     summary:
-      "`seriesColor` picks the colour for a series by its index, wrapping around the palette; `DEFAULT_CHART_PALETTE` is the palette used when you pass none.",
+      "`seriesColor` picks the colour for a series by its index, wrapping around the palette; `DEFAULT_CHART_PALETTE` is the palette used when you pass none, and `CHART_PALETTE_CLASS`, on the element around your own chart markup, gives it its light and dark steps.",
     snippet: `import { DEFAULT_CHART_PALETTE, seriesColor } from "@spy4x/preact-charts"
+import { CHART_PALETTE_CLASS } from "@spy4x/preact-charts/colors"
 
 ({
   paletteSize: DEFAULT_CHART_PALETTE.length,
   first: seriesColor(0),
   third: seriesColor(2, ["#2563eb", "#dc2626"]),
+  rootClass: CHART_PALETTE_CLASS,
 })`,
-    covers: ["DEFAULT_CHART_PALETTE", "seriesColor"],
+    covers: ["DEFAULT_CHART_PALETTE", "seriesColor", "CHART_PALETTE_CLASS"],
     run: () => ({
       paletteSize: DEFAULT_CHART_PALETTE.length,
       first: seriesColor(0),
       third: seriesColor(2, ["#2563eb", "#dc2626"]),
+      rootClass: CHART_PALETTE_CLASS,
     }),
   },
   DEFAULT_AXIS_COLOR: {

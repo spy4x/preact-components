@@ -210,10 +210,10 @@ describe("LineChart", () => {
     expect(html).toContain("#030303")
   })
 
-  it("defaults the colours to theme custom properties", () => {
+  it("defaults the colours to the chart palette and the theme tokens", () => {
     const html = render(<LineChart series={twoPoints} />)
 
-    expect(html).toContain("var(--color-primary-muted, oklch(0.558 0.288 302.321))")
+    expect(html).toContain("var(--color-chart-1, var(--chart-1, #2a78d6))")
     expect(html).toContain("var(--color-border-subtle, oklch(0.928 0.006 264.531))")
   })
 
