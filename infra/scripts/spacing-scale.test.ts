@@ -7,8 +7,12 @@
  * It reads every `.ts`, `.tsx` and `.css` file of the covered packages, test files excepted: a
  * test asserts on classes, and the checker's own test has to spell out the classes it must
  * report. What a test asserts still has to match the component, so a test file cannot keep an
- * off-scale class the component no longer renders. `ui-guide/` and `pages/` join the list with
- * #328, which rewrites them.
+ * off-scale class the component no longer renders.
+ *
+ * `ui-guide/` and `pages/` joined with #328, which redesigns the guide. The section files the
+ * redesign's later pull requests rewrite still carry off-scale values; they are listed in
+ * {@link OFF_SCALE_UNTIL_328}, one line per file, and each of those pull requests deletes its own
+ * line. The list must be empty before #328 closes.
  */
 
 import { expect } from "@std/expect"
@@ -16,14 +20,40 @@ import { describe, it } from "@std/testing/bdd"
 import { findOffScaleSpacing } from "../../theme/spacing.ts"
 
 /** The packages the scale covers today. */
-export const SPACING_PACKAGES = ["theme", "ui", "system", "crud", "charts", "map"] as const
+export const SPACING_PACKAGES = [
+  "theme",
+  "ui",
+  "system",
+  "crud",
+  "charts",
+  "map",
+  "ui-guide",
+  "pages",
+] as const
+
+/**
+ * Files that still carry off-scale spacing while #328 moves the guide's sections to the new design,
+ * one per line so each section's pull request deletes only its own. Temporary: it must be empty
+ * before #328 closes, and a listed file that has become clean fails the test, so the list only
+ * shrinks.
+ */
+export const OFF_SCALE_UNTIL_328: readonly string[] = [
+  "ui-guide/sections/display.tsx",
+  "ui-guide/sections/feedback.tsx",
+  "ui-guide/sections/forms.tsx",
+  "ui-guide/sections/inputs.tsx",
+  "ui-guide/sections/theme-examples.tsx",
+]
+
+/** Build output under a covered directory: generated, not source. */
+const SKIPPED_DIRECTORIES = ["pages/dist"]
 
 const ROOT = new URL("../../", import.meta.url)
 
 /**
  * Files `deno task --cwd theme generate` writes from other files: the CSS mirrors carry the text of
  * the `.css` files this test reads anyway, and `component-classes.ts` lists the classes of every
- * published package, `ui-guide/` included, which the scale does not cover until #328.
+ * published package, which this test reads in their own sources.
  */
 const GENERATED = [
   "theme/tokens-css.ts",
@@ -42,6 +72,7 @@ async function sourceFiles(directory: string): Promise<string[]> {
   const files: string[] = []
   for await (const entry of Deno.readDir(new URL(`${directory}/`, ROOT))) {
     const path = `${directory}/${entry.name}`
+    if (entry.isDirectory && SKIPPED_DIRECTORIES.includes(path)) continue
     if (entry.isDirectory) files.push(...await sourceFiles(path))
     else if (entry.isFile && isChecked(path)) files.push(path)
   }
@@ -71,7 +102,16 @@ async function offScale(
 describe("spacing scale", () => {
   it("finds no spacing class off the scale in the covered packages", async () => {
     const files = (await Promise.all(SPACING_PACKAGES.map(sourceFiles))).flat()
+      .filter((path) => !OFF_SCALE_UNTIL_328.includes(path))
     expect(await offScale(files)).toEqual([])
+  })
+
+  it("lists only files that still carry an off-scale value until #328 closes", async () => {
+    const clean: string[] = []
+    for (const path of OFF_SCALE_UNTIL_328) {
+      if ((await offScale([path])).length === 0) clean.push(path)
+    }
+    expect(clean, "these files are on the scale now: delete their lines").toEqual([])
   })
 
   it("reads the components and the preset, and skips test files and generated files", async () => {
@@ -85,12 +125,16 @@ describe("spacing scale", () => {
         "crud/crud-list.tsx",
         "charts/line-chart.tsx",
         "map/map.tsx",
+        "ui-guide/shell.tsx",
+        "ui-guide/card.tsx",
+        "pages/src/app.tsx",
       ]
     ) {
       expect(files).toContain(path)
     }
     expect(files.filter((path) => path.includes(".test."))).toEqual([])
     expect(files.filter((path) => GENERATED.includes(path))).toEqual([])
+    expect(files.filter((path) => path.startsWith("pages/dist/"))).toEqual([])
   })
 
   it("names the file, line, column, class and reason of each off-scale value", async () => {

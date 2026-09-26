@@ -157,8 +157,9 @@ property that rescales the whole scale inside an element (`[--spacing:0.3rem]`).
 review, so read the check as a floor, not as proof.
 
 It uses no Deno API. In this repository, `infra/scripts/spacing-scale.test.ts` runs it over every
-non-test source file of `theme/`, `ui/`, `system/`, `crud/`, `charts/` and `map/`, with no
-allow-list, and `ui-guide/root-margin.test.tsx` fails when a component the guide demonstrates puts a
+non-test source file of `theme/`, `ui/`, `system/`, `crud/`, `charts/`, `map/`, `ui-guide/` and
+`pages/`. Its one allow-list, `OFF_SCALE_UNTIL_328`, names the guide's section files still waiting
+for the #328 redesign and must be empty before that issue closes; and `ui-guide/root-margin.test.tsx` fails when a component the guide demonstrates puts a
 margin on its root. `theme/README.md` → "Spacing" shows how an app runs the same check on its own
 files.
 
