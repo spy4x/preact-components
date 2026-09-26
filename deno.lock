@@ -2,11 +2,12 @@
   "version": "5",
   "specifiers": {
     "jsr:@hono/hono@4.13.8": "4.13.8",
-    "jsr:@spy4x/platform@1.4.0": "1.4.0",
-    "jsr:@spy4x/time@1.4.0": "1.4.0",
-    "jsr:@spy4x/time@^1.4.0": "1.4.0",
-    "jsr:@spy4x/validation@1.4.0": "1.4.0",
-    "jsr:@spy4x/validation@^1.4.0": "1.4.0",
+    "jsr:@spy4x/net@^1.7.0": "1.8.0",
+    "jsr:@spy4x/platform@1.7.0": "1.7.0",
+    "jsr:@spy4x/time@1.7.0": "1.7.0",
+    "jsr:@spy4x/time@^1.7.0": "1.7.0",
+    "jsr:@spy4x/validation@1.7.0": "1.7.0",
+    "jsr:@spy4x/validation@^1.7.0": "1.7.0",
     "jsr:@std/assert@1.0.19": "1.0.19",
     "jsr:@std/assert@^1.0.19": "1.0.19",
     "jsr:@std/async@^1.5.0": "1.5.1",
@@ -44,12 +45,16 @@
     "@hono/hono@4.13.8": {
       "integrity": "bbb566d9ebb81e74c0d7eeff1f9221ba9f3fda6f1832e5ca66cbddcecb2f7fec"
     },
-    "@spy4x/platform@1.4.0": {
-      "integrity": "c843c560b0d8ea0c2f9ccc7092cf9e15ccacecbec7691cfce42a35c0d4acef6d",
+    "@spy4x/net@1.8.0": {
+      "integrity": "08a0394bcd07be2c757d156f49d8d7e3b6851a20362914770874737347e1a753"
+    },
+    "@spy4x/platform@1.7.0": {
+      "integrity": "84212de6fca85e2c45675093b1f0d5e4d2d4ecf57793161ff6084a80cea61294",
       "dependencies": [
         "jsr:@hono/hono",
-        "jsr:@spy4x/time@^1.4.0",
-        "jsr:@spy4x/validation@^1.4.0",
+        "jsr:@spy4x/net",
+        "jsr:@spy4x/time@^1.7.0",
+        "jsr:@spy4x/validation@^1.7.0",
         "jsr:@std/crypto",
         "jsr:@std/encoding",
         "jsr:@std/path@1.1.6",
@@ -57,11 +62,11 @@
         "npm:arktype"
       ]
     },
-    "@spy4x/time@1.4.0": {
-      "integrity": "0afc1a9f1ec4334015829f05b7999f422d6740fe5c78ae2b3222229fddc299a2"
+    "@spy4x/time@1.7.0": {
+      "integrity": "160ba33e58aeb22cf6d98f778a58dde617256a5578ee496db4098d5993b00a87"
     },
-    "@spy4x/validation@1.4.0": {
-      "integrity": "362f4ca9fad0bb288c1432a45e8381bee1f80ccf1c9756c152fee1bd1c8277a5",
+    "@spy4x/validation@1.7.0": {
+      "integrity": "3229e2cf0a6d5edb520bb2beae89993fd49412882003a639034592571948397c",
       "dependencies": [
         "npm:arktype"
       ]
@@ -354,9 +359,9 @@
   },
   "workspace": {
     "dependencies": [
-      "jsr:@spy4x/platform@1.4.0",
-      "jsr:@spy4x/time@1.4.0",
-      "jsr:@spy4x/validation@1.4.0",
+      "jsr:@spy4x/platform@1.7.0",
+      "jsr:@spy4x/time@1.7.0",
+      "jsr:@spy4x/validation@1.7.0",
       "jsr:@std/assert@1.0.19",
       "jsr:@std/expect@1.0.20",
       "jsr:@std/path@1.1.6",
