@@ -233,7 +233,9 @@ under "Install" instead.
   :where(.theme-base) …` rules, so they apply only inside `theme-base`, and only
   while `.dark` is on an ancestor. Components that already carry `.input` /
   `.select` / `.textarea` are painted by those utilities; these rules are what
-  covers the parts a class cannot reach.
+  covers the parts a class cannot reach. The preset does not style
+  `[aria-invalid]`: a field marked invalid keeps its normal border, so the
+  error's colour and text come from the component (`Field` draws both).
 - **Surfaces** — `card`, `card-header`, `card-body`, `card-footer`, `scrollbar`.
 - **Data display** — `num`, `kpi`, `kpi-label`, `kpi-value`, `bar`.
 - **Map** — `map-marker` inside a `status-on` / `status-off` / `status-unknown` container, used by
