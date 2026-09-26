@@ -160,12 +160,14 @@ export function DonutChart({
   const ringRef = useRef<HTMLDivElement>(null)
   const tooltipRef = useRef<HTMLDivElement>(null)
   const [interactive, setInteractive] = useState(false)
-  const [active, setActive] = useState<number | null>(null)
+  const [chosen, setActive] = useState<number | null>(null)
   useEffect(() => setInteractive(true), [])
 
   const geometry = donutGeometry(data, { colors, emptyColor: trackColor })
   // Only a slice with a share can be pointed at; an empty ring has none.
   const slices = geometry.segments.flatMap((segment, index) => segment.share > 0 ? [index] : [])
+  // A slice chosen before the data changed may no longer exist or be drawn; it then counts as none.
+  const active = chosen !== null && slices.includes(chosen) ? chosen : null
 
   useLayoutEffect(() => {
     const root = rootRef.current
