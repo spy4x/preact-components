@@ -71,7 +71,7 @@ export {
   type UIGuideLabels,
   type UIGuideProps,
 } from "./shell.tsx"
-export { IconGallery, type IconGalleryProps, iconNames } from "./icons.tsx"
+export { IconGallery, type IconGalleryLabels, type IconGalleryProps, iconNames } from "./icons.tsx"
 export type { SearchKindWords } from "./search.tsx"
 export {
   demoHref,

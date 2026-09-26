@@ -29,11 +29,20 @@ describe("IconGallery", () => {
   })
 
   it("labels every cell with the name minus the Icon prefix", () => {
-    const html = render(<IconGallery />)
+    // The break opportunities between words are markup, not text: read the caption without them.
+    const html = render(<IconGallery />).replaceAll("<wbr/>", "")
 
     for (const name of ["IconSearch", "IconTrashBin", "IconEllipsisVertical"]) {
       expect(html, name).toContain(`>${name.replace(/^Icon/, "")}</span>`)
     }
+  })
+
+  it("lets a long name wrap between its words instead of cutting it off", () => {
+    const html = render(<IconGallery />)
+
+    expect(html).toContain(">Arrow<wbr/>Down<wbr/>Tray</span>")
+    expect(html).toContain(">Search</span>")
+    expect(html).not.toContain("truncate")
   })
 
   it("reports the visible and total counts", () => {
@@ -77,5 +86,26 @@ describe("filterIconNames", () => {
 describe("iconSnippet", () => {
   it("produces the JSX a consumer pastes", () => {
     expect(iconSnippet("IconSearch")).toBe("<IconSearch />")
+  })
+})
+
+describe("IconGallery's card", () => {
+  it("is one wide guide card addressed as #icons", () => {
+    const html = render(<IconGallery />)
+
+    expect(html).toMatch(/^<article id="icons" data-card-size="wide"/)
+    expect(html).toContain('data-card-part="demo"')
+    expect(html).toContain('data-e2e="usage"')
+  })
+
+  it("takes its words from the labels", () => {
+    const html = render(
+      <IconGallery
+        labels={{ search: "Glyphen suchen", status: (shown, total) => `${shown}/${total}` }}
+      />,
+    )
+
+    expect(html).toContain('aria-label="Glyphen suchen"')
+    expect(html).toContain(`>${iconNames.length}/${iconNames.length}</p>`)
   })
 })
