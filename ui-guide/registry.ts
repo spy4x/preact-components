@@ -332,7 +332,7 @@ const catalogue = {
     package: CLASS_PACKAGE,
     title: "Forms",
     blurb:
-      "The form classes `preset.css` ships, with no component wrapped around them: the controls, a label in either placement, and the input with a button inside it. The `Fields` section above shows the same classes through the `ui/` primitives.",
+      "The classes that style native form controls, for a form written without a component around each field.",
     demos: formDemos,
   },
   surfaces: {
@@ -340,7 +340,7 @@ const catalogue = {
     package: CLASS_PACKAGE,
     title: "Surfaces and utilities",
     blurb:
-      "The half of the stylesheet an app applies to its own markup: card surfaces, the scroll container, the type scale, KPI tiles, and every colour atom.",
+      "The classes an app puts on its own markup: cards, a sideways scroller, the type scale, number tiles and the colours.",
     demos: surfaceDemos,
   },
   charts: {
@@ -423,9 +423,9 @@ const catalogue = {
     group: "application",
     package: "theme",
     kind: "example",
-    title: "Stylesheets as text",
+    title: "Helpers",
     blurb:
-      "The stylesheets exported as strings, for a build that turns them into a compiled stylesheet.",
+      "The stylesheets, the component classes and the spacing scale, exported for an app's build and tests.",
     demos: themeExamples,
   },
   "cn-examples": {
@@ -701,8 +701,8 @@ const pageCopy: Record<GuidePageId, { title: string; blurb: string; summary?: st
   theme: {
     title: "Theme",
     blurb:
-      "The design tokens and the classes `preset.css` ships: the half of the stylesheet an app applies to markup the library does not own.",
-    summary: "The design tokens, the preset stylesheet and the classes it ships.",
+      "The design tokens and the classes the preset stylesheet ships, for the markup an app writes itself.",
+    summary: "The design tokens and the classes an app puts on its own markup.",
   },
   icons: {
     title: "Icons",
