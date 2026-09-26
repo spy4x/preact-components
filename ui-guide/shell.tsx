@@ -667,7 +667,8 @@ interface GuideNavProps {
 }
 
 /**
- * Every page, in its group, and under the one showing, its sections and cards.
+ * Every page, in its group, and under the one showing, its sections and cards — under every page
+ * in the served document, which shows them all.
  *
  * `aria-current="page"` marks the page showing; `aria-current="true"` marks the section or the card
  * the route names, never both, so a reader and a check can each ask for the one current link.
@@ -689,6 +690,9 @@ function GuideNav(
                 const candidate = guidePages.find((each) => each.id === id)
                 if (!candidate) return null
                 const current = candidate.id === page?.id
+                // The served document shows every page, so its navigation lists every page's
+                // sections and cards: the links a reader without JavaScript has.
+                const expanded = current || page === undefined
                 const href = pageHref(candidate.id)
                 return (
                   <li key={candidate.id}>
@@ -706,7 +710,7 @@ function GuideNav(
                     >
                       {candidate.title}
                     </a>
-                    {current && candidate.sections.length > 0
+                    {expanded && candidate.sections.length > 0
                       ? (
                         <ul
                           class={cn(

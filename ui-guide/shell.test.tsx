@@ -10,7 +10,8 @@ import { options } from "preact"
 import { render } from "preact-render-to-string"
 import { DemoCard } from "./card.tsx"
 import { cardSpans, navGroups, UIGuide, type UIGuideProps } from "./shell.tsx"
-import { catalogueNames, demoRegistry, guidePages } from "./registry.ts"
+import { catalogueNames, catalogueSections, demoRegistry, guidePages } from "./registry.ts"
+import { demoHref } from "./routes.ts"
 
 /** The complete registry without the cards of one package's page. */
 function withoutPage(id: string): UIGuideProps["registry"] {
@@ -39,6 +40,16 @@ describe("UIGuide's pages", () => {
     expect(html).not.toContain(`data-guide-page-link="all"`)
     expect(html).not.toContain(`href="#/all"`)
     expect(html).not.toContain(">Everything<")
+  })
+
+  it("links every card from the navigation while it renders every card", () => {
+    const html = render(<UIGuide />)
+    const nav = html.slice(html.indexOf("<nav"), html.indexOf("</nav>"))
+    const unlinked = catalogueSections.flatMap((section) =>
+      section.names.filter((name) => !nav.includes(`href="${demoHref(section.id, name)}"`))
+    )
+
+    expect(unlinked).toEqual([])
   })
 
   it("renders the overview, not every card, for the old Everything route", () => {
