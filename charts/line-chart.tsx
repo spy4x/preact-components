@@ -211,7 +211,7 @@ export function LineChart({
             {drawable.map((entry, seriesIndex) => (
               <span
                 key={`legend-${entry.name}-${seriesIndex}`}
-                class="inline-flex items-center gap-1.5"
+                class="inline-flex items-center gap-1"
               >
                 <span
                   class="inline-block h-[3px] w-3"
