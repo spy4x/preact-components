@@ -8,6 +8,7 @@
     "./colors": "./colors.ts",
     "./compare-chart": "./compare-chart.tsx",
     "./d3-line-chart": "./d3-line-chart.tsx",
+    "./d3-line-chart-core": "./d3-line-chart-core.ts",
     "./donut-chart": "./donut-chart.tsx",
     "./kpi": "./kpi.tsx",
     "./line-chart": "./line-chart.tsx",

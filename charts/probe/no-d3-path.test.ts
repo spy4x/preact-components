@@ -14,6 +14,7 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import {
+  assertD3Available,
   barPercent,
   Bars,
   type BarsProps,
@@ -24,9 +25,12 @@ import {
   LineChart,
   loadMetricSeries,
   MetricPanel,
+  MISSING_D3_LINE_ERROR,
   seriesColor,
   useInView,
+  yDomainFor,
 } from "../+svg.ts"
+import { DEFAULT_D3_LINE_CHART_COLORS } from "../d3-line-chart-core.ts"
 import { KpiGrid as KpiGridDirect } from "../kpi.tsx"
 import { previousPeriod, timeSeriesPointSchema } from "../payload.ts"
 import { niceScale, ticks } from "../scales.ts"
@@ -55,12 +59,16 @@ describe("the d3-free import graph", () => {
     assertReachable("timeSeriesPointSchema", timeSeriesPointSchema)
     assertReachable("niceScale", niceScale)
     assertReachable("ticks", ticks)
+    assertReachable("assertD3Available", assertD3Available)
+    assertReachable("MISSING_D3_LINE_ERROR", MISSING_D3_LINE_ERROR)
+    assertReachable("DEFAULT_D3_LINE_CHART_COLORS (subpath)", DEFAULT_D3_LINE_CHART_COLORS)
     expect(TIME_FRAMES, "TIME_FRAMES is exported").toEqual(["minutes", "hours", "days"])
   })
 
   it("still computes, rather than merely importing", () => {
     expect(ticks(0, 10)).toEqual([0, 2, 4, 6, 8, 10])
     expect(barPercent(25, 100)).toBe(25)
+    expect(yDomainFor([{ timeGroup: 0, value: 10 }])).toEqual([0, 12])
     expect(
       previousPeriod({
         from: new Date("2024-03-05T12:00:00Z"),

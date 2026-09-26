@@ -65,6 +65,7 @@ const ABSENT_D3 = "/tmp/__preact_components_d3_is_absent__.js"
 const ZERO_DEPENDENCY_MODULES = [
   "charts/bars.tsx",
   "charts/colors.ts",
+  "charts/d3-line-chart-core.ts",
   "charts/donut-chart.tsx",
   "charts/kpi.tsx",
   "charts/line-chart.tsx",
