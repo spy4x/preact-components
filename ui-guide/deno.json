@@ -29,7 +29,7 @@
       "**/*.test.tsx",
       "coverage.ts",
       // Only `coverage.ts` and its test import it, and both are excluded above.
-      "examples-pending.ts"
+      "readme-pending.ts"
     ]
   }
 }
