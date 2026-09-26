@@ -160,7 +160,6 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await refForwardingChecks(devtools)
 
   await installBoxChecks(devtools)
-  await marginNoteChecks(devtools)
 
   await tooltipChecks(devtools)
   await comboboxChecks(devtools)
@@ -172,10 +171,10 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await enhancedFormAsyncFailureCheck(devtools)
   await enhancedFormSynchronousThrowCheck(devtools)
   await enhancedFormResultChecks(devtools)
-  await newsletterFormDoubleClickCheck(devtools)
-  await newsletterFormRequestSubmitGuardCheck(devtools)
-  await newsletterFormFocusElsewhereCheck(devtools)
-  await newsletterFormBlurWhileSendingCheck(devtools)
+  await signUpFormDoubleClickCheck(devtools)
+  await signUpFormRequestSubmitGuardCheck(devtools)
+  await signUpFormFocusElsewhereCheck(devtools)
+  await signUpFormBlurWhileSendingCheck(devtools)
   await enhancedFormsHoneypotChecks(devtools)
   await contactFormHoneypotCheck(devtools)
   await contactFormStaleSubmitCheck(devtools)
@@ -184,7 +183,6 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await enhancedFormsNoScriptChecks(devtools)
   await imageGalleryChecks(devtools)
   await lightboxRefusesEmptyCheck(devtools)
-  await exportButtonChecks(devtools)
   await moneyInputChecks(devtools)
   await moneyInputPreHydrationChecks(devtools)
   await fileInputChecks(devtools)
@@ -382,139 +380,6 @@ async function installBoxChecks(devtools: Devtools): Promise<void> {
   await devtools.evaluate<null>(
     `(document.querySelector('#demo-InstallBox button[aria-label="Copy command"]')?.blur(), null)`,
   )
-}
-
-/**
- * `MarginNote` floats by the width of its column, not the viewport's (#296): inline in a column
- * narrower than 30rem at any viewport width, beside its paragraph in a column at least that wide
- * even on a phone-width viewport. A string render cannot prove it, because it depends on which
- * container query matches, not on markup.
- *
- * Each case reads the column's layout through `layoutOf`: `getComputedStyle(aside).float` and the
- * geometry of the note against its sibling paragraph. `float` alone only proves the property
- * resolved; "beside" also needs the two to share rows with the note's left edge right of the
- * paragraph's, and "inline" needs the note to end above the paragraph's top.
- *
- * Four cases, so each direction is proven at a viewport where a viewport breakpoint would answer
- * the other way, plus two readings that pin the threshold:
- *
- * 1. The catalogue card as rendered, at the run's own viewport (at least 640px, asserted, so the
- *    old `sm:` breakpoint would have floated it) and narrower than 30rem (also asserted): inline.
- * 2. The same column widened to 640px on that viewport: beside the paragraph. Then 479px (inline)
- *    and 480px (beside), so a threshold moved away from 30rem in either direction fails one.
- * 3. The card as rendered at a 375px viewport: inline.
- * 4. The column widened to 640px at that 375px viewport: beside the paragraph.
- *
- * The viewport override is cleared and then the column's inline `width` and `max-width` are put
- * back in a `finally`, so a package block that runs after this one is handed the page it expects.
- *
- * @param devtools The connected session, on a hydrated page.
- */
-async function marginNoteChecks(devtools: Devtools): Promise<void> {
-  const asideQuery = `document.querySelector('#demo-MarginNote aside')`
-  interface Layout {
-    float: string
-    columnWidth: number
-    viewportWidth: number
-    asideLeft: number
-    asideBottom: number
-    paragraphLeft: number
-    paragraphTop: number
-    overlaps: boolean
-  }
-  /** Set the column's inline width (`""` puts the card's own back) and read the note's layout. */
-  const layoutOf = (width: string) =>
-    devtools.evaluate<Layout | null>(
-      `(() => {
-        const aside = ${asideQuery}
-        const column = aside?.parentElement
-        const paragraph = column?.querySelector(':scope > p')
-        if (!aside || !column || !paragraph) return null
-        column.style.width = ${JSON.stringify(width)}
-        column.style.maxWidth = ${JSON.stringify(width === "" ? "" : "none")}
-        const a = aside.getBoundingClientRect()
-        const p = paragraph.getBoundingClientRect()
-        return {
-          float: getComputedStyle(aside).float,
-          columnWidth: column.getBoundingClientRect().width,
-          viewportWidth: innerWidth,
-          asideLeft: a.left,
-          asideBottom: a.bottom,
-          paragraphLeft: p.left,
-          paragraphTop: p.top,
-          overlaps: a.top < p.bottom && p.top < a.bottom,
-        }
-      })()`,
-    )
-  const describe = (layout: Layout | null) =>
-    layout === null
-      ? "the MarginNote card has no <aside>, column or <p> to read"
-      : `float ${JSON.stringify(layout.float)} in a ${layout.columnWidth}px column at a ` +
-        `${layout.viewportWidth}px viewport; aside.left ${layout.asideLeft} vs paragraph.left ` +
-        `${layout.paragraphLeft}, aside.bottom ${layout.asideBottom} vs paragraph.top ` +
-        `${layout.paragraphTop}, overlapping ${layout.overlaps}`
-  const isInline = (layout: Layout | null) =>
-    layout !== null && layout.float === "none" && layout.asideBottom <= layout.paragraphTop + 0.5
-  const isBeside = (layout: Layout | null) =>
-    layout !== null && layout.float === "right" && layout.overlaps &&
-    layout.asideLeft > layout.paragraphLeft + 8
-
-  try {
-    await centreInView(devtools, asideQuery)
-    const narrowDesktop = await layoutOf("")
-    check(
-      "MarginNote stays inline in a column narrower than 30rem on a viewport of at least 640px",
-      narrowDesktop !== null && narrowDesktop.viewportWidth >= 640 &&
-        narrowDesktop.columnWidth < 480 && isInline(narrowDesktop),
-      describe(narrowDesktop),
-    )
-    const wideDesktop = await layoutOf("640px")
-    check(
-      "MarginNote floats beside its paragraph once its column is 640px wide",
-      isBeside(wideDesktop),
-      describe(wideDesktop),
-    )
-    const justBelow = await layoutOf("479px")
-    check(
-      "MarginNote stays inline in a 479px column, one pixel under the 30rem threshold",
-      isInline(justBelow),
-      describe(justBelow),
-    )
-    const atThreshold = await layoutOf("480px")
-    check(
-      "MarginNote floats beside its paragraph in a 480px column, exactly the 30rem threshold",
-      isBeside(atThreshold),
-      describe(atThreshold),
-    )
-    await layoutOf("")
-
-    await devtools.send("Emulation.setDeviceMetricsOverride", {
-      width: 375,
-      height: 812,
-      deviceScaleFactor: 1,
-      mobile: true,
-    })
-    await centreInView(devtools, asideQuery)
-    const narrowPhone = await layoutOf("")
-    check(
-      "MarginNote stays inline in the catalogue card at a 375px viewport",
-      narrowPhone !== null && narrowPhone.viewportWidth === 375 && isInline(narrowPhone),
-      describe(narrowPhone),
-    )
-    const widePhone = await layoutOf("640px")
-    check(
-      "MarginNote floats beside its paragraph in a 640px column even at a 375px viewport",
-      widePhone !== null && widePhone.viewportWidth === 375 && isBeside(widePhone),
-      describe(widePhone),
-    )
-  } finally {
-    // The viewport first: if putting the column back throws, later blocks still get their window.
-    try {
-      await devtools.send("Emulation.clearDeviceMetricsOverride")
-    } finally {
-      await layoutOf("")
-    }
-  }
 }
 
 /**
@@ -6811,31 +6676,27 @@ async function dataTableUrlSortCheck(devtools: Devtools): Promise<void> {
 }
 
 /**
- * `EnhancedForm`, `NewsletterForm` and `ContactForm`: progressive-enhancement forms proven twice —
- * once hydrated, in the functions below, and once with no script running at all, in
- * {@link enhancedFormsNoScriptChecks}.
+ * `EnhancedForm`, and the sign-up and contact forms its card builds from it:
+ * progressive-enhancement forms proven twice — once hydrated, in the functions below, and once with
+ * no script running at all, in {@link enhancedFormsNoScriptChecks}.
  *
- * Every card lives in `ui-guide/sections/enhanced-forms.tsx` and posts to `form-demo/`, a static
- * page `pages/build.ts` copies into the artefact verbatim. With scripts on, `onSubmit` intercepts
- * every submit below and the page never navigates there — that page only matters to the
- * no-JavaScript check, which reads the method and the body off the recorded network request rather
- * than assuming either: **only the local preview server this file's own `verify` run drives answers
- * a POST there.** The published GitHub Pages copy is a static host and answers one with `405`.
+ * Every form lives in the `EnhancedForm` card, `ui-guide/sections/enhanced-forms.tsx`, and posts to
+ * `form-demo/`, a static page `pages/build.ts` copies into the artefact verbatim. With scripts on,
+ * `onSubmit` intercepts every submit below and the page never navigates there — that page only
+ * matters to the no-JavaScript check, which reads the method and the body off the recorded network
+ * request rather than assuming either: **only the local preview server this file's own `verify` run
+ * drives answers a POST there.** The published GitHub Pages copy is a static host and answers one
+ * with `405`.
  *
- * **Card lifetimes matter to the order below.** A submit that reaches `"done"` replaces a card's
- * fields with a thank-you message for good — none of the three demo components offers a way back
- * from it — so every check that still needs to submit on a given card runs before the one that
- * finally lets it succeed:
+ * **Card lifetimes.** A submit that reaches `"done"` replaces a form's fields with a thank-you
+ * message for good.
  *
- * - `EnhancedForm`'s card takes its two failure proofs first
+ * - The primary `EnhancedForm` demo has no way back, so it takes its two failure proofs first
  *   ({@link enhancedFormAsyncFailureCheck}, {@link enhancedFormSynchronousThrowCheck}, both of
  *   which land back on `"idle"`) and its success proof last ({@link enhancedFormResultChecks}).
- * - `NewsletterForm`'s primary instance takes {@link newsletterFormDoubleClickCheck}, which is
- *   terminal, so {@link enhancedFormsHoneypotChecks} gets a second instance of its own — see that
- *   card's doc in `ui-guide/sections/enhanced-forms.tsx`.
- * - `ContactForm`'s single instance takes {@link contactFormStaleSubmitCheck} and
- *   {@link enhancedFormBackForwardCacheCheck} first, both of which land back on `"idle"`, and
- *   {@link contactFormFailureRetryChecks} last, since that is the one that finally succeeds.
+ * - The sign-up and contact cards hold one form each and a "Start over" button that remounts it.
+ *   Every check that submits one of them starts with {@link startOver}, so the order among them
+ *   does not matter.
  */
 
 /** One read of a card's live region and its `<fieldset>`. */
@@ -6945,6 +6806,42 @@ async function cardCanSubmit(devtools: Devtools, card: string): Promise<CardRead
 }
 
 /**
+ * Press a sign-up or contact card's "Start over" button and wait for the fresh form it mounts, then
+ * report whether that form is ready to submit, as {@link cardCanSubmit} does.
+ *
+ * Each of those cards holds one form, and a sent form stays sent, so every check that submits one
+ * starts here. The press is a scripted `.click()` on purpose: a real click would move focus to the
+ * button, and several checks below are about where focus is, and is not, when a submit lands. The
+ * fresh form is recognised by its counter reading 0 and its live region being empty, which is what
+ * a remount through `key` and the reset counter leave behind.
+ *
+ * @param devtools The connected session.
+ * @param card The card's own selector, holding a `[data-e2e$="-start-over"]` button.
+ */
+async function startOver(devtools: Devtools, card: string): Promise<CardReadiness> {
+  const pressed = await devtools.evaluate<boolean>(`(() => {
+    const button = document.querySelector('${card} [data-e2e$="-start-over"]')
+    if (!button) return false
+    button.click()
+    return true
+  })()`)
+  if (!pressed) return { ok: false, reason: "the card has no Start over button" }
+
+  const fresh = await poll(
+    () =>
+      devtools.evaluate<boolean>(`(() => {
+        const root = document.querySelector('${card}')
+        const count = root?.querySelector('[data-e2e$="-subscribes"], [data-e2e$="-leads"]')
+        const region = root?.querySelector('[role="status"]')
+        return /: 0$/.test(count?.textContent.trim() ?? "") && (region?.textContent ?? "") === ""
+      })()`),
+    2_000,
+  )
+  if (!fresh) return { ok: false, reason: "Start over did not bring back a fresh, empty form" }
+  return await cardCanSubmit(devtools, card)
+}
+
+/**
  * `EnhancedForm`'s own card, failing through a rejected promise — the ordinary async path, and the
  * first of two failure proofs this card runs before the success proof that finally consumes it
  * (see this section's own module doc).
@@ -6952,7 +6849,7 @@ async function cardCanSubmit(devtools: Devtools, card: string): Promise<CardRead
  * @param devtools The connected session, on a hydrated page.
  */
 async function enhancedFormAsyncFailureCheck(devtools: Devtools): Promise<void> {
-  const card = "#demo-EnhancedForm"
+  const card = '#demo-EnhancedForm [data-e2e="enhanced-form"]'
   const toggle = `${card} [data-e2e="enhanced-form-fail-toggle"]`
 
   const ready = await cardCanSubmit(devtools, card)
@@ -7001,7 +6898,7 @@ async function enhancedFormAsyncFailureCheck(devtools: Devtools): Promise<void> 
  * @param devtools The connected session, on a hydrated page.
  */
 async function enhancedFormSynchronousThrowCheck(devtools: Devtools): Promise<void> {
-  const card = "#demo-EnhancedForm"
+  const card = '#demo-EnhancedForm [data-e2e="enhanced-form"]'
   const toggle = `${card} [data-e2e="enhanced-form-throw-sync-toggle"]`
 
   const ready = await cardCanSubmit(devtools, card)
@@ -7052,7 +6949,7 @@ async function enhancedFormSynchronousThrowCheck(devtools: Devtools): Promise<vo
  * @param devtools The connected session, on a hydrated page.
  */
 async function enhancedFormResultChecks(devtools: Devtools): Promise<void> {
-  const card = "#demo-EnhancedForm"
+  const card = '#demo-EnhancedForm [data-e2e="enhanced-form"]'
 
   const ready = await cardCanSubmit(devtools, card)
   check(
@@ -7202,7 +7099,7 @@ async function doubleClickAt(devtools: Devtools, point: { x: number; y: number }
 }
 
 /**
- * `NewsletterForm`'s primary card: a real double click on the submit button, dispatched through
+ * The sign-up form: a real double click on the submit button, dispatched through
  * `Input.dispatchMouseEvent` rather than two scripted `.click()` calls, still calls `onSubmit`
  * once.
  *
@@ -7211,20 +7108,20 @@ async function doubleClickAt(devtools: Devtools, point: { x: number; y: number }
  * that gap was measured to be enough for Preact to have already disabled the fieldset by the time
  * the second press lands — with the guard itself removed, this check stays green, because the
  * disabled button alone already stops the second press from doing anything. What isolates the guard
- * on its own, with no gap for a re-render to close, is {@link newsletterFormRequestSubmitGuardCheck}:
+ * on its own, with no gap for a re-render to close, is {@link signUpFormRequestSubmitGuardCheck}:
  * two `form.requestSubmit()` calls made in the same script turn, before either can yield back to the
  * event loop. This check still matters on its own terms — a real double click is closer to what a
  * person actually does than a scripted call ever proves — it just proves a different thing.
  *
  * @param devtools The connected session, on a hydrated page.
  */
-async function newsletterFormDoubleClickCheck(devtools: Devtools): Promise<void> {
-  const card = "#demo-NewsletterForm"
-  const counter = `${card} [data-e2e="newsletter-form-subscribes"]`
+async function signUpFormDoubleClickCheck(devtools: Devtools): Promise<void> {
+  const card = '#demo-EnhancedForm [data-e2e="signup-form"]'
+  const counter = `${card} [data-e2e="signup-form-subscribes"]`
 
-  const ready = await cardCanSubmit(devtools, card)
+  const ready = await startOver(devtools, card)
   check(
-    "NewsletterForm's primary card is ready to submit before the double click",
+    "the sign-up form's primary card is ready to submit before the double click",
     ready.ok,
     ready.reason,
   )
@@ -7238,7 +7135,7 @@ async function newsletterFormDoubleClickCheck(devtools: Devtools): Promise<void>
 
   const point = await elementCenter(devtools, `${card} button[type="submit"]`)
   check(
-    "the double click's aim lands on NewsletterForm's own submit button",
+    "the double click's aim lands on the sign-up form's own submit button",
     point.ok,
     point.ok ? `(${point.x}, ${point.y})` : point.reason,
   )
@@ -7265,7 +7162,7 @@ async function newsletterFormDoubleClickCheck(devtools: Devtools): Promise<void>
   ).catch(() => "MISSING")
 
   check(
-    "a real double click on NewsletterForm's submit button calls onSubmit once",
+    "a real double click on the sign-up form's submit button calls onSubmit once",
     reachedOne && settled && final.includes("subscribes: 1"),
     `counter reached "subscribes: 1" shortly after the double click: ${reachedOne}; region ` +
       `reached "You're subscribed…": ${settled}; counter once settled: "${final.trim()}"`,
@@ -7273,11 +7170,11 @@ async function newsletterFormDoubleClickCheck(devtools: Devtools): Promise<void>
 }
 
 /**
- * `NewsletterForm`'s third instance: two `form.requestSubmit()` calls made in the same script turn,
+ * The sign-up form: two `form.requestSubmit()` calls made in the same script turn,
  * with no real click and so no focus ever placed anywhere in the form.
  *
  * This is what isolates `EnhancedForm`'s synchronous busy guard from the disabled `<fieldset>` a
- * slower, real double click is also stopped by (see {@link newsletterFormDoubleClickCheck}'s own
+ * slower, real double click is also stopped by (see {@link signUpFormDoubleClickCheck}'s own
  * doc for the measurement) — `requestSubmit()` calls the form's submit algorithm directly, twice,
  * before either call yields back to the event loop for Preact to re-render anything. Only the ref
  * checked synchronously inside `handleSubmit`, before either branch runs, can catch that.
@@ -7290,13 +7187,13 @@ async function newsletterFormDoubleClickCheck(devtools: Devtools): Promise<void>
  *
  * @param devtools The connected session, on a hydrated page.
  */
-async function newsletterFormRequestSubmitGuardCheck(devtools: Devtools): Promise<void> {
-  const card = '#demo-NewsletterForm [data-e2e="newsletter-form-request-submit"]'
-  const counter = `${card} [data-e2e="newsletter-form-request-submit-subscribes"]`
+async function signUpFormRequestSubmitGuardCheck(devtools: Devtools): Promise<void> {
+  const card = '#demo-EnhancedForm [data-e2e="signup-form"]'
+  const counter = `${card} [data-e2e="signup-form-subscribes"]`
 
-  const ready = await cardCanSubmit(devtools, card)
+  const ready = await startOver(devtools, card)
   check(
-    "NewsletterForm's request-submit card is ready to submit before this check begins",
+    "the sign-up form's request-submit card is ready to submit before this check begins",
     ready.ok,
     ready.reason,
   )
@@ -7364,9 +7261,9 @@ async function newsletterFormRequestSubmitGuardCheck(devtools: Devtools): Promis
 }
 
 /**
- * `NewsletterForm`'s fourth instance: a real click on the submit button — focus genuinely lands
- * there, unlike {@link newsletterFormRequestSubmitGuardCheck}'s `requestSubmit()` calls — and then,
- * while the 150ms submit is still outstanding, focus is moved to an unrelated element elsewhere on
+ * The sign-up form: a real click on the submit button — focus genuinely lands
+ * there, unlike {@link signUpFormRequestSubmitGuardCheck}'s `requestSubmit()` calls — and then,
+ * while the 300ms submit is still outstanding, focus is moved to an unrelated element elsewhere on
  * the page, standing in for a visitor who submitted and then clicked or tabbed to read something
  * else entirely before the result came back.
  *
@@ -7379,13 +7276,13 @@ async function newsletterFormRequestSubmitGuardCheck(devtools: Devtools): Promis
  *
  * @param devtools The connected session, on a hydrated page.
  */
-async function newsletterFormFocusElsewhereCheck(devtools: Devtools): Promise<void> {
-  const card = '#demo-NewsletterForm [data-e2e="newsletter-form-focus-elsewhere"]'
+async function signUpFormFocusElsewhereCheck(devtools: Devtools): Promise<void> {
+  const card = '#demo-EnhancedForm [data-e2e="signup-form"]'
   const dummyId = "verify-focus-elsewhere-dummy"
 
-  const ready = await cardCanSubmit(devtools, card)
+  const ready = await startOver(devtools, card)
   check(
-    "NewsletterForm's focus-elsewhere card is ready to submit before this check begins",
+    "the sign-up form's focus-elsewhere card is ready to submit before this check begins",
     ready.ok,
     ready.reason,
   )
@@ -7459,12 +7356,12 @@ async function newsletterFormFocusElsewhereCheck(devtools: Devtools): Promise<vo
 }
 
 /**
- * `NewsletterForm`'s fifth instance: a real click on the submit button, then a blur to `<body>` —
- * not to a specific other control, {@link newsletterFormFocusElsewhereCheck}'s own case — while the
+ * The sign-up form: a real click on the submit button, then a blur to `<body>` —
+ * not to a specific other control, {@link signUpFormFocusElsewhereCheck}'s own case — while the
  * submit is still outstanding, together with a scroll back to the top of the page.
  *
  * This is the one case the previous round's fix did not cover, because it is not a visitor whose
- * focus was never in the form ({@link newsletterFormRequestSubmitGuardCheck}'s case): disabling the
+ * focus was never in the form ({@link signUpFormRequestSubmitGuardCheck}'s case): disabling the
  * fieldset for `"sending"` already drops focus to `<body>` in this browser, so the focus-restoring
  * effect recovers it there — correctly, the first time — before this same submit ever reaches
  * `"done"`. Without clearing the flag that let that first recovery happen, the effect's second run,
@@ -7488,13 +7385,13 @@ async function newsletterFormFocusElsewhereCheck(devtools: Devtools): Promise<vo
  *
  * @param devtools The connected session, on a hydrated page.
  */
-async function newsletterFormBlurWhileSendingCheck(devtools: Devtools): Promise<void> {
-  const card = '#demo-NewsletterForm [data-e2e="newsletter-form-blur-while-sending"]'
+async function signUpFormBlurWhileSendingCheck(devtools: Devtools): Promise<void> {
+  const card = '#demo-EnhancedForm [data-e2e="signup-form"]'
   const region = `${card} [role="status"]`
 
-  const ready = await cardCanSubmit(devtools, card)
+  const ready = await startOver(devtools, card)
   check(
-    "NewsletterForm's blur-while-sending card is ready to submit before this check begins",
+    "the sign-up form's blur-while-sending card is ready to submit before this check begins",
     ready.ok,
     ready.reason,
   )
@@ -7577,8 +7474,7 @@ async function newsletterFormBlurWhileSendingCheck(devtools: Devtools): Promise<
 const HONEYPOT_INPUT_SELECTOR = 'input[name="hp-field"]'
 
 /**
- * `NewsletterForm`'s second instance — see its own doc in `ui-guide/sections/enhanced-forms.tsx`
- * for why a dedicated one exists. Two things, both about the same off-screen field:
+ * The sign-up form, whose honeypot is on. Two things, both about the same off-screen field:
  *
  * 1. Its computed style, not the literal absence of `display:none` in the markup (a render-to-string
  *    unit test can only show that much, and `ui/honeypot.test.tsx` says so): a real `getComputedStyle`
@@ -7591,8 +7487,10 @@ const HONEYPOT_INPUT_SELECTOR = 'input[name="hp-field"]'
  * @param devtools The connected session, on a hydrated page.
  */
 async function enhancedFormsHoneypotChecks(devtools: Devtools): Promise<void> {
-  const card = '#demo-NewsletterForm [data-e2e="newsletter-form-honeypot"]'
-  const counter = `${card} [data-e2e="newsletter-form-honeypot-subscribes"]`
+  const card = '#demo-EnhancedForm [data-e2e="signup-form"]'
+  const counter = `${card} [data-e2e="signup-form-subscribes"]`
+
+  const ready = await startOver(devtools, card)
 
   const style = await devtools.evaluate<
     { display: string; wrapperDisplay: string; width: number; height: number } | null
@@ -7621,8 +7519,7 @@ async function enhancedFormsHoneypotChecks(devtools: Devtools): Promise<void> {
         `wrapper size ${style.width}×${style.height}px`,
   )
 
-  const ready = await cardCanSubmit(devtools, card)
-  check("NewsletterForm's honeypot card is ready to submit", ready.ok, ready.reason)
+  check("the sign-up form's honeypot card is ready to submit", ready.ok, ready.reason)
   if (!ready.ok) return
 
   // The email field is required: an empty one fails the browser's own constraint validation and
@@ -7658,18 +7555,18 @@ async function enhancedFormsHoneypotChecks(devtools: Devtools): Promise<void> {
 }
 
 /**
- * `ContactForm`'s dedicated honeypot instance — the same proof {@link enhancedFormsHoneypotChecks}
- * runs against `NewsletterForm`, on the three-field form instead: a filled honeypot resolves as a
+ * The contact form — the same proof {@link enhancedFormsHoneypotChecks}
+ * runs against the sign-up form, on the three-field form instead: a filled honeypot resolves as a
  * success without ever calling `onSubmit`.
  *
  * @param devtools The connected session, on a hydrated page.
  */
 async function contactFormHoneypotCheck(devtools: Devtools): Promise<void> {
-  const card = '#demo-ContactForm [data-e2e="contact-form-honeypot"]'
-  const counter = `${card} [data-e2e="contact-form-honeypot-leads"]`
+  const card = '#demo-EnhancedForm [data-e2e="contact-form"]'
+  const counter = `${card} [data-e2e="contact-form-leads"]`
 
-  const ready = await cardCanSubmit(devtools, card)
-  check("ContactForm's honeypot card is ready to submit", ready.ok, ready.reason)
+  const ready = await startOver(devtools, card)
+  check("the contact form's honeypot card is ready to submit", ready.ok, ready.reason)
   if (!ready.ok) return
 
   await devtools.evaluate<null>(`(() => {
@@ -7697,13 +7594,13 @@ async function contactFormHoneypotCheck(devtools: Devtools): Promise<void> {
   ).catch(() => "MISSING")
 
   check(
-    "ContactForm: a filled honeypot resolves as a success without ever calling onSubmit",
+    "the contact form: a filled honeypot resolves as a success without ever calling onSubmit",
     settled && calls.includes("leads: 0"),
     `region reached "Thanks…": ${settled} even though onSubmit's own counter reads "${calls.trim()}"`,
   )
 }
 
-/** Fill `ContactForm`'s three fields on the given card. */
+/** Fill the contact form's three fields on the given card. */
 async function fillContact(devtools: Devtools, card: string): Promise<void> {
   // Guarded rather than assumed present: a check that runs after an earlier one left the card in
   // its terminal, fields-replaced "done" state has nothing here to fill, and should report that as
@@ -7722,7 +7619,7 @@ async function fillContact(devtools: Devtools, card: string): Promise<void> {
 }
 
 /**
- * `ContactForm`'s card, submitted normally (no failure, no hang) and reset via a synthetic
+ * The contact form's card, submitted normally (no failure, no hang) and reset via a synthetic
  * `pageshow` while its 200ms submit is still outstanding.
  *
  * This is *not* a proof that a genuine back/forward-cache restore fires `pageshow` — that proof is
@@ -7736,11 +7633,11 @@ async function fillContact(devtools: Devtools, card: string): Promise<void> {
  * @param devtools The connected session, on a hydrated page.
  */
 async function contactFormStaleSubmitCheck(devtools: Devtools): Promise<void> {
-  const card = "#demo-ContactForm"
+  const card = '#demo-EnhancedForm [data-e2e="contact-form"]'
 
-  const ready = await cardCanSubmit(devtools, card)
+  const ready = await startOver(devtools, card)
   check(
-    "ContactForm's card is ready to submit before the stale-submit check",
+    "the contact form's card is ready to submit before the stale-submit check",
     ready.ok,
     ready.reason,
   )
@@ -7784,7 +7681,7 @@ interface HistoryEntry {
 }
 
 /**
- * `ContactForm`'s card, stuck `"sending"` forever (the hang toggle) and recovered by a genuine
+ * The contact form's card, stuck `"sending"` forever (the hang toggle) and recovered by a genuine
  * back/forward-cache restore: `Page.navigate` away to `form-demo/`, then
  * `Page.navigateToHistoryEntry` back to the catalogue's own entry — a real round trip through the
  * browser's own history, not `history.back()` run through page script and not a synthetic event.
@@ -7807,15 +7704,15 @@ interface HistoryEntry {
  * @param devtools The connected session, on a hydrated page.
  */
 async function enhancedFormBackForwardCacheCheck(devtools: Devtools): Promise<void> {
-  const card = "#demo-ContactForm"
+  const card = '#demo-EnhancedForm [data-e2e="contact-form"]'
   const toggle = `${card} [data-e2e="contact-form-hang-toggle"]`
   const restoreUrl = await devtools.evaluate<string>("location.href").catch(() => "")
 
   // Standalone: this check fills the card itself rather than assuming an earlier one in the same
   // run left it filled, and confirms it is actually ready before touching anything.
-  const ready = await cardCanSubmit(devtools, card)
+  const ready = await startOver(devtools, card)
   check(
-    "ContactForm's card is ready to submit before the back/forward-cache check",
+    "the contact form's card is ready to submit before the back/forward-cache check",
     ready.ok,
     ready.reason,
   )
@@ -7823,7 +7720,11 @@ async function enhancedFormBackForwardCacheCheck(devtools: Devtools): Promise<vo
 
   await fillContact(devtools, card)
   const toggledOn = await setToggle(devtools, toggle, true)
-  check("ContactForm's hang toggle switches on", toggledOn, `hang toggle switched on: ${toggledOn}`)
+  check(
+    "the contact form's hang toggle switches on",
+    toggledOn,
+    `hang toggle switched on: ${toggledOn}`,
+  )
   if (!toggledOn) return
 
   await devtools.evaluate<null>(
@@ -7926,7 +7827,7 @@ async function enhancedFormBackForwardCacheCheck(devtools: Devtools): Promise<vo
     // Leave the hang toggle as it was found, whether or not the round trip above succeeded.
     const toggledOff = await setToggle(devtools, toggle, false)
     check(
-      "ContactForm's hang toggle switches back off",
+      "the contact form's hang toggle switches back off",
       toggledOff,
       `hang toggle switched off: ${toggledOff}`,
     )
@@ -7959,22 +7860,21 @@ async function enhancedFormBackForwardCacheCheck(devtools: Devtools): Promise<vo
 }
 
 /**
- * `ContactForm`'s card, last of its four checks because this is the one that finally succeeds and
- * replaces its fields for good (see this section's own module doc): a rejected submit ends the
- * sending state and leaves every field on screen, still holding what the visitor typed, and then an
- * actual second submit — the failure toggle turned off, the same fields resubmitted rather than
- * refilled — proves "leaves the fields for a retry" is true of a real retry, not only of what
- * happens to still be on screen a moment after the first submit failed.
+ * The contact form's card: a rejected submit ends the sending state and leaves every field on
+ * screen, still holding what the visitor typed, and then an actual second submit — the failure
+ * toggle turned off, the same fields resubmitted rather than refilled — proves "leaves the fields
+ * for a retry" is true of a real retry, not only of what happens to still be on screen a moment
+ * after the first submit failed.
  *
  * @param devtools The connected session, on a hydrated page.
  */
 async function contactFormFailureRetryChecks(devtools: Devtools): Promise<void> {
-  const card = "#demo-ContactForm"
+  const card = '#demo-EnhancedForm [data-e2e="contact-form"]'
   const toggle = `${card} [data-e2e="contact-form-fail-toggle"]`
 
-  const ready = await cardCanSubmit(devtools, card)
+  const ready = await startOver(devtools, card)
   check(
-    "ContactForm's card is ready to submit before the failure-retry check",
+    "the contact form's card is ready to submit before the failure-retry check",
     ready.ok,
     ready.reason,
   )
@@ -7982,7 +7882,11 @@ async function contactFormFailureRetryChecks(devtools: Devtools): Promise<void> 
 
   await fillContact(devtools, card)
   const toggledOn = await setToggle(devtools, toggle, true)
-  check("ContactForm's fail toggle switches on", toggledOn, `fail toggle switched on: ${toggledOn}`)
+  check(
+    "the contact form's fail toggle switches on",
+    toggledOn,
+    `fail toggle switched on: ${toggledOn}`,
+  )
   if (!toggledOn) return
 
   await devtools.evaluate<null>(
@@ -8001,7 +7905,7 @@ async function contactFormFailureRetryChecks(devtools: Devtools): Promise<void> 
   ).catch(() => "")
 
   check(
-    "a rejected ContactForm submit ends the sending state and leaves the fields on screen",
+    "a rejected contact-form submit ends the sending state and leaves the fields on screen",
     failed && !afterFailure.disabled && nameKept === "Ada Lovelace",
     `region reached the failure text: ${failed} ("${afterFailure.region}"); fieldset disabled ` +
       `once settled: ${afterFailure.disabled}; name field kept "${nameKept}"`,
@@ -8009,7 +7913,7 @@ async function contactFormFailureRetryChecks(devtools: Devtools): Promise<void> 
 
   const toggledOff = await setToggle(devtools, toggle, false)
   check(
-    "ContactForm's fail toggle switches back off",
+    "the contact form's fail toggle switches back off",
     toggledOff,
     `fail toggle switched off: ${toggledOff}`,
   )
@@ -8053,13 +7957,13 @@ interface NoScriptTarget {
 
 const NO_SCRIPT_TARGETS: readonly NoScriptTarget[] = [
   {
-    label: "NewsletterForm",
-    card: "#demo-NewsletterForm",
+    label: "the sign-up form",
+    card: '#demo-EnhancedForm [data-e2e="signup-form"]',
     fields: [{ selector: 'input[name="email"]', value: "ada@example.com" }],
   },
   {
-    label: "ContactForm",
-    card: "#demo-ContactForm",
+    label: "the contact form",
+    card: '#demo-EnhancedForm [data-e2e="contact-form"]',
     fields: [
       { selector: 'input[name="name"]', value: "Ada Lovelace" },
       { selector: 'input[name="email"]', value: "ada@example.com" },
@@ -8136,7 +8040,7 @@ async function requestBody(devtools: Devtools, request: CapturedRequest): Promis
 }
 
 /**
- * `NewsletterForm` and `ContactForm`, submitted on a page where no script has run at all —
+ * The sign-up form and the contact form, submitted on a page where no script has run at all —
  * `Emulation.setScriptExecutionDisabled` before a reload buys that, the same way `system/`'s
  * `authFormNoScriptChecks` does, and for the same reason: every other check in this file runs
  * against Preact's own hydrated submit handler, and this is the one behaviour that needs a page
@@ -8277,516 +8181,6 @@ async function enhancedFormsNoScriptChecks(devtools: Devtools): Promise<void> {
     )
 
     await settledScroll(devtools)
-  }
-}
-
-/** `ExportButton`'s two demo instances — see `ui-guide/sections/buttons.tsx`'s `ExportButtonDemo`. */
-const EXPORT_CARD = "#demo-ExportButton"
-const EXPORT_ROWS_BUTTON = `${EXPORT_CARD} button.js-export-rows`
-const EXPORT_ASYNC_BUTTON = `${EXPORT_CARD} button.js-export-async`
-
-/** The exact CSV both demo buttons write — two rows, one of them a formula-like `note`. */
-const EXPORT_EXPECTED_CSV =
-  'ID,Name,Note\r\n1,Ada Lovelace,"Bringing cake, tea for the room"\r\n2,Grace Hopper,\'=SUM(A1:A2)\r\n'
-
-/** The three bytes a UTF-8 byte-order mark decodes to. */
-const EXPORT_EXPECTED_BOM = [0xef, 0xbb, 0xbf]
-
-/** One export's outcome, read back out of the page's own instrumentation. */
-interface ExportCapture {
-  first3: number[]
-  text: string
-  blobType: string
-  downloadName: string
-  anchorConnectedAtClick: boolean
-  anchorConnectedAfter: boolean
-  hadUrlPair: boolean
-}
-
-/**
- * Patch `URL.createObjectURL`/`URL.revokeObjectURL` and `HTMLAnchorElement.prototype.click` so a
- * download can be observed from inside the page: `pages/verify.ts` denies every download for the
- * whole run (`Browser.setDownloadBehavior`, `behavior: "deny"`), so nothing here needs to read a
- * saved file back — the `Blob`'s own bytes plus the create/revoke pair are measurement enough of
- * what `ExportButton` actually did. Every patched method still calls through to the original, so
- * the click, the object URL and its lifetime are the real ones `downloadResponseAsFile`
- * (`@spy4x/platform/browser/download`) produces — nothing here short-circuits the component.
- */
-async function armExportInstrumentation(devtools: Devtools): Promise<void> {
-  await devtools.evaluate<null>(`(() => {
-    const original = {
-      createObjectURL: URL.createObjectURL.bind(URL),
-      revokeObjectURL: URL.revokeObjectURL.bind(URL),
-      click: HTMLAnchorElement.prototype.click,
-    }
-    globalThis.__exportCheck = { original, createCount: 0 }
-    const state = globalThis.__exportCheck
-    URL.createObjectURL = (blob) => {
-      const url = original.createObjectURL(blob)
-      state.blobType = blob.type
-      state.bytesPromise = blob.arrayBuffer()
-      state.createdUrl = url
-      state.createCount += 1
-      return url
-    }
-    URL.revokeObjectURL = (url) => {
-      state.revokedUrl = url
-      return original.revokeObjectURL(url)
-    }
-    HTMLAnchorElement.prototype.click = function () {
-      state.anchor = this
-      state.downloadName = this.download
-      state.anchorConnectedAtClick = this.isConnected
-      return original.click.call(this)
-    }
-    return null
-  })()`)
-}
-
-/** Undo {@link armExportInstrumentation}, restoring the three globals it patched. */
-async function disarmExportInstrumentation(devtools: Devtools): Promise<void> {
-  await devtools.evaluate<null>(`(() => {
-    const state = globalThis.__exportCheck
-    if (state && state.original) {
-      URL.createObjectURL = state.original.createObjectURL
-      URL.revokeObjectURL = state.original.revokeObjectURL
-      HTMLAnchorElement.prototype.click = state.original.click
-    }
-    return null
-  })()`)
-}
-
-/** Clear one interaction's capture fields without re-patching — {@link armExportInstrumentation} runs once. */
-async function resetExportCapture(devtools: Devtools): Promise<void> {
-  await devtools.evaluate<null>(`(() => {
-    const state = globalThis.__exportCheck
-    if (!state) return null
-    delete state.blobType
-    delete state.bytesPromise
-    delete state.createdUrl
-    delete state.revokedUrl
-    delete state.anchor
-    delete state.downloadName
-    delete state.anchorConnectedAtClick
-    return null
-  })()`)
-}
-
-/**
- * Whether the armed instrumentation has seen *this interaction's own* create-download-revoke cycle
- * complete.
- *
- * `@spy4x/platform/browser/download`'s `downloadResponseAsFile` revokes the object URL from a
- * timer about `REVOKE_DELAY_MS` (5000ms) after the click, not in the click's own task — revoking
- * too early has historically cancelled a download still starting. The poll budget here is bounded
- * well above that delay rather than asserting the revoke happens at once, so a slow CI machine
- * still has room after the real 5s wait.
- *
- * `revokedUrl === createdUrl` is required, not merely a truthy `revokedUrl`: `resetExportCapture`
- * clears both fields before an interaction, but it cannot cancel a *previous* interaction's own
- * revoke timer, which is still ticking on the page. A review found that delaying that timer past
- * this poll's own bound let its late revoke land during the *next* interaction's wait and read as
- * that interaction having settled — `state.revokedUrl` was truthy, just carrying the wrong URL.
- * Matching it against this interaction's own `createdUrl` is what tells the two apart.
- */
-async function exportSettled(devtools: Devtools): Promise<boolean> {
-  return await poll(
-    () =>
-      devtools.evaluate<boolean>(
-        `Boolean(
-          globalThis.__exportCheck &&
-          globalThis.__exportCheck.revokedUrl &&
-          globalThis.__exportCheck.revokedUrl === globalThis.__exportCheck.createdUrl
-        )`,
-      ),
-    8_000,
-  )
-}
-
-/** Read back what the armed instrumentation captured, resolving the `Blob`'s own bytes. */
-async function readExportCapture(devtools: Devtools): Promise<ExportCapture> {
-  return await devtools.evaluate<ExportCapture>(`(async () => {
-    const state = globalThis.__exportCheck
-    const buffer = await state.bytesPromise
-    const bytes = new Uint8Array(buffer)
-    return {
-      first3: [...bytes.slice(0, 3)],
-      text: new TextDecoder().decode(bytes.slice(3)),
-      blobType: state.blobType,
-      downloadName: state.downloadName,
-      anchorConnectedAtClick: state.anchorConnectedAtClick,
-      anchorConnectedAfter: state.anchor ? state.anchor.isConnected : false,
-      hadUrlPair: Boolean(state.createdUrl) && state.createdUrl === state.revokedUrl,
-    }
-  })()`)
-}
-
-/** The live region `ExportButton` renders right after its own trigger — a Fragment child, not a wrapper. */
-function exportRegionExpr(buttonSelector: string): string {
-  return `document.querySelector('${buttonSelector}').nextElementSibling`
-}
-
-/** Mark one button's own live-region node, so a later {@link exportRegionIdentityHeld} can prove it is unchanged. */
-async function stashExportRegionIdentity(
-  devtools: Devtools,
-  buttonSelector: string,
-): Promise<void> {
-  await devtools.evaluate<null>(`(() => {
-    globalThis.__exportRegionIdentity = ${exportRegionExpr(buttonSelector)}
-    return null
-  })()`)
-}
-
-/** Whether one button's own live region is still the exact node {@link stashExportRegionIdentity} marked. */
-async function exportRegionIdentityHeld(
-  devtools: Devtools,
-  buttonSelector: string,
-): Promise<boolean> {
-  return await devtools.evaluate<boolean>(`(() => {
-    const current = ${exportRegionExpr(buttonSelector)}
-    return current !== null && current === globalThis.__exportRegionIdentity && current.isConnected
-  })()`)
-}
-
-/** One button's own live region text. */
-async function exportRegionText(devtools: Devtools, buttonSelector: string): Promise<string> {
-  return await devtools.evaluate<string>(`(${exportRegionExpr(buttonSelector)})?.textContent ?? ""`)
-}
-
-/** Focus one button and confirm it took. */
-async function focusExportButton(devtools: Devtools, buttonSelector: string): Promise<boolean> {
-  return await devtools.evaluate<boolean>(`(() => {
-    const button = document.querySelector('${buttonSelector}')
-    if (!button) return false
-    button.focus()
-    return document.activeElement === button
-  })()`)
-}
-
-/** Whether one button is still the focused element. */
-async function exportButtonHasFocus(devtools: Devtools, buttonSelector: string): Promise<boolean> {
-  return await devtools.evaluate<boolean>(
-    `document.activeElement === document.querySelector('${buttonSelector}')`,
-  )
-}
-
-/** Whether the button still has focus, and still reads `aria-disabled="true"`, both read together. */
-interface FocusedAndBusy {
-  /** `document.activeElement === the button`, read after the settle below. */
-  focused: boolean
-  /** The button's own `aria-disabled` attribute at that same moment — `"true"` proves the read
-   * actually landed while the export was still pending, not after it had already settled. */
-  ariaDisabled: string | null
-}
-
-/**
- * Read focus and `aria-disabled` together, after two animation frames.
- *
- * A review measured that a bare, immediate read of `document.activeElement` races Chromium's own
- * focus fix-up after `disabled={busy}`: the DOM attribute lands on `aria-disabled`'s next render
- * step, and a read issued right after the key press can land before that step commits, so a check
- * with no wait caught the regression only 3 of 5 runs. Waiting two `requestAnimationFrame`s inside
- * one `Runtime.evaluate` — comfortably inside the demo's 600ms `getRows` delay — is what gives
- * Chromium's own rendering pipeline the turns it needs before the read, in the same task as the
- * read itself so nothing else can run focus-moving code in between. The `aria-disabled` read
- * alongside it is what proves this sample genuinely landed while the export was still pending,
- * rather than a settle that happened to race ahead of it.
- */
-async function exportButtonFocusedAndBusy(
-  devtools: Devtools,
-  buttonSelector: string,
-): Promise<FocusedAndBusy> {
-  return await devtools.evaluate<FocusedAndBusy>(`(async () => {
-    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
-    const button = document.querySelector('${buttonSelector}')
-    return {
-      focused: document.activeElement === button,
-      ariaDisabled: button ? button.getAttribute('aria-disabled') : null,
-    }
-  })()`)
-}
-
-/**
- * A real Space press on the rows-based `ExportButton` downloads the two demo rows as CSV.
- *
- * Space is dispatched through `pages/checks/harness.ts`'s `pressKey`, which already carries the
- * table entry that activates a focused button in this browser. The bytes, the byte-order mark, the
- * guarded formula-like cell, the temporary link's cleanup and the live-region announcement are all
- * read from one interaction, because they are all consequences of the one click `Space` produces.
- *
- * @param devtools The connected session, on a hydrated page.
- */
-async function exportRowsViaSpaceCheck(devtools: Devtools): Promise<void> {
-  await resetExportCapture(devtools)
-
-  const focused = await focusExportButton(devtools, EXPORT_ROWS_BUTTON)
-  check("the rows-based ExportButton can receive focus", focused)
-  if (!focused) return
-
-  await stashExportRegionIdentity(devtools, EXPORT_ROWS_BUTTON)
-  const before = await exportRegionText(devtools, EXPORT_ROWS_BUTTON)
-
-  await pressKey(devtools, "Space")
-  const settled = await exportSettled(devtools)
-  check(
-    "a real Space press on ExportButton hands a download to the browser",
-    settled,
-    settled
-      ? "URL.revokeObjectURL ran, so the create-download-revoke sequence completed"
-      : "no URL.revokeObjectURL call was observed within 8s",
-  )
-  if (!settled) return
-
-  const capture = await readExportCapture(devtools)
-
-  check(
-    "the downloaded bytes start with the UTF-8 byte-order mark",
-    capture.first3.join(",") === EXPORT_EXPECTED_BOM.join(","),
-    `first three bytes: [${capture.first3.join(", ")}]`,
-  )
-  check(
-    "the file is the CSV the rows describe, with the formula-like cell guarded by a leading '",
-    capture.text === EXPORT_EXPECTED_CSV,
-    JSON.stringify(capture.text),
-  )
-  check(
-    "the Blob carries a CSV content type",
-    capture.blobType === "text/csv;charset=utf-8",
-    capture.blobType,
-  )
-  check(
-    "the temporary link named the file, was in the document when clicked, and was removed after",
-    capture.downloadName === "attendees.csv" && capture.anchorConnectedAtClick &&
-      !capture.anchorConnectedAfter,
-    `download="${capture.downloadName}", connected at click: ${capture.anchorConnectedAtClick}, ` +
-      `connected after: ${capture.anchorConnectedAfter}`,
-  )
-  check(
-    "the object URL was revoked with the same URL it was created with",
-    capture.hadUrlPair,
-  )
-
-  const after = await exportRegionText(devtools, EXPORT_ROWS_BUTTON)
-  const identityHeld = await exportRegionIdentityHeld(devtools, EXPORT_ROWS_BUTTON)
-  check(
-    'ExportButton announces "Exported 2 rows" as a change to a region that already existed',
-    before === "" && after === "Exported 2 rows" && identityHeld,
-    `"${before}" → "${after}", same node throughout: ${identityHeld}`,
-  )
-}
-
-/**
- * A second export on the rows-based button, with the same row count as the first, still mutates
- * the live region — even though the text `resultLabel` produces is identical to what is already
- * there.
- *
- * Setting a `<span>`'s text to the value it already holds is a no-op as far as Preact's own diff is
- * concerned: nothing reaches the DOM, so nothing reaches a screen reader either. `ExportButton`
- * clears the region, then sets the real text in a following task — see the component's own doc —
- * which is what turns even a repeated announcement into two real mutations instead of zero. This is
- * measured with a `MutationObserver` rather than by reading the text again: the text after both
- * exports is `"Exported 2 rows"` either way, so the assertion has to be about whether a mutation
- * happened, not about what the final string reads.
- *
- * Runs right after {@link exportRowsViaSpaceCheck}, which has already produced one export on this
- * same button, so its own settle and its own announcement are already on screen when this starts —
- * this check produces the *second* one.
- *
- * @param devtools The connected session, on a hydrated page.
- */
-async function exportAnnouncesAgainCheck(devtools: Devtools): Promise<void> {
-  await resetExportCapture(devtools)
-
-  const watching = await devtools.evaluate<boolean>(`(() => {
-    const region = ${exportRegionExpr(EXPORT_ROWS_BUTTON)}
-    if (!region) return false
-    globalThis.__exportRegionMutations = []
-    const observer = new MutationObserver((records) => {
-      globalThis.__exportRegionMutations.push(records.length)
-    })
-    observer.observe(region, { characterData: true, subtree: true, childList: true })
-    globalThis.__exportRegionObserver = observer
-    return true
-  })()`)
-  check("a mutation observer can watch ExportButton's own live region", watching)
-  if (!watching) return
-
-  const focused = await focusExportButton(devtools, EXPORT_ROWS_BUTTON)
-  if (focused) await pressKey(devtools, "Space")
-  const settled = focused && await exportSettled(devtools)
-
-  const mutationCount = await devtools.evaluate<number>(`(() => {
-    const count = (globalThis.__exportRegionMutations ?? []).reduce((sum, n) => sum + n, 0)
-    globalThis.__exportRegionObserver?.disconnect()
-    delete globalThis.__exportRegionObserver
-    delete globalThis.__exportRegionMutations
-    return count
-  })()`)
-
-  check(
-    "a second export with the same row count still mutates the live region, so it announces again",
-    settled && mutationCount > 0,
-    settled
-      ? `${mutationCount} mutation record(s) observed on the region during the second export`
-      : "the second export never settled, so the region was never checked",
-  )
-}
-
-/**
- * A real Enter press on the `getRows`-based `ExportButton` downloads the same two rows, resolved
- * from a `Promise` rather than handed over directly.
- *
- * @param devtools The connected session, on a hydrated page.
- */
-async function exportAsyncViaEnterCheck(devtools: Devtools): Promise<void> {
-  await resetExportCapture(devtools)
-
-  const focused = await focusExportButton(devtools, EXPORT_ASYNC_BUTTON)
-  check("the getRows-based ExportButton can receive focus", focused)
-  if (!focused) return
-
-  await stashExportRegionIdentity(devtools, EXPORT_ASYNC_BUTTON)
-
-  await pressKey(devtools, "Enter")
-
-  // The demo's `getRows` takes 600ms, so the export is still pending here — this is the sample
-  // that catches `disabled={busy}` dropping focus to `<body>`, which `aria-disabled` instead of
-  // the native attribute is what fixes. See `exportButtonFocusedAndBusy`'s own doc for why the
-  // read waits two animation frames and also checks `aria-disabled` rather than reading focus
-  // alone, right after the key press.
-  const midExport = await exportButtonFocusedAndBusy(devtools, EXPORT_ASYNC_BUTTON)
-  check(
-    "focus stays on the getRows-based ExportButton while its export is pending",
-    midExport.focused && midExport.ariaDisabled === "true",
-    `focused: ${midExport.focused}, aria-disabled: ${JSON.stringify(midExport.ariaDisabled)}`,
-  )
-
-  const settled = await exportSettled(devtools)
-  check(
-    'a real Enter press (key-down carrying text: "\\r") activates ExportButton',
-    settled,
-    settled
-      ? "URL.revokeObjectURL ran, so the create-download-revoke sequence completed"
-      : "no URL.revokeObjectURL call was observed within 8s",
-  )
-  if (!settled) return
-
-  const focusedAfterSettle = await exportButtonHasFocus(devtools, EXPORT_ASYNC_BUTTON)
-  check(
-    "focus is still on the getRows-based ExportButton once its export settles",
-    focusedAfterSettle,
-  )
-
-  const capture = await readExportCapture(devtools)
-
-  check(
-    "the getRows-based export also starts with the byte-order mark and matches the rows",
-    capture.first3.join(",") === EXPORT_EXPECTED_BOM.join(",") &&
-      capture.text === EXPORT_EXPECTED_CSV,
-    `first three bytes: [${capture.first3.join(", ")}], text: ${JSON.stringify(capture.text)}`,
-  )
-  check(
-    "getRows's own file carries its own name, and its temporary link is gone afterward",
-    capture.downloadName === "attendees-async.csv" && !capture.anchorConnectedAfter,
-    `download="${capture.downloadName}", connected after: ${capture.anchorConnectedAfter}`,
-  )
-
-  const after = await exportRegionText(devtools, EXPORT_ASYNC_BUTTON)
-  const identityHeld = await exportRegionIdentityHeld(devtools, EXPORT_ASYNC_BUTTON)
-  check(
-    "the getRows button announces its own row count in its own region",
-    after === "Exported 2 rows" && identityHeld,
-    `"${after}", same node throughout: ${identityHeld}`,
-  )
-}
-
-/**
- * A second Enter press, 100ms after the first, on the `getRows`-based button while its own export
- * is still pending, is ignored — one download, not two.
- *
- * `ui/README.md` and `export-button.tsx`'s own doc both say the click handler ignores a second
- * press while one export is already running, but nothing committed proved it: a review removed
- * `handleClick`'s `if (busyRef.current) return` guard and every other check here stayed green,
- * since none of them presses the button twice. `aria-disabled` does not stop the press the way the
- * native `disabled` attribute used to, which is exactly why this guard — and a check proving it
- * still runs — exist.
- *
- * Counts `URL.createObjectURL` calls (via `armExportInstrumentation`'s own `createCount`, read
- * before and after) rather than waiting for a second download to settle: an ignored press produces
- * no second call at all, so there is nothing for a poll to wait on that a bound could time out over,
- * the way the other checks here do.
- *
- * @param devtools The connected session, on a hydrated page.
- */
-async function exportButtonIgnoresSecondPressCheck(devtools: Devtools): Promise<void> {
-  await resetExportCapture(devtools)
-
-  const focused = await focusExportButton(devtools, EXPORT_ASYNC_BUTTON)
-  check("the getRows-based ExportButton can receive focus for the double-press check", focused)
-  if (!focused) return
-
-  const before = await devtools.evaluate<number>(
-    `globalThis.__exportCheck ? globalThis.__exportCheck.createCount : 0`,
-  )
-
-  await pressKey(devtools, "Enter")
-  await new Promise((resolve) => setTimeout(resolve, 100))
-  await pressKey(devtools, "Enter")
-
-  const settled = await exportSettled(devtools)
-  const after = await devtools.evaluate<number>(
-    `globalThis.__exportCheck ? globalThis.__exportCheck.createCount : 0`,
-  )
-
-  check(
-    "a second Enter press on a pending getRows export is ignored — one download, not two",
-    settled && after - before === 1,
-    `settled: ${settled}, URL.createObjectURL calls: ${after - before}`,
-  )
-}
-
-/** Tab moves from the rows-based button to the getRows-based one, proving both are real tab stops. */
-async function exportButtonTabReachabilityCheck(devtools: Devtools): Promise<void> {
-  const staged = await focusExportButton(devtools, EXPORT_ROWS_BUTTON)
-
-  await pressKey(devtools, "Tab")
-  const landedOnAsync = await devtools.evaluate<boolean>(
-    `document.activeElement === document.querySelector('${EXPORT_ASYNC_BUTTON}')`,
-  )
-
-  check(
-    "the ExportButton trigger is reachable with Tab",
-    staged && landedOnAsync,
-    staged
-      ? `focus moved from the rows button to the getRows button: ${landedOnAsync}`
-      : "the rows button never received focus, so Tab proves nothing here",
-  )
-}
-
-/**
- * `ExportButton`'s two demo instances: the rows-based one activated with Space (twice, to prove a
- * repeated announcement still lands), the `getRows`-based one activated with Enter — including that
- * focus stays on it, busy or settled, and that a second press while it is busy is ignored — and Tab
- * moving between the two.
- *
- * @param devtools The connected session, on a hydrated page.
- */
-async function exportButtonChecks(devtools: Devtools): Promise<void> {
-  const cardPresent = await devtools.evaluate<boolean>(
-    `document.querySelector('${EXPORT_CARD}') !== null`,
-  )
-  check("the ExportButton card is on the page", cardPresent)
-  if (!cardPresent) return
-
-  await armExportInstrumentation(devtools)
-  try {
-    await exportRowsViaSpaceCheck(devtools)
-    await exportAnnouncesAgainCheck(devtools)
-    await exportAsyncViaEnterCheck(devtools)
-    await exportButtonIgnoresSecondPressCheck(devtools)
-    await exportButtonTabReachabilityCheck(devtools)
-  } finally {
-    await disarmExportInstrumentation(devtools).catch(() => {})
   }
 }
 
@@ -9310,12 +8704,11 @@ interface FileInputFixture {
  * Write the handful of real files {@link fileInputChecks} needs into a fresh `mktemp` directory.
  *
  * `DOM.setFileInputFiles` and a drop's `Input.dispatchDragEvent` both take real, on-disk paths —
- * neither can be satisfied by a `Blob` built inside the page, the way `armExportInstrumentation`
- * builds one for a download. Nothing here is a real image: the component never decodes the bytes,
- * only its extension and size, so arbitrary bytes under a `.png` name exercise exactly what
- * `matchesAccept` and `maxSize` check. Not committed as binaries — written at check time and
- * removed by the caller's own `finally`, the same lifetime `pages/verify.ts`'s own Chromium
- * profile directory has.
+ * neither can be satisfied by a `Blob` built inside the page. Nothing here is a real image: the
+ * component never decodes the bytes, only its extension and size, so arbitrary bytes under a `.png`
+ * name exercise exactly what `matchesAccept` and `maxSize` check. Not committed as binaries —
+ * written at check time and removed by the caller's own `finally`, the same lifetime
+ * `pages/verify.ts`'s own Chromium profile directory has.
  */
 async function writeFileInputFixtures(): Promise<{ dir: string; files: FileInputFixture }> {
   const dir = await Deno.makeTempDir({ prefix: "file-input-check-" })
@@ -9828,8 +9221,7 @@ async function fileInputFieldNestingCheck(devtools: Devtools): Promise<void> {
  * losing the ability to read the patched counter back — see `ui-guide/sections/inputs.tsx`'s own
  * doc on `FileInputDemo` for why the button exists at all.
  *
- * `URL.revokeObjectURL` is patched in place, counted, and restored in a `finally`, the same shape
- * `armExportInstrumentation`/`disarmExportInstrumentation` use for `ExportButton`'s own download.
+ * `URL.revokeObjectURL` is patched in place, counted, and restored in a `finally`.
  *
  * @param devtools The connected session, on a hydrated page.
  * @param fixture Real files on disk, from {@link writeFileInputFixtures}.
@@ -9908,11 +9300,11 @@ async function fileInputPreviewRevokeChecks(
  * A plain `<form method="post" enctype="multipart/form-data">` around its own `FileInput` instance
  * (`ui-guide/sections/inputs.tsx`'s fifth card, `id="guide-file-input-form"`) posts the chosen file
  * with no script running at all — not merely no hydrated `onSubmit` to intercept it, but the whole
- * bundle disabled the way {@link enhancedFormsNoScriptChecks} disables it for `NewsletterForm` and
- * `ContactForm`, via `Emulation.setScriptExecutionDisabled` before a reload. That is what "without
- * JavaScript doing anything" in #145's own done-when box means: a hydrated hander that happens not
- * to call `preventDefault` still proves nothing about a visitor whose script never ran in the first
- * place, and only a page that genuinely never executed the bundle does.
+ * bundle disabled the way {@link enhancedFormsNoScriptChecks} disables it for the sign-up form and
+ * the contact form, via `Emulation.setScriptExecutionDisabled` before a reload. That is what
+ * "without JavaScript doing anything" in #145's own done-when box means: a hydrated hander that
+ * happens not to call `preventDefault` still proves nothing about a visitor whose script never ran
+ * in the first place, and only a page that genuinely never executed the bundle does.
  *
  * Three things are checked against that unhydrated page, in order: the native input is still found
  * by `DOM.setFileInputFiles`, and its computed `display` is still not `none` — the one property this
@@ -10051,7 +9443,7 @@ async function fileInputFormPostCheck(
  * an image preview revoked on removal and on a real unmount, and a plain `<form>` post that reaches
  * a server with no script preventing it.
  *
- * Runs after `ExportButton`'s checks and before `modalChecks`, the same place `uiChecks` calls it:
+ * Runs after the `MoneyInput` checks and before `modalChecks`, the same place `uiChecks` calls it:
  * {@link fileInputFormPostCheck} navigates the page away and back, and every check after this one
  * has to run against a page that has fully rehydrated again, which its own last check confirms.
  *

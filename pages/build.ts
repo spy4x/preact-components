@@ -64,13 +64,13 @@ const ORIGIN = Deno.env.get("PAGES_ORIGIN") ?? DEFAULT_ORIGIN
  */
 const SW_DEMO_DIRECTORY = "sw-demo"
 /**
- * Directory copied verbatim into the artefact for the `EnhancedForm`, `NewsletterForm` and
- * `ContactForm` cards: one static page that stands in for "a server answered" when no script has
- * run. `pages/serve.ts`, which `deno task verify` runs against, never looks at `request.method`, so
- * it answers a POST with this same file; the published GitHub Pages copy is served by a static host
- * that answers a POST with `405 Method Not Allowed` instead — nothing here claims the published
- * site accepts one, and `pages/checks/ui.ts`'s no-JavaScript check reads the method and the body
- * off the recorded network request rather than assuming either.
+ * Directory copied verbatim into the artefact for the `EnhancedForm` card's forms: one static page
+ * that stands in for "a server answered" when no script has run. `pages/serve.ts`, which
+ * `deno task verify` runs against, never looks at `request.method`, so it answers a POST with this
+ * same file; the published GitHub Pages copy is served by a static host that answers a POST with
+ * `405 Method Not Allowed` instead — nothing here claims the published site accepts one, and
+ * `pages/checks/ui.ts`'s no-JavaScript check reads the method and the body off the recorded network
+ * request rather than assuming either.
  */
 const FORM_DEMO_DIRECTORY = "form-demo"
 /**
@@ -280,7 +280,7 @@ function kilobytes(bytes: number): string {
 
 /**
  * Copy one directory into the artefact verbatim, file by file — `sw-demo/` for the `SWUpdater`
- * card and `form-demo/` for `EnhancedForm`/`NewsletterForm`/`ContactForm`, both plain static pages
+ * card and `form-demo/` for `EnhancedForm`'s forms, both plain static pages
  * fetched by URL at runtime rather than bundled, which is why neither goes through the island
  * bundler above.
  *
@@ -392,7 +392,7 @@ async function main(): Promise<void> {
   const formDemo = await copyDemoDirectory(
     FORM_DEMO_DIRECTORY,
     ["index.html"],
-    "the EnhancedForm/NewsletterForm/ContactForm cards",
+    "the EnhancedForm card's forms",
   )
   const mapDemo = await copyDemoDirectory(
     MAP_DEMO_DIRECTORY,

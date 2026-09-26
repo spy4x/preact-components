@@ -180,7 +180,8 @@ export async function pagesChecks(devtools: Devtools): Promise<void> {
   // doing exactly that, 8px short, before the viewport height excluded the horizontal scrollbar.
   // The page is sent to the top first, so the scroll is a long one and still running when the
   // first reads arrive.
-  const AIM = `document.querySelector('#demo-ContactForm form button[type="submit"]')`
+  const CONTACT = `#demo-EnhancedForm [data-e2e="contact-form"]`
+  const AIM = `document.querySelector('${CONTACT} form button[type="submit"]')`
   await devtools.evaluate<null>(`(globalThis.scrollTo({ top: 0, behavior: "instant" }), null)`)
   const centreStarted = Date.now()
   const centred = await centreInView(devtools, AIM)
@@ -201,7 +202,7 @@ export async function pagesChecks(devtools: Devtools): Promise<void> {
     "centreInView settles on the target it worked out, with the element in the middle",
     centred && placed.found && Math.abs(placed.offset) <= 1 && placed.scrollY > 0,
     !placed.found
-      ? "the ContactForm card has no submit button to centre"
+      ? "the EnhancedForm card has no contact-form submit button to centre"
       : `${centred ? "settled" : "did not settle on its target"} after ${centreMs}ms, at ` +
         `scrollY ${placed.scrollY}, with the button's centre ${placed.offset}px from the middle`,
   )

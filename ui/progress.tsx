@@ -116,8 +116,7 @@ export function formatProgressPercent(fraction: number): string {
  * Determinate progress bar, or an indeterminate track when the reading is unknown.
  *
  * The fill width is inline, so the server-rendered markup is already correct and the CSS
- * transition animates later changes — the same reasoning as `ConfidenceMeter`, which is the
- * closest sibling.
+ * transition animates later changes.
  *
  * There is no separate indeterminate variant: no consumer needs one yet, and an animated
  * indeterminate track would need keyframes in `theme/`, which this package does not own. A

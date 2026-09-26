@@ -323,7 +323,7 @@ const catalogue = {
     package: "ui",
     title: "Enhanced forms",
     blurb:
-      "Whole forms built on the `Fields` primitives above, that post on their own before a script has run and stay on the page once one has: `EnhancedForm` is the building block, `NewsletterForm` and `ContactForm` are the two shapes built on it.",
+      "Whole forms built on the `Fields` primitives above, that post on their own before a script has run and stay on the page once one has: `EnhancedForm` is the building block, shown with a sign-up form and a contact form built from it.",
     demos: enhancedFormDemos,
   },
   forms: {

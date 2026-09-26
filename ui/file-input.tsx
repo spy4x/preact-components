@@ -24,8 +24,8 @@ export interface FileRejection {
  * three already take `ComponentChildren`/`string` directly, the same as every other field in this
  * package. The four here are functions rather than plain strings because each one has to name a
  * file (or, for `tooLarge`, a size) inside a sentence whose shape is a translator's business, not
- * this component's — the same reason `ExportButton`'s `resultLabel` and `Pagination`'s `pageLabel`
- * are functions instead of strings with a placeholder to find-and-replace.
+ * this component's — the same reason `Pagination`'s `pageLabel` is a function instead of a string
+ * with a placeholder to find-and-replace.
  */
 export interface FileInputLabels {
   /** Visible text inside the drop zone. Defaults to `"Choose files"`. */
@@ -157,7 +157,7 @@ const hintText = "mt-2 text-sm text-gray-500 dark:text-gray-400"
  * tests. `maxSize` is a plain byte comparison. Either refusal is pushed onto `onReject` and rendered
  * into a `role="status"` paragraph that exists — empty — on every render, so a screen reader already
  * has something to listen to before the first refusal ever happens; the same live-region-exists-
- * first shape `ExportButton`'s announcement uses, and for the same reason: setting a live region's
+ * first shape `EnhancedForm`'s announcement uses, and for the same reason: setting a live region's
  * text for the first time, on the same render it appears, is not guaranteed to be read.
  *
  * **Without `multiple`, an extra file is a refusal, not a silent drop.** A click-driven choice
@@ -280,9 +280,8 @@ export function FileInput(
   } = resolveLabels(labels)
 
   const announceRejection = (text: string) => {
-    // Cleared, then set on the next tick — the same two-step `ExportButton` uses, so a second
-    // refusal with the exact same text is a real DOM mutation and not a silent no-op a screen
-    // reader never hears.
+    // Cleared, then set on the next tick, so a second refusal with the exact same text is a real
+    // DOM mutation and not a silent no-op a screen reader never hears.
     if (rejectionTimer.current !== undefined) clearTimeout(rejectionTimer.current)
     setRejectionMessage("")
     rejectionTimer.current = setTimeout(() => setRejectionMessage(text), 0)
