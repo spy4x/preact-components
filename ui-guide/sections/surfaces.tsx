@@ -11,6 +11,7 @@
  */
 
 import { INK_CSS } from "@spy4x/preact-theme"
+import { Cluster, Grid, Stack } from "@spy4x/preact-ui"
 import type { ClassDemoFragment } from "../registry.ts"
 
 /**
@@ -46,7 +47,7 @@ const INK_SWATCH_LABELS: Record<string, string> = {
 }
 
 /**
- * Swatches for the ink theme's tokens (#257): the surface scale, the hairline, the two text
+ * Swatches for the ink theme's tokens: the surface scale, the hairline, the two text
  * tones, the one accent, and the nav-active/focus tokens split off it.
  *
  * `ink.css` only paints once `.dark` and `data-theme="ink"` sit together, and the convention this
@@ -74,27 +75,24 @@ function InkPaletteDemo() {
     value: resolveInkValue(declared[property] ?? "", declared),
   }))
   return (
-    <div class="card max-w-md">
-      <div class="card-body space-y-3">
-        <p class="text-sm text-muted">
-          Ink is dark-only: set <code>data-theme="ink"</code> together with <code>.dark</code> on
-          {" "}
-          <code>&lt;html&gt;</code>.
-        </p>
-        <div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
-          {swatches.map((swatch) => (
-            <div key={swatch.label} class="flex flex-col items-center gap-1">
-              <span
-                aria-hidden="true"
-                class="rounded-primary border border-subtle block size-10"
-                style={`background: ${swatch.value}`}
-              />
-              <span class="text-muted text-xs">{swatch.label}</span>
-            </div>
-          ))}
-        </div>
+    <Stack class="max-w-md">
+      <p class="text-sm text-muted">
+        Dark only: set <code>data-theme="ink"</code> together with <code>.dark</code> on{" "}
+        <code>&lt;html&gt;</code>.
+      </p>
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-5">
+        {swatches.map((swatch) => (
+          <div key={swatch.label} class="flex flex-col items-center gap-1">
+            <span
+              aria-hidden="true"
+              class="rounded-primary border border-subtle block size-10"
+              style={`background: ${swatch.value}`}
+            />
+            <span class="text-muted text-xs">{swatch.label}</span>
+          </div>
+        ))}
       </div>
-    </div>
+    </Stack>
   )
 }
 
@@ -111,8 +109,8 @@ function CardDemo() {
       </div>
       <div class="card-body">
         <p class="text-sm">
-          The body is the only part with a padding floor of its own: a header and a footer already
-          carry theirs, so a card with all three needs no spacing utilities between them.
+          The body holds the content. The header and the footer bring their own padding and the line
+          between them, so the parts need no spacing classes.
         </p>
       </div>
       <div class="card-footer">
@@ -129,33 +127,31 @@ function CardDemo() {
  */
 function ScrollbarDemo() {
   return (
-    <div class="card max-w-md">
-      <div class="card-body">
-        <div class="scrollbar flex gap-3" data-e2e="scrollbar">
-          {[
-            "January",
-            "February",
-            "March",
-            "April",
-            "May",
-            "June",
-            "July",
-            "August",
-            "September",
-            "October",
-            "November",
-            "December",
-          ].map((month) => (
-            <span key={month} class="rounded-primary border border-subtle px-3 py-1 text-sm">
-              {month}
-            </span>
-          ))}
-        </div>
-        <p class="mt-2 text-xs text-muted" data-e2e="scrollbar-note">
-          Twelve chips, one 28rem box: the row scrolls, the card does not.
-        </p>
+    <Stack gap="sm" class="max-w-md">
+      <div class="scrollbar flex gap-2" data-e2e="scrollbar">
+        {[
+          "January",
+          "February",
+          "March",
+          "April",
+          "May",
+          "June",
+          "July",
+          "August",
+          "September",
+          "October",
+          "November",
+          "December",
+        ].map((month) => (
+          <span key={month} class="rounded-primary border border-subtle px-3 py-1 text-sm">
+            {month}
+          </span>
+        ))}
       </div>
-    </div>
+      <p class="text-xs text-muted" data-e2e="scrollbar-note">
+        Twelve months in one 28rem row: the row scrolls, the page does not.
+      </p>
+    </Stack>
   )
 }
 
@@ -174,14 +170,13 @@ function TypographyDemo() {
       <p class="h4">h4 — card title</p>
       <p class="h5">h5 — field group</p>
       <ul class="list-ul">
-        <li>`.list-ul` is the one list rule: disc markers, inside, one step down in size.</li>
+        <li>A bulleted list, with its markers inside.</li>
         <li>
-          <a class="link" href="#surfaces">`.link`</a>{" "}
-          underlines on its own, and drops the underline on hover.
+          <a class="link" href="#surfaces">A link</a>, underlined until the pointer is on it.
         </li>
       </ul>
       <p class="text-xs text-muted">
-        `.page-layout` is the horizontal frame around all of it: `mx-auto max-w-6xl space-y-4`.
+        <code>.page-layout</code> frames this demo; a new page uses <code>Page</code> instead.
       </p>
     </div>
   )
@@ -195,8 +190,8 @@ function TypographyDemo() {
  */
 function DataDisplayDemo() {
   return (
-    <div class="grid max-w-md gap-3">
-      <div class="grid grid-cols-2 gap-3">
+    <Stack class="max-w-md">
+      <Grid minColumnWidth="sm">
         <div class="kpi">
           <span class="kpi-label">Consumed</span>
           <span class="kpi-value">1 284</span>
@@ -207,8 +202,8 @@ function DataDisplayDemo() {
           <span class="kpi-value">1 800</span>
           <span class="bar" style={{ width: "100%" }} />
         </div>
-      </div>
-      <table class="w-full text-sm">
+      </Grid>
+      <table class="w-full bg-transparent text-sm">
         <thead>
           <tr>
             <th scope="col" class="text-left font-normal text-muted">Month</th>
@@ -226,35 +221,35 @@ function DataDisplayDemo() {
           </tr>
         </tbody>
       </table>
-    </div>
+    </Stack>
   )
 }
 
 /** Every colour atom the preset ships, on the element it was written for. */
 function ColourAtomsDemo() {
   return (
-    <div class="grid gap-4 text-sm">
-      <div class="grid gap-1">
+    <Stack class="text-sm">
+      <Stack gap="xs">
         {["text-primary", "text-muted", "text-danger", "text-warning", "text-success"].map(
           (name) => <span key={name} class={name}>{name}</span>,
         )}
-      </div>
+      </Stack>
 
-      <div class="flex flex-wrap gap-2">
+      <Cluster>
         {["bg-primary", "bg-danger", "bg-warning", "bg-success"].map((name) => (
           <span key={name} class={`${name} rounded-primary px-2 py-1 text-xs text-white`}>
             {name}
           </span>
         ))}
-      </div>
+      </Cluster>
 
-      <div class="flex flex-wrap gap-2">
+      <Cluster>
         {["border-primary", "border-subtle", "border-control"].map((name) => (
           <span key={name} class={`${name} border px-2 py-1 text-xs`}>{name}</span>
         ))}
-      </div>
+      </Cluster>
 
-      <div class="flex flex-wrap gap-2">
+      <Cluster>
         <span class="bg-canvas border-subtle rounded-primary border px-2 py-1 text-xs">
           bg-canvas — page
         </span>
@@ -264,8 +259,8 @@ function ColourAtomsDemo() {
         <span class="rounded-primary bg-primary px-2 py-1 text-xs text-white">
           rounded-primary
         </span>
-      </div>
-    </div>
+      </Cluster>
+    </Stack>
   )
 }
 
@@ -274,7 +269,8 @@ export const surfaceDemos = {
     title: "Card",
     classes: ["card", "card-header", "card-body", "card-footer", "link", "text-muted"],
     summary:
-      "The four-part surface: `.card` is the frame, and `.card-header`/`.card-body`/`.card-footer` carry their own padding and the border between them, so the parts are spacing-free in composition.",
+      "Frames a block of content, with an optional header and footer that bring their own padding and dividers.",
+    wide: false,
     snippet: `<div class="card">
   <div class="card-header">
     <p class="font-medium">Meter 4417</p>
@@ -289,9 +285,10 @@ export const surfaceDemos = {
   },
   "class-scrollbar": {
     title: "Scroll container",
-    classes: ["scrollbar", "card", "card-body", "border-subtle", "rounded-primary", "text-muted"],
+    classes: ["scrollbar", "border-subtle", "rounded-primary", "text-muted"],
     summary:
-      "`.scrollbar` turns a flex row into a horizontal scroller with a 4px thumb instead of the platform's full-height bar. It sets the overflow only — the height belongs to the content.",
+      "Lets a row wider than its box, such as a strip of chips, scroll sideways behind a thin themed scrollbar.",
+    wide: false,
     snippet: `<div class="scrollbar flex gap-3">
   {months.map((month) => (
     <span class="rounded-primary border border-subtle px-3 py-1 text-sm">{month}</span>
@@ -313,7 +310,8 @@ export const surfaceDemos = {
       "text-muted",
     ],
     summary:
-      "`.h1`–`.h5` are type-scale utilities, `.list-ul` and `.link` are the two text affordances, and `.page-layout` is the standard frame: `mx-auto max-w-6xl space-y-4 lg:space-y-8`. Apply them to whatever element is semantically right.",
+      "Gives any element a heading size, a bulleted list style or a link style, whatever its tag.",
+    wide: false,
     snippet: `<div class="page-layout">
   <p class="h2">Section</p>
   <ul class="list-ul">
@@ -327,7 +325,8 @@ export const surfaceDemos = {
     title: "KPI tiles and numbers",
     classes: ["kpi", "kpi-label", "kpi-value", "bar", "num", "border-subtle", "text-muted"],
     summary:
-      "`.kpi` is the tile, `.kpi-label` the caption above its value. `.bar` is a width-less bar — the caller sets the length — and `.num` right-aligns a cell with tabular figures so a column of numbers lines up.",
+      "Shows a headline number in a tile with an optional bar, and lines up a column of numbers in a table.",
+    wide: false,
     snippet: `<div class="kpi">
   <span class="kpi-label">Consumed</span>
   <span class="kpi-value">1 284</span>
@@ -357,7 +356,8 @@ export const surfaceDemos = {
       "rounded-primary",
     ],
     summary:
-      "Every colour the preset exposes as a utility, read through `var(--color-*, fallback)`: text, fill, border and the two surfaces. `.rounded-primary` is the radius the same way, so a box and a button share one corner rounding.",
+      "Paints text, fills, borders, the two surfaces and the corner radius from the theme's tokens.",
+    wide: false,
     snippet: `<span class="text-danger">text-danger</span>
 <span class="bg-success rounded-primary px-2 py-1 text-xs text-white">bg-success</span>
 <span class="border-control border px-2 py-1 text-xs">border-control</span>
@@ -366,9 +366,10 @@ export const surfaceDemos = {
   },
   "class-ink-palette": {
     title: "Ink palette",
-    classes: ["card", "card-body", "text-muted", "rounded-primary", "border-subtle"],
+    classes: ["text-muted", "rounded-primary", "border-subtle"],
     summary:
-      'The ink theme (#257): an additional, opt-in dark palette, `.dark[data-theme="ink"]`. It repaints the same tokens above — the default Eirene palette is unaffected — and adds a four-step surface scale, a hairline rule colour, two text tones, and `--color-nav-active`/`--color-focus-ring`, split off `--color-primary` so focus rings and the rail indicator do not use the accent. Links, checkboxes, outline buttons and bars still do.',
+      "An opt-in dark palette that repaints the same tokens with a quieter surface scale and its own focus colour.",
+    wide: false,
     snippet: `<html class="dark" data-theme="ink">
   <body class="theme-base">
     <nav style="background: var(--color-surface-rail)">…</nav>
