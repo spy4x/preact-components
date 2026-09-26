@@ -18,16 +18,16 @@ another's sort codec.
 
 ## What is in the box
 
-| Module              | Exports                                                              |
-| ------------------- | -------------------------------------------------------------------- |
-| `build-model-store` | `buildModelStore` — CRUD over one REST collection, arktype-validated |
-| `table-state`       | `SortRule`, `toggleSort`, `sortRows`, `parseSort`, `serializeSort`   |
-| `theme`             | `createThemeStore` — light/dark/system, persistence, `matchMedia`    |
-| `toast`             | `createToastStore` — the list behind `Toastr`; runs no timers        |
-| `clipboard`         | `createClipboard` — `navigator.clipboard` plus a feedback port       |
-| `map-entry`         | `setMapEntry` / `deleteMapEntry` — immutable `Map` writes            |
-| `patch-signal`      | `patchSignal` — merge a partial object into a signal's value         |
-| `use-url-filters`   | `useUrlFilters` — two-way binding between URL params and signals     |
+| Module              | Exports                                                                                                                                                      |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `build-model-store` | `buildModelStore` — CRUD over one REST collection, arktype-validated                                                                                         |
+| `table-state`       | `SortRule`, `toggleSort`, `sortRows`, `parseSort`, `serializeSort`                                                                                           |
+| `theme`             | `createThemeStore` — light/dark/system, persistence, `matchMedia`; `themeBootstrapScript` — the inline `<head>` script that paints it before the first paint |
+| `toast`             | `createToastStore` — the list behind `Toastr`; runs no timers                                                                                                |
+| `clipboard`         | `createClipboard` — `navigator.clipboard` plus a feedback port                                                                                               |
+| `map-entry`         | `setMapEntry` / `deleteMapEntry` — immutable `Map` writes                                                                                                    |
+| `patch-signal`      | `patchSignal` — merge a partial object into a signal's value                                                                                                 |
+| `use-url-filters`   | `useUrlFilters` — two-way binding between URL params and signals                                                                                             |
 
 `types.ts` holds the shapes this package owns (`Model`, `RemoteEvent`, `ToastMessage`, `ToastPort`)
 and is re-exported from the barrel. The store's error envelope and operation state come from
@@ -470,6 +470,12 @@ reached the component under its old name, both clocks ran, and a toast lived whi
   `system` is light. `set()` is the other caller-initiated read: it persists through the storage
   port, and a storage that refuses the write — a browser in private mode throws on `setItem` — is
   ignored rather than allowed to throw out of the click handler.
+- **`themeBootstrapScript` paints the store's theme before the bundle runs.** It returns the source
+  of an inline `<head>` script that reads the same storage key, accepts the same values, resolves
+  `"system"` through the same media query and toggles the same `dark` class as an attached
+  `createThemeStore`, so a reader who chose dark sees no light flash first. Pass both the same
+  `storageKey`, `systemQuery` and `defaultPreference`. The script never writes storage and never
+  throws; its options are written in as escaped string literals.
 - **`as` assertions.** The package uses a handful, and only one is unavoidable: the spread of
   `extraOps`/`selectors` onto the base store in `build-model-store.ts`, where TypeScript cannot verify
   a spread of `Extra | undefined` against a generic `Extra`. The rest are local narrowing inside one

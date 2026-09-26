@@ -1,6 +1,13 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
-import { createThemeStore, type ThemeMediaQuery, type ThemeStorage, ThemeValue } from "./theme.ts"
+import {
+  createThemeStore,
+  type ThemeBootstrapOptions,
+  themeBootstrapScript,
+  type ThemeMediaQuery,
+  type ThemeStorage,
+  ThemeValue,
+} from "./theme.ts"
 
 /** An in-memory stand-in for `localStorage` that records what it was asked for. */
 function fakeStorage(
@@ -464,5 +471,208 @@ describe("createThemeStore attach", () => {
     media.emit(true)
     expect(applied).toEqual([ThemeValue.LIGHT, ThemeValue.LIGHT, ThemeValue.DARK])
     expect(media.listenerCount()).toBe(1)
+  })
+})
+
+describe("createThemeStore defaultPreference", () => {
+  it("uses the default preference when nothing is stored", () => {
+    const store = createThemeStore({
+      storage: fakeStorage(),
+      media: fakeMedia(false).source,
+      apply: () => {},
+      defaultPreference: ThemeValue.DARK,
+    })
+    store.attach()
+    expect(store.preference.value).toBe(ThemeValue.DARK)
+    expect(store.actual.value).toBe(ThemeValue.DARK)
+    store.dispose()
+  })
+
+  it("lets a stored preference win over the default", () => {
+    const store = createThemeStore({
+      storage: fakeStorage({ theme: ThemeValue.LIGHT }),
+      media: fakeMedia(true).source,
+      apply: () => {},
+      defaultPreference: ThemeValue.DARK,
+    })
+    store.attach()
+    expect(store.preference.value).toBe(ThemeValue.LIGHT)
+    store.dispose()
+  })
+
+  it("ignores a default preference it does not understand", () => {
+    const store = createThemeStore({
+      storage: fakeStorage(),
+      media: fakeMedia(true).source,
+      apply: () => {},
+      defaultPreference: "sepia" as ThemeValue,
+    })
+    store.attach()
+    expect(store.preference.value).toBe(ThemeValue.SYSTEM)
+    store.dispose()
+  })
+})
+
+/** What one run of the bootstrap script did to the page. */
+interface BootstrapRun {
+  dark: boolean
+  keysRead: string[]
+  queriesAsked: string[]
+  writes: number
+}
+
+/**
+ * Run the real bootstrap script against in-memory stand-ins for `localStorage`, `matchMedia` and
+ * `document`, and report what it painted and what it asked for.
+ */
+function runBootstrap(
+  options: ThemeBootstrapOptions | undefined,
+  stored: Record<string, string> | "refuse",
+  systemDark: boolean,
+): BootstrapRun {
+  const storage = stored === "refuse" ? refusingStorage() : fakeStorage(stored)
+  const keysRead: string[] = []
+  const queriesAsked: string[] = []
+  let writes = 0
+  const classes = new Set<string>()
+  const document = {
+    documentElement: {
+      classList: {
+        toggle: (name: string, on: boolean) => void (on ? classes.add(name) : classes.delete(name)),
+      },
+    },
+  }
+  const localStorage = {
+    getItem: (key: string) => {
+      keysRead.push(key)
+      return storage.getItem(key)
+    },
+    setItem: () => void writes++,
+  }
+  const matchMedia = (query: string) => {
+    queriesAsked.push(query)
+    return { matches: systemDark }
+  }
+  new Function("localStorage", "matchMedia", "document", themeBootstrapScript(options))(
+    localStorage,
+    matchMedia,
+    document,
+  )
+  return { dark: classes.has("dark"), keysRead, queriesAsked, writes }
+}
+
+describe("themeBootstrapScript", () => {
+  it("paints a stored dark preference dark on a light system", () => {
+    expect(runBootstrap(undefined, { theme: "dark" }, false).dark).toBe(true)
+  })
+
+  it("paints a stored light preference light on a dark system", () => {
+    expect(runBootstrap(undefined, { theme: "light" }, true).dark).toBe(false)
+  })
+
+  it("follows the system for a stored system preference", () => {
+    expect(runBootstrap(undefined, { theme: "system" }, true).dark).toBe(true)
+    expect(runBootstrap(undefined, { theme: "system" }, false).dark).toBe(false)
+  })
+
+  it("falls back to the default preference when nothing is stored", () => {
+    expect(runBootstrap({ defaultPreference: ThemeValue.DARK }, {}, false).dark).toBe(true)
+    expect(runBootstrap({ defaultPreference: ThemeValue.LIGHT }, {}, true).dark).toBe(false)
+    expect(runBootstrap(undefined, {}, true).dark).toBe(true)
+  })
+
+  it("falls back to the default preference for a stored value it does not understand", () => {
+    expect(runBootstrap({ defaultPreference: ThemeValue.DARK }, { theme: "auto" }, false).dark)
+      .toBe(true)
+  })
+
+  it("falls back to the default preference when storage refuses the read", () => {
+    expect(runBootstrap({ defaultPreference: ThemeValue.DARK }, "refuse", false).dark).toBe(true)
+  })
+
+  it("reads the store's storage key and media query by default", () => {
+    const run = runBootstrap(undefined, {}, false)
+    expect(run.keysRead).toEqual(["theme"])
+    expect(run.queriesAsked).toEqual(["(prefers-color-scheme: dark)"])
+  })
+
+  it("reads a custom storage key and media query", () => {
+    const run = runBootstrap(
+      { storageKey: "app-theme", systemQuery: "(prefers-contrast: more)" },
+      { theme: "dark", "app-theme": "system" },
+      false,
+    )
+    expect(run).toEqual({
+      dark: false,
+      keysRead: ["app-theme"],
+      queriesAsked: ["(prefers-contrast: more)"],
+      writes: 0,
+    })
+  })
+
+  it("never writes storage", () => {
+    expect(runBootstrap(undefined, { theme: "dark" }, false).writes).toBe(0)
+  })
+
+  it("agrees with an attached store on every stored value and system setting", () => {
+    for (const stored of [null, "light", "dark", "system", "auto"]) {
+      for (const systemDark of [false, true]) {
+        for (const defaultPreference of Object.values(ThemeValue)) {
+          const saved: Record<string, string> = stored === null ? {} : { theme: stored }
+          const store = createThemeStore({
+            storage: fakeStorage(saved),
+            media: fakeMedia(systemDark).source,
+            apply: () => {},
+            defaultPreference,
+          })
+          store.attach()
+          const painted = runBootstrap({ defaultPreference }, saved, systemDark).dark
+          expect({ stored, systemDark, defaultPreference, dark: painted }).toEqual({
+            stored,
+            systemDark,
+            defaultPreference,
+            dark: store.actual.value === ThemeValue.DARK,
+          })
+          store.dispose()
+        }
+      }
+    }
+  })
+
+  it("writes options as literals that cannot close the script element or run code", () => {
+    const script = themeBootstrapScript({
+      storageKey: `"+alert(1)+"</script><script>alert(2)//`,
+      defaultPreference: `"+alert(3)+"` as ThemeValue,
+      systemQuery: `"+alert(4)+"</script><script>alert(5)//`,
+    })
+    expect(script).not.toContain("</script")
+    expect(script).not.toContain("alert(3)")
+    const run = runBootstrap(
+      { storageKey: `"+globalThis.pwned=1+"`, systemQuery: `"+globalThis.pwnedQuery=1+"` },
+      {},
+      true,
+    )
+    expect(run.keysRead).toEqual([`"+globalThis.pwned=1+"`])
+    expect(run.queriesAsked).toEqual([`"+globalThis.pwnedQuery=1+"`])
+    expect((globalThis as { pwned?: number }).pwned).toBeUndefined()
+    expect((globalThis as { pwnedQuery?: number }).pwnedQuery).toBeUndefined()
+  })
+
+  it("paints light for a system preference when the browser has no matchMedia", () => {
+    const classes = new Set(["dark"])
+    const document = {
+      documentElement: {
+        classList: {
+          toggle: (name: string, on: boolean) =>
+            void (on ? classes.add(name) : classes.delete(name)),
+        },
+      },
+    }
+    new Function("localStorage", "matchMedia", "document", themeBootstrapScript())(
+      fakeStorage({ theme: "system" }),
+      undefined,
+      document,
+    )
+    expect(classes.has("dark")).toBe(false)
   })
 })

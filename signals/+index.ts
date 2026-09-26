@@ -44,6 +44,8 @@ export {
 export {
   createThemeStore,
   type Theme,
+  type ThemeBootstrapOptions,
+  themeBootstrapScript,
   type ThemeMediaQuery,
   type ThemeMediaSource,
   type ThemePorts,

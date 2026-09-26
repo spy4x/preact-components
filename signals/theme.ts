@@ -54,6 +54,13 @@ export interface ThemePorts {
   systemQuery?: string
   /** Applies a resolved theme. Defaults to toggling the `dark` class on `documentElement`. */
   apply?: (theme: Theme) => void
+  /**
+   * The preference used when storage holds none this version understands. Defaults to `"system"`.
+   *
+   * An app whose owner picks the default palette passes it here and to
+   * {@link themeBootstrapScript}, so the first paint and the attached store agree.
+   */
+  defaultPreference?: ThemePreference
 }
 
 /** A theme store: preference in, resolved theme out, plus the DOM wiring. */
@@ -61,8 +68,9 @@ export interface ThemeStore {
   /**
    * The user's choice. Writable so a settings form can bind to it.
    *
-   * `"system"` until {@link ThemeStore.attach} has read the stored preference, because nothing is
-   * read out of storage before then.
+   * The default preference (`"system"` unless {@link ThemePorts.defaultPreference} says otherwise)
+   * until {@link ThemeStore.attach} has read the stored one, because nothing is read out of storage
+   * before then.
    */
   preference: Signal<ThemePreference>
   /** What the OS asks for: light until {@link ThemeStore.attach} has asked the media source. */
@@ -136,8 +144,11 @@ export function createThemeStore(ports: ThemePorts = {}): ThemeStore {
   const storageKey = ports.storageKey ?? DEFAULT_STORAGE_KEY
   const systemQuery = ports.systemQuery ?? DARK_SCHEME_QUERY
   const apply = ports.apply ?? applyToDocument
+  const defaultPreference = isThemePreference(ports.defaultPreference)
+    ? ports.defaultPreference
+    : ThemeValue.SYSTEM
 
-  const preference = signal<ThemePreference>(ThemeValue.SYSTEM)
+  const preference = signal<ThemePreference>(defaultPreference)
   const system = signal<Theme>(ThemeValue.LIGHT)
   const actual = computed<Theme>(() =>
     preference.value === ThemeValue.SYSTEM ? system.value : preference.value
@@ -230,4 +241,50 @@ export function createThemeStore(ports: ThemePorts = {}): ThemeStore {
   }
 
   return { preference, system, actual, set, toggle, attach, dispose }
+}
+
+/** Options for {@link themeBootstrapScript}. Each default matches {@link createThemeStore}'s. */
+export interface ThemeBootstrapOptions {
+  /** Storage key the preference is read from. Defaults to `"theme"`. */
+  storageKey?: string
+  /** Media query that says the OS asks for dark. Defaults to the dark-scheme query. */
+  systemQuery?: string
+  /** The preference used when nothing understood is stored. Defaults to `"system"`. */
+  defaultPreference?: ThemePreference
+}
+
+/** A value as a JavaScript literal that is also safe inside an inline `<script>` element. */
+function scriptLiteral(value: string): string {
+  return JSON.stringify(value).replace(/</g, "\\u003c")
+}
+
+/**
+ * The source of an inline `<head>` script that paints the stored theme before the first paint.
+ *
+ * A theme store attaches only once the client bundle runs, so a page rendered dark for a reader who
+ * chose dark would flash light until then. Render this string in a `<script>` element in `<head>`
+ * (not a module, not deferred): it reads the same storage key as {@link createThemeStore}, accepts
+ * the same values, resolves `"system"` through the same media query and toggles the same `dark`
+ * class on `documentElement`. It never writes storage and never throws: a browser that refuses
+ * storage reads gets the default preference.
+ *
+ * The options are written into the script as string literals, escaped so that none of them can end
+ * the script element or run code; a `defaultPreference` this version does not know becomes
+ * `"system"`.
+ *
+ * @example
+ * ```tsx
+ * <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript() }} />
+ * ```
+ */
+export function themeBootstrapScript(options: ThemeBootstrapOptions = {}): string {
+  const key = scriptLiteral(options.storageKey ?? DEFAULT_STORAGE_KEY)
+  const query = scriptLiteral(options.systemQuery ?? DARK_SCHEME_QUERY)
+  const fallback = scriptLiteral(
+    isThemePreference(options.defaultPreference) ? options.defaultPreference : ThemeValue.SYSTEM,
+  )
+  return `(function(){try{var s=null;try{s=localStorage.getItem(${key})}catch(e){}` +
+    `var p=s==="light"||s==="dark"||s==="system"?s:${fallback};` +
+    `var d=p==="dark"||(p==="system"&&typeof matchMedia==="function"&&matchMedia(${query}).matches);` +
+    `document.documentElement.classList.toggle("dark",!!d)}catch(e){}})()`
 }
