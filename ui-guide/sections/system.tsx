@@ -1126,7 +1126,10 @@ function ShellDemo() {
           },
         ]}
         user={{ name: "Ada Lovelace", email: "ada@example.com" }}
-        userMenuItems={[{ label: "Your profile", href: "/profile" }, { label: "Sign out" }]}
+        userMenuItems={[
+          { label: "Your profile", href: "/profile" },
+          { label: "Sign out", dataE2E: "signout" },
+        ]}
         status={
           <span class="text-xs text-gray-500 dark:text-gray-400" data-e2e="shell-status">
             Connected
@@ -1314,7 +1317,7 @@ const tags = seoHeadTags(head)`,
   user={session ? { name: session.name, email: session.email } : null}
   userMenuItems={[
     { label: "Your profile", href: "/profile" },
-    { label: "Sign out", onClick: () => auth.signOut() },
+    { label: "Sign out", onClick: () => auth.signOut(), dataE2E: "signout" },
   ]}
   status={<ConnectionIndicator />}
 >

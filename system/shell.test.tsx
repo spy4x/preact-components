@@ -127,6 +127,24 @@ describe("Shell", () => {
     expect(html).toMatch(/<button[^>]*>Sign out<\/button>/)
   })
 
+  it("puts a user menu item's dataE2E on the rendered item", () => {
+    const html = render(
+      <Shell
+        navItems={navItems}
+        brand="Acme"
+        user={user}
+        userMenuItems={[{ label: "Profile", href: "/profile", dataE2E: "profile" }, {
+          label: "Sign out",
+          dataE2E: "signout",
+        }]}
+      >
+        page
+      </Shell>,
+    )
+    expect(html).toMatch(/<a[^>]*data-e2e="profile"[^>]*>Profile<\/a>/)
+    expect(html).toMatch(/<button[^>]*data-e2e="signout"[^>]*>Sign out<\/button>/)
+  })
+
   it("puts the skip link before any other link, targeting a focusable #shell content id", () => {
     const html = render(<Shell navItems={navItems} brand="Acme" user={null}>the page</Shell>)
     const skipLink = html.match(/<a[^>]*data-e2e="shell-skip-link"[^>]*>[^<]*<\/a>/)?.[0] ?? ""
