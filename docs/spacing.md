@@ -40,20 +40,20 @@ example follow it.
 
 ## Which gap goes where
 
-| Between                                              | Gap    | Size  | Use                           |
-| ---------------------------------------------------- | ------ | ----- | ----------------------------- |
-| parts that should touch                              | `none` | 0     | any layout component          |
-| an icon and its label, a heading and its description | `xs`   | 4 px  | the component already does it |
-| a label, its field and its hint                      | `xs`   | 4 px  | `Field` already does it       |
-| the buttons of a toolbar or a form footer, tags      | `sm`   | 8 px  | `Cluster` (its default)       |
-| the fields of a form                                 | `md`   | 16 px | `Stack` (its default)         |
-| cards in a list                                      | `md`   | 16 px | `Stack` (its default)         |
-| cards in a grid                                      | `md`   | 16 px | `Grid` (its default)          |
-| the blocks inside a section                          | `md`   | 16 px | `Section` does it             |
-| a list page's title, toolbar and table               | `lg`   | 24 px | `Stack gap="lg"`              |
-| the sections of a page                               | `xl`   | 32 px | `Page` does it                |
-| groups of sections                                   | `2xl`  | 48 px | `Stack gap="2xl"`             |
-| the page and the window's edge (the page gutter)     | —      | —     | `Page` does it                |
+| Between                                              | Gap    | Size   | Use                           |
+| ---------------------------------------------------- | ------ | ------ | ----------------------------- |
+| parts that should touch                              | `none` | 0      | any layout component          |
+| an icon and its label, a heading and its description | —      | 4–8 px | the component already does it |
+| a label, its field and its hint                      | `sm`   | 8 px   | `Field` already does it       |
+| the buttons of a toolbar or a form footer, tags      | `sm`   | 8 px   | `Cluster` (its default)       |
+| the fields of a form                                 | `md`   | 16 px  | `Stack` (its default)         |
+| cards in a list                                      | `md`   | 16 px  | `Stack` (its default)         |
+| cards in a grid                                      | `md`   | 16 px  | `Grid` (its default)          |
+| the blocks inside a section                          | `md`   | 16 px  | `Section` does it             |
+| a list page's title, toolbar and table               | `lg`   | 24 px  | `Stack gap="lg"`              |
+| the sections of a page                               | `xl`   | 32 px  | `Page` does it                |
+| groups of sections                                   | `2xl`  | 48 px  | `Stack gap="2xl"`             |
+| the page and the window's edge (the page gutter)     | —      | —      | `Page` does it                |
 
 Steps `3` (12 px) and `16` (64 px) have no name: they are for a component's own insides and the
 page's edges, not for the space between siblings.
@@ -152,7 +152,8 @@ with its line, column and reason:
 - every `--spacing()` call whose argument is not a numeric step (`--spacing(5)`).
 
 It does not see a raw CSS declaration (`padding: 10px` in a stylesheet), an inline `style`, a class
-name built at run time (`` `p-${n}` ``) or Tailwind's legacy `theme()` function. Those are held by
+name built at run time (`` `p-${n}` ``), Tailwind's legacy `theme()` function, or an arbitrary
+property that rescales the whole scale inside an element (`[--spacing:0.3rem]`). Those are held by
 review, so read the check as a floor, not as proof.
 
 It uses no Deno API. In this repository, `infra/scripts/spacing-scale.test.ts` runs it over every
