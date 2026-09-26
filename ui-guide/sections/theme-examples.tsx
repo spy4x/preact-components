@@ -1,4 +1,3 @@
-// spacing: off-scale until #328 (the lane that moves this file to the scale deletes this line)
 /**
  * Examples of the helpers `theme/` exports: its stylesheets as text, the class names the
  * components render, and the spacing scale with its checker.
@@ -15,7 +14,8 @@ const examples: ExampleFragment = {
   "theme-css-text": {
     title: "The stylesheets as text",
     summary:
-      "`TOKENS_CSS`, `PRESET_CSS` and `INK_CSS` carry the three stylesheets as strings, for a build that cannot import a CSS file from the registry.",
+      "The three stylesheets as strings, for a build that cannot import a CSS file from the registry.",
+    wide: false,
     snippet: `import { INK_CSS, PRESET_CSS, TOKENS_CSS } from "@spy4x/preact-theme"
 
 [TOKENS_CSS, PRESET_CSS, INK_CSS].map((css) => css.length > 0)`,
@@ -25,7 +25,8 @@ const examples: ExampleFragment = {
   "theme-component-classes": {
     title: "The classes the components render",
     summary:
-      "`COMPONENT_CLASSES` lists every Tailwind class the published components can render, separated by spaces. An app puts it inside an `@source inline` rule, so its build emits those classes without scanning the library's files, which a Deno app keeps in its cache rather than in `node_modules`.",
+      "Every class the components can render, for an `@source inline` rule so an app's Tailwind build emits them without scanning the library.",
+    wide: false,
     snippet: `import { COMPONENT_CLASSES } from "@spy4x/preact-theme"
 
 const entry = \`@import "tailwindcss";
@@ -38,7 +39,8 @@ COMPONENT_CLASSES.split(" ").filter((name) => name.startsWith("lg:w-"))`,
   "theme-spacing-steps": {
     title: "The spacing scale",
     summary:
-      "`SPACING_STEPS` is every step a padding, margin or gap class may use: 0, 1 px, then 4, 8, 12, 16, 24, 32, 48 and 64 px. `SPACING_GAPS` maps the named gaps the layout components take to their steps.",
+      "The steps a padding, margin or gap class may use, and the named gaps the layout components take.",
+    wide: false,
     snippet: `import { SPACING_GAPS, SPACING_STEPS } from "@spy4x/preact-theme/spacing"
 
 [SPACING_STEPS.join(" "), SPACING_GAPS.md]`,
@@ -48,7 +50,8 @@ COMPONENT_CLASSES.split(" ").filter((name) => name.startsWith("lg:w-"))`,
   "theme-find-off-scale-spacing": {
     title: "Checking a file against the scale",
     summary:
-      "`findOffScaleSpacing` reads a file's text and returns every spacing class off the scale or with an arbitrary value, every arbitrary property that sets spacing and every off-scale `--spacing()` call, with its line, column and reason. It uses no Deno API, so an app runs it from its own test over its own sources.",
+      "Finds every spacing class in a file's text that is off the scale, so an app can check its own sources from a test.",
+    wide: false,
     snippet: `import { findOffScaleSpacing } from "@spy4x/preact-theme/spacing"
 
 // Built from two parts, so Tailwind's scanner does not read this sample as a class to emit.
