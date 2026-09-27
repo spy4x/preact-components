@@ -12,7 +12,7 @@
 
 import { cn } from "@spy4x/preact-cn"
 import type { ComponentChildren, JSX } from "preact"
-import { useId, useLayoutEffect, useRef, useState } from "preact/hooks"
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "preact/hooks"
 
 /** One column of the board. */
 export interface KanbanColumn {
@@ -262,8 +262,14 @@ export function KanbanBoard<Item extends KanbanItem>(
   const [lifted, setLifted] = useState<Lifted | null>(null)
   const [dragged, setDragged] = useState<Dragged | null>(null)
   const [announcement, setAnnouncement] = useState("")
-  /** The card to keep focused after a drop, until it shows up in the column it was dropped in. */
+  /**
+   * The card to keep focused after a drop, until it shows up in the column it was dropped in or
+   * focus moves somewhere else. A caller may refuse a move or apply it late, so this must end.
+   */
   const pendingFocus = useRef<{ itemId: string; column: string } | null>(null)
+  /** The pending deferred blur decision, cleared on unmount. */
+  const blurTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  useEffect(() => () => clearTimeout(blurTimer.current), [])
 
   const lists = itemsByColumn(columns, items)
   const byId = new Map(items.map((item) => [item.id, item]))
@@ -314,6 +320,13 @@ export function KanbanBoard<Item extends KanbanItem>(
     }
     const pending = pendingFocus.current
     if (pending === null) return
+    // Focus the reader moved elsewhere wins: forget the card rather than pull focus back to it.
+    const active = document.activeElement
+    const onPending = active?.closest("[data-kanban-item]")?.getAttribute("data-kanban-item")
+    if (active !== null && active !== document.body && onPending !== pending.itemId) {
+      pendingFocus.current = null
+      return
+    }
     const arrived = find(pending.itemId, pending.column)
     if (arrived !== null) {
       pendingFocus.current = null
@@ -335,22 +348,25 @@ export function KanbanBoard<Item extends KanbanItem>(
   latest.current = { lifted, cancel }
 
   /**
-   * Focus leaving a picked-up card puts it back: Tab, or a click anywhere else.
+   * Focus leaving a card: a picked-up card is put back (Tab, or a click anywhere else), and a card
+   * waiting to be refocused after a drop is forgotten.
    *
    * Decided a task later, not in the event: a card moved to another column is a new element, and
    * Chromium fires `blur` on the old one as it leaves the document (measured: acting on that blur
    * cancelled every keyboard move). By the next task the board has focused the card's new element,
-   * so a blur the reader did not ask for finds the picked-up card focused again and is ignored.
+   * so a blur the reader did not ask for finds the card focused again and is ignored.
    */
   const onCardBlur = (itemId: string) => {
-    if (lifted === null || lifted.itemId !== itemId) return
-    setTimeout(() => {
-      const { lifted: now, cancel: putBack } = latest.current
-      if (now === null || now.itemId !== itemId) return
+    const held = lifted !== null && lifted.itemId === itemId
+    if (!held && pendingFocus.current?.itemId !== itemId) return
+    clearTimeout(blurTimer.current)
+    blurTimer.current = setTimeout(() => {
       const active = document.activeElement
       const onCard = active?.closest("[data-kanban-item]")?.getAttribute("data-kanban-item")
       if (onCard === itemId && rootRef.current?.contains(active)) return
-      putBack(now)
+      if (pendingFocus.current?.itemId === itemId) pendingFocus.current = null
+      const { lifted: now, cancel: putBack } = latest.current
+      if (now !== null && now.itemId === itemId) putBack(now)
     }, 0)
   }
 
