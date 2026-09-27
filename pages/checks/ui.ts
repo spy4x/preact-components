@@ -10601,7 +10601,7 @@ async function inlineEditInterruptionChecks(devtools: Devtools): Promise<void> {
   await poll(() => devtools.evaluate<boolean>(`!${ok}.editing`), 2_000)
   await saveWindow()
   const locked = await devtools.evaluate<InlineEditState & { disabled: boolean }>(
-    `({ ...${ok}, disabled: ${trigger}.disabled })`,
+    `({ ...${ok}, disabled: ${trigger}?.disabled ?? false })`,
   )
   check(
     "turning disabled on while an InlineEdit is open cancels the edit without saving",
@@ -10611,5 +10611,5 @@ async function inlineEditInterruptionChecks(devtools: Devtools): Promise<void> {
       `"${locked.text}", echo "${beforeLock.saved}" → "${locked.saved}"`,
   )
   await devtools.evaluate<null>(`(${lock}.click(), null)`)
-  await poll(() => devtools.evaluate<boolean>(`${trigger}.disabled === false`), 2_000)
+  await poll(() => devtools.evaluate<boolean>(`${trigger}?.disabled === false`), 2_000)
 }
