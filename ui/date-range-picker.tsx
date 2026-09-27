@@ -145,8 +145,14 @@ export type AnyDateRangePickerProps = DateRangePickerProps | DateRangePickerTime
 const panelClasses =
   "absolute z-10 mt-2 w-80 rounded-md bg-white p-3 shadow-lg ring-1 ring-black/5 dark:bg-gray-800 dark:ring-gray-600"
 
+/**
+ * The From and To fields. They carry their own utilities rather than the theme's `.input`, which is
+ * `h-12` and would crowd a compact popover, so they also set the dark `color-scheme` themselves: the
+ * browser draws a native date field's calendar icon from it, and without it the icon is black on
+ * the dark field (#379).
+ */
 const dateInputClasses =
-  "mt-1 block w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+  "mt-1 block w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:[color-scheme:dark]"
 
 const fieldLabelClasses = "block text-xs font-medium text-gray-700 dark:text-gray-300"
 
