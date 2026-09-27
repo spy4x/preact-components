@@ -193,6 +193,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await moneyInputPreHydrationChecks(devtools)
   await fileInputChecks(devtools)
   await inlineEditChecks(devtools)
+  await inlineEditInterruptionChecks(devtools)
   await toggleChipsChecks(devtools)
 
   // Last on purpose: a Modal that refuses to close would sit in the top layer over everything, so a
@@ -10413,11 +10414,15 @@ async function inlineEditChecks(devtools: Devtools): Promise<void> {
   await pressKey(devtools, "Tab")
   await poll(() => devtools.evaluate<boolean>(`!${ok}.editing`), 3_000)
   const blurred = await devtools.evaluate<InlineEditState>(ok)
+  const tabbedTo = await devtools.evaluate<string>(
+    `document.activeElement?.getAttribute("data-e2e") ?? document.activeElement?.tagName ?? ""`,
+  )
   check(
     "Tab away from an InlineEdit saves it and leaves focus where Tab moved it",
     !blurred.editing && blurred.text === "Errands" && !blurred.onTrigger &&
-      blurred.saved.startsWith("saved: Errands,"),
-    `"${blurred.text}", focus on button ${blurred.onTrigger}, echo "${blurred.saved}"`,
+      tabbedTo === "inline-edit-remove" && blurred.saved.startsWith("saved: Errands,"),
+    `"${blurred.text}", focus on button ${blurred.onTrigger}, focus on "${tabbedTo}", ` +
+      `echo "${blurred.saved}"`,
   )
 
   await devtools.evaluate<null>(`(${failTrigger}.focus(), null)`)
@@ -10514,4 +10519,97 @@ async function toggleChipsChecks(devtools: Devtools): Promise<void> {
     `Open ${before.status.Open} → ${moved.status.Open}, Done → ${moved.status.Done} → ` +
       `${cleared.status.Done}; "${moved.echo}" → "${cleared.echo}"`,
   )
+}
+
+/**
+ * Three ways an open `InlineEdit` is interrupted without the user confirming anything, each on the
+ * card's first demo, whose save takes 400ms and then changes the demo's echo.
+ *
+ * Removing the component while its field has focus saves nothing, although Chromium fires `blur` on
+ * the removed field. An Enter or Escape keydown sent while an input method is composing a word
+ * (`isComposing`) neither saves nor cancels. Turning `disabled` on while the field is open cancels
+ * the edit: the old value is back and nothing is saved. The demo's Remove and Lock buttons are
+ * pressed with a scripted `.click()`, which leaves focus in the field, as a keyboard shortcut or a
+ * change from elsewhere in an app would.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function inlineEditInterruptionChecks(devtools: Devtools): Promise<void> {
+  const ok = inlineEditState("inline-edit-ok")
+  const root = `document.querySelector('#demo-InlineEdit [data-e2e="inline-edit-ok"]')`
+  const trigger = `${root}.querySelector("button")`
+  const echo =
+    `document.querySelector('#demo-InlineEdit [data-e2e="inline-edit-saved"]').textContent.trim()`
+  const remove = `document.querySelector('#demo-InlineEdit [data-e2e="inline-edit-remove"]')`
+  const lock = `document.querySelector('#demo-InlineEdit [data-e2e="inline-edit-lock"]')`
+  // Long enough for the demo's 400ms save to finish and change the echo, had one started.
+  const saveWindow = () => new Promise((done) => setTimeout(done, 700))
+  const open = async (text: string) => {
+    await centreInView(devtools, trigger)
+    await devtools.evaluate<null>(`(${trigger}.focus(), null)`)
+    await pressKey(devtools, "Enter")
+    await poll(() => devtools.evaluate<boolean>(`${ok}.onField`), 2_000)
+    await typeInto(devtools, text)
+  }
+
+  const beforeRemoval = await devtools.evaluate<string>(echo)
+  await open("Deleted")
+  const focusedTag = await devtools.evaluate<string>(`(() => {
+    const tag = document.activeElement?.tagName ?? ""
+    ${remove}.click()
+    return tag
+  })()`)
+  await poll(
+    () => devtools.evaluate<boolean>(`${root}.querySelector("input, button") === null`),
+    2_000,
+  )
+  await saveWindow()
+  const afterRemoval = await devtools.evaluate<string>(echo)
+  check(
+    "removing an InlineEdit while its field has focus does not save the typed text",
+    focusedTag === "INPUT" && afterRemoval === beforeRemoval,
+    `focus was on ${focusedTag} when removed; echo "${beforeRemoval}" → "${afterRemoval}"`,
+  )
+  await devtools.evaluate<null>(`(${remove}.click(), null)`)
+  await poll(() => devtools.evaluate<boolean>(`${trigger} !== null`), 2_000)
+
+  await open("Composing")
+  await devtools.evaluate<null>(`(() => {
+    const field = ${root}.querySelector("input")
+    for (const key of ["Enter", "Escape"]) {
+      field.dispatchEvent(
+        new KeyboardEvent("keydown", { key, isComposing: true, bubbles: true, cancelable: true }),
+      )
+    }
+    return null
+  })()`)
+  await saveWindow()
+  const composing = await devtools.evaluate<InlineEditState>(ok)
+  check(
+    "Enter and Escape sent while an input method composes leave an InlineEdit open and unsaved",
+    composing.editing && composing.text === "Composing" && composing.busy === null &&
+      composing.saved === afterRemoval,
+    `editing ${composing.editing}, "${composing.text}", busy ${composing.busy}, ` +
+      `echo "${afterRemoval}" → "${composing.saved}"`,
+  )
+  await pressKey(devtools, "Escape")
+  await poll(() => devtools.evaluate<boolean>(`!${ok}.editing`), 2_000)
+
+  const beforeLock = await devtools.evaluate<InlineEditState>(ok)
+  await open("Locked")
+  await devtools.evaluate<null>(`(${lock}.click(), null)`)
+  await poll(() => devtools.evaluate<boolean>(`!${ok}.editing`), 2_000)
+  await saveWindow()
+  const locked = await devtools.evaluate<InlineEditState & { disabled: boolean }>(
+    `({ ...${ok}, disabled: ${trigger}.disabled })`,
+  )
+  check(
+    "turning disabled on while an InlineEdit is open cancels the edit without saving",
+    !locked.editing && locked.disabled && locked.text === beforeLock.text &&
+      locked.saved === beforeLock.saved,
+    `editing ${locked.editing}, disabled ${locked.disabled}, "${beforeLock.text}" → ` +
+      `"${locked.text}", echo "${beforeLock.saved}" → "${locked.saved}"`,
+  )
+  await devtools.evaluate<null>(`(${lock}.click(), null)`)
+  await poll(() => devtools.evaluate<boolean>(`${trigger}.disabled === false`), 2_000)
 }

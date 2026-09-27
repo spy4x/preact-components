@@ -400,28 +400,54 @@ function MoneyInputDemo() {
 
 /**
  * Two rename fields: one whose save takes a moment and succeeds, one whose save always fails, so
- * the busy state and the kept text of a rejected save can both be seen.
+ * the busy state and the kept text of a rejected save can both be seen. The first one's buttons
+ * remove it from the page and lock it, the two ways an open field can be taken away from its user.
  */
 function InlineEditDemo() {
   const list = useSignal("Groceries")
   const saves = useSignal(0)
   const offline = useSignal("Archive")
+  const shown = useSignal(true)
+  const locked = useSignal(false)
   return (
     <Stack gap="sm">
       <div data-e2e="inline-edit-ok">
-        <InlineEdit
-          value={list.value}
-          inputLabel="List name"
-          onSave={async (next) => {
-            await new Promise((done) => setTimeout(done, 400))
-            list.value = next
-            saves.value++
-          }}
-        />
+        {shown.value && (
+          <InlineEdit
+            value={list.value}
+            inputLabel="List name"
+            disabled={locked.value}
+            onSave={async (next) => {
+              await new Promise((done) => setTimeout(done, 400))
+              list.value = next
+              saves.value++
+            }}
+          />
+        )}
       </div>
       <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="inline-edit-saved">
         saved: {list.value}, saves: {saves.value}
       </p>
+      <Cluster gap="sm">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          data-e2e="inline-edit-remove"
+          onClick={() => shown.value = !shown.value}
+        >
+          {shown.value ? "Remove the field" : "Show the field"}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          data-e2e="inline-edit-lock"
+          onClick={() => locked.value = !locked.value}
+        >
+          {locked.value ? "Unlock" : "Lock"}
+        </Button>
+      </Cluster>
       <div data-e2e="inline-edit-fail">
         <InlineEdit
           value={offline.value}
@@ -683,6 +709,13 @@ export const fieldDemos = {
         type: "string",
         default: `"Saving…"`,
         description: "Shown while a returned promise runs.",
+      },
+      {
+        name: "disabled",
+        type: "boolean",
+        default: "false",
+        description:
+          "Turns the button off; turning it on while the field is open cancels the edit.",
       },
       {
         name: "errorMessage",
