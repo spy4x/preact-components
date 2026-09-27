@@ -1,5 +1,10 @@
 import { useEffect, useRef } from "preact/hooks"
-import { isApplePlatform, isTypingTarget, matchesHotkey, parseHotkey } from "./hotkey-matcher.ts"
+import {
+  isApplePlatform,
+  isTypingTarget,
+  matchesHotkey,
+  parseHotkey,
+} from "@spy4x/platform/browser/hotkeys"
 
 /**
  * One keyboard shortcut for {@link useHotkeys}: a combination, what it does and how it is listed.
