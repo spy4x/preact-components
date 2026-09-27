@@ -160,6 +160,6 @@ SOFTWARE.
 
 ## What this file does not cover
 
-24 of this set's 119 glyphs matched none of the four packs above, exactly or nearly. Their licence
+24 of this set's 120 glyphs matched none of the four packs above, exactly or nearly. Their licence
 is still unknown. They are named in `icons/README.md` under "Provenance", and are not covered by
 any notice in this file, because no matching pack was found to attribute them to.

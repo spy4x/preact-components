@@ -1,6 +1,6 @@
 # `@spy4x/preact-icons`
 
-Merged icon set. 119 glyphs, one named export per glyph, no runtime dependencies beyond Preact.
+Merged icon set. 120 glyphs, one named export per glyph, no runtime dependencies beyond Preact.
 
 ```tsx
 import { IconSearch, IconTrashBin } from "@spy4x/preact-icons"
@@ -22,7 +22,7 @@ export interface IconProps {
 - The root is always an `<svg xmlns="…" viewBox="…">`; sizing comes from the class, not from
   `width`/`height` attributes.
 - Colour comes from `currentColor`, so an icon inherits the text colour of its container.
-- `shrink-0` is always applied, on top of a per-icon default size — `size-5` (80 glyphs) unless
+- `shrink-0` is always applied, on top of a per-icon default size — `size-5` (81 glyphs) unless
   the glyph already shipped elsewhere as `size-6` (38 glyphs). Two glyphs are not square:
   `IconUpwork` (`viewBox="0 0 102 28"`) defaults to `h-5 w-auto`, and `IconExternalLink`
   (`viewBox="0 0 25 24"`) defaults to `size-5` and is stretched by ~4% rather than letterboxed.
@@ -40,7 +40,7 @@ family per surface; mixing them is visible at small sizes.
 
 | Family                         | Count | Notes                                                                                                                                                                                                                                                  |
 | ------------------------------ | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Heroicons (v1 or v2)           | 54    | 52 match exactly, 2 nearly (`IconFire`, `IconMoon`) — pack and version are on each glyph's own JSDoc line, not summarised here                                                                                                                         |
+| Heroicons (v1 or v2)           | 55    | 53 match exactly, 2 nearly (`IconFire`, `IconMoon`) — pack and version are on each glyph's own JSDoc line, not summarised here                                                                                                                         |
 | Feather and/or Lucide outlines | 19    | 18 match exactly, 1 nearly (`IconTarget`) — which pack is on each glyph's own JSDoc line                                                                                                                                                               |
 | Custom outlines                | 22    | 19 have no exact or near match in the four checked packs; 3 (`IconCircleDot`, `IconCreditCard`, `IconDocument`) near-match Feather or Lucide but keep this generic label — a near match alone was not treated as confident enough to rename the family |
 | Brand marks (trademarked)      | 6     | GitHub, LinkedIn, Telegram, Upwork, Twitter, YouTube; 2 (Twitter, YouTube) match Feather exactly, the other 4 match none of the four packs                                                                                                             |
@@ -48,7 +48,7 @@ family per surface; mixing them is visible at small sizes.
 
 Counts above are `provenance.ts`'s own — see "Provenance" below for the full method and the
 complete exact/near/none breakdown, and run `deno task --cwd icons provenance` for the per-glyph
-list. The table is a partition of all 119 glyphs: every row above is disjoint from every other,
+list. The table is a partition of all 120 glyphs: every row above is disjoint from every other,
 the Ported row's 18 included.
 
 The Ported row is a family, not a single weight, and the split below is by rendering, not by match
@@ -97,10 +97,14 @@ git clone https://github.com/spy4x/preact-components && cd preact-components
 deno task --cwd icons provenance
 ```
 
-Of the 119 glyphs: **89 match a pack's glyph exactly**, **6 match one nearly** (same shape, different
+Of the 120 glyphs: **90 match a pack's glyph exactly**, **6 match one nearly** (same shape, different
 numbers — typically a resize or a hand-adjusted curve), and **24 match none of the four packs**.
 [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md) carries the licence text for every pack an
 exact or near match was found in — Heroicons v1, Heroicons v2, Feather and Lucide, all four.
+
+One glyph was added after the merge, straight from a pack rather than from a source app:
+`IconViewColumns` is Heroicons v2's `view-columns` (24, outline), for a board view toggle
+([issue #381](https://github.com/spy4x/preact-components/issues/381)).
 
 A glyph with no match is not necessarily unlicensed — it may be a pack glyph redrawn enough to miss
 a shape comparison, or from a pack this check does not compare against — but nothing here
