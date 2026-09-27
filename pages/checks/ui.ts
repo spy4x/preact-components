@@ -10693,6 +10693,7 @@ async function kanbanBoardChecks(devtools: Devtools): Promise<void> {
     await kanbanEscapeCheck(devtools)
     await kanbanBlurCheck(devtools)
     await kanbanPointerDragCheck(devtools)
+    await kanbanPhoneWidthCheck(devtools)
   } finally {
     await resetKanban(devtools)
   }
@@ -10813,6 +10814,55 @@ async function kanbanBlurCheck(devtools: Devtools): Promise<void> {
       `${JSON.stringify(after.columns)}, onMove "${after.lastMove}", focus ${after.focused}, ` +
       `live "${after.live}"`,
   )
+}
+
+/** What the board's layout looks like at one window width. */
+interface KanbanFit {
+  /** The board's visible width and its content's width, in CSS pixels. */
+  clientWidth: number
+  scrollWidth: number
+  /** The narrowest column's width. */
+  narrowest: number
+  /** How far the page itself scrolls sideways; 0 when it does not. */
+  pageOverflow: number
+}
+
+/**
+ * On a phone-sized window the board scrolls sideways inside itself: its columns keep their width
+ * instead of being squeezed, and the page does not scroll sideways.
+ */
+async function kanbanPhoneWidthCheck(devtools: Devtools): Promise<void> {
+  try {
+    await devtools.send("Emulation.setDeviceMetricsOverride", {
+      width: 375,
+      height: 800,
+      deviceScaleFactor: 1,
+      mobile: false,
+    })
+    // Two frames: one for the resize to lay out, one for anything it scheduled.
+    const frame = `new Promise((done) => requestAnimationFrame(done))`
+    await devtools.evaluate<null>(`${frame}.then(() => ${frame}).then(() => null)`)
+    const fit = await devtools.evaluate<KanbanFit>(`(() => {
+      const board = ${KANBAN_BOARD}
+      const widths = [...board.querySelectorAll("[data-kanban-column]")]
+        .map((column) => column.getBoundingClientRect().width)
+      const root = document.documentElement
+      return {
+        clientWidth: board.clientWidth,
+        scrollWidth: board.scrollWidth,
+        narrowest: Math.round(Math.min(...widths)),
+        pageOverflow: root.scrollWidth - root.clientWidth,
+      }
+    })()`)
+    check(
+      "at 375px the KanbanBoard scrolls sideways inside itself instead of squeezing its columns",
+      fit.scrollWidth > fit.clientWidth && fit.narrowest >= 240 && fit.pageOverflow <= 0,
+      `board ${fit.clientWidth}px showing ${fit.scrollWidth}px, narrowest column ` +
+        `${fit.narrowest}px, page sideways overflow ${fit.pageOverflow}px`,
+    )
+  } finally {
+    await devtools.send("Emulation.clearDeviceMetricsOverride")
+  }
 }
 
 /** The middle of an element in viewport coordinates, from a page expression. */
