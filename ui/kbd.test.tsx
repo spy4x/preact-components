@@ -51,8 +51,22 @@ describe("Kbd", () => {
     expect(html).not.toContain("<span>+</span>")
   })
 
-  it("draws Ctrl on the server when the platform is left to the browser", () => {
-    expect(render(<Kbd keys="mod+k" />)).toContain(">Ctrl</kbd>")
+  it("draws Ctrl on the server when the platform is left to the browser, even on a Mac", () => {
+    // Pretend to be a Mac for this render only: a Kbd that read the platform during render would
+    // draw ⌘ here, and the browser's first render would then disagree with the server's.
+    const original = Object.getOwnPropertyDescriptor(globalThis, "navigator")
+    Object.defineProperty(globalThis, "navigator", {
+      value: { platform: "MacIntel" },
+      configurable: true,
+    })
+    try {
+      const html = render(<Kbd keys="mod+k" />)
+      expect(html).toContain(">Ctrl</kbd>")
+      expect(html).not.toContain("⌘")
+    } finally {
+      if (original === undefined) delete (globalThis as { navigator?: unknown }).navigator
+      else Object.defineProperty(globalThis, "navigator", original)
+    }
   })
 
   it("renders a single key as one kbd, and children as they are", () => {
