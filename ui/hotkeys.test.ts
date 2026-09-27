@@ -1,6 +1,8 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
-import { type HotkeyBinding, type HotkeyPress, pickHotkey } from "./hotkeys.ts"
+import { h } from "preact"
+import { render } from "preact-render-to-string"
+import { type HotkeyBinding, type HotkeyPress, pickHotkey, useHotkeys } from "./hotkeys.ts"
 
 /** A binding that does nothing, overridden field by field. */
 function binding(keys: string, fields: Partial<HotkeyBinding> = {}): HotkeyBinding {
@@ -51,5 +53,15 @@ describe("pickHotkey", () => {
 
   it("throws on a binding whose combination cannot be read", () => {
     expect(() => pickHotkey([binding("g i")], press("g"), false)).toThrow("sequence")
+  })
+})
+
+describe("useHotkeys", () => {
+  it("throws during render on a combination it cannot read, before any key is pressed", () => {
+    function Page() {
+      useHotkeys([binding("mod+k"), binding("g i")])
+      return h("p", null, "page")
+    }
+    expect(() => render(h(Page, null))).toThrow('The hotkey "g i" holds a sequence')
   })
 })
