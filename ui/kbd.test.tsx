@@ -1,0 +1,67 @@
+import { expect } from "@std/expect"
+import { describe, it } from "@std/testing/bdd"
+import { render } from "preact-render-to-string"
+import { Kbd, KBD_LABELS, keyFaces } from "./kbd.tsx"
+
+describe("keyFaces", () => {
+  it("draws mod as Ctrl outside Apple platforms and as a named ⌘ on them", () => {
+    expect(keyFaces("mod+k", false)).toEqual([{ text: "Ctrl" }, { text: "K" }])
+    expect(keyFaces("mod+k", true)).toEqual([{ text: "⌘", name: "Command" }, { text: "K" }])
+  })
+
+  it("orders the modifiers the way each platform writes them", () => {
+    expect(keyFaces("mod+shift+alt+ctrl+p", true).map((face) => face.text))
+      .toEqual(["⌃", "⌥", "⇧", "⌘", "P"])
+    expect(keyFaces("shift+alt+mod+p", false).map((face) => face.text))
+      .toEqual(["Ctrl", "Alt", "Shift", "P"])
+  })
+
+  it("names the arrow glyphs and writes other named keys as words", () => {
+    expect(keyFaces("up", false)).toEqual([{ text: "↑", name: "Up arrow" }])
+    expect(["esc", "space", "enter", "f2", "pagedown", "?"].map((keys) => keyFaces(keys, false)[0]))
+      .toEqual([
+        { text: "Esc" },
+        { text: "Space" },
+        { text: "Enter" },
+        { text: "F2" },
+        { text: "Pagedown" },
+        { text: "?" },
+      ])
+  })
+
+  it("takes its words from the labels it is given", () => {
+    const labels = { ...KBD_LABELS, command: "Befehl", ctrl: "Strg" }
+    expect(keyFaces("mod+k", true, labels)[0]).toEqual({ text: "⌘", name: "Befehl" })
+    expect(keyFaces("mod+k", false, labels)[0]).toEqual({ text: "Strg" })
+  })
+})
+
+describe("Kbd", () => {
+  it("renders a combination as one kbd holding a kbd per key, joined by plus", () => {
+    const html = render(<Kbd keys="mod+k" apple={false} />)
+    expect(html).toMatch(/^<kbd class="[^"]*"><kbd class="[^"]*">Ctrl<\/kbd><span>\+<\/span><kbd/)
+    expect(html).toMatch(/>K<\/kbd><\/kbd>$/)
+  })
+
+  it("hides the ⌘ glyph from screen readers and says Command instead", () => {
+    const html = render(<Kbd keys="mod+k" apple />)
+    expect(html).toContain(
+      '<span aria-hidden="true">⌘</span><span class="sr-only">Command</span>',
+    )
+    expect(html).not.toContain("<span>+</span>")
+  })
+
+  it("draws Ctrl on the server when the platform is left to the browser", () => {
+    expect(render(<Kbd keys="mod+k" />)).toContain(">Ctrl</kbd>")
+  })
+
+  it("renders a single key as one kbd, and children as they are", () => {
+    expect(render(<Kbd keys="?" class="extra" />)).toMatch(/^<kbd class="[^"]* extra">\?<\/kbd>$/)
+    expect(render(<Kbd>Tab</Kbd>)).toMatch(/^<kbd class="[^"]*">Tab<\/kbd>$/)
+  })
+
+  it("passes its labels through to the keys", () => {
+    expect(render(<Kbd keys="mod+k" apple labels={{ command: "Befehl" }} />))
+      .toContain('<span class="sr-only">Befehl</span>')
+  })
+})

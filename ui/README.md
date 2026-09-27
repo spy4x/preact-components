@@ -69,6 +69,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `ImageGallery`    | `image-gallery`     | `images` (`{ src, alt, thumbSrc? }[]`), `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`                                                      |
 | `Input`           | `input`             | native input attrs, `class`; forwards `ref`                                                                                                                           |
 | `InputButton`     | `input-button`      | `icon`, `iconLabel`, `onClick?`, native input attrs                                                                                                                   |
+| `Kbd`             | `kbd`               | `keys` (`"mod+k"`) or `children`, `apple?`, `labels?`                                                                                                                 |
 | `Lightbox`        | `lightbox`          | `images`, `index`, `open`, `onClose`, `onIndexChange`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`                                                 |
 | `LoadingSkeleton` | `loading-skeleton`  | `rows`                                                                                                                                                                |
 | `LoadingSpinner`  | `loading-spinner`   | `label`, `size`                                                                                                                                                       |
@@ -84,6 +85,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `RadioGroup`      | `radio`             | `legend`, `name`, `options`, `value?`, `onChange?`                                                                                                                    |
 | `Section`         | `layout`            | `title?`, `description?`, `headingLevel?` (2–4), `as?` (`section`/`article`/`aside`/`div`), `class?`                                                                  |
 | `Select`          | `input`             | `options`, `placeholder?`, native select attrs                                                                                                                        |
+| `ShortcutsDialog` | `shortcuts-dialog`  | `open`, `onClose`, `shortcuts`, `title?`, `closeLabel?`, `defaultGroup?`, `apple?`, `kbdLabels?`                                                                      |
 | `Stack`           | `layout`            | `gap?` (default `md`), `as?`, `class?` — a column                                                                                                                     |
 | `StatusMark`      | `status-mark`       | `status` (`ready`/`beta`/`wip`/`paused`/`archived`/`known-issue`), `label?` — a sibling of `Badge`, not an extension of it: `Badge` is colour-plus-text with no shape |
 | `Table`           | `table`             | `headerSlot`, `bodySlots`, `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`                                                                                    |
@@ -918,6 +920,50 @@ refuses the rest with reason `"too-many"` (`labels.tooMany`), reported through `
 announced the same way a `maxSize`/`accept` refusal is, rather than silently dropped.
 
 It does not upload — sending the chosen files is the caller's own form post or `fetch` call.
+
+## Keyboard shortcuts
+
+`useHotkeys(bindings, options)` (subpath `hotkeys`) listens for `keydown` on `document` while the
+component that calls it is mounted. A binding is `{ keys, handler }`, with an optional
+`description` and `group` for `ShortcutsDialog`. `keys` takes one key press: a single key (`"?"`,
+`"/"`), a key with modifiers (`"shift+n"`, `"mod+k"`) or a named key (`"esc"`, `"up"`). `mod` is
+Command on Apple platforms and Control elsewhere; the platform is read when the listener is
+attached, or given as `options.apple`. Two-key sequences such as `"g i"` are not supported and
+throw.
+
+Key presses in a text field, a select or editable content are left alone, and so are presses
+inside a dialog, unless a binding sets `inFields` or `inDialogs`. A matched press has its default
+action cancelled unless the binding sets `preventDefault: false`. `options.enabled` switches every
+binding off at once.
+
+```tsx
+const [open, setOpen] = useState(false)
+const bindings = [
+  { keys: "?", description: "Show keyboard shortcuts", handler: () => setOpen(true) },
+  { keys: "mod+k", description: "Search", group: "Navigation", handler: openSearch },
+]
+useHotkeys(bindings)
+
+<ShortcutsDialog open={open} onClose={() => setOpen(false)} shortcuts={bindings} />
+```
+
+`pickHotkey(bindings, press, apple)` is the hook's decision on its own: the first binding whose
+combination matches a key press and that may fire where the press landed.
+
+`Kbd` draws a combination as nested `<kbd>` elements: ⌘K on Apple platforms, Ctrl + K elsewhere.
+The server and the first browser render draw Ctrl, and an effect switches to ⌘ on an Apple
+platform, unless `apple` says which. A glyph such as ⌘ is hidden from screen readers and followed
+by its name in visually hidden text. `keyFaces(keys, apple, labels)` returns the text and the name
+of each key `Kbd` draws, and `KBD_LABELS` holds the English words it uses, which `labels`
+overrides one by one.
+
+`ShortcutsDialog` lists shortcuts under group headings, built on `Modal`.
+`groupShortcuts(shortcuts, defaultGroup)` is its grouping on its own: groups in the order they
+first appear, shortcuts without a description left out.
+
+The parser and the matcher are framework-free and are moving to `@spy4x/platform/browser/hotkeys`
+in spy4x/ts-libs (https://github.com/spy4x/ts-libs/pull/273). Until that release, this package
+keeps an internal copy in `hotkey-matcher.ts`, which no export reaches.
 
 ## Tests
 
