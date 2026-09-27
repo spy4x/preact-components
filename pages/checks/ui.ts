@@ -54,8 +54,8 @@ const DROPDOWN_STATE = `(() => {
  * `Field`, Tooltip, Combobox, Toastr, DateRangePicker's focus contract in both its day-only and
  * `withTime` modes, Pagination's end controls, DataTable's sort-by-header and paging contract,
  * `ImageGallery`'s thumbnail strip and the shared `Lightbox` it opens, `FileInput`'s keyboard,
- * drag-and-drop, refusal, preview-revocation and plain-form-post contract, and — last — Modal's
- * keyboard and focus contract.
+ * drag-and-drop, refusal, preview-revocation and plain-form-post contract, `useHotkeys` with
+ * `ShortcutsDialog`, and — last — Modal's keyboard and focus contract.
  *
  * This file runs last of every package's, and Modal's checks run last inside it, for the same
  * reason: Modal opens a real modal dialog, and a dialog that refused to close would sit in the top
@@ -192,6 +192,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await moneyInputChecks(devtools)
   await moneyInputPreHydrationChecks(devtools)
   await fileInputChecks(devtools)
+  await shortcutsChecks(devtools)
 
   // Last on purpose: a Modal that refuses to close would sit in the top layer over everything, so a
   // failure here cannot take an unrelated check down with it.
@@ -10274,4 +10275,148 @@ async function fileInputChecks(devtools: Devtools): Promise<void> {
   } finally {
     await Deno.remove(dir, { recursive: true }).catch(() => {})
   }
+}
+
+/** A key press with modifiers held, for {@link pressChord}. */
+interface Chord {
+  key: string
+  code: string
+  keyCode: number
+  /** The character the press types; a press with Control or Command held types none. */
+  text?: string
+  /** `Input.dispatchKeyEvent`'s bit field: Alt 1, Control 2, Meta 4, Shift 8. */
+  modifiers: number
+}
+
+/**
+ * Press a key with modifiers through the browser's own input pipeline. `pressKey` in `harness.ts`
+ * sends no modifiers, and a hotkey check is about exactly those.
+ */
+async function pressChord(devtools: Devtools, chord: Chord): Promise<void> {
+  const fields = {
+    key: chord.key,
+    code: chord.code,
+    windowsVirtualKeyCode: chord.keyCode,
+    nativeVirtualKeyCode: chord.keyCode,
+    modifiers: chord.modifiers,
+  }
+  await devtools.send("Input.dispatchKeyEvent", {
+    type: "keyDown",
+    ...fields,
+    ...(chord.text === undefined ? {} : { text: chord.text }),
+  })
+  await devtools.send("Input.dispatchKeyEvent", { type: "keyUp", ...fields })
+}
+
+/** `?` as a US keyboard types it: Shift and the slash key. */
+const QUESTION_MARK: Chord = { key: "?", code: "Slash", keyCode: 191, text: "?", modifiers: 8 }
+
+/** What one read of the `ShortcutsDialog` card sees. */
+interface ShortcutsState {
+  /** The dialog is open and in the top layer. */
+  modal: boolean
+  /** Presses the demo's plain `i` binding counted. */
+  plain: number
+  /** Presses the demo's `mod+i` binding counted. */
+  combo: number
+  /** The demo's text field's value. */
+  field: string
+  /** `data-e2e` of the focused element, or its tag name. */
+  active: string
+  /** Focus is inside the dialog. */
+  focusInDialog: boolean
+}
+
+/** Reads {@link ShortcutsState} off the `ShortcutsDialog` card in one round trip. */
+const SHORTCUTS_STATE = `(() => {
+  const card = document.querySelector("#demo-ShortcutsDialog")
+  const dialog = card.querySelector("dialog")
+  const active = document.activeElement
+  return {
+    modal: dialog?.matches(":modal") === true,
+    plain: Number(card.querySelector('[data-e2e="shortcuts-plain"]').textContent),
+    combo: Number(card.querySelector('[data-e2e="shortcuts-combo"]').textContent),
+    field: card.querySelector('[data-e2e="shortcuts-field"]').value,
+    active: active?.getAttribute("data-e2e") ?? active?.tagName ?? "none",
+    focusInDialog: dialog !== null && dialog.contains(active),
+  }
+})()`
+
+/**
+ * `useHotkeys` and `ShortcutsDialog`, driven with real key presses on the `ShortcutsDialog` card.
+ *
+ * The hook listens on `document`, so what it does depends on where a press lands and which
+ * modifiers it carries, and a string render sees neither. A plain `i` and `mod+i` are each counted
+ * by their own binding, and each press has to move its own count and leave the other alone. `?`
+ * typed in the card's text field has to stay in the field; `?` pressed with focus on the card's
+ * button has to open the dialog, and Escape has to close it and put focus back on that button.
+ *
+ * `mod` is Control in the Linux browser `verify` drives; the check still reads the page's platform
+ * and sends Command on an Apple one, so it tests the same combination the demo binds.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function shortcutsChecks(devtools: Devtools): Promise<void> {
+  const button = `document.querySelector('#demo-ShortcutsDialog [data-e2e="shortcuts-open"]')`
+  const field = `document.querySelector('#demo-ShortcutsDialog [data-e2e="shortcuts-field"]')`
+  const present = await devtools.evaluate<boolean>(`${button} !== null && ${field} !== null`)
+  check("the ShortcutsDialog card is on the page, with its button and its text field", present)
+  if (!present) return
+  await centreInView(devtools, button)
+
+  const apple = await devtools.evaluate<boolean>(
+    `/mac|iphone|ipad|ipod/i.test(navigator.userAgentData?.platform || navigator.platform || "")`,
+  )
+  const plainI: Chord = { key: "i", code: "KeyI", keyCode: 73, text: "i", modifiers: 0 }
+  const modI: Chord = { key: "i", code: "KeyI", keyCode: 73, modifiers: apple ? 4 : 2 }
+  const read = () => devtools.evaluate<ShortcutsState>(SHORTCUTS_STATE)
+  // A press that ran a handler re-renders the counts at once; give a wrong one time to show up.
+  const settle = () => new Promise((done) => setTimeout(done, 200))
+
+  await devtools.evaluate<null>(`(${button}.focus(), null)`)
+  const start = await read()
+  await pressChord(devtools, plainI)
+  await settle()
+  const afterPlain = await read()
+  await pressChord(devtools, modI)
+  await settle()
+  const afterCombo = await read()
+  check(
+    "useHotkeys runs mod+I's handler for mod+I and not for a plain I, and the reverse",
+    afterPlain.plain === start.plain + 1 && afterPlain.combo === start.combo &&
+      afterCombo.combo === start.combo + 1 && afterCombo.plain === afterPlain.plain,
+    `plain I: plain ${start.plain} → ${afterPlain.plain}, mod ${start.combo} → ` +
+      `${afterPlain.combo}; ${apple ? "Command" : "Control"}+I: plain ${afterPlain.plain} → ` +
+      `${afterCombo.plain}, mod ${afterPlain.combo} → ${afterCombo.combo}`,
+  )
+
+  await devtools.evaluate<null>(`(${field}.focus(), ${field}.value = "", null)`)
+  await pressChord(devtools, QUESTION_MARK)
+  await settle()
+  const typed = await read()
+  check(
+    "? typed in a text field stays in the field and does not open the ShortcutsDialog",
+    typed.field === "?" && !typed.modal,
+    `field "${typed.field}", dialog ${typed.modal ? "opened" : "stayed closed"}`,
+  )
+
+  await devtools.evaluate<null>(`(${button}.focus(), null)`)
+  await pressChord(devtools, QUESTION_MARK)
+  await poll(() => devtools.evaluate<boolean>(`${SHORTCUTS_STATE}.modal`), 3_000)
+  const opened = await read()
+  check(
+    "? pressed on the page opens the ShortcutsDialog and moves focus into it",
+    opened.modal && opened.focusInDialog,
+    `dialog ${opened.modal ? "open" : "closed"}, focus on ${opened.active}`,
+  )
+
+  await pressKey(devtools, "Escape")
+  await poll(() => devtools.evaluate<boolean>(`!${SHORTCUTS_STATE}.modal`), 3_000)
+  const closed = await read()
+  check(
+    "Escape closes the ShortcutsDialog and returns focus to the button that had it",
+    opened.modal && !closed.modal && closed.active === "shortcuts-open",
+    `dialog ${opened.modal ? "open" : "never opened"} → ${closed.modal ? "open" : "closed"}, ` +
+      `focus on ${closed.active}`,
+  )
 }
