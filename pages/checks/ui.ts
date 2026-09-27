@@ -10613,6 +10613,8 @@ async function inlineEditInterruptionChecks(devtools: Devtools): Promise<void> {
   )
   await devtools.evaluate<null>(`(${lock}.click(), null)`)
   await poll(() => devtools.evaluate<boolean>(`${trigger}?.disabled === false`), 2_000)
+}
+
 const KANBAN_CARD = "#demo-KanbanBoard"
 
 /** What one read of the `KanbanBoard` demo sees. */

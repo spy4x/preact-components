@@ -949,6 +949,7 @@ removes `pressed` and returns the selection in the order of `options`.
 
 `badgeClasses(color, type, className)` is `Badge`'s class list without the element, which is how
 the chips share `Badge`'s palette.
+
 ## KanbanBoard
 
 A board of columns whose cards move between and within the columns. It is controlled: `items` in,
