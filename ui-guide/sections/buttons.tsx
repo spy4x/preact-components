@@ -4,6 +4,7 @@ import {
   type ButtonVariant,
   Cluster,
   CopyButton,
+  Input,
   Stack,
 } from "@spy4x/preact-ui"
 import { useSignal } from "@preact/signals"
@@ -125,6 +126,39 @@ function BusyButtonDemo() {
 }
 
 /**
+ * A busy submit button inside a form: Enter in the field submits once, and the busy button then
+ * cancels every later press, including the one the browser makes on it when Enter is pressed in
+ * the field again. The submit count proves the form was not sent twice.
+ */
+function BusySubmitDemo() {
+  const busy = useSignal(false)
+  const submits = useSignal(0)
+  return (
+    <form
+      data-e2e="busy-form"
+      onSubmit={(event) => {
+        event.preventDefault()
+        busy.value = true
+        submits.value += 1
+      }}
+    >
+      <Cluster>
+        <Input name="reference" aria-label="Reference" data-e2e="busy-form-field" />
+        <Button type="submit" busy={busy.value} busyLabel="Saving…" data-e2e="busy-form-submit">
+          Save
+        </Button>
+        <Button variant="outline" data-e2e="busy-form-finish" onClick={() => busy.value = false}>
+          Finish
+        </Button>
+        <DemoNote>
+          submitted {submits.value} {submits.value === 1 ? "time" : "times"}
+        </DemoNote>
+      </Cluster>
+    </form>
+  )
+}
+
+/**
  * The clipboard is a port: the first two buttons copy through the browser API, the third through
  * the injected callback, so the host app can route copies through its own clipboard service.
  */
@@ -200,6 +234,7 @@ export const buttonDemos = {
         <ButtonMatrix />
         <ButtonClickDemo />
         <BusyButtonDemo />
+        <BusySubmitDemo />
       </Stack>
     ),
   },

@@ -226,7 +226,9 @@ replaces the children while busy; an icon button shows the spinner instead of it
 bottom of the viewport and there is more room above, as it does for the last row of a long table.
 It is measured each time the menu opens, before the browser draws it, so an upward menu is never
 drawn downward first. The server renders it downward, which is where a menu without JavaScript
-would open. `"up"` and `"down"` fix the direction.
+would open. `"up"` and `"down"` fix the direction. It measures against the viewport only, and once
+per opening: a menu clipped by a scrolling container, such as a modal's body, can still be cut off,
+and scrolling while the menu is open does not flip it.
 
 `dropdownOpensUp(trigger, panelHeight, viewportHeight)` is that decision on its own, a pure function
 of the trigger's `top` and `bottom`, the panel's height and the viewport's height. It opens up when

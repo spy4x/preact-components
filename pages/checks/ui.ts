@@ -161,6 +161,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
 
   await refForwardingChecks(devtools)
   await busyButtonChecks(devtools)
+  await busySubmitChecks(devtools)
 
   await copyBlockChecks(devtools)
   await copyBlockNeverClipsCheck(devtools)
@@ -286,6 +287,68 @@ async function busyButtonChecks(devtools: Devtools): Promise<void> {
     `aria-busy ${pressed.busy} → ${idle.busy}, "${pressed.text}" → "${idle.text}", ` +
       `spinner ${idle.spinner}`,
   )
+}
+
+/** What one read of the busy submit demo sees. */
+interface BusySubmitState {
+  /** `aria-busy` on the submit button, or `null` when it is not set. */
+  busy: string | null
+  /** How many submissions the form's own counter recorded. */
+  submits: number
+}
+
+/** Reads {@link BusySubmitState} off the `Button` card's form in one round trip. */
+const BUSY_SUBMIT_STATE = `(() => {
+  const form = document.querySelector('#demo-Button [data-e2e="busy-form"]')
+  const counter = form.textContent.match(/submitted (\\d+)/)
+  return {
+    busy: form.querySelector('[data-e2e="busy-form-submit"]').getAttribute("aria-busy"),
+    submits: counter === null ? -1 : Number(counter[1]),
+  }
+})()`
+
+/**
+ * A busy submit `Button` stops its form from being sent a second time.
+ *
+ * Enter in a text field submits the form by clicking its submit button for the user, so the first
+ * Enter has to submit once and make the button busy. A second Enter in the field and an Enter on
+ * the busy button itself are both presses the button cancels, so the form's own count stays at one.
+ * The field is where most double submissions start, and no string render reaches either path.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function busySubmitChecks(devtools: Devtools): Promise<void> {
+  const field = `document.querySelector('#demo-Button [data-e2e="busy-form-field"]')`
+  const submit = `document.querySelector('#demo-Button [data-e2e="busy-form-submit"]')`
+  const finish = `document.querySelector('#demo-Button [data-e2e="busy-form-finish"]')`
+  await centreInView(devtools, field)
+
+  const before = await devtools.evaluate<BusySubmitState>(BUSY_SUBMIT_STATE)
+  await devtools.evaluate<null>(`(${field}.focus(), null)`)
+  await pressKey(devtools, "Enter")
+  await poll(() => devtools.evaluate<boolean>(`${BUSY_SUBMIT_STATE}.busy === "true"`), 2_000)
+  const first = await devtools.evaluate<BusySubmitState>(BUSY_SUBMIT_STATE)
+  check(
+    "Enter in a form's field submits it once and makes its submit Button busy",
+    before.busy === null && first.busy === "true" && first.submits === before.submits + 1,
+    `aria-busy ${before.busy} → ${first.busy}, submitted ${before.submits} → ${first.submits}`,
+  )
+
+  await pressKey(devtools, "Enter")
+  await devtools.evaluate<null>(`(${submit}.focus(), null)`)
+  await pressKey(devtools, "Enter")
+  // A submission that got through would re-render the counter at once; give it time to show up.
+  await new Promise((done) => setTimeout(done, 200))
+  const again = await devtools.evaluate<BusySubmitState>(BUSY_SUBMIT_STATE)
+  check(
+    "a busy submit Button keeps its form from being sent again, from the field or from itself",
+    again.busy === "true" && again.submits === first.submits,
+    `submitted ${first.submits} → ${again.submits} after Enter in the field and on the button`,
+  )
+
+  await devtools.evaluate<null>(`(${finish}.focus(), null)`)
+  await pressKey(devtools, "Enter")
+  await poll(() => devtools.evaluate<boolean>(`${BUSY_SUBMIT_STATE}.busy === null`), 2_000)
 }
 
 /** One component whose card carries a ref-forwarding demo, and the card that holds it. */
