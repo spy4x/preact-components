@@ -11132,10 +11132,12 @@ async function kanbanSameColumnMouseCheck(devtools: Devtools): Promise<void> {
   )
   const moved = await devtools.evaluate<KanbanState>(KANBAN_STATE)
   check(
-    "a mouse drag moves a KanbanBoard card one place down its own column, reporting index 1",
+    "a mouse drag moves a KanbanBoard card one place down its own column, reporting index 1, and does not open it",
     moved.lastMove.endsWith("notes to todo at 1") &&
-      JSON.stringify(moved.columns.todo) === `["icons","notes","search"]`,
-    `onMove "${moved.lastMove}", todo ${JSON.stringify(moved.columns.todo)}; drag events: ${types}`,
+      JSON.stringify(moved.columns.todo) === `["icons","notes","search"]` &&
+      moved.opened.endsWith("none yet"),
+    `onMove "${moved.lastMove}", todo ${JSON.stringify(moved.columns.todo)}, onOpen ` +
+      `"${moved.opened}"; drag events: ${types}`,
   )
 }
 
