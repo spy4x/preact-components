@@ -10350,6 +10350,10 @@ const SHORTCUTS_STATE = `(() => {
  * by their own binding, and each press has to move its own count and leave the other alone. `?`
  * typed in the card's text field has to stay in the field; `?` pressed with focus on the card's
  * button has to open the dialog, and Escape has to close it and put focus back on that button.
+ * While the dialog is open, a plain `i` has to run nothing, because the hook skips presses inside a
+ * dialog. After Escape, `?` has to open the dialog again, which fails when the dialog's close never
+ * reaches the caller's `open` state. Last, the card's checkbox turns the hook's `enabled` option
+ * off, and a plain `i` has to stop counting; it is turned back on before the function returns.
  *
  * `mod` is Control in the Linux browser `verify` drives; the check still reads the page's platform
  * and sends Command on an Apple one, so it tests the same combination the demo binds.
@@ -10410,6 +10414,16 @@ async function shortcutsChecks(devtools: Devtools): Promise<void> {
     `dialog ${opened.modal ? "open" : "closed"}, focus on ${opened.active}`,
   )
 
+  await pressChord(devtools, plainI)
+  await settle()
+  const insideDialog = await read()
+  check(
+    "a plain I pressed inside the open ShortcutsDialog runs no shortcut",
+    opened.modal && insideDialog.focusInDialog && insideDialog.plain === opened.plain,
+    `dialog ${opened.modal ? "open" : "closed"}, focus in dialog ${insideDialog.focusInDialog}, ` +
+      `plain ${opened.plain} → ${insideDialog.plain}`,
+  )
+
   await pressKey(devtools, "Escape")
   await poll(() => devtools.evaluate<boolean>(`!${SHORTCUTS_STATE}.modal`), 3_000)
   const closed = await read()
@@ -10419,4 +10433,33 @@ async function shortcutsChecks(devtools: Devtools): Promise<void> {
     `dialog ${opened.modal ? "open" : "never opened"} → ${closed.modal ? "open" : "closed"}, ` +
       `focus on ${closed.active}`,
   )
+
+  await devtools.evaluate<null>(`(${button}.focus(), null)`)
+  await pressChord(devtools, QUESTION_MARK)
+  const reopened = await poll(() => devtools.evaluate<boolean>(`${SHORTCUTS_STATE}.modal`), 3_000)
+  await pressKey(devtools, "Escape")
+  const reclosed = await poll(() => devtools.evaluate<boolean>(`!${SHORTCUTS_STATE}.modal`), 3_000)
+  check(
+    "? opens the ShortcutsDialog again after Escape closed it",
+    !closed.modal && reopened && reclosed,
+    `closed first ${!closed.modal}, reopened ${reopened}, closed again ${reclosed}`,
+  )
+
+  const toggle = `document.querySelector('#demo-ShortcutsDialog [data-e2e="shortcuts-enabled"]')`
+  const wasOn = await devtools.evaluate<boolean>(`${toggle}?.checked === true`)
+  await devtools.evaluate<null>(`(${toggle}.click(), null)`)
+  await settle()
+  await devtools.evaluate<null>(`(${button}.focus(), null)`)
+  const off = await read()
+  await pressChord(devtools, plainI)
+  await settle()
+  const afterOff = await read()
+  check(
+    "turning the ShortcutsDialog demo's shortcuts off (useHotkeys enabled: false) stops a plain I",
+    wasOn && afterOff.plain === off.plain,
+    `checkbox on before ${wasOn}, plain ${off.plain} → ${afterOff.plain} after I with it off`,
+  )
+  // Back on, so the card is left as the page loaded it.
+  await devtools.evaluate<null>(`(${toggle}.click(), null)`)
+  await settle()
 }

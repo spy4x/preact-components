@@ -17,6 +17,7 @@ import {
   CardBody,
   CardFooter,
   CardHeader,
+  Checkbox,
   Cluster,
   CopyBlock,
   DataTable,
@@ -770,12 +771,14 @@ function KbdDemo() {
 /**
  * `useHotkeys` and `ShortcutsDialog` together. `?` anywhere on this page opens the dialog, and the
  * same key typed in the field below stays in the field. `mod+I` and a plain `I` each count their own
- * presses, which is what `pages/checks/ui.ts` reads to prove the modifier is told apart.
+ * presses, which is what `pages/checks/ui.ts` reads to prove the modifier is told apart. The
+ * checkbox is bound to the hook's `enabled` option, so turning it off stops every shortcut here.
  */
 function ShortcutsDialogDemo() {
   const open = useSignal(false)
   const plain = useSignal(0)
   const combo = useSignal(0)
+  const enabled = useSignal(true)
   const fieldId = `shortcuts-field-${useId()}`
   const bindings: HotkeyBinding[] = [
     {
@@ -796,7 +799,7 @@ function ShortcutsDialogDemo() {
       handler: () => plain.value++,
     },
   ]
-  useHotkeys(bindings)
+  useHotkeys(bindings, { enabled: enabled.value })
   return (
     <Stack>
       <Cluster align="end">
@@ -806,6 +809,13 @@ function ShortcutsDialogDemo() {
         <Field id={fieldId} label="A text field">
           <Input id={fieldId} data-e2e="shortcuts-field" placeholder="Type ? here" />
         </Field>
+        <Checkbox
+          data-e2e="shortcuts-enabled"
+          checked={enabled.value}
+          onChange={(event) => enabled.value = event.currentTarget.checked}
+        >
+          Shortcuts on
+        </Checkbox>
       </Cluster>
       <DemoNote e2e="shortcuts-counts">
         Press <Kbd keys="?" /> to open the list. Plain I pressed{" "}
