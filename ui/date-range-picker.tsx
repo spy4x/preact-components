@@ -145,8 +145,14 @@ export type AnyDateRangePickerProps = DateRangePickerProps | DateRangePickerTime
 const panelClasses =
   "absolute z-10 mt-2 w-80 rounded-md bg-white p-3 shadow-lg ring-1 ring-black/5 dark:bg-gray-800 dark:ring-gray-600"
 
+/**
+ * The From and To fields. They carry their own utilities rather than the theme's `.input`, which is
+ * `h-12` and would crowd a compact popover, so they also set the dark `color-scheme` themselves: the
+ * browser draws a native date field's calendar icon from it, and without it the icon is black on
+ * the dark field (#379).
+ */
 const dateInputClasses =
-  "mt-1 block w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+  "mt-1 block w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:[color-scheme:dark]"
 
 const fieldLabelClasses = "block text-xs font-medium text-gray-700 dark:text-gray-300"
 
@@ -185,11 +191,12 @@ function rangeText<R extends { from: string; to: string }>(
  * and losing it. Opening moves focus inside; a close the person drove **from inside** the panel
  * hands focus back to the trigger, because the next render hides the element their focus is on.
  *
- * A close driven from outside it does not, and there are two of those. An outside click leaves
- * focus on whatever was clicked. And an Escape press is only a return when focus was still inside
- * the component: the panel stays open behind a Tab — focus merely leaving it is not a close here,
- * as it never has been — so Escape can arrive from somewhere the person has since walked to, and
- * pulling them back there would be one more way to lose their place rather than a way to keep it.
+ * A close driven from outside it does not, and there are three of those. An outside click leaves
+ * focus on whatever was clicked. Focus leaving the component — a Tab out of the panel — closes it
+ * and leaves focus where the Tab went, discarding an unapplied custom range as Cancel does (#198).
+ * And an Escape press is only a return when focus was still inside the component: with focus on the
+ * page itself the panel is still open, and pulling focus onto the trigger from there would move the
+ * person somewhere they did not go.
  *
  * `withTime` changes what From and To accept and what the custom fields hand back — `datetime-local`
  * inputs and a {@link DateTimeRange} — and adds the two presets that only make sense with a time of
@@ -306,11 +313,10 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
     }
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!isOpen.value || event.key !== "Escape") return
-      // The same question the outside-click branch asks, and for the same reason. A Tab out leaves
-      // this panel open behind the person, so an Escape press can arrive from somewhere they have
-      // since walked to; returning focus then would drag them back across the page, which is the
-      // defect this component was fixed for rather than a fix for it. Focus goes back only when
-      // they were still inside when they pressed the key.
+      // The same question the outside-click branch asks, and for the same reason. A Tab out closes
+      // the panel, but focus can still fall to the page itself with the panel open — a scripted
+      // blur, a focused control that vanished — and an Escape press from there is not a press from
+      // inside. Focus goes back only when they were still inside when they pressed the key.
       closePanel(rootRef.current?.contains(document.activeElement) === true)
     }
     document.addEventListener("mousedown", handlePointerDown)
@@ -320,6 +326,32 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
       document.removeEventListener("keydown", handleKeyDown)
     }
   }, [])
+
+  /**
+   * Closes the panel when focus leaves the component, the way `Dropdown` does (#198), and leaves
+   * focus wherever it went: the person chose to go there. An unapplied custom range is discarded,
+   * as Cancel discards it — the next open reseeds the draft from the caller's value.
+   *
+   * Focus moving between the panel's own controls, into a date field or back to the trigger stays
+   * inside the root and closes nothing. A null `relatedTarget` is either focus going somewhere the
+   * event cannot name or focus going nowhere, so that case waits a tick and reads where focus ended
+   * up: on the page itself (a scripted blur, a control that vanished) the panel stays open, and so
+   * it does while a date field's native picker holds the window's focus, because the field is still
+   * the document's active element then.
+   */
+  const handleFocusOut = (event: FocusEvent) => {
+    const next = event.relatedTarget as Node | null
+    if (next !== null) {
+      if (isOpen.value && !rootRef.current?.contains(next)) closePanel(false)
+      return
+    }
+    setTimeout(() => {
+      const root = rootRef.current
+      if (!isOpen.value || root === null) return
+      const active = document.activeElement
+      if (active !== null && active !== document.body && !root.contains(active)) closePanel(false)
+    }, 0)
+  }
 
   /** Opens the panel, seeding the draft from the controlled value so typing resumes where it left off. */
   const openPanel = () => {
@@ -389,7 +421,11 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
     : rangeText(props.range, props.formatRange)
 
   return (
-    <div class={cn("relative inline-flex text-left", className)} ref={rootRef}>
+    <div
+      class={cn("relative inline-flex text-left", className)}
+      ref={rootRef}
+      onFocusOut={handleFocusOut}
+    >
       <button
         type="button"
         ref={triggerRef}

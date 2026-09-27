@@ -5309,9 +5309,6 @@ const PICKER_SETUP = `(() => {
   globalThis.__verifyPicker = {
     trigger,
     panel: panelId === "" ? null : document.getElementById(panelId),
-    // The second picker's trigger: a focusable control on the same card and outside this one, for
-    // the check that presses Escape from somewhere the person has walked to.
-    away: card?.querySelector('[data-e2e="guide-date-range-empty"]') ?? null,
   }
   return {
     card: card !== null,
@@ -5481,8 +5478,13 @@ async function dateRangeChecks(devtools: Devtools): Promise<void> {
   )
 
   await returnPathChecks(devtools)
-  await escapeFromOutsideCheck(devtools)
+  await escapeFromPageCheck(devtools, DAY_PICKER)
   await outsideClickCheck(devtools)
+  await tabThroughPanelChecks(devtools, DAY_PICKER)
+  await inWideViewport(devtools, async () => {
+    await nativePickerCheck(devtools, DAY_PICKER)
+    await darkDateIconCheck(devtools, DAY_PICKER)
+  })
 
   // The trigger answers Space, and the block after this one presses Space four times, so hand the
   // focus back rather than leaving it on a control that would open this panel again.
@@ -5603,80 +5605,6 @@ async function returnPathChecks(devtools: Devtools): Promise<void> {
           `${opened.expanded} → ${after.expanded})`,
     )
   }
-}
-
-/**
- * An Escape press from outside an open panel closes it and leaves focus where it is.
- *
- * The case exists because a Tab out does not close this panel: it stays open behind the person,
- * who can then be several controls away when they reach for Escape. Returning focus there would
- * drag them back across the page — the very thing this component was changed to stop — so the
- * Escape branch returns focus only when the component still contains `document.activeElement`.
- *
- * Focus is put on the outside control with `.focus()` rather than by tabbing to it. The tab order
- * between the panel and anything else belongs to the catalogue page, not to this component, so
- * walking it would assert the page's layout; the outside control is the second picker's trigger,
- * which is focusable, is outside this picker's root, and does not open anything of its own until it
- * is clicked. The Escape itself is a real key press, which is the path under test.
- *
- * @param devtools The connected session, on a hydrated page.
- */
-async function escapeFromOutsideCheck(devtools: Devtools): Promise<void> {
-  const opened = await openPickerPanel(devtools)
-  const moved = await devtools.evaluate<{ ok: boolean; took: boolean; outside: boolean }>(`(() => {
-    const away = globalThis.__verifyPicker?.away ?? null
-    const trigger = globalThis.__verifyPicker?.trigger ?? null
-    if (away === null || trigger === null) return { ok: false, took: false, outside: false }
-    away.focus()
-    return {
-      ok: true,
-      took: document.activeElement === away,
-      // Asserted rather than assumed: a control that turned out to be inside this component would
-      // make the whole check a restatement of the one above it.
-      outside: !(trigger.closest("div")?.contains(away) ?? true),
-    }
-  })()`)
-
-  await pressKey(devtools, "Escape")
-  const closed = await poll(
-    () => devtools.evaluate<boolean>(`${PICKER_STATE}.open === false`),
-    3_000,
-  )
-  // See settledActiveElement's own doc: reading focus immediately once `closed` is true can catch a
-  // moment between the panel closing and a wrongly-refocusing effect finishing, which reads as
-  // correct by coincidence rather than by the component actually leaving focus alone (#265).
-  const settled = await settledActiveElement(devtools)
-  const after = await devtools.evaluate<PickerState & { stillAway: boolean }>(`(() => ({
-    ...${PICKER_STATE},
-    stillAway: document.activeElement === (globalThis.__verifyPicker?.away ?? null),
-  }))()`)
-
-  check(
-    "a real Escape press from outside an open DateRangePicker leaves focus where it is",
-    opened.open && moved.ok && moved.took && moved.outside && closed && settled &&
-      after.stillAway && !after.onTrigger,
-    !opened.open
-      ? "the panel would not open, so there is nothing to press Escape at"
-      : !moved.ok
-      ? "the card has no second control to move focus to, so there is no outside to press from"
-      : !moved.took
-      ? "focus would not leave the panel, so the press did not come from outside it"
-      : !moved.outside
-      ? "the control focus was moved to is inside this picker, so this repeats the check above"
-      : !closed
-      ? "the panel was still open 3s after a real Escape press from outside it"
-      : !settled
-      ? "focus was still moving after the press, so this proves nothing about where it settled"
-      : after.onTrigger
-      ? "Escape from outside dragged focus back onto the trigger, several controls from where the " +
-        "person had got to — which is the defect this component was changed to stop, arriving by " +
-        "the fix for it"
-      : !after.stillAway
-      ? `Escape from outside closed the panel and moved focus to ${after.label} rather than ` +
-        `leaving it alone`
-      : "focus outside the component → a real Escape press → the panel is hidden and focus has " +
-        "not moved at all",
-  )
 }
 
 /**
@@ -5821,10 +5749,6 @@ const PICKER_TIME_SETUP = `(() => {
     controlled: trigger
       ?.closest(':has(> [data-e2e="controlled-value"])')
       ?.querySelector(':scope > [data-e2e="controlled-value"]') ?? null,
-    // A focusable control on the same card, outside this picker's own root — for the two checks
-    // driven from outside it. Reuses the day-mode empty card's trigger; nothing here depends on
-    // what that picker does with a click, only on it being able to hold focus.
-    away: card?.querySelector('[data-e2e="guide-date-range-empty"]') ?? null,
   }
   return {
     card: card !== null,
@@ -6127,8 +6051,13 @@ async function dateRangeTimeChecks(devtools: Devtools): Promise<void> {
   )
 
   await timeReturnPathChecks(devtools)
-  await escapeFromOutsideTimeCheck(devtools)
+  await escapeFromPageCheck(devtools, TIME_PICKER)
   await outsideClickTimeCheck(devtools)
+  await tabThroughPanelChecks(devtools, TIME_PICKER)
+  await inWideViewport(devtools, async () => {
+    await nativePickerCheck(devtools, TIME_PICKER)
+    await darkDateIconCheck(devtools, TIME_PICKER)
+  })
   await blurActive(devtools)
 }
 
@@ -6299,61 +6228,6 @@ async function timeReturnPathChecks(devtools: Devtools): Promise<void> {
 }
 
 /**
- * An Escape press from outside an open `withTime` panel closes it and leaves focus where it is —
- * the `withTime` counterpart of {@link escapeFromOutsideCheck}. See that function's own doc for why
- * this component does not pull focus back for an Escape that did not come from inside it.
- *
- * @param devtools The connected session, on a hydrated page.
- */
-async function escapeFromOutsideTimeCheck(devtools: Devtools): Promise<void> {
-  const opened = await openTimePickerPanel(devtools)
-  const moved = await devtools.evaluate<{ ok: boolean; took: boolean }>(`(() => {
-    const away = globalThis.__verifyPickerTime?.away ?? null
-    if (away === null) return { ok: false, took: false }
-    away.focus()
-    return { ok: true, took: document.activeElement === away }
-  })()`)
-
-  await pressKey(devtools, "Escape")
-  const closed = await poll(
-    () => devtools.evaluate<boolean>(`${PICKER_TIME_STATE}.open === false`),
-    3_000,
-  )
-  // See settledActiveElement's own doc: reading focus immediately once `closed` is true can catch a
-  // moment between the panel closing and a wrongly-refocusing effect finishing, which reads as
-  // correct by coincidence rather than by the component actually leaving focus alone.
-  const settled = await settledActiveElement(devtools)
-  const after = await devtools.evaluate<PickerTimeState & { stillAway: boolean }>(`(() => ({
-    ...${PICKER_TIME_STATE},
-    stillAway: document.activeElement === (globalThis.__verifyPickerTime?.away ?? null),
-  }))()`)
-
-  check(
-    "a real Escape press from outside an open withTime panel leaves focus where it is",
-    opened.open && moved.ok && moved.took && closed && settled && after.stillAway &&
-      !after.onTrigger,
-    !opened.open
-      ? "the panel would not open, so there is nothing to press Escape at"
-      : !moved.ok
-      ? "the card has no outside control to move focus to"
-      : !moved.took
-      ? "focus would not leave the panel, so the press did not come from outside it"
-      : !closed
-      ? "the panel was still open 3s after a real Escape press from outside it"
-      : !settled
-      ? "focus was still moving 3s after the press, so this proves nothing about where it settled"
-      : after.onTrigger
-      ? "Escape from outside dragged focus back onto the trigger, which is the defect this " +
-        "component was changed to stop, in the mode it was changed for"
-      : !after.stillAway
-      ? `Escape from outside closed the panel and moved focus to ${after.label} rather than ` +
-        `leaving it alone`
-      : "focus outside the component → a real Escape press → the panel is hidden and focus has " +
-        "not moved at all",
-  )
-}
-
-/**
  * A real click outside an open `withTime` panel closes it and does not pull focus back onto the
  * trigger — the `withTime` counterpart of {@link outsideClickCheck}, but aimed at a different spot.
  *
@@ -6406,6 +6280,389 @@ async function outsideClickTimeCheck(devtools: Devtools): Promise<void> {
       : "a real click at the page's own corner: the panel is hidden and focus fell to the page, " +
         "not back on the trigger",
   )
+}
+
+/**
+ * One of the two DateRangePicker demos the checks below drive the same way: the day-only picker
+ * parked by {@link PICKER_SETUP} and the `withTime` one parked by {@link PICKER_TIME_SETUP}.
+ */
+interface PickerMode {
+  /** Completes check names: "an open DateRangePicker", "an open withTime panel". */
+  subject: string
+  /** The `globalThis` key the mode's setup parked its trigger and panel under. */
+  parked: "__verifyPicker" | "__verifyPickerTime"
+  /** Opens the panel and waits for focus to land inside it. */
+  open: (devtools: Devtools) => Promise<{ open: boolean; inPanel: boolean; label: string }>
+}
+
+const DAY_PICKER: PickerMode = {
+  subject: "DateRangePicker",
+  parked: "__verifyPicker",
+  open: openPickerPanel,
+}
+
+const TIME_PICKER: PickerMode = {
+  subject: "withTime panel",
+  parked: "__verifyPickerTime",
+  open: openTimePickerPanel,
+}
+
+/** Where focus is relative to one parked picker, read in one round trip. */
+interface PickerFocus {
+  /** `false` when the setup parked no trigger or panel. */
+  ok: boolean
+  open: boolean
+  /** Focus is inside the component's root: the trigger or the panel. */
+  inRoot: boolean
+  inPanel: boolean
+  onTrigger: boolean
+  /** Focus is on the page itself — nothing focused. */
+  onBody: boolean
+  /** The focused element's `data-e2e`, or `""`. */
+  e2e: string
+  /** The focused element's text, test hook or tag, cut short, for the failure message. */
+  label: string
+}
+
+/**
+ * The page expression that reads a {@link PickerFocus}. The component's root is the trigger's
+ * parent, which is how the component renders it: the trigger and the panel are its two children.
+ */
+function pickerFocus(mode: PickerMode): string {
+  return `(() => {
+    const { trigger, panel } = globalThis.${mode.parked} ?? {}
+    const root = trigger?.parentElement ?? null
+    const active = document.activeElement
+    const label = active === document.body
+      ? "the page"
+      : ((active?.textContent ?? "").trim() || active?.getAttribute?.("data-e2e") ||
+        (active?.tagName ?? ""))
+    return {
+      ok: Boolean(trigger) && Boolean(panel) && root !== null,
+      open: Boolean(panel) && !panel.hasAttribute("hidden") &&
+        panel.getBoundingClientRect().height > 0,
+      inRoot: root?.contains(active) ?? false,
+      inPanel: panel?.contains(active) ?? false,
+      onTrigger: active === trigger,
+      onBody: active === document.body,
+      e2e: active?.getAttribute?.("data-e2e") ?? "",
+      label: String(label).slice(0, 40),
+    }
+  })()`
+}
+
+/**
+ * Tab through an open panel and out of it (#198): every press inside keeps the panel open, and the
+ * press that leaves closes it and leaves focus where it went.
+ *
+ * Real Tab presses, so the browser's own focus navigation decides every step — including the steps
+ * through a native date field's own segments, which move focus inside the field's shadow tree while
+ * the field stays the document's active element. Where the last press lands is the catalogue page's
+ * tab order, not this component's, so the check does not name it: it asserts only that it is outside
+ * the component, is a real control rather than the page, and still has focus once everything has
+ * settled — a close that pulled focus back onto the trigger would fail the last part.
+ *
+ * @param devtools The connected session, on a hydrated page with the mode's setup already run.
+ * @param mode Which picker to drive.
+ */
+async function tabThroughPanelChecks(devtools: Devtools, mode: PickerMode): Promise<void> {
+  const opened = await mode.open(devtools)
+  const walk: PickerFocus[] = []
+  // A bound, not an expectation: the day panel takes about ten presses, the timed one about twenty.
+  for (let press = 0; press < 40; press++) {
+    await pressKey(devtools, "Tab")
+    const step = await devtools.evaluate<PickerFocus>(`(() => {
+      globalThis.__verifyTabbedTo = document.activeElement
+      return ${pickerFocus(mode)}
+    })()`)
+    walk.push(step)
+    if (!step.inRoot) break
+  }
+  const inside = walk.slice(0, -1)
+  const last = walk.at(-1)
+  const leftAt = inside.findIndex((step) => !step.open || !step.inPanel)
+  const reached = new Set(inside.map((step) => step.e2e))
+  const fields = reached.has("date-range-from") && reached.has("date-range-to")
+
+  check(
+    `Tab moves focus between an open ${mode.subject}'s own controls without closing it`,
+    opened.open && opened.inPanel && inside.length >= 3 && leftAt === -1 && fields,
+    !opened.open || !opened.inPanel
+      ? "the panel would not open with focus inside, so there is nothing to walk"
+      : leftAt !== -1
+      ? `Tab press ${leftAt + 1} left the panel ${
+        inside[leftAt].open ? "open" : "closed"
+      } with focus on ${inside[leftAt].label}, while focus was still inside the component`
+      : !fields
+      ? `the walk left the component for ${last?.label ?? "nowhere"} with the panel ${
+        last?.open ? "open" : "closed"
+      } before reaching both date fields (it reached ${[...reached].join(", ")})`
+      : `${inside.length} Tab presses inside, the panel open after each, through ` +
+        `${[...reached].filter((e2e) => e2e !== "").join(", ")}`,
+  )
+
+  const closed = await poll(
+    () => devtools.evaluate<boolean>(`${pickerFocus(mode)}.open === false`),
+    3_000,
+  )
+  // See settledActiveElement's own doc: a close that wrongly refocused the trigger does so a
+  // commit later, so an immediate read could still find focus where the Tab put it.
+  const settled = await settledActiveElement(devtools)
+  const after = await devtools.evaluate<PickerFocus & { stayed: boolean }>(`(() => ({
+    ...${pickerFocus(mode)},
+    stayed: document.activeElement === globalThis.__verifyTabbedTo,
+  }))()`)
+
+  check(
+    `Tabbing out of an open ${mode.subject} closes it and leaves focus where the Tab went`,
+    last !== undefined && !last.inRoot && !last.onBody && closed && settled && after.stayed &&
+      !after.onTrigger,
+    last === undefined || last.inRoot
+      ? `40 Tab presses never took focus out of the component`
+      : last.onBody
+      ? "the Tab out landed on the page itself rather than a control, so there is nowhere to stay"
+      : !closed
+      ? `focus went to ${last.label}, outside the component, and the panel was still open 3s later`
+      : !settled
+      ? "focus was still moving 3s after the Tab out, so this proves nothing about where it settled"
+      : after.onTrigger
+      ? "the panel closed and pulled focus back onto its trigger, away from where the Tab went"
+      : !after.stayed
+      ? `the panel closed and focus moved from ${last.label} to ${after.label}`
+      : `Tab from inside → ${last.label}: the panel is hidden and focus stayed there`,
+  )
+}
+
+/**
+ * Run `body` with the viewport widened to 1600×900, and restore it afterwards.
+ *
+ * The `withTime` picker is the third column of its card, and at the harness's own width its open
+ * panel runs past the viewport's right edge, so its From field's calendar icon cannot be clicked or
+ * photographed there. Widening is what `pages/checks/icons.ts` and `charts.ts` already do for their
+ * own layouts.
+ */
+async function inWideViewport(devtools: Devtools, body: () => Promise<void>): Promise<void> {
+  await devtools.send("Emulation.setDeviceMetricsOverride", {
+    width: 1600,
+    height: 900,
+    deviceScaleFactor: 1,
+    mobile: false,
+  })
+  try {
+    await devtools.evaluate<null>(
+      `new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done(null))))`,
+    )
+    await body()
+  } finally {
+    await devtools.send("Emulation.clearDeviceMetricsOverride")
+  }
+}
+
+/** The page expression for the From field of one parked picker's panel. */
+function fromField(mode: PickerMode): string {
+  return `globalThis.${mode.parked}?.panel?.querySelector('[data-e2e="date-range-from"]')`
+}
+
+/**
+ * A date field's own picker keeps the panel open (#198): a real click on the From field's calendar
+ * icon, then the window blur a native picker's popup causes, and the panel is still open with focus
+ * on the field.
+ *
+ * The popup is the browser's, drawn outside the page, and the headless browser this runs in was
+ * measured keeping `document.hasFocus()` true after the click, so nothing here can see a popup
+ * open. What a popup does to the page in a browser with a window is send the focused field a
+ * `focusout` with no `relatedTarget` while the field stays the document's active element; the
+ * check sends that event itself, after the real click, because it is the one case in which the
+ * component has to read where focus went instead of being told.
+ *
+ * @param devtools The connected session, on a hydrated page with the mode's setup already run.
+ * @param mode Which picker to drive.
+ */
+async function nativePickerCheck(devtools: Devtools, mode: PickerMode): Promise<void> {
+  await pointerToCorner(devtools)
+  const opened = await mode.open(devtools)
+  await centreInView(devtools, fromField(mode))
+  const icon = await devtools.evaluate<{ x: number; y: number; hit: boolean }>(`(() => {
+    const field = ${fromField(mode)}
+    const box = field.getBoundingClientRect()
+    const x = Math.round(box.right - 16)
+    const y = Math.round(box.top + box.height / 2)
+    return { x, y, hit: document.elementFromPoint(x, y) === field }
+  })()`)
+  if (icon.hit) await clickAtPoint(devtools, icon)
+  await new Promise((resolve) => setTimeout(resolve, 300))
+  const clicked = await devtools.evaluate<PickerFocus>(pickerFocus(mode))
+  await devtools.evaluate<null>(`(() => {
+    const field = ${fromField(mode)}
+    field?.dispatchEvent(new FocusEvent("blur", { relatedTarget: null }))
+    field?.dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: null }))
+    return null
+  })()`)
+  // The component reads where focus went a tick after a focus-out with no target; give it the time
+  // to close the panel if it were going to.
+  await new Promise((resolve) => setTimeout(resolve, 300))
+  const blurred = await devtools.evaluate<PickerFocus>(pickerFocus(mode))
+
+  check(
+    `a date field's own picker keeps an open ${mode.subject} open`,
+    opened.open && icon.hit && clicked.open && clicked.e2e === "date-range-from" &&
+      blurred.open && blurred.e2e === "date-range-from",
+    !opened.open
+      ? "the panel would not open, so there is no field to click"
+      : !icon.hit
+      ? `the point (${icon.x}, ${icon.y}) is not on the From field, so there is no icon to click`
+      : !clicked.open
+      ? "a real click on the From field's calendar icon closed the panel"
+      : clicked.e2e !== "date-range-from"
+      ? `the click on the From field's icon left focus on ${clicked.label}`
+      : !blurred.open
+      ? "the window blur a native picker sends closed the panel while the field kept focus"
+      : `a real click at (${icon.x}, ${icon.y}) on the icon, then a focus-out with no target: ` +
+        `the panel is open and focus is on the From field`,
+  )
+  await devtools.evaluate<null>(`(() => {
+    const { trigger, panel } = globalThis.${mode.parked} ?? {}
+    if (panel && !panel.hidden) trigger?.click()
+    return null
+  })()`)
+  await poll(() => devtools.evaluate<boolean>(`${pickerFocus(mode)}.open === false`), 3_000)
+}
+
+/**
+ * An Escape press with focus on the page itself closes an open panel and leaves focus there.
+ *
+ * Focus leaving for another control closes the panel on its own (#198), so the one way left to be
+ * outside the component with the panel still open is focus falling to the page — a scripted blur,
+ * or a focused control that vanished. The check blurs the focused control inside the panel, asserts
+ * the panel stayed open, and only then presses Escape: a component that returned focus to its
+ * trigger for every Escape would move the person somewhere they never went.
+ *
+ * @param devtools The connected session, on a hydrated page with the mode's setup already run.
+ * @param mode Which picker to drive.
+ */
+async function escapeFromPageCheck(devtools: Devtools, mode: PickerMode): Promise<void> {
+  const opened = await mode.open(devtools)
+  await devtools.evaluate<null>(`((document.activeElement)?.blur?.(), null)`)
+  // The focus-out handler reads where focus went a tick later; give it the time to close the panel
+  // if it were going to.
+  await new Promise((resolve) => setTimeout(resolve, 200))
+  const before = await devtools.evaluate<PickerFocus>(pickerFocus(mode))
+
+  await pressKey(devtools, "Escape")
+  const closed = await poll(
+    () => devtools.evaluate<boolean>(`${pickerFocus(mode)}.open === false`),
+    3_000,
+  )
+  const settled = await settledActiveElement(devtools)
+  const after = await devtools.evaluate<PickerFocus>(pickerFocus(mode))
+
+  check(
+    `a real Escape press from outside an open ${mode.subject} leaves focus where it is`,
+    opened.open && opened.inPanel && before.open && before.onBody && closed && settled &&
+      after.onBody && !after.onTrigger,
+    !opened.open || !opened.inPanel
+      ? "the panel would not open with focus inside, so there is nothing to press Escape at"
+      : !before.onBody
+      ? `the blur left focus on ${before.label}, so the press did not come from the page`
+      : !before.open
+      ? "focus falling to the page closed the panel, so there was nothing open to press Escape at"
+      : !closed
+      ? "the panel was still open 3s after a real Escape press from the page"
+      : !settled
+      ? "focus was still moving 3s after the press, so this proves nothing about where it settled"
+      : after.onTrigger
+      ? "Escape from the page pulled focus onto the trigger, somewhere the person never went"
+      : !after.onBody
+      ? `Escape from the page moved focus to ${after.label} rather than leaving it alone`
+      : "focus on the page with the panel open → a real Escape press → the panel is hidden and " +
+        "focus has not moved",
+  )
+}
+
+/**
+ * In the dark palette the From field's calendar icon is drawn light on the dark field (#379).
+ *
+ * The icon is drawn by the browser from the field's `color-scheme`, which no computed-style read
+ * of the icon can see, so this reads the pixels of a real screenshot the way `pages/checks/theme.ts`
+ * reads the dark Checkbox. It samples the strip at the field's right edge where the icon sits,
+ * inset past the border, and takes the brightest pixel there: a black icon on the dark field leaves
+ * that strip no brighter than the field itself. The field's own shade is read between the text and
+ * the icon, to show the palette really was dark.
+ *
+ * @param devtools The connected session, on a hydrated page with the mode's setup already run.
+ * @param mode Which picker to drive.
+ */
+async function darkDateIconCheck(devtools: Devtools, mode: PickerMode): Promise<void> {
+  const wasDark = await devtools.evaluate<boolean>(`(() => {
+    const was = document.documentElement.classList.contains("dark")
+    document.documentElement.classList.add("dark")
+    return was
+  })()`)
+  try {
+    const opened = await mode.open(devtools)
+    const field = fromField(mode)
+    const inView = await centreInView(devtools, field)
+    await pointerToCorner(devtools)
+    const box = await devtools.evaluate<
+      { left: number; right: number; top: number; bottom: number; width: number }
+    >(`(() => {
+      const box = (${field}).getBoundingClientRect()
+      return {
+        left: box.left, right: box.right, top: box.top, bottom: box.bottom, width: innerWidth,
+      }
+    })()`)
+    const { data } = await devtools.send<{ data: string }>("Page.captureScreenshot", {
+      format: "png",
+    })
+    const read = await devtools.evaluate<{ icon: number; field: number }>(`(async () => {
+      const blob = await (await fetch("data:image/png;base64,${data}")).blob()
+      const bitmap = await createImageBitmap(blob)
+      const scale = bitmap.width / ${box.width}
+      const canvas = new OffscreenCanvas(bitmap.width, bitmap.height)
+      const context = canvas.getContext("2d")
+      context.drawImage(bitmap, 0, 0)
+      const linear = (channel) => {
+        const s = channel / 255
+        return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
+      }
+      const luminance = (x, y) => {
+        const [r, g, b] = context.getImageData(Math.round(x * scale), Math.round(y * scale), 1, 1)
+          .data
+        return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b)
+      }
+      let icon = 0
+      for (let x = ${box.right} - 32; x <= ${box.right} - 4; x++) {
+        for (let y = ${box.top} + 4; y <= ${box.bottom} - 4; y++) icon = Math.max(icon, luminance(x, y))
+      }
+      const field = luminance(${box.left} + (${box.right} - ${box.left}) * 0.65, (${box.top} + ${box.bottom}) / 2)
+      return { icon, field }
+    })()`)
+
+    check(
+      `in the dark palette the ${mode.subject}'s From field draws its calendar icon light`,
+      opened.open && inView && box.right <= box.width && read.field < 0.1 && read.icon > 0.35,
+      !opened.open
+        ? "the panel would not open, so there is no field to look at"
+        : !inView || box.right > box.width
+        ? "the From field could not be brought into view"
+        : read.field >= 0.1
+        ? `the field reads ${read.field.toFixed(3)}, not dark, so the palette never switched`
+        : read.icon <= 0.35
+        ? `the brightest pixel in the icon strip is ${read.icon.toFixed(3)} on a field of ` +
+          `${read.field.toFixed(3)} (white is 1): the icon is drawn dark on the dark field`
+        : `brightest pixel in the icon strip ${read.icon.toFixed(3)}, field ${
+          read.field.toFixed(3)
+        } (white is 1)`,
+    )
+  } finally {
+    await devtools.evaluate<null>(`(() => {
+      const { trigger, panel } = globalThis.${mode.parked} ?? {}
+      if (panel && !panel.hidden) trigger?.click()
+      document.documentElement.classList.toggle("dark", ${wasDark})
+      return null
+    })()`)
+    await poll(() => devtools.evaluate<boolean>(`${pickerFocus(mode)}.open === false`), 3_000)
+  }
 }
 
 /** One read of the pager being driven: which page it is on, and what its two end controls are. */

@@ -399,18 +399,18 @@ preset, Apply, Cancel, pressing the trigger a second time, and Escape. In each o
 render hides the element their focus is on, so something has to move it, and the trigger is where
 they came from.
 
-A close driven from **outside** it does not, and there are two. A click outside leaves focus on
-whatever was clicked, because the person has just put it there deliberately. And Escape is a return
-only when focus was still inside the component as the key was pressed: a Tab out leaves the panel
-open behind you, so Escape can arrive from somewhere the person has since walked to, and pulling
-them back there would be one more way to lose their place rather than a way to keep it.
+A close driven from **outside** it does not, and there are three. A click outside leaves focus on
+whatever was clicked, because the person has just put it there deliberately. Focus leaving the
+component — a Tab out of the panel — closes it and leaves focus where the Tab went, the way
+`Dropdown` closes; an unapplied custom range is discarded, as Cancel discards it. Focus moving
+between the panel's own controls, into a date field and its native picker, or back to the trigger
+closes nothing. And Escape is a return only when focus was still inside the component as the key
+was pressed: focus can fall to the page itself with the panel still open — a scripted blur, a
+focused control that vanished — and pulling it onto the trigger from there would move the person
+somewhere they did not go.
 
-Focus merely _leaving_ the panel is not a close at all here. A Tab out leaves it open, which is the
-one dismissal path this component does not have — and is also what makes the Escape-from-outside
-case above reachable.
-
-All seven of those close paths are driven in a real browser in `pages/checks/ui.ts` — the five that
-return focus and the two that must not — and so is the move that opens the panel.
+All eight of those close paths are driven in a real browser in `pages/checks/ui.ts` — the five that
+return focus and the three that must not — and so is the move that opens the panel.
 
 `Custom…` is marked pressed while the custom fields are the live choice — the button was activated,
 either field was typed into, or the caller's `selectedPreset` is `"custom"` — and stops being
