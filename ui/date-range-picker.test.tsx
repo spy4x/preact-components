@@ -378,11 +378,12 @@ describe("DateRangePicker", () => {
   })
 
   it(
-    "renders a chosen range identically to before withTime existed, byte for byte",
+    "pins the day-only markup for a chosen range byte for byte",
     () => {
       // Captured from this exact prop set before `withTime` was added (`PR #142`'s own evidence),
       // then generated ids normalised to "ID" — `useId()` is not stable across separate `render`
       // calls in one process, and every other test here reads ids back out rather than pinning them.
+      // The one change since: the date fields' `dark:[color-scheme:dark]` (#379).
       const html = renderPicker({
         range: { from: "2026-08-01", to: "2026-08-23" },
         selectedPreset: "last-7-days",
@@ -396,7 +397,7 @@ describe("DateRangePicker", () => {
   )
 
   it(
-    "renders the empty, all-defaults state identically to before withTime existed, byte for byte",
+    "pins the empty, all-defaults day-only markup byte for byte",
     () => {
       const html = renderPicker().replace(/P\d+-\d+/g, "ID")
 
