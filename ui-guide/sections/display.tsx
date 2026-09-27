@@ -21,9 +21,13 @@ import {
   CopyBlock,
   DataTable,
   describedImages,
+  Field,
   Grid,
+  type HotkeyBinding,
   ImageGallery,
   type ImageGalleryImage,
+  Input,
+  Kbd,
   Lightbox,
   type LightboxImage,
   MoneyDisplay,
@@ -32,16 +36,19 @@ import {
   Pagination,
   Progress,
   type ProgressTone,
+  ShortcutsDialog,
   Stack,
   type TabItem,
   Table,
   Tabs,
   Tooltip,
   type TooltipPlacement,
+  useHotkeys,
 } from "@spy4x/preact-ui"
 import { serializeSort, type SortRule } from "@spy4x/platform/universal/sort"
 import { useSignal } from "@preact/signals"
 import { type ComponentChildren, Fragment } from "preact"
+import { useId } from "preact/hooks"
 import { IconTrashBin } from "@spy4x/preact-icons"
 import { entries } from "../record.ts"
 import { DemoNote } from "./demo-note.tsx"
@@ -724,6 +731,97 @@ function ZoomableImagesDemo() {
   )
 }
 
+/** Combinations `Kbd` draws, each on both platforms. */
+const kbdCombos = ["mod+k", "mod+shift+p", "alt+up", "?", "esc"]
+
+/**
+ * Each combination twice, with `apple={false}` and `apple`, so the card shows both faces whatever
+ * the reader's platform; the last row leaves `apple` out and shows the reader's own.
+ */
+function KbdDemo() {
+  return (
+    <Stack>
+      <div class="grid grid-cols-3 items-center gap-2 text-sm">
+        <span class={demoNote}>keys</span>
+        <span class={demoNote}>{"apple={false}"}</span>
+        <span class={demoNote}>apple</span>
+        {kbdCombos.map((keys) => (
+          <Fragment key={keys}>
+            <code class="text-xs">{keys}</code>
+            <span>
+              <Kbd keys={keys} apple={false} />
+            </span>
+            <span>
+              <Kbd keys={keys} apple />
+            </span>
+          </Fragment>
+        ))}
+      </div>
+      <Cluster>
+        <DemoNote>On this device:</DemoNote>
+        <Kbd keys="mod+k" />
+        <DemoNote>Written by hand:</DemoNote>
+        <Kbd>Tab</Kbd>
+      </Cluster>
+    </Stack>
+  )
+}
+
+/**
+ * `useHotkeys` and `ShortcutsDialog` together. `?` anywhere on this page opens the dialog, and the
+ * same key typed in the field below stays in the field. `mod+I` and a plain `I` each count their own
+ * presses, which is what `pages/checks/ui.ts` reads to prove the modifier is told apart.
+ */
+function ShortcutsDialogDemo() {
+  const open = useSignal(false)
+  const plain = useSignal(0)
+  const combo = useSignal(0)
+  const fieldId = `shortcuts-field-${useId()}`
+  const bindings: HotkeyBinding[] = [
+    {
+      keys: "?",
+      description: "Show keyboard shortcuts",
+      handler: () => open.value = true,
+    },
+    {
+      keys: "mod+i",
+      description: "Count a press with the modifier",
+      group: "This demo",
+      handler: () => combo.value++,
+    },
+    {
+      keys: "i",
+      description: "Count a plain press",
+      group: "This demo",
+      handler: () => plain.value++,
+    },
+  ]
+  useHotkeys(bindings)
+  return (
+    <Stack>
+      <Cluster align="end">
+        <Button variant="outline" data-e2e="shortcuts-open" onClick={() => open.value = true}>
+          Show shortcuts
+        </Button>
+        <Field id={fieldId} label="A text field">
+          <Input id={fieldId} data-e2e="shortcuts-field" placeholder="Type ? here" />
+        </Field>
+      </Cluster>
+      <DemoNote e2e="shortcuts-counts">
+        Press <Kbd keys="?" /> to open the list. Plain I pressed{" "}
+        <span data-e2e="shortcuts-plain">{plain.value}</span> times, <Kbd keys="mod+i" /> pressed
+        {" "}
+        <span data-e2e="shortcuts-combo">{combo.value}</span> times.
+      </DemoNote>
+      <ShortcutsDialog
+        open={open.value}
+        onClose={() => open.value = false}
+        shortcuts={bindings}
+      />
+    </Stack>
+  )
+}
+
 export const displayDemos = {
   PageTitle: {
     summary: "The page's main heading, in the library's `h1` style and with no margin of its own.",
@@ -1124,5 +1222,59 @@ export const displayDemos = {
   onOpen={(image) => analytics.track("lightbox", image.src)}
 />`,
     render: () => <ZoomableImagesDemo />,
+  },
+  Kbd: {
+    summary:
+      "Shows a key or a key combination, with ⌘ on Apple platforms and Ctrl elsewhere, and names each glyph for screen readers.",
+    wide: false,
+    props: [
+      {
+        name: "keys",
+        type: "string",
+        description: "A combination such as `mod+k`, written the way `useHotkeys` takes it.",
+      },
+      {
+        name: "apple",
+        type: "boolean",
+        description: "Draw Apple's glyphs. Left out, an effect reads the platform after hydration.",
+      },
+      {
+        name: "labels",
+        type: "Partial<KbdLabels>",
+        description: "The words for each key, such as `Ctrl` and `Command`.",
+      },
+    ],
+    snippet: `<Kbd keys="mod+k" />
+<Kbd keys="mod+shift+p" apple />
+<Kbd>Tab</Kbd>`,
+    render: () => <KbdDemo />,
+  },
+  ShortcutsDialog: {
+    summary:
+      "A dialog that lists keyboard shortcuts by group, which `useHotkeys` opens when you press `?` on this page.",
+    wide: false,
+    props: [
+      { name: "open", type: "boolean", description: "Whether it is open, with `onClose`." },
+      {
+        name: "shortcuts",
+        type: "Shortcut[]",
+        description: "`{ keys, description, group? }` rows; the same array `useHotkeys` takes.",
+      },
+      {
+        name: "title",
+        type: "string",
+        default: `"Keyboard shortcuts"`,
+        description: "The dialog's title.",
+      },
+    ],
+    snippet: `const open = useSignal(false)
+const bindings = [
+  { keys: "?", description: "Show keyboard shortcuts", handler: () => open.value = true },
+  { keys: "mod+k", description: "Search", group: "Navigation", handler: openSearch },
+]
+useHotkeys(bindings)
+
+<ShortcutsDialog open={open.value} onClose={() => open.value = false} shortcuts={bindings} />`,
+    render: () => <ShortcutsDialogDemo />,
   },
 } satisfies DemoFragment
