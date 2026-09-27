@@ -14,6 +14,13 @@ export interface ButtonProps extends Omit<JSX.ButtonHTMLAttributes<HTMLButtonEle
   /** Plain utilities. Narrowed from Preact's `Signalish<string>`: this package never renders a signal in `class`. */
   class?: string
   children?: ComponentChildren
+  /**
+   * Work the button started is still running. The button shows a spinner, sets `aria-busy` and
+   * `aria-disabled`, and ignores presses, but stays focusable, so focus is not lost mid-action.
+   */
+  busy?: boolean
+  /** Shown instead of `children` while `busy`, such as "Saving…". Left out, the children stay. */
+  busyLabel?: ComponentChildren
 }
 
 const base =
@@ -69,6 +76,21 @@ export function buttonClasses(
   )
 }
 
+/** The spinner a busy {@link Button} shows; the button's own text or `aria-label` names it. */
+function BusySpinner(): JSX.Element {
+  return (
+    <svg class="size-4 shrink-0 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" />
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z" />
+    </svg>
+  )
+}
+
+/** Cancels a press on a busy button: its own `onClick` never runs, and a form is not submitted. */
+function ignorePress(event: MouseEvent): void {
+  event.preventDefault()
+}
+
 /**
  * Native button with the library's variant and size vocabulary.
  *
@@ -82,16 +104,47 @@ export function buttonClasses(
  * `<Button ref={box} />` type-check and never reach the native `<button>`. `ref`'s type comes from
  * `ButtonProps` (via `JSX.ButtonHTMLAttributes<HTMLButtonElement>`), so it is already
  * `Ref<HTMLButtonElement>` — no cast needed at the call site.
+ *
+ * `busy` does not set `disabled`: a disabled button drops focus to `<body>`, so a keyboard user who
+ * pressed Enter would lose their place. It sets `aria-disabled` instead and cancels the press, which
+ * also stops a submit button from sending its form a second time. An icon button has no room for a
+ * label, so the spinner takes the icon's place and `busyLabel` is not shown.
  */
 export const Button: (
   props: ButtonProps & { ref?: Ref<HTMLButtonElement> },
 ) => VNode | null = forwardRef<HTMLButtonElement, ButtonProps>("Button", function Button(
-  { variant = "primary", size = "md", class: className, type = "button", children, ...rest },
+  {
+    variant = "primary",
+    size = "md",
+    class: className,
+    type = "button",
+    busy = false,
+    busyLabel,
+    children,
+    ...rest
+  },
   ref,
 ) {
+  if (!busy) {
+    return (
+      <button {...rest} ref={ref} type={type} class={buttonClasses(variant, size, className)}>
+        {children}
+      </button>
+    )
+  }
+
   return (
-    <button {...rest} ref={ref} type={type} class={buttonClasses(variant, size, className)}>
-      {children}
+    <button
+      {...rest}
+      ref={ref}
+      type={type}
+      class={buttonClasses(variant, size, className)}
+      aria-busy="true"
+      aria-disabled="true"
+      onClick={ignorePress}
+    >
+      <BusySpinner />
+      {variant === "icon" ? null : busyLabel ?? children}
     </button>
   )
 })

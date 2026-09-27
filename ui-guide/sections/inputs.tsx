@@ -198,7 +198,7 @@ function DropdownDemo() {
         </Dropdown>
       </DropdownRow>
 
-      <DropdownRow title="Opens up">
+      <DropdownRow title="Always opens up">
         <Dropdown
           trigger={<IconEllipsisVertical class="size-5" />}
           triggerLabel="Last row actions"
@@ -1023,16 +1023,16 @@ export const inputDemos = {
       { name: "menuLabel", type: "string", description: "The menu's accessible name." },
       {
         name: "vertical / horizontal",
-        type: `"up" | "down" / "left" | "right"`,
-        default: `"down" / "right"`,
-        description: "Which way the menu opens and which edge it lines up with.",
+        type: `"auto" | "up" | "down" / "left" | "right"`,
+        default: `"auto" / "right"`,
+        description:
+          "Which way the menu opens and which edge it lines up with. `auto` opens up when there is no room below.",
       },
     ],
     snippet: `<Dropdown
   trigger={<IconEllipsisVertical />}
   triggerLabel="Row actions"
   menuLabel="Row actions"
-  vertical="up"
 >
   <DropdownItem href={editHref}>Edit</DropdownItem>
   <DropdownItem onClick={archive}>Archive</DropdownItem>

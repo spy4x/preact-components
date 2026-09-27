@@ -54,6 +54,48 @@ describe("Button", () => {
   })
 })
 
+describe("Button busy", () => {
+  it("marks a busy button busy and unavailable without disabling it", () => {
+    const html = render(<Button busy>Confirm</Button>)
+
+    expect(html).toContain('aria-busy="true"')
+    expect(html).toContain('aria-disabled="true"')
+    expect(html).not.toMatch(/\sdisabled[\s=>]/)
+    expect(html).toContain("animate-spin")
+    expect(html).toContain("Confirm")
+  })
+
+  it("swaps in the busy label while busy", () => {
+    const html = render(<Button busy busyLabel="Confirming…">Confirm</Button>)
+
+    expect(html).toContain("Confirming…")
+    expect(html).not.toContain(">Confirm<")
+  })
+
+  it("renders neither busy mark nor busy label while idle", () => {
+    const html = render(<Button busyLabel="Confirming…">Confirm</Button>)
+
+    expect(html).not.toContain("aria-busy")
+    expect(html).not.toContain("aria-disabled")
+    expect(html).not.toContain("animate-spin")
+    expect(html).not.toContain("Confirming…")
+    expect(html).toContain("Confirm")
+  })
+
+  it("puts the spinner in place of an icon button's icon", () => {
+    const html = render(
+      <Button variant="icon" busy busyLabel="Deleting…" aria-label="Delete">
+        <span class="icon-glyph" />
+      </Button>,
+    )
+
+    expect(html).toContain("animate-spin")
+    expect(html).toContain('aria-label="Delete"')
+    expect(html).not.toContain("icon-glyph")
+    expect(html).not.toContain("Deleting…")
+  })
+})
+
 describe("buttonClasses", () => {
   it("merges a caller override over the variant utility", () => {
     const classes = buttonClasses("outline", "md", "rounded-full px-8")

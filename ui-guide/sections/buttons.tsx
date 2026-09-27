@@ -91,6 +91,40 @@ function ButtonClickDemo() {
 }
 
 /**
+ * A press on "Confirm" makes it busy until "Finish" ends the work, standing in for a request.
+ * The count proves a busy button ignores presses: it moves once however often Confirm is pressed.
+ * `pages/checks/ui.ts` drives both buttons with real key presses.
+ */
+function BusyButtonDemo() {
+  const busy = useSignal(false)
+  const confirmations = useSignal(0)
+  return (
+    <Cluster>
+      <Button
+        busy={busy.value}
+        busyLabel="Confirming…"
+        data-e2e="busy-confirm"
+        onClick={() => {
+          busy.value = true
+          confirmations.value += 1
+        }}
+      >
+        Confirm
+      </Button>
+      <Button variant="outline" data-e2e="busy-finish" onClick={() => busy.value = false}>
+        Finish
+      </Button>
+      <Button variant="icon" busy aria-label="Deleting">
+        <IconPlus class="size-4" />
+      </Button>
+      <DemoNote>
+        confirmed {confirmations.value} {confirmations.value === 1 ? "time" : "times"}
+      </DemoNote>
+    </Cluster>
+  )
+}
+
+/**
  * The clipboard is a port: the first two buttons copy through the browser API, the third through
  * the injected callback, so the host app can route copies through its own clipboard service.
  */
@@ -141,17 +175,31 @@ export const buttonDemos = {
         description: "A button submits a form only when you say so.",
       },
       {
+        name: "busy",
+        type: "boolean",
+        default: "false",
+        description:
+          "Shows a spinner, sets `aria-busy` and ignores presses, but keeps focus on the button.",
+      },
+      {
+        name: "busyLabel",
+        type: "ComponentChildren",
+        description: "Shown instead of the children while busy. An icon button shows no label.",
+      },
+      {
         name: "ref",
         type: "Ref<HTMLButtonElement>",
         description: "Reaches the native `<button>`, so it can be focused.",
       },
     ],
     snippet: `<Button variant="primary" size="md" onClick={save}>Save</Button>
-<Button variant="danger" disabled>Delete</Button>`,
+<Button variant="danger" disabled>Delete</Button>
+<Button type="submit" busy={saving.value} busyLabel="Confirming…">Confirm</Button>`,
     render: () => (
       <Stack gap="lg">
         <ButtonMatrix />
         <ButtonClickDemo />
+        <BusyButtonDemo />
       </Stack>
     ),
   },
