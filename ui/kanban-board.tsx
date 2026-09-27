@@ -65,8 +65,10 @@ export interface KanbanBoardLabels {
   board: string
   /** How a card describes itself instead of "button". Defaults to `"movable card"`. */
   roleDescription: string
-  /** The keyboard instructions every card is described by. */
+  /** The keyboard instructions every card is described by when the board has no `onOpen`. */
   instructions: string
+  /** The keyboard instructions every card is described by when `onOpen` is given. */
+  instructionsWithOpen: string
   /** Announced when a card is picked up. */
   pickedUp: (place: KanbanPlace) => string
   /** Announced after each arrow key moves a picked-up card. */
@@ -83,6 +85,8 @@ export const defaultKanbanLabels: KanbanBoardLabels = {
   roleDescription: "movable card",
   instructions:
     "Press Space or Enter to pick the card up. Use the arrow keys to move it, Space or Enter to drop it, and Escape to put it back.",
+  instructionsWithOpen:
+    "Press Enter to open the card, or Space to pick it up. Use the arrow keys to move it, Space to drop it, and Escape to put it back.",
   pickedUp: (at) => `Picked up ${at.item}. ${at.column}, position ${at.position} of ${at.total}.`,
   moved: (at) => `${at.item}: ${at.column}, position ${at.position} of ${at.total}.`,
   dropped: (at) => `Dropped ${at.item} in ${at.column}, position ${at.position} of ${at.total}.`,
@@ -94,7 +98,10 @@ export interface KanbanBoardProps<Item extends KanbanItem> {
   columns: readonly KanbanColumn[]
   /** Every item on the board. Within a column they are shown in this array's order. */
   items: readonly Item[]
-  /** A card's body. The board draws the card around it; keep it free of buttons and links. */
+  /**
+   * A card's body. The board draws the card around it, and the whole card is the control that
+   * drags, picks up and opens, so keep the body free of buttons and links.
+   */
   renderItem: (item: Item) => ComponentChildren
   /**
    * A card's name for the announcements, such as its title. Required: only the caller knows what
@@ -103,6 +110,12 @@ export interface KanbanBoardProps<Item extends KanbanItem> {
   itemLabel: (item: Item) => string
   /** Called once per finished move. The board shows the item where it was until `items` changes. */
   onMove: (move: KanbanMove) => void
+  /**
+   * Opens a card, for example in an editor. When given, a click that is not a drag opens the card,
+   * and Enter opens it while Space still picks it up. Left out, a card cannot be opened, and Enter
+   * picks it up like Space.
+   */
+  onOpen?: (item: Item) => void
   /** Overrides for any of {@link defaultKanbanLabels}. */
   labels?: Partial<KanbanBoardLabels>
   /** The level of each column's heading. Defaults to 3. */
@@ -250,6 +263,7 @@ export function KanbanBoard<Item extends KanbanItem>(
     renderItem,
     itemLabel,
     onMove,
+    onOpen,
     labels,
     headingLevel = 3,
     class: className,
@@ -374,6 +388,12 @@ export function KanbanBoard<Item extends KanbanItem>(
     const pick = event.key === " " || event.key === "Enter"
     if (lifted === null || lifted.itemId !== itemId) {
       if (!pick || event.repeat) return
+      const item = byId.get(itemId)
+      if (event.key === "Enter" && onOpen !== undefined && item !== undefined) {
+        event.preventDefault()
+        onOpen(item)
+        return
+      }
       event.preventDefault()
       const slot = slotOf(lists, itemId)
       if (slot === undefined) return
@@ -498,6 +518,10 @@ export function KanbanBoard<Item extends KanbanItem>(
                     dragged?.itemId === item.id && cardDraggedClass,
                   )}
                   onKeyDown={(event) => onCardKeyDown(event, item.id)}
+                  onClick={() => {
+                    // A drag ends without a click; a click on the card being held does not open it.
+                    if (onOpen !== undefined && lifted?.itemId !== item.id) onOpen(item)
+                  }}
                   onBlur={() => onCardBlur(item.id)}
                   onDragStart={(event) => onDragStart(event, item.id)}
                   onDragEnd={() => setDragged(null)}
@@ -530,7 +554,9 @@ export function KanbanBoard<Item extends KanbanItem>(
           )
         })}
       </ul>
-      <span id={instructionsId} class="sr-only">{text.instructions}</span>
+      <span id={instructionsId} class="sr-only">
+        {onOpen === undefined ? text.instructions : text.instructionsWithOpen}
+      </span>
       <div aria-live="assertive" aria-atomic="true" data-kanban-live="" class="sr-only">
         {announcement}
       </div>

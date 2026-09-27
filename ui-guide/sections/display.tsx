@@ -47,6 +47,7 @@ import { entries } from "../record.ts"
 import { DemoNote } from "./demo-note.tsx"
 import { ZoomableImages } from "@spy4x/preact-ui/zoomable-images"
 import { KanbanBoard, type KanbanItem, moveKanbanItem } from "@spy4x/preact-ui/kanban-board"
+import { Checkbox } from "@spy4x/preact-ui/checkbox"
 import type { DemoFragment } from "../registry.ts"
 
 /**
@@ -1143,6 +1144,12 @@ export const displayDemos = {
           "Called with `itemId`, `toColumn` and `toIndex` once per drop; `moveKanbanItem` applies it.",
       },
       {
+        name: "onOpen",
+        type: "(item) => void",
+        description:
+          "Optional. A click that is not a drag, or Enter, opens the card; Space picks it up.",
+      },
+      {
         name: "itemLabel",
         type: "(item) => string",
         description: "A card's name in the announcements.",
@@ -1163,6 +1170,7 @@ export const displayDemos = {
   renderItem={(task) => task.title}
   itemLabel={(task) => task.title}
   onMove={(move) => tasks.value = moveKanbanItem(tasks.value, move)}
+  onOpen={(task) => openEditor(task)}
 />`,
     render: () => <KanbanBoardDemo />,
   },
@@ -1192,6 +1200,8 @@ const kanbanTasks: readonly DemoTask[] = [
 function KanbanBoardDemo() {
   const tasks = useSignal<readonly DemoTask[]>(kanbanTasks)
   const last = useSignal("none yet")
+  const opened = useSignal("none yet")
+  const refuse = useSignal(false)
 
   return (
     <Stack gap="sm">
@@ -1202,21 +1212,36 @@ function KanbanBoardDemo() {
         itemLabel={(task) => task.title}
         onMove={(move) => {
           last.value = `${move.itemId} to ${move.toColumn} at ${move.toIndex}`
-          tasks.value = moveKanbanItem(tasks.value, move)
+          if (!refuse.value) tasks.value = moveKanbanItem(tasks.value, move)
         }}
+        onOpen={(task) => opened.value = task.title}
       />
       <Cluster justify="between">
-        <DemoNote e2e="kanban-last-move">Last move through onMove: {last.value}</DemoNote>
-        <Button
-          variant="outline"
-          data-e2e="kanban-reset"
-          onClick={() => {
-            tasks.value = kanbanTasks
-            last.value = "none yet"
-          }}
-        >
-          Reset
-        </Button>
+        <Stack gap="xs">
+          <DemoNote e2e="kanban-last-move">Last move through onMove: {last.value}</DemoNote>
+          <DemoNote e2e="kanban-opened">Last card opened through onOpen: {opened.value}</DemoNote>
+        </Stack>
+        <Cluster>
+          <Checkbox
+            data-e2e="kanban-refuse"
+            checked={refuse.value}
+            onChange={(event) => refuse.value = event.currentTarget.checked}
+          >
+            Refuse moves
+          </Checkbox>
+          <Button
+            variant="outline"
+            data-e2e="kanban-reset"
+            onClick={() => {
+              tasks.value = kanbanTasks
+              last.value = "none yet"
+              opened.value = "none yet"
+              refuse.value = false
+            }}
+          >
+            Reset
+          </Button>
+        </Cluster>
       </Cluster>
     </Stack>
   )

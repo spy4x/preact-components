@@ -114,6 +114,15 @@ describe("KanbanBoard", () => {
     expect(html).toContain('class="sr-only">Leertaste</span>')
   })
 
+  it("describes cards with the open instructions only when onOpen is given", () => {
+    const opening = board({ onOpen: () => {} })
+
+    expect(opening).toContain(
+      'class="sr-only">Press Enter to open the card, or Space to pick it up.',
+    )
+    expect(board()).not.toContain("Press Enter to open the card")
+  })
+
   it("renders column headings at the level asked for", () => {
     expect(board()).toContain("<h3 ")
     expect(board({ headingLevel: 2 })).toContain("<h2 ")

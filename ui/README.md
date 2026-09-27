@@ -71,6 +71,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `InputButton`     | `input-button`      | `icon`, `iconLabel`, `onClick?`, native input attrs                                                                                                                   |
 | `InlineEdit`      | `inline-edit`       | `value`, `onSave` (may return a promise), `editLabel?`, `inputLabel?`, `savingLabel?`, `errorMessage?`, `disabled?`                                                   |
 | `KanbanBoard`     | `kanban-board`      | `columns`, `items`, `renderItem`, `itemLabel`, `onMove` (port), `labels?`, `headingLevel?` — controlled; mouse drag and a keyboard path                               |
+| `KanbanBoard`     | `kanban-board`      | `columns`, `items`, `renderItem`, `itemLabel`, `onMove`, `onOpen?`, `labels?`, `headingLevel?` — controlled; mouse drag and keyboard moves                            |
 | `Lightbox`        | `lightbox`          | `images`, `index`, `open`, `onClose`, `onIndexChange`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`                                                 |
 | `LoadingSkeleton` | `loading-skeleton`  | `rows`                                                                                                                                                                |
 | `LoadingSpinner`  | `loading-spinner`   | `label`, `size`                                                                                                                                                       |
@@ -964,6 +965,7 @@ top and the column's remaining length is the bottom. Within a column, cards show
   renderItem={(task) => task.title}
   itemLabel={(task) => task.title}
   onMove={(move) => tasks.value = moveKanbanItem(tasks.value, move)}
+  onOpen={(task) => openEditor(task)}
 />
 ```
 
@@ -981,8 +983,14 @@ top and the column's remaining length is the bottom. Within a column, cards show
   required, because only the caller knows what a card is called.
 - The columns are a list named by `labels.board`, each column a list named by its heading; the
   board scrolls sideways when the columns do not fit, rather than squeezing them.
-- A card's body comes from `renderItem`, inside a focusable control, so keep buttons and links out
-  of it.
+- **Opening a card**: pass `onOpen(item)`. A click that is not a drag opens the card, and Enter
+  opens it while Space still picks it up; the instructions a card is described by say so
+  (`labels.instructionsWithOpen`). Without `onOpen`, Enter picks a card up like Space.
+- **A move the caller refuses**: the board shows the card where `items` puts it. Focus stays on
+  the dropped card until it arrives in its new column or the reader moves focus somewhere else;
+  the board never pulls focus back after that.
+- A card's body comes from `renderItem`, inside the card's own focusable control, so keep buttons
+  and links out of it.
 
 Helpers:
 
