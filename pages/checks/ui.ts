@@ -10311,6 +10311,33 @@ async function pressChord(devtools: Devtools, chord: Chord): Promise<void> {
 /** `?` as a US keyboard types it: Shift and the slash key. */
 const QUESTION_MARK: Chord = { key: "?", code: "Slash", keyCode: 191, text: "?", modifiers: 8 }
 
+/** Control+Alt+? on a US keyboard, which has no AltGr: Control, Alt, Shift and the slash key. */
+const CONTROL_ALT_QUESTION_MARK: Chord = { key: "?", code: "Slash", keyCode: 191, modifiers: 11 }
+
+/** The modifiers the page saw on one key press, as {@link RECORD_NEXT_PRESS} stores them. */
+interface SeenModifiers {
+  ctrl: boolean
+  alt: boolean
+  /** `getModifierState("AltGraph")`. */
+  altGraph: boolean
+}
+
+/** Stores the modifiers of the page's next key press in `window.__shortcutsSeen`, once. */
+const RECORD_NEXT_PRESS = `document.addEventListener("keydown", (event) => {
+  window.__shortcutsSeen = {
+    ctrl: event.ctrlKey,
+    alt: event.altKey,
+    altGraph: event.getModifierState("AltGraph"),
+  }
+}, { capture: true, once: true })`
+
+/** Reads and clears what {@link RECORD_NEXT_PRESS} stored: `null` when no press came. */
+const TAKE_SEEN_PRESS = `(() => {
+  const seen = window.__shortcutsSeen ?? null
+  delete window.__shortcutsSeen
+  return seen
+})()`
+
 /** What one read of the `ShortcutsDialog` card sees. */
 interface ShortcutsState {
   /** The dialog is open and in the top layer. */
@@ -10348,12 +10375,15 @@ const SHORTCUTS_STATE = `(() => {
  * The hook listens on `document`, so what it does depends on where a press lands and which
  * modifiers it carries, and a string render sees neither. A plain `i` and `mod+i` are each counted
  * by their own binding, and each press has to move its own count and leave the other alone. `?`
- * typed in the card's text field has to stay in the field; `?` pressed with focus on the card's
- * button has to open the dialog, and Escape has to close it and put focus back on that button.
- * While the dialog is open, a plain `i` has to run nothing, because the hook skips presses inside a
- * dialog. After Escape, `?` has to open the dialog again, which fails when the dialog's close never
- * reaches the caller's `open` state. Last, the card's checkbox turns the hook's `enabled` option
- * off, and a plain `i` has to stop counting; it is turned back on before the function returns.
+ * typed in the card's text field has to stay in the field. Control+Alt+? on the card's button has
+ * to open nothing: the browser reports AltGr released, so the hook has to pass the event's
+ * `getModifierState` to the matcher, which then reads the press as a Control+Alt chord rather
+ * than as AltGr typing `?`. `?` pressed with focus on the card's button has to open the dialog,
+ * and Escape has to close it and put focus back on that button. While the dialog is open, a plain
+ * `i` has to run nothing, because the hook skips presses inside a dialog. After Escape, `?` has to
+ * open the dialog again, which fails when the dialog's close never reaches the caller's `open`
+ * state. Last, the card's checkbox turns the hook's `enabled` option off, and a plain `i` has to
+ * stop counting; it is turned back on before the function returns.
  *
  * `mod` is Control in the Linux browser `verify` drives; the check still reads the page's platform
  * and sends Command on an Apple one, so it tests the same combination the demo binds.
@@ -10402,6 +10432,20 @@ async function shortcutsChecks(devtools: Devtools): Promise<void> {
     "? typed in a text field stays in the field and does not open the ShortcutsDialog",
     typed.field === "?" && !typed.modal,
     `field "${typed.field}", dialog ${typed.modal ? "opened" : "stayed closed"}`,
+  )
+
+  await devtools.evaluate<null>(`(${button}.focus(), ${RECORD_NEXT_PRESS}, null)`)
+  const beforeChord = await read()
+  await pressChord(devtools, CONTROL_ALT_QUESTION_MARK)
+  await settle()
+  const afterChord = await read()
+  const seen = await devtools.evaluate<SeenModifiers | null>(TAKE_SEEN_PRESS)
+  check(
+    "useHotkeys reads Control+Alt+? with AltGr released as a chord and opens no ShortcutsDialog",
+    seen !== null && seen.ctrl && seen.alt && !seen.altGraph && !beforeChord.modal &&
+      !afterChord.modal,
+    `page saw ${seen === null ? "no press" : JSON.stringify(seen)}, dialog ` +
+      `${beforeChord.modal ? "open" : "closed"} → ${afterChord.modal ? "open" : "closed"}`,
   )
 
   await devtools.evaluate<null>(`(${button}.focus(), null)`)
