@@ -70,6 +70,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Input`           | `input`             | native input attrs, `class`; forwards `ref`                                                                                                                           |
 | `InputButton`     | `input-button`      | `icon`, `iconLabel`, `onClick?`, native input attrs                                                                                                                   |
 | `InlineEdit`      | `inline-edit`       | `value`, `onSave` (may return a promise), `editLabel?`, `inputLabel?`, `savingLabel?`, `errorMessage?`, `disabled?`                                                   |
+| `KanbanBoard`     | `kanban-board`      | `columns`, `items`, `renderItem`, `itemLabel`, `onMove`, `onOpen?`, `labels?`, `headingLevel?` — controlled; mouse drag and keyboard moves                            |
 | `Lightbox`        | `lightbox`          | `images`, `index`, `open`, `onClose`, `onIndexChange`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`                                                 |
 | `LoadingSkeleton` | `loading-skeleton`  | `rows`                                                                                                                                                                |
 | `LoadingSpinner`  | `loading-spinner`   | `label`, `size`                                                                                                                                                       |
@@ -948,6 +949,56 @@ removes `pressed` and returns the selection in the order of `options`.
 
 `badgeClasses(color, type, className)` is `Badge`'s class list without the element, which is how
 the chips share `Badge`'s palette.
+
+## KanbanBoard
+
+A board of columns whose cards move between and within the columns. It is controlled: `items` in,
+one `onMove({ itemId, fromColumn, fromIndex, toColumn, toIndex })` out, and the board never
+reorders the caller's data. `toIndex` counts the target column without the moved card, so `0` is the
+top and the column's remaining length is the bottom. Within a column, cards show in the order of
+`items`.
+
+```tsx
+<KanbanBoard
+  columns={[{ id: "todo", title: "To do" }, { id: "done", title: "Done" }]}
+  items={tasks.value}
+  renderItem={(task) => task.title}
+  itemLabel={(task) => task.title}
+  onMove={(move) => tasks.value = moveKanbanItem(tasks.value, move)}
+  onOpen={(task) => openEditor(task)}
+/>
+```
+
+- **Mouse**: the browser's own drag and drop. A line marks where the card will land, and an empty
+  column takes a drop. Touch is not proven: whether a phone starts a native drag depends on its
+  browser, so on touch screens treat the keyboard path and your own "move to" control as the way
+  to move a card.
+- **Keyboard**: every card is a tab stop. Space or Enter picks it up; the arrow keys move it (Left
+  and Right between columns, Up and Down within one); Space or Enter drops it, and Escape puts it
+  back. Moving focus away while holding a card, with Tab or a click elsewhere, also
+  puts it back. Focus stays on the card after the drop, once
+  the caller's `items` show it in its new column.
+- **Announcements**: a live region says when a card is picked up, each move, the drop and a cancel.
+  `labels` overrides any of them and the visible strings; `itemLabel` names a card in them and is
+  required, because only the caller knows what a card is called.
+- The columns are a list named by `labels.board`, each column a list named by its heading; the
+  board scrolls sideways when the columns do not fit, rather than squeezing them.
+- **Opening a card**: pass `onOpen(item)`. A click that is not a drag opens the card, and Enter
+  opens it while Space still picks it up; the instructions a card is described by say so
+  (`labels.instructionsWithOpen`). Without `onOpen`, Enter picks a card up like Space.
+- **A move the caller refuses**: the board shows the card where `items` puts it. Focus stays on
+  the dropped card until it arrives in its new column or the reader moves focus somewhere else;
+  the board never pulls focus back after that.
+- A card's body comes from `renderItem`, inside the card's own focusable control, so keep buttons
+  and links out of it.
+
+Helpers:
+
+- `moveKanbanItem(items, move)` applies a reported move to an array of items and returns a new
+  array: the item takes `toColumn` and the `toIndex`-th place in it, and the rest keep their order.
+- `nextKanbanSlot(key, from, lengths)` is the arrow-key map on its own: where a picked-up card goes
+  for a key, given each column's length without it.
+- `defaultKanbanLabels` holds the English strings `labels` overrides.
 
 ## Tests
 
