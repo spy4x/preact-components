@@ -929,6 +929,11 @@ value's button when the field closes while it has focus, and stays where the use
 blur saved. While a promise returned by `onSave` runs, the field is read-only and `aria-busy`; a
 rejected promise keeps the field open with the typed text and the `errorMessage` under it.
 
+Removing the component while its field is open saves nothing, even in Chromium, which fires `blur`
+on a focused field that leaves the page: the typed text is dropped. Turning `disabled` on while the
+field is open cancels the edit the way Escape does, unless a save is already running. Enter and
+Escape pressed while an input method is still composing a word do not save or cancel.
+
 `inlineEditCommit(draft, value)` is the save rule on its own: the trimmed draft, or `null` when it
 is empty or matches the value, in which case the field closes without calling `onSave`.
 

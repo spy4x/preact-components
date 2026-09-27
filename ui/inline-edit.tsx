@@ -22,6 +22,10 @@ export interface InlineEditProps {
   savingLabel?: string
   /** Words a rejected save. Defaults to `"Could not save. Try again."` whatever the error. */
   errorMessage?: (error: unknown) => string
+  /**
+   * Turns the value's button off. Turning it on while the field is open cancels the edit, as Escape
+   * would, unless a save is already running; that save still finishes.
+   */
   disabled?: boolean
   class?: string
 }
@@ -55,6 +59,11 @@ const defaultErrorMessage = (): string => "Could not save. Try again."
  * While a promise returned by `onSave` runs, the field is read-only, `aria-busy`, and says
  * {@link InlineEditProps.savingLabel}; Enter, Escape and blur are ignored. A rejected promise leaves
  * the field open with the typed text and an error under it, so the user can retry or cancel.
+ *
+ * Removing the component while its field is open saves nothing: the typed text is dropped. Chromium
+ * fires `blur` on a focused field that leaves the page, and a row deleted by a shortcut or a list
+ * that re-renders must not send a rename nobody confirmed. Enter and Escape pressed while an input
+ * method is composing a word are left to the input method.
  *
  * The draft is read from the field itself when saving, not only from state: the field exists only
  * after a press, so text can never be typed before the bundle runs, but a save reading the element
@@ -91,6 +100,14 @@ export function InlineEdit(
   }, [])
 
   useEffect(() => {
+    if (disabled && open.current && !saving.current) {
+      open.current = false
+      setError(null)
+      setEditing(false)
+    }
+  }, [disabled])
+
+  useEffect(() => {
     if (editing) {
       field.current?.focus()
       field.current?.select()
@@ -115,7 +132,9 @@ export function InlineEdit(
   }
 
   async function save(): Promise<void> {
-    if (!open.current || saving.current) return
+    // `mounted` first: the blur Chromium fires on a focused field being removed arrives after the
+    // effect cleanups have run, and it must not save.
+    if (!mounted.current || !open.current || saving.current) return
     const next = inlineEditCommit(field.current?.value ?? draft, value)
     if (next === null) return close()
     saving.current = true
@@ -136,6 +155,8 @@ export function InlineEdit(
   }
 
   function onKeyDown(event: JSX.TargetedKeyboardEvent<HTMLInputElement>): void {
+    // An input method confirms or cancels a word with these keys; the word is not finished yet.
+    if (event.isComposing) return
     if (event.key === "Enter") {
       // Inside a form, Enter would submit it as well.
       event.preventDefault()
