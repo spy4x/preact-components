@@ -931,6 +931,10 @@ Command on Apple platforms and Control elsewhere; the platform is read when the 
 attached, or given as `options.apple`. Two-key sequences such as `"g i"` are not supported and
 throw.
 
+A symbol typed with AltGr, such as `@` on a German keyboard, still runs a binding for that
+symbol: the hook asks the browser whether AltGr is held, so a real Control+Alt chord on a keyboard
+without AltGr runs only a binding that names Control and Alt.
+
 Key presses in a text field, a select or editable content are left alone, and so are presses
 inside a dialog, unless a binding sets `inFields` or `inDialogs`. A matched press has its default
 action cancelled unless the binding sets `preventDefault: false`. `options.enabled` switches every

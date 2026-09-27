@@ -44,6 +44,11 @@ export interface HotkeyPress {
   metaKey: boolean
   altKey: boolean
   shiftKey: boolean
+  /**
+   * The event's `getModifierState`, which the matcher asks whether AltGr is held. Without it,
+   * Control and Alt held together are read as AltGr.
+   */
+  getModifierState?(key: string): boolean
   /** The press landed in a text field, a select or editable content. */
   typing: boolean
   /** The press landed inside a dialog. */
@@ -113,6 +118,8 @@ export function useHotkeys(
         metaKey: event.metaKey,
         altKey: event.altKey,
         shiftKey: event.shiftKey,
+        // A plain `Event`, which some browsers send on autofill, has no `getModifierState`.
+        getModifierState: event.getModifierState?.bind(event),
         typing: isTypingTarget(target as HTMLElement | null),
         inDialog: (target?.closest(DIALOG_SELECTOR) ?? null) !== null,
       }, isApple)

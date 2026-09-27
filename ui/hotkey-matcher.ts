@@ -41,6 +41,11 @@ export interface HotkeyEvent {
   metaKey: boolean
   altKey: boolean
   shiftKey: boolean
+  /**
+   * Whether a modifier is held, as `KeyboardEvent.getModifierState` answers. The matcher asks it
+   * about `"AltGraph"`. Without it, Control and Alt held together are read as AltGr.
+   */
+  getModifierState?(key: string): boolean
 }
 
 /** Names a combination may use for each modifier, lowercased. */
@@ -90,7 +95,9 @@ const NAMED_KEYS = new Set([
   "contextmenu",
 ])
 
-/** Whether a lowercased key is a symbol: one character that is not a Latin letter, digit or space. */
+/**
+ * Whether a lowercased key is a symbol: one character that is not a Latin letter, digit or space.
+ */
 function isSymbol(key: string): boolean {
   return key.length === 1 && !/[a-z0-9 ]/.test(key)
 }
@@ -99,10 +106,19 @@ function isSymbol(key: string): boolean {
  * Parse a combination such as `"mod+k"`, `"shift+n"`, `"?"` or `"ctrl+alt+delete"`.
  *
  * Tokens are joined by `+` and are case-insensitive; the last one is the key and the others are
- * modifiers (`mod`, `ctrl`, `meta`/`cmd`, `alt`/`option`, `shift`). `mod` means Command on Apple
- * platforms and Control elsewhere. The `+` key itself is written `"plus"`, or as the last token
- * (`"mod++"`). Key names follow `KeyboardEvent.key` (`"escape"`, `"arrowup"`, `"f1"`), with the
- * short forms `esc`, `space`, `up`, `down`, `left`, `right`, `del` and `return`.
+ * modifiers: `mod`, `ctrl` or `control`, `meta`, `cmd` or `command`, `alt`, `option` or `opt`, and
+ * `shift`. `mod` means Command on Apple platforms and Control elsewhere.
+ *
+ * The key is one of these, and nothing else:
+ *
+ * - one character that is not whitespace, such as `k`, `1`, `?` or `/`; the `+` key is written
+ *   `plus`, or as the last token (`"mod++"`);
+ * - a function key, `f1` to `f24`;
+ * - one of these `KeyboardEvent.key` names: `escape`, `enter`, `tab`, `backspace`, `delete`,
+ *   `insert`, `home`, `end`, `pageup`, `pagedown`, `arrowup`, `arrowdown`, `arrowleft`,
+ *   `arrowright` and `contextmenu`;
+ * - a short form: `esc`, `space` or `spacebar` (the space bar), `up`, `down`, `left`, `right`,
+ *   `del` and `return`.
  *
  * Only one key press per combination: a sequence such as `"g i"` is refused. So is a combination
  * that could never fire: an unknown key name (`"mod+escpe"`), and `shift` with a symbol
@@ -170,15 +186,22 @@ export function parseHotkey(combo: string): Hotkey {
  * `"/"`, `"+"`): such a character already says which Shift state produced it, and keyboard layouts
  * disagree about which symbols need Shift.
  *
- * A symbol typed with AltGr, such as `@` on a German keyboard, reports Control and Alt held
- * together. So for a symbol combination that names none of Control, Alt, Meta and `mod`, Control
- * and Alt held together are read as AltGr and ignored, and `"@"` fires there too.
+ * A symbol typed with AltGr, such as `@` on a German keyboard, still fires a symbol combination
+ * that names none of Control, Alt, Meta and `mod`: while AltGr is held, Control and Alt are ignored
+ * for it. When the event has `getModifierState`, its `"AltGraph"` answer says whether AltGr is
+ * held, so a real Control+Alt chord on a keyboard without AltGr fires `"ctrl+alt+/"` and never
+ * `"/"`. An event without that method has Control and Alt held together read as AltGr. On Apple
+ * platforms there is no AltGr: Control and Option held together are always a chord there.
  *
  * A letter or a digit also matches by its physical key (`event.code`), but only when the key press
  * typed no Latin letter or digit: `"mod+k"` still fires with a Cyrillic layout, and `"alt+k"` on a
  * Mac, where Option turns `k` into `˚`. A key that types another Latin letter is that letter, so on
  * AZERTY the key that types `a` fires `"a"` and never `"q"`, and on Dvorak the key that types `t`
- * fires `"t"` and never `"k"`.
+ * fires `"t"` and never `"k"`. A modifier that turns the key into something other than a Latin
+ * letter or digit, as Option on a Mac usually does, makes the combination follow the key's QWERTY
+ * position instead: on a French Mac keyboard, `"alt+a"` fires on the key printed Q. A press made
+ * with AltGr never matches by its physical key, because AltGr picks another character on purpose:
+ * on a German keyboard, AltGr+Q types `@` and does not fire `"q"`.
  *
  * An event with no `key`, such as the plain `Event` some browsers send when they autofill a
  * field, matches nothing.
@@ -193,7 +216,7 @@ export function matchesHotkey(hotkey: Hotkey, event: HotkeyEvent, apple: boolean
   const ctrl = hotkey.ctrl || (hotkey.mod && !apple)
   const meta = hotkey.meta || (hotkey.mod && apple)
   const symbol = isSymbol(hotkey.key)
-  const altGr = symbol && !ctrl && !meta && !hotkey.alt && event.ctrlKey && event.altKey
+  const altGr = symbol && !apple && !ctrl && !meta && !hotkey.alt && isAltGraphHeld(event)
   if (!altGr && (event.ctrlKey !== ctrl || event.altKey !== hotkey.alt)) return false
   if (event.metaKey !== meta) return false
   if (!symbol && event.shiftKey !== hotkey.shift) return false
@@ -201,7 +224,17 @@ export function matchesHotkey(hotkey: Hotkey, event: HotkeyEvent, apple: boolean
   const typed = event.key.toLowerCase()
   if (typed === hotkey.key) return true
   if (/^[a-z0-9]$/.test(typed)) return false
+  if (!apple && isAltGraphHeld(event)) return false
   return physicalCode(hotkey.key) !== undefined && event.code === physicalCode(hotkey.key)
+}
+
+/**
+ * Whether AltGr is held: the event's own answer when it has `getModifierState`, and otherwise
+ * Control and Alt held together, the pair Windows also accepts for AltGr.
+ */
+function isAltGraphHeld(event: HotkeyEvent): boolean {
+  if (typeof event.getModifierState === "function") return event.getModifierState("AltGraph")
+  return event.ctrlKey && event.altKey
 }
 
 /** `event.code` of a letter or digit key (`"KeyK"`, `"Digit1"`), or `undefined` for any other. */
