@@ -262,3 +262,16 @@ export {
   type ToggleChipsProps,
   type ToggleChipsSingleProps,
 } from "./toggle-chips.tsx"
+export {
+  defaultKanbanLabels,
+  KanbanBoard,
+  type KanbanBoardLabels,
+  type KanbanBoardProps,
+  type KanbanColumn,
+  type KanbanItem,
+  type KanbanMove,
+  type KanbanPlace,
+  type KanbanSlot,
+  moveKanbanItem,
+  nextKanbanSlot,
+} from "./kanban-board.tsx"
