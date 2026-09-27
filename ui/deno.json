@@ -45,6 +45,9 @@
     "./toggle-switch": "./toggle-switch.tsx",
     "./tooltip": "./tooltip.tsx",
     "./zoomable-images": "./zoomable-images.tsx",
+    "./hotkeys": "./hotkeys.ts",
+    "./kbd": "./kbd.tsx",
+    "./shortcuts-dialog": "./shortcuts-dialog.tsx",
     "./inline-edit": "./inline-edit.tsx",
     "./toggle-chips": "./toggle-chips.tsx",
     "./kanban-board": "./kanban-board.tsx"

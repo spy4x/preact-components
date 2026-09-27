@@ -253,6 +253,21 @@ export {
   ZoomableImages,
   type ZoomableImagesProps,
 } from "./zoomable-images.tsx"
+export {
+  type HotkeyBinding,
+  type HotkeyPress,
+  pickHotkey,
+  useHotkeys,
+  type UseHotkeysOptions,
+} from "./hotkeys.ts"
+export { Kbd, KBD_LABELS, type KbdLabels, type KbdProps, type KeyFace, keyFaces } from "./kbd.tsx"
+export {
+  groupShortcuts,
+  type Shortcut,
+  type ShortcutGroup,
+  ShortcutsDialog,
+  type ShortcutsDialogProps,
+} from "./shortcuts-dialog.tsx"
 export { InlineEdit, inlineEditCommit, type InlineEditProps } from "./inline-edit.tsx"
 export {
   type ToggleChipOption,
