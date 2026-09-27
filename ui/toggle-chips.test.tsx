@@ -50,6 +50,17 @@ describe("ToggleChips", () => {
     expect(work).not.toContain("bg-green-600")
   })
 
+  it("gives an unpressed chip readable dark-mode text and border, and a pressed one none", () => {
+    const html = render(<ToggleChips options={options} value={["home"]} onChange={() => {}} />)
+    const home = html.match(/<button[^>]*>home</)?.[0] ?? ""
+    const work = html.match(/<button[^>]*>work</)?.[0] ?? ""
+
+    expect(work).toContain("dark:text-gray-300")
+    expect(work).toContain("dark:border-gray-600")
+    expect(work).toContain("dark:hover:bg-gray-700")
+    expect(home).not.toContain("dark:text-gray-300")
+  })
+
   it("keeps the caller's case rather than capitalising like Badge", () => {
     const html = render(<ToggleChips options={options} value={[]} onChange={() => {}} />)
 
