@@ -973,7 +973,8 @@ top and the column's remaining length is the bottom. Within a column, cards show
   to move a card.
 - **Keyboard**: every card is a tab stop. Space or Enter picks it up; the arrow keys move it (Left
   and Right between columns, Up and Down within one); Space or Enter drops it, and Escape puts it
-  back. Tab while holding a card also puts it back. Focus stays on the card after the drop, once
+  back. Moving focus away while holding a card, with Tab or a click elsewhere, also
+  puts it back. Focus stays on the card after the drop, once
   the caller's `items` show it in its new column.
 - **Announcements**: a live region says when a card is picked up, each move, the drop and a cancel.
   `labels` overrides any of them and the visible strings; `itemLabel` names a card in them and is

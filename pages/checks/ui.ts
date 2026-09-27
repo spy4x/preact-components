@@ -10691,6 +10691,7 @@ async function kanbanBoardChecks(devtools: Devtools): Promise<void> {
   try {
     await kanbanKeyboardMoveCheck(devtools)
     await kanbanEscapeCheck(devtools)
+    await kanbanBlurCheck(devtools)
     await kanbanPointerDragCheck(devtools)
   } finally {
     await resetKanban(devtools)
@@ -10769,6 +10770,48 @@ async function kanbanEscapeCheck(devtools: Devtools): Promise<void> {
     `while moving: doing ${JSON.stringify(moving.columns.doing)}; after Escape: ` +
       `${JSON.stringify(after.columns)}, onMove "${after.lastMove}", focus ${after.focused} in ` +
       `${after.focusedColumn}`,
+  )
+}
+
+/**
+ * A click outside a picked-up card puts it back, as Escape does: otherwise the card would stay
+ * picked up with focus elsewhere, and the board would pull focus back to it on its next render.
+ */
+async function kanbanBlurCheck(devtools: Devtools): Promise<void> {
+  const before = await devtools.evaluate<KanbanState>(KANBAN_STATE)
+  await devtools.evaluate<null>(`(${kanbanHandle("search")}.focus(), null)`)
+  await pressKey(devtools, "Space")
+  await pressKey(devtools, "ArrowRight")
+  await poll(
+    () => devtools.evaluate<boolean>(`${KANBAN_STATE}.columns.doing.includes("search")`),
+    2_000,
+  )
+  const moving = await devtools.evaluate<KanbanState>(KANBAN_STATE)
+  const note = await kanbanPoint(
+    devtools,
+    `document.querySelector('${KANBAN_CARD} [data-e2e="kanban-last-move"]')`,
+  )
+  for (const type of ["mousePressed", "mouseReleased"]) {
+    await devtools.send("Input.dispatchMouseEvent", {
+      type,
+      ...note,
+      button: "left",
+      buttons: type === "mousePressed" ? 1 : 0,
+      clickCount: 1,
+    })
+  }
+  await poll(() => devtools.evaluate<boolean>(`${KANBAN_STATE}.live.startsWith("Put back")`), 2_000)
+  const after = await devtools.evaluate<KanbanState>(KANBAN_STATE)
+
+  check(
+    "a click away from a picked-up KanbanBoard card puts it back and reports no move",
+    moving.columns.doing?.includes("search") === true &&
+      JSON.stringify(after.columns) === JSON.stringify(before.columns) &&
+      after.lastMove === before.lastMove && after.focused === null &&
+      after.live === "Put back Rank search results in To do, position 2 of 2.",
+    `while moving: doing ${JSON.stringify(moving.columns.doing)}; after the click: ` +
+      `${JSON.stringify(after.columns)}, onMove "${after.lastMove}", focus ${after.focused}, ` +
+      `live "${after.live}"`,
   )
 }
 

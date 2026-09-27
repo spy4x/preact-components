@@ -73,7 +73,7 @@ export interface KanbanBoardLabels {
   moved: (place: KanbanPlace) => string
   /** Announced when a card is dropped, by keyboard or by mouse. */
   dropped: (place: KanbanPlace) => string
-  /** Announced when Escape or Tab puts a picked-up card back. */
+  /** Announced when Escape, or focus leaving the card, puts a picked-up card back. */
   cancelled: (place: KanbanPlace) => string
 }
 
@@ -324,6 +324,36 @@ export function KanbanBoard<Item extends KanbanItem>(
     focus(find(pending.itemId))
   })
 
+  /** Put a picked-up card back where it came from. */
+  const cancel = (from: Lifted) => {
+    setLifted(null)
+    setAnnouncement(text.cancelled(placeOf(from.itemId, from.from)))
+  }
+
+  /** The latest render's picked-up card and `cancel`, for the blur handler's deferred read. */
+  const latest = useRef({ lifted, cancel })
+  latest.current = { lifted, cancel }
+
+  /**
+   * Focus leaving a picked-up card puts it back: Tab, or a click anywhere else.
+   *
+   * Decided a task later, not in the event: a card moved to another column is a new element, and
+   * Chromium fires `blur` on the old one as it leaves the document (measured: acting on that blur
+   * cancelled every keyboard move). By the next task the board has focused the card's new element,
+   * so a blur the reader did not ask for finds the picked-up card focused again and is ignored.
+   */
+  const onCardBlur = (itemId: string) => {
+    if (lifted === null || lifted.itemId !== itemId) return
+    setTimeout(() => {
+      const { lifted: now, cancel: putBack } = latest.current
+      if (now === null || now.itemId !== itemId) return
+      const active = document.activeElement
+      const onCard = active?.closest("[data-kanban-item]")?.getAttribute("data-kanban-item")
+      if (onCard === itemId && rootRef.current?.contains(active)) return
+      putBack(now)
+    }, 0)
+  }
+
   const onCardKeyDown = (event: KeyboardEvent, itemId: string) => {
     const pick = event.key === " " || event.key === "Enter"
     if (lifted === null || lifted.itemId !== itemId) {
@@ -344,15 +374,12 @@ export function KanbanBoard<Item extends KanbanItem>(
       finish(itemId, lifted.from, lifted.at)
       return
     }
-    if (event.key === "Escape" || event.key === "Tab") {
-      // Escape stays with the board, so a dialog around it does not close too; Tab still moves on.
-      if (event.key === "Escape") {
-        event.preventDefault()
-        event.stopPropagation()
-        pendingFocus.current = { itemId, column: columns[lifted.from.column].id }
-      }
-      setLifted(null)
-      setAnnouncement(text.cancelled(placeOf(itemId, lifted.from)))
+    if (event.key === "Escape") {
+      // Escape stays with the board, so a dialog around it does not close too.
+      event.preventDefault()
+      event.stopPropagation()
+      pendingFocus.current = { itemId, column: columns[lifted.from.column].id }
+      cancel(lifted)
       return
     }
     const next = nextKanbanSlot(event.key, lifted.at, lengthsWithout(itemId))
@@ -455,6 +482,7 @@ export function KanbanBoard<Item extends KanbanItem>(
                     dragged?.itemId === item.id && cardDraggedClass,
                   )}
                   onKeyDown={(event) => onCardKeyDown(event, item.id)}
+                  onBlur={() => onCardBlur(item.id)}
                   onDragStart={(event) => onDragStart(event, item.id)}
                   onDragEnd={() => setDragged(null)}
                 >
