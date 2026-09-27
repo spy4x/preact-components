@@ -46,6 +46,7 @@ import { IconTrashBin } from "@spy4x/preact-icons"
 import { entries } from "../record.ts"
 import { DemoNote } from "./demo-note.tsx"
 import { ZoomableImages } from "@spy4x/preact-ui/zoomable-images"
+import { KanbanBoard, type KanbanItem, moveKanbanItem } from "@spy4x/preact-ui/kanban-board"
 import type { DemoFragment } from "../registry.ts"
 
 /**
@@ -1125,4 +1126,98 @@ export const displayDemos = {
 />`,
     render: () => <ZoomableImagesDemo />,
   },
+  KanbanBoard: {
+    summary:
+      "Columns of cards a reader moves by mouse or keyboard; the board reports each move through `onMove` and never reorders the data itself.",
+    wide: true,
+    props: [
+      {
+        name: "items",
+        type: "{ id: string; column: string }[]",
+        description: "Every card, in the order each column shows them.",
+      },
+      {
+        name: "onMove",
+        type: "(move: KanbanMove) => void",
+        description:
+          "Called with `itemId`, `toColumn` and `toIndex` once per drop; `moveKanbanItem` applies it.",
+      },
+      {
+        name: "itemLabel",
+        type: "(item) => string",
+        description: "A card's name in the announcements.",
+      },
+      {
+        name: "labels",
+        type: "Partial<KanbanBoardLabels>",
+        description: "Overrides for the board's name, the instructions and every announcement.",
+      },
+    ],
+    snippet: `<KanbanBoard
+  columns={[
+    { id: "todo", title: "To do" },
+    { id: "doing", title: "Doing" },
+    { id: "done", title: "Done" },
+  ]}
+  items={tasks.value}
+  renderItem={(task) => task.title}
+  itemLabel={(task) => task.title}
+  onMove={(move) => tasks.value = moveKanbanItem(tasks.value, move)}
+/>`,
+    render: () => <KanbanBoardDemo />,
+  },
 } satisfies DemoFragment
+
+/** One card of the `KanbanBoard` demo. */
+interface DemoTask extends KanbanItem {
+  title: string
+}
+
+const kanbanColumns = [
+  { id: "todo", title: "To do" },
+  { id: "doing", title: "Doing" },
+  { id: "review", title: "Review" },
+  { id: "done", title: "Done" },
+]
+
+const kanbanTasks: readonly DemoTask[] = [
+  { id: "notes", column: "todo", title: "Write the release notes" },
+  { id: "icons", column: "todo", title: "Draw the empty-state icon" },
+  { id: "search", column: "todo", title: "Rank search results" },
+  { id: "export", column: "doing", title: "Export to CSV" },
+  { id: "login", column: "review", title: "Sign in with a passkey" },
+]
+
+/** The board with its own items, the last move `onMove` reported, and a reset. */
+function KanbanBoardDemo() {
+  const tasks = useSignal<readonly DemoTask[]>(kanbanTasks)
+  const last = useSignal("none yet")
+
+  return (
+    <Stack gap="sm">
+      <KanbanBoard
+        columns={kanbanColumns}
+        items={tasks.value}
+        renderItem={(task) => task.title}
+        itemLabel={(task) => task.title}
+        onMove={(move) => {
+          last.value = `${move.itemId} to ${move.toColumn} at ${move.toIndex}`
+          tasks.value = moveKanbanItem(tasks.value, move)
+        }}
+      />
+      <Cluster justify="between">
+        <DemoNote e2e="kanban-last-move">Last move through onMove: {last.value}</DemoNote>
+        <Button
+          variant="outline"
+          data-e2e="kanban-reset"
+          onClick={() => {
+            tasks.value = kanbanTasks
+            last.value = "none yet"
+          }}
+        >
+          Reset
+        </Button>
+      </Cluster>
+    </Stack>
+  )
+}
