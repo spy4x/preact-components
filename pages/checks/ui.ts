@@ -192,6 +192,8 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await moneyInputChecks(devtools)
   await moneyInputPreHydrationChecks(devtools)
   await fileInputChecks(devtools)
+  await inlineEditChecks(devtools)
+  await toggleChipsChecks(devtools)
 
   // Last on purpose: a Modal that refuses to close would sit in the top layer over everything, so a
   // failure here cannot take an unrelated check down with it.
@@ -10274,4 +10276,242 @@ async function fileInputChecks(devtools: Devtools): Promise<void> {
   } finally {
     await Deno.remove(dir, { recursive: true }).catch(() => {})
   }
+}
+
+/** What one read of an `InlineEdit` demo sees. */
+interface InlineEditState {
+  /** `true` while the text field is shown, `false` while the value's button is. */
+  editing: boolean
+  /** The field's text, or the button's visible text when closed. */
+  text: string
+  /** `true` when the whole text of the field is selected. */
+  allSelected: boolean
+  /** `aria-busy` on the field, or `null`. */
+  busy: string | null
+  /** `true` when the field is read-only. */
+  readOnly: boolean
+  /** The text of the field's `role="alert"`, or `""` when there is none. */
+  alert: string
+  /** `true` when the focused element is the value's button. */
+  onTrigger: boolean
+  /** `true` when the focused element is the text field. */
+  onField: boolean
+  /** The demo's echo of the saved value and the save count. */
+  saved: string
+}
+
+/**
+ * Reads {@link InlineEditState} off one `InlineEdit` demo of the `InlineEdit` card.
+ *
+ * @param which The demo's `data-e2e` marker: `inline-edit-ok` or `inline-edit-fail`.
+ */
+function inlineEditState(which: string): string {
+  return `(() => {
+    const root = document.querySelector('#demo-InlineEdit [data-e2e="${which}"]')
+    const field = root.querySelector("input")
+    const trigger = root.querySelector("button")
+    const active = document.activeElement
+    return {
+      editing: field !== null,
+      text: field !== null ? field.value : trigger.textContent.trim(),
+      allSelected: field !== null && field.selectionStart === 0 &&
+        field.selectionEnd === field.value.length && field.value.length > 0,
+      busy: field?.getAttribute("aria-busy") ?? null,
+      readOnly: field?.readOnly ?? false,
+      alert: root.querySelector('[role="alert"]')?.textContent.trim() ?? "",
+      onTrigger: trigger !== null && active === trigger,
+      onField: field !== null && active === field,
+      saved: document.querySelector('#demo-InlineEdit [data-e2e="inline-edit-saved"]').textContent.trim(),
+    }
+  })()`
+}
+
+/**
+ * `InlineEdit`'s keyboard and focus contract, driven with real key presses on its card's two demos.
+ *
+ * Enter on the value's button opens the field with the whole value selected; Escape closes it with
+ * the old value back, and focus returns to the button; Enter saves, shows the busy state while the
+ * demo's slow save runs, then closes with the new value and focus on the button; an empty text
+ * closes without saving; Tab away saves without pulling focus back; and a save that rejects keeps
+ * the field open with the typed text and an alert. A string render sees none of this: every step
+ * is an effect, a key press or a focus move.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function inlineEditChecks(devtools: Devtools): Promise<void> {
+  const ok = inlineEditState("inline-edit-ok")
+  const fail = inlineEditState("inline-edit-fail")
+  const okTrigger = `document.querySelector('#demo-InlineEdit [data-e2e="inline-edit-ok"] button')`
+  const failTrigger =
+    `document.querySelector('#demo-InlineEdit [data-e2e="inline-edit-fail"] button')`
+  await centreInView(devtools, okTrigger)
+
+  const before = await devtools.evaluate<InlineEditState>(ok)
+  await devtools.evaluate<null>(`(${okTrigger}.focus(), null)`)
+  await pressKey(devtools, "Enter")
+  await poll(() => devtools.evaluate<boolean>(`${ok}.onField`), 2_000)
+  const opened = await devtools.evaluate<InlineEditState>(ok)
+  check(
+    "Enter on InlineEdit's value opens the field focused with the whole value selected",
+    !before.editing && opened.editing && opened.onField && opened.allSelected &&
+      opened.text === before.text,
+    `editing ${before.editing} → ${opened.editing}, focus on field ${opened.onField}, ` +
+      `all selected ${opened.allSelected}, "${before.text}" → "${opened.text}"`,
+  )
+
+  await typeInto(devtools, "Shopping")
+  const typed = await devtools.evaluate<InlineEditState>(ok)
+  await pressKey(devtools, "Escape")
+  await poll(() => devtools.evaluate<boolean>(`!${ok}.editing`), 2_000)
+  const cancelled = await devtools.evaluate<InlineEditState>(ok)
+  check(
+    "Escape cancels an InlineEdit: the old value is back and focus returns to its button",
+    typed.text === "Shopping" && !cancelled.editing && cancelled.text === before.text &&
+      cancelled.onTrigger && cancelled.saved === before.saved,
+    `typed "${typed.text}", then "${cancelled.text}", focus on button ${cancelled.onTrigger}, ` +
+      `"${before.saved}" → "${cancelled.saved}"`,
+  )
+
+  await pressKey(devtools, "Enter")
+  await poll(() => devtools.evaluate<boolean>(`${ok}.onField`), 2_000)
+  await typeInto(devtools, "Shopping")
+  await pressKey(devtools, "Enter")
+  await poll(() => devtools.evaluate<boolean>(`${ok}.busy === "true"`), 2_000)
+  const busy = await devtools.evaluate<InlineEditState>(ok)
+  await poll(() => devtools.evaluate<boolean>(`!${ok}.editing`), 3_000)
+  const saved = await devtools.evaluate<InlineEditState>(ok)
+  check(
+    "Enter saves an InlineEdit: busy while the save runs, then the new value and focus on its button",
+    busy.editing && busy.readOnly && busy.onField && !saved.editing &&
+      saved.text === "Shopping" && saved.onTrigger && saved.saved.startsWith("saved: Shopping,"),
+    `busy ${busy.busy}, read-only ${busy.readOnly}, then "${saved.text}", ` +
+      `focus on button ${saved.onTrigger}, echo "${saved.saved}"`,
+  )
+
+  await pressKey(devtools, "Enter")
+  await poll(() => devtools.evaluate<boolean>(`${ok}.onField`), 2_000)
+  await devtools.evaluate<null>(`(() => {
+    const field = document.querySelector('#demo-InlineEdit [data-e2e="inline-edit-ok"] input')
+    field.value = "   "
+    field.dispatchEvent(new Event("input", { bubbles: true }))
+    return null
+  })()`)
+  await pressKey(devtools, "Enter")
+  await poll(() => devtools.evaluate<boolean>(`!${ok}.editing`), 2_000)
+  // A save that got through would show its busy state and then change the echo; give it time.
+  await new Promise((done) => setTimeout(done, 600))
+  const blank = await devtools.evaluate<InlineEditState>(ok)
+  check(
+    "Enter on a blank InlineEdit closes it without saving",
+    !blank.editing && blank.text === "Shopping" && blank.saved === saved.saved && blank.onTrigger,
+    `"${blank.text}", echo "${saved.saved}" → "${blank.saved}", focus on button ${blank.onTrigger}`,
+  )
+
+  await pressKey(devtools, "Enter")
+  await poll(() => devtools.evaluate<boolean>(`${ok}.onField`), 2_000)
+  await typeInto(devtools, "Errands")
+  await pressKey(devtools, "Tab")
+  await poll(() => devtools.evaluate<boolean>(`!${ok}.editing`), 3_000)
+  const blurred = await devtools.evaluate<InlineEditState>(ok)
+  check(
+    "Tab away from an InlineEdit saves it and leaves focus where Tab moved it",
+    !blurred.editing && blurred.text === "Errands" && !blurred.onTrigger &&
+      blurred.saved.startsWith("saved: Errands,"),
+    `"${blurred.text}", focus on button ${blurred.onTrigger}, echo "${blurred.saved}"`,
+  )
+
+  await devtools.evaluate<null>(`(${failTrigger}.focus(), null)`)
+  const failBefore = await devtools.evaluate<InlineEditState>(fail)
+  await pressKey(devtools, "Enter")
+  await poll(() => devtools.evaluate<boolean>(`${fail}.onField`), 2_000)
+  await typeInto(devtools, "Old things")
+  await pressKey(devtools, "Enter")
+  await poll(() => devtools.evaluate<boolean>(`${fail}.alert !== ""`), 2_000)
+  const rejected = await devtools.evaluate<InlineEditState>(fail)
+  check(
+    "a rejected InlineEdit save keeps the field open with the typed text and an alert",
+    rejected.editing && rejected.text === "Old things" && rejected.alert !== "" &&
+      rejected.busy === null && !rejected.readOnly && rejected.onField,
+    `editing ${rejected.editing}, "${rejected.text}", alert "${rejected.alert}", ` +
+      `busy ${rejected.busy}, focus on field ${rejected.onField}`,
+  )
+
+  await pressKey(devtools, "Escape")
+  await poll(() => devtools.evaluate<boolean>(`!${fail}.editing`), 2_000)
+  const abandoned = await devtools.evaluate<InlineEditState>(fail)
+  check(
+    "Escape after a rejected InlineEdit save restores the old value and focuses its button",
+    !abandoned.editing && abandoned.text === failBefore.text && abandoned.onTrigger,
+    `"${failBefore.text}" → "${abandoned.text}", focus on button ${abandoned.onTrigger}`,
+  )
+}
+
+/** What one read of the `ToggleChips` card sees: each chip's `aria-pressed`, by group and text. */
+const TOGGLE_CHIPS_STATE = `(() => {
+  const groups = [...document.querySelectorAll('#demo-ToggleChips [role="group"]')]
+  const read = (group) =>
+    Object.fromEntries([...group.querySelectorAll("button")].map((chip) =>
+      [chip.textContent.trim(), chip.getAttribute("aria-pressed")]
+    ))
+  return {
+    tags: read(groups.find((group) => group.getAttribute("aria-label") === "Tags")),
+    status: read(groups.find((group) => group.getAttribute("aria-label") === "Status")),
+    echo: document.querySelector('#demo-ToggleChips [data-e2e="toggle-chips-value"]').textContent.trim(),
+  }
+})()`
+
+/** A {@link TOGGLE_CHIPS_STATE} read. */
+interface ToggleChipsState {
+  tags: Record<string, string | null>
+  status: Record<string, string | null>
+  echo: string
+}
+
+/**
+ * `ToggleChips` answers real Space and Enter presses: a multi-select chip flips `aria-pressed` and
+ * the controlled value both ways, and a single-select group moves its one pressed chip, then
+ * clears it when the pressed chip is pressed again.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function toggleChipsChecks(devtools: Devtools): Promise<void> {
+  const chip = (group: string, text: string) =>
+    `[...document.querySelectorAll('#demo-ToggleChips [role="group"][aria-label="${group}"] button')]
+      .find((chip) => chip.textContent.trim() === "${text}")`
+  const read = () => devtools.evaluate<ToggleChipsState>(TOGGLE_CHIPS_STATE)
+  await centreInView(devtools, chip("Tags", "home"))
+
+  const before = await read()
+  await devtools.evaluate<null>(`(${chip("Tags", "home")}.focus(), null)`)
+  await pressKey(devtools, "Space")
+  await poll(async () => (await read()).tags.home === "true", 2_000)
+  const spaced = await read()
+  await pressKey(devtools, "Enter")
+  await poll(async () => (await read()).tags.home === "false", 2_000)
+  const entered = await read()
+  check(
+    "Space and Enter each toggle a ToggleChips chip, flipping aria-pressed and the value",
+    before.tags.home === "false" && spaced.tags.home === "true" &&
+      spaced.echo.includes("tags: work, home") && entered.tags.home === "false" &&
+      entered.echo.includes("tags: work ·") && entered.tags.work === "true",
+    `home ${before.tags.home} → ${spaced.tags.home} → ${entered.tags.home}; ` +
+      `"${spaced.echo}" → "${entered.echo}"`,
+  )
+
+  await devtools.evaluate<null>(`(${chip("Status", "Done")}.focus(), null)`)
+  await pressKey(devtools, "Enter")
+  await poll(async () => (await read()).status.Done === "true", 2_000)
+  const moved = await read()
+  await pressKey(devtools, "Space")
+  await poll(async () => (await read()).status.Done === "false", 2_000)
+  const cleared = await read()
+  check(
+    "a single-select ToggleChips moves its one pressed chip, and clears it when pressed again",
+    before.status.Open === "true" && moved.status.Done === "true" &&
+      moved.status.Open === "false" && moved.echo.endsWith("status: done") &&
+      Object.values(cleared.status).every((pressed) => pressed === "false") &&
+      cleared.echo.endsWith("status: (none)"),
+    `Open ${before.status.Open} → ${moved.status.Open}, Done → ${moved.status.Done} → ` +
+      `${cleared.status.Done}; "${moved.echo}" → "${cleared.echo}"`,
+  )
 }
