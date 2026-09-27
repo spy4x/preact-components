@@ -98,8 +98,8 @@ export function ShortcutsDialog(
               </h3>
             )}
             <dl class="flex flex-col gap-2">
-              {group.shortcuts.map((shortcut) => (
-                <div key={shortcut.keys} class="flex items-center justify-between gap-4">
+              {group.shortcuts.map((shortcut, index) => (
+                <div key={index} class="flex items-center justify-between gap-4">
                   <dt class="text-sm text-gray-700 dark:text-gray-300">{shortcut.description}</dt>
                   <dd>
                     <Kbd keys={shortcut.keys} apple={apple} labels={kbdLabels} />
