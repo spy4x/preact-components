@@ -296,7 +296,7 @@ this:
   contributed nothing after dedupe (a fork of another with byte-identical bodies throughout).
 - **Provenance is now checked, not just eyeballed.** `icons/provenance.ts` compares every exported
   glyph's geometry against the published Heroicons v1, Heroicons v2, Feather and Lucide packs. Of
-  119 glyphs, 89 match a pack's glyph exactly, 6 match one nearly, and 24 match none of the four —
+  120 glyphs, 90 match a pack's glyph exactly, 6 match one nearly, and 24 match none of the four —
   see `icons/README.md` → "Provenance" for the full breakdown and the 24 by name.
   [`icons/THIRD_PARTY_NOTICES.md`](../icons/THIRD_PARTY_NOTICES.md) carries the licence text for
   every pack a match was found in. The 24 with no match are not thereby proven unlicensed, only
@@ -307,17 +307,17 @@ this:
   relicensable even when the drawing is the pack's own (two of the six matched Feather's drawing of
   the same mark exactly). This is the part most likely to need its own decision, and it is why any
   replacement is expected to split the brand subset from the general set.
-- All 119 glyphs are inline source in `icons/+index.tsx`, `{ class?: string }` prop surface, no
+- All 120 glyphs are inline source in `icons/+index.tsx`, `{ class?: string }` prop surface, no
   codegen, no build step, no runtime dependency beyond Preact.
 
-> The glyph count above is the module's: `icons/+index.test.ts` asserts 119 exports, and
+> The glyph count above is the module's: `icons/+index.test.ts` asserts 120 exports, and
 > `deno task test` runs it. The source count is six, the ported set included — the section on
 > design-intent sources earlier in this document says why that set is a port of drawings and not of
 > a dependency.
 
 **This document does not resolve that question and must not be read as doing so.** For the 24
 glyphs `icons/provenance.ts` could not match to a pack, no licence is asserted and none is inferred.
-For the 95 it did match, the matched pack's own licence applies — that is a fact about which pack
+For the 96 it did match, the matched pack's own licence applies — that is a fact about which pack
 the geometry compares equal to, not a legal opinion rendered here. No glyph has been changed,
 replaced or re-drawn to produce a match. The open choices — whether to keep, swap or drop the 24
 unmatched, and how to treat the brand subset — belong to the repository owner as a legal decision,
@@ -336,7 +336,7 @@ settle for most of them.
 1. **A release or distribution event** — the set is published to a registry, the demo is promoted, or
    the package is consumed outside `spy4x`'s own apps. This trigger has partly fired already:
    issue #111 found the set published with no third-party notice at all, and this document's icon
-   section, `icons/README.md` and `icons/THIRD_PARTY_NOTICES.md` are the response for the 95 glyphs
+   section, `icons/README.md` and `icons/THIRD_PARTY_NOTICES.md` are the response for the 96 glyphs
    a pack match covers. The trigger still stands for the 24 that remain unmatched and for publishing
    to a registry, which has not happened yet.
 2. **A licence audit** of this repository, or of any app that consumes it.

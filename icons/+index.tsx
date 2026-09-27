@@ -1928,6 +1928,26 @@ export function IconVideo(props: IconProps): JSX.Element {
   )
 }
 
+/** Heroicons v2 outline (stroke-1.5); matches Heroicons v2's "view-columns" exactly, not v1. */
+export function IconViewColumns(props: IconProps): JSX.Element {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.5"
+      class={`shrink-0 ${props.class || "size-5"}`}
+    >
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M9 4.5v15m6-15v15m-10.875 0h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125Z"
+      />
+    </svg>
+  )
+}
+
 /** Lucide outline (stroke-2); matches Lucide's "wallet" exactly, not Heroicons. */
 export function IconWallet(props: IconProps): JSX.Element {
   return (

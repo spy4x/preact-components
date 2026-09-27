@@ -22,7 +22,7 @@
  *
  * "Component-named" is the catalogue's own rule (`ui-guide/coverage.ts`): an initial capital and a
  * lower-case letter somewhere after it. The catalogued packages are the ones the guide gives cards
- * to; `icons/` is left out on purpose, because its 119 glyphs are listed by the guide's gallery,
+ * to; `icons/` is left out on purpose, because its 120 glyphs are listed by the guide's gallery,
  * which reads them from the module.
  *
  * `export-lists.test.ts` runs this against the real tree, so `deno task check` fails on any drift.

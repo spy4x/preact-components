@@ -62,7 +62,7 @@
  *   glyphs or these four packs' output, but a future pack's might) is caught per element: its
  *   skeleton becomes `path:unparsed:<error message, which names the offending d>`, so it never
  *   matches anything by accident, and the parse failure is visible in the output rather than
- *   crashing the run. `deno task --cwd icons provenance` reports none across this package's 119
+ *   crashing the run. `deno task --cwd icons provenance` reports none across this package's 120
  *   glyphs and all four packs' files at the versions pinned below.
  *
  * Excluded from `deno task check` (network access, and it is a one-off audit, not a regression

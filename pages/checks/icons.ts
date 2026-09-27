@@ -73,7 +73,7 @@ export async function iconsChecks(devtools: Devtools): Promise<void> {
     })()`,
   )
   check(
-    "the icon filter filters 119 glyphs live",
+    "the icon filter narrows the icon gallery live",
     filter.total > 90 && filter.filtered > 0 && filter.filtered < filter.total && filter.allMatch,
     `${filter.filtered}/${filter.total} — ${filter.status}`,
   )

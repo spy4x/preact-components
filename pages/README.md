@@ -284,7 +284,7 @@ as the numerator; and `--static`, which commits no package blocks at all, instea
   labelled copy control; icon cells in the HTML; tokens and preset rules present in the compiled CSS;
   a bundle of the expected size carrying the host page.
 - **Browser** (headless Chromium over the DevTools Protocol, page served at the deployed base):
-  hydration, Dropdown open/close, ToggleSwitch, OnOffButtons, the icon filter over 119 glyphs,
+  hydration, Dropdown open/close, ToggleSwitch, OnOffButtons, the icon filter over the icon gallery,
   click-to-copy in the gallery, a click on every usage block's copy control putting that block's text
   on the clipboard, typing into a class-chapter `.input` and toggling its `.checkbox`/`.radio`, the
   `.scrollbar` scrolling, a toast pushed from the demo stack, a deep link marking/scrolling/titling,
