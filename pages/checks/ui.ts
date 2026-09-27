@@ -10696,6 +10696,7 @@ async function kanbanBoardChecks(devtools: Devtools): Promise<void> {
     await kanbanEscapeCheck(devtools)
     await kanbanBlurCheck(devtools)
     await kanbanRefusedDropFocusCheck(devtools)
+    await kanbanRefusedDropBlankClickCheck(devtools)
     await kanbanSameColumnKeyboardCheck(devtools)
     await kanbanSameColumnMouseCheck(devtools)
     await kanbanOpenChecks(devtools)
@@ -11047,6 +11048,46 @@ async function kanbanRefusedDropFocusCheck(devtools: Devtools): Promise<void> {
     refused.columns.todo?.[0] === "notes" && after.onRefuse,
     `after the refused drop: todo ${JSON.stringify(refused.columns.todo)}; after the click, ` +
       `focus on ${after.focused}`,
+  )
+}
+
+/**
+ * A keyboard drop the caller refuses, then a real click on blank space, which leaves focus on the
+ * page itself: the board's next render must not pull focus back to the card either. This is the
+ * case the card's own blur has to end, because focus on the page body is also what a remounted
+ * card leaves behind, and there the board does put focus back.
+ */
+async function kanbanRefusedDropBlankClickCheck(devtools: Devtools): Promise<void> {
+  await resetKanban(devtools)
+  const refuse = `document.querySelector('${KANBAN_CARD} [data-e2e="kanban-refuse"]')`
+  await devtools.evaluate<null>(`(${refuse}.click(), null)`)
+  await poll(() => devtools.evaluate<boolean>(`${refuse}.checked`), 2_000)
+  await devtools.evaluate<null>(`(${kanbanHandle("notes")}.focus(), null)`)
+  await pressKey(devtools, "Space")
+  await pressKey(devtools, "ArrowRight")
+  await pressKey(devtools, "Enter")
+  await poll(
+    () => devtools.evaluate<boolean>(`${KANBAN_STATE}.lastMove.endsWith("notes to doing at 0")`),
+    2_000,
+  )
+  await kanbanClick(
+    devtools,
+    `document.querySelector('${KANBAN_CARD} [data-e2e="kanban-last-move"]')`,
+  )
+  await new Promise((done) => setTimeout(done, 100))
+  const blank = await devtools.evaluate<boolean>(`document.activeElement === document.body`)
+  // A render the reader did not cause: `.click()` moves no focus.
+  await devtools.evaluate<null>(`(${refuse}.click(), null)`)
+  await poll(() => devtools.evaluate<boolean>(`!${refuse}.checked`), 2_000)
+  const frame = `new Promise((done) => requestAnimationFrame(done))`
+  await devtools.evaluate<null>(`${frame}.then(() => ${frame}).then(() => null)`)
+  await new Promise((done) => setTimeout(done, 200))
+  const after = await devtools.evaluate<KanbanState>(KANBAN_STATE)
+
+  check(
+    "after a refused KanbanBoard drop and a click on blank space, a later render leaves focus alone",
+    blank && after.focused === null,
+    `focus on the page after the click: ${blank}; after the render, focus on card ${after.focused}`,
   )
 }
 
