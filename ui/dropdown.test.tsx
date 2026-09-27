@@ -1,7 +1,7 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
-import { Dropdown, DropdownItem, nextMenuIndex } from "./dropdown.tsx"
+import { Dropdown, DropdownItem, dropdownOpensUp, nextMenuIndex } from "./dropdown.tsx"
 
 describe("Dropdown", () => {
   it("starts closed, hiding the panel", () => {
@@ -72,6 +72,15 @@ describe("Dropdown", () => {
 
     expect(html).toContain("left-0")
     expect(html).toContain("origin-top-left")
+  })
+
+  it("renders an auto menu below the trigger until the browser has measured it", () => {
+    const html = render(
+      <Dropdown trigger="Menu" triggerNamedByContent vertical="auto">item</Dropdown>,
+    )
+
+    expect(html).toContain("top-full")
+    expect(html).not.toContain("bottom-full")
   })
 
   it("defaults the panel below and to the right of the trigger", () => {
@@ -195,5 +204,28 @@ describe("nextMenuIndex", () => {
   it("has nowhere to move in an empty menu", () => {
     expect(nextMenuIndex("ArrowDown", -1, 0)).toBeUndefined()
     expect(nextMenuIndex("Home", -1, 0)).toBeUndefined()
+  })
+})
+
+describe("dropdownOpensUp", () => {
+  it("opens down when the panel fits below the trigger", () => {
+    expect(dropdownOpensUp({ top: 100, bottom: 140 }, 200, 800)).toBe(false)
+  })
+
+  it("opens up when the panel does not fit below and there is more room above", () => {
+    expect(dropdownOpensUp({ top: 700, bottom: 740 }, 200, 800)).toBe(true)
+  })
+
+  it("counts the gap between trigger and panel as space the panel needs", () => {
+    expect(dropdownOpensUp({ top: 548, bottom: 592 }, 200, 800)).toBe(false)
+    expect(dropdownOpensUp({ top: 549, bottom: 593 }, 200, 800)).toBe(true)
+  })
+
+  it("stays down when the panel fits neither way but below is roomier", () => {
+    expect(dropdownOpensUp({ top: 100, bottom: 140 }, 900, 800)).toBe(false)
+  })
+
+  it("opens up when the panel fits neither way but above is roomier", () => {
+    expect(dropdownOpensUp({ top: 500, bottom: 540 }, 900, 800)).toBe(true)
   })
 })

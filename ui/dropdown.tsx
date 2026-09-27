@@ -1,7 +1,7 @@
 import { cn } from "@spy4x/preact-cn"
 import { useSignal } from "@preact/signals"
 import type { ComponentChildren, JSX } from "preact"
-import { useEffect, useRef } from "preact/hooks"
+import { useEffect, useLayoutEffect, useRef } from "preact/hooks"
 import { buttonClasses } from "./button.tsx"
 
 /**
@@ -51,8 +51,11 @@ export interface DropdownBaseProps {
   panelClasses?: string
   /** Menu content. Items are {@link DropdownItem}s; anything else the keyboard cannot reach. */
   children: ComponentChildren
-  /** Vertical anchor relative to the trigger. Defaults to `"down"`. */
-  vertical?: "up" | "down"
+  /**
+   * Which way the menu opens. `"auto"`, the default, opens it down unless it would run past the
+   * bottom of the viewport and there is more room above the trigger (see {@link dropdownOpensUp}).
+   */
+  vertical?: "auto" | "up" | "down"
   /** Horizontal anchor relative to the trigger. Defaults to `"right"`. */
   horizontal?: "left" | "right"
   /** Accessible name for the menu, applied as `aria-label` on the panel. */
@@ -92,6 +95,32 @@ export function nextMenuIndex(key: string, current: number, count: number): numb
     default:
       return undefined
   }
+}
+
+/** The space between the trigger and the panel, in pixels: the panel's `mt-2` or `mb-2`. */
+const PANEL_GAP = 8
+
+/**
+ * Whether a `vertical="auto"` menu opens upward: it does when the panel does not fit between the
+ * trigger and the bottom of the viewport, and there is more room above the trigger than below.
+ * When neither side fits, the roomier side wins, because that is the side that hides less of it.
+ *
+ * Pure and exported so the decision is unit-testable without a layout: the component measures,
+ * this decides.
+ *
+ * @param trigger The trigger's `top` and `bottom`, in viewport pixels.
+ * @param panelHeight The open panel's height, in pixels.
+ * @param viewportHeight The viewport's height, in pixels.
+ * @returns `true` when the menu should open above the trigger.
+ */
+export function dropdownOpensUp(
+  trigger: { top: number; bottom: number },
+  panelHeight: number,
+  viewportHeight: number,
+): boolean {
+  const below = viewportHeight - trigger.bottom
+  if (panelHeight + PANEL_GAP <= below) return false
+  return trigger.top > below
 }
 
 const itemClasses =
@@ -208,12 +237,14 @@ export function Dropdown(props: DropdownProps): JSX.Element {
     containerClasses,
     panelClasses,
     children,
-    vertical = "down",
+    vertical = "auto",
     horizontal = "right",
     menuLabel,
   } = props
 
   const isOpen = useSignal(false)
+  // Where an `"auto"` menu opened last. Starts down, which is what the server renders.
+  const autoOpensUp = useSignal(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -228,6 +259,20 @@ export function Dropdown(props: DropdownProps): JSX.Element {
     document.addEventListener("mousedown", handleClickOutside)
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
+
+  // Measured before the browser paints the opened panel, so an upward menu is never drawn
+  // downward first. The panel is laid out by now: this render dropped its `hidden`.
+  useLayoutEffect(() => {
+    if (!open || vertical !== "auto") return
+    const root = rootRef.current
+    const panel = panelRef.current
+    if (!root || !panel) return
+    autoOpensUp.value = dropdownOpensUp(
+      root.getBoundingClientRect(),
+      panel.offsetHeight,
+      document.documentElement.clientHeight,
+    )
+  }, [open, vertical])
 
   useEffect(() => {
     if (!open) return
@@ -307,9 +352,10 @@ export function Dropdown(props: DropdownProps): JSX.Element {
     close(true)
   }
 
-  const verticalClass = vertical === "up" ? "bottom-full mb-2" : "top-full mt-2"
+  const opensUp = vertical === "up" || (vertical === "auto" && autoOpensUp.value)
+  const verticalClass = opensUp ? "bottom-full mb-2" : "top-full mt-2"
   const horizontalClass = horizontal === "left" ? "left-0" : "right-0"
-  const originClass = vertical === "up"
+  const originClass = opensUp
     ? (horizontal === "left" ? "origin-bottom-left" : "origin-bottom-right")
     : (horizontal === "left" ? "origin-top-left" : "origin-top-right")
 

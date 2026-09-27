@@ -68,6 +68,7 @@ const DROPDOWN_STATE = `(() => {
  */
 export async function uiChecks(devtools: Devtools): Promise<void> {
   await dropdownChecks(devtools)
+  await dropdownAutoDirectionChecks(devtools)
 
   const switches = await devtools.evaluate<{ count: number; before: string; after: string }>(
     `(async () => {
@@ -159,6 +160,8 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   )
 
   await refForwardingChecks(devtools)
+  await busyButtonChecks(devtools)
+  await busySubmitChecks(devtools)
 
   await copyBlockChecks(devtools)
   await copyBlockNeverClipsCheck(devtools)
@@ -193,6 +196,159 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   // Last on purpose: a Modal that refuses to close would sit in the top layer over everything, so a
   // failure here cannot take an unrelated check down with it.
   await modalChecks(devtools)
+}
+
+/** What one read of the busy `Button` demo sees. */
+interface BusyState {
+  /** `aria-busy` on the Confirm button, or `null` when it is not set. */
+  busy: string | null
+  /** `aria-disabled` on the Confirm button, or `null` when it is not set. */
+  ariaDisabled: string | null
+  /** `true` when the native `disabled` attribute is set, which a busy button must not do. */
+  disabled: boolean
+  /** The Confirm button's visible text. */
+  text: string
+  /** `true` when the spinner is inside the Confirm button. */
+  spinner: boolean
+  /** How many presses the demo's own counter recorded. */
+  count: number
+  /** `true` when the Confirm button has focus. */
+  focused: boolean
+}
+
+/** Reads {@link BusyState} off the `Button` card in one round trip. */
+const BUSY_STATE = `(() => {
+  const confirm = document.querySelector('#demo-Button [data-e2e="busy-confirm"]')
+  const counter = confirm.parentElement.textContent.match(/confirmed (\\d+)/)
+  return {
+    busy: confirm.getAttribute("aria-busy"),
+    ariaDisabled: confirm.getAttribute("aria-disabled"),
+    disabled: confirm.disabled,
+    text: confirm.textContent.trim(),
+    spinner: confirm.querySelector("svg.animate-spin") !== null,
+    count: counter === null ? -1 : Number(counter[1]),
+    focused: document.activeElement === confirm,
+  }
+})()`
+
+/**
+ * `Button`'s `busy` state, driven with real key presses on the `Button` card's busy demo.
+ *
+ * A press on Confirm makes it busy. Busy means a spinner, `aria-busy="true"`, the busy label in
+ * place of the children, focus left where it was, and further presses ignored: the demo counts
+ * every press its `onClick` receives, so a second Enter and a Space that reached it would move the
+ * count past one. A string render sees the attributes of a busy button, but not that a press on one
+ * does nothing, nor that focus survives the switch; only a browser shows those. Finish ends the
+ * work, and the idle button has to come back with its own label.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function busyButtonChecks(devtools: Devtools): Promise<void> {
+  const confirm = `document.querySelector('#demo-Button [data-e2e="busy-confirm"]')`
+  const finish = `document.querySelector('#demo-Button [data-e2e="busy-finish"]')`
+  await centreInView(devtools, confirm)
+
+  const before = await devtools.evaluate<BusyState>(BUSY_STATE)
+  await devtools.evaluate<null>(`(${confirm}.focus(), null)`)
+  await pressKey(devtools, "Enter")
+  await poll(() => devtools.evaluate<boolean>(`${BUSY_STATE}.busy === "true"`), 2_000)
+  const busy = await devtools.evaluate<BusyState>(BUSY_STATE)
+
+  check(
+    "a real Enter press makes the busy Button busy: spinner, aria-busy, busy label, focus kept",
+    before.busy === null && before.text === "Confirm" && !before.spinner &&
+      busy.busy === "true" && busy.ariaDisabled === "true" && !busy.disabled &&
+      busy.text === "Confirming…" && busy.spinner && busy.focused &&
+      busy.count === before.count + 1,
+    `aria-busy ${before.busy} → ${busy.busy}, aria-disabled ${busy.ariaDisabled}, ` +
+      `disabled ${busy.disabled}, "${before.text}" → "${busy.text}", spinner ${busy.spinner}, ` +
+      `focus ${busy.focused ? "kept" : "lost"}, count ${before.count} → ${busy.count}`,
+  )
+
+  await pressKey(devtools, "Enter")
+  await pressKey(devtools, "Space")
+  // A press that got through would re-render the counter at once; give it time to show up.
+  await new Promise((done) => setTimeout(done, 200))
+  const pressed = await devtools.evaluate<BusyState>(BUSY_STATE)
+  check(
+    "a busy Button ignores Enter and Space: its onClick does not run again",
+    pressed.busy === "true" && pressed.count === busy.count && pressed.focused,
+    `count ${busy.count} → ${pressed.count} after Enter and Space, aria-busy ${pressed.busy}, ` +
+      `focus ${pressed.focused ? "kept" : "lost"}`,
+  )
+
+  await devtools.evaluate<null>(`(${finish}.focus(), null)`)
+  await pressKey(devtools, "Enter")
+  await poll(() => devtools.evaluate<boolean>(`${BUSY_STATE}.busy === null`), 2_000)
+  const idle = await devtools.evaluate<BusyState>(BUSY_STATE)
+  check(
+    "a Button that stops being busy drops aria-busy, the spinner and the busy label",
+    idle.busy === null && idle.ariaDisabled === null && idle.text === "Confirm" && !idle.spinner,
+    `aria-busy ${pressed.busy} → ${idle.busy}, "${pressed.text}" → "${idle.text}", ` +
+      `spinner ${idle.spinner}`,
+  )
+}
+
+/** What one read of the busy submit demo sees. */
+interface BusySubmitState {
+  /** `aria-busy` on the submit button, or `null` when it is not set. */
+  busy: string | null
+  /** How many submissions the form's own counter recorded. */
+  submits: number
+}
+
+/** Reads {@link BusySubmitState} off the `Button` card's form in one round trip. */
+const BUSY_SUBMIT_STATE = `(() => {
+  const form = document.querySelector('#demo-Button [data-e2e="busy-form"]')
+  const counter = form.textContent.match(/submitted (\\d+)/)
+  return {
+    busy: form.querySelector('[data-e2e="busy-form-submit"]').getAttribute("aria-busy"),
+    submits: counter === null ? -1 : Number(counter[1]),
+  }
+})()`
+
+/**
+ * A busy submit `Button` stops its form from being sent a second time.
+ *
+ * Enter in a text field submits the form by clicking its submit button for the user, so the first
+ * Enter has to submit once and make the button busy. A second Enter in the field and an Enter on
+ * the busy button itself are both presses the button cancels, so the form's own count stays at one.
+ * The field is where most double submissions start, and no string render reaches either path.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function busySubmitChecks(devtools: Devtools): Promise<void> {
+  const field = `document.querySelector('#demo-Button [data-e2e="busy-form-field"]')`
+  const submit = `document.querySelector('#demo-Button [data-e2e="busy-form-submit"]')`
+  const finish = `document.querySelector('#demo-Button [data-e2e="busy-form-finish"]')`
+  await centreInView(devtools, field)
+
+  const before = await devtools.evaluate<BusySubmitState>(BUSY_SUBMIT_STATE)
+  await devtools.evaluate<null>(`(${field}.focus(), null)`)
+  await pressKey(devtools, "Enter")
+  await poll(() => devtools.evaluate<boolean>(`${BUSY_SUBMIT_STATE}.busy === "true"`), 2_000)
+  const first = await devtools.evaluate<BusySubmitState>(BUSY_SUBMIT_STATE)
+  check(
+    "Enter in a form's field submits it once and makes its submit Button busy",
+    before.busy === null && first.busy === "true" && first.submits === before.submits + 1,
+    `aria-busy ${before.busy} → ${first.busy}, submitted ${before.submits} → ${first.submits}`,
+  )
+
+  await pressKey(devtools, "Enter")
+  await devtools.evaluate<null>(`(${submit}.focus(), null)`)
+  await pressKey(devtools, "Enter")
+  // A submission that got through would re-render the counter at once; give it time to show up.
+  await new Promise((done) => setTimeout(done, 200))
+  const again = await devtools.evaluate<BusySubmitState>(BUSY_SUBMIT_STATE)
+  check(
+    "a busy submit Button keeps its form from being sent again, from the field or from itself",
+    again.busy === "true" && again.submits === first.submits,
+    `submitted ${first.submits} → ${again.submits} after Enter in the field and on the button`,
+  )
+
+  await devtools.evaluate<null>(`(${finish}.focus(), null)`)
+  await pressKey(devtools, "Enter")
+  await poll(() => devtools.evaluate<boolean>(`${BUSY_SUBMIT_STATE}.busy === null`), 2_000)
 }
 
 /** One component whose card carries a ref-forwarding demo, and the card that holds it. */
@@ -874,6 +1030,114 @@ async function strayClickCheck(devtools: Devtools): Promise<void> {
   // Leave it closed for whatever runs next, the way every other check here does.
   await pressKey(devtools, "Escape")
   await poll(() => devtools.evaluate<boolean>(`${DROPDOWN_STATE}.hidden === true`), 3_000)
+}
+
+/** Where an opened `Dropdown` panel sits relative to its trigger, in viewport pixels. */
+interface DropdownPlacement {
+  /** `true` when the panel is open: `aria-expanded` and no `hidden`. */
+  open: boolean
+  triggerTop: number
+  triggerBottom: number
+  panelTop: number
+  panelBottom: number
+  /** The viewport's height. */
+  viewport: number
+}
+
+/**
+ * A `Dropdown` left at its default `vertical="auto"` opens upward near the bottom of the viewport
+ * and downward near the top.
+ *
+ * This drives the card's "Text trigger" dropdown, the one with the tallest menu and no `vertical`
+ * of its own. The page is scrolled so the trigger sits just above the viewport's bottom edge, the
+ * menu is opened with a real Enter press, and its box has to end above the trigger and start inside
+ * the viewport. Then the trigger is scrolled near the top, and the same menu has to open below it.
+ * Each half first asserts the room it set up, below the trigger against the panel's height and
+ * its 8px gap, so a scroll that landed elsewhere fails rather than proves nothing.
+ * The pair is what proves the choice: a menu that always opened up passes the first half, one that
+ * always opened down passes the second, and only a menu that measures passes both. The measurement
+ * runs in a layout effect, so no string render can reach it.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function dropdownAutoDirectionChecks(devtools: Devtools): Promise<void> {
+  await devtools.evaluate<null>(`(() => {
+    const panel = document.querySelector('#demo-Dropdown [role="menu"][aria-label="Bulk actions"]')
+    const root = panel.parentElement
+    globalThis.__verifyAutoDropdown = {
+      panel,
+      root,
+      trigger: root.querySelector("button[aria-haspopup]"),
+    }
+    return null
+  })()`)
+  const placement = `(() => {
+    const { trigger, panel } = globalThis.__verifyAutoDropdown
+    const t = trigger.getBoundingClientRect()
+    const p = panel.getBoundingClientRect()
+    return {
+      open: trigger.getAttribute("aria-expanded") === "true" && !panel.classList.contains("hidden"),
+      triggerTop: Math.round(t.top),
+      triggerBottom: Math.round(t.bottom),
+      panelTop: Math.round(p.top),
+      panelBottom: Math.round(p.bottom),
+      viewport: document.documentElement.clientHeight,
+    }
+  })()`
+
+  // Scrolls so the trigger's top sits `fromTop` pixels below the viewport's top, or its bottom
+  // `fromBottom` pixels above the viewport's bottom, then opens the menu with a real Enter press.
+  const openAt = async (edge: "fromTop" | "fromBottom", gap: number) => {
+    const target = await devtools.evaluate<number>(`(() => {
+      const box = globalThis.__verifyAutoDropdown.trigger.getBoundingClientRect()
+      const viewport = document.documentElement.clientHeight
+      const offset = ${edge === "fromTop"} ? box.top - ${gap} : box.bottom - viewport + ${gap}
+      const top = Math.round(globalThis.scrollY + offset)
+      globalThis.scrollTo({ top, behavior: "instant" })
+      return top
+    })()`)
+    await settledScroll(devtools, { target })
+    await devtools.evaluate<null>(`(globalThis.__verifyAutoDropdown.trigger.focus(), null)`)
+    await pressKey(devtools, "Enter")
+    await poll(
+      () =>
+        devtools.evaluate<boolean>(
+          `globalThis.__verifyAutoDropdown.panel.contains(document.activeElement)`,
+        ),
+      2_000,
+    )
+    return await devtools.evaluate<DropdownPlacement>(placement)
+  }
+  const close = async () => {
+    await pressKey(devtools, "Escape")
+    await poll(
+      () =>
+        devtools.evaluate<boolean>(
+          `globalThis.__verifyAutoDropdown.panel.classList.contains("hidden")`,
+        ),
+      2_000,
+    )
+  }
+
+  const low = await openAt("fromBottom", 16)
+  await close()
+  check(
+    "a Dropdown with vertical auto opens upward when there is no room below its trigger",
+    low.open && low.viewport - low.triggerBottom < low.panelBottom - low.panelTop + 8 &&
+      low.panelBottom <= low.triggerTop && low.panelTop >= 0,
+    `trigger ${low.triggerTop}–${low.triggerBottom} in a ${low.viewport}px viewport, ` +
+      `panel ${low.panelTop}–${low.panelBottom}${low.open ? "" : ", never opened"}`,
+  )
+
+  const high = await openAt("fromTop", 120)
+  await close()
+  check(
+    "the same Dropdown opens downward when there is room below its trigger",
+    high.open && high.viewport - high.triggerBottom >= high.panelBottom - high.panelTop + 8 &&
+      high.panelTop >= high.triggerBottom && high.panelBottom <= high.viewport,
+    `trigger ${high.triggerTop}–${high.triggerBottom} in a ${high.viewport}px viewport, ` +
+      `panel ${high.panelTop}–${high.panelBottom}${high.open ? "" : ", never opened"}`,
+  )
 }
 
 /**

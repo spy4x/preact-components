@@ -45,7 +45,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Avatar`          | `avatar`            | `name`, `src`, `alt`, `size`                                                                                                                                          |
 | `AvatarGroup`     | `avatar`            | `items`, `max`, `label`, `size` (a `role="group"`, not a list)                                                                                                        |
 | `Badge`           | `badge`             | `text`, `color`, `type`                                                                                                                                               |
-| `Button`          | `button`            | `variant`, `size`, native button attrs                                                                                                                                |
+| `Button`          | `button`            | `variant`, `size`, `busy`, `busyLabel`, native button attrs                                                                                                           |
 | `Card`            | `card`              | `children`, `class` — a bordered surface                                                                                                                              |
 | `CardBody`        | `card`              | `children`, `class`                                                                                                                                                   |
 | `CardFooter`      | `card`              | `children`, `class`                                                                                                                                                   |
@@ -58,7 +58,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `CopyButton`      | `copy-button`       | `textToCopy`, `copy?` (clipboard port)                                                                                                                                |
 | `DataTable`       | `data-table`        | `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `captionHidden?`, `empty?`, `paging?`, `rowDataE2E?`, `class?`                                        |
 | `DateRangePicker` | `date-range-picker` | `range`, `onChange`, `timeZone`, `presets` or `withTime`, `labels?` (every key optional)                                                                              |
-| `Dropdown`        | `dropdown`          | `trigger`, `triggerLabel` or `triggerNamedByContent` (one is required), `menuLabel`, `vertical`, `horizontal`                                                         |
+| `Dropdown`        | `dropdown`          | `trigger`, `triggerLabel` or `triggerNamedByContent` (one is required), `menuLabel`, `vertical` (`"auto"` by default), `horizontal`                                   |
 | `DropdownItem`    | `dropdown`          | `href`, `onClick`, `disabled`, `danger`, `class` — a `role="menuitem"`, out of the tab order                                                                          |
 | `EmptyState`      | `empty-state`       | `icon?`, `title?`, `description?`, `action?`                                                                                                                          |
 | `EnhancedForm`    | `enhanced-form`     | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?` — posts natively before hydration                                                    |
@@ -205,6 +205,34 @@ asked for one.
   dismissLabel="Ausblenden"
 />
 ```
+
+## Button
+
+`busy` is for the time between a press and the end of the work it started: a payment being
+confirmed, a form being saved. The button shows a spinner, sets `aria-busy="true"` and
+`aria-disabled="true"`, and cancels every press, so its `onClick` does not run again and a submit
+button does not send its form a second time. It does not set `disabled`, because a disabled button
+drops focus to the page and a keyboard user who pressed Enter would lose their place. `busyLabel`
+replaces the children while busy; an icon button shows the spinner instead of its icon and keeps its
+`aria-label`.
+
+```tsx
+<Button type="submit" busy={saving.value} busyLabel="Confirming…">Confirm</Button>
+```
+
+## Dropdown
+
+`vertical` defaults to `"auto"`: the menu opens below its trigger unless it would run past the
+bottom of the viewport and there is more room above, as it does for the last row of a long table.
+It is measured each time the menu opens, before the browser draws it, so an upward menu is never
+drawn downward first. The server renders it downward, which is where a menu without JavaScript
+would open. `"up"` and `"down"` fix the direction. It measures against the viewport only, and once
+per opening: a menu clipped by a scrolling container, such as a modal's body, can still be cut off,
+and scrolling while the menu is open does not flip it.
+
+`dropdownOpensUp(trigger, panelHeight, viewportHeight)` is that decision on its own, a pure function
+of the trigger's `top` and `bottom`, the panel's height and the viewport's height. It opens up when
+the panel and its 8px gap do not fit below and there is more room above than below.
 
 ## Tooltip
 
