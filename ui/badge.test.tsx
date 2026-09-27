@@ -1,7 +1,7 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
-import { Badge } from "./badge.tsx"
+import { Badge, badgeClasses } from "./badge.tsx"
 
 describe("Badge", () => {
   it("fills with the purple palette by default", () => {
@@ -43,5 +43,13 @@ describe("Badge", () => {
 
   it("renders the badge as a span", () => {
     expect(render(<Badge text="x" />)).toMatch(/^<span/)
+  })
+})
+
+describe("badgeClasses", () => {
+  it("returns the same classes Badge renders", () => {
+    const html = render(<Badge text="open" color="green" type="outline" />)
+
+    expect(html).toContain(`class="${badgeClasses("green", "outline")}"`)
   })
 })

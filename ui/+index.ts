@@ -20,7 +20,7 @@ export {
   type GroupSplit,
   groupSplit,
 } from "./avatar.tsx"
-export { Badge, type BadgeColor, type BadgeProps, type BadgeType } from "./badge.tsx"
+export { Badge, badgeClasses, type BadgeColor, type BadgeProps, type BadgeType } from "./badge.tsx"
 export {
   Button,
   buttonClasses,
@@ -253,3 +253,12 @@ export {
   ZoomableImages,
   type ZoomableImagesProps,
 } from "./zoomable-images.tsx"
+export { InlineEdit, inlineEditCommit, type InlineEditProps } from "./inline-edit.tsx"
+export {
+  type ToggleChipOption,
+  ToggleChips,
+  toggleChipSelection,
+  type ToggleChipsMultipleProps,
+  type ToggleChipsProps,
+  type ToggleChipsSingleProps,
+} from "./toggle-chips.tsx"

@@ -69,6 +69,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `ImageGallery`    | `image-gallery`     | `images` (`{ src, alt, thumbSrc? }[]`), `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`                                                      |
 | `Input`           | `input`             | native input attrs, `class`; forwards `ref`                                                                                                                           |
 | `InputButton`     | `input-button`      | `icon`, `iconLabel`, `onClick?`, native input attrs                                                                                                                   |
+| `InlineEdit`      | `inline-edit`       | `value`, `onSave` (may return a promise), `editLabel?`, `inputLabel?`, `savingLabel?`, `errorMessage?`, `disabled?`                                                   |
 | `Lightbox`        | `lightbox`          | `images`, `index`, `open`, `onClose`, `onIndexChange`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`                                                 |
 | `LoadingSkeleton` | `loading-skeleton`  | `rows`                                                                                                                                                                |
 | `LoadingSpinner`  | `loading-spinner`   | `label`, `size`                                                                                                                                                       |
@@ -90,6 +91,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Tabs`            | `tabs`              | `tabs`, `active`, `onChange`, `lazy`                                                                                                                                  |
 | `Textarea`        | `input`             | native textarea attrs, `class`                                                                                                                                        |
 | `Toastr`          | `toastr`            | `toasts`, `onDismiss`, `corner`, `label`, `dismissLabel`, `dataE2E`                                                                                                   |
+| `ToggleChips`     | `toggle-chips`      | `options`, `value`, `onChange`, `mode?` (`multiple`/`single`), `label?`, `color?` — pressable `Badge`-look chips with `aria-pressed`                                  |
 | `ToggleField`     | `toggle-field`      | `id`, `label`, `value`, `onToggle`, `description?`, `error?`                                                                                                          |
 | `ToggleSwitch`    | `toggle-switch`     | `value`, `onToggle`, `disabled`, `label`                                                                                                                              |
 | `Tooltip`         | `tooltip`           | `content`, `label`, `placement`, `focusable`                                                                                                                          |
@@ -918,6 +920,34 @@ refuses the rest with reason `"too-many"` (`labels.tooMany`), reported through `
 announced the same way a `maxSize`/`accept` refusal is, rather than silently dropped.
 
 It does not upload — sending the chosen files is the caller's own form post or `fetch` call.
+
+## InlineEdit
+
+Pressing the value opens a text field in its place with the whole value selected. Enter saves,
+and so does moving focus away; Escape cancels and puts the old value back. Focus returns to the
+value's button when the field closes while it has focus, and stays where the user moved it when a
+blur saved. While a promise returned by `onSave` runs, the field is read-only and `aria-busy`; a
+rejected promise keeps the field open with the typed text and the `errorMessage` under it.
+
+Removing the component while its field is open saves nothing, even in Chromium, which fires `blur`
+on a focused field that leaves the page: the typed text is dropped. Turning `disabled` on while the
+field is open cancels the edit the way Escape does, unless a save is already running. Enter and
+Escape pressed while an input method is still composing a word do not save or cancel.
+
+`inlineEditCommit(draft, value)` is the save rule on its own: the trimmed draft, or `null` when it
+is empty or matches the value, in which case the field closes without calling `onSave`.
+
+## ToggleChips
+
+Each chip is a `button` with `aria-pressed`, inside a `role="group"` named by `label`. A pressed
+chip is a filled badge in `color`, an unpressed one a grey outlined badge. In `mode="single"`,
+pressing another chip moves the selection and pressing the pressed chip clears it to `null`.
+
+`toggleChipSelection(options, selected, pressed)` is the multiple-mode press on its own: it adds or
+removes `pressed` and returns the selection in the order of `options`.
+
+`badgeClasses(color, type, className)` is `Badge`'s class list without the element, which is how
+the chips share `Badge`'s palette.
 
 ## Tests
 

@@ -44,7 +44,9 @@
     "./toggle-field": "./toggle-field.tsx",
     "./toggle-switch": "./toggle-switch.tsx",
     "./tooltip": "./tooltip.tsx",
-    "./zoomable-images": "./zoomable-images.tsx"
+    "./zoomable-images": "./zoomable-images.tsx",
+    "./inline-edit": "./inline-edit.tsx",
+    "./toggle-chips": "./toggle-chips.tsx"
   },
   "publish": {
     // This package's own `*.test.*` suites, none reachable from `exports`. A glob rather than a
