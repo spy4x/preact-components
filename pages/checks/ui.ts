@@ -6394,7 +6394,9 @@ async function tabThroughPanelChecks(devtools: Devtools, mode: PickerMode): Prom
         inside[leftAt].open ? "open" : "closed"
       } with focus on ${inside[leftAt].label}, while focus was still inside the component`
       : !fields
-      ? `the walk never reached both date fields (${[...reached].join(", ")})`
+      ? `the walk left the component for ${last?.label ?? "nowhere"} with the panel ${
+        last?.open ? "open" : "closed"
+      } before reaching both date fields (it reached ${[...reached].join(", ")})`
       : `${inside.length} Tab presses inside, the panel open after each, through ` +
         `${[...reached].filter((e2e) => e2e !== "").join(", ")}`,
   )
