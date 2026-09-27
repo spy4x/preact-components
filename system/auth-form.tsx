@@ -77,6 +77,10 @@
  * than through its own changing label alone, and it moves the focus to itself on activation so a
  * keyboard user does not have to find it again after the toggle re-renders.
  *
+ * **Every control carries a fixed `data-e2e`** (`auth-form-login`, `auth-form-password`, …), the
+ * same convention as `Shell`'s own parts, so an app's end-to-end tests find a field whatever
+ * language its labels are in. The values are listed in `system/README.md`.
+ *
  * **`mode` and `step` are string unions, matching every other prop union in this library**
  * (`ButtonVariant`, `CalendarDayReason`) rather than a TypeScript `enum`. An `enum` earns its place
  * in this codebase for a value that is internal bookkeeping and never crosses a serialisation
@@ -287,6 +291,7 @@ export function AuthForm(
       onSubmit={handleSubmit}
       aria-label={formLabel}
       class={cn("space-y-4", className)}
+      data-e2e="auth-form"
     >
       {
         /* Always in the page, empty until there is something to say — see this module's doc and
@@ -305,7 +310,7 @@ export function AuthForm(
               required
               error={problem?.field === "login" ? problem.message : undefined}
             >
-              <Input name="login" autocomplete="username" required />
+              <Input name="login" autocomplete="username" required data-e2e="auth-form-login" />
             </Field>
             <Field
               id={passwordId}
@@ -324,6 +329,7 @@ export function AuthForm(
                     autocomplete={mode === "sign-up" ? "new-password" : "current-password"}
                     required
                     class="pr-12"
+                    data-e2e="auth-form-password"
                   />
                   {
                     /* An icon-only toggle, 32 px square at 4 px from the edge, so the field's
@@ -337,6 +343,7 @@ export function AuthForm(
                     aria-pressed={showPassword}
                     aria-label={showPassword ? copy.hidePassword : copy.showPassword}
                     class="absolute top-1/2 right-1 -translate-y-1/2"
+                    data-e2e="auth-form-password-toggle"
                     onClick={(event) => {
                       // Keeps the toggle itself the Tab stop after the type swap re-renders it,
                       // rather than leaving the browser's own click-focus behaviour to decide —
@@ -351,7 +358,7 @@ export function AuthForm(
               )}
             </Field>
             <div class="flex flex-wrap items-center gap-3">
-              <Button type="submit" disabled={busy}>
+              <Button type="submit" disabled={busy} data-e2e="auth-form-submit">
                 {mode === "sign-in" ? copy.signIn : copy.signUp}
               </Button>
               {onModeChange && (
@@ -359,6 +366,7 @@ export function AuthForm(
                   type="button"
                   variant="ghost"
                   size="sm"
+                  data-e2e="auth-form-mode-switch"
                   onClick={() => onModeChange(mode === "sign-in" ? "sign-up" : "sign-in")}
                 >
                   {mode === "sign-in" ? copy.switchToSignUp : copy.switchToSignIn}
@@ -386,10 +394,13 @@ export function AuthForm(
                   inputmode="numeric"
                   autocomplete="one-time-code"
                   required
+                  data-e2e="auth-form-code"
                 />
               )}
             </Field>
-            <Button type="submit" disabled={busy}>{copy.submitCode}</Button>
+            <Button type="submit" disabled={busy} data-e2e="auth-form-submit">
+              {copy.submitCode}
+            </Button>
           </>
         )}
 

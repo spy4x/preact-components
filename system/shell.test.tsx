@@ -166,11 +166,13 @@ describe("Shell", () => {
         navItems={navItems}
         brand="Acme"
         user={user}
+        onCollapsedChange={() => {}}
         labels={{
           menu: "Ouvrir le menu",
           nav: "Navigation principale",
           skipToContent: "Aller au contenu",
           userMenu: "Menu du compte",
+          sidebarToggle: "Afficher le panneau",
         }}
       >
         page
@@ -180,6 +182,8 @@ describe("Shell", () => {
     expect(html).toContain("Navigation principale")
     expect(html).toContain("Aller au contenu")
     expect(html).toContain('aria-label="Menu du compte"')
+    expect(html).toContain('aria-label="Afficher le panneau"')
+    expect(html).not.toContain("Toggle sidebar")
     expect(html).not.toContain("Skip to content")
     expect(html).not.toContain("Main navigation")
     expect(html).not.toContain("Account menu")
@@ -213,6 +217,112 @@ describe("Shell", () => {
         "to",
       ]),
     )
+  })
+
+  it("draws an item's action beside its link, never inside it, named by its label", () => {
+    const opened: string[] = []
+    const html = render(
+      <Shell
+        navItems={[{
+          name: "Projects",
+          href: "/projects",
+          action: { label: "New project", onClick: () => opened.push("new") },
+        }]}
+        brand="Acme"
+        user={null}
+      >
+        page
+      </Shell>,
+    )
+    const actions = [
+      ...html.matchAll(/<button[^>]*data-e2e="shell-nav-action"[^>]*>/g),
+    ].map((m) => m[0])
+    expect(actions).toHaveLength(2)
+    for (const tag of actions) {
+      expect(attr(tag, "aria-label")).toBe("New project")
+      expect(attr(tag, "type")).toBe("button")
+    }
+    for (const link of linksTo(html, "/projects")) {
+      expect(link).not.toContain("shell-nav-action")
+      expect(link).not.toContain("<button")
+    }
+  })
+
+  it("draws an action with an href as a link of its own", () => {
+    const html = render(
+      <Shell
+        navItems={[{
+          name: "Projects",
+          href: "/projects",
+          action: { label: "New project", href: "/projects/new", dataE2E: "new-project" },
+        }]}
+        brand="Acme"
+        user={null}
+      >
+        page
+      </Shell>,
+    )
+    const links = linksTo(html, "/projects/new")
+    expect(links).toHaveLength(2)
+    for (const link of links) {
+      expect(attr(link, "aria-label")).toBe("New project")
+      expect(attr(link, "data-e2e")).toBe("new-project")
+    }
+  })
+
+  it("draws sidebarTop and sidebarBottom in the sidebar and in the drawer, naming each place", () => {
+    const html = render(
+      <Shell
+        navItems={navItems}
+        brand="Acme"
+        user={null}
+        sidebarTop={(place) => <span data-e2e={`top-${place}`}>switcher</span>}
+        sidebarBottom={(place) => <span data-e2e={`bottom-${place}`}>filters</span>}
+      >
+        page
+      </Shell>,
+    )
+    const sidebar = html.slice(html.indexOf('data-e2e="shell-sidebar"'))
+    const drawer = html.slice(
+      html.indexOf('data-e2e="shell-panel"'),
+      html.indexOf('data-e2e="shell-sidebar"'),
+    )
+    expect(drawer).toContain('data-e2e="top-drawer"')
+    expect(drawer).toContain('data-e2e="bottom-drawer"')
+    expect(sidebar).toContain('data-e2e="top-sidebar"')
+    expect(sidebar).toContain('data-e2e="bottom-sidebar"')
+    for (const part of [drawer, sidebar]) {
+      const nav = part.indexOf("<nav")
+      expect(part.indexOf('data-e2e="top-')).toBeLessThan(nav)
+      expect(part.indexOf('data-e2e="bottom-')).toBeGreaterThan(part.indexOf("</nav>"))
+    }
+  })
+
+  it("draws no collapse button when onCollapsedChange is not given", () => {
+    const html = render(<Shell navItems={navItems} brand="Acme" user={null}>page</Shell>)
+    expect(html).not.toContain("shell-sidebar-toggle")
+  })
+
+  it("draws the collapse button with aria-expanded, controlling the desktop sidebar", () => {
+    for (const collapsed of [false, true]) {
+      const html = render(
+        <Shell
+          navItems={navItems}
+          brand="Acme"
+          user={null}
+          collapsed={collapsed}
+          onCollapsedChange={() => {}}
+        >
+          page
+        </Shell>,
+      )
+      const button = html.match(/<button[^>]*data-e2e="shell-sidebar-toggle"[^>]*>/)?.[0] ?? ""
+      expect(attr(button, "aria-label")).toBe("Toggle sidebar")
+      expect(attr(button, "aria-expanded")).toBe(String(!collapsed))
+      const aside = html.match(/<aside[^>]*>/)?.[0] ?? ""
+      expect(attr(aside, "id")).toBe(attr(button, "aria-controls"))
+      expect(attr(aside, "class")?.split(" ").includes("lg:flex")).toBe(!collapsed)
+    }
   })
 
   it("merges a caller's class onto the root element without losing its own", () => {

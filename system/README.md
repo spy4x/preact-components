@@ -26,16 +26,16 @@ Extracted from earlier source applications.
 
 ## Components
 
-| Component    | Subpath       | Ports / key props                                                                                                    |
-| ------------ | ------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `AuthForm`   | `auth-form`   | `mode`, `step`, `onModeChange?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `action?` |
-| `SEOHead`    | `seo-head`    | `title`, `description`, `canonical`, `crumbs?`, `ogImage?`, `jsonLd?`, `noindex?`, `twitterCard?`                    |
-| `SWUpdater`  | `sw-updater`  | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                 |
-| `Calendar`   | `calendar`    | `monthAnchor`, `minDate`, `maxDate`, `availableByDate`, `onSelectDate?`                                              |
-| `SiteHeader` | `site-header` | `links`, `currentPath?`, `brand`, `actions?`, `labels?`                                                              |
-| `Shell`      | `shell`       | `navItems`, `currentPath?`, `brand`, `user`, `userMenuItems?`, `status?`, `children`, `labels?`, `class?`            |
-| `StateInit`  | `state-init`  | `data`, `id?` — paired with `readStateInit(id?, source?)`                                                            |
-| `RailShell`  | `rail-shell`  | `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `children`, `labels?`, `class?`                     |
+| Component    | Subpath       | Ports / key props                                                                                                                                                                           |
+| ------------ | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AuthForm`   | `auth-form`   | `mode`, `step`, `onModeChange?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `action?`                                                                        |
+| `SEOHead`    | `seo-head`    | `title`, `description`, `canonical`, `crumbs?`, `ogImage?`, `jsonLd?`, `noindex?`, `twitterCard?`                                                                                           |
+| `SWUpdater`  | `sw-updater`  | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                                                                                        |
+| `Calendar`   | `calendar`    | `monthAnchor`, `minDate`, `maxDate`, `availableByDate`, `onSelectDate?`                                                                                                                     |
+| `SiteHeader` | `site-header` | `links`, `currentPath?`, `brand`, `actions?`, `labels?`                                                                                                                                     |
+| `Shell`      | `shell`       | `navItems`, `currentPath?`, `brand`, `user`, `userMenuItems?`, `status?`, `navigate?`, `sidebarTop?`, `sidebarBottom?`, `collapsed?`, `onCollapsedChange?`, `children`, `labels?`, `class?` |
+| `StateInit`  | `state-init`  | `data`, `id?` — paired with `readStateInit(id?, source?)`                                                                                                                                   |
+| `RailShell`  | `rail-shell`  | `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `children`, `labels?`, `class?`                                                                                            |
 
 `head.ts` exports `createHeadStore`, a factory that builds a fresh signal-backed store on every
 call — see below. The pure address and breadcrumb helpers `SEOHead` runs (`normalizeCanonical`,
@@ -474,6 +474,15 @@ this codebase for a value that is internal bookkeeping and never crosses a seria
 after a real round trip, so the value has to survive JSON without a second lookup table translating
 an integer back into a string.
 
+**Tests find a control by its fixed `data-e2e`, not by a prop.** Every control carries one value
+that never changes: `auth-form` on the form, `auth-form-login`, `auth-form-password`,
+`auth-form-password-toggle`, `auth-form-code`, `auth-form-submit` (in both steps) and
+`auth-form-mode-switch`. This is how `Shell` marks its own parts (`shell-menu-button`,
+`shell-sidebar`), and it holds whatever language the labels are in, which a lookup by label does
+not. A prop for test attributes was not added: nothing varies per caller, and a page with two
+forms tells them apart by the form's accessible name (`Sign in`, `Sign up`). Finding a field by
+its label still works, since every field has a real `<label for>`.
+
 ## The `SiteHeader` contract
 
 `SiteHeader` draws a public-site top bar: `brand` on the left; `links` on the right from `lg` up,
@@ -649,9 +658,44 @@ links do.** `ShellNavLink` wires the identical `onNavigate={() => close(false)}`
 `close(false)`-not-`close(true)` reasoning: a navigating link, like the scrim, is not the menu button
 asking to close, so it must not fight wherever the click actually sends focus next.
 
+**`navigate` is the client-router port, shaped like `RailShell`'s.** Without it, every link is an
+ordinary link. With it, a plain left click on a nav link, or on an action that has an `href`, calls
+`navigate(href)` and cancels the browser's own navigation. A click with Ctrl, Meta, Shift or Alt
+held, or with another button, is left to the browser, so "open in a new tab" still works, and such a
+click leaves the drawer open. A click something earlier already cancelled (a capture listener of
+the app's own router, say) does not call the port twice; in the drawer it still closes the drawer.
+Enter on a focused link fires the same plain click, so the keyboard takes the same path.
+
+**The sidebar slots are functions, called once per place.** `sidebarTop` is drawn above the
+navigation and `sidebarBottom` below it, in the desktop sidebar and again in the drawer, each
+outside the `<nav>` landmark. Both exist because the apps need both: a workspace switcher belongs
+above the links, and filters or a theme control sit below them. They are functions for the same
+reason `navItems` is data: one element can only be mounted once. The `place` argument
+(`"sidebar"` or `"drawer"`) lets the caller keep ids unique across the two copies. The desktop
+column sticks under the header and is at most one screen tall, so `sidebarBottom` stays in view
+on a long page and the column scrolls on its own when it overflows.
+
+**A nav item's `action` is a sibling of its link, never inside it.** It is a second Tab stop, named
+by the caller's required `action.label`, drawn as a link when it has an `href` (following
+`navigate` like the item's own link) and as a button otherwise. In the drawer, a link action closes
+the drawer like any link. A button action leaves the drawer open and focus on the button: it
+usually opens something on the page, such as a create form, and closing the drawer under the
+focused button would drop keyboard focus to `<body>`. The visitor closes the drawer as usual,
+with Escape, the scrim or a link. Its icon defaults to `IconPlus`, the common "create" control.
+
+**Collapsing hides the desktop sidebar; it does not shrink it to icons.** The slots hold content
+with no icon form, and an item may have no icon; `RailShell` is the frame for a navigation of
+icons. `collapsed` and `onCollapsedChange` are a controlled pair: the collapse button is drawn in
+the header, from `lg` up, only when `onCollapsedChange` is given, and reports its state with
+`aria-expanded` and `aria-controls`. Where the value is stored is the caller's choice; the guide's
+card keeps it in `localStorage` through `makeStorage` from `@spy4x/platform/browser/storage`, read
+in an effect after mount. That read comes after the first paint, so a remembered collapse shows the
+sidebar for a moment on load; an app that wants no flash reads the value before its first render,
+from a cookie on the server for instance. The drawer below `lg` is not affected by `collapsed`.
+
 **Every string beyond the caller's own data has an English default and a `labels` override**: the
-menu button's name, the shared `aria-label` on both navigation landmarks, the skip link's text, and
-the user menu panel's `aria-label`.
+menu button's name, the shared `aria-label` on both navigation landmarks, the skip link's text, the
+user menu panel's `aria-label`, and the collapse button's name (`"Toggle sidebar"`).
 
 ### Reusing `mobile-panel.ts`
 
@@ -758,8 +802,8 @@ which column header holds which text, that a month anchor is refused — is asse
 `calendar.test.tsx` and `date.test.ts`; everything else is in the browser file or is unproven.
 
 `auth-form.test.tsx` is the same split again: markup, `autocomplete`, `name`, `required`, `method`
-being `"post"` with and without `action`, and the error shape are all a string render can show, and
-are asserted there. The focus move to the code field, the mode switch pressed with a real pointer,
+being `"post"` with and without `action`, the error shape and every fixed `data-e2e` hook are all a
+string render can show, and are asserted there. The focus move to the code field, the mode switch pressed with a real pointer,
 the show/hide toggle's real click and Space press, the error arriving as a change to the
 already-present live region, a busy `requestSubmit()` calling no callback, and a submit surviving
 disabled script execution with no query string added to the URL are effects, key presses, a focus
@@ -790,15 +834,24 @@ number or no counter at all, an item with no `href` rendered as a heading with i
 it, `brand` and `status` each rendered exactly once with no anchor of the component's own, no user
 menu when `user` is `null`, the user menu named from the user's own name and every `userMenuItems`
 entry rendered as a link or a button carrying its `dataE2E`, the skip link positioned before any
-other link and wired to a focusable `#`-targeted `<main>`, a `labels` override replacing every default, and a caller's `class`
+other link and wired to a focusable `#`-targeted `<main>`, a `labels` override replacing every default, an item's `action`
+drawn beside its link rather than inside it (as a button, or as a link of its own with an `href`),
+`sidebarTop` and `sidebarBottom` drawn in both places around the `<nav>` and told which place, the
+collapse button absent without `onCollapsedChange` and otherwise reporting `aria-expanded` against
+the sidebar it controls, and a caller's `class`
 merged onto the root without losing its own — checked, as `site-header.test.tsx` is, against the full
 set of visible words the render produces. Opening the drawer with a real click, a real Escape closing
 it, an Escape aimed at the drawer landing in the same task as the click that opened it, Tab order
 through the drawer's links, the header holding still (byte-identical screenshots) while the drawer
 opens at phone width and while the user menu opens at desktop width, the skip link moving focus to
 the content area rather than only the hash, and the two-directions Escape-scoping proof between the
-drawer and the user menu are effects, key presses, a focus change, layout and real pointer/keyboard
-input — none reachable from a string render — and are proven in `pages/checks/system.ts` instead.
+drawer and the user menu, a plain click going through `navigate` while a Ctrl-click does not, a
+drawer link going through `navigate` and closing the drawer, an item's action reached by Tab and
+pressed with Enter, a button action in the drawer leaving it open with focus kept, the sidebar
+column staying under the header with its bottom slot in view on a page taller than the screen,
+and the collapse surviving a fresh load are
+effects, key presses, a focus change, layout and real pointer/keyboard input — none reachable from a
+string render — and are proven in `pages/checks/system.ts` instead.
 
 `state-init.test.tsx` is everything `StateInit` has that a string render can prove: `stateInitText`
 round-tripping `</script>`, `<!--` and both line separators unchanged through `JSON.parse`, its
