@@ -1198,9 +1198,9 @@ export const systemDemos = {
       },
       {
         name: "sidebarTop",
-        type: '(place: "sidebar" | "drawer") => ComponentChildren',
+        type: "(place) => ComponentChildren",
         description:
-          "Content above the navigation, drawn in both places; `sidebarBottom` is pinned below it.",
+          'Content above the navigation, drawn in the sidebar and the drawer (`place` is `"sidebar"` or `"drawer"`); `sidebarBottom` is pinned below it.',
       },
       {
         name: "collapsed",
