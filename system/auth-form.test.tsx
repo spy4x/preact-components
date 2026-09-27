@@ -220,6 +220,30 @@ describe("AuthForm", () => {
     expect(html).toContain('aria-label="Passwort zeigen"')
   })
 
+  it("puts a fixed data-e2e on every credentials control, whatever the labels say", () => {
+    const html = render(
+      <AuthForm {...base} onModeChange={() => {}} labels={{ login: "Benutzer" }} />,
+    )
+    expect(attr(inputTag(html, "login"), "data-e2e")).toBe("auth-form-login")
+    expect(attr(inputTag(html, "password"), "data-e2e")).toBe("auth-form-password")
+    expect(attr(submitButtonTag(html), "data-e2e")).toBe("auth-form-submit")
+    const hooks = [...html.matchAll(/data-e2e="([^"]+)"/g)].map((match) => match[1])
+    expect(hooks).toEqual([
+      "auth-form",
+      "auth-form-login",
+      "auth-form-password",
+      "auth-form-password-toggle",
+      "auth-form-submit",
+      "auth-form-mode-switch",
+    ])
+  })
+
+  it("puts a fixed data-e2e on the one-time-code field and its submit button", () => {
+    const html = render(<AuthForm {...base} step="one-time-code" />)
+    expect(attr(inputTag(html, "code"), "data-e2e")).toBe("auth-form-code")
+    expect(attr(submitButtonTag(html), "data-e2e")).toBe("auth-form-submit")
+  })
+
   it("never renders a show/hide toggle that could submit the form", () => {
     const html = render(<AuthForm {...base} />)
     expect(html).toMatch(

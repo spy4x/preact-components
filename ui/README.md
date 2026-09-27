@@ -70,6 +70,8 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Input`           | `input`             | native input attrs, `class`; forwards `ref`                                                                                                                           |
 | `InputButton`     | `input-button`      | `icon`, `iconLabel`, `onClick?`, native input attrs                                                                                                                   |
 | `Kbd`             | `kbd`               | `keys` (`"mod+k"`) or `children`, `apple?`, `labels?`                                                                                                                 |
+| `InlineEdit`      | `inline-edit`       | `value`, `onSave` (may return a promise), `editLabel?`, `inputLabel?`, `savingLabel?`, `errorMessage?`, `disabled?`                                                   |
+| `KanbanBoard`     | `kanban-board`      | `columns`, `items`, `renderItem`, `itemLabel`, `onMove`, `onOpen?`, `labels?`, `headingLevel?` — controlled; mouse drag and keyboard moves                            |
 | `Lightbox`        | `lightbox`          | `images`, `index`, `open`, `onClose`, `onIndexChange`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`                                                 |
 | `LoadingSkeleton` | `loading-skeleton`  | `rows`                                                                                                                                                                |
 | `LoadingSpinner`  | `loading-spinner`   | `label`, `size`                                                                                                                                                       |
@@ -92,6 +94,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Tabs`            | `tabs`              | `tabs`, `active`, `onChange`, `lazy`                                                                                                                                  |
 | `Textarea`        | `input`             | native textarea attrs, `class`                                                                                                                                        |
 | `Toastr`          | `toastr`            | `toasts`, `onDismiss`, `corner`, `label`, `dismissLabel`, `dataE2E`                                                                                                   |
+| `ToggleChips`     | `toggle-chips`      | `options`, `value`, `onChange`, `mode?` (`multiple`/`single`), `label?`, `color?` — pressable `Badge`-look chips with `aria-pressed`                                  |
 | `ToggleField`     | `toggle-field`      | `id`, `label`, `value`, `onToggle`, `description?`, `error?`                                                                                                          |
 | `ToggleSwitch`    | `toggle-switch`     | `value`, `onToggle`, `disabled`, `label`                                                                                                                              |
 | `Tooltip`         | `tooltip`           | `content`, `label`, `placement`, `focusable`                                                                                                                          |
@@ -968,6 +971,84 @@ first appear, shortcuts without a description left out.
 The parser and the matcher are framework-free and are moving to `@spy4x/platform/browser/hotkeys`
 in spy4x/ts-libs (https://github.com/spy4x/ts-libs/pull/273). Until that release, this package
 keeps an internal copy in `hotkey-matcher.ts`, which no export reaches.
+
+## InlineEdit
+
+Pressing the value opens a text field in its place with the whole value selected. Enter saves,
+and so does moving focus away; Escape cancels and puts the old value back. Focus returns to the
+value's button when the field closes while it has focus, and stays where the user moved it when a
+blur saved. While a promise returned by `onSave` runs, the field is read-only and `aria-busy`; a
+rejected promise keeps the field open with the typed text and the `errorMessage` under it.
+
+Removing the component while its field is open saves nothing, even in Chromium, which fires `blur`
+on a focused field that leaves the page: the typed text is dropped. Turning `disabled` on while the
+field is open cancels the edit the way Escape does, unless a save is already running. Enter and
+Escape pressed while an input method is still composing a word do not save or cancel.
+
+`inlineEditCommit(draft, value)` is the save rule on its own: the trimmed draft, or `null` when it
+is empty or matches the value, in which case the field closes without calling `onSave`.
+
+## ToggleChips
+
+Each chip is a `button` with `aria-pressed`, inside a `role="group"` named by `label`. A pressed
+chip is a filled badge in `color`, an unpressed one a grey outlined badge. In `mode="single"`,
+pressing another chip moves the selection and pressing the pressed chip clears it to `null`.
+
+`toggleChipSelection(options, selected, pressed)` is the multiple-mode press on its own: it adds or
+removes `pressed` and returns the selection in the order of `options`.
+
+`badgeClasses(color, type, className)` is `Badge`'s class list without the element, which is how
+the chips share `Badge`'s palette.
+
+## KanbanBoard
+
+A board of columns whose cards move between and within the columns. It is controlled: `items` in,
+one `onMove({ itemId, fromColumn, fromIndex, toColumn, toIndex })` out, and the board never
+reorders the caller's data. `toIndex` counts the target column without the moved card, so `0` is the
+top and the column's remaining length is the bottom. Within a column, cards show in the order of
+`items`.
+
+```tsx
+<KanbanBoard
+  columns={[{ id: "todo", title: "To do" }, { id: "done", title: "Done" }]}
+  items={tasks.value}
+  renderItem={(task) => task.title}
+  itemLabel={(task) => task.title}
+  onMove={(move) => tasks.value = moveKanbanItem(tasks.value, move)}
+  onOpen={(task) => openEditor(task)}
+/>
+```
+
+- **Mouse**: the browser's own drag and drop. A line marks where the card will land, and an empty
+  column takes a drop. Touch is not proven: whether a phone starts a native drag depends on its
+  browser, so on touch screens treat the keyboard path and your own "move to" control as the way
+  to move a card.
+- **Keyboard**: every card is a tab stop. Space or Enter picks it up; the arrow keys move it (Left
+  and Right between columns, Up and Down within one); Space or Enter drops it, and Escape puts it
+  back. Moving focus away while holding a card, with Tab or a click elsewhere, also
+  puts it back. Focus stays on the card after the drop, once
+  the caller's `items` show it in its new column.
+- **Announcements**: a live region says when a card is picked up, each move, the drop and a cancel.
+  `labels` overrides any of them and the visible strings; `itemLabel` names a card in them and is
+  required, because only the caller knows what a card is called.
+- The columns are a list named by `labels.board`, each column a list named by its heading; the
+  board scrolls sideways when the columns do not fit, rather than squeezing them.
+- **Opening a card**: pass `onOpen(item)`. A click that is not a drag opens the card, and Enter
+  opens it while Space still picks it up; the instructions a card is described by say so
+  (`labels.instructionsWithOpen`). Without `onOpen`, Enter picks a card up like Space.
+- **A move the caller refuses**: the board shows the card where `items` puts it. Focus stays on
+  the dropped card until it arrives in its new column or the reader moves focus somewhere else;
+  the board never pulls focus back after that.
+- A card's body comes from `renderItem`, inside the card's own focusable control, so keep buttons
+  and links out of it.
+
+Helpers:
+
+- `moveKanbanItem(items, move)` applies a reported move to an array of items and returns a new
+  array: the item takes `toColumn` and the `toIndex`-th place in it, and the rest keep their order.
+- `nextKanbanSlot(key, from, lengths)` is the arrow-key map on its own: where a picked-up card goes
+  for a key, given each column's length without it.
+- `defaultKanbanLabels` holds the English strings `labels` overrides.
 
 ## Tests
 

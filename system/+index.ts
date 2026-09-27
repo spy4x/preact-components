@@ -39,7 +39,9 @@ export {
   Shell,
   type ShellLabels,
   type ShellNavItem,
+  type ShellNavItemAction,
   type ShellProps,
+  type ShellSidebarPlace,
   type ShellUser,
   type ShellUserMenuItem,
 } from "./shell.tsx"

@@ -1,4 +1,14 @@
-import { centreInView, check, type Devtools, openGuidePage, poll, pressKey } from "./harness.ts"
+import {
+  centreInView,
+  check,
+  type Devtools,
+  inFreshFrame,
+  openGuidePage,
+  poll,
+  pressKey,
+  settledScroll,
+} from "./harness.ts"
+import { pageHref } from "@spy4x/preact-ui-guide/routes"
 
 /** The card these checks drive, and the pieces of it they read. */
 const CARD = "#demo-SWUpdater"
@@ -4777,6 +4787,18 @@ const SHELL_PANEL = SHELL + ' [data-e2e="shell-panel"]'
 const SHELL_SCRIM = SHELL + ' [data-e2e="shell-scrim"]'
 const SHELL_DETAILS = SHELL + " details"
 const SHELL_PANEL_LINKS = SHELL_PANEL + " nav a"
+/** Every Tab stop inside the drawer: its links, the item actions and the sidebar slots' controls. */
+const SHELL_PANEL_STOPS = ["a[href]", "button", "select", "input"].map((tag) =>
+  `${SHELL_PANEL} ${tag}`
+).join(", ")
+const SHELL_SIDEBAR = SHELL + ' [data-e2e="shell-sidebar"]'
+const SHELL_SIDEBAR_TOGGLE = SHELL + ' [data-e2e="shell-sidebar-toggle"]'
+const SHELL_SIDEBAR_ACTION = SHELL_SIDEBAR + ' [data-e2e="shell-demo-new-project"]'
+const SHELL_NAVIGATIONS = SHELL + ' [data-e2e="shell-demo-navigations"]'
+const SHELL_PATH = SHELL + ' [data-e2e="shell-demo-path"]'
+const SHELL_CREATED = SHELL + ' [data-e2e="shell-demo-created"]'
+/** The `localStorage` key the Shell card keeps its collapsed sidebar under. */
+const SHELL_COLLAPSED_KEY = "preact-components:shell-demo-collapsed"
 const SHELL_SKIP_LINK = SHELL + ' [data-e2e="shell-skip-link"]'
 const SHELL_CONTENT = SHELL + ' [data-e2e="shell-content"]'
 const SHELL_USER_MENU_BUTTON = SHELL + ' [data-e2e="shell-user-menu-button"]'
@@ -4910,25 +4932,22 @@ async function shellChecks(devtools: Devtools): Promise<void> {
       `details.open and aria-expanded both true: ${opened}`,
     )
 
+    // Every Tab stop in the drawer, not only its links: the card's drawer also holds the
+    // `sidebarTop` switcher and an item's action, each a stop of its own. Named by `aria-label`
+    // first, since an icon-only action has no text.
+    const nameOf = `((el) => el ? (el.getAttribute("aria-label") || el.textContent.trim()) : "")`
     const expectedOrder = await read(
       devtools,
-      `[...document.querySelectorAll('${SHELL_PANEL_LINKS}')]
-        .map((el) => el.textContent.trim())`,
+      `[...document.querySelectorAll('${SHELL_PANEL_STOPS}')].map(${nameOf})`,
       [] as string[],
     )
     const tabbedThrough: string[] = []
     for (let index = 0; index < expectedOrder.length; index++) {
       await pressKey(devtools, "Tab")
-      tabbedThrough.push(
-        await read(
-          devtools,
-          `(document.activeElement ? document.activeElement.textContent.trim() : "")`,
-          "",
-        ),
-      )
+      tabbedThrough.push(await read(devtools, `${nameOf}(document.activeElement)`, ""))
     }
     check(
-      "Tab walks the open drawer's links, in document order, once the button has focus",
+      "Tab walks the open drawer's links and controls, in document order, once the button has focus",
       opened && expectedOrder.length > 0 && tabbedThrough.length === expectedOrder.length &&
         tabbedThrough.every((label, index) => label === expectedOrder[index]),
       `expected ${JSON.stringify(expectedOrder)}, tabbed through ${JSON.stringify(tabbedThrough)}`,
@@ -4956,7 +4975,13 @@ async function shellChecks(devtools: Devtools): Promise<void> {
     await shellScrimClickCheck(devtools)
     await shellSkipLinkCheck(devtools)
     await shellClientNavigationChecks(devtools)
+    await shellDrawerNavigateCheck(devtools)
+    await shellDrawerActionCheck(devtools)
     await shellLayoutChecks(devtools)
+    await shellNavigatePortChecks(devtools)
+    await shellItemActionCheck(devtools)
+    await shellCollapseChecks(devtools)
+    await shellStickySidebarCheck(devtools)
   } finally {
     await devtools.send("Emulation.clearDeviceMetricsOverride", {}).catch(() => {})
   }
@@ -5238,15 +5263,20 @@ async function shellScrimClickCheck(devtools: Devtools): Promise<void> {
     return state.detailsOpen && state.expanded === "true"
   }, 3_000)
 
-  // Tabbed onto the first link inside the panel, deliberately, rather than left on the button that
+  // Tabbed onto the first stop inside the panel, deliberately, rather than left on the button that
   // opened it: the button stays in the DOM and focusable after the panel hides, so leaving focus
   // there would make `close(true)` and `close(false)` look identical — focus never actually left it
-  // either way. Moving focus onto a link the closing panel is about to hide is what gives this
+  // either way. Moving focus onto a control the closing panel is about to hide is what gives this
   // anything to observe, the same reason `shellClientNavigationChecks`' own link click needs to.
   await pressKey(devtools, "Tab")
+  // The first stop may be a link or a `sidebarTop` control; either one is inside the panel the
+  // scrim is about to hide, which is all this needs.
   const focusOnLink = await read(
     devtools,
-    `document.activeElement?.matches('${SHELL_PANEL_LINKS}') === true`,
+    `(() => {
+      const active = document.activeElement
+      return Boolean(active && active.matches('${SHELL_PANEL_STOPS}'))
+    })()`,
     false,
   )
 
@@ -5264,7 +5294,7 @@ async function shellScrimClickCheck(devtools: Devtools): Promise<void> {
     !opened
       ? "the drawer was never open, so this proves nothing about the scrim"
       : !focusOnLink
-      ? "focus never reached a link inside the panel, so this proves nothing about where the " +
+      ? "focus never reached a control inside the panel, so this proves nothing about where the " +
         "scrim leaves it"
       : !closed
       ? "the drawer was still open after the scrim was tapped"
@@ -5558,6 +5588,494 @@ async function shellLayoutChecks(devtools: Devtools): Promise<void> {
     deviceScaleFactor: 1,
     mobile: false,
   })
+}
+
+/**
+ * A real mouse click at a viewport point, with modifier keys held: 2 is Ctrl, 4 is Meta, 8 is
+ * Shift, as `Input.dispatchMouseEvent` numbers them.
+ */
+async function shellPointerClick(
+  devtools: Devtools,
+  point: { x: number; y: number },
+  modifiers = 0,
+): Promise<void> {
+  for (const type of ["mousePressed", "mouseReleased"]) {
+    await devtools.send("Input.dispatchMouseEvent", {
+      type,
+      x: point.x,
+      y: point.y,
+      modifiers,
+      button: "left",
+      buttons: type === "mousePressed" ? 1 : 0,
+      clickCount: 1,
+    })
+  }
+}
+
+/** Switch to desktop width, where `Shell` draws its sidebar, and bring the sidebar into view. */
+async function showShellSidebar(devtools: Devtools): Promise<void> {
+  await devtools.send("Emulation.setDeviceMetricsOverride", {
+    ...SHELL_VIEWPORT_DESKTOP,
+    deviceScaleFactor: 1,
+    mobile: false,
+  })
+  await centreInView(devtools, `document.querySelector('${SHELL_SIDEBAR}')`)
+}
+
+/** The centre of an element and whether the browser puts that element there, or `null`. */
+function shellAim(
+  devtools: Devtools,
+  selector: string,
+): Promise<{ x: number; y: number; onTarget: boolean; landedOn: string } | null> {
+  return read(
+    devtools,
+    `(() => {
+      const element = document.querySelector('${selector}')
+      if (!element) return null
+      const box = element.getBoundingClientRect()
+      const x = Math.round(box.left + box.width / 2)
+      const y = Math.round(box.top + box.height / 2)
+      const at = document.elementFromPoint(x, y)
+      const landedOn = at
+        ? at.tagName.toLowerCase() + (at.id ? "#" + at.id : "") +
+          (at.getAttribute("data-e2e") ? '[data-e2e="' + at.getAttribute("data-e2e") + '"]' : "") +
+          " " + String(at.className).slice(0, 60)
+        : "nothing"
+      return { x, y, onTarget: at === element || element.contains(at), landedOn }
+    })()`,
+    null,
+  )
+}
+
+/** What the Shell card's own readouts and the click spy say, in one round trip. */
+interface ShellPortState {
+  navigations: string
+  path: string
+  href: string
+  /** One entry per click the spy saw on a link: its `href`, and whether it was already cancelled. */
+  clicks: { href: string; prevented: boolean }[]
+}
+
+const READ_SHELL_PORT = `(() => ({
+  navigations: document.querySelector('${SHELL_NAVIGATIONS}')?.textContent.trim() ?? "",
+  path: document.querySelector('${SHELL_PATH}')?.textContent.trim() ?? "",
+  href: location.href,
+  clicks: [...(globalThis.__shellClickSpy?.clicks ?? [])],
+}))()`
+
+const SHELL_PORT_UNREAD: ShellPortState = { navigations: "", path: "", href: "", clicks: [] }
+
+/**
+ * Add a `document` click listener that records, for every click on a link, its `href` and whether
+ * the event was already cancelled when it arrived, then cancels it so the page never really
+ * navigates or opens a tab (`AGENTS.md`, wave six). It runs after the shell's own handler, which is
+ * attached to the link itself.
+ */
+function installShellClickSpy(devtools: Devtools): Promise<boolean> {
+  return read(
+    devtools,
+    `(() => {
+      const spy = (event) => {
+        const link = event.target.closest ? event.target.closest("a[href]") : null
+        if (!link) return
+        spy.clicks.push({ href: link.getAttribute("href"), prevented: event.defaultPrevented })
+        event.preventDefault()
+      }
+      spy.clicks = []
+      globalThis.__shellClickSpy = spy
+      document.addEventListener("click", spy)
+      return true
+    })()`,
+    false,
+  )
+}
+
+/** Remove what {@link installShellClickSpy} added. */
+function removeShellClickSpy(devtools: Devtools): Promise<boolean> {
+  return read(
+    devtools,
+    `(document.removeEventListener("click", globalThis.__shellClickSpy),
+      delete globalThis.__shellClickSpy, true)`,
+    false,
+  )
+}
+
+/**
+ * A plain click on a link in the open drawer goes through `navigate` and closes the drawer. No
+ * listener cancels the click before the shell sees it: the spy runs last and only records, so this
+ * is the path an app with a client router takes.
+ *
+ * @param devtools The connected session, on a hydrated page, at phone width.
+ */
+async function shellDrawerNavigateCheck(devtools: Devtools): Promise<void> {
+  await ensureShellClosed(devtools)
+  await focusAndClick(devtools, SHELL_MENU_BUTTON)
+  const opened = await poll(async () => (await readShellPanel(devtools)).detailsOpen, 3_000)
+  await installShellClickSpy(devtools)
+  try {
+    const before = await read(devtools, READ_SHELL_PORT, SHELL_PORT_UNREAD)
+    const docs = await shellAim(devtools, `${SHELL_PANEL} nav a[href="/docs"]`)
+    if (docs?.onTarget) await shellPointerClick(devtools, docs)
+    const closed = await poll(async () => !(await readShellPanel(devtools)).detailsOpen, 3_000)
+    const after = await read(devtools, READ_SHELL_PORT, SHELL_PORT_UNREAD)
+    const docsClick = after.clicks[0]
+    check(
+      "a plain click on a drawer link goes through navigate and closes Shell's drawer",
+      opened && Boolean(docs?.onTarget) && docsClick?.href === "/docs" && docsClick.prevented &&
+        Number(after.navigations) === Number(before.navigations) + 1 && after.path === "/docs" &&
+        closed,
+      !opened
+        ? "the drawer never opened"
+        : !docs?.onTarget
+        ? `the drawer's Docs link was not under the pointer: ${JSON.stringify(docs)}`
+        : `click ${JSON.stringify(docsClick)}, navigate calls ${before.navigations} → ` +
+          `${after.navigations}, path ${after.path}, drawer closed: ${closed}`,
+    )
+  } finally {
+    await removeShellClickSpy(devtools)
+    await ensureShellClosed(devtools)
+    // Closing the drawer can leave a smooth scroll running; the next check must not aim at a
+    // moving page.
+    await waitForScrollSettle(devtools)
+  }
+}
+
+/**
+ * Enter on a button action inside the open drawer presses it and leaves the drawer open, with focus
+ * still on the button — the README's rule for an action that opens something on the page.
+ *
+ * @param devtools The connected session, on a hydrated page, at phone width.
+ */
+async function shellDrawerActionCheck(devtools: Devtools): Promise<void> {
+  const action = `${SHELL_PANEL} [data-e2e="shell-demo-new-project"]`
+  await ensureShellClosed(devtools)
+  await focusAndClick(devtools, SHELL_MENU_BUTTON)
+  const opened = await poll(async () => (await readShellPanel(devtools)).detailsOpen, 3_000)
+  const focused = await read(
+    devtools,
+    `(() => {
+      const button = document.querySelector('${action}')
+      if (button) button.focus()
+      return Boolean(button) && document.activeElement === button
+    })()`,
+    false,
+  )
+  const created = () =>
+    read(devtools, `document.querySelector('${SHELL_CREATED}')?.textContent.trim() ?? ""`, "")
+  const before = Number(await created())
+  await pressKey(devtools, "Enter")
+  const pressed = await poll(async () => Number(await created()) === before + 1, 3_000)
+  // Two frames, so a close the press scheduled would have landed before this reads.
+  await read(
+    devtools,
+    `new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done(true))))`,
+    false,
+  )
+  const after = await read(
+    devtools,
+    `(() => ({
+      open: document.querySelector('${SHELL_DETAILS}')?.open === true,
+      focusKept: document.activeElement === document.querySelector('${action}'),
+      active: document.activeElement ? document.activeElement.tagName : "none",
+    }))()`,
+    { open: false, focusKept: false, active: "unread" },
+  )
+  check(
+    "Enter on a button action in Shell's drawer presses it, keeping the drawer open and focus on it",
+    opened && focused && pressed && after.open && after.focusKept,
+    !opened
+      ? "the drawer never opened"
+      : !focused
+      ? "the drawer's action button could not be focused"
+      : `pressed: ${pressed}, drawer open: ${after.open}, focus on the action: ` +
+        `${after.focusKept} (active: ${after.active})`,
+  )
+  await ensureShellClosed(devtools)
+  await waitForScrollSettle(devtools)
+}
+
+/**
+ * On a page taller than the screen, the desktop sidebar column sticks right under the header and
+ * `sidebarBottom` stays inside the viewport. The card's frame is stretched to 2400px and its
+ * clipping ancestors unclipped for the reading, then restored; the page is scrolled so the frame's
+ * top is far above the viewport.
+ *
+ * @param devtools The connected session, on a hydrated page. Leaves the viewport at desktop width.
+ */
+async function shellStickySidebarCheck(devtools: Devtools): Promise<void> {
+  await showShellSidebar(devtools)
+  const root = `document.querySelector('${SHELL} > div')`
+  const target = await read(
+    devtools,
+    `(() => {
+      const root = ${root}
+      if (!root) return null
+      root.style.height = "2400px"
+      // The card clips its demo (\`overflow-hidden\`), and a sticky element sticks only inside
+      // its nearest clipping ancestor; an app's page has none. Unclip every ancestor for the
+      // reading, as a page would be.
+      globalThis.__shellUnclipped = []
+      for (let el = root.parentElement; el && el !== document.body; el = el.parentElement) {
+        const style = getComputedStyle(el)
+        if (style.overflowX !== "visible" || style.overflowY !== "visible") {
+          globalThis.__shellUnclipped.push([el, el.style.overflow])
+          el.style.overflow = "visible"
+        }
+      }
+      const top = Math.round(globalThis.scrollY + root.getBoundingClientRect().top + 1200)
+      globalThis.scrollTo({ top, behavior: "instant" })
+      return top
+    })()`,
+    null as number | null,
+  )
+  try {
+    const settled = target !== null && await settledScroll(devtools, { target })
+    const layout = await read(
+      devtools,
+      `(() => {
+        const header = document.querySelector('${SHELL_HEADER}').getBoundingClientRect()
+        const column = document.querySelector('${SHELL_SIDEBAR} > div').getBoundingClientRect()
+        const bottom = document.querySelector('${SHELL_SIDEBAR} [data-e2e="shell-sidebar-bottom"]')
+          .getBoundingClientRect()
+        return {
+          headerBottom: Math.round(header.bottom),
+          columnTop: Math.round(column.top),
+          slotTop: Math.round(bottom.top),
+          slotBottom: Math.round(bottom.bottom),
+          viewport: document.documentElement.clientHeight,
+        }
+      })()`,
+      null as
+        | {
+          headerBottom: number
+          columnTop: number
+          slotTop: number
+          slotBottom: number
+          viewport: number
+        }
+        | null,
+    )
+    check(
+      "on a page taller than the screen, Shell's sidebar sticks under the header with its bottom slot in view",
+      settled && layout !== null && Math.abs(layout.columnTop - layout.headerBottom) <= 1 &&
+        layout.slotTop >= 0 && layout.slotBottom <= layout.viewport,
+      !settled ? `the page did not settle at ${target}` : JSON.stringify(layout),
+    )
+  } finally {
+    await read(
+      devtools,
+      `(() => {
+        ${root}?.style.removeProperty("height")
+        for (const [el, overflow] of globalThis.__shellUnclipped ?? []) el.style.overflow = overflow
+        delete globalThis.__shellUnclipped
+        return true
+      })()`,
+      false,
+    )
+    await centreInView(devtools, `document.querySelector('${SHELL_SIDEBAR}')`)
+  }
+}
+
+/**
+ * `Shell`'s `navigate` port, driven with real mouse clicks on the desktop sidebar: a plain click
+ * calls it and cancels the browser's navigation; a Ctrl-click does neither.
+ *
+ * Whether the browser's navigation was cancelled is read by a `document` click listener, the last
+ * to see the event: it records `defaultPrevented` as the shell left it, then cancels the event
+ * itself, so neither click ever really navigates or opens a tab (`AGENTS.md`, wave six). The card
+ * counts `navigate` calls and shows the path it was given.
+ *
+ * @param devtools The connected session, on a hydrated page. Leaves the viewport at desktop width;
+ * `shellChecks`' own `finally` clears it.
+ */
+async function shellNavigatePortChecks(devtools: Devtools): Promise<void> {
+  await ensureShellClosed(devtools)
+  await showShellSidebar(devtools)
+  await installShellClickSpy(devtools)
+
+  try {
+    const before = await read(devtools, READ_SHELL_PORT, SHELL_PORT_UNREAD)
+    const docs = await shellAim(devtools, `${SHELL_SIDEBAR} nav a[href="/docs"]`)
+    if (docs?.onTarget) await shellPointerClick(devtools, docs)
+    await poll(
+      async () => (await read(devtools, READ_SHELL_PORT, SHELL_PORT_UNREAD)).clicks.length > 0,
+      3_000,
+    )
+    const plain = await read(devtools, READ_SHELL_PORT, SHELL_PORT_UNREAD)
+    const plainClick = plain.clicks[0]
+    check(
+      "a plain click on a Shell sidebar link calls navigate with its href and cancels the page load",
+      Boolean(docs?.onTarget) && plainClick?.href === "/docs" && plainClick.prevented &&
+        Number(plain.navigations) === Number(before.navigations) + 1 && plain.path === "/docs" &&
+        plain.href === before.href,
+      !docs?.onTarget
+        ? `the sidebar's Docs link was not under the pointer: ${JSON.stringify(docs)}`
+        : `click ${JSON.stringify(plainClick)}, navigate calls ${before.navigations} → ` +
+          `${plain.navigations}, path ${before.path} → ${plain.path}, location unchanged: ` +
+          `${plain.href === before.href}`,
+    )
+
+    const dashboard = await shellAim(devtools, `${SHELL_SIDEBAR} nav a[href="/dashboard"]`)
+    if (dashboard?.onTarget) await shellPointerClick(devtools, dashboard, 2)
+    await poll(
+      async () => (await read(devtools, READ_SHELL_PORT, SHELL_PORT_UNREAD)).clicks.length > 1,
+      3_000,
+    )
+    // The shell's handler runs before the spy, on the same event, so by the time the spy has seen
+    // the click a `navigate` call would already have been counted.
+    const modified = await read(devtools, READ_SHELL_PORT, SHELL_PORT_UNREAD)
+    const ctrlClick = modified.clicks[1]
+    check(
+      "a Ctrl-click on a Shell sidebar link leaves navigate uncalled and the browser's default alone",
+      Boolean(dashboard?.onTarget) && ctrlClick?.href === "/dashboard" && !ctrlClick.prevented &&
+        modified.navigations === plain.navigations && modified.path === "/docs",
+      !dashboard?.onTarget
+        ? `the sidebar's Dashboard link was not under the pointer: ${JSON.stringify(dashboard)}`
+        : `click ${JSON.stringify(ctrlClick)}, navigate calls ${plain.navigations} → ` +
+          `${modified.navigations}, path ${modified.path}`,
+    )
+  } finally {
+    await removeShellClickSpy(devtools)
+  }
+}
+
+/**
+ * A nav item's action is its own Tab stop right after the item's link, and Enter presses it. Run
+ * in the desktop sidebar; the drawer's copy is walked by the Tab-order check in `shellChecks`.
+ *
+ * @param devtools The connected session, on a hydrated page, at desktop width.
+ */
+async function shellItemActionCheck(devtools: Devtools): Promise<void> {
+  await showShellSidebar(devtools)
+  const focusedLink = await read(
+    devtools,
+    `(() => {
+      const link = document.querySelector('${SHELL_SIDEBAR} nav a[href="/projects"]')
+      if (link) link.focus()
+      return document.activeElement === link
+    })()`,
+    false,
+  )
+  await pressKey(devtools, "Tab")
+  const onAction = await read(
+    devtools,
+    `(() => {
+      const active = document.activeElement
+      return {
+        isAction: active === document.querySelector('${SHELL_SIDEBAR_ACTION}'),
+        insideLink: Boolean(active && active.closest("a[href='/projects']")),
+        name: active ? active.getAttribute("aria-label") : null,
+      }
+    })()`,
+    { isAction: false, insideLink: true, name: null as string | null },
+  )
+  check(
+    "Tab moves from a Shell nav link to its item's action, a separate stop named by its label",
+    focusedLink && onAction.isAction && !onAction.insideLink && onAction.name === "New project",
+    !focusedLink
+      ? "the sidebar's Projects link could not be focused"
+      : `focus on the action: ${onAction.isAction}, inside the link: ${onAction.insideLink}, ` +
+        `name: ${onAction.name}`,
+  )
+
+  const created = () =>
+    read(devtools, `document.querySelector('${SHELL_CREATED}')?.textContent.trim() ?? ""`, "")
+  const before = Number(await created())
+  await pressKey(devtools, "Enter")
+  const pressed = await poll(async () => Number(await created()) === before + 1, 3_000)
+  check(
+    "Enter on a focused Shell item action presses it once",
+    onAction.isAction && pressed,
+    `presses ${before} → ${await created()}`,
+  )
+}
+
+/** One reading of the collapse button, the sidebar it controls and what the card stored. */
+interface ShellCollapseState {
+  found: boolean
+  expanded: string | null
+  sidebarShown: boolean
+  stored: string | null
+}
+
+/** Read {@link ShellCollapseState} from a document, given as a page expression. */
+function readShellCollapse(devtools: Devtools, doc = "document"): Promise<ShellCollapseState> {
+  return read(
+    devtools,
+    `(() => {
+      const doc = ${doc}
+      const button = doc?.querySelector('${SHELL_SIDEBAR_TOGGLE}')
+      const sidebar = doc?.querySelector('${SHELL_SIDEBAR}')
+      if (!button || !sidebar) return { found: false, expanded: null, sidebarShown: false, stored: null }
+      return {
+        found: button.getAttribute("aria-controls") === sidebar.id,
+        expanded: button.getAttribute("aria-expanded"),
+        sidebarShown: getComputedStyle(sidebar).display !== "none",
+        stored: localStorage.getItem(${JSON.stringify(SHELL_COLLAPSED_KEY)}),
+      }
+    })()`,
+    { found: false, expanded: null, sidebarShown: false, stored: null },
+  )
+}
+
+/**
+ * The desktop collapse: the header's button hides the sidebar, the card stores that through
+ * `onCollapsedChange`, and a fresh load of the guide — in a hidden frame, so the shared page is not
+ * reloaded — draws the sidebar collapsed again. Pressing the button again restores the sidebar and
+ * the stored value, so a later run starts from an open sidebar.
+ *
+ * @param devtools The connected session, on a hydrated page. Leaves the viewport at desktop width.
+ */
+async function shellCollapseChecks(devtools: Devtools): Promise<void> {
+  await showShellSidebar(devtools)
+  if ((await readShellCollapse(devtools)).expanded === "false") {
+    await click(devtools, SHELL_SIDEBAR_TOGGLE)
+    await poll(async () => (await readShellCollapse(devtools)).expanded === "true", 3_000)
+  }
+  const open = await readShellCollapse(devtools)
+
+  await click(devtools, SHELL_SIDEBAR_TOGGLE)
+  await poll(async () => !(await readShellCollapse(devtools)).sidebarShown, 3_000)
+  const collapsed = await readShellCollapse(devtools)
+  check(
+    "the collapse button hides Shell's desktop sidebar, flips aria-expanded and stores the choice",
+    open.found && open.sidebarShown && open.expanded === "true" && collapsed.found &&
+      !collapsed.sidebarShown && collapsed.expanded === "false" && collapsed.stored === "true",
+    `before ${JSON.stringify(open)}, after ${JSON.stringify(collapsed)}`,
+  )
+
+  await inFreshFrame(
+    devtools,
+    { id: "shell-collapse-frame", src: pageHref("system"), label: "Shell collapse" },
+    async (frame) => {
+      const doc = `${frame}?.contentDocument`
+      const restored = await poll(async () => {
+        const hydrated = await read(
+          devtools,
+          `${doc}?.documentElement.dataset.hydrated === "true"`,
+          false,
+        )
+        if (!hydrated) return false
+        const state = await readShellCollapse(devtools, doc)
+        return state.found && state.expanded === "false" && !state.sidebarShown
+      }, 15_000)
+      const state = await readShellCollapse(devtools, doc)
+      check(
+        "a fresh load of the guide draws Shell's sidebar collapsed, as the card remembered it",
+        restored,
+        JSON.stringify(state),
+      )
+    },
+  )
+
+  await click(devtools, SHELL_SIDEBAR_TOGGLE)
+  await poll(async () => (await readShellCollapse(devtools)).sidebarShown, 3_000)
+  const reopened = await readShellCollapse(devtools)
+  check(
+    "pressing the collapse button again brings Shell's sidebar back and stores that",
+    reopened.sidebarShown && reopened.expanded === "true" && reopened.stored === "false",
+    JSON.stringify(reopened),
+  )
 }
 
 /** The `RailShell` card, and the pieces of it the checks below read. */

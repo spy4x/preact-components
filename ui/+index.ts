@@ -20,7 +20,7 @@ export {
   type GroupSplit,
   groupSplit,
 } from "./avatar.tsx"
-export { Badge, type BadgeColor, type BadgeProps, type BadgeType } from "./badge.tsx"
+export { Badge, badgeClasses, type BadgeColor, type BadgeProps, type BadgeType } from "./badge.tsx"
 export {
   Button,
   buttonClasses,
@@ -268,3 +268,25 @@ export {
   ShortcutsDialog,
   type ShortcutsDialogProps,
 } from "./shortcuts-dialog.tsx"
+export { InlineEdit, inlineEditCommit, type InlineEditProps } from "./inline-edit.tsx"
+export {
+  type ToggleChipOption,
+  ToggleChips,
+  toggleChipSelection,
+  type ToggleChipsMultipleProps,
+  type ToggleChipsProps,
+  type ToggleChipsSingleProps,
+} from "./toggle-chips.tsx"
+export {
+  defaultKanbanLabels,
+  KanbanBoard,
+  type KanbanBoardLabels,
+  type KanbanBoardProps,
+  type KanbanColumn,
+  type KanbanItem,
+  type KanbanMove,
+  type KanbanPlace,
+  type KanbanSlot,
+  moveKanbanItem,
+  nextKanbanSlot,
+} from "./kanban-board.tsx"

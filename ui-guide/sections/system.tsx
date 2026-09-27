@@ -53,10 +53,12 @@ import {
   watchForUpdate,
   type WorkerLike,
 } from "@spy4x/preact-system/sw-updater"
-import { Button, Cluster, Grid, Stack } from "@spy4x/preact-ui"
+import { Button, Cluster, Field, Grid, Select, Stack } from "@spy4x/preact-ui"
+import { makeStorage } from "@spy4x/platform/browser/storage"
 import { useSignal } from "@preact/signals"
+import { type } from "arktype"
 import type { ComponentChildren } from "preact"
-import { useRef } from "preact/hooks"
+import { useEffect, useRef } from "preact/hooks"
 import type { DemoFragment } from "../registry.ts"
 
 /** One captioned part of a card whose demo shows several things side by side. */
@@ -959,22 +961,73 @@ function SiteHeaderDemo() {
   )
 }
 
+/** Where the Shell card keeps its collapsed sidebar, the way an app would: one key, validated. */
+const SHELL_DEMO_COLLAPSED_KEY = "preact-components:shell-demo-collapsed"
+
 /**
  * `Shell`, constrained to a fixed height so the card does not take over the guide's own page —
  * `min-h-screen` is overridden the same way any Tailwind utility is, by naming a conflicting one
  * later. The mobile drawer and the user menu still overlay the real viewport when opened, exactly as
  * they would in a full page, rather than being clipped to this box: that is what a caller's own app
  * gets, so that is what this card shows too.
+ *
+ * Every port is wired to something visible: `navigate` moves `currentPath` and counts its calls,
+ * the "New project" action counts presses, and the collapsed sidebar is kept in `localStorage`
+ * through `makeStorage`, read once after mount so the server's markup and the first client render
+ * agree. `pages/checks/system.ts` reads all three.
  */
 function ShellDemo() {
+  const path = useSignal("/dashboard")
+  const navigations = useSignal(0)
+  const created = useSignal(0)
+  const collapsed = useSignal(false)
+  const workspace = useSignal("personal")
+
+  useEffect(() => {
+    try {
+      const stored = makeStorage(localStorage, SHELL_DEMO_COLLAPSED_KEY, {
+        schema: type("boolean"),
+      })
+        .get()
+      if (stored.status === "ok") collapsed.value = stored.value
+    } catch {
+      // No storage in this browser: the sidebar starts open, as it would on a first visit.
+    }
+  }, [])
+
+  const setCollapsed = (value: boolean) => {
+    collapsed.value = value
+    try {
+      makeStorage(localStorage, SHELL_DEMO_COLLAPSED_KEY, { schema: type("boolean") }).set(value)
+    } catch {
+      // Not remembered, but still applied for this visit.
+    }
+  }
+
   return (
     <div class="overflow-hidden" data-e2e="shell-demo">
       <Shell
-        class="h-[420px] min-h-0"
+        class="h-[480px] min-h-0"
         brand={<span class="text-lg font-semibold text-gray-900 dark:text-white">Acme</span>}
-        currentPath="/dashboard"
+        currentPath={path.value}
+        navigate={(href) => {
+          path.value = href
+          navigations.value++
+        }}
+        collapsed={collapsed.value}
+        onCollapsedChange={setCollapsed}
         navItems={[
           { name: "Dashboard", href: "/dashboard", Icon: IconHome },
+          {
+            name: "Projects",
+            href: "/projects",
+            Icon: IconFolder,
+            action: {
+              label: "New project",
+              onClick: () => created.value++,
+              dataE2E: "shell-demo-new-project",
+            },
+          },
           { name: "Docs", href: "/docs", Icon: IconBookOpen },
           {
             name: "Settings",
@@ -984,6 +1037,19 @@ function ShellDemo() {
             ],
           },
         ]}
+        sidebarTop={(place) => (
+          <Field id={`shell-demo-workspace-${place}`} label="Workspace">
+            <Select
+              value={workspace.value}
+              options={[
+                { value: "personal", label: "Personal" },
+                { value: "team", label: "Team" },
+              ]}
+              onChange={(event) => workspace.value = event.currentTarget.value}
+            />
+          </Field>
+        )}
+        sidebarBottom={() => <p class={NOTE}>Synced a minute ago</p>}
         user={{ name: "Ada Lovelace", email: "ada@example.com" }}
         userMenuItems={[
           { label: "Your profile", href: "/profile" },
@@ -995,7 +1061,20 @@ function ShellDemo() {
           </span>
         }
       >
-        <p class="text-sm text-gray-600 dark:text-gray-300">The page goes here.</p>
+        <Stack gap="sm">
+          <p class="text-sm text-gray-600 dark:text-gray-300">
+            The page for <code data-e2e="shell-demo-path">{path.value}</code> goes here.
+          </p>
+          <p class={NOTE}>
+            <code>navigate</code> calls:{" "}
+            <span data-e2e="shell-demo-navigations">
+              {navigations.value}
+            </span>. "New project" presses:{" "}
+            <span data-e2e="shell-demo-created">
+              {created.value}
+            </span>.
+          </p>
+        </Stack>
       </Shell>
     </div>
   )
@@ -1108,7 +1187,27 @@ export const systemDemos = {
       {
         name: "navItems",
         type: "ShellNavItem[]",
-        description: "The navigation, drawn in both the sidebar and the drawer.",
+        description:
+          "The navigation, drawn in both the sidebar and the drawer. An item's `action` adds a control of its own beside it.",
+      },
+      {
+        name: "navigate",
+        type: "(href: string) => void",
+        description:
+          "Your router. A plain click on a link calls it instead of loading the page; Ctrl, Meta, Shift or Alt clicks stay the browser's.",
+      },
+      {
+        name: "sidebarTop",
+        type: "(place) => ComponentChildren",
+        description:
+          'Content above the navigation, drawn in the sidebar and the drawer (`place` is `"sidebar"` or `"drawer"`); `sidebarBottom` is pinned below it.',
+      },
+      {
+        name: "collapsed",
+        type: "boolean",
+        default: "false",
+        description:
+          "Hides the desktop sidebar. With `onCollapsedChange`, the header shows a button that toggles it; you store the value.",
       },
       {
         name: "currentPath",
@@ -1132,11 +1231,30 @@ export const systemDemos = {
         description: "A small slot in the header, such as a connection indicator.",
       },
     ],
-    snippet: `<Shell
+    snippet: `const collapsedStore = makeStorage(localStorage, "sidebar-collapsed", {
+  schema: type("boolean"),
+})
+const collapsed = useSignal(false)
+useEffect(() => {
+  const stored = collapsedStore.get()
+  if (stored.status === "ok") collapsed.value = stored.value
+}, [])
+
+<Shell
   brand={<Logo />}
   currentPath={url.pathname}
+  navigate={(href) => router.navigate(href)}
+  collapsed={collapsed.value}
+  onCollapsedChange={(value) => {
+    collapsed.value = value
+    collapsedStore.set(value)
+  }}
+  sidebarTop={(place) => <WorkspaceSwitcher id={\`workspace-\${place}\`} />}
+  sidebarBottom={() => <Filters />}
   navItems={[
     { name: "Dashboard", href: "/dashboard", Icon: IconHome },
+    { name: "Projects", href: "/projects", Icon: IconFolder,
+      action: { label: "New project", onClick: () => openCreateForm() } },
     { name: "Docs", href: "/docs", Icon: IconBookOpen },
     { name: "Settings", children: [
       { name: "Billing", href: "/settings/billing" },
@@ -1260,7 +1378,10 @@ export const systemDemos = {
         description: "Where the form posts when no script is running.",
       },
     ],
-    snippet: `<AuthForm
+    snippet: `// End-to-end tests find each control by a fixed data-e2e, whatever the labels say:
+// auth-form (the form), auth-form-login, auth-form-password, auth-form-password-toggle,
+// auth-form-code, auth-form-submit and auth-form-mode-switch.
+<AuthForm
   mode={mode}
   step={step}
   onModeChange={setMode}

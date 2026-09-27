@@ -13,6 +13,7 @@ import {
   Cluster,
   Field,
   Grid,
+  InlineEdit,
   Input,
   InputButton,
   MoneyInput,
@@ -21,6 +22,7 @@ import {
   Select,
   Stack,
   Textarea,
+  ToggleChips,
 } from "@spy4x/preact-ui"
 import { useSignal } from "@preact/signals"
 import { useRef } from "preact/hooks"
@@ -396,6 +398,107 @@ function MoneyInputDemo() {
   )
 }
 
+/**
+ * Two rename fields: one whose save takes a moment and succeeds, one whose save always fails, so
+ * the busy state and the kept text of a rejected save can both be seen. The first one's buttons
+ * remove it from the page and lock it, the two ways an open field can be taken away from its user.
+ */
+function InlineEditDemo() {
+  const list = useSignal("Groceries")
+  const saves = useSignal(0)
+  const offline = useSignal("Archive")
+  const shown = useSignal(true)
+  const locked = useSignal(false)
+  return (
+    <Stack gap="sm">
+      <div data-e2e="inline-edit-ok">
+        {shown.value && (
+          <InlineEdit
+            value={list.value}
+            inputLabel="List name"
+            disabled={locked.value}
+            onSave={async (next) => {
+              await new Promise((done) => setTimeout(done, 400))
+              list.value = next
+              saves.value++
+            }}
+          />
+        )}
+      </div>
+      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="inline-edit-saved">
+        saved: {list.value}, saves: {saves.value}
+      </p>
+      <Cluster gap="sm">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          data-e2e="inline-edit-remove"
+          onClick={() => shown.value = !shown.value}
+        >
+          {shown.value ? "Remove the field" : "Show the field"}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          data-e2e="inline-edit-lock"
+          onClick={() => locked.value = !locked.value}
+        >
+          {locked.value ? "Unlock" : "Lock"}
+        </Button>
+      </Cluster>
+      <div data-e2e="inline-edit-fail">
+        <InlineEdit
+          value={offline.value}
+          inputLabel="List name"
+          errorMessage={() => "The server is offline. Your text is kept; try again later."}
+          onSave={() => Promise.reject(new Error("offline"))}
+        />
+      </div>
+      <p class="text-xs text-gray-500 dark:text-gray-400">
+        The second field's save always fails.
+      </p>
+    </Stack>
+  )
+}
+
+/** A multi-select tag filter and a single-select status filter, each echoing its value. */
+function ToggleChipsDemo() {
+  const tags = useSignal<string[]>(["work"])
+  const status = useSignal<string | null>("open")
+  return (
+    <Stack gap="md">
+      <ToggleChips
+        label="Tags"
+        options={[
+          { value: "work", label: "work" },
+          { value: "home", label: "home" },
+          { value: "errands", label: "errands" },
+          { value: "someday", label: "someday", disabled: true },
+        ]}
+        value={tags.value}
+        onChange={(next) => tags.value = next}
+      />
+      <ToggleChips
+        mode="single"
+        label="Status"
+        color="blue"
+        options={[
+          { value: "open", label: "Open" },
+          { value: "done", label: "Done" },
+          { value: "all", label: "All" },
+        ]}
+        value={status.value}
+        onChange={(next) => status.value = next}
+      />
+      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="toggle-chips-value">
+        tags: {tags.value.join(", ") || "(none)"} · status: {status.value ?? "(none)"}
+      </p>
+    </Stack>
+  )
+}
+
 export const fieldDemos = {
   Field: {
     summary:
@@ -576,5 +679,109 @@ export const fieldDemos = {
   />
 </Field>`,
     render: () => <MoneyInputDemo />,
+  },
+  InlineEdit: {
+    summary:
+      "A value shown as text that turns into a text field in place, for renaming something where it stands.",
+    wide: false,
+    props: [
+      { name: "value", type: "string", description: "The saved text." },
+      {
+        name: "onSave",
+        type: "(value: string) => void | Promise<void>",
+        description:
+          "Called with the trimmed new text on Enter or blur; not for an empty or unchanged text.",
+      },
+      {
+        name: "editLabel",
+        type: "(value: string) => string",
+        default: "`Edit ${value}`",
+        description: "The accessible name of the button that opens the field.",
+      },
+      {
+        name: "inputLabel",
+        type: "string",
+        default: `"New name"`,
+        description: "The field's accessible name.",
+      },
+      {
+        name: "savingLabel",
+        type: "string",
+        default: `"Saving…"`,
+        description: "Shown while a returned promise runs.",
+      },
+      {
+        name: "disabled",
+        type: "boolean",
+        default: "false",
+        description:
+          "Turns the button off; turning it on while the field is open cancels the edit.",
+      },
+      {
+        name: "errorMessage",
+        type: "(error: unknown) => string",
+        default: `"Could not save. Try again."`,
+        description: "Words a rejected save; the field stays open with the typed text.",
+      },
+    ],
+    snippet: `<InlineEdit
+  value={list.value}
+  inputLabel="List name"
+  onSave={async (next) => {
+    await api.renameList(id, next)
+    list.value = next
+  }}
+/>`,
+    render: () => <InlineEditDemo />,
+  },
+  ToggleChips: {
+    summary:
+      "A row of pressable chips for filtering a list, in the colours of `Badge`, one or many pressed at once.",
+    wide: false,
+    props: [
+      {
+        name: "options",
+        type: "{ value, label, disabled? }[]",
+        description: "One chip per option.",
+      },
+      {
+        name: "value / onChange",
+        type: "string[] or string | null",
+        description: 'The pressed chips: a list, or one value or `null` with `mode="single"`.',
+      },
+      {
+        name: "mode",
+        type: `"multiple" | "single"`,
+        default: `"multiple"`,
+        description: "How many chips can be pressed at once.",
+      },
+      {
+        name: "label",
+        type: "string",
+        default: `"Filters"`,
+        description: "The group's accessible name.",
+      },
+      {
+        name: "color",
+        type: "BadgeColor",
+        default: `"purple"`,
+        description: "A pressed chip's colour; an unpressed chip is a grey outline.",
+      },
+    ],
+    snippet: `<ToggleChips
+  label="Tags"
+  options={[{ value: "work", label: "work" }, { value: "home", label: "home" }]}
+  value={tags.value}
+  onChange={(next) => tags.value = next}
+/>
+
+<ToggleChips
+  mode="single"
+  label="Status"
+  options={[{ value: "open", label: "Open" }, { value: "done", label: "Done" }]}
+  value={status.value}
+  onChange={(next) => status.value = next}
+/>`,
+    render: () => <ToggleChipsDemo />,
   },
 } satisfies DemoFragment

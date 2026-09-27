@@ -43,10 +43,27 @@ const filledClasses: Record<BadgeColor, string> = {
 const base =
   "inline-flex items-center border rounded-md px-2 py-1 text-xs whitespace-nowrap font-medium capitalize"
 
+/**
+ * Compose a badge's class list without rendering one, so a pill that is not a {@link Badge} — a
+ * pressable chip, say — draws from the same palette.
+ *
+ * @param color Palette entry, defaults to `"purple"`, the accent.
+ * @param type Tinted or outlined, defaults to `"filled"`.
+ * @param className Extra utilities; they win over the badge's own in the same group.
+ * @returns The merged `class` attribute value.
+ */
+export function badgeClasses(
+  color: BadgeColor = "purple",
+  type: BadgeType = "filled",
+  className?: string,
+): string {
+  const palette = type === "outline" ? outlineClasses : filledClasses
+  return cn(base, palette[color], className)
+}
+
 /** Small status pill. Static — takes text, renders a `span`. */
 export function Badge(
   { text, color = "purple", type = "filled", class: className }: BadgeProps,
 ): JSX.Element {
-  const palette = type === "outline" ? outlineClasses : filledClasses
-  return <span class={cn(base, palette[color], className)}>{text}</span>
+  return <span class={badgeClasses(color, type, className)}>{text}</span>
 }

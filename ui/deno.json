@@ -47,7 +47,10 @@
     "./zoomable-images": "./zoomable-images.tsx",
     "./hotkeys": "./hotkeys.ts",
     "./kbd": "./kbd.tsx",
-    "./shortcuts-dialog": "./shortcuts-dialog.tsx"
+    "./shortcuts-dialog": "./shortcuts-dialog.tsx",
+    "./inline-edit": "./inline-edit.tsx",
+    "./toggle-chips": "./toggle-chips.tsx",
+    "./kanban-board": "./kanban-board.tsx"
   },
   "publish": {
     // This package's own `*.test.*` suites, none reachable from `exports`. A glob rather than a
