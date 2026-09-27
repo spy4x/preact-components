@@ -10627,6 +10627,8 @@ interface KanbanState {
   live: string
   /** The demo's readout of the last move `onMove` reported. */
   lastMove: string
+  /** The demo's readout of the last card `onOpen` opened. */
+  opened: string
   /** The column holding a drop indicator, or `null` when none is shown. */
   indicatorColumn: string | null
 }
@@ -10649,6 +10651,7 @@ const KANBAN_STATE = `(() => {
     focusedColumn: handle ? item.closest("[data-kanban-column]").dataset.kanbanColumn : null,
     live: card.querySelector("[data-kanban-live]").textContent.trim(),
     lastMove: card.querySelector('[data-e2e="kanban-last-move"]').textContent.trim(),
+    opened: card.querySelector('[data-e2e="kanban-opened"]').textContent.trim(),
     indicatorColumn: indicator?.closest("[data-kanban-column]")?.dataset.kanbanColumn ?? null,
   }
 })()`
@@ -10692,6 +10695,10 @@ async function kanbanBoardChecks(devtools: Devtools): Promise<void> {
     await kanbanKeyboardMoveCheck(devtools)
     await kanbanEscapeCheck(devtools)
     await kanbanBlurCheck(devtools)
+    await kanbanRefusedDropFocusCheck(devtools)
+    await kanbanSameColumnKeyboardCheck(devtools)
+    await kanbanSameColumnMouseCheck(devtools)
+    await kanbanOpenChecks(devtools)
     await kanbanPointerDragCheck(devtools)
     await kanbanPhoneWidthCheck(devtools)
   } finally {
@@ -10889,54 +10896,18 @@ const KANBAN_BOARD = `document.querySelector('${KANBAN_CARD} ul[aria-label]')`
  */
 async function kanbanPointerDragCheck(devtools: Devtools): Promise<void> {
   await resetKanban(devtools)
-  await devtools.evaluate<null>(`(() => {
-    const board = ${KANBAN_BOARD}
-    board.scrollLeft = board.scrollWidth
-    globalThis.__kanbanDrag = []
-    for (const type of ["dragstart", "dragenter", "dragover", "drop"]) {
-      document.addEventListener(type, (event) => globalThis.__kanbanDrag.push({
-        type,
-        x: event.clientX,
-      }), { capture: true })
-    }
-    return null
-  })()`)
-  const from = await kanbanPoint(devtools, kanbanHandle("login"))
+  await devtools.evaluate<null>(`(${KANBAN_BOARD}.scrollLeft = ${KANBAN_BOARD}.scrollWidth, null)`)
   const to = await kanbanPoint(
     devtools,
     `document.querySelector('${KANBAN_CARD} [data-kanban-column="done"] [data-kanban-list]')`,
   )
-  const mouse = (type: string, x: number, y: number, buttons: number) =>
-    devtools.send("Input.dispatchMouseEvent", {
-      type,
-      x,
-      y,
-      button: type === "mouseMoved" && buttons === 0 ? "none" : "left",
-      buttons,
-      clickCount: type === "mouseMoved" ? 0 : 1,
-    })
-
-  await mouse("mouseMoved", from.x, from.y, 0)
-  await mouse("mousePressed", from.x, from.y, 1)
-  const steps = 10
-  for (let step = 1; step <= steps; step++) {
-    const x = Math.round(from.x + ((to.x - from.x) * step) / steps)
-    const y = Math.round(from.y + ((to.y - from.y) * step) / steps)
-    await mouse("mouseMoved", x, y, 1)
-    await poll(
-      () => devtools.evaluate<boolean>(`globalThis.__kanbanDrag.some((seen) => seen.x === ${x})`),
-      1_000,
-    )
-  }
-  const over = await devtools.evaluate<KanbanState>(KANBAN_STATE)
-  await mouse("mouseReleased", to.x, to.y, 0)
-  await poll(
-    () => devtools.evaluate<boolean>(`${KANBAN_STATE}.lastMove.endsWith("login to done at 0")`),
-    2_000,
+  const { over, types } = await kanbanMouseDrag(
+    devtools,
+    "login",
+    to,
+    `.lastMove.endsWith("login to done at 0")`,
   )
   const dropped = await devtools.evaluate<KanbanState>(KANBAN_STATE)
-  const events = await devtools.evaluate<{ type: string }[]>(`globalThis.__kanbanDrag`)
-  const types = [...new Set(events.map((seen) => seen.type))].join(", ")
 
   check(
     "dragging a KanbanBoard card over an empty column shows the drop indicator there",
@@ -10953,4 +10924,222 @@ async function kanbanPointerDragCheck(devtools: Devtools): Promise<void> {
       `${dropped.indicatorColumn}, live "${dropped.live}"; drag events seen: ${types}`,
   )
   await devtools.evaluate<null>(`(${KANBAN_BOARD}.scrollLeft = 0, null)`)
+}
+
+/** What {@link kanbanMouseDrag} saw: the board just before the release, and the drag events. */
+interface KanbanDrag {
+  over: KanbanState
+  types: string
+}
+
+/**
+ * Drag a card with real mouse events to a point, and release it there.
+ *
+ * Each move waits until the page has seen a drag event at that point: sent back to back, moves
+ * were dropped and the drag ended with no `drop` (measured, see {@link kanbanPointerDragCheck}).
+ * The drag events are recorded by `document` listeners that are removed again before returning.
+ *
+ * @param devtools The connected session.
+ * @param itemId The card to drag.
+ * @param to Where to release it, in viewport coordinates.
+ * @param settled A `KANBAN_STATE` property test that is true once the drop has shown.
+ */
+async function kanbanMouseDrag(
+  devtools: Devtools,
+  itemId: string,
+  to: { x: number; y: number },
+  settled: string,
+): Promise<KanbanDrag> {
+  await devtools.evaluate<null>(`(() => {
+    globalThis.__kanbanDrag = []
+    globalThis.__kanbanDragListeners = new AbortController()
+    for (const type of ["dragstart", "dragenter", "dragover", "drop"]) {
+      document.addEventListener(type, (event) => globalThis.__kanbanDrag.push({
+        type,
+        x: event.clientX,
+      }), { capture: true, signal: globalThis.__kanbanDragListeners.signal })
+    }
+    return null
+  })()`)
+  try {
+    const from = await kanbanPoint(devtools, kanbanHandle(itemId))
+    const mouse = (type: string, x: number, y: number, buttons: number) =>
+      devtools.send("Input.dispatchMouseEvent", {
+        type,
+        x,
+        y,
+        button: type === "mouseMoved" && buttons === 0 ? "none" : "left",
+        buttons,
+        clickCount: type === "mouseMoved" ? 0 : 1,
+      })
+
+    await mouse("mouseMoved", from.x, from.y, 0)
+    await mouse("mousePressed", from.x, from.y, 1)
+    const steps = 10
+    for (let step = 1; step <= steps; step++) {
+      const x = Math.round(from.x + ((to.x - from.x) * step) / steps)
+      const y = Math.round(from.y + ((to.y - from.y) * step) / steps)
+      await mouse("mouseMoved", x, y, 1)
+      await poll(
+        () =>
+          devtools.evaluate<boolean>(
+            `globalThis.__kanbanDrag.some((seen) => seen.type !== "dragstart" && seen.x === ${x})`,
+          ),
+        1_000,
+      )
+    }
+    const over = await devtools.evaluate<KanbanState>(KANBAN_STATE)
+    await mouse("mouseReleased", to.x, to.y, 0)
+    await poll(() => devtools.evaluate<boolean>(`${KANBAN_STATE}${settled}`), 2_000)
+    const events = await devtools.evaluate<{ type: string }[]>(`globalThis.__kanbanDrag`)
+    return { over, types: [...new Set(events.map((seen) => seen.type))].join(", ") }
+  } finally {
+    await devtools.evaluate<null>(`(globalThis.__kanbanDragListeners?.abort(), null)`)
+  }
+}
+
+/** A real mouse click in the middle of an element. */
+async function kanbanClick(devtools: Devtools, element: string): Promise<void> {
+  const at = await kanbanPoint(devtools, element)
+  for (const type of ["mouseMoved", "mousePressed", "mouseReleased"]) {
+    await devtools.send("Input.dispatchMouseEvent", {
+      type,
+      ...at,
+      button: type === "mouseMoved" ? "none" : "left",
+      buttons: type === "mousePressed" ? 1 : 0,
+      clickCount: type === "mouseMoved" ? 0 : 1,
+    })
+  }
+}
+
+/**
+ * A keyboard drop the caller refuses leaves the card where it was, and once the reader clicks
+ * another control, focus stays on that control: the board does not pull it back to the card on
+ * its next render.
+ */
+async function kanbanRefusedDropFocusCheck(devtools: Devtools): Promise<void> {
+  await resetKanban(devtools)
+  const refuse = `document.querySelector('${KANBAN_CARD} [data-e2e="kanban-refuse"]')`
+  await kanbanClick(devtools, refuse)
+  await poll(() => devtools.evaluate<boolean>(`${refuse}.checked`), 2_000)
+  await devtools.evaluate<null>(`(${kanbanHandle("notes")}.focus(), null)`)
+  await pressKey(devtools, "Space")
+  await pressKey(devtools, "ArrowRight")
+  await pressKey(devtools, "Enter")
+  await poll(
+    () => devtools.evaluate<boolean>(`${KANBAN_STATE}.lastMove.endsWith("notes to doing at 0")`),
+    2_000,
+  )
+  const refused = await devtools.evaluate<KanbanState>(KANBAN_STATE)
+  // The click turns refusal off, which re-renders the board: the render that used to steal focus.
+  await kanbanClick(devtools, refuse)
+  await poll(() => devtools.evaluate<boolean>(`!${refuse}.checked`), 2_000)
+  const frame = `new Promise((done) => requestAnimationFrame(done))`
+  await devtools.evaluate<null>(`${frame}.then(() => ${frame}).then(() => null)`)
+  await new Promise((done) => setTimeout(done, 200))
+  const after = await devtools.evaluate<{ onRefuse: boolean; focused: string }>(`({
+    onRefuse: document.activeElement === ${refuse},
+    focused: document.activeElement?.outerHTML.slice(0, 80) ?? "nothing",
+  })`)
+
+  check(
+    "after a KanbanBoard drop the caller refuses, focus stays on the control the reader clicks next",
+    refused.columns.todo?.[0] === "notes" && after.onRefuse,
+    `after the refused drop: todo ${JSON.stringify(refused.columns.todo)}; after the click, ` +
+      `focus on ${after.focused}`,
+  )
+}
+
+/** ArrowDown then Enter moves a card one place down its own column, and reports index 1. */
+async function kanbanSameColumnKeyboardCheck(devtools: Devtools): Promise<void> {
+  await resetKanban(devtools)
+  await devtools.evaluate<null>(`(${kanbanHandle("notes")}.focus(), null)`)
+  await pressKey(devtools, "Space")
+  await pressKey(devtools, "ArrowDown")
+  await pressKey(devtools, "Enter")
+  await poll(
+    () => devtools.evaluate<boolean>(`${KANBAN_STATE}.lastMove.endsWith("notes to todo at 1")`),
+    2_000,
+  )
+  const moved = await devtools.evaluate<KanbanState>(KANBAN_STATE)
+  check(
+    "ArrowDown and Enter move a KanbanBoard card one place down its own column",
+    moved.lastMove.endsWith("notes to todo at 1") &&
+      JSON.stringify(moved.columns.todo) === `["icons","notes","search"]` &&
+      moved.focused === "notes",
+    `onMove "${moved.lastMove}", todo ${
+      JSON.stringify(moved.columns.todo)
+    }, focus ${moved.focused}`,
+  )
+}
+
+/**
+ * A mouse drag of the first card to just below the second one's middle lands it second: the index
+ * counts the column without the dragged card.
+ */
+async function kanbanSameColumnMouseCheck(devtools: Devtools): Promise<void> {
+  await resetKanban(devtools)
+  const to = await devtools.evaluate<{ x: number; y: number }>(`(() => {
+    const box = ${kanbanHandle("icons")}.getBoundingClientRect()
+    return { x: Math.round(box.left + box.width / 2), y: Math.round(box.bottom - box.height / 4) }
+  })()`)
+  const { types } = await kanbanMouseDrag(
+    devtools,
+    "notes",
+    to,
+    `.lastMove.endsWith("none yet") === false`,
+  )
+  const moved = await devtools.evaluate<KanbanState>(KANBAN_STATE)
+  check(
+    "a mouse drag moves a KanbanBoard card one place down its own column, reporting index 1",
+    moved.lastMove.endsWith("notes to todo at 1") &&
+      JSON.stringify(moved.columns.todo) === `["icons","notes","search"]`,
+    `onMove "${moved.lastMove}", todo ${JSON.stringify(moved.columns.todo)}; drag events: ${types}`,
+  )
+}
+
+/**
+ * With `onOpen`, Enter on a card opens it rather than picking it up, Space still picks it up, and
+ * a real click on a card opens it.
+ */
+async function kanbanOpenChecks(devtools: Devtools): Promise<void> {
+  await resetKanban(devtools)
+  await devtools.evaluate<null>(`(${kanbanHandle("icons")}.focus(), null)`)
+  const before = await devtools.evaluate<KanbanState>(KANBAN_STATE)
+  await pressKey(devtools, "Enter")
+  await poll(
+    () =>
+      devtools.evaluate<boolean>(`${KANBAN_STATE}.opened.endsWith("Draw the empty-state icon")`),
+    2_000,
+  )
+  const entered = await devtools.evaluate<KanbanState>(KANBAN_STATE)
+  await pressKey(devtools, "Space")
+  await poll(
+    () => devtools.evaluate<boolean>(`${KANBAN_STATE}.live.startsWith("Picked up")`),
+    2_000,
+  )
+  const spaced = await devtools.evaluate<KanbanState>(KANBAN_STATE)
+  await pressKey(devtools, "Escape")
+  await poll(() => devtools.evaluate<boolean>(`${KANBAN_STATE}.live.startsWith("Put back")`), 2_000)
+
+  check(
+    "Enter opens a KanbanBoard card through onOpen, and Space still picks it up",
+    entered.opened.endsWith("Draw the empty-state icon") && entered.live === before.live &&
+      entered.focused === "icons" &&
+      spaced.live === "Picked up Draw the empty-state icon. To do, position 2 of 3.",
+    `after Enter: opened "${entered.opened}", live "${entered.live}"; after Space: ` +
+      `live "${spaced.live}"`,
+  )
+
+  await kanbanClick(devtools, kanbanHandle("search"))
+  await poll(
+    () => devtools.evaluate<boolean>(`${KANBAN_STATE}.opened.endsWith("Rank search results")`),
+    2_000,
+  )
+  const clicked = await devtools.evaluate<KanbanState>(KANBAN_STATE)
+  check(
+    "a real click on a KanbanBoard card opens it through onOpen, without moving it",
+    clicked.opened.endsWith("Rank search results") && clicked.lastMove.endsWith("none yet"),
+    `opened "${clicked.opened}", onMove "${clicked.lastMove}"`,
+  )
 }
