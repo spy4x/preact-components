@@ -968,9 +968,8 @@ overrides one by one.
 `groupShortcuts(shortcuts, defaultGroup)` is its grouping on its own: groups in the order they
 first appear, shortcuts without a description left out.
 
-The parser and the matcher are framework-free and are moving to `@spy4x/platform/browser/hotkeys`
-in spy4x/ts-libs (https://github.com/spy4x/ts-libs/pull/273). Until that release, this package
-keeps an internal copy in `hotkey-matcher.ts`, which no export reaches.
+The parser and the matcher are framework-free and come from `@spy4x/platform/browser/hotkeys`
+in spy4x/ts-libs, which also documents the keyboard-layout and AltGr rules.
 
 ## InlineEdit
 

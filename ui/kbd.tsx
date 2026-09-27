@@ -1,7 +1,7 @@
 import { cn } from "@spy4x/preact-cn"
 import { type ComponentChildren, Fragment, type JSX } from "preact"
 import { useEffect, useState } from "preact/hooks"
-import { isApplePlatform, parseHotkey } from "./hotkey-matcher.ts"
+import { isApplePlatform, parseHotkey } from "@spy4x/platform/browser/hotkeys"
 
 /**
  * The words {@link Kbd} shows or reads out for a key. Each has an English default in
