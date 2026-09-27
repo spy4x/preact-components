@@ -677,8 +677,11 @@ on a long page and the column scrolls on its own when it overflows.
 
 **A nav item's `action` is a sibling of its link, never inside it.** It is a second Tab stop, named
 by the caller's required `action.label`, drawn as a link when it has an `href` (following
-`navigate` like the item's own link) and as a button otherwise. Choosing it in the drawer closes the
-drawer. Its icon defaults to `IconPlus`, the common "create" control.
+`navigate` like the item's own link) and as a button otherwise. In the drawer, a link action closes
+the drawer like any link. A button action leaves the drawer open and focus on the button: it
+usually opens something on the page, such as a create form, and closing the drawer under the
+focused button would drop keyboard focus to `<body>`. The visitor closes the drawer as usual,
+with Escape, the scrim or a link. Its icon defaults to `IconPlus`, the common "create" control.
 
 **Collapsing hides the desktop sidebar; it does not shrink it to icons.** The slots hold content
 with no icon form, and an item may have no icon; `RailShell` is the frame for a navigation of
@@ -842,8 +845,11 @@ it, an Escape aimed at the drawer landing in the same task as the click that ope
 through the drawer's links, the header holding still (byte-identical screenshots) while the drawer
 opens at phone width and while the user menu opens at desktop width, the skip link moving focus to
 the content area rather than only the hash, and the two-directions Escape-scoping proof between the
-drawer and the user menu, a plain click going through `navigate` while a Ctrl-click does not, an
-item's action reached by Tab and pressed with Enter, and the collapse surviving a fresh load are
+drawer and the user menu, a plain click going through `navigate` while a Ctrl-click does not, a
+drawer link going through `navigate` and closing the drawer, an item's action reached by Tab and
+pressed with Enter, a button action in the drawer leaving it open with focus kept, the sidebar
+column staying under the header with its bottom slot in view on a page taller than the screen,
+and the collapse surviving a fresh load are
 effects, key presses, a focus change, layout and real pointer/keyboard input — none reachable from a
 string render — and are proven in `pages/checks/system.ts` instead.
 

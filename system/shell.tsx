@@ -206,7 +206,14 @@ function ShellNavContent(
   )
 }
 
-/** {@link ShellNavItem.action}: a link or a button, a sibling of the item's own link. */
+/**
+ * {@link ShellNavItem.action}: a link or a button, a sibling of the item's own link.
+ *
+ * A link action navigates, so in the drawer it closes the drawer like any other link. A button
+ * action does not: it usually opens something on this page, such as a create form, and closing the
+ * drawer under the focused button would drop keyboard focus to `<body>`. The drawer stays open
+ * with focus on the button; the visitor closes it as usual, with Escape, the scrim or a link.
+ */
 function ShellNavAction(
   { action, ports }: { action: ShellNavItemAction; ports: ShellLinkPorts },
 ): JSX.Element {
@@ -235,10 +242,7 @@ function ShellNavAction(
       aria-label={label}
       class={cn(navActionClasses, "cursor-pointer")}
       data-e2e={dataE2E}
-      onClick={() => {
-        onClick?.()
-        ports.onNavigate?.()
-      }}
+      onClick={() => onClick?.()}
     >
       {icon}
     </button>
