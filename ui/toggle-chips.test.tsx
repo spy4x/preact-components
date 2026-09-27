@@ -63,6 +63,7 @@ describe("ToggleChips", () => {
     )
 
     expect(html).toContain(`aria-label="Tags"`)
-    expect(html).toMatch(/<button[^>]* disabled[^>]*>iOS</)
+    expect(html).toMatch(/<button[^>]* disabled[ >][^>]*>iOS</)
+    expect(html).not.toMatch(/<button[^>]* disabled[ >][^>]*>work</)
   })
 })

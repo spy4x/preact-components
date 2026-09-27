@@ -39,6 +39,6 @@ describe("InlineEdit", () => {
   it("disables the button when disabled", () => {
     const html = render(<InlineEdit value="Shopping" disabled onSave={() => {}} />)
 
-    expect(html).toMatch(/<button[^>]* disabled/)
+    expect(html).toMatch(/<button[^>]* disabled[ >]/)
   })
 })
