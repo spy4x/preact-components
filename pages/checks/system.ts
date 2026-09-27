@@ -4975,9 +4975,9 @@ async function shellChecks(devtools: Devtools): Promise<void> {
     await shellScrimClickCheck(devtools)
     await shellSkipLinkCheck(devtools)
     await shellClientNavigationChecks(devtools)
-    await shellLayoutChecks(devtools)
     await shellDrawerNavigateCheck(devtools)
     await shellDrawerActionCheck(devtools)
+    await shellLayoutChecks(devtools)
     await shellNavigatePortChecks(devtools)
     await shellItemActionCheck(devtools)
     await shellCollapseChecks(devtools)
@@ -5734,6 +5734,9 @@ async function shellDrawerNavigateCheck(devtools: Devtools): Promise<void> {
   } finally {
     await removeShellClickSpy(devtools)
     await ensureShellClosed(devtools)
+    // Closing the drawer can leave a smooth scroll running; the next check must not aim at a
+    // moving page.
+    await waitForScrollSettle(devtools)
   }
 }
 
@@ -5788,6 +5791,7 @@ async function shellDrawerActionCheck(devtools: Devtools): Promise<void> {
         `${after.focusKept} (active: ${after.active})`,
   )
   await ensureShellClosed(devtools)
+  await waitForScrollSettle(devtools)
 }
 
 /**
