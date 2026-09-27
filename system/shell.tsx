@@ -474,18 +474,20 @@ export function Shell(props: ShellProps): JSX.Element {
       <div class="flex flex-1">
         {
           /* Hidden by `collapsed` at every width; below `lg` it is hidden anyway, the drawer being
-            the navigation there. The inner column sticks under the header and is at most one
-            screen tall, so `sidebarBottom` stays in view on a long page. */
+            the navigation there. The inner column grows to the sidebar's height but never past
+            one screen under the header, and sticks there, so `sidebarBottom` stays in view on a
+            long page. A fixed screen height instead would stretch a shorter frame, such as the
+            guide's card, past its own height. */
         }
         <aside
           id={sidebarId}
           class={cn(
-            "hidden shrink-0 border-r border-gray-200 dark:border-gray-700 lg:w-64",
-            !collapsed && "lg:block",
+            "hidden shrink-0 flex-col border-r border-gray-200 dark:border-gray-700 lg:w-64",
+            !collapsed && "lg:flex",
           )}
           data-e2e="shell-sidebar"
         >
-          <div class="sticky top-16 flex h-[calc(100dvh-4rem)] max-h-full flex-col gap-4 overflow-y-auto p-4">
+          <div class="sticky top-16 flex max-h-[calc(100dvh-4rem)] min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
             {sidebarTop && <div data-e2e="shell-sidebar-top">{sidebarTop("sidebar")}</div>}
             <nav aria-label={navLabel} class="flex-1">
               <ShellNavList items={navItems} currentPath={currentPath} ports={sidebarPorts} />

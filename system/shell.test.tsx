@@ -321,7 +321,7 @@ describe("Shell", () => {
       expect(attr(button, "aria-expanded")).toBe(String(!collapsed))
       const aside = html.match(/<aside[^>]*>/)?.[0] ?? ""
       expect(attr(aside, "id")).toBe(attr(button, "aria-controls"))
-      expect(attr(aside, "class")?.split(" ").includes("lg:block")).toBe(!collapsed)
+      expect(attr(aside, "class")?.split(" ").includes("lg:flex")).toBe(!collapsed)
     }
   })
 
