@@ -1,7 +1,9 @@
 import { useEffect, useRef } from "preact/hooks"
 import { isApplePlatform, isTypingTarget, matchesHotkey, parseHotkey } from "./hotkey-matcher.ts"
 
-/** One keyboard shortcut for {@link useHotkeys}: a combination, what it does and how it is listed. */
+/**
+ * One keyboard shortcut for {@link useHotkeys}: a combination, what it does and how it is listed.
+ */
 export interface HotkeyBinding {
   /**
    * The combination: `"?"`, `"/"`, `"shift+n"`, `"mod+k"`, `"esc"`. `mod` is Command on Apple
