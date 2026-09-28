@@ -288,6 +288,15 @@ as the numerator; and `--static`, which commits no package blocks at all, instea
   them for `verify` the way you set them for the build — exactly one `<title>` with text, exactly
   one description meta tag with content, and exactly one `twitter:card`, reading `summary`. A second
   copy of any of them fails as well as a wrong value.
+- **Recovery drill** (browser, #191, run before the package blocks): when a package block throws,
+  `resetAfterThrow` in `verify.ts` tidies the page before the next one, and no ordinary run throws.
+  So every run makes a throwaway block throw on purpose, twice, through the same `runBlocks` and
+  the same recovery. The first throw leaves the Modal card's dialog open with focus in it, the pointer on it and
+  the page scrolled; the checks then need no dialog open, the Modal's trigger opening it again (a
+  dialog closed behind the component's back leaves the component believing it is open), the page
+  at its top on the first read and for a second after, no focus, and the pointer off every card. The
+  second throw has no dialog open, and the recovery must press no Escape, which a Tooltip, a
+  Dropdown or a Combobox would answer.
 - **Browser** (headless Chromium over the DevTools Protocol, page served at the deployed base):
   hydration, Dropdown open/close, ToggleSwitch, OnOffButtons, the icon filter over the icon gallery,
   click-to-copy in the gallery, a click on every usage block's copy control putting that block's text
