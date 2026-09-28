@@ -36,7 +36,8 @@ A toast in the store carries an `id`, a `title`, a `body`, a `type` and an optio
 title gets its kind's: `"Info"`, `"Success"`, `"Error"` or `"Warning"` in English, or whatever
 `createToastStore({ titles: { success: "Erfolg", error: "Fehler" } })` says instead — an app
 in another language sets them there once, and `buildModelStore`'s success toasts, which name no
-title, pick them up. `title: ""` asks for no heading.
+title, pick them up (their bodies, and the titles of its error toasts, are still English;
+see #405). `title: ""` asks for no heading.
 
 `ThemeValue` is what the user picked: `LIGHT`, `DARK` or `SYSTEM`. `CLIPBOARD_UNAVAILABLE` is the
 reason `copy` reports when the runtime has no clipboard at all, on an insecure origin or during a
