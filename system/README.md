@@ -398,6 +398,15 @@ takes the bar off the page; the next update to be reported puts it back, so the 
 region and later arrives in it again as a fresh change. A permanent dismissal would mean a visitor
 who put one version away was never told about any version after it.
 
+**Each waiting worker is reported once.** `watchForUpdate(registration, { hasController, onUpdate })`
+is the function underneath the bar, exported so a host that owns its registration logic can use it
+alone: it calls `onUpdate` for a worker already waiting, and for one that reaches `installed` while
+a worker controls the page, and stays silent on a first install. It reports a given worker at most
+once, whatever order its events arrive in, asks only the worker whose `statechange` fired for its
+state, and takes its listener off a worker a later `updatefound` superseded. That is what keeps a
+dismissal meaning something: a second report of the same worker would bring back the bar the
+visitor put away for it. It returns a function that removes every listener it added.
+
 ## The `AuthForm` contract
 
 `AuthForm` draws the sign-in, sign-up and one-time-code screens and knows nothing about how

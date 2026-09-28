@@ -214,6 +214,64 @@ describe("watchForUpdate", () => {
     expect(updates).toBe(0)
   })
 
+  it("reports a worker once however many times its installed state is announced", () => {
+    const registration = new FakeRegistration()
+    const installing = new FakeWorker("installing")
+    registration.installing = installing
+    let updates = 0
+    watchForUpdate(registration, { hasController: () => true, onUpdate: () => updates++ })
+
+    registration.emit("updatefound")
+    installing.state = "installed"
+    installing.emit("statechange")
+    installing.emit("statechange")
+    registration.emit("updatefound")
+    installing.emit("statechange")
+
+    expect(updates).toBe(1)
+  })
+
+  it("does not report a worker that was already waiting a second time from its own event", () => {
+    // A registration that already has a waiting worker when the watcher attaches, followed by that
+    // same worker's own state change: a browser does not produce this today, a caller's own
+    // registration logic can.
+    const registration = new FakeRegistration()
+    const worker = new FakeWorker("installed")
+    registration.waiting = worker
+    let updates = 0
+    watchForUpdate(registration, { hasController: () => true, onUpdate: () => updates++ })
+
+    registration.installing = worker
+    registration.emit("updatefound")
+    worker.emit("statechange")
+
+    expect(updates).toBe(1)
+  })
+
+  it("answers a second updatefound with one report, for the worker that fired", () => {
+    // A second `updatefound` arrives before the first worker has finished installing. The first
+    // worker is superseded: it loses its listener, and an event it still fires is asked about its
+    // own state — never about the state of the worker stored after it.
+    const registration = new FakeRegistration()
+    const first = new FakeWorker("installing")
+    const second = new FakeWorker("installing")
+    let updates = 0
+    watchForUpdate(registration, { hasController: () => true, onUpdate: () => updates++ })
+
+    registration.installing = first
+    registration.emit("updatefound")
+    registration.installing = second
+    registration.emit("updatefound")
+    second.state = "installed"
+    first.emit("statechange")
+    expect(updates).toBe(0)
+
+    second.emit("statechange")
+    expect(updates).toBe(1)
+    expect(first.listenerCount).toBe(0)
+    expect(second.listenerCount).toBe(1)
+  })
+
   it("detaches every listener it added", () => {
     const registration = new FakeRegistration()
     const installing = new FakeWorker("installing")

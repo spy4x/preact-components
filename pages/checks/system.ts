@@ -32,6 +32,11 @@ const QUIET = CARD + ' [data-e2e="sw-quiet"]'
 const QUIET_REGION = QUIET + ' [role="status"]'
 const QUIET_BAR = QUIET_REGION + " > div"
 const QUIET_ANNOUNCE = QUIET + ' [data-e2e="sw-quiet-announce"]'
+const QUIET_REPEAT = QUIET + ' [data-e2e="sw-quiet-repeat"]'
+const QUIET_REPEATS = QUIET + ' [data-e2e="sw-quiet-repeats"]'
+/** The part of the card that runs `watchForUpdate` through its three scenarios. */
+const SCENARIO = CARD + ' [data-e2e="sw-scenario"]'
+const SCENARIO_LOG = CARD + ' [data-e2e="sw-scenario-log"] li'
 /** The message that card passes as a prop. Not the component's English default, on purpose. */
 const QUIET_MESSAGE = "A newer catalogue build is ready"
 
@@ -193,6 +198,7 @@ function clickBarButton(devtools: Devtools, label: string, bar = BAR): Promise<b
 export async function systemChecks(devtools: Devtools): Promise<void> {
   await authFormChecks(devtools)
   await liveRegionChecks(devtools)
+  await updateScenarioChecks(devtools)
   await calendarChecks(devtools)
   // `ZoomableImages` moved to `ui/` (#355), so its card is on the ui page. Its checks stay in this
   // file, unchanged, until they move to `pages/checks/ui.ts` with that file's owner.
@@ -212,6 +218,61 @@ export async function systemChecks(devtools: Devtools): Promise<void> {
     pageErrors.length === 0
       ? "each expression this file evaluated returned a value"
       : pageErrors.join(" | "),
+  )
+}
+
+/**
+ * `watchForUpdate`'s three scenarios on the card, pressed and read back.
+ *
+ * The card runs the real function on a registration it builds, and the log line is the function's
+ * answer. The three are documented as two reports and one silence: a worker already waiting
+ * reports, a first install with nothing controlling the page stays silent, and an update while the
+ * page is controlled reports. Before #197 the last one printed "silent" too, because the card's
+ * stand-in worker swallowed the `statechange` subscription the function makes, so the check
+ * asserts all three words and not only that they are there.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function updateScenarioChecks(devtools: Devtools): Promise<void> {
+  const ids = ["waiting", "first-install", "controlled"]
+  const expected: Record<string, string> = {
+    "waiting": "worker already waiting: update reported",
+    "first-install": "first install (no controller): silent",
+    "controlled": "update while controlled: update reported",
+  }
+  const outcomes: Record<string, string> = {}
+  for (const id of ids) {
+    const before = await read(
+      devtools,
+      `document.querySelectorAll('${SCENARIO_LOG}[data-scenario="${id}"]').length`,
+      -1,
+    )
+    await click(devtools, `${SCENARIO}[data-scenario="${id}"]`)
+    await poll(
+      () =>
+        read(
+          devtools,
+          `document.querySelectorAll('${SCENARIO_LOG}[data-scenario="${id}"]').length === ${
+            before + 1
+          }`,
+          false,
+        ),
+      3_000,
+    )
+    outcomes[id] = await read(
+      devtools,
+      `(() => {
+        const lines = document.querySelectorAll('${SCENARIO_LOG}[data-scenario="${id}"]')
+        return lines.length === ${before + 1} ? lines[lines.length - 1].textContent.trim() : ""
+      })()`,
+      "",
+    )
+  }
+  check(
+    "watchForUpdate's card prints the three documented outcomes, one for each scenario",
+    ids.every((id) => outcomes[id] === expected[id]),
+    ids.map((id) => `${JSON.stringify(outcomes[id] || "no new line")}`).join(", ") +
+      `; wanted ${ids.map((id) => JSON.stringify(expected[id])).join(", ")}`,
   )
 }
 
@@ -374,6 +435,32 @@ async function liveRegionChecks(devtools: Devtools): Promise<void> {
   )
   const dismissed = await read(devtools, READ_REGION, NO_REGION)
 
+  // The same worker's events a second time, which no browser sends today and a caller's own
+  // registration logic can. The count is what says the replay really ran; the second of quiet that
+  // follows is what says the bar stayed away. A pass spends all of it, and a watcher that reports
+  // the worker again brings the bar back within a frame (#197).
+  const repeatsBefore = await read(
+    devtools,
+    `document.querySelector('${QUIET_REPEATS}')?.textContent.trim() ?? ""`,
+    "",
+  )
+  await click(devtools, QUIET_REPEAT)
+  const replayed = await poll(
+    () =>
+      read(
+        devtools,
+        `document.querySelector('${QUIET_REPEATS}')?.textContent.trim() === ${
+          JSON.stringify(String(Number(repeatsBefore) + 1))
+        }`,
+        false,
+      ),
+    3_000,
+  )
+  const cameBack = await poll(
+    () => read(devtools, `Boolean(document.querySelector('${QUIET_BAR}'))`, false),
+    1_000,
+  )
+
   await click(devtools, QUIET_ANNOUNCE)
   const barBack = await poll(
     () => read(devtools, `Boolean(document.querySelector('${QUIET_BAR}'))`, false),
@@ -439,6 +526,18 @@ async function liveRegionChecks(devtools: Devtools): Promise<void> {
           JSON.stringify(dismissed.text)
         }, with ${dismissed.removed} node(s) recorded leaving it`
       : "the bar was still there 5s after Dismiss",
+  )
+  check(
+    "a dismissed bar does not come back when the update it was dismissed for is reported again",
+    barGone && repeatsBefore !== "" && replayed && !cameBack,
+    !barGone
+      ? "the bar was never dismissed, so there was nothing to stay away"
+      : replayed
+      ? `the card replayed the dismissed worker's updatefound and statechange ` +
+        `(repeat count ${repeatsBefore} → ${Number(repeatsBefore) + 1}), and in the second ` +
+        `after it the bar ${cameBack ? "came back" : "stayed away"}`
+      : `the card's repeat count never rose from ${repeatsBefore || "unreadable"}, so no event ` +
+        `was replayed`,
   )
   check(
     "an update after a dismissal arrives again, as a fresh change to the same region",
