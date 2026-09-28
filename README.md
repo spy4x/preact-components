@@ -22,7 +22,7 @@ The design system and the original markup are by [Eirene](https://github.com/Eir
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/guide-overview-dark.png">
-  <img src="docs/screenshots/guide-overview-light.png" width="1280" alt="The live UI guide's overview page. A header holds the library's name and version, a search box, a Made by Anton Shubin link, a Star on GitHub link, a dark-mode switch and an accent colour picker. A side navigation lists Overview under Start here and the UI, Icons, Theme, Charts, Map, System and CRUD packages. The page opens with the headline Preact components that render on the server and work from the keyboard, a Browse components button and a Star on GitHub button, the install command deno add jsr:@spy4x/preact-ui with a copy button, and the counts of components, icons and packages, above the start of a See it in an app section.">
+  <img src="docs/screenshots/guide-overview-light.png" width="1216" alt="The live UI guide's overview page. A header holds the library's name and version, a search box, a GitHub link, a dark-mode switch and an accent colour picker. A side navigation lists Overview under Start here and the UI, Icons, Theme, Charts, Map, System and CRUD packages. The page opens with the headline Preact components that render on the server and work from the keyboard, a Browse components button and a Star on GitHub button, the install command deno add jsr:@spy4x/preact-ui with a copy button, and the counts of components, icons and packages, above the See it in an app section and the title and summary of its dashboard card.">
 </picture>
 
 </div>
@@ -37,7 +37,7 @@ one. Every package is published on JSR under `@spy4x/preact-*`, all at one versi
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/guide-mini-app-dark.png">
-  <img src="docs/screenshots/guide-mini-app-light.png" width="1280" alt="The live dashboard on the guide's overview, built only from the library's components. A frame titled Orbit with a Demo badge has Run checks and New project buttons; a filter column lists All projects, Healthy, Building, Failing and Paused with a count each; four KPI tiles read Projects 5, Builds 494 all time, Failing 1 and Median build 2m 41s; a line chart titled Builds this week plots Passed and Failed builds from Monday to Sunday; and a sortable table starts with the projects Atlas, marked Healthy with 128 builds, and Beacon, marked Building with 96.">
+  <img src="docs/screenshots/guide-mini-app-light.png" width="878" alt="The live dashboard on the guide's overview, built only from the library's components. A frame titled Orbit with a Demo badge has Run checks and New project buttons; a filter column lists All projects, Healthy, Building, Failing and Paused with a count each; four KPI tiles read Projects 5, Builds 494 all time, Failing 1 and Median build 2m 41s; a line chart titled Builds this week plots Passed and Failed builds from Monday to Sunday; and a sortable table lists the five projects with their status badge and build count: Atlas, Healthy, 128; Beacon, Building, 96; Comet, Failing, 41; Drift, Healthy, 212; Ember, Paused, 17.">
 </picture>
 
 ## Where it runs
