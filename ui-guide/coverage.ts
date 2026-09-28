@@ -111,51 +111,82 @@ export function demoedNamesOf(id: PackageId): string[] {
     .flatMap((section) => section.names)
 }
 
+/** A package's `deno.json`. */
+function configOf(id: PackageId): URL {
+  return new URL(`./${id}/deno.json`, ROOT)
+}
+
 /**
- * A package's subpath modules, resolved from its `deno.json` `exports` map: everything it publishes
- * besides the barrel. A target that is not TypeScript is skipped.
+ * The subpath modules a package config publishes, resolved from its `exports` map: everything it
+ * publishes besides the barrel. {@link subpathModulesOf} reads a workspace member's; this form takes
+ * the config itself so a test can hand it a fixture package no workspace member is.
  *
- * @param id Package to read.
+ * Every target is imported as it stands. None of the covered packages publishes anything but
+ * TypeScript, so a stylesheet or other non-module target would fail the read loudly rather than be
+ * skipped quietly — and it should, because a consumer could reach that subpath.
+ *
+ * @param config URL of the package's config; each target resolves against it.
  * @returns Each subpath key and its module as an importable URL.
- * @throws When the config declares no `exports` object, or a non-string target.
+ * @throws When a subpath's target is not a string — Deno only warns about that config, then goes
+ *   on to resolve the package's barrel, so the read meets it unless it refuses it here.
  */
-export async function subpathModulesOf(
-  id: PackageId,
+export async function subpathModules(
+  config: URL,
 ): Promise<Array<{ subpath: string; href: string }>> {
-  const config = parse(await Deno.readTextFile(new URL(`./${id}/deno.json`, ROOT)))
-  const declared = (config as { exports?: unknown } | null)?.exports
-  if (typeof declared !== "object" || declared === null || Array.isArray(declared)) {
-    throw new Error(`${id}/deno.json declares no exports object`)
+  // `exports` is a string (the barrel alone) or an object. Deno cannot resolve a package's barrel
+  // from any other shape, or from none, and this module imports every covered barrel statically, so
+  // the read never runs for such a package.
+  const { exports } = parse(await Deno.readTextFile(config)) as {
+    exports: string | Record<string, unknown>
   }
+  if (typeof exports === "string") return []
 
   const modules: Array<{ subpath: string; href: string }> = []
-  for (const [subpath, target] of Object.entries(declared)) {
+  for (const [subpath, target] of Object.entries(exports)) {
     if (subpath === ".") continue
     if (typeof target !== "string") {
-      throw new Error(`${id}/deno.json declares ${subpath} with a non-string target`)
+      throw new Error(`${config.href} declares ${subpath} with a non-string target`)
     }
-    if (!/\.tsx?$/.test(target)) continue
 
-    modules.push({ subpath, href: new URL(`./${id}/${target}`, ROOT).href })
+    modules.push({ subpath, href: new URL(target, config).href })
   }
 
   return modules
 }
 
 /**
- * Every value export a consumer can reach in one package: the barrel, and every subpath module, since
- * an export only its own subpath carries is otherwise invisible.
+ * A workspace member's subpath modules: {@link subpathModules} over its own `deno.json`.
  *
  * @param id Package to read.
- * @throws When the config declares no `exports` object, or a non-string target.
  */
-export async function valueExportsOf(id: PackageId): Promise<PackageNamespace> {
-  const merged: Record<string, unknown> = { ...BARRELS[id] }
-  for (const { href } of await subpathModulesOf(id)) {
+export function subpathModulesOf(id: PackageId): Promise<Array<{ subpath: string; href: string }>> {
+  return subpathModules(configOf(id))
+}
+
+/**
+ * Every value export a consumer can reach in one package config: its barrel, and every subpath
+ * module, since an export only its own subpath carries is otherwise invisible.
+ *
+ * @param barrel The package's barrel namespace.
+ * @param config URL of the package's config.
+ */
+export async function readExports(barrel: object, config: URL): Promise<PackageNamespace> {
+  const merged: Record<string, unknown> = { ...barrel }
+  for (const { href } of await subpathModules(config)) {
     Object.assign(merged, await import(href) as object)
   }
 
   return merged
+}
+
+/**
+ * Every value export a consumer can reach in one workspace member: {@link readExports} over its
+ * barrel and its `deno.json`.
+ *
+ * @param id Package to read.
+ */
+export function valueExportsOf(id: PackageId): Promise<PackageNamespace> {
+  return readExports(BARRELS[id], configOf(id))
 }
 
 /** Every catalogued package's value exports, keyed by package. */

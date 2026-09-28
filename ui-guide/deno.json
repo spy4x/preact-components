@@ -29,7 +29,9 @@
       "**/*.test.tsx",
       "coverage.ts",
       // Only `coverage.ts` and its test import it, and both are excluded above.
-      "readme-pending.ts"
+      "readme-pending.ts",
+      // `coverage.test.ts`'s fixture package: a barrel, a subpath component and three configs.
+      "testdata/"
     ]
   }
 }
