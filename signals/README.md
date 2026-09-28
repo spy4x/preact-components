@@ -31,6 +31,14 @@ writes, so they now live in spy4x/ts-libs: import them from `@spy4x/platform/uni
 | `patch-signal`      | `patchSignal` — merge a partial object into a signal's value                                                                                                                           |
 | `use-url-filters`   | `useUrlFilters` — two-way binding between URL params and signals                                                                                                                       |
 
+A toast in the store carries an `id`, a `title`, a `body`, a `type` and an optional `duration`;
+`Toastr` in `@spy4x/preact-ui` shows the title in bold above the body. A message that names no
+title gets its kind's: `"Info"`, `"Success"`, `"Error"` or `"Warning"` in English, or whatever
+`createToastStore({ titles: { success: "Erfolg", error: "Fehler" } })` says instead — an app
+in another language sets them there once, and `buildModelStore`'s success toasts, which name no
+title, pick them up (their bodies, and the titles of its error toasts, are still English;
+see #405). `title: ""` asks for no heading.
+
 `ThemeValue` is what the user picked: `LIGHT`, `DARK` or `SYSTEM`. `CLIPBOARD_UNAVAILABLE` is the
 reason `copy` reports when the runtime has no clipboard at all, on an insecure origin or during a
 server render.
