@@ -283,6 +283,25 @@ as the numerator; and `--static`, which commits no package blocks at all, instea
   card prerendered with a `demo-<Name>` id, every one of them carrying a `Usage` block and a
   labelled copy control; icon cells in the HTML; tokens and preset rules present in the compiled CSS;
   a bundle of the expected size carrying the host page.
+- **Head** (static, #213): inside `<head>` of `dist/index.html`, exactly one canonical link whose
+  `href` is `new URL(PAGES_BASE, PAGES_ORIGIN)` — the same two variables `build.ts` reads, so set
+  them for `verify` the way you set them for the build — exactly one `<title>` with text, exactly
+  one description meta tag with content, and exactly one `twitter:card`, reading `summary`. A second
+  copy of any of them fails as well as a wrong value.
+- **Recovery drill** (browser, #191, run before the package blocks): when a package block throws,
+  `resetAfterThrow` in `verify.ts` tidies the page before the next one, and no ordinary run throws.
+  So every run makes a throwaway block throw on purpose, twice, through the same `runBlocks` and
+  the same recovery. The first throw leaves the Modal card's dialog open with focus in it, the pointer on it and
+  the page scrolled; the checks then need no dialog open, the Modal's trigger opening it again (a
+  dialog closed behind the component's back leaves the component believing it is open), the page
+  at its top on the first read and for a second after, no focus, and the pointer off every card. The
+  second throw has no dialog open, and the recovery must press no Escape, which a Tooltip, a
+  Dropdown or a Combobox would answer.
+- **Lockfile** (#283, both phases, last): the run leaves `deno.lock` byte for byte as it found it
+  after startup, and the lockfile holds no specifier without a version (`jsr:…@*`). The second is a
+  gate on the lockfile's content, whoever wrote the entry — a test run, the build or a person — so
+  an unversioned line fails `verify`, and CI, even when this run did not add it. A merely stale
+  lockfile does not fail: Deno repairs it at startup.
 - **Browser** (headless Chromium over the DevTools Protocol, page served at the deployed base):
   hydration, Dropdown open/close, ToggleSwitch, OnOffButtons, the icon filter over the icon gallery,
   click-to-copy in the gallery, a click on every usage block's copy control putting that block's text

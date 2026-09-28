@@ -150,6 +150,32 @@ describe("createToastStore variants", () => {
   })
 })
 
+describe("createToastStore titles", () => {
+  it("takes a default title per kind from the options, in the caller's language", () => {
+    const store = createToastStore({
+      nextId: counterIds(),
+      titles: { success: "Erfolg", error: "Fehler" },
+    })
+    store.success({ body: "a" })
+    store.error({ body: "b" })
+    store.info({ body: "c" })
+    expect(store.list.value.map((entry) => entry.title)).toEqual(["Erfolg", "Fehler", "Info"])
+  })
+
+  it("lets the message's own title win over the per-kind default", () => {
+    const store = createToastStore({ nextId: counterIds(), titles: { error: "Fehler" } })
+    store.error({ title: "Speichern fehlgeschlagen", body: "b" })
+    expect(store.list.value[0].title).toBe("Speichern fehlgeschlagen")
+  })
+
+  it("keeps an empty title, which is how a caller asks for no heading", () => {
+    const store = createToastStore({ nextId: counterIds(), titles: { info: "" } })
+    store.success({ title: "", body: "a" })
+    store.info({ body: "b" })
+    expect(store.list.value.map((entry) => entry.title)).toEqual(["", ""])
+  })
+})
+
 describe("createToastStore schedules nothing", () => {
   it("keeps a toast that named a delay until somebody removes it", () => {
     // The store used to take this toast away after 300ms of its own accord, whatever the component
