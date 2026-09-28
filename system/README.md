@@ -803,7 +803,8 @@ component's subpath.
 
 - `describeCalendarDay(day)` is `Calendar`'s default description of one day cell: the date as the
   locale writes it, then why it cannot be picked (`past`, outside the allowed range, none left, not
-  available) or how many are available. A `labels.day` of your own can call it and add to its text.
+  available). A selectable day adds how many are available when it has a count, and only "available"
+  when it has none. A `labels.day` of your own can call it and add to its text.
 - `seoHeadJsonLd(head)` builds the JSON-LD `@graph` `SEOHead` prints: the caller's `jsonLd`
   entities, then a `BreadcrumbList` when there are at least two `crumbs`. It returns `[]` when there
   is nothing to print. Use it to put the same structured data somewhere other than the head.
