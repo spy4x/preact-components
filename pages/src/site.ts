@@ -8,6 +8,15 @@
 /** Where the library lives. Public URL, no token, no secret. */
 export const REPOSITORY = "https://github.com/spy4x/preact-components"
 
+/**
+ * Who made the library, as the guide's header and footer credit them (#400): the author's page for
+ * this library. Public URL, no token, no secret.
+ */
+export const AUTHOR = {
+  name: "Anton Shubin",
+  href: "https://antonshubin.com/tools/preact-components",
+} as const
+
 /** The project-site subpath `actions/deploy-pages` serves this demo from. */
 export const DEFAULT_BASE = "/preact-components/"
 
