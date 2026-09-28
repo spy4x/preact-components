@@ -7618,7 +7618,7 @@ interface DataTableState {
 
 /** Park references to the DataTable card, its Merchant header button and its pager. */
 const DATA_TABLE_SETUP = `(() => {
-  const card = document.querySelector('#demo-DataTable')
+  const card = document.querySelector('#demo-DataTable [data-e2e="data-table-client"]')
   const headerButtons = card ? [...card.querySelectorAll('th button')] : []
   const byLabel = (label) =>
     headerButtons.find((button) => button.textContent.includes(label)) ?? null
@@ -7698,7 +7698,7 @@ async function dataTableChecks(devtools: Devtools): Promise<void> {
     "the DataTable card renders its sortable Merchant header, sort readout and pager",
     found.found && found.merchantFound && found.readoutFound && found.nextFound && baseline.ok,
     !found.found
-      ? "there is no #demo-DataTable card to drive"
+      ? 'there is no [data-e2e="data-table-client"] table in #demo-DataTable to drive'
       : !found.merchantFound
       ? 'no header button whose text includes "Merchant" was found'
       : !found.readoutFound
@@ -7813,6 +7813,8 @@ async function dataTableChecks(devtools: Devtools): Promise<void> {
   await openGuidePage(devtools, "ui")
   await dataTableUrlSortCheck(devtools)
   await openGuidePage(devtools, "ui")
+  await dataTableRowIdentityCheck(devtools)
+  await dataTableServerChecks(devtools)
 }
 
 /** A real mouse click on the Merchant header button, and where it landed. */
@@ -8062,6 +8064,285 @@ async function dataTableUrlSortCheck(devtools: Devtools): Promise<void> {
   )
 
   await blurActive(devtools)
+}
+
+// ---------------------------------------------------------------------------------------------
+// Table / DataTable: row identity (#234) and server mode (#235).
+// ---------------------------------------------------------------------------------------------
+
+/** One body row of the DataTable card, as the row-identity check reads it. */
+interface DataTableIdentityRow {
+  /** The row's `data-row-key`. */
+  key: string
+  /** The key this `<tr>` element was tagged with before the reorder, or `null` for an untagged one. */
+  tag: string | null
+  /** Whether the row's own Flag checkbox is ticked. */
+  flagged: boolean
+}
+
+/** Every body row of the client DataTable, with its tag and its Flag checkbox's state. */
+const DATA_TABLE_IDENTITY_ROWS = `(() => {
+  const card = globalThis.__verifyDataTable?.card ?? null
+  if (!card) return []
+  return [...card.querySelectorAll("tbody tr")]
+    .filter((tr) => tr.querySelector("[data-row-key]") !== null)
+    .map((tr) => ({
+      key: tr.querySelector("[data-row-key]").getAttribute("data-row-key"),
+      tag: tr.__verifyRowTag ?? null,
+      flagged: tr.querySelector('input[type="checkbox"]')?.checked === true,
+    }))
+})()`
+
+/**
+ * `Table` keys a body row by the identity the caller gives it (`bodyKeys`, which `DataTable` fills
+ * from `rowKey`), not by its position (#234).
+ *
+ * On the DataTable card, unsorted, this tags every `<tr>` element with the key it shows, ticks the
+ * Flag checkbox of `inv-1` — an uncontrolled checkbox, so its tick is DOM state no signal holds —
+ * and then sorts by Merchant with a real click, which moves `inv-1` from the first row to the
+ * second and brings `inv-3` to the top. Keyed by identity, each surviving `<tr>` still carries its
+ * own key's tag and the tick is still on `inv-1`. Keyed by position — the bug — the first `<tr>` is
+ * repainted in place: it now shows `inv-3` while still carrying `inv-1`'s tag and tick.
+ *
+ * Starts by turning the card back to its first page, and ends by unticking the box and cycling
+ * the sort back off, so the card is left unsorted and unticked.
+ *
+ * @param devtools The connected session, on a freshly opened guide page.
+ */
+async function dataTableRowIdentityCheck(devtools: Devtools): Promise<void> {
+  await pointerToCorner(devtools)
+  await devtools.evaluate(DATA_TABLE_SETUP)
+  // Reopening the guide page does not remount the card, so its page and sort are whatever the
+  // checks above left: the paging check leaves it on page 2. Back to page 1 first — a scripted
+  // click, because turning the page is setup here, not what this check proves.
+  await devtools.evaluate<null>(`(globalThis.__verifyDataTable?.card
+    ?.querySelector('nav[aria-label="Invoice pages"] [aria-label="Page 1"]')?.click(), null)`)
+  await poll(
+    () =>
+      devtools.evaluate<boolean>(`${DATA_TABLE_STATE}.rowKeys.join(",") === "inv-1,inv-2,inv-3"`),
+    2_000,
+  )
+  const prepared = await devtools.evaluate<DataTableIdentityRow[]>(`(() => {
+    const card = globalThis.__verifyDataTable?.card ?? null
+    if (!card) return []
+    for (const tr of card.querySelectorAll("tbody tr")) {
+      const cell = tr.querySelector("[data-row-key]")
+      if (cell) tr.__verifyRowTag = cell.getAttribute("data-row-key")
+    }
+    card.querySelector('[data-row-key="inv-1"]')?.closest("tr")
+      ?.querySelector('input[type="checkbox"]')?.click()
+    return ${DATA_TABLE_IDENTITY_ROWS}
+  })()`)
+  const preparedRows = prepared.map((row) => `${row.key}${row.flagged ? "*" : ""}`).join(",")
+  check(
+    "the DataTable card starts unsorted with a Flag checkbox per row, and inv-1 ticks",
+    preparedRows === "inv-1*,inv-2,inv-3",
+    `rows (ticked marked *): ${preparedRows || "(none)"}`,
+  )
+
+  const sorted = await clickMerchantHeader(devtools)
+  const after = await devtools.evaluate<DataTableIdentityRow[]>(DATA_TABLE_IDENTITY_ROWS)
+  const afterRows = after.map((row) =>
+    `${row.key}${row.flagged ? "*" : ""}${row.tag === null ? "" : `(was ${row.tag})`}`
+  ).join(",")
+  const order = after.map((row) => row.key).join(",")
+  const tagsFollow = after.every((row) => row.tag === null || row.tag === row.key)
+  const survivors = after.filter((row) => row.tag !== null).map((row) => row.key).sort().join(",")
+  const ticked = after.filter((row) => row.flagged).map((row) => row.key).join(",")
+  check(
+    "sorting moves each row's own <tr>, and its ticked checkbox, to the row's new position",
+    sorted.onTarget && order === "inv-3,inv-1,inv-5" && tagsFollow && survivors === "inv-1,inv-3" &&
+      ticked === "inv-1",
+    !sorted.onTarget
+      ? `the press landed on ${sorted.landingTag}, not the Merchant header button`
+      : `rows after sorting (ticked *, element's earlier key in brackets): ${afterRows}`,
+  )
+
+  // Leave the card as found: unticked, and the sort cycled on through descending back off.
+  await devtools.evaluate<null>(`(() => {
+    const card = globalThis.__verifyDataTable?.card
+    card?.querySelector('[data-row-key="inv-1"]')?.closest("tr")
+      ?.querySelector('input[type="checkbox"]')?.click()
+    return null
+  })()`)
+  for (let press = 0; press < 2; press++) {
+    const before = await devtools.evaluate<DataTableState>(DATA_TABLE_STATE)
+    await devtools.evaluate<null>(`(globalThis.__verifyDataTable?.merchant?.click(), null)`)
+    await poll(
+      () =>
+        devtools.evaluate<boolean>(
+          `${DATA_TABLE_STATE}.readout !== ${JSON.stringify(before.readout)}`,
+        ),
+      2_000,
+    )
+  }
+}
+
+/** One read of the DataTable card's server-mode table. */
+interface DataTableServerState {
+  /** `false` when the server-mode table this file drives is missing. */
+  ok: boolean
+  /** `data-row-key` of every row on screen, in document order. */
+  rowKeys: string[]
+  /** `aria-sort` of the Merchant column's `<th>`, or `null` when it carries none. */
+  merchantAriaSort: string | null
+  /** The demo's readout: the sort, the page and how many rows the "server" answered with. */
+  readout: string
+  /** Text of the page button marked `aria-current="page"`, or `""` for none. */
+  currentPage: string
+  /** How many numbered page buttons the pager shows. */
+  pageButtons: number
+  /** `aria-disabled` of the pager's Next control. */
+  nextDisabled: string | null
+  /** `"merchant"`, `"next"` or `"other"`: which of the driven controls holds focus. */
+  focus: string
+}
+
+/** Park references to the server-mode table, its Merchant header button and its Next control. */
+const DATA_TABLE_SERVER_SETUP = `(() => {
+  const section = document.querySelector('#demo-DataTable [data-e2e="data-table-server"]')
+  const merchant = section
+    ? ([...section.querySelectorAll("th button")].find((b) => b.textContent.includes("Merchant")) ?? null)
+    : null
+  const nav = section ? section.querySelector('nav[aria-label="Server invoice pages"]') : null
+  const next = nav
+    ? ([...nav.querySelectorAll("button")].find((b) => b.textContent.trim() === "Next") ?? null)
+    : null
+  globalThis.__verifyDataTableServer = { section, merchant, nav, next }
+  return { found: section !== null, merchantFound: merchant !== null, nextFound: next !== null }
+})()`
+
+/** Rows, `aria-sort`, readout, pager and focus of the server-mode table, in one round trip. */
+const DATA_TABLE_SERVER_STATE = `(() => {
+  const store = globalThis.__verifyDataTableServer
+  if (!store || !store.section) {
+    return {
+      ok: false, rowKeys: [], merchantAriaSort: null, readout: "", currentPage: "",
+      pageButtons: -1, nextDisabled: null, focus: "other",
+    }
+  }
+  const active = document.activeElement
+  return {
+    ok: true,
+    rowKeys: [...store.section.querySelectorAll("[data-row-key]")]
+      .map((el) => el.getAttribute("data-row-key")),
+    merchantAriaSort: store.merchant ? store.merchant.closest("th").getAttribute("aria-sort") : null,
+    readout: (store.section.querySelector('[data-e2e="data-table-server-readout"]')?.textContent ?? "")
+      .replace(/\\s+/g, " ").trim(),
+    currentPage: (store.nav?.querySelector('[aria-current="page"]')?.textContent ?? "").trim(),
+    pageButtons: store.nav ? store.nav.querySelectorAll("li button").length : -1,
+    nextDisabled: store.next ? store.next.getAttribute("aria-disabled") : null,
+    focus: active === store.merchant ? "merchant" : active === store.next ? "next" : "other",
+  }
+})()`
+
+/** Press a key on whatever holds focus, then wait for the server table's readout to change. */
+async function pressOnServerTable(
+  devtools: Devtools,
+  key: "Space" | "Enter",
+): Promise<DataTableServerState> {
+  const before = await devtools.evaluate<DataTableServerState>(DATA_TABLE_SERVER_STATE)
+  await pressKey(devtools, key)
+  await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `${DATA_TABLE_SERVER_STATE}.readout !== ${JSON.stringify(before.readout)}`,
+      ),
+    2_000,
+  )
+  return await devtools.evaluate<DataTableServerState>(DATA_TABLE_SERVER_STATE)
+}
+
+/** One line of a server-table state, for a failure message. */
+function describeServerState(state: DataTableServerState): string {
+  return `rows ${state.rowKeys.join(",")}, aria-sort ${String(state.merchantAriaSort)}, page ` +
+    `${state.currentPage || "(none)"} of ${state.pageButtons}, focus on ${state.focus}, readout ` +
+    `"${state.readout}"`
+}
+
+/**
+ * `DataTable`'s server mode (#235), on the second table of the DataTable card: the card's own
+ * `fetchInvoicePage` sorts and pages eight invoices and hands `DataTable` one page of three plus the
+ * total. Driven by real key presses only: Enter and then Space on the focused Merchant header,
+ * Space and then Enter on the pager's focused Next control.
+ *
+ * What it proves: a header press still reaches `onSortChange` and `aria-sort` in this mode, the
+ * rows on screen are exactly the page the "server" answered with, the pager is sized from `total`
+ * (three pages from three rows in hand), and focus stays on the control that was pressed. The
+ * "server" orders text by code unit, so descending it puts "eBay refund" (`inv-8`) first; a
+ * client-side re-sort of that page with `sortRows`' locale-aware collation would put it last
+ * (`inv-4,inv-2,inv-8`), and a client-side slice of a page the server already cut would show page
+ * 1's rows, or none, on pages 2 and 3. Ends with a scripted click that cycles
+ * the sort off, which also returns the table to page 1.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function dataTableServerChecks(devtools: Devtools): Promise<void> {
+  await pointerToCorner(devtools)
+  const found = await devtools.evaluate<
+    { found: boolean; merchantFound: boolean; nextFound: boolean }
+  >(DATA_TABLE_SERVER_SETUP)
+  const baseline = await devtools.evaluate<DataTableServerState>(DATA_TABLE_SERVER_STATE)
+  check(
+    "server mode: the DataTable card's server table shows the server's first page, pager sized from its total",
+    found.found && found.merchantFound && found.nextFound &&
+      baseline.rowKeys.join(",") === "inv-1,inv-2,inv-3" && baseline.merchantAriaSort === null &&
+      baseline.currentPage === "1" && baseline.pageButtons === 3 &&
+      baseline.readout.includes("3 of 8 rows"),
+    !found.found
+      ? 'there is no [data-e2e="data-table-server"] table in #demo-DataTable'
+      : !found.merchantFound
+      ? "no Merchant header button was found in the server table"
+      : !found.nextFound
+      ? "the server table's pager has no Next control"
+      : describeServerState(baseline),
+  )
+
+  await centreInView(devtools, "globalThis.__verifyDataTableServer?.merchant ?? null")
+  await devtools.evaluate<null>(`(globalThis.__verifyDataTableServer?.merchant?.focus(), null)`)
+  const ascending = await pressOnServerTable(devtools, "Enter")
+  check(
+    "server mode: a real Enter press on the focused header asks for the sorted page and shows it as given",
+    ascending.rowKeys.join(",") === "inv-3,inv-6,inv-1" &&
+      ascending.merchantAriaSort === "ascending" && ascending.focus === "merchant" &&
+      ascending.currentPage === "1",
+    describeServerState(ascending),
+  )
+
+  const descending = await pressOnServerTable(devtools, "Space")
+  check(
+    "server mode: a real Space press on the same header reverses the sort in the server's collation, not the client's",
+    descending.rowKeys.join(",") === "inv-8,inv-4,inv-2" &&
+      descending.merchantAriaSort === "descending" && descending.focus === "merchant",
+    describeServerState(descending),
+  )
+
+  await devtools.evaluate<null>(`(globalThis.__verifyDataTableServer?.next?.focus(), null)`)
+  const second = await pressOnServerTable(devtools, "Space")
+  check(
+    "server mode: a real Space press on the focused Next control shows the server's page 2, keeping focus",
+    second.rowKeys.join(",") === "inv-5,inv-7,inv-1" && second.currentPage === "2" &&
+      second.merchantAriaSort === "descending" && second.focus === "next",
+    describeServerState(second),
+  )
+
+  const last = await pressOnServerTable(devtools, "Enter")
+  check(
+    "server mode: a real Enter press on Next shows the short last page, and Next reports it cannot act",
+    last.rowKeys.join(",") === "inv-6,inv-3" && last.currentPage === "3" &&
+      last.nextDisabled === "true" && last.focus === "next",
+    `${describeServerState(last)}, Next aria-disabled ${String(last.nextDisabled)}`,
+  )
+
+  await blurActive(devtools)
+  await devtools.evaluate<null>(`(globalThis.__verifyDataTableServer?.merchant?.click(), null)`)
+  await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `${DATA_TABLE_SERVER_STATE}.rowKeys.join(",") === "inv-1,inv-2,inv-3"`,
+      ),
+    2_000,
+  )
 }
 
 /**

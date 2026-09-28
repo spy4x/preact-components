@@ -6,6 +6,20 @@ export interface TableProps {
   headerSlot: ComponentChildren
   /** One entry per body row; each entry is the row's `<td>` list. */
   bodySlots: ComponentChildren[]
+  /**
+   * Optional identity of each body row, one per entry in `bodySlots`, in the same order.
+   *
+   * Given, each `<tr>` is keyed by its entry here instead of by its position, so when the caller
+   * reorders `bodySlots` — a sort, a page turn, a row inserted above — Preact moves the row's DOM
+   * element, and whatever that element holds (a ticked checkbox, a half-typed input, focus, a
+   * component's own state), along with it. Omitted, rows are keyed by position, as they always
+   * were: state then stays at its old position and describes whichever row lands there.
+   *
+   * Keys have to be distinct within one table, the ordinary rule for any keyed list; that is not
+   * checked. A length that differs from `bodySlots`' is: it throws, because a row with no key of its
+   * own would silently fall back to position and bring the bug back for that row alone.
+   */
+  bodyKeys?: readonly (string | number)[]
   /** Optional `<tfoot>` content. */
   footerSlot?: ComponentChildren
   /**
@@ -44,12 +58,28 @@ function hasCaption(caption: ComponentChildren): boolean {
  *
  * Rows are rendered from `bodySlots`, so the caller keeps control of cell content while the
  * primitive owns the divider, hover and spacing utilities. The wrapper scrolls horizontally
- * instead of overflowing the page on narrow screens.
+ * instead of overflowing the page on narrow screens. Pass `bodyKeys` whenever rows can reorder
+ * and carry state of their own; without it a body row is keyed by its position.
  */
 export function Table(
-  { headerSlot, bodySlots, footerSlot, caption, captionClass, rowDataE2E, class: className }:
-    TableProps,
+  {
+    headerSlot,
+    bodySlots,
+    bodyKeys,
+    footerSlot,
+    caption,
+    captionClass,
+    rowDataE2E,
+    class: className,
+  }: TableProps,
 ): JSX.Element {
+  if (bodyKeys !== undefined && bodyKeys.length !== bodySlots.length) {
+    throw new Error(
+      `Table: bodyKeys has ${bodyKeys.length} entries for ${bodySlots.length} bodySlots; ` +
+        "give every body row a key, or none",
+    )
+  }
+
   return (
     <div class={cn(wrapper, className)}>
       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
@@ -62,7 +92,7 @@ export function Table(
         <tbody class="divide-y divide-gray-100 dark:divide-gray-600 bg-white dark:bg-gray-800">
           {bodySlots.map((bodySlot, index) => (
             <tr
-              key={index}
+              key={bodyKeys === undefined ? index : bodyKeys[index]}
               class="text-sm *:px-6 *:py-4 hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-300"
               data-e2e={rowDataE2E}
             >

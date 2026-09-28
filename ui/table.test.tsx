@@ -1,7 +1,8 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
+import type { VNode } from "preact"
 import { render } from "preact-render-to-string"
-import { Table } from "./table.tsx"
+import { Table, type TableProps } from "./table.tsx"
 
 const header = (
   <tr>
@@ -120,7 +121,70 @@ describe("Table", () => {
       expect(html).not.toContain("<caption")
     }
   })
+
+  it("keys each body row by its bodyKeys entry, not by its position", () => {
+    const keys = bodyRowKeys({
+      headerSlot: header,
+      bodySlots: cells("Grace", "Ada"),
+      bodyKeys: ["grace", 7],
+    })
+
+    expect(keys).toEqual(["grace", 7])
+  })
+
+  it("keys body rows by position when no bodyKeys are given, as it always did", () => {
+    const keys = bodyRowKeys({
+      headerSlot: header,
+      bodySlots: cells("Grace", "Ada", "Hedy"),
+    })
+
+    expect(keys).toEqual([0, 1, 2])
+  })
+
+  it("renders the same markup with bodyKeys as without", () => {
+    const bodySlots = cells("Grace", "Ada")
+
+    expect(render(<Table headerSlot={header} bodySlots={bodySlots} bodyKeys={["g", "a"]} />))
+      .toBe(render(<Table headerSlot={header} bodySlots={bodySlots} />))
+  })
+
+  it("throws when bodyKeys does not give every body row exactly one key", () => {
+    for (const bodyKeys of [["only-one"], ["a", "b", "c"]]) {
+      expect(() => Table({ headerSlot: header, bodySlots: cells("Grace", "Ada"), bodyKeys }))
+        .toThrow("bodyKeys has")
+    }
+  })
 })
+
+/**
+ * One body slot per name, each a single `<td>`. The cell's own key only quiets `jsx-key`: it is
+ * the `<tr>` around it whose key these tests read.
+ */
+function cells(...names: string[]) {
+  return names.map((name) => <td key={name}>{name}</td>)
+}
+
+/**
+ * The Preact key of every `<tr>` inside the `<tbody>` `Table` returns, read off the vnode tree —
+ * a key never reaches rendered HTML, so a string render cannot show which one a row got.
+ */
+function bodyRowKeys(props: TableProps): unknown[] {
+  const tbody = findElement(Table(props), "tbody")
+  if (!tbody) throw new Error("Table rendered no <tbody>")
+  const rows = [tbody.props.children].flat(Infinity) as VNode[]
+  return rows.map((row) => row.key)
+}
+
+function findElement(node: unknown, type: string): VNode<{ children?: unknown }> | undefined {
+  for (const candidate of Array.isArray(node) ? node.flat(Infinity) : [node]) {
+    if (typeof candidate !== "object" || candidate === null || !("type" in candidate)) continue
+    const vnode = candidate as VNode<{ children?: unknown }>
+    if (vnode.type === type) return vnode
+    const nested = findElement(vnode.props.children, type)
+    if (nested) return nested
+  }
+  return undefined
+}
 
 function countOccurrences(haystack: string, needle: string): number {
   return haystack.split(needle).length - 1
