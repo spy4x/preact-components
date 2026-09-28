@@ -90,7 +90,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `ShortcutsDialog` | `shortcuts-dialog`  | `open`, `onClose`, `shortcuts`, `title?`, `closeLabel?`, `defaultGroup?`, `apple?`, `kbdLabels?`                                                                      |
 | `Stack`           | `layout`            | `gap?` (default `md`), `as?`, `class?` — a column                                                                                                                     |
 | `StatusMark`      | `status-mark`       | `status` (`ready`/`beta`/`wip`/`paused`/`archived`/`known-issue`), `label?` — a sibling of `Badge`, not an extension of it: `Badge` is colour-plus-text with no shape |
-| `Table`           | `table`             | `headerSlot`, `bodySlots`, `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`                                                                                    |
+| `Table`           | `table`             | `headerSlot`, `bodySlots`, `bodyKeys?` (one identity per row; position when omitted), `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`                         |
 | `Tabs`            | `tabs`              | `tabs`, `active`, `onChange`, `lazy`                                                                                                                                  |
 | `Textarea`        | `input`             | native textarea attrs, `class`                                                                                                                                        |
 | `Toastr`          | `toastr`            | `toasts`, `onDismiss`, `corner`, `label`, `dismissLabel`, `dataE2E`                                                                                                   |
@@ -631,13 +631,14 @@ unaffected.
 spanning every column, defaulting to `<EmptyState title="No rows" />`. The header stays, so a
 sortable column stays clickable even when a filter elsewhere on the page is what emptied the list.
 
-**`rowKey` stamps `data-row-key` on each row's first cell**, exported as `rowKeyAttribute`.
-`Table` keys its own `<tr>`s by array position, not by a caller-supplied identity — extending that
-is `Table`'s own change to make, tracked as a follow-up
-([#234](https://github.com/spy4x/preact-components/issues/234)) rather than built here — so a sort
-or a page turn that reorders rows gives Preact nothing to reconcile a row's identity against by
-itself. Stamping the key on the DOM is what lets a page, or a browser check, point at a specific
-row without depending on its rendered text.
+**`rowKey` is each row's identity.** `DataTable` hands it to `Table` as `bodyKeys`, so every
+`<tr>` is keyed by the row it shows rather than by its position: a sort or a page turn moves the
+row's DOM element, and whatever a cell holds — a ticked checkbox, a half-typed input, focus, a
+component's own state — goes with the row instead of staying behind to describe whichever row lands
+in its old place. `pages/checks/ui.ts` proves it on the catalogue card's Flag column, whose
+checkboxes are deliberately uncontrolled. Keys must be distinct across `rows`. The same key is
+stamped as `data-row-key` on each row's first cell, exported as `rowKeyAttribute`, so a page or a
+browser check can point at a specific row without depending on its rendered text.
 
 **Paging is optional and minimal**: `page`, `pageSize` and `onChange`, mirroring `Pagination`'s own
 prop names because most of them pass straight through to it. `DataTable` computes `pageCount` from

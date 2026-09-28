@@ -292,7 +292,11 @@ const tableRows = [
   { date: "2026-02-03", merchant: "Amazon purchase", status: false, amount: -12999 },
 ]
 
-/** The caller owns every cell; the primitive owns the dividers, the hover and the scroll. */
+/**
+ * The caller owns every cell; the primitive owns the dividers, the hover and the scroll. `bodyKeys`
+ * gives each row its own identity — the date here, unique in this data — so a reorder would move
+ * rows rather than repaint them in place.
+ */
 function TableDemo() {
   return (
     <Table
@@ -305,6 +309,7 @@ function TableDemo() {
           <th scope="col" class="text-right">Amount</th>
         </>
       }
+      bodyKeys={tableRows.map((row) => row.date)}
       bodySlots={tableRows.map((row) => (
         <>
           <td class="whitespace-nowrap tabular-nums">{row.date}</td>
@@ -356,6 +361,10 @@ type DataTableSortKey = "date" | "merchant" | "amount"
  * write to whatever host embeds the catalogue. `pages/src/data-table-sort.tsx` binds `?sort=`
  * through `useUrlFilters`, and `pages/checks/ui.ts` drives both. That check reads the readout's
  * text as `sort: <rules>`.
+ *
+ * The Flag column's checkbox is deliberately uncontrolled: its tick is the row's own DOM state,
+ * written to no signal, so it stays with its invoice through a sort only because `DataTable` keys
+ * each row by `rowKey`. `pages/checks/ui.ts` ticks one, sorts, and reads where the tick went.
  */
 function DataTableDemo() {
   const sort = useSignal<SortRule<DataTableSortKey>[]>([])
@@ -375,6 +384,12 @@ function DataTableDemo() {
             sortable: true,
             align: "right",
             render: (row) => row.amount === null ? "—" : String(row.amount),
+          },
+          {
+            id: "flag",
+            header: "Flag",
+            align: "center",
+            render: (row) => <Checkbox aria-label={`Flag ${row.merchant}`} />,
           },
         ]}
         rows={dataTableRows}
@@ -899,6 +914,12 @@ export const displayDemos = {
         description: "One entry per row, each that row's cells.",
       },
       {
+        name: "bodyKeys",
+        type: "(string | number)[]",
+        description:
+          "Each row's own identity, in the same order, so a reordered row keeps its state. Left out, rows are keyed by position.",
+      },
+      {
         name: "footerSlot",
         type: "ComponentChildren",
         description: "Whole footer rows, such as a total.",
@@ -912,6 +933,7 @@ export const displayDemos = {
     snippet: `<Table
   headerSlot={<th scope="col">Merchant</th>}
   bodySlots={rows.map((row) => <td>{row.merchant}</td>)}
+  bodyKeys={rows.map((row) => row.id)}
   footerSlot={<tr>…</tr>}
 />`,
     render: () => <TableDemo />,
@@ -944,7 +966,8 @@ export const displayDemos = {
       {
         name: "rowKey",
         type: "(row) => string | number",
-        description: "A stable key for each row.",
+        description:
+          "Each row's own identity, so its checkbox, focus or state moves with it when the rows sort or page.",
       },
     ],
     snippet: `<DataTable
@@ -953,6 +976,7 @@ export const displayDemos = {
     { key: "date", header: "Date", sortable: true },
     { key: "merchant", header: "Merchant", sortable: true },
     { key: "amount", header: "Amount", sortable: true, align: "right" },
+    { id: "flag", header: "Flag", render: (row) => <Checkbox aria-label={\`Flag \${row.merchant}\`} /> },
   ]}
   rows={invoices}
   rowKey={(row) => row.id}

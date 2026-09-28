@@ -157,7 +157,11 @@ export interface DataTableProps<T, K extends Extract<keyof T, string>> {
   empty?: ComponentChildren
   /** Optional paging; omit for every row on one page. */
   paging?: DataTablePaging
-  /** Identifies one row, for anything that needs to point at it. See {@link rowKeyAttribute}. */
+  /**
+   * Identifies one row: the Preact key of its `<tr>`, so a row's DOM and state follow it through a
+   * sort or a page turn, and the {@link rowKeyAttribute} stamp on its first cell. Must be distinct
+   * across `rows`.
+   */
   rowKey: (row: T) => string | number
   /** Sets `data-e2e` on every body row, forwarded to `Table`. */
   rowDataE2E?: string
@@ -304,11 +308,10 @@ function bodyCell<T, K extends Extract<keyof T, string>>(
  * Attribute a row's first cell carries so a page — or a browser check — can find that row by the
  * identity {@link DataTableProps.rowKey} gives it, without depending on rendered cell text.
  *
- * `Table` keys its `<tr>`s by array position, not by a caller-supplied identity — extending that
- * is `ui/table.tsx`'s own change to make, tracked as a follow-up
- * (github.com/spy4x/preact-components/issues/234) rather than built here — so a sort or a page
- * turn that reorders the rows gives Preact nothing to reconcile a row's identity against. Stamping
- * the key on the DOM is what lets anything downstream tell rows apart by more than their position.
+ * The same key is `Table`'s `bodyKeys` entry for the row, so each `<tr>` is keyed by the row's
+ * identity rather than by its position: a sort or a page turn moves a row's DOM element, and
+ * anything a cell holds — a ticked checkbox, focus, a component's own state — along with the row.
+ * The attribute is what lets a page or a browser check point at a row without reading its text.
  */
 export const rowKeyAttribute = "data-row-key"
 
@@ -367,10 +370,11 @@ export function DataTable<T, K extends Extract<keyof T, string>>(
     </>
   )
 
-  const bodySlots = visible.length > 0
-    ? visible.map((row) =>
+  const bodyKeys = visible.length > 0 ? visible.map(rowKey) : undefined
+  const bodySlots = bodyKeys !== undefined
+    ? visible.map((row, rowIndex) =>
       columns.map((column, index) =>
-        bodyCell(column, row, index === 0 ? String(rowKey(row)) : undefined)
+        bodyCell(column, row, index === 0 ? String(bodyKeys[rowIndex]) : undefined)
       )
     )
     : [
@@ -386,6 +390,7 @@ export function DataTable<T, K extends Extract<keyof T, string>>(
         captionClass={captionHidden ? "sr-only" : undefined}
         headerSlot={headerSlot}
         bodySlots={bodySlots}
+        bodyKeys={bodyKeys}
         rowDataE2E={rowDataE2E}
       />
       {paging && (

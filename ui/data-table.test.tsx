@@ -4,6 +4,7 @@ import type { SortRule } from "@spy4x/platform/universal/sort"
 import type { ComponentChild, VNode } from "preact"
 import { render } from "preact-render-to-string"
 import { DataTable, type DataTableColumn, rowKeyAttribute } from "./data-table.tsx"
+import { Table } from "./table.tsx"
 
 interface Invoice {
   id: string
@@ -458,6 +459,34 @@ describe("DataTable", () => {
     }
   })
 
+  it("keys Table's body rows by rowKey, in the order it renders them", () => {
+    const tree = evaluate(DataTable<Invoice, keyof Invoice & string>, {
+      columns,
+      rows,
+      rowKey: (row) => row.id,
+      sort: [{ key: "merchant", direction: "asc" }],
+      onSortChange: noop,
+      caption: "Invoices",
+    })
+
+    // Sorted ascending by merchant: Amazon, Coffee & Co, Salary.
+    expect(tableProp(tree, "bodyKeys")).toEqual(["INV-2", "INV-1", "INV-3"])
+  })
+
+  it("gives Table no bodyKeys for the single empty-state row", () => {
+    const tree = evaluate(DataTable<Invoice, keyof Invoice & string>, {
+      columns,
+      rows: [],
+      rowKey: (row) => row.id,
+      sort: [],
+      onSortChange: noop,
+      caption: "Invoices",
+    })
+
+    expect(tableProp(tree, "bodyKeys")).toBeUndefined()
+    expect(tableProp(tree, "bodySlots")).toHaveLength(1)
+  })
+
   it("renders each cell with the column's render, or String(value) without one", () => {
     const withRender: DataTableColumn<Invoice, keyof Invoice & string>[] = [
       { key: "id", header: "Id" },
@@ -616,6 +645,25 @@ describe("DataTable", () => {
     }
   })
 })
+
+/** One prop of the `Table` vnode `DataTable` returns, read before `Table` itself runs. */
+function tableProp(tree: ComponentChild, name: string): unknown {
+  const table = findComponent(tree, Table)
+  if (!table) throw new Error("DataTable rendered no Table")
+  return table.props[name]
+}
+
+function findComponent(node: unknown, type: unknown): VNode<Record<string, unknown>> | undefined {
+  for (const candidate of Array.isArray(node) ? node : [node]) {
+    if (!isVNode(candidate)) continue
+    if (candidate.type === type) return candidate
+    for (const value of propValues(candidate.props)) {
+      const nested = findComponent(value, type)
+      if (nested) return nested
+    }
+  }
+  return undefined
+}
 
 function countOccurrences(haystack: string, needle: string): number {
   return haystack.split(needle).length - 1
