@@ -1,0 +1,6 @@
+{
+  "exports": {
+    ".": "./mod.ts",
+    "./widget": { "default": "./widget.ts" }
+  }
+}
