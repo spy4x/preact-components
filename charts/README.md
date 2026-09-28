@@ -157,6 +157,43 @@ The re-exported `ticks` changed with ts-libs 1.4.0 too: every tick now lands on 
 tick. `LineChart` calls `ticks` when a caller passes an explicit `yDomain`, so such a chart with a
 `yTicks` other than 1, 5 or 10 draws its gridlines in new places.
 
+## Helpers
+
+The colour defaults and the maths behind the components, each importable from the package root or
+from its own subpath.
+
+### Colours (`./colors`)
+
+- `seriesColor(index, palette)` picks the colour for series `index` from `palette` (by default
+  `DEFAULT_CHART_PALETTE`), wrapping past the end and tolerating a negative index; an empty palette
+  falls back to the default one. Use it to colour a legend or a table row to match its series.
+- `CHART_PALETTE_CLASS` is the class list a chart puts on its root so `DEFAULT_CHART_PALETTE`
+  resolves to its light steps, or its dark steps under a `.dark` ancestor. Put it on the root of
+  chart markup of your own that uses the default palette.
+- `DEFAULT_AXIS_COLOR`, `DEFAULT_GRID_COLOR`, `DEFAULT_TEXT_COLOR`, `DEFAULT_SURFACE_COLOR` and
+  `DEFAULT_TRACK_COLOR` are the defaults of the charts' colour props: the axis and frame lines, the
+  dashed grid lines, the axis and legend text, the panel and tooltip background, and the track
+  behind a bar or an empty donut. Each is a theme variable with an inline fallback, so it works with
+  or without `theme/`'s stylesheet.
+
+### Bars and DonutChart (`./bars`, `./donut-chart`)
+
+- `barPercent(value, top)` is a bar's width as a percentage of the longest bar, clamped to
+  `0…100`; a non-finite or negative value, or a `top` of `0` or less, gives `0`.
+- `donutGeometry(data, { colors, emptyColor })` is `DonutChart`'s slice maths: each slice's share,
+  printed percent, colour and start and end, the total, and a ready `conic-gradient(…)` value.
+  Negative and non-finite values count as `0`, and data with nothing positive gives one empty ring.
+  Use it to draw a donut or a share legend of your own.
+
+### Loading (`./payload`, `./use-in-view`)
+
+- `timeSeriesPointSchema` is the arktype schema of one `TimeSeriesPoint`, `{ timeGroup, value }`,
+  as it arrives from an API; `chartPayloadSchema` uses it for its `data`.
+- `createInViewObserver(element, onChange, { rootMargin, threshold })` observes one element and
+  calls `onChange(isIntersecting)` on every change, preloading `200px` early by default. It
+  returns a handle with `disconnect()`, or `null` where `IntersectionObserver` does not exist, such
+  as on the server. `useInView` is built on it; call it directly outside a component.
+
 ## Tests
 
 `deno task test` from the repo root. `scales.test.ts` covers `extent`, `paddedDomain`, `niceScale`,
