@@ -2,12 +2,16 @@
 
 # preact-components
 
-**Accessible Preact + Tailwind components, design tokens, icons, charts and signals helpers, with a
-live guide that shows every one running.**
+**Modern Preact + Tailwind components built on web standards: accessible components, design
+tokens, icons, charts and signals helpers, with a live guide that shows every one running.**
 
 [![CI pipeline status](https://ci.antonshubin.com/api/badges/9/status.svg)](https://ci.antonshubin.com/repos/9)
 [![JSR](https://jsr.io/badges/@spy4x/preact-ui)](https://jsr.io/@spy4x/preact-ui)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
+```bash
+deno add jsr:@spy4x/preact-ui
+```
 
 [**Live guide →**](https://spy4x.github.io/preact-components) ·
 [Install and use](docs/usage.md) · [Maintaining](docs/maintaining.md) ·
@@ -18,7 +22,7 @@ The design system and the original markup are by [Eirene](https://github.com/Eir
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/guide-overview-dark.png">
-  <img src="docs/screenshots/guide-overview-light.png" width="1280" alt="The live UI guide's overview page: a header with the library's name and version, a search box, a GitHub link and a dark-mode switch; a side navigation grouped into Start here and Packages; and the page itself, with the install command, a Browse components button beside the counts of live cards, icons and packages, and a first example card showing two buttons and a badge above its code toggle.">
+  <img src="docs/screenshots/guide-overview-light.png" width="1280" alt="The live UI guide's overview page. A header holds the library's name and version, a search box, a Made by Anton Shubin link, a Star on GitHub link, a dark-mode switch and an accent colour picker. A side navigation lists Overview under Start here and the UI, Icons, Theme, Charts, Map, System and CRUD packages. The page opens with the headline Preact components that render on the server and work from the keyboard, a Browse components button and a Star on GitHub button, the install command deno add jsr:@spy4x/preact-ui with a copy button, and the counts of components, icons and packages, above the start of a See it in an app section.">
 </picture>
 
 </div>
@@ -31,6 +35,22 @@ it, so you can try one before you install it.
 The components were extracted from real products, so the same pieces are not rebuilt for the next
 one. Every package is published on JSR under `@spy4x/preact-*`, all at one version.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/guide-mini-app-dark.png">
+  <img src="docs/screenshots/guide-mini-app-light.png" width="1280" alt="The live dashboard on the guide's overview, built only from the library's components. A frame titled Orbit with a Demo badge has Run checks and New project buttons; a filter column lists All projects, Healthy, Building, Failing and Paused with a count each; four KPI tiles read Projects 5, Builds 494 all time, Failing 1 and Median build 2m 41s; a line chart titled Builds this week plots Passed and Failed builds from Monday to Sunday; and a sortable table starts with the projects Atlas, marked Healthy with 128 builds, and Beacon, marked Building with 96.">
+</picture>
+
+## Where it runs
+
+Every package is a standard ES module built on web standards, with no Deno-only API in anything
+published: a component renders to HTML on a server and hydrates in the browser, where it uses the
+browser's own APIs, such as the History API, `localStorage`, `IntersectionObserver` and
+`ResizeObserver`. The packages are published on JSR, so a Deno app installs them with `deno add`,
+and an app that builds with Vite uses them through `@deno/vite-plugin`, with the theme's Vite
+plugins ([`theme/README.md`](theme/README.md)). The tests and the build run under Deno 2; running
+the packages under Node or Bun has not been tried. [docs/usage.md](docs/usage.md#where-it-runs)
+has the details.
+
 ## Why preact-components
 
 - **Accessibility written by hand.** Roles, labels, keyboard handling and focus are owned here, and
@@ -42,8 +62,9 @@ one. Every package is published on JSR under `@spy4x/preact-*`, all at one versi
   `var()`, so an app restyles everything by setting variables instead of forking CSS.
 - **Server-renderable.** Components touch `window` or `document` only in effects and event
   handlers, so they render to HTML on a server and hydrate in the browser.
-- **Standard ES modules.** Nothing a package publishes calls a Deno-only API; data arrives through
-  props, and every request goes to an address the app supplies.
+- **Web standards.** Standard ES modules and the browser's own APIs; nothing a package publishes
+  calls a Deno-only API, data arrives through props, and every request goes to an address the app
+  supplies.
 - **One spacing scale.** Layout goes through `Page`, `Section`, `Stack`, `Cluster` and `Grid`, and
   no component carries an outer margin: [spacing](docs/spacing.md).
 
@@ -110,5 +131,4 @@ Licensed under [MIT](LICENSE). Copyright (c) 2026 Anton Shubin.
 
 ---
 
-Made by Anton Shubin ·
-[antonshubin.com/tools/preact-components](https://antonshubin.com/tools/preact-components)
+Made by Anton Shubin · [antonshubin.com/tools](https://antonshubin.com/tools/preact-components)
