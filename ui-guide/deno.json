@@ -27,7 +27,9 @@
     "exclude": [
       "**/*.test.ts",
       "**/*.test.tsx",
-      "coverage.ts"
+      "coverage.ts",
+      // `coverage.test.ts`'s fixture package: a barrel, a subpath component and three configs.
+      "testdata/"
     ]
   }
 }
