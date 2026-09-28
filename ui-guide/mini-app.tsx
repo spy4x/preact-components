@@ -178,8 +178,9 @@ export function MiniApp(): JSX.Element {
       </div>
 
       <div class="flex flex-col @3xl:flex-row">
-        <nav
-          aria-label="Project status"
+        <div
+          role="group"
+          aria-label="Filter projects by status"
           class="flex flex-wrap gap-1 border-b border-gray-200 p-2 @3xl:w-48 @3xl:shrink-0 @3xl:flex-col @3xl:border-r @3xl:border-b-0 @3xl:p-3 dark:border-gray-700"
         >
           {(["all", ...Object.keys(STATUS)] as Filter[]).map((entry) => (
@@ -197,14 +198,14 @@ export function MiniApp(): JSX.Element {
               </span>
             </Button>
           ))}
-        </nav>
+        </div>
 
         <div class="flex min-w-0 flex-1 flex-col gap-4 p-4 @3xl:p-6">
           <KpiGrid minWidth="8rem">
             <Kpi label="Projects" value={projects.length} />
             <Kpi label="Builds" value={totalBuilds} sub="all time" tone="neutral" />
             <Kpi label="Failing" value={count("failing")} tone="negative" />
-            <Kpi label="Median build" value="2m 41s" tone="positive" />
+            <Kpi label="Median build" value="2m 41s" tone="neutral" />
           </KpiGrid>
           <div class="grid gap-4 @4xl:grid-cols-2">
             <div class="flex min-w-0 flex-col gap-4 rounded-lg border border-gray-200 p-4 dark:border-gray-700">
