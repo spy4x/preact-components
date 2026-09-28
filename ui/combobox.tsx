@@ -645,7 +645,8 @@ function Cross() {
  *
  * Every string it shows is a prop with an English default: `placeholder` (`"Select…"`),
  * `emptyMessage` (`"No matches"`), `countMessage` (`"12 matches"`), `loadingMessage`
- * (`"Loading…"`) and `clearLabel` (`"Clear selection"`). Pass your own to translate them or to say something the default cannot.
+ * (`"Loading…"`) and `clearLabel` (`"Clear selection"`). Pass your own to translate them or to
+ * say something the default cannot.
  */
 export function Combobox<T>({
   items,
