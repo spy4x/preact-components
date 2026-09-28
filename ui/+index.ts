@@ -104,8 +104,12 @@ export {
 export {
   type DateRangePreset,
   dateRangePresets,
+  type DateTimeOccurrences,
   type DateTimeRange,
+  type ExactDateTimeRange,
+  exactDateTimeRange,
   isValidDateTimeRange,
+  occurrenceOf,
   presetForRange,
   type PresetForRangeOptions,
   presetForTimeRange,
@@ -114,8 +118,11 @@ export {
   type RangeForPresetOptions,
   rangeForTimePreset,
   type RangeForTimePresetOptions,
+  resolveDateTime,
+  type ResolvedDateTime,
   type TimeRangePreset,
   timeRangePresets,
+  type WallClockOccurrence,
 } from "./date-range.ts"
 export {
   Dropdown,
