@@ -69,6 +69,7 @@ import {
   filteredRunLine,
   lastCheckName,
   openGuidePage,
+  pointerToCorner,
   poll,
   pressKey,
   ranBlockNames,
@@ -919,9 +920,8 @@ async function resetAfterThrow(devtools: Devtools): Promise<void> {
     window.scrollTo({ top: 0, behavior: "instant" })
   })()`)
 
-  // Takes the pointer off whatever card it was left on; the corner is as neutral a resting place as
-  // the protocol offers, since it refuses coordinates outside the viewport.
-  await devtools.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: 0, y: 0, buttons: 0 })
+  // Takes the pointer off whatever card it was left on, to the one corner every check parks in.
+  await pointerToCorner(devtools)
 }
 
 /**
