@@ -412,8 +412,8 @@ function AssociationEditorDemo() {
         for one that was removed.
       </Caption>
       <Caption e2e="association-rows">
-        Rows the conflict port scans: {rows.value.length}, {removed}{" "}
-        of them removed (3 and 1 on load).
+        The conflict port scans {rows.value.length} rows, {removed}{" "}
+        of them removed. A save adds one.
       </Caption>
     </Stack>
   )

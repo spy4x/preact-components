@@ -127,8 +127,10 @@ function configOf(id: PackageId): URL {
  *
  * @param config URL of the package's config; each target resolves against it.
  * @returns Each subpath key and its module as an importable URL.
- * @throws When a subpath's target is not a string — Deno only warns about that config, then goes
- *   on to resolve the package's barrel, so the read meets it unless it refuses it here.
+ * @throws When a subpath's target is not a string. This cannot fire for a workspace member: Deno
+ *   warns about such a config and then will not resolve the member at all, and this module imports
+ *   every covered barrel by its member name, so it fails to load before the read runs. The throw is
+ *   for a caller that hands in a config directly, as `coverage.test.ts` does with its fixture.
  */
 export async function subpathModules(
   config: URL,

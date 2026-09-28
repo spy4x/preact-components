@@ -167,7 +167,7 @@ async function associationEditorChecks(devtools: Devtools): Promise<void> {
   const before = await readAssociationRows(devtools)
   check(
     "the AssociationEditor demo counts the rows its conflict port scans, 3 on load",
-    before !== null && before.startsWith("Rows the conflict port scans: 3, 1 of them removed"),
+    before !== null && before.startsWith("The conflict port scans 3 rows, 1 of them removed."),
     `caption="${before}"`,
   )
   if (before === null) return
@@ -177,12 +177,12 @@ async function associationEditorChecks(devtools: Devtools): Promise<void> {
   let after = await readAssociationRows(devtools)
   await poll(async () => {
     after = await readAssociationRows(devtools)
-    return after?.includes("scans: 4,") === true
+    return after?.includes("scans 4 rows") === true
   }, 2_000)
   check(
     "a save in the AssociationEditor demo adds a row the store still holds after the re-render",
     clicked && after !== null &&
-      after.startsWith("Rows the conflict port scans: 4, 1 of them removed"),
+      after.startsWith("The conflict port scans 4 rows, 1 of them removed."),
     `committed=${committed} clicked=${clicked} caption="${after}" — a store rebuilt on the ` +
       `re-render the save causes reads 3 again`,
   )

@@ -93,11 +93,13 @@ const SUBPATH_ONLY_NAMES = await subpathOnlyNames()
 
 /**
  * Every key one package's `deno.json` `exports` declares, the barrel's `"."` included, read straight
- * from the file with no filter of its own: whatever the helper leaves out has to be the barrel.
+ * from the file with no filter of its own: whatever the helper leaves out has to be the barrel. A
+ * string `exports` is Deno's short form for the barrel alone, so it declares `"."` and nothing else.
  */
 async function declaredExportKeys(id: PackageId): Promise<string[]> {
   const config = parse(await Deno.readTextFile(new URL(`./${id}/deno.json`, ROOT)))
-  return Object.keys((config as { exports: Record<string, unknown> }).exports)
+  const { exports } = config as { exports: string | Record<string, unknown> }
+  return typeof exports === "string" ? ["."] : Object.keys(exports)
 }
 
 /** The fixture package's directory: a barrel, a component on a subpath, and three configs. */
@@ -433,7 +435,7 @@ describe("the coverage read, on a fixture package", () => {
     expect(await subpathModules(new URL("barrel-only.json", FIXTURE))).toEqual([])
   })
 
-  it("refuses a subpath whose target is not a string, which Deno only warns about", async () => {
+  it("refuses a non-string target in a config handed in directly, which no workspace member can reach", async () => {
     await expect(subpathModules(new URL("bad-target.json", FIXTURE))).rejects.toThrow(
       "declares ./widget with a non-string target",
     )
