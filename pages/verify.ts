@@ -256,11 +256,13 @@ async function staticPhase(): Promise<void> {
     html.includes(`data-guide-page="all"`),
     `data-guide-page="all"`,
   )
+  // The guide draws its own footer (#400), so the served document carries exactly that one.
+  const footers = html.match(/<footer[\s>]/g)?.length ?? 0
   check(
-    "index.html links no Everything page and carries no footer",
+    "index.html links no Everything page and carries the guide's footer alone",
     !html.includes(`href="#/all"`) && !html.includes(`data-guide-page-link="all"`) &&
-      !/<footer[\s>]/.test(html),
-    "no #/all link, no page link for it, no <footer>",
+      footers === 1 && html.includes(`data-e2e="ui-guide-footer"`),
+    `no #/all link, no page link for it, ${footers} <footer>`,
   )
   const wrongPages = guidePages.flatMap((page) => {
     const markup = renderApp(pageHref(page.id))
