@@ -681,6 +681,55 @@ export async function centreInView(
 }
 
 /**
+ * Evaluate an expression in the page, turning a page exception into a value.
+ *
+ * For a file whose checks must never throw: the exception's message goes into `errors`, which the
+ * caller turns into a failure of its own, and the reading answers `fallback` instead. Shared by
+ * `checks/system.ts` and the `ZoomableImages` checks in `checks/ui.ts`, which moved there from
+ * `system.ts` (#369) and kept this reading with them.
+ *
+ * @param page The connected session.
+ * @param expression JavaScript to run.
+ * @param fallback What to return when the expression threw; it should be a value whose check reads
+ *                 as a failure, never one that reads as a pass.
+ * @param errors Where a page exception's message is recorded.
+ */
+export async function readOr<T>(
+  page: PageReader,
+  expression: string,
+  fallback: T,
+  errors: string[],
+): Promise<T> {
+  try {
+    return await page.evaluate<T>(expression)
+  } catch (error) {
+    errors.push(error instanceof Error ? error.message : String(error))
+    return fallback
+  }
+}
+
+/** A point worked out from an element's geometry, and what the browser says is actually there. */
+export interface AimedClick {
+  /** Whether the point lands on what it was aimed at. */
+  onTarget: boolean
+  x: number
+  y: number
+  /** What `elementFromPoint` reports at that point. */
+  landedOn: string
+  /** Why no point could be worked out, when none could. */
+  reason: string
+}
+
+/** The {@link AimedClick} a reading answers when the page could not be read: never on target. */
+export const MISSED: AimedClick = {
+  onTarget: false,
+  x: 0,
+  y: 0,
+  landedOn: "nothing",
+  reason: "unread",
+}
+
+/**
  * Show one page of the guide, and wait until it is the page showing, at its top, standing still.
  *
  * The guide renders one page at a time, so a check can only find a card while that card's page
