@@ -57,24 +57,50 @@ scrolls to what the address names on its first read, but the browser's own resto
 can still win now and then, because the server sends the longer document of every page first. The
 guide does not set it itself: it is the host's setting.
 
-| Prop            | Meaning                                                                                                                                                                                                |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `hash`          | The address's fragment. `undefined` renders every page; a string renders the page its route names.                                                                                                     |
-| `navigate`      | Called with a link's `#/…` href instead of following it, for a host that routes by something other than the fragment.                                                                                  |
-| `onRouteChange` | Called after a route is shown, with the route and the page showing, so the host can title the document.                                                                                                |
-| `pageExtras`    | Host content appended to one page, after its cards — a demo that needs a page of its own.                                                                                                              |
-| `labels`        | Overrides for the shell's own strings, each with an English default: titles, button and skip-link names, the overview's counts.                                                                        |
-| `registry`      | Registry to render; defaults to the complete one. A partial one raises the banner.                                                                                                                     |
-| `copy`          | Clipboard port, forwarded to every copy control — each card's usage block and the icon gallery. Defaults to `navigator.clipboard`.                                                                     |
-| `class`         | Extra utilities on the guide's root.                                                                                                                                                                   |
-| `version`       | The version the header shows beside the library's name. Left out, none is shown.                                                                                                                       |
-| `repository`    | The repository the header, the overview and the footer link to ("Star on GitHub"), and the base of the README and licence links. Left out, there is no repository link and the README links go to JSR. |
-| `author`        | `{ name, href }`: who made the library. Given, the header (from `xl`) and the footer link to it as "Made by <name>".                                                                                   |
-| `install`       | The command the overview offers to copy. Defaults to `deno add jsr:@spy4x/preact-ui`.                                                                                                                  |
-| `colorScheme`   | `{ dark, toggle }`: the host's colour scheme. Given, the header shows a switch named for what a press does ("Switch to dark mode").                                                                    |
-| `actions`       | Host controls at the header's end, after the theme switch.                                                                                                                                             |
-| `contentAs`     | `"main"` for a host with no `<main>` of its own; the page column is a `div` otherwise.                                                                                                                 |
-| `mapTiles`      | `{ url, attribution }`: the tile provider the Map card draws with. Defaults to OpenStreetMap's tiles and credit line.                                                                                  |
+| Prop            | Meaning                                                                                                                                                                                                           |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `hash`          | The address's fragment. `undefined` renders every page; a string renders the page its route names.                                                                                                                |
+| `navigate`      | Called with a link's `#/…` href instead of following it, for a host that routes by something other than the fragment.                                                                                             |
+| `onRouteChange` | Called after a route is shown, with the route and the page showing, so the host can title the document.                                                                                                           |
+| `pageExtras`    | Host content appended to one page, after its cards — a demo that needs a page of its own.                                                                                                                         |
+| `labels`        | Overrides for the shell's own strings, each with an English default: titles, button and skip-link names, the overview's and the footer's words and counts. See "Labels" below for the ones #400 added or changed. |
+| `registry`      | Registry to render; defaults to the complete one. A partial one raises the banner.                                                                                                                                |
+| `copy`          | Clipboard port, forwarded to every copy control — each card's usage block and the icon gallery. Defaults to `navigator.clipboard`.                                                                                |
+| `class`         | Extra utilities on the guide's root.                                                                                                                                                                              |
+| `version`       | The version the header shows beside the library's name. Left out, none is shown.                                                                                                                                  |
+| `repository`    | The repository the header, the overview and the footer link to ("Star on GitHub"), and the base of the README and licence links. Left out, there is no repository link and the README links go to JSR.            |
+| `author`        | `{ name, href }`: who made the library. Given, the header (from `xl`) and the footer link to it as "Made by <name>".                                                                                              |
+| `install`       | The command the overview offers to copy. Defaults to `deno add jsr:@spy4x/preact-ui`.                                                                                                                             |
+| `colorScheme`   | `{ dark, toggle }`: the host's colour scheme. Given, the header shows a switch named for what a press does ("Switch to dark mode").                                                                               |
+| `actions`       | Host controls at the header's end, after the theme switch.                                                                                                                                                        |
+| `contentAs`     | `"main"` for a host with no `<main>` of its own; the page column is a `div` otherwise.                                                                                                                            |
+| `mapTiles`      | `{ url, attribution }`: the tile provider the Map card draws with. Defaults to OpenStreetMap's tiles and credit line.                                                                                             |
+
+### Labels
+
+Every string the shell prints has an English default in `UIGuideLabels` (`shell.tsx`); a host
+overrides any of them through `labels`. The front page (#400) changed these defaults:
+
+| Label                                                             | Default now                                                                                                                                                                                                                                                           |
+| ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `repository`                                                      | `"Star on GitHub"` (was `"Source on GitHub"`). Still the header link's accessible name, and now also its visible words from `xl`.                                                                                                                                     |
+| `stats`                                                           | Receives `{ cards, components, icons, packages }` (was `{ cards, icons, packages }`) and prints `"<components> components · <icons> icons · <packages> packages"` (was `"<cards> live cards · …"`). `packages` counts every published package, this guide's included. |
+| `iconCount`                                                       | `"1 icon"` for one, `"<count> icons"` otherwise.                                                                                                                                                                                                                      |
+| `exampleHeading`, `exampleTitle`, `exampleSummary`, `copyExample` | Now name the live mini app: `"See it in an app"`, `"A dashboard, built from the library"`, a sentence on what to try, `"Copy the dashboard's code"`.                                                                                                                  |
+
+And added these, each with an English default:
+
+| Label                                                               | What it names                                                                                                                                                                   |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `headline`                                                          | The overview's `h1`, the one-line claim under the name.                                                                                                                         |
+| `star`                                                              | The overview's "Star on GitHub" button.                                                                                                                                         |
+| `madeBy`                                                            | `(name) => string`: the author link in the header and the footer, `"Made by <name>"`.                                                                                           |
+| `whyHeading`, `why`                                                 | The "why" strip's heading, and its six facts (`standards`, `server`, `browser`, `dependencies`, `theming`, `licence`), each `{ title, body }`; a partial record overrides some. |
+| `startHeading`, `startLead`                                         | "Get started" and the sentence under it.                                                                                                                                        |
+| `startStyles`, `startStylesBody`, `copyThemeInstall`, `themeReadme` | Step one: the styles, its sentence, the theme install command's copy control, the link to the theme README.                                                                     |
+| `startUse`, `startUseBody`, `copyUsage`                             | Step two: the usage snippet, its sentence and its copy control.                                                                                                                 |
+| `startRead`, `startReadBody`, `usageDoc`, `readme`                  | Step three: its title and sentence, the `docs/usage.md` link, and `(packageName) => string` for each README link.                                                               |
+| `footerNote`, `sourceCode`, `jsr`, `licence`, `designBy`            | The footer's line beside the name, and its repository, JSR, licence and design-credit words.                                                                                    |
 
 Nothing here imports an app's state: what a catalogue needs from its host — the address, where to put
 a copied snippet — arrives as props and ports.
