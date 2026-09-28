@@ -780,3 +780,21 @@ describe("DateRangePicker, withTime, notes tied to their fields (#264 review)", 
     ).not.toContain("date-range-order")
   })
 })
+
+describe("DateRangePicker, withTime, one radio group per field (#264 review 2)", () => {
+  it("gives each field's two radios one name, different from the other field's", () => {
+    const html = renderTimePicker({
+      timeZone: "Europe/Berlin",
+      range: { from: "2026-10-25T02:30", to: "2026-10-25T02:45" },
+    })
+    const nameOf = (hook: string) => attributeOf(html, hook, "name")
+    const fromName = nameOf("date-range-from-earlier")
+    const toName = nameOf("date-range-to-earlier")
+
+    expect(fromName).toBeTruthy()
+    expect(toName).toBeTruthy()
+    expect(nameOf("date-range-from-later")).toBe(fromName)
+    expect(nameOf("date-range-to-later")).toBe(toName)
+    expect(fromName).not.toBe(toName)
+  })
+})

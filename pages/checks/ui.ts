@@ -6953,7 +6953,8 @@ function radioFocusedAndChecked(devtools: Devtools, hook: string): Promise<boole
  * ArrowUp presses move between the two passes of one field — and only that field's, which is what
  * the radios' shared `name` gives them — and Apply follows each move. A click then only puts focus
  * on To's first pass (a `datetime-local` field lies between the groups, and Tab walks its segments),
- * ArrowDown picks To's second pass, and Tab, Tab, Enter applies the first 02:30 through the second
+ * ArrowDown picks To's second pass, a second ArrowDown wraps to To's first (never into From's
+ * pair) and a third comes back, and Tab, Tab, Enter applies the first 02:30 through the second
  * 02:45.
  */
 async function keyboardPassCheck(devtools: Devtools): Promise<void> {
@@ -7020,6 +7021,32 @@ async function keyboardPassCheck(devtools: Devtools): Promise<void> {
       ? "a click on To's first pass did not leave focus on it"
       : !toLater
       ? "ArrowDown in To's group did not check and focus To's second pass"
+      : ""
+  }
+  if (step === "") {
+    // From To's last radio, ArrowDown has to wrap to To's first — the two radios of one field share
+    // a name the other field's radios do not. Without that, it walks on into From's pair and
+    // silently changes the other field's pass.
+    await pressKey(devtools, "ArrowDown")
+    const wrapped = await poll(
+      () => radioFocusedAndChecked(devtools, "date-range-to-earlier"),
+      3_000,
+    )
+    const fromKept = await devtools.evaluate<boolean>(
+      `${inTimePanel("date-range-from-earlier")}?.checked === true`,
+    )
+    const landed = await devtools.evaluate<string>(
+      `document.activeElement?.getAttribute?.("data-e2e") ?? document.activeElement?.tagName ?? ""`,
+    )
+    if (wrapped && fromKept) await pressKey(devtools, "ArrowDown")
+    const againLater = wrapped && fromKept &&
+      await poll(() => radioFocusedAndChecked(devtools, "date-range-to-later"), 3_000)
+    step = !wrapped
+      ? `a second ArrowDown from To's second pass went to "${landed}", not back to To's first`
+      : !fromKept
+      ? "a second ArrowDown in To's group changed From's choice"
+      : !againLater
+      ? "a third ArrowDown in To's group did not come back to To's second pass"
       : ""
   }
   let readout = ""
