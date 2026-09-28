@@ -515,8 +515,8 @@ const POINTER_CORNER: ViewportPoint = Object.freeze({ x: 2, y: 2 })
  * rests decides whether a later check reads a hover style or finds a toast's timer paused. Viewport
  * coordinates do not scroll with the page, so a pointer left over one card rests on another as soon
  * as the next check scrolls to it. This is the one place the corner is written (#189): the toast
- * checks and the others in `checks/ui.ts` that park in the corner, and the recovery after a
- * throwing block in `verify.ts`, all park here. A caller that wants to read what is under the parked
+ * checks and the others in `checks/ui.ts` that park in the corner, the chart checks in
+ * `checks/charts.ts`, and the recovery after a throwing block in `verify.ts`, all park here. A caller that wants to read what is under the parked
  * pointer reads the point this returns, never a second copy of the two numbers — two copies come
  * apart the moment the corner moves, and a guard reading the old one would then be reading a point
  * the pointer is not at, with nothing going red to say so.

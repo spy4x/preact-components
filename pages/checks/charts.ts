@@ -5,6 +5,7 @@ import {
   type Devtools,
   frameOverviewHydrates,
   inFreshFrame,
+  pointerToCorner,
   poll,
   pressKey,
   readFrameScripts,
@@ -445,7 +446,7 @@ async function clickAt(devtools: Devtools, at: { x: number; y: number }): Promis
   }
 }
 
-/** Rest the pointer in the corner, off every chart, so a later check reads no hover. */
+/** Rest the pointer in the shared corner (`pointerToCorner`), off every chart, so a later check reads no hover. */
 async function parkPointer(devtools: Devtools): Promise<void> {
-  await movePointer(devtools, { x: 2, y: 2 })
+  await pointerToCorner(devtools)
 }
