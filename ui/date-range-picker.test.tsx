@@ -530,3 +530,148 @@ describe("DateRangePicker, withTime", () => {
     expect(html).toMatch(/<div id="[^"]*-panel" tabindex="-1"/)
   })
 })
+
+/** Whether the Apply button carries the `disabled` attribute; its classes mention `disabled:`. */
+function applyDisabled(html: string): boolean {
+  const tag = html.match(/<button[^>]*data-e2e="date-range-apply"[^>]*>/)?.[0]
+  if (tag === undefined) throw new Error("no Apply button in the markup")
+  return /\sdisabled(?=[\s>=])/.test(tag)
+}
+
+/** The radio for one pass of a repeated time, e.g. `date-range-to-later`. */
+function radioTag(html: string, hook: string): string {
+  return html.match(new RegExp(`<input[^>]*data-e2e="${hook}"[^>]*>`))?.[0] ?? ""
+}
+
+describe("DateRangePicker, withTime, a repeated or skipped time (#264)", () => {
+  it("asks which pass of a repeated time a field means, in English, with each pass's offset", () => {
+    const html = renderTimePicker({
+      timeZone: "Europe/Berlin",
+      range: { from: "2026-10-25T01:00", to: "2026-10-25T02:30" },
+    })
+
+    expect(html).toContain('data-e2e="date-range-to-occurrence"')
+    expect(html).not.toContain('data-e2e="date-range-from-occurrence"')
+    expect(html).toContain("This time happens twice that day")
+    expect(html).toContain("First, before the clocks go back (UTC+02:00)")
+    expect(html).toContain("Second, after the clocks go back (UTC+01:00)")
+  })
+
+  it("names New York's two passes with their own offsets", () => {
+    const html = renderTimePicker({
+      timeZone: "America/New_York",
+      range: { from: "2026-11-01T00:00", to: "2026-11-01T01:30" },
+    })
+
+    expect(html).toContain("(UTC-04:00)")
+    expect(html).toContain("(UTC-05:00)")
+  })
+
+  it("selects the earlier pass when the controlled value carries no instant", () => {
+    const html = renderTimePicker({
+      timeZone: "Europe/Berlin",
+      range: { from: "2026-10-25T01:00", to: "2026-10-25T02:30" },
+    })
+
+    expect(radioTag(html, "date-range-to-earlier")).toContain("checked")
+    expect(radioTag(html, "date-range-to-later")).not.toContain("checked")
+  })
+
+  it("reopens on the pass the controlled value's instant names", () => {
+    const html = renderTimePicker({
+      timeZone: "Europe/Berlin",
+      range: {
+        from: "2026-10-25T01:00",
+        to: "2026-10-25T02:30",
+        fromInstant: "2026-10-24T23:00:00.000Z",
+        toInstant: "2026-10-25T01:30:00.000Z",
+      },
+    })
+
+    expect(radioTag(html, "date-range-to-later")).toContain("checked")
+    expect(radioTag(html, "date-range-to-earlier")).not.toContain("checked")
+  })
+
+  it("keeps apply disabled when the chosen passes put from after to", () => {
+    // Both strings read 02:30 … 02:45, in order; the instants say from is the second pass and to
+    // the first, forty-five minutes earlier.
+    const html = renderTimePicker({
+      timeZone: "Europe/Berlin",
+      range: {
+        from: "2026-10-25T02:30",
+        to: "2026-10-25T02:45",
+        fromInstant: "2026-10-25T01:30:00.000Z",
+        toInstant: "2026-10-25T00:45:00.000Z",
+      },
+    })
+
+    expect(applyDisabled(html)).toBe(true)
+  })
+
+  it("enables apply for first-pass 02:50 through second-pass 02:10, strings out of order", () => {
+    const html = renderTimePicker({
+      timeZone: "Europe/Berlin",
+      range: {
+        from: "2026-10-25T02:50",
+        to: "2026-10-25T02:10",
+        fromInstant: "2026-10-25T00:50:00.000Z",
+        toInstant: "2026-10-25T01:10:00.000Z",
+      },
+    })
+
+    expect(applyDisabled(html)).toBe(false)
+  })
+
+  it("says what a skipped time is read as, and still lets it be applied", () => {
+    const html = renderTimePicker({
+      timeZone: "Europe/Berlin",
+      range: { from: "2026-03-29T02:30", to: "2026-03-29T04:00" },
+    })
+
+    expect(html).toContain('data-e2e="date-range-from-skipped"')
+    expect(html).toContain("The clocks skip this time that day, so it is read as 2026-03-29 03:30.")
+    expect(html).not.toContain("date-range-from-occurrence")
+    expect(applyDisabled(html)).toBe(false)
+  })
+
+  it("says nothing about an ordinary time", () => {
+    const html = renderTimePicker({
+      timeZone: "Europe/Berlin",
+      range: { from: "2026-08-01T09:00", to: "2026-08-01T18:00" },
+    })
+
+    expect(html).not.toContain("-occurrence")
+    expect(html).not.toContain("-skipped")
+  })
+
+  it("overrides every new string through labels", () => {
+    const repeated = renderTimePicker({
+      timeZone: "Europe/Berlin",
+      range: { from: "2026-10-25T01:00", to: "2026-10-25T02:30" },
+      labels: {
+        repeatedTime: "Zweimal",
+        earlierOccurrence: "Sommerzeit",
+        laterOccurrence: "Winterzeit",
+      },
+    })
+    const skipped = renderTimePicker({
+      timeZone: "Europe/Berlin",
+      range: { from: "2026-03-29T02:30", to: "2026-03-29T04:00" },
+      labels: { skippedTime: (readsAs) => `Gilt als ${readsAs}` },
+    })
+
+    expect(repeated).toContain("Zweimal")
+    expect(repeated).toContain("Sommerzeit (UTC+02:00)")
+    expect(repeated).toContain("Winterzeit (UTC+01:00)")
+    expect(repeated).not.toContain("clocks go back")
+    expect(skipped).toContain("Gilt als 2026-03-29T03:30")
+    expect(skipped).not.toContain("clocks skip")
+  })
+
+  it("renders nothing new in day mode", () => {
+    const html = renderPicker({ range: { from: "2026-10-25", to: "2026-10-25" } })
+
+    expect(html).not.toContain("-occurrence")
+    expect(html).not.toContain("-skipped")
+  })
+})

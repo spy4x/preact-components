@@ -446,40 +446,64 @@ since typing a value or picking one of the two presets is the only way to reach 
 <DateRangePicker
   withTime
   range={range.value}
-  onChange={(next) => range.value = next}
+  onChange={(next) => {
+    range.value = next
+    query({ after: next.fromInstant, before: next.toInstant })
+  }}
   timeZone="Europe/Berlin"
 />
 ```
 
-`rangeForTimePreset` and `presetForTimeRange`, in `date-range.ts`, are the two presets' own maths —
-plain functions of an injected `now` and `timeZone`, the same convention `rangeForPreset` and
-`presetForRange` follow. Both subtract a fixed number of _real_ milliseconds from `now` before
-reading the wall clock: `"last-hour"` is always exactly one real hour before `now`, `"last-24-hours"`
-always exactly twenty-four, whatever that prints as. Read only as the two strings this library hands
-back, both stay right on the two days a year a zone's clocks change — the _printed_ wall-clock span
-reads as 23 or 25 hours on that day rather than the subtraction drifting to match a misleading
-24-hour-looking one.
+#### Exact instants, and the hour that happens twice
 
-That correctness is in the strings only, and does not survive a caller converting them back into
-instants — the ordinary next step for querying a database with them. On the day a zone falls back, a
-`from` or `to` can name the hour that happens twice, and the standard conversion of it — the earlier
-of its two instants, what most date libraries default to — reads a preset wrong by one hour for every
-real hour one of its ends spends inside that repeated hour. `"last-24-hours"`'s two ends are 24 real
-hours apart, wider than the roughly two real hours the repeated hour spans across both of its passes,
-so at most one end ever lands there: the round trip reads 23 or 25 hours, not 24, depending which end
-it is and which pass. `"last-hour"`'s ends are only a real hour apart, so both can land there at once,
-and the round trip then reads one of three ways: the ordinary 1 hour when neither end does; 0 hours
-when both do, because `from` and `to` then print the identical `YYYY-MM-DDTHH:mm` string — one
-wall-clock reading, taken at two different UTC offsets either side of the fall-back — and a standard
-conversion reads that pair as the same instant; and 2 hours when only `from` does, landing in the
-hour's second pass while `to` has already moved past it and reads correctly on its own. Neither this
-library nor `isValidDateTimeRange` resolves or rejects any of this: a range whose ends read
-identically is `from <= to`, the same rule a one-day `DateRange` passes by design, and a typed value
-naming the hour a zone skips in spring — a local time that never happens that day — is accepted the
-same way, because nothing here is told which zone a value is meant for and checks accordingly.
-`rangeForTimePreset`'s own doc in `date-range.ts` names the instant behind the 0- and 2-hour
-`"last-hour"` outcomes, and `date-range.test.ts` pins both, plus a 23- and a 25-hour
-`"last-24-hours"` case, each with the duration a standard conversion reads back.
+A wall-clock string cannot say which of a repeated hour it means: on the night a zone puts its
+clocks back, `2026-10-25T02:30` happens twice in `Europe/Berlin`, and a caller that converts it
+itself gets whichever instant its date library defaults to — so a "Last 24 hours" range could query
+23 or 25 hours, and "Last hour" none (#264). So every range `onChange` hands back in this mode is an
+`ExactDateTimeRange`: the same two strings, plus `fromInstant` and `toInstant`, the exact moments
+they mean as UTC ISO 8601 strings (`2026-10-25T01:30:00.000Z`). Query by those. Nothing about the
+strings changed, so a caller that only reads `from` and `to` sees what it always did; both instant
+fields are optional on `DateTimeRange` itself, so a `range` passed in without them is still valid.
+
+- **A preset** knows its instants exactly: `"last-hour"` and `"last-24-hours"` are always one and
+  twenty-four real hours apart, across both clock changes.
+- **A typed time the clocks repeat** makes the field ask which one is meant: a radio pair under it,
+  "First, before the clocks go back" and "Second, after the clocks go back", each followed by its UTC
+  offset. The first is chosen until the person picks the second. A `range` passed in with its
+  instants reopens on the pass they name.
+- **A typed time the clocks skip** is read forward by the length of the gap — Berlin's nonexistent
+  `2026-03-29T02:30` is read as `03:30`, the moment a clock that had not jumped would have called
+  `02:30`, Temporal's `"compatible"` rule — and a note under the field says so. Apply still works,
+  and the range it hands back says `03:30` in the string as well as the instant, so the two never
+  disagree.
+- **Order is by instant.** Apply stays disabled until both ends resolve and `fromInstant` is not
+  after `toInstant`, so the first-pass `02:50` through the second-pass `02:10` is a valid
+  twenty-minute range, and the second-pass `02:30` through the first-pass `02:45` is not.
+
+The four strings have English defaults and are overridden through `labels`: `repeatedTime` (the
+radio pair's legend), `earlierOccurrence`, `laterOccurrence`, and `skippedTime`, a function handed the
+`YYYY-MM-DDTHH:mm` value the skipped time is read as.
+
+The maths is in `date-range.ts`, on top of `resolveWallClock` from `@spy4x/time/tz`:
+
+- `resolveDateTime(value, timeZone)` says whether a wall-clock value happens once, never or twice
+  (`WallClockKind` from `@spy4x/time/tz`), with its instant, the later instant of a repeated time,
+  and what a skipped time is read as.
+- `exactDateTimeRange(range, timeZone, occurrences?)` resolves a whole range to an
+  `ExactDateTimeRange`, taking `"earlier"` or `"later"` for each end (default `"earlier"`), and
+  throws for a malformed end or a range whose instants are out of order.
+- `occurrenceOf(value, instant, timeZone)` is its inverse for one end: `"later"` when the instant is
+  the second pass of a repeated time, `"earlier"` otherwise.
+- `isValidDateTimeRange(range)` orders by `fromInstant`/`toInstant` when the range carries both, and
+  by the strings, as it always has, when it does not.
+
+`rangeForTimePreset` and `presetForTimeRange` are the two presets' own maths — plain functions of an
+injected `now` and `timeZone`, the same convention `rangeForPreset` and `presetForRange` follow. Both
+subtract a fixed number of _real_ milliseconds from `now` before reading the wall clock, and
+`rangeForTimePreset` returns the instants with the strings. Read as strings alone, a preset on the
+day a zone falls back still converts wrong the way it always did — `rangeForTimePreset`'s own doc
+lists the 0-, 2-, 23- and 25-hour cases, and `date-range.test.ts` pins each beside the exact
+duration its instants give.
 
 `to` is inclusive at the minute named, the same convention `DateRange`'s is at the day, and this
 library truncates seconds — so a `"last-hour"` window covers 61 minutes end to end, not 60: the whole

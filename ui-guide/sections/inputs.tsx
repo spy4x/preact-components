@@ -22,6 +22,7 @@ import {
   type DateTimeRange,
   Dropdown,
   DropdownItem,
+  type ExactDateTimeRange,
   Field,
   FileInput,
   Grid,
@@ -861,9 +862,13 @@ function DateRangePickerEmptyDemo() {
  * The picker with `withTime` on: From and To are `datetime-local` fields, and the panel also offers
  * the two presets that only make sense with a time of day, `"last-hour"` and `"last-24-hours"`.
  * `now` is injected, so the two sub-day presets resolve to the same numbers at every build.
+ *
+ * The second readout prints the exact instants `onChange` handed back (#264). Paris puts its clocks
+ * back on 2026-10-25, so a time typed between 02:00 and 02:59 that day makes the field ask which of
+ * the two it means, and the readout shows the answer as the UTC instant.
  */
 function DateRangePickerWithTimeDemo() {
-  const range = useSignal<DateTimeRange | null>(null)
+  const range = useSignal<ExactDateTimeRange | null>(null)
 
   return (
     <div class="space-y-3">
@@ -880,6 +885,16 @@ function DateRangePickerWithTimeDemo() {
         <span class="whitespace-nowrap">
           {range.value === null ? "none" : dateTimeRangeTouched(range.value)}
         </span>
+      </Note>
+      <Note e2e="controlled-instants">
+        instants:{" "}
+        <span class="whitespace-nowrap">
+          {range.value === null ? "none" : `${range.value.fromInstant} → ${range.value.toInstant}`}
+        </span>
+      </Note>
+      <Note>
+        Try 2026-10-25 02:30: the clocks in Paris go back that night, so the field asks which 02:30
+        you mean.
       </Note>
     </div>
   )
@@ -1149,7 +1164,8 @@ export const inputDemos = {
         name: "withTime",
         type: "boolean",
         default: "false",
-        description: "Date and time fields, a timed range, and last-hour presets.",
+        description:
+          "Date and time fields, last-hour presets, and a timed range that carries the exact instant of each end; a time the clocks repeat asks which one is meant.",
       },
       {
         name: "labels",
@@ -1172,12 +1188,17 @@ export const inputDemos = {
 // Every label is English by default; override only the ones you need to.
 <DateRangePicker {...props} labels={{ placeholder: "All time" }} />
 
-// withTime: datetime-local fields, a DateTimeRange, and two sub-day presets — no presets prop.
+// withTime: datetime-local fields, two sub-day presets — no presets prop — and a range whose
+// fromInstant / toInstant say exactly which moment each end means, even in a repeated hour.
 <DateRangePicker
   withTime
   range={timedRange.value}
-  onChange={(next) => timedRange.value = next}
+  onChange={(next) => {
+    timedRange.value = next
+    query({ after: next.fromInstant, before: next.toInstant })
+  }}
   timeZone="Europe/Paris"
+  labels={{ repeatedTime: "This time happens twice that day" }}
 />`,
     render: () => <DateRangePickersDemo />,
   },
