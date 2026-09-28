@@ -76,6 +76,11 @@ export interface DateRangePickerLabels {
    * `YYYY-MM-DDTHH:mm` value the time is read as instead (see `resolveDateTime`).
    */
   skippedTime?: (readsAs: string) => string
+  /**
+   * The note shown above Apply in `withTime` mode when both ends resolve but `from` comes after
+   * `to` — for instance because a skipped `from` was read forward past `to`.
+   */
+  outOfOrder?: string
 }
 
 /** The English every label falls back to. */
@@ -93,6 +98,7 @@ const defaultLabels: Required<DateRangePickerLabels> = {
   laterOccurrence: "Second, after the clocks go back",
   skippedTime: (readsAs) =>
     `The clocks skip this time that day, so it is read as ${readsAs.replace("T", " ")}.`,
+  outOfOrder: "From comes after To, so there is nothing to apply.",
 }
 
 /** Props shared by both of {@link AnyDateRangePickerProps}'s two shapes. */
@@ -298,6 +304,7 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
     earlierOccurrence: labels?.earlierOccurrence ?? defaultLabels.earlierOccurrence,
     laterOccurrence: labels?.laterOccurrence ?? defaultLabels.laterOccurrence,
     skippedTime: labels?.skippedTime ?? defaultLabels.skippedTime,
+    outOfOrder: labels?.outOfOrder ?? defaultLabels.outOfOrder,
   }
 
   // Time mode has no caller-supplied preset list — see `DateRangePickerTimeProps` — so its custom
@@ -312,6 +319,24 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
   const canApply = props.withTime
     ? exactDraft !== null && isValidDateTimeRange(exactDraft)
     : isValidDateRange(draft)
+
+  // What each `withTime` field has to say about its own value, resolved once here so the field's
+  // `aria-describedby` and the note it points at are decided by the same answer.
+  const fromResolved = props.withTime ? resolveOrNull(draftFrom.value, timeZone) : null
+  const toResolved = props.withTime ? resolveOrNull(draftTo.value, timeZone) : null
+  // Both ends resolve on their own, so the only thing that can have stopped `exactDraft` is order.
+  const outOfOrder = fromResolved !== null && toResolved !== null && exactDraft === null
+  const fromNoteId = `${fromId}-wall-clock`
+  const toNoteId = `${toId}-wall-clock`
+  const orderId = `${id}-order`
+  /** `aria-describedby` for one `withTime` field: its own note, and the order note, when shown. */
+  const describedBy = (resolved: ResolvedDateTime | null, noteId: string) => {
+    const ids = [
+      ...(hasWallClockNote(resolved) ? [noteId] : []),
+      ...(outOfOrder ? [orderId] : []),
+    ]
+    return ids.length === 0 ? undefined : ids.join(" ")
+  }
 
   // `Custom…` is pressed exactly while the custom fields are the live choice: the caller says the
   // chosen range is the custom one, or the person has reached for the fields in this panel — by
@@ -563,7 +588,13 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
         {showsCustom && (
           <div class="mt-3 space-y-2 border-t border-gray-200 pt-3 dark:border-gray-600">
             <div>
-              <label class={fieldLabelClasses} for={fromId}>{text.from}</label>
+              <label
+                class={fieldLabelClasses}
+                for={fromId}
+                id={props.withTime ? `${fromId}-label` : undefined}
+              >
+                {text.from}
+              </label>
               <input
                 id={fromId}
                 ref={fromRef}
@@ -574,11 +605,14 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
                   draftFrom.value = event.currentTarget.value
                   usingCustom.value = true
                 }}
+                aria-describedby={describedBy(fromResolved, fromNoteId)}
                 data-e2e="date-range-from"
               />
               {props.withTime && (
                 <WallClockNote
-                  value={draftFrom.value}
+                  resolved={fromResolved}
+                  id={fromNoteId}
+                  fieldLabelId={`${fromId}-label`}
                   timeZone={timeZone}
                   occurrence={fromOccurrence.value}
                   onOccurrence={(next) => {
@@ -592,7 +626,13 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
               )}
             </div>
             <div>
-              <label class={fieldLabelClasses} for={toId}>{text.to}</label>
+              <label
+                class={fieldLabelClasses}
+                for={toId}
+                id={props.withTime ? `${toId}-label` : undefined}
+              >
+                {text.to}
+              </label>
               <input
                 id={toId}
                 type={props.withTime ? "datetime-local" : "date"}
@@ -602,11 +642,14 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
                   draftTo.value = event.currentTarget.value
                   usingCustom.value = true
                 }}
+                aria-describedby={describedBy(toResolved, toNoteId)}
                 data-e2e="date-range-to"
               />
               {props.withTime && (
                 <WallClockNote
-                  value={draftTo.value}
+                  resolved={toResolved}
+                  id={toNoteId}
+                  fieldLabelId={`${toId}-label`}
                   timeZone={timeZone}
                   occurrence={toOccurrence.value}
                   onOccurrence={(next) => {
@@ -619,6 +662,11 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
                 />
               )}
             </div>
+            {outOfOrder && (
+              <p id={orderId} class={occurrenceClasses} data-e2e="date-range-order">
+                {text.outOfOrder}
+              </p>
+            )}
             <div class="flex justify-end gap-2">
               <Button variant="secondary" size="sm" onClick={cancelCustom}>{text.cancel}</Button>
               <Button
@@ -626,6 +674,7 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
                 size="sm"
                 onClick={applyCustom}
                 disabled={!canApply}
+                aria-describedby={outOfOrder ? orderId : undefined}
                 data-e2e="date-range-apply"
               >
                 {text.apply}
@@ -663,10 +712,19 @@ function exactOrNull(
   }
 }
 
+/** Whether a resolved value is skipped or repeated, which is when {@link WallClockNote} shows. */
+function hasWallClockNote(resolved: ResolvedDateTime | null): boolean {
+  return resolved !== null && resolved.kind !== WallClockKind.Unique
+}
+
 /** Props of {@link WallClockNote}. */
 interface WallClockNoteProps {
-  /** The field's draft, `YYYY-MM-DDTHH:mm` or anything the person has typed so far. */
-  value: string
+  /** The field's draft resolved in the picker's zone, or `null` while it cannot be. */
+  resolved: ResolvedDateTime | null
+  /** Id of the note or fieldset, which the field's `aria-describedby` names. */
+  id: string
+  /** Id of the field's own `<label>`, which starts the fieldset's accessible name. */
+  fieldLabelId: string
   timeZone: string
   occurrence: WallClockOccurrence
   onOccurrence: (next: WallClockOccurrence) => void
@@ -684,15 +742,19 @@ interface WallClockNoteProps {
  * because the string alone cannot say which one the person means (#264). A time the clocks skip
  * gets a note saying what it is read as instead; Apply still works, and hands back that reading.
  * An ordinary time, or an incomplete one, renders nothing.
+ *
+ * Either one carries `id`, which the field's `aria-describedby` names, so a screen reader hears it
+ * with the field. The radio group is named by the field's own label followed by its legend
+ * ("From This time happens twice that day"), so the From and To groups do not share one name.
  */
 function WallClockNote(props: WallClockNoteProps): JSX.Element | null {
-  const { value, timeZone, occurrence, onOccurrence, name, text, dataE2E } = props
-  const resolved = resolveOrNull(value, timeZone)
-  if (resolved === null || resolved.kind === WallClockKind.Unique) return null
+  const { resolved, id, fieldLabelId, timeZone, occurrence, onOccurrence, name, text, dataE2E } =
+    props
+  if (resolved === null || !hasWallClockNote(resolved)) return null
 
   if (resolved.kind === WallClockKind.Gap) {
     return (
-      <p class={occurrenceClasses} data-e2e={`${dataE2E}-skipped`}>
+      <p id={id} class={occurrenceClasses} data-e2e={`${dataE2E}-skipped`}>
         {text.skippedTime(resolved.reads)}
       </p>
     )
@@ -707,8 +769,13 @@ function WallClockNote(props: WallClockNoteProps): JSX.Element | null {
     },
   ]
   return (
-    <fieldset class={occurrenceClasses} data-e2e={`${dataE2E}-occurrence`}>
-      <legend class="font-medium">{text.repeatedTime}</legend>
+    <fieldset
+      id={id}
+      class={occurrenceClasses}
+      aria-labelledby={`${fieldLabelId} ${id}-legend`}
+      data-e2e={`${dataE2E}-occurrence`}
+    >
+      <legend id={`${id}-legend`} class="font-medium">{text.repeatedTime}</legend>
       {choices.map((choice) => (
         <label key={choice.occurrence} class={occurrenceOptionClasses}>
           <input

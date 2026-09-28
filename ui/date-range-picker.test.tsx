@@ -675,3 +675,108 @@ describe("DateRangePicker, withTime, a repeated or skipped time (#264)", () => {
     expect(html).not.toContain("-skipped")
   })
 })
+
+/** An attribute of the first element carrying `data-e2e="<hook>"`, or `undefined` without one. */
+function attributeOf(html: string, hook: string, name: string): string | undefined {
+  const tag = html.match(new RegExp(`<[a-z]+[^>]*data-e2e="${hook}"[^>]*>`))?.[0] ?? ""
+  if (tag === "") throw new Error(`no element with data-e2e="${hook}"`)
+  return tag.match(new RegExp(`\\s${name}="([^"]*)"`))?.[1]
+}
+
+/** The id of the element carrying `data-e2e="<hook>"`. */
+function idOf(html: string, hook: string): string {
+  const id = attributeOf(html, hook, "id")
+  if (id === undefined) throw new Error(`data-e2e="${hook}" has no id`)
+  return id
+}
+
+/** The text of the element with id `id`, tags stripped. */
+function textOfId(html: string, id: string): string {
+  const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  const match = html.match(new RegExp(`<([a-z]+)[^>]*\\sid="${escaped}"[^>]*>([\\s\\S]*?)</\\1>`))
+  return (match?.[2] ?? "").replace(/<[^>]+>/g, "").trim()
+}
+
+describe("DateRangePicker, withTime, notes tied to their fields (#264 review)", () => {
+  it("points a field's aria-describedby at its skipped-time note", () => {
+    const html = renderTimePicker({
+      timeZone: "Europe/Berlin",
+      range: { from: "2026-03-29T02:30", to: "2026-03-29T04:00" },
+    })
+
+    expect(attributeOf(html, "date-range-from", "aria-describedby"))
+      .toBe(idOf(html, "date-range-from-skipped"))
+    expect(attributeOf(html, "date-range-to", "aria-describedby")).toBeUndefined()
+  })
+
+  it("points a field's aria-describedby at its choice of pass", () => {
+    const html = renderTimePicker({
+      timeZone: "Europe/Berlin",
+      range: { from: "2026-10-25T02:30", to: "2026-10-25T02:45" },
+    })
+
+    expect(attributeOf(html, "date-range-from", "aria-describedby"))
+      .toBe(idOf(html, "date-range-from-occurrence"))
+    expect(attributeOf(html, "date-range-to", "aria-describedby"))
+      .toBe(idOf(html, "date-range-to-occurrence"))
+  })
+
+  it("names each choice of pass after its own field, so the two groups differ", () => {
+    const html = renderTimePicker({
+      timeZone: "Europe/Berlin",
+      range: { from: "2026-10-25T02:30", to: "2026-10-25T02:45" },
+    })
+    const nameOf = (hook: string) =>
+      (attributeOf(html, hook, "aria-labelledby") ?? "").split(" ").map((id) => textOfId(html, id))
+        .join(" ")
+
+    expect(nameOf("date-range-from-occurrence")).toBe("From This time happens twice that day")
+    expect(nameOf("date-range-to-occurrence")).toBe("To This time happens twice that day")
+  })
+
+  it("adds no aria-describedby to an ordinary field, nor in day mode", () => {
+    const timed = renderTimePicker({
+      timeZone: "Europe/Berlin",
+      range: { from: "2026-08-01T09:00", to: "2026-08-01T18:00" },
+    })
+    const day = renderPicker({ range: { from: "2026-03-29", to: "2026-03-29" } })
+
+    expect(timed).not.toContain("aria-describedby")
+    expect(day).not.toContain("aria-describedby")
+  })
+
+  it("says why Apply is off when a skipped From is read past To, and ties that to both", () => {
+    // 02:30 is read as 03:30, which is after 03:10.
+    const html = renderTimePicker({
+      timeZone: "Europe/Berlin",
+      range: { from: "2026-03-29T02:30", to: "2026-03-29T03:10" },
+    })
+    const orderId = idOf(html, "date-range-order")
+
+    expect(applyDisabled(html)).toBe(true)
+    expect(textOfId(html, orderId)).toBe("From comes after To, so there is nothing to apply.")
+    expect(attributeOf(html, "date-range-apply", "aria-describedby")).toBe(orderId)
+    expect(attributeOf(html, "date-range-from", "aria-describedby"))
+      .toBe(`${idOf(html, "date-range-from-skipped")} ${orderId}`)
+    expect(attributeOf(html, "date-range-to", "aria-describedby")).toBe(orderId)
+  })
+
+  it("overrides the order note through labels.outOfOrder", () => {
+    const html = renderTimePicker({
+      timeZone: "Europe/Berlin",
+      range: { from: "2026-08-01T18:00", to: "2026-08-01T09:00" },
+      labels: { outOfOrder: "Von liegt nach Bis." },
+    })
+
+    expect(html).toContain("Von liegt nach Bis.")
+    expect(html).not.toContain("From comes after To")
+  })
+
+  it("shows no order note while an end is incomplete, or the range is in order", () => {
+    expect(renderTimePicker({ range: { from: "2026-08-01T18:00", to: "" } }))
+      .not.toContain("date-range-order")
+    expect(
+      renderTimePicker({ range: { from: "2026-08-01T09:00", to: "2026-08-01T18:00" } }),
+    ).not.toContain("date-range-order")
+  })
+})
