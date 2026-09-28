@@ -283,6 +283,11 @@ as the numerator; and `--static`, which commits no package blocks at all, instea
   card prerendered with a `demo-<Name>` id, every one of them carrying a `Usage` block and a
   labelled copy control; icon cells in the HTML; tokens and preset rules present in the compiled CSS;
   a bundle of the expected size carrying the host page.
+- **Head** (static, #213): inside `<head>` of `dist/index.html`, exactly one canonical link whose
+  `href` is `new URL(PAGES_BASE, PAGES_ORIGIN)` — the same two variables `build.ts` reads, so set
+  them for `verify` the way you set them for the build — exactly one `<title>` with text, exactly
+  one description meta tag with content, and exactly one `twitter:card`, reading `summary`. A second
+  copy of any of them fails as well as a wrong value.
 - **Browser** (headless Chromium over the DevTools Protocol, page served at the deployed base):
   hydration, Dropdown open/close, ToggleSwitch, OnOffButtons, the icon filter over the icon gallery,
   click-to-copy in the gallery, a click on every usage block's copy control putting that block's text

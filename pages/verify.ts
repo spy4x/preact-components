@@ -2,8 +2,9 @@
  * Verify the built artefact — statically, then in a real browser.
  *
  * The static phase reads `dist/` and asserts the document's shape: base-prefixed asset paths that
- * exist, prerendered cards for every component and every theme-class card, a copy control on every
- * usage block, and a stylesheet that actually carries the theme. That alone would not prove the page
+ * exist, one each of the head tags a crawler and a link preview read, prerendered cards for every
+ * component and every theme-class card, a copy control on every usage block, and a stylesheet that
+ * actually carries the theme. That alone would not prove the page
  * *works* — a prerendered catalogue is not an interactive one — so the second phase serves `dist/`
  * at the same base GitHub Pages uses, drives headless Chromium over the DevTools Protocol, and
  * exercises what the issues ask for: the switches, the icon filter, click-to-copy in the gallery
@@ -97,7 +98,7 @@ import { demoElementId } from "./src/deep-link.ts"
 import { renderApp } from "./src/prerender.tsx"
 import { routeTableFromHtml } from "./src/route-echo.ts"
 import { type PreviewServer, serveDist } from "./serve.ts"
-import { DEFAULT_BASE, LOCAL_MAP_TILES_FLAG, normalizeBase } from "./src/site.ts"
+import { DEFAULT_BASE, DEFAULT_ORIGIN, LOCAL_MAP_TILES_FLAG, normalizeBase } from "./src/site.ts"
 
 /** This file's directory: the demo's root, `pages/`. */
 const PAGES_DIRECTORY = dirname(fileURLToPath(import.meta.url))
@@ -107,6 +108,8 @@ const REPO_ROOT = dirname(PAGES_DIRECTORY)
 const DIST_DIRECTORY = join(PAGES_DIRECTORY, "dist")
 /** Base the artefact was built for. */
 const BASE = normalizeBase(Deno.env.get("PAGES_BASE") ?? DEFAULT_BASE)
+/** Origin the artefact's canonical address was built for — the variable `build.ts` reads. */
+const ORIGIN = Deno.env.get("PAGES_ORIGIN") ?? DEFAULT_ORIGIN
 
 /**
  * `--only=system` or `--only=system,ui` restricts the browser phase to just those package blocks —
@@ -188,6 +191,66 @@ async function checkBuildFingerprint(): Promise<boolean> {
   return ok
 }
 
+/**
+ * Assert the tags in the served document's `<head>` that leave the page: what a search engine
+ * indexes and what a link preview shows (#213).
+ *
+ * Before this, the static phase read nothing inside `<head>`, so a canonical address pointing at
+ * the wrong origin, a missing description or a duplicated tag deployed green, and every change to
+ * the head was proven by someone diffing two builds by hand. Each tag is counted as well as read:
+ * two of a tag is the shape a well-meant workaround takes — a corrected tag written by hand beside
+ * the one `SEOHead` renders — and a reader of the page gets whichever one a crawler happens to pick.
+ *
+ * Only the head is searched, so a tag quoted in a card's usage snippet can never count. Attributes
+ * are matched single- or double-quoted and in any order: `preact-render-to-string` emits double
+ * quotes today, but a pattern that matched only those would report a single-quoted tag as missing
+ * rather than wrong.
+ *
+ * @param html The served `index.html`.
+ */
+function headChecks(html: string): void {
+  const head = html.match(/<head\b[^>]*>([\s\S]*?)<\/head>/i)?.[1] ?? ""
+  const tags = (pattern: RegExp) => [...head.matchAll(pattern)].map((match) => match[0])
+  const attribute = (tag: string, name: string) =>
+    tag.match(new RegExp(`\\s${name}=(["'])([\\s\\S]*?)\\1`, "i"))?.[2]
+  const counted = (found: readonly string[]) =>
+    found.length === 1
+      ? found[0]
+      : `${found.length} tag(s)${found.length ? `: ${found.join(" ")}` : ""}`
+
+  // The same origin and base `build.ts` writes into the tag, read from the same variables, so a
+  // build for a custom domain is held to its own address rather than to the default one.
+  const canonicalHref = new URL(BASE, ORIGIN).href
+  const canonicals = tags(/<link\b[^>]*\srel=["']canonical["'][^>]*>/gi)
+  check(
+    `exactly one canonical link, pointing at ${canonicalHref}`,
+    canonicals.length === 1 && attribute(canonicals[0], "href") === canonicalHref,
+    counted(canonicals),
+  )
+
+  const titles = tags(/<title\b[^>]*>[\s\S]*?<\/title>/gi)
+  const titleText = titles.length === 1 ? titles[0].replace(/<[^>]*>/g, "").trim() : ""
+  check("exactly one <title>, with text", titles.length === 1 && titleText !== "", counted(titles))
+
+  const descriptions = tags(/<meta\b[^>]*\sname=["']description["'][^>]*>/gi)
+  check(
+    "exactly one description meta tag, with content",
+    descriptions.length === 1 && (attribute(descriptions[0], "content") ?? "").trim() !== "",
+    counted(descriptions),
+  )
+
+  // The demo passes no `ogImage` (its only image is a 32×32 favicon), so `SEOHead` must derive
+  // `summary` rather than the `summary_large_image` a hard-coded card type used to publish — see
+  // #212. Exactly one tag: a workaround that hand-wrote a corrected tag beside the helper's own,
+  // rather than fixing the derivation, would ship two `twitter:card` tags and this would catch it.
+  const twitterCards = tags(/<meta\b[^>]*\sname=["']twitter:card["'][^>]*>/gi)
+  check(
+    "exactly one twitter:card tag, publishing summary for a page with no preview image",
+    twitterCards.length === 1 && attribute(twitterCards[0], "content") === "summary",
+    counted(twitterCards),
+  )
+}
+
 /** Read the artefact and assert its shape. */
 async function staticPhase(): Promise<void> {
   console.log(`static phase — ${DIST_DIRECTORY}`)
@@ -211,21 +274,7 @@ async function staticPhase(): Promise<void> {
     "body.theme-base",
   )
 
-  // The demo passes no `ogImage` (its only image is a 32×32 favicon), so `SEOHead` must derive
-  // `summary` rather than the `summary_large_image` a hard-coded card type used to publish — see
-  // #212. Exactly one tag: a workaround that hand-wrote a corrected tag beside the helper's own,
-  // rather than fixing the derivation, would ship two `twitter:card` tags and this would catch it.
-  // Single- or double-quoted: `preact-render-to-string` always emits double quotes today, but a
-  // regex that only matched those would report a single-quoted tag as "0 tag(s)" — missing, not
-  // wrong — which is a worse failure mode than the one extra character costs here.
-  const twitterCards = [...html.matchAll(/<meta[^>]*name=["']twitter:card["'][^>]*>/g)].map((m) =>
-    m[0]
-  )
-  check(
-    "exactly one twitter:card tag, publishing summary for a page with no preview image",
-    twitterCards.length === 1 && /content=["']summary["']/.test(twitterCards[0]),
-    twitterCards.length === 1 ? twitterCards[0] : `${twitterCards.length} tag(s): ${twitterCards}`,
-  )
+  headChecks(html)
 
   const stylesheet = await readAsset(cssHref)
   const island = await readAsset(islandSrc)
