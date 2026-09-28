@@ -205,6 +205,12 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   // Last on purpose: a Modal that refuses to close would sit in the top layer over everything, so a
   // failure here cannot take an unrelated check down with it.
   await modalChecks(devtools)
+
+  // A ZoomableImages reading that threw inside the page was recorded rather than raised, so the
+  // rest of this block still ran; fail the block by name now, at its end.
+  if (lightboxReadErrors.length > 0) {
+    throw new Error(`a ZoomableImages reading threw: ${lightboxReadErrors.join(" | ")}`)
+  }
 }
 
 /** What one read of the busy `Button` demo sees. */
@@ -2683,9 +2689,9 @@ async function lightboxRefusesEmptyCheck(devtools: Devtools): Promise<void> {
  *
  * These checks moved here from `pages/checks/system.ts` (#369), a file whose checks never throw, and
  * they kept its way of reading the page: {@link read} answers a fallback that reads as a failure
- * and records the exception here. `zoomableImagesChecks` throws once at its end when anything was
- * recorded, after its teardown has closed the dialog, so a swallowed exception fails the `ui` block
- * by name instead of passing silently — an expression that throws inside `Runtime.evaluate` raises
+ * and records the exception here. `uiChecks` throws once at its end when anything was recorded,
+ * after every other ui check has run, so a swallowed exception fails the `ui` block by name
+ * instead of passing silently — an expression that throws inside `Runtime.evaluate` raises
  * no protocol event for `verify.ts`'s console-error check to find.
  */
 const lightboxReadErrors: string[] = []
@@ -2933,9 +2939,6 @@ async function zoomableImagesChecks(devtools: Devtools): Promise<void> {
     })()`,
     false,
   )
-  if (lightboxReadErrors.length > 0) {
-    throw new Error(`a ZoomableImages reading threw: ${lightboxReadErrors.join(" | ")}`)
-  }
 }
 
 /**

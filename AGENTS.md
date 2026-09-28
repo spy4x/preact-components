@@ -264,7 +264,7 @@ down:
   `centreInView` in `harness.ts`: it works out where the page's own smooth scroll will stop and
   waits until the page is there. Do not swap it for an instant scroll: under load, an instant
   scroll lost to a smooth one the page already had running (#269). `pages/checks/system.ts` does
-  not follow this yet: it still makes 16 instant `scrollIntoView` calls through its own
+  not follow this yet: it still makes 13 instant `scrollIntoView` calls through its own
   `settleScroll` helper, and the `ZoomableImages` checks that moved from it to `pages/checks/ui.ts`
   (#369) make three more, waiting with an untargeted `settledScroll`. Those checks passed under
   load and under `--cpu-throttle=6` in #274, so they were left alone; move them to `centreInView`
