@@ -28,12 +28,16 @@ import type { ToastMessage, ToastVariant } from "./types.ts"
 /**
  * A toast as the store holds it.
  *
- * Assignable to `ToastItem` in `@spy4x/preact-ui` as it stands — same `duration`, same `type`,
- * same `id` — which is what lets `Toastr toasts={store.list.value}` be the wiring both READMEs
- * show.
+ * Assignable to `ToastItem` in `@spy4x/preact-ui` as it stands — same `duration`, same `title`,
+ * same `type`, same `id` — which is what lets `Toastr toasts={store.list.value}` be the wiring both
+ * READMEs show.
  */
 export interface ToastEntry {
   id: string
+  /**
+   * Heading `Toastr` shows above the body: the message's own, or the default for its kind from
+   * {@link ToastOptions.titles}. An empty string is kept, and `Toastr` renders no heading for it.
+   */
   title: string
   body: string
   type: ToastVariant
@@ -72,10 +76,28 @@ export interface ToastStore {
   warning(message: ToastMessage): string
 }
 
-/** Injected collaborators, all optional. */
+/** Injected collaborators and labels, all optional. */
 export interface ToastOptions {
   /** Id source. Defaults to a random base-36 string. */
   nextId?: () => string
+  /**
+   * The title a toast gets when its message names none, per kind. Each kind left out keeps its
+   * English default: `"Info"`, `"Success"`, `"Error"`, `"Warning"`. An empty string means no
+   * heading for that kind.
+   *
+   * `Toastr` shows the title above the body, so these are user-visible words — an app in another
+   * language passes them here once rather than a `title` on every call. `buildModelStore` names
+   * no title on its success toasts, so they carry this default.
+   */
+  titles?: Partial<Record<ToastVariant, string>>
+}
+
+/** English default titles, one per kind. */
+const defaultTitles: Record<ToastVariant, string> = {
+  info: "Info",
+  success: "Success",
+  error: "Error",
+  warning: "Warning",
 }
 
 function defaultNextId(): string {
@@ -112,7 +134,8 @@ export function createToastStore(options: ToastOptions = {}): ToastStore {
     const type = message.type ?? "info"
     const entry: ToastEntry = {
       id,
-      title: message.title ?? type.charAt(0).toUpperCase() + type.slice(1),
+      // `??`, so an explicit empty title — no heading — is kept rather than replaced by the default.
+      title: message.title ?? options.titles?.[type] ?? defaultTitles[type],
       body: message.body,
       type,
       // `duration` is the name both sides use; `timeout` is the old one, kept working for a

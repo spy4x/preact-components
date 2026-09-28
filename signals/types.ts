@@ -45,6 +45,10 @@ export interface ToastMessage {
    * a `remove(id)` cannot tell apart. Generated when omitted.
    */
   id?: string
+  /**
+   * Heading shown above the body by `Toastr`. Omitted, the store fills in its default for the
+   * toast's kind; `""` means no heading.
+   */
   title?: string
   body: string
   type?: ToastVariant
