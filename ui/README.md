@@ -40,65 +40,65 @@ one. See #257's own "What I suggest" for the two options this decides between.
 
 ## Components
 
-| Component         | Subpath             | Ports / key props                                                                                                                                                     |
-| ----------------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Avatar`          | `avatar`            | `name`, `src`, `alt`, `size`                                                                                                                                          |
-| `AvatarGroup`     | `avatar`            | `items`, `max`, `label`, `size` (a `role="group"`, not a list)                                                                                                        |
-| `Badge`           | `badge`             | `text`, `color`, `type`                                                                                                                                               |
-| `Button`          | `button`            | `variant`, `size`, `busy`, `busyLabel`, native button attrs                                                                                                           |
-| `Card`            | `card`              | `children`, `class` — a bordered surface                                                                                                                              |
-| `CardBody`        | `card`              | `children`, `class`                                                                                                                                                   |
-| `CardFooter`      | `card`              | `children`, `class`                                                                                                                                                   |
-| `CardHeader`      | `card`              | `title` and `action`, or `children`; `class`                                                                                                                          |
-| `Checkbox`        | `checkbox`          | `children` (the label), `labelClass`, native checkbox attrs; forwards `ref`                                                                                           |
-| `Cluster`         | `layout`            | `gap?` (default `sm`), `align?`, `justify?`, `as?`, `class?` — a wrapping row                                                                                         |
-| `Combobox`        | `combobox`          | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `ariaLabel?`, `aria-labelledby?`, `id?`                                                                         |
-| `ConfirmDialog`   | `confirm-dialog`    | `title`, `message?`, `onConfirm`, `onCancel`, `confirmLabel?`, `cancelLabel?`, `tone?`                                                                                |
-| `CopyBlock`       | `copy-block`        | `text`, `singleLine?`, `copy?` (clipboard port), `copyLabel?`, `copiedLabel?` — built on `CopyButton`                                                                 |
-| `CopyButton`      | `copy-button`       | `textToCopy`, `copy?` (clipboard port)                                                                                                                                |
-| `DataTable`       | `data-table`        | `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `captionHidden?`, `empty?`, `paging?`, `rowDataE2E?`, `class?`                                        |
-| `DateRangePicker` | `date-range-picker` | `range`, `onChange`, `timeZone`, `presets` or `withTime`, `labels?` (every key optional)                                                                              |
-| `Dropdown`        | `dropdown`          | `trigger`, `triggerLabel` or `triggerNamedByContent` (one is required), `menuLabel`, `vertical` (`"auto"` by default), `horizontal`                                   |
-| `DropdownItem`    | `dropdown`          | `href`, `onClick`, `disabled`, `danger`, `class` — a `role="menuitem"`, out of the tab order                                                                          |
-| `EmptyState`      | `empty-state`       | `icon?`, `title?`, `description?`, `action?`                                                                                                                          |
-| `EnhancedForm`    | `enhanced-form`     | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?` — posts natively before hydration                                                    |
-| `ErrorState`      | `error-state`       | `message` (renders nothing when empty)                                                                                                                                |
-| `Field`           | `field`             | `id`, `label?`, `children`, `hint?`, `error?`, `required?`, `suffix?`                                                                                                 |
-| `FileInput`       | `file-input`        | `id`, `accept?`, `multiple?`, `maxSize?`, `name?`, `onFiles?`, `onReject?`, `label?`, `error?`, `previews?`, `labels?`                                                |
-| `Grid`            | `layout`            | `gap?` (default `md`), `minColumnWidth?` (`sm`/`md`/`lg`), `as?`, `class?` — equal columns that fill the row                                                          |
-| `ImageGallery`    | `image-gallery`     | `images` (`{ src, alt, thumbSrc? }[]`), `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`                                                      |
-| `Input`           | `input`             | native input attrs, `class`; forwards `ref`                                                                                                                           |
-| `InputButton`     | `input-button`      | `icon`, `iconLabel`, `onClick?`, native input attrs                                                                                                                   |
-| `Kbd`             | `kbd`               | `keys` (`"mod+k"`) or `children`, `apple?`, `labels?`                                                                                                                 |
-| `InlineEdit`      | `inline-edit`       | `value`, `onSave` (may return a promise), `editLabel?`, `inputLabel?`, `savingLabel?`, `errorMessage?`, `disabled?`                                                   |
-| `KanbanBoard`     | `kanban-board`      | `columns`, `items`, `renderItem`, `itemLabel`, `onMove`, `onOpen?`, `labels?`, `headingLevel?` — controlled; mouse drag and keyboard moves                            |
-| `Lightbox`        | `lightbox`          | `images`, `index`, `open`, `onClose`, `onIndexChange`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`                                                 |
-| `LoadingSkeleton` | `loading-skeleton`  | `rows`                                                                                                                                                                |
-| `LoadingSpinner`  | `loading-spinner`   | `label`, `size`                                                                                                                                                       |
-| `Modal`           | `modal`             | `open?` or `defaultOpen?`, `onClose?`, `title?` or `ariaLabel?`, `children`, `footer?`, `cancelLabel?`                                                                |
-| `MoneyDisplay`    | `money-display`     | `amount` (smallest unit), `currency`, `locale?`, `colorNegative?`, `class?`                                                                                           |
-| `MoneyInput`      | `money-input`       | `value` (smallest unit or `null`), `onChange`, `currency`, `locale?`, `min?`, `max?`, `name?`, `id?`, `invalidMessage?`, `rangeMessage?`                              |
-| `OnOffButtons`    | `on-off-buttons`    | `value`, `amount`, `onSwitch`                                                                                                                                         |
-| `Page`            | `layout`            | `as?`, `class?` — the content column: max width, page gutter, `xl` between sections                                                                                   |
-| `PageTitle`       | `page-title`        | `children`, `class`                                                                                                                                                   |
-| `Pagination`      | `pagination`        | `page`, `pageCount`, `onChange`, `label`, `previousLabel`, `nextLabel`, `pageLabel`                                                                                   |
-| `Progress`        | `progress`          | `value`, `max`, `label`, `id` (a caption needs an `id`)                                                                                                               |
-| `Radio`           | `radio`             | `children` (the label), `labelClass`, native radio attrs; forwards `ref`                                                                                              |
-| `RadioGroup`      | `radio`             | `legend`, `name`, `options`, `value?`, `onChange?`                                                                                                                    |
-| `Section`         | `layout`            | `title?`, `description?`, `headingLevel?` (2–4), `as?` (`section`/`article`/`aside`/`div`), `class?`                                                                  |
-| `Select`          | `input`             | `options`, `placeholder?`, native select attrs                                                                                                                        |
-| `ShortcutsDialog` | `shortcuts-dialog`  | `open`, `onClose`, `shortcuts`, `title?`, `closeLabel?`, `defaultGroup?`, `apple?`, `kbdLabels?`                                                                      |
-| `Stack`           | `layout`            | `gap?` (default `md`), `as?`, `class?` — a column                                                                                                                     |
-| `StatusMark`      | `status-mark`       | `status` (`ready`/`beta`/`wip`/`paused`/`archived`/`known-issue`), `label?` — a sibling of `Badge`, not an extension of it: `Badge` is colour-plus-text with no shape |
-| `Table`           | `table`             | `headerSlot`, `bodySlots`, `bodyKeys?` (one identity per row; position when omitted), `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`                         |
-| `Tabs`            | `tabs`              | `tabs`, `active`, `onChange`, `lazy`                                                                                                                                  |
-| `Textarea`        | `input`             | native textarea attrs, `class`                                                                                                                                        |
-| `Toastr`          | `toastr`            | `toasts`, `onDismiss`, `corner`, `label`, `dismissLabel`, `dataE2E`                                                                                                   |
-| `ToggleChips`     | `toggle-chips`      | `options`, `value`, `onChange`, `mode?` (`multiple`/`single`), `label?`, `color?` — pressable `Badge`-look chips with `aria-pressed`                                  |
-| `ToggleField`     | `toggle-field`      | `id`, `label`, `value`, `onToggle`, `description?`, `error?`                                                                                                          |
-| `ToggleSwitch`    | `toggle-switch`     | `value`, `onToggle`, `disabled`, `label`                                                                                                                              |
-| `Tooltip`         | `tooltip`           | `content`, `label`, `placement`, `focusable`                                                                                                                          |
-| `ZoomableImages`  | `zoomable-images`   | `containerSelector?`, `imageSelector?`, `fallbackAlt?`, `zoomLabel?`, `previousLabel?`, `nextLabel?`, `onOpen?`                                                       |
+| Component         | Subpath             | Ports / key props                                                                                                                                                                               |
+| ----------------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Avatar`          | `avatar`            | `name`, `src`, `alt`, `size`                                                                                                                                                                    |
+| `AvatarGroup`     | `avatar`            | `items`, `max`, `label`, `size` (a `role="group"`, not a list)                                                                                                                                  |
+| `Badge`           | `badge`             | `text`, `color`, `type`                                                                                                                                                                         |
+| `Button`          | `button`            | `variant`, `size`, `busy`, `busyLabel`, native button attrs                                                                                                                                     |
+| `Card`            | `card`              | `children`, `class` — a bordered surface                                                                                                                                                        |
+| `CardBody`        | `card`              | `children`, `class`                                                                                                                                                                             |
+| `CardFooter`      | `card`              | `children`, `class`                                                                                                                                                                             |
+| `CardHeader`      | `card`              | `title` and `action`, or `children`; `class`                                                                                                                                                    |
+| `Checkbox`        | `checkbox`          | `children` (the label), `labelClass`, native checkbox attrs; forwards `ref`                                                                                                                     |
+| `Cluster`         | `layout`            | `gap?` (default `sm`), `align?`, `justify?`, `as?`, `class?` — a wrapping row                                                                                                                   |
+| `Combobox`        | `combobox`          | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `ariaLabel?`, `aria-labelledby?`, `id?`                                                                                                   |
+| `ConfirmDialog`   | `confirm-dialog`    | `title`, `message?`, `onConfirm`, `onCancel`, `confirmLabel?`, `cancelLabel?`, `tone?`                                                                                                          |
+| `CopyBlock`       | `copy-block`        | `text`, `singleLine?`, `copy?` (clipboard port), `copyLabel?`, `copiedLabel?` — built on `CopyButton`                                                                                           |
+| `CopyButton`      | `copy-button`       | `textToCopy`, `copy?` (clipboard port)                                                                                                                                                          |
+| `DataTable`       | `data-table`        | `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `captionHidden?`, `empty?`, `paging?`, `mode?` (`"client"` default, or `"server"` with `paging.total`), `rowDataE2E?`, `class?` |
+| `DateRangePicker` | `date-range-picker` | `range`, `onChange`, `timeZone`, `presets` or `withTime`, `labels?` (every key optional)                                                                                                        |
+| `Dropdown`        | `dropdown`          | `trigger`, `triggerLabel` or `triggerNamedByContent` (one is required), `menuLabel`, `vertical` (`"auto"` by default), `horizontal`                                                             |
+| `DropdownItem`    | `dropdown`          | `href`, `onClick`, `disabled`, `danger`, `class` — a `role="menuitem"`, out of the tab order                                                                                                    |
+| `EmptyState`      | `empty-state`       | `icon?`, `title?`, `description?`, `action?`                                                                                                                                                    |
+| `EnhancedForm`    | `enhanced-form`     | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?` — posts natively before hydration                                                                              |
+| `ErrorState`      | `error-state`       | `message` (renders nothing when empty)                                                                                                                                                          |
+| `Field`           | `field`             | `id`, `label?`, `children`, `hint?`, `error?`, `required?`, `suffix?`                                                                                                                           |
+| `FileInput`       | `file-input`        | `id`, `accept?`, `multiple?`, `maxSize?`, `name?`, `onFiles?`, `onReject?`, `label?`, `error?`, `previews?`, `labels?`                                                                          |
+| `Grid`            | `layout`            | `gap?` (default `md`), `minColumnWidth?` (`sm`/`md`/`lg`), `as?`, `class?` — equal columns that fill the row                                                                                    |
+| `ImageGallery`    | `image-gallery`     | `images` (`{ src, alt, thumbSrc? }[]`), `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`                                                                                |
+| `Input`           | `input`             | native input attrs, `class`; forwards `ref`                                                                                                                                                     |
+| `InputButton`     | `input-button`      | `icon`, `iconLabel`, `onClick?`, native input attrs                                                                                                                                             |
+| `Kbd`             | `kbd`               | `keys` (`"mod+k"`) or `children`, `apple?`, `labels?`                                                                                                                                           |
+| `InlineEdit`      | `inline-edit`       | `value`, `onSave` (may return a promise), `editLabel?`, `inputLabel?`, `savingLabel?`, `errorMessage?`, `disabled?`                                                                             |
+| `KanbanBoard`     | `kanban-board`      | `columns`, `items`, `renderItem`, `itemLabel`, `onMove`, `onOpen?`, `labels?`, `headingLevel?` — controlled; mouse drag and keyboard moves                                                      |
+| `Lightbox`        | `lightbox`          | `images`, `index`, `open`, `onClose`, `onIndexChange`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`                                                                           |
+| `LoadingSkeleton` | `loading-skeleton`  | `rows`                                                                                                                                                                                          |
+| `LoadingSpinner`  | `loading-spinner`   | `label`, `size`                                                                                                                                                                                 |
+| `Modal`           | `modal`             | `open?` or `defaultOpen?`, `onClose?`, `title?` or `ariaLabel?`, `children`, `footer?`, `cancelLabel?`                                                                                          |
+| `MoneyDisplay`    | `money-display`     | `amount` (smallest unit), `currency`, `locale?`, `colorNegative?`, `class?`                                                                                                                     |
+| `MoneyInput`      | `money-input`       | `value` (smallest unit or `null`), `onChange`, `currency`, `locale?`, `min?`, `max?`, `name?`, `id?`, `invalidMessage?`, `rangeMessage?`                                                        |
+| `OnOffButtons`    | `on-off-buttons`    | `value`, `amount`, `onSwitch`                                                                                                                                                                   |
+| `Page`            | `layout`            | `as?`, `class?` — the content column: max width, page gutter, `xl` between sections                                                                                                             |
+| `PageTitle`       | `page-title`        | `children`, `class`                                                                                                                                                                             |
+| `Pagination`      | `pagination`        | `page`, `pageCount`, `onChange`, `label`, `previousLabel`, `nextLabel`, `pageLabel`                                                                                                             |
+| `Progress`        | `progress`          | `value`, `max`, `label`, `id` (a caption needs an `id`)                                                                                                                                         |
+| `Radio`           | `radio`             | `children` (the label), `labelClass`, native radio attrs; forwards `ref`                                                                                                                        |
+| `RadioGroup`      | `radio`             | `legend`, `name`, `options`, `value?`, `onChange?`                                                                                                                                              |
+| `Section`         | `layout`            | `title?`, `description?`, `headingLevel?` (2–4), `as?` (`section`/`article`/`aside`/`div`), `class?`                                                                                            |
+| `Select`          | `input`             | `options`, `placeholder?`, native select attrs                                                                                                                                                  |
+| `ShortcutsDialog` | `shortcuts-dialog`  | `open`, `onClose`, `shortcuts`, `title?`, `closeLabel?`, `defaultGroup?`, `apple?`, `kbdLabels?`                                                                                                |
+| `Stack`           | `layout`            | `gap?` (default `md`), `as?`, `class?` — a column                                                                                                                                               |
+| `StatusMark`      | `status-mark`       | `status` (`ready`/`beta`/`wip`/`paused`/`archived`/`known-issue`), `label?` — a sibling of `Badge`, not an extension of it: `Badge` is colour-plus-text with no shape                           |
+| `Table`           | `table`             | `headerSlot`, `bodySlots`, `bodyKeys?` (one identity per row; position when omitted), `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`                                                   |
+| `Tabs`            | `tabs`              | `tabs`, `active`, `onChange`, `lazy`                                                                                                                                                            |
+| `Textarea`        | `input`             | native textarea attrs, `class`                                                                                                                                                                  |
+| `Toastr`          | `toastr`            | `toasts`, `onDismiss`, `corner`, `label`, `dismissLabel`, `dataE2E`                                                                                                                             |
+| `ToggleChips`     | `toggle-chips`      | `options`, `value`, `onChange`, `mode?` (`multiple`/`single`), `label?`, `color?` — pressable `Badge`-look chips with `aria-pressed`                                                            |
+| `ToggleField`     | `toggle-field`      | `id`, `label`, `value`, `onToggle`, `description?`, `error?`                                                                                                                                    |
+| `ToggleSwitch`    | `toggle-switch`     | `value`, `onToggle`, `disabled`, `label`                                                                                                                                                        |
+| `Tooltip`         | `tooltip`           | `content`, `label`, `placement`, `focusable`                                                                                                                                                    |
+| `ZoomableImages`  | `zoomable-images`   | `containerSelector?`, `imageSelector?`, `fallbackAlt?`, `zoomLabel?`, `previousLabel?`, `nextLabel?`, `onOpen?`                                                                                 |
 
 ## Usage
 
@@ -598,18 +598,55 @@ in two places.
 to whatever host application embeds the catalogue, the same reason `useUrlFilters` itself is
 demonstrated there.
 
-**`DataTable` sorts and pages client-side only.** `rows` has to be the complete, unsorted set:
-`sortRows` runs its own collation over every row it is given, including rows a server already
-sorted, and there is no way to hand this component a `pageCount` for a page it cannot see the rest
-of — passing one page's worth of rows with `paging.page: 2` renders that page's rows on what looks
-like page 1, because `DataTable` has no way to know there were more before them. A mode that skips
-`sortRows` and takes a caller-supplied `pageCount` instead is tracked in
-[#235](https://github.com/spy4x/preact-components/issues/235) rather than built here.
+**Two modes: `DataTable` sorts and pages, or a server already did.** `mode` picks one, and it is a
+prop rather than something guessed from the rows, because it changes what `rows` means. Server mode is
+the answer to [#235](https://github.com/spy4x/preact-components/issues/235), which found client
+mode the only one.
+
+- **Client mode** — the default, `mode` left out or `"client"`. `rows` is the complete, unsorted
+  set: `DataTable` sorts it with `sortRows` and slices out the current page itself, sizing the pager
+  from `rows.length`. `paging` is `{ page, pageSize, onChange }`, and a `total` there is a type
+  error, since it would mean server mode was intended.
+- **Server mode** — `mode="server"`. Something else — a server, a database query — already sorted
+  and paged the rows, so `rows` is exactly the current page and is rendered as given: no `sortRows`,
+  whose locale-aware collation need not match the server's, and no slice. `paging` adds `total`, the
+  size of the whole set, which is the only way to size a pager from one page in hand; leaving it out
+  is a type error. `sort` still drives `aria-sort` and the header glyphs, and a header press still
+  calls `onSortChange` through `toggleSort` — that call, and `paging.onChange`, are the caller's
+  signal to fetch the next slice. `rowKey` keys and stamps rows the same way in both modes.
+
+```tsx
+const response = useInvoicePage(sort.value, page.value) // your fetch: { rows, total }
+
+<DataTable
+  mode="server"
+  caption="Invoices"
+  columns={columns}
+  rows={response.rows}
+  rowKey={(row) => row.id}
+  sort={sort.value}
+  onSortChange={(next) => {
+    sort.value = next
+    page.value = 1
+  }}
+  paging={{
+    page: page.value,
+    pageSize: 25,
+    total: response.total,
+    onChange: (next) => page.value = next,
+  }}
+/>
+```
+
+The catalogue card shows both side by side; its server-mode table asks a stand-in server that
+orders text by code unit, so "eBay refund" sorts after every capitalised name, which a client-side
+re-sort would undo. `pages/checks/ui.ts` drives that table's header and pager by real key presses.
+The pager's labels (`label`, `previousLabel`, `nextLabel`, `pageLabel`) default to English in both
+modes and pass straight through to `Pagination`.
 
 **Every sortable header is a real `<button>`**, so Tab, Space and Enter all reach it —
-`pages/checks/ui.ts` proves the click and Space paths for this header, and a real Enter press
-activating a focused native button is proven once, for `Dropdown` and `Modal`, rather than
-per component. Pressing it calls `toggleSort`, which cycles that column through
+`pages/checks/ui.ts` proves a real click, Space and Enter on this header in client mode, and
+Enter and Space in server mode. Pressing it calls `toggleSort`, which cycles that column through
 ascending → descending → off and, if the column was not already part of `sort`, appends it as the
 _least significant_ rule rather than replacing what was there. That is the whole of how a
 multi-column sort is built: there is no modifier key, a keyboard user just Tabs to a second
@@ -640,11 +677,12 @@ checkboxes are deliberately uncontrolled. Keys must be distinct across `rows`. T
 stamped as `data-row-key` on each row's first cell, exported as `rowKeyAttribute`, so a page or a
 browser check can point at a specific row without depending on its rendered text.
 
-**Paging is optional and minimal**: `page`, `pageSize` and `onChange`, mirroring `Pagination`'s own
-prop names because most of them pass straight through to it. `DataTable` computes `pageCount` from
-the full, sorted row count and slices the visible page itself; omit `paging` entirely for every row
-on one page. `page` is clamped into `1…pageCount` the same way `Pagination` clamps its own, before
-it is used for both the slice and the pager — a page a filter has shrunk past, or `0` or a negative
+**Paging is optional and minimal**: `page`, `pageSize` and `onChange` — plus `total` in server
+mode — mirroring `Pagination`'s own prop names because most of them pass straight through to it. In
+client mode `DataTable` computes `pageCount` from the full, sorted row count and slices the visible
+page itself; in server mode it computes `pageCount` from `total` and slices nothing. Omit `paging`
+entirely for every row on one page. `page` is clamped into `1…pageCount` the same way `Pagination` clamps its own, before
+it is used for the pager and, in client mode, the slice — a page a filter has shrunk past, or `0` or a negative
 number, renders the nearest real page instead of an empty body beside a pager that disagrees with
 it.
 

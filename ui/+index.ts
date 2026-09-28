@@ -79,12 +79,18 @@ export {
 } from "./combobox.tsx"
 export {
   DataTable,
+  type DataTableBaseProps,
+  type DataTableClientProps,
   type DataTableColumn,
   type DataTableColumnAlign,
   type DataTableDataColumn,
   type DataTableDisplayColumn,
+  type DataTableMode,
   type DataTablePaging,
+  type DataTablePagingBase,
   type DataTableProps,
+  type DataTableServerPaging,
+  type DataTableServerProps,
   rowKeyAttribute,
 } from "./data-table.tsx"
 export {
