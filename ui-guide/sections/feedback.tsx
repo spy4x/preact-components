@@ -83,6 +83,14 @@ const autoDismissBody = "auto — dismissed by its own timer"
 const longBody = "long — outlives the component's own default"
 
 /**
+ * The title the card's titled toast is pushed with, and its body. The variant buttons push no title,
+ * so their toasts carry the store's default for their kind; this one carries a caller's own, and
+ * `pages/checks/ui.ts` reads it back off the button's `data-title` to find it on screen.
+ */
+const titledTitle = "Could not save the draft"
+const titledBody = "titled — the connection dropped; your text is kept"
+
+/**
  * What the extend control raises every toast on screen to, in milliseconds.
  *
  * Longer than {@link autoDismissMs} by enough that the two possible outcomes cannot be confused: a
@@ -156,6 +164,16 @@ function ToastrDemo() {
             {label}
           </Button>
         ))}
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="toast-titled"
+          data-title={titledTitle}
+          onClick={() =>
+            store.add({ type: "error", title: titledTitle, body: titledBody, duration: 0 })}
+        >
+          with its own title
+        </Button>
       </Cluster>
       <Cluster>
         <Button
@@ -199,7 +217,8 @@ function ToastrDemo() {
         In the store:{" "}
         <span data-e2e="toast-store-count">{toasts.length}</span>. A toast with no duration of its
         own stays <span data-e2e="toast-default-duration">{defaultToastDuration}</span>{" "}
-        ms. Hover the stack to pause every timer.
+        ms. Each toast shows the title it was pushed with, or its kind's default. Hover the stack to
+        pause every timer.
       </DemoNote>
       {toasts.length === 0 ? <DemoNote>Nothing pushed yet.</DemoNote> : null}
       <Toastr
@@ -561,7 +580,8 @@ export const feedbackDemos = {
       {
         name: "toasts",
         type: "ToastItem[]",
-        description: "The stack: each toast's id, type, body and duration.",
+        description:
+          "The stack: each toast's id, type, title (shown above the body), body and duration.",
       },
       {
         name: "onDismiss",
