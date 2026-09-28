@@ -209,6 +209,12 @@ nothing: the month on screen does not change, and the focus goes back to the day
 instead of staying on the grid container, so their next arrow press moves a day rather than being
 spent walking back to where they already were.
 
+The month arrows above the grid ask through the same `onSelectMonth`, and the same two rules hold
+for the grid's one Tab stop: a month the owner draws puts it on the same day number there, and a
+month the owner leaves where it was leaves it on the day it was on, rather than on the grid's own
+fallback of the selection, today or the first of the month. The focus does not move for either;
+the reader clicked the arrow and stays on it.
+
 The first rule needs no cooperation from the caller and does not care why the month changed. An
 owner that checks or fetches before it answers gets it, and so does an owner that changes the month
 for reasons of its own while the reader happens to be standing in the grid. A refusal can only be

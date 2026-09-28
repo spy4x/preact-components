@@ -246,8 +246,19 @@ export function Calendar(
   // arrow can change the month under it, and a requested day that is not on screen has to give way
   // to one that is.
   const [requestedDate, setRequestedDate] = useState<string | null>(null)
+
+  // The day the Tab stop was on when a month arrow asked for another month, so a month the caller
+  // does not draw leaves the Tab stop where it was.
+  //
+  // A candidate rather than a correction, and that is what separates it from the keyboard's
+  // `parkedFrom` below. The arrow leaves `requestedDate` on the same day number in the month it
+  // asked for, so a caller that draws that month — in the render the click caused or in a later one
+  // — still lands the Tab stop there; only while the month on screen is not that month does this
+  // day get its turn, ahead of the selection and today, which are where the grid would otherwise
+  // fall back to (#202). No focus moves for it: the reader is standing on the arrow they clicked.
+  const arrowFrom = useRef<string | null>(null)
   const activeDate = firstOnScreen(
-    [requestedDate, selectedDate ?? null, currentDate],
+    [requestedDate, arrowFrom.current, selectedDate ?? null, currentDate],
     monthKey,
     days,
   )
@@ -493,6 +504,9 @@ export function Calendar(
     if (!monthShown(target.slice(0, 7))) return false
 
     const landing = dayInMonth(target, Number(from.slice(8, 10)))
+    // Only the day on screen is worth going back to. A second arrow click in the same frame starts
+    // from the month the first one asked for, which is not a day the reader was ever on.
+    if (!takeFocus && from.slice(0, 7) === monthKey) arrowFrom.current = from
     cursorDate.current = landing
     if (takeFocus) {
       keyboardTarget.current = landing

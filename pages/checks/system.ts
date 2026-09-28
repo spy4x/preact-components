@@ -2762,9 +2762,88 @@ async function refusedMonthChecks(devtools: Devtools): Promise<void> {
       : `the focus was never staged on ${REFUSED_DAY} for the move-away press`,
   )
 
+  await refusedArrowCheck(devtools)
+
   // Leave no listener and no global behind: the probe is armed for a press that sometimes never
   // arrives, which is the one case its own listener cannot clean up after.
   await disarmRefusalProbe(devtools)
+}
+
+/**
+ * A month *arrow* the owner refuses leaves the grid's Tab stop on the day it was on (#202).
+ *
+ * The arrow path never parks the focus — the reader is standing on the arrow — so none of the
+ * keyboard's refusal handling above runs for it. What it used to do was leave the grid's Tab stop
+ * asking for a day of a month nobody drew, which the grid answered with its own fallback: today,
+ * the 10th. Standing on the 19th first is what makes the two tell apart, as it does above.
+ *
+ * The click is a real one through the browser's input pipeline, at the arrow's centre, so the
+ * focus lands on the arrow the way a reader's click puts it there, and the check reads it there
+ * afterwards. The refusal count rising by one is what says the click arrived and was asked about.
+ *
+ * @param devtools The connected session, on a hydrated page, with the refusing card framed.
+ */
+async function refusedArrowCheck(devtools: Devtools): Promise<void> {
+  const staged = await standOnDay(devtools, REFUSED_GRID, REFUSED_DAY)
+  const before = await read(devtools, REFUSED_STATE, NO_CARD)
+  // Aimed only once the page has stopped where the arrow is in the middle of it: focusing the day
+  // may have scrolled, and a point worked out mid-scroll lands on whatever passes under it.
+  await centreInView(
+    devtools,
+    `document.querySelector('${REFUSED} button[aria-label^="Next month"]')`,
+  )
+  const aim = await read(
+    devtools,
+    `(() => {
+      const arrow = document.querySelector('${REFUSED} button[aria-label^="Next month"]')
+      if (!arrow) return { onTarget: false, x: 0, y: 0, landedOn: "no next-month button" }
+      const rect = arrow.getBoundingClientRect()
+      const x = Math.round(rect.left + rect.width / 2)
+      const y = Math.round(rect.top + rect.height / 2)
+      const at = document.elementFromPoint(x, y)
+      // The chevron inside the button counts as the button: a click on it activates the button
+      // and focuses it, which is all this check asks of the aim.
+      return {
+        onTarget: Boolean(at) && arrow.contains(at),
+        x,
+        y,
+        landedOn: at
+          ? at.tagName.toLowerCase() + ' "' + (at.getAttribute("aria-label") || at.textContent.trim()).slice(0, 40) + '"'
+          : "nothing",
+      }
+    })()`,
+    { onTarget: false, x: 0, y: 0, landedOn: "the page could not be read" },
+  )
+  if (staged && aim.onTarget) await clickAt(devtools, aim)
+  const asked = await poll(
+    () => read(devtools, `${REFUSED_STATE}.count === ${before.count + 1}`, false),
+    3_000,
+  )
+  // Two frames, so a render the refusal causes after the count has been drawn is on screen too.
+  await read(
+    devtools,
+    `new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done(true))))`,
+    false,
+  )
+  const after = await read(devtools, REFUSED_STATE, NO_CARD)
+
+  check(
+    "a refused month arrow leaves the grid's Tab stop on the day it was on, and the focus on the arrow",
+    staged && aim.onTarget && before.tabStop === REFUSED_DAY && asked &&
+      after.asked === "2026-04-01" && after.heading === before.heading &&
+      after.tabStop === REFUSED_DAY && after.focused.startsWith('button "Next month'),
+    !staged
+      ? `the focus was never staged on ${REFUSED_DAY} of the refusing card`
+      : !aim.onTarget
+      ? `a click at the next-month arrow's centre would land on ${aim.landedOn}`
+      : `from ${before.tabStop || "nowhere"} in ${before.heading}, a click on the next-month ` +
+        `arrow was ${asked ? "asked about" : "never asked about"} (count ${before.count} → ` +
+        `${after.count}, asked for ${after.asked}); the heading is ${
+          after.heading || "unreadable"
+        }, ` +
+        `the grid's Tab stop is ${after.tabStop || "nowhere"} — the grid's own fallback is ` +
+        `2026-03-10, the card's today — and the focus is on ${after.focused}`,
+  )
 }
 
 /**

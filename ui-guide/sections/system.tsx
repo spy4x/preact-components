@@ -611,7 +611,8 @@ function CalendarRefusingDemo() {
       </p>
       <p class={NOTE}>
         Focus a day and press Page Down: the count rises, the grid stays on March, and the focus
-        stays on your day.
+        stays on your day. Click a month arrow from a day instead and the focus stays on the arrow,
+        while Tab back into the grid still lands on your day.
       </p>
       <Cluster>
         <Button
