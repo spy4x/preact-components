@@ -448,6 +448,33 @@ Small, deliberate, and each one is why the source files could drift:
 - **The status filter's count is the non-deleted total**, as in every source list, not the count of
   the rows the search term left visible.
 
+## Helpers
+
+The decisions the components make, as plain functions, each importable from the package root. They
+are exported so each rule is tested without a DOM, and so a list or editor drawn by hand can follow
+the same rules.
+
+- `rowsForStatus(store, status)` is the slice of a `CrudListStore` a status shows: the archived rows
+  for `"archived"`, the active rows otherwise. `listRows(store, status, query, match)` filters that
+  slice by the search term the way `CrudList` does.
+- `editorState({ initialized, validation, canChange, inProgress, blocked })` derives an editor's
+  chrome: whether the form is valid, whether it is busy, and whether Save is enabled. Save needs a
+  loaded, valid row, a user who may change it, no request in flight and nothing blocking the
+  archive.
+- `submitEditor({ mode, store, value, id, blocked })` sends a submit to the store: an add creates
+  the row and returns it as `created`, an edit updates it and returns `updated: true`, and an edit
+  whose archive is blocked writes nothing. A store error is returned, never thrown.
+- `toggleArchiveState(row, dependencies)` is the archive checkbox's next state: archiving stamps
+  `deletedAt` with now and lists what `dependencies` says still points at the row in `blocked`;
+  un-archiving clears both.
+- `fieldText(value)` is a model value as the text a control shows, with `null` and `undefined` as
+  `""`. `commitNumber(raw)` parses a number box's text, reading an empty or half-typed value as `0`.
+- `CONFLICT` (`"CONFLICT"`) is the issue type an association editor reports a duplicate under, on
+  the field the user has to change. `isRestorable(row)` answers whether that duplicate was removed
+  earlier (it carries a `deletedAt`) and can be restored instead of re-created.
+- `associationActions(store)` is exported for the package's own components and tests: it binds an
+  association row's Delete and Restore buttons to the store's `delete` and `undelete`.
+
 ## Tests
 
 ```bash
