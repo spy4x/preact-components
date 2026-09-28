@@ -159,17 +159,17 @@ tick. `LineChart` calls `ticks` when a caller passes an explicit `yDomain`, so s
 
 ## Helpers
 
-The colour defaults and the maths behind the components, each importable from the package root or
-from its own subpath.
+The colour defaults and the maths behind the components. Each is importable from the package root
+and from its own subpath, except `CHART_PALETTE_CLASS`, which only `./colors` exports.
 
 ### Colours (`./colors`)
 
 - `seriesColor(index, palette)` picks the colour for series `index` from `palette` (by default
   `DEFAULT_CHART_PALETTE`), wrapping past the end and tolerating a negative index; an empty palette
   falls back to the default one. Use it to colour a legend or a table row to match its series.
-- `CHART_PALETTE_CLASS` is the class list a chart puts on its root so `DEFAULT_CHART_PALETTE`
-  resolves to its light steps, or its dark steps under a `.dark` ancestor. Put it on the root of
-  chart markup of your own that uses the default palette.
+- `CHART_PALETTE_CLASS`, from `./colors` only, is the class list a chart puts on its root so
+  `DEFAULT_CHART_PALETTE` resolves to its light steps, or its dark steps under a `.dark` ancestor.
+  Put it on the root of chart markup of your own that uses the default palette.
 - `DEFAULT_AXIS_COLOR`, `DEFAULT_GRID_COLOR`, `DEFAULT_TEXT_COLOR`, `DEFAULT_SURFACE_COLOR` and
   `DEFAULT_TRACK_COLOR` are the defaults of the charts' colour props: the axis and frame lines, the
   dashed grid lines, the axis and legend text, the panel and tooltip background, and the track
