@@ -115,6 +115,68 @@ const BASE = normalizeBase(Deno.env.get("PAGES_BASE") ?? DEFAULT_BASE)
 /** Origin the artefact's canonical address was built for — the variable `build.ts` reads. */
 const ORIGIN = Deno.env.get("PAGES_ORIGIN") ?? DEFAULT_ORIGIN
 
+/** The lockfile every Deno command in this repository resolves against. */
+const LOCKFILE = join(REPO_ROOT, "deno.lock")
+
+/** The lockfile's text, or `undefined` when there is none to read. */
+async function readLockfile(): Promise<string | undefined> {
+  try {
+    return await Deno.readTextFile(LOCKFILE)
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * `deno.lock` as it stood when this run's own code started — after Deno resolved the script's
+ * static imports, so a lockfile that was merely stale before the run does not count against it.
+ */
+const LOCKFILE_AT_START = await readLockfile()
+
+/**
+ * Assert that the run resolved nothing the lockfile did not already record, and that the lockfile
+ * records no specifier without a version (#283).
+ *
+ * A verify run once left `deno.lock` with one new line, `"jsr:@std/expect@*"`: something it reached
+ * resolved a package with no version, which is whatever is newest the day it runs, and every
+ * contributor who ran `verify` got a dirty lockfile they then carried into unrelated pull requests.
+ * Neither half of that was visible anywhere. The first check catches a specifier resolved while the
+ * run is going — a dynamic import, a spawned script — and the second one resolved at startup, which
+ * Deno writes before this script's first line runs.
+ *
+ * Both are about this script and what it reaches, not a gate on the lockfile in general: a stale
+ * lockfile is rewritten by the build before `verify` starts, and is nothing this reports.
+ */
+async function lockfileChecks(): Promise<void> {
+  const now = await readLockfile()
+  check(
+    "the run left deno.lock as it found it",
+    now === LOCKFILE_AT_START,
+    now === LOCKFILE_AT_START
+      ? "byte for byte"
+      : "the lockfile changed during the run — run `git diff deno.lock` for what was resolved",
+  )
+
+  let specifiers: string[] = []
+  try {
+    specifiers = Object.keys(JSON.parse(now ?? "{}").specifiers ?? {})
+  } catch {
+    specifiers = []
+  }
+  const unversioned = specifiers.filter((specifier) => /^(jsr|npm):.+@\*$/.test(specifier))
+  check(
+    "deno.lock records no specifier without a version",
+    now !== undefined && specifiers.length > 0 && unversioned.length === 0,
+    now === undefined
+      ? `no lockfile at ${LOCKFILE}`
+      : specifiers.length === 0
+      ? "no specifiers could be read out of the lockfile"
+      : unversioned.length === 0
+      ? `${specifiers.length} specifiers, each with a version`
+      : `unversioned: ${unversioned.join(", ")}`,
+  )
+}
+
 /**
  * `--only=system` or `--only=system,ui` restricts the browser phase to just those package blocks —
  * `undefined` when the flag was not passed, which is every CI run and almost every local one.
@@ -1359,4 +1421,5 @@ if (Deno.args.includes("--static")) {
   note = [filteredRunNote(), throttled].filter((line) => line !== undefined).join("\n") ||
     undefined
 }
+await lockfileChecks()
 report(note)

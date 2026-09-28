@@ -297,6 +297,8 @@ as the numerator; and `--static`, which commits no package blocks at all, instea
   at its top on the first read and for a second after, no focus, and the pointer off every card. The
   second throw has no dialog open, and the recovery must press no Escape, which a Tooltip, a
   Dropdown or a Combobox would answer.
+- **Lockfile** (#283, both phases, last): the run leaves `deno.lock` byte for byte as it found it
+  after startup, and the lockfile holds no specifier without a version (`jsr:…@*`).
 - **Browser** (headless Chromium over the DevTools Protocol, page served at the deployed base):
   hydration, Dropdown open/close, ToggleSwitch, OnOffButtons, the icon filter over the icon gallery,
   click-to-copy in the gallery, a click on every usage block's copy control putting that block's text
