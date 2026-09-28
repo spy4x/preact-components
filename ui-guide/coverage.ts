@@ -4,13 +4,13 @@
  * A **component** — {@link isComponent} — needs a card in a component section, or an entry in
  * {@link COMPONENTS_WITHOUT_CARD} with a reason. Anything else — a function, a constant, an enum, a
  * label map — is a **helper**: the guide shows none, and the package's `README.md` has to name it
- * in code ({@link readmeNames}), unless {@link README_PENDING} still lists it.
+ * in code ({@link readmeNames}).
  *
  * The exports are read from the package rather than from a list, and from the barrel *and* every
  * subpath module the package publishes, so an export reachable only through its own subpath is
  * still seen. `coverage.test.ts` runs {@link coverageProblems} over that read and fails with the
  * offender's name when the rule is broken: a component with no card, a helper its README does not
- * name, an allow-list or pending entry the package does not export or that is covered after all,
+ * name, an allow-list entry the package does not export or that is covered after all,
  * and a card naming a name its package does not export.
  */
 
@@ -23,10 +23,7 @@ import * as system from "@spy4x/preact-system"
 import * as theme from "@spy4x/preact-theme"
 import * as ui from "@spy4x/preact-ui"
 import { parse } from "@std/jsonc"
-import { README_PENDING } from "./readme-pending.ts"
 import { catalogueSections, coveredPackageIds, type PackageId } from "./registry.ts"
-
-export { README_PENDING }
 
 /** Barrel namespace of every covered package, keyed the way the catalogue keys it. */
 const BARRELS: Record<PackageId, object> = { ui, charts, system, crud, map, signals, theme, cn }
@@ -111,51 +108,84 @@ export function demoedNamesOf(id: PackageId): string[] {
     .flatMap((section) => section.names)
 }
 
+/** A package's `deno.json`. */
+function configOf(id: PackageId): URL {
+  return new URL(`./${id}/deno.json`, ROOT)
+}
+
 /**
- * A package's subpath modules, resolved from its `deno.json` `exports` map: everything it publishes
- * besides the barrel. A target that is not TypeScript is skipped.
+ * The subpath modules a package config publishes, resolved from its `exports` map: everything it
+ * publishes besides the barrel. {@link subpathModulesOf} reads a workspace member's; this form takes
+ * the config itself so a test can hand it a fixture package no workspace member is.
  *
- * @param id Package to read.
+ * Every target is imported as it stands. None of the covered packages publishes anything but
+ * TypeScript, so a stylesheet or other non-module target would fail the read loudly rather than be
+ * skipped quietly — and it should, because a consumer could reach that subpath.
+ *
+ * @param config URL of the package's config; each target resolves against it.
  * @returns Each subpath key and its module as an importable URL.
- * @throws When the config declares no `exports` object, or a non-string target.
+ * @throws When a subpath's target is not a string. This cannot fire for a workspace member: Deno
+ *   warns about such a config and then will not resolve the member at all, and this module imports
+ *   every covered barrel by its member name, so it fails to load before the read runs. The throw is
+ *   for a caller that hands in a config directly, as `coverage.test.ts` does with its fixture.
  */
-export async function subpathModulesOf(
-  id: PackageId,
+export async function subpathModules(
+  config: URL,
 ): Promise<Array<{ subpath: string; href: string }>> {
-  const config = parse(await Deno.readTextFile(new URL(`./${id}/deno.json`, ROOT)))
-  const declared = (config as { exports?: unknown } | null)?.exports
-  if (typeof declared !== "object" || declared === null || Array.isArray(declared)) {
-    throw new Error(`${id}/deno.json declares no exports object`)
+  // `exports` is a string (the barrel alone) or an object. Deno cannot resolve a package's barrel
+  // from any other shape, or from none, and this module imports every covered barrel statically, so
+  // the read never runs for such a package.
+  const { exports } = parse(await Deno.readTextFile(config)) as {
+    exports: string | Record<string, unknown>
   }
+  if (typeof exports === "string") return []
 
   const modules: Array<{ subpath: string; href: string }> = []
-  for (const [subpath, target] of Object.entries(declared)) {
+  for (const [subpath, target] of Object.entries(exports)) {
     if (subpath === ".") continue
     if (typeof target !== "string") {
-      throw new Error(`${id}/deno.json declares ${subpath} with a non-string target`)
+      throw new Error(`${config.href} declares ${subpath} with a non-string target`)
     }
-    if (!/\.tsx?$/.test(target)) continue
 
-    modules.push({ subpath, href: new URL(`./${id}/${target}`, ROOT).href })
+    modules.push({ subpath, href: new URL(target, config).href })
   }
 
   return modules
 }
 
 /**
- * Every value export a consumer can reach in one package: the barrel, and every subpath module, since
- * an export only its own subpath carries is otherwise invisible.
+ * A workspace member's subpath modules: {@link subpathModules} over its own `deno.json`.
  *
  * @param id Package to read.
- * @throws When the config declares no `exports` object, or a non-string target.
  */
-export async function valueExportsOf(id: PackageId): Promise<PackageNamespace> {
-  const merged: Record<string, unknown> = { ...BARRELS[id] }
-  for (const { href } of await subpathModulesOf(id)) {
+export function subpathModulesOf(id: PackageId): Promise<Array<{ subpath: string; href: string }>> {
+  return subpathModules(configOf(id))
+}
+
+/**
+ * Every value export a consumer can reach in one package config: its barrel, and every subpath
+ * module, since an export only its own subpath carries is otherwise invisible.
+ *
+ * @param barrel The package's barrel namespace.
+ * @param config URL of the package's config.
+ */
+export async function readExports(barrel: object, config: URL): Promise<PackageNamespace> {
+  const merged: Record<string, unknown> = { ...barrel }
+  for (const { href } of await subpathModules(config)) {
     Object.assign(merged, await import(href) as object)
   }
 
   return merged
+}
+
+/**
+ * Every value export a consumer can reach in one workspace member: {@link readExports} over its
+ * barrel and its `deno.json`.
+ *
+ * @param id Package to read.
+ */
+export function valueExportsOf(id: PackageId): Promise<PackageNamespace> {
+  return readExports(BARRELS[id], configOf(id))
 }
 
 /** Every catalogued package's value exports, keyed by package. */
@@ -200,14 +230,12 @@ export async function packageReadmes(): Promise<Record<PackageId, string>> {
  * @param exports Each package's value exports; normally {@link packageExports}'.
  * @param readmes Each package's README text; normally {@link packageReadmes}'.
  * @param allowed Components excused from a card; defaults to {@link COMPONENTS_WITHOUT_CARD}.
- * @param pending Helpers still waiting for a README line; defaults to {@link README_PENDING}.
  * @returns One message per problem, package by package; empty when the rule holds.
  */
 export function coverageProblems(
   exports: Record<PackageId, PackageNamespace>,
   readmes: Record<PackageId, string>,
   allowed: Record<PackageId, readonly AllowedExport[]> = COMPONENTS_WITHOUT_CARD,
-  pending: Record<PackageId, readonly string[]> = README_PENDING,
 ): string[] {
   const problems: string[] = []
 
@@ -215,7 +243,6 @@ export function coverageProblems(
     const exported = new Set(Object.keys(exports[id]))
     const demoed = new Set(demoedNamesOf(id))
     const excused = new Set(allowed[id].map((entry) => entry.name))
-    const waiting = new Set(pending[id])
     const component = (name: string) => isComponent(name, exports[id][name])
 
     for (const name of exported) {
@@ -225,7 +252,7 @@ export function coverageProblems(
           `${id} exports the component ${name} and no section demonstrates it — write a card, ` +
             `or add a COMPONENTS_WITHOUT_CARD entry saying why`,
         )
-      } else if (!readmeNames(readmes[id], name) && !waiting.has(name)) {
+      } else if (!readmeNames(readmes[id], name)) {
         problems.push(
           `${id} exports the helper ${name} and ${id}/README.md does not name it — add a line ` +
             `that names it in code, \`${name}\``,
@@ -242,16 +269,6 @@ export function coverageProblems(
         )
       } else if (demoed.has(name)) {
         problems.push(`${id}'s ${name} has a card, so its COMPONENTS_WITHOUT_CARD entry is stale`)
-      }
-    }
-
-    for (const name of waiting) {
-      if (!exported.has(name)) {
-        problems.push(`${id} does not export ${name}, which README_PENDING names`)
-      } else if (component(name)) {
-        problems.push(`${id}'s ${name} is a component, so README_PENDING cannot excuse it`)
-      } else if (readmeNames(readmes[id], name)) {
-        problems.push(`${id}/README.md names ${name}, so its README_PENDING entry is stale`)
       }
     }
 

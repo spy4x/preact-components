@@ -8,7 +8,7 @@
 import { cn } from "@spy4x/preact-cn"
 import { IconChevronRight } from "@spy4x/preact-icons"
 import { CopyButton } from "@spy4x/preact-ui"
-import type { ComponentChildren, JSX } from "preact"
+import { type ComponentChildren, Fragment, type JSX } from "preact"
 import { InlineMarkdown } from "./markdown.tsx"
 import type { DemoProp } from "./registry.ts"
 
@@ -207,7 +207,12 @@ function PropsSummary(
         /* Below 28rem of card width (a phone, or a half-width card at 1024 px) a row turns into a
         two-column grid: name and type on the first line, the sentence under them at full width, so
         the sentence never shrinks to a word per line. The name takes at most half the row, so a long
-        one wraps rather than leaving its type no room; names and types wrap anywhere.
+        one wraps rather than leaving its type no room.
+        Names and types wrap with `break-word`, not `anywhere` (#400): `anywhere` lets a word break
+        when the table asks the cell for its narrowest size, so a wide table whose sentences are
+        long squeezed `text` into `tex`/`t`. `break-word` breaks a word only when it cannot fit a
+        line on its own. In the two-column grid `min-w-0` lets the name's column shrink below its
+        longest word, so a name longer than half the row still wraps at the half.
         `bg-transparent`: the preset paints a table in the dark palette with the surface colour
         (`theme/preset.css`, "Chrome the popup is painted by"), which would box the summary. */
       }
@@ -230,11 +235,11 @@ function PropsSummary(
             >
               <th
                 scope="row"
-                class="py-2 pr-4 font-mono text-xs font-semibold [overflow-wrap:anywhere] text-gray-950 dark:text-gray-50"
+                class="py-2 pr-4 font-mono text-xs font-semibold break-words text-gray-950 @max-md:min-w-0 dark:text-gray-50"
               >
-                {prop.name}
+                <NameWithBreaks name={prop.name} />
               </th>
-              <td class="py-2 pr-4 font-mono text-xs [overflow-wrap:anywhere] text-purple-800 @max-md:pr-0 dark:text-purple-200">
+              <td class="py-2 pr-4 font-mono text-xs break-words text-purple-800 @max-md:min-w-0 @max-md:pr-0 dark:text-purple-200">
                 {prop.type}
                 {prop.default === undefined
                   ? null
@@ -248,6 +253,26 @@ function PropsSummary(
         </tbody>
       </table>
     </div>
+  )
+}
+
+/**
+ * A prop name with a `<wbr>` before every camel-case hump, so a name too long for its column wraps
+ * where a reader sees a word end (`conflict`/`Removed`/`Message`) rather than mid-word (#400).
+ *
+ * @param props The name.
+ */
+function NameWithBreaks({ name }: { name: string }): JSX.Element {
+  const parts = name.split(/(?<=[a-z0-9])(?=[A-Z])/)
+  return (
+    <>
+      {parts.map((part, index) => (
+        <Fragment key={index}>
+          {index > 0 ? <wbr /> : null}
+          {part}
+        </Fragment>
+      ))}
+    </>
   )
 }
 

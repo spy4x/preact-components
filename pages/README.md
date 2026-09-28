@@ -12,12 +12,12 @@ workspace member only so it can import its sibling packages the way an app does.
 
 ## What runs at that URL
 
-| Piece             | Where it comes from                                                                                           |
-| ----------------- | ------------------------------------------------------------------------------------------------------------- |
-| The catalogue     | `UIGuide` from `@spy4x/preact-ui-guide`, unmodified — its navigation, one page at a time, and the deep links  |
-| The host page     | `src/app.tsx` — the colour-scheme and accent switches, and the address, version and tiles handed to the guide |
-| The styles        | `theme/tokens.css` + `theme/preset.css`, compiled by Tailwind into one stylesheet                             |
-| The interactivity | `src/+main.tsx`, one Preact island that hydrates the prerendered markup                                       |
+| Piece             | Where it comes from                                                                                                   |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------- |
+| The catalogue     | `UIGuide` from `@spy4x/preact-ui-guide`, unmodified — its navigation, one page at a time, and the deep links          |
+| The host page     | `src/app.tsx` — the colour-scheme and accent switches, and the address, version, author and tiles handed to the guide |
+| The styles        | `theme/tokens.css` + `theme/preset.css`, compiled by Tailwind into one stylesheet                                     |
+| The interactivity | `src/+main.tsx`, one Preact island that hydrates the prerendered markup                                               |
 
 Static files only. `index.html` ships the whole catalogue prerendered, so it reads with JavaScript
 off; the island is what makes the dropdowns open, the switches toggle, the icon filter filter, the

@@ -386,7 +386,10 @@ function CrudEditorDemo() {
 
 /** One association editor whose conflict port reports the row a new one would duplicate. */
 function AssociationEditorDemo() {
-  const { store } = makeAssociationStore()
+  // `useMemo` rather than a bare call: the caption below reads `rows`, so a save or a restore
+  // re-renders the card, and a fresh `makeAssociationStore()` on that render would drop the change.
+  const { store, rows } = useMemo(() => makeAssociationStore(), [])
+  const removed = rows.value.filter((row) => Boolean(row.deletedAt)).length
 
   return (
     <Stack>
@@ -407,6 +410,10 @@ function AssociationEditorDemo() {
       <Caption>
         Type <code>Paper supplier</code> for a duplicate, or <code>Ink supplier</code>{" "}
         for one that was removed.
+      </Caption>
+      <Caption e2e="association-rows">
+        The conflict port scans {rows.value.length} rows, {removed}{" "}
+        of them removed. A save adds one.
       </Caption>
     </Stack>
   )
@@ -453,7 +460,9 @@ function DeletionValidationDemo() {
 
 /** The list, its search box, the status filter and the per-row actions menu. */
 function CrudListDemo() {
-  const { store } = makeTeamStore()
+  // Memoized like the editor demos' stores: nothing re-renders this card today, but a bare call
+  // would silently reset the rows the first time something did.
+  const { store } = useMemo(() => makeTeamStore(), [])
   const query = useSignal("")
 
   return (

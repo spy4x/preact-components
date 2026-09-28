@@ -22,20 +22,27 @@
 
 import { cn } from "@spy4x/preact-cn"
 import { IconBars3, IconGitHub, IconMoon, IconSun, IconXMark } from "@spy4x/preact-icons"
-import { Button, buttonClasses } from "@spy4x/preact-ui/button"
-import { CopyBlock } from "@spy4x/preact-ui/copy-block"
-import { Cluster, Grid, Section, Stack } from "@spy4x/preact-ui/layout"
-import { Badge } from "@spy4x/preact-ui/badge"
+import { buttonClasses } from "@spy4x/preact-ui/button"
+import { Stack } from "@spy4x/preact-ui/layout"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useMemo, useRef, useState } from "preact/hooks"
 import { DEFAULT_CARD_LABELS, DemoCard, type DemoCardLabels, MissingDemoBanner } from "./card.tsx"
-import { IconGallery, iconNames } from "./icons.tsx"
-import { CatalogInstructions } from "./instructions.tsx"
+import { type GuideAuthor, GuideFooter } from "./footer.tsx"
+import { IconGallery } from "./icons.tsx"
 import { InlineMarkdown } from "./markdown.tsx"
+import {
+  DEFAULT_WHY,
+  defaultCardCount,
+  defaultIconCount,
+  defaultStats,
+  Overview,
+  type OverviewTotals,
+  type WhyFact,
+  type WhyFactId,
+} from "./overview.tsx"
 import { type MapTiles, MapTilesContext, OPENSTREETMAP_TILES } from "./map-tiles.ts"
 import {
   cardLabel,
-  catalogueNames,
   type CatalogueSection,
   classDemos,
   type Demo,
@@ -44,7 +51,6 @@ import {
   type GuidePageId,
   guidePages,
   missingDemos,
-  packagePages,
   type PartialDemoRegistry,
 } from "./registry.ts"
 import {
@@ -69,8 +75,10 @@ export type NavGroupId = (typeof navGroups)[number]["id"]
 
 /** Every string the shell prints that is not catalogue data. Each has an English default. */
 export interface UIGuideLabels {
-  /** The library's name: the header's and the overview's heading. Defaults to `"preact-components"`. */
+  /** The library's name: the header's, the overview's eyebrow and the footer's. Defaults to `"preact-components"`. */
   title?: string
+  /** The overview's heading: what the library is, in one line. */
+  headline?: string
   /** The line under the overview's heading. */
   tagline?: string
   /** The navigation's accessible name, and the phone dialog's. Defaults to `"Guide"`. */
@@ -105,8 +113,15 @@ export interface UIGuideLabels {
   card?: Partial<DemoCardLabels>
   /** What the search says when nothing matches. Defaults to `"Nothing matches that name."`. */
   searchEmpty?: string
-  /** The repository link's accessible name. Defaults to `"Source on GitHub"`. */
+  /**
+   * The header's repository link: its accessible name, and its words from `xl`. Defaults to
+   * `"Star on GitHub"`.
+   */
   repository?: string
+  /** The overview's repository button. Defaults to `"Star on GitHub"`. */
+  star?: string
+  /** The author link, in the header from `xl` and in the footer. Defaults to `"Made by <name>"`. */
+  madeBy?: (name: string) => string
   /** The right-hand list's heading. Defaults to `"On this page"`. */
   onThisPage?: string
   /** The theme switch's name in the light palette. Defaults to `"Switch to dark mode"`. */
@@ -119,23 +134,63 @@ export interface UIGuideLabels {
   lightMode?: string
   /** The overview's button to the first package page. Defaults to `"Browse components"`. */
   browse?: string
-  /** The overview's example heading. Defaults to `"A first example"`. */
+  /** The heading over the overview's live mini app. Defaults to `"See it in an app"`. */
   exampleHeading?: string
-  /** The overview example card's title. Defaults to `"Buttons and a badge"`. */
+  /** The mini app card's title. Defaults to `"A dashboard, built from the library"`. */
   exampleTitle?: string
-  /** The overview example card's sentence, in inline Markdown. */
+  /** The mini app card's sentence, in inline Markdown. */
   exampleSummary?: string
-  /** The overview example's copy control. Defaults to `"Copy the example code"`. */
+  /** The mini app's copy control. Defaults to `"Copy the dashboard's code"`. */
   copyExample?: string
+  /** The heading over the overview's "why" strip. Defaults to `"Why preact-components"`. */
+  whyHeading?: string
+  /** The "why" strip's facts, each a title and a sentence in inline Markdown. */
+  why?: Partial<Record<WhyFactId, WhyFact>>
+  /** The heading over "Get started". Defaults to `"Get started"`. */
+  startHeading?: string
+  /** The sentence under it. */
+  startLead?: string
+  /** The first step's title: the styles. Defaults to `"Add the styles"`. */
+  startStyles?: string
+  /** The first step's sentence, in inline Markdown. */
+  startStylesBody?: string
+  /** The theme install command's copy control. Defaults to `"Copy the theme install command"`. */
+  copyThemeInstall?: string
+  /** The link to the theme's README. Defaults to `"How to build the stylesheet"`. */
+  themeReadme?: string
+  /** The second step's title: a component in use. Defaults to `"Use a component"`. */
+  startUse?: string
+  /** The second step's sentence, in inline Markdown. */
+  startUseBody?: string
+  /** The usage snippet's copy control. Defaults to `"Copy the usage example"`. */
+  copyUsage?: string
+  /** The third step's title: the documentation. Defaults to `"Read on"`. */
+  startRead?: string
+  /** The third step's sentence, in inline Markdown. */
+  startReadBody?: string
+  /** The link to `docs/usage.md`. Defaults to `"Install and use"`. */
+  usageDoc?: string
+  /** A package's README link. Defaults to `"<package> README"`. */
+  readme?: (packageName: string) => string
+  /** The line beside the footer's name. */
+  footerNote?: string
+  /** The footer's repository link. Defaults to `"Source on GitHub"`. */
+  sourceCode?: string
+  /** The footer's link to the packages on JSR. Defaults to `"Packages on JSR"`. */
+  jsr?: string
+  /** The footer's licence link. Defaults to `"MIT licence"`. */
+  licence?: string
+  /** The words before the design credit's link. Defaults to `"Design system by"`. */
+  designBy?: string
   /** The overview's install command's copy control. Defaults to `"Copy the install command"`. */
   copyInstall?: string
   /** The overview's package grid heading. Defaults to `"Packages"`. */
   packagesHeading?: string
   /**
-   * The overview's line of totals. Defaults to
-   * `"<cards> live cards · <icons> icons · <packages> packages"`.
+   * The overview's line of totals, every one computed from the registry. Defaults to
+   * `"<components> components · <icons> icons · <packages> packages"`.
    */
-  stats?: (totals: { cards: number; icons: number; packages: number }) => string
+  stats?: (totals: OverviewTotals) => string
   /** An overview card's count of live cards. Defaults to `"<count> cards"`, and `"1 card"`. */
   cardCount?: (count: number) => string
   /** The icons page's overview card. Defaults to `"<count> icons"`. */
@@ -144,50 +199,79 @@ export interface UIGuideLabels {
   examplesComing?: string
 }
 
-const DEFAULT_LABELS: Required<Omit<UIGuideLabels, "navGroups" | "searchKinds" | "card">> & {
-  navGroups: Record<NavGroupId, string>
-  searchKinds: SearchKindWords
-  card: DemoCardLabels
-} = {
-  title: "preact-components",
-  tagline:
-    "Preact components, Tailwind styles and icons for Deno apps — every one running live in this guide, with the code next to it.",
-  nav: "Guide",
-  openNav: "Menu",
-  closeNav: "Close the guide navigation",
-  navGroups: {
-    start: "Start here",
-    packages: "Packages",
-  },
-  comingSoon: "Runnable examples for this package are coming. Its README documents it until then.",
-  skipToContent: "Skip to content",
-  search: "Search",
-  searchPlaceholder: "Search components…",
-  searchEmpty: "Nothing matches that name.",
-  closeSearch: "Close the search",
-  searchKinds: { page: "Page", component: "Component", classes: "Classes" },
-  searchGuidePlace: "Guide",
-  card: DEFAULT_CARD_LABELS,
-  repository: "Source on GitHub",
-  onThisPage: "On this page",
-  switchToDark: "Switch to dark mode",
-  switchToLight: "Switch to light mode",
-  darkMode: "Dark mode",
-  lightMode: "Light mode",
-  browse: "Browse components",
-  exampleHeading: "A first example",
-  exampleTitle: "Buttons and a badge",
-  exampleSummary:
-    "Components take props, render with the library's own classes, and are laid out by `Cluster` with its default gap.",
-  copyExample: "Copy the example code",
-  copyInstall: "Copy the install command",
-  packagesHeading: "Packages",
-  stats: ({ cards, icons, packages }) =>
-    `${cards} live cards · ${icons} icons · ${packages} packages`,
-  cardCount: (count) => `${count} ${count === 1 ? "card" : "cards"}`,
-  iconCount: (count) => `${count} icons`,
-  examplesComing: "Examples coming",
-}
+const DEFAULT_LABELS:
+  & Required<Omit<UIGuideLabels, "navGroups" | "searchKinds" | "card" | "why">>
+  & {
+    navGroups: Record<NavGroupId, string>
+    searchKinds: SearchKindWords
+    card: DemoCardLabels
+    why: Record<WhyFactId, WhyFact>
+  } = {
+    title: "preact-components",
+    headline: "Preact components that render on the server and work from the keyboard.",
+    tagline:
+      "Components, charts, Tailwind styles and icons for Deno apps. Every one runs live in this guide, with its code one click away.",
+    nav: "Guide",
+    openNav: "Menu",
+    closeNav: "Close the guide navigation",
+    navGroups: {
+      start: "Start here",
+      packages: "Packages",
+    },
+    comingSoon:
+      "Runnable examples for this package are coming. Its README documents it until then.",
+    skipToContent: "Skip to content",
+    search: "Search",
+    searchPlaceholder: "Search components…",
+    searchEmpty: "Nothing matches that name.",
+    closeSearch: "Close the search",
+    searchKinds: { page: "Page", component: "Component", classes: "Classes" },
+    searchGuidePlace: "Guide",
+    card: DEFAULT_CARD_LABELS,
+    repository: "Star on GitHub",
+    star: "Star on GitHub",
+    madeBy: (name) => `Made by ${name}`,
+    onThisPage: "On this page",
+    switchToDark: "Switch to dark mode",
+    switchToLight: "Switch to light mode",
+    darkMode: "Dark mode",
+    lightMode: "Light mode",
+    browse: "Browse components",
+    exampleHeading: "See it in an app",
+    exampleTitle: "A dashboard, built from the library",
+    exampleSummary:
+      "Every part of this frame is a component from these packages, running on local state: filter and sort the projects, run the checks for a toast, add a project in the dialog. The header's switches repaint it.",
+    copyExample: "Copy the dashboard's code",
+    copyInstall: "Copy the install command",
+    whyHeading: "Why preact-components",
+    why: DEFAULT_WHY,
+    startHeading: "Get started",
+    startLead: "The command above installs the components. Two more steps and a page renders.",
+    startStyles: "Add the styles",
+    startStylesBody:
+      "Components render against the theme's tokens and classes, compiled by Tailwind into your stylesheet.",
+    copyThemeInstall: "Copy the theme install command",
+    themeReadme: "How to build the stylesheet",
+    startUse: "Use a component",
+    startUseBody:
+      "Import it, pass props. It renders on the server and hydrates in the browser like any Preact component.",
+    copyUsage: "Copy the usage example",
+    startRead: "Read on",
+    startReadBody:
+      "Each package's README lists every component and helper it exports, with its props.",
+    usageDoc: "Install and use",
+    readme: (packageName) => `${packageName} README`,
+    footerNote: "— open-source Preact components for Deno apps.",
+    sourceCode: "Source on GitHub",
+    jsr: "Packages on JSR",
+    licence: "MIT licence",
+    designBy: "Design system by",
+    packagesHeading: "Packages",
+    stats: defaultStats,
+    cardCount: defaultCardCount,
+    iconCount: defaultIconCount,
+    examplesComing: "Examples coming",
+  }
 
 /** The shell's labels with every default filled in. */
 type Labels = typeof DEFAULT_LABELS
@@ -240,8 +324,17 @@ export interface UIGuideProps {
   labels?: UIGuideLabels
   /** The version the header shows beside the name, e.g. `"0.1.2"`. Left out, none is shown. */
   version?: string
-  /** The repository the header links to. Left out, there is no link. */
+  /**
+   * The repository the header, the overview and the footer link to ("Star on GitHub"), and the
+   * base of the overview's README and licence links. Left out, there is no repository link, and the
+   * README links go to each package's page on JSR.
+   */
   repository?: string
+  /**
+   * Who made the library: the header (from `xl`) and the footer link to them as "Made by <name>".
+   * Left out, neither does.
+   */
+  author?: GuideAuthor
   /** The command the overview offers to copy. Defaults to `"deno add jsr:@spy4x/preact-ui"`. */
   install?: string
   /**
@@ -280,6 +373,7 @@ export function UIGuide(
     labels: labelOverrides,
     version,
     repository,
+    author,
     install = "deno add jsr:@spy4x/preact-ui",
     colorScheme,
     actions,
@@ -294,6 +388,7 @@ export function UIGuide(
     navGroups: { ...DEFAULT_LABELS.navGroups, ...labelOverrides?.navGroups },
     searchKinds: { ...DEFAULT_LABELS.searchKinds, ...labelOverrides?.searchKinds },
     card: { ...DEFAULT_LABELS.card, ...labelOverrides?.card },
+    why: { ...DEFAULT_LABELS.why, ...labelOverrides?.why },
   }
   const route = parseRoute(hash ?? "")
 
@@ -458,6 +553,18 @@ export function UIGuide(
             </a>
             <div class="ml-auto flex items-center gap-2">
               <GuideSearch entries={entries} labels={labels} go={go} />
+              {author
+                ? (
+                  <a
+                    href={author.href}
+                    rel="noreferrer"
+                    class="hidden text-sm text-gray-600 hover:text-gray-950 xl:inline dark:text-gray-400 dark:hover:text-gray-50"
+                    data-e2e="ui-guide-author"
+                  >
+                    {labels.madeBy(author.name)}
+                  </a>
+                )
+                : null}
               {repository
                 ? (
                   <a
@@ -466,8 +573,10 @@ export function UIGuide(
                     aria-label={labels.repository}
                     title={labels.repository}
                     class={buttonClasses("ghost", "sm")}
+                    data-e2e="ui-guide-repository"
                   >
                     <IconGitHub class="size-5" />
+                    <span class="hidden xl:inline">{labels.repository}</span>
                   </a>
                 )
                 : null}
@@ -559,6 +668,7 @@ export function UIGuide(
                       registry={registry}
                       follow={follow}
                       install={install}
+                      repository={repository}
                       copy={copy}
                     />
                   )
@@ -591,6 +701,7 @@ export function UIGuide(
             )
             : null}
         </div>
+        <GuideFooter labels={labels} repository={repository} author={author} />
       </div>
     </MapTilesContext.Provider>
   )
@@ -854,122 +965,6 @@ function OnThisPage(
         ))}
       </ul>
     </nav>
-  )
-}
-
-/** The overview's live example: what a reader writes first, and what it draws. */
-const FIRST_EXAMPLE = `import { Badge, Button, Cluster } from "@spy4x/preact-ui"
-
-<Cluster>
-  <Button>Save changes</Button>
-  <Button variant="outline">Cancel</Button>
-  <Badge text="Draft" color="purple" />
-</Cluster>`
-
-/** The landing page: what the library is, how to install it, one example, and the packages. */
-function Overview(
-  { labels, registry, follow, install, copy }: {
-    labels: Labels
-    registry: PartialDemoRegistry
-    follow: GuideNavProps["follow"]
-    install: string
-    copy?: (text: string) => void | Promise<void>
-  },
-) {
-  const cards = catalogueNames.filter((name) => name in registry).length
-  const firstPage = packagePages[0]
-  return (
-    <Stack gap="2xl">
-      <header class="flex flex-col gap-6">
-        <Stack gap="sm">
-          <h1 class="text-4xl font-bold tracking-tight text-gray-950 sm:text-5xl dark:text-gray-50">
-            {labels.title}
-          </h1>
-          <p class="max-w-2xl text-lg text-gray-600 dark:text-gray-300">{labels.tagline}</p>
-        </Stack>
-        <CopyBlock
-          text={install}
-          copy={copy}
-          copyLabel={labels.copyInstall}
-          class="max-w-md bg-white dark:bg-gray-800/60"
-        />
-        <Cluster>
-          <a
-            href={pageHref(firstPage.id)}
-            onClick={(event) => follow(pageHref(firstPage.id), event)}
-            class={buttonClasses("primary", "md")}
-          >
-            {labels.browse}
-          </a>
-          <p class="text-sm text-gray-600 dark:text-gray-400">
-            {labels.stats({ cards, icons: iconNames.length, packages: packagePages.length })}
-          </p>
-        </Cluster>
-      </header>
-
-      <Section as="section" title={labels.exampleHeading}>
-        <DemoCard
-          name="overview-example"
-          anchorId="overview-example"
-          label="First example"
-          copyLabel={labels.copyExample}
-          labels={labels.card}
-          title={labels.exampleTitle}
-          summary={labels.exampleSummary}
-          snippet={FIRST_EXAMPLE}
-          copy={copy}
-          wide
-        >
-          <Cluster>
-            <Button>Save changes</Button>
-            <Button variant="outline">Cancel</Button>
-            <Badge text="Draft" color="purple" />
-          </Cluster>
-        </DemoCard>
-      </Section>
-
-      <Section as="section" title={labels.packagesHeading}>
-        <Grid as="ul" minColumnWidth="lg">
-          {packagePages.map((page) => {
-            const count = page.sections.reduce(
-              (total, section) => total + section.names.filter((name) => name in registry).length,
-              0,
-            )
-            const href = pageHref(page.id)
-            return (
-              <li key={page.id} class="min-w-0">
-                <a
-                  href={href}
-                  onClick={(event) => follow(href, event)}
-                  class="flex h-full flex-col gap-2 rounded-xl border border-gray-200 bg-white p-4 shadow-xs transition-colors hover:border-purple-400 sm:p-6 dark:border-gray-700/80 dark:bg-gray-800/60 dark:hover:border-purple-500"
-                >
-                  <span class="flex flex-wrap items-baseline justify-between gap-2">
-                    <span class="text-base font-semibold text-gray-950 dark:text-gray-50">
-                      {page.title}
-                    </span>
-                    <span class="text-xs text-gray-500 dark:text-gray-400">
-                      {page.id === "icons"
-                        ? labels.iconCount(iconNames.length)
-                        : count > 0
-                        ? labels.cardCount(count)
-                        : labels.examplesComing}
-                    </span>
-                  </span>
-                  <span class="font-mono text-xs text-purple-700 dark:text-purple-300">
-                    {page.packageName}
-                  </span>
-                  <span class="text-sm text-gray-600 dark:text-gray-300">
-                    <InlineMarkdown text={page.summary} />
-                  </span>
-                </a>
-              </li>
-            )
-          })}
-        </Grid>
-      </Section>
-
-      <CatalogInstructions />
-    </Stack>
   )
 }
 

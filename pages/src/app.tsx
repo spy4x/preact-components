@@ -25,7 +25,7 @@ import {
 import { useEffect, useState } from "preact/hooks"
 import { AccentSwitch } from "./accent-switch.tsx"
 import { DataTableSortDemo } from "./data-table-sort.tsx"
-import { LOCAL_MAP_TILES_FLAG, PAGE_TITLE, REPOSITORY } from "./site.ts"
+import { AUTHOR, LOCAL_MAP_TILES_FLAG, PAGE_TITLE, REPOSITORY } from "./site.ts"
 import { UrlFilterDemo } from "./url-filters.tsx"
 
 /** Storage key shared with the bootstrap script in `<head>` (`document.tsx`). */
@@ -98,6 +98,7 @@ export function App({ initialHash, version }: AppProps) {
         onRouteChange={titleDocument}
         version={version}
         repository={REPOSITORY}
+        author={AUTHOR}
         colorScheme={colorScheme}
         actions={<AccentSwitch />}
         contentAs="main"
