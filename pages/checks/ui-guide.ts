@@ -53,6 +53,9 @@ export async function uiGuideChecks(devtools: Devtools): Promise<void> {
   for (const [width, height] of [[1440, 900], [1024, 800], [390, 844]] as const) {
     await withViewport(devtools, width, height, () => propNamesCheck(devtools, width))
   }
+  for (const [width, height] of [[1440, 900], [390, 844]] as const) {
+    await withViewport(devtools, width, height, () => overviewCodeCheck(devtools, width))
+  }
   // Before the keyboard checks below, which add rows to the app it reads.
   await miniAppServedTextCheck(devtools)
   for (const [width, height] of [[1440, 900], [390, 844]] as const) {
@@ -1643,5 +1646,99 @@ async function miniAppServedTextCheck(devtools: Devtools): Promise<void> {
     texts.served === texts.live
       ? `${texts.live.length} characters`
       : whereTextsDiffer(texts.served, texts.live),
+  )
+}
+
+/**
+ * #400 review: the overview's code reads whole. No copy control sits on top of the code it copies;
+ * no box clips code without letting it scroll; every install command stays on one line and fits
+ * its box; and the
+ * "Get started" snippet fits its box without scrolling, a phone's included. The live demo's own
+ * canvas is left out: it is the app, not the page's code.
+ */
+async function overviewCodeCheck(devtools: Devtools, width: number): Promise<void> {
+  await openGuidePage(devtools, "overview")
+  const read = await devtools.evaluate<{
+    buttons: number
+    blocks: number
+    commands: number
+    faults: string[]
+  }>(`(() => {
+    const root = document.querySelector('[data-e2e="ui-guide-overview"]')
+    const inDemo = (element) => element.closest('[data-card-part="demo"]') !== null
+    // The text's boxes, cut to what its nearest scrolling box shows: text scrolled out of view is
+    // not covered by a control drawn beside that box.
+    const textRects = (element) => {
+      let clip = null
+      for (let node = element; node && node !== root; node = node.parentElement) {
+        if (getComputedStyle(node).overflowX !== "visible") { clip = node.getBoundingClientRect(); break }
+      }
+      const cut = (rect) => clip
+        ? new DOMRect(
+          Math.max(rect.left, clip.left),
+          rect.top,
+          Math.max(0, Math.min(rect.right, clip.right) - Math.max(rect.left, clip.left)),
+          rect.height,
+        )
+        : rect
+      const rects = []
+      const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const range = document.createRange()
+        range.selectNodeContents(node)
+        rects.push(...[...range.getClientRects()].map(cut).filter((rect) => rect.width > 0))
+      }
+      return rects
+    }
+    const overlaps = (a, b) =>
+      a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1
+    const faults = []
+    // Each copy control against the code of the box it belongs to.
+    const buttons = [...root.querySelectorAll('button[aria-label^="Copy"]')].filter((b) => !inDemo(b))
+    for (const button of buttons) {
+      let box = button.parentElement
+      while (box && box !== root && !box.querySelector("code")) box = box.parentElement
+      const code = box && box !== root ? [...box.querySelectorAll("code")] : []
+      if (code.length === 0) { faults.push(button.getAttribute("aria-label") + ": no code beside it"); continue }
+      const own = button.getBoundingClientRect()
+      if (code.some((each) => textRects(each).some((rect) => overlaps(rect, own)))) {
+        faults.push(button.getAttribute("aria-label") + " covers its code")
+      }
+    }
+    // A box that cuts code off must let it scroll.
+    const blocks = [...root.querySelectorAll("pre, code")].filter((b) => !inDemo(b))
+    for (const block of blocks) {
+      for (let node = block; node && node !== root; node = node.parentElement) {
+        const style = getComputedStyle(node)
+        if (node.scrollWidth <= node.clientWidth + 1 || style.display === "inline") continue
+        if (!["auto", "scroll"].includes(style.overflowX)) {
+          faults.push((block.textContent ?? "").slice(0, 30) + " is clipped by a " + node.tagName.toLowerCase() + " that does not scroll")
+        }
+        break
+      }
+    }
+    // Commands on one line.
+    const commands = [...root.querySelectorAll("code")].filter((c) => /^deno add /.test(c.textContent ?? ""))
+    for (const command of commands) {
+      const lines = new Set(textRects(command).map((rect) => Math.round(rect.top)))
+      if (lines.size !== 1) faults.push(command.textContent + " breaks over " + lines.size + " lines")
+      if (command.scrollWidth > command.clientWidth + 1) {
+        faults.push(command.textContent + " is wider than its box by " + (command.scrollWidth - command.clientWidth) + "px")
+      }
+    }
+    // The snippet fits.
+    const snippet = root.querySelector('[data-e2e="ui-guide-usage"] pre')
+    if (!snippet) faults.push("no usage snippet")
+    else if (snippet.scrollWidth > snippet.clientWidth + 1) {
+      faults.push("the usage snippet scrolls by " + (snippet.scrollWidth - snippet.clientWidth) + "px")
+    }
+    return { buttons: buttons.length, blocks: blocks.length, commands: commands.length, faults }
+  })()`)
+  check(
+    `at ${width}px the overview's code reads whole: no copy button covers it, nothing clips it, commands stay on one line`,
+    read.buttons >= 3 && read.commands >= 2 && read.faults.length === 0,
+    read.faults.length === 0
+      ? `${read.buttons} copy controls, ${read.blocks} code blocks, ${read.commands} commands`
+      : read.faults.join("; "),
   )
 }

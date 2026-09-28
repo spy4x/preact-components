@@ -39,14 +39,19 @@ import {
 } from "./registry.ts"
 import { pageHref } from "./routes.ts"
 
+/** This package's own directory: the guide is published beside the packages it shows. */
+export const GUIDE_PACKAGE_ID = "ui-guide"
+
 /**
- * Every package a reader can install, in the order the guide lists them: the packages with a page,
- * then the helper packages that have none. Derived, so a new page or helper package is counted and
- * linked without a second edit.
+ * Every package the library publishes, in the order the guide lists them: the packages with a page,
+ * then the helper packages that have none, then the guide itself. Derived from the registry, so a
+ * new page or helper package is counted and linked without a second edit; `overview.test.tsx` holds
+ * it to the workspace's own `deno.json` files.
  */
 export const libraryPackageIds: readonly string[] = [
   ...packagePages.map((page) => page.id),
   ...helperPackageIds.filter((id) => !packagePages.some((page) => page.id === id)),
+  GUIDE_PACKAGE_ID,
 ]
 
 /** Where every package is published: the scope's page on JSR lists them all. */
@@ -60,7 +65,7 @@ export interface OverviewTotals {
   components: number
   /** Glyphs the icon package exports. */
   icons: number
-  /** Packages a reader can install ({@link libraryPackageIds}). */
+  /** Packages the library publishes ({@link libraryPackageIds}), this guide's included. */
   packages: number
 }
 
@@ -172,14 +177,14 @@ export const DEFAULT_WHY: Record<WhyFactId, WhyFact> = {
       "Key presses, focus moves, dialogs and toasts are driven in headless Chromium on every pull request, not assumed from the markup.",
   },
   dependencies: {
-    title: "No third-party UI kit",
+    title: "No third-party component library",
     body:
-      "No Radix, Headless UI or Material underneath: Preact, signals and Tailwind. Everything else is written, and tested, here.",
+      "No Radix, Headless UI or Material underneath. Every component's markup, keyboard handling and focus are written, and tested, here.",
   },
   theming: {
     title: "Themed by tokens",
     body:
-      "Set `--color-primary` and every component follows, in light and dark. Nothing is painted with a colour written into a class.",
+      "Set `--color-primary` and the components' accent follows, in light and dark: buttons, switches, tabs, focus rings. Status colours stay fixed on purpose.",
   },
   licence: {
     title: "MIT licensed",
@@ -198,17 +203,31 @@ const WHY_ICONS: Record<WhyFactId, ComponentType<{ class?: string }>> = {
   licence: IconDocumentText,
 }
 
-/** The one usage snippet "Get started" shows. */
-export const USAGE_SNIPPET = `import { Badge, Button, Cluster } from "@spy4x/preact-ui"
+/**
+ * The one usage snippet "Get started" shows. Its lines are kept short enough to fit a phone's
+ * column without scrolling (`pages/checks/ui-guide.ts` measures it at 390 px).
+ */
+export const USAGE_SNIPPET = `import {
+  Badge,
+  Button,
+  Cluster,
+} from "@spy4x/preact-ui"
 
-export function Toolbar({ onSave }: { onSave: () => void }) {
+type Props = { onSave: () => void }
+
+function Toolbar({ onSave }: Props) {
   return (
     <Cluster>
-      <Button onClick={onSave}>Save</Button>
+      <Button onClick={onSave}>
+        Save
+      </Button>
       <Badge text="Draft" />
     </Cluster>
   )
 }`
+
+/** The file name over the usage snippet. */
+const USAGE_FILE = "toolbar.tsx"
 
 /** The command "Get started" offers for the styles. */
 export const THEME_INSTALL = "deno add jsr:@spy4x/preact-theme"
@@ -313,6 +332,7 @@ export function Overview(
         </Cluster>
         <CopyBlock
           text={install}
+          singleLine
           copy={copy}
           copyLabel={labels.copyInstall}
           class="max-w-md bg-white dark:bg-gray-800/60"
@@ -371,43 +391,50 @@ export function Overview(
         description={labels.startLead}
         data-overview-part="start"
       >
-        <Grid as="ol" minColumnWidth="lg">
-          <Step number={1} title={labels.startStyles}>
-            <p class={cn("text-sm", MUTED)}>
-              <InlineMarkdown text={labels.startStylesBody} />
-            </p>
+        <ol class="flex flex-col gap-4">
+          <Step
+            number={1}
+            title={labels.startStyles}
+            body={labels.startStylesBody}
+            footer={
+              <a href={readmeHref("theme", repository)} class={cn("text-sm", LINK)}>
+                {labels.themeReadme}
+              </a>
+            }
+          >
             <CopyBlock
               text={THEME_INSTALL}
+              singleLine
               copy={copy}
               copyLabel={labels.copyThemeInstall}
-              class="bg-gray-50 dark:bg-gray-900/60"
+              class="bg-gray-50 max-sm:[&_code]:text-xs dark:bg-gray-900/60"
             />
-            <a href={readmeHref("theme", repository)} class={cn("text-sm", LINK)}>
-              {labels.themeReadme}
-            </a>
           </Step>
-          <Step number={2} title={labels.startUse}>
-            <p class={cn("text-sm", MUTED)}>
-              <InlineMarkdown text={labels.startUseBody} />
-            </p>
-            <div class="relative min-w-0" data-e2e="ui-guide-usage">
-              <pre class="overflow-x-auto rounded-lg bg-gray-950 p-4 pr-12 text-xs leading-relaxed text-gray-100 dark:bg-black/40"><code>{USAGE_SNIPPET}</code></pre>
-              <CopyButton
-                textToCopy={USAGE_SNIPPET}
-                copy={copy}
-                copyLabel={labels.copyUsage}
-                class="absolute top-2 right-2 text-gray-300 hover:text-white"
-              />
+          <Step number={2} title={labels.startUse} body={labels.startUseBody}>
+            <div
+              class="min-w-0 overflow-hidden rounded-lg bg-gray-950 text-gray-100 dark:bg-black/40"
+              data-e2e="ui-guide-usage"
+            >
+              <div class="flex items-center justify-between gap-2 border-b border-white/10 py-1 pr-2 pl-4">
+                <span class="font-mono text-xs text-gray-400">{USAGE_FILE}</span>
+                <CopyButton
+                  textToCopy={USAGE_SNIPPET}
+                  copy={copy}
+                  copyLabel={labels.copyUsage}
+                  class="text-gray-300 hover:bg-white/10 hover:text-white"
+                />
+              </div>
+              <pre class="overflow-x-auto p-4 text-xs leading-relaxed"><code>{USAGE_SNIPPET}</code></pre>
             </div>
           </Step>
-          <Step number={3} title={labels.startRead}>
-            <p class={cn("text-sm", MUTED)}>
-              <InlineMarkdown text={labels.startReadBody} />
-            </p>
-            <ul class="flex flex-col gap-1 text-sm" data-e2e="ui-guide-readmes">
+          <Step number={3} title={labels.startRead} body={labels.startReadBody}>
+            <ul
+              class="grid gap-x-6 gap-y-2 text-sm @2xl:grid-cols-2"
+              data-e2e="ui-guide-readmes"
+            >
               {repository
                 ? (
-                  <li>
+                  <li class="@2xl:col-span-2">
                     <a
                       href={repositoryFile(repository, "docs/usage.md")}
                       class={cn("inline-flex items-center gap-2", LINK)}
@@ -419,15 +446,18 @@ export function Overview(
                 )
                 : null}
               {libraryPackageIds.map((id) => (
-                <li key={id}>
-                  <a href={readmeHref(id, repository)} class={cn("font-mono text-xs", LINK)}>
+                <li key={id} class="min-w-0">
+                  <a
+                    href={readmeHref(id, repository)}
+                    class={cn("font-mono text-xs break-words", LINK)}
+                  >
                     {labels.readme(`@spy4x/preact-${id}`)}
                   </a>
                 </li>
               ))}
             </ul>
           </Step>
-        </Grid>
+        </ol>
       </Section>
 
       <Section as="section" title={labels.packagesHeading} data-overview-part="packages">
@@ -470,28 +500,46 @@ export function Overview(
         </Grid>
       </Section>
 
-      <CatalogInstructions />
+      <div data-overview-part="rules">
+        <CatalogInstructions />
+      </div>
     </Stack>
   )
 }
 
-/** One numbered step of "Get started": a card with its number, title and content. */
+/**
+ * One numbered step of "Get started": a card with its number, title and sentence beside what the
+ * step hands over (a command, a snippet, the links), stacked on a narrow column. Full width, so a
+ * command and a snippet get the room their longest line needs.
+ */
 function Step(
-  { number, title, children }: { number: number; title: string; children: JSX.Element[] },
+  { number, title, body, footer, children }: {
+    number: number
+    title: string
+    body: string
+    footer?: JSX.Element
+    children: JSX.Element
+  },
 ): JSX.Element {
   return (
-    <li class="flex min-w-0 flex-col gap-4 rounded-xl border border-gray-200 bg-white p-4 sm:p-6 dark:border-gray-700/80 dark:bg-gray-800/60">
-      <span class="flex items-center gap-2">
-        <span
-          aria-hidden="true"
-          class="flex size-7 shrink-0 items-center justify-center rounded-full bg-purple-100 text-sm font-semibold text-purple-800 dark:bg-purple-950 dark:text-purple-200"
-          data-step={number}
-        >
-          {number}
+    <li class="grid min-w-0 gap-4 rounded-xl border border-gray-200 bg-white p-4 sm:p-6 @3xl:grid-cols-[16rem_minmax(0,1fr)] @3xl:gap-8 dark:border-gray-700/80 dark:bg-gray-800/60">
+      <div class="flex min-w-0 flex-col gap-2">
+        <span class="flex items-center gap-2">
+          <span
+            aria-hidden="true"
+            class="flex size-7 shrink-0 items-center justify-center rounded-full bg-purple-100 text-sm font-semibold text-purple-800 dark:bg-purple-950 dark:text-purple-200"
+            data-step={number}
+          >
+            {number}
+          </span>
+          <span class="font-semibold text-gray-950 dark:text-gray-50">{title}</span>
         </span>
-        <span class="font-semibold text-gray-950 dark:text-gray-50">{title}</span>
-      </span>
-      {children}
+        <p class={cn("text-sm", MUTED)}>
+          <InlineMarkdown text={body} />
+        </p>
+        {footer}
+      </div>
+      <div class="min-w-0 self-center">{children}</div>
     </li>
   )
 }

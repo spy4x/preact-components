@@ -4,6 +4,7 @@
  * Keyboard, focus and layout are `pages/checks/ui-guide.ts`'s, in a real browser.
  */
 
+import { parse } from "@std/jsonc"
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
@@ -24,7 +25,7 @@ import {
   helperPackageIds,
   type PartialDemoRegistry,
 } from "./registry.ts"
-import { UIGuide } from "./shell.tsx"
+import { UIGuide, type UIGuideLabels } from "./shell.tsx"
 
 const REPOSITORY = "https://example.com/owner/library"
 const AUTHOR = { name: "A. Maker", href: "https://example.com/maker" }
@@ -46,18 +47,22 @@ function componentCards(registry: PartialDemoRegistry): number {
   return count
 }
 
-/** The overview's own markup: from its root to the end of the page column. */
+/** The overview's own markup and the footer's: from the overview's root to the footer's end. */
 function overviewOf(html: string): string {
   const start = html.indexOf(`data-e2e="ui-guide-overview"`)
-  const end = html.indexOf(`data-e2e="ui-guide-footer"`)
+  const footer = html.indexOf(`data-e2e="ui-guide-footer"`)
   expect(start, "the overview is rendered").toBeGreaterThan(-1)
-  expect(end, "the footer follows it").toBeGreaterThan(start)
-  return html.slice(html.lastIndexOf("<", start), end)
+  expect(footer, "the footer follows it").toBeGreaterThan(start)
+  return html.slice(html.lastIndexOf("<", start), html.indexOf("</footer>", footer) + 9)
 }
 
-/** The text of the element that opens at `marker`, found by counting its tag's nesting. */
-function elementText(html: string, marker: string): string {
+/**
+ * Where the element that opens at `marker` starts and ends in `html`, found by counting its tag's
+ * nesting.
+ */
+function elementSpan(html: string, marker: string): [number, number] {
   const at = html.indexOf(marker)
+  if (at < 0) throw new Error(`no ${marker}`)
   const open = html.lastIndexOf("<", at)
   const tag = /^<([a-z0-9]+)/.exec(html.slice(open))![1]
   let depth = 0
@@ -65,23 +70,33 @@ function elementText(html: string, marker: string): string {
   pattern.lastIndex = open
   for (let match = pattern.exec(html); match; match = pattern.exec(html)) {
     depth += match[1] ? -1 : 1
-    if (depth === 0) return html.slice(open, match.index).replace(/<[^>]+>/g, "")
+    if (depth === 0) return [open, html.indexOf(">", match.index) + 1]
   }
   throw new Error(`no end for ${marker}`)
 }
 
+/** The text of the element that opens at `marker`. */
+function elementText(html: string, marker: string): string {
+  const [from, to] = elementSpan(html, marker)
+  return html.slice(from, to).replace(/<[^>]+>/g, "")
+}
+
 /**
- * The overview's words with the computed counts, the code and the live demo taken out: what is left
- * is prose a person wrote, which must carry no number.
+ * Every word the overview and the footer print, with only these taken out: the computed counts
+ * (the totals line, each tile's count, the step numbers), the live demo's own canvas (its rows, KPI
+ * values and chart labels are demo data), code blocks, and the class names the design rules list
+ * in code. Everything else — every heading, card title and summary, inline code in a sentence, the
+ * footer — is prose a person wrote, which must carry no number.
  */
 function handWrittenText(overview: string): string {
-  const app = [
-    overview.indexOf(`data-overview-part="app"`),
-    overview.indexOf(`data-overview-part="why"`),
-  ]
-  return (overview.slice(0, app[0]) + overview.slice(app[1]))
+  const [demoFrom, demoTo] = elementSpan(overview, `data-card-part="demo"`)
+  let html = overview.slice(0, demoFrom) + overview.slice(demoTo)
+  const [rulesFrom, rulesTo] = elementSpan(html, `data-overview-part="rules"`)
+  html = html.slice(0, rulesFrom) +
+    html.slice(rulesFrom, rulesTo).replace(/<code[\s\S]*?<\/code>/g, "") +
+    html.slice(rulesTo)
+  return html
     .replace(/<pre[\s\S]*?<\/pre>/g, "")
-    .replace(/<code[\s\S]*?<\/code>/g, "")
     .replace(/<p [^>]*data-overview-stats[^>]*>[^<]*<\/p>/g, "")
     .replace(/<span [^>]*data-(?:count|step)=[^>]*>[^<]*<\/span>/g, "")
     // Attribute values are not words on the page: ids, classes and hrefs carry digits.
@@ -90,6 +105,11 @@ function handWrittenText(overview: string): string {
     // major version of Tailwind the theme is written for: a version, not a count.
     .replaceAll("@spy4x", "@scope")
     .replaceAll("Tailwind 4 ", "Tailwind ")
+}
+
+/** Every word with a digit in it. */
+function numbersIn(text: string): string[] {
+  return text.match(/[^\s]*\d[^\s]*/g) ?? []
 }
 
 describe("the overview's counts", () => {
@@ -115,11 +135,25 @@ describe("the overview's counts", () => {
     expect(overviewTotals(trimmed).components).toBe(componentCards(trimmed))
   })
 
-  it("counts every package a reader can install: each page's, then the helper packages", () => {
+  it("counts every package the workspace publishes: each page's, the helpers', the guide's", async () => {
+    const root = new URL("../", import.meta.url)
+    const workspace = parse(await Deno.readTextFile(new URL("deno.jsonc", root))) as {
+      workspace: string[]
+    }
+    const published: string[] = []
+    for (const member of workspace.workspace) {
+      const config = parse(
+        await Deno.readTextFile(new URL(`${member.replace(/^\.\//, "")}/deno.json`, root)),
+      ) as { name?: string }
+      if (config.name?.startsWith("@spy4x/preact-")) {
+        published.push(config.name.slice("@spy4x/preact-".length))
+      }
+    }
     const pages = guidePages.filter((page) => page.id !== "overview").map((page) => page.id)
     const helpersWithoutPage = helperPackageIds.filter((id) => !(pages as string[]).includes(id))
 
-    expect([...libraryPackageIds]).toEqual([...pages, ...helpersWithoutPage])
+    expect([...libraryPackageIds].sort()).toEqual(published.sort())
+    expect([...libraryPackageIds]).toEqual([...pages, ...helpersWithoutPage, "ui-guide"])
   })
 
   it("writes no number of its own into the English totals", () => {
@@ -147,15 +181,40 @@ describe("the overview's counts", () => {
     const words = handWrittenText(overviewOf(render(<UIGuide hash="#/" repository={REPOSITORY} />)))
 
     expect(words.length, "the overview's prose was read").toBeGreaterThan(500)
-    expect(words.match(/[^\s]*\d[^\s]*/g) ?? []).toEqual([])
+    for (
+      const heard of ["See it in an app", "A dashboard, built from the library", "MIT licence"]
+    ) {
+      expect(words, `reads ${heard}`).toContain(heard)
+    }
+    expect(numbersIn(words)).toEqual([])
   })
 
-  it("finds a number a person writes into the overview's words", () => {
-    const html = render(
-      <UIGuide hash="#/" labels={{ tagline: "Over 60 components for Deno apps." }} />,
-    )
+  it("finds a number a person writes anywhere in the overview's or the footer's words", () => {
+    const written: [string, UIGuideLabels][] = [
+      ["tagline", { tagline: "Over 61 components for Deno apps." }],
+      ["exampleHeading", { exampleHeading: "See 62 components in an app" }],
+      ["exampleTitle", { exampleTitle: "A dashboard of 63 parts" }],
+      ["exampleSummary", { exampleSummary: "These 64 parts are components." }],
+      ["whyHeading", { whyHeading: "Why 65 teams pick it" }],
+      ["a why fact's inline code", {
+        why: { standards: { title: "Web standards", body: "Over `66+` components." } },
+      }],
+      ["startLead", { startLead: "Done in 67 seconds." }],
+      ["footerNote", { footerNote: "— 68 open-source components." }],
+      ["jsr", { jsr: "69 packages on JSR" }],
+    ]
+    written.forEach(([where, labels], index) => {
+      const html = render(<UIGuide hash="#/" repository={REPOSITORY} labels={labels} />)
+      const found = numbersIn(handWrittenText(overviewOf(html)))
+      expect(found.some((word) => word.includes(String(61 + index))), where).toBe(true)
+    })
+  })
 
-    expect(handWrittenText(overviewOf(html)).match(/[^\s]*\d[^\s]*/g)).toEqual(["60"])
+  it("reads the live demo's own data as data, not as prose", () => {
+    const words = handWrittenText(overviewOf(render(<UIGuide hash="#/" />)))
+
+    expect(words).not.toContain(String(MINI_PROJECTS[0].builds))
+    expect(words).not.toContain("Atlas")
   })
 })
 

@@ -169,7 +169,7 @@ the footer, with no sales block. In order, `2xl` apart:
    when the host passes `repository`), the install line with its copy button, and the totals:
    components, icons and packages.
 2. **See it in an app.** One wide card, the same `DemoCard` every package page uses, whose demo is
-   a live mini app (`mini-app.tsx`): a framed dashboard with a status filter column (a row of
+   a live mini app (`mini-app.tsx`): a framed dashboard with a status filter (a labelled `role="group"` of toggle buttons, not a landmark) (a row of
    buttons below the frame's `@3xl`), `Kpi` tiles, a `LineChart`, a sortable `DataTable`, a "Run
    checks" button that raises a `Toastr` toast from `createToastStore`, and a "New project"
    `Modal` holding a `Field` form that adds a row. It runs on local state only, with neutral demo
@@ -178,18 +178,33 @@ the footer, with no sales block. In order, `2xl` apart:
 3. **Why preact-components.** Six plain facts, one tile each with an icon, a title and a sentence:
    web standards, server render then hydrate, keyboard and focus proven in a real browser, no
    third-party UI kit, themed by tokens, MIT licence. None carries a number.
-4. **Get started.** Three numbered steps: add the styles (the theme's install line, and a link to
-   its README's build step), use a component (one short snippet with a copy button), read on
-   (`docs/usage.md` and every package's README).
+4. **Get started.** Three numbered steps, each a full-width card: the step's number, title and
+   sentence on the left, what it hands over on the right (stacked below `@3xl`). Add the styles:
+   the theme's install line, one line that fits a phone, and a link to its README's build step. Use
+   a component: one snippet under a file-name bar that holds its copy button, so the button never
+   covers code, with lines short enough to fit a 390 px column without scrolling. Read on:
+   `docs/usage.md` and the README of every published package, the guide's own included.
+   `pages/checks/ui-guide.ts` holds all of it at 1440 and 390 px: no copy button over code, no
+   box that clips code without scrolling, every command on one line inside its box, the snippet
+   unscrolled.
 5. **Packages**: a grid of every package page, with its specifier, one plain sentence (`summary` in
    `registry.ts`, not the page's longer lead) and its card count. The tiles in a row share a height.
 6. **Design rules**: the theme's classes and page conventions, in one card.
 
 **Every number is computed.** The totals, each package tile's count and the "Get started" README
-list come from the registry, the icon set and `libraryPackageIds` (`overview.tsx`), never from a
-number in a sentence. `overview.test.tsx` renders the overview, removes the counts, the code and the
-live demo, and fails on any digit left in its words; it also calls the English count sentences with
-numbers no registry has, so a count written into one of them fails too.
+list come from the registry, the icon set and `libraryPackageIds` (`overview.tsx`: every package
+page, the helper packages, and the guide itself — every package the workspace publishes, which a
+test reads from the `deno.json` files), never from a number in a sentence. `overview.test.tsx`
+renders the overview and the footer and takes out only the computed counts, the step numbers, the
+live demo's own canvas (its rows, KPI values and chart labels are demo data), code blocks, and the
+class names the design rules list in code; any digit left in a heading, a card title or summary, an
+inline code span in a sentence or the footer fails it. It also calls the English count sentences
+with numbers no registry has, so a count written into one of them fails too.
+
+**The overview's own chrome stays purple**, like the rest of the guide's (see "Surfaces" above):
+the eyebrow, the links, the step numbers and the "why" icons. What the header's accent switch
+repaints is the library's components — the buttons, the mini app — which is how a reader tells the
+two apart.
 
 ## Footer
 
