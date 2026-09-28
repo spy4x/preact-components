@@ -89,10 +89,18 @@ function columnId<T, K extends Extract<keyof T, string>>(column: DataTableColumn
 }
 
 /**
- * Paging, all of it caller-owned like `sort` — see {@link DataTableProps.sort}. Omit the whole
- * object for an unpaged table.
+ * Where a {@link DataTable}'s rows are sorted and paged.
+ *
+ * - `"client"`, the default: `rows` is the whole set, and `DataTable` sorts it with `sortRows` and
+ *   slices out the current page itself.
+ * - `"server"`: something else — a server, a database query — already sorted and paged the rows.
+ *   `rows` is exactly the current page, rendered in the order given; `DataTable` never sorts or
+ *   slices it, and the pager is sized from {@link DataTableServerPaging.total}.
  */
-export interface DataTablePaging {
+export type DataTableMode = "client" | "server"
+
+/** What both paging shapes share: the caller-owned page, its size, and the pager's labels. */
+export interface DataTablePagingBase {
   /** Current page, `1`-based. Clamped into `1…pageCount` the same way `Pagination` clamps its own. */
   page: number
   /** Rows per page. */
@@ -105,36 +113,44 @@ export interface DataTablePaging {
   previousLabel?: string
   /** Text of the next control. Defaults to `"Next"`. */
   nextLabel?: string
-  /** Accessible name of one page number, as a function of that number. */
+  /** Accessible name of one page number, as a function of that number. Defaults to `"Page N"`. */
   pageLabel?: (page: number) => string
 }
 
 /**
- * Props of {@link DataTable}.
- *
- * `columns` and `rows` are what to show; `sort` and `paging` are the two pieces of state the
- * caller owns and `DataTable` only ever reads and requests changes to, exactly as `Pagination`'s
- * own `page` prop works. `caption` is the one required string, because it is the table's name and
- * only the caller knows it; everything else about presentation — `empty`, `captionHidden`,
- * `rowDataE2E`, `class` — has a default.
- *
- * `DataTable` sorts and pages client-side only: `rows` has to be the complete, unsorted set, and
- * `sortRows`' own collation runs even over rows a server already sorted. A caller whose rows are
- * paged by a server has no way to hand this component a `pageCount` for a page it cannot see the
- * rest of — a caller-supplied-`pageCount` mode is tracked as a follow-up
- * (github.com/spy4x/preact-components/issues/235), not built here.
+ * Client-mode paging, all of it caller-owned like `sort` — see {@link DataTableProps}. `DataTable`
+ * counts the pages from `rows` itself, so there is no `total` to give; omit the whole object for an
+ * unpaged table.
  */
-export interface DataTableProps<T, K extends Extract<keyof T, string>> {
+export interface DataTablePaging extends DataTablePagingBase {
+  /** Never present — client mode counts `rows`. A `total` here means `mode: "server"` was meant. */
+  total?: never
+}
+
+/**
+ * Server-mode paging: the same caller-owned page, plus how many rows the whole set holds, which
+ * only the caller knows because `rows` is one page of it.
+ */
+export interface DataTableServerPaging extends DataTablePagingBase {
+  /** Rows in the whole, unpaged set. The pager shows `ceil(total / pageSize)` pages. */
+  total: number
+}
+
+/** The props both modes share — see {@link DataTableProps}. */
+export interface DataTableBaseProps<T, K extends Extract<keyof T, string>> {
   /** Columns, in display order. */
   columns: readonly DataTableColumn<T, K>[]
-  /** Every row, unsorted and unpaged — `DataTable` applies both. */
+  /**
+   * The rows to show. In client mode every row, unsorted and unpaged — `DataTable` applies both;
+   * in server mode the current page only, already sorted, rendered as given.
+   */
   rows: readonly T[]
   /**
    * Sort rules, most significant first. The caller owns this state — a signal, a `useState`, a URL
    * parameter through `parseSort`/`serializeSort` — so it can persist across a reload or a
-   * navigation the way a page's other filters do. `DataTable` reads it, applies it with
-   * `sortRows` and writes the next value back through {@link onSortChange}; it holds no sort state
-   * of its own.
+   * navigation the way a page's other filters do. `DataTable` reads it for `aria-sort` and the
+   * header glyphs, applies it with `sortRows` in client mode, and writes the next value back
+   * through {@link onSortChange}; it holds no sort state of its own.
    */
   sort: readonly SortRule<K>[]
   /**
@@ -142,7 +158,8 @@ export interface DataTableProps<T, K extends Extract<keyof T, string>> {
    * `sort` is appended as the least significant rule rather than replacing what is there, so
    * pressing a second sortable header builds a multi-column sort with no modifier key: Tab to it
    * and press Space. Cycling a rule back off — asc → desc → off — is how a column already in the
-   * mix, primary or not, is removed; there is no separate "clear all" gesture here.
+   * mix, primary or not, is removed; there is no separate "clear all" gesture here. In server mode
+   * this is the caller's signal to fetch the newly sorted page.
    */
   onSortChange: (sort: SortRule<K>[]) => void
   /**
@@ -155,14 +172,51 @@ export interface DataTableProps<T, K extends Extract<keyof T, string>> {
   captionHidden?: boolean
   /** Shown instead of the body when `rows` is empty. Defaults to `<EmptyState title="No rows" />`. */
   empty?: ComponentChildren
-  /** Optional paging; omit for every row on one page. */
-  paging?: DataTablePaging
-  /** Identifies one row, for anything that needs to point at it. See {@link rowKeyAttribute}. */
+  /**
+   * Identifies one row: the Preact key of its `<tr>`, so a row's DOM and state follow it through a
+   * sort or a page turn, and the {@link rowKeyAttribute} stamp on its first cell. Must be distinct
+   * across `rows`.
+   */
   rowKey: (row: T) => string | number
   /** Sets `data-e2e` on every body row, forwarded to `Table`. */
   rowDataE2E?: string
   class?: string
 }
+
+/** Client mode: `DataTable` sorts and pages the whole row set — see {@link DataTableMode}. */
+export interface DataTableClientProps<T, K extends Extract<keyof T, string>>
+  extends DataTableBaseProps<T, K> {
+  /** `"client"`, or left out. */
+  mode?: "client"
+  /** Optional paging; omit for every row on one page. */
+  paging?: DataTablePaging
+}
+
+/** Server mode: `rows` is one page, already sorted — see {@link DataTableMode}. */
+export interface DataTableServerProps<T, K extends Extract<keyof T, string>>
+  extends DataTableBaseProps<T, K> {
+  mode: "server"
+  /** Optional paging, sized by `total`; omit when the rows given are the whole set. */
+  paging?: DataTableServerPaging
+}
+
+/**
+ * Props of {@link DataTable}, in one of two modes told apart by `mode` — see
+ * {@link DataTableMode}.
+ *
+ * `columns` and `rows` are what to show; `sort` and `paging` are the two pieces of state the
+ * caller owns and `DataTable` only ever reads and requests changes to, exactly as `Pagination`'s
+ * own `page` prop works. `caption` is the one required string, because it is the table's name and
+ * only the caller knows it; everything else about presentation — `empty`, `captionHidden`,
+ * `rowDataE2E`, `class`, the pager's labels — has an English default.
+ *
+ * The mode is a prop rather than something inferred from the shape of `paging`, because server
+ * mode changes what `rows` means even with no paging at all: a server-sorted list must not be
+ * sorted again by `sortRows`, whose collation need not match the server's.
+ */
+export type DataTableProps<T, K extends Extract<keyof T, string>> =
+  | DataTableClientProps<T, K>
+  | DataTableServerProps<T, K>
 
 const alignClasses: Record<DataTableColumnAlign, string> = {
   left: "text-left",
@@ -304,11 +358,10 @@ function bodyCell<T, K extends Extract<keyof T, string>>(
  * Attribute a row's first cell carries so a page — or a browser check — can find that row by the
  * identity {@link DataTableProps.rowKey} gives it, without depending on rendered cell text.
  *
- * `Table` keys its `<tr>`s by array position, not by a caller-supplied identity — extending that
- * is `ui/table.tsx`'s own change to make, tracked as a follow-up
- * (github.com/spy4x/preact-components/issues/234) rather than built here — so a sort or a page
- * turn that reorders the rows gives Preact nothing to reconcile a row's identity against. Stamping
- * the key on the DOM is what lets anything downstream tell rows apart by more than their position.
+ * The same key is `Table`'s `bodyKeys` entry for the row, so each `<tr>` is keyed by the row's
+ * identity rather than by its position: a sort or a page turn moves a row's DOM element, and
+ * anything a cell holds — a ticked checkbox, focus, a component's own state — along with the row.
+ * The attribute is what lets a page or a browser check point at a row without reading its text.
  */
 export const rowKeyAttribute = "data-row-key"
 
@@ -316,17 +369,19 @@ export const rowKeyAttribute = "data-row-key"
  * A sortable, optionally paged table: `Table`'s markup, `@spy4x/platform/universal/sort`'s sort
  * rules, one component joining them.
  *
- * `DataTable` sorts and pages `rows` itself — with `sortRows` and a plain slice — because it is
- * the one place already holding both the full row set and the rules to apply to it; asking every
- * caller to pre-sort and pre-slice its own rows would just move that pairing back out to the two
- * call sites the issue this component closes found doing exactly that by hand. What stays
- * caller-owned is the *state* — `sort` and `paging.page` — so it can live in a signal or a URL
- * parameter the way any other filter does; `DataTable` holds none of its own.
+ * In client mode, the default, `DataTable` sorts and pages `rows` itself — with `sortRows` and a
+ * plain slice — because it is the one place already holding both the full row set and the rules to
+ * apply to it; asking every caller to pre-sort and pre-slice its own rows would just move that
+ * pairing back out to the two call sites the issue this component closes found doing exactly that
+ * by hand. In server mode (`mode: "server"`) something else already did both: `rows` is the
+ * current page, rendered in the order given, and `paging.total` sizes the pager. Either way what
+ * stays caller-owned is the *state* — `sort` and `paging.page` — so it can live in a signal or a
+ * URL parameter the way any other filter does; `DataTable` holds none of its own.
  *
  * `paging.page` is clamped into `1…pageCount` the same way `Pagination` clamps its own `page`
- * prop, before it is used for both the slice and the pager it renders — a page past the end, or
+ * prop, before it is used for the pager and, in client mode, the slice — a page past the end, or
  * `0` or less, renders the nearest real page rather than an empty body beside a pager that
- * disagrees with it.
+ * disagrees with it. Server mode never slices, so there the clamp only reaches the pager.
  *
  * Every sortable header is a real `<button>`, so Tab, Space and Enter all reach it — see
  * `pages/checks/ui.ts`. `aria-sort` goes on the `<th>` of whichever data column or columns are in
@@ -336,7 +391,9 @@ export const rowKeyAttribute = "data-row-key"
  * is what a screen reader is told, the glyph is only ever a sighted hint.
  */
 export function DataTable<T, K extends Extract<keyof T, string>>(
-  {
+  props: DataTableProps<T, K>,
+): JSX.Element {
+  const {
     columns,
     rows,
     sort,
@@ -348,17 +405,22 @@ export function DataTable<T, K extends Extract<keyof T, string>>(
     rowKey,
     rowDataE2E,
     class: className,
-  }: DataTableProps<T, K>,
-): JSX.Element {
-  const sorted = sortRows([...rows], [...sort])
+  } = props
+  const server = props.mode === "server"
 
-  let visible = sorted
+  // Server mode: `rows` is already the sorted current page, rendered untouched.
+  const ordered = server ? rows : sortRows([...rows], [...sort])
+
+  let visible = ordered
   let currentPage: number | undefined
   let pageCount: number | undefined
   if (paging) {
-    pageCount = Math.ceil(sorted.length / paging.pageSize)
+    const total = props.mode === "server" && props.paging ? props.paging.total : ordered.length
+    pageCount = Math.ceil(total / paging.pageSize)
     currentPage = Math.max(1, Math.min(Math.max(pageCount, 1), Math.round(paging.page)))
-    visible = sorted.slice((currentPage - 1) * paging.pageSize, currentPage * paging.pageSize)
+    if (!server) {
+      visible = ordered.slice((currentPage - 1) * paging.pageSize, currentPage * paging.pageSize)
+    }
   }
 
   const headerSlot = (
@@ -367,10 +429,11 @@ export function DataTable<T, K extends Extract<keyof T, string>>(
     </>
   )
 
-  const bodySlots = visible.length > 0
-    ? visible.map((row) =>
+  const bodyKeys = visible.length > 0 ? visible.map(rowKey) : undefined
+  const bodySlots = bodyKeys !== undefined
+    ? visible.map((row, rowIndex) =>
       columns.map((column, index) =>
-        bodyCell(column, row, index === 0 ? String(rowKey(row)) : undefined)
+        bodyCell(column, row, index === 0 ? String(bodyKeys[rowIndex]) : undefined)
       )
     )
     : [
@@ -386,6 +449,7 @@ export function DataTable<T, K extends Extract<keyof T, string>>(
         captionClass={captionHidden ? "sr-only" : undefined}
         headerSlot={headerSlot}
         bodySlots={bodySlots}
+        bodyKeys={bodyKeys}
         rowDataE2E={rowDataE2E}
       />
       {paging && (
