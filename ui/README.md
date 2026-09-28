@@ -1096,6 +1096,155 @@ Helpers:
   for a key, given each column's length without it.
 - `defaultKanbanLabels` holds the English strings `labels` overrides.
 
+## Helpers
+
+The pure functions and constants behind the components, each importable from the package root or
+from the component's own subpath. Most exist so a rule can be unit-tested without a browser; the
+ones a caller has a use for say when. A line that says a helper is exported for the package's own
+components and tests means exactly that: nothing outside this package should build on it.
+
+### Avatar (`./avatar`)
+
+- `avatarFace({ src, failed, name })` picks which face an `Avatar` shows: `"image"` while `src` is
+  set and has not failed, else `"initials"` when `name` yields one, else `"icon"`. Use it to match
+  the same fallback chain in markup of your own.
+- `groupSplit(total, max)` splits a member count into `{ visible, overflow }`: how many avatars an
+  `AvatarGroup` draws and how many it counts behind its `+N` chip. The two always add up to the
+  total, and a negative or non-finite argument counts as `0`.
+- `groupLabel(label, total)` is an `AvatarGroup`'s accessible name, `"<label> (<total>)"`, with
+  `"Avatars"` standing in for a blank label.
+- `failedAfterSrcChange(previous, current, failed)` is exported for the package's own components and
+  tests: it keeps an avatar's "image failed" flag only while `src` stays the same URL.
+
+### ConfirmDialog (`./confirm-dialog`)
+
+- `labelOr(label, fallback)` returns the trimmed label, or `fallback` when the label is missing or
+  blank. It is how `ConfirmDialog` resolves its button labels, and a host app can resolve its own
+  translated strings the same way.
+- `CONFIRM_LABEL` (`"Confirm"`) and `CANCEL_LABEL` (`"Cancel"`) are the English defaults for the
+  confirming and cancelling actions.
+- `confirmVariant(tone)` maps a dialog's tone to its confirm button's variant: `"danger"` for a
+  destructive decision, `"primary"` otherwise. Use it to give the button that opens the dialog the
+  same variant.
+- `hasQuestion(body)` is exported for the package's own components and tests: it decides whether the
+  dialog's body has content to point `aria-describedby` at, looking through lists and fragments for
+  anything that renders.
+
+### Modal (`./modal`)
+
+- `backdropDismissesByDefault` is `true`: a click on the backdrop dismisses a `Modal` whose
+  `closeOnBackdrop` is left out.
+- `isBackdropClick({ target, dialog }, rect, x, y)` answers whether a click landed on a modal
+  `<dialog>`'s backdrop: the target is the dialog itself and the point lies outside its rect.
+  `backdropClickDismisses(event, rect, dialog, closeOnBackdrop)` applies the caller's policy first
+  and then asks the same question. Use them for a dialog you build yourself.
+- `supportsClosedBy(dialogPrototype)` answers whether a dialog implementation knows the `closedby`
+  attribute. Pass `HTMLDialogElement.prototype`; no shipping WebKit does.
+- `clientWidthWithoutScrollbar(host)`, `scrollLockPadding(before, locked)` and
+  `applyScrollLock(document, padding)` are the scroll lock in three steps: measure the layout width
+  with the scrollbar hidden, turn the two widths into the right padding that keeps the page from
+  shifting, then lock scrolling and get back a `release()` that restores the previous inline styles.
+  Use them to lock the page behind an overlay of your own.
+- `DISMISS_KEY` (`"Escape"`), `isDismissKey(event, open)`, `escapeCloseStrategy(closedBySupported)`,
+  `bindEscapeClose(target, strategy, handlers)` and `platformCloseHandler(deps)` are exported for
+  the package's own components and tests: they decide which event carries Escape on a platform and
+  wire the matching listener.
+- `dialogHeldFocus(dialog, activeElement)` and `dialogTitleId(base)` are exported for the package's
+  own components and tests: whether focus is inside the dialog at close time, and the id of the
+  dialog's title element.
+
+### Combobox (`./combobox`)
+
+- `fold(value)` folds text for searching: accents are removed and the text is lower-cased, so
+  `"São"` and `"sao"` fold alike, whatever the host locale.
+- `matchesQuery(item, query, getLabel)` answers whether an item's folded text contains the folded,
+  trimmed query; an empty query matches everything. `filterItems(items, query, getLabel)` keeps the
+  matching items in their original order. Use them to filter a list the way `Combobox` does.
+- `defaultGetLabel(item)` is `String(item)`, the text rule `Combobox` uses when no `getLabel` is
+  given; a `getLabel` of your own can fall back to it.
+- `comboboxKey(event)` maps a keyboard event to a key the combobox acts on, or `undefined` for one
+  it leaves alone. `nextComboboxState(state, key, count)` says what that key does to the highlight
+  and the open state, wrapping at both ends, and `comboboxKeyAction(key, state, count)` adds whether
+  to call `preventDefault()` and which option `Enter` selects. Together they are the whole keyboard
+  table, for a search field that should behave like a `Combobox`; the guide's own search uses them.
+- `typingState`, `openingState`, `selectableIndex`, `listboxContent`, `leavesCombobox`, `naming`,
+  `activeDescendant`, `comboboxListboxId` and `comboboxOptionId` are exported for the package's own
+  components and tests: the highlight a new query or a fresh open starts on, the empty message,
+  when a focus change closes the popup, which prop names the input, and the ids the ARIA
+  attributes point at.
+
+### DateRangePicker (`./date-range`)
+
+- `dateRangePresets` lists every date preset in its presentation order, narrowest to widest, with
+  `"custom"` last, and `timeRangePresets` does the same for the two time presets. They carry no
+  labels: build a picker's option list from them and word each option yourself.
+
+### Dropdown (`./dropdown`)
+
+- `nextMenuIndex(key, current, count)` is the menu's arrow-key map: the index focus moves to for
+  `ArrowDown`, `ArrowUp`, `Home` or `End`, wrapping at both ends, or `undefined` for any other key
+  and for an empty menu.
+
+### EnhancedForm (`./enhanced-form`)
+
+- `enhancedFormMessage(status, labels)` is exported for the package's own components and tests: the
+  live region's text for each status, and `""` while idle.
+
+### Field (`./field`)
+
+- `labelTarget(labelFor, id)` is exported for the package's own components and tests: the `for`
+  value of a `Field`'s label, and it throws on a `labelFor` that is neither a boolean nor a
+  non-empty id.
+
+### FileInput (`./file-input`)
+
+- `matchesAccept(file, accept)` answers whether a file matches an `accept` list of extensions
+  (`.png`), MIME types (`image/png`) and MIME wildcards (`image/*`), ignoring case; an empty list
+  matches everything. Use it to check a dropped file the way the browser's chooser would.
+- `classifyFiles(selected, { accept, maxSize, multiple })` splits offered files into the ones a
+  `FileInput` keeps and the ones it refuses, each refusal with its reason: `"too-large"`,
+  `"wrong-type"` or, without `multiple`, `"too-many"` for every accepted file after the first.
+- `resolveLabels(labels)` is exported for the package's own components and tests: it fills every
+  message label a `FileInput` was not given with its English default.
+
+### ImageGallery (`./image-gallery`)
+
+- `thumbnailKey(images, index)` is exported for the package's own components and tests: a
+  thumbnail's render key, its `src` plus how many times that `src` appeared earlier in the list.
+
+### Lightbox (`./lightbox`)
+
+- `wrapIndex(index, total, delta)` moves `delta` steps through `total` items and wraps at either
+  end; a `total` of `0` or less answers `0`.
+- `counterText(position, total)` is the counter's English default, `"3 of 8"`; the `counterLabel`
+  prop replaces it.
+
+### MoneyInput (`./money-input`)
+
+- `editableText(value, currency, locale)` formats an amount in the currency's smallest unit as the
+  text a person edits: digits and the decimal mark of `locale`, the currency's number of decimals,
+  no symbol and no grouping. `null` gives `""`.
+- `resolveMoneyInputEdit(text, currency, locale, bounds, invalidMessage, rangeMessage)` is exported
+  for the package's own components and tests: the value and message one edit of a `MoneyInput`
+  produces.
+
+### Pagination (`./pagination`)
+
+- `pageRange(page, pageCount, size)` collapses a page range into the items a pagination control
+  renders: `{ page }` for a number and `{ gap: "gap" }` for a `…`. A range of up to `size` pages
+  (default `7`) is listed in full; a longer one keeps the first page, the last page and the current
+  page with its neighbours. Use it to draw pagination in markup of your own.
+
+### Progress (`./progress`)
+
+- `clampProgress(value, max)` clamps a reading into `0…max` (`max` defaults to `100`) and returns
+  it with its fraction of `max`; both are `null` when the reading cannot be measured (a missing or
+  `NaN` value, or a `max` of `0` or less).
+- `progressWidthPercent(fraction)` turns a fraction into a percentage to one decimal place, fit for
+  `width: <n>%`; `null` gives `0`.
+- `formatProgressPercent(fraction)` formats a fraction as a whole percentage for display, rounded
+  down so a bar that is not full never reads `100%`.
+
 ## Tests
 
 `deno task test` from the repo root. Tests render each component with
