@@ -1159,8 +1159,10 @@ components and tests means exactly that: nothing outside this package should bui
   `bindEscapeClose(target, strategy, handlers)` and `platformCloseHandler(deps)` are exported for
   the package's own components and tests: they decide which event carries Escape on a platform and
   wire the matching listener.
-- `dialogHeldFocus(dialog, activeElement)` and `dialogTitleId(base)` are exported for the package's
-  own components and tests: whether focus is inside the dialog at close time, and the id of the
+- `dialogHeldFocus(dialog, activeElement)` answers whether focus is inside the dialog, given
+  `document.activeElement`; `null` gives `false`. Call it at close time to report or assert where
+  focus was. `Modal` itself does not use it to decide where focus goes back to.
+- `dialogTitleId(base)` is exported for the package's own components and tests: the id of the
   dialog's title element.
 
 ### Combobox (`./combobox`)
@@ -1185,9 +1187,11 @@ components and tests means exactly that: nothing outside this package should bui
 
 ### DateRangePicker (`./date-range`)
 
-- `dateRangePresets` lists every date preset in its presentation order, narrowest to widest, with
-  `"custom"` last, and `timeRangePresets` does the same for the two time presets. They carry no
-  labels: build a picker's option list from them and word each option yourself.
+- `dateRangePresets` lists every date preset in its presentation order: the single days and rolling
+  day counts (`"today"` to `"last-90-days"`), then `"last-12-months"`, then the calendar periods
+  (`"this-month"` to `"last-year"`), then `"custom"`. `timeRangePresets` lists the two time presets,
+  `"last-hour"` then `"last-24-hours"`. They carry no labels: build a picker's option list from them
+  and word each option yourself.
 
 ### Dropdown (`./dropdown`)
 
@@ -1243,13 +1247,14 @@ components and tests means exactly that: nothing outside this package should bui
 - `pageRange(page, pageCount, size)` collapses a page range into the items a pagination control
   renders: `{ page }` for a number and `{ gap: "gap" }` for a `…`. A range of up to `size` pages
   (default `7`) is listed in full; a longer one keeps the first page, the last page and the current
-  page with its neighbours. Use it to draw pagination in markup of your own.
+  page with its neighbours. A `size` below `5` counts as `5`. Use it to draw pagination in markup of
+  your own.
 
 ### Progress (`./progress`)
 
-- `clampProgress(value, max)` clamps a reading into `0…max` (`max` defaults to `100`) and returns
-  it with its fraction of `max`; both are `null` when the reading cannot be measured (a missing or
-  `NaN` value, or a `max` of `0` or less).
+- `clampProgress(value, max)` clamps a reading into `0…max` (`max` defaults to `100`) and returns it
+  with its fraction of `max`; both are `null` when the reading cannot be measured (a missing or
+  `NaN` value, or a `max` that is not a finite number above `0`).
 - `progressWidthPercent(fraction)` turns a fraction into a percentage to one decimal place, fit for
   `width: <n>%`; `null` gives `0`.
 - `formatProgressPercent(fraction)` formats a fraction as a whole percentage for display, rounded
