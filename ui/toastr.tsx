@@ -10,6 +10,16 @@ export type ToastVariant = "success" | "error" | "info" | "warning"
 
 export interface ToastItem {
   id: string | number
+  /**
+   * Short heading shown above the body, in bold, inside the same live region so a screen reader
+   * hears both. No heading renders when it is absent or empty, and this component invents none.
+   *
+   * `createToastStore` in `@spy4x/preact-signals` fills it in from the toast's kind — "Info",
+   * "Success", "Error", "Warning" — when the caller gives none, so a store-fed toast always has
+   * one. It is written under this same name, so a store entry can be handed straight to this
+   * component. Until #207 the store filled it in and nothing drew it.
+   */
+  title?: ComponentChildren
   body: ComponentChildren
   /** Defaults to `"info"`. */
   type?: ToastVariant
@@ -313,10 +323,13 @@ function Toast({ toast, paused, onDismiss, dismissLabel, enterFrom }: ToastProps
       )}
     >
       <div class="flex justify-between gap-4">
-        <p class="flex gap-2 text-sm">
+        <div class="flex gap-2 text-sm">
           <ToastGlyph variant={variant} />
-          {toast.body}
-        </p>
+          <div class="min-w-0">
+            {toast.title ? <p class="font-semibold">{toast.title}</p> : null}
+            <p>{toast.body}</p>
+          </div>
+        </div>
         <button type="button" onClick={() => onDismiss(toast.id)} aria-label={dismissLabel}>
           <svg
             class="size-4"
