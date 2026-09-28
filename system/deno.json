@@ -1,6 +1,6 @@
 {
   "name": "@spy4x/preact-system",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "exports": {
     ".": "./+index.ts",
     "./auth-form": "./auth-form.tsx",
