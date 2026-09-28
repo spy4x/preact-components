@@ -85,39 +85,53 @@ export interface UpdateWatcher {
 }
 
 /**
- * Watch a registration for an update and report it once.
+ * Watch a registration for an update and report each waiting worker once.
  *
  * Covers both races: a worker already `waiting` at registration time (the tab was closed and
  * reopened after a deploy) and one that becomes `installed` while the page is open. The returned
  * function detaches every listener it added, including the per-worker `statechange`, so an
  * unmounting island leaves no handler behind.
+ *
+ * "Once" is enforced here rather than left to the browser's order of events (#197). A worker is
+ * reported at most once however many times its events arrive, only the worker whose `statechange`
+ * fired is asked for its state, and a worker superseded by a later `updatefound` loses its
+ * listener. The browser's install algorithm happens to make a duplicate impossible today, but
+ * {@link SWUpdater} clears a dismissal on every report, so a duplicate report of the *same* worker
+ * would bring back a bar the visitor put away for it.
  */
 export function watchForUpdate(
   registration: RegistrationLike,
   { hasController, onUpdate }: UpdateWatcher,
 ): () => void {
   let disposed = false
-  let installingListener: WorkerLike | undefined
+  let watched: { worker: WorkerLike; listener: () => void } | undefined
+  const reported = new WeakSet<WorkerLike>()
 
-  const notify = () => {
-    if (disposed) return
+  const report = (worker: WorkerLike) => {
+    if (disposed || reported.has(worker)) return
+    reported.add(worker)
     onUpdate()
   }
 
-  if (registration.waiting) notify()
-
-  const onStateChange = () => {
-    if (installingListener && installingListener.state === "installed" && hasController()) {
-      notify()
-    }
+  const unwatch = () => {
+    watched?.worker.removeEventListener("statechange", watched.listener)
+    watched = undefined
   }
+
+  if (registration.waiting) report(registration.waiting)
 
   const onUpdateFound = () => {
     if (disposed) return
     const installing = registration.installing
     if (!installing) return
-    installingListener = installing
-    installing.addEventListener("statechange", onStateChange)
+    unwatch()
+    // Bound to this worker, so the state read is the state of the worker whose event fired, never
+    // that of whichever worker was stored last.
+    const listener = () => {
+      if (installing.state === "installed" && hasController()) report(installing)
+    }
+    installing.addEventListener("statechange", listener)
+    watched = { worker: installing, listener }
   }
 
   registration.addEventListener("updatefound", onUpdateFound)
@@ -125,8 +139,7 @@ export function watchForUpdate(
   return () => {
     disposed = true
     registration.removeEventListener("updatefound", onUpdateFound)
-    installingListener?.removeEventListener("statechange", onStateChange)
-    installingListener = undefined
+    unwatch()
   }
 }
 

@@ -95,7 +95,6 @@ export const README_PENDING: Record<PackageId, readonly string[]> = {
     "serviceWorkerContainer",
     "skipWaiting",
     "TAB_BAR_SLOTS",
-    "watchForUpdate",
   ],
   crud: [
     "associationActions",

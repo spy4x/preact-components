@@ -182,6 +182,14 @@ interface QuietRig {
   container: ContainerLike
   /** Run one complete install → installed cycle, which is what reports an update. */
   announce(): void
+  /**
+   * Fire the last announced worker's events again, `updatefound` and `statechange` both.
+   *
+   * No browser does this today, and that is why it is a button: the watcher reports each waiting
+   * worker once, so a repeat of the same worker's events must not bring back a bar the visitor
+   * dismissed for it. Returns whether there was a worker to repeat.
+   */
+  repeat(): boolean
 }
 
 /**
@@ -199,6 +207,7 @@ interface QuietRig {
  */
 function quietRig(): QuietRig {
   const registration = fakeRegistration()
+  let last: ReturnType<typeof scriptedWorker> | undefined
   return {
     container: {
       controller: {},
@@ -208,10 +217,18 @@ function quietRig(): QuietRig {
     },
     announce: () => {
       const worker = scriptedWorker("installing")
+      last = worker
       registration.installing = worker
       registration.fire("updatefound")
       worker.state = "installed"
       worker.emit("statechange")
+    },
+    repeat: () => {
+      if (!last) return false
+      registration.installing = last
+      registration.fire("updatefound")
+      last.emit("statechange")
+      return true
     },
   }
 }
@@ -238,10 +255,13 @@ const QUIET_MESSAGE = "A newer catalogue build is ready"
  *
  * Dismissing it and pressing the button again is the other half of the contract: the message has
  * to leave the region and arrive again, because a visitor who put one version away still has to
- * be told about the next one.
+ * be told about the next one. The second button is the limit of that: it fires the same worker's
+ * events a second time, and a dismissed bar stays dismissed, because the watcher reports each
+ * waiting worker once.
  */
 function SwUpdaterQuietDemo() {
   const announcements = useSignal(0)
+  const repeats = useSignal(0)
   const reloads = useSignal(0)
   const rig = useRef<QuietRig | null>(null)
   rig.current ??= quietRig()
@@ -250,8 +270,9 @@ function SwUpdaterQuietDemo() {
     <div data-e2e="sw-quiet">
       <Stack gap="sm">
         <p class={NOTE}>
-          Mounted now with nothing waiting, it renders an empty live region. The button makes an
-          update ready inside that same element.
+          Mounted now with nothing waiting, it renders an empty live region. The first button makes
+          an update ready inside that same element; the second fires that update's events again,
+          which leaves a dismissed bar dismissed.
         </p>
         <Cluster>
           <Button
@@ -265,9 +286,21 @@ function SwUpdaterQuietDemo() {
           >
             Make an update ready
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            data-e2e="sw-quiet-repeat"
+            onClick={() => {
+              if (rig.current?.repeat()) repeats.value++
+            }}
+          >
+            Repeat that update's events
+          </Button>
           <span class={NOTE}>
-            announced <span data-e2e="sw-quiet-count">{announcements.value}</span>{" "}
-            times, reload port called <span data-e2e="sw-quiet-reloads">{reloads.value}</span> times
+            announced <span data-e2e="sw-quiet-count">{announcements.value}</span> times, repeated
+            {" "}
+            <span data-e2e="sw-quiet-repeats">{repeats.value}</span> times, reload port called{" "}
+            <span data-e2e="sw-quiet-reloads">{reloads.value}</span> times
           </span>
         </Cluster>
       </Stack>
@@ -282,80 +315,108 @@ function SwUpdaterQuietDemo() {
   )
 }
 
+/** One scenario of {@link SwUpdaterDemo}: what it is called, and what it does. */
+interface UpdateScenario {
+  /** `data-scenario` of its button and of the log lines it writes. */
+  id: string
+  /** The button's text. */
+  button: string
+  /** The log's name for it. */
+  label: string
+  /** Build a registration, watch it with the real function, and play the events a browser would. */
+  run: (onUpdate: () => void) => void
+}
+
+/**
+ * The three branches `watchForUpdate` decides between, each played the way a browser plays it.
+ *
+ * The two install scenarios run the whole cycle — `updatefound`, then the installing worker's own
+ * `statechange` once it is `installed` — through {@link scriptedWorker}, whose listeners really
+ * run. A worker that swallowed the subscription would leave both silent, and the two would print
+ * the same word although only one of them is a first install (#197).
+ */
+const UPDATE_SCENARIOS: UpdateScenario[] = [
+  {
+    id: "waiting",
+    button: "A worker is already waiting",
+    label: "worker already waiting",
+    run: (onUpdate) => {
+      watchForUpdate(fakeRegistration({ waiting: fakeWorker("installed") }), {
+        hasController: () => true,
+        onUpdate,
+      })
+    },
+  },
+  {
+    id: "first-install",
+    button: "First install",
+    label: "first install (no controller)",
+    run: (onUpdate) => installCycle(false, onUpdate),
+  },
+  {
+    id: "controlled",
+    button: "Update while controlled",
+    label: "update while controlled",
+    run: (onUpdate) => installCycle(true, onUpdate),
+  },
+]
+
+/** One install cycle on a fresh registration, with or without a worker controlling the page. */
+function installCycle(controlled: boolean, onUpdate: () => void): void {
+  const registration = fakeRegistration()
+  watchForUpdate(registration, { hasController: () => controlled, onUpdate })
+  const worker = scriptedWorker("installing")
+  registration.installing = worker
+  registration.fire("updatefound")
+  worker.state = "installed"
+  worker.emit("statechange")
+}
+
 /**
  * `watchForUpdate` driven through both races, with no browser and no service worker.
  *
  * The demo's whole point is that this is *not* a mock of the component: it is the exact function
  * `SWUpdater` calls in its effect, given the same inputs a browser would give it, so the branch
  * that decides "first install, say nothing" versus "update waiting, show the bar" is executed here
- * rather than described.
+ * rather than described. A worker already waiting and an update while controlled report; a first
+ * install stays silent. `pages/checks/system.ts` presses all three and reads the log.
  */
 function SwUpdaterDemo() {
-  const log = useSignal<string[]>([])
+  const log = useSignal<{ id: string; line: string }[]>([])
 
-  const run = (label: string, scenario: () => boolean) => {
-    log.value = [...log.value, `${label}: ${scenario() ? "update reported" : "silent"}`]
+  const play = (scenario: UpdateScenario) => {
+    let reports = 0
+    scenario.run(() => reports++)
+    const outcome = reports === 0
+      ? "silent"
+      : reports === 1
+      ? "update reported"
+      : `update reported ${reports} times`
+    log.value = [...log.value, { id: scenario.id, line: `${scenario.label}: ${outcome}` }]
   }
 
   return (
     <Stack gap="sm">
       <Cluster>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() =>
-            run("worker already waiting", () => {
-              let reported = false
-              watchForUpdate(fakeRegistration({ waiting: fakeWorker("installed") }), {
-                hasController: () => true,
-                onUpdate: () => reported = true,
-              })
-              return reported
-            })}
-        >
-          A worker is already waiting
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() =>
-            run("first install (no controller)", () => {
-              const registration = fakeRegistration()
-              let reported = false
-              watchForUpdate(registration, {
-                hasController: () => false,
-                onUpdate: () => reported = true,
-              })
-              registration.installing = fakeWorker("installed")
-              registration.fire("updatefound")
-              return reported
-            })}
-        >
-          First install
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() =>
-            run("update while controlled", () => {
-              const registration = fakeRegistration()
-              let reported = false
-              watchForUpdate(registration, {
-                hasController: () => true,
-                onUpdate: () => reported = true,
-              })
-              registration.installing = fakeWorker("installed")
-              registration.fire("updatefound")
-              return reported
-            })}
-        >
-          Update while controlled
-        </Button>
+        {UPDATE_SCENARIOS.map((scenario) => (
+          <Button
+            key={scenario.id}
+            variant="outline"
+            size="sm"
+            data-e2e="sw-scenario"
+            data-scenario={scenario.id}
+            onClick={() => play(scenario)}
+          >
+            {scenario.button}
+          </Button>
+        ))}
       </Cluster>
       {log.value.length > 0
         ? (
-          <ul class="space-y-1 text-xs text-gray-600 dark:text-gray-300">
-            {log.value.map((line, index) => <li key={index}>{line}</li>)}
+          <ul data-e2e="sw-scenario-log" class="space-y-1 text-xs text-gray-600 dark:text-gray-300">
+            {log.value.map((entry, index) => (
+              <li key={index} data-scenario={entry.id}>{entry.line}</li>
+            ))}
           </ul>
         )
         : (
@@ -562,6 +623,21 @@ function CalendarInteractiveDemo() {
       <p class={NOTE}>
         Tab once to reach the grid; the arrow keys, Home, End, Page Up and Page Down move inside it.
       </p>
+      <Cluster>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="calendar-go-to"
+          onClick={() => {
+            // The owner moving the month itself, the way a host "go to date" control would: the
+            // grid's Tab stop follows the selection, whatever arrow was clicked before.
+            month.value = "2026-03-01"
+            picked.value = "2026-03-05"
+          }}
+        >
+          Go to 5 March
+        </Button>
+      </Cluster>
     </Stack>
   )
 }
@@ -611,7 +687,8 @@ function CalendarRefusingDemo() {
       </p>
       <p class={NOTE}>
         Focus a day and press Page Down: the count rises, the grid stays on March, and the focus
-        stays on your day.
+        stays on your day. Click a month arrow from a day instead and the focus stays on the arrow,
+        while Tab back into the grid still lands on your day — until the owner selects another day.
       </p>
       <Cluster>
         <Button
@@ -624,6 +701,14 @@ function CalendarRefusingDemo() {
           }}
         >
           Reset the count
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="calendar-refused-select"
+          onClick={() => picked.value = "2026-03-25"}
+        >
+          Select 25 March
         </Button>
       </Cluster>
     </Stack>
