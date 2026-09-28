@@ -7083,7 +7083,7 @@ async function keyboardPassCheck(devtools: Devtools): Promise<void> {
       ? "typing 2026-10-25T02:30 in Europe/Paris never showed From's choice of pass"
       : step !== ""
       ? step
-      : `ArrowDown/ArrowUp in From, ArrowDown in To, then Enter on Apply: "${readout}"`,
+      : `ArrowDown/ArrowUp in From; ArrowDown, a wrap to the first pass and back in To; then Enter on Apply: "${readout}"`,
   )
 }
 
