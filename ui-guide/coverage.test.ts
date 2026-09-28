@@ -26,7 +26,6 @@ import {
   type PackageNamespace,
   packageReadmes,
   readExports,
-  README_PENDING,
   readmeNames,
   subpathModules,
   subpathModulesOf,
@@ -120,11 +119,6 @@ function allowing(
   entries: AllowedExport[],
 ): Record<PackageId, readonly AllowedExport[]> {
   return { ...COMPONENTS_WITHOUT_CARD, [id]: entries }
-}
-
-/** The shipped pending list with one package's names replaced. */
-function pendingWith(id: PackageId, names: string[]): Record<PackageId, readonly string[]> {
-  return { ...README_PENDING, [id]: names }
 }
 
 /** The shipped READMEs with one package's text extended. */
@@ -312,70 +306,6 @@ describe("the coverage rule", () => {
     expect(problems[0]).toContain(`${NAMED_HELPER} is not a component`)
   })
 
-  it("names a pending entry whose helper the README names after all", () => {
-    expect(NAMED_HELPER, "the signals README names a helper").not.toBe("")
-    const problems = injectedBy(
-      coverageProblems(
-        EXPORTS,
-        READMES,
-        COMPONENTS_WITHOUT_CARD,
-        pendingWith("signals", [
-          NAMED_HELPER,
-        ]),
-      ),
-    )
-
-    expect(problems.length, problems.join(" | ")).toBe(1)
-    expect(problems[0]).toContain(NAMED_HELPER)
-    expect(problems[0]).toContain("stale")
-  })
-
-  it("names a pending entry the package does not export", () => {
-    const problems = injectedBy(
-      coverageProblems(
-        EXPORTS,
-        READMES,
-        COMPONENTS_WITHOUT_CARD,
-        pendingWith("ui", [
-          ...README_PENDING.ui,
-          GHOST_HELPER,
-        ]),
-      ),
-    )
-
-    expect(problems.length, problems.join(" | ")).toBe(1)
-    expect(problems[0]).toContain(GHOST_HELPER)
-    expect(problems[0]).toContain("does not export")
-  })
-
-  it("names a pending entry that is a component", () => {
-    const demoed = demoedNamesOf("ui")[0]
-    const problems = injectedBy(
-      coverageProblems(
-        EXPORTS,
-        READMES,
-        COMPONENTS_WITHOUT_CARD,
-        pendingWith("ui", [
-          ...README_PENDING.ui,
-          demoed,
-        ]),
-      ),
-    )
-
-    expect(problems.length, problems.join(" | ")).toBe(1)
-    expect(problems[0]).toContain(`${demoed} is a component`)
-  })
-
-  it("excuses a helper the pending list still names", () => {
-    const pending = README_PENDING.ui[0]
-    expect(pending, "ui has a pending helper").toBeDefined()
-    const problems = injectedBy(
-      coverageProblems(EXPORTS, READMES, COMPONENTS_WITHOUT_CARD, pendingWith("ui", [])),
-    )
-
-    expect(problems.some((problem) => problem.includes(`helper ${pending} `))).toBe(true)
-  })
-
   it("names a card keyed to a name its package does not export", () => {
     const demoed = demoedNamesOf("ui")[0]
     const problems = injectedBy(coverageProblems(without("ui", demoed), READMES))
@@ -385,13 +315,11 @@ describe("the coverage rule", () => {
     expect(problems[0]).toContain("does not export")
   })
 
-  it("gives every allow-list entry a reason, and names each pending helper once", () => {
+  it("gives every allow-list entry a reason", () => {
     for (const id of coveredPackageIds) {
       for (const entry of COMPONENTS_WITHOUT_CARD[id]) {
         expect(entry.reason.length, `${id}: ${entry.name}`).toBeGreaterThan(20)
       }
-      const pending = README_PENDING[id]
-      expect(new Set(pending).size, `${id}: a pending name listed twice`).toBe(pending.length)
     }
   })
 

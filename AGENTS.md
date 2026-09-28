@@ -108,10 +108,9 @@ have `<package>.tsx`); the one way out is an entry in `COMPONENTS_WITHOUT_CARD` 
 `ui-guide/coverage.ts` with a sentence saying why no card is possible, which review challenges. A
 **helper** (anything else: a function, a constant, an enum, a class) gets no card; the package's
 `README.md` names it in code instead — `` `clampProgress` `` or `` `clampProgress(value, max)` ``
-— with a line on what it does. `ui-guide/readme-pending.ts` lists the helpers no README named when
-the rule changed; it only shrinks. `deno task test` fails on a component with no card and on a
-helper its README does not name. The test cannot see a changed export, so that rests on the rule
-in "Every change updates the UI guide" below.
+— with a line on what it does. `deno task test` fails on a component with no card and on a helper
+its README does not name. The test cannot see a changed export, so that rests on the rule in
+"Every change updates the UI guide" below.
 
 ## Branches
 
