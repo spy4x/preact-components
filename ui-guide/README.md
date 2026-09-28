@@ -177,25 +177,22 @@ Each kind of drift fails `deno task test`, naming the export and its package:
 | Drift                                                | Message                                                                   |
 | ---------------------------------------------------- | ------------------------------------------------------------------------- |
 | a component with no card and no allow-list entry     | `crud exports the component CrudList and no section demonstrates it — …`  |
-| a helper its README does not name, and not pending   | `ui exports the helper clampProgress and ui/README.md does not name it …` |
+| a helper its README does not name                    | `ui exports the helper clampProgress and ui/README.md does not name it …` |
 | a card naming a name the package lacks               | `the ui sections demo Badge, which ui does not export`                    |
-| an allow-list or pending entry the package lacks     | `ui does not export FakeHelper, which README_PENDING names`               |
+| an allow-list entry the package lacks                | `ui does not export FakeWidget, which COMPONENTS_WITHOUT_CARD names`      |
 | an allow-list entry whose component has a card       | `ui's Badge has a card, so its COMPONENTS_WITHOUT_CARD entry is stale`    |
-| a pending entry the README names after all           | `ui/README.md names clampProgress, so its README_PENDING entry is stale`  |
 | an allow-list entry that is a helper, or the reverse | `signals's ThemeValue is not a component, so …`                           |
 
 Prop vocabulary is guarded one level down: demos iterate a `Record<Union, …>` keyed by a prop's own
 union type (`ButtonVariant`, `BadgeColor`, `SpinnerSize`, `BadgeType`, `ToastVariant`), so adding a
 variant to a component fails `deno check` until the catalogue shows it.
 
-### The lists carry a reason, and they only shrink
+### The list carries a reason, and it only shrinks
 
 `COMPONENTS_WITHOUT_CARD` in `coverage.ts` holds a component with a sentence saying why it has no
-card; it is empty today. `readme-pending.ts` holds, per package and one name per line, every helper
-no README named when the guide stopped showing helpers (#357). An entry the package no longer
-exports fails, and so does one covered since — so adding a README line fails the tests until its
-name leaves the list. Adding a new export to the pending list to skip its README line is what
-review refuses.
+card; it is empty today. An entry the package no longer exports fails, and so does one with a card
+since. A helper has no such list: every helper every covered package exports has its README line
+(#373), so a new helper without one fails the tests.
 
 ### A component without a card is visible, not absent
 
@@ -306,9 +303,9 @@ per entry of `catalogueNames` against the emitted HTML.
 | **CRUD**                   | `crud`   | `crud`   |
 
 Nothing here states how many components are _missing_ a card, on purpose: that number moves with
-every component PR. Read `COMPONENTS_WITHOUT_CARD` in `coverage.ts` and `readme-pending.ts`, which
-is where a card or a README line somebody still owes is declared. A count in this file went wrong more
-than once while this section was being written, which is the argument against writing one.
+every component PR. Read `COMPONENTS_WITHOUT_CARD` in `coverage.ts`, which is where a card somebody
+still owes is declared. A count in this file went wrong more than once while this section was being
+written, which is the argument against writing one.
 
 `Fields` is the `ui/` half of the form story — the controlled primitives, each with the demo an app
 writes — and `forms`/`surfaces` are the other half: the preset styles markup the library does not own,

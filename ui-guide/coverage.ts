@@ -4,13 +4,13 @@
  * A **component** — {@link isComponent} — needs a card in a component section, or an entry in
  * {@link COMPONENTS_WITHOUT_CARD} with a reason. Anything else — a function, a constant, an enum, a
  * label map — is a **helper**: the guide shows none, and the package's `README.md` has to name it
- * in code ({@link readmeNames}), unless {@link README_PENDING} still lists it.
+ * in code ({@link readmeNames}).
  *
  * The exports are read from the package rather than from a list, and from the barrel *and* every
  * subpath module the package publishes, so an export reachable only through its own subpath is
  * still seen. `coverage.test.ts` runs {@link coverageProblems} over that read and fails with the
  * offender's name when the rule is broken: a component with no card, a helper its README does not
- * name, an allow-list or pending entry the package does not export or that is covered after all,
+ * name, an allow-list entry the package does not export or that is covered after all,
  * and a card naming a name its package does not export.
  */
 
@@ -23,10 +23,7 @@ import * as system from "@spy4x/preact-system"
 import * as theme from "@spy4x/preact-theme"
 import * as ui from "@spy4x/preact-ui"
 import { parse } from "@std/jsonc"
-import { README_PENDING } from "./readme-pending.ts"
 import { catalogueSections, coveredPackageIds, type PackageId } from "./registry.ts"
-
-export { README_PENDING }
 
 /** Barrel namespace of every covered package, keyed the way the catalogue keys it. */
 const BARRELS: Record<PackageId, object> = { ui, charts, system, crud, map, signals, theme, cn }
@@ -200,14 +197,12 @@ export async function packageReadmes(): Promise<Record<PackageId, string>> {
  * @param exports Each package's value exports; normally {@link packageExports}'.
  * @param readmes Each package's README text; normally {@link packageReadmes}'.
  * @param allowed Components excused from a card; defaults to {@link COMPONENTS_WITHOUT_CARD}.
- * @param pending Helpers still waiting for a README line; defaults to {@link README_PENDING}.
  * @returns One message per problem, package by package; empty when the rule holds.
  */
 export function coverageProblems(
   exports: Record<PackageId, PackageNamespace>,
   readmes: Record<PackageId, string>,
   allowed: Record<PackageId, readonly AllowedExport[]> = COMPONENTS_WITHOUT_CARD,
-  pending: Record<PackageId, readonly string[]> = README_PENDING,
 ): string[] {
   const problems: string[] = []
 
@@ -215,7 +210,6 @@ export function coverageProblems(
     const exported = new Set(Object.keys(exports[id]))
     const demoed = new Set(demoedNamesOf(id))
     const excused = new Set(allowed[id].map((entry) => entry.name))
-    const waiting = new Set(pending[id])
     const component = (name: string) => isComponent(name, exports[id][name])
 
     for (const name of exported) {
@@ -225,7 +219,7 @@ export function coverageProblems(
           `${id} exports the component ${name} and no section demonstrates it — write a card, ` +
             `or add a COMPONENTS_WITHOUT_CARD entry saying why`,
         )
-      } else if (!readmeNames(readmes[id], name) && !waiting.has(name)) {
+      } else if (!readmeNames(readmes[id], name)) {
         problems.push(
           `${id} exports the helper ${name} and ${id}/README.md does not name it — add a line ` +
             `that names it in code, \`${name}\``,
@@ -242,16 +236,6 @@ export function coverageProblems(
         )
       } else if (demoed.has(name)) {
         problems.push(`${id}'s ${name} has a card, so its COMPONENTS_WITHOUT_CARD entry is stale`)
-      }
-    }
-
-    for (const name of waiting) {
-      if (!exported.has(name)) {
-        problems.push(`${id} does not export ${name}, which README_PENDING names`)
-      } else if (component(name)) {
-        problems.push(`${id}'s ${name} is a component, so README_PENDING cannot excuse it`)
-      } else if (readmeNames(readmes[id], name)) {
-        problems.push(`${id}/README.md names ${name}, so its README_PENDING entry is stale`)
       }
     }
 
