@@ -32,6 +32,11 @@ const QUIET = CARD + ' [data-e2e="sw-quiet"]'
 const QUIET_REGION = QUIET + ' [role="status"]'
 const QUIET_BAR = QUIET_REGION + " > div"
 const QUIET_ANNOUNCE = QUIET + ' [data-e2e="sw-quiet-announce"]'
+const QUIET_REPEAT = QUIET + ' [data-e2e="sw-quiet-repeat"]'
+const QUIET_REPEATS = QUIET + ' [data-e2e="sw-quiet-repeats"]'
+/** The part of the card that runs `watchForUpdate` through its three scenarios. */
+const SCENARIO = CARD + ' [data-e2e="sw-scenario"]'
+const SCENARIO_LOG = CARD + ' [data-e2e="sw-scenario-log"] li'
 /** The message that card passes as a prop. Not the component's English default, on purpose. */
 const QUIET_MESSAGE = "A newer catalogue build is ready"
 
@@ -193,6 +198,7 @@ function clickBarButton(devtools: Devtools, label: string, bar = BAR): Promise<b
 export async function systemChecks(devtools: Devtools): Promise<void> {
   await authFormChecks(devtools)
   await liveRegionChecks(devtools)
+  await updateScenarioChecks(devtools)
   await calendarChecks(devtools)
   // `ZoomableImages` moved to `ui/` (#355), so its card is on the ui page. Its checks stay in this
   // file, unchanged, until they move to `pages/checks/ui.ts` with that file's owner.
@@ -212,6 +218,61 @@ export async function systemChecks(devtools: Devtools): Promise<void> {
     pageErrors.length === 0
       ? "each expression this file evaluated returned a value"
       : pageErrors.join(" | "),
+  )
+}
+
+/**
+ * `watchForUpdate`'s three scenarios on the card, pressed and read back.
+ *
+ * The card runs the real function on a registration it builds, and the log line is the function's
+ * answer. The three are documented as two reports and one silence: a worker already waiting
+ * reports, a first install with nothing controlling the page stays silent, and an update while the
+ * page is controlled reports. Before #197 the last one printed "silent" too, because the card's
+ * stand-in worker swallowed the `statechange` subscription the function makes, so the check
+ * asserts all three words and not only that they are there.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function updateScenarioChecks(devtools: Devtools): Promise<void> {
+  const ids = ["waiting", "first-install", "controlled"]
+  const expected: Record<string, string> = {
+    "waiting": "worker already waiting: update reported",
+    "first-install": "first install (no controller): silent",
+    "controlled": "update while controlled: update reported",
+  }
+  const outcomes: Record<string, string> = {}
+  for (const id of ids) {
+    const before = await read(
+      devtools,
+      `document.querySelectorAll('${SCENARIO_LOG}[data-scenario="${id}"]').length`,
+      -1,
+    )
+    await click(devtools, `${SCENARIO}[data-scenario="${id}"]`)
+    await poll(
+      () =>
+        read(
+          devtools,
+          `document.querySelectorAll('${SCENARIO_LOG}[data-scenario="${id}"]').length === ${
+            before + 1
+          }`,
+          false,
+        ),
+      3_000,
+    )
+    outcomes[id] = await read(
+      devtools,
+      `(() => {
+        const lines = document.querySelectorAll('${SCENARIO_LOG}[data-scenario="${id}"]')
+        return lines.length === ${before + 1} ? lines[lines.length - 1].textContent.trim() : ""
+      })()`,
+      "",
+    )
+  }
+  check(
+    "watchForUpdate's card prints the three documented outcomes, one for each scenario",
+    ids.every((id) => outcomes[id] === expected[id]),
+    ids.map((id) => `${JSON.stringify(outcomes[id] || "no new line")}`).join(", ") +
+      `; wanted ${ids.map((id) => JSON.stringify(expected[id])).join(", ")}`,
   )
 }
 
@@ -374,6 +435,32 @@ async function liveRegionChecks(devtools: Devtools): Promise<void> {
   )
   const dismissed = await read(devtools, READ_REGION, NO_REGION)
 
+  // The same worker's events a second time, which no browser sends today and a caller's own
+  // registration logic can. The count is what says the replay really ran; the second of quiet that
+  // follows is what says the bar stayed away. A pass spends all of it, and a watcher that reports
+  // the worker again brings the bar back within a frame (#197).
+  const repeatsBefore = await read(
+    devtools,
+    `document.querySelector('${QUIET_REPEATS}')?.textContent.trim() ?? ""`,
+    "",
+  )
+  await click(devtools, QUIET_REPEAT)
+  const replayed = await poll(
+    () =>
+      read(
+        devtools,
+        `document.querySelector('${QUIET_REPEATS}')?.textContent.trim() === ${
+          JSON.stringify(String(Number(repeatsBefore) + 1))
+        }`,
+        false,
+      ),
+    3_000,
+  )
+  const cameBack = await poll(
+    () => read(devtools, `Boolean(document.querySelector('${QUIET_BAR}'))`, false),
+    1_000,
+  )
+
   await click(devtools, QUIET_ANNOUNCE)
   const barBack = await poll(
     () => read(devtools, `Boolean(document.querySelector('${QUIET_BAR}'))`, false),
@@ -439,6 +526,18 @@ async function liveRegionChecks(devtools: Devtools): Promise<void> {
           JSON.stringify(dismissed.text)
         }, with ${dismissed.removed} node(s) recorded leaving it`
       : "the bar was still there 5s after Dismiss",
+  )
+  check(
+    "a dismissed bar does not come back when the update it was dismissed for is reported again",
+    barGone && repeatsBefore !== "" && replayed && !cameBack,
+    !barGone
+      ? "the bar was never dismissed, so there was nothing to stay away"
+      : replayed
+      ? `the card replayed the dismissed worker's updatefound and statechange ` +
+        `(repeat count ${repeatsBefore} → ${Number(repeatsBefore) + 1}), and in the second ` +
+        `after it the bar ${cameBack ? "came back" : "stayed away"}`
+      : `the card's repeat count never rose from ${repeatsBefore || "unreadable"}, so no event ` +
+        `was replayed`,
   )
   check(
     "an update after a dismissal arrives again, as a fresh change to the same region",
@@ -2133,6 +2232,7 @@ async function calendarChecks(devtools: Devtools): Promise<void> {
   await localeChecks(devtools)
   await refusedMonthChecks(devtools)
   await lateMonthChecks(devtools)
+  await arrowRequestChecks(devtools)
 }
 
 /**
@@ -2762,9 +2862,246 @@ async function refusedMonthChecks(devtools: Devtools): Promise<void> {
       : `the focus was never staged on ${REFUSED_DAY} for the move-away press`,
   )
 
+  await refusedArrowCheck(devtools)
+
   // Leave no listener and no global behind: the probe is armed for a press that sometimes never
   // arrives, which is the one case its own listener cannot clean up after.
   await disarmRefusalProbe(devtools)
+}
+
+/**
+ * A month *arrow* the owner refuses leaves the grid's Tab stop on the day it was on (#202).
+ *
+ * The arrow path never parks the focus — the reader is standing on the arrow — so none of the
+ * keyboard's refusal handling above runs for it. What it used to do was leave the grid's Tab stop
+ * asking for a day of a month nobody drew, which the grid answered with its own fallback: today,
+ * the 10th. Standing on the 19th first is what makes the two tell apart, as it does above.
+ *
+ * The click is a real one through the browser's input pipeline, at the arrow's centre, so the
+ * focus lands on the arrow the way a reader's click puts it there, and the check reads it there
+ * afterwards. The refusal count rising by one is what says the click arrived and was asked about.
+ *
+ * @param devtools The connected session, on a hydrated page, with the refusing card framed.
+ */
+async function refusedArrowCheck(devtools: Devtools): Promise<void> {
+  const staged = await standOnDay(devtools, REFUSED_GRID, REFUSED_DAY)
+  const before = await read(devtools, REFUSED_STATE, NO_CARD)
+  const aim = staged
+    ? await clickMonthArrow(devtools, REFUSED, "Next")
+    : { onTarget: false, landedOn: "nothing: no day was staged" }
+  const asked = await poll(
+    () => read(devtools, `${REFUSED_STATE}.count === ${before.count + 1}`, false),
+    3_000,
+  )
+  // Two frames, so a render the refusal causes after the count has been drawn is on screen too.
+  await nextFrames(devtools)
+  const after = await read(devtools, REFUSED_STATE, NO_CARD)
+
+  check(
+    "a refused month arrow leaves the grid's Tab stop on the day it was on, and the focus on the arrow",
+    staged && aim.onTarget && before.tabStop === REFUSED_DAY && asked &&
+      after.asked === "2026-04-01" && after.heading === before.heading &&
+      after.tabStop === REFUSED_DAY && after.focused.startsWith('button "Next month'),
+    !staged
+      ? `the focus was never staged on ${REFUSED_DAY} of the refusing card`
+      : !aim.onTarget
+      ? `a click at the next-month arrow's centre would land on ${aim.landedOn}`
+      : `from ${before.tabStop || "nowhere"} in ${before.heading}, a click on the next-month ` +
+        `arrow was ${asked ? "asked about" : "never asked about"} (count ${before.count} → ` +
+        `${after.count}, asked for ${after.asked}); the heading is ${
+          after.heading || "unreadable"
+        }, ` +
+        `the grid's Tab stop is ${after.tabStop || "nowhere"} — the grid's own fallback is ` +
+        `2026-03-10, the card's today — and the focus is on ${after.focused}`,
+  )
+
+  // The day the arrow was clicked from belongs to that request and to the screen it was made on.
+  // An owner that then selects a day itself has changed that screen, and the Tab stop follows the
+  // selection, as it would have with no arrow clicked at all.
+  await read(
+    devtools,
+    `(document.querySelector('${REFUSED} [data-e2e="calendar-refused-select"]')?.click(), true)`,
+    false,
+  )
+  await nextFrames(devtools)
+  const selected = await read(devtools, REFUSED_STATE, NO_CARD)
+  check(
+    "a refused arrow's day gives way to a day the owner selects afterwards",
+    after.tabStop === REFUSED_DAY && selected.heading === after.heading &&
+      selected.tabStop === "2026-03-25",
+    after.tabStop === REFUSED_DAY
+      ? `after the refused arrow the Tab stop was ${after.tabStop}; the owner selected ` +
+        `2026-03-25 and the Tab stop is ${selected.tabStop || "nowhere"}, the heading ` +
+        `${selected.heading || "unreadable"}`
+      : "the refused arrow did not leave the Tab stop on its day, so this measures nothing",
+  )
+}
+
+/** Wait two animation frames, so a render the last action caused is on screen. */
+function nextFrames(devtools: Devtools): Promise<boolean> {
+  return read(
+    devtools,
+    `new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done(true))))`,
+    false,
+  )
+}
+
+/**
+ * Click one card's month arrow for real, at its centre, once the page has stopped with it there.
+ *
+ * A real click through the browser's input pipeline, so the focus lands on the arrow the way a
+ * reader's click puts it there. Aimed only after {@link centreInView}: focusing a day may have
+ * scrolled, and a point worked out mid-scroll lands on whatever passes under it.
+ *
+ * @param devtools The connected session.
+ * @param card Selector of the card holding the calendar.
+ * @param direction Which arrow.
+ * @returns Whether the point was on the arrow, and what it landed on when it was not.
+ */
+async function clickMonthArrow(
+  devtools: Devtools,
+  card: string,
+  direction: "Next" | "Previous",
+): Promise<{ onTarget: boolean; landedOn: string }> {
+  const arrow = `document.querySelector('${card} button[aria-label^="${direction} month"]')`
+  await centreInView(devtools, arrow)
+  const aim = await read(
+    devtools,
+    `(() => {
+      const arrow = ${arrow}
+      if (!arrow) return { onTarget: false, x: 0, y: 0, landedOn: "no ${direction} month button" }
+      const rect = arrow.getBoundingClientRect()
+      const x = Math.round(rect.left + rect.width / 2)
+      const y = Math.round(rect.top + rect.height / 2)
+      const at = document.elementFromPoint(x, y)
+      // The chevron inside the button counts as the button: a click on it activates the button
+      // and focuses it, which is all the aim is asked for.
+      return {
+        onTarget: Boolean(at) && arrow.contains(at),
+        x,
+        y,
+        landedOn: at
+          ? at.tagName.toLowerCase() + ' "' +
+            (at.getAttribute("aria-label") || at.textContent.trim()).slice(0, 40) + '"'
+          : "nothing",
+      }
+    })()`,
+    { onTarget: false, x: 0, y: 0, landedOn: "the page could not be read" },
+  )
+  if (aim.onTarget) await clickAt(devtools, aim)
+  return aim
+}
+
+/** The interactive card's reading, with the month it was asked for and its selection. */
+const INTERACTIVE_STATE = cardState(CALENDAR, {
+  asked: "calendar-month",
+  count: "",
+  extra: "calendar-picked",
+})
+
+/**
+ * What a month arrow's request leaves behind once it is answered: nothing (#202 review).
+ *
+ * Two answers, each read at the Tab stop. An owner that accepts at once and later moves the month
+ * back itself — a host "go to date" control that sets the month and the selection together — lands
+ * the Tab stop on the selection, not on the day the arrow was clicked from. And an owner that
+ * answers late keeps the Tab stop on the day it was clicked from while the answer is pending, then
+ * moves it to the same day number in the month it draws. The focus stays on the arrow throughout.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function arrowRequestChecks(devtools: Devtools): Promise<void> {
+  const goTo = `(document.querySelector('${CALENDAR} [data-e2e="calendar-go-to"]')?.click(), true)`
+  const showsMarch = () => read(devtools, `${INTERACTIVE_STATE}.asked === "2026-03-01"`, false)
+
+  await read(devtools, goTo, false)
+  await poll(showsMarch, 3_000)
+  await frameCard(devtools, CALENDAR)
+  const staged = await standOnDay(devtools, GRID, "2026-03-19")
+  const aim = staged
+    ? await clickMonthArrow(devtools, CALENDAR, "Next")
+    : { onTarget: false, landedOn: "nothing: no day was staged" }
+  await poll(
+    () =>
+      read(
+        devtools,
+        `(() => { const state = ${INTERACTIVE_STATE}; return state.asked === "2026-04-01" && ` +
+          `state.tabStop === "2026-04-19" })()`,
+        false,
+      ),
+    3_000,
+  )
+  const april = await read(devtools, INTERACTIVE_STATE, NO_CARD)
+  await read(devtools, goTo, false)
+  await poll(showsMarch, 3_000)
+  await nextFrames(devtools)
+  const back = await read(devtools, INTERACTIVE_STATE, NO_CARD)
+
+  check(
+    "after an accepted month arrow, a month change the owner makes itself puts the Tab stop on the selection",
+    staged && aim.onTarget && april.asked === "2026-04-01" && april.tabStop === "2026-04-19" &&
+      back.asked === "2026-03-01" && back.extra === "2026-03-05" &&
+      back.tabStop === "2026-03-05",
+    !staged
+      ? "the focus was never staged on 2026-03-19 of the interactive card"
+      : !aim.onTarget
+      ? `a click at the next-month arrow's centre would land on ${aim.landedOn}`
+      : `from 2026-03-19 the arrow drew ${april.asked || "nothing"} with the Tab stop on ` +
+        `${april.tabStop || "nowhere"}; the owner then moved to ${back.asked || "nothing"} ` +
+        `selecting ${back.extra || "nothing"}, and the Tab stop is ${back.tabStop || "nowhere"} ` +
+        `— wanted the selection, not the day the arrow was clicked from`,
+  )
+
+  // The late card, in timer mode, which is where `lateMonthChecks` leaves it.
+  await read(
+    devtools,
+    `(document.querySelector('${LATE} [data-e2e="calendar-late-mode-timer"]')?.click(), true)`,
+    false,
+  )
+  await settleLateCard(devtools)
+  await frameCard(devtools, LATE)
+  const lateStaged = await standOnDay(devtools, LATE_GRID, LATE_DAY)
+  const before = await read(devtools, LATE_STATE, NO_CARD)
+  const lateAim = lateStaged
+    ? await clickMonthArrow(devtools, LATE, "Next")
+    : { onTarget: false, landedOn: "nothing: no day was staged" }
+  await poll(() => read(devtools, `${LATE_STATE}.asked === "2026-04-01"`, false), 900)
+  await nextFrames(devtools)
+  const pending = await read(devtools, LATE_STATE, NO_CARD)
+  await poll(
+    () =>
+      read(
+        devtools,
+        `(() => { const state = ${LATE_STATE}; return state.count === ${
+          before.count + 1
+        } && state.extra === "2026-04-01" })()`,
+        false,
+      ),
+    5_000,
+  )
+  await nextFrames(devtools)
+  const drawn = await read(devtools, LATE_STATE, NO_CARD)
+
+  check(
+    "an arrow answered late keeps the Tab stop on its day until the month is drawn, then moves it to the same day number",
+    lateStaged && lateAim.onTarget && before.tabStop === LATE_DAY &&
+      pending.asked === "2026-04-01" && pending.count === before.count &&
+      pending.extra === "2026-03-01" && pending.tabStop === LATE_DAY &&
+      pending.focused.startsWith('button "Next month') &&
+      drawn.count === before.count + 1 && drawn.extra === "2026-04-01" &&
+      drawn.tabStop === "2026-04-19" && drawn.focused.startsWith('button "Next month'),
+    !lateStaged
+      ? `the focus was never staged on ${LATE_DAY} of the late card`
+      : !lateAim.onTarget
+      ? `a click at the next-month arrow's centre would land on ${lateAim.landedOn}`
+      : `while pending (asked ${pending.asked || "nothing"}, showing ` +
+        `${pending.extra || "nothing"}, answers ${before.count} → ${pending.count}) the Tab stop ` +
+        `was ${pending.tabStop || "nowhere"} with the focus on ${pending.focused}; once drawn ` +
+        `(showing ${drawn.extra || "nothing"}, answers ${drawn.count}) it is ` +
+        `${drawn.tabStop || "nowhere"} with the focus on ${drawn.focused}`,
+  )
+
+  await settleLateCard(devtools)
 }
 
 /**
