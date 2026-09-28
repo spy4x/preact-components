@@ -7,12 +7,19 @@ import { type DateRange, isValidDateRange } from "@spy4x/time/date"
 import {
   type DateRangePreset,
   type DateTimeRange,
+  type ExactDateTimeRange,
+  exactDateTimeRange,
   isValidDateTimeRange,
+  occurrenceOf,
   rangeForPreset,
   rangeForTimePreset,
+  resolveDateTime,
+  type ResolvedDateTime,
   type TimeRangePreset,
   timeRangePresets,
+  type WallClockOccurrence,
 } from "./date-range.ts"
+import { tzOffsetMinutes, WallClockKind } from "@spy4x/time/tz"
 
 /** One option of the preset list: the maths identifier plus the caller's label for it. */
 export interface DateRangePresetOption {
@@ -55,6 +62,25 @@ export interface DateRangePickerLabels {
   lastHour?: string
   /** Text of the "last 24 hours" preset. Rendered only when `withTime` is on. */
   last24Hours?: string
+  /**
+   * Legend of the choice shown under a `withTime` field whose value happens twice that day, because
+   * the clocks go back.
+   */
+  repeatedTime?: string
+  /** The choice for the first of a repeated time's two passes; its UTC offset follows it. */
+  earlierOccurrence?: string
+  /** The choice for the second of a repeated time's two passes; its UTC offset follows it. */
+  laterOccurrence?: string
+  /**
+   * The note shown under a `withTime` field whose value the clocks skip. Handed the
+   * `YYYY-MM-DDTHH:mm` value the time is read as instead (see `resolveDateTime`).
+   */
+  skippedTime?: (readsAs: string) => string
+  /**
+   * The note shown above Apply in `withTime` mode when both ends resolve but `from` comes after
+   * `to` — for instance because a skipped `from` was read forward past `to`.
+   */
+  outOfOrder?: string
 }
 
 /** The English every label falls back to. */
@@ -67,6 +93,12 @@ const defaultLabels: Required<DateRangePickerLabels> = {
   cancel: "Cancel",
   lastHour: "Last hour",
   last24Hours: "Last 24 hours",
+  repeatedTime: "This time happens twice that day",
+  earlierOccurrence: "First, before the clocks go back",
+  laterOccurrence: "Second, after the clocks go back",
+  skippedTime: (readsAs) =>
+    `The clocks skip this time that day, so it is read as ${readsAs.replace("T", " ")}.`,
+  outOfOrder: "From comes after To, so there is nothing to apply.",
 }
 
 /** Props shared by both of {@link AnyDateRangePickerProps}'s two shapes. */
@@ -122,10 +154,17 @@ export interface DateRangePickerProps extends DateRangePickerSharedProps {
  */
 export interface DateRangePickerTimeProps extends DateRangePickerSharedProps {
   withTime: true
-  /** Controlled value; `null` until the caller has a range. */
+  /**
+   * Controlled value; `null` until the caller has a range. When it carries `fromInstant` and
+   * `toInstant`, the panel reopens on the pass of a repeated hour they name.
+   */
   range: DateTimeRange | null
-  /** Called with the new inclusive range when a preset or the custom fields commit. */
-  onChange: (range: DateTimeRange) => void
+  /**
+   * Called with the new inclusive range when a preset or the custom fields commit. It always
+   * carries `fromInstant` and `toInstant`, the exact moments the two wall-clock strings mean: read
+   * those to query by the range, because a string alone cannot say which of a repeated hour it is.
+   */
+  onChange: (range: ExactDateTimeRange) => void
   /** Preset to highlight, e.g. from {@link presetForTimeRange}, or `"custom"` for the typed fields. */
   selectedPreset?: TimeRangePreset | "custom"
   /** Renders the chosen range in the trigger. Defaults to `from → to` (ISO wall clock). */
@@ -157,6 +196,29 @@ const dateInputClasses =
 const fieldLabelClasses = "block text-xs font-medium text-gray-700 dark:text-gray-300"
 
 const pressedPresetClasses = "bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100"
+
+const occurrenceClasses = "mt-1 space-y-1 text-xs text-gray-700 dark:text-gray-300"
+
+const occurrenceOptionClasses = "flex items-center gap-2"
+
+/** `UTC+02:00` for the offset `timeZone` is at on `instant`. */
+function utcOffsetText(instant: string, timeZone: string): string {
+  const minutes = tzOffsetMinutes(new Date(instant), timeZone)
+  const sign = minutes < 0 ? "-" : "+"
+  const abs = Math.abs(minutes)
+  const hh = String(Math.floor(abs / 60)).padStart(2, "0")
+  const mm = String(abs % 60).padStart(2, "0")
+  return `UTC${sign}${hh}:${mm}`
+}
+
+/** {@link resolveDateTime}, or `null` for a value that is incomplete or cannot be resolved. */
+function resolveOrNull(value: string, timeZone: string): ResolvedDateTime | null {
+  try {
+    return resolveDateTime(value, timeZone)
+  } catch {
+    return null
+  }
+}
 
 /**
  * The trigger's text for a chosen range: the caller's formatter, or `from → to` (ISO) when there is
@@ -212,6 +274,10 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
   const usingCustom = useSignal(false)
   const draftFrom = useSignal(props.range?.from ?? "")
   const draftTo = useSignal(props.range?.to ?? "")
+  /** Which pass of a repeated hour each field names; read only in `withTime` mode. */
+  const timedRange = props.withTime ? props.range : null
+  const fromOccurrence = useSignal(seededOccurrence(timedRange, "from", timeZone))
+  const toOccurrence = useSignal(seededOccurrence(timedRange, "to", timeZone))
   const rootRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -234,13 +300,43 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
     cancel: labels?.cancel ?? defaultLabels.cancel,
     lastHour: labels?.lastHour ?? defaultLabels.lastHour,
     last24Hours: labels?.last24Hours ?? defaultLabels.last24Hours,
+    repeatedTime: labels?.repeatedTime ?? defaultLabels.repeatedTime,
+    earlierOccurrence: labels?.earlierOccurrence ?? defaultLabels.earlierOccurrence,
+    laterOccurrence: labels?.laterOccurrence ?? defaultLabels.laterOccurrence,
+    skippedTime: labels?.skippedTime ?? defaultLabels.skippedTime,
+    outOfOrder: labels?.outOfOrder ?? defaultLabels.outOfOrder,
   }
 
   // Time mode has no caller-supplied preset list — see `DateRangePickerTimeProps` — so its custom
   // fields are unconditional; day mode keeps the existing opt-in through a `"custom"` entry.
   const showsCustom = props.withTime || props.presets.some((option) => option.preset === "custom")
   const draft = { from: draftFrom.value, to: draftTo.value }
-  const canApply = props.withTime ? isValidDateTimeRange(draft) : isValidDateRange(draft)
+  // In `withTime` mode the draft is resolved in the picker's zone, with the pass of a repeated hour
+  // the person chose for each end, and Apply waits until that resolves to two ordered instants.
+  const exactDraft = props.withTime
+    ? exactOrNull(draft, timeZone, { from: fromOccurrence.value, to: toOccurrence.value })
+    : null
+  const canApply = props.withTime
+    ? exactDraft !== null && isValidDateTimeRange(exactDraft)
+    : isValidDateRange(draft)
+
+  // What each `withTime` field has to say about its own value, resolved once here so the field's
+  // `aria-describedby` and the note it points at are decided by the same answer.
+  const fromResolved = props.withTime ? resolveOrNull(draftFrom.value, timeZone) : null
+  const toResolved = props.withTime ? resolveOrNull(draftTo.value, timeZone) : null
+  // Both ends resolve on their own, so the only thing that can have stopped `exactDraft` is order.
+  const outOfOrder = fromResolved !== null && toResolved !== null && exactDraft === null
+  const fromNoteId = `${fromId}-wall-clock`
+  const toNoteId = `${toId}-wall-clock`
+  const orderId = `${id}-order`
+  /** `aria-describedby` for one `withTime` field: its own note, and the order note, when shown. */
+  const describedBy = (resolved: ResolvedDateTime | null, noteId: string) => {
+    const ids = [
+      ...(hasWallClockNote(resolved) ? [noteId] : []),
+      ...(outOfOrder ? [orderId] : []),
+    ]
+    return ids.length === 0 ? undefined : ids.join(" ")
+  }
 
   // `Custom…` is pressed exactly while the custom fields are the live choice: the caller says the
   // chosen range is the custom one, or the person has reached for the fields in this panel — by
@@ -354,9 +450,16 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
   }
 
   /** Opens the panel, seeding the draft from the controlled value so typing resumes where it left off. */
-  const openPanel = () => {
+  /** Resets the draft, the chosen passes of a repeated hour included, to the caller's value. */
+  const reseedDraft = () => {
     draftFrom.value = props.range?.from ?? ""
     draftTo.value = props.range?.to ?? ""
+    fromOccurrence.value = seededOccurrence(timedRange, "from", timeZone)
+    toOccurrence.value = seededOccurrence(timedRange, "to", timeZone)
+  }
+
+  const openPanel = () => {
+    reseedDraft()
     // The draft is reseeded from the caller's value, so the pressed state is reseeded from the
     // caller's choice: a custom draft that was abandoned last time does not come back pressed.
     usingCustom.value = false
@@ -393,6 +496,8 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
     const timeRange = rangeForTimePreset(preset, { now: instant(), timeZone })
     draftFrom.value = timeRange.from
     draftTo.value = timeRange.to
+    fromOccurrence.value = occurrenceOf(timeRange.from, timeRange.fromInstant, timeZone)
+    toOccurrence.value = occurrenceOf(timeRange.to, timeRange.toInstant, timeZone)
     props.onChange(timeRange)
     closePanel(true)
   }
@@ -400,7 +505,7 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
   const applyCustom = () => {
     if (!canApply) return
     if (props.withTime) {
-      props.onChange(draft)
+      if (exactDraft !== null) props.onChange(exactDraft)
     } else {
       props.onChange(rangeForPreset("custom", { now: instant(), timeZone, custom: draft }))
     }
@@ -408,8 +513,7 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
   }
 
   const cancelCustom = () => {
-    draftFrom.value = props.range?.from ?? ""
-    draftTo.value = props.range?.to ?? ""
+    reseedDraft()
     usingCustom.value = false
     closePanel(true)
   }
@@ -484,7 +588,13 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
         {showsCustom && (
           <div class="mt-3 space-y-2 border-t border-gray-200 pt-3 dark:border-gray-600">
             <div>
-              <label class={fieldLabelClasses} for={fromId}>{text.from}</label>
+              <label
+                class={fieldLabelClasses}
+                for={fromId}
+                id={props.withTime ? `${fromId}-label` : undefined}
+              >
+                {text.from}
+              </label>
               <input
                 id={fromId}
                 ref={fromRef}
@@ -495,11 +605,34 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
                   draftFrom.value = event.currentTarget.value
                   usingCustom.value = true
                 }}
+                aria-describedby={describedBy(fromResolved, fromNoteId)}
                 data-e2e="date-range-from"
               />
+              {props.withTime && (
+                <WallClockNote
+                  resolved={fromResolved}
+                  id={fromNoteId}
+                  fieldLabelId={`${fromId}-label`}
+                  timeZone={timeZone}
+                  occurrence={fromOccurrence.value}
+                  onOccurrence={(next) => {
+                    fromOccurrence.value = next
+                    usingCustom.value = true
+                  }}
+                  name={`${id}-from-occurrence`}
+                  text={text}
+                  dataE2E="date-range-from"
+                />
+              )}
             </div>
             <div>
-              <label class={fieldLabelClasses} for={toId}>{text.to}</label>
+              <label
+                class={fieldLabelClasses}
+                for={toId}
+                id={props.withTime ? `${toId}-label` : undefined}
+              >
+                {text.to}
+              </label>
               <input
                 id={toId}
                 type={props.withTime ? "datetime-local" : "date"}
@@ -509,9 +642,31 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
                   draftTo.value = event.currentTarget.value
                   usingCustom.value = true
                 }}
+                aria-describedby={describedBy(toResolved, toNoteId)}
                 data-e2e="date-range-to"
               />
+              {props.withTime && (
+                <WallClockNote
+                  resolved={toResolved}
+                  id={toNoteId}
+                  fieldLabelId={`${toId}-label`}
+                  timeZone={timeZone}
+                  occurrence={toOccurrence.value}
+                  onOccurrence={(next) => {
+                    toOccurrence.value = next
+                    usingCustom.value = true
+                  }}
+                  name={`${id}-to-occurrence`}
+                  text={text}
+                  dataE2E="date-range-to"
+                />
+              )}
             </div>
+            {outOfOrder && (
+              <p id={orderId} class={occurrenceClasses} data-e2e="date-range-order">
+                {text.outOfOrder}
+              </p>
+            )}
             <div class="flex justify-end gap-2">
               <Button variant="secondary" size="sm" onClick={cancelCustom}>{text.cancel}</Button>
               <Button
@@ -519,6 +674,7 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
                 size="sm"
                 onClick={applyCustom}
                 disabled={!canApply}
+                aria-describedby={outOfOrder ? orderId : undefined}
                 data-e2e="date-range-apply"
               >
                 {text.apply}
@@ -528,5 +684,113 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
         )}
       </div>
     </div>
+  )
+}
+
+/** The pass of a repeated hour one end of a controlled value names, `"earlier"` when it names none. */
+function seededOccurrence(
+  range: DateTimeRange | null,
+  end: "from" | "to",
+  timeZone: string,
+): WallClockOccurrence {
+  const instant = end === "from" ? range?.fromInstant : range?.toInstant
+  return range === null || instant === undefined
+    ? "earlier"
+    : occurrenceOf(range[end], instant, timeZone)
+}
+
+/** {@link exactDateTimeRange}, or `null` for a draft that is incomplete, unresolvable or reversed. */
+function exactOrNull(
+  draft: DateTimeRange,
+  timeZone: string,
+  occurrences: { from: WallClockOccurrence; to: WallClockOccurrence },
+): ExactDateTimeRange | null {
+  try {
+    return exactDateTimeRange(draft, timeZone, occurrences)
+  } catch {
+    return null
+  }
+}
+
+/** Whether a resolved value is skipped or repeated, which is when {@link WallClockNote} shows. */
+function hasWallClockNote(resolved: ResolvedDateTime | null): boolean {
+  return resolved !== null && resolved.kind !== WallClockKind.Unique
+}
+
+/** Props of {@link WallClockNote}. */
+interface WallClockNoteProps {
+  /** The field's draft resolved in the picker's zone, or `null` while it cannot be. */
+  resolved: ResolvedDateTime | null
+  /** Id of the note or fieldset, which the field's `aria-describedby` names. */
+  id: string
+  /** Id of the field's own `<label>`, which starts the fieldset's accessible name. */
+  fieldLabelId: string
+  timeZone: string
+  occurrence: WallClockOccurrence
+  onOccurrence: (next: WallClockOccurrence) => void
+  /** Shared `name` of the two radios, unique per field. */
+  name: string
+  text: Required<DateRangePickerLabels>
+  /** Prefix of the `data-e2e` hooks: `<prefix>-occurrence`, `<prefix>-skipped`. */
+  dataE2E: string
+}
+
+/**
+ * What a `withTime` field needs to say about its value in the picker's zone, rendered under it.
+ *
+ * A time the clocks repeat gets a choice between its two passes, each named with its UTC offset,
+ * because the string alone cannot say which one the person means (#264). A time the clocks skip
+ * gets a note saying what it is read as instead; Apply still works, and hands back that reading.
+ * An ordinary time, or an incomplete one, renders nothing.
+ *
+ * Either one carries `id`, which the field's `aria-describedby` names, so a screen reader hears it
+ * with the field. The radio group is named by the field's own label followed by its legend
+ * ("From This time happens twice that day"), so the From and To groups do not share one name.
+ */
+function WallClockNote(props: WallClockNoteProps): JSX.Element | null {
+  const { resolved, id, fieldLabelId, timeZone, occurrence, onOccurrence, name, text, dataE2E } =
+    props
+  if (resolved === null || !hasWallClockNote(resolved)) return null
+
+  if (resolved.kind === WallClockKind.Gap) {
+    return (
+      <p id={id} class={occurrenceClasses} data-e2e={`${dataE2E}-skipped`}>
+        {text.skippedTime(resolved.reads)}
+      </p>
+    )
+  }
+
+  const choices: { occurrence: WallClockOccurrence; label: string; instant: string }[] = [
+    { occurrence: "earlier", label: text.earlierOccurrence, instant: resolved.instant },
+    {
+      occurrence: "later",
+      label: text.laterOccurrence,
+      instant: resolved.later ?? resolved.instant,
+    },
+  ]
+  return (
+    <fieldset
+      id={id}
+      class={occurrenceClasses}
+      aria-labelledby={`${fieldLabelId} ${id}-legend`}
+      data-e2e={`${dataE2E}-occurrence`}
+    >
+      <legend id={`${id}-legend`} class="font-medium">{text.repeatedTime}</legend>
+      {choices.map((choice) => (
+        <label key={choice.occurrence} class={occurrenceOptionClasses}>
+          <input
+            type="radio"
+            name={name}
+            value={choice.occurrence}
+            checked={occurrence === choice.occurrence}
+            onChange={() => onOccurrence(choice.occurrence)}
+            data-e2e={`${dataE2E}-${choice.occurrence}`}
+          />
+          <span>
+            {choice.label} ({utcOffsetText(choice.instant, timeZone)})
+          </span>
+        </label>
+      ))}
+    </fieldset>
   )
 }

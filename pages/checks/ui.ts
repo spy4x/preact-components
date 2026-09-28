@@ -7216,7 +7216,458 @@ async function dateRangeTimeChecks(devtools: Devtools): Promise<void> {
     await nativePickerCheck(devtools, TIME_PICKER)
     await darkDateIconCheck(devtools, TIME_PICKER)
   })
+  await repeatedHourCheck(devtools)
+  await keyboardPassCheck(devtools)
+  await skippedHourCheck(devtools)
   await blurActive(devtools)
+}
+
+/** A page expression for one element inside the parked `withTime` panel, by its `data-e2e` hook. */
+function inTimePanel(hook: string): string {
+  return `(globalThis.__verifyPickerTime?.panel?.querySelector('[data-e2e="${hook}"]') ?? null)`
+}
+
+/**
+ * Type a value into one of the parked `withTime` panel's two fields, the way the typing check above
+ * does: set the value and dispatch one `input` event.
+ */
+async function typeTimeField(devtools: Devtools, hook: string, value: string): Promise<boolean> {
+  return await devtools.evaluate<boolean>(`(() => {
+    const field = ${inTimePanel(hook)}
+    if (field === null) return false
+    field.value = ${JSON.stringify(value)}
+    field.dispatchEvent(new Event("input", { bubbles: true }))
+    return true
+  })()`)
+}
+
+/** Whether the parked `withTime` panel's Apply is there and enabled. */
+function timeApplyEnabled(devtools: Devtools): Promise<boolean> {
+  return devtools.evaluate<boolean>(`(() => {
+    const apply = ${inTimePanel("date-range-apply")}
+    return apply !== null && apply.disabled === false
+  })()`)
+}
+
+/** The text of the withTime card's readout with `data-e2e="<hook>"`, next to the picker. */
+function timeReadout(devtools: Devtools, hook: string): Promise<string> {
+  return devtools.evaluate<string>(`(() => {
+    const trigger = globalThis.__verifyPickerTime?.trigger ?? null
+    const readout = trigger
+      ?.closest(':has(> [data-e2e="${hook}"])')
+      ?.querySelector(':scope > [data-e2e="${hook}"]') ?? null
+    return (readout?.textContent ?? "").trim()
+  })()`)
+}
+
+/** What the browser's accessibility tree computes for one element: its name and description. */
+interface TimeAX {
+  found: boolean
+  name: string
+  description: string
+}
+
+/**
+ * Read one element in the parked `withTime` panel from the browser's own accessibility tree —
+ * `Accessibility.getPartialAXTree`, the name and description a screen reader is given — rather
+ * than from its attributes, so a broken `aria-describedby` target or a label that no longer
+ * resolves reads as what it is: nothing. The same approach as `pages/checks/map.ts`, one fresh
+ * document root per read and never two reads at once, for the reason given there.
+ */
+async function timePanelAX(devtools: Devtools, hook: string): Promise<TimeAX> {
+  const selector = await devtools.evaluate<string>(`(() => {
+    const panel = globalThis.__verifyPickerTime?.panel ?? null
+    return panel === null ? "" : "#" + CSS.escape(panel.id) + ' [data-e2e="${hook}"]'
+  })()`)
+  if (selector === "") return { found: false, name: "", description: "" }
+  await devtools.send("Accessibility.enable", {})
+  const { root } = await devtools.send<{ root: { nodeId: number } }>("DOM.getDocument", {
+    depth: -1,
+    pierce: true,
+  })
+  const { nodeId } = await devtools.send<{ nodeId: number }>("DOM.querySelector", {
+    nodeId: root.nodeId,
+    selector,
+  })
+  if (!nodeId) return { found: false, name: "", description: "" }
+  const { nodes } = await devtools.send<
+    { nodes: Array<{ name?: { value?: string }; description?: { value?: string } }> }
+  >("Accessibility.getPartialAXTree", { nodeId, fetchRelatives: false })
+  return {
+    found: true,
+    name: String(nodes[0]?.name?.value ?? "").trim(),
+    description: String(nodes[0]?.description?.value ?? "").trim(),
+  }
+}
+
+/**
+ * Bring a radio in the parked panel into view and press it with a real mouse click, then wait
+ * until it reads checked.
+ *
+ * @returns An empty string on success, or what went wrong.
+ */
+async function clickTimeRadio(devtools: Devtools, hook: string): Promise<string> {
+  const target = inTimePanel(hook)
+  if (!await centreInView(devtools, target)) return `the ${hook} radio never came to rest in view`
+  const aim = await aimAt(devtools, target)
+  if (!aim.onTarget) return `the ${hook} radio is covered by ${aim.tag} at its own centre`
+  const landing = await clickAt(devtools, aim, target)
+  if (landing === null || !landing.onTarget) {
+    return `the click aimed at ${hook} landed on ${landing?.tag ?? "nothing"}`
+  }
+  const checked = await poll(
+    () => devtools.evaluate<boolean>(`${target}?.checked === true`),
+    3_000,
+  )
+  return checked ? "" : `the ${hook} radio was clicked and never read checked`
+}
+
+/**
+ * The hour Paris repeats when its clocks go back, driven by a person (#264).
+ *
+ * `2026-10-25T02:30` and `02:45` each happen twice in Europe/Paris. Typing them must make both
+ * fields ask which pass is meant; a real click on From's "Second" must disable Apply, because the
+ * second 02:30 comes after the first 02:45; clicking back to From's "First" and then To's "Second"
+ * must enable it, and Apply must hand `onChange` the first 02:30 (00:30Z) through the second 02:45
+ * (01:45Z) — seventy-five real minutes, not the fifteen both strings read as.
+ */
+async function repeatedHourCheck(devtools: Devtools): Promise<void> {
+  await closeTimePanelIfOpen(devtools)
+  const EXPECTED = "instants: 2026-10-25T00:30:00.000Z → 2026-10-25T01:45:00.000Z"
+  await pointerToCorner(devtools)
+  const opened = await openTimePickerPanel(devtools)
+  const typed = opened.open &&
+    await typeTimeField(devtools, "date-range-from", "2026-10-25T02:30") &&
+    await typeTimeField(devtools, "date-range-to", "2026-10-25T02:45")
+  const asked = typed && await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `${inTimePanel("date-range-from-occurrence")} !== null && ` +
+          `${inTimePanel("date-range-to-occurrence")} !== null`,
+      ),
+    3_000,
+  )
+  const firstChecked = asked && await devtools.evaluate<boolean>(
+    `${inTimePanel("date-range-from-earlier")}?.checked === true && ` +
+      `${inTimePanel("date-range-to-earlier")}?.checked === true`,
+  )
+
+  const REPEATED = "This time happens twice that day"
+  const fromGroup = await timePanelAX(devtools, "date-range-from-occurrence")
+  const toGroup = await timePanelAX(devtools, "date-range-to-occurrence")
+  const fromField = await timePanelAX(devtools, "date-range-from")
+  const toField = await timePanelAX(devtools, "date-range-to")
+  // Chromium describes a field by a fieldset through the fieldset's legend.
+  const describes = (field: TimeAX) => field.description === REPEATED
+  check(
+    "each field's choice of pass is named after that field, and is the field's own accessible description",
+    asked && fromGroup.name === `From ${REPEATED}` && toGroup.name === `To ${REPEATED}` &&
+      describes(fromField) && describes(toField),
+    !asked
+      ? "there was no choice of pass on the page to read"
+      : `groups named "${fromGroup.name}" / "${toGroup.name}"; From described as ` +
+        `"${fromField.description}", To as "${toField.description}"`,
+  )
+
+  const fromLater = asked ? await clickTimeRadio(devtools, "date-range-from-later") : "not asked"
+  // Wait for the render that follows the click to reach Apply, then require it to stay disabled.
+  const disabledWhenReversed = fromLater === "" &&
+    await poll(async () => !(await timeApplyEnabled(devtools)), 3_000)
+
+  const fromEarlier = fromLater === ""
+    ? await clickTimeRadio(devtools, "date-range-from-earlier")
+    : "skipped"
+  const toLater = fromEarlier === ""
+    ? await clickTimeRadio(devtools, "date-range-to-later")
+    : "skipped"
+  const enabled = toLater === "" && await poll(() => timeApplyEnabled(devtools), 3_000)
+  if (enabled) {
+    await devtools.evaluate<null>(`(${inTimePanel("date-range-apply")}?.click(), null)`)
+  }
+  const applied = enabled && await poll(
+    async () => (await timeReadout(devtools, "controlled-instants")) === EXPECTED,
+    3_000,
+  )
+  const readout = await timeReadout(devtools, "controlled-instants")
+  await pointerToCorner(devtools)
+
+  check(
+    "a repeated hour asks which pass each field means, and a real click on the second one decides the instant onChange receives",
+    opened.open && typed && asked && firstChecked && disabledWhenReversed && applied,
+    !opened.open
+      ? "the withTime panel never opened"
+      : !typed
+      ? "the withTime panel has no From or To field to type into"
+      : !asked
+      ? "typing 2026-10-25T02:30 and 02:45 in Europe/Paris never showed both fields' choice of pass"
+      : !firstChecked
+      ? "the choice did not start on the first pass for both fields"
+      : fromLater !== ""
+      ? fromLater
+      : !disabledWhenReversed
+      ? "Apply stayed enabled with From on the second 02:30 and To on the first 02:45, which is " +
+        "forty-five minutes backwards"
+      : fromEarlier !== ""
+      ? fromEarlier
+      : toLater !== ""
+      ? toLater
+      : !enabled
+      ? "Apply never enabled for the first 02:30 through the second 02:45"
+      : !applied
+      ? `onChange received "${readout}", not "${EXPECTED}"`
+      : `From "Second" disabled Apply; From "First" and To "Second" applied "${readout}"`,
+  )
+}
+
+/**
+ * Close the parked `withTime` panel if a check that failed part-way left it open, so the next check
+ * starts from a closed panel and its own opening press opens it rather than closing it.
+ */
+async function closeTimePanelIfOpen(devtools: Devtools): Promise<void> {
+  if (!(await devtools.evaluate<boolean>(`${PICKER_TIME_STATE}.open`))) return
+  await devtools.evaluate<null>(
+    `(${inTimePanel("date-range-preset-last-hour")}?.focus(), null)`,
+  )
+  await pressKey(devtools, "Escape")
+  await poll(() => devtools.evaluate<boolean>(`${PICKER_TIME_STATE}.open === false`), 3_000)
+}
+
+/** Whether the parked panel's radio `hook` is checked and has focus. */
+function radioFocusedAndChecked(devtools: Devtools, hook: string): Promise<boolean> {
+  return devtools.evaluate<boolean>(`(() => {
+    const radio = ${inTimePanel(hook)}
+    return radio !== null && radio.checked === true && document.activeElement === radio
+  })()`)
+}
+
+/**
+ * The same repeated hour, driven by keyboard alone once focus is on a radio: real ArrowDown and
+ * ArrowUp presses move between the two passes of one field — and only that field's, which is what
+ * the radios' shared `name` gives them — and Apply follows each move. A click then only puts focus
+ * on To's first pass (a `datetime-local` field lies between the groups, and Tab walks its segments),
+ * ArrowDown picks To's second pass, a second ArrowDown wraps to To's first (never into From's
+ * pair) and a third comes back, and Tab, Tab, Enter applies the first 02:30 through the second
+ * 02:45.
+ */
+async function keyboardPassCheck(devtools: Devtools): Promise<void> {
+  await closeTimePanelIfOpen(devtools)
+  const EXPECTED = "instants: 2026-10-25T00:30:00.000Z → 2026-10-25T01:45:00.000Z"
+  await pointerToCorner(devtools)
+  const opened = await openTimePickerPanel(devtools)
+  const typed = opened.open &&
+    await typeTimeField(devtools, "date-range-from", "2026-10-25T02:30") &&
+    await typeTimeField(devtools, "date-range-to", "2026-10-25T02:45")
+  const asked = typed && await poll(
+    () => devtools.evaluate<boolean>(`${inTimePanel("date-range-from-earlier")} !== null`),
+    3_000,
+  )
+  // The panel reopens on the passes the last applied range named, so To is first set to its first
+  // pass by a click; then a click on From's first pass puts focus there, and the rest is keys.
+  const toFirst = asked ? await clickTimeRadio(devtools, "date-range-to-earlier") : "not asked"
+  const focusedFrom = toFirst === ""
+    ? await clickTimeRadio(devtools, "date-range-from-earlier")
+    : toFirst
+  await pointerToCorner(devtools)
+
+  let step = focusedFrom
+  if (step === "") {
+    await pressKey(devtools, "ArrowDown")
+    const moved = await poll(() => radioFocusedAndChecked(devtools, "date-range-from-later"), 3_000)
+    const off = moved && await poll(async () => !(await timeApplyEnabled(devtools)), 3_000)
+    const toUntouched = await devtools.evaluate<boolean>(
+      `${inTimePanel("date-range-to-earlier")}?.checked === true`,
+    )
+    step = !moved
+      ? "ArrowDown on From's first pass did not check and focus From's second pass"
+      : !toUntouched
+      ? "ArrowDown in From's group changed To's choice"
+      : !off
+      ? "Apply stayed enabled with From on the second 02:30, after To's first 02:45"
+      : ""
+  }
+  if (step === "") {
+    await pressKey(devtools, "ArrowUp")
+    const back = await poll(
+      () => radioFocusedAndChecked(devtools, "date-range-from-earlier"),
+      3_000,
+    )
+    const on = back && await poll(() => timeApplyEnabled(devtools), 3_000)
+    step = !back
+      ? "ArrowUp did not bring From back to its first pass"
+      : !on
+      ? "Apply did not come back on with From on its first pass"
+      : ""
+  }
+  if (step === "") {
+    // Into To's group by a click on its already-checked first pass: a `datetime-local` field sits
+    // between the two groups, and Tab walks through that field's own date and time segments.
+    const clicked = await clickTimeRadio(devtools, "date-range-to-earlier")
+    await pointerToCorner(devtools)
+    const inTo = await poll(() => radioFocusedAndChecked(devtools, "date-range-to-earlier"), 3_000)
+    if (inTo) await pressKey(devtools, "ArrowDown")
+    const toLater = inTo &&
+      await poll(() => radioFocusedAndChecked(devtools, "date-range-to-later"), 3_000)
+    step = clicked !== ""
+      ? clicked
+      : !inTo
+      ? "a click on To's first pass did not leave focus on it"
+      : !toLater
+      ? "ArrowDown in To's group did not check and focus To's second pass"
+      : ""
+  }
+  if (step === "") {
+    // From To's last radio, ArrowDown has to wrap to To's first — the two radios of one field share
+    // a name the other field's radios do not. Without that, it walks on into From's pair and
+    // silently changes the other field's pass.
+    await pressKey(devtools, "ArrowDown")
+    const wrapped = await poll(
+      () => radioFocusedAndChecked(devtools, "date-range-to-earlier"),
+      3_000,
+    )
+    const fromKept = await devtools.evaluate<boolean>(
+      `${inTimePanel("date-range-from-earlier")}?.checked === true`,
+    )
+    const landed = await devtools.evaluate<string>(
+      `document.activeElement?.getAttribute?.("data-e2e") ?? document.activeElement?.tagName ?? ""`,
+    )
+    if (wrapped && fromKept) await pressKey(devtools, "ArrowDown")
+    const againLater = wrapped && fromKept &&
+      await poll(() => radioFocusedAndChecked(devtools, "date-range-to-later"), 3_000)
+    step = !wrapped
+      ? `a second ArrowDown from To's second pass went to "${landed}", not back to To's first`
+      : !fromKept
+      ? "a second ArrowDown in To's group changed From's choice"
+      : !againLater
+      ? "a third ArrowDown in To's group did not come back to To's second pass"
+      : ""
+  }
+  let readout = ""
+  if (step === "") {
+    // Past To's group: Cancel, then Apply.
+    await pressKey(devtools, "Tab")
+    await pressKey(devtools, "Tab")
+    const onApply = await poll(
+      () =>
+        devtools.evaluate<boolean>(`document.activeElement === ${inTimePanel("date-range-apply")}`),
+      3_000,
+    )
+    if (onApply) await pressKey(devtools, "Enter")
+    const applied = onApply && await poll(
+      async () => (await timeReadout(devtools, "controlled-instants")) === EXPECTED,
+      3_000,
+    )
+    readout = await timeReadout(devtools, "controlled-instants")
+    step = !onApply
+      ? "two Tabs from To's group did not reach Apply"
+      : !applied
+      ? `Enter on Apply handed onChange "${readout}", not "${EXPECTED}"`
+      : ""
+  }
+
+  check(
+    "the choice of pass works by keyboard: arrows move within one field's pair, and Apply follows",
+    opened.open && typed && asked && step === "",
+    !opened.open
+      ? "the withTime panel never opened"
+      : !typed
+      ? "the withTime panel has no From or To field to type into"
+      : !asked
+      ? "typing 2026-10-25T02:30 in Europe/Paris never showed From's choice of pass"
+      : step !== ""
+      ? step
+      : `ArrowDown/ArrowUp in From; ArrowDown, a wrap to the first pass and back in To; then Enter on Apply: "${readout}"`,
+  )
+}
+
+/**
+ * The hour Paris skips when its clocks go forward, typed by a person (#264): `2026-03-29T02:30`
+ * never happens there, so the field says it is read as 03:30, and Apply hands `onChange` 03:30 in
+ * both the string and the instant (01:30Z).
+ */
+async function skippedHourCheck(devtools: Devtools): Promise<void> {
+  await closeTimePanelIfOpen(devtools)
+  const EXPECTED_RANGE = "range: 2026-03-29T03:30 → 2026-03-29T04:00"
+  const EXPECTED_INSTANTS = "instants: 2026-03-29T01:30:00.000Z → 2026-03-29T02:00:00.000Z"
+  await pointerToCorner(devtools)
+  const opened = await openTimePickerPanel(devtools)
+  // First a To that the skipped From is read past: 02:30 becomes 03:30, after 03:10.
+  const typedReversed = opened.open &&
+    await typeTimeField(devtools, "date-range-from", "2026-03-29T02:30") &&
+    await typeTimeField(devtools, "date-range-to", "2026-03-29T03:10")
+  const ORDER = "From comes after To, so there is nothing to apply."
+  const SKIPPED = "The clocks skip this time that day, so it is read as 2026-03-29 03:30."
+  const orderShown = typedReversed && await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `(${inTimePanel("date-range-order")}?.textContent ?? "").trim() === ${
+          JSON.stringify(ORDER)
+        }`,
+      ),
+    3_000,
+  )
+  const reversedApplyDisabled = orderShown && !(await timeApplyEnabled(devtools))
+  const reversedApply = await timePanelAX(devtools, "date-range-apply")
+  const reversedFrom = await timePanelAX(devtools, "date-range-from")
+  check(
+    "a skipped From read past To says so, and the field and Apply are described by why",
+    orderShown && reversedApplyDisabled && reversedApply.description === ORDER &&
+      reversedFrom.description === `${SKIPPED} ${ORDER}`,
+    !typedReversed
+      ? "the withTime panel has no From or To field to type into"
+      : !orderShown
+      ? "typing 2026-03-29T02:30 → 03:10 in Europe/Paris showed no note that From comes after To"
+      : !reversedApplyDisabled
+      ? "Apply stayed enabled for a From read as 03:30 and a To of 03:10"
+      : `Apply described as "${reversedApply.description}", From as "${reversedFrom.description}"`,
+  )
+
+  const typed = typedReversed &&
+    await typeTimeField(devtools, "date-range-to", "2026-03-29T04:00")
+  const noted = typed && await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `(${inTimePanel("date-range-from-skipped")}?.textContent ?? "").includes("03:30")`,
+      ),
+    3_000,
+  )
+  const enabled = noted && await poll(() => timeApplyEnabled(devtools), 3_000)
+  const skippedFrom = await timePanelAX(devtools, "date-range-from")
+  const skippedTo = await timePanelAX(devtools, "date-range-to")
+  check(
+    "a skipped From is described, to a screen reader, by the note that says what it is read as",
+    noted && skippedFrom.description === SKIPPED && skippedTo.description === "",
+    !noted
+      ? "there was no skipped-time note on the page to read"
+      : `From described as "${skippedFrom.description}", To as "${skippedTo.description}"`,
+  )
+  if (enabled) {
+    await devtools.evaluate<null>(`(${inTimePanel("date-range-apply")}?.click(), null)`)
+  }
+  const applied = enabled && await poll(
+    async () =>
+      (await timeReadout(devtools, "controlled-value")) === EXPECTED_RANGE &&
+      (await timeReadout(devtools, "controlled-instants")) === EXPECTED_INSTANTS,
+    3_000,
+  )
+  const range = await timeReadout(devtools, "controlled-value")
+  const instants = await timeReadout(devtools, "controlled-instants")
+
+  check(
+    "a typed time the clocks skip says what it is read as, and Apply hands back that reading and its instant",
+    opened.open && typed && noted && enabled && applied,
+    !opened.open
+      ? "the withTime panel never opened"
+      : !typed
+      ? "the withTime panel has no From or To field to type into"
+      : !noted
+      ? "typing 2026-03-29T02:30 in Europe/Paris showed no note that it is read as 03:30"
+      : !enabled
+      ? "Apply never enabled for a skipped From"
+      : !applied
+      ? `onChange received "${range}" / "${instants}", not "${EXPECTED_RANGE}" / ` +
+        `"${EXPECTED_INSTANTS}"`
+      : `the note named 03:30, and onChange received "${range}" / "${instants}"`,
+  )
 }
 
 /**

@@ -59,8 +59,11 @@ import {
   startOfQuarter,
   startOfYear,
 } from "@spy4x/time/date"
-import { ONE_HOUR_IN_MILLISECONDS } from "@spy4x/platform/universal/time-constants"
-import { addDays, hhmmInTz, isoDateInTz } from "@spy4x/time/tz"
+import {
+  ONE_HOUR_IN_MILLISECONDS,
+  ONE_MINUTE_IN_MILLISECONDS,
+} from "@spy4x/platform/universal/time-constants"
+import { addDays, hhmmInTz, isoDateInTz, resolveWallClock, WallClockKind } from "@spy4x/time/tz"
 
 /**
  * Every preset the maths knows.
@@ -265,21 +268,34 @@ export const timeRangePresets: readonly TimeRangePreset[] = ["last-hour", "last-
  * which means a `"last-hour"` window covers 61 minutes end to end, not 60: the whole of the `to`
  * minute is included, not just its first instant.
  *
- * This module never converts a wall-clock string back to an instant, so it is never asked to resolve
- * the classic DST hazard on its own — but a caller who does convert one, the ordinary next step for
- * querying a database with it, meets it squarely. {@link isValidDateTimeRange} checks the string's
- * shape and calendar date only, not whether the named local time actually occurs: a `from` or `to`
- * naming the hour a zone springs forward — a local time that never happens that day — passes it, and
- * so does either reading of an hour the zone repeats when it falls back. A caller's own conversion of
- * a repeated hour resolves to whichever of its two instants that conversion defaults to — most date
- * libraries pick the earlier one — and {@link rangeForTimePreset}'s own doc lists what that can cost
- * `"last-hour"` and `"last-24-hours"` on the day a zone falls back.
+ * A wall-clock string alone cannot say which of a repeated hour it means: on the day a zone falls
+ * back, `2026-10-25T02:30` happens twice in `Europe/Berlin`, and most date libraries convert it to
+ * the earlier of the two. So a range can also carry the exact instant behind each end —
+ * `fromInstant` and `toInstant`, UTC ISO 8601 strings such as `2026-10-25T01:30:00.000Z` — and a
+ * caller that queries by the range should read those rather than convert the strings itself (#264).
+ * Both are optional here, so every range written before they existed is still a `DateTimeRange`;
+ * {@link ExactDateTimeRange} is the shape that always has them, and it is what
+ * {@link rangeForTimePreset}, {@link exactDateTimeRange} and `DateRangePicker`'s `withTime` mode
+ * hand back.
  */
 export interface DateTimeRange {
   /** Start of the range, inclusive, wall time in the caller's zone. */
   from: string
   /** End of the range, inclusive, wall time in the caller's zone. */
   to: string
+  /** The exact instant `from` means, as a UTC ISO 8601 string. */
+  fromInstant?: string
+  /** The exact instant `to` means, as a UTC ISO 8601 string. */
+  toInstant?: string
+}
+
+/**
+ * A {@link DateTimeRange} that always carries the exact instant behind each end, so a caller never
+ * has to guess which of a repeated hour a wall-clock string meant.
+ */
+export interface ExactDateTimeRange extends DateTimeRange {
+  fromInstant: string
+  toInstant: string
 }
 
 /** Options for {@link rangeForTimePreset}. */
@@ -312,33 +328,29 @@ function calendarDateTimeInZone(instant: Date, timeZone: string): string {
  * than the reverse — a 24-hour-looking span that is really 23 or 25 real ones, which is what
  * stepping the clock back a day at a time would give.
  *
- * That correctness is in the strings only, and does not survive a caller converting them back to
- * instants — see {@link DateTimeRange}'s own doc for why a caller would. On the day a zone falls
- * back, the standard conversion of a repeated hour (the earlier of its two instants) reads a preset
- * wrong by one hour for every real hour one of its ends spends inside that repeated hour.
- * `"last-24-hours"` has at most one end there: `from` and `to` are 24 real hours apart, wider than
- * the roughly two real hours the repeated hour spans across both of its passes, so its round trip
- * reads as 23 or 25 hours, never both wrong at once, depending on which end landed there and which
- * pass it fell in. `"last-hour"`'s ends are only a real hour apart, so both can land there at once,
- * and its round trip has three outcomes:
+ * Each end also carries its exact instant — `fromInstant`, `toInstant`, see
+ * {@link ExactDateTimeRange} — truncated to the minute its string names, so the two instants are
+ * always exactly one or twenty-four real hours apart and each reads back as its own string. A
+ * caller that queries by those instants is right on every day of the year.
+ *
+ * A caller that converts the strings instead is not, on the day a zone falls back: the standard
+ * conversion of a repeated hour (the earlier of its two instants) reads a preset wrong by one hour
+ * for every real hour one of its ends spends inside that repeated hour. `"last-24-hours"` has at
+ * most one end there — its ends are 24 real hours apart, wider than the roughly two real hours the
+ * repeated hour spans across both passes — so a string round trip reads 23 or 25 hours.
+ * `"last-hour"`'s ends are a real hour apart, so both can land there at once, and a string round
+ * trip has three outcomes:
  *
  * - Neither end in the repeated hour: the ordinary 1 hour, correct.
  * - Both ends there, `from` in the hour's first pass and `to` in its second: they print the exact
- *   same `YYYY-MM-DDTHH:mm` string — one wall-clock reading, taken at two different UTC offsets
- *   either side of the fall-back — and the round trip reads 0 hours. Example: `now`
- *   `2026-10-25T01:30:00Z` in `Europe/Berlin` answers `{ from: "2026-10-25T02:30", to:
- *   "2026-10-25T02:30" }`.
- * - Only `from` there, in the second pass, with `to` already past the repeated hour and reading
- *   correctly on its own: the standard conversion reads `from` a real hour later than it is, and the
- *   round trip reads 2 hours. Example: `now` `2026-10-25T02:10:00Z` in `Europe/Berlin` answers
- *   `{ from: "2026-10-25T02:10", to: "2026-10-25T03:10" }`.
+ *   same `YYYY-MM-DDTHH:mm` string, and the string round trip reads 0 hours. Example: `now`
+ *   `2026-10-25T01:30:00Z` in `Europe/Berlin` answers `from` and `to` `"2026-10-25T02:30"`, with
+ *   `fromInstant` `2026-10-25T00:30:00.000Z` and `toInstant` `2026-10-25T01:30:00.000Z`.
+ * - Only `from` there, in the second pass: the string round trip reads 2 hours. Example: `now`
+ *   `2026-10-25T02:10:00Z` in `Europe/Berlin` answers `{ from: "2026-10-25T02:10", to:
+ *   "2026-10-25T03:10" }`.
  *
- * `date-range.test.ts` pins both examples above, plus a 23- and a 25-hour `"last-24-hours"` case,
- * each with the duration a standard conversion reads back.
- *
- * Every string in every case above is still a correct reading of its own instant, and
- * {@link isValidDateTimeRange} still accepts all of them: a range whose ends read identically is
- * `from <= to`, the same rule a one-day {@link DateRange} passes by design.
+ * `date-range.test.ts` pins every case above, both as the strings read back and as the instants.
  *
  * @param preset The sub-day preset to resolve.
  * @param options Injected instant and zone; see {@link RangeForTimePresetOptions}.
@@ -347,42 +359,175 @@ function calendarDateTimeInZone(instant: Date, timeZone: string): string {
 export function rangeForTimePreset(
   preset: TimeRangePreset,
   options: RangeForTimePresetOptions,
-): DateTimeRange {
+): ExactDateTimeRange {
   const { now, timeZone } = options
   const hours = preset === "last-hour" ? 1 : 24
-  const from = new Date(now.getTime() - hours * ONE_HOUR_IN_MILLISECONDS)
+  // Truncated to the minute the strings name. Every zone offset in use is a whole number of
+  // minutes, so truncating in UTC truncates the wall clock too, and both ends lose the same seconds:
+  // the two instants stay exactly `hours` real hours apart.
+  const to = new Date(
+    Math.floor(now.getTime() / ONE_MINUTE_IN_MILLISECONDS) * ONE_MINUTE_IN_MILLISECONDS,
+  )
+  const from = new Date(to.getTime() - hours * ONE_HOUR_IN_MILLISECONDS)
   return {
     from: calendarDateTimeInZone(from, timeZone),
-    to: calendarDateTimeInZone(now, timeZone),
+    to: calendarDateTimeInZone(to, timeZone),
+    fromInstant: from.toISOString(),
+    toInstant: to.toISOString(),
   }
 }
 
 const ISO_DATE_TIME_PATTERN = /^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d$/
 
-/**
- * Whether a {@link DateTimeRange} is two well-formed wall-clock values, in order — not necessarily
- * two real ones: nothing here checks whether a named local time actually occurs in any zone, since
- * this function is not handed one. A range naming the hour a zone skips passes it just the same.
- *
- * The date half of each value is checked the way {@link isValidDateRange} checks a whole one —
- * round-tripped through {@link parseIsoDate} — so `2026-02-31T10:00` is rejected for the same
- * reason `2026-02-31` is. Ordering is a plain string comparison rather than a parse into instants:
- * `YYYY-MM-DDTHH:mm` sorts lexicographically exactly the way it sorts chronologically as a nominal
- * wall clock, so there is nothing here to convert, and so nothing here to get wrong about a wall
- * time a zone repeats or skips — see {@link DateTimeRange}'s own doc for what a caller who does
- * convert one meets instead.
- */
-export function isValidDateTimeRange(range: DateTimeRange): boolean {
-  if (!ISO_DATE_TIME_PATTERN.test(range.from) || !ISO_DATE_TIME_PATTERN.test(range.to)) {
-    return false
-  }
+/** Whether one end is a well-formed `YYYY-MM-DDTHH:mm` on a day the calendar has. */
+function isDateTimeValue(value: string): boolean {
+  if (!ISO_DATE_TIME_PATTERN.test(value)) return false
   try {
-    parseIsoDate(range.from.slice(0, 10))
-    parseIsoDate(range.to.slice(0, 10))
+    parseIsoDate(value.slice(0, 10))
   } catch {
     return false
   }
+  return true
+}
+
+/**
+ * Whether a {@link DateTimeRange} is two well-formed wall-clock values, in order — not necessarily
+ * two real ones: nothing here checks whether a named local time actually occurs in any zone, since
+ * this function is not handed one. A range naming the hour a zone skips passes it just the same;
+ * {@link exactDateTimeRange} is the function that is handed a zone and resolves it.
+ *
+ * The date half of each value is checked the way {@link isValidDateRange} checks a whole one —
+ * round-tripped through {@link parseIsoDate} — so `2026-02-31T10:00` is rejected for the same
+ * reason `2026-02-31` is.
+ *
+ * Order is read from the exact instants when the range carries both of them, and from the strings
+ * otherwise. The strings sort exactly the way nominal wall clocks do, which is right on every day
+ * but the one a zone falls back: then `02:50` in the repeated hour's first pass comes twenty real
+ * minutes before `02:10` in its second, and only the instants can say so. A range without instants
+ * keeps the string rule it always had. An instant that does not parse makes the range invalid.
+ */
+export function isValidDateTimeRange(range: DateTimeRange): boolean {
+  if (!isDateTimeValue(range.from) || !isDateTimeValue(range.to)) return false
+  if (range.fromInstant !== undefined && range.toInstant !== undefined) {
+    const from = Date.parse(range.fromInstant)
+    const to = Date.parse(range.toInstant)
+    return Number.isFinite(from) && Number.isFinite(to) && from <= to
+  }
   return range.from <= range.to
+}
+
+/** Which of the two instants a repeated wall-clock time names: before or after the clocks go back. */
+export type WallClockOccurrence = "earlier" | "later"
+
+/** The occurrence chosen for each end of a range; an end left out means `"earlier"`. */
+export interface DateTimeOccurrences {
+  from?: WallClockOccurrence
+  to?: WallClockOccurrence
+}
+
+/** What {@link resolveDateTime} found for one wall-clock value in one zone. */
+export interface ResolvedDateTime {
+  /**
+   * `Unique`, `Gap` (the clocks skip it) or `Overlap` (the clocks repeat it) — the `WallClockKind`
+   * enum from `@spy4x/time/tz`.
+   */
+  kind: WallClockKind
+  /**
+   * The instant the value names, as a UTC ISO 8601 string: its only occurrence, the earlier of two,
+   * or, for a skipped time, the instant a clock that did not change would have shown it — which
+   * the zone's clock reads as {@link ResolvedDateTime.reads}.
+   */
+  instant: string
+  /** `Overlap` only: the later of the two instants. */
+  later?: string
+  /**
+   * What the zone's clock reads at `instant`, as `YYYY-MM-DDTHH:mm`. The value itself, except for a
+   * skipped time, which is moved forward by the length of the gap: Berlin's nonexistent
+   * `2026-03-29T02:30` reads `2026-03-29T03:30`.
+   */
+  reads: string
+}
+
+/**
+ * Whether a `YYYY-MM-DDTHH:mm` wall-clock value happens once, never or twice in `timeZone`, with the
+ * instants behind it — `resolveWallClock` from `@spy4x/time/tz`, taking this module's value shape
+ * and answering in its string instants.
+ *
+ * A skipped time resolves forward, Temporal's `"compatible"` rule: `02:30` on the night the clocks
+ * jump from `02:00` to `03:00` is read as `03:30`, the time a clock that had not jumped would have
+ * called `02:30`.
+ *
+ * @throws When `value` is not a well-formed wall-clock value, its year is below 100 (which
+ * `resolveWallClock` does not accept), or `timeZone` is not a zone.
+ */
+export function resolveDateTime(value: string, timeZone: string): ResolvedDateTime {
+  if (!isDateTimeValue(value)) {
+    throw new RangeError(`expected a YYYY-MM-DDTHH:mm value, received: ${value}`)
+  }
+  const resolution = resolveWallClock(value.slice(0, 10), value.slice(11), timeZone)
+  const resolved: ResolvedDateTime = {
+    kind: resolution.kind,
+    instant: resolution.instant.toISOString(),
+    reads: resolution.kind === WallClockKind.Gap
+      ? calendarDateTimeInZone(resolution.instant, timeZone)
+      : value,
+  }
+  if (resolution.later) resolved.later = resolution.later.toISOString()
+  return resolved
+}
+
+/**
+ * A wall-clock range resolved to the exact instants it means in `timeZone`.
+ *
+ * `occurrences` says which pass of a repeated hour each end names — the choice `DateRangePicker`
+ * asks the person for when they type one — and defaults to the earlier. It is ignored for an end
+ * that is not in a repeated hour. An end in a skipped hour is moved forward (see
+ * {@link resolveDateTime}), and its string is rewritten to what the clock really read then, so
+ * `from`/`to` and `fromInstant`/`toInstant` always describe the same two moments.
+ *
+ * Ordered by instant, not by string: `02:50` in the first pass through `02:10` in the second is a
+ * valid twenty-minute range, and `02:30` second pass through `02:45` first pass is not.
+ *
+ * @throws When either end is malformed, cannot be resolved in `timeZone` (see
+ * {@link resolveDateTime}), or the resolved `from` comes after the resolved `to`.
+ */
+export function exactDateTimeRange(
+  range: DateTimeRange,
+  timeZone: string,
+  occurrences: DateTimeOccurrences = {},
+): ExactDateTimeRange {
+  const resolveEnd = (value: string, occurrence: WallClockOccurrence | undefined) => {
+    const resolved = resolveDateTime(value, timeZone)
+    const instant = occurrence === "later" && resolved.later ? resolved.later : resolved.instant
+    return { reads: resolved.reads, instant }
+  }
+  const from = resolveEnd(range.from, occurrences.from)
+  const to = resolveEnd(range.to, occurrences.to)
+  if (Date.parse(from.instant) > Date.parse(to.instant)) {
+    throw new RangeError(
+      `expected an ordered range, received: ${from.reads} (${from.instant}) … ${to.reads} (${to.instant})`,
+    )
+  }
+  return { from: from.reads, to: to.reads, fromInstant: from.instant, toInstant: to.instant }
+}
+
+/**
+ * Which pass of its wall clock an instant is: `"later"` when `value` is a repeated time in
+ * `timeZone` and `instant` is its second occurrence, `"earlier"` otherwise — including when either
+ * argument cannot be resolved. The inverse of the choice {@link exactDateTimeRange} takes, so a
+ * range handed back with its instants can be reopened on the same choice.
+ */
+export function occurrenceOf(
+  value: string,
+  instant: string,
+  timeZone: string,
+): WallClockOccurrence {
+  try {
+    const later = resolveDateTime(value, timeZone).later
+    return later !== undefined && Date.parse(later) === Date.parse(instant) ? "later" : "earlier"
+  } catch {
+    return "earlier"
+  }
 }
 
 function isSameDateTimeRange(a: DateTimeRange, b: DateTimeRange): boolean {
