@@ -209,6 +209,14 @@ nothing: the month on screen does not change, and the focus goes back to the day
 instead of staying on the grid container, so their next arrow press moves a day rather than being
 spent walking back to where they already were.
 
+The month arrows above the grid ask through the same `onSelectMonth`, and the same two rules hold
+for the grid's one Tab stop: a month the owner draws puts it on the same day number there, and a
+month the owner leaves where it was leaves it on the day it was on, rather than on the grid's own
+fallback of the selection, today or the first of the month. That day belongs to the one request:
+it is forgotten as soon as another month or another selection is on screen, so an owner that later
+moves the month or the selection itself gets the ordinary fallback. The focus does not move for
+any of this; the reader clicked the arrow and stays on it.
+
 The first rule needs no cooperation from the caller and does not care why the month changed. An
 owner that checks or fetches before it answers gets it, and so does an owner that changes the month
 for reasons of its own while the reader happens to be standing in the grid. A refusal can only be
@@ -391,6 +399,15 @@ half-filled form, and a first install reloads the page mid-visit.
 takes the bar off the page; the next update to be reported puts it back, so the message leaves the
 region and later arrives in it again as a fresh change. A permanent dismissal would mean a visitor
 who put one version away was never told about any version after it.
+
+**Each waiting worker is reported once.** `watchForUpdate(registration, { hasController, onUpdate })`
+is the function underneath the bar, exported so a host that owns its registration logic can use it
+alone: it calls `onUpdate` for a worker already waiting, and for one that reaches `installed` while
+a worker controls the page, and stays silent on a first install. It reports a given worker at most
+once, whatever order its events arrive in, asks only the worker whose `statechange` fired for its
+state, and takes its listener off a worker a later `updatefound` superseded. That is what keeps a
+dismissal meaning something: a second report of the same worker would bring back the bar the
+visitor put away for it. It returns a function that removes every listener it added.
 
 ## The `AuthForm` contract
 
