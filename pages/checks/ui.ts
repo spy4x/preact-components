@@ -4091,6 +4091,7 @@ async function comboboxChecks(devtools: Devtools): Promise<void> {
   await arrivingOptionsCheck(devtools)
   await highlightChecks(devtools)
   await reopenCheck(devtools)
+  await fetchingComboboxCheck(devtools)
 }
 
 /** One reading of the parked live region: what it is, what it holds, and what it has recorded. */
@@ -5208,6 +5209,149 @@ async function reopenCheck(devtools: Devtools): Promise<void> {
   await pressKey(devtools, "Escape")
   await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "false"`), 3_000)
   await pointerToCorner(devtools)
+}
+
+/** What the fetching field's live region said while one query was fetched, in order. */
+interface FetchWalk {
+  /** `false` when the card has no region under the fetching field's id. */
+  ok: boolean
+  /** Every distinct text the region passed through, `""` included, in the order it held them. */
+  texts: string[]
+  /** `true` when the region holding the last text is the element parked before typing. */
+  same: boolean
+  /** `aria-describedby` of the input as each text arrived, `null` when it carried none. */
+  describedBy: (string | null)[]
+}
+
+/**
+ * Park the fetching field's region and record every text it holds from here on.
+ *
+ * Every change is recorded, not sampled: a region that says "No matches" for one frame between two
+ * polls has still told a screen reader so, and a poll could step over it. The input's description
+ * is recorded with each text, because the empty message is what the input is described by and the
+ * loading message must not be.
+ */
+const FETCH_PARK = `(() => {
+  const region = document.getElementById("guide-combobox-fetch-status")
+  const input = document.getElementById("guide-combobox-fetch")
+  if (region === null || input === null) return false
+  const walk = { region, texts: [""], describedBy: [input.getAttribute("aria-describedby")] }
+  const record = () => {
+    const text = (region.textContent ?? "").trim()
+    if (text === walk.texts.at(-1)) return
+    walk.texts.push(text)
+    walk.describedBy.push(input.getAttribute("aria-describedby"))
+  }
+  walk.observer = new MutationObserver(record)
+  walk.observer.observe(region, { childList: true, subtree: true, characterData: true })
+  globalThis.__verifyFetch = walk
+  return true
+})()`
+
+/** The walk so far; see {@link FetchWalk}. */
+const FETCH_STATE = `(() => {
+  const walk = globalThis.__verifyFetch ?? null
+  const region = document.getElementById("guide-combobox-fetch-status")
+  if (walk === null || region === null) return { ok: false, texts: [], same: false, describedBy: [] }
+  return {
+    ok: true,
+    texts: [...walk.texts],
+    same: region === walk.region,
+    describedBy: [...walk.describedBy],
+  }
+})()`
+
+/**
+ * A field whose options are fetched per keystroke says it is loading, never "No matches", until
+ * the fetch answers — and then says "No matches" when the answer is nothing (#205).
+ *
+ * The card's fetching field empties its list and sets `loading` on every keystroke, and answers
+ * after a delay with the tickers that start with the query. `Z` starts none of them, so the one
+ * query here walks the whole path: nothing, the caller's loading message, then the English default
+ * empty message, all in the region that was there before the field was used. Every text the region
+ * passes through is recorded by an observer attached beforehand, so a "No matches" that flashes
+ * for one frame during the fetch is caught rather than stepped over by a poll.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function fetchingComboboxCheck(devtools: Devtools): Promise<void> {
+  await devtools.evaluate<null>(comboboxSetup("guide-combobox-fetch"))
+  await scrollToParked(devtools)
+  const parked = await devtools.evaluate<boolean>(FETCH_PARK)
+  let walk: FetchWalk = { ok: false, texts: [], same: false, describedBy: [] }
+  let landed = false
+  let opened = false
+  let typed = false
+  let settled = false
+  try {
+    const field = `globalThis.__verifyCombobox?.input ?? null`
+    landed = (await clickAt(devtools, await aimAt(devtools, field), field))?.onTarget === true
+    opened = await poll(
+      () => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "true"`),
+      3_000,
+    )
+    await typeInto(devtools, "Z")
+    typed = await poll(
+      () => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.inputValue === "Z"`),
+      3_000,
+    )
+    // Waits for the end of the walk rather than for a number of milliseconds: the card's delay is
+    // under a second, and the budget is five so a loaded machine is not mistaken for a broken field.
+    settled = await poll(
+      () => devtools.evaluate<boolean>(`${FETCH_STATE}.texts.at(-1) === "No matches"`),
+      5_000,
+    )
+    walk = await devtools.evaluate<FetchWalk>(FETCH_STATE)
+  } finally {
+    await devtools.evaluate<null>(`(() => {
+      globalThis.__verifyFetch?.observer?.disconnect()
+      delete globalThis.__verifyFetch
+      return null
+    })()`).catch(() => null)
+    await pressKey(devtools, "Escape")
+    await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "false"`), 3_000)
+    await pointerToCorner(devtools)
+  }
+
+  const loadingAt = walk.texts.indexOf("Searching tickers…")
+  const lastLoading = walk.texts.lastIndexOf("Searching tickers…")
+  const falseEmpty = walk.texts.findIndex((text, index) =>
+    text.includes("No matches") && index < lastLoading
+  )
+  const mixed = walk.texts.find((text) =>
+    text.includes("Searching tickers…") && text !== "Searching tickers…"
+  )
+  const final = walk.texts.at(-1) ?? ""
+  const shown = walk.texts.map((text) => JSON.stringify(text)).join(" → ")
+  check(
+    'a Combobox that is loading says so, not "No matches", and says "No matches" once the fetch finds nothing',
+    parked && walk.ok && landed && opened && typed && settled && loadingAt > 0 &&
+      falseEmpty === -1 && mixed === undefined && final === "No matches" && walk.same &&
+      walk.describedBy[loadingAt] === null &&
+      walk.describedBy.at(-1) === "guide-combobox-fetch-status",
+    !parked || !walk.ok
+      ? "the Combobox card has no field with id guide-combobox-fetch and a live region beside it"
+      : !landed || !opened
+      ? "the press never opened the fetching field, so nothing was typed into it"
+      : !typed
+      ? "the query Z never reached the fetching field"
+      : falseEmpty !== -1 || mixed !== undefined
+      ? `the region said the list was empty while the options were still being fetched: ${shown}`
+      : loadingAt <= 0
+      ? `the region never carried the caller's loading message while the fetch ran: ${shown}`
+      : walk.describedBy[loadingAt] !== null
+      ? `the input was described by the region while it said the loading message ` +
+        `(aria-describedby="${walk.describedBy[loadingAt]}"), which is a passing state, not a fact`
+      : !settled || final !== "No matches"
+      ? `the fetch for a query nothing starts with never ended in "No matches": ${shown}`
+      : !walk.same
+      ? `"No matches" arrived in a different element from the region parked before typing, which ` +
+        `is the shape a screen reader does not announce`
+      : walk.describedBy.at(-1) !== "guide-combobox-fetch-status"
+      ? `once "No matches" arrived the input was described by ` +
+        `"${walk.describedBy.at(-1)}", not by the region holding it`
+      : `${shown}, every change recorded on the region parked before typing`,
+  )
 }
 
 /**
