@@ -34,6 +34,7 @@ import {
 } from "@spy4x/preact-ui"
 import { type DateRange, isValidDateRange } from "@spy4x/time/date"
 import type { ComponentChildren } from "preact"
+import { useEffect, useRef } from "preact/hooks"
 import { useSignal } from "@preact/signals"
 import {
   IconChevronDown,
@@ -563,6 +564,62 @@ function LoadingCombobox() {
   )
 }
 
+/** How long the fetching card's pretend search takes to answer: long enough to be seen. */
+const fetchDelay = 900
+
+/**
+ * A search that fetches its options per keystroke, and says so while it waits.
+ *
+ * Every keystroke empties the list and sets `loading` until the pretend request answers, which is
+ * the shape of a real server search: for the length of each fetch the field holds no options, and
+ * without `loading` it would say "No matches" and take it back a moment later. With it, the region
+ * says the caller's loading message, and then the count or — for a query nothing starts with — the
+ * English default "No matches", as a change to that same region. `pages/checks/ui.ts` records
+ * every text that region passes through while a query is fetched.
+ */
+function FetchingCombobox() {
+  const query = useSignal("")
+  const coin = useSignal<string | null>(null)
+  const options = useSignal<readonly string[]>(coins)
+  const loading = useSignal(false)
+  const pending = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
+  useEffect(() => () => clearTimeout(pending.current), [])
+
+  const search = (text: string) => {
+    query.value = text
+    clearTimeout(pending.current)
+    options.value = noItemsYet
+    loading.value = true
+    pending.current = setTimeout(() => {
+      options.value = coins.filter((item) => item.startsWith(text.trim().toUpperCase()))
+      loading.value = false
+    }, fetchDelay)
+  }
+
+  return (
+    <Stack gap="sm">
+      <Combobox
+        items={options.value}
+        value={coin.value}
+        onChange={(next) => coin.value = next}
+        query={query.value}
+        onQueryChange={search}
+        filter={(items) => [...items]}
+        loading={loading.value}
+        loadingMessage="Searching tickers…"
+        id="guide-combobox-fetch"
+        ariaLabel="Coin, fetched per keystroke"
+        placeholder="Type a ticker prefix…"
+      />
+      <Note e2e="combobox-fetch">
+        {loading.value ? "fetching…" : `${options.value.length} options`} ·{" "}
+        {comboboxStatusLabel(coin.value, query.value)}
+      </Note>
+    </Stack>
+  )
+}
+
 /**
  * The live region, and what typing puts into it.
  *
@@ -597,8 +654,8 @@ function AnnouncingCombobox() {
 }
 
 /**
- * Every combobox on the card: strings, objects, a controlled query, a long list, an empty one, and
- * one whose screen-reader count uses the caller's own words.
+ * Every combobox on the card: strings, objects, a controlled query, a long list, an empty one, one
+ * whose screen-reader count uses the caller's own words, and one that fetches per keystroke.
  */
 function ComboboxDemo() {
   return (
@@ -620,6 +677,9 @@ function ComboboxDemo() {
       </Variant>
       <Variant title="A spoken count in your words">
         <AnnouncingCombobox />
+      </Variant>
+      <Variant title="Fetched per keystroke">
+        <FetchingCombobox />
       </Variant>
     </Grid>
   )
@@ -1106,6 +1166,19 @@ export const inputDemos = {
         type: "string | ((query: string) => ComponentChildren)",
         default: `"No matches"`,
         description: "What the list says when nothing matches.",
+      },
+      {
+        name: "loading",
+        type: "boolean",
+        default: "false",
+        description:
+          "Set while the options are being fetched; the field then never says the list is empty.",
+      },
+      {
+        name: "loadingMessage",
+        type: "string",
+        default: `"Loading…"`,
+        description: "What the field says while `loading` is set.",
       },
     ],
     snippet: `<Combobox

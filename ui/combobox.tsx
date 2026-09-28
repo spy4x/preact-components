@@ -482,6 +482,22 @@ export interface ComboboxProps<T> extends ComboboxNamingProps {
    */
   countMessage?: (count: number) => string
   /**
+   * `true` while the caller is still fetching the options for the current query.
+   *
+   * An empty list during a fetch is not an answer, so while this is set the field never says
+   * {@link ComboboxProps.emptyMessage} and never counts the options it may still be showing: it
+   * says {@link ComboboxProps.loadingMessage} instead, in the same live region. Set it back to
+   * `false` when the options arrive, and the region changes to the count or the empty message.
+   * Defaults to `false`, which is right for a list the caller already holds.
+   */
+  loading?: boolean
+  /**
+   * What the field says while {@link ComboboxProps.loading} is set. English default, `"Loading…"`;
+   * pass your own to translate it. Like the empty message it is shown only once the list is open or
+   * the field has a query in it.
+   */
+  loadingMessage?: string
+  /**
    * `id` of the search input, and the base of every id derived from it: the listbox and each option.
    * Pass one when a visible `<label for>` should point at the input. Without it a `useId()` value is
    * used — stable per instance, but not something a caller can address from outside.
@@ -623,9 +639,14 @@ function Cross() {
  * never while the count is: the message is a standing fact a reader should be told on focus, and a
  * count is about the last keystroke rather than about the field.
  *
+ * A caller that fetches options per query passes `loading` while the fetch is in flight: the region
+ * then says the loading message instead of "No matches", and changes to the count or the empty
+ * message once `loading` goes back to `false`.
+ *
  * Every string it shows is a prop with an English default: `placeholder` (`"Select…"`),
- * `emptyMessage` (`"No matches"`), `countMessage` (`"12 matches"`) and `clearLabel`
- * (`"Clear selection"`). Pass your own to translate them or to say something the default cannot.
+ * `emptyMessage` (`"No matches"`), `countMessage` (`"12 matches"`), `loadingMessage`
+ * (`"Loading…"`) and `clearLabel` (`"Clear selection"`). Pass your own to translate them or to
+ * say something the default cannot.
  */
 export function Combobox<T>({
   items,
@@ -638,6 +659,8 @@ export function Combobox<T>({
   placeholder = "Select…",
   emptyMessage = "No matches",
   countMessage = defaultCountMessage,
+  loading = false,
+  loadingMessage = "Loading…",
   id: callerId,
   ariaLabel,
   "aria-labelledby": ariaLabelledBy,
@@ -685,13 +708,20 @@ export function Combobox<T>({
   // this guards: with an empty `items` list, a page whose options are still arriving over the
   // network used to render and announce "No matches" on a control nobody had touched. Open, or
   // with a query in it, the message is the honest answer to a real question and is shown.
-  const answersEmpty = content.emptyMessage !== undefined && (isOpen.value || hasText)
+  //
+  // A fetch in flight is not an answer either. An empty list while the caller is still loading
+  // says nothing about the query, and saying "No matches" then — shown, and spoken by the region
+  // below — is a claim the results contradict a moment later, on every keystroke of a search that
+  // fetches per keystroke. So loading takes the empty message's place, under the same question.
+  const answersLoading = loading && (isOpen.value || hasText)
+  const answersEmpty = !loading && content.emptyMessage !== undefined && (isOpen.value || hasText)
   // The count answers one question — "what did my typing leave?" — so it is narrower than the
   // message above on purpose: opening the list is answered by the list itself, which a reader
   // announces along with the highlighted row, and a count repeated on every open would be noise
   // over the top of it. Nothing to count is not a count of nothing: an empty result is the empty
   // message's job, and announcing both would say the same thing twice.
-  const announcesCount = hasText && visible.length > 0
+  // Not while loading: the rows on screen are the last query's, so their count is stale news.
+  const announcesCount = !loading && hasText && visible.length > 0
   /**
    * The highlight, clamped to the list that is actually on screen.
    *
@@ -982,6 +1012,11 @@ export function Combobox<T>({
       */
       }
       <div id={statusId} role="status" aria-live="polite" aria-atomic="true">
+        {answersLoading && (
+          <p class="px-3 py-2 text-center text-sm text-gray-500 dark:text-gray-400">
+            {loadingMessage}
+          </p>
+        )}
         {answersEmpty && (
           <p class="px-3 py-2 text-center text-sm text-gray-500 dark:text-gray-400">
             {content.emptyMessage}

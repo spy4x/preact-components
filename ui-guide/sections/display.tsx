@@ -292,7 +292,11 @@ const tableRows = [
   { date: "2026-02-03", merchant: "Amazon purchase", status: false, amount: -12999 },
 ]
 
-/** The caller owns every cell; the primitive owns the dividers, the hover and the scroll. */
+/**
+ * The caller owns every cell; the primitive owns the dividers, the hover and the scroll. `bodyKeys`
+ * gives each row its own identity — the date here, unique in this data — so a reorder would move
+ * rows rather than repaint them in place.
+ */
 function TableDemo() {
   return (
     <Table
@@ -305,6 +309,7 @@ function TableDemo() {
           <th scope="col" class="text-right">Amount</th>
         </>
       }
+      bodyKeys={tableRows.map((row) => row.date)}
       bodySlots={tableRows.map((row) => (
         <>
           <td class="whitespace-nowrap tabular-nums">{row.date}</td>
@@ -356,16 +361,118 @@ type DataTableSortKey = "date" | "merchant" | "amount"
  * write to whatever host embeds the catalogue. `pages/src/data-table-sort.tsx` binds `?sort=`
  * through `useUrlFilters`, and `pages/checks/ui.ts` drives both. That check reads the readout's
  * text as `sort: <rules>`.
+ *
+ * The Flag column's checkbox is deliberately uncontrolled: its tick is the row's own DOM state,
+ * written to no signal, so it stays with its invoice through a sort only because `DataTable` keys
+ * each row by `rowKey`. `pages/checks/ui.ts` ticks one, sorts, and reads where the tick went.
  */
 function DataTableDemo() {
   const sort = useSignal<SortRule<DataTableSortKey>[]>([])
   const page = useSignal(1)
 
   return (
-    <Stack gap="sm">
-      <DemoNote e2e="data-table-sort">sort: {serializeSort(sort.value)}</DemoNote>
+    <Stack gap="lg">
+      <Stack gap="sm" data-e2e="data-table-client">
+        <DemoNote e2e="data-table-sort">sort: {serializeSort(sort.value)}</DemoNote>
+        <DataTable
+          caption="Invoices"
+          columns={[
+            { key: "date", header: "Date", sortable: true },
+            { key: "merchant", header: "Merchant", sortable: true },
+            {
+              key: "amount",
+              header: "Amount",
+              sortable: true,
+              align: "right",
+              render: (row) => row.amount === null ? "—" : String(row.amount),
+            },
+            {
+              id: "flag",
+              header: "Flag",
+              align: "center",
+              render: (row) => <Checkbox aria-label={`Flag ${row.merchant}`} />,
+            },
+          ]}
+          rows={dataTableRows}
+          rowKey={(row) => row.id}
+          sort={sort.value}
+          onSortChange={(next) => sort.value = next}
+          paging={{
+            page: page.value,
+            pageSize: 3,
+            onChange: (next) => page.value = next,
+            label: "Invoice pages",
+          }}
+        />
+      </Stack>
+      <DataTableServerDemo />
+    </Stack>
+  )
+}
+
+/**
+ * Eight invoices standing in for a server's table, which the server demo only ever sees a page of.
+ * `inv-8`'s merchant starts lower-case on purpose — see {@link fetchInvoicePage}.
+ */
+const serverInvoices: DataTableInvoice[] = [
+  ...dataTableRows,
+  { id: "inv-6", date: "2026-02-06", merchant: "Bakery", amount: -800 },
+  { id: "inv-7", date: "2026-02-07", merchant: "Insurance", amount: -9900 },
+  { id: "inv-8", date: "2026-02-08", merchant: "eBay refund", amount: 2500 },
+]
+
+/**
+ * Stands in for a server's endpoint: sorts and pages the whole set, and answers with one page and
+ * the whole set's size — all a server-mode `DataTable` is ever handed.
+ *
+ * It orders text by code unit, the way a database column with a binary collation does, so
+ * "eBay refund" sorts after every capitalised name, where `sortRows`' locale-aware collation would
+ * put it among the Es. That difference is the point of the demo: in server mode `DataTable` shows
+ * the server's order as given, and re-sorting a page on the client would contradict the pages
+ * either side of it. Empty cells go last either way, as they do in `sortRows`.
+ */
+function fetchInvoicePage(
+  sort: readonly SortRule<DataTableSortKey>[],
+  page: number,
+  pageSize: number,
+): { rows: DataTableInvoice[]; total: number } {
+  const sorted = [...serverInvoices].sort((a, b) => {
+    for (const { key, direction } of sort) {
+      const left = a[key]
+      const right = b[key]
+      if (left === right) continue
+      if (left === null) return 1
+      if (right === null) return -1
+      const order = left < right ? -1 : 1
+      return direction === "asc" ? order : -order
+    }
+    return 0
+  })
+  return { rows: sorted.slice((page - 1) * pageSize, page * pageSize), total: sorted.length }
+}
+
+/**
+ * `DataTable` in server mode: the card keeps `sort` and `page`, asks `fetchInvoicePage` for that
+ * page, and hands `DataTable` only the rows that came back, with the total. A new sort goes back to
+ * page 1, the way a server-backed list usually does. The readout is what `pages/checks/ui.ts` reads.
+ * The note under the table says why "eBay refund" sorts last: the server's collation, not
+ * `DataTable`'s, decides the order in this mode.
+ */
+function DataTableServerDemo() {
+  const sort = useSignal<SortRule<DataTableSortKey>[]>([])
+  const page = useSignal(1)
+  const pageSize = 3
+  const result = fetchInvoicePage(sort.value, page.value, pageSize)
+
+  return (
+    <Stack gap="sm" data-e2e="data-table-server">
+      <DemoNote e2e="data-table-server-readout">
+        server: sort {serializeSort(sort.value)}, page {page.value}, {result.rows.length} of{" "}
+        {result.total} rows fetched
+      </DemoNote>
       <DataTable
-        caption="Invoices"
+        mode="server"
+        caption="Invoices, sorted and paged by the server"
         columns={[
           { key: "date", header: "Date", sortable: true },
           { key: "merchant", header: "Merchant", sortable: true },
@@ -377,17 +484,25 @@ function DataTableDemo() {
             render: (row) => row.amount === null ? "—" : String(row.amount),
           },
         ]}
-        rows={dataTableRows}
+        rows={result.rows}
         rowKey={(row) => row.id}
         sort={sort.value}
-        onSortChange={(next) => sort.value = next}
+        onSortChange={(next) => {
+          sort.value = next
+          page.value = 1
+        }}
         paging={{
           page: page.value,
-          pageSize: 3,
+          pageSize,
+          total: result.total,
           onChange: (next) => page.value = next,
-          label: "Invoice pages",
+          label: "Server invoice pages",
         }}
       />
+      <DemoNote>
+        This "server" orders text by code unit, so "eBay refund" sorts after every capitalised name.
+        Server mode shows its order as given; client mode would re-sort it.
+      </DemoNote>
     </Stack>
   )
 }
@@ -899,6 +1014,12 @@ export const displayDemos = {
         description: "One entry per row, each that row's cells.",
       },
       {
+        name: "bodyKeys",
+        type: "(string | number)[]",
+        description:
+          "Each row's own identity, in the same order, so a reordered row keeps its state. Left out, rows are keyed by position.",
+      },
+      {
         name: "footerSlot",
         type: "ComponentChildren",
         description: "Whole footer rows, such as a total.",
@@ -912,13 +1033,14 @@ export const displayDemos = {
     snippet: `<Table
   headerSlot={<th scope="col">Merchant</th>}
   bodySlots={rows.map((row) => <td>{row.merchant}</td>)}
+  bodyKeys={rows.map((row) => row.id)}
   footerSlot={<tr>…</tr>}
 />`,
     render: () => <TableDemo />,
   },
   DataTable: {
     summary:
-      "A table whose columns sort and whose rows page, while you keep the sort and the page.",
+      "A table whose columns sort and whose rows page, while you keep the sort and the page — or a server does the sorting and paging.",
     wide: true,
     props: [
       {
@@ -939,12 +1061,21 @@ export const displayDemos = {
       {
         name: "paging",
         type: "{ page, pageSize, onChange }",
-        description: "Pages the rows when given; left out, every row shows.",
+        description:
+          "Pages the rows when given; left out, every row shows. In server mode it also takes `total`.",
+      },
+      {
+        name: "mode",
+        type: '"client" | "server"',
+        default: '"client"',
+        description:
+          'Who sorts and pages. "server" shows `rows` as given — one page, already sorted — and sizes the pager from `paging.total`.',
       },
       {
         name: "rowKey",
         type: "(row) => string | number",
-        description: "A stable key for each row.",
+        description:
+          "Each row's own identity, so its checkbox, focus or state moves with it when the rows sort or page.",
       },
     ],
     snippet: `<DataTable
@@ -953,12 +1084,30 @@ export const displayDemos = {
     { key: "date", header: "Date", sortable: true },
     { key: "merchant", header: "Merchant", sortable: true },
     { key: "amount", header: "Amount", sortable: true, align: "right" },
+    { id: "flag", header: "Flag", render: (row) => <Checkbox aria-label={\`Flag \${row.merchant}\`} /> },
   ]}
   rows={invoices}
   rowKey={(row) => row.id}
   sort={sort.value}
   onSortChange={(next) => sort.value = next}
   paging={{ page: page.value, pageSize: 3, onChange: (next) => page.value = next }}
+/>
+
+// Server mode: the server sorts and pages; DataTable shows its page as given.
+<DataTable
+  mode="server"
+  caption="Invoices"
+  columns={columns}
+  rows={response.rows}
+  rowKey={(row) => row.id}
+  sort={sort.value}
+  onSortChange={(next) => sort.value = next}
+  paging={{
+    page: page.value,
+    pageSize: 3,
+    total: response.total,
+    onChange: (next) => page.value = next,
+  }}
 />`,
     render: () => <DataTableDemo />,
   },
