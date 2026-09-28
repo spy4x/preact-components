@@ -206,6 +206,30 @@ describe("Toastr", () => {
     expect(withHook).toContain('data-e2e="guide-toastr"')
   })
 
+  it("shows a toast's title above its body, inside the toast's live element", () => {
+    const html = render(
+      <Toastr
+        toasts={[{ id: 1, type: "error", title: "Upload failed", body: "the file is too big" }]}
+        onDismiss={() => {}}
+      />,
+    )
+
+    const toast = html.match(/<div role="alert"[\s\S]*$/)?.[0] ?? ""
+    expect(toast).toContain('<p class="font-semibold">Upload failed</p>')
+    expect(toast.indexOf("Upload failed")).toBeLessThan(toast.indexOf("the file is too big"))
+  })
+
+  it("renders no heading for a toast without a title, or with an empty one", () => {
+    const html = render(
+      <Toastr
+        toasts={[{ id: 1, body: "plain" }, { id: 2, title: "", body: "also plain" }]}
+        onDismiss={() => {}}
+      />,
+    )
+
+    expect(html).not.toContain("font-semibold")
+  })
+
   it("renders element bodies, not just strings", () => {
     const html = render(
       <Toastr
@@ -230,6 +254,14 @@ describe("Toastr", () => {
  */
 type SharedDurationField = NonNullable<ToastEntry["duration"] & ToastItem["duration"]>
 const _durationIsTheSharedName: SharedDurationField = 1
+
+/**
+ * The same guard for the title: renaming it on either side, or retyping one side to something
+ * disjoint from `string`, makes this line a type error. That is the name #207 was about — the store
+ * wrote it and the component never read it.
+ */
+type SharedTitleField = NonNullable<ToastEntry["title"] & ToastItem["title"]>
+const _titleIsTheSharedName: SharedTitleField = "Saved"
 
 /**
  * What these tests prove, and what they cannot.
@@ -297,6 +329,21 @@ describe("Toastr wired to createToastStore", () => {
     expect(resolveDuration(store.list.value[0])).toBe(defaultToastDuration)
   })
 
+  it("shows the title the store filled in, and the one a caller gave it", () => {
+    // #207: the store has always written a title and this component drew none, so a caller's
+    // heading — the part that said what failed — vanished between the two.
+    const store = createToastStore({ nextId: counterIds() })
+    store.success({ body: "saved", duration: 0 })
+    store.error({ title: "Could not save the draft", body: "offline", duration: 0 })
+
+    const html = render(
+      <Toastr toasts={store.list.value} onDismiss={(id) => store.remove(String(id))} />,
+    )
+
+    expect(html).toContain('<p class="font-semibold">Success</p>')
+    expect(html).toContain('<p class="font-semibold">Could not save the draft</p>')
+  })
+
   it("renders a store's list without an adapter between them", () => {
     const store = createToastStore({ nextId: () => "rendered" })
     store.error({ body: "could not save", duration: 0 })
@@ -309,6 +356,11 @@ describe("Toastr wired to createToastStore", () => {
     expect(html).toContain('role="alert"')
   })
 })
+
+function counterIds(): () => string {
+  let next = 0
+  return () => `toast-${++next}`
+}
 
 function countOccurrences(haystack: string, needle: string): number {
   return haystack.split(needle).length - 1

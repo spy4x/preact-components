@@ -242,7 +242,7 @@ describe("UIGuide's navigate port", () => {
 describe("UIGuide's own copy", () => {
   it("prints the overview's counts in English, or through the labels when given", () => {
     const english = render(<UIGuide hash="" registry={withoutPage("map")} />)
-    expect(english).toMatch(/\d+ live cards · \d+ icons · \d+ packages/)
+    expect(english).toMatch(/\d+ components · \d+ icons · \d+ packages/)
     expect(english).toMatch(/>\d+ cards</)
     expect(english).toContain(">Examples coming<")
 
@@ -258,7 +258,7 @@ describe("UIGuide's own copy", () => {
         }}
       />,
     )
-    expect(french).not.toContain("live cards")
+    expect(french).not.toMatch(/\d+ components · /)
     expect(french).not.toMatch(/>\d+ cards</)
     expect(french).toMatch(/>\d+ icônes</)
     expect(french).toContain(">Exemples à venir<")

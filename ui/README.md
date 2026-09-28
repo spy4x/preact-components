@@ -142,6 +142,16 @@ and Home/End jump to the ends; Up/Down stay with the page. The decision table is
 that same `duration` field, so the wiring above needs no adapter; `String(id)` is there because
 `ToastItem.id` is `string | number` and that store's ids are strings.
 
+A toast carries an `id`, a `body`, and optionally a `type`, a `title`, a `duration` and a
+`dismissLabel`. The component renders the variant's glyph, the `title` in bold above the `body`
+when there is one, and a dismiss button; the title sits inside the toast's live element, so a
+screen reader hears it with the body. The component invents no title: a hand-built toast without
+one renders none, and neither does an empty one. `createToastStore` always writes one — the
+caller's, or its kind's default (`"Info"`, `"Success"`, `"Error"`, `"Warning"`, overridable through
+its `titles` option) — so a store-fed toast always shows a heading. Until
+[#207](https://github.com/spy4x/preact-components/issues/207) the store wrote it and this
+component dropped it.
+
 `corner` puts the stack in one of the window's four corners, 2rem from both edges: `"top-left"`,
 `"top-right"` (the default), `"bottom-left"` or `"bottom-right"`. The toasts keep the order of
 `toasts` in every corner, and each one slides in from its corner's side unless the reader prefers

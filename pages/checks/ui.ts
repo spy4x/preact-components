@@ -1427,11 +1427,11 @@ const TOASTR_STATE = `(() => {
     width: Math.round(box.width),
     // Cut short for the failure message, and coupled to the card whether or not anybody meant it
     // to be: the first check asserts that this text carries the label of the button that pushed
-    // the toast, so a card whose toast body grows past these 40 characters before that label
-    // appears turns the check red for a reason that has nothing to do with the component. The
-    // card's body is "success — pushed by the demo stack", 34 characters with the label first.
-    // Lengthen this cut along with that body.
-    text: (region.textContent ?? "").trim().slice(0, 40),
+    // the toast, so a card whose toast grows past these 60 characters before that label appears
+    // turns the check red for a reason that has nothing to do with the component. The card's
+    // toast reads its title, "Success", then "success — pushed by the demo stack": 41 characters
+    // with the label at 7. Lengthen this cut along with that text.
+    text: (region.textContent ?? "").trim().slice(0, 60),
   }
 })()`
 
@@ -1566,9 +1566,124 @@ async function toastrChecks(devtools: Devtools): Promise<void> {
   await budgetCheck(devtools)
   await extendCheck(devtools)
   await storeDelayChecks(devtools)
+  await toastrTitleCheck(devtools)
 
   // Leave the card as it was found, for whatever reads the page next.
   await devtools.evaluate<null>(`(globalThis.__verifyToastr?.clear?.click(), null)`)
+}
+
+/** What {@link toastrTitleCheck} reads off one toast's title. */
+interface ToastTitleReading {
+  /** The title the check expected on this toast. */
+  want: string
+  /** The toast's own text, cut short, for the failure message. */
+  text: string
+  /** Whether an element whose whole text is the title was found inside the toast. */
+  found: boolean
+  /** Whether it is painted: a box, `visibility: visible`, full opacity, and no `aria-hidden` above it. */
+  visible: boolean
+  /** Whether its box ends above where the body's begins. */
+  above: boolean
+  /** Whether it is drawn heavier than the body. */
+  bolder: boolean
+  /** Whether it sits inside the toast's `status`/`alert` element, inside the polite live area. */
+  announced: boolean
+}
+
+/**
+ * #207: the title a toast carries is on screen. The store has always filled one in — "Success",
+ * "Error" — and a caller could pass their own, and until #207 the component drew neither.
+ *
+ * Pushes two toasts through the card's real store: one from the success button, which names no
+ * title and so carries the store's default, and one from the titled button, which carries the
+ * title written on it as `data-title`. For each, the check finds the element whose whole text is
+ * that title and asserts it is painted, heavier than the body, above the body, and inside the
+ * toast's live element — a title a screen reader never hears would be half the fix. The toasts'
+ * 300ms entry fade is waited out first, so "painted" is read at full opacity.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function toastrTitleCheck(devtools: Devtools): Promise<void> {
+  const outcome = await devtools.evaluate<{ reason: string; readings: ToastTitleReading[] }>(
+    `(async () => {
+    const parked = globalThis.__verifyToastr ?? {}
+    const region = parked.region ?? null
+    const titled = parked.card?.querySelector('[data-e2e="toast-titled"]') ?? null
+    const missing = [
+      region === null ? "its live area" : "",
+      parked.success ? "" : 'its success button (data-e2e="toast-success")',
+      titled === null ? 'its titled button (data-e2e="toast-titled")' : "",
+      parked.clear ? "" : 'its clear button (data-e2e="toast-clear")',
+    ].filter(Boolean)
+    if (missing.length > 0) {
+      return { reason: "the Toastr card is missing " + missing.join(", "), readings: [] }
+    }
+    parked.clear.click()
+    await new Promise((done) => setTimeout(done, 80))
+    parked.success.click()
+    titled.click()
+    await new Promise((done) => setTimeout(done, 450))
+
+    const wants = ["Success", titled.dataset.title ?? ""]
+    const toasts = [...region.children]
+    const readings = wants.map((want, index) => {
+      const toast = toasts[index] ?? null
+      const text = (toast?.textContent ?? "").trim().slice(0, 90)
+      const leaves = toast === null ? [] : [...toast.querySelectorAll("*")]
+        .filter((el) => el.children.length === 0 && !(el instanceof SVGElement))
+      const heading = leaves.find((el) => (el.textContent ?? "").trim() === want) ?? null
+      // Both of the card's bodies carry an em dash, and neither title does.
+      const body = leaves.find((el) => el !== heading && (el.textContent ?? "").includes("—")) ??
+        null
+      if (want === "" || heading === null || body === null) {
+        return { want, text, found: false, visible: false, above: false, bolder: false,
+          announced: false }
+      }
+      const box = heading.getBoundingClientRect()
+      const style = getComputedStyle(heading)
+      let opacity = 1
+      for (let el = heading; el !== null; el = el.parentElement) {
+        opacity *= Number(getComputedStyle(el).opacity)
+      }
+      const live = heading.closest('[role="status"], [role="alert"]')
+      return {
+        want,
+        text,
+        found: true,
+        visible: box.width > 0 && box.height > 0 && style.visibility === "visible" &&
+          opacity > 0.99 && heading.closest('[aria-hidden="true"]') === null,
+        above: box.bottom <= body.getBoundingClientRect().top + 1,
+        bolder: Number(style.fontWeight) > Number(getComputedStyle(body).fontWeight),
+        announced: live === toast && live.parentElement === region &&
+          region.getAttribute("aria-live") === "polite",
+      }
+    })
+    parked.clear.click()
+    await new Promise((done) => setTimeout(done, 80))
+    return { reason: "", readings }
+  })()`,
+  )
+  const [fallback, own] = outcome.readings
+  const describe = (reading: ToastTitleReading | undefined, name: string) =>
+    reading === undefined
+      ? `no ${name} toast was read`
+      : !reading.found
+      ? `the ${name} toast reads "${reading.text}", with no element holding "${reading.want}" ` +
+        `on its own above an em-dashed body`
+      : `"${reading.want}" is ${reading.visible ? "painted" : "not painted"}, ` +
+        `${reading.above ? "above" : "not above"} the body, ` +
+        `${reading.bolder ? "heavier than" : "no heavier than"} it, and ` +
+        `${reading.announced ? "inside" : "outside"} the toast's live element`
+  const passes = (reading: ToastTitleReading | undefined) =>
+    reading !== undefined && reading.found && reading.visible && reading.above &&
+    reading.bolder && reading.announced
+  check(
+    "a toast shows its title above its body, the store's default for its kind and a caller's own",
+    outcome.reason === "" && passes(fallback) && passes(own),
+    outcome.reason !== ""
+      ? outcome.reason
+      : `default: ${describe(fallback, "success")}; own: ${describe(own, "titled")}`,
+  )
 }
 
 /** The widths #354 names for the corner check: a phone and a desktop. */
