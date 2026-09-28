@@ -4,6 +4,7 @@ import {
   check,
   type Devtools,
   openGuidePage,
+  pointerToCorner,
   poll,
   pressKey,
   settledScroll,
@@ -2324,26 +2325,20 @@ async function runThenAct(devtools: Devtools, share: number, act: string): Promi
 }
 
 /**
- * Move the pointer to the top-left corner of the viewport, off the stack.
+ * Move the pointer to the corner {@link pointerToCorner} parks it in, off the stack.
  *
  * @param devtools The connected session.
  * @returns What is under the corner, so a check can say the pointer really is clear of the stack.
  */
 async function pointerAway(devtools: Devtools): Promise<Point> {
-  await devtools.send("Input.dispatchMouseEvent", {
-    type: "mouseMoved",
-    x: 2,
-    y: 2,
-    button: "none",
-    buttons: 0,
-  })
+  const { x, y } = await pointerToCorner(devtools)
 
   return await devtools.evaluate<Point>(`(() => {
     const region = globalThis.__verifyToastr?.region ?? null
-    const target = document.elementFromPoint(2, 2)
+    const target = document.elementFromPoint(${x}, ${y})
     return {
-      x: 2,
-      y: 2,
+      x: ${x},
+      y: ${y},
       inViewport: true,
       insideRegion: region !== null && target !== null && region.contains(target),
       tag: target === null ? "nothing" : target.tagName,
@@ -4197,35 +4192,6 @@ async function movePointer(devtools: Devtools, aim: Aim, target: string): Promis
   })
 
   return await devtools.evaluate<Landing | null>(`globalThis.__verifyPointer ?? null`)
-}
-
-/** The corner {@link pointerToCorner} parks the pointer in, in viewport coordinates. */
-const POINTER_CORNER = { x: 2, y: 2 } as const
-
-/**
- * Park the pointer in the viewport's top-left corner, clear of any card.
- *
- * Viewport coordinates do not scroll with the page, so a pointer left over one card ends up
- * resting on another as soon as the next check scrolls to it.
- *
- * The coordinate comes back rather than being written down again by a caller that wants to read
- * what is under the parked pointer. Two copies of the same two numbers in two functions would come
- * apart the moment the corner moved, and the guard that reads the corner would then be reading a
- * point the pointer is not at — with nothing going red to say so.
- *
- * @param devtools The connected session.
- * @returns Where the pointer now is.
- */
-async function pointerToCorner(devtools: Devtools): Promise<{ x: number; y: number }> {
-  await devtools.send("Input.dispatchMouseEvent", {
-    type: "mouseMoved",
-    x: POINTER_CORNER.x,
-    y: POINTER_CORNER.y,
-    button: "none",
-    buttons: 0,
-  })
-
-  return POINTER_CORNER
 }
 
 /**
