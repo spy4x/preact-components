@@ -25,12 +25,15 @@ import {
   packageExports,
   type PackageNamespace,
   packageReadmes,
+  readExports,
   README_PENDING,
   readmeNames,
+  subpathModules,
   subpathModulesOf,
   valueExportsOf,
 } from "./coverage.ts"
 import { coveredPackageIds, type PackageId, packageIds } from "./registry.ts"
+import * as fixtureBarrel from "./testdata/fixture-package/mod.ts"
 
 /** The repository root: the parent of every package directory, same as `coverage.ts`'s own. */
 const ROOT = new URL("../", import.meta.url)
@@ -88,18 +91,19 @@ async function subpathOnlyNames(): Promise<Record<PackageId, Record<string, stri
 /** {@link subpathOnlyNames}, read once for the whole file. */
 const SUBPATH_ONLY_NAMES = await subpathOnlyNames()
 
-/** One package's TypeScript subpath keys, read straight from its `deno.json`, not the helper. */
-async function declaredSubpaths(id: PackageId): Promise<string[]> {
+/**
+ * Every key one package's `deno.json` `exports` declares, the barrel's `"."` included, read straight
+ * from the file with no filter of its own: whatever the helper leaves out has to be the barrel. A
+ * string `exports` is Deno's short form for the barrel alone, so it declares `"."` and nothing else.
+ */
+async function declaredExportKeys(id: PackageId): Promise<string[]> {
   const config = parse(await Deno.readTextFile(new URL(`./${id}/deno.json`, ROOT)))
-  const declared = (config as { exports?: Record<string, unknown> } | null)?.exports ?? {}
-
-  return Object.entries(declared)
-    .filter(([subpath, target]) =>
-      subpath !== "." && typeof target === "string" &&
-      /\.tsx?$/.test(target)
-    )
-    .map(([subpath]) => subpath)
+  const { exports } = config as { exports: string | Record<string, unknown> }
+  return typeof exports === "string" ? ["."] : Object.keys(exports)
 }
+
+/** The fixture package's directory: a barrel, a component on a subpath, and three configs. */
+const FIXTURE = new URL("./testdata/fixture-package/", import.meta.url)
 
 /**
  * The problems one broken input adds beyond the shipped tree's, so each fixture asserts on its own
@@ -170,13 +174,14 @@ describe("the coverage rule", () => {
   describe("reads every subpath module, not only the barrel", () => {
     // One `it` per module, so a read that skips exactly one module names it.
 
-    it("lists exactly the TypeScript subpaths each package's deno.json publishes", async () => {
+    it("lists every subpath each package's deno.json publishes, leaving out only the barrel", async () => {
       // Checks the helper the fixture is derived from against deno.json itself.
       for (const id of coveredPackageIds) {
-        const declared = (await declaredSubpaths(id)).sort()
-        const fromHelper = (await subpathModulesOf(id)).map((m) => m.subpath).sort()
+        const declared = (await declaredExportKeys(id)).sort()
+        const fromHelper = (await subpathModulesOf(id)).map((m) => m.subpath)
 
-        expect(fromHelper, `${id}: subpathModulesOf vs deno.json exports`).toEqual(declared)
+        expect([".", ...fromHelper].sort(), `${id}: subpathModulesOf vs deno.json exports`)
+          .toEqual(declared)
       }
     })
 
@@ -186,6 +191,8 @@ describe("the coverage rule", () => {
       for (const [subpath, names] of Object.entries(SUBPATH_ONLY_NAMES[id])) {
         moduleCount++
         it(`${id}${subpath} reaches valueExportsOf beyond the barrel`, async () => {
+          // An empty list would run the loop below zero times and pass with nothing asserted.
+          expect(names.length, `${id}${subpath}: barrel-absent names`).toBeGreaterThan(0)
           // The names must really be barrel-absent, or every assertion below holds by construction.
           const barrelNames = new Set(Object.keys(BARRELS[id]))
           const notBarrelAbsent = names.filter((name) => barrelNames.has(name))
@@ -401,6 +408,37 @@ describe("the coverage rule", () => {
     ) {
       expect(isComponentName(name), `${name} is a helper name`).toBe(false)
     }
+  })
+})
+
+describe("the coverage read, on a fixture package", () => {
+  // No covered package exports a component from a subpath alone today — every barrel-absent name
+  // above is a helper — so the case the read exists for is met here, on a package of its own.
+
+  it("reads a component exported only from a subpath module, and demands its card", async () => {
+    expect(Object.keys(fixtureBarrel), "the component is not in the barrel").not
+      .toContain("FixtureWidget")
+
+    const read = await readExports(fixtureBarrel, new URL("subpath-only.json", FIXTURE))
+    const problems = injectedBy(
+      coverageProblems(
+        { ...EXPORTS, ui: { ...EXPORTS.ui, ...read } },
+        readmesWith("ui", "`fixtureVersion`"),
+      ),
+    )
+
+    expect(problems.length, problems.join(" | ")).toBe(1)
+    expect(problems[0]).toContain("the component FixtureWidget and no section demonstrates it")
+  })
+
+  it("reads no subpath from a config whose exports is the barrel alone", async () => {
+    expect(await subpathModules(new URL("barrel-only.json", FIXTURE))).toEqual([])
+  })
+
+  it("refuses a non-string target in a config handed in directly, which no workspace member can reach", async () => {
+    await expect(subpathModules(new URL("bad-target.json", FIXTURE))).rejects.toThrow(
+      "declares ./widget with a non-string target",
+    )
   })
 })
 
