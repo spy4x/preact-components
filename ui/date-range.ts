@@ -90,7 +90,8 @@ export type DateRangePreset =
   | "custom"
 
 /**
- * Canonical presentation order, narrowest to widest, custom last.
+ * Canonical presentation order: single days and rolling day counts, then the last 12 months, then
+ * calendar periods, then custom.
  *
  * Carries no labels on purpose. This module is the maths, and copy belongs to the component layer
  * above it: `DateRangePicker` is handed its option list, each option's label included, by the
