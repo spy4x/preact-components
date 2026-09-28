@@ -212,8 +212,10 @@ spent walking back to where they already were.
 The month arrows above the grid ask through the same `onSelectMonth`, and the same two rules hold
 for the grid's one Tab stop: a month the owner draws puts it on the same day number there, and a
 month the owner leaves where it was leaves it on the day it was on, rather than on the grid's own
-fallback of the selection, today or the first of the month. The focus does not move for either;
-the reader clicked the arrow and stays on it.
+fallback of the selection, today or the first of the month. That day belongs to the one request:
+it is forgotten as soon as another month or another selection is on screen, so an owner that later
+moves the month or the selection itself gets the ordinary fallback. The focus does not move for
+any of this; the reader clicked the arrow and stays on it.
 
 The first rule needs no cooperation from the caller and does not care why the month changed. An
 owner that checks or fetches before it answers gets it, and so does an owner that changes the month
