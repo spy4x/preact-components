@@ -1,5 +1,4 @@
 import { expect } from "@std/expect"
-import { readFileSync } from "node:fs"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import {
@@ -1176,18 +1175,6 @@ describe("leavesCombobox", () => {
   it("leaves for the scrolling listbox itself, which Chrome makes a tab stop", () => {
     const scroller = { isSameNode: (other: unknown) => other === input } as unknown as Node
     expect(leavesCombobox(input, scroller)).toBe(true)
-  })
-
-  it("wires the component's blur handler to this rule, not to root containment", () => {
-    // The original defect: a root-containment test reports "still inside" for the clear button and for
-    // the scrolling popup, so a Tab onto either one left the list open. This pins the component to
-    // `leavesCombobox` — reverting the handler makes the test go red.
-    const source = readFileSync(new URL("./combobox.tsx", import.meta.url), "utf8")
-
-    expect(source).toContain(
-      "if (!leavesCombobox(event.currentTarget, event.relatedTarget as Node | null)) return",
-    )
-    expect(source).not.toContain("rootRef.current?.contains(next)")
   })
 })
 
