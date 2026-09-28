@@ -1,5 +1,4 @@
 import { expect } from "@std/expect"
-import { readFileSync } from "node:fs"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import {
@@ -868,6 +867,41 @@ describe("Combobox markup", () => {
     expect(html).toContain(`aria-describedby="${statusRegionId(html)}"`)
   })
 
+  it("does not say there are no matches while the options are still loading", () => {
+    // #205: a search that fetches per keystroke holds an empty list for the length of every fetch,
+    // and the same query without `loading` is the control — it does say "No matches".
+    const fetching = render(<Combobox items={[]} onChange={() => {}} query="btc" loading />)
+    const settled = render(<Combobox items={[]} onChange={() => {}} query="btc" />)
+
+    expect(fetching).not.toContain("No matches")
+    expect(statusRegion(fetching)).toContain("Loading…")
+    expect(fetching).not.toContain("aria-describedby")
+    expect(statusRegion(settled)).toContain("No matches")
+  })
+
+  it("counts nothing while loading, because the rows on screen are the last query's", () => {
+    const html = render(<Combobox items={items} onChange={() => {}} query="t" loading />)
+
+    expect(statusRegion(html)).not.toContain("matches")
+    expect(statusRegion(html)).toContain("Loading…")
+  })
+
+  it("takes the loading message from the caller, and defaults it to English otherwise", () => {
+    const html = render(
+      <Combobox items={[]} onChange={() => {}} query="btc" loading loadingMessage="Lädt…" />,
+    )
+
+    expect(statusRegion(html)).toContain("Lädt…")
+    expect(html).not.toContain("Loading…")
+  })
+
+  it("stays silent while loading on a field nobody has touched", () => {
+    const html = render(<Combobox items={[]} onChange={() => {}} loading />)
+
+    expect(html).not.toContain("Loading…")
+    expect(statusRegion(html)).toBe(emptyRegion(inputId(html)))
+  })
+
   it("takes an overridden placeholder, and defaults it to English otherwise", () => {
     expect(render(<Combobox items={items} onChange={() => {}} />))
       .toContain('placeholder="Select…"')
@@ -1141,18 +1175,6 @@ describe("leavesCombobox", () => {
   it("leaves for the scrolling listbox itself, which Chrome makes a tab stop", () => {
     const scroller = { isSameNode: (other: unknown) => other === input } as unknown as Node
     expect(leavesCombobox(input, scroller)).toBe(true)
-  })
-
-  it("wires the component's blur handler to this rule, not to root containment", () => {
-    // The original defect: a root-containment test reports "still inside" for the clear button and for
-    // the scrolling popup, so a Tab onto either one left the list open. This pins the component to
-    // `leavesCombobox` — reverting the handler makes the test go red.
-    const source = readFileSync(new URL("./combobox.tsx", import.meta.url), "utf8")
-
-    expect(source).toContain(
-      "if (!leavesCombobox(event.currentTarget, event.relatedTarget as Node | null)) return",
-    )
-    expect(source).not.toContain("rootRef.current?.contains(next)")
   })
 })
 

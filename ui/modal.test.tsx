@@ -23,17 +23,6 @@ import {
   shouldRetargetFocus,
   supportsClosedBy,
 } from "./modal.tsx"
-/**
- * The modal's source, for assertions about a parameter default.
- *
- * A function component's resolved props are not reachable from `preact-render-to-string` — refs and
- * effects never run — so a default expressed as `closeOnBackdrop = <constant>` has no rendered
- * symptom to assert on. Reading the declaration is the honest way to pin it: the test fails if the
- * default stops being the shared constant, which is the drift that matters.
- */
-function modalDialogSource(): string {
-  return Deno.readTextFileSync(new URL("./modal.tsx", import.meta.url))
-}
 
 /** The dialog's own box, as `getBoundingClientRect()` would report it in a 1000×800 viewport. */
 const rect: DialogRect = { left: 300, top: 200, right: 700, bottom: 600 }
@@ -200,16 +189,6 @@ describe("Modal", () => {
     expect(html).toContain("backdrop:bg-black/50")
   })
 
-  it("wires the Escape handler that makes a refusal possible", () => {
-    // `closedby="none"` and the keydown listener are two halves of one mechanism: the attribute stops
-    // the uncancellable platform close and the listener is what routes Escape through the port. Either
-    // one alone leaves Escape ungovernable — dropping the listener used to stay green, which is the
-    // same shape of gap as the bug this path was written to fix.
-    expect(modalDialogSource()).toContain('addEventListener("keydown"')
-    expect(modalDialogSource()).toContain("isDismissKey(")
-    expect(modalDialogSource()).toContain('removeEventListener("keydown"')
-  })
-
   it("takes the uncancellable platform close out of the picture", () => {
     // `closedby="none"` is the whole reason a refused Escape can keep the dialog open: the `cancel`
     // event is not cancelable, so the platform's own Escape close cannot be prevented, and the
@@ -227,24 +206,6 @@ describe("Modal", () => {
 
     expect(html).toContain('closedby="none"')
     expect(html.match(/closedby=/g)?.length).toBe(1)
-  })
-
-  it("gates its Escape branch on the platform, not on the attribute alone", () => {
-    // The load-bearing line of the fix, pinned at the source. `supportsClosedBy`, `escapeCloseStrategy`
-    // and `bindEscapeClose` are all covered directly below, but nothing in a DOM-free suite observes
-    // *which* of them the effect consults: a refactor that passed `true` unconditionally would leave
-    // the fallback dead code with every other test in this file still green.
-    const source = modalDialogSource()
-
-    expect(source).toContain("supportsClosedBy(globalThis.HTMLDialogElement?.prototype)")
-    expect(source).toContain('addEventListener("cancel"')
-    expect(source).toContain('removeEventListener("cancel"')
-    // The fallback's wiring, as text. Passing the state setter through is not behaviour a DOM-free
-    // suite can observe, but unhooking it — handing `platformCloseHandler` a no-op `settleOpen` — is
-    // the one mutation of this fix that would otherwise go unnoticed, and it is exactly the mutation
-    // that puts the state desync back. Stated for what it is: a presence check, not a behavioural one.
-    expect(source).toContain("platformCloseHandler({")
-    expect(source).toContain("settleOpen,")
   })
 
   it("tints the surface in the danger register", () => {
@@ -276,12 +237,8 @@ describe("Modal's backdrop policy", () => {
     // The default the component documents, named so a flip in either the component or the predicate
     // fails here rather than silently switching the whole backdrop feature off.
     expect(backdropDismissesByDefault).toBe(true)
-    // And the component's own parameter default, read from the rendered element rather than restated:
-    // flipping `Modal`'s `closeOnBackdrop = backdropDismissesByDefault` to a literal `false` leaves
-    // the constant's own value untouched and would slip past an assertion on the constant alone.
-    expect(modalDialogSource()).toContain("closeOnBackdrop = backdropDismissesByDefault")
-    expect(modalDialogSource()).not.toContain("closeOnBackdrop = false")
-    expect(modalDialogSource()).not.toContain("closeOnBackdrop = true")
+    // The component's own parameter default has no rendered symptom, so it is held in the browser:
+    // "a real click on a Modal's backdrop closes it by default" in `pages/checks/ui.ts`.
     expect(backdropClickDismisses(clickAt(dialog, 10, 10), rect, dialog, undefined)).toBe(
       backdropDismissesByDefault,
     )

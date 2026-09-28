@@ -4,6 +4,7 @@ import {
   check,
   type Devtools,
   openGuidePage,
+  pointerToCorner,
   poll,
   pressKey,
   settledScroll,
@@ -2439,26 +2440,20 @@ async function runThenAct(devtools: Devtools, share: number, act: string): Promi
 }
 
 /**
- * Move the pointer to the top-left corner of the viewport, off the stack.
+ * Move the pointer to the corner {@link pointerToCorner} parks it in, off the stack.
  *
  * @param devtools The connected session.
  * @returns What is under the corner, so a check can say the pointer really is clear of the stack.
  */
 async function pointerAway(devtools: Devtools): Promise<Point> {
-  await devtools.send("Input.dispatchMouseEvent", {
-    type: "mouseMoved",
-    x: 2,
-    y: 2,
-    button: "none",
-    buttons: 0,
-  })
+  const { x, y } = await pointerToCorner(devtools)
 
   return await devtools.evaluate<Point>(`(() => {
     const region = globalThis.__verifyToastr?.region ?? null
-    const target = document.elementFromPoint(2, 2)
+    const target = document.elementFromPoint(${x}, ${y})
     return {
-      x: 2,
-      y: 2,
+      x: ${x},
+      y: ${y},
       inViewport: true,
       insideRegion: region !== null && target !== null && region.contains(target),
       tag: target === null ? "nothing" : target.tagName,
@@ -2990,6 +2985,338 @@ async function modalChecks(devtools: Devtools): Promise<void> {
   )
 
   await uncontrolledModalChecks(devtools)
+  await modalBackdropCheck(devtools)
+  await modalFallbackEscapeCheck(devtools)
+  await confirmDialogChecks(devtools)
+}
+
+/**
+ * A point on a dialog's backdrop: halfway between the viewport's left edge and the dialog's, at the
+ * dialog's vertical middle, with what `elementFromPoint` reads there.
+ *
+ * The backdrop hit-tests as the dialog itself, which is how `Modal` tells a backdrop click from a
+ * click inside its box, so `onTarget` means "the dialog is under this point" and the point is
+ * outside the dialog's own box by construction.
+ *
+ * @param devtools The connected session.
+ * @param dialog A page expression for the open dialog.
+ */
+async function backdropAim(devtools: Devtools, dialog: string): Promise<Aim> {
+  return await devtools.evaluate<Aim>(`(() => {
+    const dialog = ${dialog}
+    if (dialog === null || dialog === undefined) {
+      return { x: -1, y: -1, inViewport: false, onTarget: false, tag: "nothing", width: 0, height: 0 }
+    }
+    const box = dialog.getBoundingClientRect()
+    const x = Math.round(box.left / 2)
+    const y = Math.round(box.top + box.height / 2)
+    const at = document.elementFromPoint(x, y)
+    return {
+      x,
+      y,
+      inViewport: x > 0 && y > 0 && x < box.left,
+      onTarget: x > 0 && x < box.left && at === dialog,
+      tag: at === null ? "nothing" : at.tagName,
+      width: Math.round(box.width),
+      height: Math.round(box.height),
+    }
+  })()`)
+}
+
+/**
+ * A real click on a default Modal's backdrop closes it through its close port.
+ *
+ * `Modal` defaults `closeOnBackdrop` to `backdropDismissesByDefault`, and a parameter default has no
+ * rendered symptom a string-rendering test could read, so `ui/modal.test.tsx` used to search the
+ * source for it (#217). This is the behaviour itself: the card's first dialog passes no
+ * `closeOnBackdrop`, so only the default decides whether this click closes it.
+ *
+ * @param devtools The connected session, on a hydrated page with no dialog open.
+ */
+async function modalBackdropCheck(devtools: Devtools): Promise<void> {
+  await devtools.evaluate<null>(`(() => {
+    const button = [...document.querySelectorAll("#demo-Modal button")]
+      .find((candidate) => candidate.textContent.trim().startsWith("default"))
+    button?.click()
+    return null
+  })()`)
+  const dialog = `document.querySelector("#demo-Modal dialog")`
+  const opened = await poll(
+    () => devtools.evaluate<boolean>(`${dialog}?.matches(":modal") === true`),
+    3_000,
+  )
+  const aim = await backdropAim(devtools, dialog)
+  const landing = aim.onTarget ? await clickAt(devtools, aim, dialog) : null
+  const closed = await poll(() => devtools.evaluate<boolean>(`${dialog} === null`), 3_000)
+  await pointerToCorner(devtools)
+  // On failure the dialog is still open over everything after this; its own close button asks the
+  // same port Escape does, so the card's parent unmounts it and releases the page's scroll lock.
+  if (!closed) {
+    await devtools.evaluate<null>(
+      `(${dialog}?.querySelector('header button[aria-label="Close"]')?.click(), null)`,
+    )
+  }
+
+  check(
+    "a real click on a Modal's backdrop closes it by default",
+    opened && aim.onTarget && landing?.onTarget === true && closed,
+    !opened
+      ? "the card's default dialog never became modal, so there was no backdrop to click"
+      : !aim.onTarget
+      ? `the point ${aim.x},${aim.y} left of the dialog reads ${aim.tag}, not the dialog's backdrop`
+      : landing?.onTarget !== true
+      ? `the press at ${aim.x},${aim.y} landed on ${landing?.tag ?? "nothing"}, not the backdrop`
+      : closed
+      ? `a real press at ${aim.x},${aim.y}, outside the dialog's box, took the dialog off the page`
+      : `the dialog was still on the page 3s after a real press on its backdrop, so the default ` +
+        `no longer lets a backdrop click close a Modal`,
+  )
+}
+
+/** What the fallback check saw on the dialog it opened with `closedBy` hidden. */
+interface FallbackReading {
+  /** Event types the browser holds listeners for on the dialog, for the failure message only. */
+  listeners: string[]
+  /** Whether the platform fired `cancel` for the Escape press. */
+  cancelled: boolean
+  present: boolean
+  lock: string
+}
+
+/**
+ * On a dialog engine that does not know `closedby`, Escape is the platform's, and an uncontrolled
+ * Modal still settles closed.
+ *
+ * Chromium honours `closedby`, so the path `Modal` takes everywhere else — WebKit today — is not
+ * reached by any other check here. This makes Chromium stand in for that engine, in the two ways
+ * the component and the platform can tell: `closedBy` is taken off `HTMLDialogElement.prototype`
+ * before the dialog mounts, so the component's capability test answers "not supported", and the
+ * `closedby` attribute is taken off the open dialog, so the platform closes on Escape and fires
+ * `cancel` as an engine that ignores the attribute would. The prototype is put back as soon as the
+ * dialog is open, and on every way out.
+ *
+ * Everything asserted is behaviour, and it covers the gate `ui/modal.test.tsx` used to pin by
+ * searching the source (#217) from both sides:
+ *
+ * - the platform must fire `cancel` for the Escape press. A component that ignored the capability
+ *   and took the `keydown` path anyway closes the dialog itself, synchronously, before the platform
+ *   gets to, so no `cancel` fires and this reads red;
+ * - the Escape press must take the uncontrolled dialog off the page and release the scroll lock,
+ *   which happens only if the `cancel` handler settles the component's own open flag. Without that,
+ *   the platform closes the element and the component keeps rendering it, closed and unopenable.
+ *
+ * The dialog's listener types are read through DevTools for the failure message only; which
+ * listeners the component uses is its own business, and asserting on them would fail a correct
+ * dialog that one day adds a `keydown` listener for something else.
+ *
+ * The trigger is pressed with a real click, because Chromium fires `cancel` for an Escape close
+ * request only after a user activation, and a scripted `.click()` is not one.
+ *
+ * @param devtools The connected session, on a hydrated page with no dialog open.
+ */
+async function modalFallbackEscapeCheck(devtools: Devtools): Promise<void> {
+  const dialog = `document.querySelector('[data-e2e="guide-modal-uncontrolled"]')`
+  const trigger = `document.querySelector('#demo-Modal [data-e2e="modal-uncontrolled-open"]')`
+  const hidden = await devtools.evaluate<boolean>(`(() => {
+    const proto = HTMLDialogElement.prototype
+    const descriptor = Object.getOwnPropertyDescriptor(proto, "closedBy")
+    if (descriptor === undefined) return false
+    globalThis.__verifyClosedBy = descriptor
+    delete proto.closedBy
+    return !("closedBy" in proto)
+  })()`)
+  const restore = `(() => {
+    const descriptor = globalThis.__verifyClosedBy
+    if (descriptor !== undefined) Object.defineProperty(HTMLDialogElement.prototype, "closedBy", descriptor)
+    delete globalThis.__verifyClosedBy
+    return "closedBy" in HTMLDialogElement.prototype
+  })()`
+  let opened = false
+  let landed = false
+  let restored = false
+  let reading: FallbackReading = { listeners: [], cancelled: false, present: true, lock: "" }
+  try {
+    await centreInView(devtools, trigger)
+    landed = (await clickAt(devtools, await aimAt(devtools, trigger), trigger))?.onTarget === true
+    opened = await poll(
+      () => devtools.evaluate<boolean>(`${dialog}?.matches(":modal") === true`),
+      3_000,
+    )
+    restored = await devtools.evaluate<boolean>(restore)
+    // Read before this check adds its own `cancel` probe below, which would otherwise be counted.
+    const listeners = await dialogListenerTypes(devtools, dialog)
+    await devtools.evaluate<null>(`(() => {
+      const dialog = ${dialog}
+      globalThis.__verifyCancelled = false
+      dialog?.removeAttribute("closedby")
+      dialog?.addEventListener("cancel", () => globalThis.__verifyCancelled = true, { once: true })
+      return null
+    })()`)
+    await pressKey(devtools, "Escape")
+    await poll(() => devtools.evaluate<boolean>(`${dialog} === null`), 3_000)
+    await poll(() => devtools.evaluate<boolean>(`document.body.style.overflow === ""`), 3_000)
+    reading = {
+      ...await devtools.evaluate<Omit<FallbackReading, "listeners">>(`(() => ({
+        cancelled: globalThis.__verifyCancelled === true,
+        present: ${dialog} !== null,
+        lock: document.body.style.overflow === "" ? "released" : document.body.style.overflow,
+      }))()`),
+      listeners,
+    }
+  } finally {
+    restored = await devtools.evaluate<boolean>(restore).catch(() => false) || restored
+    await devtools.evaluate<null>(`(() => {
+      delete globalThis.__verifyCancelled
+      const dialog = ${dialog}
+      if (dialog?.open) dialog.close()
+      return null
+    })()`).catch(() => null)
+    await pointerToCorner(devtools)
+  }
+
+  const escapeListeners = reading.listeners.filter((type) =>
+    type === "keydown" || type === "cancel"
+  )
+  check(
+    "on an engine without closedby, Modal hands Escape to the platform and an uncontrolled one still leaves the page",
+    hidden && restored && landed && opened && reading.cancelled && !reading.present &&
+      reading.lock === "released",
+    !hidden
+      ? "HTMLDialogElement.prototype has no closedBy to take away, so this browser is already the " +
+        "engine the check simulates and the premise does not hold"
+      : !restored
+      ? "closedBy could not be put back on HTMLDialogElement.prototype, so every later check runs " +
+        "on a changed platform"
+      : !landed || !opened
+      ? "a real click on the uncontrolled trigger never opened a modal dialog"
+      : !reading.cancelled
+      ? `the platform fired no cancel for the Escape press, so nothing here reached the fallback ` +
+        `(the dialog's Escape listeners were [${escapeListeners.join(", ")}]; a keydown one ` +
+        `closes the dialog itself before the platform can)`
+      : reading.present
+      ? `the platform closed the dialog but the component kept rendering it: its own open flag ` +
+        `was not settled by the cancel handler, and the scroll lock reads "${reading.lock}"`
+      : reading.lock !== "released"
+      ? `the dialog left the page but the scroll lock still reads "${reading.lock}"`
+      : `a real Escape fired the platform's cancel, the element left the page and the scroll ` +
+        `lock was released`,
+  )
+}
+
+/**
+ * The event types the browser holds listeners for on one element, read from DevTools.
+ *
+ * @param devtools The connected session.
+ * @param element A page expression for the element.
+ * @returns The types, one entry per listener; empty when the element is missing.
+ */
+async function dialogListenerTypes(devtools: Devtools, element: string): Promise<string[]> {
+  const found = await devtools.send<{ result: { objectId?: string } }>("Runtime.evaluate", {
+    expression: element,
+  })
+  const objectId = found.result.objectId
+  if (objectId === undefined) return []
+  try {
+    const { listeners } = await devtools.send<{ listeners: { type: string }[] }>(
+      "DOMDebugger.getEventListeners",
+      { objectId },
+    )
+    return listeners.map((listener) => listener.type)
+  } finally {
+    await devtools.send("Runtime.releaseObject", { objectId }).catch(() => null)
+  }
+}
+
+/**
+ * `ConfirmDialog`'s two refusals, driven for real: a backdrop click does not dismiss it by
+ * default, and an Escape press asks its `onCancel` — which, on the card's third panel, says no.
+ *
+ * Both used to be pinned by searching `ui/confirm-dialog.tsx` for `closeOnBackdrop = false` and
+ * `onClose={onCancel}` (#217). A panel left open by either check would sit in the top layer over
+ * everything after it, so each one closes its panel through the panel's own buttons on the way
+ * out, and these run last of all.
+ *
+ * @param devtools The connected session, on a hydrated page with no dialog open.
+ */
+async function confirmDialogChecks(devtools: Devtools): Promise<void> {
+  const dialog = `document.querySelector("#demo-ConfirmDialog dialog")`
+  const outcome = `(document.querySelector('#demo-ConfirmDialog [data-e2e="controlled-value"]')` +
+    `?.textContent ?? "").trim()`
+  /** Press the card button, or the open panel's footer button, whose text is `label`. */
+  const press = (scope: string, label: string) =>
+    devtools.evaluate<boolean>(`(() => {
+      const button = [...document.querySelectorAll(${JSON.stringify(scope)})]
+        .find((candidate) => candidate.textContent.trim() === ${JSON.stringify(label)})
+      button?.click()
+      return button !== undefined
+    })()`)
+  const open = async (label: string) =>
+    await press("#demo-ConfirmDialog button", label) &&
+    await poll(() => devtools.evaluate<boolean>(`${dialog}?.matches(":modal") === true`), 3_000)
+  const closeWith = async (label: string) => {
+    await press("#demo-ConfirmDialog dialog footer button", label)
+    return await poll(() => devtools.evaluate<boolean>(`${dialog} === null`), 3_000)
+  }
+
+  // A backdrop click on the Archive panel, which passes no `closeOnBackdrop`.
+  const archiveOpened = await open("Archive invoice")
+  const aim = await backdropAim(devtools, dialog)
+  const landing = aim.onTarget ? await clickAt(devtools, aim, dialog) : null
+  const stayed = await holdsFor(
+    () => devtools.evaluate<boolean>(`${dialog}?.matches(":modal") === true`),
+    1_000,
+  )
+  await pointerToCorner(devtools)
+  const archiveClosed = await closeWith("Cancel")
+  check(
+    "a real click on a ConfirmDialog's backdrop leaves it open by default",
+    archiveOpened && aim.onTarget && landing?.onTarget === true && stayed.held && archiveClosed,
+    !archiveOpened
+      ? "the Archive invoice panel never became modal"
+      : !aim.onTarget || landing?.onTarget !== true
+      ? `the press at ${aim.x},${aim.y} did not land on the panel's backdrop (${aim.tag})`
+      : !stayed.held
+      ? `a real click on the backdrop closed the panel ${stayed.elapsedMs}ms later: a confirmation ` +
+        `must not be dismissed by a stray click beside it`
+      : !archiveClosed
+      ? "the panel stayed open through a backdrop click, but its own Cancel button then failed to " +
+        "close it"
+      : `a real press at ${aim.x},${aim.y} on the backdrop; the panel was still modal 1s later, ` +
+        `and its Cancel button closed it`,
+  )
+
+  // Escape on the panel whose `onCancel` returns false.
+  const before = await devtools.evaluate<string>(outcome)
+  const leaveOpened = await open("Leave page")
+  await pressKey(devtools, "Escape")
+  const asked = await poll(
+    () => devtools.evaluate<boolean>(`${outcome}.includes("cancel refused")`),
+    3_000,
+  )
+  const held = await holdsFor(
+    () => devtools.evaluate<boolean>(`${dialog}?.matches(":modal") === true`),
+    1_000,
+  )
+  const after = await devtools.evaluate<string>(outcome)
+  const leaveClosed = await closeWith("Discard")
+  if (!leaveClosed) await devtools.evaluate<null>(`(${dialog}?.close(), null)`)
+  check(
+    "a real Escape on a ConfirmDialog asks its onCancel, and a refusal keeps the panel open",
+    leaveOpened && !before.includes("cancel refused") && asked && held.held && leaveClosed,
+    !leaveOpened
+      ? "the Leave page panel never became modal"
+      : before.includes("cancel refused")
+      ? `the card already read "${before}" before Escape, so a reading after it proves nothing`
+      : !asked
+      ? `Escape never reached onCancel: the card reads "${after}"` +
+        (held.held ? "" : ", and the panel closed without asking it")
+      : !held.held
+      ? `onCancel refused, but the panel closed ${held.elapsedMs}ms after Escape regardless`
+      : !leaveClosed
+      ? "the panel held through Escape, but its Discard button then failed to close it"
+      : `Escape → onCancel ran ("${after}") and returned false → the panel was still modal 1s ` +
+        `later, and Discard closed it`,
+  )
 }
 
 /** What the uncontrolled dialog left behind once Escape had been pressed. */
@@ -3982,35 +4309,6 @@ async function movePointer(devtools: Devtools, aim: Aim, target: string): Promis
   return await devtools.evaluate<Landing | null>(`globalThis.__verifyPointer ?? null`)
 }
 
-/** The corner {@link pointerToCorner} parks the pointer in, in viewport coordinates. */
-const POINTER_CORNER = { x: 2, y: 2 } as const
-
-/**
- * Park the pointer in the viewport's top-left corner, clear of any card.
- *
- * Viewport coordinates do not scroll with the page, so a pointer left over one card ends up
- * resting on another as soon as the next check scrolls to it.
- *
- * The coordinate comes back rather than being written down again by a caller that wants to read
- * what is under the parked pointer. Two copies of the same two numbers in two functions would come
- * apart the moment the corner moved, and the guard that reads the corner would then be reading a
- * point the pointer is not at — with nothing going red to say so.
- *
- * @param devtools The connected session.
- * @returns Where the pointer now is.
- */
-async function pointerToCorner(devtools: Devtools): Promise<{ x: number; y: number }> {
-  await devtools.send("Input.dispatchMouseEvent", {
-    type: "mouseMoved",
-    x: POINTER_CORNER.x,
-    y: POINTER_CORNER.y,
-    button: "none",
-    buttons: 0,
-  })
-
-  return POINTER_CORNER
-}
-
 /**
  * Park the pointer clear of every Tooltip in the catalogue's own demo card, for the checks in this
  * file that drive that card.
@@ -4206,6 +4504,8 @@ async function comboboxChecks(devtools: Devtools): Promise<void> {
   await arrivingOptionsCheck(devtools)
   await highlightChecks(devtools)
   await reopenCheck(devtools)
+  await focusLeavesChecks(devtools)
+  await fetchingComboboxCheck(devtools)
 }
 
 /** One reading of the parked live region: what it is, what it holds, and what it has recorded. */
@@ -5323,6 +5623,252 @@ async function reopenCheck(devtools: Devtools): Promise<void> {
   await pressKey(devtools, "Escape")
   await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "false"`), 3_000)
   await pointerToCorner(devtools)
+}
+
+/** What the fetching field's live region said while one query was fetched, in order. */
+interface FetchWalk {
+  /** `false` when the card has no region under the fetching field's id. */
+  ok: boolean
+  /** Every distinct text the region passed through, `""` included, in the order it held them. */
+  texts: string[]
+  /** `true` when the region holding the last text is the element parked before typing. */
+  same: boolean
+  /** `aria-describedby` of the input as each text arrived, `null` when it carried none. */
+  describedBy: (string | null)[]
+}
+
+/**
+ * Park the fetching field's region and record every text it holds from here on.
+ *
+ * Every change is recorded, not sampled: a region that says "No matches" for one frame between two
+ * polls has still told a screen reader so, and a poll could step over it. The input's description
+ * is recorded with each text, because the empty message is what the input is described by and the
+ * loading message must not be.
+ */
+const FETCH_PARK = `(() => {
+  const region = document.getElementById("guide-combobox-fetch-status")
+  const input = document.getElementById("guide-combobox-fetch")
+  if (region === null || input === null) return false
+  const walk = { region, texts: [""], describedBy: [input.getAttribute("aria-describedby")] }
+  const record = () => {
+    const text = (region.textContent ?? "").trim()
+    if (text === walk.texts.at(-1)) return
+    walk.texts.push(text)
+    walk.describedBy.push(input.getAttribute("aria-describedby"))
+  }
+  walk.observer = new MutationObserver(record)
+  walk.observer.observe(region, { childList: true, subtree: true, characterData: true })
+  globalThis.__verifyFetch = walk
+  return true
+})()`
+
+/** The walk so far; see {@link FetchWalk}. */
+const FETCH_STATE = `(() => {
+  const walk = globalThis.__verifyFetch ?? null
+  const region = document.getElementById("guide-combobox-fetch-status")
+  if (walk === null || region === null) return { ok: false, texts: [], same: false, describedBy: [] }
+  return {
+    ok: true,
+    texts: [...walk.texts],
+    same: region === walk.region,
+    describedBy: [...walk.describedBy],
+  }
+})()`
+
+/**
+ * A field whose options are fetched per keystroke says it is loading, never "No matches", until
+ * the fetch answers — and then says "No matches" when the answer is nothing (#205).
+ *
+ * The card's fetching field empties its list and sets `loading` on every keystroke, and answers
+ * after a delay with the tickers that start with the query. `Z` starts none of them, so the one
+ * query here walks the whole path: nothing, the caller's loading message, then the English default
+ * empty message, all in the region that was there before the field was used. Every text the region
+ * passes through is recorded by an observer attached beforehand, so a "No matches" that flashes
+ * for one frame during the fetch is caught rather than stepped over by a poll.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function fetchingComboboxCheck(devtools: Devtools): Promise<void> {
+  await devtools.evaluate<null>(comboboxSetup("guide-combobox-fetch"))
+  await scrollToParked(devtools)
+  const parked = await devtools.evaluate<boolean>(FETCH_PARK)
+  let walk: FetchWalk = { ok: false, texts: [], same: false, describedBy: [] }
+  let landed = false
+  let opened = false
+  let typed = false
+  let settled = false
+  try {
+    const field = `globalThis.__verifyCombobox?.input ?? null`
+    landed = (await clickAt(devtools, await aimAt(devtools, field), field))?.onTarget === true
+    opened = await poll(
+      () => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "true"`),
+      3_000,
+    )
+    await typeInto(devtools, "Z")
+    typed = await poll(
+      () => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.inputValue === "Z"`),
+      3_000,
+    )
+    // Waits for the end of the walk rather than for a number of milliseconds: the card's delay is
+    // under a second, and the budget is five so a loaded machine is not mistaken for a broken field.
+    settled = await poll(
+      () => devtools.evaluate<boolean>(`${FETCH_STATE}.texts.at(-1) === "No matches"`),
+      5_000,
+    )
+    walk = await devtools.evaluate<FetchWalk>(FETCH_STATE)
+  } finally {
+    await devtools.evaluate<null>(`(() => {
+      globalThis.__verifyFetch?.observer?.disconnect()
+      delete globalThis.__verifyFetch
+      return null
+    })()`).catch(() => null)
+    await pressKey(devtools, "Escape")
+    await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "false"`), 3_000)
+    await pointerToCorner(devtools)
+  }
+
+  const loadingAt = walk.texts.indexOf("Searching tickers…")
+  const lastLoading = walk.texts.lastIndexOf("Searching tickers…")
+  const falseEmpty = walk.texts.findIndex((text, index) =>
+    text.includes("No matches") && index < lastLoading
+  )
+  const mixed = walk.texts.find((text) =>
+    text.includes("Searching tickers…") && text !== "Searching tickers…"
+  )
+  const final = walk.texts.at(-1) ?? ""
+  const shown = walk.texts.map((text) => JSON.stringify(text)).join(" → ")
+  check(
+    'a Combobox that is loading says so, not "No matches", and says "No matches" once the fetch finds nothing',
+    parked && walk.ok && landed && opened && typed && settled && loadingAt > 0 &&
+      falseEmpty === -1 && mixed === undefined && final === "No matches" && walk.same &&
+      walk.describedBy[loadingAt] === null &&
+      walk.describedBy.at(-1) === "guide-combobox-fetch-status",
+    !parked || !walk.ok
+      ? "the Combobox card has no field with id guide-combobox-fetch and a live region beside it"
+      : !landed || !opened
+      ? "the press never opened the fetching field, so nothing was typed into it"
+      : !typed
+      ? "the query Z never reached the fetching field"
+      : falseEmpty !== -1 || mixed !== undefined
+      ? `the region said the list was empty while the options were still being fetched: ${shown}`
+      : loadingAt <= 0
+      ? `the region never carried the caller's loading message while the fetch ran: ${shown}`
+      : walk.describedBy[loadingAt] !== null
+      ? `the input was described by the region while it said the loading message ` +
+        `(aria-describedby="${walk.describedBy[loadingAt]}"), which is a passing state, not a fact`
+      : !settled || final !== "No matches"
+      ? `the fetch for a query nothing starts with never ended in "No matches": ${shown}`
+      : !walk.same
+      ? `"No matches" arrived in a different element from the region parked before typing, which ` +
+        `is the shape a screen reader does not announce`
+      : walk.describedBy.at(-1) !== "guide-combobox-fetch-status"
+      ? `once "No matches" arrived the input was described by ` +
+        `"${walk.describedBy.at(-1)}", not by the region holding it`
+      : `${shown}, every change recorded on the region parked before typing`,
+  )
+}
+
+/** Where focus went when the parked combobox's input lost it, and what the list did about it. */
+interface FocusLeave {
+  /** `false` when the field could not be read at all. */
+  ok: boolean
+  /** `"clear"`, `"listbox"`, `"none"` for a null `relatedTarget`, or the tag focus went to. */
+  to: string
+  expanded: string | null
+  listHidden: boolean
+}
+
+/**
+ * Record, once, where the parked input's focus goes next.
+ *
+ * `relatedTarget` on the input's own `blur` is the component's own question, so it is the one
+ * answered here: which element focus is moving to, named as the clear button, the listbox, or
+ * something else.
+ */
+const LEAVE_RECORD = `(() => {
+  const { input, list } = globalThis.__verifyCombobox ?? {}
+  globalThis.__verifyLeave = "not yet"
+  if (!input || !list) return null
+  const clear = input.parentElement?.querySelector("button") ?? null
+  input.addEventListener("blur", (event) => {
+    const next = event.relatedTarget
+    globalThis.__verifyLeave = next === null
+      ? "none"
+      : next === clear
+      ? "clear"
+      : next === list
+      ? "listbox"
+      : next.tagName
+  }, { once: true })
+  return null
+})()`
+
+/** What {@link LEAVE_RECORD} saw, with the list's state after it. */
+const LEAVE_STATE = `(() => {
+  const { input, list } = globalThis.__verifyCombobox ?? {}
+  const to = String(globalThis.__verifyLeave ?? "not yet")
+  delete globalThis.__verifyLeave
+  if (!input || !list) return { ok: false, to, expanded: null, listHidden: false }
+  return { ok: true, to, expanded: input.getAttribute("aria-expanded"), listHidden: list.hidden }
+})()`
+
+/**
+ * Tab from a Combobox's input onto one of its own descendants closes the list.
+ *
+ * Two descendants take focus from the input with one real Tab press: the clear button, once there
+ * is a selection or a query, and the popup itself when its options overflow it, because Chromium
+ * makes a scrolling box a tab stop. Both are inside the component's root, so a focus-out rule that
+ * asked "is focus still inside the root?" kept the list open over the page in both cases. The rule
+ * is "is focus still on the input?", and these two checks are what hold it now that
+ * `ui/combobox.test.tsx` no longer reads the handler's source (#217).
+ *
+ * The coin field has a selection by the time this runs, so its next tab stop is the clear button;
+ * the offset field has none and 27 rows in a six-row popup, so its next tab stop is the popup.
+ * Where focus actually went is recorded from the input's own `blur`, so a Tab that went somewhere
+ * else reports that rather than passing or failing for the wrong reason.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function focusLeavesChecks(devtools: Devtools): Promise<void> {
+  const cases = [
+    { id: "guide-combobox-coin", to: "clear", name: "its clear button" },
+    { id: "guide-combobox-offset", to: "listbox", name: "its scrolling popup" },
+  ] as const
+  for (const { id, to, name } of cases) {
+    await devtools.evaluate<null>(comboboxSetup(id))
+    await scrollToParked(devtools)
+    const field = `globalThis.__verifyCombobox?.input ?? null`
+    const landed = (await clickAt(devtools, await aimAt(devtools, field), field))?.onTarget === true
+    const opened = await poll(
+      () => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "true"`),
+      3_000,
+    )
+    await devtools.evaluate<null>(LEAVE_RECORD)
+    await pressKey(devtools, "Tab")
+    await poll(() => devtools.evaluate<boolean>(`globalThis.__verifyLeave !== "not yet"`), 3_000)
+    // A list that stays open never changes, so this poll's timeout is the failing case, not a flake.
+    await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "false"`), 1_500)
+    const left = await devtools.evaluate<FocusLeave>(LEAVE_STATE)
+
+    check(
+      `a real Tab from a Combobox's input onto ${name} closes the list`,
+      landed && opened && left.ok && left.to === to && left.expanded === "false" &&
+        left.listHidden,
+      !left.ok
+        ? `the Combobox card has no field with id ${id}`
+        : !landed || !opened
+        ? `the press never opened ${id}, so there was no list for Tab to close`
+        : left.to !== to
+        ? `Tab moved focus to ${left.to}, not to ${name}, so this is not the case it is about`
+        : `focus moved from the input to ${name}, and the list reads aria-expanded ` +
+          `"${left.expanded}" with hidden=${left.listHidden}` +
+          (left.expanded === "false" ? "" : ": it stayed open over the page after focus left"),
+    )
+    // Focus may be on the clear button, or nowhere once the popup it moved into was hidden; either
+    // way the next check starts from a closed field and a parked pointer.
+    await pressKey(devtools, "Escape")
+    await pointerToCorner(devtools)
+  }
 }
 
 /**

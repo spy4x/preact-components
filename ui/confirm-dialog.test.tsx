@@ -25,19 +25,6 @@ function dialog(overrides: Partial<Parameters<typeof ConfirmDialog>[0]> = {}) {
   )
 }
 
-/**
- * The panel's source, for the one assertion with no rendered symptom.
- *
- * `ConfirmDialog`'s `closeOnBackdrop` default is a parameter default, and a function component's
- * resolved props are not reachable through `preact-render-to-string` — refs and effects never run, so
- * nothing on the rendered element carries the value. Reading the declaration is the honest way to pin
- * it: flipping the default to `true` silently makes a destructive panel dismissable on a stray click,
- * and this is what fails when that happens.
- */
-function panelSource(): string {
-  return Deno.readTextFileSync(new URL("./confirm-dialog.tsx", import.meta.url))
-}
-
 describe("ConfirmDialog", () => {
   it("renders a modal dialog", () => {
     const html = render(dialog())
@@ -185,19 +172,6 @@ describe("ConfirmDialog", () => {
     const cancel = html.split("<button").find((part) => part.includes(">Keep it</button>"))
 
     expect(cancel).toContain("border-gray-300")
-  })
-
-  it("refuses a backdrop dismissal unless the caller opts in", () => {
-    // The panel's own default. `Modal` defaults this to true; a confirmation panel must not, because
-    // it is routinely placed over the thing it is about to act on.
-    expect(panelSource()).toContain("closeOnBackdrop = false")
-    expect(panelSource()).not.toContain("closeOnBackdrop = true")
-  })
-
-  it("routes a refusal through a port the caller owns", () => {
-    // The panel passes its `onCancel` straight to Modals `onClose`, which is the port `requestClose`
-    // consults before closing anything.
-    expect(panelSource()).toContain("onClose={onCancel}")
   })
 
   it("mounts a dialog the client can make modal", () => {

@@ -52,7 +52,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `CardHeader`      | `card`              | `title` and `action`, or `children`; `class`                                                                                                                                                    |
 | `Checkbox`        | `checkbox`          | `children` (the label), `labelClass`, native checkbox attrs; forwards `ref`                                                                                                                     |
 | `Cluster`         | `layout`            | `gap?` (default `sm`), `align?`, `justify?`, `as?`, `class?` — a wrapping row                                                                                                                   |
-| `Combobox`        | `combobox`          | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `ariaLabel?`, `aria-labelledby?`, `id?`                                                                                                   |
+| `Combobox`        | `combobox`          | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `loading?`, `loadingMessage?`, `ariaLabel?`, `aria-labelledby?`, `id?`                                                                    |
 | `ConfirmDialog`   | `confirm-dialog`    | `title`, `message?`, `onConfirm`, `onCancel`, `confirmLabel?`, `cancelLabel?`, `tone?`                                                                                                          |
 | `CopyBlock`       | `copy-block`        | `text`, `singleLine?`, `copy?` (clipboard port), `copyLabel?`, `copiedLabel?` — built on `CopyButton`                                                                                           |
 | `CopyButton`      | `copy-button`       | `textToCopy`, `copy?` (clipboard port)                                                                                                                                                          |
@@ -283,8 +283,8 @@ rest there.
 ## Combobox
 
 Every string it shows is a prop with an English default: `placeholder` (`"Select…"`), `emptyMessage`
-(`"No matches"`), `countMessage` (`"1 match"` / `"12 matches"`) and `clearLabel`
-(`"Clear selection"`).
+(`"No matches"`), `countMessage` (`"1 match"` / `"12 matches"`), `loadingMessage` (`"Loading…"`) and
+`clearLabel` (`"Clear selection"`).
 
 **One live region, rendered with the field and never taken away.** Every combobox renders a single
 `role="status"` element with `aria-live="polite"` and `aria-atomic="true"` on every render, the
@@ -294,7 +294,7 @@ here and `SWUpdater` in `system/` also follow, and the reason is the same in all
 technology announces a _change_ to a region it is already watching, and commonly says nothing at all
 about a region that arrives with its message already inside it.
 
-**What goes into it, and when.** Two answers, and neither is given before it is asked:
+**What goes into it, and when.** Three answers, and none is given before it is asked:
 
 | The field                                    | What the region holds |
 | -------------------------------------------- | --------------------- |
@@ -302,6 +302,14 @@ about a region that arrives with its message already inside it.
 | opened, no query                             | nothing               |
 | a query, and options left                    | `countMessage(count)` |
 | a query — or an open list — and nothing left | `emptyMessage`        |
+| a query — or an open list — while `loading`  | `loadingMessage`      |
+
+**While the caller is fetching, the field does not say "No matches".** A search that fetches options
+per keystroke holds an empty list for the length of every fetch, and an empty list then is not an
+answer: saying "No matches" would be a claim the results contradict a moment later, spoken on every
+keystroke. Pass `loading` while the fetch is in flight and the region holds `loadingMessage` in place
+of both the empty message and the count; set it back to `false` when the options land, and the region
+changes to the count or to the empty message, in the same element.
 
 The count answers typing, which is the one thing a screen-reader user otherwise gets no feedback
 about: the rows are on screen for anyone who can see them, so the count is `sr-only` and nobody else
