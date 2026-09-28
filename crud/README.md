@@ -457,13 +457,14 @@ the same rules.
 - `rowsForStatus(store, status)` is the slice of a `CrudListStore` a status shows: the archived rows
   for `"archived"`, the active rows otherwise. `listRows(store, status, query, match)` filters that
   slice by the search term the way `CrudList` does.
-- `editorState({ initialized, validation, canChange, inProgress, blocked })` derives an editor's
-  chrome: whether the form is valid, whether it is busy, and whether Save is enabled. Save needs a
-  loaded, valid row, a user who may change it, no request in flight and nothing blocking the
-  archive.
-- `submitEditor({ mode, store, value, id, blocked })` sends a submit to the store: an add creates
-  the row and returns it as `created`, an edit updates it and returns `updated: true`, and an edit
-  whose archive is blocked writes nothing. A store error is returned, never thrown.
+- `editorState({ initialized, validation, canChange, inProgress, blocked })` derives what the
+  editor's buttons show: whether the form is valid, whether it is busy, and whether Save is enabled.
+  Save needs a loaded, valid row, a user who may change it, no request in flight and nothing
+  blocking the archive.
+- `submitEditor({ mode, store, value, id, blocked })` sends a submit to the store and returns a
+  promise of the outcome: an add creates the row and returns it as `created`, an edit updates it and
+  returns `updated: true`, and an edit whose archive is blocked writes nothing. A store error is
+  returned, never thrown.
 - `toggleArchiveState(row, dependencies)` is the archive checkbox's next state: archiving stamps
   `deletedAt` with now and lists what `dependencies` says still points at the row in `blocked`;
   un-archiving clears both.
