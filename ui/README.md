@@ -469,9 +469,22 @@ clocks back, `2026-10-25T02:30` happens twice in `Europe/Berlin`, and a caller t
 itself gets whichever instant its date library defaults to — so a "Last 24 hours" range could query
 23 or 25 hours, and "Last hour" none (#264). So every range `onChange` hands back in this mode is an
 `ExactDateTimeRange`: the same two strings, plus `fromInstant` and `toInstant`, the exact moments
-they mean as UTC ISO 8601 strings (`2026-10-25T01:30:00.000Z`). Query by those. Nothing about the
-strings changed, so a caller that only reads `from` and `to` sees what it always did; both instant
-fields are optional on `DateTimeRange` itself, so a `range` passed in without them is still valid.
+they mean as UTC ISO 8601 strings (`2026-10-25T01:30:00.000Z`). Query by those. Both instant fields
+are optional on `DateTimeRange` itself, so a `range` passed in without them is still valid.
+
+What changed for a caller that reads only `from` and `to`:
+
+- A typed time the clocks skip comes back rewritten to the time it is read as — `02:30` on
+  Berlin's spring-forward night reaches `onChange` as `03:30` — where it used to come back as typed.
+- A year below 100 (`0050-06-01T10:00`) keeps Apply disabled, where it used to be applied:
+  `resolveWallClock` does not resolve years below 100. No note says so.
+- A range whose ends read `02:50 … 02:10` on a fall-back night can now be applied, once the person
+  sets To to its second pass (the first 02:50 through the second 02:10, twenty real minutes); the
+  string rule used to refuse it.
+- The range `onChange` receives, and the one `rangeForTimePreset` returns, carry two more keys, so a
+  deep-equality comparison against a bare `{ from, to }` object no longer matches.
+
+Every other time comes back exactly as typed.
 
 - **A preset** knows its instants exactly: `"last-hour"` and `"last-24-hours"` are always one and
   twenty-four real hours apart, across both clock changes.
@@ -486,11 +499,17 @@ fields are optional on `DateTimeRange` itself, so a `range` passed in without th
   disagree.
 - **Order is by instant.** Apply stays disabled until both ends resolve and `fromInstant` is not
   after `toInstant`, so the first-pass `02:50` through the second-pass `02:10` is a valid
-  twenty-minute range, and the second-pass `02:30` through the first-pass `02:45` is not.
+  twenty-minute range, and the second-pass `02:30` through the first-pass `02:45` is not. When both
+  ends resolve and are out of order — a skipped `02:30` read as `03:30` with To at `03:10`, say — a
+  note above Apply says "From comes after To, so there is nothing to apply."
+- **Tied to its field.** Each field's `aria-describedby` names its skipped-time note or its radio
+  group whenever one is shown, and the order note too while it shows; Apply is described by the
+  order note. Each radio group is named by its field's label and its legend ("From This time happens
+  twice that day"), so the two groups can be told apart.
 
-The four strings have English defaults and are overridden through `labels`: `repeatedTime` (the
-radio pair's legend), `earlierOccurrence`, `laterOccurrence`, and `skippedTime`, a function handed the
-`YYYY-MM-DDTHH:mm` value the skipped time is read as.
+The five strings have English defaults and are overridden through `labels`: `repeatedTime` (the
+radio pair's legend), `earlierOccurrence`, `laterOccurrence`, `skippedTime`, a function handed the
+`YYYY-MM-DDTHH:mm` value the skipped time is read as, and `outOfOrder`.
 
 The maths is in `date-range.ts`, on top of `resolveWallClock` from `@spy4x/time/tz`:
 
