@@ -461,13 +461,12 @@ it, in the one package that needs them (see "Adding a package" above): `leaflet`
 `@types/leaflet` in `map/deno.json`.
 
 **What is mechanically checked, and what is not.** Assume nothing here is, but for the one
-exception below. Exact pinning is a
-convention held by review: `deno.lock` is committed and Deno keeps it in sync automatically, but it is
-a record of what was resolved, **not a gate** — a changed or added specifier is downloaded, the
-lockfile is rewritten, and the task exits 0. Only an explicit `deno cache --frozen` fails, and no task
-passes it. The exception: `deno task --cwd pages verify`, which CI runs, fails when `deno.lock`
-records a specifier with no version (`jsr:…@*`), whoever wrote it, and when the run itself changes
-the lockfile (#283). `ts:check` fails on a **bare** specifier no config declares (`TS2307`) — that is all it
+exception below. Exact pinning is a convention held by review: `deno.lock` is committed and Deno
+keeps it in sync automatically, but it is a record of what was resolved, **not a gate** — a changed
+or added specifier is downloaded, the lockfile is rewritten, and the task exits 0. Only an explicit
+`deno cache --frozen` fails, and no task passes it. The exception: `deno task --cwd pages verify`,
+which the GitHub workflow runs, fails when `deno.lock` records a specifier with no version
+(`jsr:…@*`), whoever wrote it, and when the run itself changes the lockfile (#283). `ts:check` fails on a **bare** specifier no config declares (`TS2307`) — that is all it
 covers, so it is a gate on resolution rather than permission: adding an excluded library to an import
 map resolves and passes, and a scheme-qualified specifier written inline in a source file
 (`npm:@radix-ui/react-dialog@1.0.0`) is declared in no config, passes `deno check`, and is invisible to

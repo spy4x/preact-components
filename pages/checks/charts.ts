@@ -446,7 +446,10 @@ async function clickAt(devtools: Devtools, at: { x: number; y: number }): Promis
   }
 }
 
-/** Rest the pointer in the shared corner (`pointerToCorner`), off every chart, so a later check reads no hover. */
+/**
+ * Rest the pointer in the shared corner (`pointerToCorner`), off every chart, so a later check reads
+ * no hover.
+ */
 async function parkPointer(devtools: Devtools): Promise<void> {
   await pointerToCorner(devtools)
 }
