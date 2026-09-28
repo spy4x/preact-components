@@ -6725,6 +6725,7 @@ async function clickTimeRadio(devtools: Devtools, hook: string): Promise<string>
  * (01:45Z) — seventy-five real minutes, not the fifteen both strings read as.
  */
 async function repeatedHourCheck(devtools: Devtools): Promise<void> {
+  await closeTimePanelIfOpen(devtools)
   const EXPECTED = "instants: 2026-10-25T00:30:00.000Z → 2026-10-25T01:45:00.000Z"
   await pointerToCorner(devtools)
   const opened = await openTimePickerPanel(devtools)
@@ -6811,6 +6812,19 @@ async function repeatedHourCheck(devtools: Devtools): Promise<void> {
   )
 }
 
+/**
+ * Close the parked `withTime` panel if a check that failed part-way left it open, so the next check
+ * starts from a closed panel and its own opening press opens it rather than closing it.
+ */
+async function closeTimePanelIfOpen(devtools: Devtools): Promise<void> {
+  if (!(await devtools.evaluate<boolean>(`${PICKER_TIME_STATE}.open`))) return
+  await devtools.evaluate<null>(
+    `(${inTimePanel("date-range-preset-last-hour")}?.focus(), null)`,
+  )
+  await pressKey(devtools, "Escape")
+  await poll(() => devtools.evaluate<boolean>(`${PICKER_TIME_STATE}.open === false`), 3_000)
+}
+
 /** Whether the parked panel's radio `hook` is checked and has focus. */
 function radioFocusedAndChecked(devtools: Devtools, hook: string): Promise<boolean> {
   return devtools.evaluate<boolean>(`(() => {
@@ -6828,6 +6842,7 @@ function radioFocusedAndChecked(devtools: Devtools, hook: string): Promise<boole
  * 02:45.
  */
 async function keyboardPassCheck(devtools: Devtools): Promise<void> {
+  await closeTimePanelIfOpen(devtools)
   const EXPECTED = "instants: 2026-10-25T00:30:00.000Z → 2026-10-25T01:45:00.000Z"
   await pointerToCorner(devtools)
   const opened = await openTimePickerPanel(devtools)
@@ -6936,6 +6951,7 @@ async function keyboardPassCheck(devtools: Devtools): Promise<void> {
  * both the string and the instant (01:30Z).
  */
 async function skippedHourCheck(devtools: Devtools): Promise<void> {
+  await closeTimePanelIfOpen(devtools)
   const EXPECTED_RANGE = "range: 2026-03-29T03:30 → 2026-03-29T04:00"
   const EXPECTED_INSTANTS = "instants: 2026-03-29T01:30:00.000Z → 2026-03-29T02:00:00.000Z"
   await pointerToCorner(devtools)
