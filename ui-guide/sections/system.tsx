@@ -623,6 +623,21 @@ function CalendarInteractiveDemo() {
       <p class={NOTE}>
         Tab once to reach the grid; the arrow keys, Home, End, Page Up and Page Down move inside it.
       </p>
+      <Cluster>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="calendar-go-to"
+          onClick={() => {
+            // The owner moving the month itself, the way a host "go to date" control would: the
+            // grid's Tab stop follows the selection, whatever arrow was clicked before.
+            month.value = "2026-03-01"
+            picked.value = "2026-03-05"
+          }}
+        >
+          Go to 5 March
+        </Button>
+      </Cluster>
     </Stack>
   )
 }
@@ -673,7 +688,7 @@ function CalendarRefusingDemo() {
       <p class={NOTE}>
         Focus a day and press Page Down: the count rises, the grid stays on March, and the focus
         stays on your day. Click a month arrow from a day instead and the focus stays on the arrow,
-        while Tab back into the grid still lands on your day.
+        while Tab back into the grid still lands on your day — until the owner selects another day.
       </p>
       <Cluster>
         <Button
@@ -686,6 +701,14 @@ function CalendarRefusingDemo() {
           }}
         >
           Reset the count
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="calendar-refused-select"
+          onClick={() => picked.value = "2026-03-25"}
+        >
+          Select 25 March
         </Button>
       </Cluster>
     </Stack>
