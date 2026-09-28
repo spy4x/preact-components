@@ -169,8 +169,8 @@ the footer, with no sales block. In order, `2xl` apart:
    when the host passes `repository`), the install line with its copy button, and the totals:
    components, icons and packages.
 2. **See it in an app.** One wide card, the same `DemoCard` every package page uses, whose demo is
-   a live mini app (`mini-app.tsx`): a framed dashboard with a status filter (a labelled `role="group"` of toggle buttons, not a landmark) (a row of
-   buttons below the frame's `@3xl`), `Kpi` tiles, a `LineChart`, a sortable `DataTable`, a "Run
+   a live mini app (`mini-app.tsx`): a framed dashboard with a status filter (a labelled `role="group"` of toggle buttons, not a landmark, laid out as a
+   row below the frame's `@3xl`), `Kpi` tiles, a `LineChart`, a sortable `DataTable`, a "Run
    checks" button that raises a `Toastr` toast from `createToastStore`, and a "New project"
    `Modal` holding a `Field` form that adds a row. It runs on local state only, with neutral demo
    data (project names, no people, prices or invoices); it draws the accent scale, so the header's

@@ -184,7 +184,7 @@ export const DEFAULT_WHY: Record<WhyFactId, WhyFact> = {
   theming: {
     title: "Themed by tokens",
     body:
-      "Set `--color-primary` and the components' accent follows, in light and dark: buttons, switches, tabs, focus rings. Status colours stay fixed on purpose.",
+      "Set `--color-primary` for light and `--color-accent` for dark, and the components' accent follows: buttons, switches, tabs, focus rings. Status colours stay fixed on purpose.",
   },
   licence: {
     title: "MIT licensed",
@@ -213,9 +213,9 @@ export const USAGE_SNIPPET = `import {
   Cluster,
 } from "@spy4x/preact-ui"
 
-type Props = { onSave: () => void }
-
-function Toolbar({ onSave }: Props) {
+export function Toolbar(
+  { onSave }: { onSave: () => void },
+) {
   return (
     <Cluster>
       <Button onClick={onSave}>
