@@ -14,6 +14,9 @@ import { centreInView, check, type Devtools, poll, settledScroll } from "./harne
  * the region, a re-render for a reason unrelated to the dependency list does not scroll the page, and
  * emptying the list clears the region's content without removing the region itself.
  *
+ * And the `AssociationEditor` demo (#227): a save adds a row that its store still holds after the
+ * re-render the save causes.
+ *
  * `CrudList`/`AssociationEditor` keyboard and focus behaviour has no check yet; anything behind a
  * ref, an effect or a key press that a string-rendering test cannot execute belongs here once it is
  * covered.
@@ -138,6 +141,51 @@ export async function crudChecks(devtools: Devtools): Promise<void> {
   )
 
   await deletionValidationChecks(devtools)
+  await associationEditorChecks(devtools)
+}
+
+/** The card {@link associationEditorChecks} drives: the `AssociationEditor` catalogue demo. */
+const ASSOCIATION_CARD = "#demo-AssociationEditor"
+
+/** The demo's caption counting the rows its conflict port scans, trimmed; `null` when missing. */
+function readAssociationRows(devtools: Devtools): Promise<string | null> {
+  return devtools.evaluate<string | null>(`(() => {
+    const caption = document.querySelector('${ASSOCIATION_CARD} [data-e2e="association-rows"]')
+    return caption ? caption.textContent.replace(/\\s+/g, " ").trim() : null
+  })()`)
+}
+
+/**
+ * `AssociationEditor`'s catalogue demo keeps what a save wrote (#227). The demo's caption reads the
+ * store's rows, so a save re-renders the demo; a store built on every render instead of once
+ * (`useMemo`) would come back on that render with its three seed rows, and the new row would be
+ * gone from the list the conflict port scans.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function associationEditorChecks(devtools: Devtools): Promise<void> {
+  const before = await readAssociationRows(devtools)
+  check(
+    "the AssociationEditor demo counts the rows its conflict port scans, 3 on load",
+    before !== null && before.startsWith("Rows the conflict port scans: 3, 1 of them removed"),
+    `caption="${before}"`,
+  )
+  if (before === null) return
+
+  const committed = await commitField(devtools, "Supplier name", "Glue supplier", ASSOCIATION_CARD)
+  const clicked = committed && await clickSave(devtools, ASSOCIATION_CARD)
+  let after = await readAssociationRows(devtools)
+  await poll(async () => {
+    after = await readAssociationRows(devtools)
+    return after?.includes("scans: 4,") === true
+  }, 2_000)
+  check(
+    "a save in the AssociationEditor demo adds a row the store still holds after the re-render",
+    clicked && after !== null &&
+      after.startsWith("Rows the conflict port scans: 4, 1 of them removed"),
+    `committed=${committed} clicked=${clicked} caption="${after}" — a store rebuilt on the ` +
+      `re-render the save causes reads 3 again`,
+  )
 }
 
 /** The card {@link deletionValidationChecks} drives: the `DeletionValidation` catalogue demo. */
@@ -590,11 +638,17 @@ function readRegionIdentity(devtools: Devtools): Promise<RegionIdentity> {
  * @param devtools The connected session.
  * @param label The field's visible label text, exactly as the card renders it.
  * @param value The value to commit.
+ * @param card The demo card's selector; the `CrudEditor` card unless given.
  * @returns Whether a field with that label was found, centred and clicked.
  */
-async function commitField(devtools: Devtools, label: string, value: string): Promise<boolean> {
+async function commitField(
+  devtools: Devtools,
+  label: string,
+  value: string,
+  card: string = CARD,
+): Promise<boolean> {
   const inputExpr = `(() => {
-    const card = document.querySelector('${CARD}')
+    const card = document.querySelector('${card}')
     const target = card && [...card.querySelectorAll("label")]
       .find((element) => element.textContent.trim() === ${JSON.stringify(label)})
     const id = target ? target.getAttribute("for") : null
@@ -643,11 +697,12 @@ async function commitField(devtools: Devtools, label: string, value: string): Pr
  * one that was never found.
  *
  * @param devtools The connected session.
+ * @param card The demo card's selector; the `CrudEditor` card unless given.
  * @returns Whether a Save button was found to click.
  */
-function clickSave(devtools: Devtools): Promise<boolean> {
+function clickSave(devtools: Devtools, card: string = CARD): Promise<boolean> {
   return devtools.evaluate<boolean>(`(() => {
-    const save = document.querySelector('${CARD} button[type="submit"]')
+    const save = document.querySelector('${card} button[type="submit"]')
     if (!save) return false
     save.click()
     return true
