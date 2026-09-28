@@ -8,7 +8,8 @@ import {
   pressKey,
   settledScroll,
 } from "./harness.ts"
-import { PAGE_TITLE } from "../src/site.ts"
+import { AUTHOR, PAGE_TITLE, REPOSITORY } from "../src/site.ts"
+import { JSR_SCOPE_URL, libraryPackageIds } from "../../ui-guide/overview.tsx"
 
 /** The guide's side navigation at `lg` and up, where it is a column beside the page. */
 const ASIDE_NAV = "aside nav"
@@ -29,7 +30,9 @@ export async function uiGuideChecks(devtools: Devtools): Promise<void> {
   // move to the "On this page" column from `xl`.
   await withViewport(devtools, 1152, 800, () => navigationChecks(devtools))
   await withViewport(devtools, 375, 812, () => phoneNavigationChecks(devtools))
-  await withViewport(devtools, 375, 812, () => overflowChecks(devtools))
+  for (const [width, height] of [[375, 812], [390, 844]] as const) {
+    await withViewport(devtools, width, height, () => overflowChecks(devtools, width))
+  }
   await withViewport(devtools, 375, 812, () => codeBlockCheck(devtools))
   for (const width of [375, 1024]) {
     await withViewport(devtools, width, 812, () => propsSummaryCheck(devtools, width))
@@ -44,6 +47,21 @@ export async function uiGuideChecks(devtools: Devtools): Promise<void> {
   }
   await withViewport(devtools, 375, 812, () => drawerContentCheck(devtools))
   await withViewport(devtools, 1440, 900, () => onThisPageCheck(devtools))
+  for (const [width, height] of [[1440, 900], [390, 844]] as const) {
+    await withViewport(devtools, width, height, () => frontPageLinksCheck(devtools, width))
+  }
+  for (const [width, height] of [[1440, 900], [1024, 800], [390, 844]] as const) {
+    await withViewport(devtools, width, height, () => propNamesCheck(devtools, width))
+  }
+  for (const [width, height] of [[1440, 900], [390, 844]] as const) {
+    await withViewport(devtools, width, height, () => overviewCodeCheck(devtools, width))
+  }
+  // Before the keyboard checks below, which add rows to the app it reads.
+  await miniAppServedTextCheck(devtools)
+  for (const [width, height] of [[1440, 900], [390, 844]] as const) {
+    await withViewport(devtools, width, height, () => miniAppToastCheck(devtools, width))
+    await withViewport(devtools, width, height, () => miniAppDialogCheck(devtools, width))
+  }
   await coldDeepLinkCheck(devtools)
   await coldFragmentCheck(devtools)
   await reloadAtTopCheck(devtools)
@@ -790,7 +808,7 @@ async function codeBlockCheck(devtools: Devtools): Promise<void> {
  * `<html>`'s class, the switch the page's own toggle flips, and put back afterwards; the toggle
  * itself is not pressed, because it also writes to storage.
  */
-async function overflowChecks(devtools: Devtools): Promise<void> {
+async function overflowChecks(devtools: Devtools, viewport: number): Promise<void> {
   const wide: string[] = []
   const clipped = new Map<string, number>()
   let measured = 0
@@ -829,10 +847,10 @@ async function overflowChecks(devtools: Devtools): Promise<void> {
     await devtools.evaluate(`document.documentElement.classList.toggle("dark", ${wasDark})`)
   }
   check(
-    "no page of the guide scrolls sideways at 375px or cuts off its own text, in either palette",
+    `no page of the guide scrolls sideways at ${viewport}px or cuts off its own text, in either palette`,
     wide.length === 0 && measured > 0,
     wide.length === 0
-      ? `${guidePages.length} pages × 2 palettes fit 375px; ${measured} headings, summaries ` +
+      ? `${guidePages.length} pages × 2 palettes fit ${viewport}px; ${measured} headings, summaries ` +
         `and blurbs wrap inside their boxes`
       : wide.join(", "),
   )
@@ -840,7 +858,7 @@ async function overflowChecks(devtools: Devtools): Promise<void> {
   const unlisted = [...clipped].filter(([owner]) => !(owner in CLIPPED_AT_PHONE_WIDTH))
   const fixed = Object.keys(CLIPPED_AT_PHONE_WIDTH).filter((owner) => !clipped.has(owner))
   check(
-    "at 375px exactly the listed cards run past the page column, and nothing else does",
+    `at ${viewport}px exactly the listed cards run past the page column, and nothing else does`,
     unlisted.length === 0 && fixed.length === 0,
     [
       unlisted.length > 0
@@ -864,8 +882,8 @@ async function overflowChecks(devtools: Devtools): Promise<void> {
 const CLIPPED_AT_PHONE_WIDTH: Record<string, string> = {}
 
 /**
- * How far past the page column the content showing runs, per card (`demo-<Name>`) or `host extra`
- * for the host's own content, in whole pixels. Content inside something that scrolls or clips on
+ * How far past the page column the content showing runs, per card (`demo-<Name>`), per part of the
+ * overview (`overview hero`, `overview app`, …) or `host extra` for the host's own content, in whole pixels. Content inside something that scrolls or clips on
  * its own is its container's business and is left out, as is anything 1px wide or less
  * (`sr-only`).
  */
@@ -887,7 +905,9 @@ function clippedContent(devtools: Devtools): Promise<Record<string, number>> {
       if (box.width <= 1 || box.height <= 1) continue
       const by = Math.round(Math.max(box.right - edge.right, edge.left - box.left))
       if (by <= 1 || contained(element)) continue
-      const owner = element.closest('article[id^="demo-"]')?.id ?? "host extra"
+      const part = element.closest("[data-overview-part]")?.dataset.overviewPart
+      const owner = element.closest('article[id^="demo-"]')?.id ??
+        (part ? "overview " + part : "host extra")
       past[owner] = Math.max(past[owner] ?? 0, by)
     }
     return past
@@ -1351,5 +1371,374 @@ async function searchShortcutChecks(devtools: Devtools): Promise<void> {
     reopened && point.outside && closedByBackdrop,
     `opened ${reopened}; clicked (${point.x}, ${point.y}), outside the dialog ${point.outside}; ` +
       `closed ${closedByBackdrop}`,
+  )
+}
+
+/**
+ * #400: the front page's and the footer's links are there and go where they say — the repository
+ * ("Star on GitHub") in the hero, the header and the footer, the licence, the packages on JSR, the
+ * design credit, the author in the header (from `xl`) and the footer, the usage guide and one README
+ * per package. Every expected address comes from the host's own constants, not from the page.
+ */
+async function frontPageLinksCheck(devtools: Devtools, width: number): Promise<void> {
+  await openGuidePage(devtools, "overview")
+  const read = await devtools.evaluate<{
+    links: Record<string, { href: string | null; visible: boolean }>
+    readmes: string[]
+    footers: number
+  }>(`(() => {
+    const at = (selector) => {
+      const link = document.querySelector(selector)
+      return { href: link?.getAttribute("href") ?? null, visible: link?.checkVisibility() === true }
+    }
+    return {
+      links: {
+        star: at('[data-e2e="ui-guide-star"]'),
+        header: at('[data-e2e="ui-guide-repository"]'),
+        headerAuthor: at('[data-e2e="ui-guide-author"]'),
+        repository: at('[data-footer-link="repository"]'),
+        jsr: at('[data-footer-link="jsr"]'),
+        licence: at('[data-footer-link="licence"]'),
+        design: at('[data-footer-link="design"]'),
+        author: at('[data-footer-link="author"]'),
+      },
+      readmes: [...document.querySelectorAll('[data-e2e="ui-guide-readmes"] a')]
+        .map((link) => link.getAttribute("href")),
+      footers: document.querySelectorAll("footer").length,
+    }
+  })()`)
+  const expected: Record<string, { href: string; visible: boolean }> = {
+    star: { href: REPOSITORY, visible: true },
+    header: { href: REPOSITORY, visible: true },
+    headerAuthor: { href: AUTHOR.href, visible: width >= 1280 },
+    repository: { href: REPOSITORY, visible: true },
+    jsr: { href: JSR_SCOPE_URL, visible: true },
+    licence: { href: `${REPOSITORY}/blob/main/LICENSE`, visible: true },
+    design: { href: "https://github.com/Eirene", visible: true },
+    author: { href: AUTHOR.href, visible: true },
+  }
+  const readmes = [
+    `${REPOSITORY}/blob/main/docs/usage.md`,
+    ...libraryPackageIds.map((id) => `${REPOSITORY}/blob/main/${id}/README.md`),
+  ]
+  const wrong = Object.entries(expected).flatMap(([name, want]) => {
+    const got = read.links[name]
+    return got.href === want.href && got.visible === want.visible ? [] : [
+      `${name}: ${got.href} (visible ${got.visible}), want ${want.href} (visible ${want.visible})`,
+    ]
+  })
+  if (read.readmes.join() !== readmes.join()) wrong.push(`readmes: ${read.readmes.join(", ")}`)
+  if (read.footers !== 1) wrong.push(`${read.footers} footers`)
+  check(
+    `at ${width}px the front page and the footer link the repository, licence, JSR, design credit, author and every README`,
+    wrong.length === 0,
+    wrong.length === 0
+      ? `${Object.keys(expected).length} links and ${readmes.length} READMEs where they belong`
+      : wrong.join("; "),
+  )
+}
+
+/**
+ * #400: no prop name in a card's props table breaks mid-word. A name may wrap only where a reader
+ * sees a word end: at a space or a slash between two names (`vertical / horizontal`), or at a
+ * camel-case hump (`conflict`/`Removed`/`Message`), where the card puts a `<wbr>`. Before the fix
+ * a wide table squeezed `text` into `tex`/`t`. Every page's tables are read, and every line break
+ * inside a name is located character by character.
+ */
+async function propNamesCheck(devtools: Devtools, width: number): Promise<void> {
+  let names = 0
+  let wrapped = 0
+  const broken: string[] = []
+  for (const page of guidePages.filter((each) => each.sections.length > 0)) {
+    await openGuidePage(devtools, page.id)
+    const read = await devtools.evaluate<{ names: number; wrapped: number; broken: string[] }>(
+      `(() => {
+      const cells = [...document.querySelectorAll('article[id^="demo-"] table > tbody > tr > th[scope="row"]')]
+      const broken = []
+      let wrapped = 0
+      for (const cell of cells) {
+        // Every character with its line, across the name's text nodes.
+        const chars = []
+        const walker = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT)
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          for (let index = 0; index < node.data.length; index++) {
+            const range = document.createRange()
+            range.setStart(node, index)
+            range.setEnd(node, index + 1)
+            const rect = [...range.getClientRects()].find((each) => each.width > 0)
+            chars.push({ char: node.data[index], top: rect ? Math.round(rect.top) : null })
+          }
+        }
+        const drawn = chars.filter((each) => each.top !== null)
+        for (let index = 1; index < drawn.length; index++) {
+          if (drawn[index].top === drawn[index - 1].top) continue
+          wrapped++
+          const before = drawn[index - 1].char
+          const after = drawn[index].char
+          const atWord = /[\\s/|]/.test(before) || /[\\s/|]/.test(after) ||
+            (/[a-z0-9]/.test(before) && /[A-Z]/.test(after))
+          if (!atWord) broken.push(cell.closest("article").id + " " + JSON.stringify(cell.textContent) + " at " + before + "|" + after)
+        }
+      }
+      return { names: cells.length, wrapped, broken }
+    })()`,
+    )
+    names += read.names
+    wrapped += read.wrapped
+    broken.push(...read.broken)
+  }
+  check(
+    `at ${width}px no prop name in a props table breaks mid-word`,
+    names > 0 && broken.length === 0,
+    broken.length === 0
+      ? `${names} prop names, ${wrapped} line breaks, each between two words`
+      : `broken: ${broken.slice(0, 12).join(", ")}${broken.length > 12 ? " …" : ""}`,
+  )
+}
+
+/** The live mini app on the overview, and its parts the checks drive. */
+const MINI_APP = `[data-e2e="mini-app"]`
+const MINI_TOAST_BUTTON = `[data-e2e="mini-app-toast"]`
+const MINI_NEW_BUTTON = `[data-e2e="mini-app-new"]`
+const MINI_TOASTS = `[data-e2e="mini-app-toasts"]`
+const MINI_DIALOG = `[data-e2e="mini-app-dialog"]`
+
+/** Give the page real focus with a click on the mini app's own brand, then focus `selector`. */
+async function focusInMiniApp(devtools: Devtools, selector: string): Promise<boolean> {
+  await clickElement(devtools, `${MINI_APP} .font-semibold`)
+  return await devtools.evaluate<boolean>(`(() => {
+    const target = document.querySelector(${JSON.stringify(selector)})
+    target?.focus()
+    return target !== null && document.activeElement === target
+  })()`)
+}
+
+/**
+ * #400: the mini app's toast is raised and dismissed from the keyboard alone: Enter on "Run
+ * checks" shows it, Tab reaches its dismiss control within two presses (the stack sits right after
+ * the buttons in the document), and Enter there takes it away.
+ */
+async function miniAppToastCheck(devtools: Devtools, width: number): Promise<void> {
+  await openGuidePage(devtools, "overview")
+  const focused = await focusInMiniApp(devtools, MINI_TOAST_BUTTON)
+  await pressKey(devtools, "Enter")
+  const count = () =>
+    devtools.evaluate<number>(
+      `document.querySelectorAll(${JSON.stringify(`${MINI_TOASTS} [role="status"]`)}).length`,
+    )
+  const shown = await poll(async () => await count() === 1, 3_000)
+  let tabs = 0
+  let onDismiss = false
+  while (tabs < 2 && !onDismiss) {
+    await pressKey(devtools, "Tab")
+    tabs++
+    onDismiss = await devtools.evaluate<boolean>(
+      `document.activeElement?.matches(${
+        JSON.stringify(`${MINI_TOASTS} button[aria-label="Dismiss"]`)
+      }) === true`,
+    )
+  }
+  if (onDismiss) await pressKey(devtools, "Enter")
+  const gone = await poll(async () => await count() === 0, 3_000)
+  check(
+    `at ${width}px the mini app's toast opens with Enter and closes from the keyboard`,
+    focused && shown && onDismiss && gone,
+    `focused ${focused}; shown ${shown}; dismiss reached in ${tabs} Tab(s) ${onDismiss}; ` +
+      `gone ${gone}`,
+  )
+  // Leave nothing on screen for the next check, whatever happened above.
+  await devtools.evaluate(
+    `document.querySelectorAll(${
+      JSON.stringify(`${MINI_TOASTS} button[aria-label="Dismiss"]`)
+    }).forEach((button) => button.click())`,
+  )
+}
+
+/**
+ * #400: the mini app's dialog opens with Enter on "New project", with focus in its name field;
+ * Escape closes it and puts focus back on the button; an empty name is refused with a message; a
+ * name typed one key at a time and Enter create the project: the dialog closes, focus returns to
+ * the button, the table gains the row and a toast says so.
+ */
+async function miniAppDialogCheck(devtools: Devtools, width: number): Promise<void> {
+  await openGuidePage(devtools, "overview")
+  const state = () =>
+    devtools.evaluate<{ open: boolean; inName: boolean; onButton: boolean; error: string }>(
+      `(() => {
+      const dialog = document.querySelector(${JSON.stringify(MINI_DIALOG)})
+      return {
+        open: dialog?.open === true,
+        inName: document.activeElement?.matches('[data-e2e="mini-app-name"]') === true,
+        onButton: document.activeElement === document.querySelector(${
+        JSON.stringify(MINI_NEW_BUTTON)
+      }),
+        error: dialog?.querySelector('[id$="-error"]')?.textContent ?? "",
+      }
+    })()`,
+    )
+  const focused = await focusInMiniApp(devtools, MINI_NEW_BUTTON)
+  await pressKey(devtools, "Enter")
+  const opened = await poll(async () => {
+    const now = await state()
+    return now.open && now.inName
+  }, 3_000)
+  await pressKey(devtools, "Escape")
+  const escaped = await poll(async () => {
+    const now = await state()
+    return !now.open && now.onButton
+  }, 3_000)
+
+  await pressKey(devtools, "Enter")
+  const reopened = await poll(async () => (await state()).inName, 3_000)
+  await pressKey(devtools, "Enter")
+  const refused = await poll(async () => {
+    const now = await state()
+    return now.open && now.error.length > 0
+  }, 3_000)
+  for (const char of "Zephyr") {
+    await devtools.send("Input.insertText", { text: char })
+  }
+  await pressKey(devtools, "Enter")
+  const created = await poll(async () => {
+    const now = await state()
+    return !now.open && now.onButton && await devtools.evaluate<boolean>(`(() => {
+      const app = document.querySelector(${JSON.stringify(MINI_APP)})
+      return [...app.querySelectorAll("tbody td")].some((cell) => cell.textContent === "Zephyr") &&
+        (app.querySelector(${JSON.stringify(MINI_TOASTS)})?.textContent ?? "").includes("Zephyr")
+    })()`)
+  }, 3_000)
+  check(
+    `at ${width}px the mini app's dialog opens and closes by keyboard and gives focus back`,
+    focused && opened && escaped && reopened && refused && created,
+    `focused ${focused}; Enter opened it with focus in the name ${opened}; Escape closed it ` +
+      `onto the button ${escaped}; reopened ${reopened}; empty name refused ${refused}; ` +
+      `typed name created the row and a toast, focus on the button ${created}`,
+  )
+  // A dialog left open would sit above every later check.
+  if ((await state()).open) await pressKey(devtools, "Escape")
+  await devtools.evaluate(
+    `document.querySelectorAll(${
+      JSON.stringify(`${MINI_TOASTS} button[aria-label="Dismiss"]`)
+    }).forEach((button) => button.click())`,
+  )
+}
+
+/**
+ * #400: the mini app shows the same text in the browser as in the served document, the way
+ * `serverTextChecks` holds every card. Preact would replace a difference while hydrating and log
+ * nothing.
+ */
+async function miniAppServedTextCheck(devtools: Devtools): Promise<void> {
+  // Nothing before this check presses anything in the app, so it is still as it hydrated.
+  await openGuidePage(devtools, "overview")
+  const texts = await devtools.evaluate<{ served: string; live: string }>(`(async () => {
+    const squash = (node) => (node?.textContent ?? "").replace(/\\s+/g, " ").trim()
+    const response = await fetch(location.href.split("#")[0], { cache: "no-store" })
+    const served = new DOMParser().parseFromString(await response.text(), "text/html")
+    return {
+      served: squash(served.querySelector(${JSON.stringify(MINI_APP)})),
+      live: squash(document.querySelector(${JSON.stringify(MINI_APP)})),
+    }
+  })()`)
+  check(
+    "the mini app shows the same text in the browser as in the served document",
+    texts.served.length > 100 && texts.served === texts.live,
+    texts.served === texts.live
+      ? `${texts.live.length} characters`
+      : whereTextsDiffer(texts.served, texts.live),
+  )
+}
+
+/**
+ * #400 review: the overview's code reads whole. No copy control sits on top of the code it copies;
+ * no box clips code without letting it scroll; every install command stays on one line and fits
+ * its box; and the
+ * "Get started" snippet fits its box without scrolling, a phone's included. The live demo's own
+ * canvas is left out: it is the app, not the page's code.
+ */
+async function overviewCodeCheck(devtools: Devtools, width: number): Promise<void> {
+  await openGuidePage(devtools, "overview")
+  const read = await devtools.evaluate<{
+    buttons: number
+    blocks: number
+    commands: number
+    faults: string[]
+  }>(`(() => {
+    const root = document.querySelector('[data-e2e="ui-guide-overview"]')
+    const inDemo = (element) => element.closest('[data-card-part="demo"]') !== null
+    // The text's boxes, cut to what its nearest scrolling box shows: text scrolled out of view is
+    // not covered by a control drawn beside that box.
+    const textRects = (element) => {
+      let clip = null
+      for (let node = element; node && node !== root; node = node.parentElement) {
+        if (getComputedStyle(node).overflowX !== "visible") { clip = node.getBoundingClientRect(); break }
+      }
+      const cut = (rect) => clip
+        ? new DOMRect(
+          Math.max(rect.left, clip.left),
+          rect.top,
+          Math.max(0, Math.min(rect.right, clip.right) - Math.max(rect.left, clip.left)),
+          rect.height,
+        )
+        : rect
+      const rects = []
+      const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const range = document.createRange()
+        range.selectNodeContents(node)
+        rects.push(...[...range.getClientRects()].map(cut).filter((rect) => rect.width > 0))
+      }
+      return rects
+    }
+    const overlaps = (a, b) =>
+      a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1
+    const faults = []
+    // Each copy control against the code of the box it belongs to.
+    const buttons = [...root.querySelectorAll('button[aria-label^="Copy"]')].filter((b) => !inDemo(b))
+    for (const button of buttons) {
+      let box = button.parentElement
+      while (box && box !== root && !box.querySelector("code")) box = box.parentElement
+      const code = box && box !== root ? [...box.querySelectorAll("code")] : []
+      if (code.length === 0) { faults.push(button.getAttribute("aria-label") + ": no code beside it"); continue }
+      const own = button.getBoundingClientRect()
+      if (code.some((each) => textRects(each).some((rect) => overlaps(rect, own)))) {
+        faults.push(button.getAttribute("aria-label") + " covers its code")
+      }
+    }
+    // A box that cuts code off must let it scroll.
+    const blocks = [...root.querySelectorAll("pre, code")].filter((b) => !inDemo(b))
+    for (const block of blocks) {
+      for (let node = block; node && node !== root; node = node.parentElement) {
+        const style = getComputedStyle(node)
+        if (node.scrollWidth <= node.clientWidth + 1 || style.display === "inline") continue
+        if (!["auto", "scroll"].includes(style.overflowX)) {
+          faults.push((block.textContent ?? "").slice(0, 30) + " is clipped by a " + node.tagName.toLowerCase() + " that does not scroll")
+        }
+        break
+      }
+    }
+    // Commands on one line.
+    const commands = [...root.querySelectorAll("code")].filter((c) => /^deno add /.test(c.textContent ?? ""))
+    for (const command of commands) {
+      const lines = new Set(textRects(command).map((rect) => Math.round(rect.top)))
+      if (lines.size !== 1) faults.push(command.textContent + " breaks over " + lines.size + " lines")
+      if (command.scrollWidth > command.clientWidth + 1) {
+        faults.push(command.textContent + " is wider than its box by " + (command.scrollWidth - command.clientWidth) + "px")
+      }
+    }
+    // The snippet fits.
+    const snippet = root.querySelector('[data-e2e="ui-guide-usage"] pre')
+    if (!snippet) faults.push("no usage snippet")
+    else if (snippet.scrollWidth > snippet.clientWidth + 1) {
+      faults.push("the usage snippet scrolls by " + (snippet.scrollWidth - snippet.clientWidth) + "px")
+    }
+    return { buttons: buttons.length, blocks: blocks.length, commands: commands.length, faults }
+  })()`)
+  check(
+    `at ${width}px the overview's code reads whole: no copy button covers it, nothing clips it, commands stay on one line`,
+    read.buttons >= 3 && read.commands >= 2 && read.faults.length === 0,
+    read.faults.length === 0
+      ? `${read.buttons} copy controls, ${read.blocks} code blocks, ${read.commands} commands`
+      : read.faults.join("; "),
   )
 }
