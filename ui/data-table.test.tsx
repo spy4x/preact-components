@@ -3,7 +3,13 @@ import { describe, it } from "@std/testing/bdd"
 import type { SortRule } from "@spy4x/platform/universal/sort"
 import type { ComponentChild, VNode } from "preact"
 import { render } from "preact-render-to-string"
-import { DataTable, type DataTableColumn, rowKeyAttribute } from "./data-table.tsx"
+import {
+  DataTable,
+  type DataTableColumn,
+  type DataTableProps,
+  rowKeyAttribute,
+} from "./data-table.tsx"
+import { Table } from "./table.tsx"
 
 interface Invoice {
   id: string
@@ -458,6 +464,34 @@ describe("DataTable", () => {
     }
   })
 
+  it("keys Table's body rows by rowKey, in the order it renders them", () => {
+    const tree = evaluate(DataTable<Invoice, keyof Invoice & string>, {
+      columns,
+      rows,
+      rowKey: (row) => row.id,
+      sort: [{ key: "merchant", direction: "asc" }],
+      onSortChange: noop,
+      caption: "Invoices",
+    })
+
+    // Sorted ascending by merchant: Amazon, Coffee & Co, Salary.
+    expect(tableProp(tree, "bodyKeys")).toEqual(["INV-2", "INV-1", "INV-3"])
+  })
+
+  it("gives Table no bodyKeys for the single empty-state row", () => {
+    const tree = evaluate(DataTable<Invoice, keyof Invoice & string>, {
+      columns,
+      rows: [],
+      rowKey: (row) => row.id,
+      sort: [],
+      onSortChange: noop,
+      caption: "Invoices",
+    })
+
+    expect(tableProp(tree, "bodyKeys")).toBeUndefined()
+    expect(tableProp(tree, "bodySlots")).toHaveLength(1)
+  })
+
   it("renders each cell with the column's render, or String(value) without one", () => {
     const withRender: DataTableColumn<Invoice, keyof Invoice & string>[] = [
       { key: "id", header: "Id" },
@@ -615,7 +649,214 @@ describe("DataTable", () => {
       expect(order(html)).toEqual(["INV-A", "INV-B", "INV-C"])
     }
   })
+
+  describe("server mode", () => {
+    /** Page 2 of a 7-row set, as a server sorted it — deliberately NOT ascending by merchant. */
+    const serverPage: Invoice[] = [
+      { id: "INV-F", merchant: "F", amount: 70 },
+      { id: "INV-D", merchant: "D", amount: 68 },
+      { id: "INV-E", merchant: "E", amount: 69 },
+    ]
+
+    it("renders rows exactly as given: not re-sorted, not sliced", () => {
+      // Client mode would sort these to D, E, F. Server mode shows the server's page in the
+      // server's order.
+      const html = render(
+        <DataTable
+          mode="server"
+          columns={columns}
+          rows={serverPage}
+          rowKey={(row) => row.id}
+          sort={[{ key: "merchant", direction: "asc" }]}
+          onSortChange={noop}
+          caption="Invoices"
+          paging={{ page: 2, pageSize: 3, total: 7, onChange: noop }}
+        />,
+      )
+
+      expect(order(html)).toEqual(["INV-F", "INV-D", "INV-E"])
+    })
+
+    it("renders every row given, even more than pageSize, rather than slicing a page out", () => {
+      const html = render(
+        <DataTable
+          mode="server"
+          columns={columns}
+          rows={sevenInvoices}
+          rowKey={(row) => row.id}
+          sort={[]}
+          onSortChange={noop}
+          caption="Invoices"
+          paging={{ page: 2, pageSize: 3, total: 7, onChange: noop }}
+        />,
+      )
+
+      expect(order(html)).toEqual(sevenInvoices.map((row) => row.id))
+    })
+
+    it("sizes the pager from total and marks the caller's page current", () => {
+      const html = render(
+        <DataTable
+          mode="server"
+          columns={columns}
+          rows={serverPage}
+          rowKey={(row) => row.id}
+          sort={[]}
+          onSortChange={noop}
+          caption="Invoices"
+          paging={{ page: 2, pageSize: 3, total: 7, onChange: noop }}
+        />,
+      )
+
+      // ceil(7 / 3) = 3 pages, from three rows in hand.
+      expect(html).toContain('aria-label="Page 3"')
+      expect(html).not.toContain('aria-label="Page 4"')
+      expect(currentPageText(html)).toBe("2")
+    })
+
+    it("clamps a page past the last one for the pager, still rendering the rows given", () => {
+      const html = render(
+        <DataTable
+          mode="server"
+          columns={columns}
+          rows={serverPage}
+          rowKey={(row) => row.id}
+          sort={[]}
+          onSortChange={noop}
+          caption="Invoices"
+          paging={{ page: 9, pageSize: 3, total: 7, onChange: noop }}
+        />,
+      )
+
+      expect(currentPageText(html)).toBe("3")
+      expect(order(html)).toEqual(["INV-F", "INV-D", "INV-E"])
+    })
+
+    it("renders the rows given with no pager when paging is omitted", () => {
+      const html = render(
+        <DataTable
+          mode="server"
+          columns={columns}
+          rows={serverPage}
+          rowKey={(row) => row.id}
+          sort={[{ key: "merchant", direction: "desc" }]}
+          onSortChange={noop}
+          caption="Invoices"
+        />,
+      )
+
+      expect(order(html)).toEqual(["INV-F", "INV-D", "INV-E"])
+      expect(html).not.toContain("<nav")
+    })
+
+    it("still marks aria-sort from the caller's sort, and keys rows by rowKey", () => {
+      const props: DataTableProps<Invoice, keyof Invoice & string> = {
+        mode: "server",
+        columns,
+        rows: serverPage,
+        rowKey: (row) => row.id,
+        sort: [{ key: "merchant", direction: "desc" }],
+        onSortChange: noop,
+        caption: "Invoices",
+      }
+
+      expect(headerCell(render(<DataTable {...props} />), "Merchant"))
+        .toContain('aria-sort="descending"')
+      expect(tableProp(evaluate(DataTable<Invoice, keyof Invoice & string>, props), "bodyKeys"))
+        .toEqual(["INV-F", "INV-D", "INV-E"])
+    })
+
+    it("asks the caller for the next sort through toggleSort, the same as client mode", () => {
+      let next: SortRule<keyof Invoice & string>[] | undefined
+      const tree = evaluate(DataTable<Invoice, keyof Invoice & string>, {
+        mode: "server",
+        columns,
+        rows: serverPage,
+        rowKey: (row) => row.id,
+        sort: [{ key: "merchant", direction: "asc" }],
+        onSortChange: (rules) => next = rules,
+        caption: "Invoices",
+      })
+
+      pressHeader(tree, "Merchant")
+
+      expect(next).toEqual([{ key: "merchant", direction: "desc" }])
+    })
+
+    it("shows the empty state for an empty page", () => {
+      const html = render(
+        <DataTable
+          mode="server"
+          columns={columns}
+          rows={[]}
+          rowKey={(row) => row.id}
+          sort={[]}
+          onSortChange={noop}
+          caption="Invoices"
+          paging={{ page: 1, pageSize: 3, total: 0, onChange: noop }}
+        />,
+      )
+
+      expect(html).toContain("No rows")
+    })
+
+    it("rejects total in client mode, and server paging without one", () => {
+      // Type-level proof, as the column-shape test above: each literal must fail `ts:check`, and a
+      // loosened type turns its `@ts-expect-error` into an "unused directive" error instead.
+      // Held in a variable, not written inline: an inline literal would also fail on TypeScript's
+      // excess-property check, so it would stay red even with `total?: never` removed.
+      const pagingWithTotal = { page: 1, pageSize: 3, total: 7, onChange: noop }
+      // @ts-expect-error — client mode counts rows itself; a total means server mode was meant.
+      const clientPaging: DataTableProps<Invoice, keyof Invoice & string> = {
+        columns,
+        rows,
+        rowKey: (row) => row.id,
+        sort: [],
+        onSortChange: noop,
+        caption: "Invoices",
+        paging: pagingWithTotal,
+      }
+      // @ts-expect-error — server mode cannot size its pager without the whole set's total.
+      const serverPaging: DataTableProps<Invoice, keyof Invoice & string> = {
+        mode: "server",
+        columns,
+        rows,
+        rowKey: (row) => row.id,
+        sort: [],
+        onSortChange: noop,
+        caption: "Invoices",
+        paging: { page: 1, pageSize: 3, onChange: noop },
+      }
+
+      expect(typeof clientPaging).toBe("object")
+      expect(typeof serverPaging).toBe("object")
+    })
+  })
 })
+
+/** One prop of the `Table` vnode `DataTable` returns, read before `Table` itself runs. */
+function tableProp(tree: ComponentChild, name: string): unknown {
+  const table = findComponent(tree, Table)
+  if (!table) throw new Error("DataTable rendered no Table")
+  return table.props[name]
+}
+
+function findComponent(node: unknown, type: unknown): VNode<Record<string, unknown>> | undefined {
+  for (const candidate of Array.isArray(node) ? node : [node]) {
+    if (!isVNode(candidate)) continue
+    if (candidate.type === type) return candidate
+    for (const value of propValues(candidate.props)) {
+      const nested = findComponent(value, type)
+      if (nested) return nested
+    }
+  }
+  return undefined
+}
+
+/** Text of the page button `Pagination` marks `aria-current="page"`, or `null` for none. */
+function currentPageText(html: string): string | null {
+  return html.match(/<button[^>]*aria-current="page"[^>]*>([^<]*)<\/button>/)?.[1] ?? null
+}
 
 function countOccurrences(haystack: string, needle: string): number {
   return haystack.split(needle).length - 1
