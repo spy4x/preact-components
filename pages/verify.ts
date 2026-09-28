@@ -2,8 +2,9 @@
  * Verify the built artefact — statically, then in a real browser.
  *
  * The static phase reads `dist/` and asserts the document's shape: base-prefixed asset paths that
- * exist, prerendered cards for every component and every theme-class card, a copy control on every
- * usage block, and a stylesheet that actually carries the theme. That alone would not prove the page
+ * exist, one each of the head tags a crawler and a link preview read, prerendered cards for every
+ * component and every theme-class card, a copy control on every usage block, and a stylesheet that
+ * actually carries the theme. That alone would not prove the page
  * *works* — a prerendered catalogue is not an interactive one — so the second phase serves `dist/`
  * at the same base GitHub Pages uses, drives headless Chromium over the DevTools Protocol, and
  * exercises what the issues ask for: the switches, the icon filter, click-to-copy in the gallery
@@ -58,6 +59,8 @@ import { BUILD_HASH_FILE, computeBuildFingerprint } from "./build-fingerprint.ts
 import { chartsChecks } from "./checks/charts.ts"
 import { crudChecks } from "./checks/crud.ts"
 import {
+  BlockOutcome,
+  centreInView,
   check,
   type CheckBlock,
   commitBlocks,
@@ -69,13 +72,16 @@ import {
   filteredRunLine,
   lastCheckName,
   openGuidePage,
+  pointerToCorner,
   poll,
   pressKey,
   ranBlockNames,
   report,
+  Run,
   runBlocks,
   selectBlocks,
   settledScroll,
+  type ViewportPoint,
 } from "./checks/harness.ts"
 import { iconsChecks } from "./checks/icons.ts"
 import { mapChecks } from "./checks/map.ts"
@@ -96,7 +102,7 @@ import { demoElementId } from "./src/deep-link.ts"
 import { renderApp } from "./src/prerender.tsx"
 import { routeTableFromHtml } from "./src/route-echo.ts"
 import { type PreviewServer, serveDist } from "./serve.ts"
-import { DEFAULT_BASE, LOCAL_MAP_TILES_FLAG, normalizeBase } from "./src/site.ts"
+import { DEFAULT_BASE, DEFAULT_ORIGIN, LOCAL_MAP_TILES_FLAG, normalizeBase } from "./src/site.ts"
 
 /** This file's directory: the demo's root, `pages/`. */
 const PAGES_DIRECTORY = dirname(fileURLToPath(import.meta.url))
@@ -106,6 +112,72 @@ const REPO_ROOT = dirname(PAGES_DIRECTORY)
 const DIST_DIRECTORY = join(PAGES_DIRECTORY, "dist")
 /** Base the artefact was built for. */
 const BASE = normalizeBase(Deno.env.get("PAGES_BASE") ?? DEFAULT_BASE)
+/** Origin the artefact's canonical address was built for — the variable `build.ts` reads. */
+const ORIGIN = Deno.env.get("PAGES_ORIGIN") ?? DEFAULT_ORIGIN
+
+/** The lockfile every Deno command in this repository resolves against. */
+const LOCKFILE = join(REPO_ROOT, "deno.lock")
+
+/** The lockfile's text, or `undefined` when there is none to read. */
+async function readLockfile(): Promise<string | undefined> {
+  try {
+    return await Deno.readTextFile(LOCKFILE)
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * `deno.lock` as it stood when this run's own code started — after Deno resolved the script's
+ * static imports, so a lockfile that was merely stale before the run does not count against it.
+ */
+const LOCKFILE_AT_START = await readLockfile()
+
+/**
+ * Assert that the run resolved nothing the lockfile did not already record, and that the lockfile
+ * records no specifier without a version (#283).
+ *
+ * A verify run once left `deno.lock` with one new line, `"jsr:@std/expect@*"`: something it reached
+ * resolved a package with no version, which is whatever is newest the day it runs, and every
+ * contributor who ran `verify` got a dirty lockfile they then carried into unrelated pull requests.
+ * Neither half of that was visible anywhere. The first check catches a specifier resolved while the
+ * run is going — a dynamic import, a spawned script — and the second one resolved at startup, which
+ * Deno writes before this script's first line runs.
+ *
+ * The second check gates the lockfile's content, whoever wrote it: an unversioned entry left by
+ * `deno task test`, the build or a person earlier in the same checkout fails it just the same, and
+ * so fails CI. The first is about this run only. Neither fails on a merely stale lockfile, which
+ * Deno repairs at startup, before {@link LOCKFILE_AT_START} is read.
+ */
+async function lockfileChecks(): Promise<void> {
+  const now = await readLockfile()
+  check(
+    "the run left deno.lock as it found it",
+    now === LOCKFILE_AT_START,
+    now === LOCKFILE_AT_START
+      ? "byte for byte"
+      : "the lockfile changed during the run — run `git diff deno.lock` for what was resolved",
+  )
+
+  let specifiers: string[] = []
+  try {
+    specifiers = Object.keys(JSON.parse(now ?? "{}").specifiers ?? {})
+  } catch {
+    specifiers = []
+  }
+  const unversioned = specifiers.filter((specifier) => /^(jsr|npm):.+@\*$/.test(specifier))
+  check(
+    "deno.lock records no specifier without a version",
+    now !== undefined && specifiers.length > 0 && unversioned.length === 0,
+    now === undefined
+      ? `no lockfile at ${LOCKFILE}`
+      : specifiers.length === 0
+      ? "no specifiers could be read out of the lockfile"
+      : unversioned.length === 0
+      ? `${specifiers.length} specifiers, each with a version`
+      : `unversioned: ${unversioned.join(", ")}`,
+  )
+}
 
 /**
  * `--only=system` or `--only=system,ui` restricts the browser phase to just those package blocks —
@@ -187,6 +259,66 @@ async function checkBuildFingerprint(): Promise<boolean> {
   return ok
 }
 
+/**
+ * Assert the tags in the served document's `<head>` that leave the page: what a search engine
+ * indexes and what a link preview shows (#213).
+ *
+ * Before this, the static phase read nothing inside `<head>`, so a canonical address pointing at
+ * the wrong origin, a missing description or a duplicated tag deployed green, and every change to
+ * the head was proven by someone diffing two builds by hand. Each tag is counted as well as read:
+ * two of a tag is the shape a well-meant workaround takes — a corrected tag written by hand beside
+ * the one `SEOHead` renders — and a reader of the page gets whichever one a crawler happens to pick.
+ *
+ * Only the head is searched, so a tag quoted in a card's usage snippet can never count. Attributes
+ * are matched single- or double-quoted and in any order: `preact-render-to-string` emits double
+ * quotes today, but a pattern that matched only those would report a single-quoted tag as missing
+ * rather than wrong.
+ *
+ * @param html The served `index.html`.
+ */
+function headChecks(html: string): void {
+  const head = html.match(/<head\b[^>]*>([\s\S]*?)<\/head>/i)?.[1] ?? ""
+  const tags = (pattern: RegExp) => [...head.matchAll(pattern)].map((match) => match[0])
+  const attribute = (tag: string, name: string) =>
+    tag.match(new RegExp(`\\s${name}=(["'])([\\s\\S]*?)\\1`, "i"))?.[2]
+  const counted = (found: readonly string[]) =>
+    found.length === 1
+      ? found[0]
+      : `${found.length} tag(s)${found.length ? `: ${found.join(" ")}` : ""}`
+
+  // The same origin and base `build.ts` writes into the tag, read from the same variables, so a
+  // build for a custom domain is held to its own address rather than to the default one.
+  const canonicalHref = new URL(BASE, ORIGIN).href
+  const canonicals = tags(/<link\b[^>]*\srel=["']canonical["'][^>]*>/gi)
+  check(
+    `exactly one canonical link, pointing at ${canonicalHref}`,
+    canonicals.length === 1 && attribute(canonicals[0], "href") === canonicalHref,
+    counted(canonicals),
+  )
+
+  const titles = tags(/<title\b[^>]*>[\s\S]*?<\/title>/gi)
+  const titleText = titles.length === 1 ? titles[0].replace(/<[^>]*>/g, "").trim() : ""
+  check("exactly one <title>, with text", titles.length === 1 && titleText !== "", counted(titles))
+
+  const descriptions = tags(/<meta\b[^>]*\sname=["']description["'][^>]*>/gi)
+  check(
+    "exactly one description meta tag, with content",
+    descriptions.length === 1 && (attribute(descriptions[0], "content") ?? "").trim() !== "",
+    counted(descriptions),
+  )
+
+  // The demo passes no `ogImage` (its only image is a 32×32 favicon), so `SEOHead` must derive
+  // `summary` rather than the `summary_large_image` a hard-coded card type used to publish — see
+  // #212. Exactly one tag: a workaround that hand-wrote a corrected tag beside the helper's own,
+  // rather than fixing the derivation, would ship two `twitter:card` tags and this would catch it.
+  const twitterCards = tags(/<meta\b[^>]*\sname=["']twitter:card["'][^>]*>/gi)
+  check(
+    "exactly one twitter:card tag, publishing summary for a page with no preview image",
+    twitterCards.length === 1 && attribute(twitterCards[0], "content") === "summary",
+    counted(twitterCards),
+  )
+}
+
 /** Read the artefact and assert its shape. */
 async function staticPhase(): Promise<void> {
   console.log(`static phase — ${DIST_DIRECTORY}`)
@@ -210,21 +342,7 @@ async function staticPhase(): Promise<void> {
     "body.theme-base",
   )
 
-  // The demo passes no `ogImage` (its only image is a 32×32 favicon), so `SEOHead` must derive
-  // `summary` rather than the `summary_large_image` a hard-coded card type used to publish — see
-  // #212. Exactly one tag: a workaround that hand-wrote a corrected tag beside the helper's own,
-  // rather than fixing the derivation, would ship two `twitter:card` tags and this would catch it.
-  // Single- or double-quoted: `preact-render-to-string` always emits double quotes today, but a
-  // regex that only matched those would report a single-quoted tag as "0 tag(s)" — missing, not
-  // wrong — which is a worse failure mode than the one extra character costs here.
-  const twitterCards = [...html.matchAll(/<meta[^>]*name=["']twitter:card["'][^>]*>/g)].map((m) =>
-    m[0]
-  )
-  check(
-    "exactly one twitter:card tag, publishing summary for a page with no preview image",
-    twitterCards.length === 1 && /content=["']summary["']/.test(twitterCards[0]),
-    twitterCards.length === 1 ? twitterCards[0] : `${twitterCards.length} tag(s): ${twitterCards}`,
-  )
+  headChecks(html)
 
   const stylesheet = await readAsset(cssHref)
   const island = await readAsset(islandSrc)
@@ -743,6 +861,10 @@ async function browserPhase(): Promise<void> {
               ? `scrollY held at 0 for ${HOLD_MS}ms, read every ${HOLD_INTERVAL_MS}ms`
               : `scrollY moved to ${landedAt} during the ${HOLD_MS}ms hold after hydration`,
           )
+          // A drill that cannot finish is one failed check, never a reason to skip the blocks.
+          await recoveryDrill(devtools).catch((error) =>
+            check("the recovery drill ran to completion", false, describeError(error))
+          )
           await runBlocks(activeBlocks, devtools, resetAfterThrow)
         }
 
@@ -919,9 +1041,292 @@ async function resetAfterThrow(devtools: Devtools): Promise<void> {
     window.scrollTo({ top: 0, behavior: "instant" })
   })()`)
 
-  // Takes the pointer off whatever card it was left on; the corner is as neutral a resting place as
-  // the protocol offers, since it refuses coordinates outside the viewport.
-  await devtools.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: 0, y: 0, buttons: 0 })
+  // Takes the pointer off whatever card it was left on, to the one corner every check parks in.
+  await pointerToCorner(devtools)
+}
+
+/** The Modal card's controlled trigger, as a page expression — the one `checks/ui.ts` drives. */
+const MODAL_TRIGGER =
+  `[...(document.querySelector("#demo-Modal")?.querySelectorAll("button") ?? [])]
+  .find((button) => button.textContent.trim().startsWith("default")) ?? null`
+
+/** Whether the Modal card's dialog is in the top layer, as a page expression. */
+const MODAL_SHOWN = `document.querySelector("#demo-Modal dialog")?.matches(":modal") === true`
+
+/** What the drill left behind before it threw — the state the recovery is there to undo. */
+interface Dirt {
+  /** Whether the Modal was open, through its own trigger, when the block threw. */
+  modalOpen: boolean
+  /** Whether focus was inside the open dialog. */
+  focusInside: boolean
+  /** Whether the pointer was resting on the dialog. */
+  pointerOnDialog: boolean
+  /** `scrollY` when the block threw. */
+  scrollY: number
+}
+
+/** What the page looks like straight after the recovery returned. */
+interface Recovered {
+  dialogOpen: boolean
+  /** `document.activeElement`'s tag, `BODY` when nothing has focus. */
+  focused: string
+  scrollY: number
+  /** Where the pointer last moved to, as the page saw it, and what rests under it there. */
+  pointer: string
+  /** Whether that is inside a card or a dialog, or the browser has a card or a dialog in `:hover`. */
+  pointerOnCard: boolean
+}
+
+/**
+ * Read the page straight after a recovery, before anything else has a chance to move it.
+ *
+ * The pointer is read where the page last saw it move — {@link recoveryDrill}'s listener records
+ * every `mousemove` — and never parked again first: parking it here would put it in the corner
+ * whatever the recovery did, and the check would pass with the recovery's own parking removed.
+ *
+ * @param devtools The connected session.
+ */
+function readRecovered(devtools: Devtools): Promise<Recovered> {
+  return devtools.evaluate<Recovered>(`(() => {
+    const last = globalThis.__verifyDrillPointer ?? null
+    const at = last === null ? null : document.elementFromPoint(last.x, last.y)
+    const hovered = document.querySelector("article:hover, dialog:hover") !== null
+    return {
+      dialogOpen: document.querySelector("dialog[open]") !== null,
+      focused: document.activeElement?.tagName ?? "BODY",
+      scrollY: Math.round(globalThis.scrollY),
+      pointer: last === null
+        ? "never moved"
+        : "(" + last.x + ", " + last.y + ") over " + (at === null ? "nothing" : at.tagName),
+      pointerOnCard: hovered || (at !== null && at.closest("article, dialog") !== null),
+    }
+  })()`)
+}
+
+/**
+ * How many Escape key-downs reached the page since {@link recoveryDrill} started listening. The
+ * listener is on `window`, in the capture phase, so it sees a press before any component can stop
+ * it.
+ */
+function escapesSeen(devtools: Devtools): Promise<number> {
+  return devtools.evaluate<number>(`globalThis.__verifyDrillEscapes ?? -1`)
+}
+
+/**
+ * Make a throwaway block throw with the page dirty, let the real recovery run, and assert what it
+ * left (#191).
+ *
+ * {@link resetAfterThrow} runs only after a package block throws, and no ordinary run throws, so
+ * before this nothing automatic ever executed it — both defects found in it while it was written
+ * were found by making a block throw by hand and comparing the runs line by line. This drill runs
+ * in every browser phase, before the package blocks, so CI executes the recovery on every pull
+ * request. It uses its own {@link Run}, with the same `runBlocks` and the same `resetAfterThrow`
+ * the phase passes for the package blocks: the drill's deliberate throw never reaches this run's
+ * ledger, only the checks below do.
+ *
+ * Two throws, because the recovery has two paths:
+ *
+ * - **A dialog was left open.** The throwing block opens the Modal card's controlled dialog
+ *   through its own trigger, leaves focus inside it and the pointer on it, with the page scrolled
+ *   down to the card. After the recovery: no dialog is open, and the Modal's trigger opens it
+ *   again — which it does not when the dialog was closed behind the component's back with
+ *   `dialog.close()`, since the component still believes it is open; the page is at its top at the
+ *   first read and stays there — which it is not when the recovery's scroll is the page's smooth
+ *   one, still running when the next block takes its first reading; nothing has focus; and the
+ *   pointer rests off every card.
+ * - **No dialog was open.** The recovery must press no Escape at all: Tooltip, Dropdown and
+ *   Combobox answer one, so an unconditional press quietly changes state a later block reads. A
+ *   listener counts every Escape that reaches the page; the first throw proves it counts the
+ *   recovery's own press, so the zero here means something.
+ *
+ * The same listener records where the pointer last moved, which is how the first throw reads where
+ * the recovery left it.
+ *
+ * Nothing here throws on the drill's own account: a Modal card that cannot be driven is a failed
+ * check that says so, because without the dirt the drill proves nothing. The page is left at its
+ * top with the pointer in the corner, and the first package block opens its own page after it.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function recoveryDrill(devtools: Devtools): Promise<void> {
+  await openGuidePage(devtools, "ui")
+  await devtools.evaluate(`(() => {
+    globalThis.__verifyDrillEscapes = 0
+    globalThis.__verifyDrillPointer = null
+    globalThis.__verifyDrillListener ??= (event) => {
+      if (event.type === "mousemove") {
+        globalThis.__verifyDrillPointer = { x: event.clientX, y: event.clientY }
+      } else if (event.key === "Escape") globalThis.__verifyDrillEscapes += 1
+    }
+    window.addEventListener("keydown", globalThis.__verifyDrillListener, { capture: true })
+    window.addEventListener("mousemove", globalThis.__verifyDrillListener, { capture: true })
+    return null
+  })()`)
+
+  try {
+    await dialogLeftOpenDrill(devtools)
+    await noDialogDrill(devtools)
+  } finally {
+    await devtools.evaluate(`(() => {
+      window.removeEventListener("keydown", globalThis.__verifyDrillListener, { capture: true })
+      window.removeEventListener("mousemove", globalThis.__verifyDrillListener, { capture: true })
+      return null
+    })()`).catch(() => undefined)
+  }
+}
+
+/**
+ * The drill's first throw: a Modal left open — see {@link recoveryDrill}.
+ *
+ * @param devtools The connected session, on the guide's `ui` page.
+ */
+async function dialogLeftOpenDrill(devtools: Devtools): Promise<void> {
+  let dirt: Dirt = { modalOpen: false, focusInside: false, pointerOnDialog: false, scrollY: 0 }
+  const drill = new Run()
+  await drill.runBlocks(
+    [{
+      name: "recovery drill",
+      run: async () => {
+        await centreInView(devtools, `document.querySelector("#demo-Modal")`)
+        await devtools.evaluate(`((${MODAL_TRIGGER})?.focus(), null)`)
+        await pressKey(devtools, "Enter")
+        await poll(() => devtools.evaluate<boolean>(MODAL_SHOWN), 3_000)
+        const centre = await devtools.evaluate<ViewportPoint | null>(`(() => {
+        const dialog = document.querySelector("#demo-Modal dialog")
+        if (dialog === null) return null
+        const box = dialog.getBoundingClientRect()
+        return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
+      })()`)
+        if (centre !== null) {
+          await devtools.send("Input.dispatchMouseEvent", {
+            type: "mouseMoved",
+            x: centre.x,
+            y: centre.y,
+            button: "none",
+            buttons: 0,
+          })
+        }
+        dirt = await devtools.evaluate<Dirt>(`(() => {
+        const dialog = document.querySelector("#demo-Modal dialog")
+        return {
+          modalOpen: ${MODAL_SHOWN},
+          focusInside: dialog !== null && dialog.contains(document.activeElement),
+          pointerOnDialog: dialog !== null && dialog.matches(":hover"),
+          scrollY: Math.round(globalThis.scrollY),
+        }
+      })()`)
+        throw new Error("the recovery drill's deliberate throw, with a Modal left open")
+      },
+    }],
+    devtools,
+    resetAfterThrow,
+  )
+
+  // Read before anything else moves the page or the pointer.
+  const after = await readRecovered(devtools)
+  const pressed = await escapesSeen(devtools)
+
+  const HOLD_MS = 1_000
+  let heldAtTop = after.scrollY === 0
+  const holdDeadline = Date.now() + HOLD_MS
+  while (heldAtTop && Date.now() < holdDeadline) {
+    await new Promise((done) => setTimeout(done, 100))
+    heldAtTop = await devtools.evaluate<number>("Math.round(globalThis.scrollY)") === 0
+  }
+
+  // The component's own state, read the only way it shows: a trigger that still opens the dialog.
+  await devtools.evaluate(`((${MODAL_TRIGGER})?.focus(), null)`)
+  await pressKey(devtools, "Enter")
+  const reopened = await poll(() => devtools.evaluate<boolean>(MODAL_SHOWN), 3_000)
+  if (reopened) await pressKey(devtools, "Escape")
+  const closedAgain = await poll(async () => !await devtools.evaluate<boolean>(MODAL_SHOWN), 3_000)
+
+  const dirty = dirt.modalOpen && dirt.focusInside && dirt.pointerOnDialog && dirt.scrollY > 0
+  const dirtDetail =
+    `left behind: Modal open=${dirt.modalOpen}, focus inside=${dirt.focusInside}, ` +
+    `pointer on it=${dirt.pointerOnDialog}, scrollY=${dirt.scrollY}`
+  const stopped = drill.blocks.get("recovery drill") === BlockOutcome.StoppedPartWay
+
+  check(
+    "the recovery drill's block threw with a Modal open, focus in it, the pointer on it and the " +
+      "page scrolled",
+    stopped && dirty,
+    stopped ? dirtDetail : "the drill's block did not throw, so the recovery never ran",
+  )
+  check(
+    "after a throw that left a Modal open, the recovery closes it through the Modal's own close " +
+      "path, so its trigger opens it again",
+    dirty && !after.dialogOpen && pressed > 0 && reopened && closedAgain,
+    !dirty
+      ? `nothing to recover from — ${dirtDetail}`
+      : after.dialogOpen
+      ? "a dialog was still open after the recovery"
+      : !reopened
+      ? "the Modal's trigger no longer opens it: the dialog was closed behind the component's " +
+        `back, and the component still believes it is open (${pressed} Escape press(es) seen)`
+      : pressed === 0
+      ? "the recovery closed the dialog without a single Escape reaching the page"
+      : closedAgain
+      ? `the recovery's Escape closed it; the trigger then opened it again and Escape closed it`
+      : "the reopened Modal did not close on Escape",
+  )
+  check(
+    `after the recovery the page is at its top on the first read and stays there for ${HOLD_MS}ms`,
+    dirty && after.scrollY === 0 && heldAtTop,
+    after.scrollY !== 0
+      ? `scrollY read ${after.scrollY} straight after the recovery, from ${dirt.scrollY} — a ` +
+        `scroll still running when the next block would take its first reading`
+      : heldAtTop
+      ? `scrollY 0 from ${dirt.scrollY}, read every 100ms for ${HOLD_MS}ms`
+      : "scrollY left 0 after the recovery returned",
+  )
+  check(
+    "after the recovery nothing has focus and the pointer rests off every card",
+    dirty && after.focused === "BODY" && !after.pointerOnCard,
+    `focus on ${after.focused}, pointer last moved to ${after.pointer}` +
+      (after.pointerOnCard ? " inside a card or a dialog" : ""),
+  )
+
+  await devtools.evaluate(`(() => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+    window.scrollTo({ top: 0, behavior: "instant" })
+    return null
+  })()`)
+}
+
+/**
+ * The drill's second throw: nothing open — see {@link recoveryDrill}.
+ *
+ * @param devtools The connected session, on the guide's `ui` page, with the Escape listener armed.
+ */
+async function noDialogDrill(devtools: Devtools): Promise<void> {
+  const before = await escapesSeen(devtools)
+  const drill = new Run()
+  let openBefore = true
+  await drill.runBlocks(
+    [{
+      name: "recovery drill",
+      run: async () => {
+        openBefore = await anyDialogOpen(devtools)
+        throw new Error("the recovery drill's deliberate throw, with no dialog open")
+      },
+    }],
+    devtools,
+    resetAfterThrow,
+  )
+  const pressed = (await escapesSeen(devtools)) - before
+
+  check(
+    "after a throw with no dialog open, the recovery presses no Escape a Tooltip, Dropdown or " +
+      "Combobox would answer",
+    !openBefore && before > 0 && pressed === 0 &&
+      drill.blocks.get("recovery drill") === BlockOutcome.StoppedPartWay,
+    openBefore
+      ? "a dialog was already open, so this is not the no-dialog path"
+      : before <= 0
+      ? "the listener never saw the first drill's Escape, so a zero here would mean nothing"
+      : `${pressed} Escape press(es) reached the page during the recovery`,
+  )
 }
 
 /**
@@ -1018,4 +1423,5 @@ if (Deno.args.includes("--static")) {
   note = [filteredRunNote(), throttled].filter((line) => line !== undefined).join("\n") ||
     undefined
 }
+await lockfileChecks()
 report(note)
