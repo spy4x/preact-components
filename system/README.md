@@ -796,6 +796,31 @@ at import time. Props-and-ports conversion for those was a redesign, not a port 
 the same redesign and got it first. `Shell` (#135) and `StateInit` are that redesign, and their own
 sections above describe what changed.
 
+## Helpers
+
+Helpers the sections above do not already name, each importable from the package root or from its
+component's subpath.
+
+- `describeCalendarDay(day)` is `Calendar`'s default description of one day cell: the date as the
+  locale writes it, then why it cannot be picked (`past`, outside the allowed range, none left, not
+  available) or how many are available. A `labels.day` of your own can call it and add to its text.
+- `seoHeadJsonLd(head)` builds the JSON-LD `@graph` `SEOHead` prints: the caller's `jsonLd`
+  entities, then a `BreadcrumbList` when there are at least two `crumbs`. It returns `[]` when there
+  is nothing to print. Use it to put the same structured data somewhere other than the head.
+- `isCurrentLink(href, currentPath)` answers whether a link is the current page. It is exact string
+  equality, so `/docs` is not current while `/docs/intro` is on screen; normalise `currentPath`
+  first if your routes want a prefix match. `SiteHeader`, `Shell` and `RailShell` use it for
+  `aria-current`.
+- `TAB_BAR_SLOTS` is `5`, the number of slots in `RailShell`'s phone tab bar, "More" included.
+- `serviceWorkerContainer(host)` returns `host.serviceWorker`, by default from
+  `globalThis.navigator`, or `undefined` where there is none, such as on the server.
+- `skipWaiting(registration, message)` posts `message` (by default `DEFAULT_UPDATE_MESSAGE`,
+  `{ action: "skipWaiting" }`) to the registration's waiting worker, and returns `false` when no
+  worker is waiting. `reloadOnControllerChange(container, reload)` calls `reload` once a new worker
+  takes control and returns a function that removes the listener. Together with `watchForUpdate`
+  they are what `SWUpdater` does, for a host that owns its registration and draws its own prompt;
+  arm the reload only when the visitor asks for it (see "The service-worker contract" above).
+
 ## Tests
 
 `deno task check` from the repository root runs this suite with the rest of the workspace. Every

@@ -74,16 +74,7 @@ export const README_PENDING: Record<PackageId, readonly string[]> = {
   ],
   charts: [],
   map: [],
-  system: [
-    "DEFAULT_UPDATE_MESSAGE",
-    "describeCalendarDay",
-    "isCurrentLink",
-    "reloadOnControllerChange",
-    "seoHeadJsonLd",
-    "serviceWorkerContainer",
-    "skipWaiting",
-    "TAB_BAR_SLOTS",
-  ],
+  system: [],
   crud: [
     "associationActions",
     "commitNumber",
