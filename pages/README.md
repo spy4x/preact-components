@@ -298,7 +298,10 @@ as the numerator; and `--static`, which commits no package blocks at all, instea
   second throw has no dialog open, and the recovery must press no Escape, which a Tooltip, a
   Dropdown or a Combobox would answer.
 - **Lockfile** (#283, both phases, last): the run leaves `deno.lock` byte for byte as it found it
-  after startup, and the lockfile holds no specifier without a version (`jsr:…@*`).
+  after startup, and the lockfile holds no specifier without a version (`jsr:…@*`). The second is a
+  gate on the lockfile's content, whoever wrote the entry — a test run, the build or a person — so
+  an unversioned line fails `verify`, and CI, even when this run did not add it. A merely stale
+  lockfile does not fail: Deno repairs it at startup.
 - **Browser** (headless Chromium over the DevTools Protocol, page served at the deployed base):
   hydration, Dropdown open/close, ToggleSwitch, OnOffButtons, the icon filter over the icon gallery,
   click-to-copy in the gallery, a click on every usage block's copy control putting that block's text

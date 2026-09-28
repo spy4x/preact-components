@@ -144,8 +144,10 @@ const LOCKFILE_AT_START = await readLockfile()
  * run is going — a dynamic import, a spawned script — and the second one resolved at startup, which
  * Deno writes before this script's first line runs.
  *
- * Both are about this script and what it reaches, not a gate on the lockfile in general: a stale
- * lockfile is rewritten by the build before `verify` starts, and is nothing this reports.
+ * The second check gates the lockfile's content, whoever wrote it: an unversioned entry left by
+ * `deno task test`, the build or a person earlier in the same checkout fails it just the same, and
+ * so fails CI. The first is about this run only. Neither fails on a merely stale lockfile, which
+ * Deno repairs at startup, before {@link LOCKFILE_AT_START} is read.
  */
 async function lockfileChecks(): Promise<void> {
   const now = await readLockfile()
