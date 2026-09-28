@@ -2965,7 +2965,7 @@ async function modalBackdropCheck(devtools: Devtools): Promise<void> {
 
 /** What the fallback check saw on the dialog it opened with `closedBy` hidden. */
 interface FallbackReading {
-  /** Event types the browser holds listeners for on the dialog, from DevTools itself. */
+  /** Event types the browser holds listeners for on the dialog, for the failure message only. */
   listeners: string[]
   /** Whether the platform fired `cancel` for the Escape press. */
   cancelled: boolean
@@ -2985,16 +2985,19 @@ interface FallbackReading {
  * `cancel` as an engine that ignores the attribute would. The prototype is put back as soon as the
  * dialog is open, and on every way out.
  *
- * Two readings, because they cover different mutations of the gate `ui/modal.test.tsx` used to
- * pin by searching the source (#217):
+ * Everything asserted is behaviour, and it covers the gate `ui/modal.test.tsx` used to pin by
+ * searching the source (#217) from both sides:
  *
- * - which listeners the dialog holds, read through `DOMDebugger.getEventListeners`: on this engine
- *   it must be `cancel` and not `keydown`. A component that ignored the capability and always took
- *   the `keydown` path closes this demo just the same — it has no refusing port — so the listener
- *   set is the only thing that tells the two apart;
- * - that the Escape press takes the uncontrolled dialog off the page and releases the scroll lock,
- *   which it does only if the `cancel` handler settles the component's own open flag. Without that,
+ * - the platform must fire `cancel` for the Escape press. A component that ignored the capability
+ *   and took the `keydown` path anyway closes the dialog itself, synchronously, before the platform
+ *   gets to, so no `cancel` fires and this reads red;
+ * - the Escape press must take the uncontrolled dialog off the page and release the scroll lock,
+ *   which happens only if the `cancel` handler settles the component's own open flag. Without that,
  *   the platform closes the element and the component keeps rendering it, closed and unopenable.
+ *
+ * The dialog's listener types are read through DevTools for the failure message only; which
+ * listeners the component uses is its own business, and asserting on them would fail a correct
+ * dialog that one day adds a `keydown` listener for something else.
  *
  * The trigger is pressed with a real click, because Chromium fires `cancel` for an Escape close
  * request only after a user activation, and a scripted `.click()` is not one.
@@ -3066,8 +3069,8 @@ async function modalFallbackEscapeCheck(devtools: Devtools): Promise<void> {
   )
   check(
     "on an engine without closedby, Modal hands Escape to the platform and an uncontrolled one still leaves the page",
-    hidden && restored && landed && opened && escapeListeners.join() === "cancel" &&
-      reading.cancelled && !reading.present && reading.lock === "released",
+    hidden && restored && landed && opened && reading.cancelled && !reading.present &&
+      reading.lock === "released",
     !hidden
       ? "HTMLDialogElement.prototype has no closedBy to take away, so this browser is already the " +
         "engine the check simulates and the premise does not hold"
@@ -3076,18 +3079,17 @@ async function modalFallbackEscapeCheck(devtools: Devtools): Promise<void> {
         "on a changed platform"
       : !landed || !opened
       ? "a real click on the uncontrolled trigger never opened a modal dialog"
-      : escapeListeners.join() !== "cancel"
-      ? `with closedBy absent the dialog listens for [${escapeListeners.join(", ")}] rather than ` +
-        `for cancel alone, so the component did not take the platform's path`
       : !reading.cancelled
-      ? "the platform fired no cancel for the Escape press, so nothing here reached the fallback"
+      ? `the platform fired no cancel for the Escape press, so nothing here reached the fallback ` +
+        `(the dialog's Escape listeners were [${escapeListeners.join(", ")}]; a keydown one ` +
+        `closes the dialog itself before the platform can)`
       : reading.present
       ? `the platform closed the dialog but the component kept rendering it: its own open flag ` +
         `was not settled by the cancel handler, and the scroll lock reads "${reading.lock}"`
       : reading.lock !== "released"
       ? `the dialog left the page but the scroll lock still reads "${reading.lock}"`
-      : `the dialog listened for cancel and not keydown; a real Escape fired cancel, the element ` +
-        `left the page and the scroll lock was released`,
+      : `a real Escape fired the platform's cancel, the element left the page and the scroll ` +
+        `lock was released`,
   )
 }
 
