@@ -855,6 +855,7 @@ function CalendarLocaleDemo() {
         today="2026-03-10"
         timeZone="UTC"
         availableByDate={{
+          "2026-03-10": 7,
           "2026-03-11": 6,
           "2026-03-12": 3,
           "2026-03-13": 0,

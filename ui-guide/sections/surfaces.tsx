@@ -351,6 +351,10 @@ function TokenClassesDemo() {
         <span class={`bg-selected text-selected-foreground ${swatch}`}>bg-selected</span>
         <span class={`bg-selected-soft text-selected ${swatch}`}>bg-selected-soft</span>
         <span class={`border-selected text-selected border ${swatch}`}>border-selected</span>
+        <span class={`bg-selected-hover text-selected-foreground ${swatch}`}>
+          bg-selected-hover
+        </span>
+        <span class={`bg-selected-soft-hover text-selected ${swatch}`}>bg-selected-soft-hover</span>
         <span class={`bg-hover ${swatch}`}>bg-hover</span>
         <span class={`bg-track ${swatch}`}>bg-track</span>
         <span class={`bg-foreground text-canvas ${swatch}`}>bg-foreground</span>
@@ -523,6 +527,8 @@ export const surfaceDemos = {
       "bg-selected-soft",
       "text-selected",
       "border-selected",
+      "bg-selected-hover",
+      "bg-selected-soft-hover",
       "bg-hover",
       "bg-track",
       "bg-foreground",

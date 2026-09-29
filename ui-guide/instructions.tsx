@@ -43,6 +43,8 @@ export const documentedClasses: Record<string, string[]> = {
     "bg-selected-soft",
     "text-selected",
     "border-selected",
+    "bg-selected-hover",
+    "bg-selected-soft-hover",
     "bg-hover",
     "bg-track",
     "bg-foreground",
