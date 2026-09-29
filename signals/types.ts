@@ -38,6 +38,14 @@ export enum RemoteEvent {
  */
 export type ToastVariant = "success" | "error" | "info" | "warning"
 
+/**
+ * What identifies one toast: the type `ToastStore.remove` takes. Matches `ToastId` in
+ * `@spy4x/preact-ui`, which is the type `Toastr`'s `onDismiss` is called with, so the store's
+ * `remove` is that port as it stands. The store's own ids are strings; a number is compared as its
+ * string form.
+ */
+export type ToastId = string | number
+
 /** Notification content the store hands to its toast port. */
 export interface ToastMessage {
   /**
@@ -66,6 +74,11 @@ export interface ToastMessage {
    * `duration` wins.
    */
   timeout?: number
+  /**
+   * Test hook: `Toastr` in `@spy4x/preact-ui` puts it on this toast's own element as `data-e2e`,
+   * so a test can wait for this one message. Omitted, the toast carries no such attribute.
+   */
+  dataE2E?: string
 }
 
 /**

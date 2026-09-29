@@ -1567,6 +1567,7 @@ async function toastrChecks(devtools: Devtools): Promise<void> {
   await extendCheck(devtools)
   await storeDelayChecks(devtools)
   await toastrTitleCheck(devtools)
+  await toastrOwnHookCheck(devtools)
 
   // Leave the card as it was found, for whatever reads the page next.
   await devtools.evaluate<null>(`(globalThis.__verifyToastr?.clear?.click(), null)`)
@@ -1683,6 +1684,53 @@ async function toastrTitleCheck(devtools: Devtools): Promise<void> {
     outcome.reason !== ""
       ? outcome.reason
       : `default: ${describe(fallback, "success")}; own: ${describe(own, "titled")}`,
+  )
+}
+
+/**
+ * #420: a toast carries its own `data-e2e`, so a test can wait for one message instead of for any
+ * text inside the stack.
+ *
+ * Pushes one toast from the card's success button, whose store message names
+ * `dataE2E: "guide-toast-success"`, and asserts that exactly one element in the stack carries that
+ * hook, that it is the toast itself — a direct child of the live area holding the pushed body — and
+ * that the stack's own hook is still the stack's.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function toastrOwnHookCheck(devtools: Devtools): Promise<void> {
+  const outcome = await devtools.evaluate<{ reason: string; detail: string; ok: boolean }>(
+    `(async () => {
+    const parked = globalThis.__verifyToastr ?? {}
+    const region = parked.region ?? null
+    if (region === null || !parked.success || !parked.clear) {
+      return { reason: "the Toastr card is missing its live area or its success or clear button",
+        detail: "", ok: false }
+    }
+    parked.clear.click()
+    await new Promise((done) => setTimeout(done, 80))
+    parked.success.click()
+    await new Promise((done) => setTimeout(done, 120))
+    const hooked = [...region.querySelectorAll('[data-e2e="guide-toast-success"]')]
+    const toast = hooked[0] ?? null
+    const detail = hooked.length + " element(s) carry the hook" +
+      (toast === null ? "" : "; the first is a " + toast.tagName.toLowerCase() +
+        " whose parent is " + (toast.parentElement === region ? "the stack" : "not the stack") +
+        ", role " + toast.getAttribute("role") + ", text: " +
+        (toast.textContent ?? "").trim().slice(0, 60))
+    const ok = hooked.length === 1 && toast.parentElement === region &&
+      toast.getAttribute("role") === "status" &&
+      (toast.textContent ?? "").includes("pushed by the demo stack") &&
+      region.getAttribute("data-e2e") === "guide-toastr"
+    parked.clear.click()
+    await new Promise((done) => setTimeout(done, 80))
+    return { reason: "", detail, ok }
+  })()`,
+  )
+  check(
+    "a toast pushed with its own dataE2E carries that data-e2e on the toast itself",
+    outcome.reason === "" && outcome.ok,
+    outcome.reason !== "" ? outcome.reason : outcome.detail,
   )
 }
 

@@ -1,5 +1,8 @@
 import { type ReadonlySignal, signal } from "@preact/signals"
-import type { ToastMessage, ToastVariant } from "./types.ts"
+import type { ToastId, ToastMessage, ToastVariant } from "./types.ts"
+
+// Re-exported so `@spy4x/preact-signals/toast` alone types the id `remove` takes.
+export type { ToastId } from "./types.ts"
 
 /**
  * `@spy4x/preact-signals/toast` — the store behind `Toastr`.
@@ -50,6 +53,8 @@ export interface ToastEntry {
    * the timer.
    */
   duration?: number
+  /** The message's {@link ToastMessage.dataE2E}, which `Toastr` renders on this toast. */
+  dataE2E?: string
 }
 
 /** A toast store. `list` is what `Toastr` renders; the four shorthands are what callers use. */
@@ -66,8 +71,12 @@ export interface ToastStore {
    * on screen.
    */
   add(message: ToastMessage): string
-  /** Take one toast off the list. This is the port `Toastr`'s `onDismiss` calls. */
-  remove(id: string): void
+  /**
+   * Take one toast off the list. This is the port `Toastr`'s `onDismiss` calls, and it takes the
+   * same {@link ToastId}, so it is passed as it stands: `onDismiss={store.remove}`. A number
+   * matches the entry whose id is that number's string form.
+   */
+  remove(id: ToastId): void
   /** Empty the list. */
   clear(): void
   info(message: ToastMessage): string
@@ -112,7 +121,7 @@ function defaultNextId(): string {
  * export const toast = createToastStore()
  * // pass `toast` to buildModelStore as its ToastPort
  * // render it with
- * // <Toastr toasts={toast.list.value} onDismiss={(id) => toast.remove(String(id))} />
+ * // <Toastr toasts={toast.list.value} onDismiss={toast.remove} />
  * ```
  */
 export function createToastStore(options: ToastOptions = {}): ToastStore {
@@ -120,9 +129,11 @@ export function createToastStore(options: ToastOptions = {}): ToastStore {
 
   const list = signal<ToastEntry[]>([])
 
-  function remove(id: string): void {
+  function remove(id: ToastId): void {
+    // The store's ids are strings; `Toastr` may hand back a number for an id it was given as one.
+    const key = String(id)
     // Immutable: a new array is what makes the change observable to `Toastr`.
-    list.value = list.value.filter((entry) => entry.id !== id)
+    list.value = list.value.filter((entry) => entry.id !== key)
   }
 
   function clear(): void {
@@ -143,6 +154,8 @@ export function createToastStore(options: ToastOptions = {}): ToastStore {
       // dismissed — is carried through instead of being read as "nothing was asked for".
       duration: message.duration ?? message.timeout,
     }
+    // Only when asked for, so an entry without a hook has no `dataE2E` key at all.
+    if (message.dataE2E !== undefined) entry.dataE2E = message.dataE2E
 
     // A reused id replaces its toast where it stands. Appending instead would leave two entries that
     // `remove(id)` cannot tell apart, so dismissing one would dismiss both.

@@ -360,7 +360,7 @@ const toast = createToastStore()
 toast.success({ body: "Saved" }) // no duration named: Toastr's 5000ms default
 toast.error({ body: "Could not save", duration: 0 }) // stays until somebody dismisses it
 toast.info({ body: "Read this one", duration: 20_000 })
-<Toastr toasts={toast.list.value} onDismiss={(id) => toast.remove(String(id))} />
+<Toastr toasts={toast.list.value} onDismiss={toast.remove} />
 ```
 
 - **`duration: 0` means keep this toast until somebody dismisses it**, on both sides. Neither the
@@ -381,8 +381,11 @@ toast.info({ body: "Read this one", duration: 20_000 })
   `duration`.
 - **`timeout` is the old name for `duration`** and still works for one release. When both are
   given, `duration` wins.
-- **`String(id)`** in `onDismiss`, because `ToastItem.id` is `string | number` and this store's
-  ids are strings.
+- **`remove` is `Toastr`'s `onDismiss` as it stands.** Both take `ToastId` (`string | number`),
+  exported from this package and from `@spy4x/preact-ui`. This store's own ids are strings, and a
+  number is matched by its string form.
+- **`dataE2E` on a message** reaches its entry and `Toastr` renders it on that toast as `data-e2e`,
+  so a test can wait for one message.
 - **`list` appends the newest toast last**, so the documented wiring renders oldest at the top. A
   caller who wants the newest first hands `Toastr` a reversed copy.
 

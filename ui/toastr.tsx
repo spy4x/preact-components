@@ -8,8 +8,17 @@ export type ToastCorner = "top-left" | "top-right" | "bottom-left" | "bottom-rig
 /** Kind of a toast, selecting its colour and glyph. */
 export type ToastVariant = "success" | "error" | "info" | "warning"
 
+/**
+ * What identifies one toast in a stack: the type of {@link ToastItem.id} and of the id
+ * {@link ToastrProps.onDismiss} is called with.
+ *
+ * `ToastId` in `@spy4x/preact-signals` is this same union, and `createToastStore().remove` takes
+ * it, so the store's `remove` is the dismiss port as it stands: `onDismiss={store.remove}`.
+ */
+export type ToastId = string | number
+
 export interface ToastItem {
-  id: string | number
+  id: ToastId
   /**
    * Short heading shown above the body, in bold, inside the same live region so a screen reader
    * hears both. No heading renders when it is absent or empty, and this component invents none.
@@ -44,6 +53,14 @@ export interface ToastItem {
    * toast is about can say so here — "Dismiss the upload error".
    */
   dismissLabel?: string
+  /**
+   * Value of the `data-e2e` attribute on this toast's own element, so a test can wait for one
+   * message rather than for any text inside the stack. The attribute is absent when this is.
+   *
+   * `createToastStore` in `@spy4x/preact-signals` carries a message's `dataE2E` onto its entry
+   * under this same name.
+   */
+  dataE2E?: string
 }
 
 export interface ToastrProps {
@@ -58,10 +75,11 @@ export interface ToastrProps {
   /**
    * Injected dismiss port; also called by the auto-dismiss timer this component runs.
    *
-   * Takes `string | number` because {@link ToastItem.id} does. A store whose ids are strings —
-   * `createToastStore` is one — is wired with `onDismiss={(id) => store.remove(String(id))}`.
+   * Called with the toast's {@link ToastId}. `createToastStore().remove` in
+   * `@spy4x/preact-signals` takes the same type, so it is passed as it stands:
+   * `onDismiss={store.remove}`.
    */
-  onDismiss: (id: string | number) => void
+  onDismiss: (id: ToastId) => void
   /**
    * The window corner the stack sits in, 2rem from both edges. Defaults to `"top-right"`.
    *
@@ -78,7 +96,8 @@ export interface ToastrProps {
    */
   dismissLabel?: string
   /**
-   * Value of the `data-e2e` attribute on the stack. The attribute is absent when this prop is, so a
+   * Value of the `data-e2e` attribute on the stack; one toast carries its own through
+   * {@link ToastItem.dataE2E}. The attribute is absent when this prop is, so a
    * consumer's markup carries a test hook only when that consumer asked for one.
    */
   dataE2E?: string
@@ -259,7 +278,7 @@ interface ToastProps {
   toast: ToastItem
   /** Whether the stack is being read right now: the pointer is over it, or focus is inside it. */
   paused: boolean
-  onDismiss: (id: string | number) => void
+  onDismiss: (id: ToastId) => void
   /** Accessible name for this toast's dismiss control, already resolved by the stack. */
   dismissLabel: string
   /** The side this toast slides in from: its stack's corner side. */
@@ -316,6 +335,7 @@ function Toast({ toast, paused, onDismiss, dismissLabel, enterFrom }: ToastProps
   return (
     <div
       role={variant === "error" ? "alert" : "status"}
+      data-e2e={toast.dataE2E}
       class={cn(
         "space-y-4 rounded-lg px-6 py-4 text-white",
         enterClasses[enterFrom],

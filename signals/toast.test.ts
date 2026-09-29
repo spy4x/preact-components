@@ -1,7 +1,7 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { FakeTime } from "@std/testing/time"
-import { createToastStore } from "./toast.ts"
+import { createToastStore, type ToastId } from "./toast.ts"
 
 /**
  * Run a body with every timer in the process under this test's control.
@@ -232,6 +232,22 @@ describe("createToastStore schedules nothing", () => {
   })
 })
 
+describe("createToastStore test hooks", () => {
+  it("carries a message's dataE2E onto its entry", () => {
+    const store = createToastStore({ nextId: counterIds() })
+    store.error({ body: "Upload failed", dataE2E: "toast-upload-failed" })
+
+    expect(store.list.value[0].dataE2E).toBe("toast-upload-failed")
+  })
+
+  it("gives an entry no dataE2E key when its message named none", () => {
+    const store = createToastStore({ nextId: counterIds() })
+    store.info({ body: "Saved" })
+
+    expect(Object.hasOwn(store.list.value[0], "dataE2E")).toBe(false)
+  })
+})
+
 describe("createToastStore removal", () => {
   it("removes only the named toast", () => {
     const store = createToastStore({ nextId: counterIds() })
@@ -242,6 +258,18 @@ describe("createToastStore removal", () => {
     store.remove(id)
 
     expect(store.list.value.map((entry) => entry.body)).toEqual(["one", "three"])
+  })
+
+  it("removes a toast whose id Toastr hands back as a number", () => {
+    const store = createToastStore()
+    store.add({ id: "7", body: "seven" })
+    store.add({ id: "8", body: "eight" })
+
+    // Typed through this subpath's own export, the way a caller importing only `/toast` writes it.
+    const fromToastr: ToastId = 7
+    store.remove(fromToastr)
+
+    expect(store.list.value.map((entry) => entry.body)).toEqual(["eight"])
   })
 
   it("ignores an id that is not there", () => {

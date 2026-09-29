@@ -40,8 +40,30 @@ export interface CardFooterProps extends CardDivAttributes {
 export type CardHeaderProps =
   & CardDivAttributes
   & (
-    | { title?: string; action?: ComponentChildren; children?: never; class?: string }
-    | { children: ComponentChildren; title?: never; action?: never; class?: string }
+    | {
+      title?: string
+      action?: ComponentChildren
+      /**
+       * Draws `title` as an `<h2>`…`<h6>` of this level instead of a `<span>`, so the card has a
+       * heading a screen reader can jump to. Pick the level that fits the page's outline; the range
+       * is `KanbanBoard`'s. Size and weight stay the span's; the element also takes whatever the
+       * preset's heading styles set on heading elements, such as a heading font.
+       *
+       * Omitted, `title` stays a `<span>`, as it was before this prop existed. Making the heading
+       * the default would change the markup every existing caller renders, and a page whose own
+       * CSS styles `h2`/`h3` would see its cards change, so it is opt-in within 1.x.
+       */
+      headingLevel?: 2 | 3 | 4 | 5 | 6
+      children?: never
+      class?: string
+    }
+    | {
+      children: ComponentChildren
+      title?: never
+      action?: never
+      headingLevel?: never
+      class?: string
+    }
   )
 
 /**
@@ -62,15 +84,20 @@ export function Card({ children, class: className, ...rest }: CardProps): JSX.El
  * utility, whose own `flex items-center justify-between` is what puts `action` on the right.
  */
 export function CardHeader(
-  { class: className, children, title, action, ...attrs }: CardHeaderProps,
+  { class: className, children, title, action, headingLevel, ...attrs }: CardHeaderProps,
 ): JSX.Element {
   if (children !== undefined && children !== null && children !== false) {
     return <div {...attrs} class={cn("card-header", className)}>{children}</div>
   }
 
+  // A heading only when asked for: `headingLevel` is opt-in, so an existing caller's markup is
+  // unchanged. Tailwind's preflight resets a heading's size and weight, so the classes below give
+  // it the span's size and weight; anything the preset sets on heading elements applies on top.
+  const Title = headingLevel === undefined ? "span" : `h${headingLevel}` as "h2"
+
   return (
     <div {...attrs} class={cn("card-header", className)}>
-      <span class="text-lg font-semibold">{title}</span>
+      <Title class="text-lg font-semibold">{title}</Title>
       {action && <div class="flex items-center gap-2">{action}</div>}
     </div>
   )

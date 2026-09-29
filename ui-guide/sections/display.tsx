@@ -208,12 +208,18 @@ const tooltipPlacements: Record<TooltipPlacement, string> = {
   left: "left",
 }
 
-/** One card per mode of `CardHeader`: a title with an action, and the header's own markup. */
+/**
+ * One card per mode of `CardHeader`: a title with an action, the same title drawn as a heading, and
+ * the header's own markup.
+ */
 function CardHeaderDemo() {
   return (
     <Stack>
       <Card>
         <CardHeader title="Invoices" action={<Badge text="3 open" color="gray" />} />
+      </Card>
+      <Card>
+        <CardHeader title="Payments" headingLevel={3} action={<Badge text="h3" color="gray" />} />
       </Card>
       <Card>
         <CardHeader>
@@ -1124,7 +1130,28 @@ export const displayDemos = {
   CardHeader: {
     summary: "A card's top row: a title with an optional action, or your own markup instead.",
     wide: false,
+    props: [
+      { name: "title", type: "string", description: "The card's title." },
+      {
+        name: "action",
+        type: "ComponentChildren",
+        description: "Shown on the right of the title.",
+      },
+      {
+        name: "headingLevel",
+        type: "2 | 3 | 4 | 5 | 6",
+        description:
+          "Draws the title as a heading of that level, so screen readers can jump to it; without it the title is plain text.",
+      },
+      {
+        name: "children",
+        type: "ComponentChildren",
+        description: "Your own header, in place of the title.",
+      },
+    ],
     snippet: `<CardHeader title="Invoices" action={<Badge text="3 open" />} />
+
+<CardHeader title="Payments" headingLevel={3} />
 
 <CardHeader>
   <h4>Your own header</h4>

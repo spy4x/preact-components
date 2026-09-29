@@ -5,8 +5,16 @@ import type { JSX } from "preact"
 export type SpinnerSize = "sm" | "md" | "lg"
 
 export interface LoadingSpinnerProps {
-  /** Visible caption under the spinner. Omitted, only a screen-reader "Loading" remains. */
+  /**
+   * Visible caption under the spinner, which a screen reader also hears. Omitted, only the hidden
+   * {@link LoadingSpinnerProps.loadingLabel} remains.
+   */
   label?: string
+  /**
+   * The word a screen reader hears when there is no `label`; it is not shown. Defaults to
+   * `"Loading"`. Ignored when `label` is given, since the caption is then what is announced.
+   */
+  loadingLabel?: string
   /** Defaults to `"md"`. */
   size?: SpinnerSize
   class?: string
@@ -32,7 +40,7 @@ const strokeWidths: Record<SpinnerSize, string> = {
  * primitive stays presentational.
  */
 export function LoadingSpinner(
-  { label, size = "md", class: className }: LoadingSpinnerProps,
+  { label, loadingLabel = "Loading", size = "md", class: className }: LoadingSpinnerProps,
 ): JSX.Element {
   return (
     <div
@@ -62,7 +70,7 @@ export function LoadingSpinner(
       </svg>
       {label
         ? <p class="text-sm text-gray-600 dark:text-gray-300">{label}</p>
-        : <span class="sr-only">Loading</span>}
+        : <span class="sr-only">{loadingLabel}</span>}
     </div>
   )
 }

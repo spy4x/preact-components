@@ -49,7 +49,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Card`            | `card`              | `children`, `class` — a bordered surface                                                                                                                                                        |
 | `CardBody`        | `card`              | `children`, `class`                                                                                                                                                                             |
 | `CardFooter`      | `card`              | `children`, `class`                                                                                                                                                                             |
-| `CardHeader`      | `card`              | `title` and `action`, or `children`; `class`                                                                                                                                                    |
+| `CardHeader`      | `card`              | `title`, `action` and `headingLevel?` (`2`–`6`: the title becomes that heading; plain text without it), or `children`; `class`                                                                  |
 | `Checkbox`        | `checkbox`          | `children` (the label), `labelClass`, native checkbox attrs; forwards `ref`                                                                                                                     |
 | `Cluster`         | `layout`            | `gap?` (default `sm`), `align?`, `justify?`, `as?`, `class?` — a wrapping row                                                                                                                   |
 | `Combobox`        | `combobox`          | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `loading?`, `loadingMessage?`, `ariaLabel?`, `aria-labelledby?`, `id?`                                                                    |
@@ -74,7 +74,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `KanbanBoard`     | `kanban-board`      | `columns`, `items`, `renderItem`, `itemLabel`, `onMove`, `onOpen?`, `labels?`, `headingLevel?` — controlled; mouse drag and keyboard moves                                                      |
 | `Lightbox`        | `lightbox`          | `images`, `index`, `open`, `onClose`, `onIndexChange`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`                                                                           |
 | `LoadingSkeleton` | `loading-skeleton`  | `rows`                                                                                                                                                                                          |
-| `LoadingSpinner`  | `loading-spinner`   | `label`, `size`                                                                                                                                                                                 |
+| `LoadingSpinner`  | `loading-spinner`   | `label`, `loadingLabel?` (hidden word without a `label`, default `"Loading"`), `size`                                                                                                           |
 | `Modal`           | `modal`             | `open?` or `defaultOpen?`, `onClose?`, `title?` or `ariaLabel?`, `children`, `footer?`, `cancelLabel?`                                                                                          |
 | `MoneyDisplay`    | `money-display`     | `amount` (smallest unit), `currency`, `locale?`, `colorNegative?`, `class?`                                                                                                                     |
 | `MoneyInput`      | `money-input`       | `value` (smallest unit or `null`), `onChange`, `currency`, `locale?`, `min?`, `max?`, `name?`, `id?`, `invalidMessage?`, `rangeMessage?`                                                        |
@@ -115,7 +115,7 @@ Wiring side effects through ports, so the package stays app-agnostic:
 
 <CopyButton textToCopy={invoice.id} copy={(text) => app.clipboard.copy(text)} />
 
-<Toastr toasts={app.toast.list.value} onDismiss={(id) => app.toast.remove(String(id))} />
+<Toastr toasts={app.toast.list.value} onDismiss={app.toast.remove} />
 
 <Tabs
   active={section.value}
@@ -136,21 +136,35 @@ from the tabs whose panel it omitted. Ids are derived from each `TabItem.id` (`$
 and Home/End jump to the ends; Up/Down stay with the page. The decision table is the exported
 `nextTabIndex`.
 
+An app's first load needs no component of its own. `LoadingSpinner` already centres itself in a
+flex column, so giving it the window's height and the page's colour makes it the whole screen:
+
+```tsx
+if (!app.ready.value) {
+  return <LoadingSpinner size="lg" label="Loading your workspace…" class="min-h-dvh bg-canvas" />
+}
+```
+
+`min-h-dvh` follows a phone's collapsing address bar, and the spinner sits in the normal flow, so
+a toast or dialog raised during the load stays on top of it.
+
 `Toastr` auto-dismisses each toast after `toast.duration` milliseconds (default
 `defaultToastDuration`, which is 5000; `0` keeps it until dismissed) and reports it through
 `onDismiss` — the caller owns the stack. `createToastStore` in `@spy4x/preact-signals` writes
-that same `duration` field, so the wiring above needs no adapter; `String(id)` is there because
-`ToastItem.id` is `string | number` and that store's ids are strings.
+that same `duration` field, so the wiring above needs no adapter. The id needs none either: the
+exported `ToastId` (`string | number`) is the type of `ToastItem.id`, the id `onDismiss` is called
+with, and the id that store's `remove` takes.
 
 A toast carries an `id`, a `body`, and optionally a `type`, a `title`, a `duration` and a
-`dismissLabel`. The component renders the variant's glyph, the `title` in bold above the `body`
-when there is one, and a dismiss button; the title sits inside the toast's live element, so a
-screen reader hears it with the body. The component invents no title: a hand-built toast without
-one renders none, and neither does an empty one. `createToastStore` always writes one — the
-caller's, or its kind's default (`"Info"`, `"Success"`, `"Error"`, `"Warning"`, overridable through
-its `titles` option) — so a store-fed toast always shows a heading. Until
-[#207](https://github.com/spy4x/preact-components/issues/207) the store wrote it and this
-component dropped it.
+`dismissLabel`, and a `dataE2E` that the component puts on that toast's own element as `data-e2e`,
+so a test can wait for one message rather than for any text in the stack. The component renders the
+variant's glyph, the `title` in bold above the `body` when there is one, and a dismiss button; the
+title sits inside the toast's live element, so a screen reader hears it with the body. The component
+invents no title: a hand-built toast without one renders none, and neither does an empty one.
+`createToastStore` always writes one — the caller's, or its kind's default (`"Info"`, `"Success"`,
+`"Error"`, `"Warning"`, overridable through its `titles` option) — so a store-fed toast always shows
+a heading. Until [#207](https://github.com/spy4x/preact-components/issues/207) the store wrote it
+and this component dropped it.
 
 `corner` puts the stack in one of the window's four corners, 2rem from both edges: `"top-left"`,
 `"top-right"` (the default), `"bottom-left"` or `"bottom-right"`. The toasts keep the order of
@@ -215,7 +229,7 @@ asked for one.
 ```tsx
 <Toastr
   toasts={app.toast.list.value}
-  onDismiss={(id) => app.toast.remove(String(id))}
+  onDismiss={app.toast.remove}
   label="Benachrichtigungen"
   dismissLabel="Ausblenden"
 />
@@ -1326,7 +1340,8 @@ colour per status), `ConfidenceMeter` (`Progress`), `FactCard` (`Card` around a 
 `NewsletterForm` and `ContactForm` (`EnhancedForm` with `Field`, `Input` and `Button`),
 `SkeletonText`, `SkeletonTable`, `SkeletonCards` and `SkeletonStatus` (`LoadingSkeleton`),
 `LoadingScreen` (`LoadingSpinner` with its `label`, centred), and vertical `Tabs`. `MarginNote` went
-because only one site's articles used it.
+because only one site's articles used it. #420 asked for `LoadingScreen` back for an app's first
+load; that need is met by the `LoadingSpinner` recipe above rather than by a second name for it.
 
 `InstallBox`, `CopyableText` and `CopyableTextBody` became one component, `CopyBlock`, in #353: each
 was a box of text with a `CopyButton` beside it. `CopyBlock` never clips its text: it wraps inside

@@ -28,7 +28,7 @@ Extracted from earlier source applications.
 
 | Component    | Subpath       | Ports / key props                                                                                                                                                                           |
 | ------------ | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AuthForm`   | `auth-form`   | `mode`, `step`, `onModeChange?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `action?`                                                                        |
+| `AuthForm`   | `auth-form`   | `mode`, `step`, `onModeChange?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `action?`, `footer?`                                                             |
 | `SEOHead`    | `seo-head`    | `title`, `description`, `canonical`, `crumbs?`, `ogImage?`, `jsonLd?`, `noindex?`, `twitterCard?`                                                                                           |
 | `SWUpdater`  | `sw-updater`  | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                                                                                        |
 | `Calendar`   | `calendar`    | `monthAnchor`, `minDate`, `maxDate`, `availableByDate`, `onSelectDate?`                                                                                                                     |
@@ -415,6 +415,10 @@ visitor put away for it. It returns a function that removes every listener it ad
 signing in works: `mode`, `step`, `busy` and `error` are read from props, and a credentials submit,
 a code submit or a mode switch leaves through `onSignIn`, `onSignUp`, `onOneTimeCode` or
 `onModeChange` rather than through a fetch this package makes for you.
+
+`footer` is caller content drawn last, inside the `<form>`, so a "Back to sign in" link sits in
+the same card as the form. Because it is inside the form, a `<button>` there needs `type="button"`
+or it submits, and it cannot hold a form of its own.
 
 **The submitted values are read from `FormData`, not from controlled state.** A controlled
 `Input` needs the password sitting in a signal or a `useState` on every keystroke; reading

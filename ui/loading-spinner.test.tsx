@@ -30,6 +30,14 @@ describe("LoadingSpinner", () => {
     expect(html).toContain(">Loading<")
   })
 
+  it("says the caller's hidden word in place of Loading, with no visible caption", () => {
+    const html = render(<LoadingSpinner loadingLabel="Загрузка" />)
+
+    expect(html).toContain('<span class="sr-only">Загрузка</span>')
+    expect(html).not.toContain("Loading")
+    expect(html).not.toMatch(/<p[ >]/)
+  })
+
   it("scales the glyph with size", () => {
     expect(render(<LoadingSpinner size="sm" />)).toContain("size-5")
     expect(render(<LoadingSpinner size="lg" />)).toContain("size-12")

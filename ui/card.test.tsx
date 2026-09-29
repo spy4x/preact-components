@@ -63,10 +63,33 @@ describe("CardHeader", () => {
   })
 
   it("never leaks the convenience props into the DOM as attributes", () => {
-    const html = render(<CardHeader title="Invoices" action={<button type="button">New</button>} />)
+    const html = render(
+      <CardHeader
+        title="Invoices"
+        action={<button type="button">New</button>}
+        headingLevel={2}
+      />,
+    )
 
     expect(html).not.toContain("title=")
     expect(html).not.toContain("action=")
+    expect(html.toLowerCase()).not.toContain("headinglevel")
+  })
+
+  it("draws the title as a heading of the level the caller names, with the span's look", () => {
+    for (const level of [2, 3, 4, 5, 6] as const) {
+      const html = render(<CardHeader title="Invoices" headingLevel={level} />)
+
+      expect(html).toContain(`<h${level} class="text-lg font-semibold">Invoices</h${level}>`)
+      expect(html).not.toContain("<span")
+    }
+  })
+
+  it("keeps the title a span when no heading level is named, as before the prop existed", () => {
+    const html = render(<CardHeader title="Invoices" />)
+
+    expect(html).toContain('<span class="text-lg font-semibold">Invoices</span>')
+    expect(html).not.toMatch(/<h[1-6]/)
   })
 
   it("renders the title alone when no action is given", () => {

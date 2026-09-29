@@ -171,7 +171,7 @@ export function MiniApp(): JSX.Element {
         }
         <Toastr
           toasts={toasts.list.value}
-          onDismiss={(id) => toasts.remove(String(id))}
+          onDismiss={toasts.remove}
           dataE2E="mini-app-toasts"
           class="absolute top-auto right-4 bottom-4 left-4 z-10 ml-auto w-auto max-w-sm"
         />
@@ -305,7 +305,7 @@ export function Dashboard({ projects }: { projects: Project[] }) {
         </Button>
         <Button onClick={() => setOpen(true)}>New project</Button>
       </Cluster>
-      <Toastr toasts={toasts.list.value} onDismiss={(id) => toasts.remove(String(id))} />
+      <Toastr toasts={toasts.list.value} onDismiss={toasts.remove} />
 
       <KpiGrid>
         <Kpi label="Projects" value={projects.length} />

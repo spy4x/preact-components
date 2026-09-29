@@ -130,7 +130,8 @@ const toastPlacements: Record<ToastCorner | "card", string> = {
  * pushing each entry back under its own id.
  *
  * `pages/checks/ui.ts` finds every control here by its `data-e2e`, and reads the store's count and
- * the default duration from the two readouts under the buttons.
+ * the default duration from the two readouts under the buttons. A toast pushed by a kind's button
+ * carries its own hook, `guide-toast-<kind>`, which that file finds on the toast itself.
  */
 function ToastrDemo() {
   // One store for the life of the card. It owns no timers and no effects, so there is nothing to
@@ -139,8 +140,8 @@ function ToastrDemo() {
   const toasts = store.list.value
   const placement = useSignal<ToastCorner | "card">("card")
 
-  const push = (type: ToastVariant, duration: number, body: string) =>
-    store.add({ type, duration, body })
+  const push = (type: ToastVariant, duration: number, body: string, dataE2E?: string) =>
+    store.add({ type, duration, body, dataE2E })
 
   return (
     <Stack>
@@ -159,7 +160,8 @@ function ToastrDemo() {
             variant="outline"
             size="sm"
             data-e2e={`toast-${variant}`}
-            onClick={() => push(variant, 0, `${variant} — pushed by the demo stack`)}
+            onClick={() =>
+              push(variant, 0, `${variant} — pushed by the demo stack`, `guide-toast-${variant}`)}
           >
             {label}
           </Button>
@@ -223,7 +225,7 @@ function ToastrDemo() {
       {toasts.length === 0 ? <DemoNote>Nothing pushed yet.</DemoNote> : null}
       <Toastr
         toasts={toasts}
-        onDismiss={(id) => store.remove(String(id))}
+        onDismiss={store.remove}
         dataE2E="guide-toastr"
         {...(placement.value === "card"
           ? { class: "static max-w-sm" }
@@ -484,8 +486,43 @@ export const feedbackDemos = {
   LoadingSpinner: {
     summary: "A spinning circle for something that is loading, with an optional caption.",
     wide: true,
-    snippet: `<LoadingSpinner size="lg" label="Loading transactions…" />`,
-    render: () => <SpinnerDemo />,
+    props: [
+      {
+        name: "label",
+        type: "string",
+        description: "A caption under the spinner, which a screen reader also hears.",
+      },
+      {
+        name: "loadingLabel",
+        type: "string",
+        default: `"Loading"`,
+        description: "The hidden word a screen reader hears when there is no `label`.",
+      },
+      {
+        name: "size",
+        type: `"sm" | "md" | "lg"`,
+        default: `"md"`,
+        description: "The spinner's size.",
+      },
+    ],
+    snippet: `<LoadingSpinner size="lg" label="Loading transactions…" />
+
+// An app's first load: the whole screen
+<LoadingSpinner size="lg" label="Loading your workspace…" class="min-h-dvh bg-canvas" />`,
+    render: () => (
+      <Stack>
+        <SpinnerDemo />
+        <LoadingSpinner
+          size="lg"
+          label="Loading your workspace…"
+          class="h-64 rounded-lg border border-subtle bg-canvas"
+        />
+        <DemoNote>
+          The full-page recipe, held to a fixed height here; in an app, min-h-dvh makes it the whole
+          window.
+        </DemoNote>
+      </Stack>
+    ),
   },
   LoadingSkeleton: {
     summary: "Grey placeholder cards that hold a page's shape while its content loads.",
@@ -581,12 +618,13 @@ export const feedbackDemos = {
         name: "toasts",
         type: "ToastItem[]",
         description:
-          "The stack: each toast's id, type, title (shown above the body), body and duration.",
+          "The stack: each toast's id, type, title (shown above the body), body, duration, and a `dataE2E` test hook on that toast.",
       },
       {
         name: "onDismiss",
-        type: "(id: string | number) => void",
-        description: "Removes a toast, when its timer ends or it is dismissed.",
+        type: "(id: ToastId) => void",
+        description:
+          "Removes a toast, when its timer ends or it is dismissed; a store's `remove` fits as it is.",
       },
       {
         name: "corner",
@@ -609,7 +647,7 @@ export const feedbackDemos = {
     ],
     snippet: `<Toastr
   toasts={app.toast.list.value}
-  onDismiss={(id) => app.toast.remove(String(id))}
+  onDismiss={app.toast.remove}
   corner="bottom-right"
 />`,
     render: () => <ToastrDemo />,
