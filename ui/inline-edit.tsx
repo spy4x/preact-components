@@ -181,7 +181,7 @@ export function InlineEdit(
           onClick={start}
         >
           <span class="truncate">{value}</span>
-          <span aria-hidden="true" class="text-gray-400 dark:text-gray-500">
+          <span aria-hidden="true" class="text-placeholder">
             <IconPencilSquare class="size-4" />
           </span>
         </button>
@@ -204,7 +204,7 @@ export function InlineEdit(
         onKeyDown={onKeyDown}
         onBlur={() => void save()}
       />
-      <span role="status" class={busy ? "text-sm text-gray-500 dark:text-gray-400" : "sr-only"}>
+      <span role="status" class={busy ? "text-sm text-muted" : "sr-only"}>
         {busy ? savingLabel : ""}
       </span>
       {error !== null && (

@@ -15,7 +15,7 @@ describe("CopyButton", () => {
   it("renders an outlined button with the label text when a title is given", () => {
     const html = render(<CopyButton textToCopy="abc" title="Copy link" />)
 
-    expect(html).toContain("border-gray-300")
+    expect(html).toContain("border-control")
     expect(html).toContain("Copy link")
     expect(html).not.toContain('aria-label="Copy"')
   })

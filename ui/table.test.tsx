@@ -28,7 +28,7 @@ describe("Table", () => {
 
     expect(html).toContain("Ada")
     expect(html).toContain("Grace")
-    expect(countOccurrences(html, "hover:bg-gray-50")).toBe(2)
+    expect(countOccurrences(html, "hover:bg-hover")).toBe(2)
   })
 
   it("omits the footer when no slot is given", () => {

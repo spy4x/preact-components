@@ -153,7 +153,7 @@ export interface KbdProps {
 }
 
 const keyClass =
-  "inline-flex h-6 min-w-6 items-center justify-center rounded border border-gray-300 bg-gray-50 px-1 font-mono text-xs font-medium text-gray-700 shadow-xs dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+  "inline-flex h-6 min-w-6 items-center justify-center rounded border border-control bg-canvas px-1 font-mono text-xs font-medium text-foreground shadow-raised"
 
 /**
  * One key or a combination of keys, as the HTML `<kbd>` element: `<Kbd keys="mod+k" />` renders
@@ -175,7 +175,7 @@ export function Kbd({ keys, children, apple, labels, class: className }: KbdProp
   return (
     <kbd
       class={cn(
-        "inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400",
+        "inline-flex items-center gap-1 text-xs text-muted",
         className,
       )}
     >

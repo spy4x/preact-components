@@ -128,10 +128,12 @@ const enterClasses: Record<"left" | "right", string> = {
 }
 
 const variantClasses: Record<ToastVariant, string> = {
-  success: "bg-green-700",
-  error: "bg-red-600",
-  info: "bg-blue-700",
-  warning: "bg-yellow-700",
+  success: "bg-success text-(--color-success-foreground)",
+  error: "bg-danger-fill text-danger-fill-foreground",
+  // Info and warning keep fixed fills: their token pairs are lighter than these (warning's
+  // orange-600 with orange-50 is 3.38:1, against 4.92:1 here), and a dark info fill would flip.
+  info: "bg-blue-700 text-scrim-foreground",
+  warning: "bg-yellow-700 text-scrim-foreground",
 }
 
 /**
@@ -337,7 +339,7 @@ function Toast({ toast, paused, onDismiss, dismissLabel, enterFrom }: ToastProps
       role={variant === "error" ? "alert" : "status"}
       data-e2e={toast.dataE2E}
       class={cn(
-        "space-y-4 rounded-lg px-6 py-4 text-white",
+        "space-y-4 rounded-lg px-6 py-4",
         enterClasses[enterFrom],
         variantClasses[variant],
       )}

@@ -155,13 +155,13 @@ describe("DropdownItem", () => {
 
     expect(html).toContain("text-red-600")
     expect(html).toContain("dark:text-red-400")
-    expect(html).not.toContain("text-gray-700")
+    expect(html).not.toContain("text-foreground")
   })
 
   it("leaves an item without danger in the default grey", () => {
     const html = render(<DropdownItem onClick={() => {}}>Edit</DropdownItem>)
 
-    expect(html).toContain("text-gray-700")
+    expect(html).toContain("text-foreground")
     expect(html).not.toContain("text-red-600")
   })
 
@@ -169,7 +169,7 @@ describe("DropdownItem", () => {
     const html = render(<DropdownItem class="text-red-600">Delete</DropdownItem>)
 
     expect(html).toContain("text-red-600")
-    expect(html).not.toContain("text-gray-700")
+    expect(html).not.toContain("text-foreground")
     expect(html).toContain("px-4 py-2")
   })
 })

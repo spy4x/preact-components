@@ -417,7 +417,7 @@ export function Modal(
       aria-describedby={ariaDescribedBy}
       {...labelAttributes}
       class={cn(
-        "m-auto w-full max-w-md rounded-lg border border-gray-200 bg-white p-0 text-gray-900 shadow-xl backdrop:bg-black/50 backdrop:backdrop-blur-xs open:flex open:flex-col dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100",
+        "m-auto w-full max-w-md rounded-lg border border-subtle bg-surface p-0 text-foreground shadow-popover backdrop:bg-scrim backdrop:backdrop-blur-xs open:flex open:flex-col",
         tone === "danger" ? "border-red-300 dark:border-red-800" : "",
         className,
       )}
@@ -425,7 +425,7 @@ export function Modal(
     >
       {title
         ? (
-          <header class="flex items-start justify-between gap-4 border-b border-gray-200 px-6 py-4 dark:border-gray-700">
+          <header class="flex items-start justify-between gap-4 border-b border-subtle px-6 py-4">
             <h2 id={headingId} class="text-lg font-semibold">{title}</h2>
             {cancelLabel
               ? (
@@ -446,7 +446,7 @@ export function Modal(
       <div class="px-6 py-4">{children}</div>
       {footer
         ? (
-          <footer class="flex justify-end gap-3 border-t border-gray-200 px-6 py-4 dark:border-gray-700">
+          <footer class="flex justify-end gap-3 border-t border-subtle px-6 py-4">
             {footer}
           </footer>
         )

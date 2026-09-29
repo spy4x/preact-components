@@ -90,7 +90,7 @@ describe("ToggleField", () => {
     expect(describedIds(html)).toEqual([["archive-hint"]])
     expect(idsIn(html)).toContain("archive-hint")
     expect(html).toContain("Hidden from the active list")
-    expect(html).toContain("text-gray-500")
+    expect(html).toContain("text-muted")
   })
 
   it("renders no description paragraph and no wiring when description is absent", () => {

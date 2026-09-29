@@ -59,13 +59,14 @@ export function toggleChipSelection(
 }
 
 const chip =
-  "normal-case cursor-pointer transition-colors focus-visible:ring-2 focus-visible:ring-accent-900 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
+  "normal-case cursor-pointer transition-colors focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
 
 /**
  * The unpressed chip's own additions to `Badge`'s grey outline, which has no dark colours. Under
- * `.dark`, gray-300 text measures 12.06:1 on the gray-900 canvas and 7.00:1 on the gray-700 hover.
+ * `.dark`, `text-muted` measures 6.82:1 on the gray-900 canvas, and the hover swaps to `text-foreground`
+ * because muted reads 4.1:1 on the gray-700 hover.
  */
-const unpressed = "hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+const unpressed = "hover:bg-hover hover:text-foreground"
 
 /**
  * A group of pressable chips for filtering a list — the clickable counterpart of `Badge`, which

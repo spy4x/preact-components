@@ -93,14 +93,14 @@ export function ShortcutsDialog(
         {groups.map((group) => (
           <section key={group.title} class="flex flex-col gap-2">
             {groups.length > 1 && (
-              <h3 class="text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">
+              <h3 class="text-xs font-semibold text-muted uppercase">
                 {group.title}
               </h3>
             )}
             <dl class="flex flex-col gap-2">
               {group.shortcuts.map((shortcut, index) => (
                 <div key={index} class="flex items-center justify-between gap-4">
-                  <dt class="text-sm text-gray-700 dark:text-gray-300">{shortcut.description}</dt>
+                  <dt class="text-sm text-foreground">{shortcut.description}</dt>
                   <dd>
                     <Kbd keys={shortcut.keys} apple={apple} labels={kbdLabels} />
                   </dd>

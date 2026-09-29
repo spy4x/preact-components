@@ -36,7 +36,7 @@ export interface TooltipProps {
 }
 
 const triggerBase =
-  "relative inline-flex cursor-help rounded-sm group focus-visible:ring-2 focus-visible:ring-accent-900 focus-visible:ring-offset-2 focus-visible:outline-hidden"
+  "relative inline-flex cursor-help rounded-sm group focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:outline-hidden"
 
 /**
  * The anchored surface: where the hint sits, when it is revealed, and the bridge that reaches it.
@@ -63,7 +63,7 @@ const surfaceBase =
  * the hint would vanish on the way to it, which is no better than not being hoverable at all.
  */
 const bubbleBase =
-  "block rounded-md bg-gray-900 px-2 py-1 text-xs text-white shadow-md dark:bg-gray-700"
+  "block rounded-md bg-foreground px-2 py-1 text-xs text-canvas shadow-raised dark:bg-hover dark:text-foreground"
 
 /**
  * Where the surface sits, and which of its sides carries the bridge back to the trigger.

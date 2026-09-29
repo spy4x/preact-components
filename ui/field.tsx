@@ -103,7 +103,7 @@ export interface FieldProps {
 }
 
 const errorText = "mt-2 text-sm text-red-700 dark:text-red-300"
-const hintText = "mt-2 text-sm text-gray-500 dark:text-gray-400"
+const hintText = "mt-2 text-sm text-muted"
 
 /**
  * Label, control and messages of one field row — the id/`for` wiring every consumer hand-rolls.

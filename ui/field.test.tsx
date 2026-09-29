@@ -187,7 +187,7 @@ describe("Field", () => {
 
     expect(html).toContain('id="email-hint"')
     expect(html).toContain("Work address only")
-    expect(html).toContain("text-gray-500")
+    expect(html).toContain("text-muted")
   })
 
   it("marks a required field on the label and leaves required native to the control", () => {

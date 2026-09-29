@@ -51,6 +51,39 @@ describe("COMPONENT_CLASSES", () => {
   })
 })
 
+describe("colour classes in ui/", () => {
+  it("compile to CSS for every token class the ui sources write", async () => {
+    const utilities = new Set<string>()
+    const preset = await Deno.readTextFile(new URL("./preset.css", import.meta.url))
+    for (const match of preset.matchAll(/^@utility ([a-z-]+) \{/gm)) utilities.add(match[1])
+    const tokens = new Set<string>()
+    const tokenCss = await Deno.readTextFile(new URL("./tokens.css", import.meta.url))
+    for (const match of tokenCss.matchAll(/--color-([a-z0-9-]+):/g)) tokens.add(match[1])
+
+    const written = new Set<string>()
+    const directory = new URL("../ui/", import.meta.url)
+    for await (const entry of Deno.readDir(directory)) {
+      if (!entry.name.endsWith(".tsx") || entry.name.endsWith(".test.tsx")) continue
+      const source = await Deno.readTextFile(new URL(entry.name, directory))
+      for (
+        const match of source.matchAll(
+          /(?<![\w-])((?:[a-z0-9-]+:)*)(bg|text|border|ring|divide|decoration)-([a-z]+(?:-[a-z]+)*)(?![\w(-])/g,
+        )
+      ) {
+        const [word, , prefix, value] = match
+        if (utilities.has(`${prefix}-${value}`) || tokens.has(value)) written.add(word)
+      }
+    }
+    expect(written.size).toBeGreaterThan(50)
+
+    const css = await build(APP_ENTRY, [...written])
+    const silent = [...written].filter((word) => !css.includes(`.${word.replaceAll(":", "\\:")}`))
+    // A class that generates nothing is dropped from COMPONENT_CLASSES without a word, and the
+    // component then draws no colour at all (`ring-scrim-foreground` did).
+    expect(silent).toEqual([])
+  })
+})
+
 describe("keepClasses", () => {
   it("keeps the words that compile to CSS, including the preset's utilities, and drops the rest", async () => {
     expect(await keepClasses(["sr-only", "useState", "btn", "sr-only", "the"])).toEqual([

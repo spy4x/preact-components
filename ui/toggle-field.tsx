@@ -75,7 +75,7 @@ const labelText = "label items-center gap-3"
 // The message classes are `Field`'s, character for character: a description on a switch row must not
 // look different from a hint on an input row.
 const errorText = "mt-2 text-sm text-red-700 dark:text-red-300"
-const hintText = "mt-2 text-sm text-gray-500 dark:text-gray-400"
+const hintText = "mt-2 text-sm text-muted"
 
 /**
  * Render one switch row.

@@ -48,7 +48,12 @@ const toneClasses: Record<ProgressTone, string> = {
   danger: "bg-danger",
 }
 
-const track = "h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700"
+/**
+ * `bg-track` is gray-200 in light and gray-600 in dark, where the purple-400 fill reads 2.71:1
+ * against it (the browser check wants 3:1). The bar's dark track was gray-700, which is
+ * `bg-hover`, so it keeps that.
+ */
+const track = "h-2 w-full overflow-hidden rounded-full bg-track dark:bg-hover"
 const fill = "h-full rounded-full transition-[width] duration-300 ease-out"
 
 /**

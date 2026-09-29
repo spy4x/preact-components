@@ -186,7 +186,7 @@ describe("Modal", () => {
     const html = render(<Modal open title="Delete" />)
 
     expect(html).toContain("m-auto")
-    expect(html).toContain("backdrop:bg-black/50")
+    expect(html).toContain("backdrop:bg-scrim")
   })
 
   it("takes the uncancellable platform close out of the picture", () => {

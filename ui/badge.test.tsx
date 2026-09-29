@@ -7,8 +7,8 @@ describe("Badge", () => {
   it("fills with the purple palette by default", () => {
     const html = render(<Badge text="paid" />)
 
-    expect(html).toContain("bg-accent-900")
-    expect(html).toContain("text-accent-50")
+    expect(html).toMatch(/[" ]bg-selected[" ]/)
+    expect(html).toContain("text-selected-foreground")
     expect(html).toContain("paid")
   })
 
@@ -27,11 +27,19 @@ describe("Badge", () => {
     expect(html).toContain("text-green-50")
   })
 
+  it("draws the filled gray badge in the foreground colour, which the dark track needs", () => {
+    const html = render(<Badge text="draft" color="gray" />)
+
+    expect(html).toContain("bg-track")
+    expect(html).toContain("text-foreground")
+    expect(html).not.toContain("text-muted")
+  })
+
   it("keeps the caller's class alongside the palette", () => {
     const html = render(<Badge text="vip" class="uppercase tracking-wide" />)
 
     expect(html).toContain("uppercase tracking-wide")
-    expect(html).toContain("bg-accent-900")
+    expect(html).toMatch(/[" ]bg-selected[" ]/)
   })
 
   it("lets the caller's class win over a conflicting default", () => {

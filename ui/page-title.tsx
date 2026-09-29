@@ -13,7 +13,7 @@ export interface PageTitleProps {
 }
 
 const defaultClasses =
-  "flex items-center gap-3 leading-none text-2xl font-bold text-gray-900 sm:text-3xl dark:text-gray-100"
+  "flex items-center gap-3 leading-none text-2xl font-bold text-foreground sm:text-3xl"
 
 /**
  * Page heading with the library's `h1` typography inlined.

@@ -160,17 +160,17 @@ export interface LightboxProps {
 }
 
 const dialogClass =
-  "fixed inset-0 m-0 h-full max-h-none w-full max-w-none bg-black/95 p-0 backdrop:bg-black/80"
+  "fixed inset-0 m-0 h-full max-h-none w-full max-w-none bg-scrim-strong p-0 backdrop:bg-scrim-strong"
 const controlClass =
-  "absolute z-10 cursor-pointer rounded-full bg-black/50 p-2 text-white/70 transition-colors hover:text-white focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-white"
+  "absolute z-10 cursor-pointer rounded-full bg-scrim p-2 text-on-scrim-muted transition-colors hover:text-scrim-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-(--color-scrim-foreground)"
 // Positioned rather than stretched, exactly like `ZoomableImages`'s own image: a child
 // that fills the dialog is a backdrop no click can ever land on.
 const imageClass =
   "absolute top-1/2 left-1/2 max-h-[90vh] max-w-[90vw] -translate-x-1/2 -translate-y-1/2 object-contain"
 const captionClass =
-  "pointer-events-none absolute inset-x-0 bottom-4 mx-auto max-w-[90vw] text-center text-sm text-white/80"
+  "pointer-events-none absolute inset-x-0 bottom-4 mx-auto max-w-[90vw] text-center text-sm text-on-scrim-muted"
 const counterClass =
-  "pointer-events-none absolute inset-x-0 top-4 mx-auto w-fit rounded-full bg-black/50 px-3 py-1 text-xs text-white/80"
+  "pointer-events-none absolute inset-x-0 top-4 mx-auto w-fit rounded-full bg-scrim px-3 py-1 text-xs text-on-scrim-muted"
 
 /** What the mount-time keydown listener reads at press time, kept current every render. */
 interface LatestState {

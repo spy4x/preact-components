@@ -117,7 +117,7 @@ export function groupLabel(label: string | null | undefined, total: number): str
 }
 
 const base =
-  "relative inline-flex shrink-0 select-none items-center justify-center overflow-hidden rounded-full bg-gray-100 font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-200"
+  "relative inline-flex shrink-0 select-none items-center justify-center overflow-hidden rounded-full bg-hover font-medium text-foreground"
 
 const boxClasses: Record<AvatarSize, string> = {
   xs: "size-6",
@@ -141,7 +141,7 @@ const glyphClasses: Record<AvatarSize, string> = {
 }
 
 /** The ring a stacked avatar draws, so two overlapping faces do not read as one. */
-const stackRing = "ring-2 ring-white dark:ring-gray-800"
+const stackRing = "ring-2 ring-surface"
 
 export interface AvatarProps {
   /** Full name. Supplies the initials, and the accessible name when `alt` is not given. */

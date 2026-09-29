@@ -230,8 +230,8 @@ function alignClass(align: DataTableColumnAlign = "left"): string {
 }
 
 const sortButtonClasses = "inline-flex w-full items-center gap-1 rounded " +
-  "focus-visible:ring-2 focus-visible:ring-accent-900 focus-visible:ring-offset-2 " +
-  "focus-visible:outline-hidden hover:text-accent-900 dark:hover:text-accent-400"
+  "focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 " +
+  "focus-visible:outline-hidden hover:text-selected"
 
 /**
  * The `aria-sort` value for a column, or `undefined` for a column not currently part of `sort` —
@@ -255,7 +255,7 @@ function SortGlyph({ direction }: { direction: SortDirection | undefined }) {
   return (
     <svg
       aria-hidden="true"
-      class={cn("size-3.5 shrink-0", direction === undefined && "text-gray-400 dark:text-gray-500")}
+      class={cn("size-3.5 shrink-0", direction === undefined && "text-placeholder")}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"

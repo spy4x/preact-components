@@ -137,7 +137,7 @@ export function ConfirmDialog(
     >
       <div id={questionId}>
         {children ?? (
-          <p class="text-sm text-gray-600 dark:text-gray-300">
+          <p class="text-sm text-muted">
             {message}
           </p>
         )}

@@ -218,7 +218,7 @@ export function Pagination(
         {pageRange(current, pageCount).map((item, index) =>
           !("page" in item)
             ? (
-              <li key={`gap-${index}`} aria-hidden="true" class="px-1 text-gray-500">
+              <li key={`gap-${index}`} aria-hidden="true" class="px-1 text-muted">
                 …
               </li>
             )
@@ -229,6 +229,7 @@ export function Pagination(
                   size="sm"
                   aria-current={item.page === current ? "page" : undefined}
                   aria-label={pageLabel(item.page)}
+                  class={item.page === current ? "font-semibold" : undefined}
                   onClick={() => onChange(item.page)}
                 >
                   {item.page}

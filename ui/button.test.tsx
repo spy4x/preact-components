@@ -14,7 +14,7 @@ describe("Button", () => {
 
   it("swaps the palette per variant", () => {
     expect(render(<Button variant="outline">Cancel</Button>)).toContain(
-      "border-gray-300",
+      "border-control",
     )
     expect(render(<Button variant="danger">Delete</Button>)).toContain("bg-danger-fill")
     expect(render(<Button variant="ghost">More</Button>)).toContain("bg-transparent")

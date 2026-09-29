@@ -7,8 +7,8 @@ export interface LoadingSkeletonProps {
   class?: string
 }
 
-const card = "rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
-const bar = "animate-pulse rounded bg-gray-200 dark:bg-gray-700"
+const card = "rounded-lg border border-subtle bg-surface p-4"
+const bar = "animate-pulse rounded bg-track"
 
 /**
  * Placeholder layout shown while a result loads.
@@ -20,7 +20,7 @@ export function LoadingSkeleton({ rows = 3, class: className }: LoadingSkeletonP
   return (
     <div class={cn("space-y-3", className)} aria-hidden="true">
       <div class={cn(card, "flex items-center gap-4")}>
-        <div class="inline-flex size-10 items-center justify-center rounded-xl border border-accent-200 bg-accent-50 text-accent-700 dark:border-accent-800 dark:bg-accent-950 dark:text-accent-300">
+        <div class="inline-flex size-10 items-center justify-center rounded-xl border border-subtle bg-selected-soft text-selected">
           <svg
             class="size-5 animate-pulse"
             viewBox="0 0 24 24"

@@ -5980,7 +5980,7 @@ async function highlightChecks(devtools: Devtools): Promise<void> {
  *
  * The paint is asserted as well as the state, which it could not be until the browser was told it
  * has a mouse: Tailwind gates `hover:` styles behind `@media (hover: hover)`, so the row's
- * `hover:bg-gray-50` used to be compiled and never matched, and both rows read the same
+ * `hover:bg-hover` used to be compiled and never matched, and both rows read the same
  * transparent background. Now the row under the pointer has to be painted differently from the row
  * beside it, and both backgrounds still go into the message so the difference is visible rather
  * than implied.
@@ -6016,6 +6016,18 @@ async function pointerHighlightCheck(devtools: Devtools, walkedTo: number): Prom
     }
   })()`)
 
+  const weights = await devtools.evaluate<{ active: string; plain: string }>(`(() => {
+    const weight = (index) =>
+      getComputedStyle(document.getElementById("guide-combobox-offset-option-" + index)).fontWeight
+    return { active: weight(0), plain: weight(3) }
+  })()`)
+  check(
+    "the highlighted Combobox row is heavier than a plain row, so a hover cannot pass for it",
+    Number(weights.active) > Number(weights.plain),
+    `the highlighted row has weight ${weights.active} and a plain row ${weights.plain}: both fill ` +
+      `with the same hover colour, so weight is the only mark that tells them apart`,
+  )
+
   check(
     "the pointer paints a Combobox row without moving the highlight a screen reader follows",
     before.active === "guide-combobox-offset-option-0" && aim.onTarget &&
@@ -6040,11 +6052,11 @@ async function pointerHighlightCheck(devtools: Devtools, walkedTo: number): Prom
         `pointer at all`
       : painted.hoveredBackground === painted.plainBackground
       ? `the row under the pointer is painted exactly like the row beside it ` +
-        `(${painted.hoveredBackground}), so \`hover:bg-gray-50\` reached nothing — a browser ` +
+        `(${painted.hoveredBackground}), so \`hover:bg-hover\` reached nothing — a browser ` +
         `answering (hover: none) gates every hover utility out, which is the first thing to check`
       : `the pointer landed on ${landing.tag} at (${landing.x}, ${landing.y}) and the browser put ` +
         `that row, and only that row, into :hover, while aria-activedescendant stayed on ` +
-        `${after.active}. The paint is Tailwind's \`hover:bg-gray-50\`: the row under the pointer ` +
+        `${after.active}. The paint is Tailwind's \`hover:bg-hover\`: the row under the pointer ` +
         `reads ${painted.hoveredBackground} against ${painted.plainBackground} on the row beside ` +
         `it`,
   )
@@ -11649,7 +11661,7 @@ async function fileInputDropCheck(devtools: Devtools, fixture: FileInputFixture)
   })
   const markedWhileDragging = await devtools.evaluate<boolean>(
     `(document.querySelector('${FILE_INPUT_ZONE_SELECTOR}')?.className ?? "")
-      .includes("border-blue-500")`,
+      .includes("border-info")`,
   )
   check("the drop zone marks itself while a drag is over it", markedWhileDragging)
 
@@ -11671,7 +11683,7 @@ async function fileInputDropCheck(devtools: Devtools, fixture: FileInputFixture)
   )
 
   const markCleared = await devtools.evaluate<boolean>(
-    `!(document.querySelector('${FILE_INPUT_ZONE_SELECTOR}')?.className ?? "").includes("border-blue-500")`,
+    `!(document.querySelector('${FILE_INPUT_ZONE_SELECTOR}')?.className ?? "").includes("border-info")`,
   )
   check("the drop zone's dragging mark clears once the drop lands", markCleared)
 }
