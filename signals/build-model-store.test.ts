@@ -2902,3 +2902,128 @@ describe("buildModelStore freshness over every timestamp combination", () => {
     }
   })
 })
+
+describe("buildModelStore messages", () => {
+  const german = {
+    created: (m: string) => `${m} erstellt`,
+    updated: (m: string) => `${m} aktualisiert`,
+    deleted: (m: string) => `${m} gelöscht`,
+    restored: (m: string) => `${m} wiederhergestellt`,
+    createFailed: (m: string) => `${m}: Erstellen fehlgeschlagen`,
+    updateFailed: (m: string) => `${m}: Aktualisieren fehlgeschlagen`,
+    deleteFailed: (m: string) => `${m}: Löschen fehlgeschlagen`,
+    restoreFailed: (m: string) => `${m}: Wiederherstellen fehlgeschlagen`,
+    malformedUpdate: (m: string, issue: string | undefined) => `${m} kaputt: ${issue}`,
+    malformedResponse: (m: string, detail: string) => `${m} Antwort kaputt: ${detail}`,
+  }
+
+  function translated(fetchImpl: typeof fetch, toast: ReturnType<typeof toastRecorder>["port"]) {
+    return buildModelStore({
+      model: "Zone",
+      endpoint: "/api/zones",
+      schemas: { full: rowSchema, create: createSchema, update: updateSchema },
+      fetch: fetchImpl,
+      toast,
+      messages: german,
+    })
+  }
+
+  const failure = (message: string) => Response.json({ error: message }, { status: 409 })
+
+  it("shows the supplied wording for every success toast", async () => {
+    const { impl } = queueFetch(
+      Response.json(row(1, "a")),
+      Response.json(row(1, "b")),
+      Response.json(row(1, "b", new Date("2024-02-01T00:00:00.000Z"))),
+      Response.json(row(1, "b")),
+    )
+    const toast = toastRecorder()
+    const store = translated(impl, toast.port)
+
+    await store.create({ name: "a" })
+    await store.update(1, { name: "b" })
+    await store.delete(1)
+    await store.undelete(1)
+
+    expect(toast.messages).toEqual([
+      { body: "Zone erstellt" },
+      { body: "Zone aktualisiert" },
+      { body: "Zone gelöscht" },
+      { body: "Zone wiederhergestellt" },
+    ])
+  })
+
+  it("shows the supplied title on every error toast", async () => {
+    const { impl } = queueFetch(
+      failure("a"),
+      Response.json(row(1, "a")),
+      failure("b"),
+      failure("c"),
+      failure("d"),
+    )
+    const toast = toastRecorder()
+    const store = translated(impl, toast.port)
+
+    await store.create({ name: "x" })
+    await store.create({ name: "y" })
+    await store.update(1, { name: "z" })
+    await store.delete(1)
+    await store.undelete(1)
+
+    expect(toast.messages.filter((m) => m.title).map((m) => m.title)).toEqual([
+      "Zone: Erstellen fehlgeschlagen",
+      "Zone: Aktualisieren fehlgeschlagen",
+      "Zone: Löschen fehlgeschlagen",
+      "Zone: Wiederherstellen fehlgeschlagen",
+    ])
+  })
+
+  it("keeps the English default for an outcome it is not given", async () => {
+    const { impl } = queueFetch(Response.json(row(1, "a")))
+    const toast = toastRecorder()
+    const store = buildModelStore({
+      model: "zone",
+      endpoint: "/api/zones",
+      schemas: { full: rowSchema, create: createSchema, update: updateSchema },
+      fetch: impl,
+      toast: toast.port,
+      messages: { deleted: () => "weg" },
+    })
+
+    await store.create({ name: "a" })
+
+    expect(toast.messages).toEqual([{ body: "zone was created" }])
+  })
+
+  it("shows the supplied wording when a remote row fails its schema", async () => {
+    const { impl } = queueFetch()
+    const toast = toastRecorder()
+    const store = translated(impl, toast.port)
+
+    await store.onWs([{ id: "three", name: "Broken" }], RemoteEvent.CREATED)
+
+    expect(toast.messages[0].body).toMatch(/^Zone kaputt: (?!undefined)\w+/)
+  })
+
+  it("shows the supplied wording when a create is answered with a row that fails its schema", async () => {
+    const { impl } = queueFetch(Response.json({ id: "three" }, { status: 201 }))
+    const toast = toastRecorder()
+    const store = translated(impl, toast.port)
+
+    await store.create({ name: "a" })
+
+    expect(toast.messages[0].body).toMatch(/^Zone Antwort kaputt: \w+/)
+    expect(toast.messages[0].title).toBe("Zone: Erstellen fehlgeschlagen")
+  })
+
+  it("shows the supplied wording when a create is answered with a body that is not JSON", async () => {
+    const { impl } = queueFetch(new Response("not json", { status: 201 }))
+    const toast = toastRecorder()
+    const store = translated(impl, toast.port)
+
+    await store.create({ name: "a" })
+
+    expect(toast.messages[0].body).toMatch(/^Zone Antwort kaputt: /)
+    expect(toast.messages[0].title).toBe("Zone: Erstellen fehlgeschlagen")
+  })
+})
