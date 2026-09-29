@@ -136,6 +136,18 @@ from the tabs whose panel it omitted. Ids are derived from each `TabItem.id` (`$
 and Home/End jump to the ends; Up/Down stay with the page. The decision table is the exported
 `nextTabIndex`.
 
+An app's first load needs no component of its own. `LoadingSpinner` already centres itself in a
+flex column, so giving it the window's height and the page's colour makes it the whole screen:
+
+```tsx
+if (!app.ready.value) {
+  return <LoadingSpinner size="lg" label="Loading your workspace…" class="min-h-dvh bg-canvas" />
+}
+```
+
+`min-h-dvh` follows a phone's collapsing address bar, and the spinner sits in the normal flow, so
+a toast or dialog raised during the load stays on top of it.
+
 `Toastr` auto-dismisses each toast after `toast.duration` milliseconds (default
 `defaultToastDuration`, which is 5000; `0` keeps it until dismissed) and reports it through
 `onDismiss` — the caller owns the stack. `createToastStore` in `@spy4x/preact-signals` writes
@@ -1328,7 +1340,8 @@ colour per status), `ConfidenceMeter` (`Progress`), `FactCard` (`Card` around a 
 `NewsletterForm` and `ContactForm` (`EnhancedForm` with `Field`, `Input` and `Button`),
 `SkeletonText`, `SkeletonTable`, `SkeletonCards` and `SkeletonStatus` (`LoadingSkeleton`),
 `LoadingScreen` (`LoadingSpinner` with its `label`, centred), and vertical `Tabs`. `MarginNote` went
-because only one site's articles used it.
+because only one site's articles used it. #420 asked for `LoadingScreen` back for an app's first load; that
+need is met by the `LoadingSpinner` recipe above rather than by a second name for it.
 
 `InstallBox`, `CopyableText` and `CopyableTextBody` became one component, `CopyBlock`, in #353: each
 was a box of text with a `CopyButton` beside it. `CopyBlock` never clips its text: it wraps inside

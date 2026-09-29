@@ -505,8 +505,24 @@ export const feedbackDemos = {
         description: "The spinner's size.",
       },
     ],
-    snippet: `<LoadingSpinner size="lg" label="Loading transactions…" />`,
-    render: () => <SpinnerDemo />,
+    snippet: `<LoadingSpinner size="lg" label="Loading transactions…" />
+
+// An app's first load: the whole screen
+<LoadingSpinner size="lg" label="Loading your workspace…" class="min-h-dvh bg-canvas" />`,
+    render: () => (
+      <Stack>
+        <SpinnerDemo />
+        <LoadingSpinner
+          size="lg"
+          label="Loading your workspace…"
+          class="h-64 rounded-lg border border-subtle bg-canvas"
+        />
+        <DemoNote>
+          The full-page recipe, held to a fixed height here; in an app, min-h-dvh makes it the whole
+          window.
+        </DemoNote>
+      </Stack>
+    ),
   },
   LoadingSkeleton: {
     summary: "Grey placeholder cards that hold a page's shape while its content loads.",
