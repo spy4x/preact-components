@@ -5900,7 +5900,7 @@ async function shellCollapseChecks(devtools: Devtools): Promise<void> {
       const restored = await poll(async () => {
         const hydrated = await read(
           devtools,
-          `${doc}?.documentElement.dataset.hydrated === "true"`,
+          `${doc}?.documentElement?.dataset.hydrated === "true"`,
           false,
         )
         if (!hydrated) return false
