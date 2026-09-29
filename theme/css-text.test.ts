@@ -95,7 +95,7 @@ const UNCHANGED_ROOT_TOKENS: Record<string, string> = {
   // scrim, the soft tints, the card radius, the shadows). The Button's primary and danger variants
   // read the accent-foreground and danger-fill ones, and their defaults draw the colours the
   // Button drew before (white on red-600, its hover red-700, a white label on the purple accent).
-  "--color-accent-foreground": `var(--color-primary-foreground)`,
+  "--color-accent-foreground": `oklch(1 0 0)`, // the fallback where the luminance probe cannot run
   "--color-selected": `var(--color-accent-900)`,
   "--color-selected-foreground": `var(--color-accent-foreground)`,
   "--color-selected-soft": `var(--color-accent-50)`,
