@@ -128,7 +128,7 @@ const enterClasses: Record<"left" | "right", string> = {
 }
 
 const variantClasses: Record<ToastVariant, string> = {
-  success: "bg-success text-scrim-foreground",
+  success: "bg-success text-(--color-success-foreground)",
   error: "bg-danger-fill text-danger-fill-foreground",
   // Info and warning keep fixed fills: their token pairs are lighter than these (warning's
   // orange-600 with orange-50 is 3.38:1, against 4.92:1 here), and a dark info fill would flip.
