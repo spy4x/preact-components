@@ -75,7 +75,7 @@ mkdir ui
 cat > ui/deno.json <<'EOF'
 {
   "name": "@spy4x/preact-ui",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "exports": {
     ".": "./mod.ts"
   }
@@ -195,7 +195,8 @@ keeps outside the repository, and it is run before every release tag is pushed.
 
 Every package is published at the same version, every time, together (owner decision,
 2026-09-25, #230): sibling imports publish as caret ranges, and one version for all is what keeps
-`^0.1.N` resolving to the set published with it. [`docs/publishing.md`](./docs/publishing.md) has
+`^1.N.M` resolving to the set published with it. Since 1.0.0 the version follows semantic
+versioning: a change that can break an app bumps the major number. [`docs/publishing.md`](./docs/publishing.md) has
 the release steps.
 
 **Development is rapid: new versions are merged, deployed and published every few hours** (owner

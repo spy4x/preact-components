@@ -69,7 +69,7 @@ has the details.
   no component carries an outer margin: [spacing](docs/spacing.md).
 
 **Use it if** you build Preact apps styled with Tailwind and want components whose markup you can
-read and change. **Skip it if** you use React, or need a stable 1.0 API: this is pre-1.0.
+read and change. **Skip it if** you use React.
 
 ## Quick start
 

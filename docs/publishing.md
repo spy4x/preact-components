@@ -7,16 +7,23 @@ The owner decided this on 2026-09-25
 ## Why one version for every package
 
 `deno publish` writes a sibling import as a caret range: `system` imports `@spy4x/preact-cn`,
-and the published `system` asks for `jsr:@spy4x/preact-cn@^0.1.0`. A caret below 1.0 accepts
-every later `0.1.x`. If the packages were published at different versions, a consumer's lockfile
+and the published `system` asks for `jsr:@spy4x/preact-cn@^1.0.0`. A caret accepts every later
+`1.x`. If the packages were published at different versions, a consumer's lockfile
 could combine a `ui` with a `cn` that nobody tested together.
 
-Publishing every package at one version, every time, removes that gap: `^0.1.N` always resolves to
+Publishing every package at one version, every time, removes that gap: `^1.N.M` always resolves to
 the set published with it. The rule is a publishing discipline, not something a check enforces, so
 the steps below are the whole mechanism.
 
 A JSR version cannot be changed or deleted after it is published. Anything wrong in a published
 file stays wrong in that version for good.
+
+## Which number to bump
+
+Since 1.0.0 (owner decision, 2026-09-30) the version follows semantic versioning: a change that can
+break an app that uses the packages — a removed or renamed export, a prop or type that no longer
+accepts what it did, a changed default — bumps the major number; a new export or prop bumps the
+minor; a fix alone bumps the patch. The whole set takes the largest bump any of its packages needs.
 
 ## Steps
 
@@ -53,7 +60,7 @@ file stays wrong in that version for good.
    the `JSR_TOKEN` secret, which publishes every named workspace member at once:
 
    ```bash
-   git tag v0.1.0 && git push origin v0.1.0
+   git tag v1.0.0 && git push origin v1.0.0
    ```
 
 If a step before the tag fails, fix the cause in a pull request and start again from
