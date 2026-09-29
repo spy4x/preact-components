@@ -70,7 +70,7 @@ export const STATUS_WRAPPER_CLASS: Record<MapMarkerStatus, string> = {
  * dot with no size/shape utilities of its own would be a zero-by-zero box.
  */
 export const MARKER_DOT_CLASSES =
-  "map-marker block size-4 rounded-full border-2 border-white shadow-sm"
+  "map-marker block size-4 rounded-full border-2 border-surface shadow-raised"
 
 /** A live Leaflet map this module created, and the operations `map.tsx`'s effects need on it. */
 export interface LeafletMapHandle {

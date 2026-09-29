@@ -28,7 +28,7 @@ export interface MarkerListProps {
 function MarkerListItem({ marker }: { marker: MapMarker }): JSX.Element {
   const status = marker.status ?? "unknown"
   return (
-    <li class="flex items-center gap-2 px-2 py-1 text-sm text-gray-700 dark:text-gray-200">
+    <li class="flex items-center gap-2 px-2 py-1 text-sm text-foreground">
       <span class={cn(STATUS_WRAPPER_CLASS[status], "inline-flex shrink-0")}>
         <span class={MARKER_DOT_CLASSES} aria-hidden="true" />
       </span>
@@ -43,7 +43,7 @@ export function MarkerList(
 ): JSX.Element {
   return (
     <div class={cn("space-y-2", className)} data-e2e="map-marker-list">
-      <h3 class="text-sm font-medium text-gray-900 dark:text-gray-100">{label}</h3>
+      <h3 class="text-sm font-medium text-foreground">{label}</h3>
       <ul class="space-y-1">
         {markers.map((marker) => <MarkerListItem key={marker.id} marker={marker} />)}
       </ul>

@@ -165,7 +165,7 @@ export function mountArgsFrom(
 const DEFAULT_SIZE = "h-80 w-full"
 
 const BOX_BASE =
-  "relative overflow-hidden rounded-primary border border-subtle bg-gray-100 dark:bg-gray-800"
+  "relative overflow-hidden rounded-primary border border-subtle bg-canvas dark:bg-surface"
 
 /** See this file's own doc. */
 export function Map(
@@ -255,7 +255,7 @@ export function Map(
       <div class={cn(BOX_BASE, DEFAULT_SIZE, className)} data-e2e="map-box">
         <div ref={containerRef} class="absolute inset-0" role="group" aria-label={label} />
         <p
-          class="absolute right-0 bottom-0 z-[1000] rounded-tl bg-white/80 px-1 py-px text-xs text-gray-700 dark:bg-gray-900/80 dark:text-gray-300"
+          class="absolute right-0 bottom-0 z-[1000] rounded-tl bg-surface-overlay px-1 py-px text-xs text-muted"
           data-e2e="map-attribution"
         >
           {attribution}
