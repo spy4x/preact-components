@@ -82,7 +82,7 @@ export interface IconGalleryLabels {
 export const DEFAULT_ICON_GALLERY_LABELS: IconGalleryLabels = {
   title: "Icon gallery",
   summary:
-    "Each glyph is a component that draws in the text colour and takes a `class` for its size and colour; click one to copy its JSX.",
+    "Each glyph is a component that draws in the text colour and takes a `class` for its size and colour. It is hidden from screen readers unless it gets an `aria-label` or a `title`. Click one to copy its JSX.",
   search: "Search icons",
   status: (shown, total, copied) =>
     `${shown} of ${total} shown${copied ? ` · copied ${copied}` : ""}`,
@@ -93,7 +93,8 @@ export const DEFAULT_ICON_GALLERY_LABELS: IconGalleryLabels = {
 /** The code row of the gallery's card: how an app uses one glyph. */
 const GALLERY_SNIPPET = `import { IconSearch } from "@spy4x/preact-icons"
 
-<IconSearch class="size-5 text-gray-500" />`
+<IconSearch class="size-5 text-gray-500" />
+<IconSearch aria-label="Search" />`
 
 export interface IconGalleryProps {
   /**
