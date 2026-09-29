@@ -34,8 +34,6 @@ const SKIPPED = [
  */
 export const ALLOWED: readonly string[] = [
   "charts/kpi.tsx",
-  "crud/deletion-validation.tsx",
-  "crud/examples/regions.tsx",
   "map/leaflet-map.ts",
   "map/map.tsx",
   "map/marker-list.tsx",
@@ -117,7 +115,7 @@ async function sourceFiles(directory: string): Promise<string[]> {
  * this number on purpose; the number may only go down, and a lane that converts a file lowers it
  * with the list.
  */
-const ALLOWED_COUNT = 61
+const ALLOWED_COUNT = 59
 
 describe("fixed colour classes in component source", () => {
   it("has an allow-list that has not grown", () => {

@@ -65,7 +65,7 @@ export function DeletionValidation(
     <div
       ref={block}
       class={hasDependencies
-        ? "rounded-primary bg-white p-4 border border-red-600 text-red-600"
+        ? "rounded-primary bg-surface p-4 border border-red-600 text-red-600"
         : undefined}
       role="alert"
     >
