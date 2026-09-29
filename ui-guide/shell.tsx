@@ -815,7 +815,7 @@ function GuideNav(
                       class={cn(
                         "block rounded-md px-3 py-1 font-medium",
                         current
-                          ? "bg-purple-100 text-purple-900 dark:bg-purple-950 dark:text-purple-100"
+                          ? "bg-selected-soft font-semibold text-selected"
                           : "text-muted hover:bg-hover hover:text-foreground",
                       )}
                     >
@@ -874,7 +874,7 @@ function NavSection(
               ? "true"
               : undefined}
             onClick={(event) => follow(sectionHref, event)}
-            class="-ml-px block border-l border-transparent px-3 py-1 font-medium text-foreground hover:border-strong aria-[current]:border-purple-600 aria-[current]:text-purple-800 dark:aria-[current]:border-purple-400 dark:aria-[current]:text-purple-300"
+            class="-ml-px block border-l border-transparent px-3 py-1 font-medium text-foreground hover:border-strong aria-[current]:border-selected aria-[current]:font-semibold aria-[current]:text-selected"
           >
             {section.title}
           </a>
@@ -893,7 +893,7 @@ function NavSection(
                 class={cn(
                   "-ml-px block border-l px-3 py-1 [overflow-wrap:anywhere]",
                   current
-                    ? "border-purple-600 font-medium text-purple-800 dark:border-purple-400 dark:text-purple-300"
+                    ? "border-selected font-semibold text-selected"
                     : "border-transparent text-muted hover:border-strong hover:text-foreground",
                 )}
               >
@@ -938,7 +938,7 @@ function OnThisPage(
                 <a
                   href={routeHref(section.id)}
                   onClick={(event) => follow(routeHref(section.id), event)}
-                  class="block pb-1 font-medium text-foreground hover:text-purple-800 dark:hover:text-purple-300"
+                  class="block pb-1 font-medium text-foreground hover:text-selected"
                 >
                   {section.title}
                 </a>

@@ -473,7 +473,7 @@ export function Overview(
                 <a
                   href={href}
                   onClick={(event) => follow(href, event)}
-                  class="flex h-full flex-col gap-2 rounded-xl border border-subtle bg-surface p-4 shadow-xs transition-colors hover:border-purple-400 sm:p-6 dark:hover:border-purple-500"
+                  class="flex h-full flex-col gap-2 rounded-xl border border-subtle bg-surface p-4 shadow-xs transition-colors hover:border-selected sm:p-6"
                 >
                   <span class="flex flex-wrap items-baseline justify-between gap-2">
                     <span class="text-base font-semibold text-foreground">

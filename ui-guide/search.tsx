@@ -312,7 +312,7 @@ export function GuideSearch({ entries, labels, go }: GuideSearchProps): JSX.Elem
                 class={cn(
                   "flex cursor-pointer items-baseline justify-between gap-4 rounded-lg px-3 py-2",
                   index === active &&
-                    "bg-purple-50 text-purple-900 dark:bg-purple-950/60 dark:text-purple-100",
+                    "bg-selected-soft text-selected",
                 )}
               >
                 <span class="min-w-0">

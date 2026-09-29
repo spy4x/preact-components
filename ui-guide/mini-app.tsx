@@ -190,7 +190,7 @@ export function MiniApp(): JSX.Element {
               size="sm"
               aria-pressed={filter === entry}
               onClick={() => setFilter(entry)}
-              class="justify-between aria-pressed:bg-accent-50 aria-pressed:text-accent-900 dark:aria-pressed:bg-accent-900/40 dark:aria-pressed:text-accent-100"
+              class="justify-between aria-pressed:bg-selected-soft aria-pressed:text-selected"
             >
               <span>{entry === "all" ? "All projects" : STATUS[entry].label}</span>
               <span class="text-xs text-muted tabular-nums">
