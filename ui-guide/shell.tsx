@@ -953,7 +953,7 @@ function OnThisPage(
                       href={href}
                       aria-current={inView === name ? "location" : undefined}
                       onClick={(event) => follow(href, event)}
-                      class="-ml-px block border-l border-transparent py-1 pl-3 [overflow-wrap:anywhere] text-muted hover:text-foreground aria-[current]:border-purple-600 aria-[current]:font-medium aria-[current]:text-purple-800 dark:aria-[current]:border-purple-400 dark:aria-[current]:text-purple-300"
+                      class="-ml-px block border-l border-transparent py-1 pl-3 [overflow-wrap:anywhere] text-muted hover:text-foreground aria-[current]:border-selected aria-[current]:font-medium aria-[current]:text-selected"
                     >
                       {cardTitle(section, name)}
                     </a>

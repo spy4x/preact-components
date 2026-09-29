@@ -126,7 +126,6 @@ export function DemoCard(
       data-card-size={wide ? "wide" : wide === false ? "normal" : "auto"}
       class={cn(
         "flex min-w-0 scroll-mt-16 flex-col rounded-xl border border-subtle bg-surface shadow-sm",
-        "",
         // The deep-link mark the shell sets on the card a demo route names. The muted accent, not
         // the primary: in the dark palette the primary is near-black chrome no one can see.
         "data-[deep-link]:outline-2 data-[deep-link]:outline-offset-2",
@@ -167,7 +166,6 @@ export function DemoCard(
         data-card-part="demo"
         class={cn(
           "min-w-0 flex-1 border-y border-subtle bg-canvas p-4 sm:p-6",
-          "",
           // A dot grid, the quiet canvas a demo sits on. A background, not a border: the demo is
           // never boxed twice.
           "bg-[radial-gradient(var(--color-border-subtle)_1px,transparent_1px)] bg-size-[16px_16px]",

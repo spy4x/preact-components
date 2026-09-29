@@ -228,7 +228,6 @@ export function GuideSearch({ entries, labels, go }: GuideSearchProps): JSX.Elem
           // with its placeholder and shortcut from `sm`.
           "flex h-9 items-center gap-2 rounded-lg border border-transparent px-2 text-sm text-muted hover:text-foreground",
           "sm:w-56 sm:border-subtle sm:bg-surface sm:px-3 sm:text-muted sm:hover:border-control lg:w-72",
-          "",
         )}
       >
         <IconSearch class="size-5 shrink-0 sm:size-4" />
@@ -249,7 +248,6 @@ export function GuideSearch({ entries, labels, go }: GuideSearchProps): JSX.Elem
         class={cn(
           "mx-auto mt-16 w-[min(36rem,calc(100vw-2rem))] max-w-none rounded-xl border border-subtle bg-surface p-0 text-foreground shadow-2xl",
           "backdrop:bg-scrim backdrop:backdrop-blur-sm",
-          "",
         )}
       >
         <div class="flex items-center gap-2 border-b border-subtle px-4">
