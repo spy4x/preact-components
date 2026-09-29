@@ -40,6 +40,20 @@ export async function crudChecks(devtools: Devtools): Promise<void> {
     `aria-describedby="${initial.describedBy}" id="${initial.statusId}"`,
   )
 
+  const space = await devtools.evaluate<{ below: number; regions: number }>(`(() => {
+    const form = document.querySelector('${CARD} form')
+    const section = form.parentElement
+    return {
+      below: Math.round(section.getBoundingClientRect().bottom - form.getBoundingClientRect().bottom),
+      regions: section.querySelectorAll('[role="alert"]').length,
+    }
+  })()`)
+  check(
+    "the CrudEditor form has no blank space below it while nothing blocks the archive",
+    space.regions === 1 && space.below === 0,
+    `alert regions=${space.regions} px between the form and the section's bottom edge=${space.below}`,
+  )
+
   // The demo's blank row starts with Name and Notes equal — both "" — which the schema's
   // cross-field rule rejects. That is the starting state this check reads, not one it has to
   // provoke first: it is what #119 asked to stop happening silently.
