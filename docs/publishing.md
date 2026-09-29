@@ -11,8 +11,8 @@ and the published `system` asks for `jsr:@spy4x/preact-cn@^1.0.0`. A caret accep
 `1.x`. If the packages were published at different versions, a consumer's lockfile
 could combine a `ui` with a `cn` that nobody tested together.
 
-Publishing every package at one version, every time, removes that gap: `^1.N.M` always resolves to
-the set published with it. The rule is a publishing discipline, not something a check enforces, so
+Publishing every package at one version, every time, removes that gap: a caret range on the current version
+always resolves to the set published with it. The rule is a publishing discipline, not something a check enforces, so
 the steps below are the whole mechanism.
 
 A JSR version cannot be changed or deleted after it is published. Anything wrong in a published

@@ -7,7 +7,7 @@ cover, and where the code runs.
 ## Install
 
 Every package is published at the same version every time, so the caret range a package puts on
-its siblings (`^1.N.M`) always resolves to the set published with it — see
+its siblings (`^<version>`) always resolves to the set published with it — see
 [`docs/publishing.md`](./publishing.md). Each package below installs on its own:
 
 ```bash
