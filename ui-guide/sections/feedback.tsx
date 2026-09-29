@@ -486,6 +486,25 @@ export const feedbackDemos = {
   LoadingSpinner: {
     summary: "A spinning circle for something that is loading, with an optional caption.",
     wide: true,
+    props: [
+      {
+        name: "label",
+        type: "string",
+        description: "A caption under the spinner, which a screen reader also hears.",
+      },
+      {
+        name: "loadingLabel",
+        type: "string",
+        default: `"Loading"`,
+        description: "The hidden word a screen reader hears when there is no `label`.",
+      },
+      {
+        name: "size",
+        type: `"sm" | "md" | "lg"`,
+        default: `"md"`,
+        description: "The spinner's size.",
+      },
+    ],
     snippet: `<LoadingSpinner size="lg" label="Loading transactions…" />`,
     render: () => <SpinnerDemo />,
   },
