@@ -11,9 +11,41 @@
 
 import type { JSX } from "preact"
 
-/** Common prop surface: every icon takes an optional Tailwind class string. */
+/**
+ * Common prop surface for every icon.
+ *
+ * Without `aria-label` or `title` the icon is decorative and hidden from screen readers. With
+ * either, it becomes a labelled image that a screen reader announces.
+ */
 export interface IconProps {
+  /** Tailwind classes; replaces the icon's default size. */
   class?: string
+  /** Accessible name; makes the icon a labelled image instead of a hidden decoration. */
+  "aria-label"?: string
+  /** Rendered as the SVG's `<title>` (a name and a hover tooltip); also makes the icon labelled. */
+  title?: string
+}
+
+/** The accessibility attributes an icon's root `<svg>` carries. */
+interface IconA11yAttributes {
+  "aria-hidden"?: "true"
+  "aria-label"?: string
+  role?: "img"
+}
+
+/**
+ * Accessibility attributes for an icon's root `<svg>`: hidden when the caller gives no name, a
+ * labelled image (`role="img"`) when it passes `aria-label` or `title`.
+ */
+function iconA11y(props: IconProps): IconA11yAttributes {
+  const label = props["aria-label"]
+  if (!label && !props.title) return { "aria-hidden": "true" }
+  return label ? { role: "img", "aria-label": label } : { role: "img" }
+}
+
+/** The `<title>` child for an icon given a `title`, or nothing. */
+function iconTitle(props: IconProps): JSX.Element | null {
+  return props.title ? <title>{props.title}</title> : null
 }
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
@@ -25,8 +57,10 @@ export function IconAlertTriangle(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -47,8 +81,10 @@ export function IconArchive(props: IconProps): JSX.Element {
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <rect width="20" height="5" x="2" y="3" rx="1" />
       <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" />
       <path d="M10 12h4" />
@@ -65,8 +101,10 @@ export function IconArrowDown(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="2"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
     </svg>
   )
@@ -81,8 +119,10 @@ export function IconArrowDownTray(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -101,8 +141,10 @@ export function IconArrowLeft(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="2"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -121,8 +163,10 @@ export function IconArrowPath(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -141,8 +185,10 @@ export function IconArrowRight(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="2"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
     </svg>
   )
@@ -157,8 +203,10 @@ export function IconArrowUp(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="2"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
     </svg>
   )
@@ -175,8 +223,10 @@ export function IconArrowUpRight(props: IconProps): JSX.Element {
       stroke-width="1.75"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <line x1="7" y1="17" x2="17" y2="7" />
       <polyline points="7 7 17 7 17 17" />
     </svg>
@@ -192,8 +242,10 @@ export function IconArrowUturnLeft(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -212,8 +264,10 @@ export function IconArrowUturnRight(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -234,8 +288,10 @@ export function IconAtSign(props: IconProps): JSX.Element {
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <circle cx="12" cy="12" r="4" />
       <path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94" />
     </svg>
@@ -251,8 +307,10 @@ export function IconBars3(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -271,8 +329,10 @@ export function IconBell(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -291,8 +351,10 @@ export function IconBookOpen(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -311,8 +373,10 @@ export function IconBookmark(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.2"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path
         d="M8,0v46l15-12l15,12V0H8z M36,42L23,31L10,42l0-40h26V42z"
         fill="currentColor"
@@ -331,8 +395,10 @@ export function IconBriefcase(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="2"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -353,8 +419,10 @@ export function IconBuilding(props: IconProps): JSX.Element {
       stroke-width="1.75"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <rect x="4" y="2" width="16" height="20" rx="2" />
       <line x1="9" y1="6" x2="9" y2="6.01" />
       <line x1="9" y1="10" x2="9" y2="10.01" />
@@ -376,8 +444,10 @@ export function IconBuildingOffice2(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -398,8 +468,10 @@ export function IconCalendar(props: IconProps): JSX.Element {
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
       <line x1="16" y1="2" x2="16" y2="6" />
       <line x1="8" y1="2" x2="8" y2="6" />
@@ -417,8 +489,10 @@ export function IconCalendarDays(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -437,8 +511,10 @@ export function IconChartPie(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -464,8 +540,10 @@ export function IconChatBubble(props: IconProps): JSX.Element {
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 0 1 1.037-.443 48.282 48.282 0 0 0 5.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
       <path d="M8 12h.008M12 12h.008M16 12h.008" />
     </svg>
@@ -481,8 +559,10 @@ export function IconCheck(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -501,8 +581,10 @@ export function IconCheckCircle(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -521,8 +603,10 @@ export function IconChevronDown(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -543,8 +627,10 @@ export function IconChevronLeft(props: IconProps): JSX.Element {
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path d="m15 18-6-6 6-6" />
     </svg>
   )
@@ -561,8 +647,10 @@ export function IconChevronRight(props: IconProps): JSX.Element {
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path d="m9 18 6-6-6-6" />
     </svg>
   )
@@ -579,8 +667,10 @@ export function IconChip(props: IconProps): JSX.Element {
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <rect width="12" height="12" x="6" y="6" rx="2" />
       <path d="M12 2v4" />
       <path d="M12 18v4" />
@@ -605,8 +695,10 @@ export function IconCircleDot(props: IconProps): JSX.Element {
       stroke-width="1.75"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <circle cx="12" cy="12" r="9" />
       <circle cx="12" cy="12" r="3" fill="currentColor" />
     </svg>
@@ -622,8 +714,10 @@ export function IconClipboard(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -642,8 +736,10 @@ export function IconClipboardCopy(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="2"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -664,8 +760,10 @@ export function IconClock(props: IconProps): JSX.Element {
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   )
@@ -682,8 +780,10 @@ export function IconCode(props: IconProps): JSX.Element {
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <polyline points="16 18 22 12 16 6" />
       <polyline points="8 6 2 12 8 18" />
     </svg>
@@ -699,8 +799,10 @@ export function IconCog6Tooth(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -724,8 +826,10 @@ export function IconCpuChip(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -746,8 +850,10 @@ export function IconCreditCard(props: IconProps): JSX.Element {
       stroke-width="1.75"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <rect x="2" y="5" width="20" height="14" rx="2" />
       <line x1="2" y1="10" x2="22" y2="10" />
     </svg>
@@ -763,8 +869,10 @@ export function IconCursorArrowRays(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -785,8 +893,10 @@ export function IconDocument(props: IconProps): JSX.Element {
       stroke-width="1.75"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
       <polyline points="14 2 14 8 20 8" />
       <line x1="8" y1="13" x2="16" y2="13" />
@@ -806,8 +916,10 @@ export function IconDollar(props: IconProps): JSX.Element {
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   )
@@ -822,8 +934,10 @@ export function IconEllipsisVertical(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -844,8 +958,10 @@ export function IconExternal(props: IconProps): JSX.Element {
       stroke-width="1.75"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
       <polyline points="15 3 21 3 21 9" />
       <line x1="10" y1="14" x2="21" y2="3" />
@@ -862,8 +978,10 @@ export function IconEye(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="2"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -887,8 +1005,10 @@ export function IconEyeOff(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="2"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -909,8 +1029,10 @@ export function IconFire(props: IconProps): JSX.Element {
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" />
       <path d="M12 18a3.75 3.75 0 00.495-7.467 5.99 5.99 0 00-1.925 3.546 5.97 5.97 0 01-2.133-1A3.75 3.75 0 0012 18z" />
     </svg>
@@ -928,8 +1050,10 @@ export function IconFlag(props: IconProps): JSX.Element {
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path d="M4 21V4" />
       <path d="M4 4h13l-3 6 3 6H4" />
     </svg>
@@ -947,8 +1071,10 @@ export function IconFlask(props: IconProps): JSX.Element {
       stroke-width="1.75"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path d="M9 3v6L4 18a2 2 0 0 0 1.7 3h12.6A2 2 0 0 0 20 18l-5-9V3" />
       <path d="M9 3h6" />
       <path d="M7 14h10" />
@@ -965,8 +1091,10 @@ export function IconFolder(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="2"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -985,8 +1113,10 @@ export function IconFunnel(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -1004,8 +1134,10 @@ export function IconGateway(props: IconProps): JSX.Element {
       viewBox="0 0 32 32"
       fill="white"
       stroke="currentColor"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path d="M31,16a1.9857,1.9857,0,0,0-.5859-1.4141L24.6211,8.793,27.489,5.9253a2,2,0,1,0-1.414-1.4141L23.207,7.3789l-5.7929-5.793a1.9995,1.9995,0,0,0-2.8282,0L8.793,7.3789,5.925,4.5112A2,2,0,1,0,4.511,5.9253L7.3789,8.793l-5.793,5.7929a1.9995,1.9995,0,0,0,0,2.8282l5.793,5.7929L4.511,26.0747a2,2,0,1,0,1.414,1.4141l2.868-2.8677,5.7929,5.793a1.9995,1.9995,0,0,0,2.8282,0l5.7929-5.793,2.868,2.8677a2,2,0,1,0,1.414-1.4141L24.6211,23.207l5.793-5.7929A1.9866,1.9866,0,0,0,31,16Zm-7.793,5.793L20.4141,19,19,20.4141l2.793,2.7929L16,29l-5.793-5.793L13,20.4141,11.5859,19,8.793,21.793,3,16l5.7925-5.7935L11.5859,13,13,11.5859,10.2065,8.7925,16,3l5.7935,5.7925L19,11.5859,20.4141,13l2.7934-2.7935L29,16Z" />
     </svg>
   )
@@ -1018,8 +1150,10 @@ export function IconGitHub(props: IconProps): JSX.Element {
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 24 24"
       fill="currentColor"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
     </svg>
   )
@@ -1036,8 +1170,10 @@ export function IconGlobe(props: IconProps): JSX.Element {
       stroke-width="1.75"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <circle cx="12" cy="12" r="9" />
       <line x1="3" y1="12" x2="21" y2="12" />
       <path d="M12 3a14.5 14.5 0 0 1 0 18 14.5 14.5 0 0 1 0-18z" />
@@ -1054,8 +1190,10 @@ export function IconGrid(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="2"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -1074,8 +1212,10 @@ export function IconHandThumbUp(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -1094,8 +1234,10 @@ export function IconHome(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -1116,8 +1258,10 @@ export function IconImage(props: IconProps): JSX.Element {
       stroke-width="1.75"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <rect x="3" y="3" width="18" height="18" rx="2" />
       <circle cx="9" cy="9" r="2" />
       <path d="M21 15l-5-5L5 21" />
@@ -1134,8 +1278,10 @@ export function IconInformationCircle(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -1156,8 +1302,10 @@ export function IconKey(props: IconProps): JSX.Element {
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
     </svg>
   )
@@ -1174,8 +1322,10 @@ export function IconLens(props: IconProps): JSX.Element {
       stroke-width="1.75"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <circle cx="11" cy="11" r="7" />
       <path d="M21 21l-4.3-4.3" />
       <path d="M11 8v6" />
@@ -1193,8 +1343,10 @@ export function IconLightBulb(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -1215,8 +1367,10 @@ export function IconLink(props: IconProps): JSX.Element {
       stroke-width="1.75"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
       <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
     </svg>
@@ -1230,8 +1384,10 @@ export function IconLinkedIn(props: IconProps): JSX.Element {
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 24 24"
       fill="currentColor"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
     </svg>
   )
@@ -1248,8 +1404,10 @@ export function IconList(props: IconProps): JSX.Element {
       stroke-width="1.75"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <line x1="8" y1="6" x2="21" y2="6" />
       <line x1="8" y1="12" x2="21" y2="12" />
       <line x1="8" y1="18" x2="21" y2="18" />
@@ -1267,8 +1425,10 @@ export function IconLoading(props: IconProps): JSX.Element {
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 24 24"
       fill="none"
+      {...iconA11y(props)}
       class={`animate-spin shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <circle
         class="opacity-25"
         cx="12"
@@ -1297,8 +1457,10 @@ export function IconLocationMarker(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="2"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -1324,8 +1486,10 @@ export function IconLogout(props: IconProps): JSX.Element {
       stroke-width="1.75"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
       <polyline points="16 17 21 12 16 7" />
       <line x1="21" y1="12" x2="9" y2="12" />
@@ -1342,8 +1506,10 @@ export function IconMail(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="2"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -1362,8 +1528,10 @@ export function IconMap(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -1384,8 +1552,10 @@ export function IconMinus(props: IconProps): JSX.Element {
       stroke-width="1.8"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path d="M5 12h14" />
     </svg>
   )
@@ -1400,8 +1570,10 @@ export function IconMoon(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -1422,8 +1594,10 @@ export function IconPackage(props: IconProps): JSX.Element {
       stroke-width="1.75"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path d="M16.5 9.4l-9-5.19" />
       <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
       <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
@@ -1441,8 +1615,10 @@ export function IconPencilSquare(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -1461,8 +1637,10 @@ export function IconPlus(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -1479,8 +1657,10 @@ export function IconQuote(props: IconProps): JSX.Element {
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 975.036 975.036"
       fill="currentColor"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path d="M925.036 57.197h-304c-27.6 0-50 22.4-50 50v304c0 27.601 22.4 50 50 50h145.5c-1.9 79.601-20.4 143.3-55.4 191.2-27.6 37.8-69.399 69.1-125.3 93.8-25.7 11.3-36.8 41.7-24.8 67.101l36 76c11.6 24.399 40.3 35.1 65.1 24.399 66.2-28.6 122.101-64.8 167.7-108.8 55.601-53.7 93.7-114.3 114.3-181.9 20.601-67.6 30.9-159.8 30.9-276.8v-239c0-27.599-22.401-50-50-50zM106.036 913.497c65.4-28.5 121-64.699 166.9-108.6 56.1-53.7 94.4-114.1 115-181.2 20.6-67.1 30.899-159.6 30.899-277.5v-239c0-27.6-22.399-50-50-50h-304c-27.6 0-50 22.4-50 50v304c0 27.601 22.4 50 50 50h145.5c-1.9 79.601-20.4 143.3-55.4 191.2-27.6 37.8-69.4 69.1-125.3 93.8-25.7 11.3-36.8 41.7-24.8 67.101l35.9 75.8c11.601 24.399 40.501 35.2 65.301 24.399z" />
     </svg>
   )
@@ -1497,8 +1677,10 @@ export function IconRocket(props: IconProps): JSX.Element {
       stroke-width="1.75"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
       <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" />
       <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" />
@@ -1516,8 +1698,10 @@ export function IconSearch(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -1535,8 +1719,10 @@ export function IconSensor(props: IconProps): JSX.Element {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path
         d="M8.46447 15.5355C6.51185 13.5829 6.51185 10.4171 8.46447 8.46447M5.63592 18.364C2.1212 14.8493 2.1212 9.15077 5.63592 5.63605M15.5355 15.5355C17.4881 13.5829 17.4881 10.4171 15.5355 8.46447M18.364 18.364C21.8788 14.8493 21.8788 9.15077 18.364 5.63605M13 12.0001C13 12.5523 12.5523 13.0001 12 13.0001C11.4477 13.0001 11 12.5523 11 12.0001C11 11.4478 11.4477 11.0001 12 11.0001C12.5523 11.0001 13 11.4478 13 12.0001Z"
         stroke-width="2"
@@ -1558,8 +1744,10 @@ export function IconServer(props: IconProps): JSX.Element {
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <rect width="20" height="8" x="2" y="2" rx="2" ry="2" />
       <rect width="20" height="8" x="2" y="14" rx="2" ry="2" />
       <line x1="6" x2="6.01" y1="6" y2="6" />
@@ -1579,8 +1767,10 @@ export function IconShare(props: IconProps): JSX.Element {
       stroke-width="1.75"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
       <polyline points="16 6 12 2 8 6" />
       <line x1="12" y1="2" x2="12" y2="15" />
@@ -1597,8 +1787,10 @@ export function IconShieldCheck(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -1619,8 +1811,10 @@ export function IconSparkle(props: IconProps): JSX.Element {
       stroke-width="1.75"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path d="M12 3l1.7 4.3L18 9l-4.3 1.7L12 15l-1.7-4.3L6 9l4.3-1.7L12 3z" />
       <path d="M19 14l.8 1.8L21.5 17l-1.7.7L19 19.5l-.8-1.8L16.5 17l1.7-1.2L19 14z" />
     </svg>
@@ -1637,8 +1831,10 @@ export function IconSpinner(props: IconProps): JSX.Element {
       stroke="currentColor"
       stroke-width="2.5"
       stroke-linecap="round"
+      {...iconA11y(props)}
       class={`animate-spin shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path d="M21 12a9 9 0 1 1-6.219-8.56" />
     </svg>
   )
@@ -1655,8 +1851,10 @@ export function IconStar(props: IconProps): JSX.Element {
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
     </svg>
   )
@@ -1671,8 +1869,10 @@ export function IconSun(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -1693,8 +1893,10 @@ export function IconTag(props: IconProps): JSX.Element {
       stroke-width="1.75"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
       <line x1="7" y1="7" x2="7.01" y2="7" />
     </svg>
@@ -1712,8 +1914,10 @@ export function IconTarget(props: IconProps): JSX.Element {
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <circle cx="12" cy="12" r="9" />
       <circle cx="12" cy="12" r="5" />
       <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
@@ -1728,8 +1932,10 @@ export function IconTelegram(props: IconProps): JSX.Element {
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 24 24"
       fill="currentColor"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path
         fill-rule="evenodd"
         clip-rule="evenodd"
@@ -1750,8 +1956,10 @@ export function IconThemeAuto(props: IconProps): JSX.Element {
       stroke-width="1.8"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <circle cx="12" cy="12" r="9" />
       <path d="M12 3v18" />
       <path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none" />
@@ -1768,8 +1976,10 @@ export function IconTrashBin(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="2"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -1788,8 +1998,10 @@ export function IconTrendingDown(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="2"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -1808,8 +2020,10 @@ export function IconTrendingUp(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="2"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -1830,8 +2044,10 @@ export function IconTwitter(props: IconProps): JSX.Element {
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z" />
     </svg>
   )
@@ -1843,8 +2059,10 @@ export function IconUpwork(props: IconProps): JSX.Element {
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 102 28"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "h-5 w-auto"}`}
     >
+      {iconTitle(props)}
       <path
         fill="currentColor"
         d="M28.18,19.06A6.54,6.54,0,0,1,23,16c.67-5.34,2.62-7,5.2-7s4.54,2,4.54,5-2,5-4.54,5m0-13.34a7.77,7.77,0,0,0-7.9,6.08,26,26,0,0,1-1.93-5.62H12v7.9c0,2.87-1.3,5-3.85,5s-4-2.12-4-5l0-7.9H.49v7.9A8.61,8.61,0,0,0,2.6,20a7.27,7.27,0,0,0,5.54,2.35c4.41,0,7.5-3.39,7.5-8.24V8.77a25.87,25.87,0,0,0,3.66,8.05L17.34,28h3.72l1.29-7.92a11,11,0,0,0,1.36,1,8.32,8.32,0,0,0,4.14,1.28h.34A8.1,8.1,0,0,0,36.37,14a8.12,8.12,0,0,0-8.19-8.31"
@@ -1878,8 +2096,10 @@ export function IconUser(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -1898,8 +2118,10 @@ export function IconUsers(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -1920,8 +2142,10 @@ export function IconVideo(props: IconProps): JSX.Element {
       stroke-width="1.75"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <rect x="3" y="6" width="14" height="12" rx="2" />
       <polygon points="22 8 17 12 22 16 22 8" />
     </svg>
@@ -1937,8 +2161,10 @@ export function IconViewColumns(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -1959,8 +2185,10 @@ export function IconWallet(props: IconProps): JSX.Element {
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" />
       <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" />
     </svg>
@@ -1978,8 +2206,10 @@ export function IconWrench(props: IconProps): JSX.Element {
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path d="M14.7 6.3a4.5 4.5 0 0 0-5.6 5.6L4 17l3 3 5.1-5.1a4.5 4.5 0 0 0 5.6-5.6l-2.1 2.1-2-2 2.1-2.1z" />
     </svg>
   )
@@ -1994,8 +2224,10 @@ export function IconXMark(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -2016,8 +2248,10 @@ export function IconYouTube(props: IconProps): JSX.Element {
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z" />
       <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" />
     </svg>
@@ -2035,8 +2269,10 @@ export function IconZap(props: IconProps): JSX.Element {
       stroke-width="1.75"
       stroke-linecap="round"
       stroke-linejoin="round"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
     </svg>
   )
@@ -2051,8 +2287,10 @@ export function IconArrowsPointingOut(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="2"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -2071,8 +2309,10 @@ export function IconCloudArrowUp(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="2"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -2091,8 +2331,10 @@ export function IconSuccess(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="2"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -2111,8 +2353,10 @@ export function IconDocumentDuplicate(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="2"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -2131,8 +2375,10 @@ export function IconDocumentText(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="2"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -2151,8 +2397,10 @@ export function IconDownload(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="2"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -2173,8 +2421,10 @@ export function IconExternalLink(props: IconProps): JSX.Element {
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 25 24"
       fill="currentColor"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path
         fill-rule="evenodd"
         clip-rule="evenodd"
@@ -2193,8 +2443,10 @@ export function IconFilm(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="2"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -2213,8 +2465,10 @@ export function IconLockClosed(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="2"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -2231,8 +2485,10 @@ export function IconLockClosedFilled(props: IconProps): JSX.Element {
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 20 20"
       fill="currentColor"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path
         fill-rule="evenodd"
         clip-rule="evenodd"
@@ -2251,8 +2507,10 @@ export function IconLockOpen(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="2"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -2271,8 +2529,10 @@ export function IconMicrophone(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="2"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -2291,8 +2551,10 @@ export function IconPlayCircle(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="2"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -2312,8 +2574,10 @@ export function IconPlaySolid(props: IconProps): JSX.Element {
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 24 24"
       fill="currentColor"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
     </svg>
   )
@@ -2328,8 +2592,10 @@ export function IconRefresh(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="2"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -2348,8 +2614,10 @@ export function IconSmile(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="2"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -2368,8 +2636,10 @@ export function IconStopCircle(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="2"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
       <path
         stroke-linecap="round"
@@ -2389,8 +2659,10 @@ export function IconVideoCamera(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="2"
+      {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
+      {iconTitle(props)}
       <path
         stroke-linecap="round"
         stroke-linejoin="round"

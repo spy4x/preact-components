@@ -16,6 +16,8 @@ Every icon is a plain function component with the same prop surface:
 ```ts
 export interface IconProps {
   class?: string
+  "aria-label"?: string
+  title?: string
 }
 ```
 
@@ -29,8 +31,17 @@ export interface IconProps {
 - Passing `class` replaces the default size rather than adding to it, because the default sits on
   the right of the `||` in `shrink-0 ${props.class || "<default size>"}`.
   `IconLoading` and `IconSpinner` additionally hard-code `animate-spin`.
-- Every glyph is decorative — no `role`, no `aria-hidden`, no title. Wrap it in the element that
-  carries the accessible name, or pass one through the wrapper.
+- An icon is decorative by default: its `<svg>` carries `aria-hidden="true"`, so a screen reader
+  skips it. Put the accessible name on the element that wraps it, such as the button or link.
+- Passing `aria-label` or `title` makes it a labelled image instead: `role="img"`, the label kept,
+  no `aria-hidden`. `title` renders as the SVG's first child, `<title>`, which also shows as a
+  tooltip on hover.
+
+  ```tsx
+  <button type="button" aria-label="Search"><IconSearch /></button>
+  <IconSearch aria-label="Search" />
+  <IconTrashBin title="Deleted" />
+  ```
 - The icons are server-renderable: nothing touches `document` or `window`.
 
 ## Style families
@@ -201,8 +212,9 @@ Rules, in order:
    exists, the clearest name won. Same-name-different-body conflicts resolve by source precedence,
    `template` first and the ported set last, with the other four source applications ranked in
    between by how much of their icon set survived the merge (see the Sources table above).
-3. **Props normalised** to `{ class?: string }` everywhere. `width`/`height`, `role`,
-   `aria-hidden` and per-source `className` props were dropped; one source application's
+3. **Props normalised** to `{ class?: string }` everywhere (`aria-label` and `title` were added
+   later, see "Contract"). `width`/`height`, `role`, `aria-hidden` and per-source `className`
+   props were dropped; one source application's
    `strokeWidth` prop and another's `filled` prop were resolved to their declared defaults; the
    ported set's `$$props.size` interpolation became the same `shrink-0 ${props.class || "…"}` idiom
    as every other glyph, and `IconPlaySolid`'s hard-coded `red` became `currentColor`.
@@ -297,7 +309,8 @@ No codegen: the merged file is ordinary source now. Regenerating it is not part 
 `+index.test.ts` calls each export directly and inspects the returned vnode — no DOM, no renderer,
 no extra dependency. It asserts that every export renders, that no two exports ship the same
 glyph, that the export count matches the total documented above, that a `class` prop replaces the
-default size rather than adding to it, and that the animated icons stay animated.
+default size rather than adding to it, that the animated icons stay animated, and that every icon
+is hidden from screen readers without a name and a labelled image with `aria-label` or `title`.
 
 The export-count assertion is a hard literal a human bumps on purpose, never
 `Object.keys(icons).length` — a count derived from the module would shrink with the thing it

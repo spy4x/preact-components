@@ -120,6 +120,56 @@ describe("icon set", () => {
     }
   })
 
+  it("hides every icon from screen readers when the caller gives no name", () => {
+    for (const [name] of iconEntries) {
+      const { props } = vnodeOf(name, {})
+      expect(props["aria-hidden"], name).toBe("true")
+      expect(props.role, name).toBeUndefined()
+      expect(props["aria-label"], name).toBeUndefined()
+    }
+  })
+
+  it("turns every icon into a labelled image when given aria-label", () => {
+    for (const [name] of iconEntries) {
+      const { props } = vnodeOf(name, { "aria-label": "Search" })
+      expect(props.role, name).toBe("img")
+      expect(props["aria-label"], name).toBe("Search")
+      expect(props["aria-hidden"], name).toBeUndefined()
+    }
+  })
+
+  it("names every icon with a first-child <title> when given title", () => {
+    for (const [name] of iconEntries) {
+      const { props } = vnodeOf(name, { title: "Delete" })
+      expect(props.role, name).toBe("img")
+      expect(props["aria-hidden"], name).toBeUndefined()
+      const children = props.children as unknown[]
+      const first = (Array.isArray(children) ? children[0] : children) as VNode
+      expect(first.type, name).toBe("title")
+      expect(first.props.children, name).toBe("Delete")
+    }
+  })
+
+  it("renders no <title> for an icon without a title", () => {
+    for (const [name] of iconEntries) {
+      const titles: VNode[] = []
+      walk(vnodeOf(name, { "aria-label": "Search" }), (vnode) => {
+        if (vnode.type === "title") titles.push(vnode)
+      })
+      expect(titles, name).toEqual([])
+    }
+  })
+
+  it("still lets a class replace the default size on a labelled icon", () => {
+    for (const [name] of iconEntries) {
+      const defaultSize = (vnodeOf(name, {}).props.class as string).match(DEFAULT_SIZE)?.[0] ?? ""
+      const className = vnodeOf(name, { class: "size-8", "aria-label": "Search" }).props
+        .class as string
+      expect(className, name).toContain("shrink-0 size-8")
+      expect(className, name).not.toContain(defaultSize)
+    }
+  })
+
   it("keeps animated icons spinning whatever class the caller passes", () => {
     for (const name of ["IconLoading", "IconSpinner"]) {
       const className = vnodeOf(name, { class: "size-8" }).props.class as string
