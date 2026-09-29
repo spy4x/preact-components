@@ -792,9 +792,8 @@ export function Calendar(
 const outOfMonthClass = "text-placeholder opacity-35"
 const disabledClass = "text-placeholder cursor-not-allowed"
 const noneLeftClass = "line-through decoration-control"
-const selectedClass = "bg-selected font-semibold text-selected-foreground hover:bg-accent-800"
-const todayClass =
-  "bg-selected-soft font-semibold text-selected hover:bg-accent-100 dark:hover:bg-accent-900/50"
+const selectedClass = "bg-selected font-semibold text-selected-foreground hover:bg-selected-hover"
+const todayClass = "bg-selected-soft font-semibold text-selected hover:bg-selected-soft-hover"
 const selectableClass = "text-foreground hover:bg-hover"
 
 /**

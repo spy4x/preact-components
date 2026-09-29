@@ -158,7 +158,7 @@ describe("Calendar", () => {
     const html = render(<Calendar {...base} selectedDate="2026-08-20" />)
 
     expect(html).toContain('aria-current="date"')
-    expect(html).toContain("bg-accent-900")
+    expect(html).toContain("bg-selected")
     expect(html).toMatch(/aria-label="20 August 2026[^"]*"[^>]*aria-current="date"/)
   })
 

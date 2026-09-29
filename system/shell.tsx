@@ -149,7 +149,7 @@ export interface ShellProps {
 
 const navLinkClasses =
   "flex items-center gap-2 rounded-md px-2 py-2 text-sm font-medium text-muted hover:bg-hover hover:text-foreground"
-const navLinkActiveClasses = "bg-hover text-foreground"
+const navLinkActiveClasses = "bg-hover font-semibold text-foreground"
 const navActionClasses =
   "flex size-8 shrink-0 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-foreground"
 const iconButtonClasses =
@@ -198,7 +198,7 @@ function ShellNavContent(
       {Icon && <Icon class="size-5 shrink-0" />}
       <span class="min-w-0 flex-1 truncate">{name}</span>
       {typeof counter === "number" && counter > 0 && (
-        <span class="rounded-full bg-hover px-2 py-px text-xs font-medium text-muted">
+        <span class="rounded-full bg-canvas px-2 py-px text-xs font-medium text-muted">
           {counter}
         </span>
       )}
