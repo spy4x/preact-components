@@ -420,6 +420,84 @@ proof-first site's use of monospace and serif text, not for this package to own 
 value, so this package leaves both at Tailwind's own default and only names `--font-sans` as its
 one opinionated addition.
 
+### Headings, weights, shapes and shadows
+
+- **Headings.** `--font-heading` is the sans font until an app sets it. `h1`-`h6` under
+  `.theme-base`, the preset's `h1`-`h5` classes and the `font-heading` class draw in it, so
+  `--font-heading: "Literata", serif` gives serif headings and nothing else changes.
+- **Weights.** `font-medium` and `font-bold` read Tailwind's own `--font-weight-medium` and
+  `--font-weight-bold` (500 and 700). An app whose fonts ship only 400 and 600 sets both to `600`
+  in `:root`, after the preset, so no weight is faked. No token of this package is needed.
+- **Radius.** `--radius-primary` (`rounded-primary`, 0.5rem) is the shape of a button, a card body
+  and most controls; `--radius-control` (`rounded-control`, 0.375rem) is a small field or chip and
+  `--radius-card` (`rounded-card`, 0.75rem) a card. An app whose controls use `rounded-lg` sets
+  `--radius-control: 0.5rem`. Pills stay `rounded-full`.
+- **Shadows.** `--shadow-raised` (`shadow-raised`) is a card's and `--shadow-popover`
+  (`shadow-popover`) a menu's, dialog's or tooltip's. `none` gives flat chrome with hairline
+  borders, or a popover-only shadow: set `--shadow-raised: none`.
+
+### Selection and focus
+
+The accent is a colour of the primary `Button`. What is chosen or current reads its own tokens,
+which follow the accent until an app points them elsewhere:
+
+| Token                         | Class                              | For                                        |
+| ----------------------------- | ---------------------------------- | ------------------------------------------ |
+| `--color-selected`            | `bg-selected`                      | the chosen Calendar day, a checked control |
+| `--color-selected-foreground` | `text-selected-foreground`         | text on that fill                          |
+| `--color-selected-soft`       | `bg-selected-soft`                 | a selected row, a highlighted badge        |
+| `--color-selected-text`       | `text-selected`, `border-selected` | the active tab, a current-item mark        |
+
+Focus: `ring-2 ring-focus ring-offset-2 ring-offset-focus` draws a 2px ring in
+`--color-focus-ring` (the accent until set) with a 2px gap in `--color-focus-offset` (the canvas).
+
+### Text on a fill
+
+`--color-accent-foreground` is worked out from the accent: near-white on an accent darker than
+lightness 0.57, near-black on a lighter one, so the primary `Button` reads at 4.5:1 or better with
+`#f97316` as with the default purple. An app pins it by setting the token. The scale's label steps
+(600, 700 and 800) stay at lightness 0.6 or above for a light accent, so the hover fill keeps a
+near-black label above 4.5:1; for a dark accent they are unchanged (`accent-scale.ts` has the
+reason). `--color-danger-foreground` and `--color-info-foreground` pair with `--color-danger-fill`
+and `--color-info`; `--color-danger-fill` is `--color-danger` in the light palette and a darker red
+under `.dark`, where `--color-danger` is drawn as text.
+
+### Replacing fixed colours
+
+A class naming a Tailwind gray, slate, zinc, neutral or stone step, or `white` or `black`, ignores
+the tokens (`infra/scripts/fixed-colours.test.ts` lists the files that still have one). Each token
+below flips with `.dark` on its own, so a light/dark pair collapses to one class.
+
+| Fixed class (light and dark)                                                      | Token class                                                  |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `text-gray-900`, `-950`, `-800`, `-700`, `dark:text-gray-50`…`-200`, `text-black` | `text-foreground`                                            |
+| `text-gray-600`, `-500` (secondary text), `dark:text-gray-400`                    | `text-muted`                                                 |
+| `text-gray-400`, `-500` (placeholder, idle icon)                                  | `text-placeholder`                                           |
+| `bg-white`, `dark:bg-gray-800`                                                    | `bg-surface`                                                 |
+| `bg-gray-50`, `bg-gray-100` (page or recessed area), `dark:bg-gray-900`           | `bg-canvas`                                                  |
+| `hover:bg-gray-50`, `-100`, `-200`, `dark:hover:bg-gray-700`                      | `hover:bg-hover`                                             |
+| `bg-gray-200`, `-300` (track, unfilled part), `dark:bg-gray-600`                  | `bg-track`                                                   |
+| `bg-gray-900`, `bg-black` (inverse chip, tooltip) with `text-white`               | `bg-foreground` with `text-canvas`                           |
+| `bg-black/50` (backdrop), `text-white` drawn on it                                | `bg-scrim`, `text-scrim-foreground`                          |
+| `text-white` on `bg-accent-*` (primary button)                                    | `text-accent-foreground`                                     |
+| `text-white` on `bg-red-*`                                                        | `text-danger-foreground` on `bg-danger-fill`                 |
+| `text-white` on a chosen day or checked control                                   | `text-selected-foreground` on `bg-selected`                  |
+| `border-gray-100`, `-200`, `dark:border-gray-700` (chrome)                        | `border-subtle`                                              |
+| `border-gray-300`, `dark:border-gray-600` (control border)                        | `border-control`                                             |
+| `divide-gray-*`                                                                   | `divide-subtle`                                              |
+| `ring-gray-200`, `-300`, `dark:ring-gray-*`                                       | `ring-subtle`, `ring-control`                                |
+| `shadow-sm`, `shadow-xs`, `shadow-md`                                             | `shadow-raised`                                              |
+| `shadow-lg`, `shadow-xl`                                                          | `shadow-popover`                                             |
+| `bg-accent-50`, `dark:bg-accent-900/30` (selected row, active tab background)     | `bg-selected-soft`                                           |
+| `text-accent-900`, `dark:text-accent-400` (active tab text)                       | `text-selected`                                              |
+| `bg-accent-900` on a chosen day, checked box, switch on                           | `bg-selected` with `text-selected-foreground`                |
+| `rounded-xl` (card)                                                               | `rounded-card`                                               |
+| `rounded-md` (field, chip), `rounded-lg` (control)                                | `rounded-control`, `rounded-primary`                         |
+| `text-red-*`, `bg-red-*` (error text, danger tint)                                | `text-danger`, `bg-danger` (`text-info`, `bg-info` for blue) |
+
+Where the token's dark value is a different shade from what a component used (for example a
+`dark:` step a shade off), the lane that converts the file checks the result in the browser.
+
 ### Ink
 
 `INK_CSS` is a second, additional palette (#257) — dark-only, opt-in, and it changes nothing about
@@ -528,6 +606,10 @@ scanner, a native addon; no other test gets that grant.
 `component-classes.test.ts` holds `COMPONENT_CLASSES` to the packages' sources: it fails when a
 component gains or loses a class and `component-classes.ts` was not regenerated. The same
 `deno task --cwd theme generate` below rewrites it.
+
+`infra/scripts/fixed-colours.test.ts` (with `fixed-colours.ts`, its checker) fails on a fixed gray,
+slate, zinc, neutral, stone, white or black colour class in a component's source, except in the
+files its allow-list names; the list may only shrink.
 
 `css-text.test.ts` guards the other half: that `TOKENS_CSS`/`PRESET_CSS` — what `+index.ts`
 actually exports — match `tokens.css`/`preset.css` byte for byte. Both constants are generated
