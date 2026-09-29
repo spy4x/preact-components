@@ -36,8 +36,8 @@ A toast in the store carries an `id`, a `title`, a `body`, a `type` and an optio
 title gets its kind's: `"Info"`, `"Success"`, `"Error"` or `"Warning"` in English, or whatever
 `createToastStore({ titles: { success: "Erfolg", error: "Fehler" } })` says instead — an app
 in another language sets them there once, and `buildModelStore`'s success toasts, which name no
-title, pick them up (their bodies, and the titles of its error toasts, are still English;
-see #405). `title: ""` asks for no heading.
+title, pick them up. `title: ""` asks for no heading. The rest of `buildModelStore`'s wording
+is set by its `messages` option (below).
 
 `ThemeValue` is what the user picked: `LIGHT`, `DARK` or `SYSTEM`. `CLIPBOARD_UNAVAILABLE` is the
 reason `copy` reports when the runtime has no clipboard at all, on an insecure origin or during a
@@ -293,6 +293,30 @@ newer one replaces everything the list held. A `"deleted"` event judged older is
 the check still decides it, but the event's own claim never widens past `deletedAt` — a delete does
 not get to bring an old copy of your version column back either. It is not asked about a `"list"`
 event, because that is not weighed against anything.
+
+### Translating the toasts
+
+The store's toasts are English until told otherwise. `messages` takes any of the nine functions
+of `ModelStoreMessages`; each receives the config's `model` name, and any you leave out keeps its
+default from `DEFAULT_MODEL_STORE_MESSAGES`. `created`, `updated`, `deleted` and `restored` return
+the body of a toast with no title (the title comes from `createToastStore({ titles })`).
+`createFailed`, `updateFailed`, `deleteFailed` and `restoreFailed` return the title of an error
+toast, whose body is the request error's message. `malformedUpdate(model, issue)` returns the
+message of a remote row that failed its schema.
+
+```ts
+buildModelStore({
+  model: "Zone",
+  // ...
+  messages: {
+    created: (model) => `${model} erstellt`,
+    createFailed: (model) => `${model} konnte nicht erstellt werden`,
+  },
+})
+```
+
+The messages of errors that come from elsewhere are not touched: the server's own text, network
+failures, and input validation (`Provided data doesn't seem valid…`, from `@spy4x/platform`).
 
 ### Extension points
 

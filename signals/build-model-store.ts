@@ -165,6 +165,39 @@ export interface ModelStoreContext<F extends Type<Model>> {
   pathFor: (id: number) => string
 }
 
+/**
+ * The words of the toasts {@link buildModelStore} sends, one function per outcome.
+ *
+ * Each function receives the config's `model` name. `*Failed` returns the toast's title (its body
+ * is the request error's message); the other outcomes return the body of a toast with no title.
+ * `malformedUpdate` receives the first issue found in a remote row (`undefined` when there is
+ * none) and returns the body of that error toast.
+ */
+export interface ModelStoreMessages {
+  created: (model: string) => string
+  updated: (model: string) => string
+  deleted: (model: string) => string
+  restored: (model: string) => string
+  createFailed: (model: string) => string
+  updateFailed: (model: string) => string
+  deleteFailed: (model: string) => string
+  restoreFailed: (model: string) => string
+  malformedUpdate: (model: string, issue: string | undefined) => string
+}
+
+/** English defaults of {@link ModelStoreMessages}. */
+export const DEFAULT_MODEL_STORE_MESSAGES: ModelStoreMessages = {
+  created: (model) => `${model} was created`,
+  updated: (model) => `${model} was updated`,
+  deleted: (model) => `${model} was deleted`,
+  restored: (model) => `${model} was restored`,
+  createFailed: (model) => `Failed to create ${model}`,
+  updateFailed: (model) => `Failed to update ${model}`,
+  deleteFailed: (model) => `Failed to delete ${model}`,
+  restoreFailed: (model) => `Failed to restore ${model}`,
+  malformedUpdate: (model, issue) => `Malformed ${model} update: ${issue ?? "unknown issue"}`,
+}
+
 /** Configuration for {@link buildModelStore}. */
 export interface BuildModelStoreConfig<
   F extends Type<Model>,
@@ -183,6 +216,11 @@ export interface BuildModelStoreConfig<
   sort?: (a: SchemaOutput<F>, b: SchemaOutput<F>) => number
   /** Notification port. Omitted, the store stays silent. */
   toast?: ToastPort
+  /**
+   * Wording of the toasts, in English by default. Pass only the outcomes you translate; the rest
+   * keep their English default. See {@link ModelStoreMessages}.
+   */
+  messages?: Partial<ModelStoreMessages>
   /** Injected `fetch`, so a test never touches the network. Defaults to the global one. */
   fetch?: typeof fetch
   /** Row URLs, when they differ from the collection convention. */
@@ -338,6 +376,7 @@ export function buildModelStore<
 
   const { model, endpoint, schemas, sort, paths, onReset, extraOps, selectors } = config
   const toast = config.toast ?? silentToast
+  const words: ModelStoreMessages = { ...DEFAULT_MODEL_STORE_MESSAGES, ...config.messages }
   const isNewer = config.isNewer ?? defaultIsNewer
   const request = createRequest(model, config.fetch ?? globalThis.fetch)
   const pathFor = paths?.one ?? ((id: number) => `${endpoint}/${id}`)
@@ -536,7 +575,7 @@ export function buildModelStore<
       if (answer.settles) {
         patch({ createOp: { inProgress: false, error: outcome.error, result: null } })
       }
-      notify(outcome.error, `Failed to create ${model}`)
+      notify(outcome.error, words.createFailed(model))
       return { error: outcome.error, result: null }
     }
 
@@ -552,7 +591,7 @@ export function buildModelStore<
         ? { createOp: { inProgress: false, error: null, result: outcome.result }, list }
         : { list },
     )
-    toast.success({ body: `${model} was created` })
+    toast.success({ body: words.created(model) })
     return { error: null, result: outcome.result }
   }
 
@@ -580,7 +619,7 @@ export function buildModelStore<
       if (answer.settles) {
         settleUpdateOp(id, { inProgress: false, error: outcome.error, result: null })
       }
-      if (answer.fresh) notify(outcome.error, `Failed to update ${model}`)
+      if (answer.fresh) notify(outcome.error, words.updateFailed(model))
       return { error: outcome.error, result: null }
     }
     // A newer request for this row has already been answered: this one lost the race it was in,
@@ -595,7 +634,7 @@ export function buildModelStore<
     // value somebody else has since changed. The slot above settles either way, because the write
     // did finish, and the notification fires either way, because it did succeed at the server.
     if (outranksHeldRow(outcome.result)) patch({ list: replaceRow(outcome.result) })
-    toast.success({ body: `${model} was updated` })
+    toast.success({ body: words.updated(model) })
     return { error: null, result: outcome.result }
   }
 
@@ -613,7 +652,7 @@ export function buildModelStore<
       if (answer.settles) {
         settleDeleteOp(id, { inProgress: false, error: outcome.error, result: null })
       }
-      if (answer.fresh) notify(outcome.error, `Failed to delete ${model}`)
+      if (answer.fresh) notify(outcome.error, words.deleteFailed(model))
       return { error: outcome.error, result: null }
     }
     if (!answer.fresh) return { error: null, result: outcome.result }
@@ -625,7 +664,7 @@ export function buildModelStore<
     // and replaced only while this answer is the later of it and whatever arrived from elsewhere
     // meanwhile. See the same comparison in `update`.
     if (outranksHeldRow(outcome.result)) patch({ list: replaceRow(outcome.result) })
-    toast.success({ body: `${model} was deleted` })
+    toast.success({ body: words.deleted(model) })
     return { error: null, result: outcome.result }
   }
 
@@ -643,7 +682,7 @@ export function buildModelStore<
       if (answer.settles) {
         settleUpdateOp(id, { inProgress: false, error: outcome.error, result: null })
       }
-      if (answer.fresh) notify(outcome.error, `Failed to restore ${model}`)
+      if (answer.fresh) notify(outcome.error, words.restoreFailed(model))
       return { error: outcome.error, result: null }
     }
     if (!answer.fresh) return { error: null, result: outcome.result }
@@ -654,7 +693,7 @@ export function buildModelStore<
     // A remote change that arrived while this was on the wire and is later than this answer keeps
     // the row: an undelete does not outrank a deletion somebody made after it. See `update`.
     if (outranksHeldRow(outcome.result)) patch({ list: replaceRow(outcome.result) })
-    toast.success({ body: `${model} was restored` })
+    toast.success({ body: words.restored(model) })
     return { error: null, result: outcome.result }
   }
 
@@ -682,7 +721,7 @@ export function buildModelStore<
       if (error) {
         const payloadError: RequestError = {
           type: ErrType.Payload,
-          message: `Malformed ${model} update: ${firstIssueMessage(error) ?? "unknown issue"}`,
+          message: words.malformedUpdate(model, firstIssueMessage(error) ?? undefined),
         }
         patch({ listOp: { inProgress: false, error: payloadError, result: null } })
         toast.error({ body: payloadError.message })
