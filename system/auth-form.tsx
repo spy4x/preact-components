@@ -95,7 +95,7 @@ import { IconEye, IconEyeOff } from "@spy4x/preact-icons"
 import { Button } from "@spy4x/preact-ui/button"
 import { Field } from "@spy4x/preact-ui/field"
 import { Input } from "@spy4x/preact-ui/input"
-import type { JSX } from "preact"
+import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useRef, useState } from "preact/hooks"
 
 /** Which screen {@link AuthForm} draws. */
@@ -199,6 +199,15 @@ export interface AuthFormProps {
   labels?: Partial<AuthFormLabels>
   /** Where the form posts natively before hydration, or when the matching callback is omitted. */
   action?: string
+  /**
+   * Caller content drawn below everything else, inside the form — a "Back to sign in" or "Forgot
+   * your password?" link, for instance — so it sits in whatever card holds the form. Wrapped in an
+   * element carrying `data-e2e="auth-form-footer"`; nothing is rendered for it when this is absent.
+   *
+   * It is inside the `<form>`, so a `<button>` placed here needs `type="button"` or it submits the
+   * form, and it must not hold a form of its own.
+   */
+  footer?: ComponentChildren
   /** Utilities for the `<form>` itself. */
   class?: string
 }
@@ -229,6 +238,7 @@ export function AuthForm(
     error,
     labels,
     action,
+    footer,
     class: className,
   }: AuthFormProps,
 ): JSX.Element {
@@ -403,6 +413,10 @@ export function AuthForm(
             </Button>
           </>
         )}
+
+      {footer !== undefined && footer !== null && footer !== false
+        ? <div data-e2e="auth-form-footer">{footer}</div>
+        : null}
 
       <p role="status" aria-live="polite" aria-atomic="true" class="sr-only">
         {busy ? copy.busy : ""}

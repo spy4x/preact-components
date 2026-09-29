@@ -1462,6 +1462,11 @@ useEffect(() => {
         type: "string",
         description: "Where the form posts when no script is running.",
       },
+      {
+        name: "footer",
+        type: "ComponentChildren",
+        description: "Shown below the form, inside it: a link back to sign-in, for instance.",
+      },
     ],
     snippet: `// End-to-end tests find each control by a fixed data-e2e, whatever the labels say:
 // auth-form (the form), auth-form-login, auth-form-password, auth-form-password-toggle,
@@ -1476,6 +1481,7 @@ useEffect(() => {
   busy={pending}
   error={error} // string, or { message, field: "login" | "password" | "code" }
   action="/auth/sign-in"
+  footer={<a class="link" href="/sign-in">Back to sign in</a>}
 />`,
     render: () => (
       <Stack gap="xl">
@@ -1484,6 +1490,16 @@ useEffect(() => {
         </Part>
         <Part title="Driven by buttons in place of a server">
           <AuthFormInteractiveDemo />
+        </Part>
+        <Part title="With a link below the form">
+          <div class="max-w-sm" data-e2e="auth-form-footer-demo">
+            <AuthForm
+              mode="sign-up"
+              step="credentials"
+              action="/auth/sign-up"
+              footer={<a class="link" href="#system">Back to sign in</a>}
+            />
+          </div>
         </Part>
       </Stack>
     ),

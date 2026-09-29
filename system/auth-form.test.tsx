@@ -250,4 +250,27 @@ describe("AuthForm", () => {
       /aria-pressed="false"[^>]*type="button"|type="button"[^>]*aria-pressed="false"/,
     )
   })
+
+  it("renders the caller's footer inside the form, after its submit and mode switch", () => {
+    for (const step of ["credentials", "one-time-code"] as const) {
+      const html = render(
+        <AuthForm
+          {...base}
+          step={step}
+          onModeChange={() => {}}
+          footer={<a href="/sign-in">Back to sign in</a>}
+        />,
+      )
+      const footer = html.indexOf('<div data-e2e="auth-form-footer"><a href="/sign-in">')
+      expect(footer).toBeGreaterThan(html.indexOf('data-e2e="auth-form-submit"'))
+      expect(footer).toBeGreaterThan(html.indexOf('data-e2e="auth-form-mode-switch"'))
+      expect(footer).toBeLessThan(html.indexOf("</form>"))
+      expect(html).toContain("Back to sign in")
+    }
+  })
+
+  it("renders no footer wrapper when the caller gives no footer", () => {
+    expect(render(<AuthForm {...base} />)).not.toContain("auth-form-footer")
+    expect(render(<AuthForm {...base} footer={null} />)).not.toContain("auth-form-footer")
+  })
 })
