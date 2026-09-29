@@ -290,10 +290,11 @@ const WARM_TOKENS = [
   "--color-selected-foreground: oklch(0.94 0.012 80)",
   "--color-selected-soft: oklch(0.29 0.012 60)",
   "--color-selected-text: oklch(0.94 0.012 80)",
-  "--color-focus-ring: oklch(0.705 0.19 47)",
+  "--color-ring: oklch(0.705 0.19 47)",
   "--color-focus-offset: oklch(0.19 0.008 60)",
   "--color-danger-fill: oklch(0.5 0.14 30)",
-  "--color-danger-foreground: oklch(0.96 0.01 60)",
+  "--color-danger-fill-hover: oklch(0.45 0.13 30)",
+  "--color-danger-fill-foreground: oklch(0.96 0.01 60)",
   "--radius-primary: 0.5rem",
   "--radius-control: 0.5rem",
   "--radius-card: 0.75rem",
@@ -365,6 +366,28 @@ function TokenClassesDemo() {
         <span class={`bg-primary text-primary-foreground ${swatch}`}>text-primary-foreground</span>
         <span class={`bg-accent-900 text-accent-foreground ${swatch}`}>text-accent-foreground</span>
       </Cluster>
+      <Cluster>
+        <span class={`bg-danger-soft text-danger border-danger border ${swatch}`}>
+          bg-danger-soft
+        </span>
+        <span class={`bg-info-soft text-info ${swatch}`}>bg-info-soft</span>
+        <span class={`bg-danger-fill text-danger-fill-foreground ${swatch}`}>
+          text-danger-fill-foreground
+        </span>
+        <span class={`bg-surface-overlay ${swatch}`}>bg-surface-overlay</span>
+        <span class={`border-strong border px-2 py-1 text-xs`}>border-strong</span>
+        <span class="decoration-control text-xs underline">decoration-control</span>
+        <span class={`border-surface bg-canvas border-2 px-2 py-1 text-xs`}>border-surface</span>
+        <span class={`ring-surface ring-offset-surface ring-2 ring-offset-2 ${swatch}`}>
+          ring-surface
+        </span>
+      </Cluster>
+      <div class="bg-scrim-strong border-on-scrim text-scrim-foreground rounded-control flex gap-2 border p-2 text-xs">
+        <span class="bg-on-scrim px-2 py-1">bg-scrim-strong bg-on-scrim</span>
+        <span class="bg-on-scrim-strong text-on-scrim-muted px-2 py-1">
+          bg-on-scrim-strong text-on-scrim-muted
+        </span>
+      </div>
       <Cluster>
         <span class="text-foreground">text-foreground</span>
         <span class="text-placeholder">text-placeholder</span>
@@ -508,6 +531,8 @@ export const surfaceDemos = {
       "text-scrim-foreground",
       "bg-primary",
       "bg-surface",
+      "bg-canvas",
+      "text-danger",
       "border-subtle",
       "bg-info",
       "text-info",
@@ -530,6 +555,21 @@ export const surfaceDemos = {
       "rounded-control",
       "shadow-raised",
       "shadow-popover",
+      "text-danger-fill-foreground",
+      "bg-danger-soft",
+      "bg-info-soft",
+      "border-danger",
+      "bg-surface-overlay",
+      "bg-scrim-strong",
+      "bg-on-scrim",
+      "bg-on-scrim-strong",
+      "border-on-scrim",
+      "text-on-scrim-muted",
+      "border-strong",
+      "decoration-control",
+      "border-surface",
+      "ring-surface",
+      "ring-offset-surface",
     ],
     summary:
       "Replaces a fixed gray, white or black class: what is chosen, hovered or dimmed, the text on each fill, the focus ring, the card corner and the two shadows.",
@@ -560,7 +600,7 @@ export const surfaceDemos = {
       "rounded-control",
       "shadow-raised",
       "text-accent-foreground",
-      "text-danger-foreground",
+      "text-danger-fill-foreground",
       "text-foreground",
       "text-placeholder",
       "text-selected",
@@ -576,7 +616,7 @@ export const surfaceDemos = {
   --color-foreground: oklch(0.94 0.012 80);
   --color-accent: oklch(0.705 0.19 47); /* the label turns dark by itself */
   --color-selected: oklch(0.33 0.012 60); /* keep the accent for the primary button */
-  --font-heading: Georgia, serif;
+  --font-heading: Georgia, serif; /* unset, headings inherit */
   --font-weight-medium: 600;
   --shadow-raised: none;
 }
