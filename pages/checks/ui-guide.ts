@@ -296,7 +296,8 @@ const TEXT_DRAWN_IN_BROWSER: Record<string, DrawnInBrowser> = {
     selector: `[role="status"][aria-atomic="true"]`,
     parts: 2,
     reason: "validation runs in an effect, so the cross-field message in the live region above " +
-      "Save exists only in the browser",
+      "Save exists only in the browser; the second editor's region stays empty in both, " +
+      "because its demo row passes that validation",
   },
   "demo-Map": {
     selector: `[data-e2e="map-slot"]`,

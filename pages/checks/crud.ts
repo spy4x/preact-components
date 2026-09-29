@@ -808,6 +808,8 @@ async function blockedArchiveChecks(devtools: Devtools): Promise<void> {
 
   const ticked = await clickArchiveBox(devtools)
   await poll(async () => (await readArchiveDemo(devtools, false)).regionText !== "", 2_000)
+  // The new blocked list scrolls the message into view; let that scroll stop before measuring.
+  await settledScroll(devtools, { timeoutMs: 5_000 })
   const shown = await readArchiveDemo(devtools, false)
   check(
     "a blocked archive shows its message in normal flow, 24px under the form, in the same region",
