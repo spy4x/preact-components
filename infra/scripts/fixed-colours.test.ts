@@ -34,7 +34,8 @@ const SKIPPED = [
  */
 export const ALLOWED: readonly string[] = [
   "theme/preset.css",
-  // The colour-atoms demo paints a white label on every fill it shows, whatever token the fill is.
+  // The colour-atoms demo paints `text-white` on every fill it shows; the warning and success fills
+  // have no `text-warning-foreground` or `text-success-foreground` utility to swap it for.
   "ui-guide/sections/surfaces.tsx",
   "ui/avatar.tsx",
   "ui/badge.tsx",
