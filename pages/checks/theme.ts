@@ -1252,6 +1252,7 @@ async function accentChecks(devtools: Devtools): Promise<void> {
       `${calendar.expected.selected}), dot ${calendar.after.dot} (expected ${calendar.expected.dot})`,
   )
   await openGuidePage(devtools, "ui")
+  await lightAccentChecks(devtools)
 
   // Every reading above flips `.dark` and puts it back; one that forgot would leave the page's class
   // disagreeing with the app's own state, and the next block to press the toggle would land in the
@@ -1265,5 +1266,99 @@ async function accentChecks(devtools: Devtools): Promise<void> {
     "after the accent checks, <html>'s dark class still matches the palette toggle",
     agreement.dark === (agreement.toggle === "Switch to light mode"),
     `dark class ${agreement.dark}, toggle "${agreement.toggle}"`,
+  )
+}
+
+/**
+ * A light accent (#417): with `--color-primary: #f97316` on `:root`, the primary `Button` keeps a
+ * near-black label at 4.5:1 or better on its fill, and on the fill of its hover step (accent-800);
+ * headings follow `--font-heading`, and `font-medium` follows `--font-weight-medium`.
+ *
+ * Contrast is measured on pixels the browser drew (a 1x1 canvas), never computed from the token.
+ *
+ * @param devtools The connected session, on the `ui` page.
+ */
+async function lightAccentChecks(devtools: Devtools): Promise<void> {
+  const light = await devtools.evaluate<{
+    fill: string
+    label: string
+    fillContrast: number
+    hoverContrast: number
+    darkFillContrast: number
+  }>(`(async () => {
+    ${ACCENT_HELPERS}
+    const pixel = (color) => {
+      const canvas = document.createElement("canvas")
+      canvas.width = canvas.height = 1
+      const context = canvas.getContext("2d", { colorSpace: "srgb" })
+      context.fillStyle = color
+      context.fillRect(0, 0, 1, 1)
+      return Array.from(context.getImageData(0, 0, 1, 1).data.slice(0, 3))
+    }
+    const luminance = (rgb) => {
+      const [r, g, b] = rgb.map((value) => {
+        const c = value / 255
+        return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+      })
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b
+    }
+    const contrast = (a, b) => {
+      const x = luminance(pixel(a))
+      const y = luminance(pixel(b))
+      return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
+    }
+    const root = document.documentElement
+    const wasDark = root.classList.contains("dark")
+    const style = document.createElement("style")
+    style.textContent = ":root { --color-primary: #f97316; --color-accent: #f97316; }"
+    document.head.append(style)
+    const button = document.querySelector("#demo-Button button")
+    const result = {}
+    root.classList.toggle("dark", false)
+    await settle(button)
+    const label = getComputedStyle(button).color
+    result.fill = getComputedStyle(button).backgroundColor
+    result.label = label
+    result.fillContrast = contrast(label, result.fill)
+    result.hoverContrast = contrast(label, resolve("var(--color-accent-800)"))
+    root.classList.toggle("dark", true)
+    await settle(button)
+    result.darkFillContrast = contrast(getComputedStyle(button).color, getComputedStyle(button).backgroundColor)
+    style.remove()
+    root.classList.toggle("dark", wasDark)
+    await settle(button)
+    return result
+  })()`)
+  check(
+    "with #f97316 as the accent, the primary Button's label reads at 4.5:1 on its fill, its hover and in dark",
+    light.fillContrast >= 4.5 && light.hoverContrast >= 4.5 && light.darkFillContrast >= 4.5,
+    `label ${light.label} on ${light.fill}: ${light.fillContrast.toFixed(2)}:1, hover ` +
+      `${light.hoverContrast.toFixed(2)}:1, dark ${light.darkFillContrast.toFixed(2)}:1`,
+  )
+
+  const fonts = await devtools.evaluate<{ before: string; after: string; weight: string }>(
+    `(async () => {
+    ${ACCENT_HELPERS}
+    const heading = document.createElement("h2")
+    heading.className = "h2 font-medium"
+    heading.textContent = "Heading"
+    document.body.append(heading)
+    await frame()
+    const before = getComputedStyle(heading).fontFamily
+    const style = document.createElement("style")
+    style.textContent = ":root { --font-heading: Georgia, serif; --font-weight-medium: 600; }"
+    document.head.append(style)
+    await frame()
+    const after = getComputedStyle(heading).fontFamily
+    const weight = getComputedStyle(heading).fontWeight
+    style.remove()
+    heading.remove()
+    return { before, after, weight }
+  })()`,
+  )
+  check(
+    "--font-heading moves the h2 class off the sans font, and --font-weight-medium sets font-medium",
+    fonts.before.includes("Poppins") && fonts.after.startsWith("Georgia") && fonts.weight === "600",
+    `default ${fonts.before}; with the tokens ${fonts.after}, weight ${fonts.weight}`,
   )
 }
