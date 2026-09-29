@@ -741,12 +741,26 @@ async function canvasContrastCheck(devtools: Devtools): Promise<void> {
         }
         return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b)
       }
+      // What the text really sits on: each translucent layer (a scrim, an overlay) is laid over
+      // whatever is behind it, up to the first opaque one. A scrim block would otherwise read as
+      // the page beneath it.
       const behind = (element) => {
+        const layers = []
         for (let at = element; at; at = at.parentElement) {
           const colour = rgba(getComputedStyle(at).backgroundColor)
-          if (colour[3] === 255) return colour
+          if (colour[3] === 0) continue
+          layers.push(colour)
+          if (colour[3] === 255) break
         }
-        return rgba(getComputedStyle(document.body).backgroundColor)
+        let result = layers.length && layers[layers.length - 1][3] === 255
+          ? layers.pop()
+          : rgba(getComputedStyle(document.body).backgroundColor)
+        while (layers.length) {
+          const top = layers.pop()
+          const alpha = top[3] / 255
+          result = [0, 1, 2].map((i) => top[i] * alpha + result[i] * (1 - alpha)).concat([255])
+        }
+        return result
       }
       const failures = []
       let lines = 0
