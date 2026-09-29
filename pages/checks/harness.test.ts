@@ -660,6 +660,57 @@ describe("Devtools", () => {
       expect(await waiting).toBeUndefined()
     })
   })
+  it("evaluate rejects with the thrown value and the expression, not only Uncaught", async () => {
+    const socket = new FakeSocket()
+    await withFakeSocket(socket, async () => {
+      const connecting = Devtools.connect("ws://fake")
+      socket.onopen?.()
+      const devtools = await connecting
+
+      const pending = devtools.evaluate(`lateAnswer()`).catch((error: unknown) => error)
+      const { id } = JSON.parse(socket.sent[0])
+      socket.onmessage?.({
+        data: JSON.stringify({
+          id,
+          result: {
+            result: {},
+            exceptionDetails: {
+              text: "Uncaught",
+              exception: { type: "string", value: "late answer" },
+            },
+          },
+        }),
+      })
+
+      const outcome = await pending
+      expect(outcome).toBeInstanceOf(Error)
+      expect((outcome as Error).message).toContain(`"late answer"`)
+      expect((outcome as Error).message).toContain(`lateAnswer()`)
+    })
+  })
+
+  it("problems names the thrown value of an exception event, not only Uncaught", async () => {
+    const socket = new FakeSocket()
+    await withFakeSocket(socket, async () => {
+      const connecting = Devtools.connect("ws://fake")
+      socket.onopen?.()
+      const devtools = await connecting
+
+      socket.onmessage?.({
+        data: JSON.stringify({
+          method: "Runtime.exceptionThrown",
+          params: {
+            exceptionDetails: {
+              text: "Uncaught",
+              exception: { type: "string", value: "late answer" },
+            },
+          },
+        }),
+      })
+
+      expect(devtools.problems().join("\n")).toContain(`"late answer"`)
+    })
+  })
 })
 
 describe("connect", () => {
@@ -808,17 +859,22 @@ describe("describeException", () => {
     })
 
     expect(line).toContain(`"late answer"`)
-    expect(line).toContain(`main.js:12:3`)
+    expect(line).toContain(`main.js:13:4`)
   })
 
   it("prefers an Error's description and adds the stack frames", () => {
     const line = describeException({
       text: `Uncaught`,
-      exception: { type: `object`, className: `TypeError`, description: `TypeError: x is null` },
+      exception: {
+        type: `object`,
+        className: `TypeError`,
+        description: `TypeError: x is null\n    at tick (a.js:4:1)`,
+      },
       stackTrace: { callFrames: [{ functionName: `tick`, url: `a.js`, lineNumber: 4 }] },
     })
 
-    expect(line).toContain(`TypeError: x is null`)
+    expect(line).toContain(`TypeError: x is null at tick (a.js:4:1)`)
+    expect(line).not.toContain(`\n`)
     expect(line).toContain(`tick@a.js:4`)
   })
 

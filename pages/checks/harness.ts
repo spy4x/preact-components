@@ -736,12 +736,13 @@ export interface ExceptionDetails {
  * Reading `text` alone made a failure read as "Uncaught" (#409).
  *
  * @param details The `exceptionDetails` of `Runtime.evaluate` or `Runtime.exceptionThrown`.
- * @returns One line: the thrown value, then where it was thrown.
+ * @returns One line: the thrown value, then where it was thrown (line and column 1-based, as an
+ * editor shows them; DevTools counts from 0).
  */
 export function describeException(details: ExceptionDetails): string {
   const { exception } = details
   const parts: string[] = []
-  if (exception?.description) parts.push(exception.description)
+  if (exception?.description) parts.push(exception.description.replace(/\s*\n\s*/g, ` `))
   else if (exception) {
     const thrown = exception.value !== undefined
       ? JSON.stringify(exception.value)
@@ -751,7 +752,9 @@ export function describeException(details: ExceptionDetails): string {
     )
   } else parts.push(details.text ?? `no details`)
   if (details.url) {
-    parts.push(`at ${details.url}:${details.lineNumber}:${details.columnNumber}`)
+    parts.push(
+      `at ${details.url}:${(details.lineNumber ?? 0) + 1}:${(details.columnNumber ?? 0) + 1}`,
+    )
   }
   const frames = details.stackTrace?.callFrames ?? []
   if (frames.length > 0) {

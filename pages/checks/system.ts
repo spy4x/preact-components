@@ -1470,7 +1470,7 @@ async function authFormNoScriptChecks(devtools: Devtools): Promise<void> {
     const loaded = await waitForLoad(devtools)
 
     unhydrated = loaded &&
-      await read(devtools, `document.documentElement.dataset.hydrated !== "true"`, false)
+      await read(devtools, `document.documentElement?.dataset.hydrated !== "true"`, false)
     before = await read(devtools, "location.search", "(page unreadable)")
 
     await fillCredentialFields(devtools)
@@ -1547,7 +1547,7 @@ async function authFormNoScriptChecks(devtools: Devtools): Promise<void> {
   )
 
   const rehydrated = await poll(
-    () => read(devtools, `document.documentElement.dataset.hydrated === "true"`, false),
+    () => read(devtools, `document.documentElement?.dataset.hydrated === "true"`, false),
     10_000,
   )
   check(
@@ -4364,7 +4364,7 @@ async function siteHeaderNoScriptCheck(devtools: Devtools): Promise<void> {
     const loaded = await waitForLoad(devtools)
 
     unhydrated = loaded &&
-      await read(devtools, `document.documentElement.dataset.hydrated !== "true"`, false)
+      await read(devtools, `document.documentElement?.dataset.hydrated !== "true"`, false)
 
     target = await read(
       devtools,
@@ -4439,7 +4439,7 @@ async function siteHeaderNoScriptCheck(devtools: Devtools): Promise<void> {
   )
 
   const rehydrated = await poll(
-    () => read(devtools, `document.documentElement.dataset.hydrated === "true"`, false),
+    () => read(devtools, `document.documentElement?.dataset.hydrated === "true"`, false),
     10_000,
   )
   check(
@@ -4512,7 +4512,7 @@ async function siteHeaderHydrationSyncChecks(devtools: Devtools): Promise<void> 
         10_000,
       )
       unhydrated = buttonReady &&
-        await read(devtools, `document.documentElement.dataset.hydrated !== "true"`, false)
+        await read(devtools, `document.documentElement?.dataset.hydrated !== "true"`, false)
 
       const target = await read(
         devtools,
@@ -4546,7 +4546,7 @@ async function siteHeaderHydrationSyncChecks(devtools: Devtools): Promise<void> 
       await devtools.send("Fetch.disable")
 
       rehydrated = await poll(
-        () => read(devtools, `document.documentElement.dataset.hydrated === "true"`, false),
+        () => read(devtools, `document.documentElement?.dataset.hydrated === "true"`, false),
         10_000,
       )
       syncedAfterHydration = await poll(
@@ -6371,7 +6371,7 @@ async function railShellNoScriptCheck(devtools: Devtools): Promise<void> {
     await devtools.send("Page.reload", { ignoreCache: true })
     const loaded = await waitForLoad(devtools)
     unhydrated = loaded &&
-      await read(devtools, `document.documentElement.dataset.hydrated !== "true"`, false)
+      await read(devtools, `document.documentElement?.dataset.hydrated !== "true"`, false)
 
     moreAim = await aimAt(devtools, RAIL_SHELL_MORE, true)
     if (moreAim?.onTarget) await clickAt(devtools, moreAim)
@@ -6416,7 +6416,7 @@ async function railShellNoScriptCheck(devtools: Devtools): Promise<void> {
   )
 
   const rehydrated = await poll(
-    () => read(devtools, `document.documentElement.dataset.hydrated === "true"`, false),
+    () => read(devtools, `document.documentElement?.dataset.hydrated === "true"`, false),
     10_000,
   )
   check(
