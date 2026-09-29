@@ -6,8 +6,9 @@ the rules every package follows, and how this repository relates to the others.
 
 ## Status
 
-Stable since 1.0.0 (2026-09-30). Every package is published on JSR as
-`jsr:@spy4x/preact-<name>`, released together from a `v*` tag by Woodpecker (#150) — see [`docs/publishing.md`](./publishing.md).
+Stable since 1.0.0 (2026-09-30). Every package is published on JSR as `jsr:@spy4x/preact-<name>`,
+released together from a `v*` tag by Woodpecker (#150) — see
+[`docs/publishing.md`](./publishing.md).
 
 No published file names a private application (#237). `deno task private-names <names-file>`
 re-checks that against every package's dry-run file list, before each release tag is pushed — see
