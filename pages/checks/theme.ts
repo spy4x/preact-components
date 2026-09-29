@@ -769,8 +769,13 @@ async function canvasContrastCheck(devtools: Devtools): Promise<void> {
         if (!own || !element.checkVisibility()) continue
         if (element.closest('[data-card-part="demo"], pre, .sr-only')) continue
         lines++
-        const a = luminance(rgba(getComputedStyle(element).color))
-        const b = luminance(behind(element))
+        const ground = behind(element)
+        // A translucent text colour is laid over what it sits on before it is measured.
+        const ink = rgba(getComputedStyle(element).color)
+        const opacity = ink[3] / 255
+        const shown = [0, 1, 2].map((i) => ink[i] * opacity + ground[i] * (1 - opacity))
+        const a = luminance(shown)
+        const b = luminance(ground)
         const ratio = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)
         if (ratio < 4.5) {
           failures.push('"' + element.textContent.trim().slice(0, 30) + '" ' + ratio.toFixed(2) + ":1")
