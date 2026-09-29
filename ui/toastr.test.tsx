@@ -9,6 +9,7 @@ import {
   type ToastCorner,
   type ToastItem,
   Toastr,
+  type ToastrProps,
 } from "./toastr.tsx"
 
 /** The classes on the stack's own element, one per entry. */
@@ -206,6 +207,23 @@ describe("Toastr", () => {
     expect(withHook).toContain('data-e2e="guide-toastr"')
   })
 
+  it("puts a toast's own data-e2e on that toast alone", () => {
+    const html = render(
+      <Toastr
+        toasts={[
+          { id: 1, body: "Saved", type: "success", dataE2E: "toast-saved" },
+          { id: 2, body: "Queued" },
+        ]}
+        onDismiss={() => {}}
+      />,
+    )
+
+    const toasts = html.match(/<div role="(?:status|alert)"[^>]*>/g) ?? []
+    expect(toasts).toHaveLength(2)
+    expect(toasts[0]).toContain('data-e2e="toast-saved"')
+    expect(toasts[1]).not.toContain("data-e2e")
+  })
+
   it("shows a toast's title above its body, inside the toast's live element", () => {
     const html = render(
       <Toastr
@@ -311,7 +329,7 @@ describe("Toastr wired to createToastStore", () => {
       clock.tick(30_000)
 
       const html = render(
-        <Toastr toasts={store.list.value} onDismiss={(id) => store.remove(String(id))} />,
+        <Toastr toasts={store.list.value} onDismiss={store.remove} />,
       )
       expect(html).toContain("keep me")
     } finally {
@@ -337,11 +355,32 @@ describe("Toastr wired to createToastStore", () => {
     store.error({ title: "Could not save the draft", body: "offline", duration: 0 })
 
     const html = render(
-      <Toastr toasts={store.list.value} onDismiss={(id) => store.remove(String(id))} />,
+      <Toastr toasts={store.list.value} onDismiss={store.remove} />,
     )
 
     expect(html).toContain('<p class="font-semibold">Success</p>')
     expect(html).toContain('<p class="font-semibold">Could not save the draft</p>')
+  })
+
+  it("takes the store's remove as its dismiss port, with no wrapper", () => {
+    // A type test first: this assignment does not compile while `remove` takes a narrower id than
+    // `onDismiss` is called with. The call then shows the id `Toastr` hands back reaches the store.
+    const store = createToastStore({ nextId: () => "42" })
+    store.add({ body: "gone", duration: 0 })
+    const onDismiss: ToastrProps["onDismiss"] = store.remove
+
+    onDismiss(42)
+
+    expect(store.list.value).toEqual([])
+  })
+
+  it("renders a store toast's own data-e2e on that toast", () => {
+    const store = createToastStore({ nextId: counterIds() })
+    store.error({ body: "Upload failed", duration: 0, dataE2E: "toast-upload-failed" })
+
+    const html = render(<Toastr toasts={store.list.value} onDismiss={store.remove} />)
+
+    expect(html).toMatch(/<div role="alert" data-e2e="toast-upload-failed"[^>]*>/)
   })
 
   it("renders a store's list without an adapter between them", () => {
@@ -349,7 +388,7 @@ describe("Toastr wired to createToastStore", () => {
     store.error({ body: "could not save", duration: 0 })
 
     const html = render(
-      <Toastr toasts={store.list.value} onDismiss={(id) => store.remove(String(id))} />,
+      <Toastr toasts={store.list.value} onDismiss={store.remove} />,
     )
 
     expect(html).toContain("could not save")

@@ -252,6 +252,7 @@ export {
   defaultToastDuration,
   resolveDuration,
   type ToastCorner,
+  type ToastId,
   type ToastItem,
   Toastr,
   type ToastrProps,

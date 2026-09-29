@@ -115,7 +115,7 @@ Wiring side effects through ports, so the package stays app-agnostic:
 
 <CopyButton textToCopy={invoice.id} copy={(text) => app.clipboard.copy(text)} />
 
-<Toastr toasts={app.toast.list.value} onDismiss={(id) => app.toast.remove(String(id))} />
+<Toastr toasts={app.toast.list.value} onDismiss={app.toast.remove} />
 
 <Tabs
   active={section.value}
@@ -139,18 +139,20 @@ and Home/End jump to the ends; Up/Down stay with the page. The decision table is
 `Toastr` auto-dismisses each toast after `toast.duration` milliseconds (default
 `defaultToastDuration`, which is 5000; `0` keeps it until dismissed) and reports it through
 `onDismiss` — the caller owns the stack. `createToastStore` in `@spy4x/preact-signals` writes
-that same `duration` field, so the wiring above needs no adapter; `String(id)` is there because
-`ToastItem.id` is `string | number` and that store's ids are strings.
+that same `duration` field, so the wiring above needs no adapter. The id needs none either: the
+exported `ToastId` (`string | number`) is the type of `ToastItem.id`, the id `onDismiss` is called
+with, and the id that store's `remove` takes.
 
 A toast carries an `id`, a `body`, and optionally a `type`, a `title`, a `duration` and a
-`dismissLabel`. The component renders the variant's glyph, the `title` in bold above the `body`
-when there is one, and a dismiss button; the title sits inside the toast's live element, so a
-screen reader hears it with the body. The component invents no title: a hand-built toast without
-one renders none, and neither does an empty one. `createToastStore` always writes one — the
-caller's, or its kind's default (`"Info"`, `"Success"`, `"Error"`, `"Warning"`, overridable through
-its `titles` option) — so a store-fed toast always shows a heading. Until
-[#207](https://github.com/spy4x/preact-components/issues/207) the store wrote it and this
-component dropped it.
+`dismissLabel`, and a `dataE2E` that the component puts on that toast's own element as `data-e2e`,
+so a test can wait for one message rather than for any text in the stack. The component renders the
+variant's glyph, the `title` in bold above the `body` when there is one, and a dismiss button; the
+title sits inside the toast's live element, so a screen reader hears it with the body. The component
+invents no title: a hand-built toast without one renders none, and neither does an empty one.
+`createToastStore` always writes one — the caller's, or its kind's default (`"Info"`, `"Success"`,
+`"Error"`, `"Warning"`, overridable through its `titles` option) — so a store-fed toast always shows
+a heading. Until [#207](https://github.com/spy4x/preact-components/issues/207) the store wrote it
+and this component dropped it.
 
 `corner` puts the stack in one of the window's four corners, 2rem from both edges: `"top-left"`,
 `"top-right"` (the default), `"bottom-left"` or `"bottom-right"`. The toasts keep the order of
@@ -215,7 +217,7 @@ asked for one.
 ```tsx
 <Toastr
   toasts={app.toast.list.value}
-  onDismiss={(id) => app.toast.remove(String(id))}
+  onDismiss={app.toast.remove}
   label="Benachrichtigungen"
   dismissLabel="Ausblenden"
 />
