@@ -208,7 +208,7 @@ export function InlineEdit(
         {busy ? savingLabel : ""}
       </span>
       {error !== null && (
-        <span id={errorId} role="alert" class="text-sm text-danger">
+        <span id={errorId} role="alert" class="text-sm text-red-700 dark:text-red-300">
           {error}
         </span>
       )}

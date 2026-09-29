@@ -6016,6 +6016,18 @@ async function pointerHighlightCheck(devtools: Devtools, walkedTo: number): Prom
     }
   })()`)
 
+  const weights = await devtools.evaluate<{ active: string; plain: string }>(`(() => {
+    const weight = (index) =>
+      getComputedStyle(document.getElementById("guide-combobox-offset-option-" + index)).fontWeight
+    return { active: weight(0), plain: weight(3) }
+  })()`)
+  check(
+    "the highlighted Combobox row is heavier than a plain row, so a hover cannot pass for it",
+    Number(weights.active) > Number(weights.plain),
+    `the highlighted row has weight ${weights.active} and a plain row ${weights.plain}: both fill ` +
+      `with the same hover colour, so weight is the only mark that tells them apart`,
+  )
+
   check(
     "the pointer paints a Combobox row without moving the highlight a screen reader follows",
     before.active === "guide-combobox-offset-option-0" && aim.onTarget &&

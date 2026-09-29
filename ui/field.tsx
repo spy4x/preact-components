@@ -102,7 +102,7 @@ export interface FieldProps {
   class?: string
 }
 
-const errorText = "mt-2 text-sm text-danger"
+const errorText = "mt-2 text-sm text-red-700 dark:text-red-300"
 const hintText = "mt-2 text-sm text-muted"
 
 /**
@@ -210,7 +210,7 @@ export function Field(
     : (
       <label for={labelTarget(labelFor, id)} class={cn("label", disabled && "opacity-50")}>
         {label}
-        {required && <span aria-hidden="true" class="ml-1 text-danger">*</span>}
+        {required && <span aria-hidden="true" class="ml-1 text-red-700 dark:text-red-300">*</span>}
       </label>
     )
 

@@ -195,7 +195,7 @@ const dateInputClasses =
 
 const fieldLabelClasses = "block text-xs font-medium text-foreground"
 
-const pressedPresetClasses = "bg-hover text-foreground"
+const pressedPresetClasses = "bg-hover font-semibold text-foreground"
 
 const occurrenceClasses = "mt-1 space-y-1 text-xs text-foreground"
 

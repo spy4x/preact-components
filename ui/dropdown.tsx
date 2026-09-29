@@ -126,7 +126,7 @@ export function dropdownOpensUp(
 const itemClasses =
   "flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-foreground hover:bg-hover focus:bg-hover"
 /** Text colour of a {@link DropdownItemProps.danger} item, in both themes. */
-const dangerClasses = "text-danger"
+const dangerClasses = "text-red-600 dark:text-red-400"
 
 export interface DropdownItemProps {
   /** Target of the item. It is a link when this is set and a `<button>` otherwise. */

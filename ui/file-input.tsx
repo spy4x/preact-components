@@ -128,7 +128,7 @@ const dropZoneBase = cn(
 const dropZoneInteractive = "cursor-pointer hover:border-strong"
 const dropZoneDragging = "border-info bg-info-soft"
 const dropZoneDisabled = "cursor-not-allowed opacity-50"
-const errorText = "mt-2 text-sm text-danger"
+const errorText = "mt-2 text-sm text-red-700 dark:text-red-300"
 const hintText = "mt-2 text-sm text-muted"
 
 /**
@@ -354,7 +354,9 @@ export function FileInput(
       {label !== undefined && label !== null && (
         <label for={id} class={cn("label", disabled && "opacity-50")}>
           {label}
-          {required && <span aria-hidden="true" class="ml-1 text-danger">*</span>}
+          {required && (
+            <span aria-hidden="true" class="ml-1 text-red-700 dark:text-red-300">*</span>
+          )}
         </label>
       )}
       <div

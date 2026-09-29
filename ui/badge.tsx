@@ -34,9 +34,9 @@ const filledClasses: Record<BadgeColor, string> = {
   red: "border-red-600 bg-red-600 text-red-50",
   orange: "border-orange-400 bg-orange-400 text-orange-50",
   green: "border-green-600 bg-green-600 text-green-50",
-  gray: "border-subtle bg-track text-muted",
+  gray: "border-subtle bg-track text-foreground",
   blue: "border-blue-600 bg-blue-600 text-blue-50",
-  purple: "border-accent-900 bg-accent-900 text-accent-50",
+  purple: "border-transparent bg-selected text-selected-foreground",
   purpleNav: "border-accent-700 bg-accent-900 text-accent-100",
 }
 

@@ -175,7 +175,7 @@ describe("Field", () => {
     expect(html).toContain('id="email-error"')
     expect(html).toContain('aria-live="polite"')
     expect(html).toContain("Enter an address")
-    expect(html).toContain("text-danger")
+    expect(html).toContain("text-red-700")
   })
 
   it("renders the hint under the control", () => {

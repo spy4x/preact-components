@@ -337,7 +337,7 @@ function Toast({ toast, paused, onDismiss, dismissLabel, enterFrom }: ToastProps
       role={variant === "error" ? "alert" : "status"}
       data-e2e={toast.dataE2E}
       class={cn(
-        "space-y-4 rounded-lg px-6 py-4 text-danger-fill-foreground",
+        "space-y-4 rounded-lg px-6 py-4 text-scrim-foreground",
         enterClasses[enterFrom],
         variantClasses[variant],
       )}

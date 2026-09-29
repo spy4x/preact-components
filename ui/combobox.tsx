@@ -540,7 +540,7 @@ export interface ComboboxNamingProps {
  */
 const optionClasses =
   "flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-hover"
-const activeOptionClasses = "bg-hover"
+const activeOptionClasses = "bg-hover font-semibold"
 const selectedOptionClasses = "bg-selected-soft font-medium text-selected"
 const disabledOptionClasses = "cursor-not-allowed opacity-50"
 

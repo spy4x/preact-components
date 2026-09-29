@@ -153,7 +153,8 @@ describe("DropdownItem", () => {
   it("colours a danger item red instead of the default grey", () => {
     const html = render(<DropdownItem danger onClick={() => {}}>Archive</DropdownItem>)
 
-    expect(html).toContain("text-danger")
+    expect(html).toContain("text-red-600")
+    expect(html).toContain("dark:text-red-400")
     expect(html).not.toContain("text-foreground")
   })
 
@@ -161,7 +162,7 @@ describe("DropdownItem", () => {
     const html = render(<DropdownItem onClick={() => {}}>Edit</DropdownItem>)
 
     expect(html).toContain("text-foreground")
-    expect(html).not.toContain("text-danger")
+    expect(html).not.toContain("text-red-600")
   })
 
   it("merges the caller's classes over its own", () => {

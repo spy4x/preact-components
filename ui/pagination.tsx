@@ -229,6 +229,7 @@ export function Pagination(
                   size="sm"
                   aria-current={item.page === current ? "page" : undefined}
                   aria-label={pageLabel(item.page)}
+                  class={item.page === current ? "font-semibold" : undefined}
                   onClick={() => onChange(item.page)}
                 >
                   {item.page}

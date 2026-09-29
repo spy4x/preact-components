@@ -26,9 +26,9 @@ describe("ErrorState", () => {
   it("uses the error palette", () => {
     const html = render(<ErrorState message="Upload failed" />)
 
-    expect(html).toContain("border-danger")
-    expect(html).toContain("bg-danger-soft")
-    expect(html).toContain("text-danger")
+    expect(html).toContain("border-red-500")
+    expect(html).toContain("bg-red-50")
+    expect(html).toContain("text-red-700")
   })
 
   it("appends a caller class", () => {

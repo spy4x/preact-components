@@ -589,8 +589,12 @@ below flips with `.dark` on its own, so a light/dark pair collapses to one class
 | `hover:text-accent-900`, `dark:hover:text-accent-400` (sortable header)                       | `hover:text-selected`                                                  |
 | `focus-visible:ring-accent-900` (focus ring)                                                  | `focus-visible:ring-focus`                                             |
 | `border-blue-500 bg-blue-50` (drop target)                                                    | `border-info bg-info-soft`                                             |
+<<<<<<< HEAD
 | `text-white` on a `bg-green-*`, `bg-blue-*` or `bg-yellow-*` status fill (toast)              | `text-danger-fill-foreground`                                          |
 >>>>>>> ac11c7d (fix(ui): keep Progress's dark track at the hover fill)
+=======
+| `text-white` on a fixed status fill that stays (toast: `bg-green-700`, `bg-yellow-700`)       | `text-scrim-foreground`                                                |
+>>>>>>> d7cd797 (fix(ui): keep status reds, mark the current item, use selection fills)
 
 Where the token's dark value is a different shade from what a component used (for example a
 `dark:` step a shade off), the lane that converts the file checks the result in the browser.

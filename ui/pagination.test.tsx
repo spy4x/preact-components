@@ -426,6 +426,15 @@ describe("Pagination", () => {
     expect(html).toContain("border-control")
   })
 
+  it("marks the current page with a heavier weight, not only a fill a hover repeats", () => {
+    const html = render(<Pagination page={2} pageCount={3} onChange={() => {}} />)
+    const current = html.match(/<button[^>]*aria-current="page"[^>]*>/)?.[0] ?? ""
+    const other = html.match(/<button[^>]*aria-label="Page 3"[^>]*>/)?.[0] ?? ""
+
+    expect(current).toContain("font-semibold")
+    expect(other).not.toContain("font-semibold")
+  })
+
   it("appends a caller class to the landmark", () => {
     const html = render(<Pagination page={1} pageCount={3} onChange={() => {}} class="mt-6" />)
 
