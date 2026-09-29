@@ -541,6 +541,7 @@ below flips with `.dark` on its own, so a light/dark pair collapses to one class
 | `bg-gray-100 hover:bg-gray-200`, `dark:bg-gray-700 dark:hover:bg-gray-600` (secondary button)           | `bg-hover hover:bg-track`                                                        |
 | `bg-gray-100`, `dark:bg-gray-700` (a chip, an avatar, a pressed toolbar button)                         | `bg-hover`                                                                       |
 | `bg-gray-200 dark:bg-gray-700` (progress track, where the fill must keep 3:1)                           | `bg-track dark:bg-hover`                                                         |
+| `bg-white dark:bg-gray-200` (switch knob, light in both palettes)                                       | `bg-surface dark:bg-foreground`                                                  |
 | `bg-gray-200 text-gray-600` (filled gray badge, no dark classes)                                        | `bg-track text-foreground` (`text-muted` is 2.9:1 on the dark track)             |
 | `bg-blue-50 text-blue-700` (chosen list option)                                                         | `bg-selected-soft text-selected`                                                 |
 | `border-accent-200 bg-accent-50 text-accent-700` (icon tile)                                            | `border-subtle bg-selected-soft text-selected`                                   |

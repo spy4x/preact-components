@@ -37,6 +37,13 @@ describe("ToggleSwitch", () => {
     expect(html).toContain("shadow-raised")
   })
 
+  it("keeps the knob light on the dark track", () => {
+    const html = render(<ToggleSwitch value onToggle={() => {}} />)
+
+    expect(html).toContain("bg-surface")
+    expect(html).toContain("dark:bg-foreground")
+  })
+
   it("hides the knob from assistive tech", () => {
     expect(render(<ToggleSwitch value onToggle={() => {}} />)).toContain('aria-hidden="true"')
   })
