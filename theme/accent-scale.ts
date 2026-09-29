@@ -59,6 +59,24 @@ export const LIGHTNESS_CAPS: Record<number, number> = {
   800: 0.545,
 }
 
+/**
+ * The lightness above which an accent takes a dark label instead of a white one: where white and
+ * near-black text have the same contrast on it (about 4.5:1 each).
+ */
+export const LIGHT_ACCENT = 0.57
+
+/** The steps that sit under a label: the primary Button's fill and hover. */
+const LABEL_STEPS = [600, 700, 800]
+
+/**
+ * The lightest an accent's label steps stay when the accent is light: `min(l, LABEL_FLOOR)`. Their
+ * caps keep a white label at 4.5:1 on a dark accent; on a light one, whose label is dark, the same
+ * caps would push the hover darker than a dark label can read (orange `#f97316` at 800 gave 3.5:1).
+ * The floor holds the step at 0.6, where a near-black label reads at 5:1. An accent darker than
+ * 0.6 has `l` under the floor and the steps are unchanged.
+ */
+export const LABEL_FLOOR = 0.6
+
 /** Added to step 600's cap times the near-purple weight: purple-600's lightness is 0.558. */
 export const PURPLE_600_ALLOWANCE = 0.013
 
@@ -172,8 +190,11 @@ const fixed = (value: number, digits: number) => `${Number(value.toFixed(digits)
 function lightness(step: number): string {
   const [l] = PURPLE[step]
   const scaled = `l * ${l} / 0.381`
-  if (step === 600) {
-    return `min(${LIGHTNESS_CAPS[600]} + ${PURPLE_600_ALLOWANCE} * ${NEAR_PURPLE}, ${scaled})`
+  if (LABEL_STEPS.includes(step)) {
+    const cap = step === 600
+      ? `${LIGHTNESS_CAPS[600]} + ${PURPLE_600_ALLOWANCE} * ${NEAR_PURPLE}`
+      : `${LIGHTNESS_CAPS[step]}`
+    return `max(min(${cap}, ${scaled}), min(l, ${LABEL_FLOOR}))`
   }
   if (step in LIGHTNESS_CAPS) return `min(${LIGHTNESS_CAPS[step]}, ${scaled})`
   if (step === 950) return `calc(${scaled})`
@@ -218,6 +239,12 @@ export function accentScaleBlock(): string {
 
   return `@supports (color: oklch(from red min(l, 1) max(0, c * cos(h * 1deg)) calc(h + sin(h * 1deg)))) {
   :root {
+    --color-accent-foreground: oklch(
+      from var(--color-accent)
+      clamp(0.15, calc((${LIGHT_ACCENT} - l) * 1000), 0.98)
+      calc(c * 0.1)
+      h
+    );
 ${declarations.join("\n")}
   }
 }`

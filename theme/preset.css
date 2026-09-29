@@ -39,6 +39,12 @@
     background-color: var(--color-canvas, oklch(0.967 0.003 264.542));
     -webkit-font-smoothing: antialiased;
   }
+
+  /* Headings read --font-heading, the sans font until an app sets it. */
+  .theme-base :is(h1, h2, h3, h4, h5, h6) {
+    font-family: var(--font-heading, var(--font-sans, "Poppins", ui-sans-serif, system-ui,
+      sans-serif));
+  }
 }
 
 /* #region Colour atoms */
@@ -139,27 +145,186 @@
   color: var(--color-success, oklch(0.527 0.154 150.069));
 }
 
+@utility bg-info {
+  background-color: var(--color-info, oklch(0.546 0.245 262.881));
+}
+
+@utility text-info {
+  color: var(--color-info, oklch(0.546 0.245 262.881));
+}
+
+@utility border-info {
+  border-color: var(--color-info, oklch(0.546 0.245 262.881));
+}
+
+/* Text on a status fill. The accent's is worked out from the accent (tokens.css). */
+@utility text-accent-foreground {
+  color: var(--color-accent-foreground, oklch(0.977 0.014 308.299));
+}
+
+@utility text-primary-foreground {
+  color: var(--color-primary-foreground, oklch(0.977 0.014 308.299));
+}
+
+@utility text-danger-foreground {
+  color: var(--color-danger-foreground, oklch(0.971 0.013 17.38));
+}
+
+@utility text-info-foreground {
+  color: var(--color-info-foreground, oklch(0.97 0.014 254.604));
+}
+
+/* The danger fill, and its hover: the fill 12% darker. */
+@utility bg-danger-fill {
+  background-color: var(--color-danger-fill, oklch(0.577 0.245 27.325));
+}
+
+@utility bg-danger-fill-hover {
+  background-color: color-mix(
+    in oklab,
+    var(--color-danger-fill, oklch(0.577 0.245 27.325)),
+    black 12%
+  );
+}
+
+@utility text-foreground {
+  color: var(--color-foreground, oklch(0.13 0.028 261.692));
+}
+
+@utility text-placeholder {
+  color: var(--color-placeholder, oklch(0.551 0.027 264.364));
+}
+
+@utility bg-foreground {
+  background-color: var(--color-foreground, oklch(0.13 0.028 261.692));
+}
+
+@utility text-canvas {
+  color: var(--color-canvas, oklch(0.967 0.003 264.542));
+}
+
+@utility bg-hover {
+  background-color: var(--color-hover, oklch(0.967 0.003 264.542));
+}
+
+@utility bg-track {
+  background-color: var(--color-track, oklch(0.928 0.006 264.531));
+}
+
+@utility bg-scrim {
+  background-color: var(--color-scrim, oklch(0 0 0 / 0.5));
+}
+
+@utility text-scrim-foreground {
+  color: var(--color-scrim-foreground, oklch(1 0 0));
+}
+
+@utility divide-subtle {
+  & > :not(:last-child) {
+    border-color: var(--color-border-subtle, oklch(0.928 0.006 264.531));
+  }
+}
+
+@utility ring-subtle {
+  --tw-ring-color: var(--color-border-subtle, oklch(0.928 0.006 264.531));
+}
+
+@utility ring-control {
+  --tw-ring-color: var(--color-border-control, oklch(0.872 0.01 258.338));
+}
+
+/* Selection: what is chosen or current. Tokens in tokens.css; they follow the accent by default. */
+@utility bg-selected {
+  background-color: var(--color-selected, var(--color-accent-900));
+}
+
+@utility text-selected-foreground {
+  color: var(--color-selected-foreground, var(--color-accent-foreground));
+}
+
+@utility bg-selected-soft {
+  background-color: var(--color-selected-soft, var(--color-accent-50));
+}
+
+@utility text-selected {
+  color: var(--color-selected-text, var(--color-accent-900));
+}
+
+@utility border-selected {
+  border-color: var(--color-selected-text, var(--color-accent-900));
+}
+
+/* Focus: `ring-2 ring-focus ring-offset-2 ring-offset-focus`. */
+@utility ring-focus {
+  --tw-ring-color: var(--color-focus-ring, var(--color-accent-900));
+}
+
+@utility ring-offset-focus {
+  --tw-ring-offset-color: var(--color-focus-offset, var(--color-canvas));
+}
+
+/* Shapes and shadows. */
+@utility rounded-control {
+  border-radius: var(--radius-control, 0.375rem);
+}
+
+@utility rounded-card {
+  border-radius: var(--radius-card, 0.75rem);
+}
+
+@utility shadow-raised {
+  box-shadow: var(
+    --shadow-raised,
+    0 1px 3px 0 rgb(0 0 0 / 0.1),
+    0 1px 2px -1px rgb(0 0 0 / 0.1)
+  );
+}
+
+@utility shadow-popover {
+  box-shadow: var(
+    --shadow-popover,
+    0 10px 15px -3px rgb(0 0 0 / 0.1),
+    0 4px 6px -4px rgb(0 0 0 / 0.1)
+  );
+}
+
 /* #endregion Colour atoms */
 
 /* #region Typography */
 
+/* The font a heading is drawn in: --font-heading, which is the sans font until an app sets it. */
+@utility font-heading {
+  font-family: var(--font-heading, var(--font-sans, "Poppins", ui-sans-serif, system-ui,
+    sans-serif));
+}
+
 @utility h1 {
+  font-family: var(--font-heading, var(--font-sans, "Poppins", ui-sans-serif, system-ui,
+    sans-serif));
   @apply text-2xl xl:text-3xl font-medium;
 }
 
 @utility h2 {
+  font-family: var(--font-heading, var(--font-sans, "Poppins", ui-sans-serif, system-ui,
+    sans-serif));
   @apply text-xl xl:text-2xl font-medium;
 }
 
 @utility h3 {
+  font-family: var(--font-heading, var(--font-sans, "Poppins", ui-sans-serif, system-ui,
+    sans-serif));
   @apply text-lg xl:text-xl font-medium;
 }
 
 @utility h4 {
+  font-family: var(--font-heading, var(--font-sans, "Poppins", ui-sans-serif, system-ui,
+    sans-serif));
   @apply text-lg xl:text-xl font-medium;
 }
 
 @utility h5 {
+  font-family: var(--font-heading, var(--font-sans, "Poppins", ui-sans-serif, system-ui,
+    sans-serif));
   @apply text-lg font-medium;
 }
 

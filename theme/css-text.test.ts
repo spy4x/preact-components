@@ -91,6 +91,26 @@ const UNCHANGED_ROOT_TOKENS: Record<string, string> = {
   "--radius-primary": "0.5rem",
   "--radius-control": "0.375rem",
   "--font-sans": `"Poppins", ui-sans-serif, system-ui, sans-serif`,
+  // #417 added the tokens below: text on the accent, selection, focus, interaction fills, the info
+  // tone, the heading font, the card radius and the two shadows. Each default draws what the
+  // components drew before, or, for the new ones, a value nothing reads yet.
+  "--color-accent-foreground": `var(--color-primary-foreground)`,
+  "--color-selected": `var(--color-accent-900)`,
+  "--color-selected-foreground": `var(--color-accent-foreground)`,
+  "--color-selected-soft": `var(--color-accent-50)`,
+  "--color-selected-text": `var(--color-accent-900)`,
+  "--color-focus-offset": `var(--color-canvas)`,
+  "--color-hover": `oklch(0.967 0.003 264.542)`,
+  "--color-track": `oklch(0.928 0.006 264.531)`,
+  "--color-scrim": `oklch(0 0 0 / 0.5)`,
+  "--color-scrim-foreground": `oklch(1 0 0)`,
+  "--color-danger-fill": `var(--color-danger)`,
+  "--color-info": `oklch(0.546 0.245 262.881)`,
+  "--color-info-foreground": `oklch(0.97 0.014 254.604)`,
+  "--font-heading": `var(--font-sans)`,
+  "--radius-card": `0.75rem`,
+  "--shadow-raised": `0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)`,
+  "--shadow-popover": `0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)`,
 }
 
 const UNCHANGED_DARK_TOKENS: Record<string, string> = {
@@ -107,6 +127,13 @@ const UNCHANGED_DARK_TOKENS: Record<string, string> = {
   "--color-muted-foreground": "oklch(0.707 0.022 261.325)",
   "--color-placeholder": "oklch(0.707 0.022 261.325)",
   "--color-danger": "oklch(0.637 0.237 25.331)",
+  "--color-hover": `oklch(0.373 0.034 259.733)`,
+  "--color-track": `oklch(0.446 0.03 256.802)`,
+  "--color-selected-soft": `color-mix(in oklab, var(--color-accent-900) 30%, transparent)`,
+  "--color-selected-text": `var(--color-accent-400)`,
+  "--color-danger-fill": `oklch(0.505 0.213 27.518)`,
+  "--color-info": `oklch(0.707 0.165 254.624)`,
+  "--color-info-foreground": `oklch(0.282 0.091 267.935)`,
 }
 
 describe("the default token set, after #257", () => {

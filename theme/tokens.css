@@ -40,10 +40,36 @@
      --color-primary recolours the components with it. */
   --color-accent: var(--color-primary);
   --color-accent-900: var(--color-accent); /* the rest of the scale is at the end of this file */
+  /* Text drawn on an accent fill (step 900, and the darker steps 600-800 on hover). Worked out from
+     the accent itself, near-white on a dark accent and near-black on a light one, in the block at
+     the end of this file; a browser that cannot evaluate it keeps this fallback. An app sets it
+     to pin the colour. */
+  --color-accent-foreground: var(--color-primary-foreground);
+
+  /* Selection — what is chosen or current: a selected row, the active tab, the chosen Calendar day,
+     a checked control, a highlighted badge. They follow the accent until an app points them
+     elsewhere, so an app that keeps the accent for its primary button alone sets these four. */
+  --color-selected: var(--color-accent-900); /* the fill: a chosen day, a checked box */
+  --color-selected-foreground: var(--color-accent-foreground); /* text on that fill */
+  --color-selected-soft: var(--color-accent-50); /* a quiet background: a selected row */
+  --color-selected-text: var(--color-accent-900); /* the active tab's text, border and mark */
+
+  /* Focus — a ring of --color-focus-ring, set off from the element by --color-focus-offset. The ring
+     is not declared here: it falls back to the accent (and, under `.dark`, `.btn` and the form
+     fields draw --color-primary-muted) until an app sets it. The offset is the page colour, so the
+     gap around a ring looks like the page. Used by `ring-focus` and `ring-offset-focus`. */
+  --color-focus-offset: var(--color-canvas);
 
   /* Surfaces — page, raised card, form control. */
   --color-surface: oklch(1 0 0); /* white */
   --color-canvas: oklch(0.967 0.003 264.542); /* gray-100, a step below white: cards stand off it */
+
+  /* Interaction fills — a hovered row or ghost button, the unfilled track of a switch or bar, and
+     the dim layer behind a dialog or lightbox with the text drawn on it. */
+  --color-hover: oklch(0.967 0.003 264.542); /* gray-100 */
+  --color-track: oklch(0.928 0.006 264.531); /* gray-200 */
+  --color-scrim: oklch(0 0 0 / 0.5);
+  --color-scrim-foreground: oklch(1 0 0);
 
   /* Borders — subtle chrome, control border. */
   --color-border-subtle: oklch(0.928 0.006 264.531); /* gray-200 */
@@ -57,15 +83,28 @@
   /* Status — button tones, map markers, metric readouts. */
   --color-danger: oklch(0.577 0.245 27.325); /* red-600 */
   --color-danger-foreground: oklch(0.971 0.013 17.38); /* red-50 */
+  /* The danger colour as a fill under --color-danger-foreground. The same colour as --color-danger
+     in the light palette; the dark palette needs a darker one, because --color-danger is drawn as
+     text there and a light red fill would fail the contrast of its label. */
+  --color-danger-fill: var(--color-danger);
   --color-warning: oklch(0.646 0.222 41.116); /* orange-600 */
   --color-warning-foreground: oklch(0.98 0.016 73.684); /* orange-50 */
   --color-success: oklch(0.527 0.154 150.069); /* green-700 */
   --color-success-foreground: oklch(0.982 0.018 155.826); /* green-50 */
+  --color-info: oklch(0.546 0.245 262.881); /* blue-600 */
+  --color-info-foreground: oklch(0.97 0.014 254.604); /* blue-50 */
 
   /* Geometry. */
   --radius-primary: 0.5rem; /* rounded-lg */
   --radius-control: 0.375rem; /* rounded-md */
+  --radius-card: 0.75rem; /* rounded-xl */
+  /* Shadows — a raised card and a popover (menus, dialogs, tooltips). `none` gives flat chrome. */
+  --shadow-raised: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1); /* shadow-sm */
+  --shadow-popover: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); /* shadow-lg */
   --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
+  /* Headings — h1-h6 under `.theme-base`, the preset's `h1`-`h5` classes and `font-heading`. The
+     sans font until an app sets it, to a serif for instance. */
+  --font-heading: var(--font-sans);
   /* --font-serif and --font-mono are deliberately not redeclared here: Tailwind 4 already defines
      both (see README.md → "Theming" → "Fonts"), and a `:root` declaration in this file would win
      the cascade over an app's own `@theme --font-mono`, the same problem the header comment above
@@ -84,6 +123,9 @@
   --color-surface: oklch(0.278 0.033 256.848); /* gray-800 */
   --color-canvas: oklch(0.21 0.034 264.665); /* gray-900 */
 
+  --color-hover: oklch(0.373 0.034 259.733); /* gray-700 */
+  --color-track: oklch(0.446 0.03 256.802); /* gray-600 */
+
   --color-border-subtle: oklch(0.373 0.034 259.733); /* gray-700 */
   --color-border-control: oklch(0.446 0.03 256.802); /* gray-600 */
 
@@ -92,6 +134,11 @@
   --color-placeholder: oklch(0.707 0.022 261.325); /* gray-400 */
 
   --color-danger: oklch(0.637 0.237 25.331); /* red-500 */
+  --color-selected-soft: color-mix(in oklab, var(--color-accent-900) 30%, transparent);
+  --color-selected-text: var(--color-accent-400);
+  --color-danger-fill: oklch(0.505 0.213 27.518); /* red-700: red-50 label at 7:1 */
+  --color-info: oklch(0.707 0.165 254.624); /* blue-400: AA as text on the canvas */
+  --color-info-foreground: oklch(0.282 0.091 267.935); /* blue-950: AA on the blue-400 fill */
 }
 
 /*
@@ -130,8 +177,10 @@
  *
  * With no token set, --color-accent is purple-900, the weight is 1 and the cap is above every
  * purple step, so every step is Tailwind's own purple step to the third decimal
- * (`pages/checks/theme.ts` reads all of them). Pick an accent about as dark as purple-900, since
- * white text sits on step 900.
+ * (`pages/checks/theme.ts` reads all of them). Text on an accent fill is --color-accent-foreground,
+ * near-white on an accent darker than lightness 0.57 and near-black on a lighter one. A light
+ * accent such as orange `#f97316` keeps its label steps (600-800) at lightness 0.6 or above, so a
+ * near-black label stays at 4.5:1 or better on the fill and its hover.
  *
  * Declared on `:root` only, so the scale is worked out once from the root's --color-accent and
  * inherited as colours: set --color-primary or --color-accent on `:root`, not on a subtree. A
@@ -142,6 +191,12 @@
 /* #region accent-scale — generated by accent-scale.ts, do not edit */
 @supports (color: oklch(from red min(l, 1) max(0, c * cos(h * 1deg)) calc(h + sin(h * 1deg)))) {
   :root {
+    --color-accent-foreground: oklch(
+      from var(--color-accent)
+      clamp(0.15, calc((0.57 - l) * 1000), 0.98)
+      calc(c * 0.1)
+      h
+    );
     --color-accent-50: oklch(
       from var(--color-accent)
       0.977
@@ -198,28 +253,28 @@
     );
     --color-accent-600: oklch(
       from var(--color-accent)
-      min(0.545 + 0.013 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50), l * 0.558 / 0.381)
+      max(min(0.545 + 0.013 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50), l * 0.558 / 0.381), min(l, 0.6))
       min(
         c * (1 + 0.636364 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)),
-        (0.193 + 0.0403 * cos(h * 1deg) - 0.02 * sin(h * 1deg) - 0.0001 * cos(h * 2deg) - 0.0435 * sin(h * 2deg) + 0.0037 * cos(h * 3deg) + 0.019 * sin(h * 3deg)) * max(0, min(min(0.545 + 0.013 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50), l * 0.558 / 0.381) / (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg)), (1 - min(0.545 + 0.013 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50), l * 0.558 / 0.381)) / (1 - (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg))))) + 0.032 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)
+        (0.193 + 0.0403 * cos(h * 1deg) - 0.02 * sin(h * 1deg) - 0.0001 * cos(h * 2deg) - 0.0435 * sin(h * 2deg) + 0.0037 * cos(h * 3deg) + 0.019 * sin(h * 3deg)) * max(0, min(max(min(0.545 + 0.013 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50), l * 0.558 / 0.381), min(l, 0.6)) / (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg)), (1 - max(min(0.545 + 0.013 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50), l * 0.558 / 0.381), min(l, 0.6))) / (1 - (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg))))) + 0.032 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)
       )
       calc(h - 2.666)
     );
     --color-accent-700: oklch(
       from var(--color-accent)
-      min(0.5, l * 0.496 / 0.381)
+      max(min(0.5, l * 0.496 / 0.381), min(l, 0.6))
       min(
         c * (1 + 0.505682 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)),
-        (0.193 + 0.0403 * cos(h * 1deg) - 0.02 * sin(h * 1deg) - 0.0001 * cos(h * 2deg) - 0.0435 * sin(h * 2deg) + 0.0037 * cos(h * 3deg) + 0.019 * sin(h * 3deg)) * max(0, min(min(0.5, l * 0.496 / 0.381) / (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg)), (1 - min(0.5, l * 0.496 / 0.381)) / (1 - (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg))))) + 0.038 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)
+        (0.193 + 0.0403 * cos(h * 1deg) - 0.02 * sin(h * 1deg) - 0.0001 * cos(h * 2deg) - 0.0435 * sin(h * 2deg) + 0.0037 * cos(h * 3deg) + 0.019 * sin(h * 3deg)) * max(0, min(max(min(0.5, l * 0.496 / 0.381), min(l, 0.6)) / (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg)), (1 - max(min(0.5, l * 0.496 / 0.381), min(l, 0.6))) / (1 - (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg))))) + 0.038 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)
       )
       calc(h - 3.063)
     );
     --color-accent-800: oklch(
       from var(--color-accent)
-      min(0.545, l * 0.438 / 0.381)
+      max(min(0.545, l * 0.438 / 0.381), min(l, 0.6))
       min(
         c * (1 + 0.238636 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)),
-        (0.193 + 0.0403 * cos(h * 1deg) - 0.02 * sin(h * 1deg) - 0.0001 * cos(h * 2deg) - 0.0435 * sin(h * 2deg) + 0.0037 * cos(h * 3deg) + 0.019 * sin(h * 3deg)) * max(0, min(min(0.545, l * 0.438 / 0.381) / (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg)), (1 - min(0.545, l * 0.438 / 0.381)) / (1 - (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg))))) + 0.018 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)
+        (0.193 + 0.0403 * cos(h * 1deg) - 0.02 * sin(h * 1deg) - 0.0001 * cos(h * 2deg) - 0.0435 * sin(h * 2deg) + 0.0037 * cos(h * 3deg) + 0.019 * sin(h * 3deg)) * max(0, min(max(min(0.545, l * 0.438 / 0.381), min(l, 0.6)) / (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg)), (1 - max(min(0.545, l * 0.438 / 0.381), min(l, 0.6))) / (1 - (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg))))) + 0.018 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)
       )
       calc(h - 1.263)
     );
