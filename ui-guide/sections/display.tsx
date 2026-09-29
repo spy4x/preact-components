@@ -749,7 +749,7 @@ function TooltipDemo() {
               content="Hint"
               label={label}
               placement={placement}
-              class="bg-canvas px-2 py-1"
+              class="bg-hover px-2 py-1"
               contentClass="visible opacity-100"
             >
               <span class="text-sm">{placement}</span>
@@ -778,7 +778,7 @@ function TooltipDemo() {
             content="Escape hides this hint, and the pointer may rest on it while it is read"
             label="Delivery estimate"
             placement="bottom"
-            class="bg-canvas px-2 py-1"
+            class="bg-hover px-2 py-1"
             contentClass="max-w-48"
           >
             <span class="text-sm">Hover me, or tab to me</span>
