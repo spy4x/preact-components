@@ -39,11 +39,6 @@ export const ALLOWED: readonly string[] = [
   "map/leaflet-map.ts",
   "map/map.tsx",
   "map/marker-list.tsx",
-  "system/calendar.tsx",
-  "system/rail-shell.tsx",
-  "system/shell.tsx",
-  "system/site-header.tsx",
-  "system/sw-updater.tsx",
   "theme/preset.css",
   "ui-guide/card.tsx",
   "ui-guide/footer.tsx",
@@ -122,7 +117,7 @@ async function sourceFiles(directory: string): Promise<string[]> {
  * this number on purpose; the number may only go down, and a lane that converts a file lowers it
  * with the list.
  */
-const ALLOWED_COUNT = 66
+const ALLOWED_COUNT = 61
 
 describe("fixed colour classes in component source", () => {
   it("has an allow-list that has not grown", () => {

@@ -171,11 +171,10 @@ export interface CalendarProps {
 const cellBase =
   "relative flex size-full items-center justify-center rounded-lg text-sm tabular-nums transition-colors select-none"
 const focusRing =
-  "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent-900 focus-visible:ring-offset-2 dark:focus-visible:ring-accent-400 dark:focus-visible:ring-offset-gray-800"
+  "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent-900 focus-visible:ring-offset-2 ring-offset-surface dark:focus-visible:ring-accent-400"
 const arrowBase =
-  "inline-flex size-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition-colors dark:border-gray-700 dark:text-gray-400"
-const arrowEnabled =
-  "hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-700 dark:hover:text-gray-100"
+  "inline-flex size-8 items-center justify-center rounded-lg border border-subtle text-muted transition-colors"
+const arrowEnabled = "hover:bg-hover hover:text-foreground"
 const arrowDisabled = "cursor-not-allowed opacity-30"
 
 /** The one date shape `focusHere` can carry besides `"grid"`. */
@@ -696,12 +695,12 @@ export function Calendar(
   return (
     <div
       class={cn(
-        "group rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800",
+        "group rounded-2xl border border-subtle bg-surface",
         className,
       )}
     >
       <div class="flex items-center justify-between px-4 pt-4 pb-3">
-        <h3 id={headingId} class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+        <h3 id={headingId} class="text-sm font-semibold text-foreground">
           {monthLabel(firstOfMonth, locale)}
         </h3>
         <div class="flex items-center gap-1">
@@ -745,7 +744,7 @@ export function Calendar(
               role="columnheader"
               aria-colindex={column + 1}
               aria-label={weekday.long}
-              class="py-1 text-center text-[11px] font-medium tracking-wider text-gray-400 uppercase dark:text-gray-500"
+              class="py-1 text-center text-[11px] font-medium tracking-wider text-placeholder uppercase"
             >
               {weekday.short}
             </div>
@@ -781,7 +780,7 @@ export function Calendar(
         <p
           aria-hidden="true"
           data-calendar-hint
-          class="hidden px-4 pb-3 text-xs text-gray-500 group-focus-within:block dark:text-gray-400"
+          class="hidden px-4 pb-3 text-xs text-muted group-focus-within:block"
         >
           {copy.day(activeDay)}
         </p>
@@ -790,13 +789,13 @@ export function Calendar(
   )
 }
 
-const outOfMonthClass = "text-gray-300 dark:text-gray-600"
-const disabledClass = "text-gray-400 cursor-not-allowed dark:text-gray-500"
-const noneLeftClass = "line-through decoration-gray-300 dark:decoration-gray-600"
-const selectedClass = "bg-accent-900 font-semibold text-white hover:bg-accent-800"
+const outOfMonthClass = "text-placeholder opacity-35"
+const disabledClass = "text-placeholder cursor-not-allowed"
+const noneLeftClass = "line-through decoration-control"
+const selectedClass = "bg-selected font-semibold text-selected-foreground hover:bg-accent-800"
 const todayClass =
-  "bg-accent-50 font-semibold text-accent-800 hover:bg-accent-100 dark:bg-accent-900/30 dark:text-accent-200 dark:hover:bg-accent-900/50"
-const selectableClass = "text-gray-900 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-700"
+  "bg-selected-soft font-semibold text-selected hover:bg-accent-100 dark:hover:bg-accent-900/50"
+const selectableClass = "text-foreground hover:bg-hover"
 
 /**
  * The first and last day of the week `date` sits in, clipped to `date`'s own month.

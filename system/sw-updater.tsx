@@ -288,11 +288,11 @@ export interface SWUpdaterProps {
 }
 
 const barClass =
-  "fixed top-0 right-0 left-0 z-50 flex items-center gap-3 bg-orange-600 px-4 py-3 text-white shadow-lg sm:top-4 sm:right-4 sm:left-auto sm:w-auto sm:rounded-lg"
+  "fixed top-0 right-0 left-0 z-50 flex items-center gap-3 bg-warning px-4 py-3 text-scrim-foreground shadow-popover sm:top-4 sm:right-4 sm:left-auto sm:w-auto sm:rounded-lg"
 const reloadButtonClass =
-  "ml-auto cursor-pointer rounded bg-white px-3 py-1 text-sm font-semibold text-gray-900 transition-colors hover:bg-orange-100 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-hidden sm:ml-0"
+  "ml-auto cursor-pointer rounded bg-(--color-scrim-foreground,oklch(1_0_0)) px-3 py-1 text-sm font-semibold text-foreground transition-colors hover:bg-orange-100 focus-visible:ring-2 focus-visible:ring-(--color-scrim-foreground,oklch(1_0_0)) dark:text-canvas focus-visible:outline-hidden sm:ml-0"
 const dismissButtonClass =
-  "cursor-pointer rounded px-2 py-1 text-sm font-medium text-white/90 transition-colors hover:bg-white/20 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-hidden"
+  "cursor-pointer rounded px-2 py-1 text-sm font-medium text-scrim-foreground transition-colors hover:bg-on-scrim-strong hover:text-scrim-foreground focus-visible:ring-2 focus-visible:ring-(--color-scrim-foreground,oklch(1_0_0)) focus-visible:outline-hidden"
 
 /**
  * Register the service worker and offer a reload when a new version is waiting.

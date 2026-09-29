@@ -148,12 +148,12 @@ export interface ShellProps {
 }
 
 const navLinkClasses =
-  "flex items-center gap-2 rounded-md px-2 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white"
-const navLinkActiveClasses = "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white"
+  "flex items-center gap-2 rounded-md px-2 py-2 text-sm font-medium text-muted hover:bg-hover hover:text-foreground"
+const navLinkActiveClasses = "bg-hover text-foreground"
 const navActionClasses =
-  "flex size-8 shrink-0 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
+  "flex size-8 shrink-0 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-foreground"
 const iconButtonClasses =
-  "flex size-10 cursor-pointer list-none items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+  "flex size-10 cursor-pointer list-none items-center justify-center rounded-md text-muted hover:bg-hover"
 
 /**
  * Whether a click is one the page may take over: the primary button with no modifier. Ctrl or Meta
@@ -198,7 +198,7 @@ function ShellNavContent(
       {Icon && <Icon class="size-5 shrink-0" />}
       <span class="min-w-0 flex-1 truncate">{name}</span>
       {typeof counter === "number" && counter > 0 && (
-        <span class="rounded-full bg-gray-100 px-2 py-px text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+        <span class="rounded-full bg-hover px-2 py-px text-xs font-medium text-muted">
           {counter}
         </span>
       )}
@@ -383,14 +383,14 @@ export function Shell(props: ShellProps): JSX.Element {
     <div class={cn("flex min-h-screen flex-col", className)}>
       <a
         href={`#${contentId}`}
-        class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-gray-900 focus:shadow-lg dark:focus:bg-gray-900 dark:focus:text-white"
+        class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-surface focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-foreground focus:shadow-popover dark:focus:bg-canvas"
         data-e2e="shell-skip-link"
       >
         {skipLabel}
       </a>
 
       <header
-        class="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-4 border-b border-gray-200 bg-white px-4 dark:border-gray-700 dark:bg-gray-900"
+        class="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-4 border-b border-subtle bg-surface px-4 dark:bg-canvas"
         data-e2e="shell-header"
       >
         <details ref={detailsRef} class="group lg:hidden" onToggle={handleToggle}>
@@ -415,12 +415,12 @@ export function Shell(props: ShellProps): JSX.Element {
                 away from it. */
             }
             <div
-              class="absolute inset-0 bg-gray-900/25"
+              class="absolute inset-0 bg-scrim opacity-50"
               aria-hidden="true"
               data-e2e="shell-scrim"
               onClick={() => close(false)}
             />
-            <div class="relative flex h-full w-72 max-w-[80vw] flex-col gap-4 overflow-y-auto bg-white p-4 shadow-lg dark:bg-gray-900">
+            <div class="relative flex h-full w-72 max-w-[80vw] flex-col gap-4 overflow-y-auto bg-surface p-4 shadow-popover dark:bg-canvas">
               {sidebarTop && <div data-e2e="shell-sidebar-top">{sidebarTop("drawer")}</div>}
               <nav aria-label={navLabel} class="flex-1">
                 <ShellNavList items={navItems} currentPath={currentPath} ports={drawerPorts} />
@@ -486,7 +486,7 @@ export function Shell(props: ShellProps): JSX.Element {
         <aside
           id={sidebarId}
           class={cn(
-            "hidden shrink-0 flex-col border-r border-gray-200 dark:border-gray-700 lg:w-64",
+            "hidden shrink-0 flex-col border-r border-subtle lg:w-64",
             !collapsed && "lg:flex",
           )}
           data-e2e="shell-sidebar"
