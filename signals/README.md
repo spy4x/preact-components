@@ -296,7 +296,7 @@ event, because that is not weighed against anything.
 
 ### Translating the toasts
 
-The store's toasts are English until told otherwise. `messages` takes any of the nine functions
+The store's toasts are English until told otherwise. `messages` takes any of the ten functions
 of `ModelStoreMessages`; each receives the config's `model` name, and any you leave out keeps its
 default from `DEFAULT_MODEL_STORE_MESSAGES`. `created`, `updated`, `deleted` and `restored` return
 the body of a toast with no title (the title comes from `createToastStore({ titles })`).

@@ -3015,4 +3015,15 @@ describe("buildModelStore messages", () => {
     expect(toast.messages[0].body).toMatch(/^Zone Antwort kaputt: \w+/)
     expect(toast.messages[0].title).toBe("Zone: Erstellen fehlgeschlagen")
   })
+
+  it("shows the supplied wording when a create is answered with a body that is not JSON", async () => {
+    const { impl } = queueFetch(new Response("not json", { status: 201 }))
+    const toast = toastRecorder()
+    const store = translated(impl, toast.port)
+
+    await store.create({ name: "a" })
+
+    expect(toast.messages[0].body).toMatch(/^Zone Antwort kaputt: /)
+    expect(toast.messages[0].title).toBe("Zone: Erstellen fehlgeschlagen")
+  })
 })
