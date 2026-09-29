@@ -313,6 +313,10 @@ describe("Progress", () => {
     expect(render(<Progress value={50} tone="danger" />)).toContain("bg-track")
   })
 
+  it("darkens the track to the hover fill so the dark fill keeps its contrast", () => {
+    expect(render(<Progress value={50} />)).toContain("dark:bg-hover")
+  })
+
   it("appends a caller class", () => {
     expect(render(<Progress value={50} class="mt-4" />)).toContain("mt-4")
   })
