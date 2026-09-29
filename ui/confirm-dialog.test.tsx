@@ -163,7 +163,7 @@ describe("ConfirmDialog", () => {
     const html = render(dialog({ tone: "danger" }))
     const dangerous = html.split("<button").find((part) => part.includes(">Delete</button>"))
 
-    expect(dangerous).toContain("bg-red-600")
+    expect(dangerous).toContain("bg-danger-fill")
     expect(html).toContain("border-red-300")
   })
 
