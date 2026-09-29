@@ -117,7 +117,18 @@ async function sourceFiles(directory: string): Promise<string[]> {
   return files.sort()
 }
 
+/**
+ * How many files {@link ALLOWED} names. Adding a file to the list fails here until someone changes
+ * this number on purpose; the number may only go down, and a lane that converts a file lowers it
+ * with the list.
+ */
+const ALLOWED_COUNT = 66
+
 describe("fixed colour classes in component source", () => {
+  it("has an allow-list that has not grown", () => {
+    expect(ALLOWED.length).toBe(ALLOWED_COUNT)
+  })
+
   it("appear only in files the allow-list names", async () => {
     const offenders: string[] = []
     for (const directory of PACKAGES) {

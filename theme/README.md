@@ -422,9 +422,13 @@ one opinionated addition.
 
 ### Headings, weights, shapes and shadows
 
-- **Headings.** `--font-heading` is the sans font until an app sets it. `h1`-`h6` under
-  `.theme-base`, the preset's `h1`-`h5` classes and the `font-heading` class draw in it, so
-  `--font-heading: "Literata", serif` gives serif headings and nothing else changes.
+- **Headings.** `--font-heading` is not declared: unset, a heading inherits its font like any other
+  text, so a heading inside a `font-mono` wrapper stays mono. An app sets it, and `h1`-`h6` under
+  `.theme-base`, the preset's `h1`-`h5` classes and the `font-heading` class draw in it:
+  `--font-heading: "Literata", serif` gives serif headings. A heading that carries a font class of
+  its own (`font-sans`) keeps it, because utilities sit above the preset's base layer; a heading in
+  a `font-mono` wrapper takes the app's `--font-heading`, which is what setting it asks for.
+  `pages/checks/theme.ts` reads all three cases in a browser.
 - **Weights.** `font-medium` and `font-bold` read Tailwind's own `--font-weight-medium` and
   `--font-weight-bold` (500 and 700). An app whose fonts ship only 400 and 600 sets both to `600`
   in `:root`, after the preset, so no weight is faked. No token of this package is needed.
@@ -448,19 +452,31 @@ which follow the accent until an app points them elsewhere:
 | `--color-selected-soft`       | `bg-selected-soft`                 | a selected row, a highlighted badge        |
 | `--color-selected-text`       | `text-selected`, `border-selected` | the active tab, a current-item mark        |
 
-Focus: `ring-2 ring-focus ring-offset-2 ring-offset-focus` draws a 2px ring in
-`--color-focus-ring` (the accent until set) with a 2px gap in `--color-focus-offset` (the canvas).
+Focus: `ring-2 ring-focus ring-offset-2 ring-offset-focus` draws a 2px ring in `--color-ring` (the
+accent, which is what the primary `Button` draws today) with a 2px gap in `--color-focus-offset` (the
+canvas). `--color-focus-ring` is the other token: it moves the preset's own `.input`, `.select`,
+`.textarea` and dark `.btn` rings, and ink sets it, so ink does not touch the components' ring.
 
 ### Text on a fill
 
-`--color-accent-foreground` is worked out from the accent: near-white on an accent darker than
-lightness 0.57, near-black on a lighter one, so the primary `Button` reads at 4.5:1 or better with
-`#f97316` as with the default purple. An app pins it by setting the token. The scale's label steps
-(600, 700 and 800) stay at lightness 0.6 or above for a light accent, so the hover fill keeps a
-near-black label above 4.5:1; for a dark accent they are unchanged (`accent-scale.ts` has the
-reason). `--color-danger-foreground` and `--color-info-foreground` pair with `--color-danger-fill`
-and `--color-info`; `--color-danger-fill` is `--color-danger` in the light palette and a darker red
-under `.dark`, where `--color-danger` is drawn as text.
+`--color-accent-foreground` is white (`oklch(1 0 0)`) or a near-black (OKLCH lightness 0.1),
+whichever has the higher contrast on the accent: the accent's WCAG relative luminance, worked out
+in CSS from its sRGB channels, decides at 0.18. The default purple takes white, so the primary
+`Button` is what it was. The scale's label steps (600, 700, 800) follow the choice: for an accent
+that takes the dark label they are the accent itself or a little lighter for the hovers, so a hover
+never lowers the contrast; for one that takes white they are the caps in `accent-scale.ts`, as
+before. What is proven, in `pages/checks/theme.ts`: for 56 accents (seven hues at chroma 0.3 and
+eight lightnesses from 0.4 to 0.9, as the browser draws them) the label reads at 4.5:1 on steps 900,
+800, 700 and 600, and the same holds for `#f97316`. An accent outside that sweep is not measured. An
+app pins the label by setting `--color-accent-foreground`. The block needs `pow()` in CSS; a
+browser without it keeps the previous rules (the literal purple steps and
+`--color-primary-foreground`).
+
+`.btn-danger` keeps `--color-danger-foreground` (red-50). The `Button`'s danger variant reads
+`--color-danger-fill` (red-600 in light, red-700 in dark), `--color-danger-fill-hover` (red-700 and
+red-600) and `--color-danger-fill-foreground` (white, 4.77:1 in light and 6.42:1 in dark). The fill
+is not `--color-danger` because that is drawn as text in dark. `--color-danger-soft` and
+`--color-info-soft` are the tinted backgrounds of an error or notice.
 
 ### Replacing fixed colours
 
@@ -468,32 +484,46 @@ A class naming a Tailwind gray, slate, zinc, neutral or stone step, or `white` o
 the tokens (`infra/scripts/fixed-colours.test.ts` lists the files that still have one). Each token
 below flips with `.dark` on its own, so a light/dark pair collapses to one class.
 
-| Fixed class (light and dark)                                                      | Token class                                                  |
-| --------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| `text-gray-900`, `-950`, `-800`, `-700`, `dark:text-gray-50`…`-200`, `text-black` | `text-foreground`                                            |
-| `text-gray-600`, `-500` (secondary text), `dark:text-gray-400`                    | `text-muted`                                                 |
-| `text-gray-400`, `-500` (placeholder, idle icon)                                  | `text-placeholder`                                           |
-| `bg-white`, `dark:bg-gray-800`                                                    | `bg-surface`                                                 |
-| `bg-gray-50`, `bg-gray-100` (page or recessed area), `dark:bg-gray-900`           | `bg-canvas`                                                  |
-| `hover:bg-gray-50`, `-100`, `-200`, `dark:hover:bg-gray-700`                      | `hover:bg-hover`                                             |
-| `bg-gray-200`, `-300` (track, unfilled part), `dark:bg-gray-600`                  | `bg-track`                                                   |
-| `bg-gray-900`, `bg-black` (inverse chip, tooltip) with `text-white`               | `bg-foreground` with `text-canvas`                           |
-| `bg-black/50` (backdrop), `text-white` drawn on it                                | `bg-scrim`, `text-scrim-foreground`                          |
-| `text-white` on `bg-accent-*` (primary button)                                    | `text-accent-foreground`                                     |
-| `text-white` on `bg-red-*`                                                        | `text-danger-foreground` on `bg-danger-fill`                 |
-| `text-white` on a chosen day or checked control                                   | `text-selected-foreground` on `bg-selected`                  |
-| `border-gray-100`, `-200`, `dark:border-gray-700` (chrome)                        | `border-subtle`                                              |
-| `border-gray-300`, `dark:border-gray-600` (control border)                        | `border-control`                                             |
-| `divide-gray-*`                                                                   | `divide-subtle`                                              |
-| `ring-gray-200`, `-300`, `dark:ring-gray-*`                                       | `ring-subtle`, `ring-control`                                |
-| `shadow-sm`, `shadow-xs`, `shadow-md`                                             | `shadow-raised`                                              |
-| `shadow-lg`, `shadow-xl`                                                          | `shadow-popover`                                             |
-| `bg-accent-50`, `dark:bg-accent-900/30` (selected row, active tab background)     | `bg-selected-soft`                                           |
-| `text-accent-900`, `dark:text-accent-400` (active tab text)                       | `text-selected`                                              |
-| `bg-accent-900` on a chosen day, checked box, switch on                           | `bg-selected` with `text-selected-foreground`                |
-| `rounded-xl` (card)                                                               | `rounded-card`                                               |
-| `rounded-md` (field, chip), `rounded-lg` (control)                                | `rounded-control`, `rounded-primary`                         |
-| `text-red-*`, `bg-red-*` (error text, danger tint)                                | `text-danger`, `bg-danger` (`text-info`, `bg-info` for blue) |
+| Fixed class (light and dark)                                                          | Token class                                                  |
+| ------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `text-gray-900`, `-950`, `-800`, `-700`, `dark:text-gray-50`…`-200`, `text-black`     | `text-foreground`                                            |
+| `text-gray-600`, `-500` (secondary text), `dark:text-gray-400`                        | `text-muted`                                                 |
+| `text-gray-400`, `-500` (placeholder, idle icon)                                      | `text-placeholder`                                           |
+| `bg-white`, `dark:bg-gray-800`                                                        | `bg-surface`                                                 |
+| `bg-gray-50`, `bg-gray-100` (page or recessed area), `dark:bg-gray-900`               | `bg-canvas`                                                  |
+| `hover:bg-gray-50`, `-100`, `-200`, `dark:hover:bg-gray-700`                          | `hover:bg-hover`                                             |
+| `bg-gray-200`, `-300` (track, unfilled part), `dark:bg-gray-600`                      | `bg-track`                                                   |
+| `bg-gray-900`, `bg-black` (inverse chip, tooltip) with `text-white`                   | `bg-foreground` with `text-canvas`                           |
+| `bg-black/50` (backdrop), `text-white` drawn on it                                    | `bg-scrim`, `text-scrim-foreground`                          |
+| `text-white` on `bg-accent-*` (primary button)                                        | `text-accent-foreground`                                     |
+| `text-white` on `bg-red-*`                                                            | `text-danger-foreground` on `bg-danger-fill`                 |
+| `text-white` on a chosen day or checked control                                       | `text-selected-foreground` on `bg-selected`                  |
+| `border-gray-100`, `-200`, `dark:border-gray-700` (chrome)                            | `border-subtle`                                              |
+| `border-gray-300`, `dark:border-gray-600` (control border)                            | `border-control`                                             |
+| `divide-gray-*`                                                                       | `divide-subtle`                                              |
+| `ring-gray-200`, `-300`, `dark:ring-gray-*`                                           | `ring-subtle`, `ring-control`                                |
+| `shadow-sm`, `shadow-xs`, `shadow-md`                                                 | `shadow-raised`                                              |
+| `shadow-lg`, `shadow-xl`                                                              | `shadow-popover`                                             |
+| `bg-accent-50`, `dark:bg-accent-900/30` (selected row, active tab background)         | `bg-selected-soft`                                           |
+| `text-accent-900`, `dark:text-accent-400` (active tab text)                           | `text-selected`                                              |
+| `bg-accent-900` on a chosen day, checked box, switch on                               | `bg-selected` with `text-selected-foreground`                |
+| `bg-white/80`, `bg-white/85`, `bg-gray-900/80`, `bg-gray-900/85` (panel over content) | `bg-surface-overlay`                                         |
+| `bg-gray-900/25`, `dark:bg-gray-900/*` (tint over the canvas)                         | `bg-hover`                                                   |
+| `bg-black/80`, `bg-black/95` (lightbox backdrop)                                      | `bg-scrim-strong`                                            |
+| `bg-white/10`, `bg-white/20` (marks drawn on a scrim)                                 | `bg-on-scrim`, `bg-on-scrim-strong`                          |
+| `border-white/10`                                                                     | `border-on-scrim`                                            |
+| `text-white/70`, `text-white/80`                                                      | `text-on-scrim-muted`                                        |
+| `text-white/90`, `text-white` on a scrim                                              | `text-scrim-foreground`                                      |
+| `border-gray-400`, `border-gray-500` (checkbox, strong hairline)                      | `border-strong`                                              |
+| `decoration-gray-300`, `decoration-gray-500`, `decoration-gray-600`                   | `decoration-control`                                         |
+| `ring-black/5`, `ring-gray-900/5` (popover hairline)                                  | `ring-1 ring-subtle`                                         |
+| `ring-white`, `dark:ring-gray-800` (cutout ring)                                      | `ring-surface`                                               |
+| `ring-offset-gray-800`, `ring-offset-white`                                           | `ring-offset-surface`                                        |
+| `border-white`, `border-gray-800` (edge in the surface colour)                        | `border-surface`                                             |
+| `bg-gray-950`, `bg-gray-900` (inverse block; flips light in dark)                     | `bg-foreground` with `text-canvas`                           |
+| `rounded-xl` (card)                                                                   | `rounded-card`                                               |
+| `rounded-md` (field, chip), `rounded-lg` (control)                                    | `rounded-control`, `rounded-primary`                         |
+| `text-red-*`, `bg-red-*` (error text, danger tint)                                    | `text-danger`, `bg-danger` (`text-info`, `bg-info` for blue) |
 
 Where the token's dark value is a different shade from what a component used (for example a
 `dark:` step a shade off), the lane that converts the file checks the result in the browser.
