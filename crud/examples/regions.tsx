@@ -88,7 +88,7 @@ export function RegionList() {
       canAdd={() => canChange.value}
       header={<th class="text-left" scope="col">Name</th>}
       row={(region) => (
-        <td class="text-gray-900">
+        <td class="text-foreground">
           <a href={`/regions/${region.id}/edit`} class="hover:underline">{region.name}</a>
         </td>
       )}

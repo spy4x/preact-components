@@ -33,17 +33,6 @@ const SKIPPED = [
  * classes move to tokens, and never add one.
  */
 export const ALLOWED: readonly string[] = [
-  "charts/kpi.tsx",
-  "crud/deletion-validation.tsx",
-  "crud/examples/regions.tsx",
-  "map/leaflet-map.ts",
-  "map/map.tsx",
-  "map/marker-list.tsx",
-  "system/calendar.tsx",
-  "system/rail-shell.tsx",
-  "system/shell.tsx",
-  "system/site-header.tsx",
-  "system/sw-updater.tsx",
   "theme/preset.css",
   "ui-guide/card.tsx",
   "ui-guide/footer.tsx",
@@ -122,7 +111,7 @@ async function sourceFiles(directory: string): Promise<string[]> {
  * this number on purpose; the number may only go down, and a lane that converts a file lowers it
  * with the list.
  */
-const ALLOWED_COUNT = 66
+const ALLOWED_COUNT = 55
 
 describe("fixed colour classes in component source", () => {
   it("has an allow-list that has not grown", () => {

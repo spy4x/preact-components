@@ -315,6 +315,14 @@
   background-color: var(--color-selected-soft, var(--color-accent-50));
 }
 
+@utility bg-selected-hover {
+  background-color: var(--color-selected-hover, var(--color-accent-800));
+}
+
+@utility bg-selected-soft-hover {
+  background-color: var(--color-selected-soft-hover, var(--color-accent-100));
+}
+
 @utility text-selected {
   color: var(--color-selected-text, var(--color-accent-900));
 }

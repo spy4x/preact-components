@@ -53,6 +53,8 @@
   --color-selected-foreground: var(--color-accent-foreground); /* text on that fill */
   --color-selected-soft: var(--color-accent-50); /* a quiet background: a selected row */
   --color-selected-text: var(--color-accent-900); /* the active tab's text, border and mark */
+  --color-selected-hover: var(--color-accent-800); /* the fill under the pointer */
+  --color-selected-soft-hover: var(--color-accent-100); /* the quiet background under the pointer */
 
   /* Focus — the preset's own rings (`.input`, `.select`, `.textarea`, `.btn` under `.dark`) read
      --color-focus-ring, which is not declared here: they draw --color-primary-muted until an app
@@ -146,6 +148,7 @@
   --color-danger: oklch(0.637 0.237 25.331); /* red-500 */
   --color-selected-soft: color-mix(in oklab, var(--color-accent-900) 30%, transparent);
   --color-selected-text: var(--color-accent-400);
+  --color-selected-soft-hover: color-mix(in oklab, var(--color-accent-900) 50%, transparent);
   --color-danger-fill: oklch(0.505 0.213 27.518); /* red-700: a white label at 7:1 */
   --color-danger-fill-hover: oklch(0.577 0.245 27.325); /* red-600 */
   --color-danger-soft: color-mix(in oklab, oklch(0.505 0.213 27.518) 30%, transparent);

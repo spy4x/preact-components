@@ -369,7 +369,7 @@ export function RailShell(props: RailShellProps): JSX.Element {
           id={dialogId}
           aria-labelledby={headingId}
           class={cn(
-            "m-0 mt-auto max-h-[80dvh] w-full max-w-none rounded-t-lg border-t p-0 text-[inherit] backdrop:bg-black/40",
+            "m-0 mt-auto max-h-[80dvh] w-full max-w-none rounded-t-lg border-t p-0 text-[inherit] backdrop:bg-scrim backdrop:opacity-80",
             rule,
             surface,
           )}

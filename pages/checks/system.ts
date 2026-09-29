@@ -5,6 +5,7 @@ import {
   inFreshFrame,
   MISSED,
   openGuidePage,
+  pointerToCorner,
   poll,
   pressKey,
   readOr,
@@ -198,6 +199,7 @@ export async function systemChecks(devtools: Devtools): Promise<void> {
   await liveRegionChecks(devtools)
   await updateScenarioChecks(devtools)
   await calendarChecks(devtools)
+  await calendarSelectionHoverChecks(devtools)
   await siteHeaderChecks(devtools)
   await shellChecks(devtools)
   await railShellChecks(devtools)
@@ -6423,5 +6425,117 @@ async function railShellNoScriptCheck(devtools: Devtools): Promise<void> {
     "the page rehydrates after RailShell's no-script check re-enables script execution",
     rehydrated,
     rehydrated ? "data-hydrated set again" : "the page never rehydrated",
+  )
+}
+
+/**
+ * The chosen day and today under the pointer, with the selection tokens left alone and then
+ * repainted to greys (#417).
+ *
+ * A hover shade written as an accent step ignored the tokens: an app that moved the selection off
+ * the accent saw purple flash under the pointer. The card is the locale one, which pins today to
+ * the 10th and chooses the 12th. The pointer is a real one (`Input.dispatchMouseEvent`), because a
+ * hover style is not applied to a scripted event.
+ */
+async function calendarSelectionHoverChecks(devtools: Devtools): Promise<void> {
+  const cell = (date: string) => `${LOCALE_CARD} [data-calendar-date="${date}"]`
+  const CHOSEN = "2026-03-12"
+  const TODAY = "2026-03-10"
+  await centreInView(
+    devtools,
+    `document.querySelector('${cell(CHOSEN)}')`,
+  )
+
+  /** Move the pointer onto a day and read its background once the hover transition has ended. */
+  const hoverBackground = async (date: string): Promise<string> => {
+    const point = await read<{ x: number; y: number } | null>(
+      devtools,
+      `(() => {
+        const box = document.querySelector('${cell(date)}')?.getBoundingClientRect()
+        return box ? { x: box.left + box.width / 2, y: box.top + box.height / 2 } : null
+      })()`,
+      null,
+    )
+    if (point === null) return "no such day"
+    await devtools.send("Input.dispatchMouseEvent", {
+      type: "mouseMoved",
+      x: point.x,
+      y: point.y,
+      button: "none",
+      buttons: 0,
+    })
+    await poll(
+      () =>
+        devtools.evaluate<boolean>(
+          `document.querySelector('${cell(date)}')?.matches(":hover") === true`,
+        ),
+      2_000,
+    )
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    const background = await read(
+      devtools,
+      `getComputedStyle(document.querySelector('${cell(date)}')).backgroundColor`,
+      "unreadable",
+    )
+    await pointerToCorner(devtools)
+    return background
+  }
+
+  /** A colour as the browser computes it, from any CSS colour text. */
+  const computed = (css: string) =>
+    read(
+      devtools,
+      `(() => {
+        const probe = document.createElement("div")
+        probe.style.backgroundColor = ${JSON.stringify(css)}
+        document.body.append(probe)
+        const colour = getComputedStyle(probe).backgroundColor
+        probe.remove()
+        return colour
+      })()`,
+      "unreadable",
+    )
+
+  const accent800 = await computed("var(--color-accent-800)")
+  const defaultChosen = await hoverBackground(CHOSEN)
+  check(
+    "the chosen calendar day, hovered with no selection token set, draws the accent's hover step",
+    defaultChosen === accent800 && accent800 !== "unreadable",
+    `hovered ${defaultChosen}, accent-800 is ${accent800}`,
+  )
+
+  const GREYS = {
+    "--color-selected": "rgb(64, 64, 64)",
+    "--color-selected-hover": "rgb(32, 32, 32)",
+    "--color-selected-soft": "rgb(230, 230, 230)",
+    "--color-selected-soft-hover": "rgb(200, 200, 200)",
+  }
+  await read(
+    devtools,
+    `(Object.entries(${
+      JSON.stringify(GREYS)
+    }).forEach(([name, value]) => document.documentElement.style.setProperty(name, value)), true)`,
+    false,
+  )
+  await new Promise((resolve) => setTimeout(resolve, 400))
+  const chosenAtRest = await read(
+    devtools,
+    `getComputedStyle(document.querySelector('${cell(CHOSEN)}')).backgroundColor`,
+    "unreadable",
+  )
+  const chosen = await hoverBackground(CHOSEN)
+  const today = await hoverBackground(TODAY)
+  await read(
+    devtools,
+    `(Object.keys(${
+      JSON.stringify(GREYS)
+    }).forEach((name) => document.documentElement.style.removeProperty(name)), true)`,
+    false,
+  )
+  check(
+    "with the selection tokens set to greys, hovering the chosen calendar day and today shows no purple",
+    chosenAtRest === GREYS["--color-selected"] && chosen === GREYS["--color-selected-hover"] &&
+      today === GREYS["--color-selected-soft-hover"],
+    `chosen day at rest ${chosenAtRest}, hovered ${chosen}; today hovered ${today}`,
   )
 }

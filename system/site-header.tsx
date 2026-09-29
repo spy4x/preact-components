@@ -73,9 +73,8 @@ export function isCurrentLink(href: string, currentPath: string | undefined): bo
   return currentPath !== undefined && href === currentPath
 }
 
-const linkClasses =
-  "flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
-const activeLinkClasses = "text-gray-900 dark:text-white"
+const linkClasses = "flex items-center gap-2 text-sm font-medium text-muted hover:text-foreground"
+const activeLinkClasses = "text-foreground"
 
 function SiteHeaderNavLink(
   { link, currentPath, onClick }: {
@@ -145,7 +144,7 @@ export function SiteHeader(props: SiteHeaderProps): JSX.Element {
   return (
     <header
       class={cn(
-        "relative border-b border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900",
+        "relative border-b border-subtle bg-surface dark:bg-canvas",
         className,
       )}
     >
@@ -171,7 +170,7 @@ export function SiteHeader(props: SiteHeaderProps): JSX.Element {
               aria-expanded={open}
               aria-controls={panelId}
               aria-label={menuLabel}
-              class="flex size-10 cursor-pointer list-none items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 [&::-webkit-details-marker]:hidden"
+              class="flex size-10 cursor-pointer list-none items-center justify-center rounded-md text-muted hover:bg-hover [&::-webkit-details-marker]:hidden"
               data-e2e="site-header-menu-button"
             >
               <IconBars3 class="size-6 group-open:hidden" aria-hidden="true" />
@@ -180,7 +179,7 @@ export function SiteHeader(props: SiteHeaderProps): JSX.Element {
 
             <div
               id={panelId}
-              class="absolute inset-x-0 top-full z-10 border-b border-gray-200 bg-white px-4 py-4 shadow-lg dark:border-gray-700 dark:bg-gray-900 sm:px-6"
+              class="absolute inset-x-0 top-full z-10 border-b border-subtle bg-surface px-4 py-4 shadow-popover dark:bg-canvas sm:px-6"
               data-e2e="site-header-panel"
             >
               <nav aria-label={navLabel} class="flex flex-col gap-3">
