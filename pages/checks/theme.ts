@@ -1479,7 +1479,7 @@ async function lightAccentChecks(devtools: Devtools): Promise<void> {
     const host = document.createElement("div")
     host.className = "font-mono"
     host.innerHTML = '<h3 id="hf-a">Wrapped</h3><h3 id="hf-b" class="font-sans">Own</h3>' +
-      '<h2 id="hf-c" class="h2 font-medium">Class</h2>'
+      '<h2 id="hf-c" class="h2">Class</h2>'
     document.body.append(host)
     const family = (id) => getComputedStyle(document.getElementById(id)).fontFamily
     const sansProbe = document.createElement("div")
@@ -1518,9 +1518,9 @@ async function lightAccentChecks(devtools: Devtools): Promise<void> {
     `bare ${fonts.set}; class ${fonts.setInMono}; font-sans ${fonts.own}`,
   )
   check(
-    "--font-weight-medium sets font-medium",
+    "--font-weight-medium sets the weight of the library's h2 class",
     fonts.weight === "600",
-    `font-medium weight ${fonts.weight}`,
+    `h2 class weight ${fonts.weight}`,
   )
 }
 

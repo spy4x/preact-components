@@ -42,9 +42,9 @@
   --color-accent-900: var(--color-accent); /* the rest of the scale is at the end of this file */
   /* Text drawn on an accent fill (step 900, and the steps 600-800 on hover). Worked out from the
      accent itself in the block at the end of this file: white on an accent that white reads on,
-     near-black on one it does not. A browser that cannot evaluate it keeps this fallback. An app
-     sets it to pin the colour. */
-  --color-accent-foreground: var(--color-primary-foreground);
+     near-black on one it does not. A browser that cannot evaluate it keeps this fallback, white,
+     which is what the default purple accent draws either way. An app sets it to pin the colour. */
+  --color-accent-foreground: oklch(1 0 0);
 
   /* Selection — what is chosen or current: a selected row, the active tab, the chosen Calendar day,
      a checked control, a highlighted badge. They follow the accent until an app points them
