@@ -302,7 +302,9 @@ default from `DEFAULT_MODEL_STORE_MESSAGES`. `created`, `updated`, `deleted` and
 the body of a toast with no title (the title comes from `createToastStore({ titles })`).
 `createFailed`, `updateFailed`, `deleteFailed` and `restoreFailed` return the title of an error
 toast, whose body is the request error's message. `malformedUpdate(model, issue)` returns the
-message of a remote row that failed its schema.
+message of a remote row that failed its schema (it is also the list's `listOp.error`), and
+`malformedResponse(model, detail)` returns the message of a server answer that is not JSON or
+fails its schema.
 
 ```ts
 buildModelStore({

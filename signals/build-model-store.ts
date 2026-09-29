@@ -171,7 +171,9 @@ export interface ModelStoreContext<F extends Type<Model>> {
  * Each function receives the config's `model` name. `*Failed` returns the toast's title (its body
  * is the request error's message); the other outcomes return the body of a toast with no title.
  * `malformedUpdate` receives the first issue found in a remote row (`undefined` when there is
- * none) and returns the body of that error toast.
+ * none) and returns the body of that error toast; the same text is also the list's load error
+ * (`listOp.error`). `malformedResponse` receives the detail of a server answer that is not JSON or
+ * fails its schema and returns the error's message, which the error toast shows as its body.
  */
 export interface ModelStoreMessages {
   created: (model: string) => string
@@ -183,6 +185,7 @@ export interface ModelStoreMessages {
   deleteFailed: (model: string) => string
   restoreFailed: (model: string) => string
   malformedUpdate: (model: string, issue: string | undefined) => string
+  malformedResponse: (model: string, detail: string) => string
 }
 
 /** English defaults of {@link ModelStoreMessages}. */
@@ -196,6 +199,7 @@ export const DEFAULT_MODEL_STORE_MESSAGES: ModelStoreMessages = {
   deleteFailed: (model) => `Failed to delete ${model}`,
   restoreFailed: (model) => `Failed to restore ${model}`,
   malformedUpdate: (model, issue) => `Malformed ${model} update: ${issue ?? "unknown issue"}`,
+  malformedResponse: (model, detail) => `Malformed ${model} response: ${detail}`,
 }
 
 /** Configuration for {@link buildModelStore}. */
@@ -378,7 +382,7 @@ export function buildModelStore<
   const toast = config.toast ?? silentToast
   const words: ModelStoreMessages = { ...DEFAULT_MODEL_STORE_MESSAGES, ...config.messages }
   const isNewer = config.isNewer ?? defaultIsNewer
-  const request = createRequest(model, config.fetch ?? globalThis.fetch)
+  const request = createRequest(model, config.fetch ?? globalThis.fetch, words.malformedResponse)
   const pathFor = paths?.one ?? ((id: number) => `${endpoint}/${id}`)
   const undeletePathFor = paths?.undelete ?? ((id: number) => `${endpoint}/${id}/undelete`)
 
@@ -878,7 +882,11 @@ export function buildModelStore<
 }
 
 /** Build the request port over an injected `fetch`. */
-function createRequest(model: string, fetchImpl: typeof fetch): ModelStoreRequest {
+function createRequest(
+  model: string,
+  fetchImpl: typeof fetch,
+  describe: ModelStoreMessages["malformedResponse"],
+): ModelStoreRequest {
   return async function request<R extends Type>(url: string, init: RequestInit, schema: R) {
     let response: Response
     try {
@@ -895,19 +903,19 @@ function createRequest(model: string, fetchImpl: typeof fetch): ModelStoreReques
     try {
       body = await response.json()
     } catch (error) {
-      return { error: malformed(model, errorMessage(error)), result: null }
+      return { error: malformed(describe(model, errorMessage(error))), result: null }
     }
 
     const parsed = schema(body)
     if (isArkErrors(parsed)) {
-      return { error: malformed(model, parsed.summary), result: null }
+      return { error: malformed(describe(model, parsed.summary)), result: null }
     }
     return { error: null, result: parsed }
   }
 }
 
-function malformed(model: string, detail: string): RequestError {
-  return { type: ErrType.Payload, message: `Malformed ${model} response: ${detail}` }
+function malformed(message: string): RequestError {
+  return { type: ErrType.Payload, message }
 }
 
 function jsonRequest(method: string, body: unknown): RequestInit {

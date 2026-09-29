@@ -2914,6 +2914,7 @@ describe("buildModelStore messages", () => {
     deleteFailed: (m: string) => `${m}: Löschen fehlgeschlagen`,
     restoreFailed: (m: string) => `${m}: Wiederherstellen fehlgeschlagen`,
     malformedUpdate: (m: string, issue: string | undefined) => `${m} kaputt: ${issue}`,
+    malformedResponse: (m: string, detail: string) => `${m} Antwort kaputt: ${detail}`,
   }
 
   function translated(fetchImpl: typeof fetch, toast: ReturnType<typeof toastRecorder>["port"]) {
@@ -3001,6 +3002,17 @@ describe("buildModelStore messages", () => {
 
     await store.onWs([{ id: "three", name: "Broken" }], RemoteEvent.CREATED)
 
-    expect(toast.messages[0].body).toMatch(/^Zone kaputt: \w+/)
+    expect(toast.messages[0].body).toMatch(/^Zone kaputt: (?!undefined)\w+/)
+  })
+
+  it("shows the supplied wording when a create is answered with a row that fails its schema", async () => {
+    const { impl } = queueFetch(Response.json({ id: "three" }, { status: 201 }))
+    const toast = toastRecorder()
+    const store = translated(impl, toast.port)
+
+    await store.create({ name: "a" })
+
+    expect(toast.messages[0].body).toMatch(/^Zone Antwort kaputt: \w+/)
+    expect(toast.messages[0].title).toBe("Zone: Erstellen fehlgeschlagen")
   })
 })
