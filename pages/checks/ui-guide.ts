@@ -294,7 +294,7 @@ interface DrawnInBrowser {
 const TEXT_DRAWN_IN_BROWSER: Record<string, DrawnInBrowser> = {
   "demo-CrudEditor": {
     selector: `[role="status"][aria-atomic="true"]`,
-    parts: 1,
+    parts: 2,
     reason: "validation runs in an effect, so the cross-field message in the live region above " +
       "Save exists only in the browser",
   },

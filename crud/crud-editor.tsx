@@ -499,7 +499,7 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
         /*
         The wrapper takes the empty region out of the flow. The section is a flex column with a
         gap, and a flex item of zero height still gets a gap before it: without this, the form
-        would carry 32px of blank space below it whenever nothing blocks the archive (#279). An
+        would carry 24px of blank space below it whenever nothing blocks the archive (#279). An
         absolutely positioned element takes no gap, and it stays in the accessibility tree, so the
         live region is still watched. Once the region holds a message the wrapper is an ordinary
         child again and the gap separates it from the form.

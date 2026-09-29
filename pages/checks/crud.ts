@@ -54,6 +54,8 @@ export async function crudChecks(devtools: Devtools): Promise<void> {
     `alert regions=${space.regions} px between the form and the section's bottom edge=${space.below}`,
   )
 
+  await blockedArchiveChecks(devtools)
+
   // The demo's blank row starts with Name and Notes equal — both "" — which the schema's
   // cross-field rule rejects. That is the starting state this check reads, not one it has to
   // provoke first: it is what #119 asked to stop happening silently.
@@ -739,4 +741,88 @@ function requestSubmitForm(devtools: Devtools): Promise<boolean> {
     form.requestSubmit()
     return true
   })()`)
+}
+
+/** One reading of the edit-mode demo (`[data-e2e="archive-demo"]`) around the alert region. */
+interface ArchiveReading {
+  found: boolean
+  /** The wrapper around the `role="alert"` region. */
+  position: string
+  /** Pixels from the form's bottom edge to the wrapper's top edge; `-1` when not measurable. */
+  gapAbove: number
+  /** Pixels from the form's bottom edge to the section's bottom edge. */
+  below: number
+  /** Whether the region is the element parked on `globalThis` earlier. */
+  same: boolean
+  regionText: string
+}
+
+/** Read {@link ArchiveReading}; with `park`, also keep the region element for a later `same`. */
+function readArchiveDemo(devtools: Devtools, park: boolean): Promise<ArchiveReading> {
+  return devtools.evaluate<ArchiveReading>(`(() => {
+    const root = document.querySelector('${CARD} [data-e2e="archive-demo"]')
+    const form = root && root.querySelector('form')
+    const region = root && root.querySelector('[role="alert"]')
+    if (!form || !region) {
+      return { found: false, position: "", gapAbove: -1, below: -1, same: false, regionText: "" }
+    }
+    if (${park}) globalThis.__archiveRegion = region
+    const wrapper = region.parentElement
+    const formBox = form.getBoundingClientRect()
+    return {
+      found: true,
+      position: getComputedStyle(wrapper).position,
+      gapAbove: Math.round(wrapper.getBoundingClientRect().top - formBox.bottom),
+      below: Math.round(form.parentElement.getBoundingClientRect().bottom - formBox.bottom),
+      same: region === globalThis.__archiveRegion,
+      regionText: region.textContent.replace(/\\s+/g, " ").trim(),
+    }
+  })()`)
+}
+
+/** Click the archive checkbox of the edit-mode demo; `false` when it is missing. */
+function clickArchiveBox(devtools: Devtools): Promise<boolean> {
+  return devtools.evaluate<boolean>(`(() => {
+    const box = document.querySelector('${CARD} [data-e2e="archive-demo"] input[type="checkbox"]')
+    if (!box) return false
+    box.click()
+    return true
+  })()`)
+}
+
+/**
+ * The space under `CrudEditor`'s form follows the alert region (#279): none while it is empty, and
+ * the section's gap once a message shows, with the message in normal flow and not laid over the
+ * title or the form. Driven on the edit-mode demo, whose archive is blocked by one entity.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function blockedArchiveChecks(devtools: Devtools): Promise<void> {
+  const before = await readArchiveDemo(devtools, true)
+  check(
+    "the edit-mode CrudEditor demo has no blank space below its form before the archive is ticked",
+    before.found && before.below === 0 && before.position === "absolute",
+    `found=${before.found} position=${before.position} below=${before.below}`,
+  )
+  if (!before.found) return
+
+  const ticked = await clickArchiveBox(devtools)
+  await poll(async () => (await readArchiveDemo(devtools, false)).regionText !== "", 2_000)
+  const shown = await readArchiveDemo(devtools, false)
+  check(
+    "a blocked archive shows its message in normal flow, 24px under the form, in the same region",
+    ticked && shown.regionText.includes("please first archive") && shown.position === "static" &&
+      shown.gapAbove === 24 && shown.same,
+    `ticked=${ticked} position=${shown.position} gap above=${shown.gapAbove} same region=${shown.same} ` +
+      `text="${shown.regionText}"`,
+  )
+
+  const unticked = await clickArchiveBox(devtools)
+  await poll(async () => (await readArchiveDemo(devtools, false)).regionText === "", 2_000)
+  const after = await readArchiveDemo(devtools, false)
+  check(
+    "clearing the archive tick takes the space under the form back to 0",
+    unticked && after.regionText === "" && after.below === 0 && after.same,
+    `unticked=${unticked} text="${after.regionText}" below=${after.below} same region=${after.same}`,
+  )
 }
