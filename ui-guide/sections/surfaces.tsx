@@ -11,7 +11,7 @@
  */
 
 import { INK_CSS } from "@spy4x/preact-theme"
-import { Cluster, Grid, Stack } from "@spy4x/preact-ui"
+import { Button, Cluster, Grid, Stack } from "@spy4x/preact-ui"
 import type { ClassDemoFragment } from "../registry.ts"
 
 /**
@@ -264,6 +264,156 @@ function ColourAtomsDemo() {
   )
 }
 
+/**
+ * The tokens a warm dark palette overrides, set inline on one wrapper so the rest of the page keeps
+ * its own palette. Nothing else styles the demo: every colour, font, weight, radius and shadow in
+ * it comes from these custom properties. The accent scale is worked out on `:root` only, so the
+ * steps the primary button reads are set here by hand; an app sets `--color-accent` on `:root`
+ * and gets them, and the label colour, from `tokens.css` (`pages/checks/theme.ts` measures that).
+ */
+const WARM_TOKENS = [
+  "--color-canvas: oklch(0.19 0.008 60)",
+  "--color-surface: oklch(0.235 0.01 60)",
+  "--color-foreground: oklch(0.94 0.012 80)",
+  "--color-muted-foreground: oklch(0.76 0.02 75)",
+  "--color-placeholder: oklch(0.66 0.02 70)",
+  "--color-border-subtle: oklch(0.33 0.012 60)",
+  "--color-border-control: oklch(0.42 0.014 60)",
+  "--color-hover: oklch(0.29 0.012 60)",
+  "--color-track: oklch(0.36 0.014 60)",
+  "--color-accent-900: oklch(0.705 0.19 47)",
+  "--color-accent-800: oklch(0.6 0.17 47)",
+  "--color-accent-700: oklch(0.6 0.17 47)",
+  "--color-accent-600: oklch(0.6 0.17 47)",
+  "--color-accent-foreground: oklch(0.17 0.01 60)",
+  "--color-selected: oklch(0.33 0.012 60)",
+  "--color-selected-foreground: oklch(0.94 0.012 80)",
+  "--color-selected-soft: oklch(0.29 0.012 60)",
+  "--color-selected-text: oklch(0.94 0.012 80)",
+  "--color-ring: oklch(0.705 0.19 47)",
+  "--color-focus-offset: oklch(0.19 0.008 60)",
+  "--color-danger-fill: oklch(0.5 0.14 30)",
+  "--color-danger-fill-hover: oklch(0.45 0.13 30)",
+  "--color-danger-fill-foreground: oklch(0.96 0.01 60)",
+  "--radius-primary: 0.5rem",
+  "--radius-control: 0.5rem",
+  "--radius-card: 0.75rem",
+  "--shadow-raised: none",
+  "--shadow-popover: 0 8px 24px oklch(0 0 0 / 0.5)",
+  "--font-heading: Georgia, 'Times New Roman', serif",
+  "--font-weight-medium: 600",
+].join("; ")
+
+/** A warm dark page made only by overriding tokens: a serif heading, a light accent, flat cards. */
+function WarmPaletteDemo() {
+  return (
+    <div
+      data-e2e="warm-palette"
+      class="bg-canvas text-foreground rounded-card border-subtle border p-6"
+      style={WARM_TOKENS}
+    >
+      <Stack>
+        <h3 class="h3 font-heading" data-e2e="warm-heading">Winter readings</h3>
+        <p class="text-muted text-sm">
+          The heading is serif and the weight is 600 because of <code>--font-heading</code> and{" "}
+          <code>--font-weight-medium</code>. Nothing else was styled.
+        </p>
+        <div class="bg-surface border-subtle rounded-card shadow-raised border p-4">
+          <Stack gap="sm">
+            <p class="font-medium">Meter 4417</p>
+            <p class="text-placeholder text-xs">A flat card: --shadow-raised is none.</p>
+            <Cluster>
+              <Button>Save</Button>
+              <Button variant="danger">Delete</Button>
+              <span class="bg-selected text-selected-foreground rounded-control px-2 py-1 text-xs">
+                Chosen day
+              </span>
+              <span class="bg-selected-soft text-selected border-selected rounded-control border px-2 py-1 text-xs">
+                Active tab
+              </span>
+            </Cluster>
+            <span class="ring-2 ring-focus ring-offset-2 ring-offset-focus rounded-control w-fit px-2 py-1 text-xs">
+              A focus ring: accent, with a page-coloured gap
+            </span>
+          </Stack>
+        </div>
+      </Stack>
+    </div>
+  )
+}
+
+/** Every token class added for selection, focus, fills, shapes and shadows, on its own sample. */
+function TokenClassesDemo() {
+  const swatch = "rounded-control border-subtle border px-2 py-1 text-xs"
+  return (
+    <Stack class="text-sm">
+      <Cluster>
+        <span class={`bg-selected text-selected-foreground ${swatch}`}>bg-selected</span>
+        <span class={`bg-selected-soft text-selected ${swatch}`}>bg-selected-soft</span>
+        <span class={`border-selected text-selected border ${swatch}`}>border-selected</span>
+        <span class={`bg-hover ${swatch}`}>bg-hover</span>
+        <span class={`bg-track ${swatch}`}>bg-track</span>
+        <span class={`bg-foreground text-canvas ${swatch}`}>bg-foreground</span>
+        <span class={`bg-scrim text-scrim-foreground ${swatch}`}>bg-scrim</span>
+      </Cluster>
+      <Cluster>
+        <span class={`bg-info text-info-foreground ${swatch}`}>bg-info</span>
+        <span class={`text-info border-info border ${swatch}`}>text-info</span>
+        <span class={`bg-danger-fill text-danger-foreground ${swatch}`}>bg-danger-fill</span>
+        <span class={`bg-danger-fill-hover text-danger-foreground ${swatch}`}>
+          bg-danger-fill-hover
+        </span>
+        <span class={`bg-primary text-primary-foreground ${swatch}`}>text-primary-foreground</span>
+        <span class={`bg-accent-900 text-accent-foreground ${swatch}`}>text-accent-foreground</span>
+      </Cluster>
+      <Cluster>
+        <span class={`bg-danger-soft text-danger border-danger border ${swatch}`}>
+          bg-danger-soft
+        </span>
+        <span class={`bg-info-soft text-info ${swatch}`}>bg-info-soft</span>
+        <span class={`bg-danger-fill text-danger-fill-foreground ${swatch}`}>
+          text-danger-fill-foreground
+        </span>
+        <span class={`bg-surface-overlay ${swatch}`}>bg-surface-overlay</span>
+        <span class={`border-strong border px-2 py-1 text-xs`}>border-strong</span>
+        <span class="decoration-control text-xs underline">decoration-control</span>
+        <span class={`border-surface bg-canvas border-2 px-2 py-1 text-xs`}>border-surface</span>
+        <span class={`ring-surface ring-offset-surface ring-2 ring-offset-2 ${swatch}`}>
+          ring-surface
+        </span>
+      </Cluster>
+      <div class="bg-scrim-strong border-on-scrim text-scrim-foreground rounded-control flex gap-2 border p-2 text-xs">
+        <span class="bg-on-scrim px-2 py-1">bg-scrim-strong bg-on-scrim</span>
+        <span class="bg-on-scrim-strong text-on-scrim-muted px-2 py-1">
+          bg-on-scrim-strong text-on-scrim-muted
+        </span>
+      </div>
+      <Cluster>
+        <span class="text-foreground">text-foreground</span>
+        <span class="text-placeholder">text-placeholder</span>
+        <span class="font-heading">font-heading</span>
+      </Cluster>
+      <Cluster gap="lg">
+        <span class={`ring-2 ring-focus ring-offset-2 ring-offset-focus ${swatch}`}>
+          ring-focus
+        </span>
+        <span class={`ring-1 ring-subtle ${swatch}`}>ring-subtle</span>
+        <span class={`ring-1 ring-control ${swatch}`}>ring-control</span>
+        <span class="rounded-card border-subtle shadow-raised border px-2 py-1 text-xs">
+          rounded-card, shadow-raised
+        </span>
+        <span class="bg-surface rounded-control shadow-popover px-2 py-1 text-xs">
+          rounded-control, shadow-popover
+        </span>
+      </Cluster>
+      <div class="divide-subtle divide-y text-xs">
+        <p class="py-1">divide-subtle</p>
+        <p class="py-1">between rows</p>
+      </div>
+    </Stack>
+  )
+}
+
 export const surfaceDemos = {
   "class-card": {
     title: "Card",
@@ -364,6 +514,114 @@ export const surfaceDemos = {
 <span class="border-control border px-2 py-1 text-xs">border-control</span>
 <span class="bg-canvas border-subtle border px-2 py-1 text-xs">bg-canvas</span>`,
     render: () => <ColourAtomsDemo />,
+  },
+  "class-token-classes": {
+    title: "Token classes",
+    classes: [
+      "bg-selected",
+      "text-selected-foreground",
+      "bg-selected-soft",
+      "text-selected",
+      "border-selected",
+      "bg-hover",
+      "bg-track",
+      "bg-foreground",
+      "text-canvas",
+      "bg-scrim",
+      "text-scrim-foreground",
+      "bg-primary",
+      "bg-surface",
+      "bg-canvas",
+      "text-danger",
+      "border-subtle",
+      "bg-info",
+      "text-info",
+      "border-info",
+      "text-info-foreground",
+      "bg-danger-fill",
+      "bg-danger-fill-hover",
+      "text-danger-foreground",
+      "text-primary-foreground",
+      "text-accent-foreground",
+      "text-foreground",
+      "text-placeholder",
+      "font-heading",
+      "ring-focus",
+      "ring-offset-focus",
+      "ring-subtle",
+      "ring-control",
+      "divide-subtle",
+      "rounded-card",
+      "rounded-control",
+      "shadow-raised",
+      "shadow-popover",
+      "text-danger-fill-foreground",
+      "bg-danger-soft",
+      "bg-info-soft",
+      "border-danger",
+      "bg-surface-overlay",
+      "bg-scrim-strong",
+      "bg-on-scrim",
+      "bg-on-scrim-strong",
+      "border-on-scrim",
+      "text-on-scrim-muted",
+      "border-strong",
+      "decoration-control",
+      "border-surface",
+      "ring-surface",
+      "ring-offset-surface",
+    ],
+    summary:
+      "Replaces a fixed gray, white or black class: what is chosen, hovered or dimmed, the text on each fill, the focus ring, the card corner and the two shadows.",
+    wide: true,
+    snippet: `<span class="bg-selected text-selected-foreground rounded-control px-2 py-1">
+  Chosen day
+</span>
+<button class="ring-2 ring-focus ring-offset-2 ring-offset-focus">Focus</button>
+<div class="rounded-card shadow-raised border border-subtle">…</div>`,
+    render: () => <TokenClassesDemo />,
+  },
+  "class-warm-palette": {
+    title: "A warm dark palette from tokens",
+    classes: [
+      "bg-canvas",
+      "bg-surface",
+      "text-muted",
+      "border-subtle",
+      "rounded-card",
+      "bg-danger-fill",
+      "bg-selected",
+      "bg-selected-soft",
+      "border-selected",
+      "font-heading",
+      "h3",
+      "ring-focus",
+      "ring-offset-focus",
+      "rounded-control",
+      "shadow-raised",
+      "text-accent-foreground",
+      "text-danger-fill-foreground",
+      "text-foreground",
+      "text-placeholder",
+      "text-selected",
+      "text-selected-foreground",
+    ],
+    summary:
+      "One wrapper that overrides custom properties only: warm surfaces, a serif heading, a light orange accent with dark text, flat cards and 600 for medium weight.",
+    wide: true,
+    snippet: `<style>
+:root {
+  --color-canvas: oklch(0.19 0.008 60);
+  --color-surface: oklch(0.235 0.01 60);
+  --color-foreground: oklch(0.94 0.012 80);
+  --color-accent: oklch(0.705 0.19 47); /* the label turns dark by itself */
+  --color-selected: oklch(0.33 0.012 60); /* keep the accent for the primary button */
+  --font-heading: Georgia, serif; /* unset, headings inherit */
+  --font-weight-medium: 600;
+  --shadow-raised: none;
+}
+</style>`,
+    render: () => <WarmPaletteDemo />,
   },
   "class-ink-palette": {
     title: "Ink palette",

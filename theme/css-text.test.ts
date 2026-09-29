@@ -91,6 +91,33 @@ const UNCHANGED_ROOT_TOKENS: Record<string, string> = {
   "--radius-primary": "0.5rem",
   "--radius-control": "0.375rem",
   "--font-sans": `"Poppins", ui-sans-serif, system-ui, sans-serif`,
+  // #417 added the tokens below. Most are read by nothing yet (selection, focus, hover, track,
+  // scrim, the soft tints, the card radius, the shadows). The Button's primary and danger variants
+  // read the accent-foreground and danger-fill ones, and their defaults draw the colours the
+  // Button drew before (white on red-600, its hover red-700, a white label on the purple accent).
+  "--color-accent-foreground": `oklch(1 0 0)`, // the fallback where the luminance probe cannot run
+  "--color-selected": `var(--color-accent-900)`,
+  "--color-selected-foreground": `var(--color-accent-foreground)`,
+  "--color-selected-soft": `var(--color-accent-50)`,
+  "--color-selected-text": `var(--color-accent-900)`,
+  "--color-focus-offset": `var(--color-canvas)`,
+  "--color-ring": `var(--color-accent-900)`,
+  "--color-hover": `oklch(0.967 0.003 264.542)`,
+  "--color-track": `oklch(0.928 0.006 264.531)`,
+  "--color-scrim": `oklch(0 0 0 / 0.5)`,
+  "--color-scrim-strong": `oklch(0 0 0 / 0.9)`,
+  "--color-scrim-foreground": `oklch(1 0 0)`,
+  "--color-border-strong": `oklch(0.707 0.022 261.325)`,
+  "--color-danger-fill": `var(--color-danger)`,
+  "--color-danger-fill-hover": `oklch(0.505 0.213 27.518)`,
+  "--color-danger-fill-foreground": `oklch(1 0 0)`,
+  "--color-danger-soft": `oklch(0.971 0.013 17.38)`,
+  "--color-info": `oklch(0.546 0.245 262.881)`,
+  "--color-info-foreground": `oklch(0.97 0.014 254.604)`,
+  "--color-info-soft": `oklch(0.97 0.014 254.604)`,
+  "--radius-card": `0.75rem`,
+  "--shadow-raised": `0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)`,
+  "--shadow-popover": `0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)`,
 }
 
 const UNCHANGED_DARK_TOKENS: Record<string, string> = {
@@ -107,6 +134,17 @@ const UNCHANGED_DARK_TOKENS: Record<string, string> = {
   "--color-muted-foreground": "oklch(0.707 0.022 261.325)",
   "--color-placeholder": "oklch(0.707 0.022 261.325)",
   "--color-danger": "oklch(0.637 0.237 25.331)",
+  "--color-hover": `oklch(0.373 0.034 259.733)`,
+  "--color-track": `oklch(0.446 0.03 256.802)`,
+  "--color-border-strong": `oklch(0.551 0.027 264.364)`,
+  "--color-selected-soft": `color-mix(in oklab, var(--color-accent-900) 30%, transparent)`,
+  "--color-selected-text": `var(--color-accent-400)`,
+  "--color-danger-fill": `oklch(0.505 0.213 27.518)`,
+  "--color-danger-fill-hover": `oklch(0.577 0.245 27.325)`,
+  "--color-danger-soft": `color-mix(in oklab, oklch(0.505 0.213 27.518) 30%, transparent)`,
+  "--color-info-soft": `color-mix(in oklab, oklch(0.546 0.245 262.881) 25%, transparent)`,
+  "--color-info": `oklch(0.707 0.165 254.624)`,
+  "--color-info-foreground": `oklch(0.282 0.091 267.935)`,
 }
 
 describe("the default token set, after #257", () => {

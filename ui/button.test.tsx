@@ -16,7 +16,7 @@ describe("Button", () => {
     expect(render(<Button variant="outline">Cancel</Button>)).toContain(
       "border-gray-300",
     )
-    expect(render(<Button variant="danger">Delete</Button>)).toContain("bg-red-600")
+    expect(render(<Button variant="danger">Delete</Button>)).toContain("bg-danger-fill")
     expect(render(<Button variant="ghost">More</Button>)).toContain("bg-transparent")
   })
 

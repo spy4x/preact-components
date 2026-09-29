@@ -18,6 +18,15 @@
  *   itself needs to sit under the cap, plus {@link ALLOWANCE_MARGIN}.
  * - **H.** The purple step's hue offset from purple-900's.
  *
+ * **The label.** `--color-accent-foreground` is white (`oklch(1 0 0)`) or a near-black of lightness
+ * {@link DARK_LABEL}, whichever has the higher contrast on the accent: an accent whose WCAG relative
+ * luminance (worked out from its sRGB channels in CSS with `pow()`) is above {@link LABEL_LUMINANCE}
+ * takes the dark one. Steps 600, 700 and 800 sit under the label too; for an accent that takes the
+ * dark label they are the accent, or lighter for the hovers ({@link DARK_LABEL_STEP}), so a hover
+ * never lowers the contrast. The choice is a colour whose alpha is 0 or 1 (`--accent-label-probe`),
+ * the origin those steps and the label read. `pages/checks/theme.ts` sweeps accents of several hues
+ * and lightnesses through it in a browser.
+ *
  * With no token set the accent is purple-900, the weight is exactly 1, and every step is Tailwind's
  * purple step; `pages/checks/theme.ts` measures that, the gamut and the white-label contrast in a
  * browser. `accent-scale.test.ts` fails when `tokens.css` differs from what this writes.
@@ -58,6 +67,27 @@ export const LIGHTNESS_CAPS: Record<number, number> = {
   700: 0.5,
   800: 0.545,
 }
+
+/**
+ * The relative luminance (WCAG) above which an accent takes a dark label instead of a white one.
+ * White clears 4.5:1 up to 0.183 and a label of OKLCH lightness {@link DARK_LABEL} from 0.180, so
+ * 0.18 leaves no accent without a label at 4.5:1.
+ */
+export const LABEL_LUMINANCE = 0.18
+
+/** The lightness of the dark label: near-black, contrast 4.5:1 from a fill luminance of 0.18. */
+export const DARK_LABEL = 0.1
+
+/** The steps that sit under a label: the primary Button's fill and hover. */
+const LABEL_STEPS = [600, 700, 800]
+
+/**
+ * What a label step is for an accent that takes a dark label, as a CSS lightness. The hover steps
+ * (800 in light, 600 in dark) go a little lighter and the dark fill (700) is the accent itself: a
+ * lighter fill only raises the dark label's contrast, where the usual caps, meant for a white
+ * label, would darken it below 4.5:1.
+ */
+const DARK_LABEL_STEP: Record<number, string> = { 600: "l + 0.05", 700: "l", 800: "l + 0.05" }
 
 /** Added to step 600's cap times the near-purple weight: purple-600's lightness is 0.558. */
 export const PURPLE_600_ALLOWANCE = 0.013
@@ -172,13 +202,30 @@ const fixed = (value: number, digits: number) => `${Number(value.toFixed(digits)
 function lightness(step: number): string {
   const [l] = PURPLE[step]
   const scaled = `l * ${l} / 0.381`
-  if (step === 600) {
-    return `min(${LIGHTNESS_CAPS[600]} + ${PURPLE_600_ALLOWANCE} * ${NEAR_PURPLE}, ${scaled})`
+  if (LABEL_STEPS.includes(step)) {
+    const cap = step === 600
+      ? `${LIGHTNESS_CAPS[600]} + ${PURPLE_600_ALLOWANCE} * ${NEAR_PURPLE}`
+      : `${LIGHTNESS_CAPS[step]}`
+    // `alpha` is the probe's: 1 for an accent that takes a dark label, else 0.
+    return `calc((1 - alpha) * min(${cap}, ${scaled}) + alpha * (${DARK_LABEL_STEP[step]}))`
   }
   if (step in LIGHTNESS_CAPS) return `min(${LIGHTNESS_CAPS[step]}, ${scaled})`
   if (step === 950) return `calc(${scaled})`
   return `${l}`
 }
+
+/** `channel` (0-1, sRGB) as linear light, clamped to the gamut the screen draws. */
+const linear = (channel: string) => `pow((clamp(0, ${channel}, 1) + 0.055) / 1.055, 2.4)`
+
+/**
+ * The accent as an sRGB colour, clipped to the screen's gamut as the browser draws it, whose alpha says which label it takes: 1 when its relative
+ * luminance is above {@link LABEL_LUMINANCE} (a dark label), else 0 (white). The label steps and
+ * the label read it as their origin, so the choice is made once and by the same measure.
+ */
+const PROBE =
+  `color(from var(--color-accent) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1) / clamp(0, calc((0.2126 * ${
+    linear("r")
+  } + 0.7152 * ${linear("g")} + 0.0722 * ${linear("b")} - ${LABEL_LUMINANCE}) * 1000000), 1))`
 
 /** The generated block: the `@supports` rule that declares every derived step. */
 export function accentScaleBlock(): string {
@@ -203,21 +250,31 @@ export function accentScaleBlock(): string {
     const allowance = fixed(Math.max(0, c - triangle(l)) + ALLOWANCE_MARGIN, 3)
     const stepLightness = lightness(step)
     const inner = stepLightness.replace(/^calc\(/, "(")
+    const origin = LABEL_STEPS.includes(step) ? "var(--accent-label-probe)" : "var(--color-accent)"
+    const alpha = LABEL_STEPS.includes(step) ? "\n      / 1" : ""
     const offset = Number((h - purpleHue).toFixed(3))
     const hue = `calc(h ${offset < 0 ? "-" : "+"} ${Math.abs(offset)})`
     return `    --color-accent-${step}: oklch(
-      from var(--color-accent)
+      from ${origin}
       ${stepLightness}
       min(
         ${grow},
         ${cc} * max(0, min(${inner} / ${lc}, (1 - ${inner}) / (1 - ${lc}))) + ${allowance} * ${NEAR_PURPLE}
       )
-      ${hue}
+      ${hue}${alpha}
     );`
   })
 
-  return `@supports (color: oklch(from red min(l, 1) max(0, c * cos(h * 1deg)) calc(h + sin(h * 1deg)))) {
+  return `@supports (color: oklch(from red calc(pow(l, 2)) max(0, c * cos(h * 1deg)) calc(h + alpha))) {
   :root {
+    --accent-label-probe: ${PROBE};
+    --color-accent-foreground: oklch(
+      from var(--accent-label-probe)
+      calc(1 - alpha * ${1 - DARK_LABEL})
+      0
+      0
+      / 1
+    );
 ${declarations.join("\n")}
   }
 }`

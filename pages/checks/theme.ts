@@ -1252,6 +1252,7 @@ async function accentChecks(devtools: Devtools): Promise<void> {
       `${calendar.expected.selected}), dot ${calendar.after.dot} (expected ${calendar.expected.dot})`,
   )
   await openGuidePage(devtools, "ui")
+  await lightAccentChecks(devtools)
 
   // Every reading above flips `.dark` and puts it back; one that forgot would leave the page's class
   // disagreeing with the app's own state, and the next block to press the toggle would land in the
@@ -1267,3 +1268,264 @@ async function accentChecks(devtools: Devtools): Promise<void> {
     `dark class ${agreement.dark}, toggle "${agreement.toggle}"`,
   )
 }
+
+/** Page-side drawing and WCAG contrast, as source text: colours are read back from pixels. */
+const CONTRAST_HELPERS = `
+  const pixel = (color) => {
+    const canvas = document.createElement("canvas")
+    canvas.width = canvas.height = 1
+    const context = canvas.getContext("2d", { colorSpace: "srgb" })
+    context.fillStyle = color
+    context.fillRect(0, 0, 1, 1)
+    return Array.from(context.getImageData(0, 0, 1, 1).data.slice(0, 3))
+  }
+  const luminance = (rgb) => {
+    const [r, g, b] = rgb.map((value) => {
+      const c = value / 255
+      return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+    })
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+  }
+  const contrast = (a, b) => {
+    const x = luminance(pixel(a))
+    const y = luminance(pixel(b))
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
+  }
+`
+
+/**
+ * The accent label and the danger label (#417).
+ *
+ * - With no token set, the primary Button's label is exactly `oklch(1 0 0)` and the danger
+ *   Button's is white, at 4.5:1 or better on its fill in light and dark, with the hover steps the
+ *   Button had before.
+ * - With `#f97316` as the accent, the label reads at 4.5:1 on the fill, the hover and the dark fill.
+ * - A sweep of {@link SWEEP_HUES} x {@link SWEEP_LIGHTNESSES} accents at high chroma: the label
+ *   `--color-accent-foreground` reads at 4.5:1 on steps 900, 800, 700 and 600 for every one. That
+ *   sweep is the whole claim the README makes about a light accent.
+ * - Headings follow `--font-heading` and inherit without it; `font-medium` follows
+ *   `--font-weight-medium`.
+ *
+ * Contrast is measured on pixels the browser drew (a 1x1 canvas), never computed from a token.
+ *
+ * @param devtools The connected session, on the `ui` page.
+ */
+async function lightAccentChecks(devtools: Devtools): Promise<void> {
+  const defaults = await devtools.evaluate<{
+    dangerFound: boolean
+    primaryLabel: string
+    primaryExpected: string
+    dangerLight: { label: string; fill: string; contrast: number; hover: string }
+    dangerDark: { label: string; fill: string; contrast: number; hover: string }
+    expected: { red600: string; red700: string; white: string }
+  }>(`(async () => {
+    ${ACCENT_HELPERS}
+    ${CONTRAST_HELPERS}
+    const root = document.documentElement
+    const wasDark = root.classList.contains("dark")
+    const primary = document.querySelector("#demo-Button button")
+    const danger = Array.from(document.querySelectorAll("#demo-Button button"))
+      .find((button) => button.className.includes("bg-danger-fill"))
+    const read = async (dark) => {
+      root.classList.toggle("dark", dark)
+      await settle(primary)
+      const style = getComputedStyle(danger)
+      const probe = document.createElement("span")
+      probe.className = "bg-danger-fill-hover"
+      document.body.append(probe)
+      const hover = getComputedStyle(probe).backgroundColor
+      probe.remove()
+      return {
+        label: style.color,
+        fill: style.backgroundColor,
+        contrast: contrast(style.color, style.backgroundColor),
+        hover,
+      }
+    }
+    const result = { dangerFound: Boolean(danger) }
+    if (danger) {
+      result.dangerLight = await read(false)
+      result.dangerDark = await read(true)
+    }
+    root.classList.toggle("dark", false)
+    await settle(primary)
+    result.primaryLabel = getComputedStyle(primary).color
+    result.primaryExpected = resolve("oklch(1 0 0)")
+    result.expected = {
+      red600: resolve("oklch(0.577 0.245 27.325)"),
+      red700: resolve("oklch(0.505 0.213 27.518)"),
+      white: resolve("oklch(1 0 0)"),
+    }
+    root.classList.toggle("dark", wasDark)
+    await settle(primary)
+    return result
+  })()`)
+  const dl = defaults.dangerLight
+  const dd = defaults.dangerDark
+  check(
+    "with no token set, the primary Button's label is exactly white, oklch(1 0 0)",
+    defaults.primaryLabel === defaults.primaryExpected,
+    `label ${defaults.primaryLabel}, expected ${defaults.primaryExpected}`,
+  )
+  check(
+    "with no token set, the danger Button has a white label at 4.5:1 or better, light and dark",
+    defaults.dangerFound && dl.label === defaults.expected.white &&
+      dd.label === defaults.expected.white && dl.contrast >= 4.5 && dd.contrast >= 4.5,
+    defaults.dangerFound
+      ? `light ${dl.label} on ${dl.fill}: ${dl.contrast.toFixed(2)}:1; dark ${dd.label} on ` +
+        `${dd.fill}: ${dd.contrast.toFixed(2)}:1`
+      : "no danger Button in the Button card",
+  )
+  check(
+    "with no token set, the danger Button is red-600 in light and red-700 in dark, hover the other",
+    defaults.dangerFound && dl.fill === defaults.expected.red600 &&
+      dl.hover === defaults.expected.red700 && dd.fill === defaults.expected.red700 &&
+      dd.hover === defaults.expected.red600,
+    defaults.dangerFound
+      ? `light ${dl.fill} → ${dl.hover}; dark ${dd.fill} → ${dd.hover}`
+      : "no danger Button in the Button card",
+  )
+
+  const light = await devtools.evaluate<{
+    fill: string
+    label: string
+    fillContrast: number
+    hoverContrast: number
+    darkFillContrast: number
+  }>(`(async () => {
+    ${ACCENT_HELPERS}
+    ${CONTRAST_HELPERS}
+    const root = document.documentElement
+    const wasDark = root.classList.contains("dark")
+    const style = document.createElement("style")
+    style.textContent = ":root { --color-primary: #f97316; --color-accent: #f97316; }"
+    document.head.append(style)
+    const button = document.querySelector("#demo-Button button")
+    const result = {}
+    root.classList.toggle("dark", false)
+    await settle(button)
+    const label = getComputedStyle(button).color
+    result.fill = getComputedStyle(button).backgroundColor
+    result.label = label
+    result.fillContrast = contrast(label, result.fill)
+    result.hoverContrast = contrast(label, resolve("var(--color-accent-800)"))
+    root.classList.toggle("dark", true)
+    await settle(button)
+    result.darkFillContrast = contrast(getComputedStyle(button).color, getComputedStyle(button).backgroundColor)
+    style.remove()
+    root.classList.toggle("dark", wasDark)
+    await settle(button)
+    return result
+  })()`)
+  check(
+    "with #f97316 as the accent, the primary Button's label reads at 4.5:1 on its fill, its hover and in dark",
+    light.fillContrast >= 4.5 && light.hoverContrast >= 4.5 && light.darkFillContrast >= 4.5,
+    `label ${light.label} on ${light.fill}: ${light.fillContrast.toFixed(2)}:1, hover ` +
+      `${light.hoverContrast.toFixed(2)}:1, dark ${light.darkFillContrast.toFixed(2)}:1`,
+  )
+
+  const sweep = await devtools.evaluate<{
+    tried: number
+    failures: string[]
+    dark: number
+  }>(`(async () => {
+    ${ACCENT_HELPERS}
+    ${CONTRAST_HELPERS}
+    const style = document.createElement("style")
+    document.head.append(style)
+    const failures = []
+    let tried = 0
+    let dark = 0
+    for (const hue of ${JSON.stringify(SWEEP_HUES)}) {
+      for (const lightness of ${JSON.stringify(SWEEP_LIGHTNESSES)}) {
+        const accent = "oklch(" + lightness + " 0.3 " + hue + ")"
+        style.textContent = ":root { --color-accent: " + accent + "; }"
+        await frame()
+        const label = resolve("var(--color-accent-foreground)")
+        if (!same(label, resolve("oklch(1 0 0)"))) dark++
+        tried++
+        for (const step of [900, 800, 700, 600]) {
+          const fill = resolve("var(--color-accent-" + step + ")")
+          const ratio = contrast(label, fill)
+          if (ratio < 4.5) failures.push(accent + " step " + step + " " + ratio.toFixed(2) + ":1")
+        }
+      }
+    }
+    style.remove()
+    return { tried, failures, dark }
+  })()`)
+  check(
+    "for accents of seven hues and eight lightnesses at high chroma, the label reads at 4.5:1 on steps 900, 800, 700 and 600",
+    sweep.tried === SWEEP_HUES.length * SWEEP_LIGHTNESSES.length && sweep.failures.length === 0 &&
+      sweep.dark > 0 && sweep.dark < sweep.tried,
+    sweep.failures.length === 0
+      ? `${sweep.tried} accents, ${sweep.dark} take the dark label, all four steps ≥ 4.5:1`
+      : `${sweep.failures.length} of ${sweep.tried * 4} fails, e.g. ${
+        sweep.failures.slice(0, 4).join("; ")
+      }`,
+  )
+
+  const fonts = await devtools.evaluate<{
+    inherited: string
+    mono: string
+    unset: string
+    set: string
+    setInMono: string
+    own: string
+    ownExpected: string
+    weight: string
+  }>(`(async () => {
+    ${ACCENT_HELPERS}
+    const host = document.createElement("div")
+    host.className = "font-mono"
+    host.innerHTML = '<h3 id="hf-a">Wrapped</h3><h3 id="hf-b" class="font-sans">Own</h3>' +
+      '<h2 id="hf-c" class="h2">Class</h2>'
+    document.body.append(host)
+    const family = (id) => getComputedStyle(document.getElementById(id)).fontFamily
+    const sansProbe = document.createElement("div")
+    sansProbe.className = "font-sans"
+    document.body.append(sansProbe)
+    await frame()
+    const unset = { wrapped: family("hf-a"), klass: family("hf-c"), mono: getComputedStyle(host).fontFamily }
+    const style = document.createElement("style")
+    style.textContent = ":root { --font-heading: Georgia, serif; --font-weight-medium: 600; }"
+    document.head.append(style)
+    await frame()
+    const result = {
+      inherited: unset.wrapped,
+      mono: unset.mono,
+      unset: unset.klass,
+      set: family("hf-a"),
+      setInMono: family("hf-c"),
+      own: family("hf-b"),
+      ownExpected: getComputedStyle(sansProbe).fontFamily,
+      weight: getComputedStyle(document.getElementById("hf-c")).fontWeight,
+    }
+    style.remove()
+    host.remove()
+    sansProbe.remove()
+    return result
+  })()`)
+  check(
+    "with no --font-heading, a heading and an h2 class inside font-mono keep the wrapper's font",
+    fonts.inherited === fonts.mono && fonts.unset === fonts.mono,
+    `wrapper ${fonts.mono}; h3 ${fonts.inherited}; h2 class ${fonts.unset}`,
+  )
+  check(
+    "--font-heading sets a bare heading and the h2 class, but not a heading with a font class of its own",
+    fonts.set.startsWith("Georgia") && fonts.setInMono.startsWith("Georgia") &&
+      fonts.own === fonts.ownExpected,
+    `bare ${fonts.set}; class ${fonts.setInMono}; font-sans ${fonts.own}`,
+  )
+  check(
+    "--font-weight-medium sets the weight of the library's h2 class",
+    fonts.weight === "600",
+    `h2 class weight ${fonts.weight}`,
+  )
+}
+
+/** The hues (OKLCH degrees) the label sweep covers: red, orange, yellow, green, cyan, blue, purple. */
+const SWEEP_HUES = [25, 55, 100, 145, 200, 260, 305]
+
+/** The lightnesses the label sweep covers, from a dark fill to a pale one. */
+const SWEEP_LIGHTNESSES = [0.4, 0.5, 0.55, 0.6, 0.65, 0.7, 0.8, 0.9]

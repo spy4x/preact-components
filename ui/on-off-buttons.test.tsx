@@ -15,7 +15,7 @@ describe("OnOffButtons", () => {
     const html = render(<OnOffButtons value onSwitch={() => {}} />)
 
     expect(countOccurrences(html, "bg-accent-900")).toBe(1)
-    expect(html).toContain("text-white")
+    expect(html).toContain("text-accent-foreground")
   })
 
   it("marks the OFF half as selected", () => {
