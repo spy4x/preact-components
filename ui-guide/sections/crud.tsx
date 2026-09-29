@@ -384,6 +384,38 @@ function CrudEditorDemo() {
   )
 }
 
+/**
+ * One editor in `mode="edit"` whose archive checkbox is blocked by one entity, so ticking it shows
+ * the list of what has to be archived first.
+ */
+function CrudEditorArchiveDemo() {
+  const { store } = useMemo(() => makeTeamStore(), [])
+
+  return (
+    <div data-e2e="archive-demo">
+      <CrudEditor
+        store={store}
+        mode="edit"
+        editId={1}
+        blank={blankTeam()}
+        schema={teamCrossFieldSchema}
+        entity="Team"
+        title="Edit a team"
+        cancelHref="#crud"
+        canChange={() => true}
+        archive={{
+          dependencies: () => [{
+            kind: "Teams",
+            values: [{ title: "Support", url: "#crud" }],
+          }],
+        }}
+      >
+        {({ vm, vl }) => <TextField vm={vm} vl={vl} name="name" label="Name" />}
+      </CrudEditor>
+    </div>
+  )
+}
+
 /** One association editor whose conflict port reports the row a new one would duplicate. */
 function AssociationEditorDemo() {
   // `useMemo` rather than a bare call: the caption below reads `rows`, so a save or a restore
@@ -689,7 +721,12 @@ export const crudDemos = {
 >
   {({ vm, vl }) => <TextField vm={vm} vl={vl} name="name" label="Name" />}
 </CrudEditor>`,
-    render: () => <CrudEditorDemo />,
+    render: () => (
+      <Stack gap="lg">
+        <CrudEditorDemo />
+        <CrudEditorArchiveDemo />
+      </Stack>
+    ),
   },
   AssociationEditor: {
     summary:

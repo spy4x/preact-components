@@ -36,9 +36,8 @@ export interface DeletionValidationProps {
  * technology; a region that starts empty and is later filled is. Empty, this element carries no
  * class and no visible box of its own, but it is now always rendered — where the whole component
  * used to render nothing at all, it is on the page as a zero-height node even with an empty list.
- * A parent that gives its *last* child different spacing than the others (`crud/crud-editor.tsx`'s
- * own `page-layout` section does, through Tailwind's `space-y-*`) now treats this region as that
- * last child instead of whatever used to be last — see #279 for `CrudEditor`'s own follow-up.
+ * A flex or grid parent with a `gap` gives this zero-height node a gap of its own, so a caller
+ * wraps it to take it out of the flow while it is empty — `CrudEditor` does, see #279.
  */
 export function DeletionValidation(
   { dependencies, model }: DeletionValidationProps,
