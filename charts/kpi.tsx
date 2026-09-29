@@ -26,7 +26,7 @@ const toneClasses: Record<KpiTone, string> = {
   positive: "text-green-700 dark:text-green-400",
   warning: "text-orange-600 dark:text-orange-400",
   negative: "text-red-600 dark:text-red-400",
-  neutral: "text-gray-700 dark:text-gray-200",
+  neutral: "text-foreground",
 }
 
 /**
@@ -42,13 +42,13 @@ export function Kpi(
   return (
     <div
       class={[
-        "flex flex-col gap-1 rounded-lg border border-gray-200 px-4 py-3 dark:border-gray-700 dark:bg-gray-800",
+        "flex flex-col gap-1 rounded-lg border border-subtle px-4 py-3 dark:bg-surface",
         className,
       ].filter(Boolean).join(" ")}
     >
-      <div class="text-xs tracking-wide uppercase text-gray-500 dark:text-gray-400">{label}</div>
+      <div class="text-xs tracking-wide uppercase text-muted">{label}</div>
       <div class={`text-2xl font-bold tabular-nums ${toneClasses[tone]}`}>{value}</div>
-      {sub ? <div class="text-xs text-gray-500 dark:text-gray-400">{sub}</div> : null}
+      {sub ? <div class="text-xs text-muted">{sub}</div> : null}
     </div>
   )
 }

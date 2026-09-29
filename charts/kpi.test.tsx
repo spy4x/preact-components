@@ -40,7 +40,7 @@ describe("Kpi", () => {
       positive: "text-green-700",
       warning: "text-orange-600",
       negative: "text-red-600",
-      neutral: "text-gray-700",
+      neutral: "text-foreground",
     } as const
 
     for (const [tone, className] of Object.entries(tones)) {
