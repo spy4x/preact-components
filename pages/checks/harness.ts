@@ -708,6 +708,63 @@ export async function readOr<T>(
   }
 }
 
+/** The parts of a DevTools `exceptionDetails` object the harness reads. */
+export interface ExceptionDetails {
+  text?: string
+  url?: string
+  lineNumber?: number
+  columnNumber?: number
+  exception?: {
+    type?: string
+    subtype?: string
+    className?: string
+    description?: string
+    value?: unknown
+    unserializableValue?: string
+  }
+  stackTrace?: {
+    callFrames?: Array<{ functionName?: string; url?: string; lineNumber?: number }>
+  }
+}
+
+/**
+ * Say what a page threw, from everything the browser reports about it.
+ *
+ * DevTools puts the bare word `Uncaught` in `text` and keeps the substance elsewhere: the thrown
+ * value in `exception` (an `Error` has a `description` with its stack; a thrown string, number or
+ * `undefined` has only `type` and `value`) and the source in `url`, `lineNumber` and `stackTrace`.
+ * Reading `text` alone made a failure read as "Uncaught" (#409).
+ *
+ * @param details The `exceptionDetails` of `Runtime.evaluate` or `Runtime.exceptionThrown`.
+ * @returns One line: the thrown value, then where it was thrown.
+ */
+export function describeException(details: ExceptionDetails): string {
+  const { exception } = details
+  const parts: string[] = []
+  if (exception?.description) parts.push(exception.description)
+  else if (exception) {
+    const thrown = exception.value !== undefined
+      ? JSON.stringify(exception.value)
+      : exception.unserializableValue ?? exception.type ?? `unknown`
+    parts.push(
+      `${details.text ?? `Uncaught`} ${exception.className ?? exception.type ?? ``} ${thrown}`,
+    )
+  } else parts.push(details.text ?? `no details`)
+  if (details.url) {
+    parts.push(`at ${details.url}:${details.lineNumber}:${details.columnNumber}`)
+  }
+  const frames = details.stackTrace?.callFrames ?? []
+  if (frames.length > 0) {
+    parts.push(
+      `stack ${
+        frames.slice(0, 5).map((f) => `${f.functionName || `<anon>`}@${f.url}:${f.lineNumber}`)
+          .join(` < `)
+      }`,
+    )
+  }
+  return parts.join(` `)
+}
+
 /** A point worked out from an element's geometry, and what the browser says is actually there. */
 export interface AimedClick {
   /** Whether the point lands on what it was aimed at. */
@@ -1080,11 +1137,15 @@ export class Devtools {
   async evaluate<T>(expression: string, timeoutMs = Devtools.DEFAULT_CALL_TIMEOUT_MS): Promise<T> {
     const response = await this.send<{
       result: { value?: T }
-      exceptionDetails?: { text: string }
+      exceptionDetails?: ExceptionDetails
     }>("Runtime.evaluate", { expression, returnByValue: true, awaitPromise: true }, timeoutMs)
 
     if (response.exceptionDetails) {
-      throw new Error(`page exception: ${response.exceptionDetails.text}`)
+      throw new Error(
+        `page exception: ${describeException(response.exceptionDetails)} in expression: ${
+          expression.length > 200 ? `${expression.slice(0, 200)}…` : expression
+        }`,
+      )
     }
 
     return response.result.value as T
@@ -1138,11 +1199,9 @@ export class Devtools {
 
     for (const { method, params } of this.#events) {
       if (method === "Runtime.exceptionThrown") {
-        const details = params.exceptionDetails as {
-          text?: string
-          exception?: { description?: string }
-        }
-        problems.push(`exception: ${details.exception?.description ?? details.text}`)
+        problems.push(
+          `exception: ${describeException(params.exceptionDetails as ExceptionDetails)}`,
+        )
       }
 
       if (method === "Log.entryAdded") {

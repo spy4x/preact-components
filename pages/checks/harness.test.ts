@@ -19,6 +19,7 @@ import {
   centreInView,
   type CheckBlock,
   connect,
+  describeException,
   Devtools,
   DevtoolsClosedError,
   filteredRunLine,
@@ -793,5 +794,38 @@ describe("centreInView", () => {
 
     expect(await centreInView(page, "null")).toBe(false)
     expect(scrollReads()).toBe(0)
+  })
+})
+
+describe("describeException", () => {
+  it("names the thrown value when DevTools reports only the word Uncaught", () => {
+    const line = describeException({
+      text: `Uncaught`,
+      url: `http://127.0.0.1:1/assets/main.js`,
+      lineNumber: 12,
+      columnNumber: 3,
+      exception: { type: `string`, value: `late answer` },
+    })
+
+    expect(line).toContain(`"late answer"`)
+    expect(line).toContain(`main.js:12:3`)
+  })
+
+  it("prefers an Error's description and adds the stack frames", () => {
+    const line = describeException({
+      text: `Uncaught`,
+      exception: { type: `object`, className: `TypeError`, description: `TypeError: x is null` },
+      stackTrace: { callFrames: [{ functionName: `tick`, url: `a.js`, lineNumber: 4 }] },
+    })
+
+    expect(line).toContain(`TypeError: x is null`)
+    expect(line).toContain(`tick@a.js:4`)
+  })
+
+  it("reports a thrown undefined instead of only Uncaught", () => {
+    const line = describeException({ text: `Uncaught`, exception: { type: `undefined` } })
+
+    expect(line).toContain(`undefined`)
+    expect(line).not.toBe(`Uncaught`)
   })
 })
