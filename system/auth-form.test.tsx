@@ -68,7 +68,7 @@ describe("AuthForm", () => {
     expect(html).toMatch(/<input[^>]*name="login"[^>]*required/)
     expect(html).toMatch(/<input[^>]*name="password"[^>]*required/)
     // Field's own visible marker for `required`.
-    expect(html.match(/text-red-700 dark:text-red-300">\*/g)?.length).toBeGreaterThanOrEqual(2)
+    expect(html.match(/text-danger">\*/g)?.length).toBeGreaterThanOrEqual(2)
   })
 
   it("uses current-password in sign-in mode and new-password in sign-up mode", () => {

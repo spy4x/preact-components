@@ -182,7 +182,7 @@ export interface DateRangePickerTimeProps extends DateRangePickerSharedProps {
 export type AnyDateRangePickerProps = DateRangePickerProps | DateRangePickerTimeProps
 
 const panelClasses =
-  "absolute z-10 mt-2 w-80 rounded-md bg-white p-3 shadow-lg ring-1 ring-black/5 dark:bg-gray-800 dark:ring-gray-600"
+  "absolute z-10 mt-2 w-80 rounded-md bg-surface p-3 shadow-popover ring-1 ring-subtle"
 
 /**
  * The From and To fields. They carry their own utilities rather than the theme's `.input`, which is
@@ -191,13 +191,13 @@ const panelClasses =
  * the dark field (#379).
  */
 const dateInputClasses =
-  "mt-1 block w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:[color-scheme:dark]"
+  "mt-1 block w-full rounded-md border border-control bg-surface px-2 py-1 text-sm text-foreground dark:[color-scheme:dark]"
 
-const fieldLabelClasses = "block text-xs font-medium text-gray-700 dark:text-gray-300"
+const fieldLabelClasses = "block text-xs font-medium text-foreground"
 
-const pressedPresetClasses = "bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100"
+const pressedPresetClasses = "bg-hover text-foreground"
 
-const occurrenceClasses = "mt-1 space-y-1 text-xs text-gray-700 dark:text-gray-300"
+const occurrenceClasses = "mt-1 space-y-1 text-xs text-foreground"
 
 const occurrenceOptionClasses = "flex items-center gap-2"
 
@@ -586,7 +586,7 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
             })}
         </div>
         {showsCustom && (
-          <div class="mt-3 space-y-2 border-t border-gray-200 pt-3 dark:border-gray-600">
+          <div class="mt-3 space-y-2 border-t border-subtle pt-3">
             <div>
               <label
                 class={fieldLabelClasses}

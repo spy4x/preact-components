@@ -48,7 +48,7 @@ const toneClasses: Record<ProgressTone, string> = {
   danger: "bg-danger",
 }
 
-const track = "h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700"
+const track = "h-2 w-full overflow-hidden rounded-full bg-track"
 const fill = "h-full rounded-full transition-[width] duration-300 ease-out"
 
 /**

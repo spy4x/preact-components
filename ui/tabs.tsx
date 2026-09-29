@@ -51,19 +51,18 @@ const listBase = "flex gap-1"
  * than running past the page edge. Wrapping, not scrolling, so every tab stays in view and a
  * scroll container cannot clip the focus ring or the active tab's underline.
  */
-const listEdge = "flex-wrap border-b border-gray-200 dark:border-gray-600"
+const listEdge = "flex-wrap border-b border-subtle"
 
 const tabBase =
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap px-3 py-2 text-sm font-medium transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-accent-900 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap px-3 py-2 text-sm font-medium transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
 
 const tabEdge = "border-b-2 -mb-px"
 
-const tabSelected = "border-accent-900 text-accent-900 dark:border-accent-500 dark:text-accent-400"
+const tabSelected = "border-selected text-selected"
 
-const tabIdle =
-  "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+const tabIdle = "border-transparent text-muted hover:border-control hover:text-foreground"
 
-const panelBase = "pt-4 text-sm text-gray-700 focus-visible:outline-hidden dark:text-gray-300"
+const panelBase = "pt-4 text-sm text-foreground focus-visible:outline-hidden"
 
 /** `id` of the tab button controlling panel `tabId`. */
 function tabElementId(tabId: string): string {

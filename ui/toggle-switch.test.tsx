@@ -15,8 +15,8 @@ describe("ToggleSwitch", () => {
   })
 
   it("colours the track by state", () => {
-    expect(render(<ToggleSwitch value onToggle={() => {}} />)).toContain("bg-accent-900")
-    expect(render(<ToggleSwitch value={false} onToggle={() => {}} />)).toContain("bg-gray-200")
+    expect(render(<ToggleSwitch value onToggle={() => {}} />)).toContain("bg-selected")
+    expect(render(<ToggleSwitch value={false} onToggle={() => {}} />)).toContain("bg-track")
   })
 
   it("slides the knob by state", () => {
@@ -31,10 +31,10 @@ describe("ToggleSwitch", () => {
     expect(html).not.toContain("flex-shrink-0")
   })
 
-  it("uses the shadow-sm utility instead of the removed bare shadow", () => {
+  it("uses the shadow-raised utility instead of the removed bare shadow", () => {
     const html = render(<ToggleSwitch value onToggle={() => {}} />)
 
-    expect(html).toContain("shadow-sm")
+    expect(html).toContain("shadow-raised")
   })
 
   it("hides the knob from assistive tech", () => {

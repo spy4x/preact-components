@@ -330,7 +330,7 @@ export function EnhancedForm(
         aria-atomic="true"
         tabIndex={-1}
         class={cn(
-          "text-sm text-gray-600 outline-none dark:text-gray-400",
+          "text-sm text-muted outline-none",
           regionHidden && "sr-only",
         )}
       >

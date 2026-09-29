@@ -41,8 +41,7 @@ export interface TableProps {
   class?: string
 }
 
-const wrapper =
-  "bg-white dark:bg-gray-800 ring-1 ring-gray-200 dark:ring-gray-600 rounded-lg pb-px overflow-x-auto min-h-[300px]"
+const wrapper = "bg-surface ring-1 ring-subtle rounded-lg pb-px overflow-x-auto min-h-[300px]"
 
 /**
  * Whether `caption` means "render one", as opposed to one of the three values a conditional
@@ -82,25 +81,25 @@ export function Table(
 
   return (
     <div class={cn(wrapper, className)}>
-      <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
+      <table class="min-w-full divide-y divide-subtle">
         {hasCaption(caption) && <caption class={captionClass}>{caption}</caption>}
-        <thead class="bg-gray-50 dark:bg-gray-700">
-          <tr class="*:whitespace-nowrap *:px-6 *:py-3 text-sm font-medium text-gray-900 dark:text-gray-200">
+        <thead class="bg-canvas">
+          <tr class="*:whitespace-nowrap *:px-6 *:py-3 text-sm font-medium text-foreground">
             {headerSlot}
           </tr>
         </thead>
-        <tbody class="divide-y divide-gray-100 dark:divide-gray-600 bg-white dark:bg-gray-800">
+        <tbody class="divide-y divide-subtle bg-surface">
           {bodySlots.map((bodySlot, index) => (
             <tr
               key={bodyKeys === undefined ? index : bodyKeys[index]}
-              class="text-sm *:px-6 *:py-4 hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-300"
+              class="text-sm *:px-6 *:py-4 hover:bg-hover"
               data-e2e={rowDataE2E}
             >
               {bodySlot}
             </tr>
           ))}
         </tbody>
-        {footerSlot && <tfoot class="bg-gray-50 dark:bg-gray-700">{footerSlot}</tfoot>}
+        {footerSlot && <tfoot class="bg-canvas">{footerSlot}</tfoot>}
       </table>
     </div>
   )

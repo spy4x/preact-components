@@ -16,16 +16,16 @@ describe("MoneyDisplay", () => {
 
   it("colours a negative amount only when colorNegative is set", () => {
     const plain = render(<MoneyDisplay amount={-500} currency="USD" />)
-    expect(plain).not.toContain("text-red-600")
+    expect(plain).not.toContain("text-danger")
 
     const colored = render(<MoneyDisplay amount={-500} currency="USD" colorNegative />)
-    expect(colored).toContain("text-red-600")
+    expect(colored).toContain("text-danger")
     expect(colored).toContain("-$5.00")
   })
 
   it("never colours a positive amount even when colorNegative is set", () => {
     const html = render(<MoneyDisplay amount={500} currency="USD" colorNegative />)
-    expect(html).not.toContain("text-red-600")
+    expect(html).not.toContain("text-danger")
   })
 
   it("passes the caller's class through alongside the negative colour", () => {
@@ -33,6 +33,6 @@ describe("MoneyDisplay", () => {
       <MoneyDisplay amount={-500} currency="USD" colorNegative class="font-bold" />,
     )
     expect(html).toContain("font-bold")
-    expect(html).toContain("text-red-600")
+    expect(html).toContain("text-danger")
   })
 })

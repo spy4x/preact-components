@@ -175,7 +175,7 @@ describe("Field", () => {
     expect(html).toContain('id="email-error"')
     expect(html).toContain('aria-live="polite"')
     expect(html).toContain("Enter an address")
-    expect(html).toContain("text-red-700")
+    expect(html).toContain("text-danger")
   })
 
   it("renders the hint under the control", () => {
@@ -187,7 +187,7 @@ describe("Field", () => {
 
     expect(html).toContain('id="email-hint"')
     expect(html).toContain("Work address only")
-    expect(html).toContain("text-gray-500")
+    expect(html).toContain("text-muted")
   })
 
   it("marks a required field on the label and leaves required native to the control", () => {

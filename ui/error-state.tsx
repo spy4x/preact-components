@@ -21,7 +21,7 @@ export function ErrorState({ message, class: className }: ErrorStateProps): JSX.
     <div
       role="alert"
       class={cn(
-        "mx-auto max-w-[650px] rounded-lg border border-red-500 bg-red-50 p-4 text-center text-red-700 dark:border-red-700 dark:bg-red-950 dark:text-red-200",
+        "mx-auto max-w-[650px] rounded-lg border border-danger bg-danger-soft p-4 text-center text-danger",
         className,
       )}
     >

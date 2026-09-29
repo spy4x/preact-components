@@ -14,7 +14,7 @@ export interface MoneyDisplayProps {
   class?: string
 }
 
-const negativeClass = "text-red-600 dark:text-red-400"
+const negativeClass = "text-danger"
 
 /**
  * Renders an amount in `currency`'s smallest unit as display text, through

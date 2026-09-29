@@ -123,7 +123,7 @@ describe("Tabs", () => {
     const html = render(<Tabs tabs={twoTabs} active="overview" onChange={() => {}} />)
 
     expect(html).toContain("border-b-2")
-    expect(tagWithId(html, "overview-tab")).toContain("border-accent-900")
+    expect(tagWithId(html, "overview-tab")).toContain("border-selected")
   })
 
   it("names the tablist when a label is given", () => {

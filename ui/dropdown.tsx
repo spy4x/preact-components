@@ -124,9 +124,9 @@ export function dropdownOpensUp(
 }
 
 const itemClasses =
-  "flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 focus:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700 dark:focus:bg-gray-700"
+  "flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-foreground hover:bg-hover focus:bg-hover"
 /** Text colour of a {@link DropdownItemProps.danger} item, in both themes. */
-const dangerClasses = "text-red-600 dark:text-red-400"
+const dangerClasses = "text-danger"
 
 export interface DropdownItemProps {
   /** Target of the item. It is a link when this is set and a `<button>` otherwise. */
@@ -381,7 +381,7 @@ export function Dropdown(props: DropdownProps): JSX.Element {
       <div
         ref={panelRef}
         class={cn(
-          "absolute z-10 whitespace-nowrap rounded-md bg-white shadow-lg ring-1 ring-black/5 dark:bg-gray-800 dark:ring-gray-600 focus:outline-hidden",
+          "absolute z-10 whitespace-nowrap rounded-md bg-surface shadow-popover ring-1 ring-subtle focus:outline-hidden",
           horizontalClass,
           verticalClass,
           originClass,

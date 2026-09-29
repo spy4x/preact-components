@@ -218,7 +218,7 @@ export function Pagination(
         {pageRange(current, pageCount).map((item, index) =>
           !("page" in item)
             ? (
-              <li key={`gap-${index}`} aria-hidden="true" class="px-1 text-gray-500">
+              <li key={`gap-${index}`} aria-hidden="true" class="px-1 text-muted">
                 …
               </li>
             )

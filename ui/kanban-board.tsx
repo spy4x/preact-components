@@ -214,15 +214,14 @@ interface Dragged {
 
 const rootClass = "relative"
 const boardClass = "flex items-start gap-4 overflow-x-auto p-1"
-const columnClass =
-  "flex min-w-60 flex-1 shrink-0 flex-col gap-2 rounded-lg bg-gray-100 p-2 dark:bg-gray-800/60"
+const columnClass = "flex min-w-60 flex-1 shrink-0 flex-col gap-2 rounded-lg bg-canvas p-2"
 const headingClass =
-  "flex items-center justify-between gap-2 px-1 text-sm font-semibold text-gray-700 dark:text-gray-200"
-const countClass = "text-xs font-normal text-gray-500 dark:text-gray-400"
+  "flex items-center justify-between gap-2 px-1 text-sm font-semibold text-foreground"
+const countClass = "text-xs font-normal text-muted"
 const listClass = "flex min-h-16 flex-col gap-2"
 const cardClass =
-  "cursor-grab rounded-md border border-subtle bg-surface p-3 text-sm text-gray-800 shadow-xs transition-shadow focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent-900 dark:text-gray-100 dark:focus-visible:ring-accent-400"
-const cardLiftedClass = "shadow-lg ring-2 ring-accent-900 dark:ring-accent-400"
+  "cursor-grab rounded-md border border-subtle bg-surface p-3 text-sm text-foreground shadow-raised transition-shadow focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent-900 dark:focus-visible:ring-accent-400"
+const cardLiftedClass = "shadow-popover ring-2 ring-accent-900 dark:ring-accent-400"
 const cardDraggedClass = "opacity-50"
 const indicatorClass = "h-0.5 shrink-0 rounded-full bg-accent-900 dark:bg-accent-400"
 

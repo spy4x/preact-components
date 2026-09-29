@@ -37,37 +37,6 @@ export const ALLOWED: readonly string[] = [
   // The colour-atoms demo paints `text-white` on every fill it shows; the warning and success fills
   // have no `text-warning-foreground` or `text-success-foreground` utility to swap it for.
   "ui-guide/sections/surfaces.tsx",
-  "ui/avatar.tsx",
-  "ui/badge.tsx",
-  "ui/button.tsx",
-  "ui/combobox.tsx",
-  "ui/confirm-dialog.tsx",
-  "ui/data-table.tsx",
-  "ui/date-range-picker.tsx",
-  "ui/dropdown.tsx",
-  "ui/empty-state.tsx",
-  "ui/enhanced-form.tsx",
-  "ui/field.tsx",
-  "ui/file-input.tsx",
-  "ui/image-gallery.tsx",
-  "ui/inline-edit.tsx",
-  "ui/kanban-board.tsx",
-  "ui/kbd.tsx",
-  "ui/lightbox.tsx",
-  "ui/loading-skeleton.tsx",
-  "ui/loading-spinner.tsx",
-  "ui/modal.tsx",
-  "ui/page-title.tsx",
-  "ui/pagination.tsx",
-  "ui/progress.tsx",
-  "ui/shortcuts-dialog.tsx",
-  "ui/table.tsx",
-  "ui/tabs.tsx",
-  "ui/toastr.tsx",
-  "ui/toggle-chips.tsx",
-  "ui/toggle-field.tsx",
-  "ui/toggle-switch.tsx",
-  "ui/tooltip.tsx",
 ]
 
 const ROOT = new URL("../../", import.meta.url)
@@ -91,7 +60,7 @@ async function sourceFiles(directory: string): Promise<string[]> {
  * this number on purpose; the number may only go down, and a lane that converts a file lowers it
  * with the list.
  */
-const ALLOWED_COUNT = 33
+const ALLOWED_COUNT = 2
 
 describe("fixed colour classes in component source", () => {
   it("has an allow-list that has not grown", () => {

@@ -49,7 +49,7 @@ export function LoadingSpinner(
       aria-live="polite"
     >
       <svg
-        class={cn("animate-spin text-accent-900 dark:text-accent-400", sizeClasses[size])}
+        class={cn("animate-spin text-selected", sizeClasses[size])}
         viewBox="0 0 24 24"
         fill="none"
         aria-hidden="true"
@@ -69,7 +69,7 @@ export function LoadingSpinner(
         />
       </svg>
       {label
-        ? <p class="text-sm text-gray-600 dark:text-gray-300">{label}</p>
+        ? <p class="text-sm text-muted">{label}</p>
         : <span class="sr-only">{loadingLabel}</span>}
     </div>
   )

@@ -539,10 +539,9 @@ export interface ComboboxNamingProps {
  * base to win: the highlighted row repaints the background, the selected row repaints the text.
  */
 const optionClasses =
-  "flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-gray-900 hover:bg-gray-50 dark:text-gray-100 dark:hover:bg-gray-700"
-const activeOptionClasses = "bg-gray-50 dark:bg-gray-700"
-const selectedOptionClasses =
-  "bg-blue-50 font-medium text-blue-700 dark:bg-blue-900 dark:text-blue-200"
+  "flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-hover"
+const activeOptionClasses = "bg-hover"
+const selectedOptionClasses = "bg-selected-soft font-medium text-selected"
 const disabledOptionClasses = "cursor-not-allowed opacity-50"
 
 /**
@@ -554,7 +553,7 @@ const disabledOptionClasses = "cursor-not-allowed opacity-50"
 function Chevron() {
   return (
     <svg
-      class="size-4 shrink-0 text-gray-400 dark:text-gray-500"
+      class="size-4 shrink-0 text-placeholder"
       fill="none"
       stroke="currentColor"
       viewBox="0 0 24 24"
@@ -926,7 +925,7 @@ export function Combobox<T>({
           {showClearButton && (hasSelection || hasText) && (
             <button
               type="button"
-              class="btn-input-icon size-7 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
+              class="btn-input-icon size-7 text-placeholder hover:text-muted"
               aria-label={clearLabel}
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => {
@@ -951,7 +950,7 @@ export function Combobox<T>({
         // without the stylesheet, and cannot be shown by a utility the caller adds.
         hidden={!isOpen.value}
         class={cn(
-          "absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-gray-300 bg-white shadow-lg dark:border-gray-600 dark:bg-gray-800",
+          "absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-control bg-surface shadow-popover",
           listboxClass,
         )}
       >
@@ -978,7 +977,7 @@ export function Combobox<T>({
               // No pointer handler moves the highlight. `aria-activedescendant` is where a screen
               // reader is reading, and writing it from a `mouseenter` drags that reading around
               // with a pointer its user is not holding. The row under the pointer still lights up
-              // — `hover:bg-gray-50` in the base classes does that, in CSS, announcing nothing.
+              // — `hover:bg-hover` in the base classes does that, in CSS, announcing nothing.
               onClick={() => {
                 if (!disabled) select(item)
               }}
@@ -1013,12 +1012,12 @@ export function Combobox<T>({
       }
       <div id={statusId} role="status" aria-live="polite" aria-atomic="true">
         {answersLoading && (
-          <p class="px-3 py-2 text-center text-sm text-gray-500 dark:text-gray-400">
+          <p class="px-3 py-2 text-center text-sm text-muted">
             {loadingMessage}
           </p>
         )}
         {answersEmpty && (
-          <p class="px-3 py-2 text-center text-sm text-gray-500 dark:text-gray-400">
+          <p class="px-3 py-2 text-center text-sm text-muted">
             {content.emptyMessage}
           </p>
         )}

@@ -421,8 +421,8 @@ describe("Pagination", () => {
     const html = render(<Pagination page={2} pageCount={3} onChange={() => {}} />)
 
     // The two palettes meet in this markup: `secondary` on the active page, `outline` on the rest.
-    expect(html).toContain("bg-gray-100")
-    expect(html).toContain("border-gray-300")
+    expect(html).toContain("bg-hover")
+    expect(html).toContain("border-control")
   })
 
   it("appends a caller class to the landmark", () => {

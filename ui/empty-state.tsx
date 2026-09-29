@@ -20,11 +20,11 @@ export interface EmptyStateProps {
  * difference, and `LoadingSkeleton`'s card utilities supply most of them.
  */
 const box =
-  "mx-auto max-w-[650px] rounded-lg border border-dashed border-gray-200 bg-white p-4 text-center dark:border-gray-700 dark:bg-gray-800"
+  "mx-auto max-w-[650px] rounded-lg border border-dashed border-subtle bg-surface p-4 text-center"
 
 /* The same icon box `LoadingSkeleton` uses for its placeholder glyph. */
 const iconBox =
-  "mx-auto mb-3 inline-flex size-10 items-center justify-center rounded-xl border border-accent-200 bg-accent-50 text-accent-700 dark:border-accent-800 dark:bg-accent-950 dark:text-accent-300"
+  "mx-auto mb-3 inline-flex size-10 items-center justify-center rounded-xl border border-subtle bg-selected-soft text-selected"
 
 /**
  * "Nothing here" placeholder for a list, table or search that produced no rows.
@@ -54,11 +54,11 @@ export function EmptyState(
         </span>
       )}
       {title && (
-        <h3 class="text-base font-medium text-gray-900 dark:text-gray-100">
+        <h3 class="text-base font-medium text-foreground">
           {title}
         </h3>
       )}
-      {description && <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{description}</p>}
+      {description && <p class="mt-1 text-sm text-muted">{description}</p>}
       {action && <div class="mt-4">{action}</div>}
     </div>
   )

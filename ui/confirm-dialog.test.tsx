@@ -171,7 +171,7 @@ describe("ConfirmDialog", () => {
     const html = render(dialog({ tone: "danger" }))
     const cancel = html.split("<button").find((part) => part.includes(">Keep it</button>"))
 
-    expect(cancel).toContain("border-gray-300")
+    expect(cancel).toContain("border-control")
   })
 
   it("mounts a dialog the client can make modal", () => {

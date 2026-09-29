@@ -117,7 +117,7 @@ export interface FileInputProps {
 
 const dropZoneBase = cn(
   "flex flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed",
-  "border-gray-300 px-6 py-8 text-center transition-colors dark:border-gray-600",
+  "border-control px-6 py-8 text-center transition-colors",
   // The native input is clipped to 1px (`sr-only`), so its own `:focus-visible` paints nothing a
   // sighted keyboard user can see. `has-[:focus-visible]` reads that state off the descendant input
   // and rings the visible zone instead — the same ring every other focusable control in this
@@ -125,11 +125,11 @@ const dropZoneBase = cn(
   "has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent-900",
   "has-[:focus-visible]:ring-offset-2 dark:has-[:focus-visible]:ring-accent-400",
 )
-const dropZoneInteractive = "cursor-pointer hover:border-gray-400 dark:hover:border-gray-500"
-const dropZoneDragging = "border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950/30"
+const dropZoneInteractive = "cursor-pointer hover:border-strong"
+const dropZoneDragging = "border-info bg-info-soft"
 const dropZoneDisabled = "cursor-not-allowed opacity-50"
-const errorText = "mt-2 text-sm text-red-700 dark:text-red-300"
-const hintText = "mt-2 text-sm text-gray-500 dark:text-gray-400"
+const errorText = "mt-2 text-sm text-danger"
+const hintText = "mt-2 text-sm text-muted"
 
 /**
  * File picker built on a real `<input type="file">`, with a drop zone and a keyboard/screen-reader
@@ -354,9 +354,7 @@ export function FileInput(
       {label !== undefined && label !== null && (
         <label for={id} class={cn("label", disabled && "opacity-50")}>
           {label}
-          {required && (
-            <span aria-hidden="true" class="ml-1 text-red-700 dark:text-red-300">*</span>
-          )}
+          {required && <span aria-hidden="true" class="ml-1 text-danger">*</span>}
         </label>
       )}
       <div
@@ -396,15 +394,15 @@ export function FileInput(
           onChange={handleChange}
         />
         <UploadIcon />
-        <span class="text-sm font-medium text-gray-700 dark:text-gray-200">{resolvedBrowse}</span>
-        <span class="text-xs text-gray-500 dark:text-gray-400">{resolvedDropHint}</span>
+        <span class="text-sm font-medium text-foreground">{resolvedBrowse}</span>
+        <span class="text-xs text-muted">{resolvedDropHint}</span>
       </div>
       {files.length > 0 && (
         <ul class="mt-3 space-y-2">
           {files.map((file) => (
             <li
               key={fileKey(file)}
-              class="flex items-center gap-3 rounded-md border border-gray-200 px-3 py-2 dark:border-gray-700"
+              class="flex items-center gap-3 rounded-md border border-subtle px-3 py-2"
             >
               {previews && previewUrls.current.has(file) && (
                 <img
@@ -413,15 +411,15 @@ export function FileInput(
                   class="size-10 shrink-0 rounded object-cover"
                 />
               )}
-              <span class="min-w-0 flex-1 truncate text-sm text-gray-700 dark:text-gray-200">
+              <span class="min-w-0 flex-1 truncate text-sm text-foreground">
                 {file.name}
               </span>
-              <span class="shrink-0 text-xs text-gray-500 dark:text-gray-400">
+              <span class="shrink-0 text-xs text-muted">
                 {formatBytes(file.size)}
               </span>
               <button
                 type="button"
-                class="shrink-0 rounded p-1 text-gray-400 hover:text-gray-600 disabled:pointer-events-none disabled:opacity-50 dark:hover:text-gray-200"
+                class="shrink-0 rounded p-1 text-placeholder hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
                 aria-label={removeFileLabel(file.name)}
                 disabled={disabled}
                 onClick={() => removeFile(file)}
@@ -567,7 +565,7 @@ export function matchesAccept(file: File, accept: string | undefined): boolean {
 function UploadIcon(): JSX.Element {
   return (
     <svg
-      class="size-6 shrink-0 text-gray-400"
+      class="size-6 shrink-0 text-placeholder"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"

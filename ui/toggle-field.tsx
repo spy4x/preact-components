@@ -74,8 +74,8 @@ export interface ToggleFieldProps {
 const labelText = "label items-center gap-3"
 // The message classes are `Field`'s, character for character: a description on a switch row must not
 // look different from a hint on an input row.
-const errorText = "mt-2 text-sm text-red-700 dark:text-red-300"
-const hintText = "mt-2 text-sm text-gray-500 dark:text-gray-400"
+const errorText = "mt-2 text-sm text-danger"
+const hintText = "mt-2 text-sm text-muted"
 
 /**
  * Render one switch row.
@@ -128,7 +128,7 @@ export function ToggleField({
         >
           {label}
           {required && (
-            <span aria-hidden="true" class="ml-1 text-red-700 dark:text-red-300">
+            <span aria-hidden="true" class="ml-1 text-danger">
               *
             </span>
           )}

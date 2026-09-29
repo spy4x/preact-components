@@ -310,7 +310,7 @@ describe("Progress", () => {
   })
 
   it("keeps the track neutral rather than tone-coloured", () => {
-    expect(render(<Progress value={50} tone="danger" />)).toContain("bg-gray-200")
+    expect(render(<Progress value={50} tone="danger" />)).toContain("bg-track")
   })
 
   it("appends a caller class", () => {

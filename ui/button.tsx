@@ -29,13 +29,10 @@ const base =
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
     "bg-accent-900 text-accent-foreground hover:bg-accent-800 dark:bg-accent-700 dark:hover:bg-accent-600",
-  secondary:
-    "bg-gray-100 text-gray-900 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600",
-  outline:
-    "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700",
-  ghost: "bg-transparent text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700",
-  icon:
-    "bg-transparent text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200",
+  secondary: "bg-hover text-foreground hover:bg-track",
+  outline: "border border-control bg-surface text-foreground hover:bg-hover",
+  ghost: "bg-transparent text-foreground hover:bg-hover",
+  icon: "bg-transparent text-muted hover:bg-hover hover:text-foreground",
   danger: "bg-danger-fill text-danger-fill-foreground hover:bg-danger-fill-hover",
 }
 
