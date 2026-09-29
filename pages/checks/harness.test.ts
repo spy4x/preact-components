@@ -823,9 +823,12 @@ describe("describeException", () => {
   })
 
   it("reports a thrown undefined instead of only Uncaught", () => {
-    const line = describeException({ text: `Uncaught`, exception: { type: `undefined` } })
+    const line = describeException({
+      text: `Uncaught`,
+      exception: { type: `undefined`, className: `Thing` },
+    })
 
-    expect(line).toContain(`undefined`)
+    expect(line).toContain(`Thing undefined`)
     expect(line).not.toBe(`Uncaught`)
   })
 })
