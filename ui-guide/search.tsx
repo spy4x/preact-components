@@ -226,14 +226,14 @@ export function GuideSearch({ entries, labels, go }: GuideSearchProps): JSX.Elem
         class={cn(
           // An icon button on a phone, like the header's other controls; a field-shaped button
           // with its placeholder and shortcut from `sm`.
-          "flex h-9 items-center gap-2 rounded-lg border border-transparent px-2 text-sm text-gray-600 hover:text-gray-950",
-          "sm:w-56 sm:border-gray-200 sm:bg-white sm:px-3 sm:text-gray-500 sm:hover:border-gray-300 lg:w-72",
-          "dark:text-gray-300 dark:hover:text-gray-50 sm:dark:border-gray-700 sm:dark:bg-gray-800/60 sm:dark:text-gray-400 sm:dark:hover:border-gray-600",
+          "flex h-9 items-center gap-2 rounded-lg border border-transparent px-2 text-sm text-muted hover:text-foreground",
+          "sm:w-56 sm:border-subtle sm:bg-surface sm:px-3 sm:text-muted sm:hover:border-control lg:w-72",
+          "",
         )}
       >
         <IconSearch class="size-5 shrink-0 sm:size-4" />
         <span class="hidden flex-1 text-left sm:inline">{labels.searchPlaceholder}</span>
-        <kbd class="hidden rounded border border-gray-200 px-1 font-sans text-xs text-gray-500 sm:inline dark:border-gray-600 dark:text-gray-400">
+        <kbd class="hidden rounded border border-subtle px-1 font-sans text-xs text-muted sm:inline">
           /
         </kbd>
       </button>
@@ -247,13 +247,13 @@ export function GuideSearch({ entries, labels, go }: GuideSearchProps): JSX.Elem
           if (event.target === dialog.current) dialog.current?.close()
         }}
         class={cn(
-          "mx-auto mt-16 w-[min(36rem,calc(100vw-2rem))] max-w-none rounded-xl border border-gray-200 bg-white p-0 text-gray-900 shadow-2xl",
-          "backdrop:bg-gray-950/50 backdrop:backdrop-blur-sm",
-          "dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100",
+          "mx-auto mt-16 w-[min(36rem,calc(100vw-2rem))] max-w-none rounded-xl border border-subtle bg-surface p-0 text-foreground shadow-2xl",
+          "backdrop:bg-scrim backdrop:backdrop-blur-sm",
+          "",
         )}
       >
-        <div class="flex items-center gap-2 border-b border-gray-200 px-4 dark:border-gray-700">
-          <IconSearch class="size-4 shrink-0 text-gray-500 dark:text-gray-400" />
+        <div class="flex items-center gap-2 border-b border-subtle px-4">
+          <IconSearch class="size-4 shrink-0 text-muted" />
           <input
             ref={input}
             type="search"
@@ -272,7 +272,7 @@ export function GuideSearch({ entries, labels, go }: GuideSearchProps): JSX.Elem
               setState({ activeIndex: 0, isOpen: true })
             }}
             onKeyDown={onKeyDown}
-            class="h-12 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-gray-500 dark:placeholder:text-gray-400"
+            class="h-12 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-placeholder"
           />
           {
             /* Escape and a backdrop click close it too, but a phone has neither a key nor much
@@ -283,7 +283,7 @@ export function GuideSearch({ entries, labels, go }: GuideSearchProps): JSX.Elem
             aria-label={labels.closeSearch}
             data-e2e="ui-guide-search-close"
             onClick={() => dialog.current?.close()}
-            class="-mr-2 flex size-9 shrink-0 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-950 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-50"
+            class="-mr-2 flex size-9 shrink-0 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-foreground"
           >
             <IconXMark class="size-5" />
           </button>
@@ -296,7 +296,7 @@ export function GuideSearch({ entries, labels, go }: GuideSearchProps): JSX.Elem
         >
           {results.length === 0
             ? (
-              <li role="presentation" class="px-3 py-6 text-center text-sm text-gray-500">
+              <li role="presentation" class="px-3 py-6 text-center text-sm text-muted">
                 {labels.searchEmpty}
               </li>
             )
@@ -319,9 +319,9 @@ export function GuideSearch({ entries, labels, go }: GuideSearchProps): JSX.Elem
                   <span class="block text-sm font-medium [overflow-wrap:anywhere]">
                     {entry.label}
                   </span>
-                  <span class="block text-xs text-gray-500 dark:text-gray-400">{entry.detail}</span>
+                  <span class="block text-xs text-muted">{entry.detail}</span>
                 </span>
-                <span class="shrink-0 text-xs text-gray-500 dark:text-gray-400">
+                <span class="shrink-0 text-xs text-muted">
                   {labels.searchKinds[KIND_WORD[entry.kind]]}
                 </span>
               </li>

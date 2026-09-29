@@ -138,14 +138,14 @@ export function MiniApp(): JSX.Element {
   return (
     <div
       data-e2e="mini-app"
-      class="@container relative isolate overflow-hidden rounded-xl border border-gray-200 bg-white text-left shadow-sm dark:border-gray-700 dark:bg-gray-900"
+      class="@container relative isolate overflow-hidden rounded-xl border border-subtle bg-surface text-left shadow-sm"
     >
-      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 px-4 py-3 dark:border-gray-700">
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-subtle px-4 py-3">
         <div class="flex items-center gap-2">
-          <span class="flex size-8 items-center justify-center rounded-lg bg-accent-900 text-white dark:bg-accent-700">
+          <span class="flex size-8 items-center justify-center rounded-lg bg-accent-900 text-accent-foreground dark:bg-accent-700">
             <IconRocket class="size-4" />
           </span>
-          <span class="font-semibold text-gray-950 dark:text-gray-50">Orbit</span>
+          <span class="font-semibold text-foreground">Orbit</span>
           <Badge text="Demo" color="purple" type="outline" />
         </div>
         <Cluster>
@@ -181,7 +181,7 @@ export function MiniApp(): JSX.Element {
         <div
           role="group"
           aria-label="Filter projects by status"
-          class="flex flex-wrap gap-1 border-b border-gray-200 p-2 @3xl:w-48 @3xl:shrink-0 @3xl:flex-col @3xl:border-r @3xl:border-b-0 @3xl:p-3 dark:border-gray-700"
+          class="flex flex-wrap gap-1 border-b border-subtle p-2 @3xl:w-48 @3xl:shrink-0 @3xl:flex-col @3xl:border-r @3xl:border-b-0 @3xl:p-3"
         >
           {(["all", ...Object.keys(STATUS)] as Filter[]).map((entry) => (
             <Button
@@ -193,7 +193,7 @@ export function MiniApp(): JSX.Element {
               class="justify-between aria-pressed:bg-accent-50 aria-pressed:text-accent-900 dark:aria-pressed:bg-accent-900/40 dark:aria-pressed:text-accent-100"
             >
               <span>{entry === "all" ? "All projects" : STATUS[entry].label}</span>
-              <span class="text-xs text-gray-500 tabular-nums dark:text-gray-400">
+              <span class="text-xs text-muted tabular-nums">
                 {count(entry)}
               </span>
             </Button>
@@ -208,8 +208,8 @@ export function MiniApp(): JSX.Element {
             <Kpi label="Median build" value="2m 41s" tone="neutral" />
           </KpiGrid>
           <div class="grid gap-4 @4xl:grid-cols-2">
-            <div class="flex min-w-0 flex-col gap-4 rounded-lg border border-gray-200 p-4 dark:border-gray-700">
-              <p class="text-sm font-semibold text-gray-950 dark:text-gray-50">Builds this week</p>
+            <div class="flex min-w-0 flex-col gap-4 rounded-lg border border-subtle p-4">
+              <p class="text-sm font-semibold text-foreground">Builds this week</p>
               <LineChart
                 series={BUILDS}
                 ariaLabel="Builds this week"

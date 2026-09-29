@@ -58,7 +58,7 @@ export function LazySlot<T>(
       <div
         data-e2e={`${e2e}-placeholder`}
         class={cn(
-          "flex items-center justify-center border border-dashed border-gray-300 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400",
+          "flex items-center justify-center border border-dashed border-control text-sm text-muted",
           boxClass,
         )}
       >

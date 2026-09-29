@@ -125,8 +125,8 @@ export function DemoCard(
       id={anchorId ?? `demo-${name}`}
       data-card-size={wide ? "wide" : wide === false ? "normal" : "auto"}
       class={cn(
-        "flex min-w-0 scroll-mt-16 flex-col rounded-xl border border-gray-200 bg-white shadow-sm",
-        "dark:border-gray-700/80 dark:bg-gray-800/60",
+        "flex min-w-0 scroll-mt-16 flex-col rounded-xl border border-subtle bg-surface shadow-sm",
+        "",
         // The deep-link mark the shell sets on the card a demo route names. The muted accent, not
         // the primary: in the dark palette the primary is near-black chrome no one can see.
         "data-[deep-link]:outline-2 data-[deep-link]:outline-offset-2",
@@ -135,7 +135,7 @@ export function DemoCard(
       )}
     >
       <header class="flex flex-col gap-1 p-4 sm:p-6" data-card-part="header">
-        <h3 class="text-base font-semibold [overflow-wrap:anywhere] text-gray-950 dark:text-gray-50">
+        <h3 class="text-base font-semibold [overflow-wrap:anywhere] text-foreground">
           {title ?? label}
         </h3>
         {
@@ -146,7 +146,7 @@ export function DemoCard(
           /* A `div`, not a `p`: a JSX description may hold a list, and a list inside a paragraph
           is invalid HTML the browser repairs into a different tree than the one hydration meets. */
         }
-        <div class="text-sm [overflow-wrap:anywhere] text-gray-600 dark:text-gray-300">
+        <div class="text-sm [overflow-wrap:anywhere] text-muted">
           {description ?? <InlineMarkdown text={summary} />}
         </div>
         {classes && classes.length > 0
@@ -166,8 +166,8 @@ export function DemoCard(
       <div
         data-card-part="demo"
         class={cn(
-          "min-w-0 flex-1 border-y border-gray-200 bg-gray-50 p-4 sm:p-6",
-          "dark:border-gray-700/80 dark:bg-gray-900/60",
+          "min-w-0 flex-1 border-y border-subtle bg-canvas p-4 sm:p-6",
+          "",
           // A dot grid, the quiet canvas a demo sits on. A background, not a border: the demo is
           // never boxed twice.
           "bg-[radial-gradient(var(--color-border-subtle)_1px,transparent_1px)] bg-size-[16px_16px]",
@@ -178,11 +178,11 @@ export function DemoCard(
       {props && props.length > 0 ? <PropsSummary props={props} labels={labels} /> : null}
       <div class="relative" data-e2e="usage">
         <details class="group/code min-w-0">
-          <summary class="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium text-gray-600 select-none hover:text-gray-950 sm:px-6 dark:text-gray-400 dark:hover:text-gray-50 [&::-webkit-details-marker]:hidden">
+          <summary class="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium text-muted select-none hover:text-foreground sm:px-6 [&::-webkit-details-marker]:hidden">
             <IconChevronRight class="size-4 shrink-0 transition-transform group-open/code:rotate-90" />
             {labels.code}
           </summary>
-          <pre class="mx-4 mb-4 overflow-x-auto rounded-lg bg-gray-950 p-4 text-xs leading-relaxed text-gray-100 sm:mx-6 sm:mb-6 dark:bg-black/40">
+          <pre class="mx-4 mb-4 overflow-x-auto rounded-lg bg-scrim-strong p-4 text-xs leading-relaxed text-scrim-foreground sm:mx-6 sm:mb-6">
             <code>{snippet}</code>
           </pre>
         </details>
@@ -202,7 +202,7 @@ function PropsSummary(
   { props, labels }: { props: readonly DemoProp[]; labels: DemoCardLabels },
 ): JSX.Element {
   return (
-    <div class="@container overflow-x-auto border-b border-gray-200 px-4 py-4 sm:px-6 dark:border-gray-700/80">
+    <div class="@container overflow-x-auto border-b border-subtle px-4 py-4 sm:px-6">
       {
         /* Below 28rem of card width (a phone, or a half-width card at 1024 px) a row turns into a
         two-column grid: name and type on the first line, the sentence under them at full width, so
@@ -217,7 +217,7 @@ function PropsSummary(
         (`theme/preset.css`, "Chrome the popup is painted by"), which would box the summary. */
       }
       <table class="w-full bg-transparent text-left text-sm">
-        <caption class="pb-2 text-left text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">
+        <caption class="pb-2 text-left text-xs font-semibold tracking-wide text-muted uppercase">
           {labels.props}
         </caption>
         <thead class="sr-only">
@@ -227,7 +227,7 @@ function PropsSummary(
             <th scope="col">{labels.propDescription}</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-gray-200 dark:divide-gray-700/80">
+        <tbody class="divide-y divide-subtle">
           {props.map((prop) => (
             <tr
               key={prop.name}
@@ -235,7 +235,7 @@ function PropsSummary(
             >
               <th
                 scope="row"
-                class="py-2 pr-4 font-mono text-xs font-semibold break-words text-gray-950 @max-md:min-w-0 dark:text-gray-50"
+                class="py-2 pr-4 font-mono text-xs font-semibold break-words text-foreground @max-md:min-w-0"
               >
                 <NameWithBreaks name={prop.name} />
               </th>
@@ -243,9 +243,9 @@ function PropsSummary(
                 {prop.type}
                 {prop.default === undefined
                   ? null
-                  : <span class="block text-gray-500 dark:text-gray-400">= {prop.default}</span>}
+                  : <span class="block text-muted">= {prop.default}</span>}
               </td>
-              <td class="py-2 text-gray-600 @max-md:col-span-2 @max-md:pt-0 dark:text-gray-300">
+              <td class="py-2 text-muted @max-md:col-span-2 @max-md:pt-0">
                 <InlineMarkdown text={prop.description} />
               </td>
             </tr>

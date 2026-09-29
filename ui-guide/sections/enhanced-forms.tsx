@@ -37,7 +37,7 @@ function delay(ms: number): Promise<void> {
 
 /** A quiet counter under a form: how many submits reached its `onSubmit`. */
 function Count({ e2e, children }: { e2e: string; children: ComponentChildren }) {
-  return <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e={e2e}>{children}</p>
+  return <p class="text-xs text-muted" data-e2e={e2e}>{children}</p>
 }
 
 /**
@@ -83,7 +83,7 @@ function EnhancedFormDemo() {
             if (shouldFail.value) throw new Error("simulated failure")
           })()
         }}
-        done={<p class="text-sm text-gray-700 dark:text-gray-300">Done.</p>}
+        done={<p class="text-sm text-muted">Done.</p>}
       >
         <Field id="guide-enhanced-form-note" label="A note, any note">
           <Input name="note" placeholder="Anything" />
@@ -131,7 +131,7 @@ function SignUpForm(
         return onSubmit(String(data.get("email") ?? ""))
       }}
       labels={signUpLabels}
-      done={<p class="text-sm text-gray-700 dark:text-gray-300">{signUpLabels.done}</p>}
+      done={<p class="text-sm text-muted">{signUpLabels.done}</p>}
     >
       <Cluster align="end">
         <Field id={id} label="Email" required class="min-w-0 flex-1">
@@ -156,7 +156,7 @@ function ContactDemoForm(
       action={FORM_DEMO_ACTION}
       onSubmit={(data) => honeypotFilled(data) ? undefined : onSubmit()}
       labels={contactLabels}
-      done={<p class="text-sm text-gray-700 dark:text-gray-300">{contactLabels.done}</p>}
+      done={<p class="text-sm text-muted">{contactLabels.done}</p>}
     >
       <Grid minColumnWidth="sm" gap="md">
         <Field id={`${id}-name`} label="Name" required>

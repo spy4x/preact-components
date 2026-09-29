@@ -516,13 +516,13 @@ export function UIGuide(
             target.focus()
             target.scrollIntoView({ block: "start" })
           }}
-          class="sr-only rounded-md bg-white px-3 py-2 text-sm font-medium text-purple-900 shadow focus:not-sr-only focus:absolute focus:z-50 focus:px-3 focus:py-2 dark:bg-gray-900 dark:text-purple-200"
+          class="sr-only rounded-md bg-surface px-3 py-2 text-sm font-medium text-purple-900 shadow focus:not-sr-only focus:absolute focus:z-50 focus:px-3 focus:py-2 dark:text-purple-200"
           data-e2e="ui-guide-skip"
         >
           {labels.skipToContent}
         </a>
 
-        <header class="sticky top-0 z-30 h-14 border-b border-gray-200 bg-white/85 backdrop-blur dark:border-gray-800 dark:bg-gray-900/85">
+        <header class="sticky top-0 z-30 h-14 border-b border-subtle bg-surface-overlay backdrop-blur">
           <div class="mx-auto flex h-full max-w-screen-2xl items-center gap-2 px-4 sm:gap-4 sm:px-6 lg:px-8">
             <button
               ref={trigger}
@@ -540,12 +540,12 @@ export function UIGuide(
             <a
               href={pageHref("overview")}
               onClick={(event) => follow(pageHref("overview"), event)}
-              class="flex min-w-0 items-center gap-2 font-semibold text-gray-950 dark:text-gray-50"
+              class="flex min-w-0 items-center gap-2 font-semibold text-foreground"
             >
               <span class="truncate">{labels.title}</span>
               {version
                 ? (
-                  <span class="hidden rounded-full bg-gray-100 px-2 text-xs font-medium text-gray-600 sm:inline dark:bg-gray-800 dark:text-gray-300">
+                  <span class="hidden rounded-full bg-canvas px-2 text-xs font-medium text-muted sm:inline">
                     v{version}
                   </span>
                 )
@@ -558,7 +558,7 @@ export function UIGuide(
                   <a
                     href={author.href}
                     rel="noreferrer"
-                    class="hidden text-sm text-gray-600 hover:text-gray-950 xl:inline dark:text-gray-400 dark:hover:text-gray-50"
+                    class="hidden text-sm text-muted hover:text-foreground xl:inline"
                     data-e2e="ui-guide-author"
                   >
                     {labels.madeBy(author.name)}
@@ -613,9 +613,9 @@ export function UIGuide(
               // browser check passes with or without this line; it is here for engines that do not.
               trigger.current?.focus()
             }}
-            class="m-0 h-dvh max-h-none w-[min(20rem,85vw)] max-w-none overflow-y-auto border-r border-gray-200 bg-white p-0 text-gray-900 shadow-xl backdrop:bg-gray-950/50 backdrop:backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100"
+            class="m-0 h-dvh max-h-none w-[min(20rem,85vw)] max-w-none overflow-y-auto border-r border-subtle bg-surface p-0 text-foreground shadow-xl backdrop:bg-scrim backdrop:backdrop-blur-sm"
           >
-            <div class="sticky top-0 z-10 flex h-14 items-center justify-between gap-2 border-b border-gray-200 bg-white px-4 dark:border-gray-800 dark:bg-gray-900">
+            <div class="sticky top-0 z-10 flex h-14 items-center justify-between gap-2 border-b border-subtle bg-surface px-4">
               <span class="font-semibold">{labels.title}</span>
               <button
                 type="button"
@@ -793,7 +793,7 @@ function GuideNav(
       <Stack gap="lg" as="ul">
         {navGroups.map((group) => (
           <li key={group.id}>
-            <p class="px-3 pb-1 text-xs font-semibold text-gray-600 dark:text-gray-400">
+            <p class="px-3 pb-1 text-xs font-semibold text-muted">
               {labels.navGroups[group.id]}
             </p>
             <ul>
@@ -816,7 +816,7 @@ function GuideNav(
                         "block rounded-md px-3 py-1 font-medium",
                         current
                           ? "bg-purple-100 text-purple-900 dark:bg-purple-950 dark:text-purple-100"
-                          : "text-gray-700 hover:bg-gray-100 hover:text-gray-950 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-50",
+                          : "text-muted hover:bg-hover hover:text-foreground",
                       )}
                     >
                       {candidate.title}
@@ -865,7 +865,7 @@ function NavSection(
 ) {
   const sectionHref = routeHref(section.id)
   return (
-    <li class="border-l border-gray-200 dark:border-gray-800">
+    <li class="border-l border-subtle">
       {titled
         ? (
           <a
@@ -874,7 +874,7 @@ function NavSection(
               ? "true"
               : undefined}
             onClick={(event) => follow(sectionHref, event)}
-            class="-ml-px block border-l border-transparent px-3 py-1 font-medium text-gray-900 hover:border-gray-400 aria-[current]:border-purple-600 aria-[current]:text-purple-800 dark:text-gray-100 dark:aria-[current]:border-purple-400 dark:aria-[current]:text-purple-300"
+            class="-ml-px block border-l border-transparent px-3 py-1 font-medium text-foreground hover:border-strong aria-[current]:border-purple-600 aria-[current]:text-purple-800 dark:aria-[current]:border-purple-400 dark:aria-[current]:text-purple-300"
           >
             {section.title}
           </a>
@@ -894,7 +894,7 @@ function NavSection(
                   "-ml-px block border-l px-3 py-1 [overflow-wrap:anywhere]",
                   current
                     ? "border-purple-600 font-medium text-purple-800 dark:border-purple-400 dark:text-purple-300"
-                    : "border-transparent text-gray-600 hover:border-gray-400 hover:text-gray-950 dark:text-gray-400 dark:hover:text-gray-50",
+                    : "border-transparent text-muted hover:border-strong hover:text-foreground",
                 )}
               >
                 {cardTitle(section, name)}
@@ -929,7 +929,7 @@ function OnThisPage(
   if (sections.length === 0) return null
   return (
     <nav aria-label={label} class="text-sm" data-e2e="ui-guide-on-this-page">
-      <p class="pb-2 text-xs font-semibold text-gray-600 dark:text-gray-400">{label}</p>
+      <p class="pb-2 text-xs font-semibold text-muted">{label}</p>
       <ul class="flex flex-col gap-4">
         {sections.map((section) => (
           <li key={section.id}>
@@ -938,13 +938,13 @@ function OnThisPage(
                 <a
                   href={routeHref(section.id)}
                   onClick={(event) => follow(routeHref(section.id), event)}
-                  class="block pb-1 font-medium text-gray-900 hover:text-purple-800 dark:text-gray-100 dark:hover:text-purple-300"
+                  class="block pb-1 font-medium text-foreground hover:text-purple-800 dark:hover:text-purple-300"
                 >
                   {section.title}
                 </a>
               )
               : null}
-            <ul class="border-l border-gray-200 dark:border-gray-800">
+            <ul class="border-l border-subtle">
               {section.names.filter((name) => name in registry).map((name) => {
                 const href = demoHref(section.id, name)
                 return (
@@ -953,7 +953,7 @@ function OnThisPage(
                       href={href}
                       aria-current={inView === name ? "location" : undefined}
                       onClick={(event) => follow(href, event)}
-                      class="-ml-px block border-l border-transparent py-1 pl-3 [overflow-wrap:anywhere] text-gray-600 hover:text-gray-950 aria-[current]:border-purple-600 aria-[current]:font-medium aria-[current]:text-purple-800 dark:text-gray-400 dark:hover:text-gray-50 dark:aria-[current]:border-purple-400 dark:aria-[current]:text-purple-300"
+                      class="-ml-px block border-l border-transparent py-1 pl-3 [overflow-wrap:anywhere] text-muted hover:text-foreground aria-[current]:border-purple-600 aria-[current]:font-medium aria-[current]:text-purple-800 dark:aria-[current]:border-purple-400 dark:aria-[current]:text-purple-300"
                     >
                       {cardTitle(section, name)}
                     </a>
@@ -1009,12 +1009,12 @@ function PackagePage(
   const SectionHeading = nested ? "h3" : "h2"
   return (
     <div id={nested ? `page-${page.id}` : undefined} class="flex flex-col gap-12">
-      <header class="flex flex-col gap-4 border-b border-gray-200 pb-8 dark:border-gray-800">
+      <header class="flex flex-col gap-4 border-b border-subtle pb-8">
         <p class="font-mono text-sm text-purple-700 dark:text-purple-300">{page.packageName}</p>
-        <Heading class="text-3xl font-bold tracking-tight text-gray-950 sm:text-4xl dark:text-gray-50">
+        <Heading class="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
           {page.title}
         </Heading>
-        <p class="max-w-prose text-base text-gray-600 sm:text-lg dark:text-gray-300">
+        <p class="max-w-prose text-base text-muted sm:text-lg">
           <InlineMarkdown text={page.blurb} />
         </p>
       </header>
@@ -1022,7 +1022,7 @@ function PackagePage(
       {page.id === "icons" ? <IconGallery copy={copy} /> : null}
       {page.id !== "icons" &&
           page.sections.every((section) => section.names.every((name) => !(name in registry)))
-        ? <p class="text-sm text-gray-600 dark:text-gray-300">{labels.comingSoon}</p>
+        ? <p class="text-sm text-muted">{labels.comingSoon}</p>
         : null}
 
       {page.sections.map((section) => {
@@ -1042,10 +1042,10 @@ function PackagePage(
                 (single || section.title === page.title) && "sr-only",
               )}
             >
-              <SectionHeading class="text-2xl font-semibold tracking-tight text-gray-950 dark:text-gray-50">
+              <SectionHeading class="text-2xl font-semibold tracking-tight text-foreground">
                 {section.title}
               </SectionHeading>
-              <p class="max-w-prose text-sm text-gray-600 dark:text-gray-300">
+              <p class="max-w-prose text-sm text-muted">
                 <InlineMarkdown text={section.blurb} />
               </p>
             </div>

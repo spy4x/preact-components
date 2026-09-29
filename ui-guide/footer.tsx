@@ -37,7 +37,7 @@ export interface GuideFooterProps {
 }
 
 const LINK =
-  "text-gray-600 underline decoration-gray-300 underline-offset-4 hover:text-gray-950 hover:decoration-gray-500 dark:text-gray-300 dark:decoration-gray-600 dark:hover:text-gray-50"
+  "text-muted underline decoration-control underline-offset-4 hover:text-foreground hover:decoration-control"
 
 /**
  * The footer: the library's name and one line, then its links. A link the host gave no address for
@@ -50,12 +50,11 @@ export function GuideFooter({ labels, repository, author }: GuideFooterProps): J
   return (
     <footer
       data-e2e="ui-guide-footer"
-      class="border-t border-gray-200 dark:border-gray-800"
+      class="border-t border-subtle"
     >
       <div class="mx-auto flex max-w-screen-2xl flex-col gap-4 px-4 py-8 text-sm sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
-        <p class="text-gray-600 dark:text-gray-400">
-          <span class="font-semibold text-gray-950 dark:text-gray-50">{labels.title}</span>{" "}
-          {labels.footerNote}
+        <p class="text-muted">
+          <span class="font-semibold text-foreground">{labels.title}</span> {labels.footerNote}
         </p>
         <Cluster as="ul" gap="md">
           {repository
@@ -84,9 +83,9 @@ export function GuideFooter({ labels, repository, author }: GuideFooterProps): J
                   {labels.licence}
                 </a>
               )
-              : <span class="text-gray-600 dark:text-gray-300">{labels.licence}</span>}
+              : <span class="text-muted">{labels.licence}</span>}
           </li>
-          <li class="text-gray-600 dark:text-gray-300">
+          <li class="text-muted">
             {labels.designBy}{" "}
             <a href={DESIGN_CREDIT_URL} rel="noreferrer" class={LINK} data-footer-link="design">
               Eirene

@@ -250,7 +250,7 @@ function useTeamForm(initial: Team = blankTeam()) {
 function Caption(
   { children, e2e }: { children: ComponentChildren; e2e?: string },
 ): JSX.Element {
-  return <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e={e2e}>{children}</p>
+  return <p class="text-xs text-muted" data-e2e={e2e}>{children}</p>
 }
 
 /** The four field rows bound to one live model, with the model printed under them. */
@@ -346,14 +346,14 @@ function CrudEditorDemo() {
         onCreated={(row) => created.value = `#${row.id} "${row.name}"`}
         notice={() => (
           // `notice` renders straight after the component's field grid, which leaves the gap to it.
-          <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">
+          <p class="mt-4 text-xs text-muted">
             A <code>notice</code> slot sits between the fields and the footer.
           </p>
         )}
         footerSlot={() => (
           // `footerSlot` renders first in the component's footer row; `mr-auto` pushes the buttons
           // to the far end, as the footer's own layout expects.
-          <span class="mr-auto text-xs text-gray-500 dark:text-gray-400">
+          <span class="mr-auto text-xs text-muted">
             <code>footerSlot</code> sits before Cancel and Save
           </span>
         )}
@@ -372,7 +372,7 @@ function CrudEditorDemo() {
           </>
         )}
       </CrudEditor>
-      <Stack gap="xs" class="text-xs text-gray-500 dark:text-gray-400" data-e2e="model">
+      <Stack gap="xs" class="text-xs text-muted" data-e2e="model">
         <p>onCreated received: {created.value}</p>
         <p>
           the create port logged:{" "}
@@ -513,7 +513,7 @@ function CrudListDemo() {
       }
       row={(row) => (
         <>
-          <td class="text-gray-900 dark:text-gray-100">{row.name}</td>
+          <td class="text-foreground">{row.name}</td>
           <td class="tabular-nums">{row.members}</td>
         </>
       )}

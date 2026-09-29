@@ -93,7 +93,7 @@ export const DEFAULT_ICON_GALLERY_LABELS: IconGalleryLabels = {
 /** The code row of the gallery's card: how an app uses one glyph. */
 const GALLERY_SNIPPET = `import { IconSearch } from "@spy4x/preact-icons"
 
-<IconSearch class="size-5 text-gray-500" />
+<IconSearch class="size-5 text-muted" />
 <IconSearch aria-label="Search" />`
 
 export interface IconGalleryProps {
@@ -140,7 +140,7 @@ export function IconGallery(
     >
       <Stack gap="md">
         <Cluster gap="md" justify="between">
-          <p class="text-sm text-gray-600 dark:text-gray-300" aria-live="polite">
+          <p class="text-sm text-muted" aria-live="polite">
             {labels.status(
               matches.length,
               iconNames.length,
@@ -160,7 +160,7 @@ export function IconGallery(
 
         {matches.length === 0
           ? (
-            <p class="text-sm text-gray-600 dark:text-gray-300">
+            <p class="text-sm text-muted">
               {labels.noMatch(query.value.trim())}
             </p>
           )
@@ -178,7 +178,7 @@ export function IconGallery(
                     title={`Copy ${iconSnippet(name)}`}
                     data-icon={name}
                     onClick={() => handleCopy(name)}
-                    class="group flex min-w-0 flex-col items-center gap-2 rounded-lg p-3 text-gray-600 hover:bg-white hover:text-purple-700 hover:shadow-xs focus-visible:outline-2 focus-visible:outline-purple-600 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-purple-300"
+                    class="group flex min-w-0 flex-col items-center gap-2 rounded-lg p-3 text-muted hover:bg-surface hover:text-purple-700 hover:shadow-xs focus-visible:outline-2 focus-visible:outline-purple-600 dark:hover:text-purple-300"
                   >
                     <Icon class="size-6 transition-transform duration-300 group-hover:scale-125" />
                     <span class="w-full text-center text-xs [overflow-wrap:anywhere]" title={name}>

@@ -46,7 +46,7 @@ function MapInteractiveDemo() {
         tileUrl={tiles.url}
         attribution={tiles.attribution}
       />
-      <p class="text-xs text-gray-500 dark:text-gray-400">
+      <p class="text-xs text-muted">
         onMarkerClick: <span data-e2e="map-last-clicked">{lastClicked.value}</span>
       </p>
     </Stack>

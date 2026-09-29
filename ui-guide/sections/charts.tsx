@@ -240,7 +240,7 @@ export const chartsDemos = {
           <Kpi label="Users" value={1204} />
           <Kpi label="Latency" value="84 ms" />
         </KpiGrid>
-        <p class="text-xs text-gray-500 dark:text-gray-400">
+        <p class="text-xs text-muted">
           the same five cards at minWidth="16rem"
         </p>
         <KpiGrid minWidth="16rem">

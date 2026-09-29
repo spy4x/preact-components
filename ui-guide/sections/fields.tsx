@@ -116,7 +116,7 @@ function FieldDemo() {
         />
       </Field>
 
-      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
+      <p class="text-xs text-muted" data-e2e="controlled-value">
         name: {name.value} · email: {email.value} · role: {role.value} · archived:{" "}
         {archived.value ? "on" : "off"} · channel: {channel.value} · query:{" "}
         {query.value || "(empty)"}
@@ -140,7 +140,7 @@ function InputButtonDemo() {
         onInput={(event) => query.value = event.currentTarget.value}
         onClick={() => query.value = ""}
       />
-      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
+      <p class="text-xs text-muted" data-e2e="controlled-value">
         query: {query.value || "(empty)"}
       </p>
     </Stack>
@@ -163,7 +163,7 @@ function RadioGroupDemo() {
           { value: "push", label: "Push notification", disabled: true },
         ]}
       />
-      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
+      <p class="text-xs text-muted" data-e2e="controlled-value">
         channel: {channel.value}
       </p>
     </Stack>
@@ -196,7 +196,7 @@ function InputDemo() {
         onInput={(event) => email.value = event.currentTarget.value}
         data-e2e="ref-target"
       />
-      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
+      <p class="text-xs text-muted" data-e2e="controlled-value">
         {email.value || "(empty)"}
       </p>
       <Cluster>
@@ -226,7 +226,7 @@ function TextareaDemo() {
         value={notes.value}
         onInput={(event) => notes.value = event.currentTarget.value}
       />
-      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
+      <p class="text-xs text-muted" data-e2e="controlled-value">
         {notes.value.length} characters
       </p>
     </Stack>
@@ -249,7 +249,7 @@ function SelectDemo() {
           { value: "viewer", label: "Viewer" },
         ]}
       />
-      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
+      <p class="text-xs text-muted" data-e2e="controlled-value">
         role: {role.value}
       </p>
     </Stack>
@@ -277,7 +277,7 @@ function CheckboxDemo() {
       >
         Show archived rows
       </Checkbox>
-      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
+      <p class="text-xs text-muted" data-e2e="controlled-value">
         archived: {archived.value ? "on" : "off"}
       </p>
       <Cluster>
@@ -375,10 +375,10 @@ function MoneyInputDemo() {
             onChange={(value) => amount.value = value}
           />
         </Field>
-        <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="controlled-value">
+        <p class="text-xs text-muted" data-e2e="controlled-value">
           amount: {amount.value === null ? "(empty)" : amount.value}
         </p>
-        <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="money-input-submits">
+        <p class="text-xs text-muted" data-e2e="money-input-submits">
           submits: {submits.value}, posted: {lastSubmitted.value || "(none)"}
         </p>
         <Cluster gap="sm">
@@ -425,7 +425,7 @@ function InlineEditDemo() {
           />
         )}
       </div>
-      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="inline-edit-saved">
+      <p class="text-xs text-muted" data-e2e="inline-edit-saved">
         saved: {list.value}, saves: {saves.value}
       </p>
       <Cluster gap="sm">
@@ -456,7 +456,7 @@ function InlineEditDemo() {
           onSave={() => Promise.reject(new Error("offline"))}
         />
       </div>
-      <p class="text-xs text-gray-500 dark:text-gray-400">
+      <p class="text-xs text-muted">
         The second field's save always fails.
       </p>
     </Stack>
@@ -492,7 +492,7 @@ function ToggleChipsDemo() {
         value={status.value}
         onChange={(next) => status.value = next}
       />
-      <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e="toggle-chips-value">
+      <p class="text-xs text-muted" data-e2e="toggle-chips-value">
         tags: {tags.value.join(", ") || "(none)"} · status: {status.value ?? "(none)"}
       </p>
     </Stack>
