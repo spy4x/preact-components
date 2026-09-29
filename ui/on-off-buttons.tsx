@@ -18,13 +18,14 @@ export interface OnOffButtonsProps {
 const group = "isolate inline-flex"
 
 /** The chosen half reads the selection tokens, not the accent, so an app can point them apart. */
-const selectedFill = "bg-selected text-selected-foreground dark:bg-selected"
+const selectedFill =
+  "bg-selected text-selected-foreground hover:bg-selected-hover dark:bg-selected dark:hover:bg-selected-hover"
 
 /**
  * Segmented ON/OFF pair, optionally annotated with counts.
  *
  * The selected half is a `primary` button filled with the selection colour, the other an `outline`
- * one. Its hover still darkens the accent: the theme has no selected-hover token yet. The halves are squared off against each other.
+ * one. The halves are squared off against each other.
  */
 export function OnOffButtons(
   { value, amount, onSwitch, onLabel = "ON", offLabel = "OFF", class: className }:

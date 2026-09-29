@@ -14,15 +14,17 @@ describe("OnOffButtons", () => {
   it("marks the ON half as selected", () => {
     const html = render(<OnOffButtons value onSwitch={() => {}} />)
 
-    expect(countOccurrences(html, "bg-selected")).toBe(2) // `bg-selected` and `dark:bg-selected`
+    expect(countOccurrences(html, " bg-selected ")).toBe(1)
     expect(html).not.toContain("bg-accent-900")
     expect(html).toContain("text-selected-foreground")
+    expect(html).toContain("hover:bg-selected-hover")
+    expect(html).not.toContain("hover:bg-accent-800")
   })
 
   it("marks the OFF half as selected", () => {
     const html = render(<OnOffButtons value={false} onSwitch={() => {}} />)
 
-    expect(countOccurrences(html, "bg-selected")).toBe(2)
+    expect(countOccurrences(html, " bg-selected ")).toBe(1)
     expect(html).not.toContain("bg-accent-900")
   })
 
