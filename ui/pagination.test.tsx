@@ -421,7 +421,8 @@ describe("Pagination", () => {
     const html = render(<Pagination page={2} pageCount={3} onChange={() => {}} />)
 
     // The two palettes meet in this markup: `secondary` on the active page, `outline` on the rest.
-    expect(html).toContain("bg-hover")
+    // A bare `bg-hover` is secondary's own fill; the outline buttons only have `hover:bg-hover`.
+    expect(html).toMatch(/(?<![:\w-])bg-hover(?![\w-])/)
     expect(html).toContain("border-control")
   })
 
