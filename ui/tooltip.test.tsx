@@ -138,6 +138,7 @@ describe("Tooltip", () => {
     // off the surface is what stops the bridge painting a slab of background across the gap.
     expect(surfaceClasses).not.toContain("bg-foreground")
     expect(surface).toContain('<span class="block rounded-md bg-foreground')
+    expect(surface).toContain("dark:bg-hover dark:text-foreground")
     expect(surface).toContain(">Retries</span>")
   })
 

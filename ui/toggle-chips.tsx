@@ -63,7 +63,8 @@ const chip =
 
 /**
  * The unpressed chip's own additions to `Badge`'s grey outline, which has no dark colours. Under
- * `.dark`, gray-300 text measures 12.06:1 on the gray-900 canvas and 7.00:1 on the gray-700 hover.
+ * `.dark`, `text-muted` measures 6.82:1 on the gray-900 canvas, and the hover swaps to `text-foreground`
+ * because muted reads 4.1:1 on the gray-700 hover.
  */
 const unpressed = "hover:bg-hover hover:text-foreground"
 

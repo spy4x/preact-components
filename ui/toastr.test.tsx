@@ -51,13 +51,13 @@ describe("Toastr", () => {
     expect(
       render(<Toastr toasts={[{ id: 1, body: "ok", type: "success" }]} onDismiss={() => {}} />),
     )
-      .toContain("bg-green-700")
+      .toContain("bg-success text-scrim-foreground")
     expect(render(<Toastr toasts={[{ id: 1, body: "no", type: "error" }]} onDismiss={() => {}} />))
-      .toContain("bg-red-600")
+      .toContain("bg-danger-fill text-danger-fill-foreground")
     expect(
       render(<Toastr toasts={[{ id: 1, body: "hmm", type: "warning" }]} onDismiss={() => {}} />),
     )
-      .toContain("bg-yellow-700")
+      .toContain("bg-yellow-700 text-scrim-foreground")
   })
 
   it("falls back to the info variant", () => {

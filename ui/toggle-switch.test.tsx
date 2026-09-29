@@ -15,7 +15,7 @@ describe("ToggleSwitch", () => {
   })
 
   it("colours the track by state", () => {
-    expect(render(<ToggleSwitch value onToggle={() => {}} />)).toContain("bg-selected")
+    expect(render(<ToggleSwitch value onToggle={() => {}} />)).toMatch(/[" ]bg-selected[" ]/)
     expect(render(<ToggleSwitch value={false} onToggle={() => {}} />)).toContain("bg-track")
   })
 

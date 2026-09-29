@@ -541,7 +541,9 @@ export interface ComboboxNamingProps {
 const optionClasses =
   "flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-hover"
 const activeOptionClasses = "bg-hover font-semibold"
-const selectedOptionClasses = "bg-selected-soft font-medium text-selected"
+const selectedOptionClasses =
+  "bg-selected-soft font-medium text-selected hover:bg-selected-soft-hover"
+const activeSelectedOptionClasses = "bg-selected-soft-hover font-semibold"
 const disabledOptionClasses = "cursor-not-allowed opacity-50"
 
 /**
@@ -971,6 +973,7 @@ export function Combobox<T>({
                 optionClasses,
                 isActive && activeOptionClasses,
                 selected && selectedOptionClasses,
+                isActive && selected && activeSelectedOptionClasses,
                 disabled && disabledOptionClasses,
               )}
               onMouseDown={(event) => event.preventDefault()}

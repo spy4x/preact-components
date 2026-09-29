@@ -606,6 +606,12 @@ describe("Combobox markup", () => {
     expect(html.match(/text-foreground/g)?.length).toBe(2)
   })
 
+  it("darkens the chosen option's fill on hover, so its text keeps its contrast", () => {
+    const html = render(<Combobox items={items} value="ETH" onChange={() => {}} />)
+
+    expect(html).toContain("hover:bg-selected-soft-hover")
+  })
+
   it("renders one option per item, in order, with ids derived from the input id", () => {
     const html = render(<Combobox items={items} onChange={() => {}} />)
     const baseId = /<input[^>]*id="([^"]+)"/.exec(html)?.[1]

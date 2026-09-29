@@ -162,7 +162,7 @@ export interface LightboxProps {
 const dialogClass =
   "fixed inset-0 m-0 h-full max-h-none w-full max-w-none bg-scrim-strong p-0 backdrop:bg-scrim-strong"
 const controlClass =
-  "absolute z-10 cursor-pointer rounded-full bg-scrim p-2 text-on-scrim-muted transition-colors hover:text-scrim-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-scrim-foreground"
+  "absolute z-10 cursor-pointer rounded-full bg-scrim p-2 text-on-scrim-muted transition-colors hover:text-scrim-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-(--color-scrim-foreground)"
 // Positioned rather than stretched, exactly like `ZoomableImages`'s own image: a child
 // that fills the dialog is a backdrop no click can ever land on.
 const imageClass =

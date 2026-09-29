@@ -62,7 +62,8 @@ const surfaceBase =
  * would leave dead space between the two, and a pointer crossing dead space leaves the wrapper:
  * the hint would vanish on the way to it, which is no better than not being hoverable at all.
  */
-const bubbleBase = "block rounded-md bg-foreground px-2 py-1 text-xs text-canvas shadow-raised"
+const bubbleBase =
+  "block rounded-md bg-foreground px-2 py-1 text-xs text-canvas shadow-raised dark:bg-hover dark:text-foreground"
 
 /**
  * Where the surface sits, and which of its sides carries the bridge back to the trigger.
