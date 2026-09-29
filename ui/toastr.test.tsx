@@ -51,7 +51,7 @@ describe("Toastr", () => {
     expect(
       render(<Toastr toasts={[{ id: 1, body: "ok", type: "success" }]} onDismiss={() => {}} />),
     )
-      .toContain("bg-success text-scrim-foreground")
+      .toContain("bg-success text-(--color-success-foreground)")
     expect(render(<Toastr toasts={[{ id: 1, body: "no", type: "error" }]} onDismiss={() => {}} />))
       .toContain("bg-danger-fill text-danger-fill-foreground")
     expect(
