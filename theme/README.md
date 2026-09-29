@@ -454,6 +454,10 @@ which follow the accent until an app points them elsewhere:
 | `--color-selected-soft-hover` | `bg-selected-soft-hover`           | the quiet background under the pointer     |
 | `--color-selected-text`       | `text-selected`, `border-selected` | the active tab, a current-item mark        |
 
+The two hover tokens follow the accent, not `--color-selected`: the accent's hover step depends on
+which label the accent takes, which a colour derived from `--color-selected` cannot know. An app
+that repaints `--color-selected` or `--color-selected-soft` sets the matching hover token too.
+
 Focus: `ring-2 ring-focus ring-offset-2 ring-offset-focus` draws a 2px ring in `--color-ring` (the
 accent, which is what the primary `Button` draws today) with a 2px gap in `--color-focus-offset` (the
 canvas). `--color-focus-ring` is the other token: it moves the preset's own `.input`, `.select`,
