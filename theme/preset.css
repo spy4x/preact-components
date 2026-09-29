@@ -40,10 +40,13 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* Headings read --font-heading, the sans font until an app sets it. */
-  .theme-base :is(h1, h2, h3, h4, h5, h6) {
-    font-family: var(--font-heading, var(--font-sans, "Poppins", ui-sans-serif, system-ui,
-      sans-serif));
+  /*
+   * Headings read --font-heading when an app sets it. Unset, the font is `inherit`, so a heading
+   * in a `font-mono` wrapper stays mono. This layer is under the utilities, so a heading that
+   * carries a font class of its own keeps it.
+   */
+  :where(.theme-base) :is(h1, h2, h3, h4, h5, h6) {
+    font-family: var(--font-heading, inherit);
   }
 }
 
@@ -174,17 +177,29 @@
   color: var(--color-info-foreground, oklch(0.97 0.014 254.604));
 }
 
-/* The danger fill, and its hover: the fill 12% darker. */
+/* The danger fill, its hover and the label on it (white; --color-danger-foreground is red-50). */
 @utility bg-danger-fill {
   background-color: var(--color-danger-fill, oklch(0.577 0.245 27.325));
 }
 
 @utility bg-danger-fill-hover {
-  background-color: color-mix(
-    in oklab,
-    var(--color-danger-fill, oklch(0.577 0.245 27.325)),
-    black 12%
-  );
+  background-color: var(--color-danger-fill-hover, oklch(0.505 0.213 27.518));
+}
+
+@utility text-danger-fill-foreground {
+  color: var(--color-danger-fill-foreground, oklch(1 0 0));
+}
+
+@utility bg-danger-soft {
+  background-color: var(--color-danger-soft, oklch(0.971 0.013 17.38));
+}
+
+@utility border-danger {
+  border-color: var(--color-danger, oklch(0.577 0.245 27.325));
+}
+
+@utility bg-info-soft {
+  background-color: var(--color-info-soft, oklch(0.97 0.014 254.604));
 }
 
 @utility text-foreground {
@@ -233,6 +248,60 @@
   --tw-ring-color: var(--color-border-control, oklch(0.872 0.01 258.338));
 }
 
+/* Translucent layers: a panel over content, and the marks drawn on a scrim. */
+@utility bg-surface-overlay {
+  background-color: color-mix(in oklab, var(--color-surface, oklch(1 0 0)) 85%, transparent);
+}
+
+@utility bg-scrim-strong {
+  background-color: var(--color-scrim-strong, oklch(0 0 0 / 0.9));
+}
+
+@utility bg-on-scrim {
+  background-color: color-mix(
+    in oklab,
+    var(--color-scrim-foreground, oklch(1 0 0)) 12%,
+    transparent
+  );
+}
+
+@utility bg-on-scrim-strong {
+  background-color: color-mix(
+    in oklab,
+    var(--color-scrim-foreground, oklch(1 0 0)) 22%,
+    transparent
+  );
+}
+
+@utility border-on-scrim {
+  border-color: color-mix(in oklab, var(--color-scrim-foreground, oklch(1 0 0)) 12%, transparent);
+}
+
+@utility text-on-scrim-muted {
+  color: color-mix(in oklab, var(--color-scrim-foreground, oklch(1 0 0)) 75%, transparent);
+}
+
+/* Strong hairlines, underlines and surface-coloured edges. */
+@utility border-strong {
+  border-color: var(--color-border-strong, oklch(0.707 0.022 261.325));
+}
+
+@utility decoration-control {
+  text-decoration-color: var(--color-border-control, oklch(0.872 0.01 258.338));
+}
+
+@utility border-surface {
+  border-color: var(--color-surface, oklch(1 0 0));
+}
+
+@utility ring-surface {
+  --tw-ring-color: var(--color-surface, oklch(1 0 0));
+}
+
+@utility ring-offset-surface {
+  --tw-ring-offset-color: var(--color-surface, oklch(1 0 0));
+}
+
 /* Selection: what is chosen or current. Tokens in tokens.css; they follow the accent by default. */
 @utility bg-selected {
   background-color: var(--color-selected, var(--color-accent-900));
@@ -256,7 +325,7 @@
 
 /* Focus: `ring-2 ring-focus ring-offset-2 ring-offset-focus`. */
 @utility ring-focus {
-  --tw-ring-color: var(--color-focus-ring, var(--color-accent-900));
+  --tw-ring-color: var(--color-ring, var(--color-accent-900));
 }
 
 @utility ring-offset-focus {
@@ -292,39 +361,34 @@
 
 /* #region Typography */
 
-/* The font a heading is drawn in: --font-heading, which is the sans font until an app sets it. */
+/* The font a heading is drawn in: --font-heading, or the sans font until an app sets it. */
 @utility font-heading {
   font-family: var(--font-heading, var(--font-sans, "Poppins", ui-sans-serif, system-ui,
     sans-serif));
 }
 
 @utility h1 {
-  font-family: var(--font-heading, var(--font-sans, "Poppins", ui-sans-serif, system-ui,
-    sans-serif));
+  font-family: var(--font-heading, inherit);
   @apply text-2xl xl:text-3xl font-medium;
 }
 
 @utility h2 {
-  font-family: var(--font-heading, var(--font-sans, "Poppins", ui-sans-serif, system-ui,
-    sans-serif));
+  font-family: var(--font-heading, inherit);
   @apply text-xl xl:text-2xl font-medium;
 }
 
 @utility h3 {
-  font-family: var(--font-heading, var(--font-sans, "Poppins", ui-sans-serif, system-ui,
-    sans-serif));
+  font-family: var(--font-heading, inherit);
   @apply text-lg xl:text-xl font-medium;
 }
 
 @utility h4 {
-  font-family: var(--font-heading, var(--font-sans, "Poppins", ui-sans-serif, system-ui,
-    sans-serif));
+  font-family: var(--font-heading, inherit);
   @apply text-lg xl:text-xl font-medium;
 }
 
 @utility h5 {
-  font-family: var(--font-heading, var(--font-sans, "Poppins", ui-sans-serif, system-ui,
-    sans-serif));
+  font-family: var(--font-heading, inherit);
   @apply text-lg font-medium;
 }
 

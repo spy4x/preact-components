@@ -1712,12 +1712,15 @@ describe("theme preset", () => {
 
   it("works the accent scale out from --color-accent, and step 900 is the accent", async () => {
     const css = await preset()
-    const scale = css.slice(css.indexOf("@supports (color: oklch(from red min(l, 1)"))
+    const scale = css.slice(css.indexOf("@supports (color: oklch(from red calc(pow(l, 2))"))
     for (const step of [50, 100, 200, 300, 400, 500, 600, 700, 800, 950]) {
+      // Steps 600-800 sit under the label, so they read the probe, which is the accent itself.
+      const origin = [600, 700, 800].includes(step) ? "--accent-label-probe" : "--color-accent"
       expect(scale).toMatch(
-        new RegExp(`--color-accent-${step}: oklch\\(\\s*from var\\(--color-accent\\)\\s`),
+        new RegExp(`--color-accent-${step}: oklch\\(\\s*from var\\(${origin}\\)\\s`),
       )
     }
+    expect(scale).toMatch(/--accent-label-probe: color\(from var\(--color-accent\) srgb /)
     expect(css).toContain("--color-accent-900: var(--color-accent)")
     expect(css).toContain("--color-accent: var(--color-primary)")
   })
