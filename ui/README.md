@@ -1340,8 +1340,8 @@ colour per status), `ConfidenceMeter` (`Progress`), `FactCard` (`Card` around a 
 `NewsletterForm` and `ContactForm` (`EnhancedForm` with `Field`, `Input` and `Button`),
 `SkeletonText`, `SkeletonTable`, `SkeletonCards` and `SkeletonStatus` (`LoadingSkeleton`),
 `LoadingScreen` (`LoadingSpinner` with its `label`, centred), and vertical `Tabs`. `MarginNote` went
-because only one site's articles used it. #420 asked for `LoadingScreen` back for an app's first load; that
-need is met by the `LoadingSpinner` recipe above rather than by a second name for it.
+because only one site's articles used it. #420 asked for `LoadingScreen` back for an app's first
+load; that need is met by the `LoadingSpinner` recipe above rather than by a second name for it.
 
 `InstallBox`, `CopyableText` and `CopyableTextBody` became one component, `CopyBlock`, in #353: each
 was a box of text with a `CopyButton` beside it. `CopyBlock` never clips its text: it wraps inside
