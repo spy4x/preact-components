@@ -304,7 +304,7 @@ function ModalDemo() {
       </Cluster>
 
       <p
-        class="text-xs text-gray-500 dark:text-gray-400"
+        class="text-xs text-muted"
         data-e2e="modal-close-step"
         data-step={step}
         data-closed-at={closedAtStep ?? ""}
@@ -332,7 +332,7 @@ function ModalDemo() {
           }
         >
           <Stack gap="sm">
-            <p class="text-sm text-gray-600 dark:text-gray-300">
+            <p class="text-sm text-muted">
               Escape, the close button and a click outside all close this dialog through its
               `onClose`. Advance the step, then press Escape: the line under the triggers reports
               the step you reached.
@@ -359,7 +359,7 @@ function ModalDemo() {
           cancelLabel="Close"
           dataE2E="guide-modal-uncontrolled"
         >
-          <p class="text-sm text-gray-600 dark:text-gray-300">
+          <p class="text-sm text-muted">
             No `open` prop and no `onClose`: this dialog opens itself from `defaultOpen` and closes
             itself. Press the trigger again for a fresh one.
           </p>
@@ -428,7 +428,7 @@ function ConfirmDialogDemo() {
             target.value = null
           }}
         >
-          <p class="text-sm text-gray-600 dark:text-gray-300">
+          <p class="text-sm text-muted">
             You can find it again under the Archived filter.
           </p>
         </ConfirmDialog>

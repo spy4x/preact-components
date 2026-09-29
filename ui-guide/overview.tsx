@@ -279,7 +279,7 @@ export interface OverviewProps {
   copy?: (text: string) => void | Promise<void>
 }
 
-const MUTED = "text-gray-600 dark:text-gray-300"
+const MUTED = "text-muted"
 const LINK =
   "font-medium text-purple-800 underline decoration-purple-300 underline-offset-4 hover:decoration-purple-700 dark:text-purple-300 dark:decoration-purple-700 dark:hover:decoration-purple-300"
 
@@ -301,7 +301,7 @@ export function Overview(
           <p class="font-mono text-sm font-medium text-purple-700 dark:text-purple-300">
             {labels.title}
           </p>
-          <h1 class="max-w-3xl text-3xl font-bold tracking-tight text-balance text-gray-950 sm:text-5xl dark:text-gray-50">
+          <h1 class="max-w-3xl text-3xl font-bold tracking-tight text-balance text-foreground sm:text-5xl">
             {labels.headline}
           </h1>
           <p class={cn("max-w-2xl text-lg", MUTED)}>{labels.tagline}</p>
@@ -335,9 +335,9 @@ export function Overview(
           singleLine
           copy={copy}
           copyLabel={labels.copyInstall}
-          class="max-w-md bg-white dark:bg-gray-800/60"
+          class="max-w-md bg-surface"
         />
-        <p class="text-sm text-gray-600 dark:text-gray-400" data-overview-stats>
+        <p class="text-sm text-muted" data-overview-stats>
           {labels.stats(totals)}
         </p>
       </header>
@@ -368,13 +368,13 @@ export function Overview(
               <li
                 key={id}
                 data-why={id}
-                class="flex min-w-0 gap-4 rounded-xl border border-gray-200 bg-white p-4 sm:p-6 dark:border-gray-700/80 dark:bg-gray-800/60"
+                class="flex min-w-0 gap-4 rounded-xl border border-subtle bg-surface p-4 sm:p-6"
               >
                 <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-200">
                   <Icon class="size-5" />
                 </span>
                 <span class="flex min-w-0 flex-col gap-1">
-                  <span class="font-semibold text-gray-950 dark:text-gray-50">{fact.title}</span>
+                  <span class="font-semibold text-foreground">{fact.title}</span>
                   <span class={cn("text-sm [overflow-wrap:anywhere]", MUTED)}>
                     <InlineMarkdown text={fact.body} />
                   </span>
@@ -407,21 +407,21 @@ export function Overview(
               singleLine
               copy={copy}
               copyLabel={labels.copyThemeInstall}
-              class="bg-gray-50 max-sm:[&_code]:text-xs dark:bg-gray-900/60"
+              class="bg-canvas max-sm:[&_code]:text-xs"
             />
           </Step>
           <Step number={2} title={labels.startUse} body={labels.startUseBody}>
             <div
-              class="min-w-0 overflow-hidden rounded-lg bg-gray-950 text-gray-100 dark:bg-black/40"
+              class="min-w-0 overflow-hidden rounded-lg bg-scrim-strong text-scrim-foreground"
               data-e2e="ui-guide-usage"
             >
-              <div class="flex items-center justify-between gap-2 border-b border-white/10 py-1 pr-2 pl-4">
-                <span class="font-mono text-xs text-gray-400">{USAGE_FILE}</span>
+              <div class="flex items-center justify-between gap-2 border-b border-on-scrim py-1 pr-2 pl-4">
+                <span class="font-mono text-xs text-on-scrim-muted">{USAGE_FILE}</span>
                 <CopyButton
                   textToCopy={USAGE_SNIPPET}
                   copy={copy}
                   copyLabel={labels.copyUsage}
-                  class="text-gray-300 hover:bg-white/10 hover:text-white"
+                  class="text-on-scrim-muted hover:bg-on-scrim hover:text-scrim-foreground"
                 />
               </div>
               <pre class="overflow-x-auto p-4 text-xs leading-relaxed"><code>{USAGE_SNIPPET}</code></pre>
@@ -473,13 +473,13 @@ export function Overview(
                 <a
                   href={href}
                   onClick={(event) => follow(href, event)}
-                  class="flex h-full flex-col gap-2 rounded-xl border border-gray-200 bg-white p-4 shadow-xs transition-colors hover:border-purple-400 sm:p-6 dark:border-gray-700/80 dark:bg-gray-800/60 dark:hover:border-purple-500"
+                  class="flex h-full flex-col gap-2 rounded-xl border border-subtle bg-surface p-4 shadow-xs transition-colors hover:border-selected sm:p-6"
                 >
                   <span class="flex flex-wrap items-baseline justify-between gap-2">
-                    <span class="text-base font-semibold text-gray-950 dark:text-gray-50">
+                    <span class="text-base font-semibold text-foreground">
                       {page.title}
                     </span>
-                    <span class="text-xs text-gray-500 dark:text-gray-400" data-count={page.id}>
+                    <span class="text-xs text-muted" data-count={page.id}>
                       {page.id === "icons"
                         ? labels.iconCount(totals.icons)
                         : count > 0
@@ -522,7 +522,7 @@ function Step(
   },
 ): JSX.Element {
   return (
-    <li class="grid min-w-0 gap-4 rounded-xl border border-gray-200 bg-white p-4 sm:p-6 @3xl:grid-cols-[16rem_minmax(0,1fr)] @3xl:gap-8 dark:border-gray-700/80 dark:bg-gray-800/60">
+    <li class="grid min-w-0 gap-4 rounded-xl border border-subtle bg-surface p-4 sm:p-6 @3xl:grid-cols-[16rem_minmax(0,1fr)] @3xl:gap-8">
       <div class="flex min-w-0 flex-col gap-2">
         <span class="flex items-center gap-2">
           <span
@@ -532,7 +532,7 @@ function Step(
           >
             {number}
           </span>
-          <span class="font-semibold text-gray-950 dark:text-gray-50">{title}</span>
+          <span class="font-semibold text-foreground">{title}</span>
         </span>
         <p class={cn("text-sm", MUTED)}>
           <InlineMarkdown text={body} />

@@ -65,14 +65,14 @@ import type { DemoFragment } from "../registry.ts"
 function Part({ title, children }: { title: string; children: ComponentChildren }) {
   return (
     <Stack gap="sm">
-      <h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400">{title}</h4>
+      <h4 class="text-xs font-semibold text-muted">{title}</h4>
       {children}
     </Stack>
   )
 }
 
 /** The muted line of text a demo prints its state or its instructions in. */
-const NOTE = "text-xs text-gray-500 dark:text-gray-400"
+const NOTE = "text-xs text-muted"
 
 /**
  * A page head with every optional tag populated, so the card shows the whole set, not a subset.
@@ -112,7 +112,7 @@ function SeoHeadTagList() {
         {seoHeadTags(pageHead).length} tags, in document order: the array{" "}
         <code>&lt;SEOHead /&gt;</code> renders.
       </p>
-      <pre class="max-h-72 overflow-auto font-mono text-xs text-gray-900 dark:text-gray-100">
+      <pre class="max-h-72 overflow-auto font-mono text-xs text-foreground">
         <code>{JSON.stringify(seoHeadTags(pageHead), null, 2)}</code>
       </pre>
     </Stack>
@@ -413,7 +413,7 @@ function SwUpdaterDemo() {
       </Cluster>
       {log.value.length > 0
         ? (
-          <ul data-e2e="sw-scenario-log" class="space-y-1 text-xs text-gray-600 dark:text-gray-300">
+          <ul data-e2e="sw-scenario-log" class="space-y-1 text-xs text-muted">
             {log.value.map((entry, index) => (
               <li key={index} data-scenario={entry.id}>{entry.line}</li>
             ))}
@@ -566,7 +566,7 @@ function SwUpdaterLiveDemo() {
           reload port called <span data-e2e="sw-reloads">{reloads.value}</span> times
         </span>
       </Cluster>
-      <ul class="space-y-1 text-xs text-gray-600 dark:text-gray-300" data-e2e="sw-log">
+      <ul class="space-y-1 text-xs text-muted" data-e2e="sw-log">
         {log.value.map((line, index) => <li key={index}>{line}</li>)}
       </ul>
       <div data-e2e="sw-mount">
@@ -1026,7 +1026,7 @@ function SiteHeaderDemo() {
         brand={
           <span
             data-e2e="site-header-brand"
-            class="text-lg font-semibold text-gray-900 dark:text-white"
+            class="text-lg font-semibold text-foreground"
           >
             Acme
           </span>
@@ -1094,7 +1094,7 @@ function ShellDemo() {
     <div class="overflow-hidden" data-e2e="shell-demo">
       <Shell
         class="h-[480px] min-h-0"
-        brand={<span class="text-lg font-semibold text-gray-900 dark:text-white">Acme</span>}
+        brand={<span class="text-lg font-semibold text-foreground">Acme</span>}
         currentPath={path.value}
         navigate={(href) => {
           path.value = href
@@ -1142,13 +1142,13 @@ function ShellDemo() {
           { label: "Sign out", dataE2E: "signout" },
         ]}
         status={
-          <span class="text-xs text-gray-500 dark:text-gray-400" data-e2e="shell-status">
+          <span class="text-xs text-muted" data-e2e="shell-status">
             Connected
           </span>
         }
       >
         <Stack gap="sm">
-          <p class="text-sm text-gray-600 dark:text-gray-300">
+          <p class="text-sm text-muted">
             The page for <code data-e2e="shell-demo-path">{path.value}</code> goes here.
           </p>
           <p class={NOTE}>
@@ -1182,7 +1182,7 @@ function StateInitDemo() {
     <Stack gap="sm" data-e2e="state-init-demo">
       <StateInit id="state-init-demo" data={sampleData} />
       <p class={NOTE}>Written into the page by the server render:</p>
-      <pre class="overflow-auto font-mono text-xs whitespace-pre-wrap text-gray-900 dark:text-gray-100">
+      <pre class="overflow-auto font-mono text-xs whitespace-pre-wrap text-foreground">
         <code>{JSON.stringify(sampleData, null, 2)}</code>
       </pre>
       <Cluster>
@@ -1198,7 +1198,7 @@ function StateInitDemo() {
         </Button>
       </Cluster>
       <pre
-        class="max-h-40 overflow-auto font-mono text-xs whitespace-pre-wrap text-gray-900 dark:text-gray-100"
+        class="max-h-40 overflow-auto font-mono text-xs whitespace-pre-wrap text-foreground"
         data-e2e="state-init-readback"
       >
         <code>{readBack.value}</code>
@@ -1250,7 +1250,7 @@ function RailShellDemo() {
           {Array.from(
             { length: 12 },
             (_, index) => (
-              <p key={index} class="text-gray-600 dark:text-gray-300">
+              <p key={index} class="text-muted">
                 Paragraph {index + 1}{" "}
                 of the page. It is here so the frame scrolls and the rail and the tab bar can be
                 seen staying in place while it does.

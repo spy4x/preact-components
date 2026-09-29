@@ -50,7 +50,7 @@ import type { DemoFragment } from "../registry.ts"
 function Variant({ title, children }: { title: ComponentChildren; children: ComponentChildren }) {
   return (
     <Stack gap="sm">
-      <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">{title}</h4>
+      <h4 class="text-sm font-medium text-foreground">{title}</h4>
       {children}
     </Stack>
   )
@@ -60,7 +60,7 @@ function Variant({ title, children }: { title: ComponentChildren; children: Comp
 function Note(
   { children, e2e }: { children: ComponentChildren; e2e?: string },
 ) {
-  return <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e={e2e}>{children}</p>
+  return <p class="text-xs text-muted" data-e2e={e2e}>{children}</p>
 }
 
 /** Controlled: the switch renders `value` and reports the intended value through `onToggle`. */
@@ -76,7 +76,7 @@ function ToggleSwitchDemo() {
           onToggle={(next) => archived.value = next}
           label="Show archived"
         />
-        <span class="text-sm text-gray-600 dark:text-gray-300">
+        <span class="text-sm text-muted">
           archived: {archived.value ? "on" : "off"}
         </span>
       </Cluster>
@@ -86,13 +86,13 @@ function ToggleSwitchDemo() {
           onToggle={(next) => notifications.value = next}
           label="Notifications"
         />
-        <span class="text-sm text-gray-600 dark:text-gray-300">
+        <span class="text-sm text-muted">
           notifications: {notifications.value ? "on" : "off"}
         </span>
       </Cluster>
       <Cluster gap="sm">
         <ToggleSwitch value={false} onToggle={() => {}} disabled label="Disabled" />
-        <span class="text-sm text-gray-500 dark:text-gray-400">disabled</span>
+        <span class="text-sm text-muted">disabled</span>
       </Cluster>
     </Stack>
   )
@@ -106,7 +106,7 @@ function OnOffButtonsDemo() {
     <Stack gap="md">
       <Cluster gap="sm">
         <OnOffButtons value={value.value} onSwitch={(on) => value.value = on} />
-        <span class="text-sm text-gray-600 dark:text-gray-300">
+        <span class="text-sm text-muted">
           value: {value.value === undefined ? "undefined" : String(value.value)}
         </span>
       </Cluster>
@@ -118,7 +118,7 @@ function OnOffButtonsDemo() {
           onLabel="Active"
           offLabel="Archived"
         />
-        <span class="text-sm text-gray-500 dark:text-gray-400">with counts and custom labels</span>
+        <span class="text-sm text-muted">with counts and custom labels</span>
       </Cluster>
     </Stack>
   )
@@ -134,7 +134,7 @@ function DropdownRow(
 ) {
   return (
     <Cluster justify="between">
-      <span class="text-sm text-gray-700 dark:text-gray-300">{title}</span>
+      <span class="text-sm text-muted">{title}</span>
       {children}
     </Cluster>
   )
@@ -186,7 +186,7 @@ function DropdownDemo() {
             </span>
           }
           triggerNamedByContent
-          triggerClasses="w-48 justify-between border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+          triggerClasses="w-48 justify-between border border-control bg-surface text-foreground hover:bg-hover"
           panelClasses="min-w-[200px]"
           menuLabel="Bulk actions"
         >
@@ -425,7 +425,7 @@ function CityCombobox() {
   const renderOption = (item: City, state: ComboboxOptionState) => (
     <span class="flex w-full items-center justify-between gap-2">
       <span>{cityLabel(item)}</span>
-      <span class="font-mono text-xs text-gray-400 dark:text-gray-500">
+      <span class="font-mono text-xs text-placeholder">
         {item.code}
         {state.selected ? " ✓" : ""}
       </span>
@@ -986,7 +986,7 @@ function DateRangePickersDemo() {
           The first picker's presets, resolved against a fixed{" "}
           <code class="whitespace-nowrap">now</code> so every build prints the same dates:
         </Note>
-        <ul class="text-xs text-gray-500 dark:text-gray-400">
+        <ul class="text-xs text-muted">
           {datePresetOptions.map((option) => (
             <li key={option.preset}>
               {option.label}: <span class="whitespace-nowrap">{presetNote(option.preset)}</span>

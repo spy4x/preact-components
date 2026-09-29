@@ -36,7 +36,7 @@ function ButtonMatrix() {
     <Stack gap="sm">
       {entries(sizes).map(([size, sizeLabel]) => (
         <Cluster key={size} align="baseline" class="flex-nowrap">
-          <span class="w-16 shrink-0 text-xs text-gray-500 dark:text-gray-400">{sizeLabel}</span>
+          <span class="w-16 shrink-0 text-xs text-muted">{sizeLabel}</span>
           <Cluster>
             {entries(variants).map(([variant, label]) => (
               <Button key={variant} variant={variant} size={size} title={`${variant} ${size}`}>
@@ -47,7 +47,7 @@ function ButtonMatrix() {
         </Cluster>
       ))}
       <Cluster align="baseline" class="flex-nowrap">
-        <span class="w-16 shrink-0 text-xs text-gray-500 dark:text-gray-400">disabled</span>
+        <span class="w-16 shrink-0 text-xs text-muted">disabled</span>
         <Cluster>
           <Button disabled>Disabled</Button>
           <Button variant="danger" disabled>Disabled danger</Button>
@@ -84,7 +84,7 @@ function ButtonClickDemo() {
       >
         Focus via ref
       </Button>
-      <span class="text-sm text-gray-600 dark:text-gray-300">
+      <span class="text-sm text-muted">
         clicked {clicks.value} {clicks.value === 1 ? "time" : "times"}
       </span>
     </Cluster>

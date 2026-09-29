@@ -528,6 +528,9 @@ below flips with `.dark` on its own, so a light/dark pair collapses to one class
 | `ring-offset-gray-800`, `ring-offset-white`                                                             | `ring-offset-surface`                                                            |
 | `border-white`, `border-gray-800` (edge in the surface colour)                                          | `border-surface`                                                                 |
 | `bg-gray-950`, `bg-gray-900` (inverse block; flips light in dark)                                       | `bg-foreground` with `text-canvas`                                               |
+| `bg-gray-950` with `text-gray-100` (code block that stays dark in both palettes)                        | `bg-scrim-strong` with `text-scrim-foreground`                                   |
+| `text-gray-700`, `dark:text-gray-300` (body copy, darker than secondary text)                           | `text-muted`, the nearest token                                                  |
+| `bg-gray-100`, `dark:bg-gray-700/60` (inline code chip on a surface)                                    | `bg-hover`                                                                       |
 | `rounded-xl` (card)                                                                                     | `rounded-card`                                                                   |
 | `rounded-md` (field, chip), `rounded-lg` (control)                                                      | `rounded-control`, `rounded-primary`                                             |
 | `text-gray-300`, `dark:text-gray-600` (a day outside the month, faded text)                             | `text-placeholder opacity-35` (no token is that faint)                           |

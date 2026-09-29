@@ -224,7 +224,7 @@ function CardHeaderDemo() {
       <Card>
         <CardHeader>
           <h4 class="text-lg font-semibold">Your own header</h4>
-          <span class="text-xs text-gray-500 dark:text-gray-400">children</span>
+          <span class="text-xs text-muted">children</span>
         </CardHeader>
       </Card>
     </Stack>
@@ -237,7 +237,7 @@ function CardDemo() {
     <Card>
       <CardHeader title="Ada Lovelace" action={<Button variant="ghost" size="sm">Edit</Button>} />
       <CardBody>
-        <p class="text-sm text-gray-600 dark:text-gray-300">Administrator, since March 2026.</p>
+        <p class="text-sm text-muted">Administrator, since March 2026.</p>
       </CardBody>
       <CardFooter class="justify-end">
         <Button variant="outline" size="sm">Dismiss</Button>
@@ -284,7 +284,7 @@ function MoneyDisplayDemo() {
               colorNegative={row.negative}
             />
           </span>
-          <span class="text-xs text-gray-500 dark:text-gray-400">{row.note}</span>
+          <span class="text-xs text-muted">{row.note}</span>
         </Fragment>
       ))}
     </div>
@@ -749,7 +749,7 @@ function TooltipDemo() {
               content="Hint"
               label={label}
               placement={placement}
-              class="bg-gray-100 px-2 py-1 dark:bg-gray-700"
+              class="bg-hover px-2 py-1"
               contentClass="visible opacity-100"
             >
               <span class="text-sm">{placement}</span>
@@ -778,7 +778,7 @@ function TooltipDemo() {
             content="Escape hides this hint, and the pointer may rest on it while it is read"
             label="Delivery estimate"
             placement="bottom"
-            class="bg-gray-100 px-2 py-1 dark:bg-gray-700"
+            class="bg-hover px-2 py-1"
             contentClass="max-w-48"
           >
             <span class="text-sm">Hover me, or tab to me</span>
@@ -790,7 +790,7 @@ function TooltipDemo() {
 }
 
 /** The grey caption class of a note inside a wrapping row, where `DemoNote`'s `<p>` has no width. */
-const demoNote = "text-xs text-gray-500 dark:text-gray-400"
+const demoNote = "text-xs text-muted"
 
 /**
  * The lightbox as it exists before anything is opened, with two images to open it from.
@@ -821,14 +821,14 @@ function ZoomableImagesDemo() {
           data-e2e="lightbox-image"
           src={placeholder("c4b5fd", 120, 80)}
           alt="A placeholder image"
-          class="rounded border border-gray-200 dark:border-gray-700"
+          class="rounded border border-subtle"
         />
         <a href="https://example.com/" data-e2e="lightbox-link" class="inline-block">
           <img
             data-e2e="lightbox-linked-image"
             src={placeholder("a5b4fc", 120, 80)}
             alt="A placeholder image inside a link"
-            class="rounded border border-gray-200 dark:border-gray-700"
+            class="rounded border border-subtle"
           />
         </a>
       </div>
@@ -1169,7 +1169,7 @@ export const displayDemos = {
     render: () => (
       <Card>
         <CardBody>
-          <p class="text-sm text-gray-600 dark:text-gray-300">
+          <p class="text-sm text-muted">
             Header, body and footer are each optional.
           </p>
         </CardBody>
@@ -1186,7 +1186,7 @@ export const displayDemos = {
     render: () => (
       <Card>
         <CardBody>
-          <p class="text-sm text-gray-600 dark:text-gray-300">Save the draft before you leave?</p>
+          <p class="text-sm text-muted">Save the draft before you leave?</p>
         </CardBody>
         <CardFooter class="justify-end">
           <Button variant="outline" size="sm">Dismiss</Button>

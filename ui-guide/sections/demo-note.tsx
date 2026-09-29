@@ -13,5 +13,5 @@ export interface DemoNoteProps {
  * @param props See {@link DemoNoteProps}.
  */
 export function DemoNote({ children, e2e }: DemoNoteProps) {
-  return <p class="text-xs text-gray-500 dark:text-gray-400" data-e2e={e2e}>{children}</p>
+  return <p class="text-xs text-muted" data-e2e={e2e}>{children}</p>
 }

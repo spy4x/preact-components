@@ -34,29 +34,9 @@ const SKIPPED = [
  */
 export const ALLOWED: readonly string[] = [
   "theme/preset.css",
-  "ui-guide/card.tsx",
-  "ui-guide/footer.tsx",
-  "ui-guide/icons.tsx",
-  "ui-guide/instructions.tsx",
-  "ui-guide/lazy-slot.tsx",
-  "ui-guide/markdown.tsx",
-  "ui-guide/mini-app.tsx",
-  "ui-guide/overview.tsx",
-  "ui-guide/search.tsx",
-  "ui-guide/sections/badges.tsx",
-  "ui-guide/sections/buttons.tsx",
-  "ui-guide/sections/charts.tsx",
-  "ui-guide/sections/crud.tsx",
-  "ui-guide/sections/demo-note.tsx",
-  "ui-guide/sections/display.tsx",
-  "ui-guide/sections/enhanced-forms.tsx",
-  "ui-guide/sections/feedback.tsx",
-  "ui-guide/sections/fields.tsx",
-  "ui-guide/sections/inputs.tsx",
-  "ui-guide/sections/map.tsx",
+  // The colour-atoms demo paints `text-white` on every fill it shows; the warning and success fills
+  // have no `text-warning-foreground` or `text-success-foreground` utility to swap it for.
   "ui-guide/sections/surfaces.tsx",
-  "ui-guide/sections/system.tsx",
-  "ui-guide/shell.tsx",
   "ui/avatar.tsx",
   "ui/badge.tsx",
   "ui/button.tsx",
@@ -111,7 +91,7 @@ async function sourceFiles(directory: string): Promise<string[]> {
  * this number on purpose; the number may only go down, and a lane that converts a file lowers it
  * with the list.
  */
-const ALLOWED_COUNT = 55
+const ALLOWED_COUNT = 33
 
 describe("fixed colour classes in component source", () => {
   it("has an allow-list that has not grown", () => {

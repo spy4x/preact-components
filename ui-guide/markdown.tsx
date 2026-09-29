@@ -69,7 +69,7 @@ export function InlineMarkdown({ text }: { text: string }): JSX.Element {
           ? (
             <code
               key={index}
-              class="rounded bg-gray-100 px-1 font-mono text-[0.875em] [overflow-wrap:anywhere] text-gray-900 dark:bg-gray-700/60 dark:text-gray-100"
+              class="rounded bg-hover px-1 font-mono text-[0.875em] [overflow-wrap:anywhere] text-foreground"
             >
               {token.text}
             </code>

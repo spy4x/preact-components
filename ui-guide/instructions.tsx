@@ -259,7 +259,7 @@ export function CatalogInstructions() {
         </>
       }
     >
-      <div class="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-700 shadow-xs sm:p-6 dark:border-gray-700/80 dark:bg-gray-800/60 dark:text-gray-300">
+      <div class="rounded-xl border border-subtle bg-surface p-4 text-sm text-muted shadow-xs sm:p-6">
         <Stack gap="lg">
           <Stack gap="sm" class="max-w-prose">
             <p>
@@ -288,7 +288,7 @@ export function CatalogInstructions() {
           <Grid minColumnWidth="md">
             {Object.entries(documentedClasses).map(([group, names]) => (
               <Stack key={group} gap="sm">
-                <h3 class="font-medium text-gray-900 dark:text-gray-100">{group}</h3>
+                <h3 class="font-medium text-foreground">{group}</h3>
                 <Cluster gap="xs">
                   {names.map((name) => <ClassChip key={name} name={name} />)}
                 </Cluster>
@@ -298,9 +298,9 @@ export function CatalogInstructions() {
 
           <Stack
             gap="xs"
-            class="border-t border-gray-200 pt-4 dark:border-gray-700/80"
+            class="border-t border-subtle pt-4"
           >
-            <p class="font-medium text-gray-900 dark:text-gray-100">Removed, and not coming back</p>
+            <p class="font-medium text-foreground">Removed, and not coming back</p>
             <ul class="list-disc pl-6">
               {Object.entries(removedClasses).map(([name, replacement]) => (
                 <li key={name}>
