@@ -5,18 +5,19 @@
     ".": "./+index.tsx"
   },
   "imports": {
-    // Dev-only, for `provenance.ts` (issues #111, #112): compares every exported glyph's geometry
-    // against the icon packs the owner named as likely sources. Heroicons publishes v1 and v2 as
+    // Dev-only, for `provenance.ts` (issues #111, #112, #233): compares every exported glyph's
+    // geometry against the icon packs every glyph is drawn from. Heroicons publishes v1 and v2 as
     // the same npm package name at different major versions, so each needs its own import key to
     // resolve both at once — `heroicons@1.0.6` is the last v1 release, `heroicons@2.2.0` is current
     // v2. Feather and Lucide are compared because the earlier shape-based audit (#111) identified
-    // some glyphs as those by eye. None of these four reach a published consumer — see
+    // some glyphs as those by eye. Simple Icons (CC0) is the source of the brand marks (#233).
+    // None of these five reach a published consumer — see
     // `publish.exclude` below and `provenance.ts`'s own JSDoc for how the comparison works.
     //
-    // Cost, stated truthfully (reviewer finding on #232): pinning these four here, in this
+    // Cost, stated truthfully (reviewer finding on #232): pinning these five here, in this
     // workspace member's own `imports`, means Deno's task runner installs them as this member's npm
     // dependencies before running *any* task in it — `deno task fmt:check`, `ts:check` and `test`
-    // each download all four tarballs from an empty cache, not only `provenance` below. The
+    // each download all five tarballs from an empty cache, not only `provenance` below. The
     // *comparison itself* still runs only inside the `provenance` task; what does not stay contained
     // is the download. Kept anyway (option A over option B — see #233 for B, moving these pins
     // somewhere the task runner does not install them eagerly): the tarballs are a few megabytes,
@@ -25,10 +26,11 @@
     "heroicons-v1/": "npm:/heroicons@1.0.6/",
     "heroicons-v2/": "npm:/heroicons@2.2.0/",
     "feather-icons/": "npm:/feather-icons@4.29.2/",
-    "lucide-static/": "npm:/lucide-static@1.47.0/"
+    "lucide-static/": "npm:/lucide-static@1.47.0/",
+    "simple-icons/": "npm:/simple-icons@16.33.0/"
   },
   "tasks": {
-    // Compares every glyph against the four packs above; see the `imports` comment for what
+    // Compares every glyph against the five packs above; see the `imports` comment for what
     // downloading them costs and where that cost actually falls. Excluded from `deno task check`
     // because it is a one-off audit, not a regression gate — `provenance.test.ts` covers the
     // normalisation logic there instead, without touching the network.
