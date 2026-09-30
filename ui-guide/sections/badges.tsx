@@ -53,18 +53,24 @@ function BadgeMatrix() {
 /** Every status a `StatusMark` accepts, for the coverage guard — see {@link colors}. */
 const statuses: Record<StatusMarkStatus, string> = {
   ready: "ready",
+  "in-use": "in-use",
   beta: "beta",
   wip: "wip",
   paused: "paused",
   archived: "archived",
   "known-issue": "known-issue",
+  outcome: "outcome",
+  live: "live",
+  offline: "offline",
 }
 
-/** The six statuses in two rows of three, so no status wraps alone at half width. */
+/** The ten statuses in rows of at most three, so no row wraps a lone status at half width. */
 function StatusMarkRow() {
+  const all = entries(statuses)
+  const rows = [all.slice(0, 3), all.slice(3, 6), all.slice(6, 8), all.slice(8)]
   return (
     <Stack gap="sm">
-      {[entries(statuses).slice(0, 3), entries(statuses).slice(3)].map((row) => (
+      {rows.map((row) => (
         <Cluster key={row[0][0]} gap="md">
           {row.map(([status]) => <StatusMark key={status} status={status} />)}
         </Cluster>
@@ -102,7 +108,8 @@ export const badgeDemos = {
       "A project's or a feature's lifecycle state, as a shape and a word that read without colour.",
     wide: false,
     snippet: `<StatusMark status="ready" />
-<StatusMark status="known-issue" label="Flaky on Safari" />`,
+<StatusMark status="known-issue" label="Flaky on Safari" />
+<StatusMark status="outcome" label="Acquired 2023" />`,
     render: () => <StatusMarkRow />,
   },
 } satisfies DemoFragment

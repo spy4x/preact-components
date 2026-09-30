@@ -2,7 +2,17 @@ import { cn } from "@spy4x/preact-cn"
 import type { JSX } from "preact"
 
 /** A project or feature's lifecycle state. */
-export type StatusMarkStatus = "ready" | "beta" | "wip" | "paused" | "archived" | "known-issue"
+export type StatusMarkStatus =
+  | "ready"
+  | "in-use"
+  | "beta"
+  | "wip"
+  | "paused"
+  | "archived"
+  | "known-issue"
+  | "outcome"
+  | "live"
+  | "offline"
 
 export interface StatusMarkProps {
   status: StatusMarkStatus
@@ -19,12 +29,17 @@ const DEFAULT_LABELS: Record<StatusMarkStatus, string> = {
   paused: "Paused",
   archived: "Archived",
   "known-issue": "Known issue",
+  "in-use": "In use",
+  outcome: "Outcome",
+  live: "Live",
+  offline: "Offline",
 }
 
 /**
  * Tone per status, read through the shared colour tokens — never a literal palette value. `beta`
  * is `text-muted` rather than `text-primary`: ink (#257) reserves the accent for a page's one
- * primary action, and a status tone is not that.
+ * primary action, and a status tone is not that. `outcome` is `text-foreground`: a result such as
+ * "Acquired 2023" is neither good nor bad news about the project's health.
  */
 const TONES: Record<StatusMarkStatus, string> = {
   ready: "text-success",
@@ -33,6 +48,10 @@ const TONES: Record<StatusMarkStatus, string> = {
   paused: "text-muted",
   archived: "text-muted",
   "known-issue": "text-danger",
+  "in-use": "text-success",
+  outcome: "text-foreground",
+  live: "text-success",
+  offline: "text-muted",
 }
 
 /** Filled circle: done, nothing left to check. */
@@ -105,10 +124,64 @@ function KnownIssueShape({ class: className }: { class?: string }): JSX.Element 
   )
 }
 
+/** Outlined ring with a check: in daily use, not only finished. */
+function InUseShape({ class: className }: { class?: string }): JSX.Element {
+  return (
+    <svg viewBox="0 0 16 16" class={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5" />
+      <path
+        d="M5.3 8.2 6.9 9.8 10.6 6.1"
+        stroke="currentColor"
+        stroke-width="1.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+    </svg>
+  )
+}
+
+/** Filled five-point star: a result worth naming. */
+function OutcomeShape({ class: className }: { class?: string }): JSX.Element {
+  return (
+    <svg viewBox="0 0 16 16" class={className} xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M8 1.5 9.9 5.6 14.2 6 10.9 8.9 11.9 13.3 8 11 4.1 13.3 5.1 8.9 1.8 6 6.1 5.6Z"
+        fill="currentColor"
+      />
+    </svg>
+  )
+}
+
+/** Dot inside a ring: running now, like a broadcast light. */
+function LiveShape({ class: className }: { class?: string }): JSX.Element {
+  return (
+    <svg viewBox="0 0 16 16" class={className} xmlns="http://www.w3.org/2000/svg">
+      <circle cx="8" cy="8" r="3" fill="currentColor" />
+      <circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" stroke-width="1.5" />
+    </svg>
+  )
+}
+
+/** Ring crossed by a slash: no longer running. */
+function OfflineShape({ class: className }: { class?: string }): JSX.Element {
+  return (
+    <svg viewBox="0 0 16 16" class={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5" />
+      <path
+        d="M3.8 12.2 12.2 3.8"
+        stroke="currentColor"
+        stroke-width="1.5"
+        stroke-linecap="round"
+      />
+    </svg>
+  )
+}
+
 /**
  * One glyph per status, so the mark is told apart by shape rather than by colour alone — a filled
- * circle, an outlined ring, a diamond, two bars, a box and a warning triangle are six different
- * silhouettes even in greyscale. Inline SVG, matching this package's own rule ("no dependency on
+ * circle with a check, an outlined ring with a check, an empty ring, a diamond, two bars, a box, a
+ * warning triangle, a star, a dot in a ring and a crossed ring are ten different silhouettes even in
+ * greyscale. Inline SVG, matching this package's own rule ("no dependency on
  * `icons/`" — `ui/README.md`), not a shared icon component.
  */
 const SHAPES: Record<StatusMarkStatus, (props: { class?: string }) => JSX.Element> = {
@@ -118,13 +191,18 @@ const SHAPES: Record<StatusMarkStatus, (props: { class?: string }) => JSX.Elemen
   paused: PausedShape,
   archived: ArchivedShape,
   "known-issue": KnownIssueShape,
+  "in-use": InUseShape,
+  outcome: OutcomeShape,
+  live: LiveShape,
+  offline: OfflineShape,
 }
 
 /**
- * A shape paired with a word: `Ready`, `Beta`, `WIP`, `Paused`, `Archived`, `Known issue`.
+ * A shape paired with a word: `Ready`, `In use`, `Beta`, `WIP`, `Paused`, `Archived`,
+ * `Known issue`, `Outcome`, `Live`, `Offline`.
  *
  * The shape alone never carries the meaning — `label` is real text, and the glyph is wrapped
- * `aria-hidden`, so a screen reader announces only the word. Six distinct silhouettes ({@link
+ * `aria-hidden`, so a screen reader announces only the word. Ten distinct silhouettes ({@link
  * SHAPES}) mean the status is told apart without colour too, for a reader who cannot see tone.
  *
  * The tone colours the shape only, not the word: the `aria-hidden` wrapper carries `TONES[status]`
