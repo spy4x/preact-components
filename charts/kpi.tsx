@@ -23,9 +23,9 @@ export interface KpiGridProps {
 
 const toneClasses: Record<KpiTone, string> = {
   accent: "text-accent-900 dark:text-accent-300",
-  positive: "text-green-700 dark:text-green-400",
-  warning: "text-orange-600 dark:text-orange-400",
-  negative: "text-red-600 dark:text-red-400",
+  positive: "text-success",
+  warning: "text-warning",
+  negative: "text-danger",
   neutral: "text-foreground",
 }
 
