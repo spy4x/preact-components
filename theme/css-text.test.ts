@@ -149,7 +149,6 @@ const UNCHANGED_DARK_TOKENS: Record<string, string> = {
   "--color-border-strong": `oklch(0.551 0.027 264.364)`,
   // #434: the selected fill and the focus ring stand off the dark page.
   "--color-selected": `var(--color-accent-600)`,
-  "--color-selected-hover": `var(--color-accent-700)`,
   "--color-ring": `var(--color-accent-400)`,
   "--color-selected-soft": `color-mix(in oklab, var(--color-accent-900) 30%, transparent)`,
   "--color-selected-text": `var(--color-accent-400)`,
