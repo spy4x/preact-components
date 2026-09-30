@@ -26,9 +26,14 @@ export interface ButtonProps extends Omit<JSX.ButtonHTMLAttributes<HTMLButtonEle
 const base =
   "inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
 
+/**
+ * The dark primary fill is accent step 600: the one step that stands 3:1 off the gray-900 canvas
+ * and still holds the white label at 4.5:1. Its hover darkens to 700, which keeps the label and
+ * shows the pointer, and sits below 3:1 on the canvas only while the pointer is on it.
+ */
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "bg-accent-900 text-accent-foreground hover:bg-accent-800 dark:bg-accent-700 dark:hover:bg-accent-600",
+    "bg-accent-900 text-accent-foreground hover:bg-accent-800 dark:bg-accent-600 dark:hover:bg-accent-700",
   secondary: "bg-hover text-foreground hover:bg-track",
   outline: "border border-control bg-surface text-foreground hover:bg-hover",
   ghost: "bg-transparent text-foreground hover:bg-hover",

@@ -1645,7 +1645,7 @@ async function accentChecks(devtools: Devtools): Promise<void> {
       button: {
         ...fills,
         lightOk: same(fills.light, resolve(purple[900])),
-        darkOk: same(fills.dark, resolve(purple[700])),
+        darkOk: same(fills.dark, resolve(purple[600])),
         hovered: button.matches(":hover"),
       },
     }
@@ -1661,7 +1661,7 @@ async function accentChecks(devtools: Devtools): Promise<void> {
       ).join("; "),
   )
   check(
-    "with no token set, a primary Button is filled purple-900 in light and purple-700 in dark",
+    "with no token set, a primary Button is filled purple-900 in light and purple-600 in dark",
     defaults.button.lightOk && defaults.button.darkOk && !defaults.button.hovered,
     `light ${defaults.button.light}, dark ${defaults.button.dark}` +
       (defaults.button.hovered ? ", read with a pointer resting on it" : ""),
@@ -1694,11 +1694,11 @@ async function accentChecks(devtools: Devtools): Promise<void> {
       spinner: getComputedStyle(spinner).color,
     }
     // In the dark palette --color-primary is near-black chrome, so .dark keeps the components'
-    // accent on its own token: --color-primary alone leaves the dark Button purple-700.
+    // accent on its own token: --color-primary alone leaves the dark Button purple-600.
     root.classList.toggle("dark", true)
     await settle(button)
     result.darkButton = getComputedStyle(button).backgroundColor
-    result.darkExpected = resolve("${PURPLE[700]}")
+    result.darkExpected = resolve("${PURPLE[600]}")
     style.remove()
     root.classList.toggle("dark", wasDark)
     await settle(button, spinner)
@@ -1717,7 +1717,7 @@ async function accentChecks(devtools: Devtools): Promise<void> {
   check(
     "--color-primary alone leaves the dark palette's accent on its own token, as documented",
     primary.ok.dark,
-    `dark Button ${primary.darkButton}, purple-700 ${primary.darkExpected}`,
+    `dark Button ${primary.darkButton}, purple-600 ${primary.darkExpected}`,
   )
 
   // The focus ring: a real keyboard interaction first, so the scripted focus that follows counts as
@@ -1787,9 +1787,9 @@ async function accentChecks(devtools: Devtools): Promise<void> {
     root.classList.toggle("dark", true)
     await settle(button)
     const dark = getComputedStyle(button).backgroundColor
-    // The dark Button is step 700 of the scale the switch's accent set: whatever tokens.css works
-    // that step out to, it carries the accent's hue moved by purple-700's offset, -3.063.
-    const darkStep = resolve("var(--color-accent-700)")
+    // The dark Button is step 600 of the scale the switch's accent set: whatever tokens.css works
+    // that step out to, it carries the accent's hue moved by purple-600's offset, -2.666.
+    const darkStep = resolve("var(--color-accent-600)")
     const blue = "${ACCENTS.blue.color}"
     await choose("purple")
     const reset = getComputedStyle(button).backgroundColor
@@ -1798,10 +1798,10 @@ async function accentChecks(devtools: Devtools): Promise<void> {
     await settle(button)
     const expectedLight = resolve(blue)
     const expectedDark = numbers(darkStep)[2].toFixed(3) ===
-        (numbers(resolve(blue))[2] - 3.063).toFixed(3)
+        (numbers(resolve(blue))[2] - 2.666).toFixed(3)
       ? darkStep
-      : "a step 700 with the blue accent's hue, not " + darkStep
-    const expectedReset = resolve("${PURPLE[700]}")
+      : "a step 600 with the blue accent's hue, not " + darkStep
+    const expectedReset = resolve("${PURPLE[600]}")
     return {
       light,
       dark,
@@ -1855,8 +1855,10 @@ async function accentChecks(devtools: Devtools): Promise<void> {
         if (!(distance < 0.02)) offGamut.push(label)
       }
     }
-    // The primary Button's white label sits on step 900 (light fill), 800 (light hover), 700
-    // (dark fill) and 600 (dark hover). The fills are read off the Button card itself.
+    // The primary Button's white label sits on step 900 (light fill), 800 (light hover), 600
+    // (dark fill) and 700 (dark hover). The resting fills are read off the Button card itself; the
+    // hover steps are read as token colours, since no pointer rests on the button here.
+    // primaryButtonFillCheck in ui.ts hovers the real button for the default accent.
     const button = document.querySelector("#demo-Button button")
     const lowContrast = []
     let lowest = { ratio: Infinity, label: "" }
@@ -1867,8 +1869,8 @@ async function accentChecks(devtools: Devtools): Promise<void> {
         await settle(button)
         const fills = {
           [dark ? "dark fill" : "light fill"]: getComputedStyle(button).backgroundColor,
-          [dark ? "dark hover" : "light hover"]: resolve(
-            "var(--color-accent-" + (dark ? 600 : 800) + ")",
+          [dark ? "dark hover step 700" : "light hover step 800"]: resolve(
+            "var(--color-accent-" + (dark ? 700 : 800) + ")",
           ),
         }
         for (const [where, fill] of Object.entries(fills)) {
@@ -1892,8 +1894,8 @@ async function accentChecks(devtools: Devtools): Promise<void> {
       : `clipped by more than 0.02 OKLab: ${gamut.offGamut.join("; ")}`,
   )
   check(
-    "with those accents, the primary Button's white label clears 4.5:1 on its fill and hover, " +
-      "light and dark",
+    "with those accents, white clears 4.5:1 on the primary Button's resting fill and on the " +
+      "accent steps its hover uses, light and dark",
     gamut.lowContrast.length === 0,
     gamut.lowContrast.length === 0
       ? `lowest ${gamut.lowest} (drawn and read back)`
