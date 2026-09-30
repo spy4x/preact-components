@@ -540,6 +540,183 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
   await canvasContrastCheck(devtools)
   await statusTextChecks(devtools)
   await statusFillChecks(devtools)
+  await selectionAndRingChecks(devtools)
+}
+
+/** One colour, read in one palette, against what sits next to it. */
+interface EdgeReading {
+  name: string
+  colour: string
+  ground: string
+  ratio: number
+}
+
+/** What {@link selectionAndRingChecks} reads in one palette. */
+interface SelectionPalette {
+  fills: EdgeReading[]
+  labelOnFill: number
+  hoverOnGround: number
+  rings: (EdgeReading & {
+    token: string
+    offset: string
+    onOffset: number
+    followsRepaint: boolean
+  })[]
+}
+
+/**
+ * The selected fill and the components' focus ring stand off the page in dark (#434).
+ *
+ * - The on track of a real `ToggleSwitch` and the chosen half of a real `OnOffButtons` reach 3:1
+ *   against what they sit on, and the chosen half's label stays at 4.5:1 on the fill.
+ * - A keyboard-focused `FileInput` drop zone and `KanbanBoard` card draw the `ring-focus` colour
+ *   (`--color-ring`) and follow an app that sets it, at 3:1 against what they sit on and against
+ *   the offset gap between the ring and the element, where there is one.
+ *
+ * Both palettes are read; only dark is held to the thresholds, the issue's claim. The chosen
+ * `OnOffButtons` half is the ON one: `pages/checks/ui.ts` later clicks OFF and expects its class to
+ * change, which it still does.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function selectionAndRingChecks(devtools: Devtools): Promise<void> {
+  await openGuidePage(devtools, "ui")
+  await devtools.evaluate(`(async () => {
+    const on = [...document.querySelectorAll("#demo-OnOffButtons button")]
+      .find((button) => button.textContent.trim() === "ON")
+    on?.click()
+    await new Promise((done) => setTimeout(done, 50))
+  })()`)
+  const readPalette = async (dark: boolean): Promise<SelectionPalette> => {
+    await devtools.evaluate(`(async () => {
+      document.documentElement.classList.toggle("dark", ${dark})
+      await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+    })()`)
+    // A real key press first, so the scripted focus below counts as keyboard focus.
+    await pressKey(devtools, "Tab")
+    return await devtools.evaluate<SelectionPalette>(`(async () => {
+      ${CONTRAST_HELPERS}
+      const frames = () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+      // Transitions would hand back a colour part-way between the palettes.
+      const still = document.createElement("style")
+      still.textContent = "*, *::before, *::after { transition: none !important; }"
+      document.head.append(still)
+      await frames()
+      const opaque = (colour) => {
+        const probe = document.createElement("canvas").getContext("2d")
+        probe.fillStyle = "rgba(0, 0, 0, 0)"
+        probe.fillStyle = colour
+        probe.fillRect(0, 0, 1, 1)
+        return probe.getImageData(0, 0, 1, 1).data[3] === 255
+      }
+      const ground = (element) => {
+        for (let at = element.parentElement; at; at = at.parentElement) {
+          const colour = getComputedStyle(at).backgroundColor
+          if (opaque(colour)) return colour
+        }
+        return getComputedStyle(document.body).backgroundColor
+      }
+      const resolve = (value) => {
+        const probe = document.createElement("span")
+        probe.style.color = value
+        document.body.append(probe)
+        const colour = getComputedStyle(probe).color
+        probe.remove()
+        return colour
+      }
+      const edge = (name, element, colour) => {
+        const behind = ground(element)
+        return { name, colour, ground: behind, ratio: contrast(colour, behind) }
+      }
+      const track = document.querySelector('#demo-ToggleSwitch [role="switch"][aria-checked="true"]')
+      const half = [...document.querySelectorAll("#demo-OnOffButtons button")]
+        .find((button) => button.textContent.trim() === "ON")
+      const fills = []
+      if (track) fills.push(edge("ToggleSwitch on track", track, getComputedStyle(track).backgroundColor))
+      if (half) fills.push(edge("chosen OnOffButtons half", half, getComputedStyle(half).backgroundColor))
+      const labelOnFill = half
+        ? contrast(getComputedStyle(half).color, getComputedStyle(half).backgroundColor)
+        : 0
+      const hoverOnGround = half ? contrast(resolve("var(--color-selected-hover)"), ground(half)) : 0
+
+      const token = resolve("var(--color-ring)")
+      const rings = []
+      const zone = document.querySelector("#demo-FileInput input[type=file]:not(:disabled)")
+      const card = document.querySelector("#demo-KanbanBoard [tabindex='0']")
+      for (const [name, focusable, ringed] of [
+        ["focused FileInput drop zone", zone, zone?.closest('[data-e2e="file-input-zone"]')],
+        ["focused KanbanBoard card", card, card],
+      ]) {
+        if (!focusable || !ringed) continue
+        focusable.focus({ preventScroll: true })
+        await frames()
+        const style = getComputedStyle(ringed)
+        const colour = resolve(style.getPropertyValue("--tw-ring-color"))
+        // With no offset width, the offset colour is Tailwind's unused default: the ring then sits
+        // on the element's own edge, and the ground outside it is the neighbour that counts.
+        const offsetWidth = parseFloat(style.getPropertyValue("--tw-ring-offset-width")) || 0
+        const offset = offsetWidth > 0
+          ? resolve(style.getPropertyValue("--tw-ring-offset-color"))
+          : ground(ringed)
+        // An app that repaints the ring: the element must follow --color-ring, not a fixed step.
+        const repaint = document.createElement("style")
+        repaint.textContent = ":root, .dark { --color-ring: rgb(0, 128, 0); }"
+        document.head.append(repaint)
+        await frames()
+        const repainted = resolve(getComputedStyle(ringed).getPropertyValue("--tw-ring-color"))
+        repaint.remove()
+        rings.push({
+          ...edge(name, ringed, colour),
+          token,
+          offset,
+          onOffset: contrast(colour, offset),
+          followsRepaint: repainted === resolve("rgb(0, 128, 0)"),
+        })
+        focusable.blur()
+      }
+      still.remove()
+      return { fills, labelOnFill, hoverOnGround, rings }
+    })()`)
+  }
+  const light = await readPalette(false)
+  const dark = await readPalette(true)
+  await devtools.evaluate(`(document.documentElement.classList.toggle("dark", false), null)`)
+  const describe = (readings: EdgeReading[]) =>
+    readings.map((reading) =>
+      `${reading.name} ${reading.colour} on ${reading.ground}: ${reading.ratio.toFixed(2)}:1`
+    ).join("; ")
+  check(
+    "in the dark palette, a ToggleSwitch that is on and the chosen OnOffButtons half stand 3:1 " +
+      "off what they sit on, with the half's label at 4.5:1",
+    dark.fills.length === 2 && dark.fills.every((fill) => fill.ratio >= 3) &&
+      dark.labelOnFill >= 4.5,
+    `dark: ${describe(dark.fills)}; label ${dark.labelOnFill.toFixed(2)}:1; hover fill ` +
+      `${dark.hoverOnGround.toFixed(2)}:1. Light: ${describe(light.fills)}; label ` +
+      `${light.labelOnFill.toFixed(2)}:1; hover fill ${light.hoverOnGround.toFixed(2)}:1`,
+  )
+  check(
+    "a keyboard-focused FileInput drop zone and KanbanBoard card draw --color-ring, follow an app " +
+      "that repaints it, and stand at 3:1 off " +
+      "what they sit on and off the ring's offset gap in the dark palette",
+    dark.rings.length === 2 && light.rings.length === 2 &&
+      [...dark.rings, ...light.rings].every((ring) =>
+        ring.colour === ring.token && ring.followsRepaint
+      ) &&
+      dark.rings.every((ring) => ring.ratio >= 3 && ring.onOffset >= 3),
+    [
+      ...dark.rings.map((ring) => ({ ...ring, palette: "dark" })),
+      ...light.rings.map((ring) => ({
+        ...ring,
+        palette: "light",
+      })),
+    ].map((ring) =>
+      `${ring.palette} ${ring.name}: ring ${ring.colour} (--color-ring ${ring.token}) on ` +
+      `${ring.ground} ${ring.ratio.toFixed(2)}:1, on its offset ${ring.offset} ` +
+      `${ring.onOffset.toFixed(2)}:1, ${
+        ring.followsRepaint ? "follows" : "ignores"
+      } a repainted --color-ring`
+    ).join("; "),
+  )
 }
 
 /**
