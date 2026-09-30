@@ -58,13 +58,12 @@ function parseBlock(css: string, selector: string): Record<string, string> {
 }
 
 /**
- * Every default-palette token `tokens.css` carried before #257 added `INK_CSS`, copied here as a
- * property → value map rather than re-derived, so a changed, removed or appended declaration in
- * either block fails this test by name. This is the "every existing token resolves to the same
- * value" half of #257's done-when: ink is additive, and the default (Eirene) palette renders
- * exactly as it did before this change.
+ * Every default-palette token `tokens.css` declares, copied here as a property → value map rather
+ * than re-derived, so a changed, removed or appended declaration in either block fails this test
+ * by name. #257 introduced it to prove that ink is additive; a later change to the default palette
+ * updates the map on purpose, with a comment naming its issue.
  */
-const UNCHANGED_ROOT_TOKENS: Record<string, string> = {
+const EXPECTED_ROOT_TOKENS: Record<string, string> = {
   // #380 moved --color-primary from an approximation 12 degrees of hue off to the purple-900 its
   // comment always named, so the components that now read it keep drawing Tailwind's purple-900,
   // and added the accent the components read: --color-primary, and step 900 of its scale.
@@ -125,7 +124,7 @@ const UNCHANGED_ROOT_TOKENS: Record<string, string> = {
   "--shadow-popover": `0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)`,
 }
 
-const UNCHANGED_DARK_TOKENS: Record<string, string> = {
+const EXPECTED_DARK_TOKENS: Record<string, string> = {
   "--color-primary": "oklch(0.21 0.006 285.885)",
   // #380: the components' accent stays purple-900 where --color-primary is near-black chrome.
   "--color-accent": "oklch(0.381 0.176 304.987)",
@@ -162,9 +161,9 @@ const UNCHANGED_DARK_TOKENS: Record<string, string> = {
 }
 
 describe("the default token set, after #257", () => {
-  it("still declares every pre-existing token at its pre-existing value, and no more", () => {
-    expect(parseBlock(TOKENS_CSS, ":root")).toEqual(UNCHANGED_ROOT_TOKENS)
-    expect(parseBlock(TOKENS_CSS, ".dark")).toEqual(UNCHANGED_DARK_TOKENS)
+  it("declares exactly the expected tokens at their expected values", () => {
+    expect(parseBlock(TOKENS_CSS, ":root")).toEqual(EXPECTED_ROOT_TOKENS)
+    expect(parseBlock(TOKENS_CSS, ".dark")).toEqual(EXPECTED_DARK_TOKENS)
   })
 
   it("does not redeclare --font-serif or --font-mono in :root", () => {
