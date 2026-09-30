@@ -3414,7 +3414,7 @@ accent `Kpi` and the components' focus rings — from an accent scale, not from 
   sets nothing renders the same colours as before. With any other accent, every step renders
   within 0.02 OKLab of the colour it names. The one exception is an accent within about 11° of
   purple: the allowance that keeps purple itself exact lets step 500 overshoot by up to about 0.025
-  OKLab. A warm accent's dark fill (step 700) can sit fairly close to the danger button's red;
+  OKLab. A warm accent's dark fill (step 600) can sit fairly close to the danger button's red;
   white text on it comes first. `pages/checks/theme.ts` measures, in a browser, the purple steps,
   the gamut, and white-label contrast for four accents. Choose an accent about as dark as
   purple-900: white text sits on it.
