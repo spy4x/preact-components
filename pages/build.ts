@@ -52,6 +52,9 @@ const PAGES_DIRECTORY = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = dirname(PAGES_DIRECTORY)
 /** What the artefact is built into. Gitignored, and excluded from the repo's own checks. */
 const DIST_DIRECTORY = join(PAGES_DIRECTORY, "dist")
+
+/** Files at the repository root that the build copies to the site root, byte for byte. */
+const LLMS_FILES = ["llms.txt", "llms-full.txt"] as const
 /** GitHub Pages serves a project site from `/<repo>/`; `PAGES_BASE` overrides it for a custom domain. */
 const BASE = normalizeBase(Deno.env.get("PAGES_BASE") ?? DEFAULT_BASE)
 /** Origin written into the canonical and Open Graph URLs. */
@@ -413,6 +416,13 @@ async function main(): Promise<void> {
     await Deno.writeFile(join(DIST_DIRECTORY, MAP_DEMO_DIRECTORY, chunk.name), chunk.bytes)
   }
 
+  // The generated plain-text maps of the library (`deno task llms`), served at the site root. They
+  // are read from the repository root, so a missing file throws here rather than shipping a site
+  // whose `llms.txt` link is a 404.
+  for (const name of LLMS_FILES) {
+    await Deno.copyFile(join(REPO_ROOT, name), join(DIST_DIRECTORY, name))
+  }
+
   // Written last, after every other artefact file, so a build that throws partway through never
   // leaves a hash on disk that claims a `dist/` newer than what actually got written — `verify.ts`
   // reads this file and refuses to run against a `dist/` that does not match the working tree
@@ -435,6 +445,7 @@ async function main(): Promise<void> {
       `  ${MAP_DEMO_DIRECTORY}/index.html ${kilobytes(mapPageHtml.length)}, ${assetNames.mapJs} ${
         kilobytes(mapIsland.entry.length)
       } + ${mapIsland.chunks.length} chunks — a server-rendered Map the browser hydrates\n` +
+      `  ${LLMS_FILES.join(", ")} — the generated plain-text maps of the library\n` +
       `  served from ${ORIGIN}${BASE}`,
   )
 }
