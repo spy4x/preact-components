@@ -581,6 +581,11 @@ interface SelectionPalette {
  */
 async function selectionAndRingChecks(devtools: Devtools): Promise<void> {
   await openGuidePage(devtools, "ui")
+  // Put back afterwards: the header's theme switch reads the store, not the class, and a later
+  // check expects the two to agree.
+  const wasDark = await devtools.evaluate<boolean>(
+    `document.documentElement.classList.contains("dark")`,
+  )
   await devtools.evaluate(`(async () => {
     const on = [...document.querySelectorAll("#demo-OnOffButtons button")]
       .find((button) => button.textContent.trim() === "ON")
@@ -680,7 +685,7 @@ async function selectionAndRingChecks(devtools: Devtools): Promise<void> {
   }
   const light = await readPalette(false)
   const dark = await readPalette(true)
-  await devtools.evaluate(`(document.documentElement.classList.toggle("dark", false), null)`)
+  await devtools.evaluate(`(document.documentElement.classList.toggle("dark", ${wasDark}), null)`)
   const describe = (readings: EdgeReading[]) =>
     readings.map((reading) =>
       `${reading.name} ${reading.colour} on ${reading.ground}: ${reading.ratio.toFixed(2)}:1`
