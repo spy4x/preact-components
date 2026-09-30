@@ -569,9 +569,11 @@ interface SelectionPalette {
  *
  * - The on track of a real `ToggleSwitch` and the chosen half of a real `OnOffButtons` reach 3:1
  *   against what they sit on, and the chosen half's label stays at 4.5:1 on the fill.
- * - A keyboard-focused `FileInput` drop zone and `KanbanBoard` card draw the `ring-focus` colour
- *   (`--color-ring`) and follow an app that sets it, at 3:1 against what they sit on and against
- *   the offset gap between the ring and the element, where there is one.
+ * - A keyboard-focused `FileInput` drop zone, `KanbanBoard` card, `Button`, `Tabs` tab,
+ *   `ToggleSwitch` and one of the guide's own buttons draw the `ring-focus` colour (`--color-ring`)
+ *   and follow an app that sets it. The ring stands 3:1 off the offset gap between it and the
+ *   element in both palettes (where there is no gap, off what the element sits on), and 3:1 off
+ *   what the element sits on in dark.
  *
  * Both palettes are read; only dark is held to the thresholds, the issue's claim. The chosen
  * `OnOffButtons` half is the ON one: `pages/checks/ui.ts` later clicks OFF and expects its class to
@@ -648,10 +650,23 @@ async function selectionAndRingChecks(devtools: Devtools): Promise<void> {
       const rings = []
       const zone = document.querySelector("#demo-FileInput input[type=file]:not(:disabled)")
       const card = document.querySelector("#demo-KanbanBoard [tabindex='0']")
-      for (const [name, focusable, ringed] of [
-        ["focused FileInput drop zone", zone, zone?.closest('[data-e2e="file-input-zone"]')],
-        ["focused KanbanBoard card", card, card],
-      ]) {
+      const button = document.querySelector("#demo-Button button:not(:disabled)")
+      const tab = document.querySelector('#demo-Tabs [role="tab"]')
+      const toggle = document.querySelector('#demo-ToggleSwitch [role="switch"]:not(:disabled)')
+      // One of the guide's own buttons, outside every demo.
+      const guideButton = [...document.querySelectorAll(".ui-guide button")].find((element) =>
+        !element.closest('[data-card-part="demo"]') && element.className.includes("ring-focus") &&
+        element.checkVisibility()
+      )
+      const targets = [
+        ["FileInput drop zone", zone, zone?.closest('[data-e2e="file-input-zone"]')],
+        ["KanbanBoard card", card, card],
+        ["Button", button, button],
+        ["Tabs tab", tab, tab],
+        ["ToggleSwitch", toggle, toggle],
+        ["the guide's own button", guideButton, guideButton],
+      ]
+      for (const [name, focusable, ringed] of targets) {
         if (!focusable || !ringed) continue
         focusable.focus({ preventScroll: true })
         await frames()
@@ -700,14 +715,15 @@ async function selectionAndRingChecks(devtools: Devtools): Promise<void> {
       `${light.labelOnFill.toFixed(2)}:1; hover fill ${light.hoverOnGround.toFixed(2)}:1`,
   )
   check(
-    "a keyboard-focused FileInput drop zone and KanbanBoard card draw --color-ring, follow an app " +
-      "that repaints it, and stand at 3:1 off " +
-      "what they sit on and off the ring's offset gap in the dark palette",
-    dark.rings.length === 2 && light.rings.length === 2 &&
+    "a keyboard-focused FileInput drop zone, KanbanBoard card, Button, tab, ToggleSwitch and guide " +
+      "button draw --color-ring and follow an app that repaints it; the ring stands 3:1 off its " +
+      "offset gap in both palettes and off what the element sits on in dark",
+    dark.rings.length === 6 && light.rings.length === 6 &&
       [...dark.rings, ...light.rings].every((ring) =>
         ring.colour === ring.token && ring.followsRepaint
       ) &&
-      dark.rings.every((ring) => ring.ratio >= 3 && ring.onOffset >= 3),
+      dark.rings.every((ring) => ring.ratio >= 3) &&
+      [...dark.rings, ...light.rings].every((ring) => ring.onOffset >= 3),
     [
       ...dark.rings.map((ring) => ({ ...ring, palette: "dark" })),
       ...light.rings.map((ring) => ({
