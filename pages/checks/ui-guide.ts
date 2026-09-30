@@ -1753,6 +1753,8 @@ const CHROME_PURPLE: Record<number, string> = {
   100: "oklch(0.946 0.033 307.174)",
   200: "oklch(0.902 0.063 306.703)",
   300: "oklch(0.827 0.119 306.383)",
+  400: "oklch(0.714 0.203 305.504)",
+  600: "oklch(0.558 0.288 302.321)",
   700: "oklch(0.496 0.265 301.924)",
   800: "oklch(0.438 0.218 303.724)",
   950: "oklch(0.291 0.149 302.717)",
@@ -1760,7 +1762,8 @@ const CHROME_PURPLE: Record<number, string> = {
 
 /**
  * The guide's own chrome — the overview's eyebrow, its links and their underline, the "Get
- * started" step numbers, and a package page's package name — draws from the accent scale (#432).
+ * started" step numbers, a package page's package name, and the outline on the card a demo route
+ * names — draws from the accent scale (#432).
  * With no accent set, every colour is the purple step it was drawn with before, in both palettes;
  * with the host's accent switch on Green, every one of them is the same step of the green scale.
  */
@@ -1773,6 +1776,7 @@ async function chromeAccentCheck(devtools: Devtools): Promise<void> {
     ["overview", `[data-step="1"]`, "color", 800, 200],
     ["overview", `[data-step="1"]`, "backgroundColor", 100, 950],
     ["theme", `[data-guide-page="theme"] header p.font-mono`, "color", 700, 300],
+    ["line-chart", `#demo-LineChart[data-deep-link]`, "outlineColor", 600, 400],
   ] as const
   const readings: {
     part: string
@@ -1782,8 +1786,20 @@ async function chromeAccentCheck(devtools: Devtools): Promise<void> {
     expected: string
     ok: boolean
   }[] = []
-  for (const page of ["overview", "theme"] as const) {
-    await openGuidePage(devtools, page)
+  for (const page of ["overview", "theme", "line-chart"] as const) {
+    if (page !== "line-chart") await openGuidePage(devtools, page)
+    else {
+      // The card's own route: the shell marks the card and scrolls to it.
+      await devtools.evaluate(`(location.replace("#/charts/line-chart"), null)`)
+      await poll(
+        () =>
+          devtools.evaluate<boolean>(
+            `document.getElementById("demo-LineChart")?.hasAttribute("data-deep-link") === true`,
+          ),
+        3_000,
+      )
+      await settledScroll(devtools, { from: 0 })
+    }
     const mine = parts.filter((part) => part[0] === page)
     readings.push(
       ...await devtools.evaluate<typeof readings>(`(async () => {
@@ -1865,12 +1881,12 @@ async function chromeAccentCheck(devtools: Devtools): Promise<void> {
   const passes = (list: typeof readings) =>
     list.length === parts.length * 2 && list.every((r) => r.ok)
   check(
-    "with no accent set, the guide's links, step numbers and package names keep their purple",
+    "with no accent set, the guide's links, step numbers, package names and deep-link outline keep their purple",
     passes(byAccent("purple")),
     describe(byAccent("purple")),
   )
   check(
-    "with the accent switch on Green, the guide's links, step numbers and package names follow it",
+    "with the accent switch on Green, the guide's links, step numbers, package names and deep-link outline follow it",
     passes(byAccent("green")),
     describe(byAccent("green")),
   )
