@@ -892,6 +892,7 @@ interface WarningPairReading {
   text: number
   dismiss: number
   dismissHover: number
+  dismissHovered: boolean
   reload: number
   buttonFill: number
   buttonHover: number
@@ -900,12 +901,12 @@ interface WarningPairReading {
 
 /**
  * The warning pair reads at 4.5:1 (#431): the real `SWUpdater` bar's message and dismiss button,
- * the dismiss button over its hover tint, and `.btn-warning` at rest and under a real pointer, in
+ * the dismiss button under a real pointer, and `.btn-warning` at rest and under a real pointer, in
  * light and dark. The bar comes from the system page's quiet demo, loaded in a fresh frame and
  * made to show its bar there, so the shared page's own demo keeps the state `pages/checks/system.ts`
- * expects. The frame takes no pointer, so the dismiss hover is the button's own hover tint
- * (`bg-on-scrim-strong`) laid over the bar's fill on a canvas. The reload button is reported, not
- * held: it is a white chip with its own text colour.
+ * expects. The frame takes the pointer only while the dismiss button is hovered, and the button
+ * must match `:hover`; its translucent hover fill is laid over the bar's fill on a canvas. The
+ * reload button is reported, not held: it is a white chip with its own text colour.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -931,45 +932,85 @@ async function warningPairChecks(devtools: Devtools): Promise<void> {
       )
       if (!shown) return
       for (const palette of palettes) {
-        const reading = await devtools.evaluate<
-          Omit<WarningPairReading, "buttonFill" | "buttonHover" | "buttonHovered">
+        const rest = await devtools.evaluate<
+          Pick<WarningPairReading, "fill" | "text" | "dismiss" | "reload"> & {
+            x: number
+            y: number
+          }
         >(`(async () => {
           ${CONTRAST_HELPERS}
-          const doc = ${frame}.contentDocument
+          const frame = ${frame}
+          const doc = frame.contentDocument
           const view = doc.defaultView
           doc.documentElement.classList.toggle("dark", ${palette === "dark"})
           const still = doc.createElement("style")
+          still.id = "warning-pair-still"
           still.textContent = "*, *::before, *::after { transition: none !important; }"
           doc.head.append(still)
-          await new Promise((done) => view.requestAnimationFrame(() => view.requestAnimationFrame(done)))
           const bar = doc.querySelector('${quiet} [role="status"] > div')
           const [reload, dismiss] = bar.querySelectorAll("button")
+          // The frame's own scroll: \`scrollIntoView\` would scroll the shared page as well.
+          const top = dismiss.getBoundingClientRect().top + view.scrollY - view.innerHeight / 2
+          view.scrollTo({ top, behavior: "instant" })
+          await new Promise((done) => view.requestAnimationFrame(() => view.requestAnimationFrame(done)))
+          // The frame covers the viewport from its top-left corner, so a point in the frame is the
+          // same point on the page. It takes the pointer only for the hover reading.
+          frame.style.pointerEvents = "auto"
           const style = (element) => view.getComputedStyle(element)
           const fill = style(bar).backgroundColor
-          const tint = doc.createElement("span")
-          tint.className = "bg-on-scrim-strong"
-          bar.append(tint)
-          const tintColour = style(tint).backgroundColor
-          tint.remove()
-          // The tint laid over the fill, as the browser composites it.
-          const layer = document.createElement("canvas").getContext("2d", { colorSpace: "srgb" })
-          layer.fillStyle = fill
-          layer.fillRect(0, 0, 1, 1)
-          layer.fillStyle = tintColour
-          layer.fillRect(0, 0, 1, 1)
-          const [r, g, b] = layer.getImageData(0, 0, 1, 1).data
-          const hovered = "rgb(" + r + ", " + g + ", " + b + ")"
-          const result = {
+          const box = dismiss.getBoundingClientRect()
+          return {
             fill,
             text: contrast(style(bar.querySelector("span")).color, fill),
             dismiss: contrast(style(dismiss).color, fill),
-            dismissHover: contrast(style(dismiss).color, hovered),
             reload: contrast(style(reload).color, style(reload).backgroundColor),
+            x: box.left + box.width / 2,
+            y: box.top + box.height / 2,
           }
-          still.remove()
-          return result
         })()`)
-        bar[palette] = { ...reading, buttonFill: 0, buttonHover: 0, buttonHovered: false }
+        await devtools.send("Input.dispatchMouseEvent", {
+          type: "mouseMoved",
+          x: rest.x,
+          y: rest.y,
+          button: "none",
+          buttons: 0,
+        })
+        const hover = await devtools.evaluate<{ ratio: number; hovered: boolean }>(`(async () => {
+          ${CONTRAST_HELPERS}
+          const doc = ${frame}.contentDocument
+          const view = doc.defaultView
+          await new Promise((done) => view.requestAnimationFrame(() => view.requestAnimationFrame(done)))
+          const bar = doc.querySelector('${quiet} [role="status"] > div')
+          const dismiss = bar.querySelectorAll("button")[1]
+          const hovered = dismiss.matches(":hover")
+          const style = view.getComputedStyle(dismiss)
+          // The hover fill is a translucent tint: lay it over the bar's fill, as the browser does.
+          const layer = document.createElement("canvas").getContext("2d", { colorSpace: "srgb" })
+          layer.fillStyle = view.getComputedStyle(bar).backgroundColor
+          layer.fillRect(0, 0, 1, 1)
+          layer.fillStyle = style.backgroundColor
+          layer.fillRect(0, 0, 1, 1)
+          const [r, g, b] = layer.getImageData(0, 0, 1, 1).data
+          return { ratio: contrast(style.color, "rgb(" + r + ", " + g + ", " + b + ")"), hovered }
+        })()`)
+        await pointerToCorner(devtools)
+        await devtools.evaluate(`(() => {
+          const frame = ${frame}
+          frame.style.pointerEvents = "none"
+          frame.contentDocument.getElementById("warning-pair-still")?.remove()
+          return null
+        })()`)
+        bar[palette] = {
+          fill: rest.fill,
+          text: rest.text,
+          dismiss: rest.dismiss,
+          reload: rest.reload,
+          dismissHover: hover.ratio,
+          dismissHovered: hover.hovered,
+          buttonFill: 0,
+          buttonHover: 0,
+          buttonHovered: false,
+        }
       }
     },
   )
@@ -1037,19 +1078,20 @@ async function warningPairChecks(devtools: Devtools): Promise<void> {
     const reading = bar[palette]
     if (!reading) return `${palette}: not read`
     return `${palette}: bar ${reading.fill}, message ${reading.text.toFixed(2)}:1, dismiss ` +
-      `${reading.dismiss.toFixed(2)}:1, dismiss on its hover tint ` +
-      `${reading.dismissHover.toFixed(2)}:1, reload chip ${reading.reload.toFixed(2)}:1; ` +
+      `${reading.dismiss.toFixed(2)}:1, dismiss hovered ${reading.dismissHover.toFixed(2)}:1` +
+      (reading.dismissHovered ? "" : " (never hovered)") +
+      `, reload chip ${reading.reload.toFixed(2)}:1; ` +
       `.btn-warning ${reading.buttonFill.toFixed(2)}:1, hovered ${
         reading.buttonHover.toFixed(2)
       }:1` +
       (reading.buttonHovered ? "" : " (never hovered)")
   }
   check(
-    "in light and dark, the SWUpdater bar's message and dismiss, the dismiss over its hover tint, " +
+    "in light and dark, the SWUpdater bar's message and dismiss, the dismiss under a real hover, " +
       "and .btn-warning at rest and hovered read at 4.5:1 or better",
     shown && palettes.every((palette) => {
       const reading = bar[palette]
-      return reading !== undefined && reading.buttonHovered &&
+      return reading !== undefined && reading.buttonHovered && reading.dismissHovered &&
         [
           reading.text,
           reading.dismiss,
