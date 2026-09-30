@@ -3549,6 +3549,10 @@ or `--color-success` also sets `--color-warning-fill` or `--color-success-fill` 
 otherwise its dark fills stay orange-600 and green-700. `--color-danger-soft` and
 `--color-info-soft` are the tinted backgrounds of an error or notice.
 
+The warning fill carries a dark label: `--color-warning-foreground` is gray-950, 5.62:1 on the
+orange-600 fill, where orange-50 read 3.37:1. `.btn-warning` and the `SWUpdater` bar draw it, and
+`.btn-warning`'s hover goes a step lighter, to orange-500, so the dark label keeps its contrast.
+
 ### Replacing fixed colours
 
 A class naming a Tailwind gray, slate, zinc, neutral or stone step, or `white` or `black`, ignores

@@ -84,7 +84,8 @@ const EXPECTED_ROOT_TOKENS: Record<string, string> = {
   "--color-danger": "oklch(0.577 0.245 27.325)",
   "--color-danger-foreground": "oklch(0.971 0.013 17.38)",
   "--color-warning": "oklch(0.646 0.222 41.116)",
-  "--color-warning-foreground": "oklch(0.98 0.016 73.684)",
+  // #431: a dark label, because orange-50 read 3.37:1 on the orange-600 fill.
+  "--color-warning-foreground": "oklch(0.13 0.028 261.692)",
   "--color-success": "oklch(0.527 0.154 150.069)",
   "--color-success-foreground": "oklch(0.982 0.018 155.826)",
   // #429: the warning and success fills, the same colours as their text tokens in light.

@@ -512,11 +512,12 @@
   color: var(--color-danger, oklch(0.577 0.245 27.325));
 }
 
+/* A dark label on the warning fill, so the hover goes a step lighter (orange-500), not darker. */
 @utility btn-warning {
-  @apply border hover:bg-orange-700 focus-visible:outline-orange-700;
+  @apply border hover:bg-orange-500 focus-visible:outline-orange-700;
   @apply dark:focus-visible:outline-orange-500;
   background-color: var(--color-warning-fill, oklch(0.646 0.222 41.116));
-  color: var(--color-warning-foreground, oklch(0.98 0.016 73.684));
+  color: var(--color-warning-foreground, oklch(0.13 0.028 261.692));
 }
 
 @utility btn-warning-outline {
