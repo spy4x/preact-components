@@ -5046,6 +5046,7 @@ async function comboboxChecks(devtools: Devtools): Promise<void> {
   await reopenCheck(devtools)
   await focusLeavesChecks(devtools)
   await fetchingComboboxCheck(devtools)
+  await chosenHighlightCheck(devtools)
 }
 
 /** One reading of the parked live region: what it is, what it holds, and what it has recorded. */
@@ -6064,6 +6065,103 @@ async function pointerHighlightCheck(devtools: Devtools, walkedTo: number): Prom
   await pressKey(devtools, "Escape")
   await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "false"`), 3_000)
   await pointerToCorner(devtools)
+}
+
+/** How the chosen Combobox row is drawn, and whether the keyboard highlight is on it. */
+interface ChosenRowLook {
+  /** `false` when the popup has no row with `aria-selected="true"`; the rest is then noise. */
+  found: boolean
+  /** The chosen row's position in the list. */
+  index: number
+  highlighted: boolean
+  fontWeight: string
+  background: string
+  /** `true` when any row is in `:hover`, which would paint it and make the reading meaningless. */
+  hovered: boolean
+}
+
+/** Read the parked combobox's chosen row: its weight, its fill and where the highlight is. */
+const CHOSEN_ROW_LOOK = `(() => {
+  const { input, list } = globalThis.__verifyCombobox ?? {}
+  const rows = [...(list?.querySelectorAll('[role="option"]') ?? [])]
+  const index = rows.findIndex((row) => row.getAttribute("aria-selected") === "true")
+  const row = rows[index]
+  if (!row) {
+    return { found: false, index: -1, highlighted: false, fontWeight: "", background: "", hovered: false }
+  }
+  const style = getComputedStyle(row)
+  return {
+    found: true,
+    index,
+    highlighted: input.getAttribute("aria-activedescendant") === row.id,
+    fontWeight: style.fontWeight,
+    background: style.backgroundColor,
+    hovered: rows.some((option) => option.matches(":hover")),
+  }
+})()`
+
+/**
+ * The chosen Combobox row looks different when the keyboard highlight rests on it (#435).
+ *
+ * The chosen row is always tinted, so without a style of its own for "chosen and highlighted" a
+ * keyboard user cannot see the highlight arrive on it. The popup opens with the highlight on the
+ * chosen row; a real arrow press moves it to a neighbour, which gives the chosen row at rest, and
+ * the opposite arrow brings it back. Both the weight and the fill have to change. The pointer is
+ * parked away from the popup and every read asserts no row is in `:hover`, so a hover fill cannot
+ * stand in for the highlight's.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function chosenHighlightCheck(devtools: Devtools): Promise<void> {
+  await devtools.evaluate<null>(comboboxSetup("guide-combobox-coin"))
+  await scrollToParked(devtools)
+
+  const field = `globalThis.__verifyCombobox?.input ?? null`
+  const opened = await clickAt(devtools, await aimAt(devtools, field), field)
+  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "true"`), 3_000)
+  await pointerToCorner(devtools)
+  const start = await devtools.evaluate<ChosenRowLook>(CHOSEN_ROW_LOOK)
+
+  // Step away towards whichever neighbour exists, then back.
+  const [away, back] = start.index > 0
+    ? (["ArrowUp", "ArrowDown"] as const)
+    : (["ArrowDown", "ArrowUp"] as const)
+  await pressKey(devtools, away)
+  await poll(
+    async () => !(await devtools.evaluate<ChosenRowLook>(CHOSEN_ROW_LOOK)).highlighted,
+    3_000,
+  )
+  const rest = await devtools.evaluate<ChosenRowLook>(CHOSEN_ROW_LOOK)
+  await pressKey(devtools, back)
+  await poll(
+    async () => (await devtools.evaluate<ChosenRowLook>(CHOSEN_ROW_LOOK)).highlighted,
+    3_000,
+  )
+  const highlighted = await devtools.evaluate<ChosenRowLook>(CHOSEN_ROW_LOOK)
+
+  await pressKey(devtools, "Escape")
+  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "false"`), 3_000)
+
+  check(
+    "a keyboard highlight on the chosen Combobox row changes its weight and its fill",
+    opened?.onTarget === true && start.found && start.highlighted && !rest.highlighted &&
+      highlighted.highlighted && !rest.hovered && !highlighted.hovered &&
+      rest.fontWeight !== highlighted.fontWeight && rest.background !== highlighted.background,
+    opened?.onTarget !== true
+      ? "the press never landed on the field, so the popup was never opened — this proves nothing"
+      : !start.found
+      ? "the open popup has no chosen row, so there is nothing to highlight"
+      : !start.highlighted
+      ? "the popup opened with the highlight away from the chosen row"
+      : rest.highlighted || !highlighted.highlighted
+      ? `a real ${away} then ${back} left the highlight ${rest.highlighted ? "on" : "off"} then ${
+        highlighted.highlighted ? "on" : "off"
+      } the chosen row, not off then on`
+      : rest.hovered || highlighted.hovered
+      ? "a row was under the pointer, so its hover fill could stand in for the highlight's"
+      : `chosen row at rest: weight ${rest.fontWeight}, fill ${rest.background}; highlighted: ` +
+        `weight ${highlighted.fontWeight}, fill ${highlighted.background}`,
+  )
 }
 
 /**
