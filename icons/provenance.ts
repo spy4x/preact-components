@@ -11,6 +11,8 @@
  *   size actually ships (24 has outline and solid; 20 and 16 have solid only).
  * - Feather (`feather-icons@4.29.2`, MIT) — `dist/icons/`, one style, one size.
  * - Lucide (`lucide-static@1.47.0`, ISC) — `icons/`, one style, one size.
+ * - Simple Icons (`simple-icons@16.33.0`, CC0) — `icons/`, one style (filled brand marks), one size.
+ *   Added for the brand marks (#233): no general-purpose pack draws a company's logo.
  *
  * Every `.svg` file in each of those directories is read and its geometry-bearing elements —
  * `path`, `rect`, `circle`, `ellipse`, `line`, `polyline`, `polygon` — are normalised the same way
@@ -59,11 +61,11 @@
  *   is strong evidence of where a glyph came from; it is not a substitute for the pack's own licence
  *   terms, which the notices file quotes directly.
  * - A `path` whose `d` does not parse per the grammar above (should not occur in this package's own
- *   glyphs or these four packs' output, but a future pack's might) is caught per element: its
+ *   glyphs or these five packs' output, but a future pack's might) is caught per element: its
  *   skeleton becomes `path:unparsed:<error message, which names the offending d>`, so it never
  *   matches anything by accident, and the parse failure is visible in the output rather than
  *   crashing the run. `deno task --cwd icons provenance` reports none across this package's 120
- *   glyphs and all four packs' files at the versions pinned below.
+ *   glyphs and all five packs' files at the versions pinned below.
  *
  * Excluded from `deno task check` (network access, and it is a one-off audit, not a regression
  * gate) and from publish. Run by hand:
@@ -308,8 +310,8 @@ const ATTR_PATTERN = /([a-zA-Z][a-zA-Z0-9:-]*)="([^"]*)"/g
  * Works on raw markup text, not a parsed DOM or a rendered vnode tree: `[^>]*` matches across
  * lines, so an element whose attributes `deno fmt` wrapped onto several lines is still read as one
  * match. Closing tags (`</path>`) never match, because the pattern requires the tag name to follow
- * `<` directly. Every element in both this package's source and the four packs below is a flat leaf
- * with no children — confirmed by `grep -rc '<g' <pack>` returning 0 for all four — so this is a
+ * `<` directly. Every element in both this package's source and the five packs below is a flat leaf
+ * with no children — confirmed by `grep -rc '<g' <pack>` returning 0 for all five — so this is a
  * complete read of a glyph's geometry, not a partial one.
  */
 export function extractElements(source: string): NormalizedElement[] {
@@ -377,7 +379,7 @@ export function repoGlyphs(source: string): RepoGlyph[] {
 
 /** One glyph from a published icon pack. */
 export interface PackIcon {
-  pack: "Heroicons" | "Feather" | "Lucide"
+  pack: "Heroicons" | "Feather" | "Lucide" | "Simple Icons"
   version: string
   style: string
   size: string
@@ -503,6 +505,21 @@ async function loadLucide(): Promise<PackIcon[]> {
   return loadSvgIcons(join(root, "icons"), "Lucide", manifest.version, "outline", "24")
 }
 
+/**
+ * Simple Icons (`16.33.0`, CC0) — `icons/`, filled brand marks, one size.
+ *
+ * Unlike the other four, this package declares an `exports` map that leaves out `package.json`, so
+ * its manifest cannot be imported by specifier. Its exported data file, `icons.json`, is imported
+ * instead to locate the package (it sits in `data/`, one level below the root), and the version is
+ * read from the manifest on disk.
+ */
+async function loadSimpleIcons(): Promise<PackIcon[]> {
+  await importManifest("simple-icons/icons.json")
+  const root = dirname(packageRoot("simple-icons/icons.json"))
+  const manifest = JSON.parse(await Deno.readTextFile(join(root, "package.json")))
+  return loadSvgIcons(join(root, "icons"), "Simple Icons", manifest.version, "brand", "24")
+}
+
 interface PackIndex {
   byCanonical: Map<string, PackIcon[]>
   bySkeleton: Map<string, PackIcon[]>
@@ -564,6 +581,7 @@ export async function runProvenanceCheck(indexSourcePath?: string): Promise<Prov
     ...await loadHeroiconsV2(),
     ...await loadFeather(),
     ...await loadLucide(),
+    ...await loadSimpleIcons(),
   ]
   const index = buildIndex(corpus)
   const source = await Deno.readTextFile(
@@ -585,7 +603,7 @@ export async function runProvenanceCheck(indexSourcePath?: string): Promise<Prov
 if (import.meta.main) {
   const result = await runProvenanceCheck()
   console.log(
-    `corpus: ${result.corpusSize} pack icons (Heroicons v1 + v2, Feather, Lucide)\n` +
+    `corpus: ${result.corpusSize} pack icons (Heroicons v1 + v2, Feather, Lucide, Simple Icons)\n` +
       `${result.glyphs.length} glyphs: ${result.totals.exact} exact, ${result.totals.near} near, ` +
       `${result.totals.none} none\n`,
   )

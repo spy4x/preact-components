@@ -114,6 +114,14 @@ export interface IconBlock {
   body: string
 }
 
+/**
+ * Ports whose drawing was later swapped for a published pack's glyph, so their geometry no longer
+ * equals the source file's by design. Each keeps its export name and its place in the ledger; only
+ * the byte-for-byte comparison against the source is skipped. `IconExternalLink` matched no pack,
+ * so #233 redrew it as Heroicons v1's `external-link`.
+ */
+export const REDRAWN_PORTS: ReadonlySet<string> = new Set(["IconExternalLink"])
+
 /** The bookkeeping tables and prose counts parsed out of `README.md`. */
 export interface ReadmeClaims {
   ports: { exportName: string; source: string }[]
@@ -326,7 +334,7 @@ export async function audit(sourceDir?: string): Promise<{
     if (!block.doc.includes("from a source application")) {
       fail(port.exportName, `JSDoc does not mark the ported source family`)
     }
-    if (!sourcePresent) continue
+    if (!sourcePresent || REDRAWN_PORTS.has(port.exportName)) continue
     const sourceBody = await Deno.readTextFile(`${sourceDir}${port.source}.svelte`)
       .catch(() => undefined)
     if (sourceBody === undefined) {
@@ -349,7 +357,8 @@ export async function audit(sourceDir?: string): Promise<{
   }
   checked.push(
     sourcePresent
-      ? `ports: ${claims.ports.length} rows, geometry compared to the source files`
+      ? `ports: ${claims.ports.length} rows, geometry compared to the source files ` +
+        `(${REDRAWN_PORTS.size} redrawn from a pack, not compared)`
       : `ports: ${claims.ports.length} rows (geometry not compared; no source folder given)`,
   )
   if (!sourcePresent) {

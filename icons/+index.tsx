@@ -364,23 +364,23 @@ export function IconBookOpen(props: IconProps): JSX.Element {
   )
 }
 
-/** Custom outline (stroke 1.2). */
+/** Heroicons v1 outline (stroke-2) · "bookmark" from heroicons@1.0.6 (#233). */
 export function IconBookmark(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 46 46"
+      viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      stroke-width="1.2"
+      stroke-width="2"
       {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
       {iconTitle(props)}
       <path
-        d="M8,0v46l15-12l15,12V0H8z M36,42L23,31L10,42l0-40h26V42z"
-        fill="currentColor"
-        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
       />
     </svg>
   )
@@ -408,7 +408,7 @@ export function IconBriefcase(props: IconProps): JSX.Element {
   )
 }
 
-/** Custom outline (stroke 1.75). */
+/** Heroicons v1 outline (stroke-2) · "office-building" from heroicons@1.0.6 (#233). */
 export function IconBuilding(props: IconProps): JSX.Element {
   return (
     <svg
@@ -416,21 +416,16 @@ export function IconBuilding(props: IconProps): JSX.Element {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      stroke-width="1.75"
-      stroke-linecap="round"
-      stroke-linejoin="round"
+      stroke-width="2"
       {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
       {iconTitle(props)}
-      <rect x="4" y="2" width="16" height="20" rx="2" />
-      <line x1="9" y1="6" x2="9" y2="6.01" />
-      <line x1="9" y1="10" x2="9" y2="10.01" />
-      <line x1="9" y1="14" x2="9" y2="14.01" />
-      <line x1="15" y1="6" x2="15" y2="6.01" />
-      <line x1="15" y1="10" x2="15" y2="10.01" />
-      <line x1="15" y1="14" x2="15" y2="14.01" />
-      <path d="M10 22v-4h4v4" />
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+      />
     </svg>
   )
 }
@@ -529,7 +524,7 @@ export function IconChartPie(props: IconProps): JSX.Element {
   )
 }
 
-/** Custom outline (stroke-2); no match in the checked packs. */
+/** Heroicons v1 outline (stroke-2) · "chat-alt" from heroicons@1.0.6 (#233). */
 export function IconChatBubble(props: IconProps): JSX.Element {
   return (
     <svg
@@ -538,14 +533,15 @@ export function IconChatBubble(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
       {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
       {iconTitle(props)}
-      <path d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 0 1 1.037-.443 48.282 48.282 0 0 0 5.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
-      <path d="M8 12h.008M12 12h.008M16 12h.008" />
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+      />
     </svg>
   )
 }
@@ -656,8 +652,30 @@ export function IconChevronRight(props: IconProps): JSX.Element {
   )
 }
 
-/** Custom outline (stroke-2); uses a `rect`, which Heroicons never does, and no match in the checked packs. */
+/** Heroicons v1 outline (stroke-2) · "chip" from heroicons@1.0.6 (#233). */
 export function IconChip(props: IconProps): JSX.Element {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      {...iconA11y(props)}
+      class={`shrink-0 ${props.class || "size-5"}`}
+    >
+      {iconTitle(props)}
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"
+      />
+    </svg>
+  )
+}
+
+/** Lucide outline (stroke-2) · "circle-dot" from lucide-static@1.47.0 (#233). */
+export function IconCircleDot(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -671,36 +689,8 @@ export function IconChip(props: IconProps): JSX.Element {
       class={`shrink-0 ${props.class || "size-5"}`}
     >
       {iconTitle(props)}
-      <rect width="12" height="12" x="6" y="6" rx="2" />
-      <path d="M12 2v4" />
-      <path d="M12 18v4" />
-      <path d="M2 12h4" />
-      <path d="M18 12h4" />
-      <path d="m6.3 6.3-2.8-2.8" />
-      <path d="m17.7 6.3 2.8-2.8" />
-      <path d="m6.3 17.7-2.8 2.8" />
-      <path d="m17.7 17.7 2.8 2.8" />
-    </svg>
-  )
-}
-
-/** Custom outline (stroke 1.75). */
-export function IconCircleDot(props: IconProps): JSX.Element {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1.75"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      {...iconA11y(props)}
-      class={`shrink-0 ${props.class || "size-5"}`}
-    >
-      {iconTitle(props)}
-      <circle cx="12" cy="12" r="9" />
-      <circle cx="12" cy="12" r="3" fill="currentColor" />
+      <circle cx="12" cy="12" r="1" />
+      <circle cx="12" cy="12" r="10" />
     </svg>
   )
 }
@@ -839,7 +829,7 @@ export function IconCpuChip(props: IconProps): JSX.Element {
   )
 }
 
-/** Custom outline (stroke 1.75). */
+/** Heroicons v1 outline (stroke-2) · "credit-card" from heroicons@1.0.6 (#233). */
 export function IconCreditCard(props: IconProps): JSX.Element {
   return (
     <svg
@@ -847,15 +837,16 @@ export function IconCreditCard(props: IconProps): JSX.Element {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      stroke-width="1.75"
-      stroke-linecap="round"
-      stroke-linejoin="round"
+      stroke-width="2"
       {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
       {iconTitle(props)}
-      <rect x="2" y="5" width="20" height="14" rx="2" />
-      <line x1="2" y1="10" x2="22" y2="10" />
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+      />
     </svg>
   )
 }
@@ -882,7 +873,7 @@ export function IconCursorArrowRays(props: IconProps): JSX.Element {
   )
 }
 
-/** Custom outline (stroke 1.75). */
+/** Heroicons v2 outline (stroke-1.5) · "document" from heroicons@2.2.0 (#233). */
 export function IconDocument(props: IconProps): JSX.Element {
   return (
     <svg
@@ -890,17 +881,16 @@ export function IconDocument(props: IconProps): JSX.Element {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      stroke-width="1.75"
-      stroke-linecap="round"
-      stroke-linejoin="round"
+      stroke-width="1.5"
       {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
       {iconTitle(props)}
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-      <polyline points="14 2 14 8 20 8" />
-      <line x1="8" y1="13" x2="16" y2="13" />
-      <line x1="8" y1="17" x2="14" y2="17" />
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
+      />
     </svg>
   )
 }
@@ -1018,7 +1008,7 @@ export function IconEyeOff(props: IconProps): JSX.Element {
   )
 }
 
-/** Heroicons v2 outline (stroke-2); near-matches Heroicons v2's "fire", not v1. */
+/** Heroicons v2 outline (stroke-1.5) · "fire" from heroicons@2.2.0 (#233). */
 export function IconFire(props: IconProps): JSX.Element {
   return (
     <svg
@@ -1026,20 +1016,26 @@ export function IconFire(props: IconProps): JSX.Element {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
+      stroke-width="1.5"
       {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
       {iconTitle(props)}
-      <path d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" />
-      <path d="M12 18a3.75 3.75 0 00.495-7.467 5.99 5.99 0 00-1.925 3.546 5.97 5.97 0 01-2.133-1A3.75 3.75 0 0012 18z" />
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.047 8.287 8.287 0 0 0 9 9.601a8.983 8.983 0 0 1 3.361-6.867 8.21 8.21 0 0 0 3 2.48Z"
+      />
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M12 18a3.75 3.75 0 0 0 .495-7.468 5.99 5.99 0 0 0-1.925 3.547 5.975 5.975 0 0 1-2.133-1.001A3.75 3.75 0 0 0 12 18Z"
+      />
     </svg>
   )
 }
 
-/** Custom outline (stroke-2); no match in the checked packs. */
+/** Heroicons v1 outline (stroke-2) · "flag" from heroicons@1.0.6 (#233). */
 export function IconFlag(props: IconProps): JSX.Element {
   return (
     <svg
@@ -1048,19 +1044,20 @@ export function IconFlag(props: IconProps): JSX.Element {
       fill="none"
       stroke="currentColor"
       stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
       {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
       {iconTitle(props)}
-      <path d="M4 21V4" />
-      <path d="M4 4h13l-3 6 3 6H4" />
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"
+      />
     </svg>
   )
 }
 
-/** Custom outline (stroke 1.75). */
+/** Heroicons v1 outline (stroke-2) · "beaker" from heroicons@1.0.6 (#233). */
 export function IconFlask(props: IconProps): JSX.Element {
   return (
     <svg
@@ -1068,16 +1065,16 @@ export function IconFlask(props: IconProps): JSX.Element {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      stroke-width="1.75"
-      stroke-linecap="round"
-      stroke-linejoin="round"
+      stroke-width="2"
       {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
       {iconTitle(props)}
-      <path d="M9 3v6L4 18a2 2 0 0 0 1.7 3h12.6A2 2 0 0 0 20 18l-5-9V3" />
-      <path d="M9 3h6" />
-      <path d="M7 14h10" />
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
+      />
     </svg>
   )
 }
@@ -1126,24 +1123,32 @@ export function IconFunnel(props: IconProps): JSX.Element {
   )
 }
 
-/** Custom outline (stroke n/a) · from template; no match in the checked packs. */
+/** Lucide outline (stroke-2) · "router" from lucide-static@1.47.0 (#233). */
 export function IconGateway(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 32 32"
-      fill="white"
+      viewBox="0 0 24 24"
+      fill="none"
       stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
       {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
       {iconTitle(props)}
-      <path d="M31,16a1.9857,1.9857,0,0,0-.5859-1.4141L24.6211,8.793,27.489,5.9253a2,2,0,1,0-1.414-1.4141L23.207,7.3789l-5.7929-5.793a1.9995,1.9995,0,0,0-2.8282,0L8.793,7.3789,5.925,4.5112A2,2,0,1,0,4.511,5.9253L7.3789,8.793l-5.793,5.7929a1.9995,1.9995,0,0,0,0,2.8282l5.793,5.7929L4.511,26.0747a2,2,0,1,0,1.414,1.4141l2.868-2.8677,5.7929,5.793a1.9995,1.9995,0,0,0,2.8282,0l5.7929-5.793,2.868,2.8677a2,2,0,1,0,1.414-1.4141L24.6211,23.207l5.793-5.7929A1.9866,1.9866,0,0,0,31,16Zm-7.793,5.793L20.4141,19,19,20.4141l2.793,2.7929L16,29l-5.793-5.793L13,20.4141,11.5859,19,8.793,21.793,3,16l5.7925-5.7935L11.5859,13,13,11.5859,10.2065,8.7925,16,3l5.7935,5.7925L19,11.5859,20.4141,13l2.7934-2.7935L29,16Z" />
+      <rect width="20" height="8" x="2" y="14" rx="2" />
+      <path d="M6.01 18H6" />
+      <path d="M10.01 18H10" />
+      <path d="M15 10v4" />
+      <path d="M17.84 7.17a4 4 0 0 0-5.66 0" />
+      <path d="M20.66 4.34a8 8 0 0 0-11.31 0" />
     </svg>
   )
 }
 
-/** Brand mark (trademarked); no match in the checked packs. */
+/** Brand mark (trademarked), filled · "github" from simple-icons@16.33.0 (#233). */
 export function IconGitHub(props: IconProps): JSX.Element {
   return (
     <svg
@@ -1154,12 +1159,12 @@ export function IconGitHub(props: IconProps): JSX.Element {
       class={`shrink-0 ${props.class || "size-5"}`}
     >
       {iconTitle(props)}
-      <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
+      <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
     </svg>
   )
 }
 
-/** Custom outline (stroke 1.75). */
+/** Heroicons v1 outline (stroke-2) · "globe-alt" from heroicons@1.0.6 (#233). */
 export function IconGlobe(props: IconProps): JSX.Element {
   return (
     <svg
@@ -1167,16 +1172,16 @@ export function IconGlobe(props: IconProps): JSX.Element {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      stroke-width="1.75"
-      stroke-linecap="round"
-      stroke-linejoin="round"
+      stroke-width="2"
       {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
       {iconTitle(props)}
-      <circle cx="12" cy="12" r="9" />
-      <line x1="3" y1="12" x2="21" y2="12" />
-      <path d="M12 3a14.5 14.5 0 0 1 0 18 14.5 14.5 0 0 1 0-18z" />
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"
+      />
     </svg>
   )
 }
@@ -1247,7 +1252,7 @@ export function IconHome(props: IconProps): JSX.Element {
   )
 }
 
-/** Custom outline (stroke 1.75). */
+/** Heroicons v1 outline (stroke-2) · "photograph" from heroicons@1.0.6 (#233). */
 export function IconImage(props: IconProps): JSX.Element {
   return (
     <svg
@@ -1255,16 +1260,16 @@ export function IconImage(props: IconProps): JSX.Element {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      stroke-width="1.75"
-      stroke-linecap="round"
-      stroke-linejoin="round"
+      stroke-width="2"
       {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
       {iconTitle(props)}
-      <rect x="3" y="3" width="18" height="18" rx="2" />
-      <circle cx="9" cy="9" r="2" />
-      <path d="M21 15l-5-5L5 21" />
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+      />
     </svg>
   )
 }
@@ -1311,7 +1316,7 @@ export function IconKey(props: IconProps): JSX.Element {
   )
 }
 
-/** Custom outline (stroke 1.75). */
+/** Heroicons v1 outline (stroke-2) · "zoom-in" from heroicons@1.0.6 (#233). */
 export function IconLens(props: IconProps): JSX.Element {
   return (
     <svg
@@ -1319,17 +1324,16 @@ export function IconLens(props: IconProps): JSX.Element {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      stroke-width="1.75"
-      stroke-linecap="round"
-      stroke-linejoin="round"
+      stroke-width="2"
       {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
       {iconTitle(props)}
-      <circle cx="11" cy="11" r="7" />
-      <path d="M21 21l-4.3-4.3" />
-      <path d="M11 8v6" />
-      <path d="M8 11h6" />
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"
+      />
     </svg>
   )
 }
@@ -1377,18 +1381,27 @@ export function IconLink(props: IconProps): JSX.Element {
   )
 }
 
-/** Brand mark (trademarked); no match in the checked packs. */
+/**
+ * Brand mark (trademarked), Feather outline (stroke-2) · "linkedin" from feather-icons@4.29.2
+ * (#233). Simple Icons, the source of the other brand marks, no longer ships LinkedIn's.
+ */
 export function IconLinkedIn(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 24 24"
-      fill="currentColor"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
       {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
       {iconTitle(props)}
-      <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
+      <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
+      <rect x="2" y="9" width="4" height="12" />
+      <circle cx="4" cy="4" r="2" />
     </svg>
   )
 }
@@ -1418,32 +1431,29 @@ export function IconList(props: IconProps): JSX.Element {
   )
 }
 
-/** Custom outline (stroke 4) · from template. */
+/** Lucide outline (stroke-2) · "loader" from lucide-static@1.47.0 (#233). */
 export function IconLoading(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 24 24"
       fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
       {...iconA11y(props)}
       class={`animate-spin shrink-0 ${props.class || "size-5"}`}
     >
       {iconTitle(props)}
-      <circle
-        class="opacity-25"
-        cx="12"
-        cy="12"
-        r="10"
-        stroke="currentColor"
-        stroke-width="4"
-      >
-      </circle>
-      <path
-        class="opacity-75"
-        fill="currentColor"
-        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-      >
-      </path>
+      <path d="M12 2v4" />
+      <path d="m16.2 7.8 2.9-2.9" />
+      <path d="M18 12h4" />
+      <path d="m16.2 16.2 2.9 2.9" />
+      <path d="M12 18v4" />
+      <path d="m4.9 19.1 2.9-2.9" />
+      <path d="M2 12h4" />
+      <path d="m4.9 4.9 2.9 2.9" />
     </svg>
   )
 }
@@ -1561,7 +1571,7 @@ export function IconMinus(props: IconProps): JSX.Element {
   )
 }
 
-/** Heroicons v2 outline (stroke-1.5) · from template. */
+/** Heroicons v2 outline (stroke-1.5) · "moon" from heroicons@2.2.0 (#233). */
 export function IconMoon(props: IconProps): JSX.Element {
   return (
     <svg
@@ -1577,13 +1587,13 @@ export function IconMoon(props: IconProps): JSX.Element {
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
-        d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z"
+        d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z"
       />
     </svg>
   )
 }
 
-/** Custom outline (stroke 1.75). */
+/** Heroicons v1 outline (stroke-2) · "cube" from heroicons@1.0.6 (#233). */
 export function IconPackage(props: IconProps): JSX.Element {
   return (
     <svg
@@ -1591,17 +1601,16 @@ export function IconPackage(props: IconProps): JSX.Element {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      stroke-width="1.75"
-      stroke-linecap="round"
-      stroke-linejoin="round"
+      stroke-width="2"
       {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
       {iconTitle(props)}
-      <path d="M16.5 9.4l-9-5.19" />
-      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-      <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-      <line x1="12" y1="22.08" x2="12" y2="12" />
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+      />
     </svg>
   )
 }
@@ -1650,23 +1659,28 @@ export function IconPlus(props: IconProps): JSX.Element {
   )
 }
 
-/** Filled glyph, not a brand mark; no match in the checked packs. */
+/** Lucide outline (stroke-2) · "quote" from lucide-static@1.47.0 (#233). */
 export function IconQuote(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 975.036 975.036"
-      fill="currentColor"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
       {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
       {iconTitle(props)}
-      <path d="M925.036 57.197h-304c-27.6 0-50 22.4-50 50v304c0 27.601 22.4 50 50 50h145.5c-1.9 79.601-20.4 143.3-55.4 191.2-27.6 37.8-69.399 69.1-125.3 93.8-25.7 11.3-36.8 41.7-24.8 67.101l36 76c11.6 24.399 40.3 35.1 65.1 24.399 66.2-28.6 122.101-64.8 167.7-108.8 55.601-53.7 93.7-114.3 114.3-181.9 20.601-67.6 30.9-159.8 30.9-276.8v-239c0-27.599-22.401-50-50-50zM106.036 913.497c65.4-28.5 121-64.699 166.9-108.6 56.1-53.7 94.4-114.1 115-181.2 20.6-67.1 30.899-159.6 30.899-277.5v-239c0-27.6-22.399-50-50-50h-304c-27.6 0-50 22.4-50 50v304c0 27.601 22.4 50 50 50h145.5c-1.9 79.601-20.4 143.3-55.4 191.2-27.6 37.8-69.4 69.1-125.3 93.8-25.7 11.3-36.8 41.7-24.8 67.101l35.9 75.8c11.601 24.399 40.501 35.2 65.301 24.399z" />
+      <path d="M16 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z" />
+      <path d="M5 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z" />
     </svg>
   )
 }
 
-/** Custom outline (stroke 1.75). */
+/** Heroicons v2 outline (stroke-1.5) · "rocket-launch" from heroicons@2.2.0 (#233). */
 export function IconRocket(props: IconProps): JSX.Element {
   return (
     <svg
@@ -1674,17 +1688,16 @@ export function IconRocket(props: IconProps): JSX.Element {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      stroke-width="1.75"
-      stroke-linecap="round"
-      stroke-linejoin="round"
+      stroke-width="1.5"
       {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
       {iconTitle(props)}
-      <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
-      <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" />
-      <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" />
-      <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M15.59 14.37a6 6 0 0 1-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 0 0 6.16-12.12A14.98 14.98 0 0 0 9.631 8.41m5.96 5.96a14.926 14.926 0 0 1-5.841 2.58m-.119-8.54a6 6 0 0 0-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 0 0-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 0 1-2.448-2.448 14.9 14.9 0 0 1 .06-.312m-2.24 2.39a4.493 4.493 0 0 0-1.757 4.306 4.493 4.493 0 0 0 4.306-1.758M16.5 9a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z"
+      />
     </svg>
   )
 }
@@ -1711,7 +1724,7 @@ export function IconSearch(props: IconProps): JSX.Element {
   )
 }
 
-/** Custom outline (stroke-2) · from template; no match in the checked packs. */
+/** Heroicons v1 outline (stroke-2) · "status-online" from heroicons@1.0.6 (#233). */
 export function IconSensor(props: IconProps): JSX.Element {
   return (
     <svg
@@ -1719,15 +1732,15 @@ export function IconSensor(props: IconProps): JSX.Element {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
+      stroke-width="2"
       {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-6"}`}
     >
       {iconTitle(props)}
       <path
-        d="M8.46447 15.5355C6.51185 13.5829 6.51185 10.4171 8.46447 8.46447M5.63592 18.364C2.1212 14.8493 2.1212 9.15077 5.63592 5.63605M15.5355 15.5355C17.4881 13.5829 17.4881 10.4171 15.5355 8.46447M18.364 18.364C21.8788 14.8493 21.8788 9.15077 18.364 5.63605M13 12.0001C13 12.5523 12.5523 13.0001 12 13.0001C11.4477 13.0001 11 12.5523 11 12.0001C11 11.4478 11.4477 11.0001 12 11.0001C12.5523 11.0001 13 11.4478 13 12.0001Z"
-        stroke-width="2"
         stroke-linecap="round"
         stroke-linejoin="round"
+        d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z"
       />
     </svg>
   )
@@ -1800,7 +1813,7 @@ export function IconShieldCheck(props: IconProps): JSX.Element {
   )
 }
 
-/** Custom outline (stroke 1.75). */
+/** Heroicons v1 outline (stroke-2) · "sparkles" from heroicons@1.0.6 (#233). */
 export function IconSparkle(props: IconProps): JSX.Element {
   return (
     <svg
@@ -1808,15 +1821,16 @@ export function IconSparkle(props: IconProps): JSX.Element {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      stroke-width="1.75"
-      stroke-linecap="round"
-      stroke-linejoin="round"
+      stroke-width="2"
       {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
       {iconTitle(props)}
-      <path d="M12 3l1.7 4.3L18 9l-4.3 1.7L12 15l-1.7-4.3L6 9l4.3-1.7L12 3z" />
-      <path d="M19 14l.8 1.8L21.5 17l-1.7.7L19 19.5l-.8-1.8L16.5 17l1.7-1.2L19 14z" />
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+      />
     </svg>
   )
 }
@@ -1903,7 +1917,7 @@ export function IconTag(props: IconProps): JSX.Element {
   )
 }
 
-/** Feather/Lucide outline (stroke-2); near-matches both packs' "target", not Heroicons. */
+/** Lucide outline (stroke-2) · "target" from lucide-static@1.47.0 (#233). */
 export function IconTarget(props: IconProps): JSX.Element {
   return (
     <svg
@@ -1918,14 +1932,14 @@ export function IconTarget(props: IconProps): JSX.Element {
       class={`shrink-0 ${props.class || "size-5"}`}
     >
       {iconTitle(props)}
-      <circle cx="12" cy="12" r="9" />
-      <circle cx="12" cy="12" r="5" />
-      <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="10" />
+      <circle cx="12" cy="12" r="6" />
+      <circle cx="12" cy="12" r="2" />
     </svg>
   )
 }
 
-/** Brand mark (trademarked); no match in the checked packs. */
+/** Brand mark (trademarked), filled · "telegram" from simple-icons@16.33.0 (#233). */
 export function IconTelegram(props: IconProps): JSX.Element {
   return (
     <svg
@@ -1936,16 +1950,12 @@ export function IconTelegram(props: IconProps): JSX.Element {
       class={`shrink-0 ${props.class || "size-5"}`}
     >
       {iconTitle(props)}
-      <path
-        fill-rule="evenodd"
-        clip-rule="evenodd"
-        d="M23.1117 4.49449C23.4296 2.94472 21.9074 1.65683 20.4317 2.227L2.3425 9.21601C0.694517 9.85273 0.621087 12.1572 2.22518 12.8975L6.1645 14.7157L8.03849 21.2746C8.13583 21.6153 8.40618 21.8791 8.74917 21.968C9.09216 22.0568 9.45658 21.9576 9.70712 21.707L12.5938 18.8203L16.6375 21.8531C17.8113 22.7334 19.5019 22.0922 19.7967 20.6549L23.1117 4.49449ZM3.0633 11.0816L21.1525 4.0926L17.8375 20.2531L13.1 16.6999C12.7019 16.4013 12.1448 16.4409 11.7929 16.7928L10.5565 18.0292L10.928 15.9861L18.2071 8.70703C18.5614 8.35278 18.5988 7.79106 18.2947 7.39293C17.9906 6.99479 17.4389 6.88312 17.0039 7.13168L6.95124 12.876L3.0633 11.0816ZM8.17695 14.4791L8.78333 16.6015L9.01614 15.321C9.05253 15.1209 9.14908 14.9366 9.29291 14.7928L11.5128 12.573L8.17695 14.4791Z"
-      />
+      <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
     </svg>
   )
 }
 
-/** Custom outline (stroke 1.8). */
+/** Lucide outline (stroke-2) · "contrast" from lucide-static@1.47.0 (#233). */
 export function IconThemeAuto(props: IconProps): JSX.Element {
   return (
     <svg
@@ -1953,16 +1963,15 @@ export function IconThemeAuto(props: IconProps): JSX.Element {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      stroke-width="1.8"
+      stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
       {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
       {iconTitle(props)}
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 3v18" />
-      <path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 18a6 6 0 0 0 0-12v12z" />
     </svg>
   )
 }
@@ -2033,56 +2042,34 @@ export function IconTrendingUp(props: IconProps): JSX.Element {
   )
 }
 
-/** Brand mark (trademarked); matches Feather's "twitter" exactly, not Heroicons. */
+/** Brand mark (trademarked), filled · "x" from simple-icons@16.33.0 (#233). */
 export function IconTwitter(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
+      fill="currentColor"
       {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
       {iconTitle(props)}
-      <path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z" />
+      <path d="M14.234 10.162 22.977 0h-2.072l-7.591 8.824L7.251 0H.258l9.168 13.343L.258 24H2.33l8.016-9.318L16.749 24h6.993zm-2.837 3.299-.929-1.329L3.076 1.56h3.182l5.965 8.532.929 1.329 7.754 11.09h-3.182z" />
     </svg>
   )
 }
 
-/** Brand mark (trademarked); no match in the checked packs. */
+/** Brand mark (trademarked), filled · "upwork" from simple-icons@16.33.0 (#233). */
 export function IconUpwork(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 102 28"
+      viewBox="0 0 24 24"
+      fill="currentColor"
       {...iconA11y(props)}
       class={`shrink-0 ${props.class || "h-5 w-auto"}`}
     >
       {iconTitle(props)}
-      <path
-        fill="currentColor"
-        d="M28.18,19.06A6.54,6.54,0,0,1,23,16c.67-5.34,2.62-7,5.2-7s4.54,2,4.54,5-2,5-4.54,5m0-13.34a7.77,7.77,0,0,0-7.9,6.08,26,26,0,0,1-1.93-5.62H12v7.9c0,2.87-1.3,5-3.85,5s-4-2.12-4-5l0-7.9H.49v7.9A8.61,8.61,0,0,0,2.6,20a7.27,7.27,0,0,0,5.54,2.35c4.41,0,7.5-3.39,7.5-8.24V8.77a25.87,25.87,0,0,0,3.66,8.05L17.34,28h3.72l1.29-7.92a11,11,0,0,0,1.36,1,8.32,8.32,0,0,0,4.14,1.28h.34A8.1,8.1,0,0,0,36.37,14a8.12,8.12,0,0,0-8.19-8.31"
-      />
-      <path
-        fill="currentColor"
-        d="M80.8,7.86V6.18H77.2V21.81h3.65V15.69c0-3.77.34-6.48,5.4-6.13V6c-2.36-.18-4.2.31-5.45,1.87"
-      />
-      <polygon
-        fill="currentColor"
-        points="55.51 6.17 52.87 17.11 50.05 6.17 45.41 6.17 42.59 17.11 39.95 6.17 36.26 6.17 40.31 21.82 44.69 21.82 47.73 10.71 50.74 21.82 55.12 21.82 59.4 6.17 55.51 6.17"
-      />
-      <path
-        fill="currentColor"
-        d="M67.42,19.07c-2.59,0-4.53-2.05-4.53-5s2-5,4.53-5S72,11,72,14s-2,5-4.54,5m0-13.35A8.1,8.1,0,0,0,59.25,14,8.18,8.18,0,1,0,75.6,14a8.11,8.11,0,0,0-8.18-8.31"
-      />
-      <path
-        fill="currentColor"
-        d="M91.47,14.13h.84l5.09,7.69h4.11l-5.85-8.53a7.66,7.66,0,0,0,4.74-7.11H96.77c0,3.37-2.66,4.65-5.3,4.65V0H87.82V21.82h3.64Z"
-      />
+      <path d="M18.561 13.158c-1.102 0-2.135-.467-3.074-1.227l.228-1.076.008-.042c.207-1.143.849-3.06 2.839-3.06 1.492 0 2.703 1.212 2.703 2.703-.001 1.489-1.212 2.702-2.704 2.702zm0-8.14c-2.539 0-4.51 1.649-5.31 4.366-1.22-1.834-2.148-4.036-2.687-5.892H7.828v7.112c-.002 1.406-1.141 2.546-2.547 2.548-1.405-.002-2.543-1.143-2.545-2.548V3.492H0v7.112c0 2.914 2.37 5.303 5.281 5.303 2.913 0 5.283-2.389 5.283-5.303v-1.19c.529 1.107 1.182 2.229 1.974 3.221l-1.673 7.873h2.797l1.213-5.71c1.063.679 2.285 1.109 3.686 1.109 3 0 5.439-2.452 5.439-5.45 0-3-2.439-5.439-5.439-5.439z" />
     </svg>
   )
 }
@@ -2131,7 +2118,7 @@ export function IconUsers(props: IconProps): JSX.Element {
   )
 }
 
-/** Custom outline (stroke 1.75). */
+/** Heroicons v2 outline (stroke-1.5) · "video-camera" from heroicons@2.2.0 (#233). */
 export function IconVideo(props: IconProps): JSX.Element {
   return (
     <svg
@@ -2139,15 +2126,16 @@ export function IconVideo(props: IconProps): JSX.Element {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      stroke-width="1.75"
-      stroke-linecap="round"
-      stroke-linejoin="round"
+      stroke-width="1.5"
       {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
       {iconTitle(props)}
-      <rect x="3" y="6" width="14" height="12" rx="2" />
-      <polygon points="22 8 17 12 22 16 22 8" />
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z"
+      />
     </svg>
   )
 }
@@ -2195,7 +2183,7 @@ export function IconWallet(props: IconProps): JSX.Element {
   )
 }
 
-/** Custom outline (stroke-2); no match in the checked packs. */
+/** Heroicons v2 outline (stroke-1.5) · "wrench" from heroicons@2.2.0 (#233). */
 export function IconWrench(props: IconProps): JSX.Element {
   return (
     <svg
@@ -2203,14 +2191,21 @@ export function IconWrench(props: IconProps): JSX.Element {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
+      stroke-width="1.5"
       {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
       {iconTitle(props)}
-      <path d="M14.7 6.3a4.5 4.5 0 0 0-5.6 5.6L4 17l3 3 5.1-5.1a4.5 4.5 0 0 0 5.6-5.6l-2.1 2.1-2-2 2.1-2.1z" />
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M21.75 6.75a4.5 4.5 0 0 1-4.884 4.484c-1.076-.091-2.264.071-2.95.904l-7.152 8.684a2.548 2.548 0 1 1-3.586-3.586l8.684-7.152c.833-.686.995-1.874.904-2.95a4.5 4.5 0 0 1 6.336-4.486l-3.276 3.276a3.004 3.004 0 0 0 2.25 2.25l3.276-3.276c.256.565.398 1.192.398 1.852Z"
+      />
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M4.867 19.125h.008v.008h-.008v-.008Z"
+      />
     </svg>
   )
 }
@@ -2237,23 +2232,18 @@ export function IconXMark(props: IconProps): JSX.Element {
   )
 }
 
-/** Brand mark (trademarked); matches Feather's "youtube" exactly, not Heroicons. */
+/** Brand mark (trademarked), filled · "youtube" from simple-icons@16.33.0 (#233). */
 export function IconYouTube(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
+      fill="currentColor"
       {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
       {iconTitle(props)}
-      <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z" />
-      <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" />
+      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
     </svg>
   )
 }
@@ -2410,25 +2400,26 @@ export function IconDownload(props: IconProps): JSX.Element {
   )
 }
 
-/** Custom filled glyph (no stroke) · from a source application. Filled and strokeless where the rest of the set is
- *  outlined, and carried over on the source's own 25×24 grid. The `d`, `fill-rule` and `clip-rule` are
- *  the source's byte for byte; `fill="none"` on the root and the source's `width`/`height` were
- *  dropped, and the one path's `fill` moved onto the root as `currentColor` — the same substitution
- *  as `IconPlaySolid`'s hard-coded red. */
+/**
+ * Heroicons v1 outline (stroke-2) · from a source application, redrawn as "external-link" from
+ * heroicons@1.0.6 (#233).
+ */
 export function IconExternalLink(props: IconProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 25 24"
-      fill="currentColor"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
       {...iconA11y(props)}
       class={`shrink-0 ${props.class || "size-5"}`}
     >
       {iconTitle(props)}
       <path
-        fill-rule="evenodd"
-        clip-rule="evenodd"
-        d="M14.6045 12.1942C14.1023 12.6964 13.288 12.6964 12.7871 12.1942C12.2849 11.6933 12.2849 10.879 12.7871 10.3768L20.5912 2.5714H15.6962C14.9864 2.5714 14.4105 1.99551 14.4105 1.2857C14.4105 0.575891 14.9864 0 15.6962 0H23.6957C24.4056 0 24.9814 0.575891 24.9814 1.2857V9.28515C24.9814 9.99496 24.4056 10.5709 23.6957 10.5709C22.9859 10.5709 22.41 9.99496 22.41 9.28515V4.39024L14.6045 12.1942ZM3.55287 5.57164C3.55287 3.91497 4.89618 2.57167 6.55286 2.57167H9.40954C10.1194 2.57167 10.6952 1.99578 10.6952 1.28597C10.6952 0.576165 10.1194 0.000274328 9.40954 0.000274328H6.55286C3.47518 0.000274328 0.981445 2.49532 0.981445 5.57164V18.4286C0.981445 21.505 3.47518 24 6.55286 24H19.41C22.4863 24 24.9814 21.505 24.9814 18.4286V15.572C24.9814 14.8622 24.4055 14.2863 23.6957 14.2863C22.9859 14.2863 22.41 14.8622 22.41 15.572V18.4286C22.41 20.0853 21.0666 21.4286 19.41 21.4286H6.55286C4.89618 21.4286 3.55287 20.0853 3.55287 18.4286V5.57164Z"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
       />
     </svg>
   )

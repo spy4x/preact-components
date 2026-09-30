@@ -37,6 +37,7 @@
     "npm:lucide-static@1.47.0": "1.47.0",
     "npm:preact-render-to-string@6.7.0": "6.7.0_preact@10.29.8",
     "npm:preact@10.29.8": "10.29.8_preact-render-to-string@6.7.0",
+    "npm:simple-icons@16.33.0": "16.33.0",
     "npm:tailwind-merge@3.7.0": "3.7.0",
     "npm:tailwindcss@4.1.12": "4.1.12",
     "npm:wouter-preact@3.9.0": "3.9.0_preact@10.29.8_preact-render-to-string@6.7.0"
@@ -328,6 +329,9 @@
     "regexparam@3.0.0": {
       "integrity": "sha512-RSYAtP31mvYLkAHrOlh25pCNQ5hWnT106VukGaaFfuJrZFkGRX5GhUAdPqpSDXxOhA2c4akmRuplv1mRqnBn6Q=="
     },
+    "simple-icons@16.33.0": {
+      "integrity": "sha512-z14u6A8ngAg9mgERRsNO8YkjIMefehIpBk7A8Dz3Gd91945qFP19MLPSHgV4z8P5u/MRYd5e07OTzaDoB4d6qA=="
+    },
     "tailwind-merge@3.7.0": {
       "integrity": "sha512-XPPUyAc+cvspz3lHTcR/QgPfW2A0lv/xQNIjX3HGhLR+Nq2lHaLq5MtTesHn8GUr3W3DguT2KT5x3NVgRtYwmA=="
     },
@@ -381,7 +385,8 @@
           "npm:feather-icons@4.29.2",
           "npm:heroicons@1.0.6",
           "npm:heroicons@2.2.0",
-          "npm:lucide-static@1.47.0"
+          "npm:lucide-static@1.47.0",
+          "npm:simple-icons@16.33.0"
         ]
       },
       "map": {

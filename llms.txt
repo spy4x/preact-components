@@ -175,92 +175,92 @@ Install: `deno add jsr:@spy4x/preact-icons`
 - `IconBars3` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
 - `IconBell` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
 - `IconBookOpen` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
-- `IconBookmark` (component): Custom outline (stroke 1.2). Import: `@spy4x/preact-icons`
+- `IconBookmark` (component): Heroicons v1 outline (stroke-2) · "bookmark" from heroicons@1.0.6 (#233). Import: `@spy4x/preact-icons`
 - `IconBriefcase` (component): Heroicons v2 outline (stroke-2); matches Heroicons v2's "briefcase" exactly, not v1. Import: `@spy4x/preact-icons`
-- `IconBuilding` (component): Custom outline (stroke 1.75). Import: `@spy4x/preact-icons`
+- `IconBuilding` (component): Heroicons v1 outline (stroke-2) · "office-building" from heroicons@1.0.6 (#233). Import: `@spy4x/preact-icons`
 - `IconBuildingOffice2` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
 - `IconCalendar` (component): Feather outline (stroke-2); matches Feather's "calendar" exactly, not Heroicons. Import: `@spy4x/preact-icons`
 - `IconCalendarDays` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
 - `IconChartPie` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
-- `IconChatBubble` (component): Custom outline (stroke-2); no match in the checked packs. Import: `@spy4x/preact-icons`
+- `IconChatBubble` (component): Heroicons v1 outline (stroke-2) · "chat-alt" from heroicons@1.0.6 (#233). Import: `@spy4x/preact-icons`
 - `IconCheck` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
 - `IconCheckCircle` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
 - `IconChevronDown` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
 - `IconChevronLeft` (component): Lucide outline (stroke-2); matches Lucide's "chevron-left" exactly, not Heroicons. Import: `@spy4x/preact-icons`
 - `IconChevronRight` (component): Lucide outline (stroke-2); matches Lucide's "chevron-right" exactly, not Heroicons. Import: `@spy4x/preact-icons`
-- `IconChip` (component): Custom outline (stroke-2); uses a `rect`, which Heroicons never does, and no match in the checked packs. Import: `@spy4x/preact-icons`
-- `IconCircleDot` (component): Custom outline (stroke 1.75). Import: `@spy4x/preact-icons`
+- `IconChip` (component): Heroicons v1 outline (stroke-2) · "chip" from heroicons@1.0.6 (#233). Import: `@spy4x/preact-icons`
+- `IconCircleDot` (component): Lucide outline (stroke-2) · "circle-dot" from lucide-static@1.47.0 (#233). Import: `@spy4x/preact-icons`
 - `IconClipboard` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
 - `IconClipboardCopy` (component): Heroicons v1 outline (stroke-2) · from template. Import: `@spy4x/preact-icons`
 - `IconClock` (component): Heroicons v2 outline (stroke-2); matches Heroicons v2's "clock" exactly, not v1. Import: `@spy4x/preact-icons`
 - `IconCode` (component): Feather outline (stroke-2); matches Feather's "code" exactly, not Heroicons. Import: `@spy4x/preact-icons`
 - `IconCog6Tooth` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
 - `IconCpuChip` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
-- `IconCreditCard` (component): Custom outline (stroke 1.75). Import: `@spy4x/preact-icons`
+- `IconCreditCard` (component): Heroicons v1 outline (stroke-2) · "credit-card" from heroicons@1.0.6 (#233). Import: `@spy4x/preact-icons`
 - `IconCursorArrowRays` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
-- `IconDocument` (component): Custom outline (stroke 1.75). Import: `@spy4x/preact-icons`
+- `IconDocument` (component): Heroicons v2 outline (stroke-1.5) · "document" from heroicons@2.2.0 (#233). Import: `@spy4x/preact-icons`
 - `IconDollar` (component): Heroicons v2 outline (stroke-2); matches Heroicons v2's "currency-dollar" exactly, not v1. Import: `@spy4x/preact-icons`
 - `IconEllipsisVertical` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
 - `IconExternal` (component): Feather outline (stroke 1.75) · matches Feather's "external-link" exactly. Import: `@spy4x/preact-icons`
 - `IconEye` (component): Heroicons v1 outline (stroke-2) · from template. Import: `@spy4x/preact-icons`
 - `IconEyeOff` (component): Heroicons v1 outline (stroke-2) · from template. Import: `@spy4x/preact-icons`
-- `IconFire` (component): Heroicons v2 outline (stroke-2); near-matches Heroicons v2's "fire", not v1. Import: `@spy4x/preact-icons`
-- `IconFlag` (component): Custom outline (stroke-2); no match in the checked packs. Import: `@spy4x/preact-icons`
-- `IconFlask` (component): Custom outline (stroke 1.75). Import: `@spy4x/preact-icons`
+- `IconFire` (component): Heroicons v2 outline (stroke-1.5) · "fire" from heroicons@2.2.0 (#233). Import: `@spy4x/preact-icons`
+- `IconFlag` (component): Heroicons v1 outline (stroke-2) · "flag" from heroicons@1.0.6 (#233). Import: `@spy4x/preact-icons`
+- `IconFlask` (component): Heroicons v1 outline (stroke-2) · "beaker" from heroicons@1.0.6 (#233). Import: `@spy4x/preact-icons`
 - `IconFolder` (component): Heroicons v1 outline (stroke-2) · from template. Import: `@spy4x/preact-icons`
 - `IconFunnel` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
-- `IconGateway` (component): Custom outline (stroke n/a) · from template; no match in the checked packs. Import: `@spy4x/preact-icons`
-- `IconGitHub` (component): Brand mark (trademarked); no match in the checked packs. Import: `@spy4x/preact-icons`
-- `IconGlobe` (component): Custom outline (stroke 1.75). Import: `@spy4x/preact-icons`
+- `IconGateway` (component): Lucide outline (stroke-2) · "router" from lucide-static@1.47.0 (#233). Import: `@spy4x/preact-icons`
+- `IconGitHub` (component): Brand mark (trademarked), filled · "github" from simple-icons@16.33.0 (#233). Import: `@spy4x/preact-icons`
+- `IconGlobe` (component): Heroicons v1 outline (stroke-2) · "globe-alt" from heroicons@1.0.6 (#233). Import: `@spy4x/preact-icons`
 - `IconGrid` (component): Heroicons v2 outline (stroke-2); matches Heroicons v2's "squares-2x2" exactly, not v1. Import: `@spy4x/preact-icons`
 - `IconHandThumbUp` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
 - `IconHome` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
-- `IconImage` (component): Custom outline (stroke 1.75). Import: `@spy4x/preact-icons`
+- `IconImage` (component): Heroicons v1 outline (stroke-2) · "photograph" from heroicons@1.0.6 (#233). Import: `@spy4x/preact-icons`
 - `IconInformationCircle` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
 - `IconKey` (component): Heroicons v2 outline (stroke-2); matches Heroicons v2's "key" exactly, not v1. Import: `@spy4x/preact-icons`
-- `IconLens` (component): Custom outline (stroke 1.75). Import: `@spy4x/preact-icons`
+- `IconLens` (component): Heroicons v1 outline (stroke-2) · "zoom-in" from heroicons@1.0.6 (#233). Import: `@spy4x/preact-icons`
 - `IconLightBulb` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
 - `IconLink` (component): Feather/Lucide outline (stroke 1.75) · matches both packs' "link" exactly. Import: `@spy4x/preact-icons`
-- `IconLinkedIn` (component): Brand mark (trademarked); no match in the checked packs. Import: `@spy4x/preact-icons`
+- `IconLinkedIn` (component): Brand mark (trademarked), Feather outline (stroke-2) · "linkedin" from feather-icons@4.29.2 (#233). Import: `@spy4x/preact-icons`
 - `IconList` (component): Feather outline (stroke 1.75) · matches Feather's "list" exactly. Import: `@spy4x/preact-icons`
-- `IconLoading` (component): Custom outline (stroke 4) · from template. Import: `@spy4x/preact-icons`
+- `IconLoading` (component): Lucide outline (stroke-2) · "loader" from lucide-static@1.47.0 (#233). Import: `@spy4x/preact-icons`
 - `IconLocationMarker` (component): Heroicons v1 outline (stroke-2) · from template. Import: `@spy4x/preact-icons`
 - `IconLogout` (component): Feather outline (stroke 1.75) · matches Feather's "log-out" exactly. Import: `@spy4x/preact-icons`
 - `IconMail` (component): Heroicons v2 outline (stroke-2); matches Heroicons v2's "envelope" exactly, not v1. Import: `@spy4x/preact-icons`
 - `IconMap` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
 - `IconMinus` (component): Heroicons v2 outline (stroke 1.8); matches Heroicons v2's and Lucide's "minus" exactly. Import: `@spy4x/preact-icons`
-- `IconMoon` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
-- `IconPackage` (component): Custom outline (stroke 1.75). Import: `@spy4x/preact-icons`
+- `IconMoon` (component): Heroicons v2 outline (stroke-1.5) · "moon" from heroicons@2.2.0 (#233). Import: `@spy4x/preact-icons`
+- `IconPackage` (component): Heroicons v1 outline (stroke-2) · "cube" from heroicons@1.0.6 (#233). Import: `@spy4x/preact-icons`
 - `IconPencilSquare` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
 - `IconPlus` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
-- `IconQuote` (component): Filled glyph, not a brand mark; no match in the checked packs. Import: `@spy4x/preact-icons`
-- `IconRocket` (component): Custom outline (stroke 1.75). Import: `@spy4x/preact-icons`
+- `IconQuote` (component): Lucide outline (stroke-2) · "quote" from lucide-static@1.47.0 (#233). Import: `@spy4x/preact-icons`
+- `IconRocket` (component): Heroicons v2 outline (stroke-1.5) · "rocket-launch" from heroicons@2.2.0 (#233). Import: `@spy4x/preact-icons`
 - `IconSearch` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
-- `IconSensor` (component): Custom outline (stroke-2) · from template; no match in the checked packs. Import: `@spy4x/preact-icons`
+- `IconSensor` (component): Heroicons v1 outline (stroke-2) · "status-online" from heroicons@1.0.6 (#233). Import: `@spy4x/preact-icons`
 - `IconServer` (component): Feather outline (stroke-2); matches Feather's and Lucide's "server" exactly, not Heroicons. Import: `@spy4x/preact-icons`
 - `IconShare` (component): Feather outline (stroke 1.75) · matches Feather's "share" exactly. Import: `@spy4x/preact-icons`
 - `IconShieldCheck` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
-- `IconSparkle` (component): Custom outline (stroke 1.75). Import: `@spy4x/preact-icons`
+- `IconSparkle` (component): Heroicons v1 outline (stroke-2) · "sparkles" from heroicons@1.0.6 (#233). Import: `@spy4x/preact-icons`
 - `IconSpinner` (component): Lucide outline (stroke 2.5); matches Lucide's "loader-circle"/"loader-2" exactly. Import: `@spy4x/preact-icons`
 - `IconStar` (component): Feather outline (stroke-2); matches Feather's "star" exactly, not Heroicons. Import: `@spy4x/preact-icons`
 - `IconSun` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
 - `IconTag` (component): Feather outline (stroke 1.75) · matches Feather's "tag" exactly. Import: `@spy4x/preact-icons`
-- `IconTarget` (component): Feather/Lucide outline (stroke-2); near-matches both packs' "target", not Heroicons. Import: `@spy4x/preact-icons`
-- `IconTelegram` (component): Brand mark (trademarked); no match in the checked packs. Import: `@spy4x/preact-icons`
-- `IconThemeAuto` (component): Custom outline (stroke 1.8). Import: `@spy4x/preact-icons`
+- `IconTarget` (component): Lucide outline (stroke-2) · "target" from lucide-static@1.47.0 (#233). Import: `@spy4x/preact-icons`
+- `IconTelegram` (component): Brand mark (trademarked), filled · "telegram" from simple-icons@16.33.0 (#233). Import: `@spy4x/preact-icons`
+- `IconThemeAuto` (component): Lucide outline (stroke-2) · "contrast" from lucide-static@1.47.0 (#233). Import: `@spy4x/preact-icons`
 - `IconTrashBin` (component): Heroicons v1 outline (stroke-2) · from template. Import: `@spy4x/preact-icons`
 - `IconTrendingDown` (component): Heroicons v1 outline (stroke-2) · from template. Import: `@spy4x/preact-icons`
 - `IconTrendingUp` (component): Heroicons v1 outline (stroke-2) · from template. Import: `@spy4x/preact-icons`
-- `IconTwitter` (component): Brand mark (trademarked); matches Feather's "twitter" exactly, not Heroicons. Import: `@spy4x/preact-icons`
-- `IconUpwork` (component): Brand mark (trademarked); no match in the checked packs. Import: `@spy4x/preact-icons`
+- `IconTwitter` (component): Brand mark (trademarked), filled · "x" from simple-icons@16.33.0 (#233). Import: `@spy4x/preact-icons`
+- `IconUpwork` (component): Brand mark (trademarked), filled · "upwork" from simple-icons@16.33.0 (#233). Import: `@spy4x/preact-icons`
 - `IconUser` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
 - `IconUsers` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
-- `IconVideo` (component): Custom outline (stroke 1.75). Import: `@spy4x/preact-icons`
+- `IconVideo` (component): Heroicons v2 outline (stroke-1.5) · "video-camera" from heroicons@2.2.0 (#233). Import: `@spy4x/preact-icons`
 - `IconViewColumns` (component): Heroicons v2 outline (stroke-1.5); matches Heroicons v2's "view-columns" exactly, not v1. Import: `@spy4x/preact-icons`
 - `IconWallet` (component): Lucide outline (stroke-2); matches Lucide's "wallet" exactly, not Heroicons. Import: `@spy4x/preact-icons`
-- `IconWrench` (component): Custom outline (stroke-2); no match in the checked packs. Import: `@spy4x/preact-icons`
+- `IconWrench` (component): Heroicons v2 outline (stroke-1.5) · "wrench" from heroicons@2.2.0 (#233). Import: `@spy4x/preact-icons`
 - `IconXMark` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
-- `IconYouTube` (component): Brand mark (trademarked); matches Feather's "youtube" exactly, not Heroicons. Import: `@spy4x/preact-icons`
+- `IconYouTube` (component): Brand mark (trademarked), filled · "youtube" from simple-icons@16.33.0 (#233). Import: `@spy4x/preact-icons`
 - `IconZap` (component): Feather outline (stroke 1.75) · matches Feather's "zap" exactly. Import: `@spy4x/preact-icons`
 - `IconArrowsPointingOut` (component): Heroicons v1 outline (stroke-2) · from a source application. Import: `@spy4x/preact-icons`
 - `IconCloudArrowUp` (component): Heroicons v1 outline (stroke-2) · from a source application. Import: `@spy4x/preact-icons`
@@ -268,7 +268,7 @@ Install: `deno add jsr:@spy4x/preact-icons`
 - `IconDocumentDuplicate` (component): Heroicons v1 outline (stroke-2) · from a source application. Import: `@spy4x/preact-icons`
 - `IconDocumentText` (component): Heroicons v1 outline (stroke-2) · from a source application. Import: `@spy4x/preact-icons`
 - `IconDownload` (component): Heroicons v1 outline (stroke-2) · from a source application. Import: `@spy4x/preact-icons`
-- `IconExternalLink` (component): Custom filled glyph (no stroke) · from a source application. Import: `@spy4x/preact-icons`
+- `IconExternalLink` (component): Heroicons v1 outline (stroke-2) · from a source application, redrawn as "external-link" from heroicons@1.0.6 (#233). Import: `@spy4x/preact-icons`
 - `IconFilm` (component): Heroicons v1 outline (stroke-2) · from a source application. Import: `@spy4x/preact-icons`
 - `IconLockClosed` (component): Heroicons v1 outline (stroke-2) · from a source application. Import: `@spy4x/preact-icons`
 - `IconLockClosedFilled` (component): Heroicons v1 solid · from a source application; matches Heroicons v1's "lock-closed" exactly, not v2. Import: `@spy4x/preact-icons`

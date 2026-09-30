@@ -807,9 +807,10 @@ export interface IconProps {
   `width`/`height` attributes.
 - Colour comes from `currentColor`, so an icon inherits the text colour of its container.
 - `shrink-0` is always applied, on top of a per-icon default size — `size-5` (81 glyphs) unless
-  the glyph already shipped elsewhere as `size-6` (38 glyphs). Two glyphs are not square:
-  `IconUpwork` (`viewBox="0 0 102 28"`) defaults to `h-5 w-auto`, and `IconExternalLink`
-  (`viewBox="0 0 25 24"`) defaults to `size-5` and is stretched by ~4% rather than letterboxed.
+  the glyph already shipped elsewhere as `size-6` (38 glyphs). One glyph, `IconUpwork`, defaults to
+  `h-5 w-auto` instead, kept from when it was a wide wordmark. Every glyph is square now — 119
+  draw on a 24-unit `viewBox`, `IconLockClosedFilled` on Heroicons v1 solid's 20-unit one — so
+  `IconUpwork` renders 20 × 20 at its default.
 - Passing `class` replaces the default size rather than adding to it, because the default sits on
   the right of the `||` in `shrink-0 ${props.class || "<default size>"}`.
   `IconLoading` and `IconSpinner` additionally hard-code `animate-spin`.
@@ -828,93 +829,130 @@ export interface IconProps {
 
 ## Style families
 
-The set is a merge of six apps and the families are **not** visually interchangeable. Pick one
-family per surface; mixing them is visible at small sizes.
+Every glyph is a published pack's own drawing, copied exactly (see "Provenance" below), but the
+packs draw differently and the families are **not** visually interchangeable. Pick one family per
+surface; mixing them is visible at small sizes.
 
-| Family                         | Count | Notes                                                                                                                                                                                                                                                  |
-| ------------------------------ | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Heroicons (v1 or v2)           | 55    | 53 match exactly, 2 nearly (`IconFire`, `IconMoon`) — pack and version are on each glyph's own JSDoc line, not summarised here                                                                                                                         |
-| Feather and/or Lucide outlines | 19    | 18 match exactly, 1 nearly (`IconTarget`) — which pack is on each glyph's own JSDoc line                                                                                                                                                               |
-| Custom outlines                | 22    | 19 have no exact or near match in the four checked packs; 3 (`IconCircleDot`, `IconCreditCard`, `IconDocument`) near-match Feather or Lucide but keep this generic label — a near match alone was not treated as confident enough to rename the family |
-| Brand marks (trademarked)      | 6     | GitHub, LinkedIn, Telegram, Upwork, Twitter, YouTube; 2 (Twitter, YouTube) match Feather exactly, the other 4 match none of the four packs                                                                                                             |
-| Ported                         | 18    | 17 match exactly, 1 (`IconExternalLink`) matches none — bucketed here by source regardless of match, so the rows above exclude these 18                                                                                                                |
+| Family                         | Count | Notes                                                                                                                                                                        |
+| ------------------------------ | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Heroicons (v1 or v2)           | 72    | v1 outlines are `stroke-2`, v2 outlines `stroke-1.5` (6 are rendered at `stroke-2` and 1, `IconMinus`, at `stroke 1.8`); pack and version are on each glyph's own JSDoc line |
+| Feather and/or Lucide outlines | 24    | round caps and joins; 15 are rendered at `stroke-2`, 8 at `stroke 1.75` and 1 at `stroke 2.5`; which pack is on each glyph's own JSDoc line                                  |
+| Brand marks (trademarked)      | 6     | GitHub, Telegram, Upwork, Twitter (drawn as X's current mark) and YouTube are filled marks from Simple Icons; LinkedIn is Feather's outline — see "Provenance"               |
+| Ported                         | 18    | glyphs from the ported set, bucketed here by source; all 18 are pack drawings too — see the split below                                                                      |
 
-Counts above are `provenance.ts`'s own — see "Provenance" below for the full method and the
-complete exact/near/none breakdown, and run `deno task --cwd icons provenance` for the per-glyph
-list. The table is a partition of all 120 glyphs: every row above is disjoint from every other,
-the Ported row's 18 included.
+The table is a partition of all 120 glyphs: every row above is disjoint from every other, the
+Ported row's 18 included.
 
-The Ported row is a family, not a single weight, and the split below is by rendering, not by match
-outcome — a different partition of the same 18 from the table's own "17 match exactly, 1 matches
-none", not a second count to add against it: 15 `stroke-2` v1 outlines, all 15 exact matches to
-Heroicons v1's own outline pack, and 3 filled glyphs drawn without a stroke (`IconExternalLink`,
-`IconLockClosedFilled`, `IconPlaySolid`). Of those 3, `IconExternalLink` is the table's one "matches
-none"; `IconLockClosedFilled` and `IconPlaySolid` are 2 of its 17 exact matches — to Heroicons v1
-solid and v2 outline respectively, not to a v1 outline glyph, which is why they sit outside the 15
-here. No Ported glyph is `stroke-1.5`.
+The Ported row is a family, not a single weight, and the split below is by rendering: 16 `stroke-2`
+v1 outlines, all 16 exact matches to Heroicons v1's own outline pack, and 2 filled glyphs drawn
+without a stroke (`IconLockClosedFilled`, `IconPlaySolid`) — exact matches to Heroicons v1 solid and
+v2 outline respectively. One of the 16, `IconExternalLink`, matched no pack as ported and was redrawn
+as Heroicons v1's `external-link` in
+[issue #233](https://github.com/spy4x/preact-components/issues/233). No Ported glyph is
+`stroke-1.5`.
 
 Rendered stroke width is what matters visually, and the table above does not show it: a
 `stroke-1.5` glyph next to a `stroke-2` glyph reads as a mistake regardless of which pack either one
-matches. Each icon's JSDoc line names both its rendered family and, where `provenance.ts` found one,
-the pack and version it matches — so the exact family of any one glyph is one grep away:
+comes from. Each icon's JSDoc line names both its rendered family and the pack and version it is
+drawn from — so the exact family of any one glyph is one grep away:
 
 ```bash
 grep -B1 'export function IconSearch' +index.tsx
 ```
 
-Two known warts, kept rather than redrawn:
-
-- `IconGateway` carries `fill="white"` from `template`, so it is the only glyph that does not
-  follow the surrounding text colour.
-- `IconLoading` (thick two-tone spinner) and `IconSpinner` (a thin arc from a source application)
-  are both spinners. They are different drawings, so both survived the body dedupe.
+One known wart, kept rather than redrawn: `IconLoading` (Lucide's eight-spoke `loader`) and
+`IconSpinner` (Lucide's `loader-circle` arc) are both spinners. They are different drawings, so both
+survived the body dedupe.
 
 ## Provenance
 
 These glyphs were copied out of six source apps by hand, without keeping track of where each one
 had originally come from. Per the repository owner's comment on
 [issue #111](https://github.com/spy4x/preact-components/issues/111) (2026-09-23): most came from
-Heroicons; a few may have come from an image search, with no known licence.
+Heroicons; a few may have come from an image search, with no known licence. The owner then decided
+(2026-09-30, [issue #233](https://github.com/spy4x/preact-components/issues/233)) that every glyph
+must come from a FOSS pack, so every glyph that matched no pack exactly was replaced by a pack's own
+drawing, under the same export name and props.
 
 `provenance.ts`, in this package's own source repository, compares every exported glyph's geometry
-against the published Heroicons v1, Heroicons v2, Feather and Lucide packs — the ones named above
-plus the two an earlier shape-based audit also flagged by eye — normalising path and shape data so
-formatting differences (spacing, number precision, attribute order) do not hide a real match. Its
-own JSDoc explains the normalisation and its limits in full. It is a development tool excluded from
-this published package (see `icons/deno.json` → `publish.exclude`), so `deno task --cwd icons
-provenance` only works from a checkout of the source repository —
-<https://github.com/spy4x/preact-components> — not from an installed copy of this package:
+against the published Heroicons v1, Heroicons v2, Feather, Lucide and Simple Icons packs,
+normalising path and shape data so formatting differences (spacing, number precision, attribute
+order) do not hide a real match. Its own JSDoc explains the normalisation and its limits in full. It
+is a development tool excluded from this published package (see `icons/deno.json` →
+`publish.exclude`), so `deno task --cwd icons provenance` only works from a checkout of the source
+repository — <https://github.com/spy4x/preact-components> — not from an installed copy of this
+package:
 
 ```bash
 git clone https://github.com/spy4x/preact-components && cd preact-components
 deno task --cwd icons provenance
 ```
 
-Of the 120 glyphs: **90 match a pack's glyph exactly**, **6 match one nearly** (same shape, different
-numbers — typically a resize or a hand-adjusted curve), and **24 match none of the four packs**.
-[`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md) carries the licence text for every pack an
-exact or near match was found in — Heroicons v1, Heroicons v2, Feather and Lucide, all four.
+Of the 120 glyphs, **all 120 match a pack's glyph exactly**: Heroicons v1 (`heroicons@1.0.6`),
+Heroicons v2 (`heroicons@2.2.0`), Feather (`feather-icons@4.29.2`), Lucide (`lucide-static@1.47.0`)
+or Simple Icons (`simple-icons@16.33.0`). Each glyph's JSDoc line names its pack, and for the 32
+replaced in #233 also the upstream file name and version.
+[`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md) carries the licence text for all five packs.
 
 One glyph was added after the merge, straight from a pack rather than from a source app:
 `IconViewColumns` is Heroicons v2's `view-columns` (24, outline), for a board view toggle
 ([issue #381](https://github.com/spy4x/preact-components/issues/381)).
 
-A glyph with no match is not necessarily unlicensed — it may be a pack glyph redrawn enough to miss
-a shape comparison, or from a pack this check does not compare against — but nothing here
-establishes a licence for it, and it is not covered by the notices file. Four are the trademarked
-brand marks (GitHub, LinkedIn, Telegram, Upwork — Twitter and YouTube matched Feather exactly, so
-they are covered by the notice even though they are also brand marks); the other 20, by name:
+### Brand marks
 
-`IconBookmark`, `IconBuilding`, `IconChatBubble`, `IconChip`, `IconExternalLink`, `IconFlag`,
-`IconFlask`, `IconGateway`, `IconGlobe`, `IconImage`, `IconLens`, `IconLoading`, `IconPackage`,
-`IconQuote`, `IconRocket`, `IconSensor`, `IconSparkle`, `IconThemeAuto`, `IconVideo`, `IconWrench`.
+Five brand marks are Simple Icons' drawings (CC0): `IconGitHub` (`github`), `IconTelegram`
+(`telegram`), `IconUpwork` (`upwork`), `IconTwitter` (`x`, the brand's current mark; Simple Icons
+lists Twitter as its alias) and `IconYouTube` (`youtube`). Simple Icons 16.33.0 no longer ships a
+LinkedIn mark, so `IconLinkedIn` is Feather's `linkedin` outline (MIT).
 
-Swapping any of these 24 for a licensed replacement, or dropping them, is the repository owner's
-call — it changes what a consumer sees — and is tracked in
-[issue #233](https://github.com/spy4x/preact-components/issues/233), not done here.
-[Issue #10](https://github.com/spy4x/preact-components/issues/10) tracks replacing the whole set
-with a single licensed pack; issue #233 is the narrower, immediate version of that, scoped to the
-24 glyphs this check could not attribute.
+CC0 and MIT cover the drawings, not the trademarks. Each mark still belongs to its company, and
+using one is subject to that company's brand guidelines — Simple Icons' own disclaimer says the
+same. Before #233, `IconUpwork` was Upwork's wordmark on a `102 × 28` `viewBox`. It is now Upwork's
+square mark on a 24-unit one. Its `h-5 w-auto` default is unchanged, so at its default size it is
+20 px tall as before, but 20 px wide instead of about 73 px.
+
+### Replaced in #233
+
+Every drawing below changed in #233; the export name and props did not. The old drawing either
+matched no pack ("none") or matched one only nearly ("near": same shape, different numbers).
+
+| Glyph              | Before | Now                                              |
+| ------------------ | ------ | ------------------------------------------------ |
+| `IconBookmark`     | none   | Heroicons v1 `bookmark`                          |
+| `IconBuilding`     | none   | Heroicons v1 `office-building`                   |
+| `IconChatBubble`   | none   | Heroicons v1 `chat-alt`                          |
+| `IconChip`         | none   | Heroicons v1 `chip`                              |
+| `IconCircleDot`    | near   | Lucide `circle-dot`                              |
+| `IconCreditCard`   | near   | Heroicons v1 `credit-card`                       |
+| `IconDocument`     | near   | Heroicons v2 `document`                          |
+| `IconExternalLink` | none   | Heroicons v1 `external-link`                     |
+| `IconFire`         | near   | Heroicons v2 `fire`                              |
+| `IconFlag`         | none   | Heroicons v1 `flag`                              |
+| `IconFlask`        | none   | Heroicons v1 `beaker`                            |
+| `IconGateway`      | none   | Lucide `router`                                  |
+| `IconGitHub`       | none   | Simple Icons `github`                            |
+| `IconGlobe`        | none   | Heroicons v1 `globe-alt`                         |
+| `IconImage`        | none   | Heroicons v1 `photograph`                        |
+| `IconLens`         | none   | Heroicons v1 `zoom-in`                           |
+| `IconLinkedIn`     | none   | Feather `linkedin`                               |
+| `IconLoading`      | none   | Lucide `loader`                                  |
+| `IconMoon`         | near   | Heroicons v2 `moon`                              |
+| `IconPackage`      | none   | Heroicons v1 `cube`                              |
+| `IconQuote`        | none   | Lucide `quote`                                   |
+| `IconRocket`       | none   | Heroicons v2 `rocket-launch`                     |
+| `IconSensor`       | none   | Heroicons v1 `status-online`                     |
+| `IconSparkle`      | none   | Heroicons v1 `sparkles`                          |
+| `IconTarget`       | near   | Lucide `target` (Feather's `target` is the same) |
+| `IconTelegram`     | none   | Simple Icons `telegram`                          |
+| `IconThemeAuto`    | none   | Lucide `contrast`                                |
+| `IconTwitter`      | exact  | Simple Icons `x` (was Feather's `twitter` bird)  |
+| `IconUpwork`       | none   | Simple Icons `upwork`                            |
+| `IconVideo`        | none   | Heroicons v2 `video-camera`                      |
+| `IconWrench`       | none   | Heroicons v2 `wrench`                            |
+| `IconYouTube`      | exact  | Simple Icons `youtube` (was Feather's `youtube`) |
+
+[Issue #10](https://github.com/spy4x/preact-components/issues/10) tracked replacing the whole set
+with a single licensed pack; #233 settled its licensing question glyph by glyph instead.
 
 ## How this set was merged
 
@@ -1074,11 +1112,10 @@ Rules, in order:
    **Brand marks.** `facebook`, `google` and `instagram` are deliberately absent. They are
    third-party trademarked logos, and this package is MIT-licensed and redistributed to any app
    that consumes it, so shipping them would put a trademark obligation on every consumer without
-   them asking for it. Substituting a brand mark is the consumer's call. The five brand-adjacent
-   glyphs already shipped from an earlier source application (GitHub, LinkedIn, Telegram, Upwork,
-   Quote) are a
-   separate, pre-existing question owned by the repo owner and tracked in
-   [issue #10](https://github.com/spy4x/preact-components/issues/10); this merge adds none.
+   them asking for it. Substituting a brand mark is the consumer's call. The brand marks already
+   shipped from earlier source applications were later replaced with Simple Icons' and Feather's
+   own drawings in [issue #233](https://github.com/spy4x/preact-components/issues/233) — see
+   "Provenance" → "Brand marks"; this merge adds none.
 
    **Near-misses kept as one export.** `cross.svelte`'s geometry is the same X as `IconXMark`'s,
    only at `stroke-2` rather than the v2 incumbent's `stroke-1.5`, and both default to `size-6`, so
