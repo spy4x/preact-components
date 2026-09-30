@@ -281,7 +281,7 @@ export interface OverviewProps {
 
 const MUTED = "text-muted"
 const LINK =
-  "font-medium text-purple-800 underline decoration-purple-300 underline-offset-4 hover:decoration-purple-700 dark:text-purple-300 dark:decoration-purple-700 dark:hover:decoration-purple-300"
+  "font-medium text-accent-800 underline decoration-accent-300 underline-offset-4 hover:decoration-accent-700 dark:text-accent-300 dark:decoration-accent-700 dark:hover:decoration-accent-300"
 
 /**
  * The landing page: the hero, the live mini app, the "why" strip, "Get started", the packages
@@ -298,7 +298,7 @@ export function Overview(
     <Stack gap="2xl" data-e2e="ui-guide-overview">
       <header class="flex flex-col gap-6" data-overview-part="hero">
         <Stack gap="md">
-          <p class="font-mono text-sm font-medium text-purple-700 dark:text-purple-300">
+          <p class="font-mono text-sm font-medium text-accent-700 dark:text-accent-300">
             {labels.title}
           </p>
           <h1 class="max-w-3xl text-3xl font-bold tracking-tight text-balance text-foreground sm:text-5xl">
@@ -370,7 +370,7 @@ export function Overview(
                 data-why={id}
                 class="flex min-w-0 gap-4 rounded-xl border border-subtle bg-surface p-4 sm:p-6"
               >
-                <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-200">
+                <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent-100 text-accent-800 dark:bg-accent-950 dark:text-accent-200">
                   <Icon class="size-5" />
                 </span>
                 <span class="flex min-w-0 flex-col gap-1">
@@ -487,7 +487,7 @@ export function Overview(
                         : labels.examplesComing}
                     </span>
                   </span>
-                  <span class="font-mono text-xs text-purple-700 dark:text-purple-300">
+                  <span class="font-mono text-xs text-accent-700 dark:text-accent-300">
                     {page.packageName}
                   </span>
                   <span class={cn("text-sm", MUTED)}>
@@ -527,7 +527,7 @@ function Step(
         <span class="flex items-center gap-2">
           <span
             aria-hidden="true"
-            class="flex size-7 shrink-0 items-center justify-center rounded-full bg-purple-100 text-sm font-semibold text-purple-800 dark:bg-purple-950 dark:text-purple-200"
+            class="flex size-7 shrink-0 items-center justify-center rounded-full bg-accent-100 text-sm font-semibold text-accent-800 dark:bg-accent-950 dark:text-accent-200"
             data-step={number}
           >
             {number}

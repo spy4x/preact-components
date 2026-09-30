@@ -76,11 +76,11 @@ the popup is painted by"). A demo band must not show that as a box: the guide's 
 opts out with `bg-transparent`, and `Bars`, which renders a table, does the same in its own package
 (#337). A lane that finds another component boxed this way fixes it in that component's package.
 
-Accent is the purple of the theme: the current page and card in the navigation, the package name,
-and the class chips. The primary button stays the theme's primary. The guide's own chrome writes
-that purple; the components in the cards draw the theme's accent scale (`bg-accent-900`,
-`theme/README.md` → "Accent"), so the demo host's accent switch repaints the cards and leaves the
-chrome purple, which is how a reader tells the two apart.
+Accent is the theme's accent, purple by default: the current page and card in the navigation, the
+package name, and the class chips. The primary button stays the theme's primary. The guide's own
+chrome draws the same accent scale as the components in the cards (`text-accent-700`,
+`theme/README.md` → "Accent"), never a fixed `purple-*` class, so an app that embeds the guide
+gets its own accent on the chrome too, and the demo host's accent switch repaints both (#432).
 
 ## The card
 
@@ -123,7 +123,7 @@ shows components. Group titles are small and muted; links are one font and one s
 Under the page showing, below `xl` only: its sections, when it has more than one, and its cards.
 From `xl` the "On this page" column lists both, so the side navigation lists pages alone. The links
 stay in the document, hidden, so the section or card a route names is still marked. The current page
-has a tinted background; the current section or card a purple left rule.
+has a tinted background; the current section or card an accent left rule.
 
 A page's section heading is kept for the outline but hidden when it would repeat the page's own
 heading: on a page of one section, and on a section named like its page (Charts → Charts).
@@ -148,7 +148,7 @@ library's combobox keys; Escape or a click outside closes it. `/` and Ctrl+K (�
 
 At `xl`, a sticky right-hand column lists the page's cards, grouped under links to their sections
 when there are more than one. The first card in view (below the header, in the top half of the
-window) is marked with `aria-current="location"` and a purple rule. Clicking a card follows the
+window) is marked with `aria-current="location"` and an accent rule. Clicking a card follows the
 card's own route, which marks the card and scrolls to it.
 
 ## Phone drawer
@@ -201,10 +201,10 @@ class names the design rules list in code; any digit left in a heading, a card t
 inline code span in a sentence or the footer fails it. It also calls the English count sentences
 with numbers no registry has, so a count written into one of them fails too.
 
-**The overview's own chrome stays purple**, like the rest of the guide's (see "Surfaces" above):
-the eyebrow, the links, the step numbers and the "why" icons. What the header's accent switch
-repaints is the library's components — the buttons, the mini app — which is how a reader tells the
-two apart.
+**The overview's own chrome draws the accent**, like the rest of the guide's (see "Surfaces"
+above): the eyebrow, the links, the step numbers and the "why" icons. The header's accent switch
+repaints it together with the library's components — the buttons, the mini app — the way an app's
+own `--color-accent` would.
 
 ## Footer
 

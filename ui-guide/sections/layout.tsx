@@ -13,7 +13,7 @@ import type { DemoFragment } from "../registry.ts"
 /** A tinted placeholder, so the space around it is what the demo shows. */
 function Tile({ children }: { children: string }) {
   return (
-    <div class="rounded-md bg-purple-100 px-3 py-2 text-sm text-purple-900 dark:bg-purple-900/40 dark:text-purple-100">
+    <div class="rounded-md bg-accent-100 px-3 py-2 text-sm text-accent-900 dark:bg-accent-900/40 dark:text-accent-100">
       {children}
     </div>
   )
