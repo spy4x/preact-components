@@ -1,6 +1,13 @@
 import { guidePages } from "@spy4x/preact-ui-guide/registry"
 import { ACCENTS } from "../src/accent-switch.tsx"
-import { centreInView, check, type Devtools, openGuidePage, pressKey } from "./harness.ts"
+import {
+  centreInView,
+  check,
+  type Devtools,
+  openGuidePage,
+  pointerToCorner,
+  pressKey,
+} from "./harness.ts"
 
 /**
  * `theme/`'s browser checks: the form controls and surfaces of the class chapter as native events
@@ -541,6 +548,112 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
   await statusTextChecks(devtools)
   await statusFillChecks(devtools)
   await selectionAndRingChecks(devtools)
+  await dangerButtonClassChecks(devtools)
+}
+
+/** `.btn-danger`'s label on its fill, at rest and hovered, in one palette. */
+interface DangerButtonReading {
+  label: string
+  fill: string
+  hoverFill: string
+  hoverToken: string
+  onFill: number
+  onHover: number
+}
+
+/**
+ * The class form `.btn-danger` reads its label at 4.5:1 or better on its fill and on its hover fill,
+ * in light and dark (#424). The hover is a real pointer over a real `button.btn.btn-danger`, and
+ * the hovered fill must be `--color-danger-fill-hover`, so a hover rule that stopped applying fails
+ * instead of reading the resting fill twice.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function dangerButtonClassChecks(devtools: Devtools): Promise<void> {
+  const readings: Record<"light" | "dark", DangerButtonReading> = {} as Record<
+    "light" | "dark",
+    DangerButtonReading
+  >
+  const wasDark = await devtools.evaluate<boolean>(
+    `document.documentElement.classList.contains("dark")`,
+  )
+  const centre = await devtools.evaluate<{ x: number; y: number }>(`(() => {
+    const button = document.createElement("button")
+    button.id = "danger-class-check"
+    button.type = "button"
+    button.className = "btn btn-danger"
+    button.textContent = "Delete"
+    Object.assign(button.style, { position: "fixed", top: "200px", left: "200px", zIndex: "99999" })
+    document.body.append(button)
+    const box = button.getBoundingClientRect()
+    return { x: box.left + box.width / 2, y: box.top + box.height / 2 }
+  })()`)
+  try {
+    for (const palette of ["light", "dark"] as const) {
+      await devtools.evaluate(`(async () => {
+        document.documentElement.classList.toggle("dark", ${palette === "dark"})
+        await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+      })()`)
+      await pointerToCorner(devtools)
+      const rest = await devtools.evaluate<{ label: string; fill: string }>(`(async () => {
+        const button = document.getElementById("danger-class-check")
+        button.style.transition = "none"
+        const style = getComputedStyle(button)
+        return { label: style.color, fill: style.backgroundColor }
+      })()`)
+      await devtools.send("Input.dispatchMouseEvent", {
+        type: "mouseMoved",
+        x: centre.x,
+        y: centre.y,
+        button: "none",
+        buttons: 0,
+      })
+      readings[palette] = await devtools.evaluate<DangerButtonReading>(`(async () => {
+        ${CONTRAST_HELPERS}
+        await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+        const button = document.getElementById("danger-class-check")
+        const probe = document.createElement("span")
+        probe.style.color = "var(--color-danger-fill-hover)"
+        document.body.append(probe)
+        const hoverToken = getComputedStyle(probe).color
+        probe.remove()
+        const hoverFill = button.matches(":hover") ? getComputedStyle(button).backgroundColor : ""
+        const label = ${JSON.stringify(rest.label)}
+        const fill = ${JSON.stringify(rest.fill)}
+        return {
+          label,
+          fill,
+          hoverFill,
+          hoverToken,
+          onFill: contrast(label, fill),
+          onHover: hoverFill ? contrast(getComputedStyle(button).color, hoverFill) : 0,
+        }
+      })()`)
+    }
+  } finally {
+    await pointerToCorner(devtools)
+    await devtools.evaluate(`(() => {
+      document.getElementById("danger-class-check")?.remove()
+      document.documentElement.classList.toggle("dark", ${wasDark})
+      return null
+    })()`)
+  }
+  const describe = (palette: "light" | "dark") => {
+    const reading = readings[palette]
+    return `${palette}: ${reading.label} on ${reading.fill} ${reading.onFill.toFixed(2)}:1, on ` +
+      `hover ${reading.hoverFill || "(not hovered)"} ${reading.onHover.toFixed(2)}:1 ` +
+      `(--color-danger-fill-hover ${reading.hoverToken})`
+  }
+  check(
+    "in light and dark, .btn-danger's label reads at 4.5:1 or better on its fill and on its " +
+      "hover fill, which is --color-danger-fill-hover",
+    (["light", "dark"] as const).every((palette) => {
+      const reading = readings[palette]
+      return reading.onFill >= 4.5 && reading.onHover >= 4.5 &&
+        reading.hoverFill === reading.hoverToken
+    }),
+    `${describe("light")}; ${describe("dark")}`,
+  )
 }
 
 /** One colour, read in one palette, against what sits next to it. */
