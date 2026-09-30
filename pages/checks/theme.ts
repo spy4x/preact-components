@@ -538,6 +538,162 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
 
   await darkControlsChecks(devtools)
   await canvasContrastCheck(devtools)
+  await statusTextChecks(devtools)
+  await statusFillChecks(devtools)
+}
+
+/**
+ * The success and warning fills, each with the label class the library draws on it. The toast and
+ * `SWUpdater` bar strings are copies of the fill and label classes of `ui/toastr.tsx`'s success
+ * variant and `system/sw-updater.tsx`'s bar, which export neither; `source` names the file each copy
+ * must still appear in, and the check fails when it no longer does.
+ */
+const STATUS_FILLS = [
+  { name: ".btn.btn-success", tag: "button", className: "btn btn-success", floor: 4.5 },
+  { name: ".btn.btn-warning", tag: "button", className: "btn btn-warning", floor: 3 },
+  {
+    name: "a copy of the success toast's classes (bg-success)",
+    tag: "div",
+    className: "bg-success text-(--color-success-foreground)",
+    floor: 4.5,
+    source: "../../ui/toastr.tsx",
+  },
+  {
+    name: "a copy of the SWUpdater bar's classes (bg-warning)",
+    tag: "div",
+    className:
+      "bg-warning px-4 py-3 text-(--color-warning-foreground,oklch(0.98_0.016_73.684)) shadow-popover",
+    floor: 3,
+    source: "../../system/sw-updater.tsx",
+  },
+] as const
+
+/** One fill's label contrast in one palette. */
+interface StatusFillReading {
+  name: string
+  fill: string
+  label: string
+  ratio: number
+  floor: number
+}
+
+/**
+ * The success and warning fills keep their labels readable in both palettes (#429). The dark
+ * palette draws `--color-success` and `--color-warning` as light text colours, so a fill that read
+ * them would put its light label on a light fill (1.70:1 and 2.24:1 when measured); the fills read
+ * `--color-success-fill` and `--color-warning-fill` instead. The floor is 4.5:1 for success and
+ * 3:1 for warning: orange-600 under orange-50 measures 3.37:1 in both palettes today, below AA,
+ * and this check holds it at least where it is rather than claiming AA.
+ *
+ * @param devtools The connected session, on any page of the guide.
+ */
+async function statusFillChecks(devtools: Devtools): Promise<void> {
+  const stale: string[] = []
+  for (const fill of STATUS_FILLS) {
+    if (!("source" in fill)) continue
+    const text = await Deno.readTextFile(new URL(fill.source, import.meta.url))
+    if (!text.includes(fill.className)) stale.push(`${fill.source}: "${fill.className}"`)
+  }
+  check(
+    "the copied toast and SWUpdater bar classes the fill check measures still appear in their sources",
+    stale.length === 0,
+    stale.length ? `not found, so the check below measures stale copies: ${stale.join("; ")}` : "",
+  )
+  const read = await devtools.evaluate<{ dark: StatusFillReading[]; light: StatusFillReading[] }>(
+    `(() => {
+    ${CONTRAST_HELPERS}
+    const fills = ${JSON.stringify(STATUS_FILLS)}
+    const root = document.documentElement
+    const wasDark = root.classList.contains("dark")
+    const readPalette = (dark) => {
+      root.classList.toggle("dark", dark)
+      return fills.map(({ name, tag, className, floor }) => {
+        const probe = document.createElement(tag)
+        probe.className = className
+        probe.textContent = "Label"
+        document.body.append(probe)
+        const style = getComputedStyle(probe)
+        const fill = style.backgroundColor
+        const label = style.color
+        probe.remove()
+        return { name, fill, label, ratio: contrast(label, fill), floor }
+      })
+    }
+    const result = { dark: readPalette(true), light: readPalette(false) }
+    root.classList.toggle("dark", wasDark)
+    return result
+  })()`,
+  )
+  for (const palette of ["light", "dark"] as const) {
+    const readings = read[palette]
+    check(
+      `in the ${palette} palette, the success and warning fills (.btn-success, .btn-warning, the ` +
+        "success toast, the SWUpdater bar) keep their label at 4.5:1 for success and 3:1 for warning",
+      readings.length === STATUS_FILLS.length &&
+        readings.every((reading) => reading.ratio >= reading.floor),
+      readings.map((reading) =>
+        `${reading.name} ${reading.label} on ${reading.fill}: ${reading.ratio.toFixed(2)}:1`
+      ).join("; "),
+    )
+  }
+}
+
+/** One status tone's text, read on the surface and on the canvas. */
+interface StatusTextReading {
+  tone: string
+  text: string
+  onSurface: number
+  onCanvas: number
+}
+
+/**
+ * In the dark palette, `text-danger`, `text-warning` and `text-success` read at 4.5:1 or better on
+ * `bg-surface` and on `bg-canvas` (#429). Each colour is the one the browser computed for the
+ * utility class, drawn to a pixel and measured against the pixel of each background class. The
+ * light palette is read too and reported, not held: #429 is about the dark palette.
+ *
+ * @param devtools The connected session, on any page of the guide.
+ */
+async function statusTextChecks(devtools: Devtools): Promise<void> {
+  const read = await devtools.evaluate<{ dark: StatusTextReading[]; light: StatusTextReading[] }>(
+    `(() => {
+    ${CONTRAST_HELPERS}
+    const root = document.documentElement
+    const wasDark = root.classList.contains("dark")
+    const colourOf = (className, property) => {
+      const probe = document.createElement("span")
+      probe.className = className
+      document.body.append(probe)
+      const value = getComputedStyle(probe)[property]
+      probe.remove()
+      return value
+    }
+    const readPalette = (dark) => {
+      root.classList.toggle("dark", dark)
+      const surface = colourOf("bg-surface", "backgroundColor")
+      const canvas = colourOf("bg-canvas", "backgroundColor")
+      return ["danger", "warning", "success"].map((tone) => {
+        const text = colourOf("text-" + tone, "color")
+        return { tone, text, onSurface: contrast(text, surface), onCanvas: contrast(text, canvas) }
+      })
+    }
+    const result = { dark: readPalette(true), light: readPalette(false) }
+    root.classList.toggle("dark", wasDark)
+    return result
+  })()`,
+  )
+  const describe = (readings: StatusTextReading[]) =>
+    readings.map((reading) =>
+      `text-${reading.tone} ${reading.text}: ${reading.onSurface.toFixed(2)}:1 on the surface, ` +
+      `${reading.onCanvas.toFixed(2)}:1 on the canvas`
+    ).join("; ")
+  check(
+    "in the dark palette, text-danger, text-warning and text-success each read at 4.5:1 or better " +
+      "on the surface and on the canvas",
+    read.dark.length === 3 &&
+      read.dark.every((reading) => reading.onSurface >= 4.5 && reading.onCanvas >= 4.5),
+    `dark: ${describe(read.dark)}. Light, for reference: ${describe(read.light)}`,
+  )
 }
 
 /**

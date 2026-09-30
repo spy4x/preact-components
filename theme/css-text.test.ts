@@ -88,6 +88,9 @@ const UNCHANGED_ROOT_TOKENS: Record<string, string> = {
   "--color-warning-foreground": "oklch(0.98 0.016 73.684)",
   "--color-success": "oklch(0.527 0.154 150.069)",
   "--color-success-foreground": "oklch(0.982 0.018 155.826)",
+  // #429: the warning and success fills, the same colours as their text tokens in light.
+  "--color-warning-fill": `var(--color-warning)`,
+  "--color-success-fill": `var(--color-success)`,
   "--radius-primary": "0.5rem",
   "--radius-control": "0.375rem",
   "--font-sans": `"Poppins", ui-sans-serif, system-ui, sans-serif`,
@@ -135,7 +138,12 @@ const UNCHANGED_DARK_TOKENS: Record<string, string> = {
   "--color-foreground": "oklch(0.985 0.002 247.839)",
   "--color-muted-foreground": "oklch(0.707 0.022 261.325)",
   "--color-placeholder": "oklch(0.707 0.022 261.325)",
-  "--color-danger": "oklch(0.637 0.237 25.331)",
+  // #429: status text reads at 4.5:1 on the dark surface and canvas; the fills keep their steps.
+  "--color-danger": "oklch(0.704 0.191 22.216)",
+  "--color-warning": "oklch(0.75 0.183 55.934)",
+  "--color-success": "oklch(0.792 0.209 151.711)",
+  "--color-warning-fill": "oklch(0.646 0.222 41.116)",
+  "--color-success-fill": "oklch(0.527 0.154 150.069)",
   "--color-hover": `oklch(0.373 0.034 259.733)`,
   "--color-track": `oklch(0.446 0.03 256.802)`,
   "--color-border-strong": `oklch(0.551 0.027 264.364)`,

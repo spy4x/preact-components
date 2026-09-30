@@ -37,9 +37,9 @@ describe("Kpi", () => {
   it("maps every tone to its own colour", () => {
     const tones = {
       accent: "text-accent-900",
-      positive: "text-green-700",
-      warning: "text-orange-600",
-      negative: "text-red-600",
+      positive: "text-success",
+      warning: "text-warning",
+      negative: "text-danger",
       neutral: "text-foreground",
     } as const
 
@@ -47,6 +47,15 @@ describe("Kpi", () => {
       const html = render(<Kpi label="a" value={1} tone={tone as keyof typeof tones} />)
 
       expect(html).toContain(className)
+    }
+  })
+
+  it("draws the status tones in theme tokens alone, with no fixed colour or dark override", () => {
+    for (const tone of ["positive", "warning", "negative"] as const) {
+      const html = render(<Kpi label="a" value={1} tone={tone} />)
+
+      expect(html).not.toMatch(/\b(?:text|dark:text)-(?:red|green|orange|amber)-\d{2,3}\b/)
+      expect(html).not.toContain("dark:text-")
     }
   })
 

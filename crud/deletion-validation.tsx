@@ -65,20 +65,20 @@ export function DeletionValidation(
     <div
       ref={block}
       class={hasDependencies
-        ? "rounded-primary bg-surface p-4 border border-red-600 text-red-600 dark:border-red-400 dark:text-red-400"
+        ? "rounded-primary bg-surface p-4 border border-danger text-danger"
         : undefined}
       role="alert"
     >
       {hasDependencies && (
         <div class="flex">
           <div class="shrink-0">
-            <IconAlertTriangle class="size-5 text-red-500" />
+            <IconAlertTriangle class="size-5" />
           </div>
           <div class="ml-3">
-            <h3 class="text-sm font-medium text-red-600">
+            <h3 class="text-sm font-medium">
               To archive this {model}, please first archive:
             </h3>
-            <div class="mt-2 text-sm text-red-600 max-w-xl">
+            <div class="mt-2 text-sm max-w-xl">
               <ul role="list" class="list-disc space-y-1 pl-4">
                 {dependencies.map((dependency) => (
                   <li key={dependency.kind}>
