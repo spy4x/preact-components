@@ -458,10 +458,16 @@ The two hover tokens follow the accent, not `--color-selected`: the accent's hov
 which label the accent takes, which a colour derived from `--color-selected` cannot know. An app
 that repaints `--color-selected` or `--color-selected-soft` sets the matching hover token too.
 
+In the dark palette `--color-selected` is accent step 600: step 900 stood only 1.62:1 off the dark
+canvas, and 600 is the lightest step a white label is held to 4.5:1 on. `--color-selected-hover`
+stays step 800 in both palettes. With the default purple the fill reads 3.20:1 on the dark canvas
+and its label 5.54:1.
+
 Focus: `ring-2 ring-focus ring-offset-2 ring-offset-focus` draws a 2px ring in `--color-ring` (the
-accent, which is what the primary `Button` draws today) with a 2px gap in `--color-focus-offset` (the
-canvas). `--color-focus-ring` is the other token: it moves the preset's own `.input`, `.select`,
-`.textarea` and dark `.btn` rings, and ink sets it, so ink does not touch the components' ring.
+accent, which is what the primary `Button` draws today; step 400 in the dark palette, 6.36:1 on the
+dark canvas) with a 2px gap in `--color-focus-offset` (the canvas). `--color-focus-ring` is the
+other token: it moves the preset's own `.input`, `.select`, `.textarea` and dark `.btn` rings, and
+ink sets it, so ink does not touch the components' ring.
 
 ### Text on a fill
 
@@ -481,14 +487,14 @@ browser without it keeps the previous rules (the literal purple steps and
 `.btn-danger` keeps `--color-danger-foreground` (red-50). The `Button`'s danger variant reads
 `--color-danger-fill` (red-600 in light, red-700 in dark), `--color-danger-fill-hover` (red-700 and
 red-600) and `--color-danger-fill-foreground` (white, 4.77:1 in light and 6.42:1 in dark). The fill
-is not `--color-danger` because that is drawn as text in dark. In the dark palette
-`--color-danger`, `--color-warning` and `--color-success` are text colours (red-400, orange-400 and
-green-400), each at 4.5:1 or better on the surface and the canvas, so `text-danger`, `text-warning`
-and `text-success` need no `dark:` override. `bg-warning`, `bg-success`, `.btn-warning`,
-`.btn-success` and the on and off map markers read `--color-warning-fill` and `--color-success-fill` instead:
-the text colour in light, and orange-600 and green-700 in dark. An app that repaints
-`--color-warning` or `--color-success` also sets `--color-warning-fill` or `--color-success-fill`
-in `.dark`: otherwise its dark fills stay orange-600 and green-700. `--color-danger-soft` and
+is not `--color-danger` because that is drawn as text in dark. In the dark palette `--color-danger`,
+`--color-warning` and `--color-success` are text colours (red-400, orange-400 and green-400), each
+at 4.5:1 or better on the surface and the canvas, so `text-danger`, `text-warning` and
+`text-success` need no `dark:` override. `bg-warning`, `bg-success`, `.btn-warning`, `.btn-success`
+and the on and off map markers read `--color-warning-fill` and `--color-success-fill` instead: the
+text colour in light, and orange-600 and green-700 in dark. An app that repaints `--color-warning`
+or `--color-success` also sets `--color-warning-fill` or `--color-success-fill` in `.dark`:
+otherwise its dark fills stay orange-600 and green-700. `--color-danger-soft` and
 `--color-info-soft` are the tinted backgrounds of an error or notice.
 
 ### Replacing fixed colours

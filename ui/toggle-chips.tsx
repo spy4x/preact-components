@@ -59,7 +59,7 @@ export function toggleChipSelection(
 }
 
 const chip =
-  "normal-case cursor-pointer transition-colors focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
+  "normal-case cursor-pointer transition-colors focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
 
 /**
  * The unpressed chip's hover, the one thing it adds to `Badge`'s grey outline, whose colours it

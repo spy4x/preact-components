@@ -220,7 +220,7 @@ const headingClass =
 const countClass = "text-xs font-normal text-muted"
 const listClass = "flex min-h-16 flex-col gap-2"
 const cardClass =
-  "cursor-grab rounded-md border border-subtle bg-surface p-3 text-sm text-foreground shadow-raised transition-shadow focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent-900 dark:focus-visible:ring-accent-400"
+  "cursor-grab rounded-md border border-subtle bg-surface p-3 text-sm text-foreground shadow-raised transition-shadow focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
 const cardLiftedClass = "shadow-popover ring-2 ring-(--color-selected-text)"
 const cardDraggedClass = "opacity-50"
 const indicatorClass = "h-0.5 shrink-0 rounded-full bg-(--color-selected-text)"
