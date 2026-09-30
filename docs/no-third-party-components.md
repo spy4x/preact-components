@@ -285,65 +285,42 @@ reconstruct later. **A deferred decision is not a resolved one.**
 
 ### Replacing the icon set with a licensed FOSS pack — issue #10
 
-**Status: deferred, open, pending a licensing decision by the repository owner.** This section
-records the decision's shape. It does not take it.
+**Status: decided by the repository owner on 2026-09-30 and done in
+[issue #233](https://github.com/spy4x/preact-components/issues/233): every glyph comes from a FOSS
+pack.** The section stays under this heading so the history of the decision is easy to find.
 
-The icon set is **not** covered by the reasoning above, and it carries a separate question: it was
-not written here from scratch. Per [`icons/README.md`](../icons/README.md), which is the authority on
-this:
+The icon set was not written here from scratch. Per [`icons/README.md`](../icons/README.md), which
+is the authority on this:
 
 - It is a **merge of six source apps** — deduped by SVG body, not by name. One of the six
   contributed nothing after dedupe (a fork of another with byte-identical bodies throughout).
-- **Provenance is now checked, not just eyeballed.** `icons/provenance.ts` compares every exported
-  glyph's geometry against the published Heroicons v1, Heroicons v2, Feather and Lucide packs. Of
-  120 glyphs, 90 match a pack's glyph exactly, 6 match one nearly, and 24 match none of the four —
-  see `icons/README.md` → "Provenance" for the full breakdown and the 24 by name.
+- **Provenance is checked, not eyeballed.** `icons/provenance.ts` compares every exported glyph's
+  geometry against the published Heroicons v1, Heroicons v2, Feather, Lucide and Simple Icons packs.
+  All 120 glyphs match a pack's glyph exactly. #233 got there by replacing the 32 glyphs that did
+  not — 24 that matched no pack, 6 that matched one only nearly, and the 2 brand marks that matched
+  Feather — with a pack's own drawing under the same export name and props; `icons/README.md` →
+  "Provenance" lists each one with its old and new source.
   [`icons/THIRD_PARTY_NOTICES.md`](../icons/THIRD_PARTY_NOTICES.md) carries the licence text for
-  every pack a match was found in. The 24 with no match are not thereby proven unlicensed, only
-  unattributed by this check; replacing or dropping them is tracked in
-  [issue #233](https://github.com/spy4x/preact-components/issues/233), not decided here.
+  all five packs.
 - **Six glyphs are trademarked brand marks** — GitHub, LinkedIn, Telegram, Upwork, Twitter and
-  YouTube. Trademark constraints are independent of any icon licence: a brand mark is not freely
-  relicensable even when the drawing is the pack's own (two of the six matched Feather's drawing of
-  the same mark exactly). This is the part most likely to need its own decision, and it is why any
-  replacement is expected to split the brand subset from the general set.
+  YouTube. Five are Simple Icons' drawings (CC0); LinkedIn is Feather's, because Simple Icons no
+  longer ships LinkedIn's mark. Trademark constraints are independent of any icon licence: the pack's
+  licence covers the drawing, and using a mark is still subject to its owner's brand guidelines.
 - All 120 glyphs are inline source in `icons/+index.tsx`, `{ class?: string }` prop surface, no
-  codegen, no build step, no runtime dependency beyond Preact.
+  codegen, no build step, no runtime dependency beyond Preact. The packs are pinned in
+  `icons/deno.json` for `provenance.ts` alone and never reach a published consumer.
 
 > The glyph count above is the module's: `icons/+index.test.ts` asserts 120 exports, and
 > `deno task test` runs it. The source count is six, the ported set included — the section on
 > design-intent sources earlier in this document says why that set is a port of drawings and not of
 > a dependency.
 
-**This document does not resolve that question and must not be read as doing so.** For the 24
-glyphs `icons/provenance.ts` could not match to a pack, no licence is asserted and none is inferred.
-For the 96 it did match, the matched pack's own licence applies — that is a fact about which pack
-the geometry compares equal to, not a legal opinion rendered here. No glyph has been changed,
-replaced or re-drawn to produce a match. The open choices — whether to keep, swap or drop the 24
-unmatched, and how to treat the brand subset — belong to the repository owner as a legal decision,
-not to an implementation PR.
+For every glyph, the matched pack's own licence applies — that is a fact about which pack the
+geometry compares equal to, not a legal opinion rendered here. The repository's own licence is
+unaffected and is stated in [`LICENSE`](../LICENSE) (MIT, covering the code in this repository);
+[`CREDITS.md`](../CREDITS.md) is attribution for the design system and states explicitly that it is
+not a licence statement.
 
-The repository's own licence is unaffected and is stated in [`LICENSE`](../LICENSE) (MIT, covering
-the code in this repository); [`CREDITS.md`](../CREDITS.md) is attribution for the design system and
-states explicitly that it is not a licence statement.
-
-**Recommendation: keep #10 deferred and open.** It is not blocked, but it is also not urgent, and
-acting on it now would replace working glyphs to settle a question that attribution may already
-settle for most of them.
-
-**Revisit trigger — any one of these:**
-
-1. **A release or distribution event** — the set is published to a registry, the demo is promoted, or
-   the package is consumed outside `spy4x`'s own apps. This trigger has partly fired already:
-   issue #111 found the set published with no third-party notice at all, and this document's icon
-   section, `icons/README.md` and `icons/THIRD_PARTY_NOTICES.md` are the response for the 96 glyphs
-   a pack match covers. The trigger still stands for the 24 that remain unmatched and for publishing
-   to a registry, which has not happened yet.
-2. **A licence audit** of this repository, or of any app that consumes it.
-3. **A glyph is found to be from a pack whose licence forbids this use**, or whose attribution terms
-   are not met by the current tree.
-4. **A brand-mark complaint**, or any of the six brand glyphs being used in a context where the
-   mark's owner's guidelines apply.
-5. **New icon work** — a fresh need that would otherwise add another glyph of unverified lineage to a
-   set already carrying that caveat. At that point generate from one licensed source rather than
-   extending the merge.
+**New icon work** takes a glyph from one of the five packs, copied exactly, and records its source on
+the glyph's JSDoc line; `deno task --cwd icons provenance` must still report every glyph as an exact
+match afterwards.
