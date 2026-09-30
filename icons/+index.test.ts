@@ -170,6 +170,36 @@ describe("icon set", () => {
     }
   })
 
+  it("fills the seven solid glyphs and strokes every other one, in the text colour", () => {
+    // Paint as the browser resolves it for each drawn element: its own attribute, else the root's
+    // (no glyph nests a group), else SVG's defaults — a black fill and no stroke.
+    const filled = new Set([
+      "IconGitHub",
+      "IconTelegram",
+      "IconUpwork",
+      "IconTwitter",
+      "IconYouTube",
+      "IconLockClosedFilled",
+      "IconPlaySolid",
+    ])
+    const wrong: string[] = []
+    for (const [name] of iconEntries) {
+      const root = vnodeOf(name, {})
+      const expected = filled.has(name)
+        ? { fill: "currentColor", stroke: "none" }
+        : { fill: "none", stroke: "currentColor" }
+      walk(root, (node) => {
+        if (node === root || node.type === "title") return
+        const fill = node.props.fill ?? root.props.fill ?? "black"
+        const stroke = node.props.stroke ?? root.props.stroke ?? "none"
+        if (fill !== expected.fill || stroke !== expected.stroke) {
+          wrong.push(`${name} <${String(node.type)}> fill=${fill} stroke=${stroke}`)
+        }
+      })
+    }
+    expect(wrong).toEqual([])
+  })
+
   it("keeps animated icons spinning whatever class the caller passes", () => {
     for (const name of ["IconLoading", "IconSpinner"]) {
       const className = vnodeOf(name, { class: "size-8" }).props.class as string
