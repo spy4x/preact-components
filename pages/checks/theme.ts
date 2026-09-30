@@ -1856,7 +1856,9 @@ async function accentChecks(devtools: Devtools): Promise<void> {
       }
     }
     // The primary Button's white label sits on step 900 (light fill), 800 (light hover), 600
-    // (dark fill) and 700 (dark hover). The fills are read off the Button card itself.
+    // (dark fill) and 700 (dark hover). The resting fills are read off the Button card itself; the
+    // hover steps are read as token colours, since no pointer rests on the button here.
+    // primaryButtonFillCheck in ui.ts hovers the real button for the default accent.
     const button = document.querySelector("#demo-Button button")
     const lowContrast = []
     let lowest = { ratio: Infinity, label: "" }
@@ -1867,7 +1869,7 @@ async function accentChecks(devtools: Devtools): Promise<void> {
         await settle(button)
         const fills = {
           [dark ? "dark fill" : "light fill"]: getComputedStyle(button).backgroundColor,
-          [dark ? "dark hover" : "light hover"]: resolve(
+          [dark ? "dark hover step 700" : "light hover step 800"]: resolve(
             "var(--color-accent-" + (dark ? 700 : 800) + ")",
           ),
         }
@@ -1892,8 +1894,8 @@ async function accentChecks(devtools: Devtools): Promise<void> {
       : `clipped by more than 0.02 OKLab: ${gamut.offGamut.join("; ")}`,
   )
   check(
-    "with those accents, the primary Button's white label clears 4.5:1 on its fill and hover, " +
-      "light and dark",
+    "with those accents, white clears 4.5:1 on the primary Button's resting fill and on the " +
+      "accent steps its hover uses, light and dark",
     gamut.lowContrast.length === 0,
     gamut.lowContrast.length === 0
       ? `lowest ${gamut.lowest} (drawn and read back)`

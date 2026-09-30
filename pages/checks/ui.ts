@@ -12760,87 +12760,150 @@ interface PrimaryFill {
   label: number
   /** `true` when the fill is exactly accent step 900, the light palette's own. */
   isStep900: boolean
-  /** The hover fill (dark: step 700) against the canvas and under the label, for the evidence. */
-  hoverOnCanvas: number
-  hoverLabel: number
 }
+
+/** The primary Button under a real pointer, in the dark palette. */
+interface PrimaryHover {
+  /** `true` when the browser put the button into `:hover`. */
+  hovered: boolean
+  fill: string
+  onCanvas: number
+  label: number
+}
+
+/** The Button card's primary button, the one both checks below read. */
+const PRIMARY_BUTTON = `document.querySelector("#demo-Button button")`
+
+/** In-page helpers the two readings share: a token's colour, and a wait for running transitions. */
+const PRIMARY_HELPERS = `
+  const token = (name) => {
+    const probe = document.createElement("div")
+    probe.style.backgroundColor = "var(" + name + ")"
+    document.body.appendChild(probe)
+    const color = getComputedStyle(probe).backgroundColor
+    probe.remove()
+    return color
+  }
+  const settle = (element) =>
+    Promise.all(element.getAnimations().map((animation) => animation.finished.catch(() => {})))
+`
 
 /**
  * In the dark palette a primary Button at rest stands 3:1 off the gray-900 canvas and keeps its
- * label at 4.5:1 (#397); in the light palette it is still accent step 900. The hover fill is read
- * for the evidence and not held to 3:1: it shows only under the pointer, and no accent step both
- * stands 3:1 off the canvas and holds a white label at 4.5:1 except the resting fill's own.
+ * label at 4.5:1 (#397), and in the light palette it is still accent step 900. Then a real pointer
+ * rests on it in dark: the hovered fill must differ from the resting one and keep the label at
+ * 4.5:1. The hovered fill is not held to 3:1 on the canvas: it shows only under the pointer, and
+ * no accent step but the resting fill's own both stands 3:1 off the canvas and holds a white label
+ * at 4.5:1; its ratio is printed.
  *
  * @param devtools The connected session, on a hydrated page.
  */
 async function primaryButtonFillCheck(devtools: Devtools): Promise<void> {
   await pointerToCorner(devtools)
   const reading = await devtools.evaluate<
-    { found: boolean; light: PrimaryFill; dark: PrimaryFill }
+    { found: boolean; hovered: boolean; light: PrimaryFill; dark: PrimaryFill }
   >(
     `(async () => {
     ${CONTRAST_HELPERS}
+    ${PRIMARY_HELPERS}
     const root = document.documentElement
     const wasDark = root.classList.contains("dark")
-    const button = document.querySelector("#demo-Button button")
-    const token = (name) => {
-      const probe = document.createElement("div")
-      probe.style.backgroundColor = "var(" + name + ")"
-      document.body.appendChild(probe)
-      const color = getComputedStyle(probe).backgroundColor
-      probe.remove()
-      return color
-    }
-    const settle = () =>
-      Promise.all(button.getAnimations().map((animation) => animation.finished.catch(() => {})))
-    const measure = (dark) => {
+    const button = ${PRIMARY_BUTTON}
+    const measure = () => {
       const fill = getComputedStyle(button).backgroundColor
       const painted = paint(fill)
-      const label = paint(getComputedStyle(button).color)
-      const canvas = paint(token("--color-canvas"))
-      const hover = paint(token(dark ? "--color-accent-700" : "--color-accent-800"))
       return {
         fill,
-        onCanvas: ratio(painted, canvas),
+        onCanvas: ratio(painted, paint(token("--color-canvas"))),
         onSurface: ratio(painted, paint(token("--color-surface"))),
-        label: ratio(label, painted),
+        label: ratio(paint(getComputedStyle(button).color), painted),
         isStep900: fill === token("--color-accent-900"),
-        hoverOnCanvas: ratio(hover, canvas),
-        hoverLabel: ratio(label, hover),
       }
     }
-    if (!button) return { found: false, light: null, dark: null }
+    if (!button) return { found: false, hovered: false, light: null, dark: null }
     try {
       root.classList.remove("dark")
-      await settle()
-      const light = measure(false)
+      await settle(button)
+      const light = measure()
       root.classList.add("dark")
-      await settle()
-      return { found: true, light, dark: measure(true) }
+      await settle(button)
+      return { found: true, hovered: button.matches(":hover"), light, dark: measure() }
     } finally {
       root.classList.toggle("dark", wasDark)
     }
   })()`,
   )
-  const hovered = await devtools.evaluate<boolean>(
-    `document.querySelector("#demo-Button button")?.matches(":hover") ?? false`,
-  )
   const { found, light, dark } = reading
   check(
     "in the dark palette a primary Button stands 3:1 off the canvas with its label at 4.5:1, " +
       "and its light fill is unchanged",
-    found && !hovered && dark.onCanvas >= 3 && dark.label >= 4.5 && light.isStep900 &&
+    found && !reading.hovered && dark.onCanvas >= 3 && dark.label >= 4.5 && light.isStep900 &&
       light.label >= 4.5,
     !found
       ? "the Button card has no button"
-      : hovered
+      : reading.hovered
       ? "the pointer rests on the button, so the reading is its hover fill"
       : `dark: fill ${dark.fill} ${dark.onCanvas.toFixed(2)}:1 on the canvas, ` +
-        `${dark.onSurface.toFixed(2)}:1 on the surface, label ${dark.label.toFixed(2)}:1; hover ` +
-        `${dark.hoverOnCanvas.toFixed(2)}:1 on the canvas, label ${dark.hoverLabel.toFixed(2)}:1 ` +
-        `(not asserted) — light: fill ${light.fill} (step 900 ${light.isStep900}), ` +
+        `${dark.onSurface.toFixed(2)}:1 on the surface, label ${dark.label.toFixed(2)}:1 — ` +
+        `light: fill ${light.fill} (step 900 ${light.isStep900}), ` +
         `${light.onCanvas.toFixed(2)}:1 on the canvas, label ${light.label.toFixed(2)}:1`,
   )
+  if (!found) return
+
+  const wasDark = await devtools.evaluate<boolean>(`(() => {
+    const was = document.documentElement.classList.contains("dark")
+    document.documentElement.classList.add("dark")
+    return was
+  })()`)
+  try {
+    await centreInView(devtools, PRIMARY_BUTTON)
+    const aim = await devtools.evaluate<{ x: number; y: number; onTarget: boolean }>(`(() => {
+      const button = ${PRIMARY_BUTTON}
+      const box = button.getBoundingClientRect()
+      const x = Math.round(box.left + box.width / 2)
+      const y = Math.round(box.top + box.height / 2)
+      const hit = document.elementFromPoint(x, y)
+      return { x, y, onTarget: hit !== null && button.contains(hit) }
+    })()`)
+    await devtools.send("Input.dispatchMouseEvent", {
+      type: "mouseMoved",
+      x: aim.x,
+      y: aim.y,
+      button: "none",
+      buttons: 0,
+    })
+    await poll(() => devtools.evaluate<boolean>(`${PRIMARY_BUTTON}.matches(":hover")`), 2_000)
+    const hover = await devtools.evaluate<PrimaryHover>(`(async () => {
+      ${CONTRAST_HELPERS}
+      ${PRIMARY_HELPERS}
+      const button = ${PRIMARY_BUTTON}
+      await settle(button)
+      const fill = getComputedStyle(button).backgroundColor
+      const painted = paint(fill)
+      return {
+        hovered: button.matches(":hover"),
+        fill,
+        onCanvas: ratio(painted, paint(token("--color-canvas"))),
+        label: ratio(paint(getComputedStyle(button).color), painted),
+      }
+    })()`)
+    check(
+      "under a real pointer in the dark palette a primary Button changes its fill and keeps its " +
+        "label at 4.5:1",
+      aim.onTarget && hover.hovered && hover.fill !== dark.fill && hover.label >= 4.5,
+      !aim.onTarget
+        ? `the point (${aim.x}, ${aim.y}) is not on the button, so the pointer cannot hover it`
+        : !hover.hovered
+        ? "the pointer reached the button but the browser never put it into :hover"
+        : `rest ${dark.fill} → hover ${hover.fill}, label ${hover.label.toFixed(2)}:1, ` +
+          `${hover.onCanvas.toFixed(2)}:1 on the canvas (not asserted)`,
+    )
+  } finally {
+    await pointerToCorner(devtools)
+    await devtools.evaluate<null>(
+      `(document.documentElement.classList.toggle("dark", ${wasDark}), null)`,
+    )
+  }
 }
 
 /**
