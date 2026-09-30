@@ -682,7 +682,7 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `RadioGroupProps` (type): Props of `RadioGroup`. Import: `@spy4x/preact-ui`
 - `RadioOption` (type): One choice of a `RadioGroup`. Import: `@spy4x/preact-ui`
 - `RadioProps` (type): Radio choice with its own label. Import: `@spy4x/preact-ui`
-- `StatusMark` (component): A shape paired with a word: `Ready`, `Beta`, `WIP`, `Paused`, `Archived`, `Known issue`. Import: `@spy4x/preact-ui`
+- `StatusMark` (component): A shape paired with a word: `Ready`, `In use`, `Beta`, `WIP`, `Paused`, `Archived`, `Known issue`, `Outcome`, `Live`, `Offline`. Import: `@spy4x/preact-ui`
 - `StatusMarkProps` (type): Props of `StatusMark`. Import: `@spy4x/preact-ui`
 - `StatusMarkStatus` (type): A project or feature's lifecycle state. Import: `@spy4x/preact-ui`
 - `Table` (component): Table shell with header, body and optional footer slots. Import: `@spy4x/preact-ui`
