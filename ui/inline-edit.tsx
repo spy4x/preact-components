@@ -156,7 +156,9 @@ export function InlineEdit(
 
   function onKeyDown(event: JSX.TargetedKeyboardEvent<HTMLInputElement>): void {
     // An input method confirms or cancels a word with these keys; the word is not finished yet.
-    if (event.isComposing) return
+    // Safari sends the Enter that ends a composition with `isComposing` false and keyCode 229, the
+    // code every browser gives a key press an input method has taken.
+    if (event.isComposing || event.keyCode === 229) return
     if (event.key === "Enter") {
       // Inside a form, Enter would submit it as well.
       event.preventDefault()

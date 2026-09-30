@@ -12474,7 +12474,8 @@ async function toggleChipsChecks(devtools: Devtools): Promise<void> {
  *
  * Removing the component while its field has focus saves nothing, although Chromium fires `blur` on
  * the removed field. An Enter or Escape keydown sent while an input method is composing a word
- * (`isComposing`) neither saves nor cancels. Turning `disabled` on while the field is open cancels
+ * (`isComposing`) neither saves nor cancels, and nor does one with keyCode 229, which is how Safari
+ * sends the Enter that ends a composition. Turning `disabled` on while the field is open cancels
  * the edit: the old value is back and nothing is saved. The demo's Remove and Lock buttons are
  * pressed with a scripted `.click()`, which leaves focus in the field, as a keyboard shortcut or a
  * change from elsewhere in an app would.
@@ -12538,6 +12539,43 @@ async function inlineEditInterruptionChecks(devtools: Devtools): Promise<void> {
       composing.saved === afterRemoval,
     `editing ${composing.editing}, "${composing.text}", busy ${composing.busy}, ` +
       `echo "${afterRemoval}" → "${composing.saved}"`,
+  )
+  await pressKey(devtools, "Escape")
+  await poll(() => devtools.evaluate<boolean>(`!${ok}.editing`), 2_000)
+
+  // Safari's Enter that ends a composition: `isComposing` false, keyCode 229. Sent as real key
+  // presses, and the field records what reached it, so a press that arrived as something else
+  // reports itself instead of passing as ignored.
+  await open("Kana")
+  await devtools.evaluate<null>(`(() => {
+    const field = ${root}.querySelector("input")
+    globalThis.__verifyImeKeys = []
+    field.addEventListener("keydown", (event) => {
+      globalThis.__verifyImeKeys.push(event.key + " " + event.keyCode + " " + event.isComposing)
+    }, { capture: true })
+    return null
+  })()`)
+  for (const key of ["Enter", "Escape"]) {
+    for (const type of ["rawKeyDown", "keyUp"]) {
+      await devtools.send("Input.dispatchKeyEvent", {
+        type,
+        key,
+        code: key,
+        windowsVirtualKeyCode: 229,
+        nativeVirtualKeyCode: 229,
+      })
+    }
+  }
+  await saveWindow()
+  const ime = await devtools.evaluate<InlineEditState & { keys: string[] }>(
+    `({ ...${ok}, keys: globalThis.__verifyImeKeys ?? [] })`,
+  )
+  check(
+    "Enter and Escape with keyCode 229 and isComposing false leave an InlineEdit open and unsaved",
+    ime.keys.join(", ") === "Enter 229 false, Escape 229 false" && ime.editing &&
+      ime.text === "Kana" && ime.busy === null && ime.saved === afterRemoval,
+    `the field saw [${ime.keys.join(", ")}]; editing ${ime.editing}, "${ime.text}", busy ` +
+      `${ime.busy}, echo "${afterRemoval}" → "${ime.saved}"`,
   )
   await pressKey(devtools, "Escape")
   await poll(() => devtools.evaluate<boolean>(`!${ok}.editing`), 2_000)
