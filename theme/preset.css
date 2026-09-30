@@ -129,11 +129,11 @@
 }
 
 @utility bg-warning {
-  background-color: var(--color-warning, oklch(0.646 0.222 41.116));
+  background-color: var(--color-warning-fill, oklch(0.646 0.222 41.116));
 }
 
 @utility bg-success {
-  background-color: var(--color-success, oklch(0.527 0.154 150.069));
+  background-color: var(--color-success-fill, oklch(0.527 0.154 150.069));
 }
 
 @utility text-danger {
@@ -513,7 +513,7 @@
 @utility btn-warning {
   @apply border hover:bg-orange-700 focus-visible:outline-orange-700;
   @apply dark:focus-visible:outline-orange-500;
-  background-color: var(--color-warning, oklch(0.646 0.222 41.116));
+  background-color: var(--color-warning-fill, oklch(0.646 0.222 41.116));
   color: var(--color-warning-foreground, oklch(0.98 0.016 73.684));
 }
 
@@ -527,7 +527,7 @@
 @utility btn-success {
   @apply border hover:bg-green-700 focus-visible:outline-green-700;
   @apply dark:focus-visible:outline-green-500;
-  background-color: var(--color-success, oklch(0.527 0.154 150.069));
+  background-color: var(--color-success-fill, oklch(0.527 0.154 150.069));
   color: var(--color-success-foreground, oklch(0.982 0.018 155.826));
 }
 
@@ -801,11 +801,11 @@
   }
 
   .status-on .map-marker {
-    background-color: var(--color-success, oklch(0.527 0.154 150.069));
+    background-color: var(--color-success-fill, oklch(0.527 0.154 150.069));
   }
 
   .status-off .map-marker {
-    background-color: var(--color-warning, oklch(0.646 0.222 41.116));
+    background-color: var(--color-warning-fill, oklch(0.646 0.222 41.116));
   }
 }
 

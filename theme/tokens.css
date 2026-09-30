@@ -101,6 +101,11 @@
   --color-warning-foreground: oklch(0.98 0.016 73.684); /* orange-50 */
   --color-success: oklch(0.527 0.154 150.069); /* green-700 */
   --color-success-foreground: oklch(0.982 0.018 155.826); /* green-50 */
+  /* The warning and success colours as fills under their foregrounds (`bg-warning`, `bg-success`,
+     `.btn-warning`, `.btn-success`, the map markers). The same colours as the text tokens in the
+     light palette; the dark palette draws the text tokens lighter, and keeps these fills. */
+  --color-warning-fill: var(--color-warning);
+  --color-success-fill: var(--color-success);
   --color-info: oklch(0.546 0.245 262.881); /* blue-600 */
   --color-info-foreground: oklch(0.97 0.014 254.604); /* blue-50 */
   --color-info-soft: oklch(0.97 0.014 254.604); /* blue-50: a tinted background */
@@ -145,7 +150,13 @@
   --color-muted-foreground: oklch(0.707 0.022 261.325); /* gray-400 */
   --color-placeholder: oklch(0.707 0.022 261.325); /* gray-400 */
 
-  --color-danger: oklch(0.637 0.237 25.331); /* red-500 */
+  /* Status text: each reads at 4.5:1 or better on the surface and the canvas. */
+  --color-danger: oklch(0.704 0.191 22.216); /* red-400 */
+  --color-warning: oklch(0.75 0.183 55.934); /* orange-400 */
+  --color-success: oklch(0.792 0.209 151.711); /* green-400 */
+  /* The fills keep the light palette's steps, under the same light labels. */
+  --color-warning-fill: oklch(0.646 0.222 41.116); /* orange-600 */
+  --color-success-fill: oklch(0.527 0.154 150.069); /* green-700 */
   --color-selected-soft: color-mix(in oklab, var(--color-accent-900) 30%, transparent);
   --color-selected-text: var(--color-accent-400);
   --color-selected-soft-hover: color-mix(in oklab, var(--color-accent-900) 50%, transparent);

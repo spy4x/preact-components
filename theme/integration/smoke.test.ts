@@ -1281,7 +1281,7 @@ describe("theme preset", () => {
 
   it("emits the map status rules", async () => {
     expect(declarationsOf(await preset(), ".status-on .map-marker")).toContain(
-      "var(--color-success, ",
+      "var(--color-success-fill, ",
     )
   })
 

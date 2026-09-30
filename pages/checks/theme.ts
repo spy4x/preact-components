@@ -538,6 +538,65 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
 
   await darkControlsChecks(devtools)
   await canvasContrastCheck(devtools)
+  await statusTextChecks(devtools)
+}
+
+/** One status tone's text, read on the surface and on the canvas. */
+interface StatusTextReading {
+  tone: string
+  text: string
+  onSurface: number
+  onCanvas: number
+}
+
+/**
+ * In the dark palette, `text-danger`, `text-warning` and `text-success` read at 4.5:1 or better on
+ * `bg-surface` and on `bg-canvas` (#429). Each colour is the one the browser computed for the
+ * utility class, drawn to a pixel and measured against the pixel of each background class. The
+ * light palette is read too and reported, not held: #429 is about the dark palette.
+ *
+ * @param devtools The connected session, on any page of the guide.
+ */
+async function statusTextChecks(devtools: Devtools): Promise<void> {
+  const read = await devtools.evaluate<{ dark: StatusTextReading[]; light: StatusTextReading[] }>(
+    `(() => {
+    ${CONTRAST_HELPERS}
+    const root = document.documentElement
+    const wasDark = root.classList.contains("dark")
+    const colourOf = (className, property) => {
+      const probe = document.createElement("span")
+      probe.className = className
+      document.body.append(probe)
+      const value = getComputedStyle(probe)[property]
+      probe.remove()
+      return value
+    }
+    const readPalette = (dark) => {
+      root.classList.toggle("dark", dark)
+      const surface = colourOf("bg-surface", "backgroundColor")
+      const canvas = colourOf("bg-canvas", "backgroundColor")
+      return ["danger", "warning", "success"].map((tone) => {
+        const text = colourOf("text-" + tone, "color")
+        return { tone, text, onSurface: contrast(text, surface), onCanvas: contrast(text, canvas) }
+      })
+    }
+    const result = { dark: readPalette(true), light: readPalette(false) }
+    root.classList.toggle("dark", wasDark)
+    return result
+  })()`,
+  )
+  const describe = (readings: StatusTextReading[]) =>
+    readings.map((reading) =>
+      `text-${reading.tone} ${reading.text}: ${reading.onSurface.toFixed(2)}:1 on the surface, ` +
+      `${reading.onCanvas.toFixed(2)}:1 on the canvas`
+    ).join("; ")
+  check(
+    "in the dark palette, text-danger, text-warning and text-success each read at 4.5:1 or better " +
+      "on the surface and on the canvas",
+    read.dark.length === 3 &&
+      read.dark.every((reading) => reading.onSurface >= 4.5 && reading.onCanvas >= 4.5),
+    `dark: ${describe(read.dark)}. Light, for reference: ${describe(read.light)}`,
+  )
 }
 
 /**
