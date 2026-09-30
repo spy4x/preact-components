@@ -201,6 +201,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await shortcutsChecks(devtools)
   await toggleChipsChecks(devtools)
   await outlineBadgeContrastCheck(devtools)
+  await primaryButtonFillCheck(devtools)
   await kanbanBoardChecks(devtools)
 
   // Last on purpose: a Modal that refuses to close would sit in the top layer over everything, so a
@@ -12745,6 +12746,100 @@ async function outlineBadgeContrastCheck(devtools: Devtools): Promise<void> {
     reading.chipColor === reading.grayColor && reading.chipRatio >= 4.5,
     `chip ${reading.chipColor}, grey badge ${reading.grayColor}, chip on its card ` +
       `${reading.chipRatio.toFixed(2)}:1`,
+  )
+}
+
+/** A primary Button's fill and label, read in one palette. */
+interface PrimaryFill {
+  fill: string
+  /** The fill against the palette's canvas. */
+  onCanvas: number
+  /** The fill against the palette's raised surface, a card. */
+  onSurface: number
+  /** The label against the fill. */
+  label: number
+  /** `true` when the fill is exactly accent step 900, the light palette's own. */
+  isStep900: boolean
+  /** The hover fill (dark: step 700) against the canvas and under the label, for the evidence. */
+  hoverOnCanvas: number
+  hoverLabel: number
+}
+
+/**
+ * In the dark palette a primary Button at rest stands 3:1 off the gray-900 canvas and keeps its
+ * label at 4.5:1 (#397); in the light palette it is still accent step 900. The hover fill is read
+ * for the evidence and not held to 3:1: it shows only under the pointer, and no accent step both
+ * stands 3:1 off the canvas and holds a white label at 4.5:1 except the resting fill's own.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function primaryButtonFillCheck(devtools: Devtools): Promise<void> {
+  await pointerToCorner(devtools)
+  const reading = await devtools.evaluate<
+    { found: boolean; light: PrimaryFill; dark: PrimaryFill }
+  >(
+    `(async () => {
+    ${CONTRAST_HELPERS}
+    const root = document.documentElement
+    const wasDark = root.classList.contains("dark")
+    const button = document.querySelector("#demo-Button button")
+    const token = (name) => {
+      const probe = document.createElement("div")
+      probe.style.backgroundColor = "var(" + name + ")"
+      document.body.appendChild(probe)
+      const color = getComputedStyle(probe).backgroundColor
+      probe.remove()
+      return color
+    }
+    const settle = () =>
+      Promise.all(button.getAnimations().map((animation) => animation.finished.catch(() => {})))
+    const measure = (dark) => {
+      const fill = getComputedStyle(button).backgroundColor
+      const painted = paint(fill)
+      const label = paint(getComputedStyle(button).color)
+      const canvas = paint(token("--color-canvas"))
+      const hover = paint(token(dark ? "--color-accent-700" : "--color-accent-800"))
+      return {
+        fill,
+        onCanvas: ratio(painted, canvas),
+        onSurface: ratio(painted, paint(token("--color-surface"))),
+        label: ratio(label, painted),
+        isStep900: fill === token("--color-accent-900"),
+        hoverOnCanvas: ratio(hover, canvas),
+        hoverLabel: ratio(label, hover),
+      }
+    }
+    if (!button) return { found: false, light: null, dark: null }
+    try {
+      root.classList.remove("dark")
+      await settle()
+      const light = measure(false)
+      root.classList.add("dark")
+      await settle()
+      return { found: true, light, dark: measure(true) }
+    } finally {
+      root.classList.toggle("dark", wasDark)
+    }
+  })()`,
+  )
+  const hovered = await devtools.evaluate<boolean>(
+    `document.querySelector("#demo-Button button")?.matches(":hover") ?? false`,
+  )
+  const { found, light, dark } = reading
+  check(
+    "in the dark palette a primary Button stands 3:1 off the canvas with its label at 4.5:1, " +
+      "and its light fill is unchanged",
+    found && !hovered && dark.onCanvas >= 3 && dark.label >= 4.5 && light.isStep900 &&
+      light.label >= 4.5,
+    !found
+      ? "the Button card has no button"
+      : hovered
+      ? "the pointer rests on the button, so the reading is its hover fill"
+      : `dark: fill ${dark.fill} ${dark.onCanvas.toFixed(2)}:1 on the canvas, ` +
+        `${dark.onSurface.toFixed(2)}:1 on the surface, label ${dark.label.toFixed(2)}:1; hover ` +
+        `${dark.hoverOnCanvas.toFixed(2)}:1 on the canvas, label ${dark.hoverLabel.toFixed(2)}:1 ` +
+        `(not asserted) — light: fill ${light.fill} (step 900 ${light.isStep900}), ` +
+        `${light.onCanvas.toFixed(2)}:1 on the canvas, label ${light.label.toFixed(2)}:1`,
   )
 }
 
