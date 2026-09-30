@@ -15,7 +15,7 @@ deno add jsr:@spy4x/preact-ui
 
 [**Live guide →**](https://spy4x.github.io/preact-components) ·
 [Install and use](docs/usage.md) · [Maintaining](docs/maintaining.md) ·
-[Credits](CREDITS.md)
+[llms.txt](llms.txt) for language models · [Credits](CREDITS.md)
 
 The design system and the original markup are by [Eirene](https://github.com/Eirene)
 ([isorokina.com](https://isorokina.com/)) — see [Credits](#credits).

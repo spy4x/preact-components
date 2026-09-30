@@ -206,4 +206,50 @@ export async function pagesChecks(devtools: Devtools): Promise<void> {
       : `${centred ? "settled" : "did not settle on its target"} after ${centreMs}ms, at ` +
         `scrollY ${placed.scrollY}, with the button's centre ${placed.offset}px from the middle`,
   )
+
+  await llmsTxtChecks(devtools)
+}
+
+/**
+ * The generated `llms.txt` and `llms-full.txt` are served at the site root, next to the page: the
+ * build copies both from the repository root, and a static host serves a file it holds. Each is
+ * fetched by its address relative to the page, so the check follows whatever base the site is
+ * built for. The catalogue's `index.html` also answers a wrong path with a 200 on some hosts, so
+ * the body is checked too: the header's first line, and a package section (`llms.txt`) or the
+ * package README (`llms-full.txt`).
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function llmsTxtChecks(devtools: Devtools): Promise<void> {
+  const served = await devtools.evaluate<
+    Record<string, { status: number; type: string; text: string }>
+  >(
+    `(async () => {
+      const read = async (name) => {
+        const response = await fetch(new URL(name, document.baseURI))
+        return {
+          status: response.status,
+          type: response.headers.get("content-type") ?? "",
+          text: await response.text(),
+        }
+      }
+      return { llms: await read("llms.txt"), full: await read("llms-full.txt") }
+    })()`,
+  )
+  const llms = served.llms
+  const full = served.full
+  check(
+    "the site serves llms.txt at its root, as plain text listing the packages' exports",
+    llms.status === 200 && llms.type.startsWith("text/plain") &&
+      llms.text.startsWith("# preact-components") &&
+      llms.text.includes("## @spy4x/preact-ui") && llms.text.includes("`Badge` (component)"),
+    `${llms.status} ${llms.type}, ${llms.text.length} characters`,
+  )
+  check(
+    "the site serves llms-full.txt at its root, with the package READMEs after the header",
+    full.status === 200 && full.type.startsWith("text/plain") &&
+      full.text.startsWith("# preact-components") && full.text.includes("## Components") &&
+      full.text.length > llms.text.length,
+    `${full.status} ${full.type}, ${full.text.length} characters`,
+  )
 }

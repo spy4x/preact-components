@@ -31,6 +31,9 @@
       "description": "Run all checks",
       "dependencies": ["fmt:check", "lint", "ts:check", "test"]
     },
+    // Rewrites `llms.txt` and `llms-full.txt` from the packages' exports and READMEs
+    // (`infra/scripts/llms-txt.ts`). Run after changing an export, a JSDoc summary or a README.
+    "llms": "deno run --allow-read --allow-write --allow-run=deno infra/scripts/llms-txt.ts",
     "fmt": "deno fmt",
     "fmt:check": "deno fmt --check",
     "lint": "deno lint",
@@ -47,8 +50,10 @@
     // `theme/component-classes.test.ts` runs on its own, with `--allow-ffi` added: it runs
     // Tailwind's class scanner (`@tailwindcss/oxide`), a native Node-API addon Deno loads only with
     // that grant, to prove the committed class list matches the packages' sources (#323). No other
-    // test gets the grant.
-    "test": "deno test --no-prompt --allow-read --allow-env --ignore=theme/component-classes.test.ts && deno test --no-prompt --allow-read --allow-env --allow-ffi theme/component-classes.test.ts",
+    // test gets the grant. `infra/scripts/llms-txt.test.ts` also runs on its own, with
+    // `--allow-run=deno` added: it runs `deno doc` to prove `llms.txt` is fresh. No other test
+    // gets that grant either.
+    "test": "deno test --no-prompt --allow-read --allow-env --ignore=theme/component-classes.test.ts,infra/scripts/llms-txt.test.ts && deno test --no-prompt --allow-read --allow-env --allow-ffi theme/component-classes.test.ts && deno test --no-prompt --allow-read --allow-env --allow-run=deno infra/scripts/llms-txt.test.ts",
     // Dry-runs the publish for every named workspace member (`pages/` has no `name`, so `deno
     // publish` skips it on its own — nothing here excludes it by hand). Named `publish:dry`
     // rather than `publish`: this only ever simulates; the real `deno publish` runs in Woodpecker
