@@ -7,6 +7,9 @@
  * deno task llms
  * ```
  *
+ * It runs `deno doc`, so it needs `--allow-run` on top of read and write; the task and the test
+ * task grant it.
+ *
  * Both files are generated. Never edit them by hand: `infra/scripts/llms-txt.test.ts` fails, and
  * names that command, when either differs from what this script writes. The build of the demo site
  * copies them to the site root, so they are served at `<site>/llms.txt` and `<site>/llms-full.txt`.
@@ -24,20 +27,19 @@
  *
  * **Where each fact comes from.**
  *
- * - The names come from `readPackages()` in `export-lists.ts`, which imports each package's entry
- *   points: a value export that exists is listed, one that does not is not. Types have no runtime
- *   presence, so they come from reading the entry modules' `export` statements
- *   ({@linkcode resolveModule}), which follow `export * from` and `export { … } from` to the
- *   declaration.
- * - The kind is the declaration's own keyword plus the name: an `interface`, `type` or `enum` is a
+ * - The names of value exports come from `readPackages()` in `export-lists.ts`, which imports each
+ *   package's entry points; one with no declaration in the docs makes the script throw. Types, kinds
+ *   and JSDoc come from `deno doc --json` over the entry points ({@linkcode denoDoc}), which
+ *   follows every re-export, across packages too.
+ * - The kind is the declaration's own kind plus the name: an `interface`, type alias or `enum` is a
  *   `type`; a name starting `use` and a capital is a `hook`; an initial capital followed by a
- *   lower-case letter is a `component` (an `Error` class is a `helper`); an `UPPER_SNAKE` name or a non-function `const` is a
- *   `constant`; anything else is a `helper`.
- * - The summary is the first sentence of the declaration's JSDoc. With none, the first sentence of
- *   the line the package's `README.md` gives that name in backticks (a table row's second cell, or
- *   a list item). With neither, the entry has no summary, and `deno task llms` prints its name so
- *   the gap is visible.
- *   A `FooProps` type with neither is described as "Props of `Foo`."
+ *   lower-case letter is a `component` (an `Error` class is a `helper`); an `UPPER_SNAKE` name or a
+ *   non-function variable is a `constant`; anything else is a `helper`.
+ * - The summary is the first sentence of the declaration's JSDoc. With none, the sentence in the
+ *   package README's table row for that name, but only in a column headed like a description
+ *   ("What it is", "Summary"): a props or migration table would give a wrong one. A `FooProps` type
+ *   with neither is described as "Props of `Foo`." With none of these the entry has no summary, and
+ *   `deno task llms` prints its name so the gap is visible.
  * - The import specifier is the package root when the barrel exports the name, else the first
  *   subpath that does.
  *
@@ -46,7 +48,7 @@
  * @module
  */
 
-import { type PackageSurface, readPackages, stripJsonc } from "./export-lists.ts"
+import { readPackages, stripJsonc } from "./export-lists.ts"
 
 const ROOT = new URL("../../", import.meta.url)
 
@@ -79,95 +81,66 @@ imports the same name as \`@spy4x/preact-ui\` but pulls in only that module.
 More: live guide ${SITE}/ · the full package READMEs ${SITE}/llms-full.txt
 `
 
-/** What one exported name is, and where it is declared. */
-export interface Declaration {
-  /** Absolute file URL of the module that declares it. */
-  file: URL
-  /** `function`, `const`, `class`, `interface`, `type` or `enum`. */
-  keyword: string
-}
-
 /** One listed export. */
 export interface Entry {
   name: string
   kind: "component" | "hook" | "helper" | "type" | "constant"
-  /** One sentence, or an empty string when neither JSDoc nor README gives one. */
+  /** One sentence, or an empty string when no source gives one. */
   summary: string
   /** Import specifier, for example `@spy4x/preact-ui/badge`. */
   specifier: string
 }
 
-/** Replaces every comment character with a space, keeping newlines, so offsets stay valid. */
-function maskComments(text: string): string {
-  return text.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, (match) => match.replace(/[^\n]/g, " "))
+/** The part of `deno doc --json` output this script reads: one symbol of one entry point. */
+export interface DocSymbol {
+  name: string
+  declarations: {
+    /** `interface`, `typeAlias`, `enum`, `function`, `class`, `variable` or `reference`. */
+    kind: string
+    /** `export` for a public name; `private` for a type an exported one extends. */
+    declarationKind?: string
+    jsDoc?: { doc?: string }
+    /** Where a real declaration is. */
+    location?: { filename: string }
+    /** For a `reference`: the declaration it re-exports. */
+    def?: { target?: { filename: string } }
+  }[]
 }
 
-const DECLARATION =
-  /export\s+(?:declare\s+)?(?:abstract\s+)?(async\s+function\*?|function\*?|const|let|class|interface|type|enum)\s+([A-Za-z_$][\w$]*)/g
-const REEXPORT_ALL = /export\s+\*\s+from\s+["']([^"']+)["']/g
-const NAMED_EXPORT = /export\s+(?:type\s+)?\{([^}]*)\}(?:\s+from\s+["']([^"']+)["'])?/g
-
-/**
- * Every name a module exports, with the module and keyword that declare it.
- *
- * Follows `export * from "./x"`, `export { a, type B as C } from "./x"` and a local
- * `export { a }`. Import paths must be relative and carry their extension, as they do in this
- * repository.
- *
- * @param file Module to read.
- * @returns Exported name to its declaration.
- */
-export async function resolveModule(file: URL): Promise<Map<string, Declaration>> {
-  const source = maskComments(await Deno.readTextFile(file))
-  const found = new Map<string, Declaration>()
-
-  for (const match of source.matchAll(DECLARATION)) {
-    found.set(match[2], { file, keyword: match[1].replace(/^async\s+/, "").replace(/\*$/, "") })
-  }
-  for (const match of source.matchAll(REEXPORT_ALL)) {
-    for (const [name, declaration] of await resolveModule(new URL(match[1], file))) {
-      if (name !== "default") found.set(name, declaration)
-    }
-  }
-  for (const match of source.matchAll(NAMED_EXPORT)) {
-    const from = match[2] ? await resolveModule(new URL(match[2], file)) : found
-    for (const part of match[1].split(",")) {
-      const specifier = part.trim().replace(/^type\s+/, "")
-      if (!specifier) continue
-      const [original, alias = original] = specifier.split(/\s+as\s+/).map((s) => s.trim())
-      // A name imported from another package and exported again has no declaration here; it is
-      // listed as a function (or a component, by its name) with no JSDoc to read.
-      const imported = !match[2] && new RegExp(`import[^;]*\\b${original}\\b[^;]*from`).test(source)
-      const declaration = from.get(original) ??
-        (imported ? { file, keyword: `function` } : undefined)
-      if (declaration) found.set(alias, declaration)
-    }
-  }
-  return found
+/** One entry point of a package, with the symbols `deno doc` found in it. */
+export interface DocEntryPoint {
+  /** Import specifier of the entry point, for example `@spy4x/preact-ui/badge`. */
+  specifier: string
+  symbols: DocSymbol[]
 }
 
 /**
- * The first sentence of the JSDoc block directly above a declaration.
+ * Runs `deno doc --json` over entry point files and reads back each file's symbols.
  *
- * @param text The declaring module's source.
- * @param name The declared name.
- * @returns The sentence with its line breaks joined, or an empty string when there is no JSDoc.
+ * `deno doc` follows every re-export, including a name re-exported from another package, and reads
+ * the JSDoc where the name is declared. A name it reports as a `reference` is a re-export of one
+ * declared elsewhere; {@linkcode buildEntries} resolves it through the same package's other entry
+ * points.
+ *
+ * @param files Entry point file URLs.
+ * @returns The symbols per file URL.
+ * @throws When `deno doc` fails.
  */
-export function jsdocSummary(text: string, name: string): string {
-  const masked = maskComments(text)
-  const pattern = new RegExp(
-    `export\\s+(?:declare\\s+)?(?:abstract\\s+)?(?:async\\s+function\\*?|function\\*?|const|let|class|interface|type|enum)\\s+${
-      name.replace(/\$/g, "\\$")
-    }(?![\\w$])`,
-  )
-  const at = masked.search(pattern)
-  if (at < 0) return ""
-  const before = text.slice(0, at)
-  const block = before.match(/\/\*\*((?:(?!\*\/)[\s\S])*)\*\/\s*$/)
-  if (!block) return ""
-  const body = block[1].split("\n").map((line) => line.replace(/^\s*\*? ?/, "")).join("\n")
-  const description = body.split(/\n\s*@\w/)[0]
-  return firstSentence(description)
+export async function denoDoc(files: URL[]): Promise<Map<string, DocSymbol[]>> {
+  const result = await new Deno.Command(Deno.execPath(), {
+    args: [`doc`, `--json`, ...files.map((file) => file.href)],
+    stdout: `piped`,
+    stderr: `piped`,
+  }).output()
+  if (!result.success) {
+    throw new Error(`deno doc failed: ${new TextDecoder().decode(result.stderr)}`)
+  }
+  const parsed = JSON.parse(new TextDecoder().decode(result.stdout))
+  const symbols = new Map<string, DocSymbol[]>()
+  for (const [file, node] of Object.entries<{ symbols: DocSymbol[] }>(parsed.nodes)) {
+    symbols.set(file, node.symbols)
+  }
+  return symbols
 }
 
 /**
@@ -183,32 +156,34 @@ export function firstSentence(text: string): string {
   return (end < 0 ? paragraph : paragraph.slice(0, end + 1)).trim()
 }
 
+/** Table column headings that hold a one-sentence description of the row's first cell. */
+const DESCRIPTION_COLUMNS = /^(summary|description|what it is|what it does)$/i
+
 /**
- * The summary a package README gives a name: the second cell of a table row whose first cell holds
- * the name in backticks, or the text of a list item that starts with it.
+ * The summary a package README gives a name: the description cell of the row whose first cell holds
+ * the name in backticks. Only a column headed like a description counts (see
+ * {@linkcode DESCRIPTION_COLUMNS}): a table of props, ports or a migration ("Before | Now") says
+ * something else about the name, and a wrong summary is worse than none.
  *
  * @param readme Package README text.
  * @param name Exported name.
  * @returns The first sentence, or an empty string.
  */
 export function readmeSummary(readme: string, name: string): string {
-  const mark = (cell: string) =>
-    new RegExp(`\`${name.replace(/\$/g, "\\$")}(?:\\(.*?\\))?\``)
-      .test(cell)
+  const mark = new RegExp(`\`${name.replace(/\$/g, "\\$")}(?:\\(.*?\\))?\``)
+  const cellsOf = (line: string) => line.split("|").slice(1, -1).map((cell) => cell.trim())
+  let column = -1
+  let previous = ""
   for (const line of readme.split("\n")) {
-    if (line.startsWith("|")) {
-      const cells = line.split("|").slice(1, -1).map((cell) => cell.trim())
-      if (cells.length >= 2 && mark(cells[0])) {
-        const text = cells.slice(1).find((cell) =>
-          /[A-Za-z]{3}/.test(cell) && !/^`[^`]*`$/.test(cell)
-        )
-        if (text) return firstSentence(text)
-      }
+    if (!line.startsWith("|")) {
+      column = -1
+    } else if (/^\|[\s:|-]+\|$/.test(line)) {
+      column = cellsOf(previous).findIndex((heading) => DESCRIPTION_COLUMNS.test(heading))
+    } else if (column > 0) {
+      const cells = cellsOf(line)
+      if (mark.test(cells[0] ?? "") && cells[column]) return firstSentence(cells[column])
     }
-    const item = line.match(/^\s*[-*]\s+(?:\*\*)?(`[^`]+`[^\n]*)/)
-    if (item && mark(item[1].split(/[—:-]/)[0])) {
-      return firstSentence(item[1].replace(/^`[^`]+`(?:\*\*)?\s*[—:-]*\s*/, ""))
-    }
+    previous = line
   }
   return ""
 }
@@ -221,14 +196,14 @@ export function readmeSummary(readme: string, name: string): string {
  * @returns One of the five kinds the files use.
  */
 export function kindOf(name: string, keyword: string): Entry["kind"] {
-  if (["interface", "type", "enum"].includes(keyword)) return "type"
+  if (["interface", "typeAlias", "enum"].includes(keyword)) return "type"
   if (/^use[A-Z]/.test(name)) return "hook"
   if (keyword === "class" && /Error$/.test(name)) return "helper"
   if (/^[A-Z][a-z]/.test(name) || /^[A-Z][a-zA-Z0-9]*$/.test(name) && /[a-z]/.test(name)) {
     return "component"
   }
   if (/^[A-Z][A-Z0-9_]*$/.test(name)) return "constant"
-  if (keyword === "const" && !/^[a-z]/.test(name)) return "constant"
+  if (keyword === "variable" && !/^[a-z]/.test(name)) return "constant"
   return "helper"
 }
 
@@ -242,47 +217,82 @@ export function packageDescription(readme: string): string {
   return (paragraph ?? "").replace(/\s+/g, " ")
 }
 
-/** What {@linkcode buildEntries} needs to know about one package. */
-interface PackageInput {
-  id: string
-  surface: PackageSurface
-  readme: string
+/** A declaration in `deno doc` output. */
+export type DocDeclaration = DocSymbol["declarations"][number]
+
+/**
+ * Indexes every public, non-reference declaration by name and file, so a re-export can be followed
+ * to where it is declared, in another package too.
+ *
+ * @param symbolsByFile The result of {@linkcode denoDoc}.
+ * @returns Declarations keyed `<name>|<file URL>`.
+ */
+export function declarationIndex(
+  symbolsByFile: Iterable<DocSymbol[]>,
+): Map<string, DocDeclaration> {
+  const index = new Map<string, DocDeclaration>()
+  for (const symbols of symbolsByFile) {
+    for (const { name, declarations } of symbols) {
+      for (const declaration of declarations) {
+        if (declaration.kind === `reference` || declaration.declarationKind === `private`) continue
+        index.set(`${name}|${declaration.location?.filename}`, declaration)
+      }
+    }
+  }
+  return index
 }
 
 /**
  * Lists one package's exports, values and types, each with its kind, summary and specifier.
  *
- * @param input The package's directory name, runtime surface and README.
- * @returns Entries in the order the package's entry points declare them: the barrel first.
- * @throws When a value export the package really has cannot be found in its sources.
+ * A name exported by several entry points is listed once, under the first: the barrel comes first,
+ * so a name the barrel exports imports from the package root. The kind and the JSDoc come from
+ * where the name is declared: a `reference` symbol (a re-export) is followed through `index` to
+ * its declaration, in this package or another. A reference that reaches nothing has neither. With
+ * no JSDoc the summary falls back to the README's description column, then, for a `FooProps` type,
+ * to "Props of `Foo`."; otherwise it is empty.
+ *
+ * @param entryPoints The package's entry points, barrel first, with their `deno doc` symbols.
+ * @param valueNames Every value export the package really has, from `readPackages()`.
+ * @param readme The package README.
+ * @param pkg The package name, for the error message.
+ * @param index {@linkcode declarationIndex} over every package's symbols.
+ * @returns The entries.
+ * @throws When a value export has no declaration.
  */
-export async function buildEntries(input: PackageInput): Promise<Entry[]> {
-  const { id, surface, readme } = input
-  const config = JSON.parse(stripJsonc(await Deno.readTextFile(new URL(`${id}/deno.json`, ROOT))))
-  const pkg = config.name as string
-  const entries = new Map<string, Entry>()
-  const sources = new Map<string, string>()
-
-  for (const [key, target] of Object.entries(config.exports as Record<string, string>)) {
-    if (!/\.tsx?$/.test(target)) continue
-    const specifier = key === "." ? pkg : `${pkg}/${key.replace(/^\.\//, "")}`
-    const module = new URL(`${id}/${target}`, ROOT)
-    for (const [name, declaration] of await resolveModule(module)) {
-      if (entries.has(name)) continue
-      const path = declaration.file.href
-      if (!sources.has(path)) sources.set(path, await Deno.readTextFile(declaration.file))
-      let summary = jsdocSummary(sources.get(path)!, name) || readmeSummary(readme, name)
-      // A props type with no JSDoc of its own is described by the component it belongs to.
-      if (!summary && /^[A-Z]\w*Props$/.test(name) && declaration.keyword !== `function`) {
-        summary = `Props of \`${name.slice(0, -5)}\`.`
-      }
-      entries.set(name, { name, kind: kindOf(name, declaration.keyword), summary, specifier })
+export function buildEntries(
+  entryPoints: DocEntryPoint[],
+  valueNames: string[],
+  readme: string,
+  pkg: string,
+  index: Map<string, DocDeclaration>,
+): Entry[] {
+  const resolve = (name: string, declarations: DocDeclaration[]) => {
+    for (const declaration of declarations) {
+      if (declaration.declarationKind === `private`) continue
+      if (declaration.kind !== `reference`) return declaration
+      const target = index.get(`${name}|${declaration.def?.target?.filename}`)
+      if (target) return target
     }
   }
 
-  for (const name of surface.names) {
+  const entries = new Map<string, Entry>()
+  for (const { specifier, symbols } of entryPoints) {
+    for (const { name, declarations } of symbols) {
+      const declaration = resolve(name, declarations)
+      if (!declaration || entries.has(name)) continue
+      let summary = firstSentence(declaration.jsDoc?.doc ?? ``) || readmeSummary(readme, name)
+      // A props type with no JSDoc of its own is described by the component it belongs to.
+      if (!summary && /^[A-Z]\w*Props$/.test(name) && declaration.kind !== `function`) {
+        summary = `Props of \`${name.slice(0, -5)}\`.`
+      }
+      entries.set(name, { name, kind: kindOf(name, declaration.kind), summary, specifier })
+    }
+  }
+
+  for (const name of valueNames) {
     if (!entries.has(name)) {
-      throw new Error(`${pkg} exports \`${name}\` but no source declaration was found for it`)
+      throw new Error(`${pkg} exports \`${name}\` but no declaration was found for it`)
     }
   }
   return [...entries.values()]
@@ -313,10 +323,29 @@ export async function generate(): Promise<Generated> {
   const readmes: string[] = []
   const missingSummaries: string[] = []
 
+  const configs: Record<string, { name: string; exports: Record<string, string> }> = {}
+  const files: URL[] = []
+  for (const id of Object.keys(packages)) {
+    configs[id] = JSON.parse(stripJsonc(await Deno.readTextFile(new URL(`${id}/deno.json`, ROOT))))
+    for (const target of Object.values(configs[id].exports)) {
+      if (/\.tsx?$/.test(target)) files.push(new URL(`${id}/${target}`, ROOT))
+    }
+  }
+  const symbols = await denoDoc(files)
+  const index = declarationIndex(symbols.values())
+
   for (const [id, surface] of Object.entries(packages)) {
-    const config = JSON.parse(stripJsonc(await Deno.readTextFile(new URL(`${id}/deno.json`, ROOT))))
+    const config = configs[id]
     const readme = await Deno.readTextFile(new URL(`${id}/README.md`, ROOT)).catch(() => "")
-    const entries = await buildEntries({ id, surface, readme })
+    const entryPoints: DocEntryPoint[] = []
+    for (const [key, target] of Object.entries(config.exports)) {
+      if (!/\.tsx?$/.test(target)) continue
+      entryPoints.push({
+        specifier: key === "." ? config.name : `${config.name}/${key.replace(/^\.\//, "")}`,
+        symbols: symbols.get(new URL(`${id}/${target}`, ROOT).href) ?? [],
+      })
+    }
+    const entries = buildEntries(entryPoints, surface.names, readme, config.name, index)
     for (const entry of entries) {
       if (!entry.summary) missingSummaries.push(`${config.name}: ${entry.name}`)
     }

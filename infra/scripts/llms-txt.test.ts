@@ -1,13 +1,14 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import {
+  buildEntries,
+  declarationIndex,
+  type DocEntryPoint,
   firstSentence,
   generate,
-  jsdocSummary,
   kindOf,
   packageDescription,
   readmeSummary,
-  resolveModule,
 } from "./llms-txt.ts"
 
 const ROOT = new URL("../../", import.meta.url)
@@ -32,65 +33,55 @@ describe("llms.txt and llms-full.txt", () => {
   })
 })
 
-describe("jsdocSummary", () => {
-  const source = `
-/** Not this one. */
-export const other = 1
-
-/**
- * Adds two numbers
- * across lines. The second sentence is left out.
- *
- * @param a First.
- */
-export function add(a: number) {}
-
-export const bare = 1
-`
-
-  it("returns the first sentence of the block directly above the declaration", () => {
-    expect(jsdocSummary(source, "add")).toBe("Adds two numbers across lines.")
-  })
-
-  it("returns nothing for a declaration with no JSDoc", () => {
-    expect(jsdocSummary(source, "bare")).toBe("")
-  })
-
+describe("firstSentence", () => {
   it("turns an inline link into the linked name", () => {
     expect(firstSentence("Options for {@link preactThemeCss}. More.")).toBe(
       "Options for `preactThemeCss`.",
+    )
+  })
+
+  it("joins the lines of the first sentence and drops the rest", () => {
+    expect(firstSentence("Adds two numbers\nacross lines. Second one.")).toBe(
+      "Adds two numbers across lines.",
     )
   })
 })
 
 describe("readmeSummary", () => {
   const readme = [
-    "| Component | Summary |",
+    "| Export | What it is |",
     "| --- | --- |",
     "| `Widget` | Draws a widget. Second sentence. |",
     "",
-    "- `helper(x)` — Does the helping. More.",
+    "| Before | Now |",
+    "| --- | --- |",
+    "| `oldTicks` | `yTicks`, `yFormat` |",
+    "",
+    "| Component | Subpath | Ports / key props |",
+    "| --- | --- | --- |",
+    "| `Calendar` | `calendar` | `value`, `onSelect` |",
   ].join("\n")
 
-  it("reads a table row's second cell", () => {
+  it("reads the cell under a description column", () => {
     expect(readmeSummary(readme, "Widget")).toBe("Draws a widget.")
   })
 
-  it("reads a list item after the name", () => {
-    expect(readmeSummary(readme, "helper")).toBe("Does the helping.")
+  it("writes nothing for a migration table", () => {
+    expect(readmeSummary(readme, "oldTicks")).toBe("")
   })
 
-  it("returns nothing for a name the README does not mention", () => {
-    expect(readmeSummary(readme, "Missing")).toBe("")
+  it("writes nothing for a props column", () => {
+    expect(readmeSummary(readme, "Calendar")).toBe("")
   })
 })
 
 describe("kindOf", () => {
   it("names the five kinds", () => {
     expect(kindOf("Props", "interface")).toBe("type")
+    expect(kindOf("Alias", "typeAlias")).toBe("type")
     expect(kindOf("useThing", "function")).toBe("hook")
     expect(kindOf("Button", "function")).toBe("component")
-    expect(kindOf("DEFAULT_COLOR", "const")).toBe("constant")
+    expect(kindOf("DEFAULT_COLOR", "variable")).toBe("constant")
     expect(kindOf("clamp", "function")).toBe("helper")
     expect(kindOf("VersionError", "class")).toBe("helper")
   })
@@ -104,10 +95,58 @@ describe("packageDescription", () => {
   })
 })
 
-describe("resolveModule", () => {
-  it("follows a re-export to the module that declares the name", async () => {
-    const found = await resolveModule(new URL("ui/+index.ts", ROOT))
-    expect(found.get("Badge")?.file.pathname.endsWith("/ui/badge.tsx")).toBe(true)
-    expect(found.get("BadgeProps")?.keyword).toBe("interface")
+describe("buildEntries", () => {
+  const TARGET = "file:///other/input.tsx"
+
+  /** This package: re-exports a type another package declares, and declares two names itself. */
+  const fixture = (): DocEntryPoint[] => [
+    {
+      specifier: "@spy4x/pkg",
+      symbols: [
+        {
+          name: "SelectOption",
+          declarations: [{ kind: "reference", def: { target: { filename: TARGET } } }],
+        },
+        {
+          name: "niceStep",
+          declarations: [{ kind: "function", jsDoc: { doc: "Rounds a step." } }],
+        },
+        { name: "Thing", declarations: [{ kind: "function" }] },
+      ],
+    },
+  ]
+
+  /** The other package's symbols, where the type is declared. */
+  const index = () =>
+    declarationIndex([[{
+      name: "SelectOption",
+      declarations: [{
+        kind: "interface",
+        declarationKind: "export",
+        location: { filename: TARGET },
+        jsDoc: { doc: "One option. More text." },
+      }],
+    }]])
+
+  it("lists a re-exported type with the kind and JSDoc of its declaration", () => {
+    const entries = buildEntries(fixture(), ["niceStep", "Thing"], "", "@spy4x/pkg", index())
+    expect(entries.find((entry) => entry.name === "SelectOption")).toEqual({
+      name: "SelectOption",
+      kind: "type",
+      summary: "One option.",
+      specifier: "@spy4x/pkg",
+    })
+  })
+
+  it("leaves the summary empty rather than take a wrong README line", () => {
+    const readme = "| Before | Now |\n| --- | --- |\n| `Thing` | `a`, `b` |"
+    const entries = buildEntries(fixture(), ["Thing"], readme, "@spy4x/pkg", index())
+    expect(entries.find((entry) => entry.name === "Thing")?.summary).toBe("")
+  })
+
+  it("throws for a value export that has no declaration", () => {
+    expect(() => buildEntries(fixture(), ["Missing"], "", "@spy4x/pkg", index())).toThrow(
+      /exports `Missing`/,
+    )
   })
 })

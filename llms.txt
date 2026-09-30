@@ -68,9 +68,9 @@ Install: `deno add jsr:@spy4x/preact-charts`
 - `NiceScale` (type): Import: `@spy4x/preact-charts`
 - `niceScale` (helper): Padded, rounded-outward domain plus the tick values that go with it. Import: `@spy4x/preact-charts`
 - `NiceScaleOptions` (type): Import: `@spy4x/preact-charts`
-- `niceStep` (helper): Import: `@spy4x/preact-charts`
+- `niceStep` (helper): Round a span up to a sensible tick step at roughly `target` ticks. Import: `@spy4x/preact-charts`
 - `paddedDomain` (helper): Pad a domain by a fraction of its span, so points never sit on the axis frame. Import: `@spy4x/preact-charts`
-- `ticks` (helper): `yTicks`, `yFormat` Import: `@spy4x/preact-charts`
+- `ticks` (helper): Tick values at multiples of a nice step, kept within half a step of `[min, max]`. Import: `@spy4x/preact-charts`
 - `xLabelStride` (helper): Draw every `stride`-th X label and always the last one, so a dense axis keeps a readable label count without dropping the right-hand end. Import: `@spy4x/preact-charts`
 - `createInViewObserver` (helper): Observe one element and report intersection changes. Import: `@spy4x/preact-charts`
 - `InViewHandle` (type): Handle returned by `createInViewObserver`. Import: `@spy4x/preact-charts`
@@ -78,7 +78,7 @@ Install: `deno add jsr:@spy4x/preact-charts`
 - `useInView` (hook): Report whether the element behind `ref` has scrolled into view. Import: `@spy4x/preact-charts`
 - `TIME_FRAMES` (constant): The bucket granularities a series can be aggregated at. Import: `@spy4x/preact-charts`
 - `TimeFrame` (type): Bucket granularity of a series, which decides the X tick format. Import: `@spy4x/preact-charts`
-- `TimeSeriesPoint` (type): is the arktype schema of one `TimeSeriesPoint`, `{ timeGroup, value }`, Import: `@spy4x/preact-charts`
+- `TimeSeriesPoint` (type): Import: `@spy4x/preact-charts`
 - `CHART_PALETTE_CLASS` (constant): Classes a chart puts on its root so `DEFAULT_CHART_PALETTE` resolves to the light steps, or to the dark ones under a `.dark` ancestor — the theme package's class-based dark mode. Import: `@spy4x/preact-charts/colors`
 
 ## @spy4x/preact-cn
@@ -127,7 +127,7 @@ Install: `deno add jsr:@spy4x/preact-crud`
 - `NumberField` (component): One labelled numeric input. Import: `@spy4x/preact-crud`
 - `SelectField` (component): One labelled select, on `ui`'s `Select`. Import: `@spy4x/preact-crud`
 - `SelectFieldProps` (type): A `SelectField` adds its option list and the empty option to `FieldProps`. Import: `@spy4x/preact-crud`
-- `SelectOption` (component): Import: `@spy4x/preact-crud`
+- `SelectOption` (type): One option of a `Select`. Import: `@spy4x/preact-crud`
 - `setField` (helper): Merge one field into a model signal. Import: `@spy4x/preact-crud`
 - `TextareaField` (component): One labelled multi-line text input. Import: `@spy4x/preact-crud`
 - `TextField` (component): One labelled text input. Import: `@spy4x/preact-crud`
@@ -366,7 +366,7 @@ Install: `deno add jsr:@spy4x/preact-system`
 - `AuthFormProps` (type): Props of `AuthForm`. Import: `@spy4x/preact-system`
 - `AuthMode` (type): Which screen `AuthForm` draws. Import: `@spy4x/preact-system`
 - `AuthStep` (type): Which step of a mode `AuthForm` draws. Import: `@spy4x/preact-system`
-- `Calendar` (component): `monthAnchor`, `minDate`, `maxDate`, `availableByDate`, `onSelectDate?` Import: `@spy4x/preact-system`
+- `Calendar` (component): Import: `@spy4x/preact-system`
 - `CalendarDay` (type): One cell of the grid, resolved. Import: `@spy4x/preact-system`
 - `CalendarDayReason` (type): Why a day cannot be picked. Import: `@spy4x/preact-system`
 - `CalendarLabels` (type): Copy the calendar renders. Import: `@spy4x/preact-system`
@@ -500,7 +500,7 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `hasQuestion` (helper): Whether the panel's body holds something worth being described by. Import: `@spy4x/preact-ui`
 - `labelOr` (helper): The caller's label, or the library's English default. Import: `@spy4x/preact-ui`
 - `CopyBlock` (component): A box of monospace text with a copy control beside it: an install command, an API key, an id. Import: `@spy4x/preact-ui`
-- `CopyBlockProps` (component): Import: `@spy4x/preact-ui`
+- `CopyBlockProps` (type): Props of `CopyBlock`, the one block of copyable text this package ships. Import: `@spy4x/preact-ui`
 - `CopyButton` (component): Copy a string to the clipboard through an injected port or the browser API. Import: `@spy4x/preact-ui`
 - `CopyButtonProps` (type): Props of `CopyButton`. Import: `@spy4x/preact-ui`
 - `activeDescendant` (helper): `aria-activedescendant` for the combobox input, or `undefined` when nothing is highlighted. Import: `@spy4x/preact-ui`

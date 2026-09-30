@@ -56,8 +56,11 @@ const WORKSPACE_DIRECTORIES = [
   "ui-guide",
 ] as const
 
-/** Root files that change how every specifier in the workspace resolves. */
-const ROOT_FILES = ["deno.jsonc", "deno.lock"] as const
+/**
+ * Root files that change how every specifier in the workspace resolves, and the two generated
+ * files the build copies to the site root byte for byte (`deno task llms`).
+ */
+const ROOT_FILES = ["deno.jsonc", "deno.lock", "llms.txt", "llms-full.txt"] as const
 
 /**
  * Directories copied into the artefact verbatim and served from it (`build.ts`'s
