@@ -458,9 +458,13 @@ The two hover tokens follow the accent, not `--color-selected`: the accent's hov
 which label the accent takes, which a colour derived from `--color-selected` cannot know. An app
 that repaints `--color-selected` or `--color-selected-soft` sets the matching hover token too.
 
+In the dark palette `--color-selected` is accent step 600 and `--color-selected-hover` step 700:
+step 900 stood only 1.62:1 off the dark canvas, and 600 is the lightest step a white label is held
+to 4.5:1 on. With the default purple the fill reads 3.20:1 on the dark canvas and its label 5.54:1.
+
 Focus: `ring-2 ring-focus ring-offset-2 ring-offset-focus` draws a 2px ring in `--color-ring` (the
-accent, which is what the primary `Button` draws today) with a 2px gap in `--color-focus-offset` (the
-canvas). `--color-focus-ring` is the other token: it moves the preset's own `.input`, `.select`,
+accent, which is what the primary `Button` draws today; step 400 in the dark palette, 6.36:1 on the
+dark canvas) with a 2px gap in `--color-focus-offset` (the canvas). `--color-focus-ring` is the other token: it moves the preset's own `.input`, `.select`,
 `.textarea` and dark `.btn` rings, and ink sets it, so ink does not touch the components' ring.
 
 ### Text on a fill

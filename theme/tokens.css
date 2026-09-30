@@ -157,6 +157,12 @@
   /* The fills keep the light palette's steps, under the same light labels. */
   --color-warning-fill: oklch(0.646 0.222 41.116); /* orange-600 */
   --color-success-fill: oklch(0.527 0.154 150.069); /* green-700 */
+  /* The selected fill is step 600: the lightest step a white label is held to 4.5:1 on, and 3:1
+     against the canvas, so a switch that is on stands off the page. Its hover is one step darker. */
+  --color-selected: var(--color-accent-600);
+  --color-selected-hover: var(--color-accent-700);
+  /* The components' focus ring, at 3:1 or better against the surface and the canvas. */
+  --color-ring: var(--color-accent-400);
   --color-selected-soft: color-mix(in oklab, var(--color-accent-900) 30%, transparent);
   --color-selected-text: var(--color-accent-400);
   --color-selected-soft-hover: color-mix(in oklab, var(--color-accent-900) 50%, transparent);
