@@ -171,7 +171,7 @@ export interface CalendarProps {
 const cellBase =
   "relative flex size-full items-center justify-center rounded-lg text-sm tabular-nums transition-colors select-none"
 const focusRing =
-  "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent-900 focus-visible:ring-offset-2 ring-offset-surface dark:focus-visible:ring-accent-400"
+  "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ring-offset-surface"
 const arrowBase =
   "inline-flex size-8 items-center justify-center rounded-lg border border-subtle text-muted transition-colors"
 const arrowEnabled = "hover:bg-hover hover:text-foreground"
