@@ -20,13 +20,19 @@ export interface BadgeProps {
   class?: string
 }
 
+/**
+ * An outline badge draws its label straight on whatever is behind it, so in the dark palette each
+ * colour steps up to its 400 shade: red, green, blue and the accent at 600 read below 4.5:1 on the
+ * gray-900 canvas and the gray-800 surface. Orange is already at 400, and grey reads the muted
+ * text token, which the dark palette lightens itself.
+ */
 const outlineClasses: Record<BadgeColor, string> = {
-  red: "border-red-600 text-red-600",
+  red: "border-red-600 text-red-600 dark:border-red-400 dark:text-red-400",
   orange: "border-orange-400 text-orange-400",
-  green: "border-green-600 text-green-600",
+  green: "border-green-600 text-green-600 dark:border-green-400 dark:text-green-400",
   gray: "border-control text-muted",
-  blue: "border-blue-600 text-blue-600",
-  purple: "border-accent-600 text-accent-600",
+  blue: "border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400",
+  purple: "border-accent-600 text-accent-600 dark:border-accent-400 dark:text-accent-400",
   purpleNav: "border-accent-700 bg-accent-900 text-accent-100",
 }
 
