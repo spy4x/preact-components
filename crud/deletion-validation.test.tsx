@@ -20,7 +20,7 @@ describe("DeletionValidation", () => {
     const html = render(<DeletionValidation dependencies={[]} model="Region" />)
 
     expect(html).toContain('role="alert"')
-    expect(html).not.toContain("border-red-600")
+    expect(html).not.toContain("border-danger")
     expect(html).not.toContain("To archive this Region")
   })
 
@@ -48,6 +48,13 @@ describe("DeletionValidation", () => {
     const html = render(<DeletionValidation dependencies={dependencies} model="Region" />)
     const match = html.match(/<div([^>]*)role="alert"/)
 
-    expect(match?.[1]).toContain("border-red-600")
+    expect(match?.[1]).toContain("border-danger text-danger")
+  })
+
+  it("draws its red from the danger token alone, with no fixed red or dark override", () => {
+    const html = render(<DeletionValidation dependencies={dependencies} model="Region" />)
+
+    expect(html).not.toMatch(/\b(?:[a-z]+:)*(?:text|border)-red-\d{2,3}\b/)
+    expect(html).not.toContain("dark:")
   })
 })
