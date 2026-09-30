@@ -484,10 +484,10 @@ app pins the label by setting `--color-accent-foreground`. The block needs `pow(
 browser without it keeps the previous rules (the literal purple steps and
 `--color-primary-foreground`).
 
-`.btn-danger` keeps `--color-danger-foreground` (red-50). The `Button`'s danger variant reads
-`--color-danger-fill` (red-600 in light, red-700 in dark), `--color-danger-fill-hover` (red-700 and
-red-600) and `--color-danger-fill-foreground` (white, 4.77:1 in light and 6.42:1 in dark). The fill
-is not `--color-danger` because that is drawn as text in dark. In the dark palette `--color-danger`,
+`.btn-danger` and the `Button`'s danger variant read `--color-danger-fill` (red-600 in light,
+red-700 in dark), `--color-danger-fill-hover` (red-700 and red-600) and
+`--color-danger-fill-foreground` (white, 4.77:1 in light and 6.42:1 in dark). The fill is not
+`--color-danger` because that is drawn as text in dark. In the dark palette `--color-danger`,
 `--color-warning` and `--color-success` are text colours (red-400, orange-400 and green-400), each
 at 4.5:1 or better on the surface and the canvas, so `text-danger`, `text-warning` and
 `text-success` need no `dark:` override. `bg-warning`, `bg-success`, `.btn-warning`, `.btn-success`

@@ -496,11 +496,13 @@
   }
 }
 
+/* The danger fill tokens, as the `Button`'s danger variant draws them: `--color-danger` is a text
+   colour in dark, too light to carry a label. */
 @utility btn-danger {
-  @apply border hover:bg-red-700 focus-visible:outline-red-700;
+  @apply border hover:bg-danger-fill-hover focus-visible:outline-red-700;
   @apply dark:focus-visible:outline-red-500;
-  background-color: var(--color-danger, oklch(0.577 0.245 27.325));
-  color: var(--color-danger-foreground, oklch(0.971 0.013 17.38));
+  background-color: var(--color-danger-fill, oklch(0.577 0.245 27.325));
+  color: var(--color-danger-fill-foreground, oklch(1 0 0));
 }
 
 @utility btn-danger-outline {
