@@ -200,6 +200,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await inlineEditInterruptionChecks(devtools)
   await shortcutsChecks(devtools)
   await toggleChipsChecks(devtools)
+  await outlineBadgeContrastCheck(devtools)
   await kanbanBoardChecks(devtools)
 
   // Last on purpose: a Modal that refuses to close would sit in the top layer over everything, so a
@@ -12465,6 +12466,170 @@ async function toggleChipsChecks(devtools: Devtools): Promise<void> {
       cleared.echo.endsWith("status: (none)"),
     `Open ${before.status.Open} → ${moved.status.Open}, Done → ${moved.status.Done} → ` +
       `${cleared.status.Done}; "${moved.echo}" → "${cleared.echo}"`,
+  )
+}
+
+/**
+ * In-page helpers that measure WCAG contrast the way the screen shows it. `paint(color)` draws a
+ * colour on a 1×1 canvas and reads back its sRGB bytes, so a computed style in any colour function
+ * (`oklch()`, relative colour syntax, `color-mix()`) resolves the way Chromium renders it.
+ * `backdrop(element)` composites every background from the first opaque ancestor down to the
+ * element itself, the colour text inside it is really drawn on. `ratio(a, b)` takes two byte
+ * triples.
+ */
+const CONTRAST_HELPERS = `
+  const contrastCanvas = new OffscreenCanvas(1, 1).getContext("2d", { willReadFrequently: true })
+  const paintLayers = (colors) => {
+    contrastCanvas.clearRect(0, 0, 1, 1)
+    for (const color of colors) {
+      contrastCanvas.fillStyle = color
+      contrastCanvas.fillRect(0, 0, 1, 1)
+    }
+    return [...contrastCanvas.getImageData(0, 0, 1, 1).data.slice(0, 3)]
+  }
+  const paint = (color) => paintLayers(["white", color])
+  const backdrop = (element) => {
+    const layers = []
+    for (let node = element; node; node = node.parentElement) {
+      const color = getComputedStyle(node).backgroundColor
+      layers.unshift(color)
+      contrastCanvas.clearRect(0, 0, 1, 1)
+      contrastCanvas.fillStyle = color
+      contrastCanvas.fillRect(0, 0, 1, 1)
+      if (contrastCanvas.getImageData(0, 0, 1, 1).data[3] === 255) break
+    }
+    return paintLayers(["white", ...layers])
+  }
+  const luminance = (rgb) => {
+    const [r, g, b] = rgb.map((channel) => {
+      const s = channel / 255
+      return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
+    })
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+  }
+  const ratio = (a, b) => {
+    const [x, y] = [luminance(a), luminance(b)]
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
+  }
+`
+
+/** One outline badge's label contrast, measured in one palette. */
+interface BadgeContrast {
+  /** The badge's text, which is its colour's name in the catalogue. */
+  name: string
+  /** Against what the badge really sits on (its own fill, when it has one). */
+  onBackdrop: number
+  /** Against the palette's page canvas and raised surface, the other places a badge sits. */
+  onCanvas: number
+  onSurface: number
+  /** Whether the badge has a fill of its own, so only its own fill is behind the label. */
+  filled: boolean
+}
+
+/** Both palettes' readings of every outline badge, and the unpressed chip beside them in dark. */
+interface OutlineBadgeReading {
+  found: number
+  light: BadgeContrast[]
+  dark: BadgeContrast[]
+  /** An unpressed `ToggleChips` chip's text colour, and the grey outline badge's, in dark. */
+  chipColor: string
+  grayColor: string
+  chipRatio: number
+}
+
+/**
+ * In the dark palette every outline `Badge` label reaches 4.5:1 against what it sits on: the
+ * catalogue card behind it, the gray-900 canvas and the gray-800 surface (#396). A badge with its
+ * own fill (`purpleNav`) is measured against that fill alone. The light palette is read too, for
+ * the evidence, and not asserted: this change leaves it alone. An unpressed `ToggleChips` chip draws
+ * the grey outline badge's own dark colour, so the chip needs no dark override of its own.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function outlineBadgeContrastCheck(devtools: Devtools): Promise<void> {
+  await pointerToCorner(devtools)
+  const reading = await devtools.evaluate<OutlineBadgeReading>(`(async () => {
+    ${CONTRAST_HELPERS}
+    const root = document.documentElement
+    const wasDark = root.classList.contains("dark")
+    const card = document.querySelector("#demo-Badge")
+    const row = [...card.querySelectorAll("span")].find((span) => span.textContent.trim() === "outline")
+    const badges = [...(row?.nextElementSibling?.children ?? [])]
+    const chip = document.querySelector('#demo-ToggleChips button[aria-pressed="false"]')
+    const grayBadge = badges.find((badge) => badge.textContent.trim() === "gray")
+    const token = (name) => {
+      const probe = document.createElement("div")
+      probe.style.backgroundColor = "var(" + name + ")"
+      document.body.appendChild(probe)
+      const color = paint(getComputedStyle(probe).backgroundColor)
+      probe.remove()
+      return color
+    }
+    const settle = () => Promise.all(
+      [...badges, chip].flatMap((element) =>
+        element ? element.getAnimations().map((animation) => animation.finished.catch(() => {})) : []
+      ),
+    )
+    const measure = () => {
+      const canvas = token("--color-canvas")
+      const surface = token("--color-surface")
+      return badges.map((badge) => {
+        const text = paint(getComputedStyle(badge).color)
+        const behind = backdrop(badge)
+        paintLayers([getComputedStyle(badge).backgroundColor])
+        const filled = contrastCanvas.getImageData(0, 0, 1, 1).data[3] === 255
+        return {
+          name: badge.textContent.trim(),
+          onBackdrop: ratio(text, behind),
+          onCanvas: filled ? ratio(text, behind) : ratio(text, canvas),
+          onSurface: filled ? ratio(text, behind) : ratio(text, surface),
+          filled,
+        }
+      })
+    }
+    try {
+      root.classList.remove("dark")
+      await settle()
+      const light = measure()
+      root.classList.add("dark")
+      await settle()
+      const dark = measure()
+      return {
+        found: badges.length,
+        light,
+        dark,
+        chipColor: chip ? getComputedStyle(chip).color : "no unpressed chip",
+        grayColor: grayBadge ? getComputedStyle(grayBadge).color : "no gray badge",
+        chipRatio: chip ? ratio(paint(getComputedStyle(chip).color), backdrop(chip)) : 0,
+      }
+    } finally {
+      root.classList.toggle("dark", wasDark)
+    }
+  })()`)
+
+  const lowest = (badge: BadgeContrast) =>
+    Math.min(badge.onBackdrop, badge.onCanvas, badge.onSurface)
+  const failing = reading.dark.filter((badge) => lowest(badge) < 4.5)
+  const table = (badges: BadgeContrast[]) =>
+    badges.map((badge) =>
+      badge.filled
+        ? `${badge.name} ${badge.onBackdrop.toFixed(2)} on its fill`
+        : `${badge.name} ${badge.onBackdrop.toFixed(2)}/${badge.onCanvas.toFixed(2)}/` +
+          badge.onSurface.toFixed(2)
+    ).join(", ")
+  check(
+    "in the dark palette every outline Badge label reaches 4.5:1 on the card, canvas and surface",
+    reading.found === 7 && failing.length === 0,
+    reading.found !== 7
+      ? `found ${reading.found} outline badges in the Badge card, expected 7`
+      : `card/canvas/surface — dark: ${table(reading.dark)}; light (not asserted): ` +
+        table(reading.light),
+  )
+  check(
+    "in the dark palette an unpressed ToggleChips chip draws the grey outline Badge's colour",
+    reading.chipColor === reading.grayColor && reading.chipRatio >= 4.5,
+    `chip ${reading.chipColor}, grey badge ${reading.grayColor}, chip on its card ` +
+      `${reading.chipRatio.toFixed(2)}:1`,
   )
 }
 
