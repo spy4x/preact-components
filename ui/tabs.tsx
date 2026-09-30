@@ -54,7 +54,7 @@ const listBase = "flex gap-1"
 const listEdge = "flex-wrap border-b border-subtle"
 
 const tabBase =
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap px-3 py-2 text-sm font-medium transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap px-3 py-2 text-sm font-medium transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
 
 const tabEdge = "border-b-2 -mb-px"
 

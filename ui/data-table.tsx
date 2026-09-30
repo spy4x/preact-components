@@ -230,7 +230,7 @@ function alignClass(align: DataTableColumnAlign = "left"): string {
 }
 
 const sortButtonClasses = "inline-flex w-full items-center gap-1 rounded " +
-  "focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 " +
+  "focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus " +
   "focus-visible:outline-hidden hover:text-selected"
 
 /**
