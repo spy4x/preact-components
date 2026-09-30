@@ -62,9 +62,9 @@ const chip =
   "normal-case cursor-pointer transition-colors focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
 
 /**
- * The unpressed chip's own additions to `Badge`'s grey outline, which has no dark colours. Under
- * `.dark`, `text-muted` measures 6.82:1 on the gray-900 canvas, and the hover swaps to `text-foreground`
- * because muted reads 4.1:1 on the gray-700 hover.
+ * The unpressed chip's hover, the one thing it adds to `Badge`'s grey outline, whose colours it
+ * takes for both palettes. The hover swaps to `text-foreground` because, under `.dark`, muted text
+ * reads 4.1:1 on the gray-700 hover fill.
  */
 const unpressed = "hover:bg-hover hover:text-foreground"
 
