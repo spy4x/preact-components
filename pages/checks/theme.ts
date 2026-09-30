@@ -570,7 +570,8 @@ interface SelectionPalette {
  * - The on track of a real `ToggleSwitch` and the chosen half of a real `OnOffButtons` reach 3:1
  *   against what they sit on, and the chosen half's label stays at 4.5:1 on the fill.
  * - A keyboard-focused `FileInput` drop zone, `KanbanBoard` card, `Button`, `Tabs` tab,
- *   `ToggleSwitch` and one of the guide's own buttons draw the `ring-focus` colour (`--color-ring`)
+ *   `ToggleSwitch`, one of the guide's own buttons, a `ToggleChips` chip, a `DataTable` sort button,
+ *   an `ImageGallery` thumbnail and a `Tooltip` trigger draw the `ring-focus` colour (`--color-ring`)
  *   and follow an app that sets it. The ring stands 3:1 off the offset gap between it and the
  *   element in both palettes (where there is no gap, off what the element sits on), and 3:1 off
  *   what the element sits on in dark.
@@ -658,6 +659,12 @@ async function selectionAndRingChecks(devtools: Devtools): Promise<void> {
         !element.closest('[data-card-part="demo"]') && element.className.includes("ring-focus") &&
         element.checkVisibility()
       )
+      const chip = document.querySelector("#demo-ToggleChips button:not(:disabled)")
+      const sort = document.querySelector("#demo-DataTable th button")
+      const thumbnail = document.querySelector("#demo-ImageGallery button")
+      const trigger = document.querySelector(
+        '#demo-Tooltip button[aria-label], #demo-Tooltip [tabindex="0"][aria-label]',
+      )
       const targets = [
         ["FileInput drop zone", zone, zone?.closest('[data-e2e="file-input-zone"]')],
         ["KanbanBoard card", card, card],
@@ -665,6 +672,10 @@ async function selectionAndRingChecks(devtools: Devtools): Promise<void> {
         ["Tabs tab", tab, tab],
         ["ToggleSwitch", toggle, toggle],
         ["the guide's own button", guideButton, guideButton],
+        ["ToggleChips chip", chip, chip],
+        ["DataTable sort button", sort, sort],
+        ["ImageGallery thumbnail", thumbnail, thumbnail],
+        ["Tooltip trigger", trigger, trigger],
       ]
       for (const [name, focusable, ringed] of targets) {
         if (!focusable || !ringed) continue
@@ -715,10 +726,11 @@ async function selectionAndRingChecks(devtools: Devtools): Promise<void> {
       `${light.labelOnFill.toFixed(2)}:1; hover fill ${light.hoverOnGround.toFixed(2)}:1`,
   )
   check(
-    "a keyboard-focused FileInput drop zone, KanbanBoard card, Button, tab, ToggleSwitch and guide " +
-      "button draw --color-ring and follow an app that repaints it; the ring stands 3:1 off its " +
-      "offset gap in both palettes and off what the element sits on in dark",
-    dark.rings.length === 6 && light.rings.length === 6 &&
+    "a keyboard-focused FileInput drop zone, KanbanBoard card, Button, tab, ToggleSwitch, guide " +
+      "button, ToggleChips chip, DataTable sort button, ImageGallery thumbnail and Tooltip trigger " +
+      "draw --color-ring and follow an app that repaints it; the ring stands 3:1 off its offset " +
+      "gap in both palettes and off what the element sits on in dark",
+    dark.rings.length === 10 && light.rings.length === 10 &&
       [...dark.rings, ...light.rings].every((ring) =>
         ring.colour === ring.token && ring.followsRepaint
       ) &&
