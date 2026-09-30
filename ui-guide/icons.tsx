@@ -178,7 +178,7 @@ export function IconGallery(
                     title={`Copy ${iconSnippet(name)}`}
                     data-icon={name}
                     onClick={() => handleCopy(name)}
-                    class="group flex min-w-0 flex-col items-center gap-2 rounded-lg p-3 text-muted hover:bg-surface hover:text-selected hover:shadow-xs focus-visible:outline-2 focus-visible:outline-purple-600"
+                    class="group flex min-w-0 flex-col items-center gap-2 rounded-lg p-3 text-muted hover:bg-surface hover:text-selected hover:shadow-xs focus-visible:outline-2 focus-visible:outline-accent-600"
                   >
                     <Icon class="size-6 transition-transform duration-300 group-hover:scale-125" />
                     <span class="w-full text-center text-xs [overflow-wrap:anywhere]" title={name}>

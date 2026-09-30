@@ -231,7 +231,7 @@ export function demonstratedClasses(html: string): Set<string> {
 /** One documented class, rendered as code text rather than applied. */
 function ClassChip({ name }: { name: string }) {
   return (
-    <code class="rounded-md bg-purple-50 px-1 font-mono text-xs text-purple-800 dark:bg-purple-950/60 dark:text-purple-200">
+    <code class="rounded-md bg-accent-50 px-1 font-mono text-xs text-accent-800 dark:bg-accent-950/60 dark:text-accent-200">
       .{name}
     </code>
   )

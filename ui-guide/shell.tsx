@@ -516,7 +516,7 @@ export function UIGuide(
             target.focus()
             target.scrollIntoView({ block: "start" })
           }}
-          class="sr-only rounded-md bg-surface px-3 py-2 text-sm font-medium text-purple-900 shadow focus:not-sr-only focus:absolute focus:z-50 focus:px-3 focus:py-2 dark:text-purple-200"
+          class="sr-only rounded-md bg-surface px-3 py-2 text-sm font-medium text-accent-900 shadow focus:not-sr-only focus:absolute focus:z-50 focus:px-3 focus:py-2 dark:text-accent-200"
           data-e2e="ui-guide-skip"
         >
           {labels.skipToContent}
@@ -1010,7 +1010,7 @@ function PackagePage(
   return (
     <div id={nested ? `page-${page.id}` : undefined} class="flex flex-col gap-12">
       <header class="flex flex-col gap-4 border-b border-subtle pb-8">
-        <p class="font-mono text-sm text-purple-700 dark:text-purple-300">{page.packageName}</p>
+        <p class="font-mono text-sm text-accent-700 dark:text-accent-300">{page.packageName}</p>
         <Heading class="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
           {page.title}
         </Heading>

@@ -65,6 +65,7 @@ export async function uiGuideChecks(devtools: Devtools): Promise<void> {
   await coldDeepLinkCheck(devtools)
   await coldFragmentCheck(devtools)
   await reloadAtTopCheck(devtools)
+  await withViewport(devtools, 1440, 900, () => chromeAccentCheck(devtools))
 }
 
 /**
@@ -1741,5 +1742,152 @@ async function overviewCodeCheck(devtools: Devtools, width: number): Promise<voi
     read.faults.length === 0
       ? `${read.buttons} copy controls, ${read.blocks} code blocks, ${read.commands} commands`
       : read.faults.join("; "),
+  )
+}
+
+/**
+ * Tailwind's purple steps the guide's chrome drew as fixed classes before #432, which the default
+ * accent scale reproduces.
+ */
+const CHROME_PURPLE: Record<number, string> = {
+  100: "oklch(0.946 0.033 307.174)",
+  200: "oklch(0.902 0.063 306.703)",
+  300: "oklch(0.827 0.119 306.383)",
+  400: "oklch(0.714 0.203 305.504)",
+  600: "oklch(0.558 0.288 302.321)",
+  700: "oklch(0.496 0.265 301.924)",
+  800: "oklch(0.438 0.218 303.724)",
+  950: "oklch(0.291 0.149 302.717)",
+}
+
+/**
+ * The guide's own chrome — the overview's eyebrow, its links and their underline, the "Get
+ * started" step numbers, a package page's package name, and the outline on the card a demo route
+ * names — draws from the accent scale (#432).
+ * With no accent set, every colour is the purple step it was drawn with before, in both palettes;
+ * with the host's accent switch on Green, every one of them is the same step of the green scale.
+ */
+async function chromeAccentCheck(devtools: Devtools): Promise<void> {
+  // Each part: the page, a selector, the CSS property read, and the step in light and in dark.
+  const parts = [
+    ["overview", `[data-overview-part="hero"] p.font-mono`, "color", 700, 300],
+    ["overview", `[data-overview-part="start"] a.underline`, "color", 800, 300],
+    ["overview", `[data-overview-part="start"] a.underline`, "textDecorationColor", 300, 700],
+    ["overview", `[data-step="1"]`, "color", 800, 200],
+    ["overview", `[data-step="1"]`, "backgroundColor", 100, 950],
+    ["theme", `[data-guide-page="theme"] header p.font-mono`, "color", 700, 300],
+    ["line-chart", `#demo-LineChart[data-deep-link]`, "outlineColor", 600, 400],
+  ] as const
+  const readings: {
+    part: string
+    dark: boolean
+    accent: string
+    read: string
+    expected: string
+    ok: boolean
+  }[] = []
+  for (const page of ["overview", "theme", "line-chart"] as const) {
+    if (page !== "line-chart") await openGuidePage(devtools, page)
+    else {
+      // The card's own route: the shell marks the card and scrolls to it.
+      await devtools.evaluate(`(location.replace("#/charts/line-chart"), null)`)
+      await poll(
+        () =>
+          devtools.evaluate<boolean>(
+            `document.getElementById("demo-LineChart")?.hasAttribute("data-deep-link") === true`,
+          ),
+        3_000,
+      )
+      await settledScroll(devtools, { from: 0 })
+    }
+    const mine = parts.filter((part) => part[0] === page)
+    readings.push(
+      ...await devtools.evaluate<typeof readings>(`(async () => {
+      const parts = ${JSON.stringify(mine)}
+      const purple = ${JSON.stringify(CHROME_PURPLE)}
+      const resolve = (value) => {
+        const probe = document.createElement("span")
+        probe.style.color = value
+        document.body.append(probe)
+        const color = getComputedStyle(probe).color
+        probe.remove()
+        return color
+      }
+      const numbers = (color) => (color.match(/-?[0-9.]+(?:e-?[0-9]+)?/g) || []).map(Number)
+      const same = (a, b) => {
+        const x = numbers(a)
+        const y = numbers(b)
+        return a.slice(0, a.indexOf("(")) === b.slice(0, b.indexOf("(")) &&
+          x.length === y.length && x.every((value, index) => Math.abs(value - y[index]) < 0.0015)
+      }
+      const frame = () => new Promise((done) => requestAnimationFrame(() => done()))
+      const settle = async () => {
+        await frame()
+        await frame()
+        await Promise.all(document.getAnimations()
+          .filter((animation) => animation instanceof CSSTransition)
+          .map((animation) => animation.finished.catch(() => {})))
+      }
+      const root = document.documentElement
+      const wasDark = root.classList.contains("dark")
+      const select = document.querySelector('[data-e2e="accent-switch"]')
+      const choose = async (value) => {
+        select.value = value
+        select.dispatchEvent(new Event("change", { bubbles: true }))
+        await settle()
+      }
+      const out = []
+      try {
+        for (const accent of ["purple", "green"]) {
+          await choose(accent)
+          for (const dark of [false, true]) {
+            root.classList.toggle("dark", dark)
+            await settle()
+            for (const [, selector, property, lightStep, darkStep] of parts) {
+              const element = document.querySelector(selector)
+              const step = dark ? darkStep : lightStep
+              const read = element ? getComputedStyle(element)[property] : "missing"
+              const expected = accent === "purple"
+                ? resolve(purple[step])
+                : resolve("var(--color-accent-" + step + ")")
+              // Green must also move off purple, or a chrome that ignored the accent would pass.
+              const moved = accent === "purple" || !same(read, resolve(purple[step]))
+              out.push({
+                part: selector + " " + property + " (" + step + ")",
+                dark,
+                accent,
+                read,
+                expected,
+                ok: same(read, expected) && moved,
+              })
+            }
+          }
+        }
+      } finally {
+        await choose("purple")
+        root.classList.toggle("dark", wasDark)
+        await settle()
+      }
+      return out
+    })()`),
+    )
+  }
+  const describe = (list: typeof readings) =>
+    list.map((r) =>
+      `${r.part} ${r.dark ? "dark" : "light"}: ${r.read}` +
+      (r.ok ? "" : ` (expected ${r.expected})`)
+    ).join("; ")
+  const byAccent = (accent: string) => readings.filter((r) => r.accent === accent)
+  const passes = (list: typeof readings) =>
+    list.length === parts.length * 2 && list.every((r) => r.ok)
+  check(
+    "with no accent set, the guide's links, step numbers, package names and deep-link outline keep their purple",
+    passes(byAccent("purple")),
+    describe(byAccent("purple")),
+  )
+  check(
+    "with the accent switch on Green, the guide's links, step numbers, package names and deep-link outline follow it",
+    passes(byAccent("green")),
+    describe(byAccent("green")),
   )
 }

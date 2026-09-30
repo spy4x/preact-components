@@ -126,10 +126,10 @@ export function DemoCard(
       data-card-size={wide ? "wide" : wide === false ? "normal" : "auto"}
       class={cn(
         "flex min-w-0 scroll-mt-16 flex-col rounded-xl border border-subtle bg-surface shadow-sm",
-        // The deep-link mark the shell sets on the card a demo route names. The muted accent, not
+        // The deep-link mark the shell sets on the card a demo route names. The accent scale, not
         // the primary: in the dark palette the primary is near-black chrome no one can see.
-        "data-[deep-link]:outline-2 data-[deep-link]:outline-offset-2",
-        "data-[deep-link]:outline-(--color-primary-muted) data-[deep-link]:outline-solid",
+        "data-[deep-link]:outline-2 data-[deep-link]:outline-offset-2 data-[deep-link]:outline-solid",
+        "data-[deep-link]:outline-accent-600 dark:data-[deep-link]:outline-accent-400",
         className,
       )}
     >
@@ -153,7 +153,7 @@ export function DemoCard(
             <ul class="flex flex-wrap gap-1 pt-1" aria-label={labels.classes}>
               {classes.map((className) => (
                 <li key={className}>
-                  <code class="rounded-md bg-purple-50 px-1 font-mono text-xs text-purple-800 dark:bg-purple-950/60 dark:text-purple-200">
+                  <code class="rounded-md bg-accent-50 px-1 font-mono text-xs text-accent-800 dark:bg-accent-950/60 dark:text-accent-200">
                     .{className}
                   </code>
                 </li>
@@ -237,7 +237,7 @@ function PropsSummary(
               >
                 <NameWithBreaks name={prop.name} />
               </th>
-              <td class="py-2 pr-4 font-mono text-xs break-words text-purple-800 @max-md:min-w-0 @max-md:pr-0 dark:text-purple-200">
+              <td class="py-2 pr-4 font-mono text-xs break-words text-accent-800 @max-md:min-w-0 @max-md:pr-0 dark:text-accent-200">
                 {prop.type}
                 {prop.default === undefined
                   ? null
