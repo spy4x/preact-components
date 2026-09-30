@@ -1,4 +1,4 @@
-import { check, type Devtools } from "./harness.ts"
+import { check, type Devtools, pointerToCorner } from "./harness.ts"
 
 /**
  * Every glyph's caption fits its cell on a phone: a long name wraps between its words rather than
@@ -40,14 +40,139 @@ async function captionFitCheck(devtools: Devtools): Promise<void> {
   }
 }
 
+/** One gallery glyph that failed a rendering rule, and why. */
+interface GlyphFault {
+  name: string
+  fault: string
+}
+
+/** What {@link glyphPaintCheck} reads in one theme. */
+interface GlyphPaint {
+  total: number
+  faults: GlyphFault[]
+  minRatio: number
+  hovered: number
+}
+
 /**
- * `icons/`'s browser checks: every caption fits on a phone, the live filter over the glyph
- * gallery, and click-to-copy on a glyph.
+ * On the light and the dark theme, every glyph in the gallery renders at the gallery's 24 px size,
+ * draws inside its own `viewBox` and spans at least 40% of it (Feather's small
+ * `arrow-up-right` spans 42%), paints every stroke and fill in
+ * the text colour it inherits, and that colour reaches 3:1 against the cell's background.
+ *
+ * The glyphs #233 swapped for pack drawings changed `viewBox` (`IconUpwork`, `IconBookmark`,
+ * `IconQuote`, `IconGateway`, `IconExternalLink`) and stroke or fill kind (`IconQuote`,
+ * `IconLinkedIn`, `IconTwitter`, `IconYouTube`); this is the proof that each still draws in the
+ * cell, and none paints a fixed colour the theme cannot reach — the old `IconGateway` filled white.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function glyphPaintCheck(devtools: Devtools): Promise<void> {
+  await pointerToCorner(devtools)
+  for (const theme of ["light", "dark"] as const) {
+    const read = await devtools.evaluate<GlyphPaint>(`(async () => {
+      const root = document.documentElement
+      const wasDark = root.classList.contains("dark")
+      root.classList.toggle("dark", ${theme === "dark"})
+      try {
+        await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+        const canvas = document.createElement("canvas")
+        canvas.width = canvas.height = 1
+        const paint = canvas.getContext("2d", { willReadFrequently: true })
+        // Any CSS colour, oklch included, as sRGB channels and alpha.
+        const rgba = (css) => {
+          paint.clearRect(0, 0, 1, 1)
+          paint.fillStyle = "#000"
+          paint.fillStyle = css
+          paint.fillRect(0, 0, 1, 1)
+          return [...paint.getImageData(0, 0, 1, 1).data]
+        }
+        const luminance = ([r, g, b]) => {
+          const linear = (c) => (c /= 255) <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+          return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b)
+        }
+        // The first opaque background at or above an element: what it is drawn on.
+        const behind = (element) => {
+          for (let at = element; at; at = at.parentElement) {
+            const colour = rgba(getComputedStyle(at).backgroundColor)
+            if (colour[3] === 255) return colour
+          }
+          return rgba(getComputedStyle(root).backgroundColor)
+        }
+        const cells = [...document.querySelectorAll("#icons [data-icon]")]
+        const faults = []
+        let minRatio = Infinity
+        for (const cell of cells) {
+          const name = cell.getAttribute("data-icon")
+          const svg = cell.querySelector("svg")
+          // The laid-out size, not the painted one: two spinners rotate, which widens their
+          // bounding rectangle mid-turn without changing the size they are laid out at.
+          const size = getComputedStyle(svg)
+          if (size.width !== "24px" || size.height !== "24px") {
+            faults.push({ name, fault: "box " + size.width + " x " + size.height })
+          }
+          const view = svg.viewBox.baseVal
+          const drawn = svg.getBBox()
+          const inside = drawn.x >= view.x - 0.5 && drawn.y >= view.y - 0.5 &&
+            drawn.x + drawn.width <= view.x + view.width + 0.5 &&
+            drawn.y + drawn.height <= view.y + view.height + 0.5
+          const cover = Math.max(drawn.width / view.width, drawn.height / view.height)
+          if (!inside || cover < 0.4) {
+            faults.push({ name, fault: "drawing " + [drawn.x, drawn.y, drawn.width, drawn.height]
+              .map((n) => Math.round(n * 10) / 10).join(",") + " in viewBox " +
+              [view.x, view.y, view.width, view.height].join(",") })
+          }
+          const text = rgba(getComputedStyle(svg).color).join(",")
+          let painted = 0
+          for (const shape of svg.querySelectorAll("path, rect, circle, ellipse, line, polyline, polygon")) {
+            const style = getComputedStyle(shape)
+            for (const property of ["fill", "stroke"]) {
+              const value = style[property]
+              if (value === "none") continue
+              painted++
+              if (rgba(value).join(",") !== text) {
+                faults.push({ name, fault: property + " " + value + " is not the text colour" })
+              }
+            }
+          }
+          if (painted === 0) faults.push({ name, fault: "paints nothing" })
+          const ink = luminance(rgba(getComputedStyle(svg).color))
+          const ground = luminance(behind(cell))
+          minRatio = Math.min(minRatio, (Math.max(ink, ground) + 0.05) / (Math.min(ink, ground) + 0.05))
+        }
+        return {
+          total: cells.length,
+          faults,
+          minRatio: Math.round(minRatio * 100) / 100,
+          hovered: cells.filter((cell) => cell.matches(":hover")).length,
+        }
+      } finally {
+        root.classList.toggle("dark", wasDark)
+      }
+    })()`)
+    check(
+      `on the ${theme} theme, every gallery glyph draws inside its 24 px box in the text colour, ` +
+        "at 3:1 or more against its cell",
+      read.total > 90 && read.hovered === 0 && read.faults.length === 0 && read.minRatio >= 3,
+      `${read.total} glyphs, ${read.hovered} hovered, lowest ratio ${read.minRatio}:1` +
+        (read.faults.length
+          ? `; ${read.faults.length} faults: ${
+            read.faults.slice(0, 6).map((f) => `${f.name} ${f.fault}`).join("; ")
+          }`
+          : ""),
+    )
+  }
+}
+
+/**
+ * `icons/`'s browser checks: every caption fits on a phone, every glyph draws in the text colour
+ * on both themes, the live filter over the glyph gallery, and click-to-copy on a glyph.
  *
  * @param devtools The connected session, on a hydrated page.
  */
 export async function iconsChecks(devtools: Devtools): Promise<void> {
   await captionFitCheck(devtools)
+  await glyphPaintCheck(devtools)
 
   const filter = await devtools.evaluate<{
     total: number
