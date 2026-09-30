@@ -184,6 +184,13 @@ Runs `fmt:check`, `lint`, `ts:check` and `test`. All four must pass with zero er
 | `deno task publish:dry`          | `deno publish --dry-run` for every named workspace member  |
 | `deno task private-names <file>` | search every package's dry-run file list for private names |
 
+`llms.txt` and `llms-full.txt` at the repository root are generated, never hand-edited: the first
+lists every published package's exports (name, kind, one-sentence summary, import specifier), the
+second adds every package README. Run `deno task llms` after changing an export, a JSDoc summary or
+a package README; `infra/scripts/llms-txt.test.ts` runs in `deno task test` and fails, naming that
+command, when either file is out of date. The summary is the first sentence of the export's JSDoc,
+so write one. The site build copies both files to the site root.
+
 `publish:dry` is not part of `check`: `deno publish --dry-run` refuses a dirty tree, so folding it
 into `check` would fail every local run against uncommitted work. Each CI system runs it as its own
 step, after `check`, against its own clean checkout — `.github/workflows/pages.yml` and
