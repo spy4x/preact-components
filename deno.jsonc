@@ -44,15 +44,16 @@
     // Tailwind compiler (resolved via `import.meta.resolve`, so `HOME` is no
     // longer read). Both grants are as narrow as the tests allow, and are
     // repo-wide only because `deno test` discovers every member's suite in
-    // one process. Nothing here needs `net` or `write`, and `run` is granted for `deno` alone (the
-    // `llms.txt` freshness test runs `deno doc`) — see
+    // one process. Nothing here needs `net`, `run` or `write` — see
     // `pages/build-fingerprint.ts`'s own doc for why its build-fingerprint logic is split into
     // pure functions the colocated test exercises with in-memory fixtures instead.
     // `theme/component-classes.test.ts` runs on its own, with `--allow-ffi` added: it runs
     // Tailwind's class scanner (`@tailwindcss/oxide`), a native Node-API addon Deno loads only with
     // that grant, to prove the committed class list matches the packages' sources (#323). No other
-    // test gets the grant.
-    "test": "deno test --no-prompt --allow-read --allow-env --allow-run=deno --ignore=theme/component-classes.test.ts && deno test --no-prompt --allow-read --allow-env --allow-ffi theme/component-classes.test.ts",
+    // test gets the grant. `infra/scripts/llms-txt.test.ts` also runs on its own, with
+    // `--allow-run=deno` added: it runs `deno doc` to prove `llms.txt` is fresh. No other test
+    // gets that grant either.
+    "test": "deno test --no-prompt --allow-read --allow-env --ignore=theme/component-classes.test.ts,infra/scripts/llms-txt.test.ts && deno test --no-prompt --allow-read --allow-env --allow-ffi theme/component-classes.test.ts && deno test --no-prompt --allow-read --allow-env --allow-run=deno infra/scripts/llms-txt.test.ts",
     // Dry-runs the publish for every named workspace member (`pages/` has no `name`, so `deno
     // publish` skips it on its own — nothing here excludes it by hand). Named `publish:dry`
     // rather than `publish`: this only ever simulates; the real `deno publish` runs in Woodpecker
