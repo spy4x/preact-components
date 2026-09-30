@@ -3,21 +3,27 @@ import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import { StatusMark, type StatusMarkStatus } from "./status-mark.tsx"
 
-const STATUSES: StatusMarkStatus[] = [
-  "ready",
-  "beta",
-  "wip",
-  "paused",
-  "archived",
-  "known-issue",
-]
+/** Every status paired with its default word; `Record` stops compiling when a status is missing. */
+const LABELS: Record<StatusMarkStatus, string> = {
+  ready: "Ready",
+  "in-use": "In use",
+  beta: "Beta",
+  wip: "WIP",
+  paused: "Paused",
+  archived: "Archived",
+  "known-issue": "Known issue",
+  outcome: "Outcome",
+  live: "Live",
+  offline: "Offline",
+}
+
+const STATUSES = Object.keys(LABELS) as StatusMarkStatus[]
 
 describe("StatusMark", () => {
   it("renders the default English label for every status", () => {
-    const labels = ["Ready", "Beta", "WIP", "Paused", "Archived", "Known issue"]
-    STATUSES.forEach((status, index) => {
-      expect(render(<StatusMark status={status} />)).toContain(labels[index])
-    })
+    for (const status of STATUSES) {
+      expect(render(<StatusMark status={status} />)).toContain(`>${LABELS[status]}</span>`)
+    }
   })
 
   it("renders a caller-supplied label instead of the default", () => {
@@ -57,7 +63,7 @@ describe("StatusMark", () => {
     for (const status of STATUSES) {
       const html = render(<StatusMark status={status} />)
       const outer = html.slice(0, html.indexOf(">") + 1)
-      expect(outer).not.toMatch(/text-(success|muted|warning|danger)/)
+      expect(outer).not.toMatch(/text-(success|muted|warning|danger|foreground)/)
     }
   })
 
@@ -67,6 +73,17 @@ describe("StatusMark", () => {
       return html.slice(html.indexOf("<svg"), html.indexOf("</svg>"))
     })
     expect(new Set(svgs).size).toBe(STATUSES.length)
+  })
+
+  it("draws every shape in the tone's colour or a theme token, never a literal colour", () => {
+    for (const status of STATUSES) {
+      const html = render(<StatusMark status={status} />)
+      const svg = html.slice(html.indexOf("<svg"), html.indexOf("</svg>"))
+      // A literal inside a token's fallback (`var(--color-surface, oklch(1 0 0))`) is allowed.
+      const outsideTokens = svg.replace(/var\([^()]*(\([^()]*\))?[^()]*\)/g, "")
+      expect({ status, literal: outsideTokens.match(/#[0-9a-f]{3,8}\b|oklch\(|rgb|hsl/i) })
+        .toEqual({ status, literal: null })
+    }
   })
 
   it("passes the caller's class through", () => {
