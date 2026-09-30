@@ -539,6 +539,89 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
   await darkControlsChecks(devtools)
   await canvasContrastCheck(devtools)
   await statusTextChecks(devtools)
+  await statusFillChecks(devtools)
+}
+
+/**
+ * The success and warning fills, each with the label class the library draws on it. The toast and
+ * `SWUpdater` bar strings carry the fill and label classes of `ui/toastr.tsx`'s success variant and
+ * `system/sw-updater.tsx`'s bar, which export neither; update them here when those change.
+ */
+const STATUS_FILLS = [
+  { name: ".btn.btn-success", tag: "button", className: "btn btn-success", floor: 4.5 },
+  { name: ".btn.btn-warning", tag: "button", className: "btn btn-warning", floor: 3 },
+  {
+    name: "the success toast (bg-success)",
+    tag: "div",
+    className: "bg-success text-(--color-success-foreground)",
+    floor: 4.5,
+  },
+  {
+    name: "the SWUpdater bar (bg-warning)",
+    tag: "div",
+    className:
+      "bg-warning px-4 py-3 text-(--color-warning-foreground,oklch(0.98_0.016_73.684)) shadow-popover",
+    floor: 3,
+  },
+] as const
+
+/** One fill's label contrast in one palette. */
+interface StatusFillReading {
+  name: string
+  fill: string
+  label: string
+  ratio: number
+  floor: number
+}
+
+/**
+ * The success and warning fills keep their labels readable in both palettes (#429). The dark
+ * palette draws `--color-success` and `--color-warning` as light text colours, so a fill that read
+ * them would put its light label on a light fill (1.70:1 and 2.24:1 when measured); the fills read
+ * `--color-success-fill` and `--color-warning-fill` instead. The floor is 4.5:1 for success and
+ * 3:1 for warning: orange-600 under orange-50 measures 3.37:1 in both palettes today, below AA,
+ * and this check holds it at least where it is rather than claiming AA.
+ *
+ * @param devtools The connected session, on any page of the guide.
+ */
+async function statusFillChecks(devtools: Devtools): Promise<void> {
+  const read = await devtools.evaluate<{ dark: StatusFillReading[]; light: StatusFillReading[] }>(
+    `(() => {
+    ${CONTRAST_HELPERS}
+    const fills = ${JSON.stringify(STATUS_FILLS)}
+    const root = document.documentElement
+    const wasDark = root.classList.contains("dark")
+    const readPalette = (dark) => {
+      root.classList.toggle("dark", dark)
+      return fills.map(({ name, tag, className, floor }) => {
+        const probe = document.createElement(tag)
+        probe.className = className
+        probe.textContent = "Label"
+        document.body.append(probe)
+        const style = getComputedStyle(probe)
+        const fill = style.backgroundColor
+        const label = style.color
+        probe.remove()
+        return { name, fill, label, ratio: contrast(label, fill), floor }
+      })
+    }
+    const result = { dark: readPalette(true), light: readPalette(false) }
+    root.classList.toggle("dark", wasDark)
+    return result
+  })()`,
+  )
+  for (const palette of ["light", "dark"] as const) {
+    const readings = read[palette]
+    check(
+      `in the ${palette} palette, the success and warning fills (.btn-success, .btn-warning, the ` +
+        "success toast, the SWUpdater bar) keep their label at 4.5:1 for success and 3:1 for warning",
+      readings.length === STATUS_FILLS.length &&
+        readings.every((reading) => reading.ratio >= reading.floor),
+      readings.map((reading) =>
+        `${reading.name} ${reading.label} on ${reading.fill}: ${reading.ratio.toFixed(2)}:1`
+      ).join("; "),
+    )
+  }
 }
 
 /** One status tone's text, read on the surface and on the canvas. */

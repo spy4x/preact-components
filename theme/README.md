@@ -486,7 +486,9 @@ is not `--color-danger` because that is drawn as text in dark. In the dark palet
 green-400), each at 4.5:1 or better on the surface and the canvas, so `text-danger`, `text-warning`
 and `text-success` need no `dark:` override. `bg-warning`, `bg-success`, `.btn-warning`,
 `.btn-success` and the on and off map markers read `--color-warning-fill` and `--color-success-fill` instead:
-the text colour in light, and orange-600 and green-700 in dark. `--color-danger-soft` and
+the text colour in light, and orange-600 and green-700 in dark. An app that repaints
+`--color-warning` or `--color-success` also sets `--color-warning-fill` or `--color-success-fill`
+in `.dark`: otherwise its dark fills stay orange-600 and green-700. `--color-danger-soft` and
 `--color-info-soft` are the tinted backgrounds of an error or notice.
 
 ### Replacing fixed colours
