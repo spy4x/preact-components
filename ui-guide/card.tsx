@@ -126,10 +126,10 @@ export function DemoCard(
       data-card-size={wide ? "wide" : wide === false ? "normal" : "auto"}
       class={cn(
         "flex min-w-0 scroll-mt-16 flex-col rounded-xl border border-subtle bg-surface shadow-sm",
-        // The deep-link mark the shell sets on the card a demo route names. The muted accent, not
+        // The deep-link mark the shell sets on the card a demo route names. The accent scale, not
         // the primary: in the dark palette the primary is near-black chrome no one can see.
-        "data-[deep-link]:outline-2 data-[deep-link]:outline-offset-2",
-        "data-[deep-link]:outline-(--color-primary-muted) data-[deep-link]:outline-solid",
+        "data-[deep-link]:outline-2 data-[deep-link]:outline-offset-2 data-[deep-link]:outline-solid",
+        "data-[deep-link]:outline-accent-600 dark:data-[deep-link]:outline-accent-400",
         className,
       )}
     >
