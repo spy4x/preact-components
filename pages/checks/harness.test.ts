@@ -887,4 +887,59 @@ describe("describeException", () => {
     expect(line).toContain(`Thing undefined`)
     expect(line).not.toBe(`Uncaught`)
   })
+
+  // The shapes below were recorded from headless Chromium over DevTools.
+  it("names a thrown undefined and where it was thrown", () => {
+    const line = describeException({
+      text: `Uncaught`,
+      lineNumber: 0,
+      columnNumber: 6,
+      exception: { type: `undefined` },
+    })
+
+    expect(line).toBe(`Uncaught undefined undefined at line 1:7`)
+  })
+
+  it("names a thrown null", () => {
+    const line = describeException({
+      text: `Uncaught`,
+      exception: { type: `object`, subtype: `null`, value: null },
+    })
+
+    expect(line).toContain(`null`)
+    expect(line).not.toBe(`Uncaught`)
+  })
+
+  it("says (in promise) for a rejection with no reason, though it has no url and no stack", () => {
+    const line = describeException({
+      exceptionId: 5,
+      text: `Uncaught (in promise)`,
+      lineNumber: 0,
+      columnNumber: 0,
+      exception: { type: `undefined` },
+    })
+
+    expect(line).toContain(`(in promise)`)
+    expect(line).toContain(`undefined`)
+  })
+
+  it("prints a cross-origin script error's url once, with its message and ids, and no JSON", () => {
+    const url = `http://127.0.0.1:18732/x.js`
+    const line = describeException({
+      exceptionId: 1,
+      text: `Uncaught Error: secret`,
+      lineNumber: 0,
+      columnNumber: 25,
+      scriptId: `4`,
+      url,
+      stackTrace: { callFrames: [{ functionName: ``, url, lineNumber: 0 }] },
+      executionContextId: 2,
+    })
+
+    expect(line.split(url).length - 1).toBe(1)
+    expect(line).toContain(`Uncaught Error: secret`)
+    expect(line).toContain(`script 4, exception 1, context 2`)
+    expect(line).toContain(`x.js:1:26`)
+    expect(line).not.toContain(`{"`)
+  })
 })

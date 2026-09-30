@@ -710,6 +710,9 @@ export async function readOr<T>(
 
 /** The parts of a DevTools `exceptionDetails` object the harness reads. */
 export interface ExceptionDetails {
+  exceptionId?: number
+  scriptId?: string
+  executionContextId?: number
   text?: string
   url?: string
   lineNumber?: number
@@ -751,16 +754,30 @@ export function describeException(details: ExceptionDetails): string {
       `${details.text ?? `Uncaught`} ${exception.className ?? exception.type ?? ``} ${thrown}`,
     )
   } else parts.push(details.text ?? `no details`)
+  if (!exception) {
+    // No thrown value: what nothing else prints. A script error from another origin arrives like
+    // this, with its message in `text` and its source in `url`, so those are left to the lines below.
+    const ids = [
+      details.scriptId !== undefined && `script ${details.scriptId}`,
+      details.exceptionId !== undefined && `exception ${details.exceptionId}`,
+      details.executionContextId !== undefined && `context ${details.executionContextId}`,
+    ].filter(Boolean)
+    if (ids.length > 0) parts.push(`(${ids.join(`, `)})`)
+  }
   if (details.url) {
     parts.push(
       `at ${details.url}:${(details.lineNumber ?? 0) + 1}:${(details.columnNumber ?? 0) + 1}`,
     )
+  } else if (details.lineNumber !== undefined) {
+    parts.push(`at line ${details.lineNumber + 1}:${(details.columnNumber ?? 0) + 1}`)
   }
   const frames = details.stackTrace?.callFrames ?? []
   if (frames.length > 0) {
     parts.push(
       `stack ${
-        frames.slice(0, 5).map((f) => `${f.functionName || `<anon>`}@${f.url}:${f.lineNumber}`)
+        frames.slice(0, 5).map((f) =>
+          `${f.functionName || `<anon>`}@${f.url === details.url ? `` : f.url}:${f.lineNumber}`
+        )
           .join(` < `)
       }`,
     )
