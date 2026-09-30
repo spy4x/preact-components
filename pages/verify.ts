@@ -1175,6 +1175,34 @@ async function recoveryDrill(devtools: Devtools): Promise<void> {
       return null
     })()`).catch(() => undefined)
   }
+  await freshPageAfterDrill(devtools)
+}
+
+/**
+ * Reload the page the recovery drill used, so no block starts on what the drill left behind.
+ *
+ * The drill really opens and closes the Modal card, so that card's own state ("onClose last read
+ * step 1") survives in the page. A full run hid it, because the blocks before the `ui-guide` block
+ * happen to reload the page; a run filtered with `--only=ui-guide` did not, and its comparison of
+ * the served text with the browser's text failed on the Modal card every time (#426).
+ *
+ * @param devtools The connected session.
+ */
+async function freshPageAfterDrill(devtools: Devtools): Promise<void> {
+  await devtools.send("Page.reload", {})
+  await devtools.next("Page.loadEventFired")
+  const hydrated = await poll(
+    () => devtools.evaluate<boolean>("document.documentElement.dataset.hydrated === 'true'"),
+    10_000,
+  )
+  const readout = await devtools.evaluate<string>(
+    `document.querySelector('#demo-Modal [data-e2e="modal-close-step"]')?.textContent ?? ""`,
+  )
+  check(
+    "after the recovery drill the page is reloaded, with the Modal card as the server drew it",
+    hydrated && readout.includes("nothing yet"),
+    `hydrated ${hydrated}, Modal readout ${JSON.stringify(readout)}`,
+  )
 }
 
 /**
