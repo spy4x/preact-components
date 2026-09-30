@@ -22,6 +22,7 @@ import {
   describeException,
   Devtools,
   DevtoolsClosedError,
+  type ExceptionDetails,
   filteredRunLine,
   type PageReader,
   poll,
@@ -886,5 +887,18 @@ describe("describeException", () => {
 
     expect(line).toContain(`Thing undefined`)
     expect(line).not.toBe(`Uncaught`)
+  })
+
+  it("keeps the other reported fields when there is no thrown value and no url", () => {
+    const line = describeException({
+      text: `Uncaught`,
+      lineNumber: 7,
+      columnNumber: 2,
+      scriptId: `42`,
+    } as ExceptionDetails)
+
+    expect(line).not.toBe(`Uncaught`)
+    expect(line).toContain(`"lineNumber":7`)
+    expect(line).toContain(`"scriptId":"42"`)
   })
 })

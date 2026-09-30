@@ -750,7 +750,13 @@ export function describeException(details: ExceptionDetails): string {
     parts.push(
       `${details.text ?? `Uncaught`} ${exception.className ?? exception.type ?? ``} ${thrown}`,
     )
-  } else parts.push(details.text ?? `no details`)
+  } else {
+    // No thrown value at all (a cross-origin script error, say): keep every other field the
+    // browser sent, so the line is never the bare word `Uncaught`.
+    const { text, ...rest } = details
+    parts.push(text ?? `no details`)
+    if (Object.keys(rest).length > 0) parts.push(`details ${JSON.stringify(rest)}`)
+  }
   if (details.url) {
     parts.push(
       `at ${details.url}:${(details.lineNumber ?? 0) + 1}:${(details.columnNumber ?? 0) + 1}`,
