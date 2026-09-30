@@ -544,24 +544,27 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
 
 /**
  * The success and warning fills, each with the label class the library draws on it. The toast and
- * `SWUpdater` bar strings carry the fill and label classes of `ui/toastr.tsx`'s success variant and
- * `system/sw-updater.tsx`'s bar, which export neither; update them here when those change.
+ * `SWUpdater` bar strings are copies of the fill and label classes of `ui/toastr.tsx`'s success
+ * variant and `system/sw-updater.tsx`'s bar, which export neither; `source` names the file each copy
+ * must still appear in, and the check fails when it no longer does.
  */
 const STATUS_FILLS = [
   { name: ".btn.btn-success", tag: "button", className: "btn btn-success", floor: 4.5 },
   { name: ".btn.btn-warning", tag: "button", className: "btn btn-warning", floor: 3 },
   {
-    name: "the success toast (bg-success)",
+    name: "a copy of the success toast's classes (bg-success)",
     tag: "div",
     className: "bg-success text-(--color-success-foreground)",
     floor: 4.5,
+    source: "../../ui/toastr.tsx",
   },
   {
-    name: "the SWUpdater bar (bg-warning)",
+    name: "a copy of the SWUpdater bar's classes (bg-warning)",
     tag: "div",
     className:
       "bg-warning px-4 py-3 text-(--color-warning-foreground,oklch(0.98_0.016_73.684)) shadow-popover",
     floor: 3,
+    source: "../../system/sw-updater.tsx",
   },
 ] as const
 
@@ -585,6 +588,17 @@ interface StatusFillReading {
  * @param devtools The connected session, on any page of the guide.
  */
 async function statusFillChecks(devtools: Devtools): Promise<void> {
+  const stale: string[] = []
+  for (const fill of STATUS_FILLS) {
+    if (!("source" in fill)) continue
+    const text = await Deno.readTextFile(new URL(fill.source, import.meta.url))
+    if (!text.includes(fill.className)) stale.push(`${fill.source}: "${fill.className}"`)
+  }
+  check(
+    "the copied toast and SWUpdater bar classes the fill check measures still appear in their sources",
+    stale.length === 0,
+    stale.length ? `not found, so the check below measures stale copies: ${stale.join("; ")}` : "",
+  )
   const read = await devtools.evaluate<{ dark: StatusFillReading[]; light: StatusFillReading[] }>(
     `(() => {
     ${CONTRAST_HELPERS}
