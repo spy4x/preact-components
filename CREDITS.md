@@ -23,12 +23,13 @@ and in the demo footer.
 
 ## Icons
 
-Some of `@spy4x/preact-icons`' glyphs match glyphs from Heroicons, Feather or Lucide, three
-open-source icon packs whose licences require their notice to travel with copies of their work.
-That notice — the exact licence text, which glyph pack it came from, and which of this package's
-glyphs it covers — is [`icons/THIRD_PARTY_NOTICES.md`](./icons/THIRD_PARTY_NOTICES.md), not here:
-it ships inside the published `@spy4x/preact-icons` package itself, which this file does not.
-See [`icons/README.md`](./icons/README.md) → "Provenance" for how the match was found.
+Every glyph in `@spy4x/preact-icons` is a drawing copied from one of four open-source icon packs:
+Heroicons (v1 and v2), Feather, Lucide and Simple Icons. Heroicons and Feather are MIT-licensed and
+Lucide is ISC-licensed; all three require their notice to travel with copies of their work. Simple
+Icons is CC0 and does not, but its licence is quoted as well. Those notices, with the exact licence
+text of each pack, are in [`icons/THIRD_PARTY_NOTICES.md`](./icons/THIRD_PARTY_NOTICES.md), not
+here: that file ships inside the published `@spy4x/preact-icons` package, and this one does not. See
+[`icons/README.md`](./icons/README.md) → "Provenance" for how each glyph's source is checked.
 
 ## What this file is not
 
