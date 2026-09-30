@@ -98,7 +98,8 @@
   --color-danger-fill-foreground: oklch(1 0 0); /* white: 4.83:1 on red-600, 7:1 on red-700 */
   --color-danger-soft: oklch(0.971 0.013 17.38); /* red-50: a tinted background */
   --color-warning: oklch(0.646 0.222 41.116); /* orange-600 */
-  --color-warning-foreground: oklch(0.98 0.016 73.684); /* orange-50 */
+  /* gray-950: a dark label, because orange-50 read 3.37:1 on the orange-600 fill (#431). */
+  --color-warning-foreground: oklch(0.13 0.028 261.692); /* gray-950 */
   --color-success: oklch(0.527 0.154 150.069); /* green-700 */
   --color-success-foreground: oklch(0.982 0.018 155.826); /* green-50 */
   /* The warning and success colours as fills under their foregrounds (`bg-warning`, `bg-success`,
@@ -154,7 +155,7 @@
   --color-danger: oklch(0.704 0.191 22.216); /* red-400 */
   --color-warning: oklch(0.75 0.183 55.934); /* orange-400 */
   --color-success: oklch(0.792 0.209 151.711); /* green-400 */
-  /* The fills keep the light palette's steps, under the same light labels. */
+  /* The fills keep the light palette's steps, under the same labels as in light. */
   --color-warning-fill: oklch(0.646 0.222 41.116); /* orange-600 */
   --color-success-fill: oklch(0.527 0.154 150.069); /* green-700 */
   /* The selected fill is step 600: the lightest step a white label is held to 4.5:1 on, and 3:1

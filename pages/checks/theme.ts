@@ -4,8 +4,10 @@ import {
   centreInView,
   check,
   type Devtools,
+  inFreshFrame,
   openGuidePage,
   pointerToCorner,
+  poll,
   pressKey,
 } from "./harness.ts"
 
@@ -547,6 +549,7 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
   await canvasContrastCheck(devtools)
   await statusTextChecks(devtools)
   await statusFillChecks(devtools)
+  await warningPairChecks(devtools)
   await selectionAndRingChecks(devtools)
   await dangerButtonClassChecks(devtools)
 }
@@ -866,14 +869,14 @@ async function selectionAndRingChecks(devtools: Devtools): Promise<void> {
 }
 
 /**
- * The success and warning fills, each with the label class the library draws on it. The toast and
- * `SWUpdater` bar strings are copies of the fill and label classes of `ui/toastr.tsx`'s success
- * variant and `system/sw-updater.tsx`'s bar, which export neither; `source` names the file each copy
- * must still appear in, and the check fails when it no longer does.
+ * The success and warning fills, each with the label class the library draws on it. The toast string
+ * is a copy of the fill and label classes of `ui/toastr.tsx`'s success variant, which does not
+ * export them; `source` names the file the copy must still appear in, and the check fails when it
+ * no longer does. The `SWUpdater` bar is measured for real in {@link warningPairChecks}.
  */
 const STATUS_FILLS = [
   { name: ".btn.btn-success", tag: "button", className: "btn btn-success", floor: 4.5 },
-  { name: ".btn.btn-warning", tag: "button", className: "btn btn-warning", floor: 3 },
+  { name: ".btn.btn-warning", tag: "button", className: "btn btn-warning", floor: 4.5 },
   {
     name: "a copy of the success toast's classes (bg-success)",
     tag: "div",
@@ -881,15 +884,226 @@ const STATUS_FILLS = [
     floor: 4.5,
     source: "../../ui/toastr.tsx",
   },
-  {
-    name: "a copy of the SWUpdater bar's classes (bg-warning)",
-    tag: "div",
-    className:
-      "bg-warning px-4 py-3 text-(--color-warning-foreground,oklch(0.98_0.016_73.684)) shadow-popover",
-    floor: 3,
-    source: "../../system/sw-updater.tsx",
-  },
 ] as const
+
+/** What {@link warningPairChecks} reads in one palette. */
+interface WarningPairReading {
+  fill: string
+  text: number
+  dismiss: number
+  dismissHover: number
+  dismissHovered: boolean
+  reload: number
+  buttonFill: number
+  buttonHover: number
+  buttonHovered: boolean
+}
+
+/**
+ * The warning pair reads at 4.5:1 (#431): the real `SWUpdater` bar's message and dismiss button,
+ * the dismiss button under a real pointer, and `.btn-warning` at rest and under a real pointer, in
+ * light and dark. The bar comes from the system page's quiet demo, loaded in a fresh frame and
+ * made to show its bar there, so the shared page's own demo keeps the state `pages/checks/system.ts`
+ * expects. The frame takes the pointer only while the dismiss button is hovered, and the button
+ * must match `:hover`; its translucent hover fill is laid over the bar's fill on a canvas. The
+ * reload button is reported, not held: it is a white chip with its own text colour.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function warningPairChecks(devtools: Devtools): Promise<void> {
+  const palettes = ["light", "dark"] as const
+  const bar: Partial<Record<(typeof palettes)[number], WarningPairReading>> = {}
+  let shown = false
+  await inFreshFrame(
+    devtools,
+    { id: "warning-pair-frame", src: "#/system", label: "SWUpdater bar contrast" },
+    async (frame) => {
+      const quiet = `#demo-SWUpdater [data-e2e="sw-quiet"]`
+      // Clicked until the bar shows: a click before the frame hydrates does nothing.
+      shown = await poll(
+        () =>
+          devtools.evaluate<boolean>(`(() => {
+            const doc = ${frame}?.contentDocument
+            if (doc?.querySelector('${quiet} [role="status"] > div')) return true
+            doc?.querySelector('${quiet} [data-e2e="sw-quiet-announce"]')?.click()
+            return false
+          })()`),
+        15_000,
+      )
+      if (!shown) return
+      for (const palette of palettes) {
+        const rest = await devtools.evaluate<
+          Pick<WarningPairReading, "fill" | "text" | "dismiss" | "reload"> & {
+            x: number
+            y: number
+          }
+        >(`(async () => {
+          ${CONTRAST_HELPERS}
+          const frame = ${frame}
+          const doc = frame.contentDocument
+          const view = doc.defaultView
+          doc.documentElement.classList.toggle("dark", ${palette === "dark"})
+          const still = doc.createElement("style")
+          still.id = "warning-pair-still"
+          still.textContent = "*, *::before, *::after { transition: none !important; }"
+          doc.head.append(still)
+          const bar = doc.querySelector('${quiet} [role="status"] > div')
+          const [reload, dismiss] = bar.querySelectorAll("button")
+          // The frame's own scroll: \`scrollIntoView\` would scroll the shared page as well.
+          const top = dismiss.getBoundingClientRect().top + view.scrollY - view.innerHeight / 2
+          view.scrollTo({ top, behavior: "instant" })
+          await new Promise((done) => view.requestAnimationFrame(() => view.requestAnimationFrame(done)))
+          // The frame covers the viewport from its top-left corner, so a point in the frame is the
+          // same point on the page. It takes the pointer only for the hover reading.
+          frame.style.pointerEvents = "auto"
+          const style = (element) => view.getComputedStyle(element)
+          const fill = style(bar).backgroundColor
+          const box = dismiss.getBoundingClientRect()
+          return {
+            fill,
+            text: contrast(style(bar.querySelector("span")).color, fill),
+            dismiss: contrast(style(dismiss).color, fill),
+            reload: contrast(style(reload).color, style(reload).backgroundColor),
+            x: box.left + box.width / 2,
+            y: box.top + box.height / 2,
+          }
+        })()`)
+        await devtools.send("Input.dispatchMouseEvent", {
+          type: "mouseMoved",
+          x: rest.x,
+          y: rest.y,
+          button: "none",
+          buttons: 0,
+        })
+        const hover = await devtools.evaluate<{ ratio: number; hovered: boolean }>(`(async () => {
+          ${CONTRAST_HELPERS}
+          const doc = ${frame}.contentDocument
+          const view = doc.defaultView
+          await new Promise((done) => view.requestAnimationFrame(() => view.requestAnimationFrame(done)))
+          const bar = doc.querySelector('${quiet} [role="status"] > div')
+          const dismiss = bar.querySelectorAll("button")[1]
+          const hovered = dismiss.matches(":hover")
+          const style = view.getComputedStyle(dismiss)
+          // The hover fill is a translucent tint: lay it over the bar's fill, as the browser does.
+          const layer = document.createElement("canvas").getContext("2d", { colorSpace: "srgb" })
+          layer.fillStyle = view.getComputedStyle(bar).backgroundColor
+          layer.fillRect(0, 0, 1, 1)
+          layer.fillStyle = style.backgroundColor
+          layer.fillRect(0, 0, 1, 1)
+          const [r, g, b] = layer.getImageData(0, 0, 1, 1).data
+          return { ratio: contrast(style.color, "rgb(" + r + ", " + g + ", " + b + ")"), hovered }
+        })()`)
+        await pointerToCorner(devtools)
+        await devtools.evaluate(`(() => {
+          const frame = ${frame}
+          frame.style.pointerEvents = "none"
+          frame.contentDocument.getElementById("warning-pair-still")?.remove()
+          return null
+        })()`)
+        bar[palette] = {
+          fill: rest.fill,
+          text: rest.text,
+          dismiss: rest.dismiss,
+          reload: rest.reload,
+          dismissHover: hover.ratio,
+          dismissHovered: hover.hovered,
+          buttonFill: 0,
+          buttonHover: 0,
+          buttonHovered: false,
+        }
+      }
+    },
+  )
+
+  // `.btn-warning` on the shared page, under the real pointer.
+  const wasDark = await devtools.evaluate<boolean>(
+    `document.documentElement.classList.contains("dark")`,
+  )
+  const centre = await devtools.evaluate<{ x: number; y: number }>(`(() => {
+    const button = document.createElement("button")
+    button.id = "warning-class-check"
+    button.type = "button"
+    button.className = "btn btn-warning"
+    button.textContent = "Proceed"
+    Object.assign(button.style, {
+      position: "fixed", top: "200px", left: "200px", zIndex: "99999", transition: "none",
+    })
+    document.body.append(button)
+    const box = button.getBoundingClientRect()
+    return { x: box.left + box.width / 2, y: box.top + box.height / 2 }
+  })()`)
+  try {
+    for (const palette of palettes) {
+      await devtools.evaluate(`(async () => {
+        document.documentElement.classList.toggle("dark", ${palette === "dark"})
+        await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+      })()`)
+      await pointerToCorner(devtools)
+      const rest = await devtools.evaluate<number>(`(() => {
+        ${CONTRAST_HELPERS}
+        const style = getComputedStyle(document.getElementById("warning-class-check"))
+        return contrast(style.color, style.backgroundColor)
+      })()`)
+      await devtools.send("Input.dispatchMouseEvent", {
+        type: "mouseMoved",
+        x: centre.x,
+        y: centre.y,
+        button: "none",
+        buttons: 0,
+      })
+      const hover = await devtools.evaluate<{ ratio: number; hovered: boolean }>(`(async () => {
+        ${CONTRAST_HELPERS}
+        await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+        const button = document.getElementById("warning-class-check")
+        const style = getComputedStyle(button)
+        return { ratio: contrast(style.color, style.backgroundColor), hovered: button.matches(":hover") }
+      })()`)
+      const reading = bar[palette]
+      if (reading) {
+        reading.buttonFill = rest
+        reading.buttonHover = hover.ratio
+        reading.buttonHovered = hover.hovered
+      }
+    }
+  } finally {
+    await pointerToCorner(devtools)
+    await devtools.evaluate(`(() => {
+      document.getElementById("warning-class-check")?.remove()
+      document.documentElement.classList.toggle("dark", ${wasDark})
+      return null
+    })()`)
+  }
+
+  const describe = (palette: (typeof palettes)[number]) => {
+    const reading = bar[palette]
+    if (!reading) return `${palette}: not read`
+    return `${palette}: bar ${reading.fill}, message ${reading.text.toFixed(2)}:1, dismiss ` +
+      `${reading.dismiss.toFixed(2)}:1, dismiss hovered ${reading.dismissHover.toFixed(2)}:1` +
+      (reading.dismissHovered ? "" : " (never hovered)") +
+      `, reload chip ${reading.reload.toFixed(2)}:1; ` +
+      `.btn-warning ${reading.buttonFill.toFixed(2)}:1, hovered ${
+        reading.buttonHover.toFixed(2)
+      }:1` +
+      (reading.buttonHovered ? "" : " (never hovered)")
+  }
+  check(
+    "in light and dark, the SWUpdater bar's message and dismiss, the dismiss under a real hover, " +
+      "and .btn-warning at rest and hovered read at 4.5:1 or better",
+    shown && palettes.every((palette) => {
+      const reading = bar[palette]
+      return reading !== undefined && reading.buttonHovered && reading.dismissHovered &&
+        [
+          reading.text,
+          reading.dismiss,
+          reading.dismissHover,
+          reading.buttonFill,
+          reading.buttonHover,
+        ]
+          .every((ratio) => ratio >= 4.5)
+    }),
+    shown ? palettes.map(describe).join("; ") : "the quiet demo's bar never appeared in the frame",
+  )
+}
 
 /** One fill's label contrast in one palette. */
 interface StatusFillReading {
@@ -904,9 +1118,8 @@ interface StatusFillReading {
  * The success and warning fills keep their labels readable in both palettes (#429). The dark
  * palette draws `--color-success` and `--color-warning` as light text colours, so a fill that read
  * them would put its light label on a light fill (1.70:1 and 2.24:1 when measured); the fills read
- * `--color-success-fill` and `--color-warning-fill` instead. The floor is 4.5:1 for success and
- * 3:1 for warning: orange-600 under orange-50 measures 3.37:1 in both palettes today, below AA,
- * and this check holds it at least where it is rather than claiming AA.
+ * `--color-success-fill` and `--color-warning-fill` instead. Every label is held to 4.5:1: since
+ * #431 the warning label is gray-950, where orange-50 read 3.37:1.
  *
  * @param devtools The connected session, on any page of the guide.
  */
@@ -918,7 +1131,7 @@ async function statusFillChecks(devtools: Devtools): Promise<void> {
     if (!text.includes(fill.className)) stale.push(`${fill.source}: "${fill.className}"`)
   }
   check(
-    "the copied toast and SWUpdater bar classes the fill check measures still appear in their sources",
+    "the copied toast classes the fill check measures still appear in their source",
     stale.length === 0,
     stale.length ? `not found, so the check below measures stale copies: ${stale.join("; ")}` : "",
   )
@@ -951,7 +1164,7 @@ async function statusFillChecks(devtools: Devtools): Promise<void> {
     const readings = read[palette]
     check(
       `in the ${palette} palette, the success and warning fills (.btn-success, .btn-warning, the ` +
-        "success toast, the SWUpdater bar) keep their label at 4.5:1 for success and 3:1 for warning",
+        "success toast) keep their label at 4.5:1",
       readings.length === STATUS_FILLS.length &&
         readings.every((reading) => reading.ratio >= reading.floor),
       readings.map((reading) =>
