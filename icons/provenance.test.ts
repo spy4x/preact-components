@@ -111,10 +111,10 @@ describe("normalizePathData", () => {
   })
 
   it("reads an exponent, and does not mistake a bare e for the start of one", () => {
-    // The SVG number grammar allows scientific notation, even though no pack file or glyph in this
-    // set happens to use it (checked: no `d` or `points` anywhere in the four packs or +index.tsx
-    // contains one). Covered anyway, because the parser claims to follow the grammar in full, not
-    // only the part real inputs so far have exercised.
+    // The SVG number grammar allows scientific notation. No glyph in this set uses it, and neither
+    // does any file in four of the five packs; Simple Icons does, in two files (`mingww64`,
+    // `preact`: `-3e-4`, `10e-4`). Covered in full, because the parser claims to follow the grammar,
+    // not only the part this package's own glyphs exercise.
     expect(normalizePathData("M1e2 3").canonical).toBe("M 100 3")
     expect(normalizePathData("M1e-2 3").canonical).toBe("M 0.01 3")
     // "e" with no digits after it is not an exponent marker — SVG allows a bare command letter `e`

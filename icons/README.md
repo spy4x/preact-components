@@ -51,12 +51,12 @@ Every glyph is a published pack's own drawing, copied exactly (see "Provenance" 
 packs draw differently and the families are **not** visually interchangeable. Pick one family per
 surface; mixing them is visible at small sizes.
 
-| Family                         | Count | Notes                                                                                                                                                          |
-| ------------------------------ | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Heroicons (v1 or v2)           | 72    | v1 outlines are `stroke-2`, v2 outlines `stroke-1.5` (6 are rendered at `stroke-2`); pack and version are on each glyph's own JSDoc line                       |
-| Feather and/or Lucide outlines | 24    | round caps and joins; 15 are rendered at `stroke-2`, 8 at `stroke 1.75` and 1 at `stroke 2.5`; which pack is on each glyph's own JSDoc line                    |
-| Brand marks (trademarked)      | 6     | GitHub, Telegram, Upwork, Twitter (drawn as X's current mark) and YouTube are filled marks from Simple Icons; LinkedIn is Feather's outline — see "Provenance" |
-| Ported                         | 18    | glyphs from the ported set, bucketed here by source; all 18 are pack drawings too — see the split below                                                        |
+| Family                         | Count | Notes                                                                                                                                                                        |
+| ------------------------------ | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Heroicons (v1 or v2)           | 72    | v1 outlines are `stroke-2`, v2 outlines `stroke-1.5` (6 are rendered at `stroke-2` and 1, `IconMinus`, at `stroke 1.8`); pack and version are on each glyph's own JSDoc line |
+| Feather and/or Lucide outlines | 24    | round caps and joins; 15 are rendered at `stroke-2`, 8 at `stroke 1.75` and 1 at `stroke 2.5`; which pack is on each glyph's own JSDoc line                                  |
+| Brand marks (trademarked)      | 6     | GitHub, Telegram, Upwork, Twitter (drawn as X's current mark) and YouTube are filled marks from Simple Icons; LinkedIn is Feather's outline — see "Provenance"               |
+| Ported                         | 18    | glyphs from the ported set, bucketed here by source; all 18 are pack drawings too — see the split below                                                                      |
 
 The table is a partition of all 120 glyphs: every row above is disjoint from every other, the
 Ported row's 18 included.
