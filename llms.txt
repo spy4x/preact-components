@@ -1,0 +1,846 @@
+# preact-components
+
+> Preact + Tailwind components built on web standards: accessible components, design tokens, icons,
+> charts, CRUD scaffolding and signals helpers for Deno apps. Components render on the server and
+> hydrate in the browser, take everything through props and ports, and never import an app's state.
+
+Use it when an app needs a button, table, dialog, form field, chart, calendar, shell or state store
+and you would rather import a tested, keyboard-accessible one than write it. Every package is
+published on JSR as `@spy4x/preact-<package>`, all at one version.
+
+Install a package:
+
+    deno add jsr:@spy4x/preact-<package>
+
+Exact signatures and props are not repeated here. Read them from the published package:
+
+    deno doc jsr:@spy4x/preact-<package>
+
+Each line below is one export: its name, its kind (component, hook, helper, type or constant), a
+one-sentence summary and the specifier to import it from. The specifier `@spy4x/preact-ui/badge`
+imports the same name as `@spy4x/preact-ui` but pulls in only that module.
+
+More: live guide https://spy4x.github.io/preact-components/ · the full package READMEs https://spy4x.github.io/preact-components/llms-full.txt
+
+## @spy4x/preact-charts
+
+Charts for Preact that render complete on the server and become interactive in the browser, plus the axis and loading helpers behind them.
+
+Install: `deno add jsr:@spy4x/preact-charts`
+
+- `BarDatum` (type): Import: `@spy4x/preact-charts`
+- `barPercent` (helper): Percentage of the longest bar, clamped to `[0, 100]`. Import: `@spy4x/preact-charts`
+- `Bars` (component): Server-rendered horizontal bar list — the "Top N" chart. Import: `@spy4x/preact-charts`
+- `BarsProps` (type): Props of `Bars`. Import: `@spy4x/preact-charts`
+- `DEFAULT_AXIS_COLOR` (constant): Axis and frame line colour. Import: `@spy4x/preact-charts`
+- `DEFAULT_CHART_PALETTE` (constant): Series colours, in draw order. Import: `@spy4x/preact-charts`
+- `DEFAULT_GRID_COLOR` (constant): Dashed grid line colour. Import: `@spy4x/preact-charts`
+- `DEFAULT_SURFACE_COLOR` (constant): Panel, tooltip and donut-centre background. Import: `@spy4x/preact-charts`
+- `DEFAULT_TEXT_COLOR` (constant): Axis label and legend text colour. Import: `@spy4x/preact-charts`
+- `DEFAULT_TRACK_COLOR` (constant): Track colour behind a bar or an empty donut ring. Import: `@spy4x/preact-charts`
+- `seriesColor` (helper): Pick a palette entry for a series index, wrapping around and tolerating a negative index. Import: `@spy4x/preact-charts`
+- `DonutChart` (component): Server-rendered donut built from a single CSS `conic-gradient`. Import: `@spy4x/preact-charts`
+- `DonutChartProps` (type): Props of `DonutChart`. Import: `@spy4x/preact-charts`
+- `DonutDatum` (type): Import: `@spy4x/preact-charts`
+- `DonutGeometry` (type): Import: `@spy4x/preact-charts`
+- `donutGeometry` (helper): Slice maths for `DonutChart`: cumulative shares plus the `conic-gradient` string. Import: `@spy4x/preact-charts`
+- `DonutGeometryOptions` (type): Import: `@spy4x/preact-charts`
+- `DonutSegment` (type): Import: `@spy4x/preact-charts`
+- `Kpi` (component): Key-performance-indicator card: label, value, optional caption. Import: `@spy4x/preact-charts`
+- `KpiGrid` (component): Responsive grid for `Kpi` cards: two columns on a phone, as many as fit on a desktop. Import: `@spy4x/preact-charts`
+- `KpiGridProps` (type): Props of `KpiGrid`. Import: `@spy4x/preact-charts`
+- `KpiProps` (type): Props of `Kpi`. Import: `@spy4x/preact-charts`
+- `KpiTone` (type): Colour role of a `Kpi` value. Import: `@spy4x/preact-charts`
+- `LineChart` (component): The line chart: drawn complete on the server, interactive once it runs in a browser. Import: `@spy4x/preact-charts`
+- `LineChartProps` (type): Props of `LineChart`. Import: `@spy4x/preact-charts`
+- `LinePoint` (type): Import: `@spy4x/preact-charts`
+- `LineSeries` (type): Import: `@spy4x/preact-charts`
+- `LineX` (type): A point's place on the X axis: a label, or — on a time axis — an instant. Import: `@spy4x/preact-charts`
+- `ChartPayload` (type): Import: `@spy4x/preact-charts`
+- `chartPayloadSchema` (helper): Payload of a stats loader: the points plus the granularity they were bucketed at. Import: `@spy4x/preact-charts`
+- `DateRange` (type): Data layer for the chart components: the shape a stats endpoint is expected to return, the loader that validates it, and the date-range maths a comparison panel needs. Import: `@spy4x/preact-charts`
+- `loadChartPayload` (helper): Call a stats loader and validate what it returns. Import: `@spy4x/preact-charts`
+- `LoadPayloadResult` (type): Import: `@spy4x/preact-charts`
+- `previousPeriod` (helper): The window before `range`, ending exactly where `range` starts. Import: `@spy4x/preact-charts`
+- `timeSeriesPointSchema` (helper): One bucket of a time series, as it arrives from an API. Import: `@spy4x/preact-charts`
+- `extent` (helper): Finite-only `[min, max]`, or `null` when nothing is plottable. Import: `@spy4x/preact-charts`
+- `linearScale` (helper): Map a domain onto a pixel range. Import: `@spy4x/preact-charts`
+- `NiceScale` (type): Import: `@spy4x/preact-charts`
+- `niceScale` (helper): Padded, rounded-outward domain plus the tick values that go with it. Import: `@spy4x/preact-charts`
+- `NiceScaleOptions` (type): Import: `@spy4x/preact-charts`
+- `niceStep` (helper): Import: `@spy4x/preact-charts`
+- `paddedDomain` (helper): Pad a domain by a fraction of its span, so points never sit on the axis frame. Import: `@spy4x/preact-charts`
+- `ticks` (helper): `yTicks`, `yFormat` Import: `@spy4x/preact-charts`
+- `xLabelStride` (helper): Draw every `stride`-th X label and always the last one, so a dense axis keeps a readable label count without dropping the right-hand end. Import: `@spy4x/preact-charts`
+- `createInViewObserver` (helper): Observe one element and report intersection changes. Import: `@spy4x/preact-charts`
+- `InViewHandle` (type): Handle returned by `createInViewObserver`. Import: `@spy4x/preact-charts`
+- `InViewOptions` (type): Import: `@spy4x/preact-charts`
+- `useInView` (hook): Report whether the element behind `ref` has scrolled into view. Import: `@spy4x/preact-charts`
+- `TIME_FRAMES` (constant): The bucket granularities a series can be aggregated at. Import: `@spy4x/preact-charts`
+- `TimeFrame` (type): Bucket granularity of a series, which decides the X tick format. Import: `@spy4x/preact-charts`
+- `TimeSeriesPoint` (type): is the arktype schema of one `TimeSeriesPoint`, `{ timeGroup, value }`, Import: `@spy4x/preact-charts`
+- `CHART_PALETTE_CLASS` (constant): Classes a chart puts on its root so `DEFAULT_CHART_PALETTE` resolves to the light steps, or to the dark ones under a `.dark` ancestor — the theme package's class-based dark mode. Import: `@spy4x/preact-charts/colors`
+
+## @spy4x/preact-cn
+
+One function: join conditional class names and resolve conflicting Tailwind utilities.
+
+Install: `deno add jsr:@spy4x/preact-cn`
+
+- `cn` (helper): Join conditional class names and resolve conflicting Tailwind utilities. Import: `@spy4x/preact-cn`
+
+## @spy4x/preact-crud
+
+The list and editor scaffolding every resource page in a source application was rebuilt from: one table with search, a status filter, a count and row actions, and one add/edit form with validation, a soft delete and a dependency block. The package knows no entity — the store arrives as a prop and the cells and fields arrive as slots.
+
+Install: `deno add jsr:@spy4x/preact-crud`
+
+- `CrudList` (component): Listed collection: title, count, search, status filter, an add action and a table. Import: `@spy4x/preact-crud`
+- `CrudListBaseProps` (type): What every CRUD list needs, whatever it is listing. Import: `@spy4x/preact-crud`
+- `CrudListProps` (type): `CrudListBaseProps` plus one of the two row sources. Import: `@spy4x/preact-crud`
+- `CrudListSource` (type): Where a list reads its rows. Import: `@spy4x/preact-crud`
+- `listRows` (helper): The rows a store-backed list renders: the status slice, filtered by the search term. Import: `@spy4x/preact-crud`
+- `rowsForStatus` (helper): The status slice of a store's collection. Import: `@spy4x/preact-crud`
+- `StatusFilterLabels` (type): Wording of the status select. Import: `@spy4x/preact-crud`
+- `ArchiveConfig` (type): The archive toggle: a checkbox in the footer that stamps `deletedAt` through the update the form already submits, plus whatever has to be archived first for it to be allowed. Import: `@spy4x/preact-crud`
+- `ArchiveToggleState` (type): What the archive toggle changes: the soft-delete column, and what blocks it. Import: `@spy4x/preact-crud`
+- `CrudEditor` (component): Add/edit form for one row of a collection. Import: `@spy4x/preact-crud`
+- `CrudEditorBaseProps` (type): Everything a CRUD editor needs, whatever it is editing. Import: `@spy4x/preact-crud`
+- `CrudEditorMode` (type): Which mode the editor is in. Import: `@spy4x/preact-crud`
+- `CrudEditorProps` (type): `CrudEditorBaseProps` plus the mode. Import: `@spy4x/preact-crud`
+- `CrudEditorSlot` (type): What the form body receives: the model signal to write, the validation signal to read. Import: `@spy4x/preact-crud`
+- `CrudSubmitInput` (type): A submit, narrowed by mode: an edit has an id to patch, an add does not. Import: `@spy4x/preact-crud`
+- `CrudSubmitOutcome` (type): What `submitEditor` decided. Import: `@spy4x/preact-crud`
+- `CrudSubmitStore` (type): The store slice a submit writes through. Import: `@spy4x/preact-crud`
+- `EditorState` (type): Whether the form validates, whether it is busy, and whether Save is live. Import: `@spy4x/preact-crud`
+- `editorState` (helper): Derive the form's chrome from the store's state. Import: `@spy4x/preact-crud`
+- `EditorStateInput` (type): What `editorState` derives its answer from. Import: `@spy4x/preact-crud`
+- `submitEditor` (helper): Route a submit to the store operation the mode implies. Import: `@spy4x/preact-crud`
+- `toggleArchiveState` (helper): The archive toggle's next state. Import: `@spy4x/preact-crud`
+- `DeletionValidation` (component): The list of entities that block a soft delete. Import: `@spy4x/preact-crud`
+- `DeletionValidationProps` (type): Props of `DeletionValidation`. Import: `@spy4x/preact-crud`
+- `CheckboxField` (component): One labelled checkbox, on `ui`'s `Checkbox`: the label is the checkbox's own, after the box. Import: `@spy4x/preact-crud`
+- `commitNumber` (helper): Parse a numeric input's value, tolerating the empty and half-typed boxes a browser reports. Import: `@spy4x/preact-crud`
+- `FieldIssues` (component): The issues of one field, or nothing when it has none. Import: `@spy4x/preact-crud`
+- `FieldProps` (type): What every field row receives. Import: `@spy4x/preact-crud`
+- `fieldText` (helper): A model value as the text a control shows. Import: `@spy4x/preact-crud`
+- `NumberField` (component): One labelled numeric input. Import: `@spy4x/preact-crud`
+- `SelectField` (component): One labelled select, on `ui`'s `Select`. Import: `@spy4x/preact-crud`
+- `SelectFieldProps` (type): A `SelectField` adds its option list and the empty option to `FieldProps`. Import: `@spy4x/preact-crud`
+- `SelectOption` (component): Import: `@spy4x/preact-crud`
+- `setField` (helper): Merge one field into a model signal. Import: `@spy4x/preact-crud`
+- `TextareaField` (component): One labelled multi-line text input. Import: `@spy4x/preact-crud`
+- `TextField` (component): One labelled text input. Import: `@spy4x/preact-crud`
+- `AssociationActions` (type): The two writes an association editor performs outside the form's own submit. Import: `@spy4x/preact-crud`
+- `associationActions` (helper): Bind the two module-level writes to a store. Import: `@spy4x/preact-crud`
+- `AssociationEditor` (component): Add/edit form for a row that exists only to join two entities. Import: `@spy4x/preact-crud`
+- `AssociationEditorBaseProps` (type): Everything an association editor needs, whatever the two entities are. Import: `@spy4x/preact-crud`
+- `AssociationEditorProps` (type): `AssociationEditorBaseProps` plus the mode. Import: `@spy4x/preact-crud`
+- `CONFLICT` (constant): Issue type a duplicate association is reported under. Import: `@spy4x/preact-crud`
+- `ConflictInput` (type): Everything `conflictIssue` needs to decide. Import: `@spy4x/preact-crud`
+- `conflictIssue` (helper): Fold the duplicate into the validation model. Import: `@spy4x/preact-crud`
+- `CrudAssociationStore` (type): The slice of a model store an association editor reads and writes. Import: `@spy4x/preact-crud`
+- `isRestorable` (helper): Whether a conflicting row is one that was removed and can be restored. Import: `@spy4x/preact-crud`
+- `CrudEditorStore` (type): The slice `CrudEditor` reads and writes. Import: `@spy4x/preact-crud`
+- `CrudListStore` (type): The slice `CrudList` reads. Import: `@spy4x/preact-crud`
+- `CrudModel` (type): Minimum a row must have for the scaffold to manage it. Import: `@spy4x/preact-crud`
+- `CrudRow` (type): A row the editor can load, archive and save. Import: `@spy4x/preact-crud`
+- `CrudStatus` (type): Which slice of a collection a list shows. Import: `@spy4x/preact-crud`
+- `DeletionDependency` (type): One entity kind blocking a soft delete, with the rows that block it. Import: `@spy4x/preact-crud`
+- `DeletionDependencyItem` (type): One row blocking a soft delete. Import: `@spy4x/preact-crud`
+- `OperationResult` (type): Either a value or an error — never both, never neither. Import: `@spy4x/preact-crud`
+- `OperationState` (type): Status of one in-flight store operation. Import: `@spy4x/preact-crud`
+- `SoftDeletable` (type): A row carrying the soft-delete column the editor toggles. Import: `@spy4x/preact-crud`
+- `StoreErrorLike` (type): An error a store operation settles with. Import: `@spy4x/preact-crud`
+
+## @spy4x/preact-icons
+
+Merged icon set. 120 glyphs, one named export per glyph, no runtime dependencies beyond Preact.
+
+Install: `deno add jsr:@spy4x/preact-icons`
+
+- `IconProps` (type): Common prop surface for every icon. Import: `@spy4x/preact-icons`
+- `IconAlertTriangle` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconArchive` (component): Lucide outline (stroke-2); matches Lucide's "archive" exactly, not Heroicons. Import: `@spy4x/preact-icons`
+- `IconArrowDown` (component): Heroicons v1 outline (stroke-2) · from template. Import: `@spy4x/preact-icons`
+- `IconArrowDownTray` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconArrowLeft` (component): Heroicons v1 outline (stroke-2) · from template. Import: `@spy4x/preact-icons`
+- `IconArrowPath` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconArrowRight` (component): Heroicons v1 outline (stroke-2) · from template. Import: `@spy4x/preact-icons`
+- `IconArrowUp` (component): Heroicons v1 outline (stroke-2) · from template. Import: `@spy4x/preact-icons`
+- `IconArrowUpRight` (component): Feather outline (stroke 1.75) · matches Feather's "arrow-up-right" exactly. Import: `@spy4x/preact-icons`
+- `IconArrowUturnLeft` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconArrowUturnRight` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconAtSign` (component): Feather outline (stroke-2); matches Feather's "at-sign" exactly, not Heroicons. Import: `@spy4x/preact-icons`
+- `IconBars3` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconBell` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconBookOpen` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconBookmark` (component): Custom outline (stroke 1.2). Import: `@spy4x/preact-icons`
+- `IconBriefcase` (component): Heroicons v2 outline (stroke-2); matches Heroicons v2's "briefcase" exactly, not v1. Import: `@spy4x/preact-icons`
+- `IconBuilding` (component): Custom outline (stroke 1.75). Import: `@spy4x/preact-icons`
+- `IconBuildingOffice2` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconCalendar` (component): Feather outline (stroke-2); matches Feather's "calendar" exactly, not Heroicons. Import: `@spy4x/preact-icons`
+- `IconCalendarDays` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconChartPie` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconChatBubble` (component): Custom outline (stroke-2); no match in the checked packs. Import: `@spy4x/preact-icons`
+- `IconCheck` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconCheckCircle` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconChevronDown` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconChevronLeft` (component): Lucide outline (stroke-2); matches Lucide's "chevron-left" exactly, not Heroicons. Import: `@spy4x/preact-icons`
+- `IconChevronRight` (component): Lucide outline (stroke-2); matches Lucide's "chevron-right" exactly, not Heroicons. Import: `@spy4x/preact-icons`
+- `IconChip` (component): Custom outline (stroke-2); uses a `rect`, which Heroicons never does, and no match in the checked packs. Import: `@spy4x/preact-icons`
+- `IconCircleDot` (component): Custom outline (stroke 1.75). Import: `@spy4x/preact-icons`
+- `IconClipboard` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconClipboardCopy` (component): Heroicons v1 outline (stroke-2) · from template. Import: `@spy4x/preact-icons`
+- `IconClock` (component): Heroicons v2 outline (stroke-2); matches Heroicons v2's "clock" exactly, not v1. Import: `@spy4x/preact-icons`
+- `IconCode` (component): Feather outline (stroke-2); matches Feather's "code" exactly, not Heroicons. Import: `@spy4x/preact-icons`
+- `IconCog6Tooth` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconCpuChip` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconCreditCard` (component): Custom outline (stroke 1.75). Import: `@spy4x/preact-icons`
+- `IconCursorArrowRays` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconDocument` (component): Custom outline (stroke 1.75). Import: `@spy4x/preact-icons`
+- `IconDollar` (component): Heroicons v2 outline (stroke-2); matches Heroicons v2's "currency-dollar" exactly, not v1. Import: `@spy4x/preact-icons`
+- `IconEllipsisVertical` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconExternal` (component): Feather outline (stroke 1.75) · matches Feather's "external-link" exactly. Import: `@spy4x/preact-icons`
+- `IconEye` (component): Heroicons v1 outline (stroke-2) · from template. Import: `@spy4x/preact-icons`
+- `IconEyeOff` (component): Heroicons v1 outline (stroke-2) · from template. Import: `@spy4x/preact-icons`
+- `IconFire` (component): Heroicons v2 outline (stroke-2); near-matches Heroicons v2's "fire", not v1. Import: `@spy4x/preact-icons`
+- `IconFlag` (component): Custom outline (stroke-2); no match in the checked packs. Import: `@spy4x/preact-icons`
+- `IconFlask` (component): Custom outline (stroke 1.75). Import: `@spy4x/preact-icons`
+- `IconFolder` (component): Heroicons v1 outline (stroke-2) · from template. Import: `@spy4x/preact-icons`
+- `IconFunnel` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconGateway` (component): Custom outline (stroke n/a) · from template; no match in the checked packs. Import: `@spy4x/preact-icons`
+- `IconGitHub` (component): Brand mark (trademarked); no match in the checked packs. Import: `@spy4x/preact-icons`
+- `IconGlobe` (component): Custom outline (stroke 1.75). Import: `@spy4x/preact-icons`
+- `IconGrid` (component): Heroicons v2 outline (stroke-2); matches Heroicons v2's "squares-2x2" exactly, not v1. Import: `@spy4x/preact-icons`
+- `IconHandThumbUp` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconHome` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconImage` (component): Custom outline (stroke 1.75). Import: `@spy4x/preact-icons`
+- `IconInformationCircle` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconKey` (component): Heroicons v2 outline (stroke-2); matches Heroicons v2's "key" exactly, not v1. Import: `@spy4x/preact-icons`
+- `IconLens` (component): Custom outline (stroke 1.75). Import: `@spy4x/preact-icons`
+- `IconLightBulb` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconLink` (component): Feather/Lucide outline (stroke 1.75) · matches both packs' "link" exactly. Import: `@spy4x/preact-icons`
+- `IconLinkedIn` (component): Brand mark (trademarked); no match in the checked packs. Import: `@spy4x/preact-icons`
+- `IconList` (component): Feather outline (stroke 1.75) · matches Feather's "list" exactly. Import: `@spy4x/preact-icons`
+- `IconLoading` (component): Custom outline (stroke 4) · from template. Import: `@spy4x/preact-icons`
+- `IconLocationMarker` (component): Heroicons v1 outline (stroke-2) · from template. Import: `@spy4x/preact-icons`
+- `IconLogout` (component): Feather outline (stroke 1.75) · matches Feather's "log-out" exactly. Import: `@spy4x/preact-icons`
+- `IconMail` (component): Heroicons v2 outline (stroke-2); matches Heroicons v2's "envelope" exactly, not v1. Import: `@spy4x/preact-icons`
+- `IconMap` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconMinus` (component): Heroicons v2 outline (stroke 1.8); matches Heroicons v2's and Lucide's "minus" exactly. Import: `@spy4x/preact-icons`
+- `IconMoon` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconPackage` (component): Custom outline (stroke 1.75). Import: `@spy4x/preact-icons`
+- `IconPencilSquare` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconPlus` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconQuote` (component): Filled glyph, not a brand mark; no match in the checked packs. Import: `@spy4x/preact-icons`
+- `IconRocket` (component): Custom outline (stroke 1.75). Import: `@spy4x/preact-icons`
+- `IconSearch` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconSensor` (component): Custom outline (stroke-2) · from template; no match in the checked packs. Import: `@spy4x/preact-icons`
+- `IconServer` (component): Feather outline (stroke-2); matches Feather's and Lucide's "server" exactly, not Heroicons. Import: `@spy4x/preact-icons`
+- `IconShare` (component): Feather outline (stroke 1.75) · matches Feather's "share" exactly. Import: `@spy4x/preact-icons`
+- `IconShieldCheck` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconSparkle` (component): Custom outline (stroke 1.75). Import: `@spy4x/preact-icons`
+- `IconSpinner` (component): Lucide outline (stroke 2.5); matches Lucide's "loader-circle"/"loader-2" exactly. Import: `@spy4x/preact-icons`
+- `IconStar` (component): Feather outline (stroke-2); matches Feather's "star" exactly, not Heroicons. Import: `@spy4x/preact-icons`
+- `IconSun` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconTag` (component): Feather outline (stroke 1.75) · matches Feather's "tag" exactly. Import: `@spy4x/preact-icons`
+- `IconTarget` (component): Feather/Lucide outline (stroke-2); near-matches both packs' "target", not Heroicons. Import: `@spy4x/preact-icons`
+- `IconTelegram` (component): Brand mark (trademarked); no match in the checked packs. Import: `@spy4x/preact-icons`
+- `IconThemeAuto` (component): Custom outline (stroke 1.8). Import: `@spy4x/preact-icons`
+- `IconTrashBin` (component): Heroicons v1 outline (stroke-2) · from template. Import: `@spy4x/preact-icons`
+- `IconTrendingDown` (component): Heroicons v1 outline (stroke-2) · from template. Import: `@spy4x/preact-icons`
+- `IconTrendingUp` (component): Heroicons v1 outline (stroke-2) · from template. Import: `@spy4x/preact-icons`
+- `IconTwitter` (component): Brand mark (trademarked); matches Feather's "twitter" exactly, not Heroicons. Import: `@spy4x/preact-icons`
+- `IconUpwork` (component): Brand mark (trademarked); no match in the checked packs. Import: `@spy4x/preact-icons`
+- `IconUser` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconUsers` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconVideo` (component): Custom outline (stroke 1.75). Import: `@spy4x/preact-icons`
+- `IconViewColumns` (component): Heroicons v2 outline (stroke-1.5); matches Heroicons v2's "view-columns" exactly, not v1. Import: `@spy4x/preact-icons`
+- `IconWallet` (component): Lucide outline (stroke-2); matches Lucide's "wallet" exactly, not Heroicons. Import: `@spy4x/preact-icons`
+- `IconWrench` (component): Custom outline (stroke-2); no match in the checked packs. Import: `@spy4x/preact-icons`
+- `IconXMark` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconYouTube` (component): Brand mark (trademarked); matches Feather's "youtube" exactly, not Heroicons. Import: `@spy4x/preact-icons`
+- `IconZap` (component): Feather outline (stroke 1.75) · matches Feather's "zap" exactly. Import: `@spy4x/preact-icons`
+- `IconArrowsPointingOut` (component): Heroicons v1 outline (stroke-2) · from a source application. Import: `@spy4x/preact-icons`
+- `IconCloudArrowUp` (component): Heroicons v1 outline (stroke-2) · from a source application. Import: `@spy4x/preact-icons`
+- `IconSuccess` (component): Heroicons v1 outline (stroke-2) · from a source application. Import: `@spy4x/preact-icons`
+- `IconDocumentDuplicate` (component): Heroicons v1 outline (stroke-2) · from a source application. Import: `@spy4x/preact-icons`
+- `IconDocumentText` (component): Heroicons v1 outline (stroke-2) · from a source application. Import: `@spy4x/preact-icons`
+- `IconDownload` (component): Heroicons v1 outline (stroke-2) · from a source application. Import: `@spy4x/preact-icons`
+- `IconExternalLink` (component): Custom filled glyph (no stroke) · from a source application. Import: `@spy4x/preact-icons`
+- `IconFilm` (component): Heroicons v1 outline (stroke-2) · from a source application. Import: `@spy4x/preact-icons`
+- `IconLockClosed` (component): Heroicons v1 outline (stroke-2) · from a source application. Import: `@spy4x/preact-icons`
+- `IconLockClosedFilled` (component): Heroicons v1 solid · from a source application; matches Heroicons v1's "lock-closed" exactly, not v2. Import: `@spy4x/preact-icons`
+- `IconLockOpen` (component): Heroicons v1 outline (stroke-2) · from a source application. Import: `@spy4x/preact-icons`
+- `IconMicrophone` (component): Heroicons v1 outline (stroke-2) · from a source application. Import: `@spy4x/preact-icons`
+- `IconPlayCircle` (component): Heroicons v1 outline (stroke-2) · from a source application. Import: `@spy4x/preact-icons`
+- `IconPlaySolid` (component): Heroicons v2 outline, filled · from a source application. Import: `@spy4x/preact-icons`
+- `IconRefresh` (component): Heroicons v1 outline (stroke-2) · from a source application. Import: `@spy4x/preact-icons`
+- `IconSmile` (component): Heroicons v1 outline (stroke-2) · from a source application. Import: `@spy4x/preact-icons`
+- `IconStopCircle` (component): Heroicons v1 outline (stroke-2) · from a source application. Import: `@spy4x/preact-icons`
+- `IconVideoCamera` (component): Heroicons v1 outline (stroke-2) · from a source application. Import: `@spy4x/preact-icons`
+
+## @spy4x/preact-map
+
+`Map` — markers on a Leaflet tile layer, plotted from plain data, plus the plain-text list of the same places next to it. The map's own pins are the keyboard and screen-reader interface; the list is a non-interactive overview — see "Keyboard and screen readers" below for why the two are split that way.
+
+Install: `deno add jsr:@spy4x/preact-map`
+
+- `Map` (component): See this file's own doc. Import: `@spy4x/preact-map`
+- `MapCenter` (type): A point `Map` centres on. Import: `@spy4x/preact-map`
+- `MapMarker` (type): One place `Map` shows, on the tile layer and in the plain-text list beside it. Import: `@spy4x/preact-map`
+- `MapMarkerStatus` (type): One of the three states `MapMarker` carries a colour for — see `theme/preset.css`'s `.status-on`/`.status-off`/`.status-unknown` rules. Import: `@spy4x/preact-map`
+- `MapProps` (type): Props of `Map`. Import: `@spy4x/preact-map`
+
+## @spy4x/preact-signals
+
+Signals state layer: a CRUD store factory and the small stores around them. No Preact component, no Tailwind class, no application singleton.
+
+Install: `deno add jsr:@spy4x/preact-signals`
+
+- `buildModelStore` (helper): Build a CRUD store for one collection. Import: `@spy4x/preact-signals`
+- `BuildModelStoreConfig` (type): Configuration for `buildModelStore`. Import: `@spy4x/preact-signals`
+- `DEFAULT_MODEL_STORE_MESSAGES` (constant): English defaults of `ModelStoreMessages`. Import: `@spy4x/preact-signals`
+- `InputError` (type): Errors an operation that carries a payload settles with. Import: `@spy4x/preact-signals`
+- `ModelSchemas` (type): Payload and row schemas for a model. Import: `@spy4x/preact-signals`
+- `ModelStore` (type): A built store: the common base, plus whatever `extraOps` and `selectors` added. Import: `@spy4x/preact-signals`
+- `ModelStoreBase` (type): The part of a model store that is the same for every model. Import: `@spy4x/preact-signals`
+- `ModelStoreContext` (type): What an `extraOps` or `selectors` callback receives. Import: `@spy4x/preact-signals`
+- `ModelStoreMessages` (type): The words of the toasts `buildModelStore` sends, one function per outcome. Import: `@spy4x/preact-signals`
+- `ModelStoreRequest` (type): Fetch, parse and normalise one request. Import: `@spy4x/preact-signals`
+- `ModelStoreState` (type): State a model store keeps. Import: `@spy4x/preact-signals`
+- `StoreStateOf` (type): State of a store built for a given row schema. Import: `@spy4x/preact-signals`
+- `CLIPBOARD_UNAVAILABLE` (constant): Reason reported when the runtime has no clipboard at all (an insecure origin, a server render). Import: `@spy4x/preact-signals`
+- `ClipboardPort` (type): Write port. Import: `@spy4x/preact-signals`
+- `ClipboardStore` (type): A clipboard helper. Import: `@spy4x/preact-signals`
+- `CopyFeedback` (type): What to do about the outcome. Import: `@spy4x/preact-signals`
+- `createClipboard` (helper): Create a clipboard helper. Import: `@spy4x/preact-signals`
+- `deleteMapEntry` (helper): Return a copy of `map` without `key`. Import: `@spy4x/preact-signals`
+- `setMapEntry` (helper): Return a copy of `map` with `key` set to `value`. Import: `@spy4x/preact-signals`
+- `patchSignal` (helper): Merge `patch` into `signal`'s current value and notify subscribers. Import: `@spy4x/preact-signals`
+- `createThemeStore` (helper): Create a theme store. Import: `@spy4x/preact-signals`
+- `Theme` (type): A resolved theme: what is actually painted. Import: `@spy4x/preact-signals`
+- `ThemeBootstrapOptions` (type): Options for `themeBootstrapScript`. Import: `@spy4x/preact-signals`
+- `themeBootstrapScript` (helper): The source of an inline `<head>` script that paints the stored theme before the first paint. Import: `@spy4x/preact-signals`
+- `ThemeMediaQuery` (type): Media-query port. Import: `@spy4x/preact-signals`
+- `ThemeMediaSource` (type): Media-query source port. Import: `@spy4x/preact-signals`
+- `ThemePorts` (type): Everything the store needs from the outside. Import: `@spy4x/preact-signals`
+- `ThemePreference` (type): A stored preference: a resolved theme, or `"system"`. Import: `@spy4x/preact-signals`
+- `ThemeStorage` (type): Persistence port. Import: `@spy4x/preact-signals`
+- `ThemeStore` (type): A theme store: preference in, resolved theme out, plus the DOM wiring. Import: `@spy4x/preact-signals`
+- `ThemeValue` (type): What the user chose in the UI. Import: `@spy4x/preact-signals`
+- `createToastStore` (helper): Create a toast store. Import: `@spy4x/preact-signals`
+- `ToastEntry` (type): A toast as the store holds it. Import: `@spy4x/preact-signals`
+- `ToastOptions` (type): Injected collaborators and labels, all optional. Import: `@spy4x/preact-signals`
+- `ToastStore` (type): A toast store. Import: `@spy4x/preact-signals`
+- `Model` (type): The minimum a row must have for the store to manage it. Import: `@spy4x/preact-signals`
+- `RemoteEvent` (type): Event kinds a remote (websocket) feed can announce. Import: `@spy4x/preact-signals`
+- `ToastId` (type): What identifies one toast: the type `ToastStore.remove` takes. Import: `@spy4x/preact-signals`
+- `ToastMessage` (type): Notification content the store hands to its toast port. Import: `@spy4x/preact-signals`
+- `ToastPort` (type): Notification port. Import: `@spy4x/preact-signals`
+- `ToastVariant` (type): Kind of a toast, selecting its colour and glyph. Import: `@spy4x/preact-signals`
+- `FilterField` (type): One filter, bound to one URL parameter. Import: `@spy4x/preact-signals`
+- `resolveFilterValue` (helper): Value a URL parameter implies for one field. Import: `@spy4x/preact-signals`
+- `shouldPersistFilter` (helper): Whether a value belongs in the URL: not the default, not `null`, not the empty string. Import: `@spy4x/preact-signals`
+- `UrlFilters` (type): Result of `useUrlFilters`. Import: `@spy4x/preact-signals`
+- `useUrlFilters` (hook): Bind filter signals to URL parameters. Import: `@spy4x/preact-signals`
+- `FilterWrite` (type): What one filter does to its own query parameter: set it, or — with no `value` — remove it. Import: `@spy4x/preact-signals/use-url-filters`
+- `filterWrite` (helper): What one field's value means for its parameter. Import: `@spy4x/preact-signals/use-url-filters`
+- `clearFilterFields` (helper): Take every field back to its default, as **one** change. Import: `@spy4x/preact-signals/use-url-filters`
+- `filterSearch` (helper): The query string a set of filter values implies, starting from the one the address already has. Import: `@spy4x/preact-signals/use-url-filters`
+- `AddressParts` (type): An address as `location` reports it, in the four pieces this hook has to read. Import: `@spy4x/preact-signals/use-url-filters`
+- `restoredAddress` (helper): The address the write should have left behind, or `undefined` when that is already the address. Import: `@spy4x/preact-signals/use-url-filters`
+
+## @spy4x/preact-system
+
+Application chrome and platform integration: SEO, PWA updates, and the progressive-enhancement components that have to render without JavaScript.
+
+Install: `deno add jsr:@spy4x/preact-system`
+
+- `AuthCredentials` (type): What a credentials submit hands back. Import: `@spy4x/preact-system`
+- `AuthForm` (component): Sign-in, sign-up and a one-time-code step, drawn from props and reported through callbacks. Import: `@spy4x/preact-system`
+- `AuthFormError` (type): One error `AuthForm` shows. Import: `@spy4x/preact-system`
+- `AuthFormErrorField` (type): Which field one `AuthFormError` names, when it names one. Import: `@spy4x/preact-system`
+- `AuthFormLabels` (type): Copy `AuthForm` renders. Import: `@spy4x/preact-system`
+- `AuthFormProps` (type): Props of `AuthForm`. Import: `@spy4x/preact-system`
+- `AuthMode` (type): Which screen `AuthForm` draws. Import: `@spy4x/preact-system`
+- `AuthStep` (type): Which step of a mode `AuthForm` draws. Import: `@spy4x/preact-system`
+- `Calendar` (component): `monthAnchor`, `minDate`, `maxDate`, `availableByDate`, `onSelectDate?` Import: `@spy4x/preact-system`
+- `CalendarDay` (type): One cell of the grid, resolved. Import: `@spy4x/preact-system`
+- `CalendarDayReason` (type): Why a day cannot be picked. Import: `@spy4x/preact-system`
+- `CalendarLabels` (type): Copy the calendar renders. Import: `@spy4x/preact-system`
+- `CalendarProps` (type): Props of `Calendar`. Import: `@spy4x/preact-system`
+- `describeCalendarDay` (helper): Default day description: the date as the locale writes it, then why it cannot be picked. Import: `@spy4x/preact-system`
+- `createHeadStore` (helper): Build a head store from defaults. Import: `@spy4x/preact-system`
+- `HeadStore` (type): A head signal with the defaults it was created from, so `resetHead()` is exact. Import: `@spy4x/preact-system`
+- `OgType` (type): Open Graph object type a page declares. Import: `@spy4x/preact-system`
+- `PageHead` (type): Every field `SEOHead` renders, plus the JSON-LD inputs. Import: `@spy4x/preact-system`
+- `RailShell` (component): The frame: a skip link, the rail from `md` up, the page in `<main>`, the phone tab bar below `md`, and the "More" overlay. Import: `@spy4x/preact-system`
+- `RailShellItem` (type): One destination in `RailShellProps.items`, or the `RailShellProps.primary` action. Import: `@spy4x/preact-system`
+- `RailShellLabels` (type): Every string `RailShell` prints that is not data the caller supplied. Import: `@spy4x/preact-system`
+- `RailShellProps` (type): Everything `RailShell` draws comes from here: the destinations, which one is current, the primary action, the `navigate` port for entries without an `href`, the page itself, and every label. Import: `@spy4x/preact-system`
+- `TAB_BAR_SLOTS` (constant): The tab bar's slot count, "More" included. Import: `@spy4x/preact-system`
+- `tabBarSlots` (helper): Split the entries between the phone tab bar and its "More" overlay. Import: `@spy4x/preact-system`
+- `TabBarSplit` (type): What `tabBarSlots` decides for the phone bar. Import: `@spy4x/preact-system`
+- `Shell` (component): The frame for a signed-in app: a header (menu button, brand, status, user menu) that is always in view, a sidebar below it from `lg` up, and the same navigation in a `<details>`-built drawer below `lg` — see `mobile-panel.ts`. Import: `@spy4x/preact-system`
+- `ShellLabels` (type): Every user-visible or accessible string `Shell` prints that is not data the caller supplied. Import: `@spy4x/preact-system`
+- `ShellNavItem` (type): One entry of `ShellProps.navItems`, or of one entry's own `children`. Import: `@spy4x/preact-system`
+- `ShellNavItemAction` (type): `ShellNavItem.action`: a control of its own beside an item's link, never inside it, so it is a separate Tab stop with its own accessible name. Import: `@spy4x/preact-system`
+- `ShellProps` (type): Props of `Shell`. Import: `@spy4x/preact-system`
+- `ShellSidebarPlace` (type): Where a sidebar slot is being drawn: the desktop sidebar, or the mobile drawer's copy of it. Import: `@spy4x/preact-system`
+- `ShellUser` (type): `ShellProps.user`, or `null` for a signed-out visitor — the user menu renders only then. Import: `@spy4x/preact-system`
+- `ShellUserMenuItem` (type): One entry of `ShellProps.userMenuItems`. Import: `@spy4x/preact-system`
+- `HeadTag` (type): A serialisable `<head>` element, in document order. Import: `@spy4x/preact-system`
+- `HeadTagName` (type): Which `<head>` element a `HeadTag` describes. Import: `@spy4x/preact-system`
+- `SEOHead` (component): Render the head tag set for a page. Import: `@spy4x/preact-system`
+- `seoHeadJsonLd` (helper): Build the JSON-LD `@graph` for a page: the caller's entities, then the breadcrumb. Import: `@spy4x/preact-system`
+- `seoHeadTags` (helper): The full `<head>` tag set for a page, in document order. Import: `@spy4x/preact-system`
+- `isCurrentLink` (helper): Whether `href` is the page `currentPath` names. Import: `@spy4x/preact-system`
+- `SiteHeader` (component): A top bar for a public site: `brand` on the left; `links` on the right from `lg` up, and in a `<details>`-built disclosure below it; `actions` and the menu button always in view, beside whichever form `links` is currently taking. Import: `@spy4x/preact-system`
+- `SiteHeaderLabels` (type): Every user-visible or accessible string this component prints that is not `links`/`brand`. Import: `@spy4x/preact-system`
+- `SiteHeaderLink` (type): One entry of `SiteHeaderProps.links`. Import: `@spy4x/preact-system`
+- `SiteHeaderProps` (type): Props of `SiteHeader`. Import: `@spy4x/preact-system`
+- `readStateInit` (helper): Read back the value a `StateInit` with the same `id` wrote into this page. Import: `@spy4x/preact-system`
+- `StateInit` (component): Write `data` into the page as JSON, for `readStateInit` to read back on the client. Import: `@spy4x/preact-system`
+- `StateInitElementLike` (type): One element, as `readStateInit` needs to see it — a seam a test can fake without a DOM. Import: `@spy4x/preact-system`
+- `StateInitProps` (type): Props of `StateInit`. Import: `@spy4x/preact-system`
+- `StateInitSourceLike` (type): The one thing `readStateInit` needs from `document` — a seam a test can fake without a DOM. Import: `@spy4x/preact-system`
+- `stateInitText` (helper): Serialise `data` for embedding inside `StateInit`'s `<script type="application/json">`. Import: `@spy4x/preact-system`
+- `ContainerLike` (type): The slice of `ServiceWorkerContainer` this package uses. Import: `@spy4x/preact-system`
+- `DEFAULT_UPDATE_MESSAGE` (constant): What a waiting worker is told to take over with, when the caller names nothing else. Import: `@spy4x/preact-system`
+- `RegistrationLike` (type): The slice of `ServiceWorkerRegistration` this package uses. Import: `@spy4x/preact-system`
+- `reloadOnControllerChange` (helper): Reload once a new worker takes control of the page. Import: `@spy4x/preact-system`
+- `serviceWorkerContainer` (helper): The service-worker container of a host, or `undefined` when there is none. Import: `@spy4x/preact-system`
+- `ServiceWorkerHost` (type): Anything that may carry a service-worker container: `navigator`, a test double. Import: `@spy4x/preact-system`
+- `skipWaiting` (helper): Tell the waiting worker to take over. Import: `@spy4x/preact-system`
+- `startUpdates` (helper): Register the service worker and watch that registration for an update. Import: `@spy4x/preact-system`
+- `SWUpdater` (component): Register the service worker and offer a reload when a new version is waiting. Import: `@spy4x/preact-system`
+- `SWUpdaterProps` (type): Props of `SWUpdater`. Import: `@spy4x/preact-system`
+- `UpdateStart` (type): Everything `startUpdates` needs beyond the container itself. Import: `@spy4x/preact-system`
+- `UpdateWatcher` (type): Tuning for `watchForUpdate`. Import: `@spy4x/preact-system`
+- `watchForUpdate` (helper): Watch a registration for an update and report each waiting worker once. Import: `@spy4x/preact-system`
+- `WorkerLike` (type): The slice of `ServiceWorker` this package uses. Import: `@spy4x/preact-system`
+- `TwitterCard` (type): `twitter:card` value a page can publish. Import: `@spy4x/preact-system/head`
+
+## @spy4x/preact-theme
+
+The design-system CSS every component in this repo styles against: design tokens, a Tailwind 4 preset, and the class names components render.
+
+Install: `deno add jsr:@spy4x/preact-theme`
+
+- `COMPONENT_CLASSES` (constant): Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (796 classes). Import: `@spy4x/preact-theme`
+- `INK_CSS` (constant): ./ink.css's exact contents. Import: `@spy4x/preact-theme`
+- `PRESET_CSS` (constant): ./preset.css's exact contents. Import: `@spy4x/preact-theme`
+- `TOKENS_CSS` (constant): ./tokens.css's exact contents. Import: `@spy4x/preact-theme`
+- `SPACING_STEPS` (constant): Every spacing step a class may use, smallest first: 0, 1 px, then 4, 8, 12, 16, 24, 32, 48 and 64 px (Tailwind's step times 4 px). Import: `@spy4x/preact-theme/spacing`
+- `SpacingStep` (type): One of `SPACING_STEPS`. Import: `@spy4x/preact-theme/spacing`
+- `SPACING_GAPS` (constant): The named gaps a layout component offers, and the step each one stands for: 0, 4, 8, 16, 24, 32 and 48 px. Import: `@spy4x/preact-theme/spacing`
+- `SpacingGap` (type): A named gap: a key of `SPACING_GAPS`. Import: `@spy4x/preact-theme/spacing`
+- `SpacingViolation` (type): One spacing class that breaks the scale, and where it is. Import: `@spy4x/preact-theme/spacing`
+- `findOffScaleSpacing` (helper): Finds every spacing class in `source` that uses a step outside `SPACING_STEPS` or an arbitrary value, written in square brackets or as a custom property in parentheses; every arbitrary property that sets padding, margin, a gap or their scroll forms; and every use of Tailwind's spacing function whose argument is not a numeric step. Import: `@spy4x/preact-theme/spacing`
+- `VitePluginContext` (type): The part of Rollup's plugin context the hooks below call. Import: `@spy4x/preact-theme/vite`
+- `VitePartialResolvedId` (type): What `ViteResolveContext.resolve` answers: the id another plugin resolved a module to. Import: `@spy4x/preact-theme/vite`
+- `ViteOptimizedDep` (type): The dependency optimizer's record of one pre-bundled import. Import: `@spy4x/preact-theme/vite`
+- `ViteEnvironment` (type): The part of a Vite environment `npmSpecifiers` reads: the dev server's optimizer. Import: `@spy4x/preact-theme/vite`
+- `ViteResolveContext` (type): The plugin context inside `resolveId`. Import: `@spy4x/preact-theme/vite`
+- `ViteOutputFile` (type): One file of the bundle `generateBundle` receives: a CSS or other asset, or a JS chunk. Import: `@spy4x/preact-theme/vite`
+- `VitePlugin` (type): The shape of a Vite plugin, cut down to the hooks the plugins here implement. Import: `@spy4x/preact-theme/vite`
+- `PreactThemeCssOptions` (type): Options for `preactThemeCss`. Import: `@spy4x/preact-theme/vite`
+- `preactThemeCss` (helper): Gives the app's stylesheet the `@spy4x/preact-*` design system before Tailwind compiles it. Import: `@spy4x/preact-theme/vite`
+- `RequireComponentCssOptions` (type): Options for `requireComponentCss`. Import: `@spy4x/preact-theme/vite`
+- `requireComponentCss` (helper): Fails `vite build` when the CSS it wrote lacks the library's classes. Import: `@spy4x/preact-theme/vite`
+- `NpmVersionMismatchError` (helper): Thrown when a library module pins an npm package at a version the app does not have. Import: `@spy4x/preact-theme/vite`
+- `NpmSpecifiersOptions` (type): Options for `npmSpecifiers`. Import: `@spy4x/preact-theme/vite`
+- `npmSpecifiers` (helper): Resolves the `npm:` specifiers inside `@spy4x/preact-*` modules to the app's own copy of that package, and refuses one whose pinned version differs from the app's. Import: `@spy4x/preact-theme/vite`
+
+## @spy4x/preact-ui
+
+Preact + Tailwind primitives extracted from earlier source applications.
+
+Install: `deno add jsr:@spy4x/preact-ui`
+
+- `Avatar` (component): Round image with an initials fallback and a generic-icon last resort. Import: `@spy4x/preact-ui`
+- `AvatarFace` (type): Which of the three faces an `Avatar` renders. Import: `@spy4x/preact-ui`
+- `avatarFace` (helper): Pick an avatar's face: the image while it is usable, then the initials, then the generic icon. Import: `@spy4x/preact-ui`
+- `AvatarFaceInput` (type): What `avatarFace` decides from. Import: `@spy4x/preact-ui`
+- `AvatarGroup` (component): Overlapping avatar stack for a handful of members, with a `+N` chip for the rest. Import: `@spy4x/preact-ui`
+- `AvatarGroupProps` (type): Props of `AvatarGroup`. Import: `@spy4x/preact-ui`
+- `AvatarMember` (type): One member of an `AvatarGroup`. Import: `@spy4x/preact-ui`
+- `AvatarProps` (type): Props of `Avatar`. Import: `@spy4x/preact-ui`
+- `AvatarSize` (type): Square box of an `Avatar` or an `AvatarGroup`. Import: `@spy4x/preact-ui`
+- `groupLabel` (helper): The accessible name of an `AvatarGroup`: what it is, and how many members it holds. Import: `@spy4x/preact-ui`
+- `GroupSplit` (type): How an `AvatarGroup` splits its members between the stack and the `+N` chip. Import: `@spy4x/preact-ui`
+- `groupSplit` (helper): Split a group's member count into the avatars that fit and the ones counted behind `+N`. Import: `@spy4x/preact-ui`
+- `Badge` (component): Small status pill. Import: `@spy4x/preact-ui`
+- `badgeClasses` (helper): Compose a badge's class list without rendering one, so a pill that is not a `Badge` — a pressable chip, say — draws from the same palette. Import: `@spy4x/preact-ui`
+- `BadgeColor` (type): Palette entries a `Badge` can use. Import: `@spy4x/preact-ui`
+- `BadgeProps` (type): Props of `Badge`. Import: `@spy4x/preact-ui`
+- `BadgeType` (type): Whether a `Badge` is tinted (`filled`, the default) or only outlined. Import: `@spy4x/preact-ui`
+- `Button` (component): Native button with the library's variant and size vocabulary. Import: `@spy4x/preact-ui`
+- `buttonClasses` (helper): Compose the class list of a button without rendering one. Import: `@spy4x/preact-ui`
+- `ButtonProps` (type): Props of `Button`. Import: `@spy4x/preact-ui`
+- `ButtonSize` (type): Control height and text scale of a `Button`. Import: `@spy4x/preact-ui`
+- `ButtonVariant` (type): Visual role of a `Button`. Import: `@spy4x/preact-ui`
+- `Checkbox` (component): Render the box and its label. Import: `@spy4x/preact-ui`
+- `CheckboxProps` (type): Checkbox with its own label. Import: `@spy4x/preact-ui`
+- `Card` (component): Card surface. Import: `@spy4x/preact-ui`
+- `CardBody` (component): Card body: the content region of a `Card`. Import: `@spy4x/preact-ui`
+- `CardBodyProps` (type): Props of `CardBody`. Import: `@spy4x/preact-ui`
+- `CardFooter` (component): Card footer: a divider-separated action row at the bottom of a `Card`. Import: `@spy4x/preact-ui`
+- `CardFooterProps` (type): Props of `CardFooter`. Import: `@spy4x/preact-ui`
+- `CardHeader` (component): Card header: a title plus a right-aligned action, or raw children. Import: `@spy4x/preact-ui`
+- `CardHeaderProps` (type): Props of a `CardHeader`, in one of two mutually exclusive modes. Import: `@spy4x/preact-ui`
+- `CardProps` (type): Props of `Card`. Import: `@spy4x/preact-ui`
+- `CANCEL_LABEL` (constant): English default for the cancelling action, which also names the header dismiss control. Import: `@spy4x/preact-ui`
+- `CONFIRM_LABEL` (constant): English default for the confirming action, used when the caller names no verb. Import: `@spy4x/preact-ui`
+- `ConfirmDialog` (component): Confirmation panel: a title, one question, and two labelled actions. Import: `@spy4x/preact-ui`
+- `ConfirmDialogProps` (type): Props of `ConfirmDialog`. Import: `@spy4x/preact-ui`
+- `confirmVariant` (helper): Button variant for the confirming action. Import: `@spy4x/preact-ui`
+- `hasQuestion` (helper): Whether the panel's body holds something worth being described by. Import: `@spy4x/preact-ui`
+- `labelOr` (helper): The caller's label, or the library's English default. Import: `@spy4x/preact-ui`
+- `CopyBlock` (component): A box of monospace text with a copy control beside it: an install command, an API key, an id. Import: `@spy4x/preact-ui`
+- `CopyBlockProps` (component): Import: `@spy4x/preact-ui`
+- `CopyButton` (component): Copy a string to the clipboard through an injected port or the browser API. Import: `@spy4x/preact-ui`
+- `CopyButtonProps` (type): Props of `CopyButton`. Import: `@spy4x/preact-ui`
+- `activeDescendant` (helper): `aria-activedescendant` for the combobox input, or `undefined` when nothing is highlighted. Import: `@spy4x/preact-ui`
+- `Combobox` (component): Searchable single-select: a text input filtering a `role="listbox"` of options. Import: `@spy4x/preact-ui`
+- `ComboboxKey` (type): Keys the combobox acts on, and what each does. Import: `@spy4x/preact-ui`
+- `comboboxKey` (helper): Map a DOM keyboard event onto a `ComboboxKey`. Import: `@spy4x/preact-ui`
+- `ComboboxKeyAction` (type): What the DOM handler must do once `comboboxKeyAction` has decided. Import: `@spy4x/preact-ui`
+- `comboboxKeyAction` (helper): The whole key decision table of the combobox: state, `preventDefault` and selection, decided purely from the key, the current state and the length of the filtered list. Import: `@spy4x/preact-ui`
+- `ComboboxKeyResult` (type): What one key press produces: the next state, plus whether the key was ours to consume. Import: `@spy4x/preact-ui`
+- `ComboboxListboxContent` (type): What the popup must render: either options with ids, or nothing at all. Import: `@spy4x/preact-ui`
+- `comboboxListboxId` (helper): `id` of the popup listbox of the combobox whose base id is `id`. Import: `@spy4x/preact-ui`
+- `ComboboxNamingProps` (type): How the combobox is named. Import: `@spy4x/preact-ui`
+- `comboboxOptionId` (helper): `id` of one option, which is also what `aria-activedescendant` points at. Import: `@spy4x/preact-ui`
+- `ComboboxOptionState` (type): Extra state handed to a `renderOption` callback, so the caller can style selection and highlight. Import: `@spy4x/preact-ui`
+- `ComboboxProps` (type): Props of `Combobox`. Import: `@spy4x/preact-ui`
+- `ComboboxState` (type): Highlighted-or-not plus open-or-not of one combobox. Import: `@spy4x/preact-ui`
+- `defaultGetLabel` (helper): The identity rule for item text: `String(item)`. Import: `@spy4x/preact-ui`
+- `filterItems` (helper): Filter a list down to the items matching a query, in the order they arrived. Import: `@spy4x/preact-ui`
+- `fold` (helper): Fold a string for searching: Unicode-decompose, drop the combining marks, then lower-case. Import: `@spy4x/preact-ui`
+- `leavesCombobox` (helper): Whether a focus change **out of the input** closes the popup. Import: `@spy4x/preact-ui`
+- `listboxContent` (helper): Split a filtered list into "options to render" and "message to announce". Import: `@spy4x/preact-ui`
+- `matchesQuery` (helper): Whether one item matches a query. Import: `@spy4x/preact-ui`
+- `naming` (helper): Whether the combobox has a usable accessible name, and which channel carries it. Import: `@spy4x/preact-ui`
+- `nextComboboxState` (helper): Decide what one key press does to the active option and the open state. Import: `@spy4x/preact-ui`
+- `openingState` (helper): The state a fresh list opens into: open, highlighting the selected item when the filter kept it, else the first enabled one. Import: `@spy4x/preact-ui`
+- `selectableIndex` (helper): Index a freshly opened list should highlight: `preferred` when it is still in the list and taking it is allowed, else the first enabled item, else `-1` when nothing can be highlighted. Import: `@spy4x/preact-ui`
+- `typingState` (helper): The state a keystroke leaves behind after the caller has re-filtered for the new query. Import: `@spy4x/preact-ui`
+- `DataTable` (component): A sortable, optionally paged table: `Table`'s markup, `@spy4x/platform/universal/sort`'s sort rules, one component joining them. Import: `@spy4x/preact-ui`
+- `DataTableBaseProps` (type): The props both modes share — see `DataTableProps`. Import: `@spy4x/preact-ui`
+- `DataTableClientProps` (type): Client mode: `DataTable` sorts and pages the whole row set — see `DataTableMode`. Import: `@spy4x/preact-ui`
+- `DataTableColumn` (type): One column of a `DataTable`: a field to read and maybe sort by, or a display-only slot. Import: `@spy4x/preact-ui`
+- `DataTableColumnAlign` (type): Horizontal alignment of one column's header and cells. Import: `@spy4x/preact-ui`
+- `DataTableDataColumn` (type): A column that reads one field of a row, and may be sorted by it. Import: `@spy4x/preact-ui`
+- `DataTableDisplayColumn` (type): A column with no field of its own — an actions column, typically — that only ever renders what `render` returns. Import: `@spy4x/preact-ui`
+- `DataTableMode` (type): Where a `DataTable`'s rows are sorted and paged. Import: `@spy4x/preact-ui`
+- `DataTablePaging` (type): Client-mode paging, all of it caller-owned like `sort` — see `DataTableProps`. Import: `@spy4x/preact-ui`
+- `DataTablePagingBase` (type): What both paging shapes share: the caller-owned page, its size, and the pager's labels. Import: `@spy4x/preact-ui`
+- `DataTableProps` (type): Props of `DataTable`, in one of two modes told apart by `mode` — see `DataTableMode`. Import: `@spy4x/preact-ui`
+- `DataTableServerPaging` (type): Server-mode paging: the same caller-owned page, plus how many rows the whole set holds, which only the caller knows because `rows` is one page of it. Import: `@spy4x/preact-ui`
+- `DataTableServerProps` (type): Server mode: `rows` is one page, already sorted — see `DataTableMode`. Import: `@spy4x/preact-ui`
+- `rowKeyAttribute` (helper): Attribute a row's first cell carries so a page — or a browser check — can find that row by the identity `DataTableProps.rowKey` gives it, without depending on rendered cell text. Import: `@spy4x/preact-ui`
+- `AnyDateRangePickerProps` (type): Every shape `DateRangePicker` itself accepts, chosen by `withTime`: the default, `DateRangePickerProps`, carries a calendar-day `DateRange`, and `withTime: true` carries a timed `DateTimeRange` instead — see `DateRangePickerTimeProps`. Import: `@spy4x/preact-ui`
+- `DateRangePicker` (component): Preset menu plus a custom from/to panel over `rangeForPreset`. Import: `@spy4x/preact-ui`
+- `DateRangePickerLabels` (type): Every string the panel renders. Import: `@spy4x/preact-ui`
+- `DateRangePickerProps` (type): Props for `DateRangePicker` with `withTime` off (the default): calendar days, no time of day. Import: `@spy4x/preact-ui`
+- `DateRangePickerTimeProps` (type): `AnyDateRangePickerProps` with `withTime` on: From and To are `datetime-local` fields, and the panel also offers `"last-hour"` and `"last-24-hours"`, the two presets that only make sense with a time of day. Import: `@spy4x/preact-ui`
+- `DateRangePresetOption` (type): One option of the preset list: the maths identifier plus the caller's label for it. Import: `@spy4x/preact-ui`
+- `DateRangePreset` (type): Every preset the maths knows. Import: `@spy4x/preact-ui`
+- `dateRangePresets` (helper): Canonical presentation order: single days and rolling day counts, then the last 12 months, then calendar periods, then custom. Import: `@spy4x/preact-ui`
+- `DateTimeOccurrences` (type): The occurrence chosen for each end of a range; an end left out means `"earlier"`. Import: `@spy4x/preact-ui`
+- `DateTimeRange` (type): Inclusive wall-clock range, minute precision, in the caller's zone. Import: `@spy4x/preact-ui`
+- `ExactDateTimeRange` (type): A `DateTimeRange` that always carries the exact instant behind each end, so a caller never has to guess which of a repeated hour a wall-clock string meant. Import: `@spy4x/preact-ui`
+- `exactDateTimeRange` (helper): A wall-clock range resolved to the exact instants it means in `timeZone`. Import: `@spy4x/preact-ui`
+- `isValidDateTimeRange` (helper): Whether a `DateTimeRange` is two well-formed wall-clock values, in order — not necessarily two real ones: nothing here checks whether a named local time actually occurs in any zone, since this function is not handed one. Import: `@spy4x/preact-ui`
+- `occurrenceOf` (helper): Which pass of its wall clock an instant is: `"later"` when `value` is a repeated time in `timeZone` and `instant` is its second occurrence, `"earlier"` otherwise — including when either argument cannot be resolved. Import: `@spy4x/preact-ui`
+- `presetForRange` (helper): The first preset whose range equals `range`, or `undefined` when none does. Import: `@spy4x/preact-ui`
+- `PresetForRangeOptions` (type): Options for `presetForRange`. Import: `@spy4x/preact-ui`
+- `presetForTimeRange` (helper): The first sub-day preset whose range equals `range`, or `undefined` when none does — the `TimeRangePreset` counterpart of `presetForRange`. Import: `@spy4x/preact-ui`
+- `PresetForTimeRangeOptions` (type): Options for `presetForTimeRange`. Import: `@spy4x/preact-ui`
+- `rangeForPreset` (helper): The inclusive range a preset describes. Import: `@spy4x/preact-ui`
+- `RangeForPresetOptions` (type): Options shared by every preset resolution. Import: `@spy4x/preact-ui`
+- `rangeForTimePreset` (helper): The inclusive wall-clock range a sub-day preset describes, minute precision. Import: `@spy4x/preact-ui`
+- `RangeForTimePresetOptions` (type): Options for `rangeForTimePreset`. Import: `@spy4x/preact-ui`
+- `resolveDateTime` (helper): Whether a `YYYY-MM-DDTHH:mm` wall-clock value happens once, never or twice in `timeZone`, with the instants behind it — `resolveWallClock` from `@spy4x/time/tz`, taking this module's value shape and answering in its string instants. Import: `@spy4x/preact-ui`
+- `ResolvedDateTime` (type): What `resolveDateTime` found for one wall-clock value in one zone. Import: `@spy4x/preact-ui`
+- `TimeRangePreset` (type): Every sub-day preset the maths knows. Import: `@spy4x/preact-ui`
+- `timeRangePresets` (helper): Canonical presentation order — the `TimeRangePreset` counterpart of `dateRangePresets`. Import: `@spy4x/preact-ui`
+- `WallClockOccurrence` (type): Which of the two instants a repeated wall-clock time names: before or after the clocks go back. Import: `@spy4x/preact-ui`
+- `Dropdown` (component): Trigger plus a real menu: opening moves focus into it, the arrow keys move between its items, Escape closes it and gives the trigger its focus back, and it closes as soon as focus leaves. Import: `@spy4x/preact-ui`
+- `DropdownBaseProps` (type): Everything about a dropdown except how its trigger is named. Import: `@spy4x/preact-ui`
+- `DropdownItem` (component): One item of a `Dropdown`'s menu. Import: `@spy4x/preact-ui`
+- `DropdownItemProps` (type): Props of `DropdownItem`. Import: `@spy4x/preact-ui`
+- `DropdownProps` (type): Props of `Dropdown`. Import: `@spy4x/preact-ui`
+- `DropdownTriggerName` (type): How the trigger button gets its accessible name. Import: `@spy4x/preact-ui`
+- `nextMenuIndex` (helper): Index the open menu moves focus to for `key`, or `undefined` for a key the menu does not own. Import: `@spy4x/preact-ui`
+- `EmptyState` (component): "Nothing here" placeholder for a list, table or search that produced no rows. Import: `@spy4x/preact-ui`
+- `EmptyStateProps` (type): Props of `EmptyState`. Import: `@spy4x/preact-ui`
+- `EnhancedForm` (component): A real `<form>` that posts on its own, and gets nicer once JavaScript has run. Import: `@spy4x/preact-ui`
+- `EnhancedFormLabels` (type): Copy `EnhancedForm` announces. Import: `@spy4x/preact-ui`
+- `EnhancedFormProps` (type): Props of `EnhancedForm`. Import: `@spy4x/preact-ui`
+- `EnhancedFormStatus` (type): Where one `EnhancedForm` is in its submit cycle. Import: `@spy4x/preact-ui`
+- `ErrorState` (component): Inline error banner. Import: `@spy4x/preact-ui`
+- `ErrorStateProps` (type): Props of `ErrorState`. Import: `@spy4x/preact-ui`
+- `Field` (component): Label, control and messages of one field row — the id/`for` wiring every consumer hand-rolls. Import: `@spy4x/preact-ui`
+- `FieldChild` (type): The control of one `Field`: exactly one element, or a function that returns one. Import: `@spy4x/preact-ui`
+- `FieldControlWiring` (type): The DOM attributes of one `Field`, handed to the control. Import: `@spy4x/preact-ui`
+- `FieldProps` (type): Props of `Field`. Import: `@spy4x/preact-ui`
+- `FieldWiring` (type): The full `Field` wiring: the control's attributes plus the ids of the messages. Import: `@spy4x/preact-ui`
+- `FileInput` (component): File picker built on a real `<input type="file">`, with a drop zone and a keyboard/screen-reader story the input already has for free. Import: `@spy4x/preact-ui`
+- `FileInputLabels` (type): Every user-visible string of `FileInput` that is not `label`, `hint` or `error` — those three already take `ComponentChildren`/`string` directly, the same as every other field in this package. Import: `@spy4x/preact-ui`
+- `FileInputProps` (type): Props of `FileInput`. Import: `@spy4x/preact-ui`
+- `FileRejection` (type): One file a `FileInput` refused, and why. Import: `@spy4x/preact-ui`
+- `matchesAccept` (helper): Whether `file` matches an `<input accept>`-style pattern list: comma-separated extensions (`.png`), MIME types (`image/png`) and MIME wildcards (`image/*`) — exactly the three shapes the browser's own file chooser filters by. Import: `@spy4x/preact-ui`
+- `honeypotField` (helper): A field simple bots fill in and people never see: off-screen rather than `display: none` or `type="hidden"`, since a scraper that already skips those two is exactly the bot this stops nothing against, and a sighted visitor tabbing past it never lands on it — `tabindex="-1"` keeps it out of the tab order on top of being off-screen, and `aria-hidden` keeps a screen reader from ever announcing it. Import: `@spy4x/preact-ui`
+- `ImageGallery` (component): A strip of thumbnails that opens the shared `Lightbox` on the one pressed. Import: `@spy4x/preact-ui`
+- `ImageGalleryImage` (type): One image a gallery's strip can show, and hand to the lightbox it opens. Import: `@spy4x/preact-ui`
+- `ImageGalleryProps` (type): Props of `ImageGallery`. Import: `@spy4x/preact-ui`
+- `Input` (component): Controlled text input. Import: `@spy4x/preact-ui`
+- `InputProps` (type): The single-line text control of the library. Import: `@spy4x/preact-ui`
+- `Select` (component): Controlled select. Import: `@spy4x/preact-ui`
+- `SelectOption` (type): One option of a `Select`. Import: `@spy4x/preact-ui`
+- `SelectProps` (type): Native `<select>` of the library, with its option list as data. Import: `@spy4x/preact-ui`
+- `Textarea` (component): Controlled multi-line input. Import: `@spy4x/preact-ui`
+- `TextareaProps` (type): Multi-line control of the library. Import: `@spy4x/preact-ui`
+- `InputButton` (component): Render the input, the button and the chrome that positions them. Import: `@spy4x/preact-ui`
+- `InputButtonProps` (type): An input with an icon button positioned inside it — the `.btn-input-icon` pattern. Import: `@spy4x/preact-ui`
+- `Cluster` (component): Children in a row that wraps, a named `gap` apart: a toolbar, a row of buttons, a list of tags. Import: `@spy4x/preact-ui`
+- `ClusterAlign` (type): How a `Cluster`'s children line up across the row. Import: `@spy4x/preact-ui`
+- `ClusterJustify` (type): Where a `Cluster`'s children sit along the row. Import: `@spy4x/preact-ui`
+- `ClusterProps` (type): Props of `Cluster`. Import: `@spy4x/preact-ui`
+- `Grid` (component): Equal columns that fill the width: as many as fit at `minColumnWidth`, a named `gap` apart. Import: `@spy4x/preact-ui`
+- `GridColumnWidth` (type): The narrowest a `Grid` column may get before the grid drops a column. Import: `@spy4x/preact-ui`
+- `GridProps` (type): Props of `Grid`. Import: `@spy4x/preact-ui`
+- `LayoutElement` (type): The block elements a layout component may render as. Import: `@spy4x/preact-ui`
+- `Page` (component): The content column of a page: a readable maximum width, centred, with the page gutter (16 px on a phone, 24 px from `sm`, 32 px from `lg`) and the `xl` gap (32 px) between its sections. Import: `@spy4x/preact-ui`
+- `PageProps` (type): Props of `Page`. Import: `@spy4x/preact-ui`
+- `Section` (component): A titled block of a page: an optional heading and description, then the children. Import: `@spy4x/preact-ui`
+- `SectionElement` (type): The elements a `Section` may render as: ones that can hold its `<header>`. Import: `@spy4x/preact-ui`
+- `SectionHeadingLevel` (type): Heading level of a `Section`'s title. Import: `@spy4x/preact-ui`
+- `SectionProps` (type): Props of `Section`. Import: `@spy4x/preact-ui`
+- `Stack` (component): Children in a column, a named `gap` apart. Import: `@spy4x/preact-ui`
+- `StackProps` (type): Props of `Stack`. Import: `@spy4x/preact-ui`
+- `counterText` (helper): The counter text, e.g. Import: `@spy4x/preact-ui`
+- `describedImages` (helper): Keep only the images with a real description. Import: `@spy4x/preact-ui`
+- `Lightbox` (component): The shared image dialog — see the module doc for what it is built on and why. Import: `@spy4x/preact-ui`
+- `LightboxImage` (type): One image a `Lightbox` can show. Import: `@spy4x/preact-ui`
+- `LightboxProps` (type): Props of `Lightbox`. Import: `@spy4x/preact-ui`
+- `wrapIndex` (helper): Move `delta` steps through a sequence of `total` items, wrapping at either end. Import: `@spy4x/preact-ui`
+- `LoadingSkeleton` (component): Placeholder layout shown while a result loads. Import: `@spy4x/preact-ui`
+- `LoadingSkeletonProps` (type): Props of `LoadingSkeleton`. Import: `@spy4x/preact-ui`
+- `LoadingSpinner` (component): Inline spinner with an accessible live region. Import: `@spy4x/preact-ui`
+- `LoadingSpinnerProps` (type): Props of `LoadingSpinner`. Import: `@spy4x/preact-ui`
+- `SpinnerSize` (type): Rendered size of a `LoadingSpinner`. Import: `@spy4x/preact-ui`
+- `applyScrollLock` (helper): Lock page scrolling without moving the page, and hand back how to undo it. Import: `@spy4x/preact-ui`
+- `backdropClickDismisses` (helper): Whether one click should dismiss the dialog. Import: `@spy4x/preact-ui`
+- `BackdropHitTarget` (type): The two identities a backdrop hit-test compares. Import: `@spy4x/preact-ui`
+- `clientWidthWithoutScrollbar` (helper): Read the layout width once the scrollbar clamping is in place. Import: `@spy4x/preact-ui`
+- `dialogHeldFocus` (helper): Whether the dialog still holds the focused element. Import: `@spy4x/preact-ui`
+- `DialogRect` (type): Rectangle in viewport coordinates: a structural subset of `DOMRect`, so tests need no DOM. Import: `@spy4x/preact-ui`
+- `DialogRole` (type): How a `Modal` announces itself to assistive technology. Import: `@spy4x/preact-ui`
+- `dialogTitleId` (helper): Build the id of a dialog's title element. Import: `@spy4x/preact-ui`
+- `DialogTone` (type): Visual register of a `Modal`: a plain surface or a destructive one. Import: `@spy4x/preact-ui`
+- `DISMISS_KEY` (constant): The key that asks a `Modal` to close. Import: `@spy4x/preact-ui`
+- `FocusableElement` (type): Anything the browser can move focus to. Import: `@spy4x/preact-ui`
+- `isBackdropClick` (helper): Whether a click landed on the dialog's backdrop rather than on the dialog's content. Import: `@spy4x/preact-ui`
+- `isDismissKey` (helper): Whether a keyboard event is a request to dismiss the dialog. Import: `@spy4x/preact-ui`
+- `Modal` (component): Built on the platform's dialog element, in the top layer. Import: `@spy4x/preact-ui`
+- `ModalProps` (type): Props of `Modal`. Import: `@spy4x/preact-ui`
+- `restoreFocus` (helper): Move focus back to a captured element. Import: `@spy4x/preact-ui`
+- `ScrollLock` (type): A held lock, undone by `ScrollLock.release`. Import: `@spy4x/preact-ui`
+- `ScrollLockHost` (type): The scrollable element whose scrollbar a lock removes. Import: `@spy4x/preact-ui`
+- `scrollLockPadding` (helper): Padding, in pixels, that keeps a scroll-locked page from shifting. Import: `@spy4x/preact-ui`
+- `ScrollLockTarget` (type): The two elements a page-level scroll lock has to touch, and the styles it replaces. Import: `@spy4x/preact-ui`
+- `shouldRetargetFocus` (helper): Decide whether focus should go back to the element that opened the dialog. Import: `@spy4x/preact-ui`
+- `MoneyDisplay` (component): Renders an amount in `currency`'s smallest unit as display text, through `Intl.NumberFormat` — `<MoneyDisplay amount={12345} currency="EUR" />` is `€123.45`, `currency="JPY"` is `¥12,345`, `currency="KWD"` is three decimals. Import: `@spy4x/preact-ui`
+- `MoneyDisplayProps` (type): Props of `MoneyDisplay`. Import: `@spy4x/preact-ui`
+- `MoneyInput` (component): A text field for an amount in `currency`'s smallest unit: `value`/`onChange` carry the integer, exactly the way `MoneyDisplay` renders it. Import: `@spy4x/preact-ui`
+- `MoneyInputBounds` (type): Import: `@spy4x/preact-ui`
+- `MoneyInputEdit` (type): What one edit of `MoneyInput`'s text resolves to — see `resolveMoneyInputEdit`. Import: `@spy4x/preact-ui`
+- `MoneyInputProps` (type): Props of `MoneyInput`. Import: `@spy4x/preact-ui`
+- `MoneyInputRangeMessage` (type): A `MoneyInputProps.rangeMessage` function. Import: `@spy4x/preact-ui`
+- `resolveMoneyInputEdit` (helper): The whole decision one edit of `MoneyInput`'s text makes, as a pure function with no signal, ref or DOM in it — everything `MoneyInput` itself does with an edit is call this and apply the result. Import: `@spy4x/preact-ui`
+- `OnOffButtons` (component): Segmented ON/OFF pair, optionally annotated with counts. Import: `@spy4x/preact-ui`
+- `OnOffButtonsProps` (type): Props of `OnOffButtons`. Import: `@spy4x/preact-ui`
+- `PageTitle` (component): Page heading with the library's `h1` typography inlined. Import: `@spy4x/preact-ui`
+- `PageTitleProps` (type): Props of `PageTitle`. Import: `@spy4x/preact-ui`
+- `pageRange` (helper): Collapse a page range into the items a pagination control renders. Import: `@spy4x/preact-ui`
+- `PageRangeItem` (type): One item of the range a pagination control renders: a real page, or a collapsed run of pages. Import: `@spy4x/preact-ui`
+- `Pagination` (component): Page numbers with the long runs collapsed, plus previous/next. Import: `@spy4x/preact-ui`
+- `PaginationProps` (type): Props of `Pagination`. Import: `@spy4x/preact-ui`
+- `clampProgress` (helper): Clamp a progress reading into `0…max` and derive its completion fraction. Import: `@spy4x/preact-ui`
+- `formatProgressPercent` (helper): Format a completion fraction as a whole percentage for display. Import: `@spy4x/preact-ui`
+- `Progress` (component): Determinate progress bar, or an indeterminate track when the reading is unknown. Import: `@spy4x/preact-ui`
+- `ProgressProps` (type): A bar with no caption needs no id, and a captioned one cannot go without. Import: `@spy4x/preact-ui`
+- `ProgressTone` (type): Semantic colour of the filled portion, mapped onto the `theme/` colour atoms. Import: `@spy4x/preact-ui`
+- `progressWidthPercent` (helper): Turn a completion fraction into the percentage a declaration can take. Import: `@spy4x/preact-ui`
+- `Radio` (component): One radio choice. Import: `@spy4x/preact-ui`
+- `RadioGroup` (component): Radio set with an accessible group name. Import: `@spy4x/preact-ui`
+- `RadioGroupProps` (type): Props of `RadioGroup`. Import: `@spy4x/preact-ui`
+- `RadioOption` (type): One choice of a `RadioGroup`. Import: `@spy4x/preact-ui`
+- `RadioProps` (type): Radio choice with its own label. Import: `@spy4x/preact-ui`
+- `StatusMark` (component): A shape paired with a word: `Ready`, `Beta`, `WIP`, `Paused`, `Archived`, `Known issue`. Import: `@spy4x/preact-ui`
+- `StatusMarkProps` (type): Props of `StatusMark`. Import: `@spy4x/preact-ui`
+- `StatusMarkStatus` (type): A project or feature's lifecycle state. Import: `@spy4x/preact-ui`
+- `Table` (component): Table shell with header, body and optional footer slots. Import: `@spy4x/preact-ui`
+- `TableProps` (type): Props of `Table`. Import: `@spy4x/preact-ui`
+- `nextTabIndex` (helper): Index the tablist should move focus to for `key`, given the tab currently focused. Import: `@spy4x/preact-ui`
+- `TabItem` (type): One tab and the panel it controls. Import: `@spy4x/preact-ui`
+- `Tabs` (component): Controlled tabbed interface: a tablist plus one panel per tab. Import: `@spy4x/preact-ui`
+- `TabsProps` (type): Props of `Tabs`. Import: `@spy4x/preact-ui`
+- `defaultToastDuration` (helper): How long a toast that names no duration of its own stays, in milliseconds. Import: `@spy4x/preact-ui`
+- `resolveDuration` (helper): How long one toast has, in milliseconds: what it asked for, or `defaultToastDuration`. Import: `@spy4x/preact-ui`
+- `ToastCorner` (type): The window corner a `Toastr` stack sits in. Import: `@spy4x/preact-ui`
+- `ToastId` (type): What identifies one toast in a stack: the type of `ToastItem.id` and of the id `ToastrProps.onDismiss` is called with. Import: `@spy4x/preact-ui`
+- `ToastItem` (type): Import: `@spy4x/preact-ui`
+- `Toastr` (component): Stack of transient notifications in a corner of the window — top right unless `corner` says otherwise. Import: `@spy4x/preact-ui`
+- `ToastrProps` (type): Props of `Toastr`. Import: `@spy4x/preact-ui`
+- `ToastVariant` (type): Kind of a toast, selecting its colour and glyph. Import: `@spy4x/preact-ui`
+- `ToggleField` (component): Render one switch row. Import: `@spy4x/preact-ui`
+- `ToggleFieldProps` (type): Labelled row for a `ToggleSwitch`: label, control, description and error. Import: `@spy4x/preact-ui`
+- `ToggleSwitch` (component): Two-state switch. Import: `@spy4x/preact-ui`
+- `ToggleSwitchProps` (type): Props of `ToggleSwitch`. Import: `@spy4x/preact-ui`
+- `Tooltip` (component): Supplementary hint attached to a trigger, revealed on hover and on keyboard focus. Import: `@spy4x/preact-ui`
+- `TooltipPlacement` (type): Side of the trigger the tooltip is anchored to. Import: `@spy4x/preact-ui`
+- `TooltipProps` (type): Props of `Tooltip`. Import: `@spy4x/preact-ui`
+- `ImageElementLike` (type): The view of a clicked element this component needs. Import: `@spy4x/preact-ui`
+- `resolveImage` (helper): Turn an event target into a lightbox image, or `null` when the event missed an image. Import: `@spy4x/preact-ui`
+- `ZoomableImages` (component): Zoomable images inside a container, opening the shared `Lightbox`. Import: `@spy4x/preact-ui`
+- `ZoomableImagesProps` (type): Props of `ZoomableImages`. Import: `@spy4x/preact-ui`
+- `HotkeyBinding` (type): One keyboard shortcut for `useHotkeys`: a combination, what it does and how it is listed. Import: `@spy4x/preact-ui`
+- `HotkeyPress` (type): A key press as `pickHotkey` sees it: the key, the modifiers and where it landed. Import: `@spy4x/preact-ui`
+- `pickHotkey` (helper): The binding a key press runs, or `undefined`: the first binding whose combination matches and that may fire where the press landed. Import: `@spy4x/preact-ui`
+- `useHotkeys` (hook): Page-wide keyboard shortcuts: listens for `keydown` on `document` while the component is mounted, and runs the first binding that matches. Import: `@spy4x/preact-ui`
+- `UseHotkeysOptions` (type): Options of `useHotkeys`. Import: `@spy4x/preact-ui`
+- `Kbd` (component): One key or a combination of keys, as the HTML `<kbd>` element: `<Kbd keys="mod+k" />` renders an outer `<kbd>` holding one `<kbd>` per key. Import: `@spy4x/preact-ui`
+- `KBD_LABELS` (constant): English defaults for every `KbdLabels` entry. Import: `@spy4x/preact-ui`
+- `KbdLabels` (type): The words `Kbd` shows or reads out for a key. Import: `@spy4x/preact-ui`
+- `KbdProps` (type): Props of `Kbd`. Import: `@spy4x/preact-ui`
+- `KeyFace` (type): How one key of a combination is drawn: what is on the key, and its name when that is a glyph. Import: `@spy4x/preact-ui`
+- `keyFaces` (helper): The faces of every key in a combination, modifiers first, in the order the platform writes them: ⌃ ⌥ ⇧ ⌘ on Apple platforms, Ctrl Alt Shift Meta elsewhere. Import: `@spy4x/preact-ui`
+- `groupShortcuts` (helper): Sort shortcuts into their groups, in the order each group first appears. Import: `@spy4x/preact-ui`
+- `Shortcut` (type): One row of `ShortcutsDialog`. Import: `@spy4x/preact-ui`
+- `ShortcutGroup` (type): A heading of `ShortcutsDialog` and the shortcuts under it, in the order given. Import: `@spy4x/preact-ui`
+- `ShortcutsDialog` (component): A dialog that lists keyboard shortcuts, each with what it does and its keys, under group headings. Import: `@spy4x/preact-ui`
+- `ShortcutsDialogProps` (type): Props of `ShortcutsDialog`. Import: `@spy4x/preact-ui`
+- `InlineEdit` (component): A value shown as text that turns into a text field in place, for renaming a list, a tag or a column where it stands. Import: `@spy4x/preact-ui`
+- `inlineEditCommit` (helper): What an edit saves: the trimmed draft, or `null` when there is nothing to save because the draft is empty or matches the current value. Import: `@spy4x/preact-ui`
+- `InlineEditProps` (type): Props of `InlineEdit`. Import: `@spy4x/preact-ui`
+- `ToggleChipOption` (type): One chip of a `ToggleChips` group. Import: `@spy4x/preact-ui`
+- `ToggleChips` (component): A group of pressable chips for filtering a list — the clickable counterpart of `Badge`, which only shows text. Import: `@spy4x/preact-ui`
+- `toggleChipSelection` (helper): The selection after one chip is pressed, in multiple mode: the chip is added or removed, and the result keeps the order of `options` rather than the order of presses. Import: `@spy4x/preact-ui`
+- `ToggleChipsMultipleProps` (type): Any number of chips pressed at once: `value` lists them, in the order of `options`. Import: `@spy4x/preact-ui`
+- `ToggleChipsProps` (type): Props of `ToggleChips`: one shape per `mode`. Import: `@spy4x/preact-ui`
+- `ToggleChipsSingleProps` (type): At most one chip pressed: pressing another moves it, pressing the pressed one clears it. Import: `@spy4x/preact-ui`
+- `defaultKanbanLabels` (helper): The English defaults of `KanbanBoardLabels`. Import: `@spy4x/preact-ui`
+- `KanbanBoard` (component): A board of columns; see the module doc. Import: `@spy4x/preact-ui`
+- `KanbanBoardLabels` (type): Every string the board shows or announces. Import: `@spy4x/preact-ui`
+- `KanbanBoardProps` (type): Props of `KanbanBoard`. Import: `@spy4x/preact-ui`
+- `KanbanColumn` (type): One column of the board. Import: `@spy4x/preact-ui`
+- `KanbanItem` (type): The two fields the board reads off an item. Import: `@spy4x/preact-ui`
+- `KanbanMove` (type): A move the reader asked for, reported through `KanbanBoardProps.onMove`. Import: `@spy4x/preact-ui`
+- `KanbanPlace` (type): Where a card is, as the announcements describe it. Import: `@spy4x/preact-ui`
+- `KanbanSlot` (type): A place on the board by indices: which column, and which index in it. Import: `@spy4x/preact-ui`
+- `moveKanbanItem` (helper): Apply a reported move to an array of items, returning a new array. Import: `@spy4x/preact-ui`
+- `nextKanbanSlot` (helper): Where an arrow key sends a picked-up card. Import: `@spy4x/preact-ui`
+- `failedAfterSrcChange` (helper): Carry an avatar's "this image failed" flag across a change of `src`. Import: `@spy4x/preact-ui/avatar`
+- `dropdownOpensUp` (helper): Whether a `vertical="auto"` menu opens upward: it does when the panel does not fit between the trigger and the bottom of the viewport, and there is more room above the trigger than below. Import: `@spy4x/preact-ui/dropdown`
+- `enhancedFormMessage` (helper): The live region's text for one status — the one piece of `EnhancedForm`'s behaviour a render-to-string test can assert directly, since the status it runs against never leaves `"idle"` without an effect or an event `preact-render-to-string` does not run. Import: `@spy4x/preact-ui/enhanced-form`
+- `FieldLabelFor` (type): What `Field`'s own label points at through `for`. Import: `@spy4x/preact-ui/field`
+- `labelTarget` (helper): The `for` value of `Field`'s label, given the caller's `FieldProps.labelFor`. Import: `@spy4x/preact-ui/field`
+- `resolveLabels` (helper): Fills in every message-building label `FileInputLabels` leaves unset with its default, exported so a caller's override — or the fallback it replaces — can be checked directly, without driving a real file chooser to reach the code that would otherwise call it. Import: `@spy4x/preact-ui/file-input`
+- `classifyFiles` (helper): Splits `selected` into the files `FileInput` would keep and the files it would refuse, applying `accept`, `maxSize` and `multiple` exactly as `handleFiles` does — extracted so the classification itself (including the `maxSize` boundary) can be unit-tested without a browser. Import: `@spy4x/preact-ui/file-input`
+- `thumbnailKey` (helper): A stable key for the thumbnail at `index`: its `src`, plus how many times that `src` already appeared earlier in `images`. Import: `@spy4x/preact-ui/image-gallery`
+- `backdropDismissesByDefault` (helper): Whether a click on the backdrop dismisses a `Modal` that says nothing about the policy. Import: `@spy4x/preact-ui/modal`
+- `supportsClosedBy` (helper): Whether a dialog implementation knows the `closedby` attribute. Import: `@spy4x/preact-ui/modal`
+- `EscapeCloseStrategy` (type): How Escape is handled on a platform, given whether it honours `closedby`. Import: `@spy4x/preact-ui/modal`
+- `escapeCloseStrategy` (helper): Choose the Escape plan for a platform. Import: `@spy4x/preact-ui/modal`
+- `EscapeCloseTarget` (type): The listener surface `bindEscapeClose` needs: a structural subset of `HTMLDialogElement`. Import: `@spy4x/preact-ui/modal`
+- `EscapeCloseHandlers` (type): The two handlers an `EscapeCloseStrategy` can ask for, keyed by the event they belong to. Import: `@spy4x/preact-ui/modal`
+- `bindEscapeClose` (helper): Register the one Escape listener a strategy asks for, and hand back how to undo it. Import: `@spy4x/preact-ui/modal`
+- `PlatformCloseDeps` (type): What `platformCloseHandler` needs: the strategy's verdict, the port and the state setter. Import: `@spy4x/preact-ui/modal`
+- `platformCloseHandler` (helper): Build the handler for a close the platform performs itself: Escape where `closedby` is ignored. Import: `@spy4x/preact-ui/modal`
+- `editableText` (helper): The text a person edits: the amount's digits and decimal mark in `locale`, with no currency symbol and no grouping — grouping separators would have to be re-parsed back out on every keystroke for no benefit, since `parseMoney` already understands them being absent. Import: `@spy4x/preact-ui/money-input`
+- `zoomableAlt` (helper): The `alt` an image will open the lightbox with: its own, trimmed, or `fallbackAlt` — also trimmed, so a caller who passes whitespace (`" "`) is refused exactly like one who passes `""`, not treated as a real name because a non-empty string happens to be truthy. Import: `@spy4x/preact-ui/zoomable-images`
+- `ImageSequence` (type): What `collectSequence` hands back: the lightbox's whole sequence, and where it opened. Import: `@spy4x/preact-ui/zoomable-images`
+- `collectSequence` (helper): Build the sequence a lightbox pages through, and the position of the image that was opened. Import: `@spy4x/preact-ui/zoomable-images`
+
+## @spy4x/preact-ui-guide
+
+The live component catalogue, shipped as a component so every app that imports the library gets it free. It shows one page at a time: an overview, then one page per package, picked from a side navigation that becomes a modal dialog behind a menu button on a phone. The guide shows components only: one demo per component of every package that has them (`ui`, `charts`, `map`, `system` and `crud`), one card per group of `theme/preset.css` classes, the icon gallery, and the design-system rules components are meant to be assembled in. Helpers — functions, constants, enums — have no card; each package's README names them. An app mounts it in one line, `<uiGuideRoute.component />` (see "Usage").
+
+Install: `deno add jsr:@spy4x/preact-ui-guide`
+
+- `UiGuideRoute` (type): A route a host app can register, in the shape most routers want. Import: `@spy4x/preact-ui-guide`
+- `uiGuideRoute` (helper): Route descriptor for the catalogue. Import: `@spy4x/preact-ui-guide`
+- `DemoCard` (component): One demo: its name and one sentence, the live example on a quiet canvas, an optional props summary, and the code behind it. Import: `@spy4x/preact-ui-guide`
+- `DemoCardLabels` (type): Every word a card prints of its own. Import: `@spy4x/preact-ui-guide`
+- `DemoCardProps` (type): Props of one catalogue card: its identity, the port, and the live example as children. Import: `@spy4x/preact-ui-guide`
+- `GuideAuthor` (type): Who made the library, as the host names them: the footer and the header link to them. Import: `@spy4x/preact-ui-guide`
+- `useLocationHash` (hook): `location.hash`, re-read on every `hashchange`. Import: `@spy4x/preact-ui-guide`
+- `MapTiles` (type): A tile provider: its URL template and the credit line it requires. Import: `@spy4x/preact-ui-guide`
+- `OPENSTREETMAP_TILES` (constant): OpenStreetMap's standard tile layer, and its required credit line. Import: `@spy4x/preact-ui-guide`
+- `ColorSchemePort` (type): The host's colour scheme, as the guide's theme switch reads and changes it. Import: `@spy4x/preact-ui-guide`
+- `GuideRouteChange` (type): What the shell tells its host after it has shown a route. Import: `@spy4x/preact-ui-guide`
+- `UIGuide` (component): The live catalogue: a header, a navigation and the page the route names. Import: `@spy4x/preact-ui-guide`
+- `UIGuideLabels` (type): Every string the shell prints that is not catalogue data. Import: `@spy4x/preact-ui-guide`
+- `UIGuideProps` (type): Props of `UIGuide`. Import: `@spy4x/preact-ui-guide`
+- `IconGallery` (component): Searchable grid of every icon on one wide guide card, each cell copying `<IconName />` on click. Import: `@spy4x/preact-ui-guide`
+- `IconGalleryLabels` (type): Every word the gallery prints. Import: `@spy4x/preact-ui-guide`
+- `IconGalleryProps` (type): Props of `IconGallery`. Import: `@spy4x/preact-ui-guide`
+- `iconNames` (helper): Every glyph the icon package exports, in module order. Import: `@spy4x/preact-ui-guide`
+- `SearchKindWords` (type): The word beside a result for each kind of entry. Import: `@spy4x/preact-ui-guide`
+- `demoHref` (helper): Canonical href of one demo card. Import: `@spy4x/preact-ui-guide`
+- `DemoRouteEntry` (type): One demo's route, as the emitted route table carries it. Import: `@spy4x/preact-ui-guide`
+- `DemoRouteMatch` (type): Matched one demo card: `#/inputs/toggle-switch`, or the legacy `#toggle-switch`. Import: `@spy4x/preact-ui-guide`
+- `IndexRouteMatch` (type): Matched the landing route: the catalogue's index, and the fallback for anything that is not one. Import: `@spy4x/preact-ui-guide`
+- `pageHref` (helper): Canonical href of a page: `#/` for the overview, `#/<id>` for the rest. Import: `@spy4x/preact-ui-guide`
+- `pageOfFragment` (helper): The page holding the element a bare fragment names, for the ids the guide itself renders: a section's (`#inputs`) and a page's own (`#icons`, the gallery). Import: `@spy4x/preact-ui-guide`
+- `pageOfRoute` (helper): The page a route opens, or `undefined` for a hash that names no route. Import: `@spy4x/preact-ui-guide`
+- `PageRouteEntry` (type): One page's route, as the emitted route table carries it. Import: `@spy4x/preact-ui-guide`
+- `PageRouteMatch` (type): Matched one page of the guide whose id names no section: `#/ui`, `#/icons`. Import: `@spy4x/preact-ui-guide`
+- `parseRoute` (helper): Resolve an incoming `location.hash` to the route it names. Import: `@spy4x/preact-ui-guide`
+- `routeHref` (helper): Canonical href of a section. Import: `@spy4x/preact-ui-guide`
+- `RouteMatch` (type): What a hash resolved to: a page, a section, a demo, or the landing route. Import: `@spy4x/preact-ui-guide`
+- `routeSlug` (helper): URL slug of a name or a section id: `ToggleSwitch` becomes `toggle-switch`. Import: `@spy4x/preact-ui-guide`
+- `RouteTable` (type): The routes the deployed document echoes: one entry per page, per section and per demo. Import: `@spy4x/preact-ui-guide`
+- `routeTable` (helper): The route table for a set of sections: every section's route, then every demo's. Import: `@spy4x/preact-ui-guide`
+- `routeTableDrift` (helper): Read an emitted route table back and report every entry the resolver would not accept. Import: `@spy4x/preact-ui-guide`
+- `SectionRouteEntry` (type): One section's route, as the emitted route table carries it. Import: `@spy4x/preact-ui-guide`
+- `SectionRouteMatch` (type): Matched one section of the catalogue: `#/inputs`. Import: `@spy4x/preact-ui-guide`
+- `cardLabel` (helper): A card's heading: a class card's own title, and `<Name />` for a component. Import: `@spy4x/preact-ui-guide`
+- `catalogueGroupIds` (helper): The group a section belongs to, as the reader's reason for looking rather than as a package boundary. Import: `@spy4x/preact-ui-guide`
+- `catalogueNames` (helper): Names with a demo, in render order — every card the catalogue renders, `ui`'s first. Import: `@spy4x/preact-ui-guide`
+- `CatalogueSection` (type): One rendered section: its identity, its copy, the package it documents and its cards. Import: `@spy4x/preact-ui-guide`
+- `catalogueSections` (helper): The sections in render order, resolved against `catalogue`. Import: `@spy4x/preact-ui-guide`
+- `CLASS_PACKAGE` (constant): The package the class sections document. Import: `@spy4x/preact-ui-guide`
+- `ClassDemo` (type): One card of a class section: the same shape as `Demo`, plus what only a class card has. Import: `@spy4x/preact-ui-guide`
+- `ClassDemoFragment` (type): The shape a class section's cards have: one `ClassDemo` per card id. Import: `@spy4x/preact-ui-guide`
+- `classDemoNames` (helper): Card ids of the class sections, in render order: the demos that document classes, not components. Import: `@spy4x/preact-ui-guide`
+- `classDemos` (helper): Every class demonstration the catalogue renders, keyed by card id. Import: `@spy4x/preact-ui-guide`
+- `coveredPackageIds` (helper): Every package the coverage rule accounts for: `packageIds`, then `helperPackageIds`. Import: `@spy4x/preact-ui-guide`
+- `Demo` (type): One entry of the catalogue: what the component is, the JSX to copy, and the live example. Import: `@spy4x/preact-ui-guide`
+- `DemoFragment` (type): The shape a section's demos have: one `Demo` per card, keyed by component name. Import: `@spy4x/preact-ui-guide`
+- `DemoRegistry` (type): The complete registry: one demo per card every section documents. Import: `@spy4x/preact-ui-guide`
+- `demoRegistry` (helper): The flat registry the catalogue renders from: one entry per card, all sections merged. Import: `@spy4x/preact-ui-guide`
+- `GroupId` (type): Identifier of a top-level group, e.g. Import: `@spy4x/preact-ui-guide`
+- `GuidePage` (type): One page as the navigation and the page header show it. Import: `@spy4x/preact-ui-guide`
+- `GuidePageId` (type): Identifier of one page of the guide, e.g. Import: `@spy4x/preact-ui-guide`
+- `guidePageIds` (helper): The guide's pages, in navigation order: the overview, then one page per package. Import: `@spy4x/preact-ui-guide`
+- `guidePages` (helper): Every page of the guide, resolved, in `guidePageIds` order. Import: `@spy4x/preact-ui-guide`
+- `helperPackageIds` (helper): Packages that export no component: helpers only, so the guide shows none of their exports and no stylesheet needs to scan them. Import: `@spy4x/preact-ui-guide`
+- `missingDemos` (helper): Cards the sections mean to render that this registry does not carry. Import: `@spy4x/preact-ui-guide`
+- `PackageId` (type): Identifier of a catalogued package: its directory, and the last segment of its specifier. Import: `@spy4x/preact-ui-guide`
+- `packageIds` (helper): Every package whose components the catalogue renders, in reading order. Import: `@spy4x/preact-ui-guide`
+- `packageSpecifier` (helper): `@spy4x/preact-<id>` — the specifier a reader copies out of the guide. Import: `@spy4x/preact-ui-guide`
+- `pageOfSection` (helper): The page a section is read on: its package's page, and `theme` for a class section. Import: `@spy4x/preact-ui-guide`
+- `PartialDemoRegistry` (type): A registry that may still be short an entry, which is what `missingDemos` reports on. Import: `@spy4x/preact-ui-guide`
+- `SectionId` (type): Identifier of a catalogue section. Import: `@spy4x/preact-ui-guide`
+- `sectionIds` (helper): The groups' sections as one array, in group order then declaration order: the reading order `catalogueSections` is built from, and so the order each page lists its sections in. Import: `@spy4x/preact-ui-guide`
+- `SectionKind` (type): What a section's cards are: a package's components, or the theme's classes. Import: `@spy4x/preact-ui-guide`
+- `SectionPackage` (type): A section's package: a package whose components have cards, or the theme for its classes. Import: `@spy4x/preact-ui-guide`
+- `DemoProp` (type): One row of a card's props summary: a prop, its type, its default and what it does. Import: `@spy4x/preact-ui-guide/registry`
+- `packagePages` (helper): The pages that document one package each: every page but the overview. Import: `@spy4x/preact-ui-guide/registry`
