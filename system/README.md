@@ -802,7 +802,7 @@ and reports through callbacks; the rule reports a module that imports a signals 
 the app's own code, or that reads `fetch`, `window`, `document` or another browser global.
 
 - `checkModule(source, options)` runs the rule over one module's text and returns every
-  `BoundaryViolation` (`message`, `range`) in source order. Pass `filename`, the module's absolute
+  `BoundaryViolation` (`message`, `range`) Deno reports. Pass `filename`, the module's absolute
   path, so relative imports resolve and a `.ts` file is not parsed as `.tsx`. It calls
   `Deno.lint.runPlugin`, which Deno provides only under `deno test`, so call it from a test that
   walks the folder.
@@ -812,7 +812,9 @@ the app's own code, or that reads `fetch`, `window`, `document` or another brows
   forbidden, or `null`.
 - `BoundaryLintPlugin`, `BoundaryRuleContext` and `BoundaryLintNode` type the slice of Deno's lint
   API the rule uses. Deno declares the full API only in its unstable library, which a published
-  module may not reference, so `checkModule` throws outside `deno test` rather than fail to type.
+  module may not reference. `boundary-types.test.ts`, which is not published, holds
+  `boundaryPlugin()` to Deno's own `Deno.lint.Plugin` type, so the result passes straight to
+  `Deno.lint.runPlugin` or a plugin module's default export.
 - `BoundaryOptions` holds four lists. `forbiddenPackages` defaults to
   `DEFAULT_FORBIDDEN_PACKAGES` (`@preact/signals`, `@preact/signals-core`,
   `@spy4x/preact-signals`, `wouter-preact`); a subpath, a version or a `jsr:`/`npm:` prefix of one
@@ -823,10 +825,11 @@ the app's own code, or that reads `fetch`, `window`, `document` or another brows
   into) default to none, because only the app knows them.
 
 ```ts
+import { fromFileUrl } from "@std/path"
 import { checkModule } from "@spy4x/preact-system/boundary"
 
 Deno.test("screens stay pure", async () => {
-  const filename = new URL("./screens/profile.tsx", import.meta.url).pathname
+  const filename = fromFileUrl(new URL("./screens/profile.tsx", import.meta.url))
   const source = await Deno.readTextFile(filename)
   const found = checkModule(source, { filename, appAliases: ["@api/"], appDirectories: ["apps"] })
   if (found.length > 0) throw new Error(found.map((v) => v.message).join("\n"))

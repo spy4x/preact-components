@@ -3,7 +3,7 @@ import { describe, it } from "@std/testing/bdd"
 import { fromFileUrl, relative } from "@std/path"
 import { checkModule, forbiddenImport } from "./boundary.ts"
 
-/** The messages `checkModule` reports for `source`, in source order. */
+/** The messages `checkModule` reports for `source`, in the order Deno reports them. */
 function messages(source: string, options: Parameters<typeof checkModule>[1] = {}): string[] {
   return checkModule(source, options).map((violation) => violation.message)
 }

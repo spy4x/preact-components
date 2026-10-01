@@ -105,24 +105,25 @@ export function forbiddenImport(
   return null
 }
 
-/** One node of Deno's lint syntax tree, as much of it as the rule reads. */
+/**
+ * One node of Deno's lint syntax tree, as much of it as the rule reads. Every other field is read
+ * by name and narrowed where it is used, so each of Deno's own node types fits this shape.
+ */
 export interface BoundaryLintNode {
   /** The node's kind, such as `"Identifier"` or `"ImportDeclaration"`. */
   type: string
   /** Start and end character offsets in the source. */
   range: [number, number]
   /** The node that contains this one. */
-  parent: BoundaryLintNode
-  /** Every other field, read by kind. */
-  [field: string]: unknown
+  parent: unknown
 }
 
 /** What a rule gets from Deno's linter: the file it runs over, and a way to report. */
 export interface BoundaryRuleContext {
   /** Absolute path of the module being linted. */
   filename: string
-  /** Record one violation at `node`. */
-  report(violation: { node: BoundaryLintNode; message: string }): void
+  /** Record one violation over a range of the source. */
+  report(violation: { range: [number, number]; message: string }): void
 }
 
 /** A Deno lint plugin, typed as far as {@link boundaryPlugin} builds one. */
@@ -135,30 +136,40 @@ export interface BoundaryLintPlugin {
   }>
 }
 
+/** A field of a node that this module's types do not declare, or `undefined`. */
+function field(node: unknown, name: string): unknown {
+  return typeof node === "object" && node !== null
+    ? (node as Record<string, unknown>)[name]
+    : undefined
+}
+
 /** The specifier an import, a re-export or a dynamic import names, when it is a plain string. */
 function sourceOf(node: BoundaryLintNode): string | null {
-  const source = node.source as { type?: string; value?: unknown } | null | undefined
-  if (source?.type !== "Literal" || typeof source.value !== "string") return null
-  return source.value
+  const source = field(node, "source")
+  const value = field(source, "value")
+  return field(source, "type") === "Literal" && typeof value === "string" ? value : null
 }
 
 /** Whether an identifier here names a variable, rather than a property or a key. */
 function isReference(node: BoundaryLintNode): boolean {
   const parent = node.parent
-  if (parent.type === "MemberExpression" && parent.property === node && !parent.computed) {
-    return false
-  }
+  const type = field(parent, "type")
+  const computed = field(parent, "computed") === true
+  if (type === "MemberExpression" && field(parent, "property") === node && !computed) return false
   const keyed = ["Property", "TSPropertySignature", "PropertyDefinition", "MethodDefinition"]
-  if (keyed.includes(parent.type) && parent.key === node && !parent.computed) return false
+  if (keyed.includes(type as string) && field(parent, "key") === node && !computed) return false
   return true
 }
 
 /** Whether an identifier is a property read off the global object, as in `globalThis.fetch`. */
 function isGlobalProperty(node: BoundaryLintNode): boolean {
   const parent = node.parent
-  if (parent.type !== "MemberExpression" || parent.property !== node) return false
-  const object = parent.object as BoundaryLintNode
-  return object.type === "Identifier" && (object.name === "globalThis" || object.name === "self")
+  if (field(parent, "type") !== "MemberExpression" || field(parent, "property") !== node) {
+    return false
+  }
+  const object = field(parent, "object")
+  const name = field(object, "name")
+  return field(object, "type") === "Identifier" && (name === "globalThis" || name === "self")
 }
 
 /**
@@ -180,7 +191,7 @@ export function boundaryPlugin(options: BoundaryOptions = {}): BoundaryLintPlugi
             const reason = source === null
               ? null
               : forbiddenImport(source, context.filename, options)
-            if (reason) context.report({ node, message: reason })
+            if (reason) context.report({ range: node.range, message: reason })
           }
           return {
             ImportDeclaration: checkSource,
@@ -188,11 +199,11 @@ export function boundaryPlugin(options: BoundaryOptions = {}): BoundaryLintPlugi
             ExportAllDeclaration: checkSource,
             ImportExpression: checkSource,
             Identifier(node) {
-              const name = node.name as string
-              if (!globals.has(name)) return
+              const name = field(node, "name")
+              if (typeof name !== "string" || !globals.has(name)) return
               if (!isReference(node) && !isGlobalProperty(node)) return
               context.report({
-                node,
+                range: node.range,
                 message: `"${name}" reaches outside the screen; take it through props instead.`,
               })
             },
@@ -211,9 +222,9 @@ type RunPlugin = (
 ) => { message: string; range: [number, number] }[]
 
 /**
- * Check one module's source against the boundary and return every violation, in source order.
+ * Check one module's source against the boundary and return every violation Deno reports.
  *
- * Works only under `deno test`, where Deno provides `Deno.lint.runPlugin`; anywhere else it throws.
+ * Works only under `deno test`: anywhere else `Deno.lint.runPlugin` throws Deno's own error.
  *
  * @param source The module's text.
  * @param options The lists to check against, plus `filename`: the module's absolute path, which
@@ -223,14 +234,8 @@ export function checkModule(
   source: string,
   options: BoundaryOptions & { filename?: string } = {},
 ): BoundaryViolation[] {
-  const runPlugin = (Deno as unknown as { lint?: { runPlugin?: RunPlugin } }).lint?.runPlugin
-  if (!runPlugin) {
-    throw new Error(
-      "checkModule needs Deno.lint.runPlugin, which Deno provides only under deno test",
-    )
-  }
+  const { runPlugin } = (Deno as unknown as { lint: { runPlugin: RunPlugin } }).lint
   const filename = options.filename ?? "/module.tsx"
   return runPlugin(boundaryPlugin(options), filename, source)
     .map(({ message, range }) => ({ message, range: [range[0], range[1]] as [number, number] }))
-    .sort((a, b) => a.range[0] - b.range[0])
 }
