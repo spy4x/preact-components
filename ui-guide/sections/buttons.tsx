@@ -5,6 +5,7 @@ import {
   Cluster,
   CopyButton,
   Input,
+  Link,
   Stack,
 } from "@spy4x/preact-ui"
 import { useSignal } from "@preact/signals"
@@ -184,6 +185,40 @@ function CopyButtonDemo() {
   )
 }
 
+/**
+ * One link with a `navigate` port that only records where it was asked to go, and one without.
+ * A plain click on the first shows its href below instead of leaving the page; Ctrl, Meta, Shift,
+ * Alt or a middle click opens it the browser's way. `pages/checks/ui.ts` drives both with real
+ * clicks.
+ */
+function LinkDemo() {
+  const navigated = useSignal<string[]>([])
+  return (
+    <Stack gap="sm">
+      <Cluster>
+        <Link
+          href="#/system"
+          class="link"
+          data-e2e="link-routed"
+          navigate={(href) => navigated.value = [...navigated.value, href]}
+        >
+          Open the system page
+        </Link>
+        <Link href="https://jsr.io/@spy4x/preact-ui" class="link" data-e2e="link-plain">
+          The package on JSR
+        </Link>
+      </Cluster>
+      <span class="text-sm text-muted" data-e2e="link-navigated">
+        {navigated.value.length === 0
+          ? "navigate not called yet"
+          : `navigate called ${navigated.value.length} ${
+            navigated.value.length === 1 ? "time" : "times"
+          }, last with ${navigated.value.at(-1)}`}
+      </span>
+    </Stack>
+  )
+}
+
 export const buttonDemos = {
   Button: {
     summary:
@@ -258,5 +293,32 @@ export const buttonDemos = {
     snippet: `<CopyButton textToCopy={invoice.id} />
 <CopyButton textToCopy={invoice.id} title="Copy id" copy={app.clipboard.copy} />`,
     render: () => <CopyButtonDemo />,
+  },
+  Link: {
+    summary:
+      "A real link that hands plain clicks to your router and leaves new tabs, windows and downloads to the browser.",
+    wide: false,
+    props: [
+      { name: "href", type: "string", description: "Where it goes; works before any script runs." },
+      {
+        name: "navigate",
+        type: "(href) => void",
+        description:
+          "Called on a plain click instead of the browser navigating. Left out, every click is the browser's.",
+      },
+      {
+        name: "onClick",
+        type: "(event) => void",
+        description: "Runs first; `preventDefault()` in it keeps `navigate` out of that click.",
+      },
+      {
+        name: "class",
+        type: "string",
+        description:
+          "The link has no look of its own; every other anchor attribute passes through.",
+      },
+    ],
+    snippet: `<Link href="/reports" navigate={router.navigate} class="link">Reports</Link>`,
+    render: () => <LinkDemo />,
   },
 } satisfies DemoFragment

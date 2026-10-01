@@ -3990,6 +3990,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `InlineEdit`      | `inline-edit`       | `value`, `onSave` (may return a promise), `editLabel?`, `inputLabel?`, `savingLabel?`, `errorMessage?`, `disabled?`                                                                             |
 | `KanbanBoard`     | `kanban-board`      | `columns`, `items`, `renderItem`, `itemLabel`, `onMove`, `onOpen?`, `labels?`, `headingLevel?` — controlled; mouse drag and keyboard moves                                                      |
 | `Lightbox`        | `lightbox`          | `images`, `index`, `open`, `onClose`, `onIndexChange`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`                                                                           |
+| `Link`            | `link`              | `href`, `navigate?` (router port), `class`, native anchor attrs — a real `<a>`; a plain click goes through `navigate`                                                                           |
 | `LoadingSkeleton` | `loading-skeleton`  | `rows`                                                                                                                                                                                          |
 | `LoadingSpinner`  | `loading-spinner`   | `label`, `loadingLabel?` (hidden word without a `label`, default `"Loading"`), `size`                                                                                                           |
 | `Modal`           | `modal`             | `open?` or `defaultOpen?`, `onClose?`, `title?` or `ariaLabel?`, `children`, `footer?`, `cancelLabel?`                                                                                          |
@@ -5251,6 +5252,17 @@ components and tests means exactly that: nothing outside this package should bui
 - `resolveMoneyInputEdit(text, currency, locale, bounds, invalidMessage, rangeMessage)` is exported
   for the package's own components and tests: the value and message one edit of a `MoneyInput`
   produces.
+
+### Link (`./link`)
+
+- `isPlainClick(event)` says whether a click is one the page may take over: the primary button
+  with no Ctrl, Meta, Shift or Alt. A middle click never counts. `Shell` uses the same rule.
+- `followLinkClick(event, { href, navigate, target, download })` is the rule `Link` runs on every
+  click: when `navigate` is given, the click is plain, nothing earlier cancelled it, `target` is
+  none, `""` or `_self`, and there is no `download`, it cancels the browser's navigation, calls
+  `navigate(href)` and returns `true`; otherwise it does nothing and returns `false`. Call it from
+  the click handler of an anchor of your own — a button drawn as a link, say — to give it the same
+  behaviour.
 
 ### Pagination (`./pagination`)
 
