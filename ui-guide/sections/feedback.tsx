@@ -235,7 +235,11 @@ function ToastrDemo() {
   )
 }
 
-/** A full empty state, one with a title alone, and one with nothing, which renders nothing. */
+/**
+ * A full empty state, one with a title alone, one whose title is an `<h4>` under the card's own
+ * `<h3>` (an `<h1>` here would give the catalogue page a second one), and one with nothing, which
+ * renders nothing.
+ */
 function EmptyStateDemo() {
   return (
     <Stack>
@@ -250,6 +254,11 @@ function EmptyStateDemo() {
         }
       />
       <EmptyState title="No filters applied" />
+      <EmptyState
+        headingLevel={4}
+        title="No matches"
+        description="This title is an h4, under the card's h3; a whole-page empty state passes 1."
+      />
       <EmptyState />
     </Stack>
   )
@@ -459,6 +468,13 @@ export const feedbackDemos = {
     wide: true,
     props: [
       { name: "title", type: "string", description: "What is missing." },
+      {
+        name: "headingLevel",
+        type: "1 | 2 | 3 | 4",
+        default: `3`,
+        description:
+          "The title's heading tag; 1 when the empty state is the whole page. Same size.",
+      },
       { name: "description", type: "string", description: "Why, or what to do next." },
       { name: "icon", type: "ComponentChildren", description: "A glyph above the title." },
       { name: "action", type: "ComponentChildren", description: "A button that fills the list." },
@@ -468,7 +484,10 @@ export const feedbackDemos = {
   title="No invoices yet"
   description="Invoices appear here once a customer is billed."
   action={<Button size="sm">New invoice</Button>}
-/>`,
+/>
+
+// A 404 page whose whole content is the empty state:
+<EmptyState headingLevel={1} title="Page not found" />`,
     render: () => <EmptyStateDemo />,
   },
   ErrorState: {
