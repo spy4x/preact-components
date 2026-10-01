@@ -56,9 +56,9 @@ const DROPDOWN_STATE = `(() => {
  * `ui/`'s browser checks: Dropdown's pointer and keyboard contract, ToggleSwitch, OnOffButtons,
  * `Field`, Tooltip, Combobox, Toastr, DateRangePicker's focus contract in both its day-only and
  * `withTime` modes, Pagination's end controls, DataTable's sort-by-header and paging contract,
- * `Link`'s plain-click rule, `ImageGallery`'s thumbnail strip and the shared `Lightbox` it opens, `FileInput`'s keyboard,
- * drag-and-drop, refusal, preview-revocation and plain-form-post contract, `useHotkeys` with
- * `ShortcutsDialog`, and — last — Modal's keyboard and focus contract.
+ * `Link`'s plain-click rule, `ImageGallery`'s thumbnail strip and the shared `Lightbox` it opens,
+ * `FileInput`'s keyboard, drag-and-drop, refusal, preview-revocation and plain-form-post contract,
+ * `useHotkeys` with `ShortcutsDialog`, and — last — Modal's keyboard and focus contract.
  *
  * This file runs last of every package's, and Modal's checks run last inside it, for the same
  * reason: Modal opens a real modal dialog, and a dialog that refused to close would sit in the top

@@ -1347,7 +1347,7 @@ components and tests means exactly that: nothing outside this package should bui
 ### Link (`./link`)
 
 - `isPlainClick(event)` says whether a click is one the page may take over: the primary button
-  with no Ctrl, Meta, Shift or Alt. A middle click never counts. `Shell` uses the same rule.
+  with no Ctrl, Meta, Shift or Alt. A middle click never counts. It is the same rule `Shell` applies.
 - `followLinkClick(event, { href, navigate, target, download })` is the rule `Link` runs on every
   click: when `navigate` is given, the click is plain, nothing earlier cancelled it, `target` is
   none, `""` or `_self`, and there is no `download`, it cancels the browser's navigation, calls
