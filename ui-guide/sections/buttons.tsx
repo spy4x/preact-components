@@ -271,12 +271,18 @@ function ThemeToggleDemo() {
   const [store] = useState(() => createThemeStore({ storage: null, apply: () => {} }))
   useEffect(() => store.attach(), [store])
   return (
-    <Cluster>
-      <ThemeToggle store={store} />
-      <DemoNote e2e="theme-toggle-readout">
-        preference {store.preference.value}, an app would paint {store.actual.value}
-      </DemoNote>
-    </Cluster>
+    <Stack gap="sm">
+      <Cluster>
+        <ThemeToggle store={store} />
+        <DemoNote e2e="theme-toggle-readout">
+          preference {store.preference.value}, an app would paint {store.actual.value}
+        </DemoNote>
+      </Cluster>
+      <Cluster justify="between" data-e2e="theme-toggle-header">
+        <span class="text-sm font-medium">At the end of a header</span>
+        <ThemeToggle store={store} />
+      </Cluster>
+    </Stack>
   )
 }
 
@@ -411,7 +417,7 @@ export const buttonDemos = {
     props: [
       {
         name: "store",
-        type: "ThemeStore",
+        type: "ThemeToggleStore",
         description:
           "Your app's `createThemeStore()`; you call its `attach()`, the button calls `cycle()`.",
       },
@@ -426,6 +432,11 @@ export const buttonDemos = {
         type: "number",
         default: "2000",
         description: "How long the Auto mode hint stays up.",
+      },
+      {
+        name: "class",
+        type: "string",
+        description: "Utilities appended to the wrapper around the button and its hint.",
       },
     ],
     snippet: `const theme = createThemeStore()

@@ -5216,8 +5216,9 @@ button for `hintForMs` (2000 by default). The hint is the text of a polite live 
 the start, because a region inserted together with its text is often not announced. It sits out of
 the flow and takes no pointer events, so nothing moves and the button keeps focus. A click away from
 auto while the hint is up hides it at once, and the next switch to auto shows it again with a fresh
-timer. The hint sits right-aligned under the button, which suits a button at the end of a header; it
-can run past the left edge of a narrow screen when the button sits at the start of a row.
+timer. The hint sits under the button with their end edges aligned; when that would put it past
+either edge of the viewport, as with a button at the start of a row on a phone, it slides sideways
+to stay 8 px inside.
 
 `defaultThemeToggleLabels` holds the English words: the four accessible names (`autoLight`,
 `autoDark`, `light`, `dark`) and the hint. Pass any of them in `labels` to replace them.

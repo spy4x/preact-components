@@ -1,7 +1,7 @@
 import { join } from "@spy4x/preact-cn/join"
 import { IconMoon, IconSun, IconThemeAuto } from "@spy4x/preact-icons"
 import type { JSX } from "preact"
-import { useEffect, useState } from "preact/hooks"
+import { useLayoutEffect, useRef, useState } from "preact/hooks"
 import { Button } from "./button.tsx"
 import { hintBubbleClasses } from "./hint-bubble.ts"
 
@@ -59,10 +59,29 @@ export interface ThemeToggleProps {
 }
 
 /**
- * Where the hint sits: under the button, right edges aligned, out of the flow so nothing moves
+ * Where the hint sits: under the button, end edges aligned, out of the flow so nothing moves
  * when it appears, and out of hit testing so it never takes a click.
  */
-const hintRegion = "pointer-events-none absolute top-full right-0 z-50 w-max pt-2"
+const hintRegion = "pointer-events-none absolute top-full end-0 z-50 w-max pt-2"
+
+/** The least room, in pixels, the hint keeps from either edge of the viewport. */
+const viewportGutter = 8
+
+/**
+ * How far to move a box sideways so it fits the viewport with {@link viewportGutter} to spare:
+ * right when it starts past the left edge, left when it ends past the right one, `0` when it fits.
+ *
+ * @param left The box's left edge, in viewport pixels.
+ * @param right The box's right edge, in viewport pixels.
+ * @param width The viewport's width without its scrollbar.
+ */
+function shiftIntoView(left: number, right: number, width: number): number {
+  if (left < viewportGutter) return viewportGutter - left
+  if (right > width - viewportGutter) {
+    return Math.max(width - viewportGutter - right, viewportGutter - left)
+  }
+  return 0
+}
 
 /**
  * One icon button that steps through the theme preference: auto → the opposite of the device →
@@ -76,7 +95,9 @@ const hintRegion = "pointer-events-none absolute top-full right-0 z-50 w-max pt-
  * that click shows a small "Auto mode" hint under the button for {@link ThemeToggleProps.hintForMs}.
  * The hint is the text of a polite live region that is in the DOM from the first render, because a
  * region inserted together with its text is often not announced. It is positioned out of the flow,
- * takes no pointer events and is never focused, so the button keeps focus and nothing moves. A click
+ * takes no pointer events and is never focused, so the button keeps focus and nothing moves. It
+ * sits under the button with their end edges aligned, and slides sideways to stay inside the
+ * viewport when that would put it past either edge. A click
  * away from auto while the hint is up hides it at once; the next switch to auto shows it again with
  * a fresh timer. The timer is cleared on unmount.
  *
@@ -90,9 +111,18 @@ export function ThemeToggle(
   // A number rather than a flag: each switch to auto gets a new one, so the effect below restarts
   // the timer even when the previous hint has not gone yet. `0` means no hint.
   const [hint, setHint] = useState(0)
+  const region = useRef<HTMLSpanElement>(null)
 
-  useEffect(() => {
-    if (hint === 0) return
+  // A layout effect, so the hint is measured and moved before the browser first paints it.
+  useLayoutEffect(() => {
+    const element = region.current
+    if (hint === 0 || !element) return
+    // Under the button the hint can start past the left edge of a narrow screen (or end past the
+    // right one in a right-to-left page): measure it where it lands and slide it back inside.
+    element.style.translate = ""
+    const box = element.getBoundingClientRect()
+    const shift = shiftIntoView(box.left, box.right, document.documentElement.clientWidth)
+    if (shift !== 0) element.style.translate = `${shift}px 0`
     const timer = setTimeout(() => setHint(0), hintForMs)
     return () => clearTimeout(timer)
   }, [hint, hintForMs])
@@ -121,7 +151,13 @@ export function ThemeToggle(
       <Button variant="icon" aria-label={label} title={label} onClick={onClick}>
         {icon}
       </Button>
-      <span role="status" aria-live="polite" aria-atomic="true" class={hintRegion}>
+      <span
+        ref={region}
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        class={hintRegion}
+      >
         {hint === 0 ? null : <span class={hintBubbleClasses}>{text.hint}</span>}
       </span>
     </span>

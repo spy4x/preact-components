@@ -14993,7 +14993,8 @@ async function themeToggleHintContrast(
  * the step back to auto — announced through the live region rendered from the start, shown
  * without moving the button or taking focus, gone after its two seconds. On the light device a
  * press while the hint is up hides it at once, and the next switch to auto shows it again. Then the
- * hint's text contrast in both palettes and the button's focus ring.
+ * hint's text contrast in both palettes, the button's focus ring, and where the hint lands on a
+ * phone-wide page.
  *
  * The card's store keeps nothing and paints nothing, so pressing it leaves the guide's own palette
  * alone; the emulated colour scheme is cleared afterwards.
@@ -15107,6 +15108,92 @@ async function themeToggleChecks(devtools: Devtools): Promise<void> {
     selector: "#demo-ThemeToggle button",
     name: "ThemeToggle button",
   })
+  await themeTogglePlacementChecks(devtools)
+}
+
+/** Where one ThemeToggle's hint landed, against its button and the viewport. */
+interface ThemeTogglePlacement {
+  shown: boolean
+  bubbleLeft: number
+  bubbleRight: number
+  buttonLeft: number
+  buttonRight: number
+  viewport: number
+}
+
+/**
+ * At a 375px phone width, each of the card's two ThemeToggles is pressed back to auto and its hint
+ * measured: the one at the start of a row slides inside the viewport, and the one at the end of a
+ * header keeps its end edge on the button's, because it fits there as it is.
+ *
+ * @param devtools The connected session, on the `ui` page with a fresh card on auto.
+ */
+async function themeTogglePlacementChecks(devtools: Devtools): Promise<void> {
+  const rows = [
+    {
+      name: "at the start of a row",
+      wrapper: `${THEME_TOGGLE}?.querySelector("button")?.parentElement`,
+    },
+    {
+      name: "at the end of a header",
+      wrapper: `${THEME_TOGGLE}?.querySelector('[data-e2e="theme-toggle-header"] button')` +
+        "?.parentElement",
+    },
+  ] as const
+  await devtools.send("Emulation.setDeviceMetricsOverride", {
+    width: 375,
+    height: 812,
+    deviceScaleFactor: 1,
+    mobile: false,
+  })
+  try {
+    for (const row of rows) {
+      await centreInView(devtools, row.wrapper)
+      // From auto, three presses come back to auto, and only this button's own presses show its hint.
+      await devtools.evaluate(`(() => {
+        const button = ${row.wrapper}?.querySelector("button")
+        for (let press = 0; press < 3; press++) button?.click()
+        return null
+      })()`)
+      const measure = `(() => {
+        const wrapper = ${row.wrapper}
+        const bubble = wrapper?.querySelector('[role="status"]')?.firstElementChild
+        const button = wrapper?.querySelector("button")
+        const b = bubble?.getBoundingClientRect()
+        const k = button?.getBoundingClientRect()
+        return {
+          shown: !!b && b.width > 0,
+          bubbleLeft: Math.round(b?.left ?? 0),
+          bubbleRight: Math.round(b?.right ?? 0),
+          buttonLeft: Math.round(k?.left ?? 0),
+          buttonRight: Math.round(k?.right ?? 0),
+          viewport: document.documentElement.clientWidth,
+        }
+      })()`
+      await poll(async () => (await devtools.evaluate<ThemeTogglePlacement>(measure)).shown, 1_500)
+      const at = await devtools.evaluate<ThemeTogglePlacement>(measure)
+      const inside = at.shown && at.bubbleLeft >= 0 && at.bubbleRight <= at.viewport
+      const detail = at.shown
+        ? `bubble ${at.bubbleLeft}–${at.bubbleRight}, button ${at.buttonLeft}–` +
+          `${at.buttonRight}, viewport 0–${at.viewport}`
+        : "the hint never came up"
+      if (row.name === "at the start of a row") {
+        check(
+          `at 375px, the hint of a ThemeToggle ${row.name} stays wholly inside the viewport`,
+          inside,
+          detail,
+        )
+      } else {
+        check(
+          `at 375px, the hint of a ThemeToggle ${row.name} fits as it is, end edge on the button's`,
+          inside && at.bubbleRight === at.buttonRight,
+          detail,
+        )
+      }
+    }
+  } finally {
+    await devtools.send("Emulation.clearDeviceMetricsOverride")
+  }
 }
 
 /**
