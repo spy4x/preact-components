@@ -245,7 +245,10 @@ export interface ZoomableImagesProps {
   nextLabel?: string
   /** Called when an image is opened, with the resolved `src` and `alt`. */
   onOpen?: (image: LightboxImage) => void
-  /** Utilities for the dialog. */
+  /**
+   * Utilities for the dialog, appended to `Lightbox`'s own and merged with none of them: mark a
+   * replacement important with a trailing `!`.
+   */
   class?: string
 }
 

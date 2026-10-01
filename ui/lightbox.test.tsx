@@ -215,11 +215,11 @@ describe("Lightbox", () => {
         open={false}
         onClose={() => {}}
         onIndexChange={() => {}}
-        class="bg-white"
+        class="backdrop-blur-sm"
       />,
     )
 
-    expect(html).toContain("bg-white")
+    expect(html).toContain("backdrop-blur-sm")
     expect(html).not.toContain("bg-black/95")
   })
 

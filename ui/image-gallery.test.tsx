@@ -126,8 +126,8 @@ describe("ImageGallery", () => {
   })
 
   it("keeps the caller's utilities on the thumbnail strip", () => {
-    const html = render(<ImageGallery images={IMAGES} class="gap-6" />)
+    const html = render(<ImageGallery images={IMAGES} class="scroll-smooth" />)
 
-    expect(html).toContain("gap-6")
+    expect(html).toContain("scroll-smooth")
   })
 })
