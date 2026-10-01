@@ -27,6 +27,7 @@
     "./input-button": "./input-button.tsx",
     "./layout": "./layout.tsx",
     "./lightbox": "./lightbox.tsx",
+    "./link": "./link.tsx",
     "./loading-skeleton": "./loading-skeleton.tsx",
     "./loading-spinner": "./loading-spinner.tsx",
     "./modal": "./modal.tsx",
