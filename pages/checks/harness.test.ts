@@ -24,6 +24,8 @@ import {
   DevtoolsClosedError,
   filteredRunLine,
   type PageReader,
+  PhaseVerdict,
+  phaseVerdict,
   poll,
   Run,
   selectBlocks,
@@ -259,6 +261,72 @@ describe("Run.lastCheck", () => {
     run.record("b", false, "why")
 
     expect(run.lastCheck).toEqual({ name: "b", ok: false, detail: "why" })
+  })
+})
+
+describe("Run.sinceProgress", () => {
+  /** A run on a clock the test moves by hand. */
+  function clocked(): { run: Run; advance: (ms: number) => void } {
+    let now = 1_000
+    return { run: new Run(() => now), advance: (ms) => now += ms }
+  }
+
+  it("counts from the run's creation until something happens", () => {
+    const { run, advance } = clocked()
+    advance(40)
+    expect(run.sinceProgress()).toBe(40)
+  })
+
+  it("restarts at every recorded check, passing or failing", () => {
+    const { run, advance } = clocked()
+    advance(40)
+    run.record("a", true)
+    expect(run.sinceProgress()).toBe(0)
+    advance(15)
+    run.record("b", false)
+    advance(5)
+    expect(run.sinceProgress()).toBe(5)
+  })
+
+  it("restarts when a block starts, before it records anything", async () => {
+    const { run, advance } = clocked()
+    advance(40)
+    let seen = -1
+    await run.runBlocks([{
+      name: "quiet",
+      run: () => {
+        seen = run.sinceProgress()
+        return Promise.resolve()
+      },
+    }], run)
+    expect(seen).toBe(0)
+  })
+
+  it("restarts when told to", () => {
+    const { run, advance } = clocked()
+    advance(40)
+    run.noteProgress()
+    expect(run.sinceProgress()).toBe(0)
+  })
+})
+
+describe("phaseVerdict", () => {
+  const limits = { stallMs: 90, ceilingMs: 1_000 }
+
+  it("keeps a phase running while checks keep finishing and the ceiling is not reached", () => {
+    expect(phaseVerdict(999, 89, limits)).toBe(PhaseVerdict.Running)
+  })
+
+  it("stops a phase whose last check is the whole stall limit ago", () => {
+    expect(phaseVerdict(100, 90, limits)).toBe(PhaseVerdict.Stalled)
+  })
+
+  it("stops a phase that reaches its ceiling while still making progress", () => {
+    expect(phaseVerdict(1_000, 0, limits)).toBe(PhaseVerdict.OverCeiling)
+  })
+
+  it("reports a stall rather than the ceiling when both are reached", () => {
+    expect(phaseVerdict(1_000, 90, limits)).toBe(PhaseVerdict.Stalled)
   })
 })
 

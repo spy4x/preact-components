@@ -83,6 +83,29 @@ export class Run {
   #checks: CheckRecord[] = []
   #blocks = new Map<string, BlockOutcome>()
   #current?: string
+  #clock: () => number
+  #lastProgressAt: number
+
+  /**
+   * @param clock Milliseconds from any fixed origin; a test passes its own to step time by hand.
+   */
+  constructor(clock: () => number = () => performance.now()) {
+    this.#clock = clock
+    this.#lastProgressAt = clock()
+  }
+
+  /**
+   * Milliseconds since this run last made progress: recorded a check, started a block, or was told
+   * to by {@link noteProgress}. The browser phase's stall limit reads this (#466).
+   */
+  sinceProgress(): number {
+    return this.#clock() - this.#lastProgressAt
+  }
+
+  /** Count now as progress — the browser phase calls this as it starts. */
+  noteProgress(): void {
+    this.#lastProgressAt = this.#clock()
+  }
 
   /** Every check recorded so far, in the order they were recorded. */
   get checks(): readonly CheckRecord[] {
@@ -134,6 +157,7 @@ export class Run {
    */
   record(name: string, ok: boolean, detail = ""): void {
     this.#checks.push({ name, ok, detail })
+    this.noteProgress()
   }
 
   /**
@@ -176,6 +200,7 @@ export class Run {
 
     for (const block of blocks) {
       this.#current = block.name
+      this.noteProgress()
       try {
         await block.run(context)
         this.#blocks.set(block.name, BlockOutcome.Completed)
@@ -361,6 +386,56 @@ export function filteredRunLine(all: readonly string[], ran: readonly string[]):
  */
 export function lastCheckName(): string | undefined {
   return currentRun.lastPassedCheck?.name
+}
+
+/** Milliseconds since this script's run last made progress — see {@link Run.sinceProgress}. */
+export function msSinceProgress(): number {
+  return currentRun.sinceProgress()
+}
+
+/** Count now as progress in this script's run — see {@link Run.noteProgress}. */
+export function noteProgress(): void {
+  currentRun.noteProgress()
+}
+
+/** What the browser phase's watchdog decides on one look — see {@link phaseVerdict}. */
+export enum PhaseVerdict {
+  /** Neither limit is reached; keep going. */
+  Running = 1,
+  /** No check finished and no block started for the whole stall limit. */
+  Stalled = 2,
+  /** The phase as a whole ran past its ceiling, progress or not. */
+  OverCeiling = 3,
+}
+
+/** The two limits {@link phaseVerdict} holds a browser phase to, already scaled by any throttle. */
+export interface PhaseLimits {
+  /** The longest the phase may go without a check finishing or a block starting. */
+  stallMs: number
+  /** The longest the whole phase may take, however steadily it progresses. */
+  ceilingMs: number
+}
+
+/**
+ * Decide whether the browser phase should be stopped (#466).
+ *
+ * The stall limit is what catches a hang: it fires a fixed time after the last check, however many
+ * checks came before, so a run that grows by a hundred checks needs no new number. The ceiling is
+ * only a backstop for a run that keeps recording checks and never ends. A stall wins over the
+ * ceiling when both hold, because it says more: the run was stuck, not merely long.
+ *
+ * @param elapsedMs Time since the phase started.
+ * @param sinceProgressMs Time since the last check or block start — {@link Run.sinceProgress}.
+ * @param limits The two limits.
+ */
+export function phaseVerdict(
+  elapsedMs: number,
+  sinceProgressMs: number,
+  limits: PhaseLimits,
+): PhaseVerdict {
+  if (sinceProgressMs >= limits.stallMs) return PhaseVerdict.Stalled
+  if (elapsedMs >= limits.ceilingMs) return PhaseVerdict.OverCeiling
+  return PhaseVerdict.Running
 }
 
 /** The package block currently running, or `undefined` between blocks — see {@link Run.currentBlock}. */
