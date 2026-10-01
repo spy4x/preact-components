@@ -166,6 +166,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await busyButtonChecks(devtools)
   await busySubmitChecks(devtools)
   await linkChecks(devtools)
+  await buttonLinkChecks(devtools)
 
   await copyBlockChecks(devtools)
   await copyBlockNeverClipsCheck(devtools)
@@ -204,7 +205,12 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await shortcutsChecks(devtools)
   await toggleChipsChecks(devtools)
   await outlineBadgeContrastCheck(devtools)
-  await linkedBadgeFocusRingCheck(devtools)
+  // The pill itself is the link, unlike the link inside the static badge beside it.
+  await linkFocusRingCheck(devtools, {
+    selector: "#demo-Badge a[href].inline-flex",
+    name: "linked Badge",
+  })
+  await linkFocusRingCheck(devtools, { selector: BUTTON_LINK, name: "Button link" })
   await primaryButtonFillCheck(devtools)
   await kanbanBoardChecks(devtools)
 
@@ -13155,9 +13161,9 @@ async function outlineBadgeContrastCheck(devtools: Devtools): Promise<void> {
   )
 }
 
-/** A keyboard-focused linked `Badge`'s ring, read in one palette. */
+/** A keyboard-focused link's ring, read in one palette. */
 interface LinkedBadgeRing {
-  /** Whether the badge was found, took focus, and matched `:focus-visible`. */
+  /** Whether the link was found, took focus, and matched `:focus-visible`. */
   focusVisible: boolean
   /** The badge's computed `box-shadow`, where Tailwind draws the offset gap and the ring. */
   shadow: string
@@ -13171,15 +13177,26 @@ interface LinkedBadgeRing {
   onGround: number
 }
 
+/** A link whose focus ring {@link linkFocusRingCheck} measures, and what its check calls it. */
+interface FocusRingTarget {
+  /** In-page selector of the link itself. */
+  selector: string
+  /** The component, as the check's name says it: "linked Badge", "Button link". */
+  name: string
+}
+
 /**
- * A keyboard-focused linked `Badge` (one given `href`) draws a focus ring that stands 3:1 off its
- * offset gap and off the card behind it, in the light and the dark palette (#473). A static badge
- * draws no ring, so this is the one interactive thing `href` adds.
+ * A keyboard-focused link draws a focus ring that stands 3:1 off its offset gap and off the card
+ * behind it, in the light and the dark palette. For a linked `Badge` (one given `href`, #473) the
+ * ring is the one interactive thing `href` adds; a `Button` given `href` (#472) must keep the ring
+ * its `<button>` draws.
  *
  * @param devtools The connected session, on a hydrated page.
+ * @param target The link to focus, and the name its check uses.
  */
-async function linkedBadgeFocusRingCheck(devtools: Devtools): Promise<void> {
+async function linkFocusRingCheck(devtools: Devtools, target: FocusRingTarget): Promise<void> {
   await pointerToCorner(devtools)
+  const missing = JSON.stringify(`nothing at ${target.selector}`)
   const read = async (dark: boolean): Promise<LinkedBadgeRing> => {
     // A real key press first, so the scripted focus below counts as keyboard focus.
     await pressKey(devtools, "Tab")
@@ -13192,29 +13209,28 @@ async function linkedBadgeFocusRingCheck(devtools: Devtools): Promise<void> {
       still.textContent = "*, *::before, *::after { transition: none !important; }"
       document.head.append(still)
       try {
-        // The pill itself is the link, unlike the link inside the static badge beside it.
-        const badge = document.querySelector("#demo-Badge a[href].inline-flex")
-        if (!badge) {
-          return { focusVisible: false, shadow: "no linked badge", ringDrawn: false, ring: [],
+        const link = document.querySelector(${JSON.stringify(target.selector)})
+        if (!link) {
+          return { focusVisible: false, shadow: ${missing}, ringDrawn: false, ring: [],
             offset: [], ground: [],
             onOffset: 0, onGround: 0 }
         }
-        badge.focus({ preventScroll: true })
+        link.focus({ preventScroll: true })
         await frames()
-        const style = getComputedStyle(badge)
+        const style = getComputedStyle(link)
         const resolve = (value) => {
           const probe = document.createElement("span")
           probe.style.color = value
-          badge.append(probe)
+          link.append(probe)
           const colour = getComputedStyle(probe).color
           probe.remove()
           return paint(colour)
         }
         const ring = resolve(style.getPropertyValue("--tw-ring-color"))
         const offset = resolve(style.getPropertyValue("--tw-ring-offset-color"))
-        const ground = backdrop(badge.parentElement)
+        const ground = backdrop(link.parentElement)
         const reading = {
-          focusVisible: badge.matches(":focus-visible"),
+          focusVisible: link.matches(":focus-visible"),
           shadow: style.boxShadow,
           ringDrawn: [...style.boxShadow.matchAll(/0px 0px 0px (\\d+(?:\\.\\d+)?)px/g)]
             .some(([, spread]) =>
@@ -13226,7 +13242,7 @@ async function linkedBadgeFocusRingCheck(devtools: Devtools): Promise<void> {
           onOffset: ratio(ring, offset),
           onGround: ratio(ring, ground),
         }
-        badge.blur()
+        link.blur()
         return reading
       } finally {
         still.remove()
@@ -13245,7 +13261,7 @@ async function linkedBadgeFocusRingCheck(devtools: Devtools): Promise<void> {
     `rgb(${reading.offset}) ${reading.onOffset.toFixed(2)}:1, on card rgb(${reading.ground}) ` +
     `${reading.onGround.toFixed(2)}:1, box-shadow ${reading.shadow}`
   check(
-    "a keyboard-focused linked Badge draws a ring that stands 3:1 off its offset gap and the " +
+    `a keyboard-focused ${target.name} draws a ring that stands 3:1 off its offset gap and the ` +
       "card, in light and dark",
     [light, dark].every((reading) =>
       reading.focusVisible && reading.ringDrawn &&
@@ -14390,6 +14406,13 @@ async function shortcutsChecks(devtools: Devtools): Promise<void> {
 const LINK_CARD = "#demo-Link"
 const ROUTED_LINK = `${LINK_CARD} [data-e2e="link-routed"]`
 const PLAIN_LINK = `${LINK_CARD} [data-e2e="link-plain"]`
+/** Where a card's `navigate` port reports "called N times"; {@link pressLink} reads it. */
+const LINK_COUNTER = `${LINK_CARD} [data-e2e="link-navigated"]`
+
+/** The `Button` card's routed link, its disabled link, and its `navigate` counter. */
+const BUTTON_LINK = `#demo-Button [data-e2e="button-link-routed"]`
+const BUTTON_LINK_DISABLED = `#demo-Button [data-e2e="button-link-disabled"]`
+const BUTTON_LINK_COUNTER = `#demo-Button [data-e2e="button-link-navigated"]`
 
 /** One mouse press the `Link` checks send: which button, and the CDP modifier bitmask. */
 interface LinkPress {
@@ -14424,7 +14447,12 @@ interface LinkOutcome {
  * `Link` did. `document` is the last place the event reaches, so its reading is what the browser
  * would have acted on.
  */
-async function pressLink(devtools: Devtools, link: string, press: LinkPress): Promise<LinkOutcome> {
+async function pressLink(
+  devtools: Devtools,
+  link: string,
+  press: LinkPress,
+  counter: string = LINK_COUNTER,
+): Promise<LinkOutcome> {
   const failed = (reason: string): LinkOutcome => ({
     aimed: false,
     type: null,
@@ -14443,7 +14471,7 @@ async function pressLink(devtools: Devtools, link: string, press: LinkPress): Pr
     const x = Math.round(rect.left + rect.width / 2)
     const y = Math.round(rect.top + rect.height / 2)
     const at = document.elementFromPoint(x, y)
-    const counter = document.querySelector('${LINK_CARD} [data-e2e="link-navigated"]')
+    const counter = document.querySelector('${counter}')
     globalThis.__linkPress = {
       events: [],
       href: location.href,
@@ -14483,7 +14511,7 @@ async function pressLink(devtools: Devtools, link: string, press: LinkPress): Pr
     document.removeEventListener("click", globalThis.__linkListener)
     document.removeEventListener("auxclick", globalThis.__linkListener)
     const record = globalThis.__linkPress
-    const counter = document.querySelector('${LINK_CARD} [data-e2e="link-navigated"]')
+    const counter = document.querySelector('${counter}')
     const after = Number(/called (\\d+)/.exec(counter?.textContent ?? "")?.[1] ?? 0)
     const first = record.events[0] ?? { type: null, prevented: null }
     return {
@@ -14547,6 +14575,65 @@ async function linkChecks(devtools: Devtools): Promise<void> {
       describeLinkOutcome(outcome),
     )
   }
+
+  await pointerToCorner(devtools)
+}
+
+/**
+ * A `Button` given `href` and `navigate` follows the rule `Link` runs: a plain click calls
+ * `navigate` and cancels the browser's navigation, and a Ctrl click is left to the browser. Its
+ * disabled form cannot take focus, as a disabled `<button>` cannot. Each click is one real press;
+ * see {@link pressLink}.
+ *
+ * @param devtools The connected session, on the `ui` page.
+ */
+async function buttonLinkChecks(devtools: Devtools): Promise<void> {
+  const routed = await pressLink(
+    devtools,
+    BUTTON_LINK,
+    { name: "a plain click", button: "left", modifiers: 0 },
+    BUTTON_LINK_COUNTER,
+  )
+  check(
+    "a plain click on a Button link with navigate calls navigate and cancels the browser's " +
+      "navigation",
+    routed.aimed && routed.type === "click" && routed.prevented === true &&
+      routed.navigations === 1 && !routed.navigated,
+    describeLinkOutcome(routed),
+  )
+
+  const ctrl = await pressLink(
+    devtools,
+    BUTTON_LINK,
+    { name: "a Ctrl click", button: "left", modifiers: 2 },
+    BUTTON_LINK_COUNTER,
+  )
+  check(
+    "a Ctrl click on a Button link with navigate is left to the browser and does not call navigate",
+    ctrl.aimed && ctrl.type === "click" && ctrl.prevented === false && ctrl.navigations === 0 &&
+      !ctrl.navigated,
+    describeLinkOutcome(ctrl),
+  )
+
+  const disabled = await devtools.evaluate<{ found: boolean; href: boolean; focused: boolean }>(
+    `(() => {
+      const link = document.querySelector('${BUTTON_LINK_DISABLED}')
+      if (!link) return { found: false, href: false, focused: false }
+      link.focus({ preventScroll: true })
+      const focused = document.activeElement === link
+      link.blur()
+      return { found: true, href: link.hasAttribute("href"), focused }
+    })()`,
+  )
+  check(
+    "a disabled Button link has no href and cannot take focus",
+    disabled.found && !disabled.href && !disabled.focused,
+    disabled.found
+      ? `href ${disabled.href ? "present" : "absent"}, focus ${
+        disabled.focused ? "taken" : "refused"
+      }`
+      : `nothing at ${BUTTON_LINK_DISABLED}`,
+  )
 
   await pointerToCorner(devtools)
 }
