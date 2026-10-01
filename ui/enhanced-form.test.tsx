@@ -107,6 +107,19 @@ describe("EnhancedForm", () => {
     expect(html).toContain("max-w-sm")
   })
 
+  it("appends a caller's spacing after its own, merging nothing", () => {
+    // A merge would drop `space-y-4`: the form joins its classes so `tailwind-merge` stays out (#511).
+    const html = render(
+      <EnhancedForm action="/api/subscribe" class="space-y-8">
+        <input name="email" />
+      </EnhancedForm>,
+    )
+
+    expect(html).toContain(
+      '<form action="/api/subscribe" method="post" class="space-y-4 space-y-8">',
+    )
+  })
+
   it("keeps its own idle state when no status is passed", () => {
     const html = render(
       <EnhancedForm action="/api/subscribe" sending={<p>Wait</p>}>

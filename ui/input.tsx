@@ -1,4 +1,4 @@
-import { cn } from "@spy4x/preact-cn"
+import { join } from "@spy4x/preact-cn/join"
 import type { JSX, Ref, VNode } from "preact"
 import { forwardRef } from "./forward-ref.ts"
 
@@ -10,12 +10,17 @@ import { forwardRef } from "./forward-ref.ts"
  * platform already does is reimplemented here.
  */
 export interface InputProps extends Omit<JSX.InputHTMLAttributes<HTMLInputElement>, "class"> {
-  /** Plain utilities. Narrowed from Preact's `Signalish<string>`: this package never renders a signal in `class`. */
+  /**
+   * Plain utilities, appended after `.pc-input` and not merged, so `tailwind-merge` stays out of the
+   * bundle (#511). Narrowed from Preact's `Signalish<string>`: this package never renders a signal
+   * in `class`.
+   */
   class?: string
 }
 
 /** Multi-line control of the library. Same contract as {@link Input}, on a `<textarea>`. */
 export type TextareaProps = Omit<JSX.TextareaHTMLAttributes<HTMLTextAreaElement>, "class"> & {
+  /** Plain utilities, appended after `.pc-textarea` and not merged; see {@link InputProps.class}. */
   class?: string
 }
 
@@ -27,6 +32,7 @@ export interface SelectOption {
 
 /** Native `<select>` of the library, with its option list as data. */
 export interface SelectProps extends Omit<JSX.SelectHTMLAttributes<HTMLSelectElement>, "class"> {
+  /** Plain utilities, appended after `.pc-select` and not merged; see {@link InputProps.class}. */
   class?: string
   options: SelectOption[]
   /** Label of a leading empty option. Omit for a select that must always hold a value. */
@@ -53,12 +59,12 @@ export const Input: (
   { class: className, ...rest },
   ref,
 ) {
-  return <input {...rest} ref={ref} class={cn("pc-input", className)} />
+  return <input {...rest} ref={ref} class={join("pc-input", className)} />
 })
 
 /** Controlled multi-line input. See {@link Input} for the state contract. */
 export function Textarea({ class: className, ...rest }: TextareaProps): JSX.Element {
-  return <textarea {...rest} class={cn("pc-textarea", className)} />
+  return <textarea {...rest} class={join("pc-textarea", className)} />
 }
 
 /**
@@ -73,7 +79,7 @@ export function Select(
   { class: className, options, placeholder, ...rest }: SelectProps,
 ): JSX.Element {
   return (
-    <select {...rest} class={cn("pc-select", className)}>
+    <select {...rest} class={join("pc-select", className)}>
       {placeholder !== undefined && <option value="">{placeholder}</option>}
       {options.map((option) => (
         <option key={String(option.value)} value={String(option.value)}>{option.label}</option>

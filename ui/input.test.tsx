@@ -51,6 +51,11 @@ describe("Input", () => {
     expect(html).toContain("pc-input")
   })
 
+  it("keeps a caller's classes as given, merging nothing", () => {
+    // A merge would drop `p-2`: the control joins its classes so `tailwind-merge` stays out (#511).
+    expect(render(<Input class="p-2 p-4" />)).toContain('class="pc-input p-2 p-4"')
+  })
+
   it("renders an aria-describedby and an id for a Field to point at", () => {
     const html = render(<Input id="email" aria-describedby="email-error" />)
 

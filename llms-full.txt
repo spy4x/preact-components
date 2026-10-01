@@ -282,12 +282,12 @@ Use `join` where no two inputs can be utilities of one group, and `cn` where a l
 replace an earlier one. `join` is also exported from `@spy4x/preact-cn` itself; the `/join` path
 is the one that never reaches `tailwind-merge`, whatever the bundler's tree-shaking does.
 
-`Button`, `buttonClasses`, `ImageGallery` and `Lightbox` in `@spy4x/preact-ui` compose their classes
-with `join` (#471), so an island that renders them carries no `tailwind-merge`; `CopyButton` and
-`ZoomableImages` pass their `class` to `Button` and `Lightbox`, so the same holds for them. Their
-`class` is
-appended to their own classes, not merged into them: to replace one of their own utilities, mark
-the replacement important, `<Button class="px-8!">`. Tailwind 4 writes the `!` at the end.
+`Button`, `buttonClasses`, `ImageGallery` and `Lightbox` (#471), and `Input`, `Textarea`, `Select`,
+`EnhancedForm` and `Field`'s label (#511), in `@spy4x/preact-ui` compose their classes with `join`,
+so an island that renders them carries no `tailwind-merge`; `CopyButton` and `ZoomableImages` pass
+their `class` to `Button` and `Lightbox`, so the same holds for them. Their `class` is appended to
+their own classes, not merged into them: to replace one of their own utilities, mark the
+replacement important, `<Button class="px-8!">`. Tailwind 4 writes the `!` at the end.
 
 ## The theme-class rule
 
@@ -3980,13 +3980,14 @@ Preact + Tailwind primitives extracted from earlier source applications.
   glyphs come from `@spy4x/preact-icons`.
 - **Server-renderable.** `document`, `navigator` and timers are touched inside effects or event
   handlers only.
-- **A `class` is merged, except on six exports.** Most components pass a caller's `class` through
+- **A `class` is merged, except on ten exports.** Most components pass a caller's `class` through
   `cn` from `@spy4x/preact-cn`, so a caller's utility replaces the component's own of the same
-  group. `Button`, `buttonClasses`, `ImageGallery` and `Lightbox` use `join` instead, and `CopyButton`
-  and `ZoomableImages` hand their `class` to `Button` and `Lightbox`, so a browser bundle that
-  renders them carries no `tailwind-merge`, about 28 KB minified (#471): their `class`
-  is appended after their own classes, and replaces one of them only when it is marked important,
-  `<Button class="px-8!">`. Every component the library renders keeps one utility per group on an
+  group. `Button`, `buttonClasses`, `ImageGallery`, `Lightbox` (#471), `Input`, `Textarea`, `Select`
+  and `EnhancedForm` (#511) use `join` instead, and `CopyButton` and `ZoomableImages` hand their
+  `class` to `Button` and `Lightbox`, so a browser bundle that renders them carries no
+  `tailwind-merge`, about 28 KB minified. `Field` puts its `class` on its wrapper unchanged, as
+  before. Their `class` is appended after their own classes, and replaces one of them only when
+  it is marked important, `<Button class="px-8!">`. Every component the library renders keeps one utility per group on an
   element; `ui-guide/class-conflicts.test.tsx` holds that for every card in the guide.
 - **One Preact option hook, for four components' refs.** `./forward-ref.ts`'s hook, installed on
   Preact's shared `options` object, is what lets `Input`, `Button`, `Checkbox` and `Radio` forward
