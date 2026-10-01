@@ -7,7 +7,7 @@ describe("InputButton", () => {
   it("renders an input with the shipped input class and a trailing button", () => {
     const html = render(<InputButton icon="🔍" iconLabel="Search" />)
 
-    expect(html).toContain('class="input pr-12"')
+    expect(html).toContain('class="pc-input pr-12"')
     expect(html).toContain('class="btn-input-icon"')
     expect(html.indexOf("<input")).toBeLessThan(html.indexOf("<button"))
   })
@@ -71,7 +71,7 @@ describe("InputButton", () => {
       <InputButton icon="Go" iconLabel="Run" iconMarginClass="pr-16" />,
     )
 
-    expect(html).toContain('class="input pr-16"')
+    expect(html).toContain('class="pc-input pr-16"')
     expect(html).not.toContain("pr-12")
   })
 

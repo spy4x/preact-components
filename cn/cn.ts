@@ -10,7 +10,7 @@ export { join } from "./join.ts"
  * reaching the DOM and leaving the winner to CSS source order.
  *
  * `twMerge` only knows Tailwind's own utility groups — it does not know this repository's theme
- * component classes (`btn-*`, `input`, `badge-*`, …), and it is not taught them here, because that
+ * component classes (`btn-*`, `pc-input`, `badge-*`, …), and it is not taught them here, because that
  * list would be hand-kept and would drift from `theme/`. Do not override a theme component class
  * through `class`; pick the variant through the component's own prop instead. Two theme classes
  * passed to `cn` are both kept — `cn("btn-primary", "btn-danger")` is `"btn-primary btn-danger"` —

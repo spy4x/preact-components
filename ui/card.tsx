@@ -69,25 +69,25 @@ export type CardHeaderProps =
 /**
  * Card surface.
  *
- * Emits the shipped `card` utility and nothing else, so it carries no opinion about padding,
+ * Emits the shipped `pc-card` utility and nothing else, so it carries no opinion about padding,
  * colour or width beyond the preset. Header, body and footer are all optional children.
  */
 export function Card({ children, class: className, ...rest }: CardProps): JSX.Element {
-  return <div {...rest} class={cn("card", className)}>{children}</div>
+  return <div {...rest} class={cn("pc-card", className)}>{children}</div>
 }
 
 /**
  * Card header: a title plus a right-aligned action, or raw children.
  *
  * `children` win over `title`/`action` whenever they are present, because a caller carrying its own
- * header markup is the more specific intent. Both modes lay out through the shipped `card-header`
+ * header markup is the more specific intent. Both modes lay out through the shipped `pc-card-header`
  * utility, whose own `flex items-center justify-between` is what puts `action` on the right.
  */
 export function CardHeader(
   { class: className, children, title, action, headingLevel, ...attrs }: CardHeaderProps,
 ): JSX.Element {
   if (children !== undefined && children !== null && children !== false) {
-    return <div {...attrs} class={cn("card-header", className)}>{children}</div>
+    return <div {...attrs} class={cn("pc-card-header", className)}>{children}</div>
   }
 
   // A heading only when asked for: `headingLevel` is opt-in, so an existing caller's markup is
@@ -96,7 +96,7 @@ export function CardHeader(
   const Title = headingLevel === undefined ? "span" : `h${headingLevel}` as "h2"
 
   return (
-    <div {...attrs} class={cn("card-header", className)}>
+    <div {...attrs} class={cn("pc-card-header", className)}>
       <Title class="text-lg font-semibold">{title}</Title>
       {action && <div class="flex items-center gap-2">{action}</div>}
     </div>
@@ -105,12 +105,12 @@ export function CardHeader(
 
 /** Card body: the content region of a {@link Card}. */
 export function CardBody({ children, class: className, ...rest }: CardBodyProps): JSX.Element {
-  return <div {...rest} class={cn("card-body", className)}>{children}</div>
+  return <div {...rest} class={cn("pc-card-body", className)}>{children}</div>
 }
 
 /** Card footer: a divider-separated action row at the bottom of a {@link Card}. */
 export function CardFooter(
   { children, class: className, ...rest }: CardFooterProps,
 ): JSX.Element {
-  return <div {...rest} class={cn("card-footer", className)}>{children}</div>
+  return <div {...rest} class={cn("pc-card-footer", className)}>{children}</div>
 }

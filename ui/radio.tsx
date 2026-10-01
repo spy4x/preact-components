@@ -66,8 +66,8 @@ export const Radio: (
   ref,
 ) {
   return (
-    <label class={cn("label", "gap-2 items-center", labelClass)}>
-      <input {...rest} ref={ref} type="radio" class={cn("radio", className)} />
+    <label class={cn("pc-label", "gap-2 items-center", labelClass)}>
+      <input {...rest} ref={ref} type="radio" class={cn("pc-radio", className)} />
       {children}
     </label>
   )
@@ -102,7 +102,7 @@ export function RadioGroup(
 
   return (
     <fieldset {...rest} class={cn(className)}>
-      <legend class="label mb-2">{legend}</legend>
+      <legend class="pc-label mb-2">{legend}</legend>
       <div class="flex flex-col gap-2">
         {options.map((option, index) => (
           <Radio

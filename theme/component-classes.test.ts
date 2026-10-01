@@ -9,6 +9,7 @@
 
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
+import { Scanner } from "@tailwindcss/oxide"
 import { compile } from "tailwindcss"
 import { fileURLToPath } from "node:url"
 import { COMPONENT_CLASSES } from "./+index.ts"
@@ -81,6 +82,76 @@ describe("colour classes in ui/", () => {
     // A class that generates nothing is dropped from COMPONENT_CLASSES without a word, and the
     // component then draws no colour at all (`ring-scrim-foreground` did).
     expect(silent).toEqual([])
+  })
+})
+
+/**
+ * A page an app writes, in its own words: every word the preset once had a class for appears in
+ * its text, its markup and its code, as it would in a real form, dashboard or article (#469).
+ */
+const APP_PAGE = `
+<h2>Billing</h2>
+<p>Type your address into an input field, select a plan, then check the card for a link to the bar
+chart. Each label sits beside its checkbox or radio; a textarea takes the notes. The kpi row shows
+one num per scrollbar step, from h1 down to h5.</p>
+<input type="checkbox" name="link" /> <label for="card">card</label>
+<script>const input = select(card.link, bar, num, kpi)</script>
+`
+
+/** The class names Tailwind's own scanner extracts from `content`, as an app's build sees them. */
+function scannedWords(content: string): string[] {
+  return new Scanner({}).getCandidatesWithPositions({ content, extension: "html" }).map((
+    { candidate },
+  ) => candidate)
+}
+
+/** The prefix every preset utility named after a plain word carries (#469). */
+const PREFIX = "pc-"
+
+/**
+ * The preset utilities that may stay unprefixed: those named inside a Tailwind utility namespace
+ * (`text-`, `bg-`, `border-`, …), which no app writes as an ordinary word, the `btn` family, and
+ * the deprecated `page-layout`. Any other name has to carry {@link PREFIX}.
+ */
+const NAMESPACED =
+  /^(?:(?:text|bg|border|rounded|ring|divide|decoration|shadow|font|pb|list)-|btn(?:-|$)|page-layout$)/
+
+/** Every `@utility` name `preset.css` defines, read from the file itself. */
+async function presetUtilityNames(): Promise<string[]> {
+  const css = await Deno.readTextFile(new URL("./preset.css", import.meta.url))
+  return [...css.matchAll(/^@utility ([\w-]+)/gm)].map(([, name]) => name ?? "")
+}
+
+describe("an app's own words", () => {
+  it("emit none of the preset's rules", async () => {
+    const words = scannedWords(APP_PAGE)
+    // The scanner does read these words, so the check below is about the preset, not the scanner.
+    const preset = ["input", "select", "card", "link", "label", "checkbox", "bar", "num", "h1"]
+    expect(preset.filter((word) => !words.includes(word))).toEqual([])
+    expect(await build(APP_ENTRY, words)).toBe(await build(APP_ENTRY, []))
+  })
+
+  it("emit nothing for any preset utility's name without its prefix", async () => {
+    const names = await presetUtilityNames()
+    const prefixed = names.filter((name) => name.startsWith(PREFIX))
+    expect(prefixed.length).toBeGreaterThan(0)
+    const bare = prefixed.map((name) => name.slice(PREFIX.length))
+    expect(await build(APP_ENTRY, bare)).toBe(await build(APP_ENTRY, []))
+  })
+
+  it("emit the prefixed rule once the app names it", async () => {
+    expect(await build(APP_ENTRY, scannedWords(`<div class="pc-card">x</div>`))).toContain(
+      ".pc-card",
+    )
+  })
+})
+
+describe("preset.css utility names", () => {
+  it("prefixes every one outside a Tailwind namespace and the button family", async () => {
+    const unprefixed = (await presetUtilityNames()).filter((name) =>
+      !name.startsWith(PREFIX) && !NAMESPACED.test(name)
+    )
+    expect(unprefixed).toEqual([])
   })
 })
 

@@ -41,7 +41,7 @@ the replacement important, `<Button class="px-8!">`. Tailwind 4 writes the `!` a
 ## The theme-class rule
 
 `tailwind-merge` knows Tailwind's own utility groups. It is not taught this repository's theme
-component classes (`btn-*`, `input`, `badge-*`, …) — that list would be hand-kept and would drift
+component classes (`btn-*`, `pc-input`, `badge-*`, …) — that list would be hand-kept and would drift
 from `theme/`. So:
 
 - Do not override a theme component class through `class`; pick the variant through the

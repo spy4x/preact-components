@@ -61,7 +61,7 @@ export function InputButton(
       <input
         {...rest}
         disabled={disabled}
-        class={cn("input", iconMarginClass ?? "pr-12", className)}
+        class={cn("pc-input", iconMarginClass ?? "pr-12", className)}
       />
       <div class="absolute top-1.5 right-1.5">
         <button

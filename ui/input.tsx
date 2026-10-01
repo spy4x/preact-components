@@ -5,7 +5,7 @@ import { forwardRef } from "./forward-ref.ts"
 /**
  * The single-line text control of the library.
  *
- * A real `<input>` with `.input` on it: every native attribute (`type`, `name`, `placeholder`,
+ * A real `<input>` with `.pc-input` on it: every native attribute (`type`, `name`, `placeholder`,
  * `required`, `autocomplete`, `disabled`, `aria-*`, …) passes straight through, so nothing the
  * platform already does is reimplemented here.
  */
@@ -53,12 +53,12 @@ export const Input: (
   { class: className, ...rest },
   ref,
 ) {
-  return <input {...rest} ref={ref} class={cn("input", className)} />
+  return <input {...rest} ref={ref} class={cn("pc-input", className)} />
 })
 
 /** Controlled multi-line input. See {@link Input} for the state contract. */
 export function Textarea({ class: className, ...rest }: TextareaProps): JSX.Element {
-  return <textarea {...rest} class={cn("textarea", className)} />
+  return <textarea {...rest} class={cn("pc-textarea", className)} />
 }
 
 /**
@@ -73,7 +73,7 @@ export function Select(
   { class: className, options, placeholder, ...rest }: SelectProps,
 ): JSX.Element {
   return (
-    <select {...rest} class={cn("select", className)}>
+    <select {...rest} class={cn("pc-select", className)}>
       {placeholder !== undefined && <option value="">{placeholder}</option>}
       {options.map((option) => (
         <option key={String(option.value)} value={String(option.value)}>{option.label}</option>

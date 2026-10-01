@@ -12,7 +12,7 @@
  * The scanner reports every word that could be a class; the list keeps only the words Tailwind
  * compiles to CSS against `tailwindcss` plus this package's `tokens.css`, `ink.css` and
  * `preset.css`, the same stylesheets an app compiles against. That drops prose and identifiers
- * and keeps the preset's own utilities (`btn`, `card`, …), which are `@utility` rules and so are
+ * and keeps the preset's own utilities (`btn`, `pc-card`, …), which are `@utility` rules and so are
  * emitted only when named.
  *
  * Run it after changing a class in any package:

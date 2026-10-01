@@ -57,7 +57,7 @@ async function compileInk(candidates: string[]): Promise<string> {
 
 describe("the ink theme", () => {
   it("compiles through the real Tailwind compiler", async () => {
-    const css = await compileInk(["btn", "btn-primary", "card", "bg-canvas", "bg-primary"])
+    const css = await compileInk(["btn", "btn-primary", "pc-card", "bg-canvas", "bg-primary"])
     expect(css).toContain('.dark[data-theme="ink"]')
   })
 
@@ -115,7 +115,7 @@ describe("the ink theme", () => {
   })
 
   it("points the input, select and textarea focus outline at --color-focus-ring", async () => {
-    const css = await compileInk(["input", "select", "textarea"])
+    const css = await compileInk(["pc-input", "pc-select", "pc-textarea"])
     expect(css).toContain("outline: 1px solid var(--color-focus-ring, var(--color-primary-muted")
   })
 })

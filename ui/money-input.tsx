@@ -291,7 +291,7 @@ export function MoneyInput(
         value={draft.value}
         disabled={disabled}
         placeholder={placeholder}
-        class={cn("input", className)}
+        class={cn("pc-input", className)}
         aria-describedby={describedBy}
         aria-invalid={message.value ? true : undefined}
         onInput={handleInput}

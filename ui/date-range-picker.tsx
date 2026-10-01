@@ -185,7 +185,7 @@ const panelClasses =
   "absolute z-10 mt-2 w-80 rounded-md bg-surface p-3 shadow-popover ring-1 ring-subtle"
 
 /**
- * The From and To fields. They carry their own utilities rather than the theme's `.input`, which is
+ * The From and To fields. They carry their own utilities rather than the theme's `.pc-input`, which is
  * `h-12` and would crowd a compact popover, so they also set the dark `color-scheme` themselves: the
  * browser draws a native date field's calendar icon from it, and without it the icon is black on
  * the dark field (#379).

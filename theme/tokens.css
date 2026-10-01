@@ -64,9 +64,9 @@
     --color-selected-hover: var(--color-accent-800); /* the fill under the pointer */
     --color-selected-soft-hover: var(--color-accent-100); /* the quiet background under the pointer */
 
-    /* Focus — the preset's own rings (`.input`, `.select`, `.textarea`, `.btn` under `.dark`) read
-       --color-focus-ring, which is not declared here: they draw --color-primary-muted until an app
-       sets it. The components draw --color-ring through `ring-focus`, set off by --color-focus-offset
+    /* Focus — the preset's own rings (`.pc-input`, `.pc-select`, `.pc-textarea`, `.btn` under
+       `.dark`) read --color-focus-ring, which is not declared here: they draw --color-primary-muted
+       until an app sets it. The components draw --color-ring through `ring-focus`, set off by --color-focus-offset
        (`ring-offset-focus`): the offset is the page colour, so the gap looks like the page. */
     --color-focus-offset: var(--color-canvas);
     /* The ring the components draw (`ring-focus`): the accent, in both palettes. --color-focus-ring
@@ -131,7 +131,8 @@
        `@theme { --font-sans: … }` (README.md → "Theming" → "Fonts"). */
     /* --font-heading is deliberately not declared: unset, a heading inherits its font like any other
        text, so a `font-mono` wrapper still sets its headings. An app sets it (to a serif, say) and
-       h1-h6 under `.theme-base`, the preset's `h1`-`h5` classes and `font-heading` draw in it. */
+       h1-h6 under `.theme-base`, the preset's `pc-h1`-`pc-h5` classes and `font-heading` draw in
+       it. */
     /* --font-serif and --font-mono are deliberately not redeclared here either: Tailwind 4 already
        defines both (see README.md → "Theming" → "Fonts"). #257 asked for the two tokens to exist,
        not for this package to own their default value. */

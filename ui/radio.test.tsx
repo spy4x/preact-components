@@ -22,13 +22,13 @@ describe("Radio", () => {
     const html = render(<Radio name="notification-method" value="email">Email</Radio>)
 
     expect(html).toContain('type="radio"')
-    expect(html).toContain('class="radio"')
+    expect(html).toContain('class="pc-radio"')
   })
 
   it("binds the choice to its label by wrapping it", () => {
     const html = render(<Radio name="m" value="email">Email</Radio>)
 
-    expect(html).toContain('<label class="label gap-2 items-center"')
+    expect(html).toContain('<label class="pc-label gap-2 items-center"')
     expect(html.indexOf("<input")).toBeLessThan(html.indexOf("Email"))
     expect(html.indexOf("Email")).toBeLessThan(html.indexOf("</label>"))
     expect(html).not.toContain("for=")
@@ -42,8 +42,8 @@ describe("Radio", () => {
   it("keeps the caller's box class and wrapper class apart", () => {
     const html = render(<Radio class="size-5" labelClass="mt-4">Email</Radio>)
 
-    expect(html).toContain("radio size-5")
-    expect(html).toContain("label gap-2 items-center mt-4")
+    expect(html).toContain("pc-radio size-5")
+    expect(html).toContain("pc-label gap-2 items-center mt-4")
   })
 })
 
@@ -56,7 +56,7 @@ describe("RadioGroup", () => {
     expect(html).toContain("<fieldset")
     expect(html).toContain("<legend")
     expect(html).toContain("Notification method")
-    expect(html).toContain('class="label mb-2"')
+    expect(html).toContain('class="pc-label mb-2"')
     expect(html.indexOf("<legend")).toBeLessThan(html.indexOf("<input"))
   })
 
@@ -227,7 +227,7 @@ describe("RadioGroup", () => {
     expect(labelsNaming(html, "notification-method-0")).toBe(1)
     expect(html.match(/<legend/g)?.length).toBe(1)
     expect(html).toContain(
-      '<label class="label gap-2 items-center"><input id="notification-method-0"',
+      '<label class="pc-label gap-2 items-center"><input id="notification-method-0"',
     )
   })
 

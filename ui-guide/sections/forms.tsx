@@ -22,10 +22,10 @@ function InputDemo() {
 
   return (
     <Stack gap="sm" class="max-w-sm">
-      <label class="label" for="guide-input-email">Email</label>
+      <label class="pc-label" for="guide-input-email">Email</label>
       <input
         id="guide-input-email"
-        class="input"
+        class="pc-input"
         type="email"
         name="guide-input-email"
         placeholder="you@example.com"
@@ -33,7 +33,7 @@ function InputDemo() {
         onInput={(event) => email.value = event.currentTarget.value}
       />
       <input
-        class="input"
+        class="pc-input"
         name="guide-input-disabled"
         placeholder="Disabled"
         aria-label="Disabled input"
@@ -52,10 +52,10 @@ function SelectDemo() {
 
   return (
     <Stack gap="sm" class="max-w-sm">
-      <label class="label" for="guide-select-role">Role</label>
+      <label class="pc-label" for="guide-select-role">Role</label>
       <select
         id="guide-select-role"
-        class="select"
+        class="pc-select"
         name="guide-select-role"
         value={role.value}
         onChange={(event) => role.value = event.currentTarget.value}
@@ -64,7 +64,7 @@ function SelectDemo() {
         <option value="editor">Editor</option>
         <option value="viewer">Viewer</option>
       </select>
-      <select class="select" aria-label="Disabled select" disabled>
+      <select class="pc-select" aria-label="Disabled select" disabled>
         <option>Disabled</option>
       </select>
       <p class="text-xs text-muted" data-e2e="controlled-value">role: {role.value}</p>
@@ -72,16 +72,16 @@ function SelectDemo() {
   )
 }
 
-/** The multi-line control: `.textarea` is `.input` plus a floor height and inner padding. */
+/** The multi-line control: `.pc-textarea` is `.pc-input` plus a floor height and inner padding. */
 function TextareaDemo() {
   const notes = useSignal("Runs the night shift.\nKeeps the pager.")
 
   return (
     <Stack gap="sm" class="max-w-sm">
-      <label class="label" for="guide-textarea-notes">Notes</label>
+      <label class="pc-label" for="guide-textarea-notes">Notes</label>
       <textarea
         id="guide-textarea-notes"
-        class="textarea"
+        class="pc-textarea"
         name="guide-textarea-notes"
         rows={3}
         placeholder="Anything the next person should know"
@@ -98,7 +98,7 @@ function TextareaDemo() {
 /**
  * The two label placements and the three states that go with them.
  *
- * `.label` is one class either way: above the control for a stacked field, below it when the value
+ * `.pc-label` is one class either way: above the control for a stacked field, below it when the value
  * matters more than the name. The required marker, the hint and the error are text with
  * `.text-danger`/`.text-muted` — the preset ships no `[aria-invalid]` styling, so colour plus
  * `aria-describedby` is what carries the state to both a reader and a screen reader.
@@ -111,12 +111,12 @@ function LabelDemo() {
   return (
     <Grid gap="lg" minColumnWidth="md">
       <Stack gap="sm">
-        <label class="label" for="guide-label-name">
+        <label class="pc-label" for="guide-label-name">
           Name <span class="text-danger" aria-hidden="true">*</span>
         </label>
         <input
           id="guide-label-name"
-          class="input"
+          class="pc-input"
           aria-required="true"
           aria-invalid={invalid || undefined}
           aria-describedby={invalid ? "guide-label-name-error" : "guide-label-name-hint"}
@@ -137,20 +137,20 @@ function LabelDemo() {
       </Stack>
 
       <Stack gap="sm">
-        <input id="guide-label-suffix" class="input" value="Ref 2024-0917" />
-        <label class="label" for="guide-label-suffix">Reference, label under the control</label>
+        <input id="guide-label-suffix" class="pc-input" value="Ref 2024-0917" />
+        <label class="pc-label" for="guide-label-suffix">Reference, label under the control</label>
       </Stack>
 
       <Stack gap="sm">
-        <input id="guide-label-disabled" class="input" value="Locked" disabled />
-        <label class="label text-muted" for="guide-label-disabled">Disabled field</label>
+        <input id="guide-label-disabled" class="pc-input" value="Locked" disabled />
+        <label class="pc-label text-muted" for="guide-label-disabled">Disabled field</label>
       </Stack>
 
       <Stack gap="sm">
-        <label class="label" for="guide-label-archived">
+        <label class="pc-label" for="guide-label-archived">
           <input
             id="guide-label-archived"
-            class="checkbox"
+            class="pc-checkbox"
             type="checkbox"
             checked={archived.value}
             onChange={(event) => archived.value = event.currentTarget.checked}
@@ -169,10 +169,10 @@ function CheckboxDemo() {
 
   return (
     <Stack gap="sm" class="max-w-sm">
-      <label class="label" for="guide-checkbox-archived">
+      <label class="pc-label" for="guide-checkbox-archived">
         <input
           id="guide-checkbox-archived"
-          class="checkbox"
+          class="pc-checkbox"
           type="checkbox"
           name="guide-checkbox-archived"
           checked={archived.value}
@@ -180,10 +180,10 @@ function CheckboxDemo() {
         />
         Show archived rows
       </label>
-      <label class="label" for="guide-checkbox-notify">
+      <label class="pc-label" for="guide-checkbox-notify">
         <input
           id="guide-checkbox-notify"
-          class="checkbox"
+          class="pc-checkbox"
           type="checkbox"
           name="guide-checkbox-notify"
           checked={notify.value}
@@ -191,8 +191,8 @@ function CheckboxDemo() {
         />
         Email me about it
       </label>
-      <label class="label" for="guide-checkbox-disabled">
-        <input id="guide-checkbox-disabled" class="checkbox" type="checkbox" disabled />
+      <label class="pc-label" for="guide-checkbox-disabled">
+        <input id="guide-checkbox-disabled" class="pc-checkbox" type="checkbox" disabled />
         Disabled
       </label>
       <p class="text-xs text-muted" data-e2e="controlled-value">
@@ -209,16 +209,16 @@ function RadioDemo() {
   return (
     <Stack gap="sm" class="max-w-sm">
       <Stack as="fieldset" gap="sm">
-        <legend class="label">Notification method</legend>
+        <legend class="pc-label">Notification method</legend>
         {[
           { value: "email", label: "Email" },
           { value: "sms", label: "Phone (SMS)" },
           { value: "push", label: "Push notification" },
         ].map((option) => (
-          <label key={option.value} class="label" for={`guide-radio-${option.value}`}>
+          <label key={option.value} class="pc-label" for={`guide-radio-${option.value}`}>
             <input
               id={`guide-radio-${option.value}`}
-              class="radio"
+              class="pc-radio"
               type="radio"
               name="guide-radio-channel"
               value={option.value}
@@ -236,10 +236,10 @@ function RadioDemo() {
 }
 
 /**
- * The `.btn-input-icon` pattern: a `.input` with a button positioned inside its right edge.
+ * The `.btn-input-icon` pattern: a `.pc-input` with a button positioned inside its right edge.
  *
  * The utilities around it are the layout the pattern needs — `.btn-input-icon` styles the button,
- * `.input` styles the field, and the reserved right padding is what keeps the typed text out from
+ * `.pc-input` styles the field, and the reserved right padding is what keeps the typed text out from
  * under the button.
  */
 function InputButtonDemo() {
@@ -249,7 +249,7 @@ function InputButtonDemo() {
     <Stack gap="sm" class="max-w-sm">
       <div class="relative">
         <input
-          class="input pr-12"
+          class="pc-input pr-12"
           type="search"
           name="guide-input-button"
           placeholder="Search users"
@@ -277,11 +277,11 @@ function InputButtonDemo() {
 export const formDemos = {
   "class-input": {
     title: "Input",
-    classes: ["input", "label", "text-muted"],
+    classes: ["pc-input", "pc-label", "text-muted"],
     summary: "Styles a native text field, so a form needs no input component.",
     wide: false,
     snippet: `<input
-  class="input"
+  class="pc-input"
   type="email"
   placeholder="you@example.com"
   value={email.value}
@@ -291,11 +291,11 @@ export const formDemos = {
   },
   "class-select": {
     title: "Select",
-    classes: ["select", "label", "text-muted"],
+    classes: ["pc-select", "pc-label", "text-muted"],
     summary: "Styles a native drop-down to match the text field beside it.",
     wide: false,
     snippet:
-      `<select class="select" value={role.value} onChange={(event) => role.value = event.currentTarget.value}>
+      `<select class="pc-select" value={role.value} onChange={(event) => role.value = event.currentTarget.value}>
   <option value="admin">Administrator</option>
   <option value="editor">Editor</option>
 </select>`,
@@ -303,12 +303,12 @@ export const formDemos = {
   },
   "class-textarea": {
     title: "Textarea",
-    classes: ["textarea", "label", "text-muted"],
+    classes: ["pc-textarea", "pc-label", "text-muted"],
     summary:
       "Styles a native multi-line field, with a floor height so a short note still looks deliberate.",
     wide: false,
     snippet: `<textarea
-  class="textarea"
+  class="pc-textarea"
   rows={3}
   placeholder="Anything the next person should know"
   value={notes.value}
@@ -318,12 +318,12 @@ export const formDemos = {
   },
   "class-input-button": {
     title: "Input with an inline button",
-    classes: ["btn-input-icon", "input", "text-muted"],
+    classes: ["btn-input-icon", "pc-input", "text-muted"],
     summary:
       "Puts a small square button, such as search or clear, inside the right edge of a text field.",
     wide: false,
     snippet: `<div class="relative">
-  <input class="input pr-12" type="search" placeholder="Search users" />
+  <input class="pc-input pr-12" type="search" placeholder="Search users" />
   <button class="btn-input-icon absolute inset-y-0 right-1.5 my-auto" type="button" aria-label="Search">
     <IconSearch class="size-4" />
   </button>
@@ -332,14 +332,14 @@ export const formDemos = {
   },
   "class-checkbox": {
     title: "Checkbox",
-    classes: ["checkbox", "label", "text-muted"],
+    classes: ["pc-checkbox", "pc-label", "text-muted"],
     summary:
       "Styles a native checkbox, with its label wrapped around it so the text is part of the hit area.",
     wide: false,
-    snippet: `<label class="label" for="archived">
+    snippet: `<label class="pc-label" for="archived">
   <input
     id="archived"
-    class="checkbox"
+    class="pc-checkbox"
     type="checkbox"
     checked={archived.value}
     onChange={(event) => archived.value = event.currentTarget.checked}
@@ -350,14 +350,14 @@ export const formDemos = {
   },
   "class-radio": {
     title: "Radio",
-    classes: ["radio", "label", "text-muted"],
+    classes: ["pc-radio", "pc-label", "text-muted"],
     summary:
       "Styles native radio buttons, grouped in a `fieldset` whose `legend` names the choice.",
     wide: false,
     snippet: `<fieldset>
-  <legend class="label">Notification method</legend>
-  <label class="label" for="sms">
-    <input id="sms" class="radio" type="radio" name="channel" value="sms"
+  <legend class="pc-label">Notification method</legend>
+  <label class="pc-label" for="sms">
+    <input id="sms" class="pc-radio" type="radio" name="channel" value="sms"
       checked={channel.value === "sms"}
       onChange={() => channel.value = "sms"} />
     Phone (SMS)
@@ -367,19 +367,19 @@ export const formDemos = {
   },
   "class-label": {
     title: "Labels and their placement",
-    classes: ["label", "input", "checkbox", "text-muted", "text-danger"],
+    classes: ["pc-label", "pc-input", "pc-checkbox", "text-muted", "text-danger"],
     summary:
       "Names a field from above it or below it, with a required marker, a hint and an error shown as plain text.",
     wide: true,
     snippet: `<div class="grid gap-2">
-  <label class="label" for="name">Name <span class="text-danger">*</span></label>
-  <input id="name" class="input" aria-describedby="name-hint" value={name.value} />
+  <label class="pc-label" for="name">Name <span class="text-danger">*</span></label>
+  <input id="name" class="pc-input" aria-describedby="name-hint" value={name.value} />
   <p id="name-hint" class="text-xs text-muted">As it appears on the contract.</p>
 </div>
 
 <!-- the suffix placement: the label follows the control -->
-<input id="ref" class="input" value="Ref 2024-0917" />
-<label class="label" for="ref">Reference</label>`,
+<input id="ref" class="pc-input" value="Ref 2024-0917" />
+<label class="pc-label" for="ref">Reference</label>`,
     render: () => <LabelDemo />,
   },
 } satisfies ClassDemoFragment

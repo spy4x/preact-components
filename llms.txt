@@ -677,7 +677,7 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `resolveMoneyInputEdit` (helper): The whole decision one edit of `MoneyInput`'s text makes, as a pure function with no signal, ref or DOM in it — everything `MoneyInput` itself does with an edit is call this and apply the result. Import: `@spy4x/preact-ui`
 - `OnOffButtons` (component): Segmented ON/OFF pair, optionally annotated with counts. Import: `@spy4x/preact-ui`
 - `OnOffButtonsProps` (type): Props of `OnOffButtons`. Import: `@spy4x/preact-ui`
-- `PageTitle` (component): Page heading with the library's `h1` typography inlined. Import: `@spy4x/preact-ui`
+- `PageTitle` (component): Page heading with the library's `pc-h1` typography inlined. Import: `@spy4x/preact-ui`
 - `PageTitleProps` (type): Props of `PageTitle`. Import: `@spy4x/preact-ui`
 - `pageRange` (helper): Collapse a page range into the items a pagination control renders. Import: `@spy4x/preact-ui`
 - `PageRangeItem` (type): One item of the range a pagination control renders: a real page, or a collapsed run of pages. Import: `@spy4x/preact-ui`

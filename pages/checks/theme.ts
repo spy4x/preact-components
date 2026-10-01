@@ -20,7 +20,7 @@ import {
  */
 export async function themeChecks(devtools: Devtools): Promise<void> {
   // The form chapter is a section of the theme rather than of `ui/`, so the interaction is the
-  // native one: type into `.input`, toggle `.checkbox`, pick a `.radio`. The computed styles are
+  // native one: type into `.pc-input`, toggle `.pc-checkbox`, pick a `.pc-radio`. The computed styles are
   // what says the class itself reached the browser, not only the markup.
   const forms = await devtools.evaluate<{
     echoBefore: string
@@ -37,18 +37,18 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
     const echo = (card) => document.querySelector("#demo-" + card + ' [data-e2e="controlled-value"]')
       .textContent.trim()
 
-    const input = document.querySelector("#demo-class-input input.input")
+    const input = document.querySelector("#demo-class-input input.pc-input")
     const echoBefore = echo("class-input")
     input.value = "ada@example.com"
     input.dispatchEvent(new Event("input", { bubbles: true }))
     await settle()
 
-    const box = document.querySelector("#demo-class-checkbox input.checkbox")
+    const box = document.querySelector("#demo-class-checkbox input.pc-checkbox")
     const checkboxBefore = echo("class-checkbox")
     box.click()
     await settle()
 
-    const radio = document.querySelector('#demo-class-radio input.radio[value="sms"]')
+    const radio = document.querySelector('#demo-class-radio input.pc-radio[value="sms"]')
     radio.click()
     await settle()
 
@@ -66,7 +66,7 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
     }
   })()`)
   check(
-    "typing into a `.input` drives the demo's controlled value",
+    "typing into a `.pc-input` drives the demo's controlled value",
     forms.echoBefore !== forms.echoAfter && forms.echoAfter.includes("ada@example.com"),
     `${forms.echoBefore} → ${forms.echoAfter}`,
   )
@@ -74,11 +74,11 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
     "the form classes reach the browser",
     forms.inputHeight === "48px" && forms.inputRadius === "8px" &&
       forms.checkboxSize === "20px",
-    `.input ${forms.inputHeight}/radius ${forms.inputRadius} (h-12, radius-primary), ` +
-      `.checkbox ${forms.checkboxSize} (size-5)`,
+    `.pc-input ${forms.inputHeight}/radius ${forms.inputRadius} (h-12, radius-primary), ` +
+      `.pc-checkbox ${forms.checkboxSize} (size-5)`,
   )
   check(
-    "a `.checkbox` and a `.radio` report through the native events",
+    "a `.pc-checkbox` and a `.pc-radio` report through the native events",
     forms.checkboxBefore !== forms.checkboxAfter && forms.radio.includes("sms"),
     `${forms.checkboxBefore} → ${forms.checkboxAfter}; radio ${forms.radio}`,
   )
@@ -113,24 +113,24 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
     await new Promise((done) => setTimeout(done, 50))
 
     return {
-      cardRadius: style("#demo-class-card .card").borderRadius,
-      headerBorder: style("#demo-class-card .card-header").borderBottomWidth,
-      footerBorder: style("#demo-class-card .card-footer").borderTopWidth,
-      kpiValue: style("#demo-class-data-display .kpi-value").fontSize,
-      numAlign: style("#demo-class-data-display .num").textAlign,
-      barHeight: style("#demo-class-data-display .bar").height,
+      cardRadius: style("#demo-class-card .pc-card").borderRadius,
+      headerBorder: style("#demo-class-card .pc-card-header").borderBottomWidth,
+      footerBorder: style("#demo-class-card .pc-card-footer").borderTopWidth,
+      kpiValue: style("#demo-class-data-display .pc-kpi-value").fontSize,
+      numAlign: style("#demo-class-data-display .pc-num").textAlign,
+      barHeight: style("#demo-class-data-display .pc-bar").height,
       scrolled: scroller.scrollLeft > 0,
       overflow,
       canvas: style("#demo-class-colour-atoms .bg-canvas").backgroundColor,
       surface: style("#demo-class-colour-atoms .bg-surface").backgroundColor,
-      link: style("#demo-class-typography .link").textDecorationLine,
-      // The .link class applies hover:no-underline, and an applied hover variant is gated by
+      link: style("#demo-class-typography .pc-link").textDecorationLine,
+      // The .pc-link class applies hover:no-underline, and an applied hover variant is gated by
       // "@media (hover: hover)" exactly like a utility written in the markup — checked against
       // the built stylesheet, not assumed. The browser is now hover-capable, so a pointer
       // resting on this link would take the underline away and this check would read the hovered
       // state as the resting one. Nothing moves a pointer before this file runs today; asserted
       // so that a later check which does fails here by name.
-      linkHovered: document.querySelector("#demo-class-typography .link").matches(":hover"),
+      linkHovered: document.querySelector("#demo-class-typography .pc-link").matches(":hover"),
       list: style("#demo-class-typography .list-ul").listStyleType,
     }
   })()`)
@@ -143,7 +143,7 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
       `footer ${surfaces.footerBorder}, kpi-value ${surfaces.kpiValue}, bar ${surfaces.barHeight}`,
   )
   check(
-    "`.num` right-aligns and `.list-ul`/`.link` style their text",
+    "`.pc-num` right-aligns and `.list-ul`/`.pc-link` style their text",
     surfaces.numAlign === "right" && surfaces.list === "disc" && surfaces.link === "underline" &&
       !surfaces.linkHovered,
     surfaces.linkHovered
@@ -153,7 +153,7 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
         `nothing hovering it`,
   )
   check(
-    "`.scrollbar` is a real horizontal scroller",
+    "`.pc-scrollbar` is a real horizontal scroller",
     surfaces.overflow && surfaces.scrolled,
     `overflow ${surfaces.overflow}, scrolled to a non-zero offset`,
   )
@@ -1290,14 +1290,14 @@ export async function darkControlsChecks(devtools: Devtools): Promise<void> {
     document.documentElement.classList.add("dark")
     // An unchecked box shows its own fill; a ticked one shows the accent over it.
     for (const control of document.querySelectorAll(
-      "#demo-Checkbox input.checkbox",
+      "#demo-Checkbox input.pc-checkbox",
     )) control.checked = false
     return was
   })()`)
   try {
     const checkbox = await luminanceAtCentre(
       devtools,
-      `document.querySelector("#demo-Checkbox input.checkbox")`,
+      `document.querySelector("#demo-Checkbox input.pc-checkbox")`,
     )
     check(
       "in the dark palette an unticked Checkbox is drawn dark, not as a white box",
@@ -1306,7 +1306,7 @@ export async function darkControlsChecks(devtools: Devtools): Promise<void> {
     )
     const radio = await luminanceAtCentre(
       devtools,
-      `[...document.querySelectorAll("#demo-Radio input.radio")].find((radio) => !radio.checked)`,
+      `[...document.querySelectorAll("#demo-Radio input.pc-radio")].find((radio) => !radio.checked)`,
     )
     check(
       "in the dark palette an unpicked Radio is drawn dark, not as a white disc",
@@ -1357,7 +1357,7 @@ export async function darkControlsChecks(devtools: Devtools): Promise<void> {
     for (const label of document.querySelectorAll(
       "#demo-Checkbox label, #demo-Radio label, #demo-RadioGroup label",
     )) {
-      const control = label.querySelector("input.checkbox, input.radio")
+      const control = label.querySelector("input.pc-checkbox, input.pc-radio")
       if (!control) continue
       const range = document.createRange()
       range.setStartAfter(control)
@@ -2197,7 +2197,7 @@ async function lightAccentChecks(devtools: Devtools): Promise<void> {
     const host = document.createElement("div")
     host.className = "font-mono"
     host.innerHTML = '<h3 id="hf-a">Wrapped</h3><h3 id="hf-b" class="font-sans">Own</h3>' +
-      '<h2 id="hf-c" class="h2">Class</h2>'
+      '<h2 id="hf-c" class="pc-h2">Class</h2>'
     document.body.append(host)
     const family = (id) => getComputedStyle(document.getElementById(id)).fontFamily
     const sansProbe = document.createElement("div")

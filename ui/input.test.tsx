@@ -7,7 +7,7 @@ describe("Input", () => {
   it("renders the shipped input class", () => {
     const html = render(<Input />)
 
-    expect(html).toContain('class="input"')
+    expect(html).toContain('class="pc-input"')
     expect(html).toContain("<input")
   })
 
@@ -48,7 +48,7 @@ describe("Input", () => {
 
     expect(html).toContain("my-3")
     expect(html).toContain("w-60")
-    expect(html).toContain("input")
+    expect(html).toContain("pc-input")
   })
 
   it("renders an aria-describedby and an id for a Field to point at", () => {
@@ -63,7 +63,7 @@ describe("Textarea", () => {
   it("renders the shipped textarea class", () => {
     const html = render(<Textarea />)
 
-    expect(html).toContain('class="textarea"')
+    expect(html).toContain('class="pc-textarea"')
     expect(html).toContain("<textarea")
   })
 
@@ -81,7 +81,7 @@ describe("Textarea", () => {
 
   it("appends a caller class instead of replacing the primitive's", () => {
     expect(render(<Textarea class="min-h-32" />)).toContain("min-h-32")
-    expect(render(<Textarea class="min-h-32" />)).toContain("textarea")
+    expect(render(<Textarea class="min-h-32" />)).toContain("pc-textarea")
   })
 })
 
@@ -89,7 +89,7 @@ describe("Select", () => {
   it("renders the shipped select class", () => {
     const html = render(<Select options={[]} />)
 
-    expect(html).toContain('class="select"')
+    expect(html).toContain('class="pc-select"')
     expect(html).toContain("<select")
   })
 
@@ -140,6 +140,6 @@ describe("Select", () => {
 
   it("appends a caller class instead of replacing the primitive's", () => {
     expect(render(<Select class="mt-2" options={[]} />)).toContain("mt-2")
-    expect(render(<Select class="mt-2" options={[]} />)).toContain("select")
+    expect(render(<Select class="mt-2" options={[]} />)).toContain("pc-select")
   })
 })

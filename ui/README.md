@@ -7,7 +7,7 @@ Preact + Tailwind primitives extracted from earlier source applications.
 - **Props and ports, never a global store.** No component imports an app's state singleton. App
   state arrives as props; side effects (clipboard, geolocation, toasts) arrive as callbacks.
 - **Tailwind classes, rendered against the theme.** Components write Tailwind utilities and the
-  theme's class names (`input`, `btn-input-icon`), so a page needs `theme/`'s stylesheet; a few
+  theme's class names (`pc-input`, `btn-input-icon`), so a page needs `theme/`'s stylesheet; a few
   glyphs come from `@spy4x/preact-icons`.
 - **Server-renderable.** `document`, `navigator` and timers are touched inside effects or event
   handlers only.

@@ -292,7 +292,7 @@ the replacement important, `<Button class="px-8!">`. Tailwind 4 writes the `!` a
 ## The theme-class rule
 
 `tailwind-merge` knows Tailwind's own utility groups. It is not taught this repository's theme
-component classes (`btn-*`, `input`, `badge-*`, …) — that list would be hand-kept and would drift
+component classes (`btn-*`, `pc-input`, `badge-*`, …) — that list would be hand-kept and would drift
 from `theme/`. So:
 
 - Do not override a theme component class through `class`; pick the variant through the
@@ -3364,12 +3364,32 @@ under "Install" instead.
 
 ### Classes
 
+A class named after a plain word carries the `pc-` prefix: `pc-input`, `pc-card`, `pc-link`,
+`pc-h2` and the rest below. Tailwind builds a utility for every class name it finds in an app's
+source, prose and comments included, so an unprefixed `card` or `link` was emitted, and painted
+whatever carried it, as soon as the word appeared anywhere in the app.
+
+**Moving to 2.0.0.** Until 2.0.0 these classes had no prefix. Rename each class where you use it;
+nothing else about them changed.
+
+| Before 2.0.0                                               | From 2.0.0                 |
+| ---------------------------------------------------------- | -------------------------- |
+| `h1` `h2` `h3` `h4` `h5`                                   | `pc-h1` … `pc-h5`          |
+| `link`                                                     | `pc-link`                  |
+| `input` `select` `textarea` `label` `checkbox` `radio`     | `pc-input` … `pc-radio`    |
+| `card` `card-header` `card-body` `card-footer` `scrollbar` | `pc-card` … `pc-scrollbar` |
+| `num` `kpi` `kpi-label` `kpi-value` `bar`                  | `pc-num` … `pc-bar`        |
+
+`pc-select` still draws what `pc-input` draws, through `@apply`, without putting the `pc-input` rule
+in the stylesheet. The `btn*`, colour, `list-ul`, `page-layout`, `theme-base`, `pb-safe*` and map
+classes keep their names: no app writes them as ordinary words.
+
 - **Colour atoms** — `text-primary`, `bg-primary`, `bg-primary-muted` (the accent as a fill,
   which stays visible in dark where `bg-primary` is near-black chrome), `border-primary`,
   `rounded-primary`, `text-muted`, `bg-canvas`, `bg-surface`, `border-subtle`,
   `border-control`, `bg-danger`, `bg-warning`, `bg-success` and the `text-*`
   status tones.
-- **Type** — `h1`–`h5`, `link`, `page-layout` (deprecated: use `Page` from
+- **Type** — `pc-h1`–`pc-h5`, `pc-link`, `page-layout` (deprecated: use `Page` from
   `@spy4x/preact-ui/layout`), `list-ul`, plus `theme-base` for
   the document-level font, colour and canvas. Nothing is applied to the host
   page by importing the preset; `theme-base` is put on `<body>` when wanted, and
@@ -3379,12 +3399,12 @@ under "Install" instead.
 - **Buttons** — `btn` with `btn-primary`, `btn-danger`, `btn-warning`,
   `btn-success` and their `-outline` variants; `btn-icon`, `btn-link`,
   `btn-input-icon`, `btn-disabled`. `btn` carries its own `:disabled` styling.
-- **Forms** — `input`, `select`, `textarea`, `label`, `checkbox`, `radio`. In
+- **Forms** — `pc-input`, `pc-select`, `pc-textarea`, `pc-label`, `pc-checkbox`, `pc-radio`. In
   dark mode the OS-rendered `option` list, the popup chrome and the table
   (`table`, `th`, `td` borders) are repainted by `:where(.dark)
   :where(.theme-base) …` rules, so they apply only inside `theme-base`, and only
-  while `.dark` is on an ancestor. Components that already carry `.input` /
-  `.select` / `.textarea` are painted by those utilities; these rules are what
+  while `.dark` is on an ancestor. Components that already carry `.pc-input` /
+  `.pc-select` / `.pc-textarea` are painted by those utilities; these rules are what
   covers the parts a class cannot reach. The preset does not style
   `[aria-invalid]`: a field marked invalid keeps its normal border, so the
   error's colour and text come from the component (`Field` draws both).
@@ -3392,8 +3412,8 @@ under "Install" instead.
   browser draws a checkbox, a radio, a date picker's icon and a field's
   scrollbar dark instead of as a white box. The page's own scrollbar follows the
   root element's `color-scheme`, which the preset leaves to the app.
-- **Surfaces** — `card`, `card-header`, `card-body`, `card-footer`, `scrollbar`.
-- **Data display** — `num`, `kpi`, `kpi-label`, `kpi-value`, `bar`.
+- **Surfaces** — `pc-card`, `pc-card-header`, `pc-card-body`, `pc-card-footer`, `pc-scrollbar`.
+- **Data display** — `pc-num`, `pc-kpi`, `pc-kpi-label`, `pc-kpi-value`, `pc-bar`.
 - **Map** — `map-marker` inside a `status-on` / `status-off` / `status-unknown` container, used by
   `@spy4x/preact-map`'s `Map` component and its plain-text list of markers.
 - **Spacing** — `pb-safe` (bottom padding that clears a phone's home indicator) and `pb-safe-3`
@@ -3559,7 +3579,7 @@ stands off the page without a heavy border. Muted text is `gray-600`, which
 keeps WCAG AA contrast (4.5:1) on that canvas as well as on a card; `gray-500`
 does not (4.4:1).
 
-Focus rings follow the accent. A focused `.input`, `.select` or `.textarea` draws its outline in
+Focus rings follow the accent. A focused `.pc-input`, `.pc-select` or `.pc-textarea` draws its outline in
 `--color-primary-muted`, and so does a focused `.btn` under `.dark`; in the light palette a `.btn`
 keeps the browser's own ring. To give focus rings a colour of their own, set `--color-focus-ring`:
 every one of those rules reads it first. The tone buttons (`.btn-danger`, `.btn-warning`,
@@ -3584,7 +3604,7 @@ won over an app's own `@theme --font-sans` (#470). An app that wants that font s
 
 - **Headings.** `--font-heading` is not declared: unset, a heading inherits its font like any other
   text, so a heading inside a `font-mono` wrapper stays mono. An app sets it, and `h1`-`h6` under
-  `.theme-base`, the preset's `h1`-`h5` classes and the `font-heading` class draw in it:
+  `.theme-base`, the preset's `pc-h1`-`pc-h5` classes and the `font-heading` class draw in it:
   `--font-heading: "Literata", serif` gives serif headings. A heading that carries a font class of
   its own (`font-sans`) keeps it, because utilities sit above the preset's base layer; a heading in
   a `font-mono` wrapper takes the app's `--font-heading`, which is what setting it asks for.
@@ -3626,7 +3646,7 @@ and its label 5.54:1.
 Focus: `ring-2 ring-focus ring-offset-2 ring-offset-focus` draws a 2px ring in `--color-ring` (the
 accent, which is what the primary `Button` draws today; step 400 in the dark palette, 6.36:1 on the
 dark canvas) with a 2px gap in `--color-focus-offset` (the canvas). `--color-focus-ring` is the
-other token: it moves the preset's own `.input`, `.select`, `.textarea` and dark `.btn` rings, and
+other token: it moves the preset's own `.pc-input`, `.pc-select`, `.pc-textarea` and dark `.btn` rings, and
 ink sets it, so ink does not touch the components' ring.
 
 ### Text on a fill
@@ -3781,7 +3801,7 @@ so focus states and a rail's current item do not use the accent. `--color-nav-ac
 **foreground/indicator** colour: a rail draws its current item's icon or text in it, not its
 background — the background a rail paints behind its current item is `--color-surface-active`
 above, a separate token. `--color-focus-ring` is read by three focus rules in `preset.css`:
-`.btn`'s ring under any `.dark`, and the `.input`/`.select`/`.textarea` outline. Each falls back to
+`.btn`'s ring under any `.dark`, and the `.pc-input`/`.pc-select`/`.pc-textarea` outline. Each falls back to
 the accent, `--color-primary-muted`, where the token is not set, which is everywhere but ink. So the
 form fields draw the rings they drew before, and a focused `.btn` in default dark draws purple-400
 instead of the browser's near-black ring (#297). The default palette's `--color-primary` stays
@@ -3789,7 +3809,7 @@ documented as covering buttons, links, focus rings and active nav all at once �
 palette that splits focus rings and a rail's active indicator off it, onto their own tokens. Everything else that reads
 `--color-primary` or `--color-primary-muted` in `preset.css` still carries the accent under ink:
 `.btn-primary`'s fill, links (`.btn-link`, `.text-primary`, `.border-primary`), `bg-primary`,
-checkboxes, radios, `.btn-primary-outline` and `.bar`. That is narrower than #257 asked (the accent
+checkboxes, radios, `.btn-primary-outline` and `.pc-bar`. That is narrower than #257 asked (the accent
 on the primary action alone); moving those is left for a later change.
 
 Two consequences of the design worth knowing:
@@ -3813,7 +3833,7 @@ Both classes had zero usages in the product they were extracted from — only it
 - `.h6` — use `text-base font-medium`.
 - `.btn-sm` — use `h-9 px-4` on the button.
 
-`card-header` and `btn-disabled` were added back from another source
+`card-header` (now `pc-card-header`) and `btn-disabled` were added back from another source
 application, where both are in use (`btn-disabled` replaces that app's
 `fieldset[disabled] .btn`).
 
@@ -3874,7 +3894,7 @@ Preact + Tailwind primitives extracted from earlier source applications.
 - **Props and ports, never a global store.** No component imports an app's state singleton. App
   state arrives as props; side effects (clipboard, geolocation, toasts) arrive as callbacks.
 - **Tailwind classes, rendered against the theme.** Components write Tailwind utilities and the
-  theme's class names (`input`, `btn-input-icon`), so a page needs `theme/`'s stylesheet; a few
+  theme's class names (`pc-input`, `btn-input-icon`), so a page needs `theme/`'s stylesheet; a few
   glyphs come from `@spy4x/preact-icons`.
 - **Server-renderable.** `document`, `navigator` and timers are touched inside effects or event
   handlers only.
