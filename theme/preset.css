@@ -31,7 +31,7 @@
    * host page by importing the preset.
    */
   .theme-base {
-    font-family: var(--font-sans, "Poppins", ui-sans-serif, system-ui, sans-serif);
+    font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
     font-weight: 400;
     font-size: 1rem;
     line-height: 1.5rem;
@@ -371,8 +371,7 @@
 
 /* The font a heading is drawn in: --font-heading, or the sans font until an app sets it. */
 @utility font-heading {
-  font-family: var(--font-heading, var(--font-sans, "Poppins", ui-sans-serif, system-ui,
-    sans-serif));
+  font-family: var(--font-heading, var(--font-sans, ui-sans-serif, system-ui, sans-serif));
 }
 
 @utility pc-h1 {
