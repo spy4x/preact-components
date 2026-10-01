@@ -1086,7 +1086,7 @@ export const inputDemos = {
   },
   Dropdown: {
     summary:
-      "A button that opens a menu of actions, which the arrow keys, Home, End and Escape work through.",
+      "A button that opens a menu of actions, which the arrow keys, Home, End and Escape work through, and which opens as a plain disclosure without JavaScript.",
     wide: true,
     props: [
       { name: "trigger", type: "ComponentChildren", description: "What the button shows." },
