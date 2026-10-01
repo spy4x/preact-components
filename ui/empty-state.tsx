@@ -26,7 +26,7 @@ export interface EmptyStateProps {
  * difference, and `LoadingSkeleton`'s card utilities supply most of them.
  */
 const box =
-  "mx-auto max-w-[650px] rounded-lg border border-dashed border-subtle bg-surface p-4 text-center"
+  "mx-auto max-w-[650px] rounded-lg border border-dashed border-subtle bg-surface pc-focus-offset-surface p-4 text-center"
 
 /* The same icon box `LoadingSkeleton` uses for its placeholder glyph. */
 const iconBox =

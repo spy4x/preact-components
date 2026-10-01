@@ -88,7 +88,7 @@ export function Table(
             {headerSlot}
           </tr>
         </thead>
-        <tbody class="divide-y divide-subtle bg-surface">
+        <tbody class="divide-y divide-subtle bg-surface pc-focus-offset-surface">
           {bodySlots.map((bodySlot, index) => (
             <tr
               key={bodyKeys === undefined ? index : bodyKeys[index]}
