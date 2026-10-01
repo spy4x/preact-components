@@ -194,7 +194,10 @@ The harness is the six parts, once:
    a screen-reader user who reaches the (possibly disabled) button is told why. arktype's default
    wording for a whole-model `.narrow` failure appends the entire rejected value as JSON, which a
    caller almost never wants read aloud on every field change that still fails the rule; write the
-   message yourself with `ctx.reject({ message })` instead of `ctx.mustBe(...)`.
+   message yourself with `ctx.reject({ message })` instead of `ctx.mustBe(...)`. The form itself
+   carries no margin, and the dependency block is taken out of the flow while it is empty, so the
+   editor ends at the form's bottom edge in any parent layout; once the block holds a list, the
+   section's 24px gap separates it from the form (#279).
 
 | Prop         | Default             | Notes                                                           |
 | ------------ | ------------------- | --------------------------------------------------------------- |
@@ -255,10 +258,8 @@ Four behaviours the copies got wrong, now in one place:
 
 `DeletionValidation` renders the entities that block an archive. It lives here rather than in `ui/`
 because only the CRUD scaffold produces a `DeletionDependency`. Its `role="alert"` region is on the
-page on every render — even with an empty list, which is now a zero-height node rather than nothing
-at all, so a parent that spaces its last child differently (`CrudEditor`'s own `page-layout` section
-does, #279) can pick up a bottom margin it did not have before — empty until `dependencies` is
-non-empty, the pattern `ui/`'s toasts and combobox use, so a screen reader reliably announces the
+page on every render — even with an empty list, as a zero-height node rather than nothing at all —
+empty until `dependencies` is non-empty, the pattern `ui/`'s toasts and combobox use, so a screen reader reliably announces the
 text rather than meeting a region already holding it. A first render with a non-empty list scrolls
 the block into view, and so does a later render whose non-empty list has different content; a later
 render that replaces one non-empty list with an _equal_ one, without the

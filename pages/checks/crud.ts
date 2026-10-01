@@ -752,6 +752,14 @@ interface ArchiveReading {
   gapAbove: number
   /** Pixels from the form's bottom edge to the section's bottom edge. */
   below: number
+  /**
+   * Pixels from the form's bottom edge to the bottom edge of the demo's own wrapper, a flex item
+   * of the card's `Stack`: the space a caller's layout sees under the editor, where no margin
+   * collapses into a neighbour's.
+   */
+  outerBelow: number
+  /** The form's own computed `margin-bottom`. */
+  formMargin: string
   /** Whether the region is the element parked on `globalThis` earlier. */
   same: boolean
   regionText: string
@@ -764,7 +772,16 @@ function readArchiveDemo(devtools: Devtools, park: boolean): Promise<ArchiveRead
     const form = root && root.querySelector('form')
     const region = root && root.querySelector('[role="alert"]')
     if (!form || !region) {
-      return { found: false, position: "", gapAbove: -1, below: -1, same: false, regionText: "" }
+      return {
+        found: false,
+        position: "",
+        gapAbove: -1,
+        below: -1,
+        outerBelow: -1,
+        formMargin: "",
+        same: false,
+        regionText: "",
+      }
     }
     if (${park}) globalThis.__archiveRegion = region
     const wrapper = region.parentElement
@@ -774,6 +791,8 @@ function readArchiveDemo(devtools: Devtools, park: boolean): Promise<ArchiveRead
       position: getComputedStyle(wrapper).position,
       gapAbove: Math.round(wrapper.getBoundingClientRect().top - formBox.bottom),
       below: Math.round(form.parentElement.getBoundingClientRect().bottom - formBox.bottom),
+      outerBelow: Math.round(root.getBoundingClientRect().bottom - formBox.bottom),
+      formMargin: getComputedStyle(form).marginBottom,
       same: region === globalThis.__archiveRegion,
       regionText: region.textContent.replace(/\\s+/g, " ").trim(),
     }
@@ -793,7 +812,9 @@ function clickArchiveBox(devtools: Devtools): Promise<boolean> {
 /**
  * The space under `CrudEditor`'s form follows the alert region (#279): none while it is empty, and
  * the section's gap once a message shows, with the message in normal flow and not laid over the
- * title or the form. Driven on the edit-mode demo, whose archive is blocked by one entity.
+ * title or the form. The form's own margin stays 0 throughout, so the space is the section's gap
+ * and never a margin on the form. Driven on the edit-mode demo, whose archive is blocked by one
+ * entity; the demo sits in the card's `Stack`, a flex column, where no margin collapses away.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -801,8 +822,10 @@ async function blockedArchiveChecks(devtools: Devtools): Promise<void> {
   const before = await readArchiveDemo(devtools, true)
   check(
     "the edit-mode CrudEditor demo has no blank space below its form before the archive is ticked",
-    before.found && before.below === 0 && before.position === "absolute",
-    `found=${before.found} position=${before.position} below=${before.below}`,
+    before.found && before.below === 0 && before.outerBelow === 0 && before.formMargin === "0px" &&
+      before.position === "absolute",
+    `found=${before.found} position=${before.position} below=${before.below} ` +
+      `below in the flex parent=${before.outerBelow} form margin-bottom=${before.formMargin}`,
   )
   if (!before.found) return
 
@@ -812,19 +835,22 @@ async function blockedArchiveChecks(devtools: Devtools): Promise<void> {
   await settledScroll(devtools, { timeoutMs: 5_000 })
   const shown = await readArchiveDemo(devtools, false)
   check(
-    "a blocked archive shows its message in normal flow, 24px under the form, in the same region",
+    "a blocked archive shows its message in normal flow, 24px under the form, in the same region, with the form's own margin still 0",
     ticked && shown.regionText.includes("please first archive") && shown.position === "static" &&
-      shown.gapAbove === 24 && shown.same,
-    `ticked=${ticked} position=${shown.position} gap above=${shown.gapAbove} same region=${shown.same} ` +
-      `text="${shown.regionText}"`,
+      shown.gapAbove === 24 && shown.formMargin === "0px" && shown.same,
+    `ticked=${ticked} position=${shown.position} gap above=${shown.gapAbove} ` +
+      `form margin-bottom=${shown.formMargin} same region=${shown.same} text="${shown.regionText}"`,
   )
 
   const unticked = await clickArchiveBox(devtools)
   await poll(async () => (await readArchiveDemo(devtools, false)).regionText === "", 2_000)
   const after = await readArchiveDemo(devtools, false)
   check(
-    "clearing the archive tick takes the space under the form back to 0",
-    unticked && after.regionText === "" && after.below === 0 && after.same,
-    `unticked=${unticked} text="${after.regionText}" below=${after.below} same region=${after.same}`,
+    "clearing the archive tick takes the space under the form back to 0, in the flex parent too",
+    unticked && after.regionText === "" && after.below === 0 && after.outerBelow === 0 &&
+      after.formMargin === "0px" && after.same,
+    `unticked=${unticked} text="${after.regionText}" below=${after.below} ` +
+      `below in the flex parent=${after.outerBelow} form margin-bottom=${after.formMargin} ` +
+      `same region=${after.same}`,
   )
 }
