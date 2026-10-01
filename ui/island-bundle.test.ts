@@ -2,9 +2,10 @@
  * What a browser bundle of a library component carries (#471).
  *
  * `tailwind-merge` is about 28 KB minified, and `cn` brings it into every bundle that imports it.
- * `Button`, `ImageGallery` and `Lightbox` compose their classes with `join` instead, so an island
- * that renders one of them must not carry it. Each fixture under `testdata/` is such an island, and
- * is bundled here the way an app's build bundles one: `deno bundle --platform browser --minify`.
+ * `Button`, `ImageGallery`, `Lightbox` (#471), `Field`, `Input`, `Textarea` and `EnhancedForm`
+ * (#511) compose their classes with `join` instead, so an island that renders one of them must not
+ * carry it. Each fixture under `testdata/` is such an island, and is bundled here the way an app's
+ * build bundles one: `deno bundle --platform browser --minify`.
  *
  * `tailwind-merge`'s minified code keeps its class-group names as strings, so its presence is read
  * from one of them. The control fixture calls `cn` and must contain that string: if a
@@ -51,7 +52,15 @@ describe("a browser bundle of a library component", () => {
     expect(await bundle("island-cn.tsx")).toContain(TAILWIND_MERGE_MARKER)
   })
 
-  for (const fixture of ["island-button.tsx", "island-image-gallery.tsx", "island-lightbox.tsx"]) {
+  for (
+    const fixture of [
+      "island-button.tsx",
+      "island-image-gallery.tsx",
+      "island-lightbox.tsx",
+      "island-field.tsx",
+      "island-enhanced-form.tsx",
+    ]
+  ) {
     it(`carries no tailwind-merge, and stays under the ceiling, for ${fixture}`, async () => {
       const code = await bundle(fixture)
       expect(code).not.toContain(TAILWIND_MERGE_MARKER)

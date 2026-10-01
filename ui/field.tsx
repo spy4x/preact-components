@@ -1,4 +1,4 @@
-import { cn } from "@spy4x/preact-cn"
+import { join } from "@spy4x/preact-cn/join"
 import {
   cloneElement,
   type ComponentChild,
@@ -208,7 +208,7 @@ export function Field(
   const labelElement = label === undefined || label === null
     ? null
     : (
-      <label for={labelTarget(labelFor, id)} class={cn("pc-label", disabled && "opacity-50")}>
+      <label for={labelTarget(labelFor, id)} class={join("pc-label", disabled && "opacity-50")}>
         {label}
         {required && <span aria-hidden="true" class="ml-1 text-danger">*</span>}
       </label>

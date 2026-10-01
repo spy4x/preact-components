@@ -1,4 +1,4 @@
-import { cn } from "@spy4x/preact-cn"
+import { join } from "@spy4x/preact-cn/join"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useRef, useState } from "preact/hooks"
 
@@ -107,7 +107,11 @@ export interface EnhancedFormProps {
    * to let the form keep its own state.
    */
   status?: EnhancedFormStatus
-  /** Utilities for the `<form>` itself. */
+  /**
+   * Utilities for the `<form>` itself, appended after its own `space-y-4` and not merged, so
+   * `tailwind-merge` stays out of the bundle (#511). To replace the spacing, mark the replacement
+   * important with a trailing `!`.
+   */
   class?: string
 }
 
@@ -341,7 +345,7 @@ export function EnhancedForm(
       action={action}
       method={method}
       onSubmit={handleSubmit}
-      class={cn("space-y-4", className)}
+      class={join("space-y-4", className)}
     >
       <div>{slot}</div>
       {
@@ -356,7 +360,7 @@ export function EnhancedForm(
         aria-live="polite"
         aria-atomic="true"
         tabIndex={-1}
-        class={cn(
+        class={join(
           "text-sm text-muted outline-none",
           regionHidden && "sr-only",
         )}
