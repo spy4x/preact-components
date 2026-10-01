@@ -3110,8 +3110,8 @@ async function closeDialog(devtools: Devtools, selector: string): Promise<void> 
  * `1rem` from the edges; with `controls="below"` a 780×1688 image fits a 1440×900 window with the
  * counter and previous/next in a row under it, and a real click on that row's next button moves on;
  * an image with `webpSrc` loads the WebP source; a sideways swipe pages while a short or vertical
- * one does not; and on a phone turned sideways with a 47px safe-area inset, the close button and
- * the image clear it.
+ * one does not; and on a phone turned sideways with a 47px safe-area inset, the close button
+ * clears it.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -3250,7 +3250,7 @@ async function lightboxOptionsChecks(devtools: Devtools): Promise<void> {
       }
       : null
     check(
-      "on a phone turned sideways, the close button and the image clear a 47px safe-area inset",
+      "on a phone turned sideways, the close button clears a 47px safe-area inset",
       notched.open && clearance !== null && clearance.closeRight >= 47 &&
         clearance.closeTop >= 16 && clearance.imageLeft >= 47 && clearance.rowBottom >= 21 &&
         insideViewport(notched.image, notched),
