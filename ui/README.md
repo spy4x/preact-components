@@ -52,7 +52,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | ----------------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Avatar`          | `avatar`            | `name`, `src`, `alt`, `size`                                                                                                                                                                    |
 | `AvatarGroup`     | `avatar`            | `items`, `max`, `label`, `size` (a `role="group"`, not a list)                                                                                                                                  |
-| `Badge`           | `badge`             | `text`, `color`, `type`                                                                                                                                                                         |
+| `Badge`           | `badge`             | `text` or `children`, `color`, `type`, `href?` (the whole pill becomes a link)                                                                                                                  |
 | `Button`          | `button`            | `variant`, `size`, `busy`, `busyLabel`, native button attrs                                                                                                                                     |
 | `Card`            | `card`              | `children`, `class` — a bordered surface                                                                                                                                                        |
 | `CardBody`        | `card`              | `children`, `class`                                                                                                                                                                             |
@@ -242,6 +242,26 @@ asked for one.
   dismissLabel="Ausblenden"
 />
 ```
+
+## Badge
+
+A badge holds a text label (`text`, typed by `BadgeProps`) or element content (`children`, typed
+by `BadgeElementProps`), never both; a badge with neither, or with both, is a type error. Element
+content — a `StatusMark` beside a word, say — gets a `gap-1` between its parts, which a class of
+your own overrides:
+
+```tsx
+<Badge color="gray" href="https://ci.example.com/my-repo">
+  <span>CI</span>
+  <StatusMark status="ready" label="Passing" />
+</Badge>
+```
+
+`href` makes the whole pill one link: it renders an `<a>` with the focus ring the other focusable
+components draw, and the pill's content is the link's accessible name. That is the shape of a CI
+pill, where the pill is one target. For a pill with a link inside it, leave `href` out and pass the
+`<a>` among the children instead. A badge without `href` renders the same `<span>`, with the same
+classes, as before element content existed.
 
 ## Button
 

@@ -20,7 +20,14 @@ export {
   type GroupSplit,
   groupSplit,
 } from "./avatar.tsx"
-export { Badge, badgeClasses, type BadgeColor, type BadgeProps, type BadgeType } from "./badge.tsx"
+export {
+  Badge,
+  badgeClasses,
+  type BadgeColor,
+  type BadgeElementProps,
+  type BadgeProps,
+  type BadgeType,
+} from "./badge.tsx"
 export {
   Button,
   buttonClasses,
