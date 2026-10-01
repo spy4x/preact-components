@@ -30,6 +30,9 @@ describe("the generated CSS text constants", () => {
   })
 })
 
+/** The opening of `tokens.css`'s one `@layer` rule, as a regular-expression fragment. */
+const TOKENS_LAYER_OPEN = "@layer theme\\.preact-tokens\\s*\\{"
+
 /**
  * Parses a top-level `selector { ... }` block's declarations into a property → value map, so a
  * comparison can catch an appended or reordered declaration that a `toContain` check on a fixed
@@ -37,12 +40,16 @@ describe("the generated CSS text constants", () => {
  * nothing else was added alongside them (a duplicate `--color-primary` appended after the real one
  * still contains the original string). Comments are stripped before parsing, and only the requested
  * selector's own braces are read — `tokens.css` has exactly one `:root` and one `.dark` block, both
- * flat, so a non-greedy match up to the first closing brace is exact.
+ * flat, so a non-greedy match up to the first closing brace is exact. Since #470 both open its
+ * `@layer` rule's body, so a block counts when it follows that rule's opening brace or a closing
+ * brace; the `:root` inside `@supports` follows neither.
  */
 function parseBlock(css: string, selector: string): Record<string, string> {
   const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, "")
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-  const blocks = withoutComments.match(new RegExp(`(^|\\})\\s*${escaped}\\s*\\{`, "g")) ?? []
+  const blocks =
+    withoutComments.match(new RegExp(`(^|\\}|${TOKENS_LAYER_OPEN})\\s*${escaped}\\s*\\{`, "g")) ??
+      []
   if (blocks.length !== 1) throw new Error(`expected one ${selector} block, found ${blocks.length}`)
   const match = withoutComments.match(new RegExp(`${escaped}\\s*\\{([\\s\\S]*?)\\}`))
   if (!match) throw new Error(`no ${selector} block found`)
@@ -93,7 +100,6 @@ const EXPECTED_ROOT_TOKENS: Record<string, string> = {
   "--color-success-fill": `var(--color-success)`,
   "--radius-primary": "0.5rem",
   "--radius-control": "0.375rem",
-  "--font-sans": `"Poppins", ui-sans-serif, system-ui, sans-serif`,
   // #417 added the tokens below. Most are read by nothing yet (selection, focus, hover, track,
   // scrim, the soft tints, the card radius, the shadows). The Button's primary and danger variants
   // read the accent-foreground and danger-fill ones, and their defaults draw the colours the
@@ -167,8 +173,9 @@ describe("the default token set, after #257", () => {
     expect(parseBlock(TOKENS_CSS, ".dark")).toEqual(EXPECTED_DARK_TOKENS)
   })
 
-  it("does not redeclare --font-serif or --font-mono in :root", () => {
+  it("does not redeclare a font token Tailwind's own theme declares", () => {
     const root = parseBlock(TOKENS_CSS, ":root")
+    expect(root).not.toHaveProperty("--font-sans")
     expect(root).not.toHaveProperty("--font-serif")
     expect(root).not.toHaveProperty("--font-mono")
     expect(TOKENS_CSS).not.toMatch(/\.(woff2?|ttf|otf)/)

@@ -1219,6 +1219,49 @@ function declarationsOf(css: string, selector: string): string {
   return css.slice(start, css.indexOf("}", start))
 }
 
+/** One custom-property declaration in compiled CSS, with the cascade layers around it. */
+interface LayeredDeclaration {
+  value: string
+  /** Layer names from the outermost in, a dotted name split into its parts; `[]` is unlayered. */
+  layers: string[]
+}
+
+/**
+ * Every declaration of `property` in `css`, each with the `@layer` rules that enclose it.
+ *
+ * Reads braces, not a full CSS grammar: compiled Tailwind output has no braces inside strings or
+ * comments, which is all this needs.
+ *
+ * @param css Compiled CSS.
+ * @param property A custom property, such as `--color-accent`.
+ * @returns The declarations in source order.
+ */
+function layeredDeclarations(css: string, property: string): LayeredDeclaration[] {
+  const found: LayeredDeclaration[] = []
+  const preludes: string[] = []
+  let statementStart = 0
+  for (let index = 0; index < css.length; index++) {
+    const char = css[index]
+    if (char === "{") {
+      preludes.push(css.slice(statementStart, index).trim())
+      statementStart = index + 1
+    } else if (char === "}") {
+      preludes.pop()
+      statementStart = index + 1
+    } else if (char === ";") {
+      const statement = css.slice(statementStart, index).trim()
+      if (statement.startsWith(`${property}:`)) {
+        const layers = preludes
+          .filter((prelude) => prelude.startsWith("@layer "))
+          .flatMap((prelude) => prelude.slice("@layer ".length).trim().split("."))
+        found.push({ value: statement.slice(property.length + 1).trim(), layers })
+      }
+      statementStart = index + 1
+    }
+  }
+  return found
+}
+
 describe("theme preset", () => {
   /*
    * Compiled once for the whole suite. Memoised because bdd's `describe`
@@ -1738,6 +1781,28 @@ describe("theme preset", () => {
     expect(declarationsOf(withoutTokens, ".text-accent-400")).toContain(
       "var(--color-accent-400, oklch(0.714 0.203 305.504))",
     )
+  })
+
+  it("ranks tokens.css below an app's own @theme token", async () => {
+    // The real `@import "tailwindcss"` this time: its `@layer theme, base, components, utilities;`
+    // statement is what makes `theme` the lowest layer, and the name `theme.preact-tokens` refers to.
+    const css = await compilePreset(
+      `@import "tailwindcss";\n@import "./tokens.css";\n@import "./preset.css";\n` +
+        `@theme {\n  --color-accent: oklch(0.6 0.2 40);\n}\n`,
+      ["bg-accent-900"],
+    )
+    expect(css).toContain("@layer theme, base, components, utilities;")
+    const declarations = layeredDeclarations(css, "--color-accent")
+    // The app's value sits in `theme` itself. Every other one is tokens.css's, in a sublayer of
+    // `theme`, and a layer's own rules outrank its sublayers': the app's accent wins.
+    expect(declarations.filter(({ layers }) => layers.join(".") === "theme")).toEqual([
+      { value: "oklch(0.6 0.2 40)", layers: ["theme"] },
+    ])
+    const library = declarations.filter(({ value }) => value !== "oklch(0.6 0.2 40)")
+    expect(library.length).toBeGreaterThan(0)
+    for (const declaration of library) {
+      expect(declaration.layers).toEqual(["theme", "preact-tokens"])
+    }
   })
 
   it("ships light tokens in :root and dark tokens on .dark", async () => {
