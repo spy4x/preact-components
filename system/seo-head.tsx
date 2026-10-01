@@ -117,23 +117,29 @@ export function seoHeadTags(head: PageHead): HeadTag[] {
   return tags
 }
 
-function renderTag(tag: HeadTag, index: number) {
+/**
+ * One tag as JSX, deliberately without a `key`. Fresh's `<Head>` prints a head tag's key as
+ * `data-key` and treats it as the tag's identity across every `<Head>` block on the page, so an
+ * index key replaced another block's tag that happened to share the number. With no key, Fresh
+ * identifies each tag by its type and attributes, which are unique within this set. Preact
+ * matches unkeyed children by position, which for these tags only means rewriting attributes.
+ */
+function renderTag(tag: HeadTag) {
   switch (tag.tag) {
     case "title":
-      return <title key={index}>{tag.text}</title>
+      return <title>{tag.text}</title>
     case "link":
-      return <link key={index} {...tag.attrs} />
+      return <link {...tag.attrs} />
     case "script":
       return (
         <script
-          key={index}
           {...tag.attrs}
           // The body is JSON this module serialised, with `<` escaped; see `jsonLdText`.
           dangerouslySetInnerHTML={{ __html: tag.text ?? "" }}
         />
       )
     default:
-      return <meta key={index} {...tag.attrs} />
+      return <meta {...tag.attrs} />
   }
 }
 
@@ -146,5 +152,5 @@ function renderTag(tag: HeadTag, index: number) {
  * test with no head pipeline at all.
  */
 export function SEOHead(head: PageHead): JSX.Element {
-  return <>{seoHeadTags(head).map(renderTag)}</>
+  return <>{seoHeadTags(head).map((tag) => renderTag(tag))}</>
 }
