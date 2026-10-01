@@ -50,6 +50,30 @@ function BadgeMatrix() {
   )
 }
 
+/**
+ * Element content: a whole-pill link holding a word and a `StatusMark`, and a static pill with a
+ * link inside it. The link points at this repository's public CI runs.
+ */
+function BadgeContentRow() {
+  return (
+    <Cluster align="baseline" class="flex-nowrap">
+      <span class="w-16 shrink-0 text-xs text-muted">content</span>
+      <Cluster>
+        <Badge color="gray" href={CI_RUNS}>
+          <span>CI</span>
+          <StatusMark status="ready" label="Passing" />
+        </Badge>
+        <Badge color="gray" type="outline">
+          <StatusMark status="beta" />
+          <a href={CI_RUNS} class="underline underline-offset-4">notes</a>
+        </Badge>
+      </Cluster>
+    </Cluster>
+  )
+}
+
+const CI_RUNS = "https://github.com/spy4x/preact-components/actions"
+
 /** Every status a `StatusMark` accepts, for the coverage guard — see {@link colors}. */
 const statuses: Record<StatusMarkStatus, string> = {
   ready: "ready",
@@ -84,7 +108,23 @@ export const badgeDemos = {
     summary: "A small coloured label for a status or a category, filled or outlined.",
     wide: true,
     props: [
-      { name: "text", type: "string", description: "The label." },
+      {
+        name: "text",
+        type: "string",
+        description: "A plain text label. Give this or `children`, not both.",
+      },
+      {
+        name: "children",
+        type: "ComponentChildren",
+        description: "Element content in place of `text`, such as a `StatusMark` beside a word, " +
+          "or a link inside the pill; its parts get a small gap.",
+      },
+      {
+        name: "href",
+        type: "string",
+        description: "Makes the whole pill one link, with the focus ring; its content is the " +
+          "link's name.",
+      },
       {
         name: "color",
         type: "BadgeColor",
@@ -100,8 +140,17 @@ export const badgeDemos = {
       },
     ],
     snippet: `<Badge text="paid" color="green" />
-<Badge text="draft" color="gray" type="outline" />`,
-    render: () => <BadgeMatrix />,
+<Badge text="draft" color="gray" type="outline" />
+<Badge color="gray" href="https://ci.example.com/my-repo">
+  <span>CI</span>
+  <StatusMark status="ready" label="Passing" />
+</Badge>`,
+    render: () => (
+      <Stack gap="sm">
+        <BadgeMatrix />
+        <BadgeContentRow />
+      </Stack>
+    ),
   },
   StatusMark: {
     summary:
