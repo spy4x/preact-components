@@ -14,9 +14,9 @@ cannot be run from here; the source is at
 package is built from.
 
 Each licence text below is copied verbatim from that package's own `LICENSE` file — nothing is
-paraphrased or retyped from a project's website — and each package is exactly what
-`icons/deno.json` → `imports` pins under `heroicons-v1/`, `heroicons-v2/`, `feather-icons/`,
-`lucide-static/` and `simple-icons/`.
+paraphrased or retyped from a project's website — and each package is exactly the version that
+`icons/provenance.ts` names in its full `npm:` specifiers, with its integrity hash recorded in
+`icons/provenance.lock`.
 
 ## Heroicons v1
 
