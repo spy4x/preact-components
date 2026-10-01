@@ -1264,9 +1264,9 @@ export const displayDemos = {
       },
       {
         name: "copy",
-        type: "(text) => void",
+        type: "(text) => void | boolean | Promise",
         default: "the clipboard",
-        description: "Replaces the clipboard.",
+        description: "Replaces the clipboard; throwing, rejecting or returning false is a failure.",
       },
       {
         name: "copyLabel",
@@ -1279,6 +1279,12 @@ export const displayDemos = {
         type: "string",
         default: `"Copied"`,
         description: "What a screen reader hears after a copy.",
+      },
+      {
+        name: "failedLabel",
+        type: "string",
+        default: `"Copy failed"`,
+        description: "What a screen reader hears after a copy that failed.",
       },
     ],
     snippet: `<CopyBlock text="deno add jsr:@spy4x/preact-ui" copyLabel="Copy command" />

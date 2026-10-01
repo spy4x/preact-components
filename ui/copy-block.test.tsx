@@ -1,42 +1,26 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
-import { createElement } from "preact"
 import { render } from "preact-render-to-string"
 import { CopyButton, type CopyButtonProps } from "./copy-button.tsx"
-import { CopyBlock } from "./copy-block.tsx"
-import { CopyBlockBody, type CopyBlockBodyProps } from "./copy-block-body.tsx"
+import { CopyBlock, type CopyBlockProps } from "./copy-block.tsx"
 
-/** A clipboard port, in the shape {@link CopyButtonProps} takes. */
-type CopyPort = (text: string) => void | Promise<void>
-
-/** One element of the body's tree, reduced to what these assertions read. */
+/** One element of the block's tree, reduced to what these assertions read. */
 interface Element {
   type: unknown
   props: Record<string, unknown>
 }
 
 /**
- * The children `CopyBlockBody` returns: the `<code>`, the copy control and the live region.
+ * The copy control's props, as `CopyBlock` hands them down.
  *
- * The body is invoked directly — it calls no hook — so its vnodes are the props it handed down, and
- * that is what the copy-port assertions below are about.
+ * `CopyBlock` calls no hook, so it is invoked directly and its vnodes are the props it passed on.
  */
-function bodyOf(props: CopyBlockBodyProps): Element[] {
-  const root = CopyBlockBody(props) as unknown as Element
-  return root.props.children as unknown as Element[]
-}
-
-/** The copy control's props, as the body handed them down. */
-function controlOf(props: CopyBlockBodyProps): CopyButtonProps {
-  const control = bodyOf(props).find((child) => child.type === CopyButton)
-  if (!control) throw new Error("CopyBlockBody rendered no CopyButton")
+function controlOf(props: CopyBlockProps): CopyButtonProps {
+  const root = CopyBlock(props) as unknown as Element
+  const children = root.props.children as unknown as Element[]
+  const control = children.find((child) => child.type === CopyButton)
+  if (!control) throw new Error("CopyBlock rendered no CopyButton")
   return control.props as unknown as CopyButtonProps
-}
-
-/** The live region the body renders, as markup. */
-function statusOf(props: CopyBlockBodyProps): string {
-  const status = bodyOf(props)[2]
-  return render(createElement(status.type as never, status.props as never))
 }
 
 /** The `<code>` element's opening tag, as `CopyBlock` renders it. */
@@ -50,11 +34,6 @@ function codeClasses(html: string): string[] {
 }
 
 const command = "deno add jsr:@spy4x/preact-ui jsr:@spy4x/preact-icons jsr:@spy4x/preact-theme"
-
-/** Body props for a block nothing has happened to. */
-function idle(overrides: Partial<CopyBlockBodyProps> = {}): CopyBlockBodyProps {
-  return { text: command, copied: false, onCopy: () => {}, ...overrides }
-}
 
 describe("CopyBlock", () => {
   it("renders the text as real, selectable text inside a monospace code element", () => {
@@ -94,59 +73,30 @@ describe("CopyBlock", () => {
   })
 
   it("hands the copy control the whole text", () => {
-    expect(controlOf(idle()).textToCopy).toBe(command)
+    expect(controlOf({ text: command }).textToCopy).toBe(command)
   })
 
-  it("routes a press through the caller's port with the text, and marks it copied", () => {
-    const copied: string[] = []
-    let announced = 0
-    const port: CopyPort = (text) => {
-      copied.push(text)
-    }
+  it("forwards the caller's port, labels and window to the copy control", () => {
+    const port = () => false
+    const control = controlOf({
+      text: command,
+      copy: port,
+      copiedLabel: "Command copied",
+      failedLabel: "Command not copied",
+      copiedForMs: 900,
+    })
 
-    controlOf(idle({ copy: port, onCopy: () => announced++ })).copy?.(command)
-
-    expect(copied).toEqual([command])
-    expect(announced).toBe(1)
+    expect(control.copy).toBe(port)
+    expect(control.copiedLabel).toBe("Command copied")
+    expect(control.failedLabel).toBe("Command not copied")
+    expect(control.copiedForMs).toBe(900)
   })
 
-  it("does not wait on the caller's port when it is async", () => {
-    const copied: string[] = []
-    const port: CopyPort = (text) => {
-      copied.push(text)
-      return new Promise(() => {})
-    }
+  it("renders one empty polite live region on the server, the copy control's own", () => {
+    const html = render(<CopyBlock text={command} />)
 
-    controlOf(idle({ copy: port })).copy?.(command)
-
-    expect(copied).toEqual([command])
-  })
-
-  it("forwards the copied-for window to the control, 1500ms unless told otherwise", () => {
-    expect(controlOf(idle()).copiedForMs).toBe(1500)
-    expect(controlOf(idle({ copiedForMs: 900 })).copiedForMs).toBe(900)
-  })
-
-  it("announces a copy through a polite live region, empty until one happens", () => {
-    expect(statusOf(idle())).toBe('<span role="status" aria-live="polite" class="sr-only"></span>')
-    expect(statusOf(idle({ copied: true }))).toBe(
-      '<span role="status" aria-live="polite" class="sr-only">Copied</span>',
-    )
-  })
-
-  it("takes the confirmation word from the caller rather than conjugating the label", () => {
-    const status = statusOf(
-      idle({ copied: true, copyLabel: "Copy command", copiedLabel: "Command copied" }),
-    )
-
-    expect(status).toContain(">Command copied<")
-    expect(status).not.toContain("commanded")
-  })
-
-  it("renders an empty live region on the server", () => {
-    expect(render(<CopyBlock text={command} />)).toContain(
-      '<span role="status" aria-live="polite" class="sr-only"></span>',
-    )
+    expect(html.match(/role="status"/g)?.length).toBe(1)
+    expect(html).toContain('<span role="status" aria-live="polite" class="sr-only"></span>')
   })
 
   it("appends a caller class to the box", () => {
