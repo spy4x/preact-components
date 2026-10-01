@@ -51,9 +51,10 @@
     // Tailwind's class scanner (`@tailwindcss/oxide`), a native Node-API addon Deno loads only with
     // that grant, to prove the committed class list matches the packages' sources (#323). No other
     // test gets the grant. `infra/scripts/llms-txt.test.ts` also runs on its own, with
-    // `--allow-run=deno` added: it runs `deno doc` to prove `llms.txt` is fresh. No other test
-    // gets that grant either.
-    "test": "deno test --no-prompt --allow-read --allow-env --ignore=theme/component-classes.test.ts,infra/scripts/llms-txt.test.ts && deno test --no-prompt --allow-read --allow-env --allow-ffi theme/component-classes.test.ts && deno test --no-prompt --allow-read --allow-env --allow-run=deno infra/scripts/llms-txt.test.ts",
+    // `--allow-run=deno` added: it runs `deno doc` to prove `llms.txt` is fresh. So does
+    // `ui/island-bundle.test.ts`: it runs `deno bundle` to prove an island that renders `Button`,
+    // `ImageGallery` or `Lightbox` carries no `tailwind-merge` (#471). No other test gets that grant.
+    "test": "deno test --no-prompt --allow-read --allow-env --ignore=theme/component-classes.test.ts,infra/scripts/llms-txt.test.ts,ui/island-bundle.test.ts && deno test --no-prompt --allow-read --allow-env --allow-ffi theme/component-classes.test.ts && deno test --no-prompt --allow-read --allow-env --allow-run=deno infra/scripts/llms-txt.test.ts ui/island-bundle.test.ts",
     // Dry-runs the publish for every named workspace member (`pages/` has no `name`, so `deno
     // publish` skips it on its own — nothing here excludes it by hand). Named `publish:dry`
     // rather than `publish`: this only ever simulates; the real `deno publish` runs in Woodpecker

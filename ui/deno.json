@@ -58,6 +58,7 @@
     // here would catch a forgotten entry — a new `*.test.tsx` would ship to JSR with the package.
     // `**/` because a bare `*.test.ts` matches this directory only: measured in `ui-guide/`, where
     // it shipped `sections/demo-decisions.test.ts`. Every package that publishes uses this pair.
-    "exclude": ["**/*.test.ts", "**/*.test.tsx"]
+    // `testdata/` holds the islands `island-bundle.test.ts` bundles, for that test alone.
+    "exclude": ["**/*.test.ts", "**/*.test.tsx", "testdata/"]
   }
 }
