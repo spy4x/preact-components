@@ -200,6 +200,8 @@ export {
   Lightbox,
   type LightboxImage,
   type LightboxProps,
+  SWIPE_MIN_PX,
+  swipeStep,
   wrapIndex,
 } from "./lightbox.tsx"
 export {

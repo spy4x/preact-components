@@ -59,6 +59,22 @@
  * `fallbackAlt` (default `"Image"`) first, unchanged from before this component existed, so a
  * missing description there still opens and is still captioned — named `"Image"` rather than
  * dropped — unless that substitution is itself turned off with `fallbackAlt=""`.
+ *
+ * **Controls overlay the image by default, or sit in a row below it** ({@link LightboxProps.controls}).
+ * In the row, the image is positioned inside a box that fills the space the row leaves, with
+ * `max-h-full`/`max-w-full` resolving against that box, so a tall image fits the viewport whether or
+ * not it sits inside a `<picture>`.
+ *
+ * **Edge controls clear the phone's safe area.** Every control placed against an edge sits at
+ * `max(1rem, env(safe-area-inset-*))` from it, which is `1rem` wherever the inset is zero — so a
+ * page without `viewport-fit=cover` looks exactly as before — and clears a notch on a phone turned
+ * sideways on a page with it.
+ *
+ * **A horizontal swipe on a touch screen pages through the images**, the same as Left and Right:
+ * leftward for the next image, rightward for the previous one. It counts only a single finger that
+ * travels at least {@link SWIPE_MIN_PX} sideways and more sideways than up or down, so a pinch or a
+ * vertical drag does nothing. Touch events rather than pointer events: the browser cancels a pointer
+ * the moment it starts a pan of its own, and a touch still ends.
  */
 
 import { join } from "@spy4x/preact-cn/join"
@@ -77,6 +93,11 @@ export interface LightboxImage {
    * this component's rendered sequence at all.
    */
   alt: string
+  /**
+   * The same image as WebP. When set, the image renders inside a `<picture>` with this as its
+   * `image/webp` source and `src` as the fallback for a browser without WebP.
+   */
+  webpSrc?: string
 }
 
 /**
@@ -124,6 +145,21 @@ export function counterText(position: number, total: number): string {
   return `${position} of ${total}`
 }
 
+/** How far, in CSS pixels, one finger must travel sideways for a swipe to change the image. */
+export const SWIPE_MIN_PX = 50
+
+/**
+ * The step a finished touch asks for: `1` for a leftward swipe (next image), `-1` for a rightward
+ * one (previous image), `0` for anything that is not a swipe.
+ *
+ * @param dx Horizontal travel from touch start to touch end, in CSS pixels; negative is leftward.
+ * @param dy Vertical travel over the same touch.
+ */
+export function swipeStep(dx: number, dy: number): -1 | 0 | 1 {
+  if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) <= Math.abs(dy)) return 0
+  return dx < 0 ? 1 : -1
+}
+
 export interface LightboxProps {
   /**
    * The sequence a reader can arrow through. Filtered through {@link describedImages} before
@@ -156,6 +192,11 @@ export interface LightboxProps {
    */
   counterLabel?: (position: number, total: number) => string
   /**
+   * Where the counter and the previous/next buttons go: `"overlay"` floats them over the image
+   * (the default), `"below"` puts them in one row under the image and its caption.
+   */
+  controls?: "overlay" | "below"
+  /**
    * Extra utilities for the dialog element, appended after its own and not merged into them. To
    * replace one of its own utilities, mark the replacement important with a trailing `!`.
    */
@@ -164,16 +205,38 @@ export interface LightboxProps {
 
 const dialogClass =
   "fixed inset-0 m-0 h-full max-h-none w-full max-w-none bg-scrim-strong p-0 backdrop:bg-scrim-strong"
-const controlClass =
-  "absolute z-10 cursor-pointer rounded-full bg-scrim p-2 text-on-scrim-muted transition-colors hover:text-scrim-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-(--color-scrim-foreground)"
+const buttonClass =
+  "cursor-pointer rounded-full bg-scrim p-2 text-on-scrim-muted transition-colors hover:text-scrim-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-(--color-scrim-foreground)"
+const controlClass = join("absolute z-10", buttonClass)
+// `max(1rem, env(safe-area-inset-*))`: today's `1rem` wherever there is no inset to clear.
+const safeTop = "top-[max(--spacing(4),env(safe-area-inset-top,0px))]"
+const safeRight = "right-[max(--spacing(4),env(safe-area-inset-right,0px))]"
+const safeLeft = "left-[max(--spacing(4),env(safe-area-inset-left,0px))]"
+const safeBottom = "bottom-[max(--spacing(4),env(safe-area-inset-bottom,0px))]"
 // Positioned rather than stretched, exactly like `ZoomableImages`'s own image: a child
 // that fills the dialog is a backdrop no click can ever land on.
 const imageClass =
   "absolute top-1/2 left-1/2 max-h-[90vh] max-w-[90vw] -translate-x-1/2 -translate-y-1/2 object-contain"
 const captionClass =
-  "pointer-events-none absolute inset-x-0 bottom-4 mx-auto max-w-[90vw] text-center text-sm text-on-scrim-muted"
-const counterClass =
-  "pointer-events-none absolute inset-x-0 top-4 mx-auto w-fit rounded-full bg-scrim px-3 py-1 text-xs text-on-scrim-muted"
+  `pointer-events-none absolute inset-x-0 ${safeBottom} mx-auto max-w-[90vw] text-center text-sm text-on-scrim-muted`
+const chipClass = "rounded-full bg-scrim px-3 py-1 text-xs text-on-scrim-muted"
+const counterClass = `pointer-events-none absolute inset-x-0 ${safeTop} mx-auto w-fit ${chipClass}`
+// The row layout. The column lets clicks through to the dialog, so a click on empty space still
+// lands on the backdrop and closes it; only the image and the row take clicks back.
+// Positioned rather than padded, so the safe-area insets stay positions: it starts below the close
+// button (its `1rem` offset plus its 3rem height) and keeps the same distance from the other edges.
+const columnClass = join(
+  "pointer-events-none absolute flex flex-col items-center gap-3",
+  "top-[calc(max(--spacing(4),env(safe-area-inset-top,0px))+--spacing(12))]",
+  safeRight,
+  safeBottom,
+  safeLeft,
+)
+const stageClass = "relative min-h-0 w-full flex-1"
+const stageImageClass =
+  "pointer-events-auto absolute inset-0 m-auto max-h-full max-w-full object-contain"
+const belowCaptionClass = "max-w-[90vw] text-center text-sm text-on-scrim-muted"
+const rowClass = "pointer-events-auto flex items-center gap-3"
 
 /** What the mount-time keydown listener reads at press time, kept current every render. */
 interface LatestState {
@@ -198,6 +261,7 @@ export function Lightbox(
     previousLabel = "Previous image",
     nextLabel = "Next image",
     counterLabel = counterText,
+    controls = "overlay",
     class: className,
   }: LightboxProps,
 ): JSX.Element {
@@ -254,8 +318,37 @@ export function Lightbox(
       }
     }
 
+    // A swipe, tracked from the first finger down to the last one up. A second finger at any point
+    // makes it a pinch, which never pages.
+    let start: { x: number; y: number } | null = null
+    const onTouchStart = (event: TouchEvent) => {
+      start = event.touches.length === 1
+        ? { x: event.touches[0].clientX, y: event.touches[0].clientY }
+        : null
+    }
+    const onTouchEnd = (event: TouchEvent) => {
+      const state = latest.current
+      const touch = event.changedTouches[0]
+      if (!start || !touch || event.touches.length > 0) return
+      const step = swipeStep(touch.clientX - start.x, touch.clientY - start.y)
+      start = null
+      if (!state.open || state.total <= 1 || step === 0) return
+      state.onIndexChange(wrapIndex(state.index, state.total, step))
+    }
+    const onTouchCancel = () => {
+      start = null
+    }
+
     dialog.addEventListener("keydown", onKeyDown)
-    return () => dialog.removeEventListener("keydown", onKeyDown)
+    dialog.addEventListener("touchstart", onTouchStart, { passive: true })
+    dialog.addEventListener("touchend", onTouchEnd, { passive: true })
+    dialog.addEventListener("touchcancel", onTouchCancel, { passive: true })
+    return () => {
+      dialog.removeEventListener("keydown", onKeyDown)
+      dialog.removeEventListener("touchstart", onTouchStart)
+      dialog.removeEventListener("touchend", onTouchEnd)
+      dialog.removeEventListener("touchcancel", onTouchCancel)
+    }
   }, [])
 
   // The restore itself is measured, not merely hoped for, and the measurement is the same one
@@ -298,35 +391,85 @@ export function Lightbox(
             type="button"
             onClick={() => dialogRef.current?.close()}
             aria-label={closeLabel}
-            class={join(controlClass, "top-4 right-4")}
+            class={join(controlClass, safeTop, safeRight)}
           >
             <IconXMark class="size-8" />
           </button>
-          {total > 1 && (
-            <>
-              <button
-                type="button"
-                onClick={() => onIndexChange(wrapIndex(clampedIndex, total, -1))}
-                aria-label={previousLabel}
-                class={join(controlClass, "top-1/2 left-4 -translate-y-1/2")}
-              >
-                <IconChevronLeft class="size-8" />
-              </button>
-              <button
-                type="button"
-                onClick={() => onIndexChange(wrapIndex(clampedIndex, total, 1))}
-                aria-label={nextLabel}
-                class={join(controlClass, "top-1/2 right-4 -translate-y-1/2")}
-              >
-                <IconChevronRight class="size-8" />
-              </button>
-            </>
-          )}
-          {counter && <p class={counterClass}>{counter}</p>}
-          <img src={current.src} alt={current.alt} class={imageClass} />
-          <p class={captionClass}>{current.alt}</p>
+          {controls === "below"
+            ? (
+              <div class={columnClass}>
+                <div class={stageClass}>{picture(current, stageImageClass)}</div>
+                <p class={belowCaptionClass}>{current.alt}</p>
+                {total > 1 && (
+                  <div class={rowClass}>
+                    <button
+                      type="button"
+                      onClick={() => onIndexChange(wrapIndex(clampedIndex, total, -1))}
+                      aria-label={previousLabel}
+                      class={buttonClass}
+                    >
+                      <IconChevronLeft class="size-8" />
+                    </button>
+                    <p class={chipClass}>{counter}</p>
+                    <button
+                      type="button"
+                      onClick={() => onIndexChange(wrapIndex(clampedIndex, total, 1))}
+                      aria-label={nextLabel}
+                      class={buttonClass}
+                    >
+                      <IconChevronRight class="size-8" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )
+            : (
+              <>
+                {total > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => onIndexChange(wrapIndex(clampedIndex, total, -1))}
+                      aria-label={previousLabel}
+                      class={join(controlClass, "top-1/2 -translate-y-1/2", safeLeft)}
+                    >
+                      <IconChevronLeft class="size-8" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onIndexChange(wrapIndex(clampedIndex, total, 1))}
+                      aria-label={nextLabel}
+                      class={join(controlClass, "top-1/2 -translate-y-1/2", safeRight)}
+                    >
+                      <IconChevronRight class="size-8" />
+                    </button>
+                  </>
+                )}
+                {counter && <p class={counterClass}>{counter}</p>}
+                {picture(current, imageClass)}
+                <p class={captionClass}>{current.alt}</p>
+              </>
+            )}
         </>
       )}
     </dialog>
+  )
+}
+
+/**
+ * The image element, wrapped in a `<picture>` with a WebP source when the image has one.
+ *
+ * @param image The image to render.
+ * @param className Utilities for the `<img>`; the `<picture>` stays an unstyled inline box, so the
+ * `<img>` is positioned against the same ancestor either way.
+ */
+function picture(image: LightboxImage, className: string): JSX.Element {
+  const img = <img src={image.src} alt={image.alt} class={className} />
+  if (!image.webpSrc) return img
+  return (
+    <picture>
+      <source type="image/webp" srcset={image.webpSrc} />
+      {img}
+    </picture>
   )
 }
