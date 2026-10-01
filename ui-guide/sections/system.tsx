@@ -887,6 +887,41 @@ function AuthFormAutofillDemo() {
   )
 }
 
+/**
+ * One instance whose inputs post as `username`, `password` and `otp`, the names an API's schema
+ * might use. A credentials submit moves it to the code step, and the line below the form shows what
+ * each callback received — the login and the code as typed, the password only by its length — so a
+ * check can prove the renamed fields still reach the callbacks once the page has hydrated.
+ */
+function AuthFormNamesDemo() {
+  const step = useSignal<AuthStep>("credentials")
+  const login = useSignal("")
+  const passwordLength = useSignal(0)
+  const code = useSignal("")
+
+  return (
+    <Stack gap="sm" class="max-w-sm" data-e2e="auth-form-names-demo">
+      <AuthForm
+        mode="sign-in"
+        step={step.value}
+        names={{ login: "username", code: "otp" }}
+        action="/auth/sign-in"
+        onSignIn={(credentials) => {
+          login.value = credentials.login
+          passwordLength.value = credentials.password.length
+          step.value = "one-time-code"
+        }}
+        onOneTimeCode={(received) => code.value = received}
+      />
+      <p class={NOTE}>
+        login: <span data-e2e="auth-form-names-login">{login.value}</span>, password length:{" "}
+        <span data-e2e="auth-form-names-password-length">{passwordLength.value}</span>, code:{" "}
+        <span data-e2e="auth-form-names-code">{code.value}</span>
+      </p>
+    </Stack>
+  )
+}
+
 /** The two errors this card's buttons can set, kept next to each other for that reason. */
 const FORM_ERROR = "Wrong login or password"
 const FIELD_ERROR: AuthFormError = { message: "No account with that login", field: "login" }
@@ -1459,6 +1494,13 @@ useEffect(() => {
         description: "Shown above the form, and beside the field it names.",
       },
       {
+        name: "names",
+        type: "{ login?, password?, code? }",
+        default: '"login", "password", "code"',
+        description:
+          "The inputs' name attributes, so a post without script sends the field names your API expects. The callbacks keep their shape.",
+      },
+      {
         name: "action",
         type: "string",
         description: "Where the form posts when no script is running.",
@@ -1481,6 +1523,7 @@ useEffect(() => {
   onOneTimeCode={(code) => auth.verify(code)}
   busy={pending}
   error={error} // string, or { message, field: "login" | "password" | "code" }
+  names={{ login: "username", code: "otp" }} // what a post without script sends
   action="/auth/sign-in"
   footer={<a class="link" href="/sign-in">Back to sign in</a>}
 />`,
@@ -1491,6 +1534,9 @@ useEffect(() => {
         </Part>
         <Part title="Driven by buttons in place of a server">
           <AuthFormInteractiveDemo />
+        </Part>
+        <Part title="With the field names your API expects">
+          <AuthFormNamesDemo />
         </Part>
         <Part title="With a link below the form">
           <div class="max-w-sm" data-e2e="auth-form-footer-demo">
