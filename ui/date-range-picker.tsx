@@ -182,7 +182,7 @@ export interface DateRangePickerTimeProps extends DateRangePickerSharedProps {
 export type AnyDateRangePickerProps = DateRangePickerProps | DateRangePickerTimeProps
 
 const panelClasses =
-  "absolute z-10 mt-2 w-80 rounded-md bg-surface p-3 shadow-popover ring-1 ring-subtle"
+  "absolute z-10 mt-2 w-80 rounded-md bg-surface pc-focus-offset-surface p-3 shadow-popover ring-1 ring-subtle"
 
 /**
  * The From and To fields. They carry their own utilities rather than the theme's `.pc-input`, which is

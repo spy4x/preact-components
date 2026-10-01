@@ -417,7 +417,7 @@ export function Modal(
       aria-describedby={ariaDescribedBy}
       {...labelAttributes}
       class={cn(
-        "m-auto w-full max-w-md rounded-lg border border-subtle bg-surface p-0 text-foreground shadow-popover backdrop:bg-scrim backdrop:backdrop-blur-xs open:flex open:flex-col",
+        "m-auto w-full max-w-md rounded-lg border border-subtle bg-surface pc-focus-offset-surface p-0 text-foreground shadow-popover backdrop:bg-scrim backdrop:backdrop-blur-xs open:flex open:flex-col",
         tone === "danger" ? "border-red-300 dark:border-red-800" : "",
         className,
       )}

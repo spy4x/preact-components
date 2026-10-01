@@ -78,6 +78,15 @@ describe("Table", () => {
     expect(html).toContain("Name")
   })
 
+  it("gives a focus ring in the body a gap in the body's colour, and leaves the head on the page's", () => {
+    const html = render(<Table headerSlot={header} bodySlots={[]} />)
+
+    expect(html).toContain(
+      '<tbody class="divide-y divide-subtle bg-surface pc-focus-offset-surface">',
+    )
+    expect(html).toContain('<thead class="bg-canvas">')
+  })
+
   it("scrolls horizontally instead of overflowing the page", () => {
     expect(render(<Table headerSlot={header} bodySlots={[]} />)).toContain("overflow-x-auto")
   })

@@ -190,7 +190,7 @@ describe("Field", () => {
     expect(html).toContain("text-muted")
   })
 
-  it("marks a required field on the label and leaves required native to the control", () => {
+  it("marks a required field on the label in the danger colour and leaves required native to the control", () => {
     const html = render(
       <Field id="email" label="Email" required>
         <input id="email" required />
@@ -198,6 +198,7 @@ describe("Field", () => {
     )
 
     expect(html).toContain('aria-hidden="true"')
+    expect(html).toContain('<span aria-hidden="true" class="ml-1 text-danger">*</span>')
     expect(html.match(/required/g)?.length ?? 0).toBeGreaterThan(0)
     expect(labelFors(html)).toEqual(["email"])
   })

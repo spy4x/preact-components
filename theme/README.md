@@ -263,7 +263,8 @@ classes keep their names: no app writes them as ordinary words.
   browser draws a checkbox, a radio, a date picker's icon and a field's
   scrollbar dark instead of as a white box. The page's own scrollbar follows the
   root element's `color-scheme`, which the preset leaves to the app.
-- **Surfaces** — `pc-card`, `pc-card-header`, `pc-card-body`, `pc-card-footer`, `pc-scrollbar`.
+- **Surfaces** — `pc-card`, `pc-card-header`, `pc-card-body`, `pc-card-footer`, `pc-scrollbar`,
+  `pc-focus-offset-surface`.
 - **Data display** — `pc-num`, `pc-kpi`, `pc-kpi-label`, `pc-kpi-value`, `pc-bar`.
 - **Map** — `map-marker` inside a `status-on` / `status-off` / `status-unknown` container, used by
   `@spy4x/preact-map`'s `Map` component and its plain-text list of markers.
@@ -496,7 +497,13 @@ and its label 5.54:1.
 
 Focus: `ring-2 ring-focus ring-offset-2 ring-offset-focus` draws a 2px ring in `--color-ring` (the
 accent, which is what the primary `Button` draws today; step 400 in the dark palette, 6.36:1 on the
-dark canvas) with a 2px gap in `--color-focus-offset` (the canvas). `--color-focus-ring` is the
+dark canvas) with a 2px gap in `--color-focus-offset` (the canvas). A container drawn in the
+surface colour sets that gap to the surface, so a focused control on a card shows no band of page
+colour around it: `.pc-card` does this itself, and `pc-focus-offset-surface` does it for any other
+surface (the library's `Modal`, `DateRangePicker` panel, `EmptyState` and `Table` body carry it).
+An app that paints its own surface adds `pc-focus-offset-surface` beside its `bg-surface`; it sets
+`--color-focus-offset` on that element, so a value an app sets on `:root` no longer reaches the
+controls inside. `--color-focus-ring` is the
 other token: it moves the preset's own `.pc-input`, `.pc-select`, `.pc-textarea` and dark `.btn` rings, and
 ink sets it, so ink does not touch the components' ring.
 

@@ -195,12 +195,13 @@ describe("ToggleField", () => {
     expect(off).toContain('aria-checked="false"')
   })
 
-  it("marks a required switch on the label only", () => {
+  it("marks a required switch on the label only, in the danger colour", () => {
     const html = render(
       <ToggleField id="archive" label="Archive" value onToggle={onToggle} required />,
     )
 
     expect(html).toContain('aria-hidden="true"')
+    expect(html).toContain('<span aria-hidden="true" class="ml-1 text-danger">*</span>')
     // A button carries no `required`, and `aria-required` on a `role="switch"` is not supported:
     // claiming it would be a lie to assistive tech. The attribute is what is asserted, not the word:
     // `required` as a substring could match a utility class and turn this into a passing no-op.

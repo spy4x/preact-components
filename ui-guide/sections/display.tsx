@@ -1139,7 +1139,8 @@ export const displayDemos = {
     render: () => <DataTableDemo />,
   },
   Card: {
-    summary: "A surface that groups related content, with an optional header, body and footer.",
+    summary:
+      "A surface that groups related content in an optional header, body and footer, and gives a focus ring inside it a gap in its own colour.",
     wide: false,
     snippet: `<Card>
   <CardHeader title="Invoices" action={<Button size="sm">New</Button>} />

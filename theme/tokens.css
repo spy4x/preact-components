@@ -67,7 +67,9 @@
     /* Focus — the preset's own rings (`.pc-input`, `.pc-select`, `.pc-textarea`, `.btn` under
        `.dark`) read --color-focus-ring, which is not declared here: they draw --color-primary-muted
        until an app sets it. The components draw --color-ring through `ring-focus`, set off by --color-focus-offset
-       (`ring-offset-focus`): the offset is the page colour, so the gap looks like the page. */
+       (`ring-offset-focus`): the offset is the page colour, so the gap looks like the page. A card
+       (`.pc-card`) and any container carrying `pc-focus-offset-surface` set it to the surface
+       instead, so a ring inside them has a gap in the surface colour. */
     --color-focus-offset: var(--color-canvas);
     /* The ring the components draw (`ring-focus`): the accent, in both palettes. --color-focus-ring
        moves the preset's own rings and not these, so ink keeps the accent on the components. */

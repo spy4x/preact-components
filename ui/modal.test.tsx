@@ -182,6 +182,14 @@ describe("Modal", () => {
     expect(html).toContain("max-w-md")
   })
 
+  it("gives a focus ring inside the dialog a gap in the dialog's own colour", () => {
+    const html = render(<Modal open title="Delete" />)
+    const dialog = html.slice(html.indexOf("<dialog"), html.indexOf(">", html.indexOf("<dialog")))
+
+    expect(dialog).toContain("bg-surface")
+    expect(dialog).toContain("pc-focus-offset-surface")
+  })
+
   it("centres itself and names the backdrop colour", () => {
     const html = render(<Modal open title="Delete" />)
 

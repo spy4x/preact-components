@@ -32,7 +32,7 @@ describe("EmptyState", () => {
   it("renders the minimal title-only markup", () => {
     expect(render(<EmptyState title="No invoices yet" />)).toBe(
       '<div role="status" class="mx-auto max-w-[650px] rounded-lg border border-dashed ' +
-        'border-subtle bg-surface p-4 text-center">' +
+        'border-subtle bg-surface pc-focus-offset-surface p-4 text-center">' +
         '<h3 class="text-base font-medium text-foreground">No invoices yet</h3>' +
         "</div>",
     )
@@ -50,7 +50,7 @@ describe("EmptyState", () => {
       ),
     ).toBe(
       '<div role="status" class="mx-auto max-w-[650px] rounded-lg border border-dashed ' +
-        'border-subtle bg-surface p-4 text-center">' +
+        'border-subtle bg-surface pc-focus-offset-surface p-4 text-center">' +
         '<span aria-hidden="true" class="mx-auto mb-3 inline-flex size-10 items-center ' +
         'justify-center rounded-xl border border-subtle bg-selected-soft text-selected">' +
         '<svg viewBox="0 0 24 24"></svg></span>' +
