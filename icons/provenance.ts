@@ -4,7 +4,13 @@
  * a few possibly from an image search with no known licence. Feather and Lucide are compared too,
  * because the earlier shape-based audit (#111) identified some glyphs as those by eye.
  *
- * Packs compared, pinned in `deno.json` → `imports`:
+ * Packs compared, each pinned to an exact version by the full `npm:` specifier its loader below
+ * imports. They are deliberately not in `deno.json` → `imports`: Deno's task runner installs a
+ * member's mapped npm packages before running any task in it, so every `deno task check` downloaded
+ * all five tarballs for this run-by-hand audit (#467). A specifier that appears only as a string
+ * passed to a dynamic `import()` is fetched when that import runs, and only then. The `provenance`
+ * task records their integrity hashes in `provenance.lock` rather than the root `deno.lock`, where
+ * they would put the packs back on the install list.
  *
  * - Heroicons v1 (`heroicons@1.0.6`, the last v1 release) — `outline/` and `solid/`, one size (24).
  * - Heroicons v2 (`heroicons@2.2.0`) — `24/`, `20/`, `16/`, each with the style directories that
@@ -79,7 +85,7 @@ import { fileURLToPath } from "node:url"
 import { basename, dirname, join } from "node:path"
 import { parseIconBlocks } from "./check-readme.ts"
 
-// Deliberately not a static `import … from "heroicons-v1/package.json" with { type: "json" }` here
+// Deliberately not a static `import … from "npm:heroicons@1.0.6/package.json" with { type: "json" }`
 // at module scope: this file's pure normalisation and comparison functions are also imported by
 // `provenance.test.ts`, which `deno task test` runs with no `--allow-net` (see the root `deno.jsonc`
 // `test` task). A static import of an npm specifier runs — and reaches the network — the moment this
@@ -89,7 +95,7 @@ import { parseIconBlocks } from "./check-readme.ts"
 // only after a package has been imported as a real module does `import.meta.resolve` hand back a
 // `file:` URL for it, rather than the bare specifier — the same requirement
 // `theme/integration/load-stylesheet.ts` documents for `tailwindcss`. Heroicons ships v1 and v2 as
-// the same npm package name at different versions, so each has its own import key in `deno.json`.
+// the same npm package name at different versions; each loader names its exact version.
 async function importManifest(specifier: string): Promise<{ version: string }> {
   const module = await import(specifier, { with: { type: "json" } })
   return module.default as { version: string }
@@ -456,8 +462,8 @@ async function loadSvgIcons(
 
 /** Heroicons v1 (last release, `1.0.6`) — `outline/` and `solid/`, one size. */
 async function loadHeroiconsV1(): Promise<PackIcon[]> {
-  const manifest = await importManifest("heroicons-v1/package.json")
-  const root = packageRoot("heroicons-v1/package.json")
+  const manifest = await importManifest("npm:heroicons@1.0.6/package.json")
+  const root = packageRoot("npm:heroicons@1.0.6/package.json")
   const version = `v1@${manifest.version}`
   const icons: PackIcon[] = []
   for (const style of ["outline", "solid"]) {
@@ -468,8 +474,8 @@ async function loadHeroiconsV1(): Promise<PackIcon[]> {
 
 /** Heroicons v2 (`2.2.0`) — every `<size>/<style>` directory the package actually ships. */
 async function loadHeroiconsV2(): Promise<PackIcon[]> {
-  const manifest = await importManifest("heroicons-v2/package.json")
-  const root = packageRoot("heroicons-v2/package.json")
+  const manifest = await importManifest("npm:heroicons@2.2.0/package.json")
+  const root = packageRoot("npm:heroicons@2.2.0/package.json")
   const version = `v2@${manifest.version}`
   const icons: PackIcon[] = []
   for await (const sizeEntry of Deno.readDir(root)) {
@@ -493,15 +499,15 @@ async function loadHeroiconsV2(): Promise<PackIcon[]> {
 
 /** Feather (`4.29.2`, MIT) — `dist/icons/`, one style, one size. */
 async function loadFeather(): Promise<PackIcon[]> {
-  const manifest = await importManifest("feather-icons/package.json")
-  const root = packageRoot("feather-icons/package.json")
+  const manifest = await importManifest("npm:feather-icons@4.29.2/package.json")
+  const root = packageRoot("npm:feather-icons@4.29.2/package.json")
   return loadSvgIcons(join(root, "dist", "icons"), "Feather", manifest.version, "outline", "24")
 }
 
 /** Lucide (`1.47.0`, ISC) — `icons/`, one style, one size. */
 async function loadLucide(): Promise<PackIcon[]> {
-  const manifest = await importManifest("lucide-static/package.json")
-  const root = packageRoot("lucide-static/package.json")
+  const manifest = await importManifest("npm:lucide-static@1.47.0/package.json")
+  const root = packageRoot("npm:lucide-static@1.47.0/package.json")
   return loadSvgIcons(join(root, "icons"), "Lucide", manifest.version, "outline", "24")
 }
 
@@ -514,8 +520,8 @@ async function loadLucide(): Promise<PackIcon[]> {
  * read from the manifest on disk.
  */
 async function loadSimpleIcons(): Promise<PackIcon[]> {
-  await importManifest("simple-icons/icons.json")
-  const root = dirname(packageRoot("simple-icons/icons.json"))
+  await importManifest("npm:simple-icons@16.33.0/icons.json")
+  const root = dirname(packageRoot("npm:simple-icons@16.33.0/icons.json"))
   const manifest = JSON.parse(await Deno.readTextFile(join(root, "package.json")))
   return loadSvgIcons(join(root, "icons"), "Simple Icons", manifest.version, "brand", "24")
 }
