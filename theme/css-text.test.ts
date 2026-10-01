@@ -88,16 +88,18 @@ const EXPECTED_ROOT_TOKENS: Record<string, string> = {
   "--color-foreground": "oklch(0.13 0.028 261.692)",
   "--color-muted-foreground": "oklch(0.446 0.03 256.802)",
   "--color-placeholder": "oklch(0.551 0.027 264.364)",
-  "--color-danger": "oklch(0.577 0.245 27.325)",
+  // #463: the light status text a step or two darker, so it reads at 4.5:1 on the surface and the
+  // canvas; the fills below keep the steps the text tokens used to have.
+  "--color-danger": "oklch(0.505 0.213 27.518)",
   "--color-danger-foreground": "oklch(0.971 0.013 17.38)",
-  "--color-warning": "oklch(0.646 0.222 41.116)",
+  "--color-warning": "oklch(0.553 0.195 38.402)",
   // #431: a dark label, because orange-50 read 3.37:1 on the orange-600 fill.
   "--color-warning-foreground": "oklch(0.13 0.028 261.692)",
-  "--color-success": "oklch(0.527 0.154 150.069)",
+  "--color-success": "oklch(0.448 0.119 151.328)",
   "--color-success-foreground": "oklch(0.982 0.018 155.826)",
-  // #429: the warning and success fills, the same colours as their text tokens in light.
-  "--color-warning-fill": `var(--color-warning)`,
-  "--color-success-fill": `var(--color-success)`,
+  // #429: the warning and success fills; #463 gave them their own values when the text darkened.
+  "--color-warning-fill": "oklch(0.646 0.222 41.116)",
+  "--color-success-fill": "oklch(0.527 0.154 150.069)",
   "--radius-primary": "0.5rem",
   "--radius-control": "0.375rem",
   // #417 added the tokens below. Most are read by nothing yet (selection, focus, hover, track,
@@ -119,7 +121,7 @@ const EXPECTED_ROOT_TOKENS: Record<string, string> = {
   "--color-scrim-strong": `oklch(0 0 0 / 0.9)`,
   "--color-scrim-foreground": `oklch(1 0 0)`,
   "--color-border-strong": `oklch(0.707 0.022 261.325)`,
-  "--color-danger-fill": `var(--color-danger)`,
+  "--color-danger-fill": `oklch(0.577 0.245 27.325)`,
   "--color-danger-fill-hover": `oklch(0.505 0.213 27.518)`,
   "--color-danger-fill-foreground": `oklch(1 0 0)`,
   "--color-danger-soft": `oklch(0.971 0.013 17.38)`,
@@ -179,5 +181,19 @@ describe("the default token set, after #257", () => {
     expect(root).not.toHaveProperty("--font-serif")
     expect(root).not.toHaveProperty("--font-mono")
     expect(TOKENS_CSS).not.toMatch(/\.(woff2?|ttf|otf)/)
+  })
+})
+
+describe("preset.css fallbacks, after #463", () => {
+  it("fall back to the light value tokens.css gives each status text token", () => {
+    const root = parseBlock(TOKENS_CSS, ":root")
+    const fallbacks = [
+      ...PRESET_CSS.matchAll(/var\((--color-(?:danger|warning|success)),\s*([^()]*\([^()]*\))\)/g),
+    ]
+    const mismatched = fallbacks
+      .filter(([, token, fallback]) => fallback !== root[token])
+      .map(([usage, token]) => `${usage} (tokens.css: ${root[token]})`)
+    expect(fallbacks.length).toBe(12)
+    expect(mismatched).toEqual([])
   })
 })

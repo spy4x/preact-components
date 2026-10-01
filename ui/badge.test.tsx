@@ -13,12 +13,12 @@ describe("Badge", () => {
     expect(html).toContain("paid")
   })
 
-  it("uses only the border and text colours in outline mode", () => {
+  it("draws an outline badge's border and text in its light shade, with no fill", () => {
     const html = render(<Badge text="draft" color="red" type="outline" />)
 
-    expect(html).toContain("border-red-600")
-    expect(html).toContain("text-red-600")
-    expect(html).not.toContain("bg-red-600")
+    expect(html).toContain("border-red-700")
+    expect(html).toContain("text-red-700")
+    expect(html).not.toMatch(/[" ]bg-red-/)
   })
 
   it("renders a filled colour by name", () => {

@@ -13021,6 +13021,8 @@ interface BadgeContrast {
   /** Against the palette's page canvas and raised surface, the other places a badge sits. */
   onCanvas: number
   onSurface: number
+  /** The label's colour as the browser computes it. */
+  color: string
   /** Whether the badge has a fill of its own, so only its own fill is behind the label. */
   filled: boolean
 }
@@ -13037,11 +13039,22 @@ interface OutlineBadgeReading {
 }
 
 /**
- * In the dark palette every outline `Badge` label reaches 4.5:1 against what it sits on: the
- * catalogue card behind it, the gray-900 canvas and the gray-800 surface (#396). A badge with its
- * own fill (`purpleNav`) is measured against that fill alone. The light palette is read too, for
- * the evidence, and not asserted: this change leaves it alone. An unpressed `ToggleChips` chip draws
- * the grey outline badge's own dark colour, so the chip needs no dark override of its own.
+ * The outline badges' dark label colours: #463 gave the light palette its own shades and left
+ * these alone.
+ */
+const DARK_OUTLINE_BADGE_COLOURS: Record<string, string> = {
+  red: "oklch(0.704 0.191 22.216)", // red-400
+  orange: "oklch(0.75 0.183 55.934)", // orange-400
+  green: "oklch(0.792 0.209 151.711)", // green-400
+  blue: "oklch(0.707 0.165 254.624)", // blue-400
+}
+
+/**
+ * In both palettes every outline `Badge` label reaches 4.5:1 against what it sits on: the
+ * catalogue card behind it, the canvas and the surface (#396 for dark, #463 for light). A badge
+ * with its own fill (`purpleNav`) is measured against that fill alone. The dark red, orange, green
+ * and blue labels keep their 400 shades. An unpressed `ToggleChips` chip draws the grey outline
+ * badge's own dark colour, so the chip needs no dark override of its own.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -13079,6 +13092,7 @@ async function outlineBadgeContrastCheck(devtools: Devtools): Promise<void> {
         const filled = contrastCanvas.getImageData(0, 0, 1, 1).data[3] === 255
         return {
           name: badge.textContent.trim(),
+          color: getComputedStyle(badge).color,
           onBackdrop: ratio(text, behind),
           onCanvas: filled ? ratio(text, behind) : ratio(text, canvas),
           onSurface: filled ? ratio(text, behind) : ratio(text, surface),
@@ -13108,7 +13122,6 @@ async function outlineBadgeContrastCheck(devtools: Devtools): Promise<void> {
 
   const lowest = (badge: BadgeContrast) =>
     Math.min(badge.onBackdrop, badge.onCanvas, badge.onSurface)
-  const failing = reading.dark.filter((badge) => lowest(badge) < 4.5)
   const table = (badges: BadgeContrast[]) =>
     badges.map((badge) =>
       badge.filled
@@ -13116,13 +13129,23 @@ async function outlineBadgeContrastCheck(devtools: Devtools): Promise<void> {
         : `${badge.name} ${badge.onBackdrop.toFixed(2)}/${badge.onCanvas.toFixed(2)}/` +
           badge.onSurface.toFixed(2)
     ).join(", ")
+  for (const palette of ["light", "dark"] as const) {
+    check(
+      `in the ${palette} palette every outline Badge label reaches 4.5:1 on the card, canvas and ` +
+        "surface",
+      reading.found === 7 && reading[palette].every((badge) => lowest(badge) >= 4.5),
+      reading.found !== 7
+        ? `found ${reading.found} outline badges in the Badge card, expected 7`
+        : `card/canvas/surface — ${palette}: ${table(reading[palette])}`,
+    )
+  }
+  const darkMoved = Object.entries(DARK_OUTLINE_BADGE_COLOURS).filter(([name, colour]) =>
+    reading.dark.find((badge) => badge.name === name)?.color !== colour
+  )
   check(
-    "in the dark palette every outline Badge label reaches 4.5:1 on the card, canvas and surface",
-    reading.found === 7 && failing.length === 0,
-    reading.found !== 7
-      ? `found ${reading.found} outline badges in the Badge card, expected 7`
-      : `card/canvas/surface — dark: ${table(reading.dark)}; light (not asserted): ` +
-        table(reading.light),
+    "in the dark palette the red, orange, green and blue outline Badges keep their 400 shades",
+    darkMoved.length === 0,
+    reading.dark.map((badge) => `${badge.name} ${badge.color}`).join(", "),
   )
   check(
     "in the dark palette an unpressed ToggleChips chip draws the grey outline Badge's colour",

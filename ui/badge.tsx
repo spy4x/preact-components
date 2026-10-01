@@ -37,15 +37,17 @@ export interface BadgeElementProps extends Omit<BadgeProps, "text"> {
 }
 
 /**
- * An outline badge draws its label straight on whatever is behind it, so in the dark palette each
- * colour steps up to its 400 shade: red, green, blue and the accent at 600 read below 4.5:1 on the
- * gray-900 canvas and the gray-800 surface. Orange is already at 400, and grey reads the muted
- * text token, which the dark palette lightens itself.
+ * An outline badge draws its label straight on whatever is behind it, so each colour takes a shade
+ * that reads at 4.5:1 or better on the canvas and the surface of its palette. In light, red and
+ * orange take their 700 shade and green its 800 (#463): red, orange and green at 600 or lighter
+ * read below 4.5:1 on the gray-100 canvas. In dark, red, orange, green, blue and the accent take
+ * their 400 shade: at 600 they read below 4.5:1 on the gray-900 canvas and the gray-800 surface.
+ * Grey reads the muted text token, which each palette sets itself.
  */
 const outlineClasses: Record<BadgeColor, string> = {
-  red: "border-red-600 text-red-600 dark:border-red-400 dark:text-red-400",
-  orange: "border-orange-400 text-orange-400",
-  green: "border-green-600 text-green-600 dark:border-green-400 dark:text-green-400",
+  red: "border-red-700 text-red-700 dark:border-red-400 dark:text-red-400",
+  orange: "border-orange-700 text-orange-700 dark:border-orange-400 dark:text-orange-400",
+  green: "border-green-800 text-green-800 dark:border-green-400 dark:text-green-400",
   gray: "border-control text-muted",
   blue: "border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400",
   purple: "border-accent-600 text-accent-600 dark:border-accent-400 dark:text-accent-400",
