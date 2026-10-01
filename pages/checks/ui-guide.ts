@@ -66,6 +66,89 @@ export async function uiGuideChecks(devtools: Devtools): Promise<void> {
   await coldFragmentCheck(devtools)
   await reloadAtTopCheck(devtools)
   await withViewport(devtools, 1440, 900, () => chromeAccentCheck(devtools))
+  await withViewport(devtools, 1280, 800, () => colourAtomLabelsCheck(devtools))
+}
+
+/** The labels the "Colour atoms" card draws on a fill of their own, by their text. */
+const COLOUR_ATOM_LABELS = [
+  "bg-primary",
+  "bg-danger-fill",
+  "bg-warning",
+  "bg-success",
+  "bg-canvas — page",
+  "bg-surface — card",
+  "rounded-primary",
+].sort()
+
+/** One label of the "Colour atoms" card, as the browser paints it. */
+interface PaintedLabel {
+  text: string
+  ratio: number
+}
+
+/**
+ * Every label the "Colour atoms" card draws on a fill reads at 4.5:1 or more against that fill, in
+ * the light palette and the dark one.
+ *
+ * A label is an element of the card's demo with text of its own and an opaque background of its
+ * own; the set of them must be exactly {@link COLOUR_ATOM_LABELS}, so a swatch that loses its
+ * label, or a mark swatch that gains one, fails here rather than going unmeasured. The palette is
+ * switched on `<html>`'s class and put back afterwards.
+ */
+async function colourAtomLabelsCheck(devtools: Devtools): Promise<void> {
+  await openGuidePage(devtools, "theme")
+  for (const palette of ["light", "dark"] as const) {
+    const labels = await devtools.evaluate<PaintedLabel[]>(`(async () => {
+      const root = document.documentElement
+      const wasDark = root.classList.contains("dark")
+      root.classList.toggle("dark", ${palette === "dark"})
+      try {
+        await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+        const canvas = document.createElement("canvas")
+        canvas.width = canvas.height = 1
+        const paint = canvas.getContext("2d", { willReadFrequently: true })
+        // Any CSS colour, oklch included, as sRGB channels and alpha.
+        const rgba = (css) => {
+          paint.clearRect(0, 0, 1, 1)
+          paint.fillStyle = "#000"
+          paint.fillStyle = css
+          paint.fillRect(0, 0, 1, 1)
+          return [...paint.getImageData(0, 0, 1, 1).data]
+        }
+        const luminance = ([r, g, b]) => {
+          const linear = (c) => (c /= 255) <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+          return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b)
+        }
+        const demo = document.querySelector('#demo-class-colour-atoms [data-card-part="demo"]')
+        if (!demo) return []
+        return [...demo.querySelectorAll("*")].flatMap((element) => {
+          const text = [...element.childNodes]
+            .filter((node) => node.nodeType === Node.TEXT_NODE)
+            .map((node) => node.textContent).join("").trim()
+          const style = getComputedStyle(element)
+          const fill = rgba(style.backgroundColor)
+          if (!text || fill[3] !== 255) return []
+          const ink = luminance(rgba(style.color))
+          const ground = luminance(fill)
+          const ratio = (Math.max(ink, ground) + 0.05) / (Math.min(ink, ground) + 0.05)
+          return [{ text, ratio: Math.round(ratio * 100) / 100 }]
+        })
+      } finally {
+        root.classList.toggle("dark", wasDark)
+      }
+    })()`)
+    const found = labels.map((label) => label.text).sort()
+    const faint = labels.filter((label) => label.ratio < 4.5)
+    check(
+      `in the ${palette} palette every label the "Colour atoms" card draws on a fill reads at ` +
+        "4.5:1 or more against it",
+      JSON.stringify(found) === JSON.stringify(COLOUR_ATOM_LABELS) && faint.length === 0,
+      labels.map((label) => `${label.text} ${label.ratio}:1`).join(", ") +
+        (JSON.stringify(found) === JSON.stringify(COLOUR_ATOM_LABELS)
+          ? ""
+          : `; expected labels ${COLOUR_ATOM_LABELS.join(", ")}`),
+    )
+  }
 }
 
 /**
