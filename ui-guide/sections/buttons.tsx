@@ -118,7 +118,7 @@ function ButtonLinkDemo() {
         <Button href="#/system" variant="outline" disabled data-e2e="button-link-disabled">
           Disabled link
         </Button>
-        <Button href="#/system" variant="secondary" size="none" class="rounded-full px-6 py-3">
+        <Button href="#/system" variant="secondary" size="none" class="px-6 py-3">
           size="none", sized by class
         </Button>
       </Cluster>
