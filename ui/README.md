@@ -16,8 +16,8 @@ Preact + Tailwind primitives extracted from earlier source applications.
   group. `Button`, `buttonClasses`, `ImageGallery`, `Lightbox` (#471), `Input`, `Textarea`, `Select`
   and `EnhancedForm` (#511) use `join` instead, and `CopyButton` and `ZoomableImages` hand their
   `class` to `Button` and `Lightbox`, so a browser bundle that renders them carries no
-  `tailwind-merge`, about 28 KB minified. `Field` puts its `class` on its wrapper unchanged, as before. Their `class`
-  is appended after their own classes, and replaces one of them only when it is marked important,
+  `tailwind-merge`, about 28 KB minified. `Field` puts its `class` on its wrapper unchanged, as
+  before. Their `class` is appended after their own classes, and replaces one of them only when it is marked important,
   `<Button class="px-8!">`. Every component the library renders keeps one utility per group on an
   element; `ui-guide/class-conflicts.test.tsx` holds that for every card in the guide.
 - **One Preact option hook, for four components' refs.** `./forward-ref.ts`'s hook, installed on
