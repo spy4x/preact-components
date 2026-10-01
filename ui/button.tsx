@@ -1,4 +1,4 @@
-import { cn } from "@spy4x/preact-cn"
+import { join } from "@spy4x/preact-cn/join"
 import type { ComponentChildren, JSX, Ref, VNode } from "preact"
 import { forwardRef } from "./forward-ref.ts"
 
@@ -11,7 +11,12 @@ export type ButtonSize = "sm" | "md" | "lg"
 export interface ButtonProps extends Omit<JSX.ButtonHTMLAttributes<HTMLButtonElement>, "class"> {
   variant?: ButtonVariant
   size?: ButtonSize
-  /** Plain utilities. Narrowed from Preact's `Signalish<string>`: this package never renders a signal in `class`. */
+  /**
+   * Plain utilities, appended after the button's own and not merged into them, so `tailwind-merge`
+   * stays out of the bundle (#471). To replace one of the button's own utilities, mark the
+   * replacement important with a trailing `!`. Narrowed from Preact's `Signalish<string>`: this package never
+   * renders a signal in `class`.
+   */
   class?: string
   children?: ComponentChildren
   /**
@@ -57,20 +62,21 @@ const iconSizeClasses: Record<ButtonSize, string> = {
  * Compose the class list of a button without rendering one.
  *
  * Exported so sibling primitives (`CopyButton`, `Dropdown`) share one
- * definition of a button instead of copying utility strings. `cn` runs last, so a
- * caller-supplied class wins over the variant's own utility in the same group.
+ * definition of a button instead of copying utility strings. The classes are joined, not merged:
+ * a caller's class is appended, and replaces one of the button's own utilities only when it is
+ * marked important with a trailing `!`.
  *
  * @param variant Visual role, defaults to `"primary"`.
  * @param size Control height, defaults to `"md"`. The `icon` variant maps it to a square box.
  * @param className Extra utilities supplied by the caller.
- * @returns The merged `class` attribute value.
+ * @returns The `class` attribute value.
  */
 export function buttonClasses(
   variant: ButtonVariant = "primary",
   size: ButtonSize = "md",
   className?: string,
 ): string {
-  return cn(
+  return join(
     base,
     variantClasses[variant],
     variant === "icon" ? iconSizeClasses[size] : sizeClasses[size],

@@ -18,7 +18,7 @@
  * dialog, without this component and `Lightbox` running the filter twice and risking disagreement.
  */
 
-import { cn } from "@spy4x/preact-cn"
+import { join } from "@spy4x/preact-cn/join"
 import type { JSX } from "preact"
 import { useState } from "preact/hooks"
 import { describedImages, Lightbox, type LightboxImage } from "./lightbox.tsx"
@@ -48,7 +48,10 @@ export interface ImageGalleryProps {
    * `` (position, total) => `${position} of ${total}` ``.
    */
   counterLabel?: (position: number, total: number) => string
-  /** Extra utilities for the thumbnail strip. */
+  /**
+   * Extra utilities for the thumbnail strip, appended after its own and not merged into them. To
+   * replace one of its own utilities, mark the replacement important with a trailing `!`.
+   */
   class?: string
 }
 
@@ -106,7 +109,7 @@ export function ImageGallery(
 
   return (
     <>
-      <ul class={cn("flex flex-wrap gap-3", className)}>
+      <ul class={join("flex flex-wrap gap-3", className)}>
         {shown.map((image, index) => (
           <li key={thumbnailKey(shown, index)}>
             <button

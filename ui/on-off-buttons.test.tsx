@@ -14,18 +14,16 @@ describe("OnOffButtons", () => {
   it("marks the ON half as selected", () => {
     const html = render(<OnOffButtons value onSwitch={() => {}} />)
 
-    expect(countOccurrences(html, " bg-selected ")).toBe(1)
-    expect(html).not.toContain("bg-accent-900")
-    expect(html).toContain("text-selected-foreground")
-    expect(html).toContain("hover:bg-selected-hover")
-    expect(html).not.toContain("hover:bg-accent-800")
+    // The primary fill stays in the class list; the selection fill is important, so it wins.
+    expect(countOccurrences(html, " bg-selected! ")).toBe(1)
+    expect(html).toContain("text-selected-foreground!")
+    expect(html).toContain("hover:bg-selected-hover!")
   })
 
   it("marks the OFF half as selected", () => {
     const html = render(<OnOffButtons value={false} onSwitch={() => {}} />)
 
-    expect(countOccurrences(html, " bg-selected ")).toBe(1)
-    expect(html).not.toContain("bg-accent-900")
+    expect(countOccurrences(html, " bg-selected! ")).toBe(1)
   })
 
   it("leaves both halves unselected when value is undefined", () => {

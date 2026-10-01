@@ -17,9 +17,13 @@ export interface OnOffButtonsProps {
 
 const group = "isolate inline-flex"
 
-/** The chosen half reads the selection tokens, not the accent, so an app can point them apart. */
+/**
+ * The chosen half reads the selection tokens, not the accent, so an app can point them apart. Each
+ * utility is important (`!`) because it replaces the `primary` button's own fill: `Button` appends a
+ * `class` to its own classes instead of merging it into them.
+ */
 const selectedFill =
-  "bg-selected text-selected-foreground hover:bg-selected-hover dark:bg-selected dark:hover:bg-selected-hover"
+  "bg-selected! text-selected-foreground! hover:bg-selected-hover! dark:bg-selected! dark:hover:bg-selected-hover!"
 
 /**
  * Segmented ON/OFF pair, optionally annotated with counts.

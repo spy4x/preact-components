@@ -83,10 +83,11 @@ Install: `deno add jsr:@spy4x/preact-charts`
 
 ## @spy4x/preact-cn
 
-One function: join conditional class names and resolve conflicting Tailwind utilities.
+Two functions: `cn` joins conditional class names and resolves conflicting Tailwind utilities; `join` joins them and resolves nothing.
 
 Install: `deno add jsr:@spy4x/preact-cn`
 
+- `join` (helper): Join conditional class names, with no Tailwind conflict resolution. Import: `@spy4x/preact-cn`
 - `cn` (helper): Join conditional class names and resolve conflicting Tailwind utilities. Import: `@spy4x/preact-cn`
 
 ## @spy4x/preact-crud
@@ -440,7 +441,7 @@ The design-system CSS every component in this repo styles against: design tokens
 
 Install: `deno add jsr:@spy4x/preact-theme`
 
-- `COMPONENT_CLASSES` (constant): Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (796 classes). Import: `@spy4x/preact-theme`
+- `COMPONENT_CLASSES` (constant): Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (807 classes). Import: `@spy4x/preact-theme`
 - `INK_CSS` (constant): ./ink.css's exact contents. Import: `@spy4x/preact-theme`
 - `PRESET_CSS` (constant): ./preset.css's exact contents. Import: `@spy4x/preact-theme`
 - `TOKENS_CSS` (constant): ./tokens.css's exact contents. Import: `@spy4x/preact-theme`

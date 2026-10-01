@@ -16,7 +16,7 @@ its own PR, each owning exactly one top-level directory.
 | `ui/`       | `Stack`, `Cluster`, `Grid`, `Page`, `Section`, `Badge`, `Button`, `Table`, `DataTable`, `Dropdown`, `Combobox`, `Modal`, `Tooltip`, `Toastr` — and the rest                                                                                                                                               |
 | `system/`   | `AuthForm`, `Calendar`, `RailShell`, `SEOHead` + `head` store, `Shell`, `SiteHeader`, `StateInit`, `SWUpdater`                                                                                                                                                                                            |
 | `charts/`   | server-rendered charts with browser tooltips (`LineChart`, `Bars`, `DonutChart`, `Kpi`), axis maths (`scales`)                                                                                                                                                                                            |
-| `cn/`       | `cn()` — class-name join + Tailwind conflict resolution                                                                                                                                                                                                                                                   |
+| `cn/`       | `cn()` — class-name join + Tailwind conflict resolution; `join()` — the join alone                                                                                                                                                                                                                        |
 | `signals/`  | `buildModelStore`, `useUrlFilters`, `createThemeStore`, `createToastStore`, `patchSignal` — and the rest; no components                                                                                                                                                                                   |
 | `crud/`     | `CrudList`, `CrudEditor`, `AssociationEditor`, `DeletionValidation`, field rows                                                                                                                                                                                                                           |
 | `map/`      | `Map` on Leaflet — its own package, so only an app that imports it resolves Leaflet                                                                                                                                                                                                                       |
@@ -232,7 +232,7 @@ startup, and calls every package's file in one fixed order. The shared helpers �
 from there rather than redefined. Every workspace package whose components the catalogue demonstrates
 has a file under `pages/checks/`, including the ones with no check yet — that emptiness is
 deliberate, so a later pull request adding the first check to one of them touches nobody else's file.
-`cn/` is the one workspace member with none: it is a single class-name function, and there is nothing
+`cn/` is the one workspace member with none: it is two class-name functions, and there is nothing
 in it a browser could drive.
 
 Which components are covered is not written here, because every version of that sentence has gone

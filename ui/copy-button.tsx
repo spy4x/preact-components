@@ -18,6 +18,10 @@ export interface CopyButtonProps {
   copyLabel?: string
   /** Milliseconds the confirmation icon stays visible. Defaults to 1500. */
   copiedForMs?: number
+  /**
+   * Utilities for the button, appended to `Button`'s own and merged with none of them: mark a
+   * replacement important with a trailing `!`.
+   */
   class?: string
 }
 

@@ -2,7 +2,9 @@
   "name": "@spy4x/preact-cn",
   "version": "1.3.0",
   "exports": {
-    ".": "./cn.ts"
+    ".": "./cn.ts",
+    // The merge-free join on its own, so a module that imports it never reaches `tailwind-merge`.
+    "./join": "./join.ts"
   },
   "publish": {
     // This package's own `*.test.*` suites, none reachable from `exports`; see `ui/deno.json` for

@@ -195,7 +195,8 @@ const dateInputClasses =
 
 const fieldLabelClasses = "block text-xs font-medium text-foreground"
 
-const pressedPresetClasses = "bg-hover font-semibold text-foreground"
+/** Important (`!`): they replace the `ghost` button's own fill and weight, which `Button` appends to. */
+const pressedPresetClasses = "bg-hover! font-semibold!"
 
 const occurrenceClasses = "mt-1 space-y-1 text-xs text-foreground"
 
@@ -533,7 +534,7 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
       <button
         type="button"
         ref={triggerRef}
-        class={buttonClasses("outline", "sm", "min-w-48 justify-between gap-2 truncate")}
+        class={buttonClasses("outline", "sm", "min-w-48 justify-between! truncate")}
         onClick={togglePanel}
         aria-expanded={isOpen.value}
         aria-controls={panelId}
