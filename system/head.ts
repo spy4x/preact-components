@@ -146,7 +146,7 @@ export interface HeadStore<T extends PageHead = PageHead> {
  *   copied here, so a caller who changes the object afterwards does not change what a reset
  *   restores. The copy is shallow: a crumb or JSON-LD object inside it is still the caller's.
  */
-export function createHeadStore<T extends PageHead = PageHead>(defaults: T): HeadStore<T> {
+export function createHeadStore<T extends PageHead = PageHead>(defaults: NoInfer<T>): HeadStore<T> {
   const initial: T = { ...defaults }
   const head = signal<T>({ ...initial })
 
