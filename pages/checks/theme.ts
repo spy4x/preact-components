@@ -371,8 +371,12 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
       window.__inkFocusRingRestore = {
         wasDark: root.classList.contains("dark"),
         wasTheme: root.getAttribute("data-theme"),
+        wasScheme: root.style.colorScheme,
       }
+      // The theme store sets color-scheme with the class (#446), and the browser's own ring this
+      // reads follows color-scheme, so the probe sets both, as a real switch does.
       root.classList.toggle("dark", ${palette.dark})
+      root.style.colorScheme = ${palette.dark} ? "dark" : "light"
       if (${palette.ink}) root.setAttribute("data-theme", "ink")
       else root.removeAttribute("data-theme")
 
@@ -433,7 +437,7 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
       ratio: number
     }>(`(async () => {
       const root = document.documentElement
-      const { wasDark, wasTheme } = window.__inkFocusRingRestore
+      const { wasDark, wasTheme, wasScheme } = window.__inkFocusRingRestore
       delete window.__inkFocusRingRestore
 
       const button = document.getElementById("ink-focus-ring-probe")
@@ -524,6 +528,7 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
 
       button.parentElement.remove()
       root.classList.toggle("dark", wasDark)
+      root.style.colorScheme = wasScheme
       if (wasTheme === null) root.removeAttribute("data-theme")
       else root.setAttribute("data-theme", wasTheme)
 

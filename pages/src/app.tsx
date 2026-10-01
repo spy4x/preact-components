@@ -22,14 +22,18 @@ import {
   type MapTiles,
   uiGuideRoute,
 } from "@spy4x/preact-ui-guide"
-import { useEffect, useState } from "preact/hooks"
+import { createThemeStore, ThemeValue } from "@spy4x/preact-signals/theme"
+import { useEffect } from "preact/hooks"
 import { AccentSwitch } from "./accent-switch.tsx"
 import { DataTableSortDemo } from "./data-table-sort.tsx"
-import { AUTHOR, LOCAL_MAP_TILES_FLAG, PAGE_TITLE, REPOSITORY } from "./site.ts"
+import { AUTHOR, LOCAL_MAP_TILES_FLAG, PAGE_TITLE, REPOSITORY, THEME_KEY } from "./site.ts"
 import { UrlFilterDemo } from "./url-filters.tsx"
 
-/** Storage key shared with the bootstrap script in `<head>` (`document.tsx`). */
-const THEME_KEY = "pc-theme"
+/**
+ * The page's theme: `@spy4x/preact-signals/theme`'s store, on the same key as the bootstrap script.
+ * Inert until the island attaches it, so prerendering reads no storage.
+ */
+const theme = createThemeStore({ storageKey: THEME_KEY })
 
 /**
  * Clipboard port handed to the catalogue.
@@ -132,29 +136,13 @@ function titleDocument({ route, page }: GuideRouteChange): void {
 }
 
 /**
- * The colour scheme the guide's theme switch reads and changes: the `dark` class on `<html>`,
- * remembered in storage.
+ * The colour scheme the guide's theme switch reads and changes, from the page's theme store: the
+ * store toggles the `dark` class and `color-scheme` on `<html>` and remembers the choice.
  *
- * The class is set by the inline script in `<head>` before first paint; this reads it back in an
- * effect, so the island's first render still matches the prerendered switch.
+ * The bootstrap script in `<head>` paints the same theme before first paint; the store attaches in
+ * an effect, so the island's first render still reads light and matches the prerendered switch.
  */
 function useColorScheme(): ColorSchemePort {
-  const [dark, setDark] = useState(false)
-
-  useEffect(() => {
-    setDark(document.documentElement.classList.contains("dark"))
-  }, [])
-
-  const toggle = () => {
-    const next = !dark
-    setDark(next)
-    document.documentElement.classList.toggle("dark", next)
-    try {
-      localStorage.setItem(THEME_KEY, next ? "dark" : "light")
-    } catch {
-      // Storage blocked (private mode): the palette still switches for this page view.
-    }
-  }
-
-  return { dark, toggle }
+  useEffect(() => theme.attach(), [])
+  return { dark: theme.actual.value === ThemeValue.DARK, toggle: theme.toggle }
 }
