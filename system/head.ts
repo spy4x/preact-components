@@ -45,6 +45,15 @@ export interface PageHead {
   canonical: string
   /** Absolute social preview image. The `og:image` / `twitter:image` pair is omitted without it. */
   ogImage?: string
+  /**
+   * Width of {@link PageHead.ogImage} in pixels, published as `og:image:width`.
+   *
+   * Omitted when unset, and also when there is no `ogImage`: a size describes an image, and a
+   * page without one has nothing to measure.
+   */
+  imageWidth?: number
+  /** Height of {@link PageHead.ogImage} in pixels, `og:image:height`; omitted like `imageWidth`. */
+  imageHeight?: number
   /** Defaults to `"website"`. */
   ogType?: OgType
   /** Renders `noindex, nofollow` instead of `index, follow`. */
@@ -53,6 +62,8 @@ export interface PageHead {
   siteName?: string
   /** Twitter/X handle for `twitter:site`, e.g. `"@acme"`. */
   twitterSite?: string
+  /** Twitter/X handle of the page's author, for `twitter:creator`, e.g. `"@jane"`. */
+  twitterCreator?: string
   /**
    * Overrides the derived `twitter:card` value.
    *
@@ -76,16 +87,21 @@ export interface PageHead {
   crumbs?: readonly Crumb[]
 }
 
-/** A head signal with the defaults it was created from, so `resetHead()` is exact. */
-export interface HeadStore {
+/**
+ * A head signal with the defaults it was created from, so `resetHead()` is exact.
+ *
+ * `T` is the head the app keeps: {@link PageHead} itself, or `PageHead` plus fields of the app's
+ * own, such as a `pageName` its layout prints. `SEOHead` reads only the `PageHead` part.
+ */
+export interface HeadStore<T extends PageHead = PageHead> {
   /** Current page head. Read `.value` in a component to subscribe. */
-  head: Signal<PageHead>
+  head: Signal<T>
   /**
    * Merge a patch into the current head, write it to {@link HeadStore.head}, and return it.
    *
    * A field the patch names with the value `undefined` is cleared; an empty patch changes no field.
    */
-  setHead: (patch: Partial<PageHead>) => PageHead
+  setHead: (patch: Partial<T>) => T
   /**
    * Write the defaults handed to {@link createHeadStore} back to {@link HeadStore.head}, and
    * return them.
@@ -95,7 +111,7 @@ export interface HeadStore {
    * names. The next page does not know what the previous page set — its `noindex`, its `crumbs` —
    * so it cannot name them; a reset before its patch clears them without that list.
    */
-  resetHead: () => PageHead
+  resetHead: () => T
 }
 
 /**
@@ -123,13 +139,16 @@ export interface HeadStore {
  * In a browser the store outlives a page, so a client-side navigation calls `resetHead()` before
  * the next page's `setHead()`; otherwise the new page inherits every field the old one set.
  *
+ * An app with head fields of its own names its type, and the store carries them with no cast:
+ * `createHeadStore<PageHead & { pageName: string }>(defaults)`.
+ *
  * @param defaults Fields used by every page; also the state `resetHead()` returns to. They are
  *   copied here, so a caller who changes the object afterwards does not change what a reset
  *   restores. The copy is shallow: a crumb or JSON-LD object inside it is still the caller's.
  */
-export function createHeadStore(defaults: PageHead): HeadStore {
-  const initial: PageHead = { ...defaults }
-  const head = signal<PageHead>({ ...initial })
+export function createHeadStore<T extends PageHead = PageHead>(defaults: NoInfer<T>): HeadStore<T> {
+  const initial: T = { ...defaults }
+  const head = signal<T>({ ...initial })
 
   return {
     head,

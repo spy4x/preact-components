@@ -11,6 +11,9 @@ const PAGE: PageHead = {
   ogImage: "https://acme.example/og/widgets.png",
   siteName: "Acme",
   twitterSite: "@acme",
+  twitterCreator: "@jane",
+  imageWidth: 1200,
+  imageHeight: 630,
   locale: "en_US",
   crumbs: [
     { name: "Home", href: "/" },
@@ -60,6 +63,7 @@ describe("seoHeadTags", () => {
     const tags = tagMap(PAGE)
 
     expect(tags.get("twitter:site")).toBe("@acme")
+    expect(tags.get("twitter:creator")).toBe("@jane")
     expect(tags.get("twitter:title")).toBe("Widgets — Acme")
     expect(tags.get("twitter:description")).toBe("Widgets for teams.")
     expect(tags.get("twitter:image")).toBe("https://acme.example/og/widgets.png")
@@ -107,6 +111,8 @@ describe("seoHeadTags", () => {
     expect(tags.get("og:title")).toBe("Widgets — Acme")
     expect(tags.get("og:url")).toBe("https://acme.example/products/widgets")
     expect(tags.get("og:image")).toBe("https://acme.example/og/widgets.png")
+    expect(tags.get("og:image:width")).toBe("1200")
+    expect(tags.get("og:image:height")).toBe("630")
     expect(tags.get("og:site_name")).toBe("Acme")
     expect(tags.get("og:locale")).toBe("en_US")
   })
@@ -129,9 +135,41 @@ describe("seoHeadTags", () => {
       canonical: "https://acme.example/bare",
     })
 
-    for (const key of ["og:image", "og:site_name", "og:locale", "twitter:site", "twitter:image"]) {
+    for (
+      const key of [
+        "og:image",
+        "og:image:width",
+        "og:image:height",
+        "og:site_name",
+        "og:locale",
+        "twitter:site",
+        "twitter:creator",
+        "twitter:image",
+      ]
+    ) {
       expect(tags.has(key)).toBe(false)
     }
+  })
+
+  it("puts the image size right after og:image, width first", () => {
+    const keys = seoHeadTags(PAGE).map((tag) => tag.attrs.property ?? tag.attrs.name)
+    const image = keys.indexOf("og:image")
+
+    expect(keys.slice(image, image + 3)).toEqual(["og:image", "og:image:width", "og:image:height"])
+  })
+
+  it("puts twitter:creator right after twitter:site", () => {
+    const keys = seoHeadTags(PAGE).map((tag) => tag.attrs.name)
+    const site = keys.indexOf("twitter:site")
+
+    expect(keys[site + 1]).toBe("twitter:creator")
+  })
+
+  it("publishes no image size for a page with no image", () => {
+    const tags = tagMap({ ...PAGE, ogImage: undefined })
+
+    expect(tags.has("og:image:width")).toBe(false)
+    expect(tags.has("og:image:height")).toBe(false)
   })
 
   it("does not emit an empty og:image when only the social image is missing", () => {

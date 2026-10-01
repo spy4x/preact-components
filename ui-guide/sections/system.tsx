@@ -86,9 +86,12 @@ const pageHead: PageHead = {
   description: "Specifications, prices and reviews for the blue widget.",
   canonical: "https://example.com/products/widgets/12#reviews",
   ogImage: "https://example.com/og/widgets.png",
+  imageWidth: 1200,
+  imageHeight: 630,
   ogType: "article",
   siteName: "Acme",
   twitterSite: "@acme",
+  twitterCreator: "@jane",
   locale: "en_GB",
   jsonLd: [{ "@type": "Organization", name: "Acme" }],
   crumbs: [
@@ -1708,13 +1711,31 @@ const state = readStateInit<{ userId: string; features: string[] }>()`,
         description: "The breadcrumb trail, root first, published as a `BreadcrumbList`.",
       },
       { name: "jsonLd", type: "unknown[]", description: "More structured data for the graph." },
+      {
+        name: "imageWidth",
+        type: "number",
+        description: "The preview image's width in pixels; published only with an `ogImage`.",
+      },
+      {
+        name: "imageHeight",
+        type: "number",
+        description: "The preview image's height in pixels; published only with an `ogImage`.",
+      },
+      {
+        name: "twitterCreator",
+        type: "string",
+        description: "The author's Twitter/X handle, as `twitter:creator`.",
+      },
     ],
     snippet: `<SEOHead
   title="Blue widget — Acme"
   description="Specifications, prices and reviews for the blue widget."
   canonical="https://example.com/products/widgets/12"
   ogImage="https://example.com/og/widgets.png"
+  imageWidth={1200}
+  imageHeight={630}
   siteName="Acme"
+  twitterCreator="@jane"
   jsonLd={[{ "@type": "Organization", name: "Acme" }]}
   crumbs={[
     { name: "Home", href: "/" },

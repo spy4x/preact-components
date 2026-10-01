@@ -2174,7 +2174,7 @@ Extracted from earlier source applications.
 | Component    | Subpath       | Ports / key props                                                                                                                                                                           |
 | ------------ | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `AuthForm`   | `auth-form`   | `mode`, `step`, `onModeChange?`, `modeHrefs?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `names?`, `action?`, `footer?`                                     |
-| `SEOHead`    | `seo-head`    | `title`, `description`, `canonical`, `crumbs?`, `ogImage?`, `jsonLd?`, `noindex?`, `twitterCard?`                                                                                           |
+| `SEOHead`    | `seo-head`    | `title`, `description`, `canonical`, `crumbs?`, `ogImage?`, `imageWidth?`, `imageHeight?`, `jsonLd?`, `noindex?`, `twitterCard?`, `twitterCreator?`                                         |
 | `SWUpdater`  | `sw-updater`  | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                                                                                        |
 | `Calendar`   | `calendar`    | `monthAnchor`, `minDate`, `maxDate`, `availableByDate`, `onSelectDate?`                                                                                                                     |
 | `SiteHeader` | `site-header` | `links`, `currentPath?`, `brand`, `actions?`, `labels?`                                                                                                                                     |
@@ -2198,6 +2198,9 @@ import { SEOHead } from "@spy4x/preact-system"
   canonical="https://acme.example/products/widgets"
   siteName="Acme"
   ogImage="https://acme.example/og/widgets.png"
+  imageWidth={1200}
+  imageHeight={630}
+  twitterCreator="@jane"
   crumbs={[
     { name: "Home", href: "/" },
     { name: "Products", href: "/products" },
@@ -2210,6 +2213,14 @@ import { SEOHead } from "@spy4x/preact-system"
 "application/ld+json">`; the host framework decides where head tags go. `seoHeadTags()` returns the
 same set as data for a head pipeline that is not a component tree, and it is what the tests assert
 on.
+
+`imageWidth` and `imageHeight` publish the preview image's size in pixels as `og:image:width` and
+`og:image:height`, right after `og:image`; LinkedIn and Facebook read them to lay out a link
+preview before the image loads. Each is emitted only when it is set and an `ogImage` is given,
+since a size with no image describes nothing. `twitterCreator` publishes the author's handle as
+`twitter:creator`, right after `twitter:site`. Every tag in the set has its own `name`, `property`
+or `rel`, so Fresh's `<Head>`, which identifies an unkeyed tag by those attributes, prints each one
+once.
 
 Every string the component prints came in as a prop — the title, the description, the site name,
 each crumb's name. It has no user-visible string of its own and therefore no label to default or
@@ -2298,6 +2309,17 @@ the one call that clears them without that list: reset first, then patch. A stor
 request is thrown away with the request and never needs a reset.
 The defaults are copied when the store is created, so changing the object afterwards does not
 change what a reset restores.
+
+An app that keeps head fields of its own beside `PageHead` names the combined type, and the store
+carries those fields through `head`, `setHead` and `resetHead` without a cast:
+
+```ts
+const store = createHeadStore<PageHead & { pageName: string }>({
+  ...siteDefaults,
+  pageName: "Home",
+})
+store.setHead({ pageName: "Widgets" })
+```
 
 ## The dual-mode contract
 

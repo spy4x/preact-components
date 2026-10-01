@@ -171,4 +171,28 @@ describe("createHeadStore", () => {
     expect(one.head.value).toEqual(DEFAULTS)
     expect(two.head.value).toEqual({ ...other, title: "Two" })
   })
+
+  it("carries an app's own head fields through patch and reset, typed without a cast", () => {
+    // The explicit `string` annotations are the type proof: with a non-generic store, `head.value`
+    // is a plain `PageHead` and `pageName` does not exist on it, so `deno check` fails here.
+    const store = createHeadStore<PageHead & { pageName: string }>({
+      ...DEFAULTS,
+      pageName: "Home",
+    })
+
+    const patched: string = store.setHead({ pageName: "Widgets" }).pageName
+    const current: string = store.head.value.pageName
+    const reset: string = store.resetHead().pageName
+
+    expect([patched, current, reset]).toEqual(["Widgets", "Widgets", "Home"])
+  })
+  it("accepts any PageHead field in setHead when the defaults are an untyped literal", () => {
+    // Type proof: if `T` were inferred from the literal, `noindex` and `ogImage` would not be
+    // known properties and `deno check` would fail here.
+    const store = createHeadStore({ title: "Site", description: "About", canonical: "/" })
+
+    const patched = store.setHead({ noindex: true, ogImage: "/og.png" })
+
+    expect([patched.noindex, patched.ogImage]).toEqual([true, "/og.png"])
+  })
 })
