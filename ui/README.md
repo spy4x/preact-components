@@ -61,7 +61,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Dropdown`        | `dropdown`          | `trigger`, `triggerLabel` or `triggerNamedByContent` (one is required), `menuLabel`, `vertical` (`"auto"` by default), `horizontal`                                                             |
 | `DropdownItem`    | `dropdown`          | `href`, `onClick`, `disabled`, `danger`, `class` — a `role="menuitem"`, out of the tab order                                                                                                    |
 | `EmptyState`      | `empty-state`       | `icon?`, `title?`, `headingLevel?` (`1`–`4`, `3` default; same look at every level), `description?`, `action?`                                                                                  |
-| `EnhancedForm`    | `enhanced-form`     | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?` — posts natively before hydration                                                                              |
+| `EnhancedForm`    | `enhanced-form`     | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?`, `status?` — posts natively before hydration                                                                   |
 | `ErrorState`      | `error-state`       | `message` (renders nothing when empty)                                                                                                                                                          |
 | `Field`           | `field`             | `id`, `label?`, `children`, `hint?`, `error?`, `required?`, `suffix?`                                                                                                                           |
 | `FileInput`       | `file-input`        | `id`, `accept?`, `multiple?`, `maxSize?`, `name?`, `onFiles?`, `onReject?`, `label?`, `error?`, `previews?`, `labels?`                                                                          |
@@ -817,6 +817,18 @@ happens, the first condition is cleared, so a visitor who then clicks on plain t
 `<body>` again — and moves on to reading something else is not pulled back a second time once the
 same submit later reaches `done` or `failed`. A submit nobody focused, or a visitor who has moved
 focus somewhere specific of their own accord, is never pulled back at all.
+
+A caller that already tracks the submit passes `status` (`"idle"`, `"sending"`, `"done"` or
+`"failed"`), and the form renders from that value instead of its own: the fieldset, the slots, the
+region and the focus recovery all follow it, and `onSubmit` is still called on every submit the
+form accepts. Moving `status` on is then the caller's job, including after a back/forward-cache
+restore, which the form cannot reset for it. The busy guard holds in this mode too: a submit is
+refused while the caller's `status` reads `"sending"`, as well as while the promise `onSubmit`
+returned is outstanding, so a caller whose `onSubmit` returns at once is still guarded. An empty
+string for a key of `labels` makes the region say nothing in that status, and
+`labels={{ sending: "", done: "", failed: "" }}` silences it entirely, for a caller whose own text
+— the server's error, say — is the only message. The region still renders, empty, and still takes
+focus when the visitor's submit button is disabled under them.
 
 A form built on this can carry a honeypot from `honeypot`: `honeypotField` renders an off-screen
 field simple bots fill in. Its server half comes from `@spy4x/platform/universal/honeypot`:

@@ -14,6 +14,7 @@ import {
   Checkbox,
   Cluster,
   EnhancedForm,
+  type EnhancedFormStatus,
   Field,
   Grid,
   honeypotField,
@@ -283,6 +284,69 @@ function ContactDemo() {
   )
 }
 
+/** Every label empty: the controlled demo below shows its own text, so the form says nothing. */
+const silentLabels = { sending: "", done: "", failed: "" }
+
+/**
+ * A form whose caller holds the submit cycle: the status lives in the caller's own signal, and the
+ * form announces nothing, so the caller's line under it is the only message. `onSubmit` returns at
+ * once and the "request" finishes later on a timer, the shape of an app whose store tracks the
+ * request — which is why a second submit is refused by the caller's `"sending"` alone.
+ */
+function ControlledDemo() {
+  const status = useSignal<EnhancedFormStatus>("idle")
+  const submits = useSignal(0)
+  const shouldFail = useSignal(false)
+
+  return (
+    <Stack gap="md" class="max-w-md" data-e2e="controlled-form">
+      <Checkbox
+        checked={shouldFail.value}
+        onChange={(event) => shouldFail.value = event.currentTarget.checked}
+        data-e2e="controlled-form-fail-toggle"
+      >
+        Fail the submit
+      </Checkbox>
+      <EnhancedForm
+        action={FORM_DEMO_ACTION}
+        status={status.value}
+        labels={silentLabels}
+        onSubmit={() => {
+          submits.value++
+          status.value = "sending"
+          setTimeout(() => status.value = shouldFail.value ? "failed" : "done", 600)
+        }}
+      >
+        <Field id="guide-controlled-form-note" label="A note, any note">
+          <Input name="note" placeholder="Anything" />
+        </Field>
+        <Cluster>
+          <Button type="submit">Submit</Button>
+        </Cluster>
+      </EnhancedForm>
+      <p class="text-sm text-muted" role="status" data-e2e="controlled-form-message">
+        {status.value === "sending"
+          ? "Saving your note…"
+          : status.value === "done"
+          ? "Your note is saved."
+          : status.value === "failed"
+          ? "The server said no. Try again."
+          : ""}
+      </p>
+      <Cluster justify="between">
+        <Count e2e="controlled-form-submits">submits: {submits.value}</Count>
+        <StartOver
+          e2e="controlled-form-start-over"
+          onPress={() => {
+            submits.value = 0
+            status.value = "idle"
+          }}
+        />
+      </Cluster>
+    </Stack>
+  )
+}
+
 /**
  * The card: the raw building block first, then the two forms an app most often builds from it — a
  * sign-up and a contact form — written here from `Field`, `Input` and `Button` rather than shipped
@@ -292,6 +356,12 @@ function EnhancedFormCard() {
   return (
     <Stack gap="xl">
       <EnhancedFormDemo />
+      <Stack gap="md">
+        <DemoNote>
+          With status passed in, the caller drives the form, and empty labels make it say nothing.
+        </DemoNote>
+        <ControlledDemo />
+      </Stack>
       <Grid minColumnWidth="md" gap="xl">
         <Stack gap="md">
           <DemoNote>A sign-up form built from Field, Input and Button.</DemoNote>
@@ -326,6 +396,17 @@ export const enhancedFormDemos = {
         name: "done / failed / sending",
         type: "ComponentChildren",
         description: "What replaces the fields in each state.",
+      },
+      {
+        name: "status",
+        type: `"idle" | "sending" | "done" | "failed"`,
+        description:
+          "Hands the submit cycle to the caller: the form renders from it, and refuses a submit while it reads `sending`.",
+      },
+      {
+        name: "labels",
+        type: "{ sending?, done?, failed? }",
+        description: 'What the form announces; `""` for a key says nothing in that state.',
       },
       {
         name: "method",

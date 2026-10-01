@@ -106,4 +106,82 @@ describe("EnhancedForm", () => {
 
     expect(html).toContain("max-w-sm")
   })
+
+  it("keeps its own idle state when no status is passed", () => {
+    const html = render(
+      <EnhancedForm action="/api/subscribe" sending={<p>Wait</p>}>
+        <input name="email" />
+      </EnhancedForm>,
+    )
+
+    expect(html).not.toContain("Wait")
+    expect(html).toContain('name="email"')
+    expect(html).toMatch(/<p role="status"[^>]*><\/p>/)
+  })
+})
+
+describe("EnhancedForm with a controlled status", () => {
+  it("disables the fieldset and announces sending while the caller's status is sending", () => {
+    const html = render(
+      <EnhancedForm action="/api/subscribe" status="sending">
+        <input name="email" />
+      </EnhancedForm>,
+    )
+
+    expect(html).toMatch(/<fieldset[^>]*\sdisabled/)
+    expect(html).toMatch(/<p role="status"[^>]*>Sending…<\/p>/)
+  })
+
+  it("shows the slot for the caller's status and hides the region's duplicate", () => {
+    const html = render(
+      <EnhancedForm action="/api/subscribe" status="done" done={<p>Thanks.</p>}>
+        <input name="email" />
+      </EnhancedForm>,
+    )
+
+    expect(html).toContain("Thanks.")
+    expect(html).not.toContain('name="email"')
+    expect(html).toMatch(/<p role="status"[^>]*sr-only[^>]*>Sent.<\/p>/)
+  })
+
+  it("keeps the fields on screen, enabled, and announces failure with no failed slot", () => {
+    const html = render(
+      <EnhancedForm action="/api/subscribe" status="failed">
+        <input name="email" />
+      </EnhancedForm>,
+    )
+
+    expect(html).toContain('name="email"')
+    expect(html).not.toMatch(/<fieldset[^>]*\sdisabled/)
+    expect(html).toMatch(/<p role="status"[^>]*>Something went wrong. Please try again.<\/p>/)
+  })
+
+  it("says nothing in any status when every label is empty", () => {
+    for (const status of ["idle", "sending", "done", "failed"] as const) {
+      const html = render(
+        <EnhancedForm
+          action="/api/subscribe"
+          status={status}
+          labels={{ sending: "", done: "", failed: "" }}
+        >
+          <input name="email" />
+        </EnhancedForm>,
+      )
+
+      // The region stays in the page, empty, so a caller that later sets a label still has a
+      // region assistive technology is already watching.
+      expect(html).toMatch(/<p role="status"[^>]*><\/p>/)
+    }
+  })
+
+  it("still renders a real form that posts natively before hydration", () => {
+    const html = render(
+      <EnhancedForm action="/api/subscribe" status="idle" onSubmit={() => {}}>
+        <input name="email" />
+      </EnhancedForm>,
+    )
+
+    expect(html).toContain('action="/api/subscribe"')
+    expect(html).toContain('method="post"')
+  })
 })

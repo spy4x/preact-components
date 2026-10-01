@@ -7,11 +7,15 @@ import { useEffect, useRef, useState } from "preact/hooks"
  *
  * `"idle"` covers both "never submitted" and "submitted natively", since a native submit navigates
  * the page away and takes this state with it — there is nothing left here to be in any other status
- * about. The other three only exist once `onSubmit` has taken over the submit.
+ * about. Left to itself, the form reaches the other three only once `onSubmit` has taken over the
+ * submit; a caller that passes {@link EnhancedFormProps.status} can put it in any of the four.
  */
 export type EnhancedFormStatus = "idle" | "sending" | "done" | "failed"
 
-/** Copy {@link EnhancedForm} announces. Override per key through the `labels` prop. */
+/**
+ * Copy {@link EnhancedForm} announces. Override per key through the `labels` prop; an empty string
+ * makes the form say nothing for that status, so a caller with its own message is the only voice.
+ */
 export interface EnhancedFormLabels {
   /** Announced while a background submit is in flight. */
   sending: string
@@ -88,8 +92,21 @@ export interface EnhancedFormProps {
   /** Replaces `children` once a background submit rejects. Omit it to keep `children` on screen,
    * re-enabled, so the visitor can retry without losing what they typed. */
   failed?: ComponentChildren
-  /** Copy overrides. */
+  /**
+   * Copy overrides, merged over the English defaults per key. `""` for a key keeps the live region
+   * empty in that status: `labels={{ sending: "", done: "", failed: "" }}` makes the form announce
+   * nothing at all, for a caller that shows its own text — say, the server's error — instead.
+   */
   labels?: Partial<EnhancedFormLabels>
+  /**
+   * Hands the submit cycle to the caller. When given, the form renders from this value and ignores
+   * its own: `"sending"` disables the fieldset (or shows `sending`), `"done"` and `"failed"` show
+   * their slots and announce their labels. `onSubmit` is still called on submit, and moving this
+   * prop on — to `"sending"` and then to a result — is the caller's job. Submits stay refused while
+   * this reads `"sending"`, as well as while the promise `onSubmit` returned is outstanding. Omit it
+   * to let the form keep its own state.
+   */
+  status?: EnhancedFormStatus
   /** Utilities for the `<form>` itself. */
   class?: string
 }
@@ -177,6 +194,14 @@ export interface EnhancedFormProps {
  * a second time, once the same submit later reaches `done` or `failed`: without that, the effect
  * would see the flag still set on that later run too, "recovering" focus a visitor had already,
  * deliberately, put somewhere else.
+ *
+ * **A caller that already tracks the submit passes `status`, and the form follows it.** Every rule
+ * above holds in that controlled mode, read off the caller's value instead of the form's own: the
+ * native post before hydration, the disabled fieldset, the slots, the region and its focus
+ * recovery. The busy guard refuses a submit while the caller's `status` is `"sending"` too, so a
+ * caller whose `onSubmit` returns at once and keeps its request in its own store is still guarded.
+ * A back/forward-cache restore cannot reset the caller's value; a caller whose `"sending"` can be
+ * frozen that way listens for `pageshow` itself.
  */
 export function EnhancedForm(
   {
@@ -188,11 +213,13 @@ export function EnhancedForm(
     done,
     failed,
     labels,
+    status: controlledStatus,
     class: className,
   }: EnhancedFormProps,
 ): JSX.Element {
   const copy = { ...defaultLabels, ...labels }
-  const [status, setStatus] = useState<EnhancedFormStatus>("idle")
+  const [ownStatus, setStatus] = useState<EnhancedFormStatus>("idle")
+  const status = controlledStatus ?? ownStatus
   // Checked synchronously, before either branch of `handleSubmit` runs, so two submits that arrive
   // in the same tick — a fast double click, or a `requestSubmit()` racing the disabled button — both
   // see the flag the first one set, however far the `useState` update above has (or has not) been
@@ -257,7 +284,7 @@ export function EnhancedForm(
   }, [status])
 
   const handleSubmit = (event: JSX.TargetedEvent<HTMLFormElement, SubmitEvent>) => {
-    if (busyRef.current) {
+    if (busyRef.current || controlledStatus === "sending") {
       event.preventDefault()
       return
     }
