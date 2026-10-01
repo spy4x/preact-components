@@ -203,7 +203,9 @@ function BusySubmitDemo() {
 
 /**
  * The clipboard is a port: the first two buttons copy through the browser API, the third through
- * the injected callback, so the host app can route copies through its own clipboard service.
+ * the injected callback, so the host app can route copies through its own clipboard service. The
+ * fourth's port always fails, to show the failure state. `pages/checks/ui.ts` presses the fourth
+ * twice, and drives the first two with a clipboard it replaces.
  */
 function CopyButtonDemo() {
   const lastCopy = useSignal("nothing yet")
@@ -222,6 +224,9 @@ function CopyButtonDemo() {
           }}
         />
         <DemoNote>port received: {lastCopy.value}</DemoNote>
+      </Cluster>
+      <Cluster>
+        <CopyButton textToCopy="INV-0007" title="Copy, then fail" copy={() => false} />
       </Cluster>
     </Stack>
   )
@@ -366,21 +371,51 @@ export const buttonDemos = {
     summary: "Copies a piece of text to the clipboard, as an icon alone or with a title.",
     wide: false,
     props: [
-      { name: "textToCopy", type: "string", description: "What lands on the clipboard." },
+      {
+        name: "textToCopy",
+        type: "string | () => string",
+        description: "What lands on the clipboard; a function is read at click time.",
+      },
       {
         name: "title",
         type: "string",
-        description: "A visible label; without it the button shows only the icon.",
+        description:
+          "A visible label, replaced by the confirmation while it shows; without it, the icon alone.",
       },
       {
         name: "copy",
-        type: "(text) => void",
+        type: "(text) => void | boolean | Promise",
         default: "the clipboard",
-        description: "Replaces the clipboard, to route copies through your own service.",
+        description:
+          "Replaces the clipboard; throwing, rejecting or returning false shows the failure state.",
+      },
+      {
+        name: "copiedLabel",
+        type: "string",
+        default: `"Copied"`,
+        description: "Shown and announced after a copy that worked.",
+      },
+      {
+        name: "failedLabel",
+        type: "string",
+        default: `"Copy failed"`,
+        description: "Shown and announced after a copy that failed.",
+      },
+      {
+        name: "copiedForMs",
+        type: "number",
+        default: "1500",
+        description: "How long either confirmation stays.",
+      },
+      {
+        name: "data-*, id, …",
+        type: "button attributes",
+        description: "Passed to the button, for analytics among other things.",
       },
     ],
     snippet: `<CopyButton textToCopy={invoice.id} />
-<CopyButton textToCopy={invoice.id} title="Copy id" copy={app.clipboard.copy} />`,
+<CopyButton textToCopy={invoice.id} title="Copy id" copy={app.clipboard.copy} />
+<CopyButton textToCopy={() => input.value} data-umami-event="copy-input" />`,
     render: () => <CopyButtonDemo />,
   },
   Link: {

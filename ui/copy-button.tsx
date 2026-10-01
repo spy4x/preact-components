@@ -1,98 +1,48 @@
 import type { JSX } from "preact"
-import { Button } from "./button.tsx"
-import { useEffect, useState } from "preact/hooks"
-import { copyToClipboard } from "@spy4x/platform/browser/clipboard"
+import { useEffect, useRef, useState } from "preact/hooks"
+import {
+  CopyButtonBody,
+  type CopyButtonProps,
+  type CopyStatus,
+  copyText,
+  DEFAULT_COPIED_FOR_MS,
+} from "./copy-button-body.tsx"
 
-export interface CopyButtonProps {
-  textToCopy: string
-  /** Visible label. Without it the button renders icon-only. */
-  title?: string
-  /**
-   * Injected clipboard port, e.g. the host app's `clipboard.copy`.
-   *
-   * Left out, the component uses `navigator.clipboard` and falls back to a hidden textarea plus
-   * `execCommand("copy")` — `navigator.clipboard` is unavailable on insecure origins.
-   */
-  copy?: (text: string) => void | Promise<void>
-  /** Tooltip and accessible name. Defaults to `"Copy"`. */
-  copyLabel?: string
-  /** Milliseconds the confirmation icon stays visible. Defaults to 1500. */
-  copiedForMs?: number
-  /**
-   * Utilities for the button, appended to `Button`'s own and merged with none of them: mark a
-   * replacement important with a trailing `!`.
-   */
-  class?: string
-}
+export type { CopyButtonProps }
 
 /**
- * Copy a string to the clipboard through an injected port or the browser API.
+ * Copy a string to the clipboard through an injected port or the browser API, and say whether it
+ * worked.
+ *
+ * The copy is awaited: a checkmark (and, with a `title`, `copiedLabel` in its place) follows a copy
+ * that worked, a cross and `failedLabel` one that did not, and a polite live region announces
+ * either. The confirmation clears after `copiedForMs`. Any other attribute, such as `data-*` for
+ * analytics, is passed to the `<button>`.
  *
  * `document` and `navigator` are touched inside the click handler and the timer effect only, so
  * the server render is unaffected.
  */
 export function CopyButton(
-  {
-    textToCopy,
-    title,
-    copy,
-    copyLabel = "Copy",
-    copiedForMs = 1500,
-    class: className,
-  }: CopyButtonProps,
+  { copy, copiedForMs = DEFAULT_COPIED_FOR_MS, ...props }: CopyButtonProps,
 ): JSX.Element {
-  const [copied, setCopied] = useState(false)
+  const [status, setStatus] = useState<CopyStatus>("idle")
+  // Counts presses, so a slow copy that settles after a later press does not overwrite its status.
+  const latest = useRef(0)
 
   useEffect(() => {
-    if (!copied) return
-    const timer = setTimeout(() => setCopied(false), copiedForMs)
+    if (status === "idle") return
+    const timer = setTimeout(() => setStatus("idle"), copiedForMs)
     return () => clearTimeout(timer)
-  }, [copied, copiedForMs])
+  }, [status, copiedForMs])
 
-  const handleCopy = () => {
-    void (copy ? copy(textToCopy) : copyToClipboard(textToCopy))
-    setCopied(true)
+  const press = async () => {
+    const id = ++latest.current
+    // Back to rest first: a second copy then empties the live region and fills it again, so it is
+    // announced again, and its confirmation gets a full window of its own.
+    setStatus("idle")
+    const worked = await copyText(props.textToCopy, copy)
+    if (id === latest.current) setStatus(worked ? "copied" : "failed")
   }
 
-  return (
-    <Button
-      variant={title ? "outline" : "icon"}
-      class={className}
-      title={copyLabel}
-      aria-label={title ? undefined : copyLabel}
-      onClick={handleCopy}
-    >
-      {copied
-        ? (
-          <svg
-            class="size-4 shrink-0"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path d="m5 13 4 4L19 7" />
-          </svg>
-        )
-        : (
-          <svg
-            class="size-4 shrink-0"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <rect x="9" y="9" width="11" height="11" rx="2" />
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-          </svg>
-        )}
-      {title ?? null}
-    </Button>
-  )
+  return <CopyButtonBody {...props} status={status} onPress={() => void press()} />
 }

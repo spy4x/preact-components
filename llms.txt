@@ -520,7 +520,7 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `labelOr` (helper): The caller's label, or the library's English default. Import: `@spy4x/preact-ui`
 - `CopyBlock` (component): A box of monospace text with a copy control beside it: an install command, an API key, an id. Import: `@spy4x/preact-ui`
 - `CopyBlockProps` (type): Props of `CopyBlock`, the one block of copyable text this package ships. Import: `@spy4x/preact-ui`
-- `CopyButton` (component): Copy a string to the clipboard through an injected port or the browser API. Import: `@spy4x/preact-ui`
+- `CopyButton` (component): Copy a string to the clipboard through an injected port or the browser API, and say whether it worked. Import: `@spy4x/preact-ui`
 - `CopyButtonProps` (type): Props of `CopyButton`. Import: `@spy4x/preact-ui`
 - `activeDescendant` (helper): `aria-activedescendant` for the combobox input, or `undefined` when nothing is highlighted. Import: `@spy4x/preact-ui`
 - `Combobox` (component): Searchable single-select: a text input filtering a `role="listbox"` of options. Import: `@spy4x/preact-ui`
