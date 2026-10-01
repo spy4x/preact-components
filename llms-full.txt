@@ -3970,7 +3970,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Avatar`          | `avatar`            | `name`, `src`, `alt`, `size`                                                                                                                                                                    |
 | `AvatarGroup`     | `avatar`            | `items`, `max`, `label`, `size` (a `role="group"`, not a list)                                                                                                                                  |
 | `Badge`           | `badge`             | `text` or `children`, `color`, `type`, `href?` (the whole pill becomes a link)                                                                                                                  |
-| `Button`          | `button`            | `variant`, `size`, `busy`, `busyLabel`, native button attrs                                                                                                                                     |
+| `Button`          | `button`            | `variant`, `size` (`"none"` leaves sizing to `class`), `busy`, `busyLabel`, native button attrs; `href?` and `navigate?` (router port) render a link                                            |
 | `Card`            | `card`              | `children`, `class` — a bordered surface                                                                                                                                                        |
 | `CardBody`        | `card`              | `children`, `class`                                                                                                                                                                             |
 | `CardFooter`      | `card`              | `children`, `class`                                                                                                                                                                             |
@@ -4193,6 +4193,27 @@ replaces the children while busy; an icon button shows the spinner instead of it
 
 ```tsx
 <Button type="submit" busy={saving.value} busyLabel="Confirming…">Confirm</Button>
+```
+
+Given `href`, `Button` renders an `<a>` with the classes the same `variant`, `size` and `class`
+give a `<button>`, focus ring included, so an app whose actions are links does not copy the
+button's classes onto an anchor of its own. Its props are `ButtonLinkProps`, a separate interface,
+so an interface that extends `ButtonProps` is untouched; `ButtonOverloads` is the type of `Button`
+with both call shapes. A `navigate` port follows the rule `Link` runs: a plain click calls
+`navigate(href)` and the browser does not navigate, and a click with Ctrl, Meta, Shift or Alt, a
+middle click, another `target` or a `download` stays the browser's. A link has no `busy`.
+
+A disabled link has no `disabled` attribute to set, so `disabled` renders the `<a>` without `href`,
+with `role="link"` and `aria-disabled="true"`, dimmed like a disabled button. With no `href` it
+leaves the tab order and a click goes nowhere, as a disabled `<button>` does, and a screen reader
+still reads it as an unavailable link.
+
+`size="none"` sets no padding, gap or text size (and no box size on the `icon` variant), so the
+caller sizes the button through `class`. The other sizes render the same classes as before.
+
+```tsx
+<Button href="/reports" navigate={router.navigate}>Reports</Button>
+<Button href="/book" variant="outline" size="none" class="px-6 py-3 text-lg">Book a call</Button>
 ```
 
 ## Dropdown
