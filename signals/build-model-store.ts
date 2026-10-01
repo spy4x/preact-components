@@ -285,7 +285,10 @@ export interface ModelStoreBase<F extends Type<Model>, C extends Type, U extends
     nonDeleted: ReadonlySignal<SchemaOutput<F>[]>
   }
   one: {
-    /** `undefined` when no such row is loaded — the honest result of a `find`. */
+    /**
+     * `undefined` when no such row is loaded — the honest result of a lookup. Asking twice for the
+     * same id returns the same signal, until `reset()` starts a new session.
+     */
     byId: (id: number) => ReadonlySignal<SchemaOutput<F> | undefined>
   }
   op: {
@@ -402,6 +405,45 @@ export function buildModelStore<
    */
   const patch = (update: Partial<State>): void => {
     state.value = { ...state.value, ...update }
+  }
+
+  /**
+   * The list as its own signal, so what reads only the rows is not woken by an operation slot.
+   *
+   * A `computed` that returns the same array as before tells nobody downstream, and `patch` passes
+   * the list through by reference whenever it is not part of the patch.
+   */
+  const rows = computed(() => state.value.list)
+
+  /**
+   * Every held row by its id, rebuilt once per change of the list rather than scanned per lookup.
+   *
+   * `one.byId`, the remote events and the own-write paths all read it. It sits beside the array and
+   * never replaces it: `list` stays an array, so `list.all`, `list.nonDeleted` and the
+   * `CrudListStore` contract keep their types, and a write still copies one array instead of an
+   * array and a `Map`. Where the list holds an id twice, the first row wins, as `find` did.
+   */
+  const index = computed(() => indexById(rows.value))
+
+  /**
+   * One `byId` signal per id asked for, so a component that calls `one.byId(id)` on every render
+   * subscribes to the same signal instead of building a new `computed` each time.
+   *
+   * An entry reads `index`, never a row captured when it was made, so it cannot go stale: a row
+   * that is updated is read anew, and one that is removed, or wiped by `reset()`, reads as
+   * `undefined`. An entry is kept while its row is absent, because an id asked for before the list
+   * arrives is the ordinary case. `reset()` drops every entry, so the cache holds only the ids asked
+   * for in the current session; a signal handed out earlier keeps working, it is just no longer the
+   * one the next call returns.
+   */
+  const byIdSignals = new Map<number, ReadonlySignal<Row | undefined>>()
+
+  const byId = (id: number): ReadonlySignal<Row | undefined> => {
+    const cached = byIdSignals.get(id)
+    if (cached) return cached
+    const made = computed(() => index.value.get(id))
+    byIdSignals.set(id, made)
+    return made
   }
 
   const setUpdateOp = (id: number, op: OperationState<Row, InputError>): void => {
@@ -522,7 +564,7 @@ export function buildModelStore<
    * `replaceRow` over a list with no such id is a copy of the same list either way.
    */
   const outranksHeldRow = (answer: Row): boolean => {
-    const held = state.value.list.find((existing) => existing.id === answer.id)
+    const held = index.value.get(answer.id)
     return held === undefined || isNewer(answer, held)
   }
 
@@ -587,7 +629,7 @@ export function buildModelStore<
     // and only the shared `createOp` slot has to pick one of them. The one way the list already
     // holds this id is a remote `"created"` event for this very row arriving first; appending then
     // would show the row twice, so the clock picks between the two copies instead.
-    const list = state.value.list.some((existing) => existing.id === outcome.result.id)
+    const list = index.value.has(outcome.result.id)
       ? outranksHeldRow(outcome.result) ? replaceRow(outcome.result) : state.value.list
       : [...state.value.list, outcome.result]
     patch(
@@ -719,7 +761,7 @@ export function buildModelStore<
    * answer.
    */
   function applyRemote(items: unknown[], event: RemoteEvent): void {
-    const rows: Row[] = []
+    const incoming: Row[] = []
     for (const item of items) {
       const { error, data } = validate(schemas.full, item)
       if (error) {
@@ -731,36 +773,41 @@ export function buildModelStore<
         toast.error({ body: payloadError.message })
         return
       }
-      rows.push(data)
+      incoming.push(data)
     }
+
+    // Each event below walks the held list at most once and looks every row up in a `Map`, never
+    // scanning one list per row of the other: a 1,000-row batch over 5,000 held rows is about 6,000
+    // steps rather than 5 million.
 
     switch (event) {
       case RemoteEvent.LIST:
-        patch({ list: rows, listOp: { inProgress: false, error: null, result: rows } })
+        patch({ list: incoming, listOp: { inProgress: false, error: null, result: incoming } })
         return
-      case RemoteEvent.CREATED:
-        patch({
-          list: [
-            ...state.value.list,
-            ...rows.filter((row) => !state.value.list.some((existing) => existing.id === row.id)),
-          ],
-        })
+      case RemoteEvent.CREATED: {
+        const held = index.value
+        patch({ list: [...state.value.list, ...incoming.filter((row) => !held.has(row.id))] })
         return
-      case RemoteEvent.UPDATED:
+      }
+      case RemoteEvent.UPDATED: {
+        const byIncomingId = indexById(incoming)
         patch({
           list: state.value.list.map((existing) => {
-            const incoming = rows.find((row) => row.id === existing.id)
-            return incoming && isNewer(incoming, existing) ? incoming : existing
+            const row = byIncomingId.get(existing.id)
+            return row && isNewer(row, existing) ? row : existing
           }),
         })
         return
-      case RemoteEvent.DELETED:
+      }
+      case RemoteEvent.DELETED: {
+        const byIncomingId = indexById(incoming)
         patch({
           list: state.value.list.map((existing) => {
-            const incoming = rows.find((row) => row.id === existing.id)
-            return incoming ? applyRemoteDelete(incoming, existing) : existing
+            const row = byIncomingId.get(existing.id)
+            return row ? applyRemoteDelete(row, existing) : existing
           }),
         })
+      }
     }
   }
 
@@ -782,6 +829,7 @@ export function buildModelStore<
     // session's list, which is the failure this counter exists to prevent. Two tests in
     // `buildModelStore across a reset` hold the order.
     generation += 1
+    byIdSignals.clear()
     patch({
       list: [],
       listOp: idle(),
@@ -848,7 +896,7 @@ export function buildModelStore<
       nonDeleted: computed(() => all.value.filter((row) => !row.deletedAt)),
     },
     one: {
-      byId: (id: number) => computed(() => state.value.list.find((row) => row.id === id)),
+      byId,
     },
     op: {
       list: computed(() => state.value.listOp),
@@ -924,6 +972,16 @@ function jsonRequest(method: string, body: unknown): RequestInit {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   }
+}
+
+/**
+ * Rows keyed by id. Where `rows` holds an id twice the first one wins, which is what `find` returned
+ * before the store kept an index.
+ */
+function indexById<M extends Model>(rows: readonly M[]): ReadonlyMap<number, M> {
+  const index = new Map<number, M>()
+  for (const row of rows) if (!index.has(row.id)) index.set(row.id, row)
+  return index
 }
 
 /** A settled, empty operation slot. */
