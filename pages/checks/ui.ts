@@ -1570,6 +1570,7 @@ async function toastrChecks(devtools: Devtools): Promise<void> {
   await storeDelayChecks(devtools)
   await toastrTitleCheck(devtools)
   await toastrOwnHookCheck(devtools)
+  await toastrWarningContrastCheck(devtools)
 
   // Leave the card as it was found, for whatever reads the page next.
   await devtools.evaluate<null>(`(globalThis.__verifyToastr?.clear?.click(), null)`)
@@ -1733,6 +1734,119 @@ async function toastrOwnHookCheck(devtools: Devtools): Promise<void> {
     "a toast pushed with its own dataE2E carries that data-e2e on the toast itself",
     outcome.reason === "" && outcome.ok,
     outcome.reason !== "" ? outcome.reason : outcome.detail,
+  )
+}
+
+/** The warning toast's colours and its weakest label, read in one palette. */
+interface WarningToastReading {
+  /** The toast's fill and the `--color-warning-fill` token, both painted to sRGB bytes. */
+  fill: string
+  token: string
+  /** The toast's text colour and the `--color-warning-foreground` token, painted the same way. */
+  label: string
+  labelToken: string
+  /** The lowest of the title's, the body's and the dismiss button's contrast on the fill. */
+  ratio: number
+  /** The toast's opacity with its ancestors', which must be 1 for the reading to mean anything. */
+  opacity: number
+  /** The page canvas, which differs between the palettes: proof the palette really switched. */
+  canvas: string
+}
+
+/**
+ * #461: the warning toast is drawn with the warning tokens, and its label reads 4.5:1 or better on
+ * that fill in light and dark. Pushes one warning toast from the card's real store, waits out its
+ * entry fade, and in each palette paints the toast's fill and text colour next to
+ * `--color-warning-fill` and `--color-warning-foreground`. The contrast is the lowest of the
+ * title, the body and the dismiss button, each against everything composited behind it. The page
+ * canvas is read in each palette too, and must differ, so a palette that never switched fails.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function toastrWarningContrastCheck(devtools: Devtools): Promise<void> {
+  await pointerToCorner(devtools)
+  const outcome = await devtools.evaluate<{
+    reason: string
+    light?: WarningToastReading
+    dark?: WarningToastReading
+  }>(`(async () => {
+    ${CONTRAST_HELPERS}
+    const parked = globalThis.__verifyToastr ?? {}
+    const region = parked.region ?? null
+    const push = parked.card?.querySelector('[data-e2e="toast-warning"]') ?? null
+    if (region === null || push === null || !parked.clear) {
+      return { reason: "the Toastr card is missing its live area, its warning button " +
+        '(data-e2e="toast-warning") or its clear button' }
+    }
+    parked.clear.click()
+    await new Promise((done) => setTimeout(done, 80))
+    push.click()
+    await new Promise((done) => setTimeout(done, 450))
+    const toast = region.querySelector('[data-e2e="guide-toast-warning"]')
+    if (toast === null) {
+      parked.clear.click()
+      return { reason: "no warning toast arrived in the stack" }
+    }
+    const root = document.documentElement
+    const wasDark = root.classList.contains("dark")
+    const rgb = (bytes) => "rgb(" + bytes.join(", ") + ")"
+    const token = (name) => {
+      const probe = document.createElement("div")
+      probe.style.backgroundColor = "var(" + name + ")"
+      document.body.appendChild(probe)
+      const color = paint(getComputedStyle(probe).backgroundColor)
+      probe.remove()
+      return rgb(color)
+    }
+    const labels = [
+      ...toast.querySelectorAll("p"),
+      toast.querySelector("button"),
+    ].filter(Boolean)
+    const measure = () => {
+      let opacity = 1
+      for (let el = toast; el !== null; el = el.parentElement) {
+        opacity *= Number(getComputedStyle(el).opacity)
+      }
+      return {
+        fill: rgb(paint(getComputedStyle(toast).backgroundColor)),
+        token: token("--color-warning-fill"),
+        label: rgb(paint(getComputedStyle(toast).color)),
+        labelToken: token("--color-warning-foreground"),
+        ratio: labels.length < 3 ? 0 : Math.min(
+          ...labels.map((el) => ratio(paint(getComputedStyle(el).color), backdrop(el))),
+        ),
+        opacity,
+        canvas: token("--color-canvas"),
+      }
+    }
+    try {
+      root.classList.remove("dark")
+      const light = measure()
+      root.classList.add("dark")
+      const dark = measure()
+      return { reason: "", light, dark }
+    } finally {
+      root.classList.toggle("dark", wasDark)
+      parked.clear.click()
+      await new Promise((done) => setTimeout(done, 80))
+    }
+  })()`)
+  const passes = (reading: WarningToastReading | undefined) =>
+    reading !== undefined && reading.fill === reading.token &&
+    reading.label === reading.labelToken && reading.ratio >= 4.5 && reading.opacity > 0.99
+  const describe = (name: string, reading: WarningToastReading | undefined) =>
+    reading === undefined
+      ? `${name}: not read`
+      : `${name}: fill ${reading.fill} (token ${reading.token}), label ${reading.label} ` +
+        `(token ${reading.labelToken}), lowest ${reading.ratio.toFixed(2)}:1 at opacity ` +
+        `${reading.opacity.toFixed(2)}, canvas ${reading.canvas}`
+  check(
+    "the warning toast draws the warning tokens and its label reads 4.5:1 in light and dark",
+    outcome.reason === "" && passes(outcome.light) && passes(outcome.dark) &&
+      outcome.light?.canvas !== outcome.dark?.canvas,
+    outcome.reason !== ""
+      ? outcome.reason
+      : `${describe("light", outcome.light)}; ${describe("dark", outcome.dark)}`,
   )
 }
 
