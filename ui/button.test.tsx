@@ -98,11 +98,12 @@ describe("Button busy", () => {
 
 describe("buttonClasses", () => {
   it("appends a caller's classes after its own, merging nothing", () => {
-    const classes = buttonClasses("outline", "md", "rounded-full! px-8!")
+    // Two utilities of the groups the variant and size already set: a merge would drop those.
+    const classes = buttonClasses("outline", "md", "rounded-full px-8")
 
-    expect(classes.endsWith(" rounded-full! px-8!")).toBe(true)
-    expect(classes).toContain("rounded-md")
-    expect(classes).toContain("px-3")
+    expect(classes.endsWith(" rounded-full px-8")).toBe(true)
+    expect(classes.split(" ")).toContain("rounded-md")
+    expect(classes.split(" ")).toContain("px-3")
   })
 
   it("keeps utilities from other groups", () => {
