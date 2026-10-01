@@ -523,9 +523,10 @@ and the canvas in both palettes, so `text-danger`, `text-warning` and `text-succ
 `dark:` override: red-700, orange-700 and green-800 in light, red-400, orange-400 and green-400 in
 dark. `bg-warning`, `bg-success`, `.btn-warning`, `.btn-success` and the on and off map markers read
 `--color-warning-fill` and `--color-success-fill` instead: orange-600 and green-700 in both
-palettes. An app that repaints `--color-warning` or `--color-success` sets the matching fill token
-too, or its fills stay orange-600 and green-700. `bg-danger`, `border-danger` and the unknown map
-marker read the danger text colour itself. `--color-danger-soft` and `--color-info-soft` are the
+palettes. An app that repaints `--color-danger`, `--color-warning` or `--color-success`, in either
+palette, sets the matching fill tokens too (`--color-danger-fill` and `--color-danger-fill-hover`,
+`--color-warning-fill`, `--color-success-fill`), or its fills keep the library's colours.
+`bg-danger`, `border-danger` and the unknown map marker read the danger text colour itself. `--color-danger-soft` and `--color-info-soft` are the
 tinted backgrounds of an error or notice.
 
 The warning fill carries a dark label: `--color-warning-foreground` is gray-950, 5.62:1 on the

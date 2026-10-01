@@ -183,3 +183,17 @@ describe("the default token set, after #257", () => {
     expect(TOKENS_CSS).not.toMatch(/\.(woff2?|ttf|otf)/)
   })
 })
+
+describe("preset.css fallbacks, after #463", () => {
+  it("fall back to the light value tokens.css gives each status text token", () => {
+    const root = parseBlock(TOKENS_CSS, ":root")
+    const fallbacks = [
+      ...PRESET_CSS.matchAll(/var\((--color-(?:danger|warning|success)),\s*([^()]*\([^()]*\))\)/g),
+    ]
+    const mismatched = fallbacks
+      .filter(([, token, fallback]) => fallback !== root[token])
+      .map(([usage, token]) => `${usage} (tokens.css: ${root[token]})`)
+    expect(fallbacks.length).toBe(12)
+    expect(mismatched).toEqual([])
+  })
+})
