@@ -1,4 +1,4 @@
-import { check, type Devtools, pointerToCorner } from "./harness.ts"
+import { check, type Devtools, PAGE_UNTIL, pointerToCorner } from "./harness.ts"
 
 /**
  * Every glyph's caption fits its cell on a phone: a long name wraps between its words rather than
@@ -242,7 +242,7 @@ export async function iconsChecks(devtools: Devtools): Promise<void> {
       input.focus()
       input.value = "arrow"
       input.dispatchEvent(new Event("input", { bubbles: true }))
-      await new Promise((done) => setTimeout(done, 50))
+      await ${PAGE_UNTIL}(() => document.querySelectorAll("#icons [data-icon]").length < total)
       const shown = [...document.querySelectorAll("#icons [data-icon]")]
         .map((cell) => cell.getAttribute("data-icon"))
       return {
@@ -264,7 +264,9 @@ export async function iconsChecks(devtools: Devtools): Promise<void> {
       const cell = document.querySelector("#icons [data-icon]")
       const name = cell.getAttribute("data-icon")
       cell.click()
-      await new Promise((done) => setTimeout(done, 50))
+      await ${PAGE_UNTIL}(() =>
+        document.querySelector("#icons p[aria-live]").textContent.includes("copied")
+      )
       return { name, status: document.querySelector("#icons p[aria-live]").textContent }
     })()`,
   )

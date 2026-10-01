@@ -80,6 +80,7 @@ import {
   poll,
   pressKey,
   ranBlockNames,
+  reloadAndHydrate,
   report,
   Run,
   runBlocks,
@@ -724,19 +725,21 @@ async function launchChromium(
 /**
  * Drive the page in headless Chromium and assert the interactions.
  *
- * The whole phase races an overall deadline (`#239`): everything below runs inside `work`, and
- * `Promise.race` against a timer means a hang anywhere inside it — a `DevTools` call with no timeout
- * of its own would be the classic case, which is why every one now has one — still lets `verify` exit
- * non-zero instead of waiting forever. The deadline branch cannot know what `work` was doing, so it
- * reads {@link currentBlockName} and {@link lastCheckName} instead: the block `runBlocks` was inside
- * when time ran out, and the last check that finished before that.
+ * The whole phase races a watchdog (#466): everything below runs inside `work`, and the watchdog
+ * stops the phase when no check has finished and no block has started for 90 seconds, or when the
+ * phase has run 15 minutes in all, both multiplied by `--cpu-throttle` (see {@link phaseVerdict}).
+ * So a hang anywhere inside `work` — a `DevTools` call with no timeout of its own would be the
+ * classic case, which is why every one now has one — still lets `verify` exit non-zero instead of
+ * waiting forever. The watchdog cannot know what `work` was doing, so it reads
+ * {@link currentBlockName} and {@link lastCheckName} instead: the block `runBlocks` was inside when
+ * it fired, and the last check that finished before that.
  *
- * A `SIGINT`/`SIGTERM`/`SIGHUP` listener gives this the same chance an internal deadline gets: without
+ * A `SIGINT`/`SIGTERM`/`SIGHUP` listener gives this the same chance the watchdog gets: without
  * one, Deno's default handling for those signals is to exit immediately, and `teardown` never runs at
  * all — found in review, alongside the `detached: true` removal above that lets those signals reach
  * Chromium's process group in the first place.
  *
- * `work`'s own `finally`, the deadline branch and every signal handler all call `teardown` — really
+ * `work`'s own `finally`, the watchdog and every signal handler all call `teardown` — really
  * `lifecycle.teardown`, one promise shared by every caller (see {@link ChromiumLifecycle}) — so
  * whichever fires first does the actual killing, and a second caller awaits that same completion
  * instead of returning early.
@@ -1221,12 +1224,7 @@ async function recoveryDrill(devtools: Devtools): Promise<void> {
  * @param devtools The connected session.
  */
 async function freshPageAfterDrill(devtools: Devtools): Promise<void> {
-  await devtools.send("Page.reload", {})
-  await devtools.next("Page.loadEventFired")
-  const hydrated = await poll(
-    () => devtools.evaluate<boolean>("document.documentElement.dataset.hydrated === 'true'"),
-    10_000,
-  )
+  const hydrated = await reloadAndHydrate(devtools, { ignoreCache: false })
   const readout = await devtools.evaluate<string>(
     `document.querySelector('#demo-Modal [data-e2e="modal-close-step"]')?.textContent ?? ""`,
   )

@@ -6,6 +6,7 @@ import {
   type Devtools,
   inFreshFrame,
   openGuidePage,
+  PAGE_UNTIL,
   pointerToCorner,
   poll,
   pressKey,
@@ -33,7 +34,7 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
     radio: string
     inlineButton: string
   }>(`(async () => {
-    const settle = () => new Promise((done) => setTimeout(done, 30))
+    const until = ${PAGE_UNTIL}
     const echo = (card) => document.querySelector("#demo-" + card + ' [data-e2e="controlled-value"]')
       .textContent.trim()
 
@@ -41,16 +42,16 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
     const echoBefore = echo("class-input")
     input.value = "ada@example.com"
     input.dispatchEvent(new Event("input", { bubbles: true }))
-    await settle()
+    await until(() => echo("class-input").includes("ada@example.com"))
 
     const box = document.querySelector("#demo-class-checkbox input.pc-checkbox")
     const checkboxBefore = echo("class-checkbox")
     box.click()
-    await settle()
+    await until(() => echo("class-checkbox") !== checkboxBefore)
 
     const radio = document.querySelector('#demo-class-radio input.pc-radio[value="sms"]')
     radio.click()
-    await settle()
+    await until(() => echo("class-radio").includes("sms"))
 
     return {
       echoBefore,
@@ -110,7 +111,7 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
     const scroller = document.querySelector('#demo-class-scrollbar [data-e2e="scrollbar"]')
     const overflow = scroller.scrollWidth > scroller.clientWidth
     scroller.scrollLeft = 120
-    await new Promise((done) => setTimeout(done, 50))
+    await ${PAGE_UNTIL}(() => scroller.scrollLeft > 0)
 
     return {
       cardRadius: style("#demo-class-card .pc-card").borderRadius,
@@ -168,7 +169,7 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
       const button = document.querySelector('[data-e2e="theme-toggle"]')
       const before = document.documentElement.classList.contains("dark")
       button.click()
-      await new Promise((done) => setTimeout(done, 50))
+      await ${PAGE_UNTIL}(() => document.documentElement.classList.contains("dark") !== before)
       return {
         before,
         after: document.documentElement.classList.contains("dark"),
@@ -265,17 +266,21 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
     const wasTheme = root.getAttribute("data-theme")
     const canvas = () => getComputedStyle(document.body).backgroundColor
 
+    const until = ${PAGE_UNTIL}
+
+    // \`getComputedStyle\` recalculates the cascade on the spot and the body's background has no
+    // transition, so the baseline needs no wait; each change after it waits for the colour it
+    // expects, with a deadline.
     root.classList.add("dark")
     root.removeAttribute("data-theme")
-    await new Promise((done) => setTimeout(done, 30))
     const before = canvas()
 
     root.setAttribute("data-theme", "ink")
-    await new Promise((done) => setTimeout(done, 30))
+    await until(() => canvas() !== before)
     const ink = canvas()
 
     root.removeAttribute("data-theme")
-    await new Promise((done) => setTimeout(done, 30))
+    await until(() => canvas() === before)
     const after = canvas()
 
     root.classList.toggle("dark", wasDark)
@@ -302,9 +307,11 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
     const wasTheme = root.getAttribute("data-theme")
     const canvas = () => getComputedStyle(document.body).backgroundColor
 
+    // The baseline needs no wait, as in the probe above. The read after setting the attribute
+    // waits a fixed 30ms on purpose: this proves the canvas does NOT change, and there is no
+    // condition to poll for a change that must never come.
     root.classList.remove("dark")
     root.removeAttribute("data-theme")
-    await new Promise((done) => setTimeout(done, 30))
     const before = canvas()
 
     root.setAttribute("data-theme", "ink")
@@ -401,7 +408,14 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
       const box = button.getBoundingClientRect()
       return { x: box.x + box.width / 2, y: box.y + box.height / 2 }
     })()`)
-    const settle = () => devtools.evaluate(`new Promise((done) => setTimeout(done, 60))`)
+    const probeFocused = (focused: boolean) =>
+      poll(
+        () =>
+          devtools.evaluate<boolean>(
+            `(document.activeElement?.id === "ink-focus-ring-probe") === ${focused}`,
+          ),
+        3_000,
+      )
     for (const type of ["mousePressed", "mouseReleased"]) {
       await devtools.send("Input.dispatchMouseEvent", {
         type,
@@ -412,9 +426,9 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
         clickCount: 1,
       })
     }
-    await settle()
+    await probeFocused(true)
     await pressKey(devtools, "Tab")
-    await settle()
+    await probeFocused(false)
     // Shift+Tab, to come straight back to the button — `pressKey`'s table carries no modifier keys,
     // so this one dispatch is written directly against the same `Input.dispatchKeyEvent` it wraps.
     // CDP's Shift bit is 8.
@@ -428,7 +442,7 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
         modifiers: 8,
       })
     }
-    await settle()
+    await probeFocused(true)
     const focusRing = await devtools.evaluate<{
       outlineColor: string
       pageBackground: string
@@ -909,7 +923,7 @@ async function selectionAndRingChecks(devtools: Devtools): Promise<void> {
     const on = [...document.querySelectorAll("#demo-OnOffButtons button")]
       .find((button) => button.textContent.trim() === "ON")
     on?.click()
-    await new Promise((done) => setTimeout(done, 50))
+    await ${PAGE_UNTIL}(() => on?.className.includes("bg-selected") ?? true)
   })()`)
   const readPalette = async (dark: boolean): Promise<SelectionPalette> => {
     await devtools.evaluate(`(async () => {

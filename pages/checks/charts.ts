@@ -167,6 +167,8 @@ async function noD3Check(devtools: Devtools, frame: string): Promise<void> {
       ),
     15_000,
   )
+  // A fixed wait on purpose: this proves a d3 script is NOT fetched, and there is no event for a
+  // load that never starts. It gives anything the charts page would load late a second to show up.
   await new Promise((resolve) => setTimeout(resolve, 1_000))
   const report = await readFrameScripts(devtools, frame, D3_MARKERS)
   check(
