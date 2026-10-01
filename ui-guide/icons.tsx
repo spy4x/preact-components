@@ -94,7 +94,8 @@ export const DEFAULT_ICON_GALLERY_LABELS: IconGalleryLabels = {
 const GALLERY_SNIPPET = `import { IconSearch } from "@spy4x/preact-icons"
 
 <IconSearch class="size-5 text-muted" />
-<IconSearch aria-label="Search" />`
+<IconSearch aria-label="Search" />
+<IconStar filled aria-label="Rated" />`
 
 export interface IconGalleryProps {
   /**
@@ -156,6 +157,13 @@ export function IconGallery(
             value={query.value}
             onInput={(event) => query.value = event.currentTarget.value}
           />
+        </Cluster>
+
+        {/* The one glyph with a prop beyond the shared three: the outline and its solid variant. */}
+        <Cluster gap="sm" class="text-muted" data-star-variants>
+          <icons.IconStar class="size-6" />
+          <icons.IconStar filled class="size-6" />
+          <code class="text-xs">{"<IconStar filled />"}</code>
         </Cluster>
 
         {matches.length === 0

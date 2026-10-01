@@ -164,15 +164,71 @@ async function glyphPaintCheck(devtools: Devtools): Promise<void> {
   }
 }
 
+/** What {@link starVariantsCheck} reads off the gallery's two stars. */
+interface StarVariants {
+  found: number
+  outlineFill: string
+  solidFill: string
+  solidStroke: string
+  text: string
+  sameBox: boolean
+}
+
+/**
+ * The gallery shows `IconStar` beside `<IconStar filled />`: the outline paints no fill, the filled
+ * star paints its fill and its stroke in the text colour, and the two draw the same box, so filling
+ * a star in a rating does not shift it.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function starVariantsCheck(devtools: Devtools): Promise<void> {
+  const read = await devtools.evaluate<StarVariants>(`(() => {
+    const [outline, solid] = [...document.querySelectorAll("#icons [data-star-variants] svg")]
+    if (!outline || !solid) return { found: [outline, solid].filter(Boolean).length }
+    const shape = (svg) => getComputedStyle(svg.querySelector("polygon"))
+    const box = (svg) => {
+      const { x, y, width, height } = svg.querySelector("polygon").getBBox()
+      return [x, y, width, height].join(",")
+    }
+    return {
+      found: 2,
+      outlineFill: shape(outline).fill,
+      solidFill: shape(solid).fill,
+      solidStroke: shape(solid).stroke,
+      text: getComputedStyle(solid).color,
+      sameBox: box(outline) === box(solid) &&
+        outline.getBoundingClientRect().width === solid.getBoundingClientRect().width,
+    }
+  })()`)
+  check(
+    "the gallery's filled IconStar paints solid in the text colour, in the outline star's box",
+    read.found === 2 && read.outlineFill === "none" && read.solidFill === read.text &&
+      read.solidStroke === read.text && read.sameBox,
+    `${read.found} stars; outline fill ${read.outlineFill}, filled fill ${read.solidFill} ` +
+      `stroke ${read.solidStroke}, text ${read.text}, same box ${read.sameBox}`,
+  )
+}
+
 /**
  * `icons/`'s browser checks: every caption fits on a phone, every glyph draws in the text colour
- * on both themes, the live filter over the glyph gallery, and click-to-copy on a glyph.
+ * on both themes, the filled star beside the outline one, the glyphs #495 added, the live filter
+ * over the glyph gallery, and click-to-copy on a glyph.
  *
  * @param devtools The connected session, on a hydrated page.
  */
 export async function iconsChecks(devtools: Devtools): Promise<void> {
   await captionFitCheck(devtools)
   await glyphPaintCheck(devtools)
+  await starVariantsCheck(devtools)
+
+  const added = await devtools.evaluate<string[]>(
+    `["IconCopy", "IconPen"].filter((name) => document.querySelector(\`#icons [data-icon="\${name}"] svg\`))`,
+  )
+  check(
+    "the gallery lists IconCopy and IconPen",
+    added.length === 2,
+    `found: ${added.join(", ") || "neither"}`,
+  )
 
   const filter = await devtools.evaluate<{
     total: number
