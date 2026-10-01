@@ -26,6 +26,7 @@ import { cn } from "@spy4x/preact-cn"
 import { IconBars3, IconPlus, type IconProps, IconXMark } from "@spy4x/preact-icons"
 import { Avatar } from "@spy4x/preact-ui/avatar"
 import { Dropdown, DropdownItem } from "@spy4x/preact-ui/dropdown"
+import { followLinkClick, isPlainClick } from "@spy4x/preact-ui/link"
 import type { ComponentChildren, ComponentType, JSX } from "preact"
 import { useId } from "preact/hooks"
 import { isCurrentLink } from "./site-header.tsx"
@@ -177,15 +178,6 @@ const iconButtonClasses =
 const menuItemClasses =
   "flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-foreground hover:bg-hover focus:bg-hover"
 
-/**
- * Whether a click is one the page may take over: the primary button with no modifier. Ctrl or Meta
- * opens a new tab, Shift a new window and Alt a download, so those stay the browser's.
- */
-function isPlainClick(event: MouseEvent): boolean {
-  return event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey &&
-    !event.altKey
-}
-
 /** What every link in the navigation needs to follow a click: the port, and the drawer's close. */
 interface ShellLinkPorts {
   navigate?: (href: string) => void
@@ -195,8 +187,10 @@ interface ShellLinkPorts {
 
 /**
  * The click handler of a link at `href`. A modified click is left alone entirely, so the drawer
- * stays open behind a new tab. A plain click goes through `navigate` unless something earlier
- * already cancelled it, and closes the drawer either way.
+ * stays open behind a new tab. A plain click goes through `navigate` by the library's one link
+ * rule ({@link followLinkClick}), and closes the drawer either way: also when `navigate` is
+ * missing or something earlier already cancelled the click, which is why the close is keyed off
+ * {@link isPlainClick} and not off whether `followLinkClick` navigated.
  */
 function followLink(
   href: string,
@@ -204,10 +198,7 @@ function followLink(
 ): (event: MouseEvent) => void {
   return (event) => {
     if (!isPlainClick(event)) return
-    if (navigate && !event.defaultPrevented) {
-      event.preventDefault()
-      navigate(href)
-    }
+    followLinkClick(event, { href, navigate })
     onNavigate?.()
   }
 }

@@ -95,6 +95,7 @@ import { IconEye, IconEyeOff } from "@spy4x/preact-icons"
 import { Button, buttonClasses } from "@spy4x/preact-ui/button"
 import { Field } from "@spy4x/preact-ui/field"
 import { Input } from "@spy4x/preact-ui/input"
+import { followLinkClick } from "@spy4x/preact-ui/link"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useRef, useState } from "preact/hooks"
 
@@ -194,17 +195,6 @@ export interface AuthFormModeHrefs {
   "sign-in": string
   /** The sign-up page; the switch links here from sign-in. */
   "sign-up": string
-}
-
-/**
- * Whether a click is one the page may take over: the primary button with no modifier. Ctrl or Meta
- * opens a new tab, Shift a new window and Alt a download, so those stay the browser's.
- *
- * The same rule as `Shell`'s private copy; both give way to the shared `Link` planned in #454.
- */
-function isPlainClick(event: MouseEvent): boolean {
-  return event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey &&
-    !event.altKey
 }
 
 export interface AuthFormProps {
@@ -438,9 +428,10 @@ export function AuthForm(
                     class={buttonClasses("ghost", "sm")}
                     data-e2e="auth-form-mode-switch"
                     onClick={(event) => {
-                      if (!onModeChange || !isPlainClick(event) || event.defaultPrevented) return
-                      event.preventDefault()
-                      onModeChange(otherMode)
+                      followLinkClick(event, {
+                        href: modeHrefs[otherMode],
+                        navigate: onModeChange && (() => onModeChange(otherMode)),
+                      })
                     }}
                   >
                     {switchLabel}

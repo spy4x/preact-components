@@ -5032,6 +5032,7 @@ async function shellChecks(devtools: Devtools): Promise<void> {
     await shellSkipLinkCheck(devtools)
     await shellClientNavigationChecks(devtools)
     await shellDrawerNavigateCheck(devtools)
+    await shellDrawerCancelledClickCheck(devtools)
     await shellDrawerActionCheck(devtools)
     await shellLayoutChecks(devtools)
     await shellNavigatePortChecks(devtools)
@@ -5793,6 +5794,63 @@ async function shellDrawerNavigateCheck(devtools: Devtools): Promise<void> {
     await ensureShellClosed(devtools)
     // Closing the drawer can leave a smooth scroll running; the next check must not aim at a
     // moving page.
+    await waitForScrollSettle(devtools)
+  }
+}
+
+/**
+ * A plain click on a drawer link that a listener earlier in the dispatch already cancelled leaves
+ * `navigate` uncalled, as the library's link rule says, and still closes the drawer: the close
+ * follows the click being plain, not whether the shell navigated. The canceller is a `document`
+ * listener in the capture phase, so it runs before the shell's handler on the link itself.
+ *
+ * @param devtools The connected session, on a hydrated page, at phone width.
+ */
+async function shellDrawerCancelledClickCheck(devtools: Devtools): Promise<void> {
+  await ensureShellClosed(devtools)
+  await focusAndClick(devtools, SHELL_MENU_BUTTON)
+  const opened = await poll(async () => (await readShellPanel(devtools)).detailsOpen, 3_000)
+  await installShellClickSpy(devtools)
+  await read(
+    devtools,
+    `(() => {
+      const cancel = (event) => {
+        if (event.target.closest && event.target.closest("a[href]")) event.preventDefault()
+      }
+      globalThis.__shellClickCanceller = cancel
+      document.addEventListener("click", cancel, true)
+      return true
+    })()`,
+    false,
+  )
+  try {
+    const before = await read(devtools, READ_SHELL_PORT, SHELL_PORT_UNREAD)
+    const docs = await shellAim(devtools, `${SHELL_PANEL} nav a[href="/docs"]`)
+    if (docs?.onTarget) await shellPointerClick(devtools, docs)
+    const closed = await poll(async () => !(await readShellPanel(devtools)).detailsOpen, 3_000)
+    const after = await read(devtools, READ_SHELL_PORT, SHELL_PORT_UNREAD)
+    const docsClick = after.clicks[0]
+    check(
+      "a plain click on a drawer link that was already cancelled skips navigate but still closes " +
+        "Shell's drawer",
+      opened && Boolean(docs?.onTarget) && docsClick?.href === "/docs" &&
+        after.navigations === before.navigations && after.path === before.path && closed,
+      !opened
+        ? "the drawer never opened"
+        : !docs?.onTarget
+        ? `the drawer's Docs link was not under the pointer: ${JSON.stringify(docs)}`
+        : `click ${JSON.stringify(docsClick)}, navigate calls ${before.navigations} → ` +
+          `${after.navigations}, path ${before.path} → ${after.path}, drawer closed: ${closed}`,
+    )
+  } finally {
+    await read(
+      devtools,
+      `(document.removeEventListener("click", globalThis.__shellClickCanceller, true),
+        delete globalThis.__shellClickCanceller, true)`,
+      false,
+    )
+    await removeShellClickSpy(devtools)
+    await ensureShellClosed(devtools)
     await waitForScrollSettle(devtools)
   }
 }
