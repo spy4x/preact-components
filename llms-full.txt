@@ -2896,6 +2896,54 @@ reads the same as one whose `id` was mistyped, rather than throwing either way.
   the opposite answer: which zones exist is a property of the build's `Intl` data rather than of the
   caller's code, so an unknown one falls back to UTC instead of throwing out of the render.
 
+## The screen boundary rule
+
+`@spy4x/preact-system/boundary` is a development tool, not a component: a lint rule for an app
+that keeps a folder of pure screens apart from its state and transport. A pure screen takes props
+and reports through callbacks; the rule reports a module that imports a signals store, a router or
+the app's own code, or that reads `fetch`, `window`, `document` or another browser global.
+
+- `checkModule(source, options)` runs the rule over one module's text and returns every
+  `BoundaryViolation` (`message`, `range`) in source order. Pass `filename`, the module's absolute
+  path, so relative imports resolve and a `.ts` file is not parsed as `.tsx`. It calls
+  `Deno.lint.runPlugin`, which Deno provides only under `deno test`, so call it from a test that
+  walks the folder.
+- `boundaryPlugin(options)` builds the Deno lint plugin itself (rule `ui/boundary`). Export its
+  result as the default export of a module of your own to run it with `deno lint`.
+- `forbiddenImport(source, filename, options)` is the import half on its own: why a specifier is
+  forbidden, or `null`.
+- `BoundaryLintPlugin`, `BoundaryRuleContext` and `BoundaryLintNode` type the slice of Deno's lint
+  API the rule uses. Deno declares the full API only in its unstable library, which a published
+  module may not reference, so `checkModule` throws outside `deno test` rather than fail to type.
+- `BoundaryOptions` holds four lists. `forbiddenPackages` defaults to
+  `DEFAULT_FORBIDDEN_PACKAGES` (`@preact/signals`, `@preact/signals-core`,
+  `@spy4x/preact-signals`, `wouter-preact`); a subpath, a version or a `jsr:`/`npm:` prefix of one
+  is forbidden too. `forbiddenGlobals` defaults to `DEFAULT_FORBIDDEN_GLOBALS` (`fetch`,
+  `XMLHttpRequest`, `WebSocket`, `EventSource`, `window`, `document`, `location`, `history`,
+  `navigator`, `localStorage`, `sessionStorage`). `appAliases` (import prefixes such as `"@api/"`)
+  and `appDirectories` (directory names such as `"apps"` that a relative import must not resolve
+  into) default to none, because only the app knows them.
+
+```ts
+import { checkModule } from "@spy4x/preact-system/boundary"
+
+Deno.test("screens stay pure", async () => {
+  const filename = new URL("./screens/profile.tsx", import.meta.url).pathname
+  const source = await Deno.readTextFile(filename)
+  const found = checkModule(source, { filename, appAliases: ["@api/"], appDirectories: ["apps"] })
+  if (found.length > 0) throw new Error(found.map((v) => v.message).join("\n"))
+})
+```
+
+Run it from a test rather than listing the plugin under `lint.plugins` in a workspace's
+`deno.json`: with a lint plugin in the workspace config, the `deno info` calls a Vite plugin makes
+at startup stalled on the `node_modules` lock, and the app never started.
+
+This library's own components are not pure screens in that sense: several keep local state in a
+signal and touch `document` inside an effect, which "Component rules" in `AGENTS.md` allows.
+`boundary.test.ts` holds `ui/` and `system/` to the narrower part that does apply: no router, no
+`@spy4x/preact-signals` store, no network call and no `history` or storage access.
+
 ## Not in this package
 
 | Left out                            | Why                                                                                                                                                                                                          |
