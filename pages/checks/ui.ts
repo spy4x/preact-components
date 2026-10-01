@@ -14875,16 +14875,18 @@ interface ThemeToggleReading {
   deviceDark: boolean
 }
 
-/** Reads a {@link ThemeToggleReading}; the region is remembered on the first read. */
+/**
+ * Reads a {@link ThemeToggleReading}. `sameRegion` compares the live region with the one
+ * {@link themeToggleChecks} remembered before the first press.
+ */
 const THEME_TOGGLE_STATE = `(() => {
   const card = ${THEME_TOGGLE}
   const button = card?.querySelector("button")
   const region = card?.querySelector('[role="status"]')
-  if (!button || !region) {
+  if (!button) {
     return { found: false, name: "", drawing: "", hint: "", hintShown: false, focused: false,
       sameRegion: false, wrapperBox: "", buttonBox: "", deviceDark: false }
   }
-  globalThis.__verifyThemeToggleRegion ??= region
   const box = (element) => {
     const r = element.getBoundingClientRect()
     return [r.x, r.y, r.width, r.height].map(Math.round).join(",")
@@ -14894,17 +14896,17 @@ const THEME_TOGGLE_STATE = `(() => {
     .map((child) => child.tagName.toLowerCase() + " " +
       [...child.attributes].map((a) => a.name + "=" + a.value).sort().join(" "))
     .join("|")
-  const bubble = region.firstElementChild
+  const bubble = region?.firstElementChild
   const bubbleBox = bubble?.getBoundingClientRect()
   return {
     found: true,
     name: button.getAttribute("aria-label") ?? "",
     drawing,
-    hint: region.textContent,
+    hint: region?.textContent ?? "",
     hintShown: !!bubbleBox && bubbleBox.width > 0 && bubbleBox.height > 0 &&
       getComputedStyle(bubble).visibility === "visible",
     focused: document.activeElement === button,
-    sameRegion: globalThis.__verifyThemeToggleRegion === region,
+    sameRegion: !!region && globalThis.__verifyThemeToggleRegion === region,
     wrapperBox: box(button.parentElement),
     buttonBox: box(button),
     deviceDark: matchMedia("(prefers-color-scheme: dark)").matches,
@@ -15013,7 +15015,11 @@ async function themeToggleChecks(devtools: Devtools): Promise<void> {
   await openGuidePage(devtools, "ui")
   await centreInView(devtools, THEME_TOGGLE)
   await pointerToCorner(devtools)
-  await devtools.evaluate(`(delete globalThis.__verifyThemeToggleRegion, null)`)
+  // The live region before any press: a region that is missing now, or replaced later, is not it.
+  await devtools.evaluate(
+    `(globalThis.__verifyThemeToggleRegion =
+      ${THEME_TOGGLE}?.querySelector('[role="status"]') ?? null, null)`,
+  )
 
   try {
     for (const device of ["dark", "light"] as const) {
@@ -15094,6 +15100,9 @@ async function themeToggleChecks(devtools: Devtools): Promise<void> {
     await pointerToCorner(devtools)
   }
 
+  await themeToggleUnmountCheck(devtools)
+  await openGuidePage(devtools, "ui")
+  await centreInView(devtools, THEME_TOGGLE)
   await linkFocusRingCheck(devtools, {
     selector: "#demo-ThemeToggle button",
     name: "ThemeToggle button",
@@ -15139,5 +15148,60 @@ async function hintAppearsAndGoes(
     `${when}, ThemeToggle's hint goes on its own after about two seconds`,
     shown && gone && after >= 1_500,
     gone ? `gone ${after}ms after the press` : `still up ${after}ms after the press`,
+  )
+}
+
+/**
+ * A ThemeToggle that leaves the page while its hint is up clears the hint's timer. The page's
+ * `setTimeout` and `clearTimeout` are wrapped for the length of the check to see the timer the
+ * press starts, then the guide shows another page, which unmounts the card.
+ *
+ * @param devtools The connected session, on the `ui` page.
+ */
+async function themeToggleUnmountCheck(devtools: Devtools): Promise<void> {
+  const started = await devtools.evaluate<boolean>(`(async () => {
+    const frames = () =>
+      new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+    const watch = { created: [], cleared: [], setTimeout, clearTimeout }
+    globalThis.__verifyThemeToggleTimers = watch
+    globalThis.setTimeout = (callback, ms, ...rest) => {
+      const id = watch.setTimeout.call(globalThis, callback, ms, ...rest)
+      if (ms === 2000) watch.created.push(id)
+      return id
+    }
+    globalThis.clearTimeout = (id) => {
+      watch.cleared.push(id)
+      return watch.clearTimeout.call(globalThis, id)
+    }
+    const button = ${THEME_TOGGLE}?.querySelector("button")
+    if (!button) return false
+    // From auto, three presses come back to auto and start the hint's timer.
+    for (let press = 0; press < 3; press++) button.click()
+    for (let wait = 0; wait < 20 && watch.created.length === 0; wait++) await frames()
+    return watch.created.length > 0
+  })()`)
+  const other = guidePages.find((page) => page.id !== "ui")?.id ?? "ui"
+  await openGuidePage(devtools, other)
+  const result = await devtools.evaluate<{ created: number; cleared: boolean; gone: boolean }>(
+    `(() => {
+      const watch = globalThis.__verifyThemeToggleTimers
+      globalThis.setTimeout = watch.setTimeout
+      globalThis.clearTimeout = watch.clearTimeout
+      delete globalThis.__verifyThemeToggleTimers
+      const id = watch.created.at(-1)
+      return {
+        created: watch.created.length,
+        cleared: id !== undefined && watch.cleared.includes(id),
+        gone: ${THEME_TOGGLE} === null,
+      }
+    })()`,
+  )
+  check(
+    "a ThemeToggle that unmounts while its hint is up clears the hint's timer",
+    started && result.gone && result.cleared,
+    !started
+      ? "the presses started no two-second timer"
+      : `${result.created} two-second timer(s) started; card gone ${result.gone}, last timer ` +
+        `cleared ${result.cleared}`,
   )
 }
