@@ -71,7 +71,11 @@ import {
   type Devtools,
   filteredRunLine,
   lastCheckName,
+  msSinceProgress,
+  noteProgress,
   openGuidePage,
+  PhaseVerdict,
+  phaseVerdict,
   pointerToCorner,
   poll,
   pressKey,
@@ -208,7 +212,7 @@ const ONLY = (() => {
  * five full runs at a load average near 20 and five near 65 all passed, while throttled runs found
  * a check that read focus one effect too early and a scroll helper that lost to a smooth scroll the
  * page already had running. A check that fails only here is reading before the page has finished,
- * and is fixed the same way as any other. The phase deadline is multiplied by the same
+ * and is fixed the same way as any other. Both browser-phase limits are multiplied by the same
  * rate, so a slower page is not reported as a hung one. Like `--only`, it is a tool for reproducing
  * a failure, never a substitute for a CI run, and the run's last line says it was throttled.
  */
@@ -563,20 +567,27 @@ const LAUNCH_CONNECT_TIMEOUT_MS = 10_000
  */
 const LAUNCH_ATTEMPT_TIMEOUT_MS = LAUNCH_PORT_TIMEOUT_MS + LAUNCH_CONNECT_TIMEOUT_MS + 5_000
 /**
- * How long the whole browser phase gets before it is torn down and reported as hung — `#239`.
+ * How long the browser phase may go without a check finishing or a block starting before it is
+ * torn down and reported as hung — the limit that catches a hang (#239, #466).
  *
- * Generous against the roughly two minutes a normal run takes today: the two launch attempts
- * together cost at most `2 × LAUNCH_ATTEMPT_TIMEOUT_MS` = 60s, leaving over four minutes for the
- * rest of the run before this is ever in contention with a healthy one.
+ * It bounds the gap between two checks, not the run, so it does not have to grow as checks are
+ * added. `pages/README.md` ("How long a run may take") has the measurements it was sized from.
  */
-const PHASE_DEADLINE_MS = 5 * 60_000
+const STALL_LIMIT_MS = 90_000
+
+/**
+ * How long the whole browser phase may take, however steadily it records checks — a backstop for a
+ * run that never stops making progress, not the limit a hang meets first ({@link STALL_LIMIT_MS}
+ * is). `pages/README.md` ("How long a run may take") has how it was sized.
+ */
+const PHASE_CEILING_MS = 20 * 60_000
 
 /**
  * One Chromium launch attempt: a fresh profile, a spawned process, a bounded wait for its DevTools
  * port and target, all inside {@link LAUNCH_ATTEMPT_TIMEOUT_MS}.
  *
  * `lifecycle.trackAttempt` is called the moment the process exists, before either bounded wait —
- * that ordering is what lets a phase deadline or a signal that fires while this attempt is still
+ * that ordering is what lets a phase limit or a signal that fires while this attempt is still
  * running reach the process it already spawned, rather than only ever seeing a finished
  * `ChromiumSession`; see {@link ChromiumLifecycle}'s own doc for the gap this closes, and for the
  * narrower gap review found afterwards: a launch that fails now tears itself down through
@@ -784,6 +795,8 @@ async function browserPhase(): Promise<void> {
   const signalListeners = SIGNALS.map((signal) => [signal, onSignal(signal)] as const)
   for (const [signal, listener] of signalListeners) Deno.addSignalListener(signal, listener)
 
+  noteProgress()
+  const phaseStartedAt = performance.now()
   try {
     const work = (async (): Promise<void> => {
       try {
@@ -886,22 +899,40 @@ async function browserPhase(): Promise<void> {
       }
     })()
 
-    const phaseDeadlineMs = PHASE_DEADLINE_MS * CPU_THROTTLE
-    const deadline = new Promise<"deadline">((resolve) => {
-      setTimeout(() => resolve("deadline"), phaseDeadlineMs)
+    // Both limits scale with the throttle, so a slower page is not reported as a hung one. The
+    // watchdog looks once a second; a hang is reported at most a second past the stall limit.
+    const limits = {
+      stallMs: STALL_LIMIT_MS * CPU_THROTTLE,
+      ceilingMs: PHASE_CEILING_MS * CPU_THROTTLE,
+    }
+    let watchdogTimer: ReturnType<typeof setInterval> | undefined
+    const watchdog = new Promise<PhaseVerdict>((resolve) => {
+      watchdogTimer = setInterval(() => {
+        const verdict = phaseVerdict(performance.now() - phaseStartedAt, msSinceProgress(), limits)
+        if (verdict !== PhaseVerdict.Running) resolve(verdict)
+      }, 1_000)
     })
 
-    const outcome = await Promise.race([work.then(() => "done" as const), deadline])
+    const outcome = await Promise.race([work.then(() => "done" as const), watchdog])
+    clearInterval(watchdogTimer)
 
-    if (outcome === "deadline") {
+    if (outcome !== "done") {
       const running = currentBlockName()
-      check(
-        "the browser phase finished within its deadline",
-        false,
-        `no result after ${Math.round(phaseDeadlineMs / 1000)}s` +
-          (running ? `; still running the ${running} checks` : "") +
-          `; last completed check: ${lastCheckName() ?? "none"}`,
-      )
+      const where = (running ? `; still running the ${running} checks` : "") +
+        `; last completed check: ${lastCheckName() ?? "none"}`
+      if (outcome === PhaseVerdict.Stalled) {
+        check(
+          "the browser phase kept finishing checks",
+          false,
+          `no check finished for ${Math.round(limits.stallMs / 1000)}s${where}`,
+        )
+      } else {
+        check(
+          "the browser phase finished within its ceiling",
+          false,
+          `no result after ${Math.round(limits.ceilingMs / 1000)}s${where}`,
+        )
+      }
       await teardown()
     }
   } finally {
