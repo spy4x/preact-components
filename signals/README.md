@@ -132,7 +132,7 @@ export const zone = buildModelStore({
 })
 
 zone.list.nonDeleted.value // rows with no deletedAt
-zone.one.byId(3).value // Zone | undefined
+zone.one.byId(3).value // Zone | undefined; the same signal on every call, until reset()
 zone.op.update(3).value?.error // per-row operation state
 await zone.create({ name: "North" })
 await zone.delete(3) // soft delete: the row keeps its place in the list

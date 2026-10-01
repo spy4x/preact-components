@@ -233,6 +233,97 @@ describe("buildModelStore list selectors", () => {
   })
 })
 
+/**
+ * `one.byId` is one cached signal per id over an index of the list, not a fresh `find` per call.
+ * These ask what a component sees through it: the same signal on every render, and a value that
+ * follows the list through every way the list can change.
+ */
+describe("buildModelStore one.byId", () => {
+  it("returns the same signal when asked twice for one id", async () => {
+    const { impl } = queueFetch()
+    const store = buildStore({ fetch: impl })
+    await store.onWs([row(5, "North")], RemoteEvent.LIST)
+
+    expect(store.one.byId(5)).toBe(store.one.byId(5))
+    expect(store.one.byId(5)).not.toBe(store.one.byId(6))
+  })
+
+  it("reads a row that arrives after the signal was made", async () => {
+    const { impl } = queueFetch()
+    const store = buildStore({ fetch: impl })
+    const north = store.one.byId(1)
+    expect(north.value).toBeUndefined()
+
+    await store.onWs([row(1, "North")], RemoteEvent.LIST)
+
+    expect(north.value?.name).toBe("North")
+  })
+
+  it("follows a remote update of its row and leaves the other rows' values alone", async () => {
+    const { impl } = queueFetch()
+    const store = buildTimedStore(impl)
+    await store.onWs(
+      [stampedRow(1, "North", LOADED_AT), stampedRow(2, "South", LOADED_AT)],
+      RemoteEvent.LIST,
+    )
+    const north = store.one.byId(1)
+    const south = store.one.byId(2)
+    const southBefore = south.value
+    const seen: Array<string | undefined> = []
+    const stop = effect(() => {
+      seen.push(north.value?.name)
+    })
+
+    await store.onWs([stampedRow(1, "Edited", LATER)], RemoteEvent.UPDATED)
+    stop()
+
+    expect(seen).toEqual(["North", "Edited"])
+    // The untouched row is the same object, so a component reading only it has nothing to redo.
+    expect(south.value).toBe(southBefore)
+  })
+
+  it("reads undefined once its row is removed from the list", async () => {
+    const { impl } = queueFetch()
+    const store = buildStore({ fetch: impl })
+    await store.onWs([row(1, "North"), row(2, "South")], RemoteEvent.LIST)
+    const north = store.one.byId(1)
+    expect(north.value?.name).toBe("North")
+
+    store.remove(1)
+
+    expect(north.value).toBeUndefined()
+    expect(store.one.byId(2).value?.name).toBe("South")
+  })
+
+  it("reads undefined after a reset and hands out a new signal for the next session", async () => {
+    const { impl } = queueFetch()
+    const store = buildStore({ fetch: impl })
+    await store.onWs([row(1, "North")], RemoteEvent.LIST)
+    const before = store.one.byId(1)
+    expect(before.value?.name).toBe("North")
+
+    store.reset()
+
+    expect(before.value).toBeUndefined()
+    // The cache starts over with the session, so it never holds more than one session's ids.
+    const after = store.one.byId(1)
+    expect(after).not.toBe(before)
+    await store.onWs([row(1, "Next session")], RemoteEvent.LIST)
+    expect(after.value?.name).toBe("Next session")
+    // A signal handed out before the reset still reads the live list, not a stale copy.
+    expect(before.value?.name).toBe("Next session")
+  })
+
+  it("returns the first row when the list holds one id twice", async () => {
+    const { impl } = queueFetch()
+    const store = buildStore({ fetch: impl })
+
+    await store.onWs([row(1, "First"), row(1, "Second")], RemoteEvent.LIST)
+
+    expect(store.one.byId(1).value?.name).toBe("First")
+  })
+})
+
 describe("buildModelStore create", () => {
   it("posts the payload, parses the created row and appends it", async () => {
     const created = row(3, "North")
@@ -1233,6 +1324,78 @@ describe("buildModelStore remote events", () => {
     await store.onWs([row(1, "North")], RemoteEvent.LIST)
     await store.onWs([row(1, "North again"), row(2, "South")], RemoteEvent.CREATED)
     expect(store.state.value.list.map((r) => r.id)).toEqual([1, 2])
+  })
+
+  it("dedupes a created row against one an earlier created event added", async () => {
+    const { impl } = queueFetch()
+    const store = buildStore({ fetch: impl })
+    await store.onWs([row(1, "North")], RemoteEvent.LIST)
+    await store.onWs([row(2, "South")], RemoteEvent.CREATED)
+
+    await store.onWs([row(2, "South again"), row(3, "East")], RemoteEvent.CREATED)
+
+    expect(store.state.value.list.map((r) => r.name)).toEqual(["North", "South", "East"])
+  })
+
+  it("judges each row of an updated batch by isNewer against the row with its id", async () => {
+    const { impl } = queueFetch()
+    const store = buildTimedStore(impl)
+    await store.onWs(
+      [
+        stampedRow(1, "One", EARLIER),
+        stampedRow(2, "Two", EARLIER),
+        stampedRow(3, "Three", EARLIER),
+      ],
+      RemoteEvent.LIST,
+    )
+
+    // The batch runs in a different order from the list and names only two of its rows: one
+    // newer, which replaces its row, and one older, which is ignored. A row matched to the wrong id,
+    // or taken without asking `isNewer`, changes a name this expects to stay put.
+    await store.onWs(
+      [stampedRow(3, "Three, older", LOADED_AT), stampedRow(1, "One, newer", LATER)],
+      RemoteEvent.UPDATED,
+    )
+
+    expect(store.state.value.list.map((r) => r.name)).toEqual(["One, newer", "Two", "Three"])
+  })
+
+  it("takes the first row when an updated batch names one id twice", async () => {
+    const { impl } = queueFetch()
+    const store = buildTimedStore(impl)
+    await store.onWs([stampedRow(1, "One", EARLIER)], RemoteEvent.LIST)
+
+    // Both copies are newer than the held row, so only the first-wins rule decides which lands.
+    await store.onWs(
+      [stampedRow(1, "One, first", LATER), stampedRow(1, "One, second", LATER)],
+      RemoteEvent.UPDATED,
+    )
+
+    expect(store.state.value.list.map((r) => r.name)).toEqual(["One, first"])
+  })
+
+  it("archives each row a deleted batch names and only those", async () => {
+    const { impl } = queueFetch()
+    const store = buildTimedStore(impl)
+    await store.onWs(
+      [
+        stampedRow(1, "One", EARLIER),
+        stampedRow(2, "Two", EARLIER),
+        stampedRow(3, "Three", EARLIER),
+      ],
+      RemoteEvent.LIST,
+    )
+
+    await store.onWs(
+      [
+        archivedAt(stampedRow(3, "Three", LATER), LATER),
+        archivedAt(stampedRow(1, "One", LATER), LATER),
+      ],
+      RemoteEvent.DELETED,
+    )
+
+    expect(store.list.deleted.value.map((r) => r.id)).toEqual([1, 3])
+    expect(store.list.nonDeleted.value.map((r) => r.id)).toEqual([2])
   })
 
   it("adopts a remote delete's row when the model has no clock to refuse it", async () => {
