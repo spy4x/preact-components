@@ -1,7 +1,40 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
-import { Button, buttonClasses } from "./button.tsx"
+import type { VNode } from "preact"
+import { Button, buttonClasses, type ButtonProps } from "./button.tsx"
+
+/** The `class` attribute of the first element in `html`. */
+function classOf(html: string): string {
+  return /class="([^"]*)"/.exec(html)?.[1] ?? "no class attribute"
+}
+
+/** A click as `followLinkClick` reads it, recording whether it was cancelled. */
+function click(modifiers: { ctrlKey?: boolean } = {}) {
+  return {
+    button: 0,
+    ctrlKey: modifiers.ctrlKey ?? false,
+    metaKey: false,
+    shiftKey: false,
+    altKey: false,
+    defaultPrevented: false,
+    preventDefault() {
+      this.defaultPrevented = true
+    },
+  }
+}
+
+/**
+ * An app's own wrapper that adds a prop to `ButtonProps`. It compiles only while `ButtonProps` stays
+ * an interface an `interface` can extend, which is what keeps the link form a minor release.
+ */
+interface WrappedButtonProps extends ButtonProps {
+  marker: string
+}
+
+function WrappedButton({ marker, ...props }: WrappedButtonProps) {
+  return <Button {...props} data-marker={marker} />
+}
 
 describe("Button", () => {
   it("defaults to a primary button that does not submit a form", () => {
@@ -46,11 +79,138 @@ describe("Button", () => {
     expect(html).toContain('data-e2e="submit"')
   })
 
+  it("renders an existing button's markup exactly as before the link form existed", () => {
+    expect(render(<Button>Save</Button>)).toBe(
+      '<button type="button" class="inline-flex items-center justify-center gap-2 rounded-md ' +
+        "font-medium transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-focus " +
+        "focus-visible:ring-offset-2 focus-visible:ring-offset-focus focus-visible:outline-hidden " +
+        "disabled:pointer-events-none disabled:opacity-50 bg-accent-900 text-accent-foreground " +
+        "hover:bg-accent-800 dark:bg-accent-600 dark:hover:bg-accent-700 px-3 py-2 text-sm" +
+        '">Save</button>',
+    )
+  })
+
+  it("still accepts the props of an interface that extends ButtonProps", () => {
+    const html = render(<WrappedButton marker="kept" variant="outline">Go</WrappedButton>)
+
+    expect(html).toContain('data-marker="kept"')
+    expect(html).toContain("<button")
+  })
+
   it("appends a caller class instead of replacing the variant", () => {
     const html = render(<Button class="w-full">Wide</Button>)
 
     expect(html).toContain("w-full")
     expect(html).toContain("bg-accent-900")
+  })
+})
+
+describe("Button size none", () => {
+  it("sets no padding, gap or text size, so the caller's class sizes it", () => {
+    const classes = classOf(render(<Button size="none" class="px-6 py-3 text-lg">Book</Button>))
+      .split(" ")
+
+    for (
+      const set of ["gap-2", "px-2", "px-3", "px-4", "py-2", "text-xs", "text-sm", "text-base"]
+    ) {
+      expect(classes).not.toContain(set)
+    }
+    expect(classes).toContain("rounded-md")
+    expect(classes).toContain("focus-visible:ring-2")
+    expect(classes.slice(-3)).toEqual(["px-6", "py-3", "text-lg"])
+  })
+
+  it("gives an icon button no box size", () => {
+    const classes = classOf(render(<Button variant="icon" size="none" aria-label="Add" />))
+
+    expect(classes).not.toMatch(/(^| )size-/)
+  })
+})
+
+describe("Button as a link", () => {
+  it("renders an anchor with the classes the same button would have", () => {
+    const link = render(
+      <Button href="/reports" variant="outline" size="lg" class="w-full">Reports</Button>,
+    )
+    const button = render(<Button variant="outline" size="lg" class="w-full">Reports</Button>)
+
+    expect(link).toMatch(/^<a href="\/reports" class="/)
+    expect(link).toContain(">Reports</a>")
+    expect(classOf(link)).toBe(classOf(button))
+    expect(link).not.toContain("type=")
+  })
+
+  it("passes anchor attributes through", () => {
+    const html = render(
+      <Button href="https://example.com" target="_blank" rel="noopener" data-e2e="out">Out</Button>,
+    )
+
+    expect(html).toContain('target="_blank"')
+    expect(html).toContain('rel="noopener"')
+    expect(html).toContain('data-e2e="out"')
+  })
+
+  it("renders a disabled link with no href, marked as an unavailable link and dimmed", () => {
+    const html = render(<Button href="/reports" disabled>Reports</Button>)
+
+    expect(html).not.toContain("href=")
+    expect(html).toContain('role="link"')
+    expect(html).toContain('aria-disabled="true"')
+    expect(html).not.toMatch(/\sdisabled[\s=>]/)
+    expect(classOf(html).split(" ")).toEqual(
+      expect.arrayContaining(["pointer-events-none", "opacity-50"]),
+    )
+  })
+
+  it("hands a plain click to navigate and leaves a Ctrl click to the browser", () => {
+    const routed: string[] = []
+    const vnode = Button({
+      href: "/reports",
+      navigate: (href: string) => routed.push(href),
+    }) as VNode<
+      { onClick: (event: ReturnType<typeof click>) => void }
+    >
+
+    const plain = click()
+    vnode.props.onClick(plain)
+    const ctrl = click({ ctrlKey: true })
+    vnode.props.onClick(ctrl)
+
+    expect(plain.defaultPrevented).toBe(true)
+    expect(ctrl.defaultPrevented).toBe(false)
+    expect(routed).toEqual(["/reports"])
+  })
+
+  it("gives a disabled link no click handler that could navigate", () => {
+    const routed: string[] = []
+    const vnode = Button({
+      href: "/reports",
+      disabled: true,
+      navigate: (href: string) => routed.push(href),
+    }) as VNode<{ onClick?: unknown }>
+
+    expect(vnode.props.onClick).toBeUndefined()
+  })
+
+  it("types a link's navigate and onClick arguments from context, with no annotation", () => {
+    const html = render(
+      <Button
+        href="/reports"
+        navigate={(href) => href.toUpperCase()}
+        onClick={(event) => event.currentTarget.href}
+      >
+        Reports
+      </Button>,
+    )
+
+    expect(html).toContain('href="/reports"')
+  })
+
+  it("refuses busy on a link at the type level", () => {
+    // @ts-expect-error A link starts no work of its own, so it takes no `busy`.
+    const html = render(<Button href="/reports" busy>Reports</Button>)
+
+    expect(html).toContain("<a")
   })
 })
 
