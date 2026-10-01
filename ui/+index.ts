@@ -322,3 +322,10 @@ export {
   moveKanbanItem,
   nextKanbanSlot,
 } from "./kanban-board.tsx"
+export {
+  defaultThemeToggleLabels,
+  ThemeToggle,
+  type ThemeToggleLabels,
+  type ThemeToggleProps,
+  type ThemeToggleStore,
+} from "./theme-toggle.tsx"

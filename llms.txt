@@ -772,6 +772,11 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `KanbanSlot` (type): A place on the board by indices: which column, and which index in it. Import: `@spy4x/preact-ui`
 - `moveKanbanItem` (helper): Apply a reported move to an array of items, returning a new array. Import: `@spy4x/preact-ui`
 - `nextKanbanSlot` (helper): Where an arrow key sends a picked-up card. Import: `@spy4x/preact-ui`
+- `defaultThemeToggleLabels` (helper): The English words `ThemeToggle` uses when a caller passes none. Import: `@spy4x/preact-ui`
+- `ThemeToggle` (component): One icon button that steps through the theme preference: auto → the opposite of the device → the device's own → auto, in the order `ThemeStore.cycle()` decides. Import: `@spy4x/preact-ui`
+- `ThemeToggleLabels` (type): Words `ThemeToggle` shows or announces. Import: `@spy4x/preact-ui`
+- `ThemeToggleProps` (type): Props of `ThemeToggle`. Import: `@spy4x/preact-ui`
+- `ThemeToggleStore` (type): The slice of a theme store `ThemeToggle` reads, described by shape so this package imports no store: `createThemeStore()` from `@spy4x/preact-signals/theme` satisfies it as it is. Import: `@spy4x/preact-ui`
 - `failedAfterSrcChange` (helper): Carry an avatar's "this image failed" flag across a change of `src`. Import: `@spy4x/preact-ui/avatar`
 - `dropdownOpensUp` (helper): Whether a `vertical="auto"` menu opens upward: it does when the panel does not fit between the trigger and the bottom of the viewport, and there is more room above the trigger than below. Import: `@spy4x/preact-ui/dropdown`
 - `enhancedFormMessage` (helper): The live region's text for one status — the one piece of `EnhancedForm`'s behaviour a render-to-string test can assert directly, since the status it runs against never leaves `"idle"` without an effect or an event `preact-render-to-string` does not run. Import: `@spy4x/preact-ui/enhanced-form`
