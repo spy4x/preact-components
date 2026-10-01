@@ -5,6 +5,7 @@ import {
   matchesHotkey,
   parseHotkey,
 } from "@spy4x/platform/browser/hotkeys"
+import { isImeKeyPress } from "./ime.ts"
 
 /**
  * One keyboard shortcut for {@link useHotkeys}: a combination, what it does and how it is listed.
@@ -114,7 +115,7 @@ export function useHotkeys(
     if (!enabled) return
     const isApple = apple ?? isApplePlatform()
     const listener = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.isComposing) return
+      if (event.defaultPrevented || isImeKeyPress(event)) return
       const target = event.target instanceof Element ? event.target : null
       const binding = pickHotkey(latest.current, {
         key: event.key,

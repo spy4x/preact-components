@@ -2,6 +2,7 @@ import { cn } from "@spy4x/preact-cn"
 import { useSignal } from "@preact/signals"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useRef } from "preact/hooks"
+import { isImeKeyPress } from "./ime.ts"
 
 /**
  * Keys the combobox acts on, and what each does. Everything else falls through to the platform,
@@ -843,6 +844,8 @@ export function Combobox<T>({
   }
 
   const handleKeyDown = (event: KeyboardEvent) => {
+    // An input method confirms or cancels a word with Enter and Escape; the word is not finished.
+    if (isImeKeyPress(event)) return
     const key = comboboxKey(event)
     if (key === undefined) return
     const action = comboboxKeyAction(key, {

@@ -893,13 +893,18 @@ function KbdDemo() {
 /**
  * `useHotkeys` and `ShortcutsDialog` together. `?` anywhere on this page opens the dialog, and the
  * same key typed in the field below stays in the field. `mod+I` and a plain `I` each count their own
- * presses, which is what `pages/checks/ui.ts` reads to prove the modifier is told apart. The
- * checkbox is bound to the hook's `enabled` option, so turning it off stops every shortcut here.
+ * presses, which is what `pages/checks/ui.ts` reads to prove the modifier is told apart. Enter and
+ * Escape pressed outside a field or a dialog are counted too, with `preventDefault: false` so every
+ * button on the page still answers Enter; the check reads them to prove that a key press an input
+ * method has taken runs nothing. The checkbox is bound to the hook's `enabled` option, so turning it
+ * off stops every shortcut here.
  */
 function ShortcutsDialogDemo() {
   const open = useSignal(false)
   const plain = useSignal(0)
   const combo = useSignal(0)
+  const enter = useSignal(0)
+  const escape = useSignal(0)
   const enabled = useSignal(true)
   const fieldId = `shortcuts-field-${useId()}`
   const bindings: HotkeyBinding[] = [
@@ -919,6 +924,20 @@ function ShortcutsDialogDemo() {
       description: "Count a plain press",
       group: "This demo",
       handler: () => plain.value++,
+    },
+    {
+      keys: "enter",
+      description: "Count an Enter press",
+      group: "This demo",
+      preventDefault: false,
+      handler: () => enter.value++,
+    },
+    {
+      keys: "esc",
+      description: "Count an Escape press",
+      group: "This demo",
+      preventDefault: false,
+      handler: () => escape.value++,
     },
   ]
   useHotkeys(bindings, { enabled: enabled.value })
@@ -943,7 +962,9 @@ function ShortcutsDialogDemo() {
         Press <Kbd keys="?" /> to open the list. Plain I pressed{" "}
         <span data-e2e="shortcuts-plain">{plain.value}</span> times, <Kbd keys="mod+i" /> pressed
         {" "}
-        <span data-e2e="shortcuts-combo">{combo.value}</span> times.
+        <span data-e2e="shortcuts-combo">{combo.value}</span> times. Enter pressed{" "}
+        <span data-e2e="shortcuts-enter">{enter.value}</span> times, Escape pressed{" "}
+        <span data-e2e="shortcuts-escape">{escape.value}</span> times.
       </DemoNote>
       <ShortcutsDialog
         open={open.value}
