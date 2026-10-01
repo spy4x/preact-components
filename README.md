@@ -2,19 +2,22 @@
 
 # preact-components
 
-**Modern Preact + Tailwind components built on web standards: accessible components, design
-tokens, icons, charts and signals helpers, with a live guide that shows every one running.**
+**Server-rendered Preact and Tailwind components, with a live guide that runs every one.**
 
 [![CI pipeline status](https://ci.antonshubin.com/api/badges/9/status.svg)](https://ci.antonshubin.com/repos/9)
 [![JSR](https://jsr.io/badges/@spy4x/preact-ui)](https://jsr.io/@spy4x/preact-ui)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
+**Status: beta.** Breaking changes still ship often (1.0.0 to 3.0.0 took three days), and each
+one bumps the major version. No screen reader has been run against the components yet
+([#210](https://github.com/spy4x/preact-components/issues/210)).
 
 ```bash
 deno add jsr:@spy4x/preact-ui
 ```
 
 [**Live guide →**](https://spy4x.github.io/preact-components) ·
-[Install and use](docs/usage.md) · [Maintaining](docs/maintaining.md) ·
+[Install and use](docs/usage.md) ·
 [llms.txt](llms.txt) for language models · [Credits](CREDITS.md)
 
 The design system and the original markup are by [Eirene](https://github.com/Eirene)
@@ -54,8 +57,7 @@ has the details.
 ## Why preact-components
 
 - **Accessibility written by hand.** Roles, labels, keyboard handling and focus are owned here, and
-  browser checks in `pages/checks/` prove the behaviours each package's README names. No screen
-  reader has been run against them yet (#210).
+  browser checks in `pages/checks/` prove the behaviours each package's README names.
 - **No component-library dependency.** No Radix, shadcn, Headless UI or Material underneath, and
   no vendored copies of them: [the policy](docs/no-third-party-components.md).
 - **Tokens you can override.** Colours, radii and fonts are CSS custom properties read through
