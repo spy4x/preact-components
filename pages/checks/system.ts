@@ -682,6 +682,7 @@ async function authFormChecks(devtools: Devtools): Promise<void> {
   await authFormFocusStabilityChecks(devtools)
   await authFormToggleChecks(devtools)
   await authFormBusyChecks(devtools)
+  await authFormNamesChecks(devtools)
   await authFormNoScriptChecks(devtools)
 }
 
@@ -1333,6 +1334,100 @@ async function authFormBusyChecks(devtools: Devtools): Promise<void> {
         ? `sign-ins went from "${idle.signIns}" to "${afterIdleSubmit.signIns}"`
         : "no change in sign-ins within 3s of requesting a submit with busy cleared"
       : "the submit button was still disabled after toggling busy off",
+  )
+}
+
+/** The card part whose `AuthForm` posts as `username`, `pass` and `otp`. */
+const AUTH_NAMES = `${AUTH_FORM} [data-e2e="auth-form-names-demo"]`
+
+/** What the renamed-fields card shows its callbacks received, read in one round trip. */
+const AUTH_NAMES_STATE = `(() => {
+  const card = document.querySelector('${AUTH_NAMES}')
+  if (!card) return null
+  const text = (name) => card.querySelector('[data-e2e="auth-form-names-' + name + '"]')
+    ?.textContent ?? ""
+  return {
+    names: [...card.querySelectorAll("form input")].map((input) => input.name).join(","),
+    login: text("login"),
+    passwordLength: text("password-length"),
+    code: text("code"),
+  }
+})()`
+
+interface AuthNamesState {
+  names: string
+  login: string
+  passwordLength: string
+  code: string
+}
+
+const NO_AUTH_NAMES: AuthNamesState = { names: "", login: "", passwordLength: "", code: "" }
+
+/**
+ * Fill the renamed-fields card's inputs by name and press its submit button.
+ *
+ * @param devtools The connected session.
+ * @param values Input name to value.
+ * @returns Whether every named input and the submit button were found.
+ */
+function fillAndSubmitNamed(devtools: Devtools, values: Record<string, string>): Promise<boolean> {
+  return devtools.evaluate<boolean>(`(() => {
+    const form = document.querySelector('${AUTH_NAMES} form')
+    if (!form) return false
+    const values = ${JSON.stringify(values)}
+    for (const [name, value] of Object.entries(values)) {
+      const input = form.querySelector('input[name="' + name + '"]')
+      if (!input) return false
+      input.value = value
+    }
+    const submit = form.querySelector('[data-e2e="auth-form-submit"]')
+    if (!submit) return false
+    submit.click()
+    return true
+  })()`)
+}
+
+/**
+ * A hydrated submit of an `AuthForm` whose inputs carry the names an API expects (`username`,
+ * `pass`, `otp`) still hands the typed values to `onSignIn` and `onOneTimeCode`: the submit handler
+ * reads `FormData` under the renamed keys, not under the defaults. A handler still reading `login`,
+ * `password` or `code` would hand the callbacks empty strings, which the card shows.
+ */
+async function authFormNamesChecks(devtools: Devtools): Promise<void> {
+  const login = "ada@example.com"
+  const password = "correct horse"
+  const code = "482916"
+
+  const before = await read(devtools, AUTH_NAMES_STATE, NO_AUTH_NAMES)
+  const filled = await fillAndSubmitNamed(devtools, { username: login, pass: password })
+  const signedIn = await poll(
+    () => read(devtools, `${AUTH_NAMES_STATE}?.names === "otp"`, false),
+    3_000,
+  )
+  const afterSignIn = await read(devtools, AUTH_NAMES_STATE, NO_AUTH_NAMES)
+
+  check(
+    "a hydrated sign-in with renamed fields hands the typed login and password to onSignIn",
+    before.names === "username,pass" && filled && signedIn &&
+      afterSignIn.login === login && afterSignIn.passwordLength === String(password.length),
+    `inputs before: ${JSON.stringify(before.names)}, filled and submitted: ${filled}, ` +
+      `reached the code step: ${signedIn}, onSignIn received login ` +
+      `${JSON.stringify(afterSignIn.login)} and a password of length ` +
+      `${JSON.stringify(afterSignIn.passwordLength)}`,
+  )
+
+  const submitted = await fillAndSubmitNamed(devtools, { otp: code })
+  const coded = await poll(
+    () => read(devtools, `${AUTH_NAMES_STATE}?.code === ${JSON.stringify(code)}`, false),
+    3_000,
+  )
+  const afterCode = await read(devtools, AUTH_NAMES_STATE, NO_AUTH_NAMES)
+
+  check(
+    "a hydrated code submit with a renamed field hands the typed code to onOneTimeCode",
+    submitted && coded,
+    `filled and submitted: ${submitted}, onOneTimeCode received ` +
+      `${JSON.stringify(afterCode.code)} within 3s`,
   )
 }
 
