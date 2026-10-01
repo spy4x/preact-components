@@ -491,8 +491,10 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `BadgeElementProps` (type): A `Badge` with element content in place of `text` — a `StatusMark` beside a word, say, or a link inside the pill. Import: `@spy4x/preact-ui`
 - `BadgeProps` (type): Props of `Badge`. Import: `@spy4x/preact-ui`
 - `BadgeType` (type): Whether a `Badge` is tinted (`filled`, the default) or only outlined. Import: `@spy4x/preact-ui`
-- `Button` (component): Native button with the library's variant and size vocabulary. Import: `@spy4x/preact-ui`
+- `Button` (component): Native button with the library's variant and size vocabulary, or a link that looks like one. Import: `@spy4x/preact-ui`
 - `buttonClasses` (helper): Compose the class list of a button without rendering one. Import: `@spy4x/preact-ui`
+- `ButtonLinkProps` (type): A `Button` that is a link: given `href`, it renders an `<a>` with the classes the same `variant`, `size` and `class` give a `<button>`. Import: `@spy4x/preact-ui`
+- `ButtonOverloads` (type): `Button`'s two call shapes: given `href`, a link with an anchor's ref, or a native `<button>` with its ref. Import: `@spy4x/preact-ui`
 - `ButtonProps` (type): Props of `Button`. Import: `@spy4x/preact-ui`
 - `ButtonSize` (type): Control height and text scale of a `Button`. Import: `@spy4x/preact-ui`
 - `ButtonVariant` (type): Visual role of a `Button`. Import: `@spy4x/preact-ui`

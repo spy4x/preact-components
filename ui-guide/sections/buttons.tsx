@@ -93,6 +93,46 @@ function ButtonClickDemo() {
 }
 
 /**
+ * `Button` given `href`: a link that looks like the button beside it. The first has a `navigate`
+ * port that only records where it was asked to go, so a plain click shows its href below instead
+ * of leaving the page, while a Ctrl, Meta, Shift, Alt or middle click opens it the browser's way.
+ * The disabled one has no href. The last is `size="none"`, sized by its own class.
+ * `pages/checks/ui.ts` drives the first with real clicks and measures its focus ring.
+ */
+function ButtonLinkDemo() {
+  const navigated = useSignal<string[]>([])
+  return (
+    <Stack gap="sm">
+      <Cluster>
+        <Button
+          href="#/system"
+          data-e2e="button-link-routed"
+          navigate={(href) => navigated.value = [...navigated.value, href]}
+        >
+          Open the system page
+        </Button>
+        <Button href="https://jsr.io/@spy4x/preact-ui" variant="outline">
+          The package on JSR
+        </Button>
+        <Button href="#/system" variant="outline" disabled data-e2e="button-link-disabled">
+          Disabled link
+        </Button>
+        <Button href="#/system" variant="secondary" size="none" class="px-6 py-3">
+          size="none", sized by class
+        </Button>
+      </Cluster>
+      <span class="text-sm text-muted" data-e2e="button-link-navigated">
+        {navigated.value.length === 0
+          ? "navigate not called yet"
+          : `navigate called ${navigated.value.length} ${
+            navigated.value.length === 1 ? "time" : "times"
+          }, last with ${navigated.value.at(-1)}`}
+      </span>
+    </Stack>
+  )
+}
+
+/**
  * A press on "Confirm" makes it busy until "Finish" ends the work, standing in for a request.
  * The count proves a busy button ignores presses: it moves once however often Confirm is pressed.
  * `pages/checks/ui.ts` drives both buttons with real key presses.
@@ -222,7 +262,7 @@ function LinkDemo() {
 export const buttonDemos = {
   Button: {
     summary:
-      "A native button in the library's variants and sizes; every other button attribute passes through.",
+      "A native button in the library's variants and sizes, or a link that looks like one; every other attribute passes through.",
     wide: true,
     props: [
       {
@@ -233,9 +273,28 @@ export const buttonDemos = {
       },
       {
         name: "size",
-        type: `"sm" | "md" | "lg"`,
+        type: `"sm" | "md" | "lg" | "none"`,
         default: `"md"`,
-        description: "The button's height and padding.",
+        description:
+          'The button\'s height and padding. `"none"` sets no padding, gap or text size; size it with `class`.',
+      },
+      {
+        name: "href",
+        type: "string",
+        description:
+          "Renders an `<a>` with the same classes instead of a `<button>` (`ButtonLinkProps`).",
+      },
+      {
+        name: "navigate",
+        type: "(href) => void",
+        description:
+          "A link's router port: a plain click calls it instead of the browser navigating; modified clicks stay the browser's.",
+      },
+      {
+        name: "disabled",
+        type: "boolean",
+        description:
+          'On a link: drops `href`, sets `role="link"` and `aria-disabled`, and dims it; it leaves the tab order.',
       },
       {
         name: "type",
@@ -263,13 +322,16 @@ export const buttonDemos = {
     ],
     snippet: `<Button variant="primary" size="md" onClick={save}>Save</Button>
 <Button variant="danger" disabled>Delete</Button>
-<Button type="submit" busy={saving.value} busyLabel="Confirming…">Confirm</Button>`,
+<Button type="submit" busy={saving.value} busyLabel="Confirming…">Confirm</Button>
+<Button href="/reports" navigate={router.navigate}>Reports</Button>
+<Button href="/book" size="none" class="px-6 py-3">Book a call</Button>`,
     render: () => (
       <Stack gap="lg">
         <ButtonMatrix />
         <ButtonClickDemo />
         <BusyButtonDemo />
         <BusySubmitDemo />
+        <ButtonLinkDemo />
       </Stack>
     ),
   },

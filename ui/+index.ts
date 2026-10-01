@@ -31,6 +31,8 @@ export {
 export {
   Button,
   buttonClasses,
+  type ButtonLinkProps,
+  type ButtonOverloads,
   type ButtonProps,
   type ButtonSize,
   type ButtonVariant,
