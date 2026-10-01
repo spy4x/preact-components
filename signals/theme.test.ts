@@ -396,6 +396,79 @@ describe("createThemeStore toggle", () => {
   })
 })
 
+describe("createThemeStore cycle", () => {
+  /** An attached store on a device whose OS asks for dark (`true`) or light (`false`). */
+  function attachedStore(dark: boolean) {
+    const storage = fakeStorage()
+    const media = fakeMedia(dark)
+    const store = createThemeStore({ storage, media: media.source, apply: () => {} })
+    store.attach()
+    return { store, storage, media }
+  }
+
+  it("goes system, light, dark, system on a dark device", () => {
+    const { store } = attachedStore(true)
+    expect(store.preference.value).toBe(ThemeValue.SYSTEM)
+    store.cycle()
+    expect(store.preference.value).toBe(ThemeValue.LIGHT)
+    store.cycle()
+    expect(store.preference.value).toBe(ThemeValue.DARK)
+    store.cycle()
+    expect(store.preference.value).toBe(ThemeValue.SYSTEM)
+    store.dispose()
+  })
+
+  it("goes system, dark, light, system on a light device", () => {
+    const { store } = attachedStore(false)
+    expect(store.preference.value).toBe(ThemeValue.SYSTEM)
+    store.cycle()
+    expect(store.preference.value).toBe(ThemeValue.DARK)
+    store.cycle()
+    expect(store.preference.value).toBe(ThemeValue.LIGHT)
+    store.cycle()
+    expect(store.preference.value).toBe(ThemeValue.SYSTEM)
+    store.dispose()
+  })
+
+  it("persists every step through the storage port", () => {
+    const { store, storage } = attachedStore(true)
+    const stored: Array<string | undefined> = []
+    for (let step = 0; step < 3; step++) {
+      store.cycle()
+      stored.push(storage.entries.get("theme"))
+    }
+    expect(stored).toEqual([ThemeValue.LIGHT, ThemeValue.DARK, ThemeValue.SYSTEM])
+    store.dispose()
+  })
+
+  it("decides each step from the OS theme at the time of the click", () => {
+    const { store, media } = attachedStore(true)
+    store.cycle()
+    expect(store.preference.value).toBe(ThemeValue.LIGHT)
+    // The device turns light: the explicit light now matches it, so the next step is system.
+    media.emit(false)
+    store.cycle()
+    expect(store.preference.value).toBe(ThemeValue.SYSTEM)
+    // From system on a light device the next step is dark.
+    store.cycle()
+    expect(store.preference.value).toBe(ThemeValue.DARK)
+    // The device turns dark again: dark matches it, so the next step is system once more.
+    media.emit(true)
+    store.cycle()
+    expect(store.preference.value).toBe(ThemeValue.SYSTEM)
+    store.dispose()
+  })
+
+  it("moves an explicit theme that differs from a changed OS onto the OS theme", () => {
+    const { store, media } = attachedStore(false)
+    store.set(ThemeValue.LIGHT)
+    media.emit(true)
+    store.cycle()
+    expect(store.preference.value).toBe(ThemeValue.DARK)
+    store.dispose()
+  })
+})
+
 describe("createThemeStore attach", () => {
   it("applies the resolved theme immediately and on every change", () => {
     const applied: string[] = []

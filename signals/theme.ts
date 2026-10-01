@@ -86,6 +86,15 @@ export interface ThemeStore {
   /** Flip light↔dark. From `"system"`, flips away from whatever the OS currently asks for. */
   toggle(): void
   /**
+   * Step through system → the opposite of the OS → the OS theme → system, through {@link set}.
+   *
+   * From `"system"` it picks the opposite of what the OS asks for now; from an explicit theme that
+   * differs from the OS it picks the OS theme; from one that matches the OS it returns to
+   * `"system"`. A dark device goes system → light → dark → system, a light one system → dark →
+   * light → system. Each step is decided from the OS theme at the moment of the call.
+   */
+  cycle(): void
+  /**
    * Read the stored preference and the OS one, start applying the theme and watch for OS changes.
    *
    * This is where the outside world is first read. The stored preference is loaded once, on the
@@ -219,6 +228,18 @@ export function createThemeStore(ports: ThemePorts = {}): ThemeStore {
     }
   }
 
+  const cycle = (): void => {
+    const current = preference.value
+    const os = system.value
+    if (current === ThemeValue.SYSTEM) {
+      set(os === ThemeValue.LIGHT ? ThemeValue.DARK : ThemeValue.LIGHT)
+    } else if (current !== os) {
+      set(os)
+    } else {
+      set(ThemeValue.SYSTEM)
+    }
+  }
+
   let detach: (() => void) | null = null
   let loaded = false
 
@@ -250,7 +271,7 @@ export function createThemeStore(ports: ThemePorts = {}): ThemeStore {
     detach = null
   }
 
-  return { preference, system, actual, set, toggle, attach, dispose }
+  return { preference, system, actual, set, toggle, cycle, attach, dispose }
 }
 
 /** Options for {@link themeBootstrapScript}. Each default matches {@link createThemeStore}'s. */
