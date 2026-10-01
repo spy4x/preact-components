@@ -1117,6 +1117,13 @@ export class Devtools {
    */
   static readonly DEFAULT_CALL_TIMEOUT_MS = 15_000
 
+  /**
+   * The budget a `send` or `evaluate` gets when its caller names none. `verify.ts` multiplies it by
+   * `--cpu-throttle`: a slowed page can take longer than {@link Devtools.DEFAULT_CALL_TIMEOUT_MS}
+   * to answer one healthy call — a theme contrast sweep took over 15s at a throttle of 4 (#466).
+   */
+  callTimeoutMs = Devtools.DEFAULT_CALL_TIMEOUT_MS
+
   #socket: WebSocket
   #nextId = 0
   #pending = new Map<
@@ -1191,13 +1198,13 @@ export class Devtools {
    * @param method Protocol method, e.g. `Page.navigate`.
    * @param params Method parameters.
    * @param timeoutMs How long to wait for a reply before rejecting — see
-   * {@link Devtools.DEFAULT_CALL_TIMEOUT_MS}.
+   * {@link Devtools.callTimeoutMs}.
    * @returns The method's result.
    */
   send<T>(
     method: string,
     params: Record<string, unknown> = {},
-    timeoutMs = Devtools.DEFAULT_CALL_TIMEOUT_MS,
+    timeoutMs = this.callTimeoutMs,
   ): Promise<T> {
     if (this.#closed) return Promise.reject(this.#closed)
 
@@ -1226,10 +1233,10 @@ export class Devtools {
    *
    * @param expression JavaScript to run; a promise is awaited.
    * @param timeoutMs How long to wait for a reply before rejecting — see
-   * {@link Devtools.DEFAULT_CALL_TIMEOUT_MS}.
+   * {@link Devtools.callTimeoutMs}.
    * @returns The JSON value the expression produced.
    */
-  async evaluate<T>(expression: string, timeoutMs = Devtools.DEFAULT_CALL_TIMEOUT_MS): Promise<T> {
+  async evaluate<T>(expression: string, timeoutMs = this.callTimeoutMs): Promise<T> {
     const response = await this.send<{
       result: { value?: T }
       exceptionDetails?: ExceptionDetails

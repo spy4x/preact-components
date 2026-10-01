@@ -688,6 +688,22 @@ describe("Devtools", () => {
     })
   })
 
+  it("gives a call with no budget of its own the session's callTimeoutMs", async () => {
+    const socket = new FakeSocket()
+    await withFakeSocket(socket, async () => {
+      const connecting = Devtools.connect("ws://fake")
+      socket.onopen?.()
+      const devtools = await connecting
+      devtools.callTimeoutMs = 20
+
+      const sent = await devtools.send("Runtime.enable", {}).catch((error: unknown) => error)
+      const evaluated = await devtools.evaluate(`1`).catch((error: unknown) => error)
+
+      expect((sent as Error).message).toBe("Runtime.enable did not answer within 20ms")
+      expect((evaluated as Error).message).toBe("Runtime.evaluate did not answer within 20ms")
+    })
+  })
+
   it("closes the socket when the open times out", async () => {
     const socket = new FakeSocket()
     const outcome = await withFakeSocket(

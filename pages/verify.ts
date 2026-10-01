@@ -68,7 +68,7 @@ import {
   currentBlockName,
   debuggingPort,
   describeError,
-  type Devtools,
+  Devtools,
   filteredRunLine,
   lastCheckName,
   msSinceProgress,
@@ -580,7 +580,7 @@ const STALL_LIMIT_MS = 90_000
  * run that never stops making progress, not the limit a hang meets first ({@link STALL_LIMIT_MS}
  * is). `pages/README.md` ("How long a run may take") has how it was sized.
  */
-const PHASE_CEILING_MS = 20 * 60_000
+const PHASE_CEILING_MS = 15 * 60_000
 
 /**
  * One Chromium launch attempt: a fresh profile, a spawned process, a bounded wait for its DevTools
@@ -817,6 +817,7 @@ async function browserPhase(): Promise<void> {
           source: `globalThis.${LOCAL_MAP_TILES_FLAG} = true`,
         })
         if (CPU_THROTTLE > 1) {
+          devtools.callTimeoutMs = Devtools.DEFAULT_CALL_TIMEOUT_MS * CPU_THROTTLE
           await devtools.send("Emulation.setCPUThrottlingRate", { rate: CPU_THROTTLE })
         }
 
