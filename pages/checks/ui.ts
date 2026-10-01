@@ -205,6 +205,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await shortcutsChecks(devtools)
   await toggleChipsChecks(devtools)
   await outlineBadgeContrastCheck(devtools)
+  await fieldErrorContrastCheck(devtools)
   // The pill itself is the link, unlike the link inside the static badge beside it.
   await linkFocusRingCheck(devtools, {
     selector: "#demo-Badge a[href].inline-flex",
@@ -13158,6 +13159,188 @@ async function outlineBadgeContrastCheck(devtools: Devtools): Promise<void> {
     reading.chipColor === reading.grayColor && reading.chipRatio >= 4.5,
     `chip ${reading.chipColor}, grey badge ${reading.grayColor}, chip on its card ` +
       `${reading.chipRatio.toFixed(2)}:1`,
+  )
+}
+
+/** One field error message's text, measured in one palette. */
+interface FieldErrorContrast {
+  /** The component that renders the message. */
+  name: string
+  /** Whether the message was found in the catalogue. */
+  found: boolean
+  /** Against the card behind it, the palette's page canvas and its raised surface. */
+  onBackdrop: number
+  onCanvas: number
+  onSurface: number
+  /** Against ink's rail and active-row surfaces; the canvas figure again in the other palettes. */
+  onExtra: number
+  /** The message's colour as the browser computes it. */
+  color: string
+  /** Whether that colour paints the same pixel as `--color-danger` in this palette. */
+  isDanger: boolean
+}
+
+/** Both palettes' readings of every field error message, and the colour after a repaint. */
+interface FieldErrorReading {
+  light: FieldErrorContrast[]
+  dark: FieldErrorContrast[]
+  /** The opt-in dark `data-theme="ink"` palette. */
+  ink: FieldErrorContrast[]
+  /**
+   * Each message's colour, in the light and the dark palette, while the root sets
+   * `--color-danger` to {@link REPAINTED_DANGER}.
+   */
+  repainted: { name: string; color: string; follows: boolean }[]
+}
+
+/** A danger colour no palette uses, which every error message must follow once an app sets it. */
+const REPAINTED_DANGER = "rgb(0, 128, 0)"
+
+/**
+ * The error text of `Field`, `ToggleField`, `FileInput` and `InlineEdit` is drawn with
+ * `text-danger` (#507): in the light, the dark and the ink palette it paints `--color-danger` and
+ * reaches 4.5:1 against the card behind it, the canvas and the surface (in ink also its rail and
+ * active-row surfaces), and an app that repaints
+ * `--color-danger` gets its own colour in every message, in both palettes. `FileInput` is read off its refusal region,
+ * which carries the same classes as its `error` paragraph and is the one of the two the catalogue
+ * renders; the `Field` demo's email is set to an invalid address for the reading and put back
+ * after, and the failing `InlineEdit` is saved once so its alert shows, then abandoned with Escape.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function fieldErrorContrastCheck(devtools: Devtools): Promise<void> {
+  const fail = inlineEditState("inline-edit-fail")
+  const failTrigger =
+    `document.querySelector('#demo-InlineEdit [data-e2e="inline-edit-fail"] button')`
+  await centreInView(devtools, failTrigger)
+  await devtools.evaluate<null>(`(${failTrigger}.focus(), null)`)
+  await pressKey(devtools, "Enter")
+  await poll(() => devtools.evaluate<boolean>(`${fail}.onField`), 2_000)
+  await typeInto(devtools, "Contrast")
+  await pressKey(devtools, "Enter")
+  await poll(() => devtools.evaluate<boolean>(`${fail}.alert !== ""`), 2_000)
+  await pointerToCorner(devtools)
+
+  const reading = await devtools.evaluate<FieldErrorReading>(`(async () => {
+    ${CONTRAST_HELPERS}
+    const root = document.documentElement
+    const wasDark = root.classList.contains("dark")
+    const wasTheme = root.getAttribute("data-theme")
+    const email = document.querySelector("#demo-Field input[type=email]")
+    const emailBefore = email?.value ?? ""
+    const frames = () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+    const setEmail = async (value) => {
+      if (!email) return
+      email.value = value
+      email.dispatchEvent(new Event("input", { bubbles: true }))
+      await frames()
+    }
+    const messages = () => [
+      ["Field", document.querySelector("#guide-email-error")],
+      ["ToggleField", document.querySelector("#guide-toggle-error-error")],
+      ["FileInput", document.querySelector("#guide-file-input-rejection")],
+      ["InlineEdit", document.querySelector('#demo-InlineEdit [data-e2e="inline-edit-fail"] [role="alert"]')],
+    ]
+    const token = (name) => {
+      const probe = document.createElement("div")
+      probe.style.backgroundColor = "var(" + name + ")"
+      document.body.appendChild(probe)
+      const color = paint(getComputedStyle(probe).backgroundColor)
+      probe.remove()
+      return color
+    }
+    const settle = () => Promise.all(
+      messages().flatMap(([, element]) =>
+        element ? element.getAnimations().map((animation) => animation.finished.catch(() => {})) : []
+      ),
+    )
+    const same = (a, b) => a.every((channel, index) => channel === b[index])
+    const measure = (extras = ["--color-canvas"]) => {
+      const canvas = token("--color-canvas")
+      const surface = token("--color-surface")
+      const danger = token("--color-danger")
+      return messages().map(([name, element]) => {
+        if (!element) {
+          return { name, found: false, onBackdrop: 0, onCanvas: 0, onSurface: 0, onExtra: 0, color: "", isDanger: false }
+        }
+        const text = paint(getComputedStyle(element).color)
+        return {
+          name,
+          found: true,
+          onBackdrop: ratio(text, backdrop(element)),
+          onCanvas: ratio(text, canvas),
+          onSurface: ratio(text, surface),
+          onExtra: Math.min(...extras.map((extra) => ratio(text, token(extra)))),
+          color: getComputedStyle(element).color,
+          isDanger: same(text, danger),
+        }
+      })
+    }
+    try {
+      await setEmail("not-an-address")
+      root.classList.remove("dark")
+      await settle()
+      const light = measure()
+      root.classList.add("dark")
+      await settle()
+      const dark = measure()
+      root.setAttribute("data-theme", "ink")
+      await settle()
+      const ink = measure(["--color-surface-rail", "--color-surface-active"])
+      if (wasTheme === null) root.removeAttribute("data-theme")
+      else root.setAttribute("data-theme", wasTheme)
+      await settle()
+      root.style.setProperty("--color-danger", ${JSON.stringify(REPAINTED_DANGER)})
+      await settle()
+      const wanted = paint(${JSON.stringify(REPAINTED_DANGER)})
+      const readRepainted = (palette) => messages().map(([name, element]) => {
+        const color = element ? getComputedStyle(element).color : "missing"
+        return { name: palette + " " + name, color, follows: element !== null && same(paint(color), wanted) }
+      })
+      const repaintedDark = readRepainted("dark")
+      root.classList.remove("dark")
+      await settle()
+      const repainted = [...readRepainted("light"), ...repaintedDark]
+      return { light, dark, ink, repainted }
+    } finally {
+      root.style.removeProperty("--color-danger")
+      root.classList.toggle("dark", wasDark)
+      if (wasTheme === null) root.removeAttribute("data-theme")
+      else root.setAttribute("data-theme", wasTheme)
+      await setEmail(emailBefore)
+    }
+  })()`)
+
+  await pressKey(devtools, "Escape")
+  await poll(() => devtools.evaluate<boolean>(`!${fail}.editing`), 2_000)
+
+  const lowest = (message: FieldErrorContrast) =>
+    Math.min(message.onBackdrop, message.onCanvas, message.onSurface, message.onExtra)
+  const table = (messages: FieldErrorContrast[]) =>
+    messages.map((message) =>
+      message.found
+        ? `${message.name} ${message.color} ${message.onBackdrop.toFixed(2)}/` +
+          `${message.onCanvas.toFixed(2)}/${message.onSurface.toFixed(2)}/` +
+          message.onExtra.toFixed(2)
+        : `${message.name} missing`
+    ).join(", ")
+  for (const palette of ["light", "dark", "ink"] as const) {
+    check(
+      `in the ${palette} palette every field error message paints --color-danger at 4.5:1 or ` +
+        "better on the card, canvas and surface" +
+        (palette === "ink" ? ", rail and active row" : ""),
+      reading[palette].every((message) =>
+        message.found && message.isDanger && lowest(message) >= 4.5
+      ),
+      `card/canvas/surface/${palette === "ink" ? "lower of rail and active" : "canvas"} — ` +
+        `${palette}: ${table(reading[palette])}`,
+    )
+  }
+  check(
+    "in the light and the dark palette every field error message follows an app's repainted " +
+      "--color-danger",
+    reading.repainted.every((message) => message.follows),
+    reading.repainted.map((message) => `${message.name} ${message.color}`).join(", "),
   )
 }
 
